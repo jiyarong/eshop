@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_28_000003) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_31_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -41,6 +41,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_28_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "index_ec_inventory_totals_on_sku_code", unique: true
+  end
+
+  create_table "ec_sku_batches", force: :cascade do |t|
+    t.string "sku_code", null: false
+    t.string "batch_code", null: false
+    t.string "status", default: "draft", null: false
+    t.integer "purchased_quantity", default: 0, null: false
+    t.integer "received_quantity", default: 0, null: false
+    t.decimal "purchase_unit_price_cny", precision: 12, scale: 4, default: "0.0", null: false
+    t.date "expected_arrival_on"
+    t.date "received_on"
+    t.text "memo"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["batch_code"], name: "index_ec_sku_batches_on_batch_code", unique: true
+    t.index ["sku_code"], name: "index_ec_sku_batches_on_sku_code"
   end
 
   create_table "ec_sku_costs", force: :cascade do |t|
@@ -1367,6 +1383,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_28_000003) do
     t.index ["wb_warehouse_id"], name: "index_raw_wb_warehouses_on_wb_warehouse_id", unique: true
   end
 
+  add_foreign_key "ec_sku_batches", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
