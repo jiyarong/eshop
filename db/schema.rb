@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_31_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_31_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -41,6 +41,35 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "index_ec_inventory_totals_on_sku_code", unique: true
+  end
+
+  create_table "ec_purchase_order_items", force: :cascade do |t|
+    t.bigint "purchase_order_id", null: false
+    t.string "sku_code", null: false
+    t.bigint "sku_batch_id", null: false
+    t.integer "quantity", null: false
+    t.decimal "unit_price_cny", precision: 12, scale: 4, null: false
+    t.text "memo"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["purchase_order_id", "sku_batch_id"], name: "idx_ec_po_items_order_batch_unique", unique: true
+    t.index ["purchase_order_id"], name: "index_ec_purchase_order_items_on_purchase_order_id"
+    t.index ["sku_batch_id"], name: "index_ec_purchase_order_items_on_sku_batch_id"
+    t.index ["sku_code"], name: "index_ec_purchase_order_items_on_sku_code"
+  end
+
+  create_table "ec_purchase_orders", force: :cascade do |t|
+    t.string "order_no", null: false
+    t.bigint "supplier_id", null: false
+    t.date "ordered_on"
+    t.string "status", default: "draft", null: false
+    t.string "currency", default: "CNY", null: false
+    t.text "memo"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_no"], name: "index_ec_purchase_orders_on_order_no", unique: true
+    t.index ["status"], name: "index_ec_purchase_orders_on_status"
+    t.index ["supplier_id"], name: "index_ec_purchase_orders_on_supplier_id"
   end
 
   create_table "ec_sku_batches", force: :cascade do |t|
@@ -155,6 +184,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000001) do
     t.datetime "updated_at", null: false
     t.index ["ozon_client_id"], name: "index_ec_stores_on_ozon_client_id", unique: true, where: "(ozon_client_id IS NOT NULL)"
     t.index ["platform"], name: "index_ec_stores_on_platform"
+  end
+
+  create_table "ec_suppliers", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "contact_name"
+    t.string "phone"
+    t.string "wechat"
+    t.text "address"
+    t.boolean "is_active", default: true, null: false
+    t.text "memo"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["is_active"], name: "index_ec_suppliers_on_is_active"
+    t.index ["name"], name: "index_ec_suppliers_on_name", unique: true
   end
 
   create_table "ec_weekly_rates", force: :cascade do |t|
@@ -1387,6 +1430,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000001) do
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_purchase_order_items", "ec_purchase_orders", column: "purchase_order_id"
+  add_foreign_key "ec_purchase_order_items", "ec_sku_batches", column: "sku_batch_id"
+  add_foreign_key "ec_purchase_order_items", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_purchase_orders", "ec_suppliers", column: "supplier_id"
   add_foreign_key "raw_ozon_accrual_by_day", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_analytics", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_analytics_stocks", "raw_ozon_seller_accounts", column: "account_id"
