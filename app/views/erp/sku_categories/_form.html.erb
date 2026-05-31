@@ -1,0 +1,35 @@
+<%= form_with model: category, url: category.persisted? ? erp_sku_category_path(category) : erp_sku_categories_path do |form| %>
+  <% if category.errors.any? %>
+    <div class="panel error-box">
+      <%= category.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <div class="report-form">
+    <div class="field">
+      <%= form.label :code, "类别编码" %>
+      <%= form.text_field :code %>
+    </div>
+    <div class="field">
+      <%= form.label :name, "类别名称" %>
+      <%= form.text_field :name %>
+    </div>
+    <div class="field">
+      <%= form.label :parent_id, "父级" %>
+      <%= form.collection_select :parent_id, parent_options, :id, :name, { include_blank: "无" } %>
+    </div>
+    <div class="field">
+      <%= form.label :position, "排序" %>
+      <%= form.number_field :position, min: 0 %>
+    </div>
+    <div class="field">
+      <%= form.label :is_active, "启用" %>
+      <%= form.check_box :is_active %>
+    </div>
+    <div class="field">
+      <%= form.label :memo, "备注" %>
+      <%= form.text_field :memo %>
+    </div>
+    <%= form.submit "保存", class: "button" %>
+  </div>
+<% end %>

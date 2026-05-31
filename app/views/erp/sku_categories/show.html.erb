@@ -1,0 +1,47 @@
+<h1 class="page-title"><%= @category.name %></h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <p><%= link_to "编辑", erp_edit_sku_category_path(@category), class: "button" %></p>
+    <dl class="definition-list">
+      <dt>类别编码</dt>
+      <dd><%= @category.code %></dd>
+      <dt>类别名称</dt>
+      <dd><%= @category.name %></dd>
+      <dt>父级</dt>
+      <dd><%= erp_value(@category.parent&.name) %></dd>
+      <dt>级别</dt>
+      <dd><%= @category.depth %></dd>
+      <dt>排序</dt>
+      <dd><%= @category.position %></dd>
+      <dt>状态</dt>
+      <dd><%= @category.is_active ? "启用" : "停用" %></dd>
+      <dt>备注</dt>
+      <dd><%= erp_value(@category.memo) %></dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">子类别</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>类别编码</th>
+            <th>类别名称</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @children.each do |child| %>
+            <tr>
+              <td><%= link_to child.code, erp_sku_category_path(child) %></td>
+              <td><%= child.name %></td>
+              <td><%= child.is_active ? "启用" : "停用" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

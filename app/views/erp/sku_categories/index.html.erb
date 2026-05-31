@@ -1,0 +1,31 @@
+<h1 class="page-title">SKU 类别</h1>
+
+<section class="panel">
+  <p><%= link_to "新增 SKU 类别", erp_new_sku_category_path, class: "button" %></p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>类别编码</th>
+          <th>类别名称</th>
+          <th>父级</th>
+          <th>级别</th>
+          <th>排序</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @categories.each do |category| %>
+          <tr>
+            <td><%= link_to category.code, erp_sku_category_path(category) %></td>
+            <td><%= category.name %></td>
+            <td><%= category.parent&.name %></td>
+            <td><%= category.depth %></td>
+            <td><%= category.position %></td>
+            <td><%= category.is_active ? "启用" : "停用" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

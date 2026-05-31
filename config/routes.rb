@@ -13,6 +13,12 @@ Rails.application.routes.draw do
   get "reports/costs"     => "reports#costs"
 
   namespace :erp do
+    get "sku_categories/new" => "sku_categories#new", as: :new_sku_category
+    get "sku_categories/:id/edit" => "sku_categories#edit", as: :edit_sku_category
+    get "skus/new" => "skus#new", as: :new_sku
+    get "skus/:id/edit" => "skus#edit", as: :edit_sku
+    resources :sku_categories, except: [:destroy]
+    resources :skus, except: [:destroy]
     resources :sku_batches, only: [:index, :show]
     resources :suppliers, only: [:index, :show]
     resources :purchase_orders, only: [:index, :show]
