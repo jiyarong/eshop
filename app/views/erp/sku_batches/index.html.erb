@@ -1,0 +1,32 @@
+<h1 class="page-title">SKU 批次</h1>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>批次号</th>
+          <th>SKU</th>
+          <th>商品名</th>
+          <th>状态</th>
+          <th>采购数量</th>
+          <th>到货数量</th>
+          <th>采购单价</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @batches.each do |batch| %>
+          <tr>
+            <td><%= link_to batch.batch_code, erp_sku_batch_path(batch) %></td>
+            <td><%= batch.sku_code %></td>
+            <td><%= batch.sku&.product_name %></td>
+            <td><%= batch.status %></td>
+            <td><%= batch.purchased_quantity %></td>
+            <td><%= batch.received_quantity %></td>
+            <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

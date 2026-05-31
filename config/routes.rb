@@ -12,6 +12,14 @@ Rails.application.routes.draw do
   get "reports/skus"      => "reports#skus"
   get "reports/costs"     => "reports#costs"
 
+  namespace :erp do
+    resources :sku_batches, only: [:index, :show]
+    resources :suppliers, only: [:index, :show]
+    resources :purchase_orders, only: [:index, :show]
+    resources :cost_allocations, only: [:index, :show]
+    resources :operation_tasks, only: [:index, :show]
+  end
+
   # 暂时屏蔽所有业务接口
   # namespace :raw_wb do
   #   resources :seller_accounts

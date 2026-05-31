@@ -1,0 +1,30 @@
+<h1 class="page-title">费用分摊</h1>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>分摊单号</th>
+          <th>费用类型</th>
+          <th>分摊方式</th>
+          <th>状态</th>
+          <th>总金额</th>
+          <th>已分摊</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @cost_allocations.each do |allocation| %>
+          <tr>
+            <td><%= link_to allocation.allocation_no, erp_cost_allocation_path(allocation) %></td>
+            <td><%= allocation.cost_type %></td>
+            <td><%= allocation.allocation_method %></td>
+            <td><%= allocation.status %></td>
+            <td><%= erp_value(allocation.total_amount_cny) %></td>
+            <td><%= erp_value(allocation.allocated_amount_cny) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

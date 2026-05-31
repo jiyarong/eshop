@@ -1,0 +1,42 @@
+<h1 class="page-title"><%= @cost_allocation.allocation_no %></h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <dl class="definition-list">
+      <dt>费用类型</dt>
+      <dd><%= @cost_allocation.cost_type %></dd>
+      <dt>分摊方式</dt>
+      <dd><%= @cost_allocation.allocation_method %></dd>
+      <dt>状态</dt>
+      <dd><%= @cost_allocation.status %></dd>
+      <dt>分摊金额</dt>
+      <dd><%= erp_value(@cost_allocation.total_amount_cny) %></dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">分摊明细</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>批次号</th>
+            <th>SKU</th>
+            <th>商品名</th>
+            <th>金额</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @cost_allocation.items.each do |item| %>
+            <tr>
+              <td><%= item.sku_batch&.batch_code %></td>
+              <td><%= item.sku_batch&.sku_code %></td>
+              <td><%= item.sku_batch&.sku&.product_name %></td>
+              <td><%= erp_value(item.amount_cny) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
