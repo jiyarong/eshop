@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_31_000005) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_31_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -41,6 +41,27 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000005) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "index_ec_inventory_totals_on_sku_code", unique: true
+  end
+
+  create_table "ec_operation_tasks", force: :cascade do |t|
+    t.string "task_type", null: false
+    t.string "status", default: "open", null: false
+    t.string "priority", default: "medium", null: false
+    t.string "sku_code"
+    t.string "platform"
+    t.string "store_key"
+    t.string "title", null: false
+    t.text "reason"
+    t.text "suggested_action"
+    t.string "owner_name"
+    t.date "due_on"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["priority"], name: "index_ec_operation_tasks_on_priority"
+    t.index ["sku_code"], name: "index_ec_operation_tasks_on_sku_code"
+    t.index ["status"], name: "index_ec_operation_tasks_on_status"
+    t.index ["task_type"], name: "index_ec_operation_tasks_on_task_type"
   end
 
   create_table "ec_cost_allocations", force: :cascade do |t|
