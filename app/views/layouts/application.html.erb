@@ -270,6 +270,8 @@
             <a href="/reports/inventory" <%= 'aria-current="page"'.html_safe if request.path == "/reports/inventory" %>>库存</a>
             <a href="/reports/skus" <%= 'aria-current="page"'.html_safe if request.path == "/reports/skus" %>>SKU</a>
             <a href="/reports/costs" <%= 'aria-current="page"'.html_safe if request.path == "/reports/costs" %>>成本</a>
+            <a href="/erp/skus" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/skus") %>>SKU 管理</a>
+            <a href="/erp/sku_categories" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/sku_categories") %>>SKU 类别</a>
             <a href="/erp/sku_batches" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/sku_batches") %>>ERP 批次</a>
             <a href="/erp/purchase_orders" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/purchase_orders") %>>采购单</a>
             <a href="/erp/cost_allocations" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/cost_allocations") %>>费用分摊</a>

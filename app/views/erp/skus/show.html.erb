@@ -1,0 +1,35 @@
+<h1 class="page-title"><%= @sku.sku_code %></h1>
+
+<section class="panel">
+  <p><%= link_to "编辑", erp_edit_sku_path(@sku), class: "button" %></p>
+  <dl class="definition-list">
+    <dt>中文名</dt>
+    <dd><%= erp_value(@sku.product_name) %></dd>
+    <dt>俄文名</dt>
+    <dd><%= erp_value(@sku.product_name_ru) %></dd>
+    <dt>类别</dt>
+    <dd><%= erp_value(@sku.sku_category&.name) %></dd>
+    <dt>颜色</dt>
+    <dd><%= erp_value(@sku.color) %></dd>
+    <dt>规格</dt>
+    <dd><%= erp_value(@sku.spec) %></dd>
+    <dt>尺寸</dt>
+    <dd><%= erp_value(@sku.size) %></dd>
+    <dt>重量 kg</dt>
+    <dd><%= erp_value(@sku.weight_kg) %></dd>
+    <dt>体积 L</dt>
+    <dd><%= erp_value(@sku.volume_l) %></dd>
+    <dt>型号</dt>
+    <dd><%= erp_value(@sku.model) %></dd>
+    <dt>品质</dt>
+    <dd><%= erp_value(@sku.quality_grade) %></dd>
+    <dt>特点</dt>
+    <dd><%= erp_value(@sku.features) %></dd>
+    <dt>负责人</dt>
+    <dd><%= erp_value(@sku.owner_name) %></dd>
+    <dt>状态</dt>
+    <dd><%= @sku.is_active ? "上架" : "下架" %></dd>
+    <dt>备注</dt>
+    <dd><%= erp_value(@sku.memo) %></dd>
+  </dl>
+</section>

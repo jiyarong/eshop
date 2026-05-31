@@ -1,0 +1,35 @@
+<h1 class="page-title">SKU 管理</h1>
+
+<section class="panel">
+  <p><%= link_to "新增 SKU", erp_new_sku_path, class: "button" %></p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th>中文名</th>
+          <th>俄文名</th>
+          <th>类别</th>
+          <th>颜色</th>
+          <th>规格</th>
+          <th>负责人</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @skus.each do |sku| %>
+          <tr>
+            <td><%= link_to sku.sku_code, erp_sku_path(sku) %></td>
+            <td><%= sku.product_name %></td>
+            <td><%= sku.product_name_ru %></td>
+            <td><%= sku.sku_category&.name %></td>
+            <td><%= sku.color %></td>
+            <td><%= sku.spec %></td>
+            <td><%= sku.owner_name %></td>
+            <td><%= sku.is_active ? "上架" : "下架" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
