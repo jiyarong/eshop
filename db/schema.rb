@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_31_000003) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_31_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -41,6 +41,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "index_ec_inventory_totals_on_sku_code", unique: true
+  end
+
+  create_table "ec_payment_requests", force: :cascade do |t|
+    t.bigint "purchase_order_id", null: false
+    t.string "payment_type", null: false
+    t.decimal "amount_cny", precision: 12, scale: 4, null: false
+    t.string "status", default: "pending", null: false
+    t.date "requested_on"
+    t.datetime "approved_at"
+    t.datetime "paid_at"
+    t.text "memo"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_type"], name: "index_ec_payment_requests_on_payment_type"
+    t.index ["purchase_order_id"], name: "index_ec_payment_requests_on_purchase_order_id"
+    t.index ["status"], name: "index_ec_payment_requests_on_status"
   end
 
   create_table "ec_purchase_order_items", force: :cascade do |t|
@@ -1430,6 +1446,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000003) do
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_payment_requests", "ec_purchase_orders", column: "purchase_order_id"
   add_foreign_key "ec_purchase_order_items", "ec_purchase_orders", column: "purchase_order_id"
   add_foreign_key "ec_purchase_order_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_purchase_order_items", "ec_skus", column: "sku_code", primary_key: "sku_code"

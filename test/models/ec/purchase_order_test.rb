@@ -14,6 +14,9 @@ class Ec::PurchaseOrderTest < ActiveSupport::TestCase
   end
 
   teardown do
+    if defined?(Ec::PaymentRequest)
+      Ec::PaymentRequest.joins(:purchase_order).where(ec_purchase_orders: { order_no: "PO-#{@token}" }).delete_all
+    end
     if defined?(Ec::PurchaseOrderItem)
       Ec::PurchaseOrderItem.where(sku_code: @sku.sku_code).delete_all
     end
@@ -47,5 +50,28 @@ class Ec::PurchaseOrderTest < ActiveSupport::TestCase
     item = order.items.build(sku_code: @sku.sku_code, sku_batch: @batch, quantity: 0, unit_price_cny: 10)
 
     assert_not item.valid?
+  end
+
+  test "purchase order sums paid payment requests" do
+    order = Ec::PurchaseOrder.create!(
+      order_no: "PO-#{@token}",
+      supplier: @supplier,
+      ordered_on: Date.new(2026, 5, 31)
+    )
+
+    order.payment_requests.create!(
+      payment_type: "deposit",
+      amount_cny: 300,
+      status: "paid",
+      requested_on: Date.new(2026, 5, 31)
+    )
+    order.payment_requests.create!(
+      payment_type: "balance",
+      amount_cny: 700,
+      status: "pending",
+      requested_on: Date.new(2026, 6, 10)
+    )
+
+    assert_equal 300.to_d, order.paid_amount_cny
   end
 end
