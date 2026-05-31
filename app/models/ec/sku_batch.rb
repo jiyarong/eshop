@@ -5,6 +5,7 @@ module Ec
     STATUSES = %w[draft ordered in_transit received closed].freeze
 
     belongs_to :sku, class_name: "Ec::Sku", foreign_key: :sku_code, primary_key: :sku_code
+    has_many :cost_allocation_items, class_name: "Ec::CostAllocationItem", foreign_key: :sku_batch_id
 
     validates :sku_code, :batch_code, presence: true
     validates :batch_code, uniqueness: true
