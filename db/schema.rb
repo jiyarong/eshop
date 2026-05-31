@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_31_000006) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_31_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -41,6 +41,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000006) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "index_ec_inventory_totals_on_sku_code", unique: true
+  end
+
+  create_table "ec_sku_categories", force: :cascade do |t|
+    t.string "code", null: false
+    t.string "name", null: false
+    t.bigint "parent_id"
+    t.integer "position", default: 0, null: false
+    t.boolean "is_active", default: true, null: false
+    t.text "memo"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_ec_sku_categories_on_code", unique: true
+    t.index ["is_active"], name: "index_ec_sku_categories_on_is_active"
+    t.index ["name"], name: "index_ec_sku_categories_on_name"
+    t.index ["parent_id"], name: "index_ec_sku_categories_on_parent_id"
   end
 
   create_table "ec_operation_tasks", force: :cascade do |t|
@@ -1494,6 +1509,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_31_000006) do
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_payment_requests", "ec_purchase_orders", column: "purchase_order_id"
