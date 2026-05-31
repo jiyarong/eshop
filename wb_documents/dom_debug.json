@@ -1,0 +1,598 @@
+{
+  "candidates": [
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/ping",
+      "html": "<span class=\"sidebar-endpoint\">/ping</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/communications/v2/news",
+      "html": "<span class=\"sidebar-endpoint\">/api/communications/v2/news</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/v1/seller-info",
+      "html": "<span class=\"sidebar-endpoint\">/api/v1/seller-info</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/common/v1/rating",
+      "html": "<span class=\"sidebar-endpoint\">/api/common/v1/rating</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/common/v1/subscriptions",
+      "html": "<span class=\"sidebar-endpoint\">/api/common/v1/subscriptions</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/v1/invite",
+      "html": "<span class=\"sidebar-endpoint\">/api/v1/invite</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/v1/users",
+      "html": "<span class=\"sidebar-endpoint\">/api/v1/users</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/v1/users/access",
+      "html": "<span class=\"sidebar-endpoint\">/api/v1/users/access</span>"
+    },
+    {
+      "tag": "SPAN",
+      "cls": "sidebar-endpoint",
+      "children": 0,
+      "text": "/api/v1/user",
+      "html": "<span class=\"sidebar-endpoint\">/api/v1/user</span>"
+    },
+    {
+      "tag": "DIV",
+      "cls": "footer_left__aGAgT",
+      "children": 1,
+      "text": "© Wildberries 2004-2026. Все права защищены. Контактные данные: dev-info@rwb.ru",
+      "html": "<div class=\"footer_left__aGAgT\"><div class=\"copyright_root__Y_86k\"><p class=\"_Text_1xgga_9 _Text--body-s_1xgga_359 _Text--secondary_1xgga_452\" data-name=\"Text\">© <!-- -->Wildberries<!-- --> 2004-<!-- -->2026<!-- -->. <!-- -->Все права защищены<!-- -->. <!-- -->Контактные&nbsp;данные<!-- -->:&nbsp;<a class=\"copyright_link__Wngbu\" href=\"mailto:dev-info@rwb.ru\">dev-info@rwb.ru</a></p></div></div>"
+    }
+  ],
+  "allLinks": [
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information",
+      "text": "Документация"
+    },
+    {
+      "href": "https://dev.wildberries.ru/release-notes",
+      "text": "Журнал изменений"
+    },
+    {
+      "href": "https://dev.wildberries.ru/sandbox",
+      "text": "Песочница"
+    },
+    {
+      "href": "https://dev.wildberries.ru/wb-status",
+      "text": "Статус API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/forum",
+      "text": "Сообщество"
+    },
+    {
+      "href": "https://dev.wildberries.ru/knowledge-base",
+      "text": "База знаний"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie",
+      "text": "общая информация о WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Kak-nachat-rabotu-s-API",
+      "text": "начать работу с WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya",
+      "text": "авторизоваться"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "создавать токены"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Status-kody-HTTP",
+      "text": "статус-коды ответов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "лимиты запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Podderzhka",
+      "text": "поддержку"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Proverka-podklyucheniya-k-WB-API/paths/~1ping/get",
+      "text": "подключение к WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/API-novostej/paths/~1api~1communications~1v2~1news/get",
+      "text": "новости портала продавцов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Informaciya-o-prodavce/paths/~1api~1v1~1seller-info/get",
+      "text": "информацию о продавце"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca",
+      "text": "управлять пользователями продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie",
+      "text": "общая информация о WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Kak-nachat-rabotu-s-API",
+      "text": "начать работу с WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya",
+      "text": "авторизоваться"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "создавать токены"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Status-kody-HTTP",
+      "text": "статус-коды ответов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "лимиты запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Podderzhka",
+      "text": "поддержку"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Proverka-podklyucheniya-k-WB-API/paths/~1ping/get",
+      "text": "подключение к WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/API-novostej/paths/~1api~1communications~1v2~1news/get",
+      "text": "новости портала продавцов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Informaciya-o-prodavce/paths/~1api~1v1~1seller-info/get",
+      "text": "информацию о продавце"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca",
+      "text": "управлять пользователями продавца"
+    },
+    {
+      "href": "https://seller.wildberries.ru/",
+      "text": "личном кабинете Продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "создайте API-токен"
+    },
+    {
+      "href": "https://seller.wildberries.ru/auth-services",
+      "text": "каталога решений для бизнеса"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Proverka-podklyucheniya-k-WB-API",
+      "text": "проверки подключения"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information",
+      "text": "Официальная документация WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Podderzhka",
+      "text": "техническую поддержку"
+    },
+    {
+      "href": "https://dev.wildberries.ru/release-notes",
+      "text": "журнале изменений"
+    },
+    {
+      "href": "https://seller.wildberries.ru/news-v2/news-list",
+      "text": "новостной ленте Wildberries"
+    },
+    {
+      "href": "https://seller.wildberries.ru/",
+      "text": "личном кабинете продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/business-solutions",
+      "text": "Каталога решений для бизнеса"
+    },
+    {
+      "href": "https://seller.wildberries.ru/monetization/jam",
+      "text": "Джема"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "Маркетплейс"
+    },
+    {
+      "href": "https://dev.wildberries.ru/",
+      "text": "WB API"
+    },
+    {
+      "href": "https://legal.wildberries.ru/soglashenie-o-razmeschenii-avtorizovannykh-servisov-na-platforme-wb-api/country/ru/lang/ru/",
+      "text": "Соглашении о размещении Авторизованных сервисов на платформе WB API"
+    },
+    {
+      "href": "https://seller.wildberries.ru/instructions/ru/ru/material/api-integration-with-token",
+      "text": "инструкции в справочном центре"
+    },
+    {
+      "href": "https://dev.wildberries.ru/business-solutions",
+      "text": "Каталога готовых решений для бизнеса"
+    },
+    {
+      "href": "https://dev.wildberries.ru/business-solutions",
+      "text": "Каталога"
+    },
+    {
+      "href": "https://dev.wildberries.ru/sandbox",
+      "text": "песочнице WB API"
+    },
+    {
+      "href": "https://seller.wildberries.ru/instructions/ru/ru/material/how-to-create-update-or-delete-a-wb-api-token?categoryId=api-integration&goBackOption=prevRoute#%D0%BA%D0%B0%D0%BA-%D1%81%D0%BE%D0%B7%D0%B4%D0%B0%D1%82%D1%8C-%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81%D0%BD%D1%8B%D0%B9-%D1%82%D0%BE%D0%BA%D0%B5%D0%BD",
+      "text": "инструкции в справочном центре"
+    },
+    {
+      "href": "https://seller.wildberries.ru/api-integrations",
+      "text": "Интеграции по API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Kategorii-predmety-i-harakteristiki",
+      "text": "Категории, предметы и характеристики"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Sozdanie-kartochek-tovarov",
+      "text": "Создание карточек товаров"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Kartochki-tovarov",
+      "text": "Карточки товаров"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Mediafajly",
+      "text": "Медиафайлы"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Yarlyki",
+      "text": "Ярлыки"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/analytics#tag/Voronka-prodazh",
+      "text": "Воронка продаж"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/analytics#tag/Poiskovye-zaprosy-po-vashim-tovaram",
+      "text": "Поисковые запросы по вашим товарам"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/analytics#tag/Istoriya-ostatkov",
+      "text": "История остатков"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/analytics#tag/Analitika-prodavca-CSV",
+      "text": "Аналитика продавца CSV"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Otchyot-ob-ostatkah-na-skladah",
+      "text": "Отчёт об остатках на складах"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Otchyot-o-tovarah-c-obyazatelnoj-markirovkoj",
+      "text": "Отчёт о товарах с обязательной маркировкой"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Otchyoty-ob-uderzhaniyah",
+      "text": "Отчёты об удержаниях"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Platnaya-priyomka",
+      "text": "Платная приёмка"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Platnoe-hranenie",
+      "text": "Платное хранение"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Prodazhi-po-regionam",
+      "text": "Продажи по регионам"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Dolya-brenda-v-prodazhah",
+      "text": "Доля бренда в продажах"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Skrytye-tovary",
+      "text": "Скрытые товары"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Otchyot-o-vozvratah-i-peremeshenii-tovarov",
+      "text": "Отчёт о возвратах и перемещении товаров"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Ceny-i-skidki",
+      "text": "Цены и скидки"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Kalendar-akcij",
+      "text": "Календарь акций"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/orders-fbs",
+      "text": "Заказы FBS"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Sklady-prodavca",
+      "text": "Склады продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/work-with-products#tag/Ostatki-na-skladah-prodavca",
+      "text": "Остатки"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/orders-dbs",
+      "text": "Заказы DBS"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/in-store-pickup",
+      "text": "Самовывоз"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/reports#tag/Osnovnye-otchyoty",
+      "text": "Основные отчёты"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Kampanii",
+      "text": "Кампании"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Sozdanie-kampanij",
+      "text": "Создание кампаний"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Upravlenie-kampaniyami",
+      "text": "Управление кампаниями"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Parametry-kampanij",
+      "text": "Параметры кампаний"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Finansy",
+      "text": "Финансы"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Media",
+      "text": "Медиа"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/promotion#tag/Statistika",
+      "text": "Статистика"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/user-communication#tag/Voprosy",
+      "text": "Вопросы"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/user-communication#tag/Otzyvy",
+      "text": "Отзывы"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/user-communication#tag/Zakreplyonnye-otzyvy",
+      "text": "Закреплённые отзывы"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/user-communication#tag/Chat-s-pokupatelyami",
+      "text": "Чат с покупателями"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/orders-fbw#tag/Postavki-FBW",
+      "text": "Поставки FBW"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/user-communication#tag/Vozvraty-pokupatelyami",
+      "text": "Возвраты покупателями"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/financial-reports-and-accounting#tag/Dokumenty",
+      "text": "Документы"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/financial-reports-and-accounting#tag/Balans",
+      "text": "Баланс"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/financial-reports-and-accounting#tag/Finansovye-otchyoty",
+      "text": "Финансовые отчёты"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca",
+      "text": "Управление пользователями продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/jwt?utm_source=dev-portal&utm_campaign=api-information&utm_content=cta-link",
+      "text": "декодировать его"
+    },
+    {
+      "href": "https://dev.wildberries.ru/jwt?utm_source=dev-portal&utm_campaign=api-information&utm_content=cta-link",
+      "text": "отдельной странице портала разработчиков"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "токеном"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "секунд"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "токеном"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Informaciya-o-prodavce/paths/~1api~1v1~1seller-info/get",
+      "text": "информацию о продавце"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Informaciya-o-prodavce/operation/getCommonV1Rating",
+      "text": "рейтинг продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Informaciya-o-prodavce/operation/getCommonV1Subscriptions",
+      "text": "информацию о подписке Джем"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "токеном"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "токен"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API",
+      "text": "токену"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "токеном"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API",
+      "text": "токену"
+    },
+    {
+      "href": "https://seller.wildberries.ru/monetization/jam",
+      "text": "Джем"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Kak-sozdat-personalnyj-bazovyj-ili-testovyj-token",
+      "text": "токен"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1invite/post",
+      "text": "Создать приглашение для пользователя"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1users/get",
+      "text": "Получить список активных или приглашённых пользователей продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1users~1access/put",
+      "text": "Изменить права доступа пользователей"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1user/delete",
+      "text": "Закрыть доступ пользователю"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API",
+      "text": "токену"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://seller.wildberries.ru/supplier-settings/supplier-card?inviteId=e5a813c7-65e0-4599-a550-a6b3d85661ed",
+      "text": "https://seller.wildberries.ru/supplier-settings/supplier-card?inviteId=e5a813c7-"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API",
+      "text": "токену"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API",
+      "text": "токену"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Avtorizaciya/Pravila-ispolzovaniya-tokenov-dostupa-k-API",
+      "text": "токену"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Upravlenie-polzovatelyami-prodavca/paths/~1api~1v1~1users/get",
+      "text": "списка сотрудников продавца"
+    },
+    {
+      "href": "https://dev.wildberries.ru/docs/openapi/api-information#tag/Vvedenie/Limity-zaprosov",
+      "text": "Лимит запросов"
+    },
+    {
+      "href": "https://dev.wildberries.ru/rules",
+      "text": "Пользовательское соглашение Сервиса «WB API»"
+    },
+    {
+      "href": "https://legal.wildberries.ru/soglashenie-o-razmeschenii-avtorizovannykh-servisov-na-platforme-wb-api/country/ru/lang/ru/",
+      "text": "Соглашение о размещении сервисов на платформе WB API"
+    },
+    {
+      "href": "https://dev.wildberries.ru/privacy",
+      "text": "Политика в отношении обработки ПД РВБ"
+    },
+    {
+      "href": "https://dev.wildberries.ru/faq",
+      "text": "FAQ. Ответы на часто задаваемые вопросы"
+    },
+    {
+      "href": "https://dev.wildberries.ru/privacy",
+      "text": "cookies"
+    }
+  ],
+  "bodyHTML": "<div class=\"page-wrapper\"><header class=\"header_root___1grn\"><div class=\"header_wrapper__2j3vt\"><div class=\"header_navBlock__O8LcQ\"><a href=\"/\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"92\" height=\"32\" viewBox=\"0 0 92 32\" fill=\"none\" class=\"_svg_vz6yj_1\"><path d=\"M35.467 6.94453C33.6887 6.94453 32.0809 7.48047 30.7098 8.40085V0H26.9165V15.4931C26.9165 20.2067 30.7514 24 35.4442 24C40.1371 24 44.0155 20.2295 44.0155 15.4495C44.0155 10.6696 40.2223 6.94263 35.4651 6.94263L35.467 6.94453ZM18.2505 16.5877L14.7792 7.54486H12.1222L8.63008 16.5877L5.13793 7.54486H1L7.10747 23.4451H9.76446L13.4289 13.9743L17.1143 23.4451H19.7712L25.8579 7.54486H21.7427L18.2505 16.5877ZM35.4461 20.2086C32.8744 20.2086 30.7098 18.152 30.7098 15.4723C30.7098 12.7926 32.7456 10.7586 35.467 10.7586C38.1884 10.7586 40.2242 12.8797 40.2242 15.4723C40.2242 18.0649 38.0596 20.2086 35.4461 20.2086Z\" fill=\"#94E330\"></path><path d=\"M85.8599 0C87.309 0 88.6322 1.29167 88.6322 2.83537C88.6322 4.28455 87.4981 5.63923 85.8599 5.63923C84.3162 5.63923 82.993 4.50508 82.993 2.99289C82.993 1.29167 84.3162 0 85.8599 0ZM83.9696 23.4705V7.7185H87.6871V23.4705H83.9696Z\" fill=\"white\"></path><path d=\"M73.5114 10.9004C71.054 10.9004 68.8173 12.9166 68.8173 15.626C68.8173 18.2093 70.865 20.2571 73.7004 20.2571C76.3152 20.2571 78.3945 18.2093 78.3945 15.626C78.3945 12.9166 76.1262 10.9004 73.5114 10.9004ZM65.0683 30.9999V15.626C65.0683 10.9004 68.9748 7.15137 73.5114 7.15137C78.2055 7.15137 82.112 10.9004 82.112 15.626C82.112 20.2571 78.3945 24.0375 73.7004 24.0375C71.8101 24.0375 70.2979 23.439 68.8173 22.5254V30.9999H65.0683Z\" fill=\"white\"></path><path d=\"M59.4362 7.71855H63.1852V23.4706H59.4362V21.8954C58.1446 23.187 56.3803 24.0062 54.2381 24.0062C49.4179 24.0062 46.0155 20.2887 46.0155 15.5946C46.0155 10.932 49.4179 7.18298 54.2381 7.18298C56.3803 7.18298 58.1446 8.03359 59.4362 9.38827V7.71855ZM49.8275 15.5946C49.8275 18.3354 52.0013 20.3832 54.6161 20.3832C57.1994 20.3832 59.4362 18.2724 59.4362 15.5946C59.4362 12.9167 57.1994 10.8375 54.6161 10.8375C52.0013 10.8375 49.8275 12.8537 49.8275 15.5946Z\" fill=\"white\"></path></svg></a><div class=\"navigation_navWrapper__ZsmHt\"><nav><ul class=\"navigation_measureContainer__zYJus\" aria-hidden=\"true\"><li class=\"navigation_element__KuCzX\"><a href=\"/docs/openapi/api-information\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Документация</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/release-notes\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Журнал изменений</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/sandbox\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Песочница</span></a></li><li class=\"navigation_element__KuCzX\"><button type=\"button\" class=\"ant-dropdown-trigger dropdownmenu_btn__A_qWN\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Swagger</span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"25\" height=\"24\" viewBox=\"0 0 25 24\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M18.0151 9.29462C17.6096 8.90535 16.9523 8.905 16.5464 9.29385L12.4999 13.17L8.4534 9.29385C8.04747 8.905 7.39014 8.90535 6.98465 9.29462C6.57885 9.68419 6.57885 10.3158 6.98465 10.7054L11.7633 15.2929C12.1701 15.6834 12.8297 15.6834 13.2364 15.2929L18.0151 10.7054C18.4209 10.3158 18.4209 9.68419 18.0151 9.29462Z\" fill=\"black\"></path></svg></button></li><li class=\"navigation_element__KuCzX\"><a href=\"/wb-status\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Статус API</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/forum\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Сообщество</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/knowledge-base\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">База знаний</span></a></li></ul><ul class=\"navigation_desctopNav__JXGRB\"><li class=\"navigation_element__KuCzX\"><a href=\"/docs/openapi/api-information\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Документация</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/release-notes\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Журнал изменений</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/sandbox\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Песочница</span></a></li><li class=\"navigation_element__KuCzX\"><button type=\"button\" class=\"ant-dropdown-trigger dropdownmenu_btn__A_qWN\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Swagger</span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"25\" height=\"24\" viewBox=\"0 0 25 24\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M18.0151 9.29462C17.6096 8.90535 16.9523 8.905 16.5464 9.29385L12.4999 13.17L8.4534 9.29385C8.04747 8.905 7.39014 8.90535 6.98465 9.29462C6.57885 9.68419 6.57885 10.3158 6.98465 10.7054L11.7633 15.2929C12.1701 15.6834 12.8297 15.6834 13.2364 15.2929L18.0151 10.7054C18.4209 10.3158 18.4209 9.68419 18.0151 9.29462Z\" fill=\"black\"></path></svg></button></li><li class=\"navigation_element__KuCzX\"><a href=\"/wb-status\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Статус API</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/forum\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Сообщество</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/knowledge-base\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">База знаний</span></a></li></ul><div class=\"navigation_mobNav__V0Jec\" id=\"mobMenu\"><ul class=\"ant-menu ant-menu-root ant-menu-inline ant-menu-light css-tz4qjp\" role=\"menu\" tabindex=\"0\" data-menu-list=\"true\"><li class=\"ant-menu-item ant-menu-item-only-child\" style=\"padding-left:24px\" role=\"menuitem\" tabindex=\"-1\" feature=\"docs\" data-menu-id=\"rc-menu-uuid-98696-1-docs\"><span class=\"ant-menu-title-content\"><a href=\"/docs/openapi/api-information\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Документация</span></a></span></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li><li class=\"ant-menu-item ant-menu-item-only-child\" style=\"padding-left:24px\" role=\"menuitem\" tabindex=\"-1\" feature=\"releaseNotes\" data-menu-id=\"rc-menu-uuid-98696-1-release-notes\"><span class=\"ant-menu-title-content\"><a href=\"/release-notes\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Журнал изменений</span></a></span></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li><li class=\"ant-menu-item ant-menu-item-only-child\" style=\"padding-left:24px\" role=\"menuitem\" tabindex=\"-1\" feature=\"sandbox\" data-menu-id=\"rc-menu-uuid-98696-1-sandbox\"><span class=\"ant-menu-title-content\"><a href=\"/sandbox\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Песочница</span></a></span></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li><li class=\"ant-menu-submenu ant-menu-submenu-inline\" role=\"none\" feature=\"swagger\"><div role=\"menuitem\" style=\"padding-left:24px\" class=\"ant-menu-submenu-title\" tabindex=\"-1\" aria-expanded=\"false\" aria-haspopup=\"true\" data-menu-id=\"rc-menu-uuid-98696-1-swagger\" aria-controls=\"rc-menu-uuid-98696-1-swagger-popup\"><span class=\"ant-menu-title-content\"><button type=\"button\" class=\"navigation_accordionBtn___MVtY\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Swagger</span></button></span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M12.1548 10.0001L6.07739 3.92265L7.2559 2.74414L14.5118 10.0001L7.2559 17.256L6.07739 16.0775L12.1548 10.0001Z\" fill=\"#EBEBF5\" fill-opacity=\"0.3\"></path></svg></div></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li><li class=\"ant-menu-item ant-menu-item-only-child\" style=\"padding-left:24px\" role=\"menuitem\" tabindex=\"-1\" feature=\"wbStatus\" data-menu-id=\"rc-menu-uuid-98696-1-wbStatus\"><span class=\"ant-menu-title-content\"><a href=\"/wb-status\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Статус API</span></a></span></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li><li class=\"ant-menu-item ant-menu-item-only-child\" style=\"padding-left:24px\" role=\"menuitem\" tabindex=\"-1\" feature=\"forum\" data-menu-id=\"rc-menu-uuid-98696-1-forum\"><span class=\"ant-menu-title-content\"><a href=\"/forum\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Сообщество</span></a></span></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li><li class=\"ant-menu-item ant-menu-item-only-child\" style=\"padding-left:24px\" role=\"menuitem\" tabindex=\"-1\" feature=\"knowledgeBase\" data-menu-id=\"rc-menu-uuid-98696-1-knowledgeBase\"><span class=\"ant-menu-title-content\"><a href=\"/knowledge-base\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">База знаний</span></a></span></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li><li class=\"ant-menu-item ant-menu-item-only-child\" style=\"padding-left:24px\" role=\"menuitem\" tabindex=\"-1\" feature=\"auth\" data-menu-id=\"rc-menu-uuid-98696-1-login\"><span class=\"ant-menu-title-content\"><button type=\"button\" class=\"login-btn_loginBtn__9fpq6\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--white_1xgga_467 _--fixed_1xgga_230\" data-name=\"Text\">Войти</span><span class=\"login-btn_desktopIcon__R9IJx\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"25\" height=\"24\" viewBox=\"0 0 25 24\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M7.7587 2H16.2413C17.0463 1.99999 17.7106 1.99998 18.2518 2.04419C18.8139 2.09012 19.3306 2.18868 19.816 2.43598C20.5686 2.81947 21.1805 3.43139 21.564 4.18404C21.8113 4.66937 21.9099 5.18608 21.9558 5.74818C22 6.28937 22 6.95372 22 7.75868V16.2413C22 17.0463 22 17.7106 21.9558 18.2518C21.9099 18.8139 21.8113 19.3306 21.564 19.816C21.1805 20.5686 20.5686 21.1805 19.816 21.564C19.3306 21.8113 18.8139 21.9099 18.2518 21.9558C17.7106 22 17.0463 22 16.2413 22H7.75868C6.95372 22 6.28936 22 5.74818 21.9558C5.18608 21.9099 4.66937 21.8113 4.18404 21.564C3.43139 21.1805 2.81947 20.5686 2.43598 19.816C2.18868 19.3306 2.09012 18.8139 2.04419 18.2518C1.99998 17.7106 1.99999 17.0463 2 16.2413V7.7587C1.99999 6.95374 1.99998 6.28937 2.04419 5.74818C2.09012 5.18608 2.18868 4.66937 2.43598 4.18404C2.81947 3.43139 3.43139 2.81947 4.18404 2.43598C4.66937 2.18868 5.18608 2.09012 5.74818 2.04419C6.28937 1.99998 6.95374 1.99999 7.7587 2ZM5.91104 4.03755C5.47262 4.07337 5.24842 4.1383 5.09202 4.21799C4.7157 4.40973 4.40973 4.7157 4.21799 5.09202C4.1383 5.24842 4.07337 5.47262 4.03755 5.91104C4.00078 6.36113 4 6.94342 4 7.8V11L9.08579 11L7.79289 9.70711C7.40237 9.31658 7.40237 8.68342 7.79289 8.29289C8.18341 7.90237 8.81658 7.90237 9.2071 8.29289L12.2071 11.2929C12.3946 11.4804 12.5 11.7348 12.5 12C12.5 12.2652 12.3946 12.5196 12.2071 12.7071L9.20711 15.7071C8.81658 16.0976 8.18342 16.0976 7.79289 15.7071C7.40237 15.3166 7.40237 14.6834 7.79289 14.2929L9.08579 13L4 13V16.2C4 17.0566 4.00078 17.6389 4.03755 18.089C4.07337 18.5274 4.1383 18.7516 4.21799 18.908C4.40973 19.2843 4.7157 19.5903 5.09202 19.782C5.24842 19.8617 5.47262 19.9266 5.91104 19.9624C6.36113 19.9992 6.94342 20 7.8 20H15L15 4H7.8C6.94342 4 6.36113 4.00078 5.91104 4.03755ZM18.089 19.9624C17.7954 19.9864 17.4455 19.9951 17 19.9982L17 4.00176C17.4455 4.00489 17.7954 4.01357 18.089 4.03755C18.5274 4.07337 18.7516 4.1383 18.908 4.21799C19.2843 4.40973 19.5903 4.7157 19.782 5.09202C19.8617 5.24842 19.9266 5.47262 19.9624 5.91104C19.9992 6.36113 20 6.94342 20 7.8V16.2C20 17.0566 19.9992 17.6389 19.9624 18.089C19.9266 18.5274 19.8617 18.7516 19.782 18.908C19.5903 19.2843 19.2843 19.5903 18.908 19.782C18.7516 19.8617 18.5274 19.9266 18.089 19.9624Z\" fill=\"#F6F6F9\"></path></svg></span><span class=\"login-btn_mobileIcon__D5e6b\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"25\" height=\"24\" viewBox=\"0 0 25 24\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M10.9372 17C10.9372 18.1046 11.8699 19 13.0205 19H16.3538C17.2461 19 17.8527 18.9992 18.3215 18.9624C18.7782 18.9266 19.0117 18.8617 19.1747 18.782C19.5667 18.5903 19.8854 18.2843 20.0851 17.908C20.1681 17.7516 20.2357 17.5274 20.2731 17.089C20.3114 16.6389 20.3122 16.0566 20.3122 15.2V8.8C20.3122 7.94342 20.3114 7.36113 20.2731 6.91104C20.2357 6.47262 20.1681 6.24842 20.0851 6.09202C19.8854 5.71569 19.5667 5.40973 19.1747 5.21799C19.0117 5.1383 18.7782 5.07337 18.3215 5.03755C17.8527 5.00078 17.2461 5 16.3538 5H13.0205C11.8699 5 10.9372 5.89543 10.9372 7V8C10.9372 8.55228 10.4708 9 9.89551 9C9.32021 9 8.85384 8.55228 8.85384 8V7C8.85384 4.79086 10.7193 3 13.0205 3H16.3969C17.2354 2.99999 17.9274 2.99998 18.4912 3.04419C19.0767 3.09012 19.6149 3.18868 20.1205 3.43597C20.9045 3.81947 21.5419 4.43139 21.9414 5.18404C22.199 5.66937 22.3016 6.18608 22.3495 6.74817C22.3955 7.28937 22.3955 7.95374 22.3955 8.75872V15.2413C22.3955 16.0463 22.3955 16.7106 22.3495 17.2518C22.3016 17.8139 22.199 18.3306 21.9414 18.816C21.5419 19.5686 20.9045 20.1805 20.1205 20.564C19.6149 20.8113 19.0767 20.9099 18.4912 20.9558C17.9274 21 17.2354 21 16.397 21H16.3969H13.0205C10.7193 21 8.85384 19.2091 8.85384 17V16C8.85384 15.4477 9.32021 15 9.89551 15C10.4708 15 10.9372 15.4477 10.9372 16V17ZM17.4029 11.2929C17.8097 11.6834 17.8097 12.3166 17.4029 12.7071L13.7571 16.2071C13.3503 16.5976 12.6907 16.5976 12.2839 16.2071C11.8771 15.8166 11.8771 15.1834 12.2839 14.7929L14.1515 13H3.12467C2.54938 13 2.08301 12.5523 2.08301 12C2.08301 11.4477 2.54938 11 3.12467 11H14.1515L12.2839 9.20711C11.8771 8.81658 11.8771 8.18342 12.2839 7.79289C12.6907 7.40237 13.3503 7.40237 13.7571 7.79289L17.4029 11.2929Z\" fill=\"#5F5F6D\"></path></svg></span></button></span></li><li role=\"separator\" class=\"ant-menu-item-divider\"></li></ul><div style=\"display:none\" aria-hidden=\"true\"></div><footer class=\"navigation_footer__dEEor\"><div class=\"copyright_root__Y_86k\"><p class=\"_Text_1xgga_9 _Text--body-s_1xgga_359 _Text--secondary_1xgga_452\" data-name=\"Text\">© <!-- -->Wildberries<!-- --> 2004-<!-- -->2026<!-- -->. <!-- -->Все права защищены<!-- -->. <!-- -->Контактные&nbsp;данные<!-- -->:&nbsp;<a class=\"copyright_link__Wngbu\" href=\"mailto:dev-info@rwb.ru\">dev-info@rwb.ru</a></p></div></footer></div></nav></div></div><div class=\"header_langBlock__3PyAQ\"><a href=\"https://max.ru/wbapi\" target=\"_blank\" rel=\"noreferrer\"><svg class=\"styles_svg__ICRX1\" width=\"40\" height=\"40\" viewBox=\"0 0 40 40\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M40.0023 20C40.0023 36 36.0025 40 20.0023 40C4.00216 40 0.00232524 36.0002 0.00232601 20C0.00232677 3.99984 4.00217 -1.43429e-06 20.0023 -7.96822e-07C36.0025 -1.59358e-07 40.0023 3.99984 40.0023 20Z\" fill=\"#010101\"></path><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M20.2256 30.3948C18.1647 30.3948 17.207 30.094 15.5422 28.8905C14.4892 30.2444 11.1547 31.3024 11.0093 29.4923C11.0093 28.1334 10.7084 26.9851 10.3675 25.7315C9.96132 24.1871 9.5 22.4672 9.5 19.9751C9.5 14.0231 14.3839 9.54532 20.1705 9.54532C25.962 9.54532 30.4999 14.2437 30.4999 20.0302C30.5194 25.7273 25.9226 30.3644 20.2256 30.3948ZM20.3109 14.69C17.4928 14.5446 15.2965 16.4952 14.8102 19.5539C14.409 22.0861 15.121 25.1699 15.7278 25.3304C16.0186 25.4006 16.7507 24.8089 17.207 24.3526C17.9615 24.8738 18.8401 25.1869 19.7543 25.2602C22.6742 25.4006 25.1692 23.1777 25.3653 20.2609C25.4794 17.338 23.2312 14.8623 20.3109 14.695L20.3109 14.69Z\" fill=\"#F6F6F9\"></path></svg></a><a href=\"https://t.me/wb_api_notifications\" target=\"_blank\" rel=\"noreferrer\"><svg class=\"telegramlink_svg__uHp_S\" width=\"40\" height=\"40\" viewBox=\"0 0 40 40\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M40.0023 20C40.0023 36 36.0025 40 20.0023 40C4.00216 40 0.00232524 36.0002 0.00232601 20C0.00232677 3.99984 4.00217 -1.43429e-06 20.0023 -7.96822e-07C36.0025 -1.59358e-07 40.0023 3.99984 40.0023 20Z\" fill=\"#010101\"></path><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M10.6542 18.8084C16.207 16.3891 19.9097 14.7942 21.7624 14.0236C27.0521 11.8234 28.1512 11.4412 28.8677 11.4286C29.0252 11.4258 29.3775 11.4649 29.6058 11.6501C29.7985 11.8064 29.8515 12.0176 29.8768 12.1659C29.9022 12.3141 29.9338 12.6519 29.9087 12.9157C29.622 15.9276 28.3817 23.2366 27.7507 26.61C27.4837 28.0374 26.9579 28.516 26.449 28.5628C25.3428 28.6646 24.5029 27.8318 23.4315 27.1295C21.7551 26.0306 20.808 25.3465 19.1808 24.2742C17.3002 23.0349 18.5193 22.3538 19.591 21.2406C19.8715 20.9493 24.7451 16.5163 24.8395 16.1142C24.8513 16.0639 24.8622 15.8764 24.7508 15.7774C24.6395 15.6784 24.4751 15.7123 24.3565 15.7392C24.1883 15.7774 21.5102 17.5475 16.3221 21.0497C15.5619 21.5717 14.8733 21.826 14.2564 21.8127C13.5763 21.798 12.2681 21.4281 11.2956 21.112C10.1027 20.7242 9.15463 20.5192 9.23719 19.8607C9.28019 19.5177 9.75253 19.1669 10.6542 18.8084Z\" fill=\"white\"></path></svg></a><button type=\"button\" class=\"locale-switcher_root__7QdNU\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9.88232 16.2856V19.9998C9.88232 21.1044 10.7778 21.9998 11.8823 21.9998H22C23.1045 21.9998 24 21.1044 24 19.9998V9.71411C24 8.60954 23.1045 7.71411 22 7.71411H14.1176V9.21411H22C22.2761 9.21411 22.5 9.43797 22.5 9.71411V19.9998C22.5 20.276 22.2761 20.4998 22 20.4998H11.8823C11.6062 20.4998 11.3823 20.276 11.3823 19.9998V16.2856H9.88232Z\" fill=\"#5D5D67\"></path><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M15.9234 16.9003V16.433C15.9234 16.3225 15.8338 16.233 15.7234 16.233H13.5989V15.2514H15.461C15.5715 15.2514 15.661 15.1618 15.661 15.0514V14.5963C15.661 14.4858 15.5715 14.3963 15.461 14.3963H13.5989V13.482H15.7234C15.8338 13.482 15.9234 13.3924 15.9234 13.282V12.8147C15.9234 12.7042 15.8338 12.6147 15.7234 12.6147H12.8058C12.6954 12.6147 12.6058 12.7042 12.6058 12.8147V16.9003C12.6058 17.0108 12.6954 17.1003 12.8058 17.1003H15.7234C15.8338 17.1003 15.9234 17.0108 15.9234 16.9003Z\" fill=\"#5D5D67\"></path><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M21.2764 16.9003V12.8147C21.2764 12.7042 21.1869 12.6147 21.0764 12.6147H20.4894C20.379 12.6147 20.2894 12.7042 20.2894 12.8147V15.3434L18.0427 12.6855C18.0047 12.6405 17.9488 12.6146 17.8899 12.6146H17.3835C17.2731 12.6146 17.1835 12.7041 17.1835 12.8146V16.9002C17.1835 17.0107 17.2731 17.1002 17.3835 17.1002H17.9705C18.081 17.1002 18.1705 17.0107 18.1705 16.9002L18.1705 14.3715L20.4173 17.0294C20.4553 17.0744 20.5112 17.1003 20.57 17.1003H21.0764C21.1869 17.1003 21.2764 17.0108 21.2764 16.9003Z\" fill=\"#5D5D67\"></path><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M4.69137 10.0758L5.52423 11.2982C5.56148 11.3529 5.62336 11.3856 5.68951 11.3856H6.29858C6.45954 11.3856 6.55456 11.2051 6.46348 11.0724L5.63673 9.86785L5.6369 9.8663C5.63756 9.86407 5.63922 9.86202 5.64168 9.86087C5.89168 9.7437 6.09039 9.57911 6.23434 9.36639C6.40549 9.1195 6.48914 8.8271 6.48914 8.49388C6.48914 8.16951 6.41202 7.88387 6.25386 7.64127C6.09589 7.39895 5.86876 7.21508 5.57741 7.08828C5.29027 6.96156 4.95556 6.89988 4.5759 6.89988H2.92351C2.81305 6.89988 2.7235",
+  "contentBlocks": []
+}

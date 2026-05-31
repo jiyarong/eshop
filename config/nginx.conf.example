@@ -1,0 +1,42 @@
+upstream puma_ecommerce {
+  server unix:///home/deployer/apps/ecommerce_manage/shared/tmp/sockets/puma.sock fail_timeout=0;
+}
+
+# HTTP → HTTPS 跳转
+server {
+  listen 80;
+  server_name YOUR_DOMAIN;
+  return 301 https://$host$request_uri;
+}
+
+server {
+  listen 443 ssl;
+  server_name YOUR_DOMAIN;
+
+  ssl_certificate     /etc/ssl/ecommerce_manage/fullchain.pem;
+  ssl_certificate_key /etc/ssl/ecommerce_manage/privkey.pem;
+  ssl_protocols       TLSv1.2 TLSv1.3;
+  ssl_ciphers         HIGH:!aNULL:!MD5;
+  ssl_session_cache   shared:SSL:10m;
+  ssl_session_timeout 10m;
+
+  root /home/deployer/apps/ecommerce_manage/current/public;
+  access_log /home/deployer/apps/ecommerce_manage/shared/log/nginx.access.log;
+  error_log  /home/deployer/apps/ecommerce_manage/shared/log/nginx.error.log;
+
+  client_max_body_size 10m;
+  keepalive_timeout 70;
+
+  location / {
+    proxy_pass         http://puma_ecommerce;
+    proxy_redirect     off;
+    proxy_set_header   Host             $host;
+    proxy_set_header   X-Real-IP        $remote_addr;
+    proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 60;
+    proxy_read_timeout    300;
+  }
+
+  error_page 500 502 503 504 /500.html;
+}

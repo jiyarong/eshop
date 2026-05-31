@@ -1,0 +1,77 @@
+<h1 class="page-title">库存报表</h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <h2 class="section-title">店铺库存</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>商品名</th>
+            <th>平台</th>
+            <th>店铺</th>
+            <th>库存</th>
+            <th>送仓</th>
+            <th>售出</th>
+            <th>FBS</th>
+            <th>同步时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @snapshots.each do |snapshot| %>
+            <tr>
+              <td><%= snapshot.sku_code %></td>
+              <td><%= snapshot.sku&.product_name %></td>
+              <td><%= snapshot.platform %></td>
+              <td><%= snapshot.store_name %></td>
+              <td><%= snapshot.stock %></td>
+              <td><%= snapshot.supply %></td>
+              <td><%= snapshot.sold %></td>
+              <td><%= snapshot.fbs %></td>
+              <td><%= snapshot.synced_at&.strftime("%Y-%m-%d %H:%M") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">库存汇总</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>商品名</th>
+            <th>总入库</th>
+            <th>总送仓</th>
+            <th>总库存</th>
+            <th>总售出</th>
+            <th>FBS 总计</th>
+            <th>白俄仓推算</th>
+            <th>总可售</th>
+            <th>同步时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @totals.each do |total| %>
+            <tr>
+              <td><%= total.sku_code %></td>
+              <td><%= total.sku&.product_name %></td>
+              <td><%= total.total_received %></td>
+              <td><%= total.total_supply %></td>
+              <td><%= total.total_stock %></td>
+              <td><%= total.total_sold %></td>
+              <td><%= total.total_fbs %></td>
+              <td><%= total.blr_warehouse %></td>
+              <td><%= total.total_available %></td>
+              <td><%= total.synced_at&.strftime("%Y-%m-%d %H:%M") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

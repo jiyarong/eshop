@@ -1,0 +1,1457 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电商项目需求梳理</title>
+  <style>
+    :root {
+      --bg: #f7f6f1;
+      --paper: #fffdf7;
+      --ink: #1e211d;
+      --muted: #686b61;
+      --line: #d9d3c3;
+      --line-strong: #b8ae98;
+      --green: #2f6b4f;
+      --green-soft: #e2efe7;
+      --blue: #255f85;
+      --blue-soft: #dfeef6;
+      --red: #9b3d32;
+      --red-soft: #f6e3dd;
+      --amber: #8b641f;
+      --amber-soft: #f3e8c9;
+      --black: #11130f;
+      --shadow: 0 16px 40px rgba(40, 35, 24, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(30, 33, 29, 0.03) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(30, 33, 29, 0.025) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+      font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 22px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.9);
+      backdrop-filter: blur(12px);
+      overflow: auto;
+    }
+
+    .brand {
+      padding-bottom: 22px;
+      border-bottom: 2px solid var(--black);
+    }
+
+    .brand .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      margin: 8px 0 10px;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: 30px;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+      margin: 22px 0;
+    }
+
+    .nav a {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      align-items: center;
+      min-height: 38px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: #33362f;
+      font-size: 14px;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      background: var(--black);
+      color: #fffaf0;
+    }
+
+    .nav .num {
+      color: var(--amber);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .nav a:hover .num,
+    .nav a.active .num {
+      color: #f4c65d;
+    }
+
+    .side-note {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: #f3efe4;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .content {
+      max-width: 1180px;
+      width: 100%;
+      padding: 38px 48px 80px;
+    }
+
+    .hero {
+      min-height: 430px;
+      display: grid;
+      align-content: center;
+      gap: 22px;
+      padding: 44px;
+      border: 1px solid var(--line-strong);
+      background:
+        linear-gradient(135deg, rgba(47, 107, 79, 0.16), transparent 34%),
+        linear-gradient(315deg, rgba(139, 100, 31, 0.16), transparent 36%),
+        var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .hero h2 {
+      max-width: 850px;
+      margin: 0;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: clamp(38px, 6vw, 78px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      max-width: 780px;
+      margin: 0;
+      color: #44483f;
+      font-size: 18px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .metric {
+      min-height: 104px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.72);
+      border-radius: 6px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 24px;
+      line-height: 1.15;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    section {
+      scroll-margin-top: 24px;
+      margin-top: 34px;
+      padding: 34px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid var(--black);
+    }
+
+    .section-num {
+      display: inline-grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 2px solid var(--black);
+      border-radius: 50%;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    h2,
+    h3,
+    h4 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    section h2 {
+      font-family: Georgia, "Songti SC", serif;
+      font-size: 34px;
+      line-height: 1.2;
+    }
+
+    section h3 {
+      margin-top: 26px;
+      font-size: 21px;
+      line-height: 1.35;
+    }
+
+    section h4 {
+      margin-top: 18px;
+      font-size: 16px;
+    }
+
+    .lead {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .panel {
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 6px;
+    }
+
+    .panel h3,
+    .panel h4 {
+      margin-top: 0;
+    }
+
+    .panel p {
+      margin: 8px 0 0;
+      color: #484c43;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tag.green { color: var(--green); background: var(--green-soft); }
+    .tag.blue { color: var(--blue); background: var(--blue-soft); }
+    .tag.red { color: var(--red); background: var(--red-soft); }
+    .tag.amber { color: var(--amber); background: var(--amber-soft); }
+
+    ul,
+    ol {
+      padding-left: 1.25em;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .step {
+      min-height: 100px;
+      padding: 14px;
+      border: 1px solid var(--line-strong);
+      background: #fbf7ea;
+      border-radius: 6px;
+      position: relative;
+    }
+
+    .step:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -10px;
+      top: 36px;
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      color: var(--amber);
+      font-weight: 900;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      z-index: 2;
+    }
+
+    .step b {
+      display: block;
+      font-size: 15px;
+    }
+
+    .step span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 14px;
+      background: #fffdf8;
+    }
+
+    th,
+    td {
+      vertical-align: top;
+      padding: 12px 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+    }
+
+    th {
+      background: #efe8d6;
+      color: var(--black);
+      font-size: 13px;
+    }
+
+    .matrix td:first-child,
+    .matrix th:first-child {
+      width: 120px;
+      font-weight: 800;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 6px solid var(--green);
+      background: var(--green-soft);
+      border-radius: 0 6px 6px 0;
+    }
+
+    .callout.warning {
+      border-left-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .callout.risk {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 6px;
+    }
+
+    .phase strong {
+      color: var(--green);
+      font-size: 15px;
+    }
+
+    .phase h3 {
+      margin-top: 0;
+      font-size: 19px;
+    }
+
+    .phase p {
+      margin: 6px 0 0;
+    }
+
+    .phase ul {
+      margin-bottom: 0;
+    }
+
+    .question-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 900;
+      background: #f1ead9;
+    }
+
+    details > div {
+      padding: 4px 18px 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button {
+      min-height: 36px;
+      padding: 6px 12px;
+      border: 1px solid var(--black);
+      border-radius: 6px;
+      color: var(--black);
+      background: #fffdf8;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:hover {
+      color: #fffaf0;
+      background: var(--black);
+    }
+
+    .mini {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .kbd {
+      display: inline-block;
+      min-width: 24px;
+      padding: 1px 6px;
+      border: 1px solid var(--line-strong);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: #fffdf8;
+      color: var(--black);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .content {
+        padding: 24px 16px 60px;
+      }
+
+      .hero {
+        min-height: auto;
+        padding: 28px;
+      }
+
+      .hero-grid,
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        grid-template-columns: 1fr;
+      }
+
+      section {
+        padding: 24px 18px;
+      }
+
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .phase {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .shell {
+        display: block;
+      }
+
+      .sidebar,
+      .toolbar {
+        display: none;
+      }
+
+      .content {
+        max-width: none;
+        padding: 0;
+      }
+
+      .hero,
+      section {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="eyebrow">E-commerce ERP Discovery</div>
+        <h1>电商项目需求梳理</h1>
+        <p>基于录音内容整理：需求、待确认问题、开发方向与落地路线。</p>
+      </div>
+
+      <nav class="nav" aria-label="页面目录">
+        <a href="#summary"><span class="num">01</span><span>核心判断</span></a>
+        <a href="#background"><span class="num">02</span><span>业务现状</span></a>
+        <a href="#erp"><span class="num">03</span><span>ERP 底座</span></a>
+        <a href="#operation"><span class="num">04</span><span>运营工具</span></a>
+        <a href="#data"><span class="num">05</span><span>数据体系</span></a>
+        <a href="#model"><span class="num">06</span><span>模型与规则</span></a>
+        <a href="#questions"><span class="num">07</span><span>待确认问题</span></a>
+        <a href="#roadmap"><span class="num">08</span><span>开发路线</span></a>
+        <a href="#risks"><span class="num">09</span><span>风险与原则</span></a>
+      </nav>
+
+      <div class="side-note">
+        阅读建议：先看「核心判断」和「开发路线」，再回到 ERP、运营工具和待确认问题逐项对齐。
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="hero">
+        <div>
+          <span class="tag green">整理版</span>
+          <span class="tag amber">适合需求评审</span>
+          <span class="tag blue">HTML 单文件</span>
+        </div>
+        <h2>这不是单纯做 ERP，而是在搭一套「算清账 + 帮运营赚钱」的电商经营系统。</h2>
+        <p>
+          录音里反复出现的主线是：长期要把采购、付款、物流、平台账单、库存、销售和回款全部归集到 SKU、批次，甚至单件商品；短期更迫切的是用数据工具降低运营遗漏，提升补货、定价、选品和清库决策质量。
+        </p>
+        <div class="hero-grid">
+          <div class="metric">
+            <b>2 条主线</b>
+            <span>ERP 财务底座 + 运营赚钱工具。</span>
+          </div>
+          <div class="metric">
+            <b>1 个核心</b>
+            <span>把费用分摊到商品，算清真实利润。</span>
+          </div>
+          <div class="metric">
+            <b>P0 优先</b>
+            <span>周报、补货测算、异常提醒、数据同步。</span>
+          </div>
+          <div class="metric">
+            <b>3 个月</b>
+            <span>先跑出一批可用小工具，不做重系统。</span>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button type="button" onclick="window.print()">打印 / 导出 PDF</button>
+          <button type="button" onclick="expandAll(true)">展开全部问题</button>
+          <button type="button" onclick="expandAll(false)">收起全部问题</button>
+        </div>
+      </header>
+
+      <section id="summary">
+        <div class="section-head">
+          <div class="section-num">01</div>
+          <div>
+            <h2>核心判断</h2>
+            <p class="lead">先统一对这次沟通的理解，避免把项目误解成单一 ERP 或单一 AI 工具。</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <span class="tag green">长期底座</span>
+            <h3>ERP / 财务核算系统</h3>
+            <p>
+              目标是替代表格，把商品、采购、付款、物流、费用分摊、平台账单、回款和退税纳入线上流程。它解决的是「钱去了哪里」「这件货真实成本是多少」「卖掉之后是否完成资金闭环」。
+            </p>
+          </div>
+          <div class="panel">
+            <span class="tag amber">短期收益</span>
+            <h3>运营决策与赚钱工具</h3>
+            <p>
+              目标是帮助团队更快发现问题、做补货和定价决策、分析竞品、降低库存和资金占用。它解决的是「哪些品值得继续做」「补多少」「哪里亏了」「运营漏了什么」。
+            </p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>推荐判断：</strong>
+          短期不要先做大而全 ERP。先做数据底座、利润周报、补货测算、异常提醒这类能直接改善经营的小工具；ERP 最小版可以并行设计，等规则稳定后逐步接入。
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>ERP 底座</th>
+              <th>运营工具</th>
+              <th>当前优先级判断</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>直接价值</td>
+              <td>管钱、控成本、可追溯。</td>
+              <td>提升利润、减少遗漏、支持扩品。</td>
+              <td>当前现金压力下，运营工具更急。</td>
+            </tr>
+            <tr>
+              <td>难点</td>
+              <td>规则多、财务口径要准、迁移风险高。</td>
+              <td>数据质量、平台规则理解、建议要可执行。</td>
+              <td>两者都依赖数据底座，应先沉淀原始数据。</td>
+            </tr>
+            <tr>
+              <td>建设方式</td>
+              <td>先做最小版，逐步替代表格。</td>
+              <td>拆成多个小工具，边用边改。</td>
+              <td>小步快跑，避免一两个月憋大版本。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="background">
+        <div class="section-head">
+          <div class="section-num">02</div>
+          <div>
+            <h2>业务现状</h2>
+            <p class="lead">这套系统服务的是「本土电商」模式，不是简单跨境一件代发。</p>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="panel">
+            <h3>业务模式</h3>
+            <p>国内采购商品，发往俄罗斯、白俄罗斯等本地公司或仓库，再通过当地平台和店铺销售。</p>
+          </div>
+          <div class="panel">
+            <h3>组织形态</h3>
+            <p>涉及国内公司、海外公司、多个平台、多个店铺、多个仓库、运营、采购、财务和供应商。</p>
+          </div>
+          <div class="panel">
+            <h3>核心矛盾</h3>
+            <p>商品数量和店铺数量会快速增长，但人工运营、表格核算和经验决策跟不上。</p>
+          </div>
+        </div>
+
+        <h3>当前明显痛点</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>痛点</th>
+              <th>录音中的典型描述</th>
+              <th>带来的后果</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>钱和货对不上</td>
+              <td>付了多少钱、对应哪些 SKU、回款是否回来，目前不清楚。</td>
+              <td>无法判断某个商品是否完成从采购到回款的闭环。</td>
+            </tr>
+            <tr>
+              <td>真实成本不清</td>
+              <td>采购价、物流费、清关税费、认证费、平台费、广告费都可能影响成本。</td>
+              <td>只能粗略判断利润，无法精细化运营。</td>
+            </tr>
+            <tr>
+              <td>补货靠经验</td>
+              <td>采购倾向一次多买拿低价，但库存和资金占用可能拖低回报率。</td>
+              <td>容易断货、压货，或错过高利润商品的销售窗口。</td>
+            </tr>
+            <tr>
+              <td>运营遗漏</td>
+              <td>商品被低价清库、滞销品未多店铺清仓、广告在缺货时继续烧钱。</td>
+              <td>本可避免的亏损持续发生。</td>
+            </tr>
+            <tr>
+              <td>人员能力不稳定</td>
+              <td>优秀运营难招、成本高、流动性强，团队希望一般人也能做出 70 分结果。</td>
+              <td>需要系统和 AI 把经验沉淀下来，降低对个人的依赖。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="erp">
+        <div class="section-head">
+          <div class="section-num">03</div>
+          <div>
+            <h2>ERP 底座需求</h2>
+            <p class="lead">ERP 的本质是把商品、资金和费用建立可追溯关系，让每件货的成本和收益能被解释。</p>
+          </div>
+        </div>
+
+        <h3>完整资金与商品闭环</h3>
+        <div class="flow" aria-label="资金与商品闭环">
+          <div class="step"><b>选品 / 预测</b><span>判断是否采购、预计销量和利润。</span></div>
+          <div class="step"><b>国内采购</b><span>合同、供应商、数量、首付和尾款。</span></div>
+          <div class="step"><b>付款审批</b><span>按合同和发票付款，两级审核。</span></div>
+          <div class="step"><b>成本分摊</b><span>采购款、物流、认证等归集到商品。</span></div>
+          <div class="step"><b>出口 / 入仓</b><span>清关、税费、海外仓库存。</span></div>
+          <div class="step"><b>平台销售</b><span>订单、佣金、广告、平台扣费。</span></div>
+          <div class="step"><b>回款</b><span>海外公司向国内回款，拆到商品。</span></div>
+          <div class="step"><b>利润确认</b><span>核对当地财报、退税和最终利润。</span></div>
+        </div>
+
+        <h3>核心对象关系</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>对象</th>
+              <th>说明</th>
+              <th>关键字段 / 能力</th>
+              <th>待定边界</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>类目</td>
+              <td>商品需要三级类目体系。</td>
+              <td>一级类目、二级类目、三级类目。</td>
+              <td>是否需要映射平台类目。</td>
+            </tr>
+            <tr>
+              <td>SKU</td>
+              <td>带属性的可售商品，例如金色毛巾架。</td>
+              <td>颜色、规格、尺寸、重量、体积、型号、品质、特点。</td>
+              <td>SKU 属性是否需要模板化。</td>
+            </tr>
+            <tr>
+              <td>批次</td>
+              <td>某次采购或发货形成的一批货。</td>
+              <td>采购数量、采购价、到仓成本、所属 SKU。</td>
+              <td>第一版做到批次，还是必须做到单件。</td>
+            </tr>
+            <tr>
+              <td>单件商品</td>
+              <td>长期希望每件实体商品都有 ID 和成本。</td>
+              <td>唯一编号、二维码、所属批次、成本流水、销售结果。</td>
+              <td>是否第一阶段就生成实体商品 ID。</td>
+            </tr>
+            <tr>
+              <td>费用单</td>
+              <td>采购款、物流费、认证费、赔付等费用来源。</td>
+              <td>金额、币种、付款主体、分摊对象、审核状态。</td>
+              <td>哪些费用必须财务审核后锁定。</td>
+            </tr>
+            <tr>
+              <td>店铺</td>
+              <td>海外平台上的经营单元。</td>
+              <td>国家、公司、平台、税制、佣金规则。</td>
+              <td>多国家规则如何抽象。</td>
+            </tr>
+            <tr>
+              <td>订单 / 账单</td>
+              <td>平台销售和扣费的依据。</td>
+              <td>订单金额、佣金、物流费、广告费、税费、结算金额。</td>
+              <td>账单是否稳定关联到 SKU 或单件商品。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>成本分摊设计</h3>
+        <div class="grid-2">
+          <div class="panel">
+            <h4>国内费用</h4>
+            <ul>
+              <li>采购款：人工选择分摊到 SKU、批次或单件商品。</li>
+              <li>首付 / 尾款：关联采购合同和发票。</li>
+              <li>认证费：可挂到 SKU，也可由首批、前 N 件或每件固定金额承担。</li>
+              <li>国内杂费：包装、检测、国内物流等可作为费用单录入。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>海外与平台费用</h4>
+            <ul>
+              <li>国际物流费：可能按体积、重量、货值或人工指定分摊。</li>
+              <li>清关和税费：按规则归集到批次或商品。</li>
+              <li>平台佣金 / 广告费：优先按平台账单自动归集。</li>
+              <li>固定服务费 / 会员费：是否摊入商品，需要业务规则确认。</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <strong>实现原则：</strong>
+          第一版不必追求所有分摊自动化，但必须保证每笔已审核付款能解释「分给了谁」，并且审核后的成本不能被随意改动。
+        </div>
+      </section>
+
+      <section id="operation">
+        <div class="section-head">
+          <div class="section-num">04</div>
+          <div>
+            <h2>运营赚钱工具</h2>
+            <p class="lead">这部分是短期价值最高的方向：先让系统帮运营发现问题、做测算、给建议。</p>
+          </div>
+        </div>
+
+        <h3>利润周报 / 日报</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>看板问题</th>
+              <th>需要的数据</th>
+              <th>输出结果</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>上周到底赚没赚钱？</td>
+              <td>销售额、平台扣费、税费、广告费、商品成本。</td>
+              <td>按 SKU、店铺、国家拆分的税后净利。</td>
+            </tr>
+            <tr>
+              <td>哪个店铺表现最好？</td>
+              <td>同一 SKU 在不同店铺的销量、价格、扣费和利润。</td>
+              <td>店铺间利润差异，决定库存优先给谁卖。</td>
+            </tr>
+            <tr>
+              <td>哪些品要立刻处理？</td>
+              <td>库存、动销、亏损、异常低价、广告消耗。</td>
+              <td>断货提醒、清库提醒、亏损提醒、广告异常提醒。</td>
+            </tr>
+            <tr>
+              <td>是否需要调整策略？</td>
+              <td>预测数据、实际数据、竞品变化、库存周期。</td>
+              <td>补货、降价、提价、停广告、清库等建议。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>补货决策</h3>
+        <div class="grid-3">
+          <div class="panel">
+            <span class="tag blue">输入</span>
+            <ul>
+              <li>当前库存和仓库分布。</li>
+              <li>近 1 周、4 周、8 周动销。</li>
+              <li>采购周期、生产周期、物流周期。</li>
+              <li>不同采购量对应的采购价。</li>
+              <li>安全库存和旺季系数。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <span class="tag amber">计算</span>
+            <ul>
+              <li>库存可售周期。</li>
+              <li>预计断货日期。</li>
+              <li>每种补货数量的资金占用。</li>
+              <li>仓储费、物流费、资金利息。</li>
+              <li>年化回报率和回本点。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <span class="tag green">输出</span>
+            <ul>
+              <li>建议补货数量。</li>
+              <li>建议补货频率。</li>
+              <li>是否空运或铁路。</li>
+              <li>是否继续做该 SKU。</li>
+              <li>不同方案收益对比。</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>SKU 分级策略</h3>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>等级</th>
+              <th>判断标准</th>
+              <th>经营策略</th>
+              <th>系统动作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>S 级</td>
+              <td>高回报、高动销、有放量潜力，可能贡献主要利润。</td>
+              <td>重点保障库存、优化图片、分析竞品、加强广告和仓库覆盖。</td>
+              <td>高频监控库存、竞品调价、广告 ROI、分仓建议。</td>
+            </tr>
+            <tr>
+              <td>A 级</td>
+              <td>稳定赚钱，年化回报率和绝对利润都较好。</td>
+              <td>持续补货，保持价格和广告稳定，避免断货。</td>
+              <td>补货提醒、利润波动提醒、店铺表现对比。</td>
+            </tr>
+            <tr>
+              <td>B 级</td>
+              <td>绝对利润不高，但投入小、维护成本低、回报率可接受。</td>
+              <td>低成本长尾经营，控制库存，不要一次压太多货。</td>
+              <td>低频监控，按月补货，异常时提醒。</td>
+            </tr>
+            <tr>
+              <td>C 级</td>
+              <td>亏损、滞销、库存周期过长，或运营价值不足。</td>
+              <td>清库、降价、减少广告、尽快释放资金和仓位。</td>
+              <td>清库策略、多店铺上架检查、亏损边界控制。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>异常检测清单</h3>
+        <div class="grid-2">
+          <div class="panel">
+            <h4>已明确需要抓的异常</h4>
+            <ul>
+              <li>商品被平台自动低价清库，造成亏损。</li>
+              <li>滞销品没有上到所有店铺清库。</li>
+              <li>热销品断货或即将断货。</li>
+              <li>高利润商品没有及时空运补货。</li>
+              <li>广告在无库存、低库存或低回报状态下继续消耗。</li>
+              <li>某店铺低利润销售占用了高利润店铺库存。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>后续可扩展异常</h4>
+            <ul>
+              <li>某区域销量高但未分仓，导致物流惩罚。</li>
+              <li>价格低于成本或低于清库边界。</li>
+              <li>平台扣费突然异常升高。</li>
+              <li>转化率明显低于竞品或历史水平。</li>
+              <li>订单退货率异常升高。</li>
+              <li>竞品大幅降价但自身未响应。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="data">
+        <div class="section-head">
+          <div class="section-num">05</div>
+          <div>
+            <h2>数据体系</h2>
+            <p class="lead">后续所有工具都依赖数据底座。先把原始数据拉准、存住、能重算，比直接堆分析更重要。</p>
+          </div>
+        </div>
+
+        <h3>数据来源</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>来源</th>
+              <th>数据内容</th>
+              <th>用途</th>
+              <th>注意事项</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>平台 API</td>
+              <td>订单、账单、库存、店铺、发货、费用、销售漏斗。</td>
+              <td>利润核算、异常检测、周报、补货。</td>
+              <td>接口限流，字段含义可能不清，需要本地存储和规则解释。</td>
+            </tr>
+            <tr>
+              <td>第三方工具</td>
+              <td>竞品销量、价格、排名、关键词、转化率等。</td>
+              <td>选品、竞品监控、定价和销量预测。</td>
+              <td>数据不一定 100% 准，但趋势有参考价值。</td>
+            </tr>
+            <tr>
+              <td>人工表格</td>
+              <td>采购、成本、预测、SKU 属性、供应商价格。</td>
+              <td>早期补齐系统缺口，支持快速试算。</td>
+              <td>需要逐步迁移到系统，避免长期依赖散表。</td>
+            </tr>
+            <tr>
+              <td>爬虫 / 插件</td>
+              <td>竞品详情、图片、卖点、评论、真实价格。</td>
+              <td>运营分析、图文优化、竞品报告。</td>
+              <td>需要评估账号、频率、合规和稳定性风险。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>数据处理链路</h3>
+        <div class="flow">
+          <div class="step"><b>原始拉取</b><span>按平台、店铺、日期拉取接口或导入文件。</span></div>
+          <div class="step"><b>原始归档</b><span>保留原始响应，便于规则变更后重算。</span></div>
+          <div class="step"><b>标准化</b><span>统一币种、时区、字段命名和对象 ID。</span></div>
+          <div class="step"><b>业务解释</b><span>判断国家、仓库、费用类型、订单状态。</span></div>
+          <div class="step"><b>聚合计算</b><span>按 SKU、店铺、周、批次聚合。</span></div>
+          <div class="step"><b>工具消费</b><span>周报、补货、异常、竞品和财务核算。</span></div>
+          <div class="step"><b>人工校验</b><span>不确定数据进入待确认状态。</span></div>
+          <div class="step"><b>规则沉淀</b><span>把人工判断固化为规则和测试用例。</span></div>
+        </div>
+
+        <div class="callout risk">
+          <strong>关键提醒：</strong>
+          对平台 API 返回含义不明确的数据，不要让 AI 直接二选一猜结果。系统需要支持「未知 / 待确认」，并保留原始数据，方便人工补规则。
+        </div>
+      </section>
+
+      <section id="model">
+        <div class="section-head">
+          <div class="section-num">06</div>
+          <div>
+            <h2>模型与规则</h2>
+            <p class="lead">这里的模型不是先追求复杂 AI，而是把经营公式、边界条件和人工经验结构化。</p>
+          </div>
+        </div>
+
+        <h3>回报率与补货模型</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>模型项</th>
+              <th>含义</th>
+              <th>影响决策</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>单件净利</td>
+              <td>售价扣除平台佣金、广告、物流、税费、商品成本后的利润。</td>
+              <td>判断定价、广告和店铺表现。</td>
+            </tr>
+            <tr>
+              <td>全批次利润</td>
+              <td>一批货全部卖完后的总利润。</td>
+              <td>判断这批采购是否值得。</td>
+            </tr>
+            <tr>
+              <td>回本点</td>
+              <td>卖出多少件可以收回初始投入。</td>
+              <td>判断资金压力和库存风险。</td>
+            </tr>
+            <tr>
+              <td>年化回报率</td>
+              <td>结合投入金额、卖完周期、补货频率和净利后的资金效率。</td>
+              <td>决定是否继续做、是否加大投入。</td>
+            </tr>
+            <tr>
+              <td>安全库存</td>
+              <td>覆盖生产和运输周期的库存缓冲。</td>
+              <td>决定补货时间和补货量。</td>
+            </tr>
+            <tr>
+              <td>采购阶梯价</td>
+              <td>不同采购数量对应不同采购成本。</td>
+              <td>平衡低采购价与资金占用。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>竞品分析模型</h3>
+        <div class="grid-3">
+          <div class="panel">
+            <h4>选品前</h4>
+            <p>用排名前 10、前 50、前 100 的竞品销量做乐观、中性、悲观预测，估算是否值得采购。</p>
+          </div>
+          <div class="panel">
+            <h4>运营中</h4>
+            <p>持续看竞品价格、销量、卖点、评论、主图和活动，判断自己的转化率为什么低。</p>
+          </div>
+          <div class="panel">
+            <h4>复盘后</h4>
+            <p>把预测和实际销售对比，如果长期估高或估低，就调整预测系数。</p>
+          </div>
+        </div>
+
+        <h3>AI 适合与不适合的边界</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>适合 AI</th>
+              <th>需要人工 / 规则兜底</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>竞品卖点提炼、评论总结、运营报告草稿、规则文档整理。</td>
+              <td>财务核算、成本锁定、税费、回款、影响真实利润的计算。</td>
+            </tr>
+            <tr>
+              <td>基于数据提出异常原因和运营建议。</td>
+              <td>平台字段含义不清时的最终判断。</td>
+            </tr>
+            <tr>
+              <td>生成补货、定价、广告调整的候选方案。</td>
+              <td>是否执行方案、执行边界和亏损上限。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="questions">
+        <div class="section-head">
+          <div class="section-num">07</div>
+          <div>
+            <h2>待确认问题</h2>
+            <p class="lead">这些问题需要在开发前或开发过程中逐步对齐，否则容易做出不能落地的系统。</p>
+          </div>
+        </div>
+
+        <div class="question-list">
+          <details open>
+            <summary>ERP 范围</summary>
+            <div>
+              <ul>
+                <li>第一版 ERP 是否只做国内采购、付款、SKU、批次和成本分摊？</li>
+                <li>是否第一版就要求单件商品 ID，还是先做到 SKU + 批次？</li>
+                <li>国内端和国外端是否拆成两个项目，通过数据接口衔接？</li>
+                <li>已有汽车业务的审批和付款逻辑，能复用到什么程度？</li>
+              </ul>
+            </div>
+          </details>
+
+          <details open>
+            <summary>成本分摊规则</summary>
+            <div>
+              <ul>
+                <li>采购款默认分摊到 SKU、批次，还是单件商品？</li>
+                <li>物流费默认按体积、重量、货值，还是人工指定？</li>
+                <li>认证费如何摊：挂 SKU、首批承担、前 N 件承担，还是每件固定金额？</li>
+                <li>平台会员费、固定服务费是否摊到商品？如果摊，按件数、货值还是销售额？</li>
+                <li>财务审核后哪些字段必须锁定？锁定后如何更正错误？</li>
+              </ul>
+            </div>
+          </details>
+
+          <details open>
+            <summary>平台账单与财务口径</summary>
+            <div>
+              <ul>
+                <li>平台账单是否能稳定关联到订单、商品链接、SKU 和店铺？</li>
+                <li>每日账单、月度账单和当地财务报表的口径是否一致？</li>
+                <li>不可分摊费用如何处理，是进入店铺费用，还是公司期间费用？</li>
+                <li>不同国家的税制、佣金、结算周期如何版本化维护？</li>
+              </ul>
+            </div>
+          </details>
+
+          <details open>
+            <summary>回款与闭环</summary>
+            <div>
+              <ul>
+                <li>海外公司回款是否必须拆到 SKU、批次或单件商品？</li>
+                <li>一笔回款对应多个 SKU、多个销售周期时，如何拆分？</li>
+                <li>回款未拆清时是否允许入账？是否进入待分配状态？</li>
+                <li>退税是否第一阶段纳入，还是先只记录待退税金额？</li>
+              </ul>
+            </div>
+          </details>
+
+          <details open>
+            <summary>补货和分级规则</summary>
+            <div>
+              <ul>
+                <li>年化回报率最终采用哪套公式？公式中的仓储费和资金利息如何取值？</li>
+                <li>安全库存默认按 3 个月，还是按供应商、品类、运输方式配置？</li>
+                <li>S / A / B / C 的分级阈值是什么？按回报率、绝对利润、动销还是组合评分？</li>
+                <li>旺季系数如何维护？是否允许运营手动调整？</li>
+                <li>C 级清库的最大亏损边界是什么？</li>
+              </ul>
+            </div>
+          </details>
+
+          <details open>
+            <summary>技术和协作</summary>
+            <div>
+              <ul>
+                <li>核心系统用 Ruby、Python，还是混合？脚本工具如何管理？</li>
+                <li>平台 API 数据同步、业务计算、运营工具、ERP 页面是否分模块？</li>
+                <li>文档驱动开发的文档放在哪里，由谁维护，需求变更如何同步？</li>
+                <li>哪些模块必须写测试？哪些可以先用人工样例验证？</li>
+                <li>生产数据上线后，表结构频繁变化如何迁移、备份和回滚？</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <div class="section-head">
+          <div class="section-num">08</div>
+          <div>
+            <h2>开发路线</h2>
+            <p class="lead">路线按「先能看清经营，再逐步线上化 ERP」设计。</p>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div class="phase">
+            <strong>第 0 阶段</strong>
+            <div>
+              <h3>需求、架构和数据盘点</h3>
+              <p>先把流程图、核心对象、平台数据、人工表格、成本规则列清楚。</p>
+              <ul>
+                <li>国内采购到海外销售闭环流程图。</li>
+                <li>SKU、批次、单件商品、费用单、店铺、订单、账单对象关系。</li>
+                <li>现有 API、第三方工具、表格和样本数据清单。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="phase">
+            <strong>P0 / 第 1 阶段</strong>
+            <div>
+              <h3>数据同步和利润周报</h3>
+              <p>先解决「每周赚没赚钱」和「哪个 SKU / 店铺异常」。</p>
+              <ul>
+                <li>平台数据定时拉取和原始归档。</li>
+                <li>按 SKU、店铺、周聚合销售和费用。</li>
+                <li>输出税后净利、广告费、平台扣费和异常列表。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="phase">
+            <strong>P0 / 第 2 阶段</strong>
+            <div>
+              <h3>补货测算和回报率工具</h3>
+              <p>把录音中反复讨论的年化回报率、采购量、补货频率做成可用工具。</p>
+              <ul>
+                <li>输入采购价、库存、动销、周期和费用，计算回报率。</li>
+                <li>比较一次买 100、200、500、1000 件的资金效率。</li>
+                <li>输出建议补货量、断货风险和是否继续做。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="phase">
+            <strong>P0 / 第 3 阶段</strong>
+            <div>
+              <h3>运营异常提醒</h3>
+              <p>先抓会直接亏钱或错失利润的异常。</p>
+              <ul>
+                <li>低价亏损销售、断货、广告无效消耗。</li>
+                <li>滞销未清库、清库未覆盖全部店铺。</li>
+                <li>店铺利润差异和库存分配不合理。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="phase">
+            <strong>P1 / 第 4 阶段</strong>
+            <div>
+              <h3>ERP 最小可用版</h3>
+              <p>把国内采购、付款和成本分摊从表格迁到系统。</p>
+              <ul>
+                <li>SKU / 批次管理、采购合同、付款申请。</li>
+                <li>采购款、物流费、认证费等费用录入和分摊。</li>
+                <li>财务审核、成本锁定和追溯。</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="phase">
+            <strong>P1 / 第 5 阶段</strong>
+            <div>
+              <h3>竞品和选品工具</h3>
+              <p>用第三方数据、爬虫或插件辅助选品、定价和转化率优化。</p>
+              <ul>
+                <li>竞品价格、销量、排名、关键词导入。</li>
+                <li>重点竞品监控和调价提醒。</li>
+                <li>主图、卖点、评论分析和新品预测。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="risks">
+        <div class="section-head">
+          <div class="section-num">09</div>
+          <div>
+            <h2>风险与原则</h2>
+            <p class="lead">这个项目最容易失败的地方不是代码，而是规则、数据、文档和协作失控。</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <h3>关键风险</h3>
+            <ul>
+              <li>需求还在探索，如果过早做重系统，会反复推翻数据结构。</li>
+              <li>平台 API 字段含义不清，AI 猜测会制造隐性错误。</li>
+              <li>没有原始数据归档，后续规则变化无法重算。</li>
+              <li>财务口径不严谨，会导致系统算账和当地财务报表对不上。</li>
+              <li>工具只输出泛泛建议，不能直接指导运营动作。</li>
+              <li>多人开发但文档不更新，后续接手会困难。</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>执行原则</h3>
+            <ul>
+              <li>先做能直接改善经营的小工具，再做完整 ERP。</li>
+              <li>所有原始数据先存档，再加工。</li>
+              <li>所有财务计算必须规则化、可追溯、可复核。</li>
+              <li>不确定数据进入待确认，不要强行归类。</li>
+              <li>每个工具只解决一个明确问题，避免一开始做大平台。</li>
+              <li>用 3 个典型 SKU 作为样板先跑通闭环。</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>建议立即做的样板</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>样板 SKU</th>
+              <th>选择原因</th>
+              <th>验证内容</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>爆款 / 高利润品</td>
+              <td>验证断货、空运补货、广告和分仓是否能带来利润提升。</td>
+              <td>补货测算、断货提醒、店铺利润对比。</td>
+            </tr>
+            <tr>
+              <td>腰部稳定品</td>
+              <td>验证低维护、长尾经营是否值得继续做。</td>
+              <td>年化回报率、月度补货、库存资金效率。</td>
+            </tr>
+            <tr>
+              <td>滞销 / 亏损品</td>
+              <td>验证清库策略和亏损边界。</td>
+              <td>多店铺上架、降价策略、广告限制、清库周期。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const links = Array.from(document.querySelectorAll(".nav a"));
+    const sections = links
+      .map((link) => document.querySelector(link.getAttribute("href")))
+      .filter(Boolean);
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+      if (!visible) return;
+
+      links.forEach((link) => {
+        link.classList.toggle("active", link.getAttribute("href") === `#${visible.target.id}`);
+      });
+    }, { rootMargin: "-10% 0px -70% 0px", threshold: [0.1, 0.25, 0.5] });
+
+    sections.forEach((section) => observer.observe(section));
+
+    function expandAll(open) {
+      document.querySelectorAll("details").forEach((item) => {
+        item.open = open;
+      });
+    }
+  </script>
+</body>
+</html>

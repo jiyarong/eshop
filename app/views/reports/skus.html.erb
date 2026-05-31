@@ -1,0 +1,30 @@
+<h1 class="page-title">SKU 主数据</h1>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>SKU编码</th>
+          <th>商品名(中文)</th>
+          <th>商品名(俄文)</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @skus.each do |sku| %>
+          <tr>
+            <td><%= sku.sku_code %></td>
+            <td><%= sku.product_name %></td>
+            <td><%= sku.product_name_ru %></td>
+            <td>
+              <span class="status-pill <%= sku.is_active ? "is-active" : "is-muted" %>">
+                <%= sku.is_active ? "上架" : "下架" %>
+              </span>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

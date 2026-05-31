@@ -1,0 +1,103 @@
+require 'net/http'
+require 'json'
+
+module RawWb
+  class WbClient
+    BASE_URLS = {
+      common:            'https://common-api.wildberries.ru',
+      content:           'https://content-api.wildberries.ru',
+      statistics:        'https://statistics-api.wildberries.ru',
+      marketplace:       'https://marketplace-api.wildberries.ru',
+      feedbacks:         'https://feedbacks-api.wildberries.ru',
+      finance:           'https://finance-api.wildberries.ru',
+      discounts_prices:  'https://discounts-prices-api.wildberries.ru',
+      seller_analytics:  'https://seller-analytics-api.wildberries.ru',
+      advert:            'https://advert-api.wildberries.ru',
+      supplies:          'https://supplies-api.wildberries.ru',
+    }.freeze
+
+    MAX_RETRIES = 3
+    OPEN_TIMEOUT = 10
+    READ_TIMEOUT = 30
+
+    class RetryableError < StandardError
+      attr_reader :retry_after
+      def initialize(msg, retry_after: nil)
+        super(msg)
+        @retry_after = retry_after
+      end
+    end
+
+    class ApiError < StandardError; end
+
+    def initialize(api_token)
+      @api_token = api_token
+    end
+
+    def get(service, path, params = {})
+      uri = URI("#{BASE_URLS.fetch(service)}#{path}")
+      uri.query = URI.encode_www_form(params.compact) unless params.empty?
+
+      with_retry(context: "GET #{path}") do
+        req = Net::HTTP::Get.new(uri)
+        req['Authorization'] = @api_token
+        req['Content-Type']  = 'application/json'
+
+        resp = Net::HTTP.start(uri.host, uri.port,
+                               use_ssl: true,
+                               open_timeout: OPEN_TIMEOUT,
+                               read_timeout: READ_TIMEOUT) { |h| h.request(req) }
+        handle_response(resp, path)
+      end
+    end
+
+    def post(service, path, body = {})
+      uri = URI("#{BASE_URLS.fetch(service)}#{path}")
+
+      with_retry(context: "POST #{path}") do
+        req = Net::HTTP::Post.new(uri)
+        req['Authorization'] = @api_token
+        req['Content-Type']  = 'application/json'
+        req.body = body.to_json
+
+        resp = Net::HTTP.start(uri.host, uri.port,
+                               use_ssl: true,
+                               open_timeout: OPEN_TIMEOUT,
+                               read_timeout: READ_TIMEOUT) { |h| h.request(req) }
+        handle_response(resp, path)
+      end
+    end
+
+    private
+
+    def with_retry(context:)
+      retries = 0
+      begin
+        yield
+      rescue RetryableError => e
+        retries += 1
+        raise if retries > MAX_RETRIES
+        wait = e.retry_after || (2**retries)
+        Rails.logger.warn "[WbClient] #{context} — retry #{retries}/#{MAX_RETRIES} in #{wait}s (#{e.message})"
+        sleep wait
+        retry
+      end
+    end
+
+    def handle_response(resp, path)
+      code = resp.code.to_i
+      case code
+      when 200..299
+        body = resp.body.presence
+        body ? JSON.parse(body) : {}
+      when 429
+        wait = resp['Retry-After']&.to_i || 10
+        raise RetryableError.new("429 rate-limited on #{path}", retry_after: wait)
+      when 500..599
+        raise RetryableError.new("#{code} server error on #{path}")
+      else
+        raise ApiError, "#{code} on #{path}: #{resp.body.to_s.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').truncate(300)}"
+      end
+    end
+  end
+end

@@ -1,0 +1,328 @@
+{
+  "allLinks": [
+    {
+      "href": "/",
+      "text": ""
+    },
+    {
+      "href": "/docs/openapi/api-information",
+      "text": ""
+    },
+    {
+      "href": "/release-notes",
+      "text": ""
+    },
+    {
+      "href": "/sandbox",
+      "text": ""
+    },
+    {
+      "href": "/wb-status",
+      "text": ""
+    },
+    {
+      "href": "/forum",
+      "text": ""
+    },
+    {
+      "href": "/knowledge-base",
+      "text": ""
+    },
+    {
+      "href": "/docs/openapi/api-information",
+      "text": "Документация"
+    },
+    {
+      "href": "/release-notes",
+      "text": "Журнал изменений"
+    },
+    {
+      "href": "/sandbox",
+      "text": "Песочница"
+    },
+    {
+      "href": "/wb-status",
+      "text": "Статус API"
+    },
+    {
+      "href": "/forum",
+      "text": "Сообщество"
+    },
+    {
+      "href": "/docs/openapi/api-information",
+      "text": ""
+    },
+    {
+      "href": "/release-notes",
+      "text": ""
+    },
+    {
+      "href": "/sandbox",
+      "text": ""
+    },
+    {
+      "href": "/wb-status",
+      "text": ""
+    },
+    {
+      "href": "/forum",
+      "text": ""
+    },
+    {
+      "href": "/knowledge-base",
+      "text": ""
+    },
+    {
+      "href": "/jwt?utm_source=dev-portal&utm_campaign=api-information&utm_content=cta-link",
+      "text": "декодировать его"
+    },
+    {
+      "href": "/jwt?utm_source=dev-portal&utm_campaign=api-information&utm_content=cta-link",
+      "text": "отдельной странице портала разработчиков"
+    },
+    {
+      "href": "/rules",
+      "text": "Пользовательское соглашение Сервиса «WB API»"
+    },
+    {
+      "href": "/privacy",
+      "text": "Политика в отношении обработки ПД РВБ"
+    },
+    {
+      "href": "/faq",
+      "text": "FAQ. Ответы на часто задаваемые вопросы"
+    },
+    {
+      "href": "/",
+      "text": ""
+    }
+  ],
+  "navStructure": [
+    {
+      "tag": "H1",
+      "class": "sc-hwkwBN sc-fcSHUR kNScra bWXUMb",
+      "text": "Общее (general)"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Общее"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Введение"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Как начать работу с API"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Поддержка"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Статус-коды HTTP"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Лимиты запросов"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Авторизация"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Правила использования токенов доступа к API"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Как создать персональный, базовый или тестовый токен"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Как устроен токен"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Декодирование токена"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Проверка подключения к WB API"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Проверка подключения{{ /ping }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "API новостей"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Получение новостей портала продавцов{{ /api/communications/v2/news }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Информация о продавце"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Получить информацию о продавце{{ /api/v1/seller-info }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Получить рейтинг продавца{{ /api/common/v1/rating }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Получить информацию о подписке Джем{{ /api/common/v1/subscriptions }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Управление пользователями продавца"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Создать приглашение для нового пользователя{{ /api/v1/invite }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Request samples"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Получить список активных или приглашённых пользователей продавца{{ /api/v1/users }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Изменить права доступа пользователей{{ /api/v1/users/access }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Request samples"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    },
+    {
+      "tag": "H2",
+      "class": "sc-kNOymR bmjcdh",
+      "text": "Удалить пользователя{{ /api/v1/user }}"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-eJvlPh lhcnPl",
+      "text": "Responses"
+    },
+    {
+      "tag": "H3",
+      "class": "sc-lgpSej wQFJD",
+      "text": "Response samples"
+    }
+  ],
+  "sidebarHTML": "<nav><ul class=\"navigation_measureContainer__zYJus\" aria-hidden=\"true\"><li class=\"navigation_element__KuCzX\"><a href=\"/docs/openapi/api-information\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Документация</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/release-notes\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Журнал изменений</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/sandbox\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Песочница</span></a></li><li class=\"navigation_element__KuCzX\"><button type=\"button\" class=\"ant-dropdown-trigger dropdownmenu_btn__A_qWN\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Swagger</span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"25\" height=\"24\" viewBox=\"0 0 25 24\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M18.0151 9.29462C17.6096 8.90535 16.9523 8.905 16.5464 9.29385L12.4999 13.17L8.4534 9.29385C8.04747 8.905 7.39014 8.90535 6.98465 9.29462C6.57885 9.68419 6.57885 10.3158 6.98465 10.7054L11.7633 15.2929C12.1701 15.6834 12.8297 15.6834 13.2364 15.2929L18.0151 10.7054C18.4209 10.3158 18.4209 9.68419 18.0151 9.29462Z\" fill=\"black\"></path></svg></button></li><li class=\"navigation_element__KuCzX\"><a href=\"/wb-status\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Статус API</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/forum\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Сообщество</span></a></li><li class=\"navigation_element__KuCzX\"><a href=\"/knowledge-base\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">База знаний</span></a></li><li class=\"navigation_element__KuCzX\"><button type=\"button\" class=\"ant-dropdown-trigger dropdownmenu_btn__A_qWN\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text\">Еще</span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"25\" height=\"24\" viewBox=\"0 0 25 24\" fill=\"none\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M18.0151 9.29462C17.6096 8.90535 16.9523 8.905 16.5464 9.29385L12.4999 13.17L8.4534 9.29385C8.04747 8.905 7.39014 8.90535 6.98465 9.29462C6.57885 9.68419 6.57885 10.3158 6.98465 10.7054L11.7633 15.2929C12.1701 15.6834 12.8297 15.6834 13.2364 15.2929L18.0151 10.7054C18.4209 10.3158 18.4209 9.68419 18.0151 9.29462Z\" fill=\"black\"></path></svg></button></li></ul><ul class=\"navigation_desctopNav__JXGRB\"><li class=\"navigation_element__KuCzX\"><a href=\"/docs/openapi/api-information\"><span class=\"_Text_1xgga_9 _Text--body-m_1xgga_391 _Text--primary_1xgga_449 _--fixed_1xgga_230\" data-name=\"Text"
+}

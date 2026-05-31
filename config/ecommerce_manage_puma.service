@@ -1,0 +1,15 @@
+[Unit]
+Description=Ecommerce Manage Rails Puma Server
+After=network.target
+
+[Service]
+Type=simple
+User=deployer
+WorkingDirectory=/home/deployer/apps/ecommerce_manage/current
+Environment=RAILS_ENV=production
+ExecStart=/bin/bash -lc 'cd /home/deployer/apps/ecommerce_manage/current && set -a && . /home/deployer/apps/ecommerce_manage/shared/.env && set +a && exec /home/deployer/.rvm/bin/rvm ruby-3.2.2@ecommerce_manage do bundle exec puma -C /home/deployer/apps/ecommerce_manage/current/config/puma.rb'
+ExecReload=/home/deployer/.rvm/bin/rvm ruby-3.2.2@ecommerce_manage do bundle exec pumactl -P /home/deployer/apps/ecommerce_manage/shared/tmp/pids/puma.pid phased-restart
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

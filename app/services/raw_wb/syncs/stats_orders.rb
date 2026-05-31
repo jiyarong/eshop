@@ -1,0 +1,71 @@
+module RawWb
+  module Syncs
+    module StatsOrders
+      # GET /api/v1/supplier/orders — statistics-api
+      def sync_stats_orders
+        data = @client.get(:statistics, '/api/v1/supplier/orders', dateFrom: @from.iso8601)
+        rows = Array(data).filter_map { |r| build_stats_order(r) }
+        return 0 if rows.empty?
+
+        # Assign a deterministic synthetic srid to records missing one so all rows
+        # can go through upsert_all and remain idempotent across repeated syncs.
+        rows.each do |r|
+          unless r[:srid].present?
+            r[:srid] = "nosrid:#{r[:account_id]}:#{r[:g_number]}:#{r[:barcode]}:#{r[:order_date].to_s[0..9]}"
+          end
+        end
+
+        rows = rows.uniq { |r| r[:srid] }
+        RawWb::StatsOrder.upsert_all(rows, unique_by: %i[account_id srid],
+          update_only: stats_order_update_cols)
+
+        # Backfill g_number into orders table via srid cross-reference
+        srid_to_gnumber = rows.each_with_object({}) do |r, h|
+          h[r[:srid]] = r[:g_number] if r[:srid].present? && r[:g_number].present?
+        end
+        if srid_to_gnumber.any?
+          srid_to_gnumber.each_slice(500) do |slice|
+            slice.each do |srid, g_number|
+              RawWb::Order.where(account_id: @account.id, srid: srid, g_number: nil)
+                          .update_all(g_number: g_number)
+            end
+          end
+        end
+
+        rows.size
+      end
+
+      private
+
+      def build_stats_order(r)
+        return nil if r['date'].blank?
+        {
+          account_id:       @account.id,
+          g_number:         r['gNumber'],
+          order_date:       r['date'],
+          last_change_date: r['lastChangeDate'],
+          supplier_article: r['supplierArticle'],
+          tech_size:        r['techSize'],
+          barcode:          r['barcode'],
+          total_price:      r['totalPrice'],
+          discount_percent: r['discountPercent'],
+          warehouse_name:   r['warehouseName'],
+          oblast:           r['oblast'],
+          nm_id:            r['nmId'],
+          subject:          r['subject'],
+          category:         r['category'],
+          brand:            r['brand'],
+          is_cancel:        r['isCancel'],
+          cancel_date:      r['cancelDate'].presence,
+          order_type:       r['orderType'],
+          srid:             r['srid'].presence,
+          synced_at:        Time.current,
+        }
+      end
+
+      def stats_order_update_cols
+        %i[last_change_date is_cancel cancel_date synced_at]
+      end
+    end
+  end
+end

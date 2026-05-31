@@ -1,0 +1,123 @@
+<h1 class="page-title">成本报表</h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <h2 class="section-title">SKU 成本</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>商品名</th>
+            <th>采购价 CNY</th>
+            <th>到白俄运费 CNY</th>
+            <th>清关杂费 CNY</th>
+            <th>关税额 CNY</th>
+            <th>进口增值税 CNY</th>
+            <th>货物总成本 CNY</th>
+            <th>升量 L</th>
+            <th>杂费 CNY</th>
+            <th>货损率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @sku_costs.each do |cost| %>
+            <tr>
+              <td><%= cost.sku_code %></td>
+              <td><%= cost.sku&.product_name %></td>
+              <td><%= report_value(cost.purchase_price_cny) %></td>
+              <td><%= report_value(cost.freight_to_by_cny) %></td>
+              <td><%= report_value(cost.customs_misc_cny) %></td>
+              <td><%= report_value(cost.customs_duty_cny) %></td>
+              <td><%= report_value(cost.import_vat_cny) %></td>
+              <td><%= report_value(cost.goods_cost_cny) %></td>
+              <td><%= report_value(cost.pkg_volume_l) %></td>
+              <td><%= report_value(cost.misc_cost_cny) %></td>
+              <td><%= report_value(cost.damage_rate) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">WB 成本</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>配送模式</th>
+            <th>公司类型</th>
+            <th>目标售价 RUB</th>
+            <th>收入 CNY</th>
+            <th>平台运费 CNY</th>
+            <th>广告费 CNY</th>
+            <th>最终成本 CNY</th>
+            <th>利润 CNY</th>
+            <th>利润率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @wb_costs.each do |cost| %>
+            <tr>
+              <td><%= cost.sku_code %></td>
+              <td><%= cost.delivery_mode %></td>
+              <td><%= cost.company_type %></td>
+              <td><%= report_value(cost.target_price_rub) %></td>
+              <td><%= report_value(cost.revenue_cny) %></td>
+              <td><%= report_value(cost.wb_platform_freight_cny) %></td>
+              <td><%= report_value(cost.wb_ad_spend_cny) %></td>
+              <td><%= report_value(cost.wb_total_cost_cny) %></td>
+              <td><%= report_value(cost.profit_cny) %></td>
+              <td><%= cost.margin_pct %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">Ozon 成本</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>配送模式</th>
+            <th>公司类型</th>
+            <th>俄罗斯售价 RUB</th>
+            <th>白俄售价 RUB</th>
+            <th>俄罗斯收入 CNY</th>
+            <th>白俄收入 CNY</th>
+            <th>平台运费 CNY</th>
+            <th>俄罗斯最终成本 CNY</th>
+            <th>白俄最终成本 CNY</th>
+            <th>俄罗斯利润 CNY</th>
+            <th>白俄利润 CNY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @ozon_costs.each do |cost| %>
+            <tr>
+              <td><%= cost.sku_code %></td>
+              <td><%= cost.delivery_mode %></td>
+              <td><%= cost.company_type %></td>
+              <td><%= report_value(cost.target_price_rf_rub) %></td>
+              <td><%= report_value(cost.target_price_by_rub) %></td>
+              <td><%= report_value(cost.ozon_revenue_rf_cny) %></td>
+              <td><%= report_value(cost.ozon_revenue_by_cny) %></td>
+              <td><%= report_value(cost.ozon_platform_freight_cny) %></td>
+              <td><%= report_value(cost.ozon_total_cost_rf_cny) %></td>
+              <td><%= report_value(cost.ozon_total_cost_by_cny) %></td>
+              <td><%= report_value(cost.ozon_profit_rf_cny) %></td>
+              <td><%= report_value(cost.ozon_profit_by_cny) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
