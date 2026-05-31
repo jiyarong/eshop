@@ -1,0 +1,28 @@
+<h1 class="page-title">供应商</h1>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>供应商</th>
+          <th>联系人</th>
+          <th>电话</th>
+          <th>微信</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @suppliers.each do |supplier| %>
+          <tr>
+            <td><%= link_to supplier.name, erp_supplier_path(supplier) %></td>
+            <td><%= supplier.contact_name %></td>
+            <td><%= supplier.phone %></td>
+            <td><%= supplier.wechat %></td>
+            <td><%= supplier.is_active ? "启用" : "停用" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

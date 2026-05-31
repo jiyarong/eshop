@@ -1,0 +1,32 @@
+<h1 class="page-title">运营任务</h1>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>标题</th>
+          <th>SKU</th>
+          <th>类型</th>
+          <th>状态</th>
+          <th>优先级</th>
+          <th>负责人</th>
+          <th>截止日期</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @tasks.each do |task| %>
+          <tr>
+            <td><%= link_to task.title, erp_operation_task_path(task) %></td>
+            <td><%= task.sku_code %></td>
+            <td><%= task.task_type %></td>
+            <td><%= task.status %></td>
+            <td><%= task.priority %></td>
+            <td><%= task.owner_name %></td>
+            <td><%= task.due_on %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

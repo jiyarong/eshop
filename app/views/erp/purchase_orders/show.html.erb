@@ -1,0 +1,48 @@
+<h1 class="page-title"><%= @purchase_order.order_no %></h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <dl class="definition-list">
+      <dt>供应商</dt>
+      <dd><%= @purchase_order.supplier&.name %></dd>
+      <dt>状态</dt>
+      <dd><%= @purchase_order.status %></dd>
+      <dt>采购日期</dt>
+      <dd><%= erp_value(@purchase_order.ordered_on) %></dd>
+      <dt>采购金额</dt>
+      <dd><%= erp_value(@purchase_order.goods_amount_cny) %></dd>
+      <dt>已付款</dt>
+      <dd><%= erp_value(@purchase_order.paid_amount_cny) %></dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">采购明细</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>商品名</th>
+            <th>批次号</th>
+            <th>数量</th>
+            <th>单价</th>
+            <th>金额</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @purchase_order.items.each do |item| %>
+            <tr>
+              <td><%= item.sku_code %></td>
+              <td><%= item.sku&.product_name %></td>
+              <td><%= item.sku_batch&.batch_code %></td>
+              <td><%= item.quantity %></td>
+              <td><%= erp_value(item.unit_price_cny) %></td>
+              <td><%= erp_value(item.amount_cny) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,22 @@
+<h1 class="page-title"><%= @task.title %></h1>
+
+<section class="panel">
+  <dl class="definition-list">
+    <dt>SKU</dt>
+    <dd><%= erp_value(@task.sku_code) %></dd>
+    <dt>任务类型</dt>
+    <dd><%= @task.task_type %></dd>
+    <dt>状态</dt>
+    <dd><%= @task.status %></dd>
+    <dt>优先级</dt>
+    <dd><%= @task.priority %></dd>
+    <dt>原因</dt>
+    <dd><%= erp_value(@task.reason) %></dd>
+    <dt>建议动作</dt>
+    <dd><%= erp_value(@task.suggested_action) %></dd>
+    <dt>负责人</dt>
+    <dd><%= erp_value(@task.owner_name) %></dd>
+    <dt>截止日期</dt>
+    <dd><%= erp_value(@task.due_on) %></dd>
+  </dl>
+</section>

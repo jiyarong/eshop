@@ -5,6 +5,7 @@ module Ec
     has_one  :cost,              class_name: 'Ec::SkuCost',             foreign_key: :sku_code, primary_key: :sku_code
     has_many :platform_costs,    class_name: 'Ec::SkuPlatformCost',     foreign_key: :sku_code, primary_key: :sku_code
     has_many :store_assignments, class_name: 'Ec::SkuStoreAssignment',  foreign_key: :sku_code, primary_key: :sku_code
+    has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
 
     validates :sku_code, presence: true, uniqueness: true
     before_validation { self.sku_code = sku_code&.upcase }

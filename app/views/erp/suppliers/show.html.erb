@@ -1,0 +1,42 @@
+<h1 class="page-title"><%= @supplier.name %></h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <dl class="definition-list">
+      <dt>联系人</dt>
+      <dd><%= erp_value(@supplier.contact_name) %></dd>
+      <dt>电话</dt>
+      <dd><%= erp_value(@supplier.phone) %></dd>
+      <dt>微信</dt>
+      <dd><%= erp_value(@supplier.wechat) %></dd>
+      <dt>地址</dt>
+      <dd><%= erp_value(@supplier.address) %></dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">采购单</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>采购单号</th>
+            <th>状态</th>
+            <th>采购日期</th>
+            <th>采购金额</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @purchase_orders.each do |order| %>
+            <tr>
+              <td><%= link_to order.order_no, erp_purchase_order_path(order) %></td>
+              <td><%= order.status %></td>
+              <td><%= order.ordered_on %></td>
+              <td><%= erp_value(order.goods_amount_cny) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
