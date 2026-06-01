@@ -1,0 +1,67 @@
+<%= form_with model: purchase_order, url: purchase_order.persisted? ? erp_purchase_order_path(purchase_order) : erp_purchase_orders_path do |form| %>
+  <% if purchase_order.errors.any? %>
+    <div class="panel error-box">
+      <%= purchase_order.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <div class="report-form">
+    <div class="field">
+      <%= form.label :order_no, "采购单号" %>
+      <%= form.text_field :order_no %>
+    </div>
+    <div class="field">
+      <%= form.label :supplier_id, "供应商" %>
+      <%= form.collection_select :supplier_id, supplier_options, :id, :name %>
+    </div>
+    <div class="field">
+      <%= form.label :ordered_on, "采购日期" %>
+      <%= form.date_field :ordered_on %>
+    </div>
+    <div class="field">
+      <%= form.label :status, "状态" %>
+      <%= form.select :status, Ec::PurchaseOrder::STATUSES %>
+    </div>
+    <div class="field">
+      <%= form.label :currency, "币种" %>
+      <%= form.text_field :currency %>
+    </div>
+    <div class="field">
+      <%= form.label :memo, "备注" %>
+      <%= form.text_field :memo %>
+    </div>
+  </div>
+
+  <div class="report-stack">
+    <div>
+      <h2 class="section-title">采购明细</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>批次</th>
+              <th>数量</th>
+              <th>单价</th>
+              <th>备注</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= form.fields_for :items do |item_form| %>
+              <tr>
+                <td>
+                  <%= item_form.hidden_field :id if item_form.object.persisted? %>
+                  <%= item_form.collection_select :sku_batch_id, batch_options, :id, :batch_code, { include_blank: "选择批次" } %>
+                </td>
+                <td><%= item_form.number_field :quantity, min: 1 %></td>
+                <td><%= item_form.number_field :unit_price_cny, min: 0, step: "0.0001" %></td>
+                <td><%= item_form.text_field :memo %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <%= form.submit "保存", class: "button" %>
+  </div>
+<% end %>

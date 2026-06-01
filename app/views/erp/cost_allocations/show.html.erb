@@ -2,6 +2,7 @@
 
 <div class="report-stack">
   <section class="panel">
+    <p><%= link_to "编辑", erp_edit_cost_allocation_path(@cost_allocation), class: "button" %></p>
     <dl class="definition-list">
       <dt>费用类型</dt>
       <dd><%= @cost_allocation.cost_type %></dd>

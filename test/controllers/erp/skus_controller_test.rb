@@ -3,6 +3,8 @@ require "test_helper"
 class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
   setup do
     @token = SecureRandom.hex(4).upcase
+    @current_user = create_user_with_roles("erp-skus-#{@token.downcase}@example.com", "manager")
+    sign_in @current_user
     @category = Ec::SkuCategory.create!(code: "SKU-PAGE-CAT-#{@token}", name: "SKU 页面类目")
     @sku = Ec::Sku.create!(
       sku_code: "SKU-PAGE-#{@token}",
@@ -17,6 +19,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
   teardown do
     Ec::Sku.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::SkuCategory.where(id: @category.id).delete_all
+    UserRole.joins(:user).where("users.email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
   end
 
   test "index renders skus" do
@@ -78,6 +82,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "编辑 SKU"
 
+    sign_in @current_user
     patch "/erp/skus/#{@sku.id}", params: {
       ec_sku: {
         product_name: "更新商品",

@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
     <title>电商管理平台</title>
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.13/+esm"></script>
     <style>
@@ -70,6 +71,71 @@
       .app-nav-group {
         display: flex;
         gap: 12px;
+      }
+
+      .app-user {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 13px;
+      }
+
+      .link-button {
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.78);
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .feedback-fab {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        z-index: 1000;
+        box-shadow: 0 10px 24px rgba(23, 32, 51, 0.18);
+      }
+
+      .feedback-highlight {
+        outline: 2px solid #f59e0b !important;
+        outline-offset: 2px !important;
+        cursor: crosshair !important;
+      }
+
+      .feedback-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1001;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(23, 32, 51, 0.38);
+        padding: 18px;
+      }
+
+      .feedback-modal-backdrop.is-open {
+        display: flex;
+      }
+
+      .feedback-modal {
+        width: min(560px, 100%);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        box-shadow: 0 18px 50px rgba(23, 32, 51, 0.22);
+      }
+
+      .feedback-modal textarea {
+        min-height: 92px;
+        border: 1px solid #c8d0dc;
+        border-radius: 6px;
+        padding: 10px;
+        color: var(--text);
+        font: inherit;
       }
 
       .page {
@@ -254,8 +320,13 @@
         }
 
         .app-nav,
-        .app-nav-group {
+        .app-nav-group,
+        .app-user {
           gap: 10px;
+        }
+
+        .app-user {
+          margin-left: 0;
         }
       }
     </style>
@@ -275,12 +346,172 @@
             <a href="/erp/sku_batches" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/sku_batches") %>>ERP 批次</a>
             <a href="/erp/purchase_orders" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/purchase_orders") %>>采购单</a>
             <a href="/erp/cost_allocations" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/cost_allocations") %>>费用分摊</a>
+            <% if can?(:manage_users) %>
+              <a href="/admin/users" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/users") %>>用户管理</a>
+            <% end %>
+            <% if can?(:manage_feedback_tasks) %>
+              <a href="/admin/feedback_tasks" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/feedback_tasks") %>>改动任务</a>
+            <% end %>
           </span>
         </nav>
+        <% if user_signed_in? %>
+          <div class="app-user">
+            <span><%= current_user.email %></span>
+            <%= button_to "退出", destroy_user_session_path, method: :delete, class: "link-button" %>
+          </div>
+        <% end %>
       </header>
       <main class="page">
         <%= yield %>
       </main>
+      <% if user_signed_in? %>
+        <button class="button feedback-fab" type="button" data-feedback-start>反馈</button>
+        <div class="feedback-modal-backdrop" data-feedback-modal>
+          <section class="feedback-modal">
+            <h2 class="section-title">提交改动建议</h2>
+            <form class="report-stack" data-feedback-form>
+              <div class="field">
+                <label for="feedback_issue_type">问题类型</label>
+                <select id="feedback_issue_type" name="issue_type">
+                  <option value="layout">布局</option>
+                  <option value="copy">文案</option>
+                  <option value="data">数据</option>
+                  <option value="interaction">交互</option>
+                  <option value="performance">性能</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="feedback_description">具体问题</label>
+                <textarea id="feedback_description" name="description" required></textarea>
+              </div>
+              <div class="field">
+                <label for="feedback_suggestion">改善建议</label>
+                <textarea id="feedback_suggestion" name="suggestion"></textarea>
+              </div>
+              <div class="report-form">
+                <button class="button" type="submit">提交</button>
+                <button class="button" type="button" data-feedback-cancel>取消</button>
+              </div>
+            </form>
+          </section>
+        </div>
+        <script>
+          (() => {
+            const startButton = document.querySelector("[data-feedback-start]");
+            const modal = document.querySelector("[data-feedback-modal]");
+            const form = document.querySelector("[data-feedback-form]");
+            const cancelButton = document.querySelector("[data-feedback-cancel]");
+            let selecting = false;
+            let highlighted = null;
+            let selected = null;
+
+            const clearHighlight = () => {
+              if (highlighted) highlighted.classList.remove("feedback-highlight");
+              highlighted = null;
+            };
+
+            const cssPath = (element) => {
+              const parts = [];
+              let node = element;
+              while (node && node.nodeType === Node.ELEMENT_NODE && node !== document.body) {
+                let part = node.tagName.toLowerCase();
+                if (node.id) {
+                  part += `#${CSS.escape(node.id)}`;
+                  parts.unshift(part);
+                  break;
+                }
+                const siblings = Array.from(node.parentElement.children).filter((child) => child.tagName === node.tagName);
+                if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(node) + 1})`;
+                parts.unshift(part);
+                node = node.parentElement;
+              }
+              return parts.join(" > ");
+            };
+
+            const openModal = () => modal.classList.add("is-open");
+            const closeModal = () => modal.classList.remove("is-open");
+
+            startButton.addEventListener("click", () => {
+              selecting = true;
+              selected = null;
+              startButton.textContent = "选择页面元素";
+            });
+
+            document.addEventListener("mouseover", (event) => {
+              if (!selecting) return;
+              if (event.target.closest("[data-feedback-modal]") || event.target.closest("[data-feedback-start]")) return;
+              clearHighlight();
+              highlighted = event.target;
+              highlighted.classList.add("feedback-highlight");
+            });
+
+            document.addEventListener("click", (event) => {
+              if (!selecting) return;
+              if (event.target.closest("[data-feedback-modal]") || event.target.closest("[data-feedback-start]")) return;
+              event.preventDefault();
+              event.stopPropagation();
+              selected = event.target;
+              selecting = false;
+              startButton.textContent = "反馈";
+              openModal();
+            }, true);
+
+            cancelButton.addEventListener("click", () => {
+              selecting = false;
+              selected = null;
+              startButton.textContent = "反馈";
+              clearHighlight();
+              closeModal();
+              form.reset();
+            });
+
+            form.addEventListener("submit", async (event) => {
+              event.preventDefault();
+              if (!selected) return;
+
+              const rect = selected.getBoundingClientRect();
+              const payload = {
+                feedback_task: {
+                  page_url: window.location.pathname + window.location.search + window.location.hash,
+                  page_title: document.title,
+                  issue_type: form.issue_type.value,
+                  description: form.description.value,
+                  suggestion: form.suggestion.value,
+                  selector: cssPath(selected),
+                  element_text: selected.innerText.trim().slice(0, 500),
+                  element_rect: {
+                    x: Math.round(rect.x),
+                    y: Math.round(rect.y),
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height)
+                  },
+                  scroll_x: Math.round(window.scrollX),
+                  scroll_y: Math.round(window.scrollY),
+                  viewport_width: window.innerWidth,
+                  viewport_height: window.innerHeight
+                }
+              };
+
+              const response = await fetch("/feedback_tasks", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+                },
+                body: JSON.stringify(payload)
+              });
+
+              if (response.ok) {
+                clearHighlight();
+                closeModal();
+                form.reset();
+                selected = null;
+              }
+            });
+          })();
+        </script>
+      <% end %>
     </div>
   </body>
 </html>

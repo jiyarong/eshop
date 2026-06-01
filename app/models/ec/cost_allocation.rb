@@ -6,7 +6,9 @@ module Ec
     ALLOCATION_METHODS = %w[manual by_quantity by_purchase_amount].freeze
     STATUSES = %w[draft locked].freeze
 
-    has_many :items, class_name: "Ec::CostAllocationItem", foreign_key: :cost_allocation_id, dependent: :destroy
+    has_many :items, class_name: "Ec::CostAllocationItem", foreign_key: :cost_allocation_id, dependent: :destroy, inverse_of: :cost_allocation
+
+    accepts_nested_attributes_for :items, reject_if: :reject_blank_item
 
     validates :allocation_no, presence: true, uniqueness: true
     validates :cost_type, inclusion: { in: COST_TYPES }
@@ -28,6 +30,10 @@ module Ec
       return if allocated_amount_cny == total_amount_cny.to_d
 
       errors.add(:base, "分摊明细合计必须等于费用总额")
+    end
+
+    def reject_blank_item(attributes)
+      attributes[:sku_batch_id].blank? && attributes[:amount_cny].blank?
     end
   end
 end

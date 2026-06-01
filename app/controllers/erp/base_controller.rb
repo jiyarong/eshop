@@ -1,6 +1,7 @@
 module Erp
   class BaseController < ApplicationController
     helper_method :erp_value
+    before_action -> { require_permission!(:view_erp) }
 
     private
 

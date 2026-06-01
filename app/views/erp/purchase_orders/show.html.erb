@@ -2,6 +2,7 @@
 
 <div class="report-stack">
   <section class="panel">
+    <p><%= link_to "编辑", erp_edit_purchase_order_path(@purchase_order), class: "button" %></p>
     <dl class="definition-list">
       <dt>供应商</dt>
       <dd><%= @purchase_order.supplier&.name %></dd>

@@ -1,4 +1,6 @@
 class WeeklyProfitReportsController < ApplicationController
+  before_action -> { require_permission!(:view_reports) }, except: [:accounts]
+
   rescue_from ActionController::ParameterMissing, with: :render_bad_request
 
   WB_COLUMNS = %w[

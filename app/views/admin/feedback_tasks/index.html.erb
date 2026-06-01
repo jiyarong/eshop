@@ -1,0 +1,30 @@
+<h1 class="page-title">改动任务</h1>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>页面</th>
+          <th>提交人</th>
+          <th>类型</th>
+          <th>状态</th>
+          <th>创建时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @feedback_tasks.each do |task| %>
+          <tr>
+            <td><%= link_to task.id, admin_feedback_task_path(task) %></td>
+            <td><%= task.page_url %></td>
+            <td><%= task.user.email %></td>
+            <td><%= task.issue_type %></td>
+            <td><%= task.status %></td>
+            <td><%= task.created_at %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

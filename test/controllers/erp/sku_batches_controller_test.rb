@@ -3,6 +3,8 @@ require "test_helper"
 class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
   setup do
     @token = SecureRandom.hex(4).upcase
+    @current_user = create_user_with_roles("erp-batches-#{@token.downcase}@example.com", "manager")
+    sign_in @current_user
     @sku = Ec::Sku.create!(sku_code: "ERP-BATCH-#{@token}", product_name: "ERP 批次 SKU")
     @batch = Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,
@@ -14,9 +16,13 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    Ec::CostAllocationItem.where(sku_batch_id: @batch.id).delete_all
-    Ec::SkuBatch.where(id: @batch.id).delete_all
+    batch_ids = Ec::SkuBatch.where(sku_code: @sku.sku_code).pluck(:id)
+    Ec::CostAllocationItem.where(sku_batch_id: batch_ids).delete_all
+    Ec::PurchaseOrderItem.where(sku_batch_id: batch_ids).delete_all
+    Ec::SkuBatch.where(id: batch_ids).delete_all
     @sku.destroy
+    UserRole.joins(:user).where("users.email LIKE ?", "erp-batches-#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "erp-batches-#{@token.downcase}%").delete_all
   end
 
   test "index renders sku batches" do
@@ -34,5 +40,57 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", @batch.batch_code
     assert_select "dt", "单件批次成本"
+  end
+
+  test "new renders form" do
+    get "/erp/sku_batches/new", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "新增 SKU 批次"
+    assert_select "form[action='/erp/sku_batches']"
+  end
+
+  test "create batch" do
+    assert_difference "Ec::SkuBatch.count", 1 do
+      post "/erp/sku_batches", params: {
+        ec_sku_batch: {
+          sku_code: @sku.sku_code,
+          batch_code: "created-batch-#{@token}",
+          status: "ordered",
+          purchased_quantity: "120",
+          received_quantity: "20",
+          purchase_unit_price_cny: "11.5",
+          expected_arrival_on: "2026-06-15",
+          memo: "手动录入"
+        }
+      }
+    end
+
+    created = Ec::SkuBatch.find_by!(batch_code: "CREATED-BATCH-#{@token}")
+    assert_redirected_to "/erp/sku_batches/#{created.id}"
+    assert_equal "ordered", created.status
+    assert_equal 120, created.purchased_quantity
+  end
+
+  test "edit and update batch" do
+    get "/erp/sku_batches/#{@batch.id}/edit", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "编辑 SKU 批次"
+
+    sign_in @current_user
+    patch "/erp/sku_batches/#{@batch.id}", params: {
+      ec_sku_batch: {
+        status: "received",
+        received_quantity: "100",
+        received_on: "2026-06-20"
+      }
+    }
+
+    assert_redirected_to "/erp/sku_batches/#{@batch.id}"
+    @batch.reload
+    assert_equal "received", @batch.status
+    assert_equal 100, @batch.received_quantity
+    assert_equal Date.new(2026, 6, 20), @batch.received_on
   end
 end

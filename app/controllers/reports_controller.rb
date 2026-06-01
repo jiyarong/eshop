@@ -1,5 +1,6 @@
 class ReportsController < ApplicationController
   helper_method :report_value
+  before_action -> { require_permission!(:view_reports) }
 
   def inventory
     @snapshots = Ec::InventorySnapshot.includes(:sku).order(:sku_code, :platform, :account_id)

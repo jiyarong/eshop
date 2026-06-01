@@ -1,0 +1,19 @@
+<h1 class="page-title">登录</h1>
+
+<section class="panel">
+  <%= form_with model: resource, as: resource_name, url: session_path(resource_name), class: "report-form" do |form| %>
+    <div class="field">
+      <%= form.label :email, "邮箱" %>
+      <%= form.email_field :email, autofocus: true, autocomplete: "email" %>
+    </div>
+    <div class="field">
+      <%= form.label :password, "密码" %>
+      <%= form.password_field :password, autocomplete: "current-password" %>
+    </div>
+    <div class="field">
+      <%= form.label :remember_me, "记住登录" %>
+      <%= form.check_box :remember_me %>
+    </div>
+    <%= form.submit "登录", class: "button" %>
+  <% end %>
+</section>

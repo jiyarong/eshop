@@ -1,0 +1,16 @@
+<h1 class="page-title">重置密码</h1>
+
+<section class="panel">
+  <%= form_with model: resource, as: resource_name, url: password_path(resource_name), method: :patch, class: "report-form" do |form| %>
+    <%= form.hidden_field :reset_password_token %>
+    <div class="field">
+      <%= form.label :password, "新密码" %>
+      <%= form.password_field :password, autocomplete: "new-password" %>
+    </div>
+    <div class="field">
+      <%= form.label :password_confirmation, "确认密码" %>
+      <%= form.password_field :password_confirmation, autocomplete: "new-password" %>
+    </div>
+    <%= form.submit "更新密码", class: "button" %>
+  <% end %>
+</section>

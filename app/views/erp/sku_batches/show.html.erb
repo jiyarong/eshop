@@ -1,6 +1,7 @@
 <h1 class="page-title"><%= @batch.batch_code %></h1>
 
 <section class="panel">
+  <p><%= link_to "编辑", erp_edit_sku_batch_path(@batch), class: "button" %></p>
   <dl class="definition-list">
     <dt>SKU</dt>
     <dd><%= @batch.sku_code %></dd>

@@ -3,6 +3,7 @@ require "test_helper"
 class Erp::OperationTasksControllerTest < ActionDispatch::IntegrationTest
   setup do
     @token = SecureRandom.hex(4).upcase
+    sign_in create_user_with_roles("erp-tasks-#{@token.downcase}@example.com", "manager")
     @sku = Ec::Sku.create!(sku_code: "TASK-PAGE-#{@token}", product_name: "任务页面 SKU")
     @task = Ec::OperationTask.create!(
       task_type: "replenish",
@@ -18,6 +19,8 @@ class Erp::OperationTasksControllerTest < ActionDispatch::IntegrationTest
   teardown do
     Ec::OperationTask.where(id: @task.id).delete_all if defined?(Ec::OperationTask)
     @sku.destroy
+    UserRole.joins(:user).where("users.email LIKE ?", "erp-tasks-#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "erp-tasks-#{@token.downcase}%").delete_all
   end
 
   test "index renders operation tasks" do

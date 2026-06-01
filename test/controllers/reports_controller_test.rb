@@ -3,6 +3,7 @@ require "test_helper"
 class ReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @sku_code = "TST-#{SecureRandom.hex(4).upcase}"
+    sign_in create_user_with_roles("reports-#{@sku_code.downcase}@example.com", "manager")
     @sku = Ec::Sku.create!(
       sku_code: @sku_code,
       product_name: "测试商品",
@@ -91,6 +92,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::InventorySnapshot.where(sku_code: @sku.sku_code).delete_all
     Ec::InventoryTotal.where(sku_code: @sku.sku_code).delete_all
     @sku&.destroy
+    UserRole.joins(:user).where("users.email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
+    User.where("email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
   end
 
   test "inventory report renders inventory snapshot and totals" do

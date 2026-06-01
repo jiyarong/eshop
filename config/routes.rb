@@ -1,4 +1,9 @@
 Rails.application.routes.draw do
+  devise_for :users, skip: [:registrations], controllers: {
+    sessions: "users/sessions",
+    passwords: "users/passwords"
+  }
+
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Google Sheets 连通性测试
@@ -12,17 +17,32 @@ Rails.application.routes.draw do
   get "reports/skus"      => "reports#skus"
   get "reports/costs"     => "reports#costs"
 
+  resources :feedback_tasks, only: [:create]
+
+  namespace :admin do
+    get "users/new" => "users#new", as: :new_user
+    get "users/:id/edit" => "users#edit", as: :edit_user
+    resources :users, except: [:destroy]
+    resources :feedback_tasks, only: [:index, :show, :update]
+  end
+
   namespace :erp do
     get "sku_categories/new" => "sku_categories#new", as: :new_sku_category
     get "sku_categories/:id/edit" => "sku_categories#edit", as: :edit_sku_category
     get "skus/new" => "skus#new", as: :new_sku
     get "skus/:id/edit" => "skus#edit", as: :edit_sku
+    get "sku_batches/new" => "sku_batches#new", as: :new_sku_batch
+    get "sku_batches/:id/edit" => "sku_batches#edit", as: :edit_sku_batch
+    get "purchase_orders/new" => "purchase_orders#new", as: :new_purchase_order
+    get "purchase_orders/:id/edit" => "purchase_orders#edit", as: :edit_purchase_order
+    get "cost_allocations/new" => "cost_allocations#new", as: :new_cost_allocation
+    get "cost_allocations/:id/edit" => "cost_allocations#edit", as: :edit_cost_allocation
     resources :sku_categories, except: [:destroy]
     resources :skus, except: [:destroy]
-    resources :sku_batches, only: [:index, :show]
+    resources :sku_batches, except: [:destroy]
     resources :suppliers, only: [:index, :show]
-    resources :purchase_orders, only: [:index, :show]
-    resources :cost_allocations, only: [:index, :show]
+    resources :purchase_orders, except: [:destroy]
+    resources :cost_allocations, except: [:destroy]
     resources :operation_tasks, only: [:index, :show]
   end
 

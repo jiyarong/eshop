@@ -1,0 +1,13 @@
+<h1 class="page-title"><%= @user.email %></h1>
+
+<section class="panel">
+  <p><%= link_to "编辑", admin_edit_user_path(@user), class: "button" %></p>
+  <dl class="definition-list">
+    <dt>状态</dt>
+    <dd><%= @user.active? ? "启用" : "停用" %></dd>
+    <dt>角色</dt>
+    <dd><%= @user.roles.order(:position).map(&:name).join(" / ") %></dd>
+    <dt>最后登录</dt>
+    <dd><%= @user.last_sign_in_at || "-" %></dd>
+  </dl>
+</section>

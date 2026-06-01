@@ -1,6 +1,7 @@
 module Erp
   class SkusController < BaseController
     before_action :set_sku, only: [:show, :edit, :update]
+    before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update]
 
     def index
       @skus = Ec::Sku.includes(:sku_category).order(:sku_code)

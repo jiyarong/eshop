@@ -1,0 +1,41 @@
+<%= form_with model: [:admin, user] do |form| %>
+  <% if user.errors.any? %>
+    <div class="panel error-box">
+      <%= user.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <div class="report-form">
+    <div class="field">
+      <%= form.label :email, "邮箱" %>
+      <%= form.email_field :email %>
+    </div>
+    <div class="field">
+      <%= form.label :password, "密码" %>
+      <%= form.password_field :password %>
+    </div>
+    <div class="field">
+      <%= form.label :password_confirmation, "确认密码" %>
+      <%= form.password_field :password_confirmation %>
+    </div>
+    <div class="field">
+      <%= form.label :active, "启用" %>
+      <%= form.check_box :active %>
+    </div>
+  </div>
+
+  <div class="report-stack">
+    <section>
+      <h2 class="section-title">角色</h2>
+      <div class="report-form">
+        <% roles.each do |role| %>
+          <label>
+            <%= check_box_tag "user[role_ids][]", role.id, user.roles.include?(role) %>
+            <%= role.name %>
+          </label>
+        <% end %>
+      </div>
+    </section>
+    <%= form.submit "保存", class: "button" %>
+  </div>
+<% end %>

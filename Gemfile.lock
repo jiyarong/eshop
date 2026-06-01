@@ -82,6 +82,7 @@ GEM
       rake (>= 0.8.7)
     ast (2.4.3)
     base64 (0.3.0)
+    bcrypt (3.1.22)
     bcrypt_pbkdf (1.1.2)
     bigdecimal (4.1.2)
     bootsnap (1.24.0)
@@ -98,6 +99,12 @@ GEM
       irb (~> 1.10)
       reline (>= 0.3.8)
     declarative (0.0.20)
+    devise (5.0.4)
+      bcrypt (~> 3.0)
+      orm_adapter (~> 0.1)
+      railties (>= 7.0)
+      responders
+      warden (~> 1.2.3)
     dotenv (3.2.0)
     drb (2.2.3)
     ed25519 (1.4.0)
@@ -233,6 +240,7 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.3-x86_64-linux-musl)
       racc (~> 1.4)
+    orm_adapter (0.5.0)
     os (1.1.4)
     ostruct (0.6.3)
     parallel (1.28.0)
@@ -309,6 +317,9 @@ GEM
       declarative (< 0.1.0)
       trailblazer-option (>= 0.1.1, < 0.2.0)
       uber (< 0.2.0)
+    responders (3.2.0)
+      actionpack (>= 7.0)
+      railties (>= 7.0)
     retriable (3.4.1)
     rubocop (1.86.1)
       json (~> 2.3)
@@ -386,6 +397,8 @@ GEM
     unicode-emoji (4.2.0)
     uri (1.1.1)
     useragent (0.16.11)
+    warden (1.2.9)
+      rack (>= 2.0.9)
     websocket-driver (0.8.0)
       base64
       websocket-extensions (>= 0.1.0)
@@ -411,6 +424,7 @@ DEPENDENCIES
   bootsnap
   brakeman
   debug
+  devise
   google-apis-drive_v3
   google-apis-sheets_v4
   jbuilder
