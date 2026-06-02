@@ -1,7 +1,7 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-if ENV["RAILS_ENV"] == "production"
+if ENV["RAILS_ENV"] == "production" && !ENV["KAMAL_CONTAINER"]
   # current/ 的两级上父是 deploy_to/，shared/ 与 current/ 同级
   shared = File.expand_path("../../shared", __dir__)
 
@@ -19,7 +19,7 @@ if ENV["RAILS_ENV"] == "production"
     ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
   end
 else
-  port ENV.fetch("PORT", 4010)
+  bind "tcp://0.0.0.0:#{ENV.fetch("PORT", 4010)}"
   plugin :tmp_restart
 end
 

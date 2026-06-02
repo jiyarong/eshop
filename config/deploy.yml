@@ -40,6 +40,7 @@ env:
     SOLID_QUEUE_IN_PUMA: true
     DB_HOST: eshop_manage-postgres
     REDIS_URL: redis://eshop_manage-redis:6379/0
+    PORT: 3000
 
     # Set number of processes dedicated to Solid Queue (default: 1)
     # JOB_CONCURRENCY: 3
