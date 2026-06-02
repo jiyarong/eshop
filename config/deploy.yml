@@ -1,6 +1,8 @@
 # Name of your application. Used to uniquely configure containers.
 service: eshop_manage
 
+secrets_path: .env.kamal
+
 # Name of the container image.
 image: eshop_manage
 
