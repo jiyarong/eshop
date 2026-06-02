@@ -92,7 +92,6 @@ accessories:
     service: eshop_manage-postgres
     image: postgres:16
     role: web
-    port: "127.0.0.1:5432:5432"
     env:
       clear:
         POSTGRES_USER: ecommerce_manage
@@ -105,6 +104,5 @@ accessories:
     service: eshop_manage-redis
     image: redis:7
     role: web
-    port: "127.0.0.1:6379:6379"
     directories:
       - data:/data
