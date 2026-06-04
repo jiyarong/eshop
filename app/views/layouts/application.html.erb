@@ -302,6 +302,31 @@
         background: #f8fafc;
       }
 
+      details {
+        max-width: 420px;
+      }
+
+      summary {
+        color: var(--brand);
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      pre {
+        max-width: 420px;
+        max-height: 260px;
+        overflow: auto;
+        margin: 8px 0 0;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #0f172a;
+        color: #e5edf8;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
       @media (max-width: 720px) {
         .app-header {
           align-items: flex-start;
@@ -339,6 +364,7 @@
           <span class="app-nav-group">
             <a href="/weekly_profit_reports" <%= 'aria-current="page"'.html_safe if request.path == "/weekly_profit_reports" %>>周利润报表</a>
             <a href="/reports/inventory" <%= 'aria-current="page"'.html_safe if request.path == "/reports/inventory" %>>库存</a>
+            <a href="/orders" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/orders") %>>订单中心</a>
             <a href="/reports/skus" <%= 'aria-current="page"'.html_safe if request.path == "/reports/skus" %>>SKU</a>
             <a href="/reports/costs" <%= 'aria-current="page"'.html_safe if request.path == "/reports/costs" %>>成本</a>
             <a href="/erp/skus" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/skus") %>>SKU 管理</a>

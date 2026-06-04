@@ -84,6 +84,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       ozon_warehouse_op_rub: 20,
       ozon_fbs_delivery_rub: 30
     )
+
   end
 
   teardown do
@@ -133,4 +134,5 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "100.00"
     assert_select "td", "120.00"
   end
+
 end

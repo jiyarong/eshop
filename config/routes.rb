@@ -17,6 +17,8 @@ Rails.application.routes.draw do
   get "reports/skus"      => "reports#skus"
   get "reports/costs"     => "reports#costs"
 
+  resources :orders, only: [:index, :show]
+
   resources :feedback_tasks, only: [:create]
 
   namespace :admin do

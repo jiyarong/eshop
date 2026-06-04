@@ -1,0 +1,160 @@
+<main class="page">
+  <h1 class="page-title">订单 <%= @order.external_order_number %></h1>
+
+  <section class="panel">
+    <div class="report-meta">
+      <%= link_to "返回订单中心", orders_path %>
+    </div>
+
+    <div class="summary-grid">
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">平台 / 店铺</div>
+        <div class="summary-value"><%= platform_label(@order.platform) %> / <%= @order.store.store_name %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">统一状态</div>
+        <div class="summary-value"><%= order_status_label(@order.order_status) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">源状态</div>
+        <div class="summary-value"><%= display_value(@order.source_status) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">城市 / 国家</div>
+        <div class="summary-value"><%= display_value([@order.buyer_city, @order.buyer_country].compact_blank.join(" / ")) %></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="report-stack">
+    <section class="panel">
+      <h2 class="section-title">订单信息</h2>
+      <div class="table-scroll">
+        <table>
+          <tbody>
+            <tr><th>平台订单 ID</th><td><%= display_value(@order.external_order_id) %></td></tr>
+            <tr><th>平台订单号</th><td><%= display_value(@order.external_order_number) %></td></tr>
+            <tr><th>源子状态</th><td><%= display_value(@order.source_substatus) %></td></tr>
+            <tr><th>下单时间</th><td><%= @order.ordered_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
+            <tr><th>处理时间</th><td><%= @order.in_process_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
+            <tr><th>支付方式</th><td><%= display_value(@order.payment_method_source) %></td></tr>
+            <tr><th>同步时间</th><td><%= @order.synced_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">履约与追踪</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>履约单号</th>
+              <th>模式</th>
+              <th>状态</th>
+              <th>源状态</th>
+              <th>源子状态</th>
+              <th>仓库</th>
+              <th>配送方式</th>
+              <th>运单号</th>
+              <th>发货时间</th>
+              <th>签收时间</th>
+              <th>原始来源</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @order.fulfillments.each do |fulfillment| %>
+              <tr>
+                <td><%= fulfillment.external_fulfillment_id %></td>
+                <td><%= fulfillment_label(fulfillment.fulfillment_type) %></td>
+                <td><%= order_status_label(fulfillment.status) %></td>
+                <td><%= display_value(fulfillment.source_status) %></td>
+                <td><%= display_value(fulfillment.source_substatus) %></td>
+                <td><%= display_value(fulfillment.warehouse_name) %></td>
+                <td><%= display_value(fulfillment.delivery_method_name || fulfillment.delivery_type_source) %></td>
+                <td><%= display_value(fulfillment.tracking_number) %></td>
+                <td><%= fulfillment.shipped_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+                <td><%= fulfillment.delivered_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+                <td><%= display_value(fulfillment.raw_source_type) %>#<%= display_value(fulfillment.raw_source_id) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">商品明细</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>平台 SKU</th>
+              <th>Offer ID</th>
+              <th>内部 SKU</th>
+              <th>商品名称</th>
+              <th>源商品名</th>
+              <th>数量</th>
+              <th>单价</th>
+              <th>原价</th>
+              <th>币种</th>
+              <th>佣金</th>
+              <th>折扣</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @order.items.each do |item| %>
+              <tr>
+                <td><%= display_value(item.platform_sku_id) %></td>
+                <td><%= display_value(item.offer_id) %></td>
+                <td><%= display_value(item.sku_code) %></td>
+                <td><%= display_value(item.sku&.product_name) %></td>
+                <td><%= display_value(item.product_name_source) %></td>
+                <td><%= item.quantity %></td>
+                <td><%= money_value(item.unit_price) %></td>
+                <td><%= money_value(item.old_unit_price) %></td>
+                <td><%= display_value(item.currency_code) %></td>
+                <td><%= money_value(item.commission_amount) %></td>
+                <td><%= money_value(item.discount_amount) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">原始数据关联</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>来源类型</th>
+              <th>来源 ID</th>
+              <th>来源 Key</th>
+              <th>角色</th>
+              <th>同步时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @order.source_links.each do |link| %>
+              <tr>
+                <td><%= link.source_type %></td>
+                <td><%= link.source_id %></td>
+                <td><%= display_value(link.source_key) %></td>
+                <td><%= link.source_role %></td>
+                <td><%= link.synced_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <details>
+        <summary>查看订单源片段</summary>
+        <pre><%= JSON.pretty_generate(@order.source_payload || {}) %></pre>
+      </details>
+    </section>
+  </div>
+</main>

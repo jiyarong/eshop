@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_01_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_03_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -89,6 +89,115 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_000003) do
     t.index ["sku_code"], name: "index_ec_operation_tasks_on_sku_code"
     t.index ["status"], name: "index_ec_operation_tasks_on_status"
     t.index ["task_type"], name: "index_ec_operation_tasks_on_task_type"
+  end
+
+  create_table "ec_order_fulfillments", force: :cascade do |t|
+    t.string "cancel_reason_source"
+    t.datetime "cancelled_at"
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.string "delivery_method_name"
+    t.string "delivery_type_source"
+    t.string "external_fulfillment_id", null: false
+    t.string "fulfillment_key", null: false
+    t.string "fulfillment_type", default: "unknown", null: false
+    t.bigint "order_id", null: false
+    t.string "platform", null: false
+    t.bigint "raw_source_id"
+    t.string "raw_source_type"
+    t.datetime "shipped_at"
+    t.string "source_status"
+    t.string "source_substatus"
+    t.string "status", default: "unknown", null: false
+    t.bigint "store_id", null: false
+    t.datetime "synced_at"
+    t.string "tracking_number"
+    t.datetime "updated_at", null: false
+    t.string "warehouse_external_id"
+    t.string "warehouse_name"
+    t.index ["order_id"], name: "index_ec_order_fulfillments_on_order_id"
+    t.index ["platform", "store_id", "fulfillment_key"], name: "idx_ec_order_fulfillments_unique_key", unique: true
+    t.index ["raw_source_type", "raw_source_id"], name: "idx_ec_order_fulfillments_raw_source"
+    t.index ["status"], name: "index_ec_order_fulfillments_on_status"
+    t.index ["store_id"], name: "index_ec_order_fulfillments_on_store_id"
+  end
+
+  create_table "ec_order_items", force: :cascade do |t|
+    t.decimal "commission_amount", precision: 18, scale: 2
+    t.decimal "commission_percent", precision: 8, scale: 2
+    t.datetime "created_at", null: false
+    t.string "currency_code"
+    t.decimal "discount_amount", precision: 18, scale: 2
+    t.decimal "discount_percent", precision: 8, scale: 2
+    t.string "external_item_id"
+    t.bigint "fulfillment_id"
+    t.jsonb "item_payload"
+    t.string "offer_id"
+    t.decimal "old_unit_price", precision: 18, scale: 2
+    t.bigint "order_id", null: false
+    t.decimal "payout", precision: 18, scale: 2
+    t.string "platform", null: false
+    t.string "platform_sku_id"
+    t.string "product_name_source"
+    t.integer "quantity", default: 1, null: false
+    t.string "sku_code"
+    t.bigint "store_id", null: false
+    t.datetime "synced_at"
+    t.decimal "unit_price", precision: 18, scale: 2
+    t.datetime "updated_at", null: false
+    t.index ["fulfillment_id"], name: "index_ec_order_items_on_fulfillment_id"
+    t.index ["order_id"], name: "index_ec_order_items_on_order_id"
+    t.index ["platform", "store_id", "external_item_id"], name: "idx_ec_order_items_external_item"
+    t.index ["platform", "store_id", "offer_id"], name: "idx_ec_order_items_offer"
+    t.index ["platform_sku_id"], name: "index_ec_order_items_on_platform_sku_id"
+    t.index ["sku_code"], name: "index_ec_order_items_on_sku_code"
+    t.index ["store_id"], name: "index_ec_order_items_on_store_id"
+  end
+
+  create_table "ec_order_source_links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "fulfillment_id"
+    t.bigint "item_id"
+    t.bigint "order_id", null: false
+    t.string "platform", null: false
+    t.bigint "source_id", null: false
+    t.string "source_key"
+    t.string "source_role", default: "primary", null: false
+    t.string "source_type", null: false
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["fulfillment_id"], name: "index_ec_order_source_links_on_fulfillment_id"
+    t.index ["item_id"], name: "index_ec_order_source_links_on_item_id"
+    t.index ["order_id"], name: "index_ec_order_source_links_on_order_id"
+    t.index ["platform", "source_key"], name: "idx_ec_order_source_links_source_key"
+    t.index ["source_type", "source_id", "source_role"], name: "idx_ec_order_source_links_unique_source", unique: true
+  end
+
+  create_table "ec_orders", force: :cascade do |t|
+    t.string "buyer_city"
+    t.string "buyer_country"
+    t.string "buyer_region"
+    t.datetime "created_at", null: false
+    t.string "external_order_id"
+    t.string "external_order_number"
+    t.datetime "in_process_at"
+    t.boolean "is_legal_entity", default: false, null: false
+    t.string "order_key", null: false
+    t.string "order_status", default: "unknown", null: false
+    t.datetime "ordered_at"
+    t.string "payment_method_source"
+    t.string "platform", null: false
+    t.jsonb "source_payload"
+    t.string "source_status"
+    t.string "source_substatus"
+    t.bigint "store_id", null: false
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["order_status"], name: "index_ec_orders_on_order_status"
+    t.index ["ordered_at"], name: "index_ec_orders_on_ordered_at"
+    t.index ["platform", "store_id", "external_order_number"], name: "idx_ec_orders_external_order_number"
+    t.index ["platform", "store_id", "order_key"], name: "idx_ec_orders_unique_order_key", unique: true
+    t.index ["store_id"], name: "index_ec_orders_on_store_id"
   end
 
   create_table "ec_payment_requests", force: :cascade do |t|
@@ -1580,6 +1689,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_000003) do
 
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
+  add_foreign_key "ec_order_fulfillments", "ec_orders", column: "order_id"
+  add_foreign_key "ec_order_fulfillments", "ec_stores", column: "store_id"
+  add_foreign_key "ec_order_items", "ec_order_fulfillments", column: "fulfillment_id"
+  add_foreign_key "ec_order_items", "ec_orders", column: "order_id"
+  add_foreign_key "ec_order_items", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_order_items", "ec_stores", column: "store_id"
+  add_foreign_key "ec_order_source_links", "ec_order_fulfillments", column: "fulfillment_id"
+  add_foreign_key "ec_order_source_links", "ec_order_items", column: "item_id"
+  add_foreign_key "ec_order_source_links", "ec_orders", column: "order_id"
+  add_foreign_key "ec_orders", "ec_stores", column: "store_id"
   add_foreign_key "ec_payment_requests", "ec_purchase_orders", column: "purchase_order_id"
   add_foreign_key "ec_purchase_order_items", "ec_purchase_orders", column: "purchase_order_id"
   add_foreign_key "ec_purchase_order_items", "ec_sku_batches", column: "sku_batch_id"
