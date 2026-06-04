@@ -29,5 +29,9 @@ module Ec
     rescue NameError
       nil
     end
+
+    def self.ransackable_attributes(_auth_object = nil)
+      %w[external_fulfillment_id fulfillment_type platform source_status source_substatus status store_id]
+    end
   end
 end

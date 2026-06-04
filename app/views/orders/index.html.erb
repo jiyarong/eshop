@@ -2,23 +2,23 @@
   <h1 class="page-title">订单中心</h1>
 
   <section class="panel">
-    <%= form_with url: "/orders", method: :get, local: true, class: "report-form" do %>
+    <%= search_form_for @search, url: orders_path, method: :get, html: { class: "report-form" } do |form| %>
       <div class="field">
         <label for="platform">平台</label>
-        <select id="platform" name="platform">
+        <select id="platform" name="q[platform_eq]">
           <option value="">全部平台</option>
           <% %w[ozon wb amazon].each do |platform| %>
-            <option value="<%= platform %>" <%= "selected" if @platform == platform %>><%= platform_label(platform) %></option>
+            <option value="<%= platform %>" <%= "selected" if @q_params["platform_eq"] == platform %>><%= platform_label(platform) %></option>
           <% end %>
         </select>
       </div>
 
       <div class="field">
         <label for="store_id">店铺</label>
-        <select id="store_id" name="store_id">
+        <select id="store_id" name="q[store_id_eq]">
           <option value="">全部店铺</option>
           <% @stores.each do |store| %>
-            <option value="<%= store.id %>" <%= "selected" if @store_id.to_s == store.id.to_s %>>
+            <option value="<%= store.id %>" <%= "selected" if @q_params["store_id_eq"].to_s == store.id.to_s %>>
               <%= platform_label(store.platform) %> / <%= store.store_name %>
             </option>
           <% end %>
@@ -27,27 +27,27 @@
 
       <div class="field">
         <label for="status">状态</label>
-        <select id="status" name="status">
+        <select id="status" name="q[order_status_eq]">
           <option value="">全部状态</option>
           <% Ec::Order::STATUSES.values.each do |status| %>
-            <option value="<%= status %>" <%= "selected" if @status == status %>><%= order_status_label(status) %></option>
+            <option value="<%= status %>" <%= "selected" if @q_params["order_status_eq"] == status %>><%= order_status_label(status) %></option>
           <% end %>
         </select>
       </div>
 
       <div class="field">
         <label for="from_date">开始日期</label>
-        <input id="from_date" type="date" name="from_date" value="<%= @from_date %>">
+        <input id="from_date" type="date" name="q[ordered_at_gteq]" value="<%= @q_params["ordered_at_gteq"]&.to_date %>">
       </div>
 
       <div class="field">
         <label for="to_date">结束日期</label>
-        <input id="to_date" type="date" name="to_date" value="<%= @to_date %>">
+        <input id="to_date" type="date" name="q[ordered_at_lteq_end_of_day]" value="<%= @q_params["ordered_at_lteq_end_of_day"] %>">
       </div>
 
       <div class="field">
         <label for="q">搜索</label>
-        <input id="q" type="search" name="q" value="<%= @q %>" placeholder="订单号 / 履约单 / SKU">
+        <input id="q" type="search" name="q[external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont]" value="<%= @q_params["external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont"] %>" placeholder="订单号 / 履约单 / SKU">
       </div>
 
       <button class="button" type="submit">查询</button>
@@ -94,34 +94,43 @@
                 <th>平台</th>
                 <th>店铺</th>
                 <th>状态</th>
-                <th>源状态</th>
-                <th>源子状态</th>
                 <th>平台订单号</th>
-                <th>履约单号</th>
                 <th>下单时间</th>
                 <th>处理时间</th>
                 <th>城市</th>
-                <th>商品/数量</th>
+                <th>SKU/数量</th>
                 <th>同步时间</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               <% @orders.each do |order| %>
-                <% fulfillment_ids = order.fulfillments.map(&:external_fulfillment_id).join(" / ") %>
-                <% quantity = order.items.sum { |item| item.quantity.to_i } %>
                 <tr>
                   <td><%= platform_label(order.platform) %></td>
                   <td><%= order.store.store_name %></td>
-                  <td><%= order_status_label(order.order_status) %></td>
-                  <td><%= display_value(order.source_status) %></td>
-                  <td><%= display_value(order.source_substatus) %></td>
-                  <td><%= display_value(order.external_order_number) %></td>
-                  <td><%= display_value(fulfillment_ids) %></td>
+                  <td title="<%= order_status_title(order) %>"><%= order_status_label(order.order_status) %></td>
+                  <td>
+                    <% if platform_order_url(order).present? %>
+                      <%= link_to truncated_order_number(order), platform_order_url(order), title: display_value(order.external_order_number), target: "_blank", rel: "noopener" %>
+                    <% else %>
+                      <%= link_to truncated_order_number(order), order_path(order), title: display_value(order.external_order_number) %>
+                    <% end %>
+                  </td>
                   <td><%= order.ordered_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
                   <td><%= order.in_process_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
                   <td><%= display_value(order.buyer_city) %></td>
-                  <td><%= order.items.size %> / <%= quantity %></td>
+                  <td>
+                    <% order.items.each_with_index do |item, index| %>
+                      <% sku = sku_for_order_item(item) %>
+                      <%= " / " if index.positive? %>
+                      <% if sku.present? %>
+                        <%= link_to order_item_sku_label(item), erp_sku_path(sku) %>
+                      <% else %>
+                        <%= order_item_sku_label(item) %>
+                      <% end %>
+                    <% end %>
+                    / <%= order.items.sum { |item| item.quantity.to_i } %>
+                  </td>
                   <td><%= order.synced_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
                   <td><%= link_to "查看详情", order_path(order) %></td>
                 </tr>
@@ -130,6 +139,7 @@
           </table>
         </div>
       <% end %>
+      <%= paginate @orders %>
     </section>
   </div>
 </main>

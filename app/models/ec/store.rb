@@ -21,5 +21,9 @@ module Ec
       return unless ozon?
       RawOzon::SellerAccount.find_by(id: ozon_raw_account_id)
     end
+
+    def self.ransackable_attributes(_auth_object = nil)
+      %w[id platform store_name]
+    end
   end
 end

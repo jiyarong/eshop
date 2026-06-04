@@ -11,5 +11,9 @@ module Ec
     has_many :source_links, class_name: "Ec::OrderSourceLink", foreign_key: :item_id, dependent: :nullify
 
     validates :platform, :store, :order, :quantity, presence: true
+
+    def self.ransackable_attributes(_auth_object = nil)
+      %w[offer_id platform platform_sku_id product_name_source sku_code store_id]
+    end
   end
 end

@@ -22,8 +22,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       platform: "ozon",
       store: @store,
       external_order_id: "36122165127",
-      external_order_number: "0128619527-0157",
-      order_key: "ozon:#{@store.id}:0128619527-0157",
+      external_order_number: "0128619527-0157-LONG-ORDER",
+      order_key: "ozon:#{@store.id}:0128619527-0157-LONG-ORDER",
       order_status: "shipped",
       source_status: "delivering",
       source_substatus: "posting_on_way_to_city",
@@ -60,7 +60,6 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       external_item_id: "0128619527-0157-1:3902460130",
       platform_sku_id: "3902460130",
       offer_id: "CTR-#{@token}",
-      sku_code: @sku.sku_code,
       product_name_source: "Пылесос вертикальный",
       quantity: 1,
       unit_price: 140,
@@ -83,9 +82,42 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       source_role: "primary",
       synced_at: Time.zone.parse("2026-06-02 04:00:00")
     )
+
+    @wb_store = Ec::Store.create!(
+      platform: "wb",
+      store_name: "订单中心 WB 店",
+      company_type: "small"
+    )
+
+    @wb_order = Ec::Order.create!(
+      platform: "wb",
+      store: @wb_store,
+      external_order_id: "WB-SRID-#{@token}",
+      external_order_number: "WB-G-#{@token}",
+      order_key: "wb:#{@wb_store.id}:WB-G-#{@token}",
+      order_status: "processing",
+      ordered_at: Time.zone.parse("2026-06-02 03:54:10"),
+      synced_at: Time.zone.parse("2026-06-02 04:00:00")
+    )
+
+    @older_orders = 21.times.map do |index|
+      Ec::Order.create!(
+        platform: "ozon",
+        store: @store,
+        external_order_id: "OLDER-#{@token}-#{index}",
+        external_order_number: "OLDER-#{@token}-#{index}",
+        order_key: "ozon:#{@store.id}:OLDER-#{@token}-#{index}",
+        order_status: "processing",
+        ordered_at: Time.zone.parse("2026-05-01 00:00:00") + index.minutes,
+        synced_at: Time.zone.parse("2026-05-01 00:00:00") + index.minutes
+      )
+    end
   end
 
   teardown do
+    @older_orders&.each(&:destroy)
+    @wb_order&.destroy
+    @wb_store&.destroy
     Ec::OrderSourceLink.where(order_id: @order&.id).delete_all
     Ec::OrderItem.where(order_id: @order&.id).delete_all
     Ec::OrderFulfillment.where(order_id: @order&.id).delete_all
@@ -96,7 +128,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     User.where("email LIKE ?", "orders-#{@token.downcase}%").delete_all
   end
 
-  test "index renders unified order center with filters and tracking summary" do
+  test "index renders unified order center with filters and sku summary" do
     get "/orders", params: { platform: "ozon", q: "0128619527" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -105,21 +137,69 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "Ozon"
     assert_select "td", "订单中心 Ozon 店"
     assert_select "td", "配送中"
-    assert_select "td", "delivering"
-    assert_select "td", "0128619527-0157"
-    assert_select "td", "0128619527-0157-1"
+    assert_select "th", { text: "源状态", count: 0 }
+    assert_select "th", { text: "源子状态", count: 0 }
+    assert_select "td", { text: "delivering", count: 0 }
+    assert_select "td", { text: "posting_on_way_to_city", count: 0 }
+    assert_select "td", "配送中" do |elements|
+      assert_equal "源状态: delivering\n源子状态: posting_on_way_to_city", elements.first["title"]
+    end
+    assert_select "a[href=?][target=?][rel=?]",
+                  "https://seller.ozon.ru/app/postings/crossborder/fbo/0128619527-0157-1",
+                  "_blank",
+                  "noopener",
+                  "0128619527-0157-LONG"
+    assert_select "a", { text: "0128619527-0157-LONG-ORDER", count: 0 }
+    assert_select "th", { text: "履约单号", count: 0 }
+    assert_select "td", { text: "0128619527-0157-1", count: 0 }
     assert_select "td", "Орск"
-    assert_select "td", "1 / 1"
+    assert_select "td" do
+      assert_select "a[href=?]", "/erp/skus/#{@sku.id}", "CTR-#{@token}"
+    end
     assert_select "a[href=?]", "/orders/#{@order.id}"
+  end
+
+  test "index links wb order number to seller order feed" do
+    get "/orders", params: { platform: "wb", q: "WB-G-#{@token}" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?][target=?][rel=?]",
+                  "https://seller.wildberries.ru/order-feed?orderId=WB-SRID-#{@token}",
+                  "_blank",
+                  "noopener",
+                  "WB-G-#{@token}"
+  end
+
+  test "index filters orders with ransack params" do
+    search_key = "external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont"
+    get "/orders", params: { q: { platform_eq: "wb", search_key => "WB-G-#{@token}" } }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "form[action=?][method=?]", "/orders", "get"
+    assert_select "select[name=?]", "q[platform_eq]"
+    assert_select "input[name=?][value=?]", "q[external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont]", "WB-G-#{@token}"
+    assert_select "td", "WB"
+    assert_select "td", "订单中心 WB 店"
+    assert_select "td", { text: "订单中心 Ozon 店", count: 0 }
+  end
+
+  test "index paginates order list" do
+    get "/orders", params: { q: { platform_eq: "ozon" }, page: 2 }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "nav.pagination"
+    assert_select "span.page.current", "2"
+    assert_select "td", "订单中心 Ozon 店"
   end
 
   test "show renders order detail with fulfillments items and source links" do
     get "/orders/#{@order.id}", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "h1", "订单 0128619527-0157"
+    assert_select "h1", "订单 0128619527-0157-LONG-ORDER"
     assert_select "h2", "履约与追踪"
-    assert_select "td", "0128619527-0157-1"
+    assert_select "th", { text: "履约单号", count: 0 }
+    assert_select "td", { text: "0128619527-0157-1", count: 0 }
     assert_select "td", "FBO"
     assert_select "td", "ЕКАТЕРИНБУРГ_РФЦ_НОВЫЙ"
     assert_select "h2", "商品明细"
@@ -130,6 +210,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", "原始数据关联"
     assert_select "td", "RawOzon::PostingFbo"
     assert_select "td", "123456"
-    assert_select "pre", /posting_number/
+    assert_select "th", { text: "来源 Key", count: 0 }
+    assert_select "details", { text: /查看订单源片段/, count: 0 }
   end
 end

@@ -23,5 +23,25 @@ module Ec
 
     validates :platform, :store, :order_key, :order_status, presence: true
     validates :order_key, uniqueness: { scope: [:platform, :store_id] }
+
+    def self.ransackable_attributes(_auth_object = nil)
+      %w[
+        buyer_city
+        external_order_id
+        external_order_number
+        in_process_at
+        order_status
+        ordered_at
+        platform
+        source_status
+        source_substatus
+        store_id
+        synced_at
+      ]
+    end
+
+    def self.ransackable_associations(_auth_object = nil)
+      %w[fulfillments items store]
+    end
   end
 end
