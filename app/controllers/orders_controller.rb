@@ -1,7 +1,8 @@
 class OrdersController < ApplicationController
   helper_method :order_status_label, :platform_label, :fulfillment_label, :display_value, :money_value,
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
-                :order_status_title, :truncated_order_number, :platform_order_url
+                :order_status_title, :truncated_order_number, :platform_order_url,
+                :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value
   before_action -> { require_permission!(:view_reports) }
 
   def index
@@ -19,6 +20,7 @@ class OrdersController < ApplicationController
       .includes(:store, :fulfillments, { items: :sku }, :source_links)
       .find(params[:id])
     @sku_by_code = sku_lookup_for(@order.items)
+    @ozon_product_details_by_item_id = ozon_product_details_lookup(@order)
   end
 
   private
@@ -100,10 +102,22 @@ class OrdersController < ApplicationController
     value.presence || "-"
   end
 
+  def truncated_display_value(value, length: 24)
+    display_value(value).to_s.truncate(length, omission: "...")
+  end
+
   def money_value(value)
     return "-" if value.nil?
 
     format("%.2f", value)
+  end
+
+  def ozon_product_details_for(item)
+    @ozon_product_details_by_item_id&.fetch(item.id, nil) || {}
+  end
+
+  def ozon_product_image_url(product)
+    first_image_url(product&.images) || first_image_url(product&.color_image)
   end
 
   def order_items_summary(order)
@@ -147,6 +161,72 @@ class OrdersController < ApplicationController
     return {} if codes.empty?
 
     Ec::Sku.where(sku_code: codes).index_by(&:sku_code)
+  end
+
+  def ozon_product_details_lookup(order)
+    return {} unless order.platform == "ozon"
+
+    account_id = order.store.ozon_raw_account_id
+    return {} unless account_id
+
+    items = order.items.to_a
+    offer_ids = items.map(&:offer_id).compact_blank
+    sku_ids = items.map(&:platform_sku_id).compact_blank
+    products = matching_ozon_products(account_id, offer_ids, sku_ids)
+    return {} if products.empty?
+
+    product_ids = products.map(&:ozon_product_id)
+    prices_by_product_id = RawOzon::ProductPrice
+      .where(account_id: account_id, ozon_product_id: product_ids)
+      .index_by(&:ozon_product_id)
+    stocks_by_product_id = RawOzon::ProductStock
+      .where(account_id: account_id, ozon_product_id: product_ids)
+      .index_by(&:ozon_product_id)
+    products_by_sku = products.group_by { |product| product.raw_json&.dig("sku").to_s.presence }.compact
+    products_by_offer = products.group_by { |product| product.offer_id.to_s.upcase.presence }.compact
+
+    items.each_with_object({}) do |item, result|
+      product = products_by_sku[item.platform_sku_id.to_s].to_a.first ||
+        products_by_offer[item.offer_id.to_s.upcase].to_a.first
+      next unless product
+
+      result[item.id] = {
+        product: product,
+        price: prices_by_product_id[product.ozon_product_id],
+        stock: stocks_by_product_id[product.ozon_product_id]
+      }
+    end
+  end
+
+  def matching_ozon_products(account_id, offer_ids, sku_ids)
+    scope = RawOzon::Product.where(account_id: account_id)
+    clauses = []
+    values = {}
+
+    if offer_ids.present?
+      clauses << "offer_id IN (:offer_ids)"
+      values[:offer_ids] = offer_ids
+    end
+
+    if sku_ids.present?
+      clauses << "raw_json ->> 'sku' IN (:sku_ids)"
+      values[:sku_ids] = sku_ids
+    end
+
+    return RawOzon::Product.none if clauses.empty?
+
+    scope.where(clauses.join(" OR "), values).to_a
+  end
+
+  def first_image_url(value)
+    Array(value).filter_map do |image|
+      case image
+      when String
+        image
+      when Hash
+        image["url"] || image["file_name"]
+      end
+    end.first
   end
 
   def ozon_order_url(order)

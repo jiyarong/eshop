@@ -108,14 +108,75 @@
                 <td><%= display_value(item.platform_sku_id) %></td>
                 <td><%= display_value(item.offer_id) %></td>
                 <td><%= display_value(order_item_sku_label(item)) %></td>
-                <td><%= display_value(sku&.product_name) %></td>
-                <td><%= display_value(item.product_name_source) %></td>
+                <td title="<%= display_value(sku&.product_name) %>"><%= truncated_display_value(sku&.product_name) %></td>
+                <td title="<%= display_value(item.product_name_source) %>"><%= truncated_display_value(item.product_name_source) %></td>
                 <td><%= item.quantity %></td>
                 <td><%= money_value(item.unit_price) %></td>
                 <td><%= money_value(item.old_unit_price) %></td>
                 <td><%= display_value(item.currency_code) %></td>
                 <td><%= money_value(item.commission_amount) %></td>
                 <td><%= money_value(item.discount_amount) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">SKU 具体情况</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>图片</th>
+              <th>商品名称</th>
+              <th>Ozon Product ID</th>
+              <th>平台 SKU</th>
+              <th>Offer ID</th>
+              <th>价格</th>
+              <th>营销价</th>
+              <th>原价</th>
+              <th>币种</th>
+              <th>FBO 现货 / 预留</th>
+              <th>FBS 现货 / 预留</th>
+              <th>条码</th>
+              <th>同步时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% detail_rows = @order.items.map { |item| [item, ozon_product_details_for(item)] }.select { |_item, details| details[:product].present? } %>
+            <% if detail_rows.any? %>
+              <% detail_rows.each do |item, details| %>
+                <% product = details[:product] %>
+                <% price = details[:price] %>
+                <% stock = details[:stock] %>
+                <% image_url = ozon_product_image_url(product) %>
+                <tr>
+                  <td>
+                    <% if image_url.present? %>
+                      <%= image_tag image_url, alt: product.name.presence || item.product_name_source.presence || item.offer_id, style: "width: 56px; height: 56px; object-fit: cover; border-radius: 6px;" %>
+                    <% else %>
+                      -
+                    <% end %>
+                  </td>
+                  <td title="<%= display_value(product.name) %>"><%= truncated_display_value(product.name) %></td>
+                  <td><%= product.ozon_product_id %></td>
+                  <td><%= display_value(item.platform_sku_id) %></td>
+                  <td><%= display_value(product.offer_id || item.offer_id) %></td>
+                  <td><%= money_value(price&.price) %></td>
+                  <td><%= money_value(price&.marketing_price) %></td>
+                  <td><%= money_value(price&.old_price) %></td>
+                  <td><%= display_value(price&.currency_code || product.currency_code) %></td>
+                  <td><%= stock ? "#{stock.present_fbo.to_i} / #{stock.reserved_fbo.to_i}" : "-" %></td>
+                  <td><%= stock ? "#{stock.present_fbs.to_i} / #{stock.reserved_fbs.to_i}" : "-" %></td>
+                  <td><%= display_value(product.barcodes&.join(" / ")) %></td>
+                  <td><%= [product.synced_at, price&.synced_at, stock&.synced_at].compact.max&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="13">暂无 Ozon SKU 原始商品信息</td>
               </tr>
             <% end %>
           </tbody>

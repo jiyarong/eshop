@@ -7,15 +7,23 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
 
     @sku = Ec::Sku.create!(
       sku_code: "CTR-#{@token}",
-      product_name: "订单中心商品",
+      product_name: "订单中心商品超长名称用于验证详情页商品名称截断展示避免表格被撑开",
       product_name_ru: "Центр заказов",
       is_active: true
+    )
+
+    @ozon_account = RawOzon::SellerAccount.create!(
+      client_id: "orders-ozon-#{@token}",
+      api_key: "test-key",
+      company_name: "订单中心 Ozon Raw #{@token}",
+      company_type: "general"
     )
 
     @store = Ec::Store.create!(
       platform: "ozon",
       store_name: "订单中心 Ozon 店",
-      company_type: "general"
+      company_type: "general",
+      ozon_raw_account_id: @ozon_account.id
     )
 
     @order = Ec::Order.create!(
@@ -60,7 +68,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       external_item_id: "0128619527-0157-1:3902460130",
       platform_sku_id: "3902460130",
       offer_id: "CTR-#{@token}",
-      product_name_source: "Пылесос вертикальный",
+      product_name_source: "Пылесос вертикальный с очень длинным названием для проверки обрезки строки",
       quantity: 1,
       unit_price: 140,
       old_unit_price: 553.96,
@@ -112,9 +120,49 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         synced_at: Time.zone.parse("2026-05-01 00:00:00") + index.minutes
       )
     end
+
+    @raw_product = RawOzon::Product.create!(
+      account: @ozon_account,
+      ozon_product_id: 9_876_543_210,
+      offer_id: "CTR-#{@token}",
+      name: "Ozon 原始商品超长名称用于验证详情页 SKU 具体情况名称截断展示",
+      currency_code: "BYN",
+      barcodes: ["4600000000012"],
+      images: ["https://cdn.example.test/ozon-product.jpg"],
+      raw_json: { "sku" => 3_902_460_130 },
+      synced_at: Time.zone.parse("2026-06-02 05:00:00")
+    )
+
+    @raw_price = RawOzon::ProductPrice.create!(
+      account: @ozon_account,
+      ozon_product_id: @raw_product.ozon_product_id,
+      offer_id: @raw_product.offer_id,
+      price: 159.90,
+      old_price: 199.90,
+      marketing_price: 149.90,
+      currency_code: "BYN",
+      raw_json: { "product_id" => @raw_product.ozon_product_id },
+      synced_at: Time.zone.parse("2026-06-02 05:05:00")
+    )
+
+    @raw_stock = RawOzon::ProductStock.create!(
+      account: @ozon_account,
+      ozon_product_id: @raw_product.ozon_product_id,
+      offer_id: @raw_product.offer_id,
+      present_fbo: 12,
+      reserved_fbo: 2,
+      present_fbs: 7,
+      reserved_fbs: 1,
+      raw_json: { "product_id" => @raw_product.ozon_product_id },
+      synced_at: Time.zone.parse("2026-06-02 05:10:00")
+    )
   end
 
   teardown do
+    RawOzon::ProductStock.where(account_id: @ozon_account&.id).delete_all
+    RawOzon::ProductPrice.where(account_id: @ozon_account&.id).delete_all
+    RawOzon::Product.where(account_id: @ozon_account&.id).delete_all
+    @ozon_account&.destroy
     @older_orders&.each(&:destroy)
     @wb_order&.destroy
     @wb_store&.destroy
@@ -205,8 +253,20 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", "商品明细"
     assert_select "td", "3902460130"
     assert_select "td", "CTR-#{@token}"
-    assert_select "td", "订单中心商品"
+    assert_select "td[title=?]", @sku.product_name, "订单中心商品超长名称用于验证详情页商品名称..."
+    assert_select "td[title=?]", @item.product_name_source, "Пылесос вертикальный ..."
+    assert_select "td", { text: @sku.product_name, count: 0 }
+    assert_select "td", { text: @item.product_name_source, count: 0 }
     assert_select "td", "140.00"
+    assert_select "h2", "SKU 具体情况"
+    assert_select "td[title=?]", @raw_product.name, "Ozon 原始商品超长名称用于验证详情页 ..."
+    assert_select "td", { text: @raw_product.name, count: 0 }
+    assert_select "td", "9876543210"
+    assert_select "td", "159.90"
+    assert_select "td", "149.90"
+    assert_select "td", "12 / 2"
+    assert_select "td", "7 / 1"
+    assert_select "img[src=?][alt=?]", "https://cdn.example.test/ozon-product.jpg", @raw_product.name
     assert_select "h2", "原始数据关联"
     assert_select "td", "RawOzon::PostingFbo"
     assert_select "td", "123456"

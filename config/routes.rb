@@ -15,6 +15,7 @@ Rails.application.routes.draw do
 
   get "reports/inventory" => "reports#inventory"
   get "reports/skus"      => "reports#skus"
+  get "reports/sku_sales" => "reports#sku_sales"
   get "reports/costs"     => "reports#costs"
 
   resources :orders, only: [:index, :show]

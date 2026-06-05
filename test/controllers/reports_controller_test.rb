@@ -3,12 +3,30 @@ require "test_helper"
 class ReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @sku_code = "TST-#{SecureRandom.hex(4).upcase}"
-    sign_in create_user_with_roles("reports-#{@sku_code.downcase}@example.com", "manager")
+    @current_user = create_user_with_roles("reports-#{@sku_code.downcase}@example.com", "manager")
+    sign_in @current_user
     @sku = Ec::Sku.create!(
       sku_code: @sku_code,
       product_name: "测试商品",
       product_name_ru: "Тестовый товар",
       is_active: true
+    )
+    @second_sku_code = "TST2-#{@sku_code.delete_prefix("TST-")}"
+    @second_sku = Ec::Sku.create!(
+      sku_code: @second_sku_code,
+      product_name: "第二个测试商品",
+      product_name_ru: "Второй тестовый товар",
+      is_active: true
+    )
+    @sales_store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "销量统计 Ozon 店 #{@sku_code}",
+      company_type: "general"
+    )
+    @wb_sales_store = Ec::Store.create!(
+      platform: "wb",
+      store_name: "销量统计 WB 店 #{@sku_code}",
+      company_type: "small"
     )
 
     @inventory_snapshot = Ec::InventorySnapshot.create!(
@@ -85,13 +103,141 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       ozon_fbs_delivery_rub: 30
     )
 
+    @sales_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "SALE-#{@sku_code}",
+      external_order_number: "SALE-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-01 10:00:00"),
+      synced_at: Time.zone.parse("2026-06-01 10:10:00")
+    )
+    @sales_fulfillment = @sales_order.fulfillments.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_fulfillment_id: "SALE-F-#{@sku_code}",
+      fulfillment_key: "ozon:#{@sales_store.id}:SALE-F-#{@sku_code}",
+      fulfillment_type: "fbo",
+      status: "delivered"
+    )
+    @sales_order.items.create!(
+      fulfillment: @sales_fulfillment,
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "SALE-I-#{@sku_code}",
+      platform_sku_id: "OZON-SKU-#{@sku_code}",
+      offer_id: @sku.sku_code,
+      sku_code: @sku.sku_code,
+      product_name_source: "销量统计测试商品",
+      quantity: 2,
+      unit_price: 100,
+      payout: 160,
+      commission_amount: 20,
+      discount_amount: 10,
+      currency_code: "BYN"
+    )
+
+    @return_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "RETURN-#{@sku_code}",
+      external_order_number: "RETURN-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:RETURN-#{@sku_code}",
+      order_status: "returned",
+      ordered_at: Time.zone.parse("2026-06-01 15:00:00"),
+      synced_at: Time.zone.parse("2026-06-01 15:10:00")
+    )
+    @return_fulfillment = @return_order.fulfillments.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_fulfillment_id: "RETURN-F-#{@sku_code}",
+      fulfillment_key: "ozon:#{@sales_store.id}:RETURN-F-#{@sku_code}",
+      fulfillment_type: "fbs",
+      status: "returned"
+    )
+    @return_order.items.create!(
+      fulfillment: @return_fulfillment,
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "RETURN-I-#{@sku_code}",
+      platform_sku_id: "OZON-SKU-#{@sku_code}",
+      offer_id: @sku.sku_code,
+      sku_code: @sku.sku_code,
+      product_name_source: "销量统计测试商品",
+      quantity: 1,
+      unit_price: 100,
+      payout: 80,
+      commission_amount: 10,
+      discount_amount: 5,
+      currency_code: "BYN"
+    )
+
+    @wb_sales_order = Ec::Order.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_order_id: "WB-SALE-#{@sku_code}",
+      external_order_number: "WB-SALE-#{@sku_code}",
+      order_key: "wb:#{@wb_sales_store.id}:WB-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-08 11:00:00"),
+      synced_at: Time.zone.parse("2026-06-08 11:10:00")
+    )
+    @wb_sales_order.items.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_item_id: "WB-SALE-I-#{@sku_code}",
+      platform_sku_id: "WB-SKU-#{@sku_code}",
+      offer_id: @sku.sku_code,
+      sku_code: @sku.sku_code,
+      product_name_source: "销量统计 WB 测试商品",
+      quantity: 3,
+      unit_price: 50,
+      payout: 120,
+      commission_amount: 15,
+      discount_amount: 6,
+      currency_code: "BYN"
+    )
+
+    @second_sku_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "SECOND-SALE-#{@sku_code}",
+      external_order_number: "SECOND-SALE-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:SECOND-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-08 16:00:00"),
+      synced_at: Time.zone.parse("2026-06-08 16:10:00")
+    )
+    @second_sku_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "SECOND-SALE-I-#{@sku_code}",
+      platform_sku_id: "OZON-SKU-#{@second_sku_code}",
+      offer_id: @second_sku.sku_code,
+      sku_code: @second_sku.sku_code,
+      product_name_source: "第二个销量统计测试商品",
+      quantity: 4,
+      unit_price: 25,
+      payout: 90,
+      commission_amount: 8,
+      discount_amount: 4,
+      currency_code: "BYN"
+    )
+
   end
 
   teardown do
+    Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
+    Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
+    Ec::Order.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all
+    @sales_store&.destroy
+    @wb_sales_store&.destroy
     Ec::SkuPlatformCost.where(sku_code: @sku.sku_code).delete_all
     Ec::SkuCost.where(sku_code: @sku.sku_code).delete_all
     Ec::InventorySnapshot.where(sku_code: @sku.sku_code).delete_all
     Ec::InventoryTotal.where(sku_code: @sku.sku_code).delete_all
+    @second_sku&.destroy
     @sku&.destroy
     UserRole.joins(:user).where("users.email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
     User.where("email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
@@ -133,6 +279,79 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "fbs"
     assert_select "td", "100.00"
     assert_select "td", "120.00"
+  end
+
+  test "sku sales report renders chart and grouped sales metrics" do
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "SKU 销量统计"
+    assert_select "form[action=?][method=?]", "/reports/sku_sales", "get"
+    assert_select "select[name=?]", "period"
+    assert_select "select[name=?]", "grain"
+    assert_select "select[name=?][multiple]", "sku_codes[]"
+    assert_select "script[src*=?]", "echarts"
+    assert_select "#sku-sales-chart[data-chart='sku-sales']"
+    assert_select "script#sku-sales-chart-data[type=?]", "application/json", /销量统计 Ozon 店 #{@sku_code}/
+    assert_select "script#sku-sales-chart-data[type=?]", "application/json", /销量统计 WB 店 #{@sku_code}/
+    assert_select "script#sku-sales-chart-data[type=?]", "application/json", /净销量/
+    assert_select "script#sku-sales-chart-data[type=?]", "application/json", /销售额/
+    assert_select "td", @sku.sku_code
+    assert_select "td", "Ozon"
+    assert_select "td", "销量统计 Ozon 店 #{@sku_code}"
+    assert_select "td", "2026-06-01"
+    assert_select "td", "2"
+    assert_select "td", "1"
+    assert_select "td", "1"
+    assert_select "td", "2"
+    assert_select "td", "300.00"
+    assert_select "td", "240.00"
+    assert_select "td", "30.00"
+    assert_select "td", "15.00"
+    assert_select "td", "fbo / fbs"
+    assert_select "td", "WB"
+    assert_select "td", "2026-06-08"
+    assert_select "td", "3"
+    assert_select "td", { text: @second_sku.sku_code, count: 0 }
+  end
+
+  test "sku sales report aggregates by platform and sku grains" do
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code, @second_sku.sku_code],
+      grain: "platform",
+      period: "week",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", "Ozon"
+    assert_select "td", { text: "销量统计 Ozon 店 #{@sku_code}", count: 0 }
+    assert_select "td", @sku.sku_code
+    assert_select "td", @second_sku.sku_code
+    assert_select "script#sku-sales-chart-data[type=?]", "application/json", /Ozon/
+
+    sign_in @current_user
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code, @second_sku.sku_code],
+      grain: "sku",
+      period: "week",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", { text: "Ozon", count: 0 }
+    assert_select "td", { text: "WB", count: 0 }
+    assert_select "td", { text: "销量统计 Ozon 店 #{@sku_code}", count: 0 }
+    assert_select "td", @sku.sku_code
+    assert_select "td", @second_sku.sku_code
   end
 
 end

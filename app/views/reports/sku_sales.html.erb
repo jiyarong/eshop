@@ -1,0 +1,185 @@
+<h1 class="page-title">SKU 销量统计</h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <%= form_with url: "/reports/sku_sales", method: :get, local: true, html: { class: "report-form" } do %>
+      <div class="field">
+        <label for="sku_codes">SKU</label>
+        <select id="sku_codes" name="sku_codes[]" multiple size="6">
+          <% @skus.each do |sku| %>
+            <option value="<%= sku.sku_code %>" <%= "selected" if @selected_sku_codes.include?(sku.sku_code) %>><%= sku.sku_code %></option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="grain">分析粒度</label>
+        <select id="grain" name="grain">
+          <option value="store" <%= "selected" if @grain == "store" %>>店铺</option>
+          <option value="platform" <%= "selected" if @grain == "platform" %>>平台</option>
+          <option value="sku" <%= "selected" if @grain == "sku" %>>SKU</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="platform">平台</label>
+        <select id="platform" name="platform">
+          <option value="">全部平台</option>
+          <option value="ozon" <%= "selected" if @selected_platform == "ozon" %>>Ozon</option>
+          <option value="wb" <%= "selected" if @selected_platform == "wb" %>>WB</option>
+          <option value="amazon" <%= "selected" if @selected_platform == "amazon" %>>Amazon</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="store_id">店铺</label>
+        <select id="store_id" name="store_id">
+          <option value="">全部店铺</option>
+          <% @stores.each do |store| %>
+            <option value="<%= store.id %>" <%= "selected" if @selected_store_id.to_s == store.id.to_s %>><%= store.platform.upcase %> / <%= store.store_name %></option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="period">周期</label>
+        <select id="period" name="period">
+          <option value="day" <%= "selected" if @period == "day" %>>日</option>
+          <option value="week" <%= "selected" if @period == "week" %>>周</option>
+          <option value="month" <%= "selected" if @period == "month" %>>月</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="from_date">开始日期</label>
+        <input id="from_date" type="date" name="from_date" value="<%= @from_date %>">
+      </div>
+
+      <div class="field">
+        <label for="to_date">结束日期</label>
+        <input id="to_date" type="date" name="to_date" value="<%= @to_date %>">
+      </div>
+
+      <button class="button" type="submit">查询</button>
+    <% end %>
+  </section>
+
+  <section class="panel">
+    <div class="summary-grid">
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">销售件数</div>
+        <div class="summary-value"><%= @sku_sales_summary[:sales_quantity] %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">退货件数</div>
+        <div class="summary-value"><%= @sku_sales_summary[:return_quantity] %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">净销量</div>
+        <div class="summary-value"><%= @sku_sales_summary[:net_quantity] %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">订单数</div>
+        <div class="summary-value"><%= @sku_sales_summary[:order_count] %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">销售额</div>
+        <div class="summary-value"><%= report_value(@sku_sales_summary[:gross_revenue]) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label">佣金</div>
+        <div class="summary-value"><%= report_value(@sku_sales_summary[:commission]) %></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">净销量 / 销售额趋势</h2>
+    <% if @sku_sales_chart_series.any? %>
+      <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+      <div id="sku-sales-chart" data-chart="sku-sales" style="width: 100%; height: 360px;"></div>
+      <script id="sku-sales-chart-data" type="application/json"><%= raw JSON.generate(@sku_sales_chart_option) %></script>
+      <script>
+        (() => {
+          const renderSkuSalesChart = () => {
+            const element = document.getElementById("sku-sales-chart");
+            const dataElement = document.getElementById("sku-sales-chart-data");
+            if (!element || !dataElement || !window.echarts) return;
+
+            const chart = window.echarts.getInstanceByDom(element) || window.echarts.init(element);
+            chart.setOption(JSON.parse(dataElement.textContent));
+            window.addEventListener("resize", () => chart.resize(), { once: true });
+          };
+
+          document.addEventListener("turbo:load", renderSkuSalesChart);
+          document.addEventListener("DOMContentLoaded", renderSkuSalesChart);
+          renderSkuSalesChart();
+        })();
+      </script>
+    <% else %>
+      <div class="empty-state">当前筛选范围内没有订单数据</div>
+    <% end %>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">明细表</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>周期</th>
+            <th>SKU</th>
+            <th>商品名</th>
+            <% unless @grain == "sku" %>
+              <th>平台</th>
+            <% end %>
+            <% if @grain == "store" %>
+              <th>店铺</th>
+            <% end %>
+            <th>销售件数</th>
+            <th>退货件数</th>
+            <th>净销量</th>
+            <th>订单数</th>
+            <th>销售额</th>
+            <th>Payout</th>
+            <th>佣金</th>
+            <th>折扣</th>
+            <th>均价</th>
+            <th>履约模式</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @sku_sales_rows.any? %>
+            <% @sku_sales_rows.each do |row| %>
+              <tr>
+                <td><%= row[:period_start] %></td>
+                <td><%= row[:sku_code] %></td>
+                <td><%= report_value(row[:product_name]) %></td>
+                <% unless @grain == "sku" %>
+                  <td><%= row[:platform] == "ozon" ? "Ozon" : row[:platform].to_s.upcase %></td>
+                <% end %>
+                <% if @grain == "store" %>
+                  <td><%= row[:store_name] %></td>
+                <% end %>
+                <td><%= row[:sales_quantity] %></td>
+                <td><%= row[:return_quantity] %></td>
+                <td><%= row[:net_quantity] %></td>
+                <td><%= row[:order_count] %></td>
+                <td><%= report_value(row[:gross_revenue]) %></td>
+                <td><%= report_value(row[:payout]) %></td>
+                <td><%= report_value(row[:commission]) %></td>
+                <td><%= report_value(row[:discount]) %></td>
+                <td><%= report_value(row[:average_unit_price]) %></td>
+                <td><%= report_value(row[:fulfillment_types]) %></td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="<%= @grain == "store" ? 15 : (@grain == "platform" ? 14 : 13) %>" class="empty-state">当前筛选范围内没有订单数据</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
