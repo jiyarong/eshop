@@ -39,8 +39,10 @@ class OrdersController < ApplicationController
         :store_id_eq,
         :ordered_at_gteq,
         :ordered_at_lteq_end_of_day,
+        :ordered_at_lteq,
         :in_process_at_gteq,
         :in_process_at_lteq_end_of_day,
+        :in_process_at_lteq,
         :external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont
       ).to_h
     else
@@ -53,9 +55,11 @@ class OrdersController < ApplicationController
     query[:order_status_eq] ||= params[:status].presence_in(Ec::Order::STATUSES.values)
     query[:store_id_eq] ||= params[:store_id].presence
     query[:ordered_at_gteq] ||= parse_date(params[:from_date])&.beginning_of_day
-    query[:ordered_at_lteq_end_of_day] ||= parse_date(params[:to_date])
+    query[:ordered_at_lteq_end_of_day] ||= params[:to_date].presence
     query[:in_process_at_gteq] ||= parse_date(params[:process_from_date])&.beginning_of_day
-    query[:in_process_at_lteq_end_of_day] ||= parse_date(params[:process_to_date])
+    query[:in_process_at_lteq_end_of_day] ||= params[:process_to_date].presence
+    query[:ordered_at_lteq] ||= parse_date(query[:ordered_at_lteq_end_of_day])&.end_of_day
+    query[:in_process_at_lteq] ||= parse_date(query[:in_process_at_lteq_end_of_day])&.end_of_day
     query.compact_blank
   end
 

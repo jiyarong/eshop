@@ -108,6 +108,18 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       synced_at: Time.zone.parse("2026-06-02 04:00:00")
     )
 
+    @later_processed_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @store,
+      external_order_id: "LATER-PROCESSED-#{@token}",
+      external_order_number: "LATER-PROCESSED-#{@token}",
+      order_key: "ozon:#{@store.id}:LATER-PROCESSED-#{@token}",
+      order_status: "processing",
+      ordered_at: Time.zone.parse("2026-06-02 05:00:00"),
+      in_process_at: Time.zone.parse("2026-06-03 00:00:00"),
+      synced_at: Time.zone.parse("2026-06-03 00:05:00")
+    )
+
     @older_orders = 21.times.map do |index|
       Ec::Order.create!(
         platform: "ozon",
@@ -164,6 +176,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     RawOzon::Product.where(account_id: @ozon_account&.id).delete_all
     @ozon_account&.destroy
     @older_orders&.each(&:destroy)
+    @later_processed_order&.destroy
     @wb_order&.destroy
     @wb_store&.destroy
     Ec::OrderSourceLink.where(order_id: @order&.id).delete_all
@@ -233,13 +246,13 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
 
   test "index filters orders by processing date range" do
     get "/orders",
-        params: { q: { platform_eq: "ozon", in_process_at_gteq: "2026-06-02", in_process_at_lteq_end_of_day: "2026-06-02" } },
+        params: { q: { platform_eq: "ozon", in_process_at_lteq_end_of_day: "2026-06-02" } },
         headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "input[name=?][value=?]", "q[in_process_at_gteq]", "2026-06-02"
     assert_select "input[name=?][value=?]", "q[in_process_at_lteq_end_of_day]", "2026-06-02"
     assert_select "td", "0128619527-0157-LONG"
+    assert_select "td", { text: "LATER-PROCESSED-#{@token}", count: 0 }
     assert_select "td", { text: "OLDER-#{@token}-20", count: 0 }
   end
 
