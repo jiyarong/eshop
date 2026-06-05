@@ -46,6 +46,16 @@
       </div>
 
       <div class="field">
+        <label for="process_from_date">处理开始</label>
+        <input id="process_from_date" type="date" name="q[in_process_at_gteq]" value="<%= @q_params["in_process_at_gteq"]&.to_date %>">
+      </div>
+
+      <div class="field">
+        <label for="process_to_date">处理结束</label>
+        <input id="process_to_date" type="date" name="q[in_process_at_lteq_end_of_day]" value="<%= @q_params["in_process_at_lteq_end_of_day"] %>">
+      </div>
+
+      <div class="field">
         <label for="q">搜索</label>
         <input id="q" type="search" name="q[external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont]" value="<%= @q_params["external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont"] %>" placeholder="订单号 / 履约单 / SKU">
       </div>

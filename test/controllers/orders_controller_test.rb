@@ -231,6 +231,18 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: "订单中心 Ozon 店", count: 0 }
   end
 
+  test "index filters orders by processing date range" do
+    get "/orders",
+        params: { q: { platform_eq: "ozon", in_process_at_gteq: "2026-06-02", in_process_at_lteq_end_of_day: "2026-06-02" } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[name=?][value=?]", "q[in_process_at_gteq]", "2026-06-02"
+    assert_select "input[name=?][value=?]", "q[in_process_at_lteq_end_of_day]", "2026-06-02"
+    assert_select "td", "0128619527-0157-LONG"
+    assert_select "td", { text: "OLDER-#{@token}-20", count: 0 }
+  end
+
   test "index paginates order list" do
     get "/orders", params: { q: { platform_eq: "ozon" }, page: 2 }, headers: { "Accept" => "text/html" }
 
