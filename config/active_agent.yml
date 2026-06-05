@@ -1,0 +1,16 @@
+default: &default
+  openai:
+    service: OpenAI
+    access_token: <%= ENV["OPENAI_ACCESS_TOKEN"].presence || ENV["OPENAI_API_KEY"] %>
+    host: <%= ENV["OPENAI_HOST"].presence || "https://api.openai.com/v1" %>
+    model: <%= ENV["OPENAI_MODEL"].presence || "gpt-4.1-mini" %>
+    api_version: chat
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

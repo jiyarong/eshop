@@ -1,0 +1,32 @@
+<h1 class="page-title">AI Agent 管理</h1>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>名称</th>
+          <th>模型</th>
+          <th>Temperature</th>
+          <th>状态</th>
+          <th>更新时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @agents.each do |agent| %>
+          <tr>
+            <td><%= agent.code %></td>
+            <td><%= agent.name %></td>
+            <td><%= agent.model_id %></td>
+            <td><%= agent.temperature %></td>
+            <td><%= agent.enabled? ? "启用" : "停用" %></td>
+            <td><%= agent.updated_at || "-" %></td>
+            <td><%= link_to "编辑", edit_admin_agent_path(agent.code) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

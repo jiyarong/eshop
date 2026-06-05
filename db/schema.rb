@@ -10,9 +10,40 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_03_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_05_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "agents", force: :cascade do |t|
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "model_id", null: false
+    t.string "name", null: false
+    t.text "system_prompt", null: false
+    t.decimal "temperature", precision: 3, scale: 2, default: "0.3", null: false
+    t.jsonb "tools", default: [], null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_agents_on_code", unique: true
+    t.index ["enabled"], name: "index_agents_on_enabled"
+    t.index ["name"], name: "index_agents_on_name"
+  end
+
+  create_table "conversations", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.string "business_object_id"
+    t.string "business_object_type"
+    t.jsonb "context", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "module_name"
+    t.jsonb "time_range", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["agent_id"], name: "index_conversations_on_agent_id"
+    t.index ["module_name", "business_object_type", "business_object_id"], name: "idx_conversations_on_erp_context"
+    t.index ["user_id", "created_at"], name: "index_conversations_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_conversations_on_user_id"
+  end
 
   create_table "ec_cost_allocation_items", force: :cascade do |t|
     t.decimal "amount_cny", precision: 12, scale: 4, null: false
@@ -429,6 +460,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_000001) do
     t.index ["created_at"], name: "index_feedback_tasks_on_created_at"
     t.index ["status"], name: "index_feedback_tasks_on_status"
     t.index ["user_id"], name: "index_feedback_tasks_on_user_id"
+  end
+
+  create_table "messages", force: :cascade do |t|
+    t.text "content", null: false
+    t.bigint "conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.string "role", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "usage", default: {}, null: false
+    t.index ["conversation_id", "created_at"], name: "index_messages_on_conversation_id_and_created_at"
+    t.index ["conversation_id"], name: "index_messages_on_conversation_id"
+    t.index ["role"], name: "index_messages_on_role"
   end
 
   create_table "raw_ozon_accrual_by_day", force: :cascade do |t|
@@ -1687,6 +1730,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_000001) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "conversations", "agents"
+  add_foreign_key "conversations", "users"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_order_fulfillments", "ec_orders", column: "order_id"
@@ -1711,6 +1756,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_03_000001) do
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
   add_foreign_key "feedback_tasks", "users"
+  add_foreign_key "messages", "conversations"
   add_foreign_key "raw_ozon_accrual_by_day", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_analytics", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_analytics_stocks", "raw_ozon_seller_accounts", column: "account_id"

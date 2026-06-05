@@ -21,9 +21,15 @@ Rails.application.routes.draw do
 
   resources :feedback_tasks, only: [:create]
 
+  namespace :ai, module: :erp_ai do
+    resources :conversations, only: [:create]
+  end
+
   namespace :admin do
     get "users/new" => "users#new", as: :new_user
     get "users/:id/edit" => "users#edit", as: :edit_user
+    post "agents/:id" => "agents#update"
+    resources :agents, only: [:index, :edit, :update], param: :id
     resources :users, except: [:destroy]
     resources :feedback_tasks, only: [:index, :show, :update]
   end

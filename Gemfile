@@ -13,6 +13,8 @@ gem "kaminari"
 gem "ransack"
 gem "devise"
 gem "csv"
+gem "activeagent", "~> 1.0"
+gem "openai"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"

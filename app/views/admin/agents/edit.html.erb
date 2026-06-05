@@ -1,0 +1,45 @@
+<h1 class="page-title">编辑 AI Agent</h1>
+
+<section class="panel">
+  <dl class="summary-list">
+    <dt>Code</dt>
+    <dd><%= @agent.code %></dd>
+    <dt>名称</dt>
+    <dd><%= @agent.name %></dd>
+    <dt>工具</dt>
+    <dd><%= @agent.tools.join(" / ") %></dd>
+    <dt>状态</dt>
+    <dd><%= @agent.enabled? ? "启用" : "停用" %></dd>
+  </dl>
+
+  <%= form_with model: @agent, url: admin_agent_path(@agent.code), method: :patch do |form| %>
+    <% if @agent.errors.any? %>
+      <div class="panel error-box">
+        <%= @agent.errors.full_messages.join("；") %>
+      </div>
+    <% end %>
+
+    <div class="report-stack">
+      <div class="report-form">
+        <div class="field">
+          <%= form.label :model_id, "模型" %>
+          <%= form.text_field :model_id %>
+        </div>
+        <div class="field">
+          <%= form.label :temperature, "Temperature" %>
+          <%= form.number_field :temperature, min: 0, max: 1, step: 0.01 %>
+        </div>
+      </div>
+
+      <div class="field">
+        <%= form.label :system_prompt, "提示词" %>
+        <%= form.text_area :system_prompt, rows: 18 %>
+      </div>
+
+      <div class="report-form">
+        <%= form.submit "保存", class: "button" %>
+        <%= link_to "返回", admin_agents_path, class: "button" %>
+      </div>
+    </div>
+  <% end %>
+</section>

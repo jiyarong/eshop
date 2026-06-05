@@ -374,6 +374,7 @@
             <a href="/erp/cost_allocations" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/cost_allocations") %>>费用分摊</a>
             <% if can?(:manage_users) %>
               <a href="/admin/users" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/users") %>>用户管理</a>
+              <a href="/admin/agents" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/agents") %>>AI Agent</a>
             <% end %>
             <% if can?(:manage_feedback_tasks) %>
               <a href="/admin/feedback_tasks" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/feedback_tasks") %>>改动任务</a>
