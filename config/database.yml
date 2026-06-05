@@ -83,7 +83,7 @@ test:
 production:
   primary: &primary_production
     <<: *default
-    database: ecommerce_manage_production
+    database: ecommerce_manage_production2
     username: ecommerce_manage
     password: <%= ENV["ECOMMERCE_MANAGE_DATABASE_PASSWORD"] %>
     host: <%= ENV["DB_HOST"] %>
