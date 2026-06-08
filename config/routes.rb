@@ -36,6 +36,7 @@ Rails.application.routes.draw do
   end
 
   namespace :erp do
+    get "master_skus/new" => "master_skus#new", as: :new_master_sku
     get "sku_categories/new" => "sku_categories#new", as: :new_sku_category
     get "sku_categories/:id/edit" => "sku_categories#edit", as: :edit_sku_category
     get "skus/new" => "skus#new", as: :new_sku
@@ -46,8 +47,10 @@ Rails.application.routes.draw do
     get "purchase_orders/:id/edit" => "purchase_orders#edit", as: :edit_purchase_order
     get "cost_allocations/new" => "cost_allocations#new", as: :new_cost_allocation
     get "cost_allocations/:id/edit" => "cost_allocations#edit", as: :edit_cost_allocation
+    resources :master_skus, only: [:new, :create]
     resources :sku_categories, except: [:destroy]
     resources :skus, except: [:destroy]
+    post "skus/:id" => "skus#update"
     resources :sku_batches, except: [:destroy]
     resources :suppliers, only: [:index, :show]
     resources :purchase_orders, except: [:destroy]

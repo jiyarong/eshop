@@ -13,7 +13,9 @@ module Erp
 
     def new
       @batch = Ec::SkuBatch.new(status: "draft")
+      @batch.sku_code = params[:sku_code] if params[:sku_code].present?
       load_sku_options
+      render_modal_or_page(:new, :new_modal)
     end
 
     def edit
@@ -26,7 +28,7 @@ module Erp
         redirect_to erp_sku_batch_path(@batch)
       else
         load_sku_options
-        render :new, status: :unprocessable_entity
+        render_modal_or_page(:new, :new_modal, status: :unprocessable_entity)
       end
     end
 

@@ -1,544 +1,155 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<%= I18n.locale == :zh ? "zh-CN" : I18n.locale %>">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="turbo-cache-control" content="no-preview">
     <%= csrf_meta_tags %>
-    <title>电商管理平台</title>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.13/+esm"></script>
-    <style>
-      :root {
-        color-scheme: light;
-        --bg: #f5f7fb;
-        --panel: #ffffff;
-        --line: #dde3ee;
-        --text: #172033;
-        --muted: #657084;
-        --brand: #176b87;
-        --brand-dark: #0f4f64;
-        --danger-bg: #fff1f0;
-        --danger-line: #ffccc7;
-        --danger-text: #a8071a;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-
-      .app-shell {
-        min-height: 100vh;
-      }
-
-      .app-header {
-        display: flex;
-        align-items: center;
-        gap: 28px;
-        min-height: 58px;
-        padding: 0 28px;
-        background: #172033;
-        color: #fff;
-      }
-
-      .app-brand {
-        font-weight: 700;
-        white-space: nowrap;
-      }
-
-      .app-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 18px;
-        font-size: 14px;
-      }
-
-      .app-nav a {
-        color: rgba(255, 255, 255, 0.78);
-        text-decoration: none;
-      }
-
-      .app-nav a[aria-current="page"] {
-        color: #fff;
-        font-weight: 600;
-      }
-
-      .app-nav-group {
-        display: flex;
-        gap: 12px;
-      }
-
-      .app-user {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: rgba(255, 255, 255, 0.78);
-        font-size: 13px;
-      }
-
-      .link-button {
-        border: 0;
-        padding: 0;
-        background: transparent;
-        color: rgba(255, 255, 255, 0.78);
-        cursor: pointer;
-        font: inherit;
-      }
-
-      .feedback-fab {
-        position: fixed;
-        right: 22px;
-        bottom: 22px;
-        z-index: 1000;
-        box-shadow: 0 10px 24px rgba(23, 32, 51, 0.18);
-      }
-
-      .feedback-highlight {
-        outline: 2px solid #f59e0b !important;
-        outline-offset: 2px !important;
-        cursor: crosshair !important;
-      }
-
-      .feedback-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 1001;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: rgba(23, 32, 51, 0.38);
-        padding: 18px;
-      }
-
-      .feedback-modal-backdrop.is-open {
-        display: flex;
-      }
-
-      .feedback-modal {
-        width: min(560px, 100%);
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 18px;
-        box-shadow: 0 18px 50px rgba(23, 32, 51, 0.22);
-      }
-
-      .feedback-modal textarea {
-        min-height: 92px;
-        border: 1px solid #c8d0dc;
-        border-radius: 6px;
-        padding: 10px;
-        color: var(--text);
-        font: inherit;
-      }
-
-      .page {
-        width: min(1440px, calc(100vw - 48px));
-        margin: 24px auto 40px;
-      }
-
-      .page-title {
-        margin: 0 0 18px;
-        font-size: 24px;
-        line-height: 1.25;
-      }
-
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 18px;
-        box-shadow: 0 8px 20px rgba(23, 32, 51, 0.05);
-      }
-
-      .report-form {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: end;
-        gap: 14px;
-      }
-
-      .field {
-        display: grid;
-        gap: 6px;
-      }
-
-      .field label {
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      select,
-      input {
-        min-height: 36px;
-        border: 1px solid #c8d0dc;
-        border-radius: 6px;
-        padding: 0 10px;
-        background: #fff;
-        color: var(--text);
-        font: inherit;
-      }
-
-      .button {
-        min-height: 36px;
-        border: 0;
-        border-radius: 6px;
-        padding: 0 18px;
-        background: var(--brand);
-        color: #fff;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      .button:hover {
-        background: var(--brand-dark);
-      }
-
-      .empty-state,
-      .error-box {
-        margin-top: 16px;
-      }
-
-      .empty-state {
-        color: var(--muted);
-        text-align: center;
-        padding: 34px;
-      }
-
-      .error-box {
-        border: 1px solid var(--danger-line);
-        background: var(--danger-bg);
-        color: var(--danger-text);
-      }
-
-      .report-stack {
-        display: grid;
-        gap: 16px;
-        margin-top: 16px;
-      }
-
-      .report-meta {
-        margin: 0 0 12px;
-        color: var(--muted);
-      }
-
-      .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 12px;
-      }
-
-      .weekly-profit-summary-card {
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 12px;
-        background: #fbfcff;
-      }
-
-      .summary-label {
-        color: var(--muted);
-        font-size: 12px;
-      }
-
-      .summary-value {
-        margin-top: 6px;
-        font-size: 20px;
-        font-weight: 700;
-      }
-
-      .section-title {
-        margin: 0 0 12px;
-        font-size: 16px;
-      }
-
-      .status-pill {
-        display: inline-flex;
-        align-items: center;
-        min-height: 24px;
-        border-radius: 999px;
-        padding: 0 10px;
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .status-pill.is-active {
-        background: #e7f6ed;
-        color: #167044;
-      }
-
-      .status-pill.is-muted {
-        background: #eef1f6;
-        color: var(--muted);
-      }
-
-      .table-scroll {
-        overflow-x: auto;
-      }
-
-      table {
-        width: 100%;
-        min-width: 760px;
-        border-collapse: collapse;
-      }
-
-      th,
-      td {
-        border-bottom: 1px solid var(--line);
-        padding: 10px;
-        text-align: left;
-        white-space: nowrap;
-      }
-
-      th {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 600;
-        background: #f8fafc;
-      }
-
-      details {
-        max-width: 420px;
-      }
-
-      summary {
-        color: var(--brand);
-        cursor: pointer;
-        font-weight: 600;
-      }
-
-      pre {
-        max-width: 420px;
-        max-height: 260px;
-        overflow: auto;
-        margin: 8px 0 0;
-        padding: 10px;
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        background: #0f172a;
-        color: #e5edf8;
-        font-size: 12px;
-        line-height: 1.45;
-        white-space: pre-wrap;
-      }
-
-      @media (max-width: 720px) {
-        .app-header {
-          align-items: flex-start;
-          flex-direction: column;
-          gap: 8px;
-          padding: 14px 18px;
-        }
-
-        .page {
-          width: calc(100vw - 24px);
-          margin-top: 14px;
-        }
-
-        .report-form {
-          display: grid;
-        }
-
-        .app-nav,
-        .app-nav-group,
-        .app-user {
-          gap: 10px;
-        }
-
-        .app-user {
-          margin-left: 0;
-        }
-      }
-    </style>
+    <%= csp_meta_tag %>
+    <title><%= content_for?(:title) ? "#{yield(:title)} · #{t("app.name")}" : t("app.name") %></title>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", type: "module", "data-turbo-track": "reload", defer: true %>
   </head>
-  <body>
-    <div class="app-shell">
-      <header class="app-header">
-        <div class="app-brand">电商管理平台</div>
-        <nav class="app-nav">
-          <span class="app-nav-group">
-            <a href="/weekly_profit_reports" <%= 'aria-current="page"'.html_safe if request.path == "/weekly_profit_reports" %>>周利润报表</a>
-            <a href="/reports/inventory" <%= 'aria-current="page"'.html_safe if request.path == "/reports/inventory" %>>库存</a>
-            <a href="/orders" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/orders") %>>订单中心</a>
-            <a href="/reports/skus" <%= 'aria-current="page"'.html_safe if request.path == "/reports/skus" %>>SKU</a>
-            <a href="/reports/sku_sales" <%= 'aria-current="page"'.html_safe if request.path == "/reports/sku_sales" %>>SKU销量</a>
-            <a href="/reports/costs" <%= 'aria-current="page"'.html_safe if request.path == "/reports/costs" %>>成本</a>
-            <a href="/erp/skus" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/skus") %>>SKU 管理</a>
-            <a href="/erp/sku_categories" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/sku_categories") %>>SKU 类别</a>
-            <a href="/erp/sku_batches" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/sku_batches") %>>ERP 批次</a>
-            <a href="/erp/purchase_orders" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/purchase_orders") %>>采购单</a>
-            <a href="/erp/cost_allocations" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/erp/cost_allocations") %>>费用分摊</a>
-            <% if can?(:manage_users) %>
-              <a href="/admin/users" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/users") %>>用户管理</a>
-              <a href="/admin/agents" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/agents") %>>AI Agent</a>
-            <% end %>
-            <% if can?(:manage_feedback_tasks) %>
-              <a href="/admin/feedback_tasks" <%= 'aria-current="page"'.html_safe if request.path.start_with?("/admin/feedback_tasks") %>>改动任务</a>
-            <% end %>
+  <body class="erp-shell">
+    <% current_path = request.path %>
+    <% active_link = ->(prefixes) { Array(prefixes).any? { |prefix| current_path == prefix || current_path.start_with?("#{prefix}/") } } %>
+    <% nav_sections = [
+      {
+        label: t("navigation.sections.dashboard"),
+        links: [
+          { label: t("navigation.weekly_profit_reports"), path: "/weekly_profit_reports", icon: "bi-graph-up-arrow", active: active_link.call("/weekly_profit_reports") }
+        ]
+      },
+      {
+        label: t("navigation.sections.operations"),
+        links: [
+          { label: t("navigation.inventory"), path: "/reports/inventory", icon: "bi-box-seam", active: current_path == "/reports/inventory" },
+          { label: t("navigation.orders"), path: "/orders", icon: "bi-receipt", active: active_link.call("/orders") },
+          { label: t("navigation.skus"), path: "/reports/skus", icon: "bi-tags", active: current_path == "/reports/skus" },
+          { label: t("navigation.sku_sales"), path: "/reports/sku_sales", icon: "bi-bar-chart-line", active: current_path == "/reports/sku_sales" },
+          { label: t("navigation.costs"), path: "/reports/costs", icon: "bi-cash-coin", active: current_path == "/reports/costs" }
+        ]
+      },
+      {
+        label: t("navigation.sections.erp"),
+        links: [
+          { label: t("navigation.erp_skus"), path: "/erp/skus", icon: "bi-grid-3x3-gap", active: active_link.call("/erp/skus") },
+          { label: t("navigation.sku_categories"), path: "/erp/sku_categories", icon: "bi-diagram-3", active: active_link.call("/erp/sku_categories") },
+          { label: t("navigation.sku_batches"), path: "/erp/sku_batches", icon: "bi-layers", active: active_link.call("/erp/sku_batches") },
+          { label: t("navigation.purchase_orders"), path: "/erp/purchase_orders", icon: "bi-cart-check", active: active_link.call("/erp/purchase_orders") },
+          { label: t("navigation.cost_allocations"), path: "/erp/cost_allocations", icon: "bi-calculator", active: active_link.call("/erp/cost_allocations") },
+          { label: t("navigation.operation_tasks"), path: "/erp/operation_tasks", icon: "bi-list-task", active: active_link.call("/erp/operation_tasks") }
+        ]
+      }
+    ] %>
+    <% admin_links = [] %>
+    <% if can?(:manage_users) %>
+      <% admin_links << { label: t("navigation.users"), path: "/admin/users", icon: "bi-people", active: active_link.call("/admin/users") } %>
+      <% admin_links << { label: t("navigation.agents"), path: "/admin/agents", icon: "bi-cpu", active: active_link.call("/admin/agents") } %>
+    <% end %>
+    <% if can?(:manage_feedback_tasks) %>
+      <% admin_links << { label: t("navigation.feedback_tasks"), path: "/admin/feedback_tasks", icon: "bi-chat-square-text", active: active_link.call("/admin/feedback_tasks") } %>
+    <% end %>
+    <% nav_sections << { label: t("navigation.sections.administration"), links: admin_links } if admin_links.any? %>
+    <% locale_path = ->(locale) { url_for(request.query_parameters.merge(locale: locale)) } %>
+
+    <div
+      class="erp-shell__frame"
+      data-controller="shell feedback"
+      data-action="mouseover@document->feedback#hover click@document->feedback#choose">
+      <aside class="erp-sidebar" data-shell-target="sidebar">
+        <div class="erp-brand">
+          <span class="erp-brand__mark" aria-hidden="true">Y</span>
+          <span>
+            <span class="erp-brand__name">Yuanlong ERP</span>
+            <span class="erp-brand__meta"><%= t("app.subtitle") %></span>
           </span>
+        </div>
+
+        <nav class="erp-nav" aria-label="Main navigation">
+          <% nav_sections.each do |section| %>
+            <section class="erp-nav__section">
+              <p class="erp-nav__label"><%= section[:label] %></p>
+              <% section[:links].each do |link| %>
+                <%= link_to link[:path], class: "erp-nav__link", aria: (link[:active] ? { current: "page" } : nil), data: { action: "shell#closeSidebar" } do %>
+                  <i class="bi <%= link[:icon] %>" aria-hidden="true"></i>
+                  <span><%= link[:label] %></span>
+                <% end %>
+              <% end %>
+            </section>
+          <% end %>
         </nav>
-        <% if user_signed_in? %>
-          <div class="app-user">
-            <span><%= current_user.email %></span>
-            <%= button_to "退出", destroy_user_session_path, method: :delete, class: "link-button" %>
+
+        <div class="erp-sidebar__foot"><%= t("app.version") %></div>
+      </aside>
+
+      <div class="erp-main">
+        <header class="erp-topbar">
+          <button class="erp-topbar__menu" type="button" data-action="shell#toggleSidebar" aria-label="打开导航">
+            <i class="bi bi-list" aria-hidden="true"></i>
+          </button>
+          <div class="erp-topbar__title">
+            <span class="erp-topbar__eyebrow"><%= t("app.topbar_eyebrow") %></span>
+            <span class="erp-topbar__heading"><%= content_for?(:page_heading) ? yield(:page_heading) : t("app.name") %></span>
           </div>
-        <% end %>
-      </header>
-      <main class="page">
-        <%= yield %>
-      </main>
+          <div class="erp-topbar__actions">
+            <nav class="locale-switcher" aria-label="<%= t("locale.switcher_label") %>">
+              <% available_locales.each do |locale| %>
+                <%= link_to t("locale.#{locale}"), locale_path.call(locale), class: "locale-switcher__link", aria: (I18n.locale == locale ? { current: "page" } : nil) %>
+              <% end %>
+            </nav>
+            <% if user_signed_in? %>
+              <div class="erp-user">
+                <span class="erp-user__avatar" aria-hidden="true"><%= current_user.email.first.upcase %></span>
+                <span><%= current_user.email %></span>
+              </div>
+              <%= button_to t("app.sign_out"), destroy_user_session_path, method: :delete, class: "link-button" %>
+            <% end %>
+          </div>
+        </header>
+
+        <main class="erp-content">
+          <div class="page">
+            <%= yield %>
+          </div>
+        </main>
+      </div>
+
       <% if user_signed_in? %>
-        <button class="button feedback-fab" type="button" data-feedback-start>反馈</button>
-        <div class="feedback-modal-backdrop" data-feedback-modal>
+        <button
+          class="button feedback-fab"
+          type="button"
+          data-feedback-target="start"
+          data-action="feedback#start"
+          data-default-label="<%= t("app.feedback") %>"
+          data-selecting-label="<%= t("app.select_feedback_element") %>"><%= t("app.feedback") %></button>
+        <div class="feedback-modal-backdrop" data-feedback-target="modal">
           <section class="feedback-modal">
-            <h2 class="section-title">提交改动建议</h2>
-            <form class="report-stack" data-feedback-form>
+            <h2 class="section-title"><%= t("feedback.title") %></h2>
+            <form class="report-stack" data-feedback-target="form" data-action="submit->feedback#submit">
               <div class="field">
-                <label for="feedback_issue_type">问题类型</label>
+                <label for="feedback_issue_type"><%= t("feedback.issue_type") %></label>
                 <select id="feedback_issue_type" name="issue_type">
-                  <option value="layout">布局</option>
-                  <option value="copy">文案</option>
-                  <option value="data">数据</option>
-                  <option value="interaction">交互</option>
-                  <option value="performance">性能</option>
-                  <option value="other">其他</option>
+                  <% %w[layout copy data interaction performance other].each do |type| %>
+                    <option value="<%= type %>"><%= t("feedback.types.#{type}") %></option>
+                  <% end %>
                 </select>
               </div>
               <div class="field">
-                <label for="feedback_description">具体问题</label>
+                <label for="feedback_description"><%= t("feedback.description") %></label>
                 <textarea id="feedback_description" name="description" required></textarea>
               </div>
               <div class="field">
-                <label for="feedback_suggestion">改善建议</label>
+                <label for="feedback_suggestion"><%= t("feedback.suggestion") %></label>
                 <textarea id="feedback_suggestion" name="suggestion"></textarea>
               </div>
               <div class="report-form">
-                <button class="button" type="submit">提交</button>
-                <button class="button" type="button" data-feedback-cancel>取消</button>
+                <button class="button" type="submit"><%= t("feedback.submit") %></button>
+                <button class="button" type="button" data-action="feedback#cancel"><%= t("feedback.cancel") %></button>
               </div>
             </form>
           </section>
         </div>
-        <script>
-          (() => {
-            const startButton = document.querySelector("[data-feedback-start]");
-            const modal = document.querySelector("[data-feedback-modal]");
-            const form = document.querySelector("[data-feedback-form]");
-            const cancelButton = document.querySelector("[data-feedback-cancel]");
-            let selecting = false;
-            let highlighted = null;
-            let selected = null;
-
-            const clearHighlight = () => {
-              if (highlighted) highlighted.classList.remove("feedback-highlight");
-              highlighted = null;
-            };
-
-            const cssPath = (element) => {
-              const parts = [];
-              let node = element;
-              while (node && node.nodeType === Node.ELEMENT_NODE && node !== document.body) {
-                let part = node.tagName.toLowerCase();
-                if (node.id) {
-                  part += `#${CSS.escape(node.id)}`;
-                  parts.unshift(part);
-                  break;
-                }
-                const siblings = Array.from(node.parentElement.children).filter((child) => child.tagName === node.tagName);
-                if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(node) + 1})`;
-                parts.unshift(part);
-                node = node.parentElement;
-              }
-              return parts.join(" > ");
-            };
-
-            const openModal = () => modal.classList.add("is-open");
-            const closeModal = () => modal.classList.remove("is-open");
-
-            startButton.addEventListener("click", () => {
-              selecting = true;
-              selected = null;
-              startButton.textContent = "选择页面元素";
-            });
-
-            document.addEventListener("mouseover", (event) => {
-              if (!selecting) return;
-              if (event.target.closest("[data-feedback-modal]") || event.target.closest("[data-feedback-start]")) return;
-              clearHighlight();
-              highlighted = event.target;
-              highlighted.classList.add("feedback-highlight");
-            });
-
-            document.addEventListener("click", (event) => {
-              if (!selecting) return;
-              if (event.target.closest("[data-feedback-modal]") || event.target.closest("[data-feedback-start]")) return;
-              event.preventDefault();
-              event.stopPropagation();
-              selected = event.target;
-              selecting = false;
-              startButton.textContent = "反馈";
-              openModal();
-            }, true);
-
-            cancelButton.addEventListener("click", () => {
-              selecting = false;
-              selected = null;
-              startButton.textContent = "反馈";
-              clearHighlight();
-              closeModal();
-              form.reset();
-            });
-
-            form.addEventListener("submit", async (event) => {
-              event.preventDefault();
-              if (!selected) return;
-
-              const rect = selected.getBoundingClientRect();
-              const payload = {
-                feedback_task: {
-                  page_url: window.location.pathname + window.location.search + window.location.hash,
-                  page_title: document.title,
-                  issue_type: form.issue_type.value,
-                  description: form.description.value,
-                  suggestion: form.suggestion.value,
-                  selector: cssPath(selected),
-                  element_text: selected.innerText.trim().slice(0, 500),
-                  element_rect: {
-                    x: Math.round(rect.x),
-                    y: Math.round(rect.y),
-                    width: Math.round(rect.width),
-                    height: Math.round(rect.height)
-                  },
-                  scroll_x: Math.round(window.scrollX),
-                  scroll_y: Math.round(window.scrollY),
-                  viewport_width: window.innerWidth,
-                  viewport_height: window.innerHeight
-                }
-              };
-
-              const response = await fetch("/feedback_tasks", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
-                },
-                body: JSON.stringify(payload)
-              });
-
-              if (response.ok) {
-                clearHighlight();
-                closeModal();
-                form.reset();
-                selected = null;
-              }
-            });
-          })();
-        </script>
       <% end %>
     </div>
   </body>

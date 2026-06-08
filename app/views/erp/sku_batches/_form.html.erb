@@ -1,4 +1,4 @@
-<%= form_with model: batch, url: batch.persisted? ? erp_sku_batch_path(batch) : erp_sku_batches_path do |form| %>
+<%= form_with model: batch, url: batch.persisted? ? erp_sku_batch_path(batch) : erp_sku_batches_path, data: (local_assigns[:modal] ? { turbo_frame: "_top" } : {}) do |form| %>
   <% if batch.errors.any? %>
     <div class="panel error-box">
       <%= batch.errors.full_messages.join("；") %>

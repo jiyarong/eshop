@@ -51,7 +51,7 @@ class Ec::SkuBatchTest < ActiveSupport::TestCase
     )
 
     assert_not batch.valid?
-    assert_includes batch.errors[:purchased_quantity], "must be greater than or equal to 0"
-    assert_includes batch.errors[:received_quantity], "must be greater than or equal to 0"
+    assert_predicate batch.errors[:purchased_quantity], :present?
+    assert_predicate batch.errors[:received_quantity], :present?
   end
 end

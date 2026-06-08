@@ -113,6 +113,10 @@
 
 ## 测试与验证
 
+本项目本地 Web 默认端口为 `4011`。
+
+除非用户明确要求，Agent 不需要也不应主动启动 Web server，不主动运行 `npm run build`、`npm run build:css`、`vite build` 等前端构建命令；这些由用户自行运行。需要验证时，优先运行相关 Rails 测试，或在最终说明中明确列出未运行的前端构建。
+
 Rails 测试优先使用：
 
 ```bash

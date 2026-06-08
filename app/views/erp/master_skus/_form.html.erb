@@ -1,0 +1,36 @@
+<%= form_with model: master_sku, url: erp_master_skus_path, data: (modal ? { turbo_frame: "_top" } : {}) do |form| %>
+  <% if master_sku.errors.any? %>
+    <div class="panel error-box">
+      <%= master_sku.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <div class="report-form modal-form-grid">
+    <div class="field">
+      <%= form.label :master_sku_code, "Master SKU" %>
+      <%= form.text_field :master_sku_code %>
+    </div>
+    <div class="field">
+      <%= form.label :product_name, "中文名" %>
+      <%= form.text_field :product_name %>
+    </div>
+    <div class="field">
+      <%= form.label :product_name_ru, "俄文名" %>
+      <%= form.text_field :product_name_ru %>
+    </div>
+    <div class="field">
+      <%= form.label :is_active, "启用" %>
+      <%= form.check_box :is_active %>
+    </div>
+    <div class="field modal-form-grid__wide">
+      <%= form.label :memo, "备注" %>
+      <%= form.text_field :memo %>
+    </div>
+    <div class="modal-form-actions">
+      <%= form.submit "保存", class: "button" %>
+      <% if modal %>
+        <button class="button button-secondary" type="button" data-action="modal#close">取消</button>
+      <% end %>
+    </div>
+  </div>
+<% end %>

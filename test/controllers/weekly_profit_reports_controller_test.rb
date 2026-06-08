@@ -3,6 +3,8 @@ require "test_helper"
 class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     unique = SecureRandom.hex(4)
+    @current_user = create_user_with_roles("weekly-profit-#{unique}@example.com", "manager")
+    sign_in @current_user
 
     @wb_account = RawWb::SellerAccount.create!(
       name: "WB Test Shop",
@@ -24,6 +26,8 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::WeeklyRate.where(week_start: Date.parse("2026-05-18")).delete_all
     @ozon_account&.destroy
     @wb_account&.destroy
+    UserRole.joins(:user).where("users.email = ?", @current_user.email).delete_all
+    @current_user.destroy
   end
 
   test "accounts returns active wb and ozon shops" do

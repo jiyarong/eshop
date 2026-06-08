@@ -1,5 +1,16 @@
 {
+  "name": "eshop_manage",
+  "scripts": {
+    "build": "esbuild app/javascript/application.js --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets",
+    "build:css": "esbuild app/assets/stylesheets/application.css --bundle --loader:.woff=copy --loader:.woff2=copy --loader:.ttf=copy --outdir=app/assets/builds",
+    "watch": "concurrently \"npm run build -- --watch\" \"npm run build:css -- --watch\""
+  },
   "dependencies": {
-    "docx": "^9.6.1"
+    "@hotwired/stimulus": "^3.2.2",
+    "@hotwired/turbo-rails": "^8.0.23",
+    "bootstrap-icons": "^1.13.1",
+    "concurrently": "^10.0.3",
+    "docx": "^9.6.1",
+    "esbuild": "^0.28.0"
   }
 }

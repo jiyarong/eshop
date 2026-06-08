@@ -50,6 +50,16 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action='/erp/sku_batches']"
   end
 
+  test "modal new renders batch form with selected sku" do
+    get "/erp/sku_batches/new", params: { sku_code: @sku.sku_code }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "form[action='/erp/sku_batches'][data-turbo-frame='_top']"
+    assert_select "select[name='ec_sku_batch[sku_code]'] option[selected='selected'][value=?]", @sku.sku_code
+  end
+
   test "create batch" do
     assert_difference "Ec::SkuBatch.count", 1 do
       post "/erp/sku_batches", params: {
@@ -70,6 +80,22 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to "/erp/sku_batches/#{created.id}"
     assert_equal "ordered", created.status
     assert_equal 120, created.purchased_quantity
+  end
+
+  test "invalid modal create rerenders batch form" do
+    post "/erp/sku_batches", params: {
+      ec_sku_batch: {
+        sku_code: @sku.sku_code,
+        batch_code: "",
+        purchased_quantity: "120",
+        purchase_unit_price_cny: "11.5"
+      }
+    }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :unprocessable_entity
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select ".error-box"
   end
 
   test "edit and update batch" do

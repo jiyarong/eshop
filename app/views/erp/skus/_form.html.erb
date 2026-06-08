@@ -1,4 +1,4 @@
-<%= form_with model: sku, url: sku.persisted? ? erp_sku_path(sku) : erp_skus_path do |form| %>
+<%= form_with model: sku, url: sku.persisted? ? erp_sku_path(sku) : erp_skus_path, data: (local_assigns[:modal] ? { turbo_frame: "_top" } : {}) do |form| %>
   <% if sku.errors.any? %>
     <div class="panel error-box">
       <%= sku.errors.full_messages.join("；") %>
@@ -6,6 +6,10 @@
   <% end %>
 
   <div class="report-form">
+    <div class="field">
+      <%= form.label :master_sku_id, "Master SKU" %>
+      <%= form.collection_select :master_sku_id, master_sku_options, :id, :master_sku_code, { include_blank: "无" } %>
+    </div>
     <div class="field">
       <%= form.label :sku_code, "SKU 编码" %>
       <%= form.text_field :sku_code %>

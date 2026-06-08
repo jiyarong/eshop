@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_05_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_08_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -99,6 +99,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_05_000001) do
     t.integer "total_supply", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "index_ec_inventory_totals_on_sku_code", unique: true
+  end
+
+  create_table "ec_master_skus", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "is_active", default: true, null: false
+    t.string "master_sku_code", null: false
+    t.text "memo"
+    t.string "product_name"
+    t.string "product_name_ru"
+    t.datetime "updated_at", null: false
+    t.index ["is_active"], name: "index_ec_master_skus_on_is_active"
+    t.index ["master_sku_code"], name: "index_ec_master_skus_on_master_sku_code", unique: true
   end
 
   create_table "ec_operation_tasks", force: :cascade do |t|
@@ -378,6 +390,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_05_000001) do
     t.datetime "created_at", null: false
     t.text "features"
     t.boolean "is_active", default: true, null: false
+    t.bigint "master_sku_id"
     t.text "memo"
     t.string "model"
     t.string "owner_name"
@@ -392,6 +405,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_05_000001) do
     t.decimal "volume_l", precision: 10, scale: 4
     t.decimal "weight_kg", precision: 10, scale: 4
     t.index ["is_active"], name: "idx_ec_skus_is_active"
+    t.index ["master_sku_id"], name: "index_ec_skus_on_master_sku_id"
     t.index ["sku_category_id"], name: "index_ec_skus_on_sku_category_id"
     t.index ["sku_code"], name: "idx_ec_skus_sku_code", unique: true
   end
@@ -1754,6 +1768,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_05_000001) do
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
   add_foreign_key "feedback_tasks", "users"
   add_foreign_key "messages", "conversations"

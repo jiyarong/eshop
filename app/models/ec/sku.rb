@@ -2,6 +2,7 @@ module Ec
   class Sku < ApplicationRecord
     self.table_name = 'ec_skus'
 
+    belongs_to :master_sku, class_name: "Ec::MasterSku", optional: true
     belongs_to :sku_category, class_name: 'Ec::SkuCategory', optional: true
     has_one  :cost,              class_name: 'Ec::SkuCost',             foreign_key: :sku_code, primary_key: :sku_code
     has_many :platform_costs,    class_name: 'Ec::SkuPlatformCost',     foreign_key: :sku_code, primary_key: :sku_code

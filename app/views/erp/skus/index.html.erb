@@ -1,35 +1,275 @@
-<h1 class="page-title">SKU 管理</h1>
+<% content_for :page_heading, "产品管理" %>
 
-<section class="panel">
-  <p><%= link_to "新增 SKU", erp_new_sku_path, class: "button" %></p>
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th>SKU</th>
-          <th>中文名</th>
-          <th>俄文名</th>
-          <th>类别</th>
-          <th>颜色</th>
-          <th>规格</th>
-          <th>负责人</th>
-          <th>状态</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @skus.each do |sku| %>
-          <tr>
-            <td><%= link_to sku.sku_code, erp_sku_path(sku) %></td>
-            <td><%= sku.product_name %></td>
-            <td><%= sku.product_name_ru %></td>
-            <td><%= sku.sku_category&.name %></td>
-            <td><%= sku.color %></td>
-            <td><%= sku.spec %></td>
-            <td><%= sku.owner_name %></td>
-            <td><%= sku.is_active ? "上架" : "下架" %></td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
+<% total_visible_skus = @master_sku_entries.sum { |entry| entry[:skus].size } + @orphan_skus.size %>
+
+<div class="product-management">
+  <%= turbo_frame_tag "erp_modal" %>
+
+  <div class="resource-header">
+    <div>
+      <p class="resource-eyebrow">Product Catalog</p>
+      <h1 class="page-title">产品管理</h1>
+    </div>
+    <div class="resource-actions">
+      <%= link_to erp_sku_categories_path, class: "button button-secondary" do %>
+        <i class="bi bi-diagram-3" aria-hidden="true"></i>
+        类别管理
+      <% end %>
+      <%= link_to erp_new_master_sku_path, class: "button", data: { turbo_frame: "erp_modal" } do %>
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        新增产品
+      <% end %>
+    </div>
   </div>
-</section>
+
+  <section class="product-summary-grid" aria-label="产品概览">
+    <div class="product-summary-card">
+      <span class="summary-label">Master SKU</span>
+      <strong class="summary-value"><%= @product_counts[:master_total] %></strong>
+    </div>
+    <div class="product-summary-card">
+      <span class="summary-label">SKU</span>
+      <strong class="summary-value"><%= @product_counts[:sku_total] %></strong>
+    </div>
+    <div class="product-summary-card">
+      <span class="summary-label">批次</span>
+      <strong class="summary-value"><%= @product_counts[:batch_total] %></strong>
+    </div>
+    <div class="product-summary-card">
+      <span class="summary-label">启用产品</span>
+      <strong class="summary-value"><%= @product_counts[:active_master_total] %></strong>
+    </div>
+  </section>
+
+  <section class="panel product-toolbar">
+    <%= form_with url: erp_skus_path, method: :get, local: true, class: "report-form" do |form| %>
+      <div class="field product-search-field">
+        <%= form.label :q, "搜索产品" %>
+        <%= form.search_field :q, value: @q, placeholder: "搜索 Master SKU、中文名或俄文名…" %>
+      </div>
+      <div class="field">
+        <%= form.label :status, "状态" %>
+        <%= form.select :status, [["全部", "all"], ["启用", "active"], ["停用", "inactive"]], selected: @status %>
+      </div>
+      <div class="field">
+        <%= form.label :category_id, "类别" %>
+        <%= form.collection_select :category_id, @categories, :id, :name, { include_blank: "全部类别", selected: @category_id } %>
+      </div>
+      <button class="button" type="submit">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        筛选
+      </button>
+      <%= link_to "重置", erp_skus_path, class: "link-button product-reset-link" %>
+    <% end %>
+  </section>
+
+  <section class="panel product-list-panel">
+    <div class="table-section-header">
+      <div>
+        <h2 class="section-title">产品列表</h2>
+        <p class="report-meta">
+          当前显示 <%= @master_sku_entries.size %> 个 Master SKU · <%= total_visible_skus %> 个 SKU
+        </p>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table class="master-sku-table">
+        <thead>
+          <tr>
+            <th>Master SKU</th>
+            <th>中文名</th>
+            <th>俄文名</th>
+            <th>SKU</th>
+            <th>批次</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @master_sku_entries.each do |entry| %>
+            <% master_sku = entry[:master_sku] %>
+            <% skus = entry[:skus] %>
+            <% batch_total = skus.sum { |sku| sku.batches.size } %>
+            <tr class="master-sku-row">
+              <td class="product-code-cell">
+                <span class="product-code"><%= master_sku.master_sku_code %></span>
+              </td>
+              <td class="product-name-cell">
+                <div class="product-name"><%= erp_value(master_sku.product_name) %></div>
+              </td>
+              <td>
+                <div class="product-name-ru"><%= erp_value(master_sku.product_name_ru) %></div>
+              </td>
+              <td><%= skus.size %> 个 SKU</td>
+              <td><%= batch_total %> 个批次</td>
+              <td>
+                <% if master_sku.is_active %>
+                  <span class="status-pill is-active">Active</span>
+                <% else %>
+                  <span class="status-pill is-muted">停用</span>
+                <% end %>
+              </td>
+              <td>
+                <%= link_to erp_new_sku_path(master_sku_id: master_sku.id), class: "link-button", data: { turbo_frame: "erp_modal" } do %>
+                  新增 SKU
+                <% end %>
+              </td>
+            </tr>
+            <tr class="sku-variant-row">
+              <td colspan="7">
+                <details class="sku-nested-details" open>
+                  <summary>
+                    <span>SKU 变体</span>
+                    <small><%= skus.size %> 个</small>
+                  </summary>
+
+                  <% if skus.any? %>
+                    <div class="sku-variant-list">
+                      <% skus.each do |sku| %>
+                        <% batches = sku.batches.sort_by { |batch| [batch.received_on || Date.new(1900, 1, 1), batch.id || 0] }.reverse.first(10) %>
+                        <% purchased_quantity = sku.batches.sum(&:purchased_quantity) %>
+                        <% received_quantity = sku.batches.sum(&:received_quantity) %>
+                        <article class="sku-variant-card">
+                          <div class="sku-variant-main">
+                            <div>
+                              <%= link_to sku.sku_code, erp_sku_path(sku), class: "product-code" %>
+                              <div class="product-attributes">
+                                <span><%= erp_value(sku.sku_category&.name) %></span>
+                                <span><%= erp_value(sku.color) %></span>
+                                <span><%= erp_value(sku.spec) %></span>
+                                <span><%= erp_value(sku.model) %></span>
+                              </div>
+                            </div>
+                            <div class="sku-variant-metrics" aria-label="SKU 数量">
+                              <span>采购 <strong><%= purchased_quantity %></strong></span>
+                              <span>入库 <strong><%= received_quantity %></strong></span>
+                              <span>批次 <strong><%= sku.batches.size %></strong></span>
+                            </div>
+                            <div class="table-row-actions">
+                              <%= link_to "查看", erp_sku_path(sku) %>
+                              <%= link_to "编辑", erp_edit_sku_path(sku) if can?(:manage_skus) %>
+                              <%= link_to "新增批次", erp_new_sku_batch_path(sku_code: sku.sku_code), data: { turbo_frame: "erp_modal" } %>
+                            </div>
+                          </div>
+                          <div class="sku-variant-name">
+                            <span><%= erp_value(sku.product_name) %></span>
+                            <span><%= erp_value(sku.product_name_ru) %></span>
+                          </div>
+
+                          <% if batches.any? %>
+                            <table class="sku-batch-table">
+                              <thead>
+                                <tr>
+                                  <th>批号</th>
+                                  <th>登记日期</th>
+                                  <th>预计到货</th>
+                                  <th>入库日期</th>
+                                  <th>采购数量</th>
+                                  <th>入库数量</th>
+                                  <th>采购单价</th>
+                                  <th>状态</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <% batches.each do |batch| %>
+                                  <tr>
+                                    <td><%= batch.batch_code %></td>
+                                    <td><%= erp_value(batch.created_at&.to_date) %></td>
+                                    <td><%= erp_value(batch.expected_arrival_on) %></td>
+                                    <td><%= erp_value(batch.received_on) %></td>
+                                    <td><%= batch.purchased_quantity %></td>
+                                    <td><%= batch.received_quantity %></td>
+                                    <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
+                                    <td><span class="status-pill is-muted"><%= batch.status %></span></td>
+                                  </tr>
+                                <% end %>
+                              </tbody>
+                            </table>
+                          <% else %>
+                            <div class="nested-empty-state">还没有批次记录。</div>
+                          <% end %>
+                        </article>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <div class="nested-empty-state">当前筛选条件下没有 SKU。</div>
+                  <% end %>
+                </details>
+              </td>
+            </tr>
+          <% end %>
+
+          <% @orphan_skus.each do |sku| %>
+            <% batches = sku.batches.sort_by { |batch| [batch.received_on || Date.new(1900, 1, 1), batch.id || 0] }.reverse.first(10) %>
+            <tr class="master-sku-row master-sku-row--orphan">
+              <td class="product-code-cell">
+                <span class="product-code">未归档</span>
+              </td>
+              <td class="product-name-cell">
+                <div class="product-name"><%= erp_value(sku.product_name) %></div>
+              </td>
+              <td>
+                <div class="product-name-ru"><%= erp_value(sku.product_name_ru) %></div>
+              </td>
+              <td><%= sku.sku_code %></td>
+              <td><%= sku.batches.size %> 个批次</td>
+              <td>
+                <% if sku.is_active %>
+                  <span class="status-pill is-active">Active</span>
+                <% else %>
+                  <span class="status-pill is-muted">下架</span>
+                <% end %>
+              </td>
+              <td>
+                <div class="table-row-actions">
+                  <%= link_to "查看", erp_sku_path(sku) %>
+                  <%= link_to "编辑", erp_edit_sku_path(sku) if can?(:manage_skus) %>
+                  <%= link_to "新增批次", erp_new_sku_batch_path(sku_code: sku.sku_code), data: { turbo_frame: "erp_modal" } %>
+                </div>
+              </td>
+            </tr>
+            <% if batches.any? %>
+              <tr class="sku-variant-row">
+                <td colspan="7">
+                  <table class="sku-batch-table">
+                    <thead>
+                      <tr>
+                        <th>批号</th>
+                        <th>登记日期</th>
+                        <th>预计到货</th>
+                        <th>入库日期</th>
+                        <th>采购数量</th>
+                        <th>入库数量</th>
+                        <th>采购单价</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% batches.each do |batch| %>
+                        <tr>
+                          <td><%= batch.batch_code %></td>
+                          <td><%= erp_value(batch.created_at&.to_date) %></td>
+                          <td><%= erp_value(batch.expected_arrival_on) %></td>
+                          <td><%= erp_value(batch.received_on) %></td>
+                          <td><%= batch.purchased_quantity %></td>
+                          <td><%= batch.received_quantity %></td>
+                          <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
+                          <td><span class="status-pill is-muted"><%= batch.status %></span></td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @master_sku_entries.empty? && @orphan_skus.empty? %>
+      <div class="empty-state">没有找到匹配的产品。</div>
+    <% end %>
+  </section>
+</div>
