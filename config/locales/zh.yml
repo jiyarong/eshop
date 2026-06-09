@@ -6,6 +6,7 @@ zh:
     version: "Admin Console 1.0"
     feedback: "反馈"
     select_feedback_element: "选择页面元素"
+    change_password: "修改密码"
     sign_out: "退出"
   locale:
     switcher_label: "语言切换"

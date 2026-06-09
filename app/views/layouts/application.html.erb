@@ -54,11 +54,11 @@
     <% locale_path = ->(locale) { url_for(request.query_parameters.merge(locale: locale)) } %>
 
     <div
-      class="erp-shell__frame"
+      class="app erp-shell__frame"
       data-controller="shell feedback"
       data-action="mouseover@document->feedback#hover click@document->feedback#choose">
-      <aside class="erp-sidebar" data-shell-target="sidebar">
-        <div class="erp-brand">
+      <aside class="sidebar erp-sidebar" data-shell-target="sidebar">
+        <div class="sidebar-brand erp-brand">
           <span class="erp-brand__mark" aria-hidden="true">Y</span>
           <span>
             <span class="erp-brand__name">Yuanlong ERP</span>
@@ -84,31 +84,53 @@
       </aside>
 
       <div class="erp-main">
-        <header class="erp-topbar">
-          <button class="erp-topbar__menu" type="button" data-action="shell#toggleSidebar" aria-label="打开导航">
+        <header class="header erp-topbar">
+          <div class="hd-inner">
+            <button
+              class="sidebar-toggle erp-topbar__menu"
+              type="button"
+              data-action="shell#toggleSidebar"
+              aria-label="折叠左侧菜单"
+              aria-expanded="true"
+              data-shell-target="toggle">
+              <i class="bi bi-layout-sidebar" aria-hidden="true"></i>
+            </button>
+            <a class="brand" href="/" aria-label="<%= t("app.name") %>">
+              <span class="erp-brand__mark" aria-hidden="true">Y</span>
+              <span>Yuanlong ERP</span>
+            </a>
+            <div class="erp-topbar__title">
+              <span class="erp-topbar__eyebrow"><%= t("app.topbar_eyebrow") %></span>
+              <span class="erp-topbar__heading"><%= content_for?(:page_heading) ? yield(:page_heading) : t("app.name") %></span>
+            </div>
+            <div class="hd-right erp-topbar__actions">
+              <nav class="locale-switcher" aria-label="<%= t("locale.switcher_label") %>">
+                <% available_locales.each do |locale| %>
+                  <%= link_to t("locale.#{locale}"), locale_path.call(locale), class: "locale-switcher__link", aria: (I18n.locale == locale ? { current: "page" } : nil) %>
+                <% end %>
+              </nav>
+              <% if user_signed_in? %>
+                <div class="hd-divider" aria-hidden="true"></div>
+                <details class="erp-account-menu">
+                  <summary>
+                    <span class="erp-user__avatar" aria-hidden="true"><%= current_user.email.first.upcase %></span>
+                    <span class="erp-account-menu__email"><%= current_user.email %></span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                  </summary>
+                  <div class="erp-account-menu__panel">
+                    <%= link_to t("app.change_password"), new_user_password_path, class: "erp-account-menu__item" %>
+                    <%= button_to t("app.sign_out"), destroy_user_session_path, method: :delete, class: "erp-account-menu__item erp-account-menu__button" %>
+                  </div>
+                </details>
+              <% end %>
+            </div>
+          </div>
+          <button class="erp-topbar__mobile-menu" type="button" data-action="shell#openSidebar" aria-label="打开导航">
             <i class="bi bi-list" aria-hidden="true"></i>
           </button>
-          <div class="erp-topbar__title">
-            <span class="erp-topbar__eyebrow"><%= t("app.topbar_eyebrow") %></span>
-            <span class="erp-topbar__heading"><%= content_for?(:page_heading) ? yield(:page_heading) : t("app.name") %></span>
-          </div>
-          <div class="erp-topbar__actions">
-            <nav class="locale-switcher" aria-label="<%= t("locale.switcher_label") %>">
-              <% available_locales.each do |locale| %>
-                <%= link_to t("locale.#{locale}"), locale_path.call(locale), class: "locale-switcher__link", aria: (I18n.locale == locale ? { current: "page" } : nil) %>
-              <% end %>
-            </nav>
-            <% if user_signed_in? %>
-              <div class="erp-user">
-                <span class="erp-user__avatar" aria-hidden="true"><%= current_user.email.first.upcase %></span>
-                <span><%= current_user.email %></span>
-              </div>
-              <%= button_to t("app.sign_out"), destroy_user_session_path, method: :delete, class: "link-button" %>
-            <% end %>
-          </div>
         </header>
 
-        <main class="erp-content">
+        <main class="main erp-content">
           <div class="page">
             <%= yield %>
           </div>

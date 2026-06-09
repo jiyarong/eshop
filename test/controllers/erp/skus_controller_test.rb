@@ -57,19 +57,39 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "产品管理"
     assert_select ".product-management"
-    assert_select ".product-toolbar form[action='/erp/skus'][method='get']"
+    assert_select ".page-h"
+    assert_select ".product-page-actions a", text: "新增产品"
+    assert_no_match "Import", response.body
+    assert_no_match "展开全部", response.body
+    assert_no_match "收起全部", response.body
+    assert_select ".card.product-filter-card form[action='/erp/skus'][method='get']"
     assert_select "input[name='q']"
     assert_select "select[name='category_id']"
-    assert_select ".product-summary-card", minimum: 3
-    assert_select ".master-sku-table"
-    assert_select ".master-sku-row .product-code", text: @master_sku.master_sku_code
-    assert_select ".sku-variant-row .product-code", text: @sku.sku_code
-    assert_select ".sku-batch-table td", text: @batch.batch_code
-    assert_select ".sku-batch-table td", text: "180"
+    assert_select ".product-summary-grid", 1
+    assert_select ".product-summary-card", 4
+    assert_select ".card.product-list-card"
+    assert_select ".prod-tbl"
+    assert_select ".prod-tbl thead th", text: "Master SKU"
+    assert_select ".prod-tbl thead th", text: "中文名"
+    assert_select ".prod-tbl thead th", text: "俄文名"
+    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".sub-h", text: "SKU 变体 · 1 个"
+    assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
+    assert_select ".batch-title", text: "批次清单"
+    assert_select ".batch-tbl th", text: "采购日期"
+    assert_select ".batch-tbl th", text: "出境日期"
+    assert_select ".batch-tbl th", text: "境外交付日期"
+    assert_no_match "入库日期", response.body
+    assert_no_match "境内交付日期", response.body
+    assert_no_match "采购单价", response.body
+    assert_no_match "成本价", response.body
+    assert_no_match "仓库", response.body
+    assert_select ".batch-tbl td .barcode", text: @batch.batch_code
+    assert_select ".batch-tbl td", text: "180"
     assert_select "td", "页面主产品"
-    assert_select ".product-attributes span", text: @category.name
-    assert_select ".status-pill.is-active", text: "Active"
-    assert_select ".status-pill.is-muted", text: "下架"
+    assert_select ".attr-zh", text: @category.name
+    assert_select ".badge.badge-suc", text: "Active"
+    assert_select ".badge.badge-sec", text: "下架"
     assert_select "turbo-frame#erp_modal"
     assert_select "a[href='#{erp_new_master_sku_path}'][data-turbo-frame='erp_modal']", text: "新增产品"
     assert_select "a[href='#{erp_edit_master_sku_path(@master_sku)}'][data-turbo-frame='erp_modal']", text: "编辑产品"
@@ -84,7 +104,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "input[name='q'][value=?]", @master_sku.master_sku_code.downcase
-    assert_select ".master-sku-row .product-code", text: @master_sku.master_sku_code
+    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
     assert_no_match @inactive_sku.sku_code, response.body
   end
 

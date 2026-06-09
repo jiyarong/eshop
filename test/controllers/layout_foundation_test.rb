@@ -24,6 +24,12 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select "link[rel='stylesheet'][href^='/assets/application']"
     assert_select "script[type='module'][src^='/assets/application']"
     assert_no_match "cdn.jsdelivr.net", response.body
+    assert_select ".app"
+    assert_select ".sidebar"
+    assert_select ".header"
+    assert_select ".main"
+    assert_select ".brand span", text: "Yuanlong ERP"
+    assert_select ".sidebar-toggle[aria-label='折叠左侧菜单']"
     assert_select ".erp-sidebar"
     assert_select ".erp-topbar"
     assert_select ".erp-brand__name", "Yuanlong ERP"
@@ -32,6 +38,12 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".locale-switcher__link[aria-current='page']", text: "中"
     assert_select "a.locale-switcher__link[href*='locale=en']", text: "EN"
     assert_select "a.locale-switcher__link[href*='locale=ru']", text: "RU"
+    assert_select ".erp-account-menu"
+    assert_select ".erp-account-menu__email", text: @current_user.email
+    assert_select ".erp-account-menu__panel a", text: "修改密码"
+    assert_select ".erp-account-menu__panel form[action='#{destroy_user_session_path}'] button", text: "退出"
+    assert_select ".erp-topbar__actions .erp-account-menu", 1
+    assert_select ".erp-topbar__actions .erp-user", 0
   end
 
   test "application uses chinese i18n defaults" do

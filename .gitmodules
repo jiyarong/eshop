@@ -1,0 +1,3 @@
+[submodule "docs/design"]
+	path = docs/design
+	url = git@github.com:jiyarong/yuanlong_erp_prototype.git

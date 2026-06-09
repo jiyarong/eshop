@@ -35,6 +35,7 @@ en:
     version: "Admin Console 1.0"
     feedback: "Feedback"
     select_feedback_element: "Select element"
+    change_password: "Change password"
     sign_out: "Sign out"
   locale:
     switcher_label: "Language"

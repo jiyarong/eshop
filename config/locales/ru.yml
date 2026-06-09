@@ -6,6 +6,7 @@ ru:
     version: "Admin Console 1.0"
     feedback: "Отзыв"
     select_feedback_element: "Выберите элемент"
+    change_password: "Изменить пароль"
     sign_out: "Выйти"
   locale:
     switcher_label: "Язык"
