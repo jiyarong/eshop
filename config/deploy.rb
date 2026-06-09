@@ -66,8 +66,10 @@ task deploy: :remote_environment do
     command %(bundle install --jobs 4)
     command %(yarn install --frozen-lockfile)
     command %(yarn build:css)
-    command %(set -a; source #{fetch(:shared_path)}/.env; set +a; SKIP_YARN_INSTALL=1 bundle exec rake assets:precompile RAILS_ENV=production)
-    command %(set -a; source #{fetch(:shared_path)}/.env; set +a; bundle exec rake db:migrate RAILS_ENV=production)
+    command %(set -a; source #{fetch(:shared_path)}/.env; set +a; RAILS_ENV=production SKIP_YARN_INSTALL=1 bundle exec rake assets:precompile)
+    command %(test -f public/assets/.manifest.json)
+    command %(set -a; source #{fetch(:shared_path)}/.env; set +a; RAILS_ENV=production bundle exec rails runner "puts Rails.application.assets.resolver.resolve('application.js') || raise('missing application.js asset')")
+    command %(set -a; source #{fetch(:shared_path)}/.env; set +a; RAILS_ENV=production bundle exec rake db:migrate)
     invoke :'deploy:cleanup'
 
     on :launch do
