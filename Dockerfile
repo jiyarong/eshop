@@ -58,7 +58,7 @@ RUN --mount=type=secret,id=RAILS_MASTER_KEY \
     SECRET_KEY_BASE_DUMMY=1 SKIP_JS_BUILD=1 bundle exec rails assets:precompile
 RUN --mount=type=secret,id=RAILS_MASTER_KEY \
     RAILS_MASTER_KEY="$(cat /run/secrets/RAILS_MASTER_KEY 2>/dev/null || true)" \
-    SECRET_KEY_BASE_DUMMY=1 bundle exec rails runner "puts Rails.application.assets.resolver.resolve('application.js') || raise('missing application.js asset')"
+    SECRET_KEY_BASE_DUMMY=1 bundle exec rails runner "puts Rails.application.assets.resolver.resolve('application.js') || raise('missing application.js asset'); puts Rails.application.assets.resolver.resolve('mission_control/jobs/bulma.min.css') || raise('missing mission control css asset')"
 
 # Final stage for app image
 FROM base

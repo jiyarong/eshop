@@ -10,10 +10,10 @@ image: eshop_manage
 servers:
   web:
     - eshop.evexport.cn
-  # job:
-  #   hosts:
-  #     - 192.168.0.1
-  #   cmd: bin/jobs
+  job:
+    hosts:
+      - eshop.evexport.cn
+    cmd: bin/jobs
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
@@ -40,10 +40,7 @@ env:
     - RAILS_MASTER_KEY
     - ECOMMERCE_MANAGE_DATABASE_PASSWORD
   clear:
-    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
-    # When you start using multiple servers, you should split out job processing to a dedicated machine.
     KAMAL_CONTAINER: true
-    SOLID_QUEUE_IN_PUMA: true
     DB_HOST: eshop_manage-postgres
     REDIS_URL: redis://eshop_manage-redis:6379/0
     PORT: 3000

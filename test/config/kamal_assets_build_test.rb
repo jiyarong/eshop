@@ -18,5 +18,6 @@ class KamalAssetsBuildTest < ActiveSupport::TestCase
     assert_includes dockerfile, "SKIP_JS_BUILD=1"
     assert_includes dockerfile, "assets:precompile"
     assert_includes dockerfile, "Rails.application.assets.resolver.resolve('application.js')"
+    assert_includes dockerfile, "Rails.application.assets.resolver.resolve('mission_control/jobs/bulma.min.css')"
   end
 end

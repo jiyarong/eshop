@@ -37,6 +37,10 @@ module EcommerceManage
     # config.eager_load_paths << Rails.root.join("extras")
     config.i18n.available_locales = [:zh, :en, :ru]
     config.i18n.default_locale = :zh
+    config.mission_control.jobs.base_controller_class = "Admin::JobsController"
+    config.mission_control.jobs.http_basic_auth_enabled = false
+    config.assets.paths << MissionControl::Jobs::Engine.root.join("app/assets/stylesheets")
+    config.assets.paths << MissionControl::Jobs::Engine.root.join("app/javascript")
 
     # Only loads a smaller set of middleware suitable for API only apps.
     # Middleware like session, flash, cookies can be added back manually.

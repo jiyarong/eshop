@@ -1,15 +1,111 @@
-# examples:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_cleanup_with_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
+# Solid Queue recurring tasks.
+#
+# Run with:
+#   bin/jobs start
+#
+# In production this app currently starts Solid Queue from Puma when
+# SOLID_QUEUE_IN_PUMA=true. Schedules are parsed by Fugit.
 
 production:
+  # Wildberries daily sync: orders, stocks, prices, balance, reviews, chats,
+  # return claims.
+  wb_daily_sync_morning:
+    command: "RawWb::DailySync.run"
+    schedule: every day at 8:00 in Asia/Shanghai
+
+  wb_daily_sync_evening:
+    command: "RawWb::DailySync.run"
+    schedule: every day at 20:00 in Asia/Shanghai
+
+  # WB weekly sync. days:8 gives 1-day overlap to catch late settlement data.
+  wb_weekly_sync:
+    command: "RawWb::WeeklySync.run(days: 8)"
+    schedule: every monday at 5:30 in Asia/Shanghai
+
+  # WB ad data settles T+1; refresh Mon-Wed numbers before the next weekly run.
+  wb_midweek_ad_stats_sync:
+    command: "RawWb::WeeklySync.run(sync_keys: [:sync_ad_campaigns, :sync_ad_stats], days: 4)"
+    schedule: every thursday at 3:30 in Asia/Shanghai
+
+  # WB paid_storage has a T+2~3 day lag. Re-sync W-1 and refresh W-1 report only.
+  wb_paid_storage_resync:
+    command: "RawWb::WeeklySync.run(days: 14, sync_keys: [:sync_paid_storage])"
+    schedule: every thursday at 5:00 in Asia/Shanghai
+
+  weekly_profit_report_refresh_w1:
+    command: "GoogleSheets::WeeklyProfitReportRunner.run(weeks_ago: [1], clear_all: false)"
+    schedule: every thursday at 5:30 in Asia/Shanghai
+
+  wb_setup_sync:
+    command: "RawWb::SetupSync.run"
+    schedule: every month on the 1st at 4:00 in Asia/Shanghai
+
+  # WB stocks API only returns recently changed rows; this refreshes all active
+  # product stock at least once a month.
+  wb_monthly_full_stocks_resync:
+    command: "RawWb::DailySync.run(days: 500, sync_keys: [:sync_stocks])"
+    schedule: every month on the 2nd at 3:00 in Asia/Shanghai
+
+  # Safety net for DailySync-only WB steps over the full prior week.
+  wb_weekly_daily_steps_catchup:
+    command: "RawWb::DailySync.run(days: 8, sync_keys: [:sync_orders, :sync_supplies, :sync_supply_items, :sync_stats_orders, :sync_stats_sales])"
+    schedule: every sunday at 2:00 in Asia/Shanghai
+
+  # Ozon daily sync: FBS/FBO postings, returns, stocks, prices, finance
+  # transactions, supply orders, chats.
+  ozon_daily_sync_morning:
+    command: "RawOzon::DailySync.run"
+    schedule: every day at 8:30 in Asia/Shanghai
+
+  ozon_daily_sync_evening:
+    command: "RawOzon::DailySync.run"
+    schedule: every day at 20:30 in Asia/Shanghai
+
+  ozon_weekly_sync:
+    command: "RawOzon::WeeklySync.run(days: 8)"
+    schedule: every tuesday at 3:00 in Asia/Shanghai
+
+  ozon_setup_sync:
+    command: "RawOzon::SetupSync.run"
+    schedule: every month on the 1st at 5:00 in Asia/Shanghai
+
+  inventory_snapshot_sync:
+    command: "Ec::InventorySnapshotSync.run_and_push_to_sheets"
+    schedule: every day at 9:00 in Asia/Shanghai
+
+  # Fetch current-week CBR rate for W-1/W-2 report fallback.
+  cbr_rate_fetch:
+    command: "Ec::CbrRateFetcher.fetch_and_store"
+    schedule: every monday at 8:30 in Asia/Shanghai
+
+  weekly_profit_report:
+    command: "GoogleSheets::WeeklyProfitReportRunner.run"
+    schedule: every monday at 15:00 in Asia/Shanghai
+
+  # Sync W-2 and W-1 Ozon ad performance with natural-week boundaries.
+  ozon_performance_weekly_sync:
+    command: |
+      w1_from = Date.current.beginning_of_week - 1.week
+      w2_from = w1_from - 1.week
+      RawOzon::PerformanceSync.run(from_date: w2_from, to_date: w2_from + 6)
+      RawOzon::PerformanceSync.run(from_date: w1_from, to_date: w1_from + 6)
+    schedule: every monday at 13:00 in Asia/Shanghai
+
+  # T+1 settlement catchup for current-week Ozon ad data.
+  ozon_performance_midweek_sync:
+    command: "RawOzon::PerformanceSync.run"
+    schedule: every thursday at 3:00 in Asia/Shanghai
+
+  # Pre-report sync for core WB profit attribution sources.
+  wb_profit_sources_prereport_sync:
+    command: "RawWb::WeeklySync.run(days: 8, sync_keys: [:sync_ad_campaigns, :sync_finance_details, :sync_paid_storage, :sync_ad_settled_fees])"
+    schedule: every monday at 13:10 in Asia/Shanghai
+
+  # Refresh W-2 and W-1 Ozon accrual_by_day before weekly report generation.
+  ozon_accrual_prereport_sync:
+    command: "RawOzon::DailySync.run(days: 15, sync_keys: [:sync_finance_accrual_by_day])"
+    schedule: every monday at 13:30 in Asia/Shanghai
+
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
-    schedule: every hour at minute 12
+    schedule: every hour at minute 12 in Asia/Shanghai

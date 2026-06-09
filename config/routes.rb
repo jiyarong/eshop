@@ -28,6 +28,8 @@ Rails.application.routes.draw do
   end
 
   namespace :admin do
+    mount MissionControl::Jobs::Engine, at: "/jobs"
+
     get "users/new" => "users#new", as: :new_user
     get "users/:id/edit" => "users#edit", as: :edit_user
     post "agents/:id" => "agents#update"
