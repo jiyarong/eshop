@@ -15,6 +15,7 @@ class KamalAssetsBuildTest < ActiveSupport::TestCase
     assert_includes dockerfile, "npm ci"
     assert_includes dockerfile, "npm run build"
     assert_includes dockerfile, "npm run build:css"
+    assert_includes dockerfile, "SKIP_JS_BUILD=1"
     assert_includes dockerfile, "assets:precompile"
     assert_includes dockerfile, "Rails.application.assets.resolver.resolve('application.js')"
   end

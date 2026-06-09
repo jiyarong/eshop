@@ -55,7 +55,7 @@ RUN npm run build:css && \
     npm run build
 RUN --mount=type=secret,id=RAILS_MASTER_KEY \
     RAILS_MASTER_KEY="$(cat /run/secrets/RAILS_MASTER_KEY 2>/dev/null || true)" \
-    SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile
+    SECRET_KEY_BASE_DUMMY=1 SKIP_JS_BUILD=1 bundle exec rails assets:precompile
 RUN --mount=type=secret,id=RAILS_MASTER_KEY \
     RAILS_MASTER_KEY="$(cat /run/secrets/RAILS_MASTER_KEY 2>/dev/null || true)" \
     SECRET_KEY_BASE_DUMMY=1 bundle exec rails runner "puts Rails.application.assets.resolver.resolve('application.js') || raise('missing application.js asset')"
