@@ -51,12 +51,13 @@ module Erp
     def edit
       load_category_options
       load_master_sku_options
+      render_modal_or_page(:edit, :edit_modal)
     end
 
     def create
       @sku = Ec::Sku.new(sku_params)
       if @sku.save
-        redirect_to erp_sku_path(@sku)
+        redirect_to erp_skus_path
       else
         load_category_options
         load_master_sku_options
@@ -66,10 +67,11 @@ module Erp
 
     def update
       if @sku.update(sku_params)
-        redirect_to erp_sku_path(@sku)
+        redirect_to erp_skus_path
       else
         load_category_options
-        render :edit, status: :unprocessable_entity
+        load_master_sku_options
+        render_modal_or_page(:edit, :edit_modal, status: :unprocessable_entity)
       end
     end
 

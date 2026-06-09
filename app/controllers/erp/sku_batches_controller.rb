@@ -20,12 +20,13 @@ module Erp
 
     def edit
       load_sku_options
+      render_modal_or_page(:edit, :edit_modal)
     end
 
     def create
       @batch = Ec::SkuBatch.new(batch_params)
       if @batch.save
-        redirect_to erp_sku_batch_path(@batch)
+        redirect_to erp_skus_path
       else
         load_sku_options
         render_modal_or_page(:new, :new_modal, status: :unprocessable_entity)
@@ -34,10 +35,10 @@ module Erp
 
     def update
       if @batch.update(batch_params)
-        redirect_to erp_sku_batch_path(@batch)
+        redirect_to erp_skus_path
       else
         load_sku_options
-        render :edit, status: :unprocessable_entity
+        render_modal_or_page(:edit, :edit_modal, status: :unprocessable_entity)
       end
     end
 

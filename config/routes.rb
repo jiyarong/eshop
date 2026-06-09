@@ -4,6 +4,7 @@ Rails.application.routes.draw do
     passwords: "users/passwords"
   }
 
+  root  'erp/skus#index'
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Google Sheets 连通性测试
@@ -37,6 +38,7 @@ Rails.application.routes.draw do
 
   namespace :erp do
     get "master_skus/new" => "master_skus#new", as: :new_master_sku
+    get "master_skus/:id/edit" => "master_skus#edit", as: :edit_master_sku
     get "sku_categories/new" => "sku_categories#new", as: :new_sku_category
     get "sku_categories/:id/edit" => "sku_categories#edit", as: :edit_sku_category
     get "skus/new" => "skus#new", as: :new_sku
@@ -47,7 +49,7 @@ Rails.application.routes.draw do
     get "purchase_orders/:id/edit" => "purchase_orders#edit", as: :edit_purchase_order
     get "cost_allocations/new" => "cost_allocations#new", as: :new_cost_allocation
     get "cost_allocations/:id/edit" => "cost_allocations#edit", as: :edit_cost_allocation
-    resources :master_skus, only: [:new, :create]
+    resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]
     resources :skus, except: [:destroy]
     post "skus/:id" => "skus#update"

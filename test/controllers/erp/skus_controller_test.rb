@@ -72,8 +72,11 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".status-pill.is-muted", text: "下架"
     assert_select "turbo-frame#erp_modal"
     assert_select "a[href='#{erp_new_master_sku_path}'][data-turbo-frame='erp_modal']", text: "新增产品"
+    assert_select "a[href='#{erp_edit_master_sku_path(@master_sku)}'][data-turbo-frame='erp_modal']", text: "编辑产品"
     assert_select "a[href='#{erp_new_sku_path(master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "新增 SKU"
+    assert_select "a[href='#{erp_edit_sku_path(@sku)}'][data-turbo-frame='erp_modal']", text: "编辑"
     assert_select "a[href='#{erp_new_sku_batch_path(sku_code: @sku.sku_code)}'][data-turbo-frame='erp_modal']", text: "新增批次"
+    assert_select "a[href='#{erp_edit_sku_batch_path(@batch)}'][data-turbo-frame='erp_modal']", text: "编辑"
   end
 
   test "index filters products by keyword and status" do
@@ -111,7 +114,18 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "select[name='ec_sku[master_sku_id]'] option[selected='selected'][value=?]", @master_sku.id.to_s
   end
 
-  test "create sku" do
+  test "modal edit renders sku form" do
+    get "/erp/skus/#{@sku.id}/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "h2", "编辑 SKU"
+    assert_select "form[action='#{erp_sku_path(@sku)}'][data-turbo-frame='_top']"
+    assert_select "input[name='ec_sku[product_name]'][value=?]", @sku.product_name
+  end
+
+  test "create sku returns to sku list" do
     assert_difference "Ec::Sku.count", 1 do
       post "/erp/skus", params: {
         ec_sku: {
@@ -136,7 +150,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     end
 
     created = Ec::Sku.find_by!(sku_code: "CREATED-SKU-#{@token}")
-    assert_redirected_to "/erp/skus/#{created.id}"
+    assert_redirected_to "/erp/skus"
     assert_equal @category, created.sku_category
     assert_equal @master_sku, created.master_sku
   end
@@ -156,7 +170,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".error-box"
   end
 
-  test "edit and update sku" do
+  test "edit and update sku returns to sku list" do
     get "/erp/skus/#{@sku.id}/edit", headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -171,10 +185,25 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to "/erp/skus/#{@sku.id}"
+    assert_redirected_to "/erp/skus"
     @sku.reload
     assert_equal "更新商品", @sku.product_name
     assert_equal "蓝色", @sku.color
     assert_not @sku.is_active
+  end
+
+  test "invalid modal update rerenders sku form" do
+    patch "/erp/skus/#{@sku.id}", params: {
+      ec_sku: {
+        sku_code: "",
+        product_name: "缺少编码"
+      }
+    }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :unprocessable_entity
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "h2", "编辑 SKU"
+    assert_select ".error-box"
   end
 end

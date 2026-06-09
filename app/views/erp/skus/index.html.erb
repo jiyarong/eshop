@@ -111,9 +111,12 @@
                 <% end %>
               </td>
               <td>
-                <%= link_to erp_new_sku_path(master_sku_id: master_sku.id), class: "link-button", data: { turbo_frame: "erp_modal" } do %>
-                  新增 SKU
-                <% end %>
+                <div class="table-row-actions">
+                  <%= link_to "编辑产品", erp_edit_master_sku_path(master_sku), class: "link-button", data: { turbo_frame: "erp_modal" } if can?(:manage_skus) %>
+                  <%= link_to erp_new_sku_path(master_sku_id: master_sku.id), class: "link-button", data: { turbo_frame: "erp_modal" } do %>
+                    新增 SKU
+                  <% end %>
+                </div>
               </td>
             </tr>
             <tr class="sku-variant-row">
@@ -148,7 +151,7 @@
                             </div>
                             <div class="table-row-actions">
                               <%= link_to "查看", erp_sku_path(sku) %>
-                              <%= link_to "编辑", erp_edit_sku_path(sku) if can?(:manage_skus) %>
+                              <%= link_to "编辑", erp_edit_sku_path(sku), data: { turbo_frame: "erp_modal" } if can?(:manage_skus) %>
                               <%= link_to "新增批次", erp_new_sku_batch_path(sku_code: sku.sku_code), data: { turbo_frame: "erp_modal" } %>
                             </div>
                           </div>
@@ -158,34 +161,40 @@
                           </div>
 
                           <% if batches.any? %>
-                            <table class="sku-batch-table">
-                              <thead>
-                                <tr>
-                                  <th>批号</th>
-                                  <th>登记日期</th>
-                                  <th>预计到货</th>
-                                  <th>入库日期</th>
-                                  <th>采购数量</th>
-                                  <th>入库数量</th>
-                                  <th>采购单价</th>
-                                  <th>状态</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <% batches.each do |batch| %>
+                            <div class="sku-batch-table-wrap">
+                              <table class="sku-batch-table">
+                                <thead>
                                   <tr>
-                                    <td><%= batch.batch_code %></td>
-                                    <td><%= erp_value(batch.created_at&.to_date) %></td>
-                                    <td><%= erp_value(batch.expected_arrival_on) %></td>
-                                    <td><%= erp_value(batch.received_on) %></td>
-                                    <td><%= batch.purchased_quantity %></td>
-                                    <td><%= batch.received_quantity %></td>
-                                    <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
-                                    <td><span class="status-pill is-muted"><%= batch.status %></span></td>
+                                    <th>批号</th>
+                                    <th>登记日期</th>
+                                    <th>预计到货</th>
+                                    <th>入库日期</th>
+                                    <th>采购数量</th>
+                                    <th>入库数量</th>
+                                    <th>采购单价</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
                                   </tr>
-                                <% end %>
-                              </tbody>
-                            </table>
+                                </thead>
+                                <tbody>
+                                  <% batches.each do |batch| %>
+                                    <tr>
+                                      <td><%= batch.batch_code %></td>
+                                      <td><%= erp_value(batch.created_at&.to_date) %></td>
+                                      <td><%= erp_value(batch.expected_arrival_on) %></td>
+                                      <td><%= erp_value(batch.received_on) %></td>
+                                      <td><%= batch.purchased_quantity %></td>
+                                      <td><%= batch.received_quantity %></td>
+                                      <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
+                                      <td><span class="status-pill is-muted"><%= batch.status %></span></td>
+                                      <td class="table-row-actions">
+                                        <%= link_to "编辑", erp_edit_sku_batch_path(batch), data: { turbo_frame: "erp_modal" } if can?(:manage_purchases) || can?(:manage_inventory) %>
+                                      </td>
+                                    </tr>
+                                  <% end %>
+                                </tbody>
+                              </table>
+                            </div>
                           <% else %>
                             <div class="nested-empty-state">还没有批次记录。</div>
                           <% end %>
@@ -224,7 +233,7 @@
               <td>
                 <div class="table-row-actions">
                   <%= link_to "查看", erp_sku_path(sku) %>
-                  <%= link_to "编辑", erp_edit_sku_path(sku) if can?(:manage_skus) %>
+                  <%= link_to "编辑", erp_edit_sku_path(sku), data: { turbo_frame: "erp_modal" } if can?(:manage_skus) %>
                   <%= link_to "新增批次", erp_new_sku_batch_path(sku_code: sku.sku_code), data: { turbo_frame: "erp_modal" } %>
                 </div>
               </td>
@@ -232,34 +241,40 @@
             <% if batches.any? %>
               <tr class="sku-variant-row">
                 <td colspan="7">
-                  <table class="sku-batch-table">
-                    <thead>
-                      <tr>
-                        <th>批号</th>
-                        <th>登记日期</th>
-                        <th>预计到货</th>
-                        <th>入库日期</th>
-                        <th>采购数量</th>
-                        <th>入库数量</th>
-                        <th>采购单价</th>
-                        <th>状态</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <% batches.each do |batch| %>
+                  <div class="sku-batch-table-wrap">
+                    <table class="sku-batch-table">
+                      <thead>
                         <tr>
-                          <td><%= batch.batch_code %></td>
-                          <td><%= erp_value(batch.created_at&.to_date) %></td>
-                          <td><%= erp_value(batch.expected_arrival_on) %></td>
-                          <td><%= erp_value(batch.received_on) %></td>
-                          <td><%= batch.purchased_quantity %></td>
-                          <td><%= batch.received_quantity %></td>
-                          <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
-                          <td><span class="status-pill is-muted"><%= batch.status %></span></td>
+                          <th>批号</th>
+                          <th>登记日期</th>
+                          <th>预计到货</th>
+                          <th>入库日期</th>
+                          <th>采购数量</th>
+                          <th>入库数量</th>
+                          <th>采购单价</th>
+                          <th>状态</th>
+                          <th>操作</th>
                         </tr>
-                      <% end %>
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        <% batches.each do |batch| %>
+                          <tr>
+                            <td><%= batch.batch_code %></td>
+                            <td><%= erp_value(batch.created_at&.to_date) %></td>
+                            <td><%= erp_value(batch.expected_arrival_on) %></td>
+                            <td><%= erp_value(batch.received_on) %></td>
+                            <td><%= batch.purchased_quantity %></td>
+                            <td><%= batch.received_quantity %></td>
+                            <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
+                            <td><span class="status-pill is-muted"><%= batch.status %></span></td>
+                            <td class="table-row-actions">
+                              <%= link_to "编辑", erp_edit_sku_batch_path(batch), data: { turbo_frame: "erp_modal" } if can?(:manage_purchases) || can?(:manage_inventory) %>
+                            </td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
                 </td>
               </tr>
             <% end %>

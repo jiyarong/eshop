@@ -60,7 +60,17 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "select[name='ec_sku_batch[sku_code]'] option[selected='selected'][value=?]", @sku.sku_code
   end
 
-  test "create batch" do
+  test "modal edit renders batch form" do
+    get "/erp/sku_batches/#{@batch.id}/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "h2", "编辑批次"
+    assert_select "form[action='#{erp_sku_batch_path(@batch)}'][data-turbo-frame='_top']"
+  end
+
+  test "create batch returns to sku list" do
     assert_difference "Ec::SkuBatch.count", 1 do
       post "/erp/sku_batches", params: {
         ec_sku_batch: {
@@ -77,7 +87,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     end
 
     created = Ec::SkuBatch.find_by!(batch_code: "CREATED-BATCH-#{@token}")
-    assert_redirected_to "/erp/sku_batches/#{created.id}"
+    assert_redirected_to "/erp/skus"
     assert_equal "ordered", created.status
     assert_equal 120, created.purchased_quantity
   end
@@ -98,7 +108,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".error-box"
   end
 
-  test "edit and update batch" do
+  test "edit and update batch returns to sku list" do
     get "/erp/sku_batches/#{@batch.id}/edit", headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -113,10 +123,25 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to "/erp/sku_batches/#{@batch.id}"
+    assert_redirected_to "/erp/skus"
     @batch.reload
     assert_equal "received", @batch.status
     assert_equal 100, @batch.received_quantity
     assert_equal Date.new(2026, 6, 20), @batch.received_on
+  end
+
+  test "invalid modal update rerenders batch form" do
+    patch "/erp/sku_batches/#{@batch.id}", params: {
+      ec_sku_batch: {
+        batch_code: "",
+        purchased_quantity: "100"
+      }
+    }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :unprocessable_entity
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "h2", "编辑批次"
+    assert_select ".error-box"
   end
 end

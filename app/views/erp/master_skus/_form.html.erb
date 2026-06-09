@@ -1,4 +1,4 @@
-<%= form_with model: master_sku, url: erp_master_skus_path, data: (modal ? { turbo_frame: "_top" } : {}) do |form| %>
+<%= form_with model: master_sku, url: master_sku.persisted? ? erp_master_sku_path(master_sku) : erp_master_skus_path, data: (modal ? { turbo_frame: "_top" } : {}) do |form| %>
   <% if master_sku.errors.any? %>
     <div class="panel error-box">
       <%= master_sku.errors.full_messages.join("；") %>
