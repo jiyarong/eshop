@@ -115,6 +115,13 @@
 
 本项目本地 Web 默认端口为 `4011`。
 
+## 生产部署
+
+- 生产部署使用 Kamal：`kamal deploy -c config/deploy.yml`。
+- Kamal 配置文件是 `config/deploy.yml`，镜像构建使用根目录 `Dockerfile`。
+- 不要把 `config/deploy.rb`（Mina）当作当前生产部署入口；排查 production 部署、镜像、assets 问题时优先看 Kamal 配置和 Dockerfile。
+- production 缺少 Rails assets（例如 Propshaft 报 `application.js` missing）时，应检查 Docker image 构建阶段是否安装 Node 依赖并执行 `assets:precompile`，以及最终镜像内是否包含 `public/assets/.manifest.json` 和对应 digest 资源。
+
 除非用户明确要求，Agent 不需要也不应主动启动 Web server，不主动运行 `npm run build`、`npm run build:css`、`vite build` 等前端构建命令；这些由用户自行运行。需要验证时，优先运行相关 Rails 测试，或在最终说明中明确列出未运行的前端构建。
 
 Rails 测试优先使用：

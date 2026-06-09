@@ -78,6 +78,8 @@ volumes:
 # Configure the image builder.
 builder:
   arch: amd64
+  secrets:
+    - RAILS_MASTER_KEY
 
   # # Build image via remote server (useful for faster amd64 builds on arm64 computers)
   # remote: ssh://docker@docker-builder-server

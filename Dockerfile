@@ -30,7 +30,7 @@ FROM base AS build
 
 # Install packages needed to build gems
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev pkg-config && \
+    apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev nodejs npm pkg-config && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Install application gems
@@ -39,6 +39,10 @@ RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
+# Install JavaScript dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
+
 # Copy application code
 COPY . .
 RUN test -f config/database.yml
@@ -46,8 +50,15 @@ RUN test -f config/database.yml
 # Precompile bootsnap code for faster boot times
 RUN bundle exec bootsnap precompile app/ lib/
 
-
-
+# Precompile Rails assets so Propshaft can resolve them in production
+RUN npm run build:css && \
+    npm run build
+RUN --mount=type=secret,id=RAILS_MASTER_KEY \
+    RAILS_MASTER_KEY="$(cat /run/secrets/RAILS_MASTER_KEY 2>/dev/null || true)" \
+    SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile
+RUN --mount=type=secret,id=RAILS_MASTER_KEY \
+    RAILS_MASTER_KEY="$(cat /run/secrets/RAILS_MASTER_KEY 2>/dev/null || true)" \
+    SECRET_KEY_BASE_DUMMY=1 bundle exec rails runner "puts Rails.application.assets.resolver.resolve('application.js') || raise('missing application.js asset')"
 
 # Final stage for app image
 FROM base
