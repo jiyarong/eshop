@@ -64,6 +64,9 @@ task deploy: :remote_environment do
     invoke :'deploy:link_shared_paths'
     command %(bundle config set --local without 'development test')
     command %(bundle install --jobs 4)
+    command %(yarn install --frozen-lockfile)
+    command %(yarn build:css)
+    command %(set -a; source #{fetch(:shared_path)}/.env; set +a; SKIP_YARN_INSTALL=1 bundle exec rake assets:precompile RAILS_ENV=production)
     command %(set -a; source #{fetch(:shared_path)}/.env; set +a; bundle exec rake db:migrate RAILS_ENV=production)
     invoke :'deploy:cleanup'
 
