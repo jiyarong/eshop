@@ -39,6 +39,7 @@ env:
   secret:
     - RAILS_MASTER_KEY
     - ECOMMERCE_MANAGE_DATABASE_PASSWORD
+    - GOOGLE_SHEETS_WEBHOOK_SECRET
   clear:
     KAMAL_CONTAINER: true
     DB_HOST: eshop_manage-postgres
