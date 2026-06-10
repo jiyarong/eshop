@@ -43,11 +43,15 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Use Redis for production caching.
-  config.cache_store = :redis_cache_store, {
-    url: ENV.fetch("REDIS_URL"),
-    namespace: "eshop_manage:cache"
-  }
+  # Use local cache only while Docker precompiles assets with a dummy secret.
+  if ENV["SECRET_KEY_BASE_DUMMY"] == "1"
+    config.cache_store = :file_store, Rails.root.join("tmp/cache")
+  else
+    config.cache_store = :redis_cache_store, {
+      url: ENV.fetch("REDIS_URL"),
+      namespace: "eshop_manage:cache"
+    }
+  end
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue
