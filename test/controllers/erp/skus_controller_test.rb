@@ -73,6 +73,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl thead th", text: "中文名"
     assert_select ".prod-tbl thead th", text: "俄文名"
     assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".product-list-card[data-controller='product-tree']"
+    assert_select "button.product-tree-toggle[data-action='product-tree#toggleMaster'][aria-expanded='true']", minimum: 1
+    assert_select "button.product-tree-toggle[data-action='product-tree#toggleSku'][aria-expanded='true']", minimum: 1
     assert_select ".sub-h", text: "SKU 变体 · 1 个"
     assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
     assert_select ".batch-title", text: "批次清单"

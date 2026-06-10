@@ -11,10 +11,10 @@
       <p class="sub">Master Product · SKU Variant · Batch Inventory</p>
     </div>
     <div class="hstack product-page-actions">
-      <%= link_to erp_sku_categories_path, class: "btn btn-outline" do %>
-        <i class="bi bi-diagram-3" aria-hidden="true"></i>
-        类别管理
-      <% end %>
+      <%#= link_to erp_sku_categories_path, class: "btn btn-outline" do %>
+<!--        <i class="bi bi-diagram-3" aria-hidden="true"></i>-->
+<!--        类别管理-->
+      <%# end %>
       <%= link_to erp_new_master_sku_path, class: "btn btn-primary", data: { turbo_frame: "erp_modal" } do %>
         <i class="bi bi-plus-lg" aria-hidden="true"></i>
         新增产品
@@ -68,7 +68,7 @@
     <% end %>
   </section>
 
-  <section class="card product-list-card">
+  <section class="card product-list-card" data-controller="product-tree">
     <table class="prod-tbl">
       <thead>
         <tr>
@@ -88,7 +88,11 @@
           <% skus = entry[:skus] %>
           <% batch_total = skus.sum { |sku| sku.batches.size } %>
           <tr class="master open">
-            <td><span class="chev"><i class="bi bi-chevron-down" aria-hidden="true"></i></span></td>
+            <td>
+              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= master_sku.master_sku_code %>" aria-label="收起 <%= master_sku.master_sku_code %>" aria-expanded="true">
+                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+              </button>
+            </td>
             <td><span class="code-text"><%= master_sku.master_sku_code %></span></td>
             <td><span class="zh-name"><%= erp_value(master_sku.product_name) %></span></td>
             <td><span class="ru-name"><%= erp_value(master_sku.product_name_ru) %></span></td>
@@ -139,7 +143,9 @@
                         <% received_quantity = sku.batches.sum(&:received_quantity) %>
                         <tr class="sku-row open">
                           <td>
-                            <span class="chev"><i class="bi bi-chevron-down" aria-hidden="true"></i></span>
+                            <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleSku" data-label="<%= sku.sku_code %> 批次" aria-label="收起 <%= sku.sku_code %> 批次" aria-expanded="true">
+                              <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                            </button>
                             <%= link_to sku.sku_code, erp_sku_path(sku), class: "code-text sub" %>
                           </td>
                           <td>
@@ -229,7 +235,11 @@
         <% @orphan_skus.each do |sku| %>
           <% batches = sku.batches.sort_by { |batch| [batch.received_on || Date.new(1900, 1, 1), batch.id || 0] }.reverse.first(10) %>
           <tr class="master open">
-            <td><span class="chev"><i class="bi bi-chevron-down" aria-hidden="true"></i></span></td>
+            <td>
+              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= sku.sku_code %> 批次" aria-label="收起 <%= sku.sku_code %> 批次" aria-expanded="true">
+                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+              </button>
+            </td>
             <td><span class="code-text">未归档</span></td>
             <td><span class="zh-name"><%= erp_value(sku.product_name) %></span></td>
             <td><span class="ru-name"><%= erp_value(sku.product_name_ru) %></span></td>

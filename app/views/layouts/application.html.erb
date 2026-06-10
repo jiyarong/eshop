@@ -7,6 +7,7 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <title><%= content_for?(:title) ? "#{yield(:title)} · #{t("app.name")}" : t("app.name") %></title>
+    <%= favicon_link_tag "/favicon.png", type: "image/png" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", type: "module", "data-turbo-track": "reload", defer: true %>
   </head>
@@ -34,11 +35,11 @@
         label: t("navigation.sections.erp"),
         links: [
           { label: t("navigation.erp_skus"), path: "/erp/skus", icon: "bi-grid-3x3-gap", active: active_link.call("/erp/skus") },
-          { label: t("navigation.sku_categories"), path: "/erp/sku_categories", icon: "bi-diagram-3", active: active_link.call("/erp/sku_categories") },
+          # { label: t("navigation.sku_categories"), path: "/erp/sku_categories", icon: "bi-diagram-3", active: active_link.call("/erp/sku_categories") },
           { label: t("navigation.sku_batches"), path: "/erp/sku_batches", icon: "bi-layers", active: active_link.call("/erp/sku_batches") },
-          { label: t("navigation.purchase_orders"), path: "/erp/purchase_orders", icon: "bi-cart-check", active: active_link.call("/erp/purchase_orders") },
-          { label: t("navigation.cost_allocations"), path: "/erp/cost_allocations", icon: "bi-calculator", active: active_link.call("/erp/cost_allocations") },
-          { label: t("navigation.operation_tasks"), path: "/erp/operation_tasks", icon: "bi-list-task", active: active_link.call("/erp/operation_tasks") }
+          # { label: t("navigation.purchase_orders"), path: "/erp/purchase_orders", icon: "bi-cart-check", active: active_link.call("/erp/purchase_orders") },
+          # { label: t("navigation.cost_allocations"), path: "/erp/cost_allocations", icon: "bi-calculator", active: active_link.call("/erp/cost_allocations") },
+          # { label: t("navigation.operation_tasks"), path: "/erp/operation_tasks", icon: "bi-list-task", active: active_link.call("/erp/operation_tasks") }
         ]
       }
     ] %>

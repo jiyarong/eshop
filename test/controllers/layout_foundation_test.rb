@@ -21,6 +21,7 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select "html[lang='zh-CN']"
     assert_select "body.erp-shell"
     assert_select "meta[name='turbo-cache-control'][content='no-preview']"
+    assert_select "link[rel='icon'][type='image/png'][href='/favicon.png']"
     assert_select "link[rel='stylesheet'][href^='/assets/application']"
     assert_select "script[type='module'][src^='/assets/application']"
     assert_no_match "cdn.jsdelivr.net", response.body
@@ -50,8 +51,14 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_equal :zh, I18n.default_locale
     assert_includes I18n.available_locales, :zh
     assert_includes I18n.available_locales, :ru
-    assert_equal "元隆 ERP", I18n.t("app.name")
+    assert_equal "辕隆 ERP", I18n.t("app.name")
     assert_equal "Юаньлун ERP", I18n.t("app.name", locale: :ru)
+  end
+
+  test "topbar inner spans full width for right aligned controls" do
+    css = Rails.root.join("app/assets/stylesheets/application.css").read
+
+    assert_match(/\.hd-inner\s*\{[^}]*width:\s*100%/m, css)
   end
 
   test "locale switcher supports russian and persists selected locale" do

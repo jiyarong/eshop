@@ -35,7 +35,6 @@ gem "redis", "~> 5.0"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
-gem "whenever", require: false
 gem "google-apis-sheets_v4"
 gem "google-apis-drive_v3"
 
@@ -64,5 +63,4 @@ end
 
 group :development do
   gem 'annotate'
-  gem 'mina', require: false
 end
