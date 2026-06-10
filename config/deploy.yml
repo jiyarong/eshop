@@ -71,6 +71,7 @@ aliases:
 # Recommended to change this to a mounted volume path that is backed up off server.
 volumes:
   - "eshop_manage_storage:/rails/storage"
+  - "/etc/eshop_manage/ecommerce-sheets-495606-2f1153f07139.json:/rails/config/ecommerce-sheets-495606-2f1153f07139.json:ro"
 
 
 # Configure the image builder.
