@@ -1,12 +1,23 @@
 class OrdersController < ApplicationController
+  ORDER_TIMEZONES = {
+    "utc" => { label: "UTC", name: "UTC" },
+    "shanghai" => { label: "上海", name: "Asia/Shanghai" },
+    "russia" => { label: "俄区", name: "Europe/Moscow" }
+  }.freeze
+  DEFAULT_ORDER_TIMEZONE = "shanghai"
+
   helper_method :order_status_label, :platform_label, :fulfillment_label, :display_value, :money_value,
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
-                :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value
+                :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
+                :order_timezone_options, :order_time_value
   before_action -> { require_permission!(:view_reports) }
 
   def index
+    @selected_timezone = selected_timezone
+    @order_time_zone = ActiveSupport::TimeZone[ORDER_TIMEZONES.fetch(@selected_timezone).fetch(:name)]
     @q_params = normalized_ransack_params
+    @date_params = date_filter_params(@q_params)
     @stores = Ec::Store.order(:platform, :store_name)
     @search = base_order_scope.ransack(@q_params)
     @orders_scope = @search.result(distinct: true)
@@ -54,13 +65,33 @@ class OrdersController < ApplicationController
     query[:platform_eq] ||= params[:platform].presence_in(%w[wb ozon amazon])
     query[:order_status_eq] ||= params[:status].presence_in(Ec::Order::STATUSES.values)
     query[:store_id_eq] ||= params[:store_id].presence
-    query[:ordered_at_gteq] ||= parse_date(params[:from_date])&.beginning_of_day
+    query[:ordered_at_gteq] ||= params[:from_date].presence
     query[:ordered_at_lteq_end_of_day] ||= params[:to_date].presence
-    query[:in_process_at_gteq] ||= parse_date(params[:process_from_date])&.beginning_of_day
+    query[:in_process_at_gteq] ||= params[:process_from_date].presence
     query[:in_process_at_lteq_end_of_day] ||= params[:process_to_date].presence
-    query[:ordered_at_lteq] ||= parse_date(query[:ordered_at_lteq_end_of_day])&.end_of_day
-    query[:in_process_at_lteq] ||= parse_date(query[:in_process_at_lteq_end_of_day])&.end_of_day
+
+    normalize_date_range!(query, :ordered_at)
+    normalize_date_range!(query, :in_process_at)
     query.compact_blank
+  end
+
+  def normalize_date_range!(query, attribute)
+    start_key = :"#{attribute}_gteq"
+    end_of_day_key = :"#{attribute}_lteq_end_of_day"
+    end_key = :"#{attribute}_lteq"
+
+    query[start_key] = time_in_selected_zone(query[start_key], :beginning_of_day)
+    query[end_key] ||= time_in_selected_zone(query[end_of_day_key], :end_of_day)
+    query.delete(end_of_day_key)
+  end
+
+  def date_filter_params(query)
+    {
+      "ordered_at_gteq" => query[:ordered_at_gteq]&.in_time_zone(@order_time_zone)&.to_date,
+      "ordered_at_lteq_end_of_day" => query[:ordered_at_lteq]&.in_time_zone(@order_time_zone)&.to_date,
+      "in_process_at_gteq" => query[:in_process_at_gteq]&.in_time_zone(@order_time_zone)&.to_date,
+      "in_process_at_lteq_end_of_day" => query[:in_process_at_lteq]&.in_time_zone(@order_time_zone)&.to_date
+    }
   end
 
   def build_summary(scope)
@@ -80,6 +111,25 @@ class OrdersController < ApplicationController
     Date.parse(value.to_s)
   rescue ArgumentError
     nil
+  end
+
+  def time_in_selected_zone(value, boundary)
+    date = parse_date(value)
+    return unless date
+
+    @order_time_zone.local(date.year, date.month, date.day).public_send(boundary)
+  end
+
+  def selected_timezone
+    params[:timezone].presence_in(ORDER_TIMEZONES.keys) || DEFAULT_ORDER_TIMEZONE
+  end
+
+  def order_timezone_options
+    ORDER_TIMEZONES.map { |key, config| [config.fetch(:label), key] }
+  end
+
+  def order_time_value(value)
+    value&.in_time_zone(@order_time_zone)&.strftime("%Y-%m-%d %H:%M") || "-"
   end
 
   def order_status_label(status)

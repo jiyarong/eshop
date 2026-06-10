@@ -3,7 +3,8 @@ require "test_helper"
 class OrdersControllerTest < ActionDispatch::IntegrationTest
   setup do
     @token = SecureRandom.hex(4).upcase
-    sign_in create_user_with_roles("orders-#{@token.downcase}@example.com", "manager")
+    @current_user = create_user_with_roles("orders-#{@token.downcase}@example.com", "manager")
+    sign_in @current_user
 
     @sku = Ec::Sku.create!(
       sku_code: "CTR-#{@token}",
@@ -254,6 +255,57 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "0128619527-0157-LONG"
     assert_select "td", { text: "LATER-PROCESSED-#{@token}", count: 0 }
     assert_select "td", { text: "OLDER-#{@token}-20", count: 0 }
+  end
+
+  test "index filters order dates in selected timezone and defaults to shanghai" do
+    boundary_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @store,
+      external_order_id: "SHANGHAI-DAY-#{@token}",
+      external_order_number: "SHANGHAI-DAY-#{@token}",
+      order_key: "ozon:#{@store.id}:SHANGHAI-DAY-#{@token}",
+      order_status: "processing",
+      ordered_at: Time.zone.parse("2026-06-01 16:30:00"),
+      synced_at: Time.zone.parse("2026-06-01 16:35:00")
+    )
+
+    get "/orders",
+        params: {
+          q: {
+            platform_eq: "ozon",
+            ordered_at_gteq: "2026-06-02",
+            ordered_at_lteq_end_of_day: "2026-06-02"
+          }
+        },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "select[name=?]", "timezone" do
+      assert_select "option[value=?][selected]", "shanghai", "上海"
+      assert_select "option[value=?]", "utc", "UTC"
+      assert_select "option[value=?]", "russia", "俄区"
+    end
+    assert_select "a[href=?]", "/orders/#{boundary_order.id}"
+    assert_select "td", "2026-06-02 00:30"
+
+    sign_in @current_user
+
+    get "/orders",
+        params: {
+          timezone: "utc",
+          q: {
+            platform_eq: "ozon",
+            ordered_at_gteq: "2026-06-02",
+            ordered_at_lteq_end_of_day: "2026-06-02"
+          }
+        },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "option[value=?][selected]", "utc", "UTC"
+    assert_select "a[href=?]", "/orders/#{boundary_order.id}", count: 0
+  ensure
+    boundary_order&.destroy
   end
 
   test "index paginates order list" do
