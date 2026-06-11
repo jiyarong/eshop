@@ -39,7 +39,7 @@ production:
     schedule: every thursday at 5:00 in Asia/Shanghai
 
   weekly_profit_report_refresh_w1:
-    command: "GoogleSheets::WeeklyProfitReportRunner.run(weeks_ago: [1], clear_all: false)"
+    command: "GoogleSheets::WeeklyProfitReportRunner.run(weeks_ago: [1], clear: false)"
     schedule: every thursday at 5:30 in Asia/Shanghai
 
   wb_setup_sync:
