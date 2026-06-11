@@ -47,6 +47,8 @@ Rails.application.routes.draw do
     get "skus/:id/edit" => "skus#edit", as: :edit_sku
     get "sku_batches/new" => "sku_batches#new", as: :new_sku_batch
     get "sku_batches/:id/edit" => "sku_batches#edit", as: :edit_sku_batch
+    get "stores/new" => "stores#new", as: :new_store
+    get "stores/:id/edit" => "stores#edit", as: :edit_store
     get "purchase_orders/new" => "purchase_orders#new", as: :new_purchase_order
     get "purchase_orders/:id/edit" => "purchase_orders#edit", as: :edit_purchase_order
     get "cost_allocations/new" => "cost_allocations#new", as: :new_cost_allocation
@@ -55,6 +57,7 @@ Rails.application.routes.draw do
     resources :sku_categories, except: [:destroy]
     resources :skus, except: [:destroy]
     post "skus/:id" => "skus#update"
+    resources :stores, except: [:show, :destroy]
     resources :sku_batches, except: [:destroy]
     resources :suppliers, only: [:index, :show]
     resources :purchase_orders, except: [:destroy]

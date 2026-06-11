@@ -5,10 +5,16 @@ module Ec
     enum :platform,     { wb: 'wb', ozon: 'ozon', amazon: 'amazon' }, validate: true
     enum :company_type, { general: 'general', small: 'small' }, validate: true
 
+    REGISTRATION_COUNTRIES = {
+      "belarus" => "白俄罗斯",
+      "russia" => "俄罗斯"
+    }.freeze
+
     has_many :orders, class_name: "Ec::Order", foreign_key: :store_id, dependent: :restrict_with_error
 
     validates :platform,    presence: true
     validates :store_name,  presence: true
+    validates :registration_country, inclusion: { in: REGISTRATION_COUNTRIES.keys }, allow_blank: true
 
     scope :active, -> { where(is_active: true) }
 

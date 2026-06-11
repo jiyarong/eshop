@@ -1,0 +1,13 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal" role="dialog" aria-modal="true" aria-labelledby="store-modal-title">
+      <div class="erp-modal__header">
+        <h2 id="store-modal-title">编辑店铺</h2>
+        <button class="icon-button" type="button" aria-label="关闭" data-action="modal#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <%= render "form", store: @store, modal: true %>
+    </section>
+  </div>
+<% end %>

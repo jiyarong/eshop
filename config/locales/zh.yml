@@ -26,6 +26,7 @@ zh:
     sku_sales: "SKU 销量"
     costs: "成本"
     erp_skus: "SKU 管理"
+    erp_stores: "店铺设置"
     sku_categories: "SKU 类别"
     sku_batches: "ERP 批次"
     purchase_orders: "采购单"

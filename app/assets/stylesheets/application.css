@@ -1534,9 +1534,40 @@ textarea:focus {
   color: var(--suc-text);
 }
 
+.badge-pri {
+  background: var(--pri-bg);
+  color: var(--pri-text);
+}
+
 .badge-sec {
   background: var(--gray-100);
   color: var(--gray-600);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--color-success);
+}
+
+.dot-muted {
+  background: var(--gray-400);
+}
+
+.switch-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.switch-checkbox input {
+  min-height: auto;
+  margin-top: 2px;
 }
 
 .product-management {

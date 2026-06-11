@@ -1,0 +1,38 @@
+<%= form_with model: store, url: store.persisted? ? erp_store_path(store) : erp_stores_path, data: (local_assigns[:modal] ? { turbo_frame: "_top" } : {}) do |form| %>
+  <% if store.errors.any? %>
+    <div class="panel error-box">
+      <%= store.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <div class="report-form modal-form-grid">
+    <div class="field">
+      <%= form.label :platform, "平台" %>
+      <%= form.select :platform, store_platform_options %>
+    </div>
+    <div class="field">
+      <%= form.label :company_type, "公司规模类型" %>
+      <%= form.select :company_type, store_company_type_options %>
+    </div>
+    <div class="field modal-form-grid__wide">
+      <%= form.label :store_name, "名称" %>
+      <%= form.text_field :store_name, placeholder: "例如：明斯克 Ozon 店铺" %>
+    </div>
+    <div class="field">
+      <%= form.label :registration_country, "公司注册国" %>
+      <%= form.select :registration_country, store_country_options, { include_blank: "请选择" } %>
+    </div>
+    <div class="field">
+      <%= form.label :is_active, "是否激活" %>
+      <label class="switch-checkbox">
+        <%= form.check_box :is_active %>
+        <span>未激活的店铺不会进入 1.0 运营工作流。</span>
+      </label>
+    </div>
+    <div class="field modal-form-grid__wide">
+      <%= form.label :memo, "备注" %>
+      <%= form.text_field :memo %>
+    </div>
+    <%= form.submit "保存", class: "button" %>
+  </div>
+<% end %>

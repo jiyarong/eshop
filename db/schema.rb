@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_08_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_10_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -421,6 +421,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_000001) do
     t.text "ozon_performance_client_secret"
     t.integer "ozon_raw_account_id"
     t.string "platform", null: false
+    t.string "registration_country"
     t.string "store_name", null: false
     t.datetime "updated_at", null: false
     t.text "wb_api_token"
