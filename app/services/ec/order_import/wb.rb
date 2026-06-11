@@ -44,6 +44,8 @@ module Ec
       def upsert_order(raw_order, store)
         external_number = raw_order.g_number.presence || raw_order.srid.presence || raw_order.wb_order_id.to_s
         order_key = "wb:#{store.id}:#{external_number}"
+        stats_sale = stats_record_for(RawWb::StatsSale, raw_order)
+        stats_order = stats_record_for(RawWb::StatsOrder, raw_order)
         order = Ec::Order.find_or_initialize_by(platform: "wb", store: store, order_key: order_key)
         order.assign_attributes(
           external_order_id: raw_order.srid.presence || raw_order.wb_order_id.to_s,
@@ -53,6 +55,8 @@ module Ec
           source_substatus: raw_order.supplier_status,
           ordered_at: raw_order.created_at,
           in_process_at: raw_order.updated_at,
+          completed_at: stats_sale&.sale_date,
+          cancelled_at: stats_order&.is_cancel? ? stats_order.cancel_date : nil,
           buyer_city: raw_order.wb_office,
           payment_method_source: nil,
           source_payload: raw_order.attributes.slice(
@@ -127,6 +131,18 @@ module Ec
         STATUS_MAP[raw_order.supplier_status.to_s] ||
           STATUS_MAP[raw_order.wb_status.to_s] ||
           "unknown"
+      end
+
+      def stats_record_for(model, raw_order)
+        scope = model.where(account_id: raw_order.account_id)
+        if raw_order.srid.present?
+          record = scope.find_by(srid: raw_order.srid)
+          return record if record
+        end
+
+        return unless raw_order.g_number.present?
+
+        scope.where(g_number: raw_order.g_number).order(:id).first
       end
     end
   end

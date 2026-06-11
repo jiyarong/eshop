@@ -37,6 +37,8 @@
             <tr><th>源子状态</th><td><%= display_value(@order.source_substatus) %></td></tr>
             <tr><th>下单时间</th><td><%= @order.ordered_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
             <tr><th>处理时间</th><td><%= @order.in_process_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
+            <tr><th>完成时间</th><td><%= @order.completed_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
+            <tr><th>取消时间</th><td><%= @order.cancelled_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
             <tr><th>支付方式</th><td><%= display_value(@order.payment_method_source) %></td></tr>
             <tr><th>同步时间</th><td><%= @order.synced_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
           </tbody>

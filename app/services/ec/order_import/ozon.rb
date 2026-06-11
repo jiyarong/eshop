@@ -16,6 +16,7 @@ module Ec
         "not_accepted" => "cancelled",
         "sent_by_seller" => "shipped"
       }.freeze
+      CANCELLATION_TIME_KEYS = %w[cancelled_at canceled_at cancel_date cancelled_date cancellation_date].freeze
 
       def call
         total = 0
@@ -34,7 +35,7 @@ module Ec
         store = store_for(posting.account)
         return 0 unless store
 
-        order = upsert_order(posting, store)
+        order = upsert_order(posting, store, type)
         fulfillment = upsert_fulfillment(posting, store, order, type, source_type)
         import_items(posting, store, order, fulfillment, type)
         upsert_source_link(order, fulfillment, nil, source_type, posting.id, posting.posting_number)
@@ -46,7 +47,7 @@ module Ec
           Ec::Store.find_by(platform: "ozon", ozon_client_id: account.client_id)
       end
 
-      def upsert_order(posting, store)
+      def upsert_order(posting, store, type)
         order_key = "ozon:#{store.id}:#{posting.order_number.presence || posting.order_id || posting.posting_number}"
         order = Ec::Order.find_or_initialize_by(platform: "ozon", store: store, order_key: order_key)
         order.assign_attributes(
@@ -57,6 +58,8 @@ module Ec
           source_substatus: posting.substatus,
           ordered_at: posting.created_at,
           in_process_at: posting.in_process_at,
+          completed_at: completed_at_for(posting, type),
+          cancelled_at: cancelled_at_for(posting),
           buyer_city: posting.analytics_data&.dig("city"),
           payment_method_source: posting.analytics_data&.dig("payment_type_group_name"),
           is_legal_entity: posting.analytics_data&.dig("is_legal") || false,
@@ -83,8 +86,8 @@ module Ec
           delivery_type_source: posting.analytics_data&.dig("delivery_type"),
           tracking_number: type == "fbs" ? posting.tracking_number : nil,
           shipped_at: type == "fbs" ? posting.shipment_date : nil,
-          delivered_at: type == "fbs" ? posting.delivering_date : posting.fact_delivery_date,
-          cancelled_at: nil,
+          delivered_at: completed_at_for(posting, type),
+          cancelled_at: cancelled_at_for(posting),
           cancel_reason_source: posting.respond_to?(:cancel_reason_id) ? posting.cancel_reason_id&.to_s : nil,
           raw_source_type: source_type,
           raw_source_id: posting.id,
@@ -155,6 +158,30 @@ module Ec
 
       def normalized_status(status)
         STATUS_MAP.fetch(status.to_s, "unknown")
+      end
+
+      def completed_at_for(posting, type)
+        return unless normalized_status(posting.status) == "delivered"
+
+        type == "fbs" ? posting.delivering_date : posting.fact_delivery_date
+      end
+
+      def cancelled_at_for(posting)
+        return unless normalized_status(posting.status) == "cancelled"
+
+        [posting.raw_json, posting.raw_json&.dig("cancellation"), posting.try(:cancellation)].filter_map do |payload|
+          cancellation_time_from(payload)
+        end.first
+      end
+
+      def cancellation_time_from(payload)
+        return unless payload.respond_to?(:[])
+
+        CANCELLATION_TIME_KEYS.each do |key|
+          value = payload[key] || payload[key.to_sym]
+          return value if value.present?
+        end
+        nil
       end
     end
   end

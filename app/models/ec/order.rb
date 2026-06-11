@@ -27,6 +27,8 @@ module Ec
     def self.ransackable_attributes(_auth_object = nil)
       %w[
         buyer_city
+        cancelled_at
+        completed_at
         external_order_id
         external_order_number
         in_process_at

@@ -38,6 +38,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       source_substatus: "posting_on_way_to_city",
       ordered_at: Time.zone.parse("2026-06-02 03:54:10"),
       in_process_at: Time.zone.parse("2026-06-02 03:54:24"),
+      completed_at: Time.zone.parse("2026-06-04 10:00:00"),
+      cancelled_at: Time.zone.parse("2026-06-05 11:30:00"),
       buyer_city: "Орск",
       buyer_country: "RU",
       payment_method_source: "SberPay",
@@ -322,6 +324,10 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "订单 0128619527-0157-LONG-ORDER"
+    assert_select "th", "完成时间"
+    assert_select "td", "2026-06-04 10:00"
+    assert_select "th", "取消时间"
+    assert_select "td", "2026-06-05 11:30"
     assert_select "h2", "履约与追踪"
     assert_select "th", { text: "履约单号", count: 0 }
     assert_select "td", { text: "0128619527-0157-1", count: 0 }

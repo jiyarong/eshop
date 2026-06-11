@@ -36,8 +36,8 @@ module Ec
         posting_number: "OZON-FBO-#{@token}",
         order_id: 100_001,
         order_number: "OZON-ORDER-#{@token}",
-        status: "delivering",
-        substatus: "posting_on_way_to_city",
+        status: "delivered",
+        substatus: "posting_received",
         analytics_data: {
           "city" => "Орск",
           "warehouse_id" => 180_445,
@@ -84,8 +84,8 @@ module Ec
         posting_number: "OZON-FBS-#{@token}",
         order_id: 100_002,
         order_number: "OZON-ORDER-FBS-#{@token}",
-        status: "awaiting_packaging",
-        substatus: "posting_created",
+        status: "delivering",
+        substatus: "posting_on_way_to_city",
         delivery_method_name: "Ozon Rocket",
         tracking_number: "TRACK-#{@token}",
         analytics_data: { "city" => "Минск", "payment_type_group_name" => "Card" },
@@ -93,6 +93,7 @@ module Ec
         raw_json: { "posting_number" => "OZON-FBS-#{@token}", "status" => "awaiting_packaging" },
         in_process_at: Time.zone.parse("2026-06-03 08:00:00"),
         shipment_date: Time.zone.parse("2026-06-03 18:00:00"),
+        delivering_date: Time.zone.parse("2026-06-04 09:00:00"),
         created_at: Time.zone.parse("2026-06-03 07:55:00"),
         synced_at: Time.zone.parse("2026-06-03 08:10:00")
       )
@@ -130,6 +131,28 @@ module Ec
         updated_at: Time.zone.parse("2026-06-04 09:05:00"),
         synced_at: Time.zone.parse("2026-06-04 09:10:00")
       )
+      RawWb::StatsOrder.create!(
+        account: @wb_account,
+        g_number: @wb_order.g_number,
+        order_date: @wb_order.created_at,
+        last_change_date: Time.zone.parse("2026-06-05 10:00:00"),
+        supplier_article: @wb_order.article,
+        barcode: @wb_order.barcode,
+        is_cancel: true,
+        cancel_date: Time.zone.parse("2026-06-05 10:30:00"),
+        srid: @wb_order.srid,
+        synced_at: Time.zone.parse("2026-06-05 10:35:00")
+      )
+      RawWb::StatsSale.create!(
+        account: @wb_account,
+        g_number: @wb_order.g_number,
+        sale_date: Time.zone.parse("2026-06-06 11:00:00"),
+        last_change_date: Time.zone.parse("2026-06-06 11:05:00"),
+        supplier_article: @wb_order.article,
+        barcode: @wb_order.barcode,
+        srid: @wb_order.srid,
+        synced_at: Time.zone.parse("2026-06-06 11:10:00")
+      )
     end
 
     teardown do
@@ -146,6 +169,8 @@ module Ec
       ].compact).delete_all
       Ec::Order.where(store_id: [@ozon_store&.id, @wb_store&.id]).delete_all
       RawOzon::PostingItem.where(account_id: @ozon_account&.id).delete_all
+      RawWb::StatsSale.where(account_id: @wb_account&.id).delete_all
+      RawWb::StatsOrder.where(account_id: @wb_account&.id).delete_all
       @ozon_fbo&.destroy
       @ozon_fbs&.destroy
       @wb_order&.destroy
@@ -162,7 +187,9 @@ module Ec
       assert_operator result[:wb], :>=, 1
 
       ozon_order = Ec::Order.find_by!(platform: "ozon", external_order_number: "OZON-ORDER-#{@token}")
-      assert_equal "shipped", ozon_order.order_status
+      assert_equal "delivered", ozon_order.order_status
+      assert_equal Time.zone.parse("2026-06-04 10:00:00"), ozon_order.completed_at
+      assert_nil ozon_order.cancelled_at
       assert_equal "Орск", ozon_order.buyer_city
       assert_equal "SberPay", ozon_order.payment_method_source
       assert_equal 1, ozon_order.fulfillments.count
@@ -173,12 +200,16 @@ module Ec
       assert_equal "3902460130", ozon_order.items.first.platform_sku_id
 
       ozon_fbs_order = Ec::Order.find_by!(platform: "ozon", external_order_number: "OZON-ORDER-FBS-#{@token}")
-      assert_equal "processing", ozon_fbs_order.order_status
+      assert_equal "shipped", ozon_fbs_order.order_status
+      assert_nil ozon_fbs_order.completed_at
       assert_equal "fbs", ozon_fbs_order.fulfillments.first.fulfillment_type
+      assert_nil ozon_fbs_order.fulfillments.first.delivered_at
       assert_equal "TRACK-#{@token}", ozon_fbs_order.fulfillments.first.tracking_number
 
       wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-G-#{@token}")
       assert_equal "processing", wb_order.order_status
+      assert_equal Time.zone.parse("2026-06-06 11:00:00"), wb_order.completed_at
+      assert_equal Time.zone.parse("2026-06-05 10:30:00"), wb_order.cancelled_at
       assert_equal "WB-SRID-#{@token}", wb_order.external_order_id
       assert_equal "WB707", wb_order.items.first.offer_id
       assert_equal @wb_order, wb_order.source_links.first.source
