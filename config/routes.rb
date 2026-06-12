@@ -16,6 +16,7 @@ Rails.application.routes.draw do
 
   get "reports/inventory" => "reports#inventory"
   get "reports/skus"      => "reports#skus"
+  get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   get "reports/sku_sales" => "reports#sku_sales"
   get "reports/costs"     => "reports#costs"
 

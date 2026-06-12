@@ -1,6 +1,8 @@
 class ReportsController < ApplicationController
-  helper_method :report_value, :sku_sales_series_name
+  helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales
   before_action -> { require_permission!(:view_reports) }
+
+  SKU_DETAIL_TABS = %w[basic costs stores trend].freeze
 
   def inventory
     @snapshots = Ec::InventorySnapshot.includes(:sku).order(:sku_code, :platform, :account_id)
@@ -9,6 +11,48 @@ class ReportsController < ApplicationController
 
   def skus
     @skus = Ec::Sku.order(:sku_code)
+  end
+
+  def sku_detail
+    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments).find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @active_tab = params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
+    @stores = Ec::Store.order(:platform, :store_name)
+    @sku_cost = @sku.cost
+    @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
+    @ozon_costs = @sku.platform_costs.select { |cost| cost.platform == "ozon" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
+    @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
+
+    @overview_from_date = 30.days.ago.to_date
+    @overview_to_date = Time.zone.today
+    @overview_rows = sku_detail_sales_rows(
+      sku_codes: [@sku.sku_code],
+      from_date: @overview_from_date,
+      to_date: @overview_to_date,
+      period: "day",
+      grain: "store"
+    )
+    @overview_summary = build_sku_sales_summary(@overview_rows)
+    @overview_store_count = @overview_rows.map { |row| [row[:platform], row[:store_name]] }.uniq.count
+
+    @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
+    @to_date = parse_report_date(params[:to_date]) || Time.zone.today
+    @period = params[:period].presence_in(%w[day week month]) || "day"
+    @grain = params[:grain].presence_in(%w[store platform sku]) || "store"
+    @selected_platform = params[:platform].presence_in(Ec::Order::PLATFORMS.values)
+    @selected_store_id = params[:store_id].presence
+
+    @sku_sales_rows = sku_detail_sales_rows(
+      sku_codes: [@sku.sku_code],
+      from_date: @from_date,
+      to_date: @to_date,
+      period: sku_detail_sales_period,
+      grain: @grain,
+      platform: @selected_platform,
+      store_id: @selected_store_id
+    )
+    @sku_sales_summary = build_sku_sales_summary(@sku_sales_rows)
+    @sku_sales_chart_series = build_sku_sales_chart_series(@sku_sales_rows)
+    @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
   end
 
   def costs
@@ -50,52 +94,85 @@ class ReportsController < ApplicationController
     nil
   end
 
+  def default_sku_detail_from_date
+    @active_tab == "trend" ? 90.days.ago.to_date : 30.days.ago.to_date
+  end
+
+  def sku_detail_sales_period
+    @active_tab == "stores" ? "range" : @period
+  end
+
+  def sku_detail_tab_path(tab)
+    report_sku_path(@sku.sku_code, request.query_parameters.merge(tab: tab).except(:sku_code))
+  end
+
   def build_sku_sales_rows
     rows = sku_sales_relation.map do |row|
-      {
-        period_start: row.period_start.to_date,
-        sku_code: row.sku_code,
-        product_name: row.product_name,
-        platform: row.platform,
-        store_name: row.store_name,
-        sales_quantity: row.sales_quantity.to_i,
-        return_quantity: row.return_quantity.to_i,
-        net_quantity: row.net_quantity.to_i,
-        order_count: row.order_count.to_i,
-        gross_revenue: row.gross_revenue.to_d,
-        payout: row.payout.to_d,
-        commission: row.commission.to_d,
-        discount: row.discount.to_d,
-        average_unit_price: row.average_unit_price.to_d,
-        fulfillment_types: row.fulfillment_types.to_s
-      }
+      sku_sales_row_hash(row)
     end
 
     rows.sort_by { |row| [row[:period_start], row[:sku_code].to_s, row[:platform].to_s, row[:store_name].to_s] }
   end
 
-  def sku_sales_relation
+  def sku_detail_sales_rows(sku_codes:, from_date:, to_date:, period:, grain:, platform: nil, store_id: nil)
+    rows = sku_sales_relation_for(
+      sku_codes: sku_codes,
+      from_date: from_date,
+      to_date: to_date,
+      period: period,
+      grain: grain,
+      platform: platform,
+      store_id: store_id
+    ).map do |row|
+      sku_sales_row_hash(row)
+    end
+
+    rows.sort_by { |row| [row[:period_start], row[:sku_code].to_s, row[:platform].to_s, row[:store_name].to_s] }
+  end
+
+  def sku_sales_row_hash(row)
+    {
+      period_start: row.period_start.to_date,
+      sku_code: row.sku_code,
+      product_name: row.product_name,
+      platform: row.platform,
+      store_name: row.store_name,
+      sales_quantity: row.sales_quantity.to_i,
+      return_quantity: row.return_quantity.to_i,
+      net_quantity: row.net_quantity.to_i,
+      order_count: row.order_count.to_i,
+      gross_revenue: row.gross_revenue.to_d,
+      payout: row.payout.to_d,
+      commission: row.commission.to_d,
+      discount: row.discount.to_d,
+      average_unit_price: row.average_unit_price.to_d,
+      fulfillment_types: row.fulfillment_types.to_s,
+      last_ordered_at: row.respond_to?(:last_ordered_at) ? row.last_ordered_at : nil
+    }
+  end
+
+  def sku_sales_relation_for(sku_codes:, from_date:, to_date:, period:, grain:, platform: nil, store_id: nil)
     scope = Ec::OrderItem
       .joins(:order, :store)
       .left_joins(:fulfillment)
       .joins("LEFT JOIN ec_skus ON ec_skus.sku_code = ec_order_items.sku_code")
-      .where(ec_orders: { ordered_at: @from_date.beginning_of_day..@to_date.end_of_day })
-    if @selected_sku_codes.present?
-      scope = scope.where("ec_order_items.sku_code IN (:skus) OR ec_order_items.offer_id IN (:skus)", skus: @selected_sku_codes)
+      .where(ec_orders: { ordered_at: from_date.beginning_of_day..to_date.end_of_day })
+    if sku_codes.present?
+      scope = scope.where("ec_order_items.sku_code IN (:skus) OR ec_order_items.offer_id IN (:skus)", skus: sku_codes)
     end
-    scope = scope.where(ec_order_items: { platform: @selected_platform }) if @selected_platform.present?
-    scope = scope.where(ec_order_items: { store_id: @selected_store_id }) if @selected_store_id.present?
+    scope = scope.where(ec_order_items: { platform: platform }) if platform.present?
+    scope = scope.where(ec_order_items: { store_id: store_id }) if store_id.present?
 
-    period_sql = "DATE_TRUNC('#{@period}', ec_orders.ordered_at)"
+    period_sql = period == "range" ? "'#{from_date}'::date" : "DATE_TRUNC('#{period}', ec_orders.ordered_at)"
     sku_sql = "COALESCE(ec_order_items.sku_code, ec_order_items.offer_id, ec_order_items.platform_sku_id)"
-    platform_sql = @grain == "sku" ? "NULL" : "ec_order_items.platform"
-    store_sql = @grain == "store" ? "ec_stores.store_name" : "NULL"
+    platform_sql = grain == "sku" ? "NULL" : "ec_order_items.platform"
+    store_sql = grain == "store" ? "ec_stores.store_name" : "NULL"
     group_columns = ["period_start", sku_sql]
-    group_columns << "ec_order_items.platform" unless @grain == "sku"
-    group_columns << "ec_stores.store_name" if @grain == "store"
+    group_columns << "ec_order_items.platform" unless grain == "sku"
+    group_columns << "ec_stores.store_name" if grain == "store"
     order_columns = ["period_start ASC", "sku_code ASC"]
-    order_columns << "platform ASC" unless @grain == "sku"
-    order_columns << "store_name ASC" if @grain == "store"
+    order_columns << "platform ASC" unless grain == "sku"
+    order_columns << "store_name ASC" if grain == "store"
     sales_case = "CASE WHEN ec_orders.order_status = 'returned' THEN 0 ELSE ec_order_items.quantity END"
     return_case = "CASE WHEN ec_orders.order_status = 'returned' THEN ec_order_items.quantity ELSE 0 END"
 
@@ -115,10 +192,23 @@ class ReportsController < ApplicationController
         "SUM(COALESCE(ec_order_items.commission_amount, 0)) AS commission",
         "SUM(COALESCE(ec_order_items.discount_amount, 0)) AS discount",
         "AVG(ec_order_items.unit_price) AS average_unit_price",
-        "STRING_AGG(DISTINCT ec_order_fulfillments.fulfillment_type, ' / ') AS fulfillment_types"
+        "STRING_AGG(DISTINCT ec_order_fulfillments.fulfillment_type, ' / ') AS fulfillment_types",
+        "MAX(ec_orders.ordered_at) AS last_ordered_at"
       )
       .group(*group_columns)
       .order(Arel.sql(order_columns.join(", ")))
+  end
+
+  def sku_sales_relation
+    sku_sales_relation_for(
+      sku_codes: @selected_sku_codes,
+      from_date: @from_date,
+      to_date: @to_date,
+      period: @period,
+      grain: @grain,
+      platform: @selected_platform,
+      store_id: @selected_store_id
+    )
   end
 
   def build_sku_sales_summary(rows)

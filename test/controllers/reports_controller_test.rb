@@ -260,10 +260,127 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "SKU 主数据"
+    assert_select "a[href=?]", "/reports/skus/#{@sku_code}", @sku_code
     assert_select "td", @sku_code
     assert_select "td", "测试商品"
     assert_select "td", "Тестовый товар"
     assert_select ".status-pill", "上架"
+  end
+
+  test "sku detail renders basic configuration by default" do
+    assignment = Ec::SkuStoreAssignment.create!(
+      sku_code: @sku.sku_code,
+      store_key: "ozon1_nevastal",
+      platform: "ozon",
+      external_id: "EXT-#{@sku_code}",
+      listed_at: Date.new(2026, 6, 1),
+      owner_name: "运营 #{@sku_code}",
+      is_active: true
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", @sku.sku_code
+    assert_select ".sku-detail-tabs a[aria-current='page']", "基础配置"
+    assert_select "dt", "中文名"
+    assert_select "dd", "测试商品"
+    assert_select "dt", "俄文名"
+    assert_select "dd", "Тестовый товар"
+    assert_select "td", assignment.store_display_name
+    assert_select "td", "EXT-#{@sku_code}"
+    assert_select "td", "2026-06-01"
+  ensure
+    assignment&.destroy
+  end
+
+  test "sku detail renders cost tab" do
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "costs" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "成本情况"
+    assert_select "h2", "SKU 基础成本"
+    assert_select "h2", "WB 成本"
+    assert_select "h2", "Ozon 成本"
+    assert_select "td", "fbo"
+    assert_select "td", "fbs"
+    assert_select "td", "1000.00"
+    assert_select "td", "1200.00"
+  end
+
+  test "sku detail renders store sales tab without other sku data" do
+    extra_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "EXTRA-SALE-#{@sku_code}",
+      external_order_number: "EXTRA-SALE-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:EXTRA-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-08 09:00:00"),
+      synced_at: Time.zone.parse("2026-06-08 09:10:00")
+    )
+    extra_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "EXTRA-SALE-I-#{@sku_code}",
+      platform_sku_id: "OZON-SKU-#{@sku_code}",
+      offer_id: @sku.sku_code,
+      sku_code: @sku.sku_code,
+      product_name_source: "销量统计测试商品",
+      quantity: 5,
+      unit_price: 100,
+      payout: 400,
+      commission_amount: 50,
+      discount_amount: 25,
+      currency_code: "BYN"
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: {
+      tab: "stores",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "各店铺销量情况"
+    assert_select "td", { text: "销量统计 Ozon 店 #{@sku_code}", count: 1 }
+    assert_select "td", "销量统计 WB 店 #{@sku_code}"
+    assert_select "td", "Ozon"
+    assert_select "td", "WB"
+    assert_select "td", "6"
+    assert_select "td", "3"
+    assert_select "td", { text: @second_sku.sku_code, count: 0 }
+    assert_select "td", { text: "第二个销量统计测试商品", count: 0 }
+  ensure
+    extra_order&.items&.delete_all
+    extra_order&.destroy
+  end
+
+  test "sku detail renders sales trend tab" do
+    get "/reports/skus/#{@sku.sku_code}", params: {
+      tab: "trend",
+      period: "week",
+      grain: "platform",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "销量历史趋势"
+    assert_select "script[src*=?]", "echarts"
+    assert_select "#sku-detail-sales-chart[data-chart='sku-detail-sales']"
+    assert_select "script#sku-detail-sales-chart-data[type=?]", "application/json", /净销量/
+    assert_select "script#sku-detail-sales-chart-data[type=?]", "application/json", /销售额/
+    assert_select "td", @sku.sku_code
+    assert_select "td", "2026-06-01"
+    assert_select "td", "2026-06-08"
+    assert_select "td", { text: @second_sku.sku_code, count: 0 }
+  end
+
+  test "sku detail returns not found for missing sku" do
+    get "/reports/skus/MISSING-#{@sku_code}", headers: { "Accept" => "text/html" }
+
+    assert_response :not_found
   end
 
   test "costs report renders sku wb and ozon costs" do

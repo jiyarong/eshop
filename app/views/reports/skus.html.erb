@@ -14,7 +14,7 @@
       <tbody>
         <% @skus.each do |sku| %>
           <tr>
-            <td><%= sku.sku_code %></td>
+            <td><%= link_to sku.sku_code, report_sku_path(sku.sku_code) %></td>
             <td><%= sku.product_name %></td>
             <td><%= sku.product_name_ru %></td>
             <td>

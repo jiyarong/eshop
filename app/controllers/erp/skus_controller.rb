@@ -38,6 +38,7 @@ module Erp
     end
 
     def show
+      redirect_to report_sku_path(@sku.sku_code)
     end
 
     def new

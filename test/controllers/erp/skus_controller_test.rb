@@ -111,12 +111,10 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_no_match @inactive_sku.sku_code, response.body
   end
 
-  test "show renders sku detail" do
+  test "show redirects to sku report detail" do
     get "/erp/skus/#{@sku.id}", headers: { "Accept" => "text/html" }
 
-    assert_response :success
-    assert_select "h1", @sku.sku_code
-    assert_select "dt", "颜色"
+    assert_redirected_to "/reports/skus/#{@sku.sku_code}"
   end
 
   test "new renders form" do
