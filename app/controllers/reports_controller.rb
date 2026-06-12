@@ -1,6 +1,7 @@
 class ReportsController < ApplicationController
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales
   before_action -> { require_permission!(:view_reports) }
+  before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
 
   SKU_DETAIL_TABS = %w[basic costs stores trend].freeze
 
@@ -14,13 +15,61 @@ class ReportsController < ApplicationController
   end
 
   def sku_detail
-    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments).find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @active_tab = params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
+    load_sku_detail
+  end
+
+  def new_sku_predicted_cost
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @predicted_cost = @sku.predicted_costs.new(cost_currency: "CNY", effective_from: Time.zone.today)
+    render :new_sku_predicted_cost_modal
+  end
+
+  def create_sku_predicted_cost
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    predicted_cost = @sku.predicted_costs.new(sku_predicted_cost_params)
+
+    if predicted_cost.save
+      redirect_to report_sku_path(@sku.sku_code, tab: "costs")
+    else
+      @predicted_cost = predicted_cost
+      render :new_sku_predicted_cost_modal, status: :unprocessable_entity
+    end
+  end
+
+  def costs
+    @sku_costs = Ec::SkuCost.includes(:sku).order(:sku_code)
+    @wb_costs = Ec::SkuPlatformCost.includes(:sku, :cost).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
+    @ozon_costs = Ec::SkuPlatformCost.includes(:sku, :cost).where(platform: "ozon").order(:sku_code, :delivery_mode, :company_type)
+  end
+
+  def sku_sales
+    @period = params[:period].presence_in(%w[day week month]) || "day"
+    @grain = params[:grain].presence_in(%w[store platform sku]) || "store"
+    @from_date = parse_report_date(params[:from_date]) || 30.days.ago.to_date
+    @to_date = parse_report_date(params[:to_date]) || Time.zone.today
+    @stores = Ec::Store.order(:platform, :store_name)
+    @skus = Ec::Sku.order(:sku_code)
+    @selected_sku_codes = selected_sku_codes
+    @selected_platform = params[:platform].presence_in(Ec::Order::PLATFORMS.values)
+    @selected_store_id = params[:store_id].presence
+    @sku_sales_rows = build_sku_sales_rows
+    @sku_sales_summary = build_sku_sales_summary(@sku_sales_rows)
+    @sku_sales_chart_series = build_sku_sales_chart_series(@sku_sales_rows)
+    @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
+  end
+
+  private
+
+  def load_sku_detail(active_tab: nil)
+    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments, :predicted_costs).find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
     @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @ozon_costs = @sku.platform_costs.select { |cost| cost.platform == "ozon" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
+    @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
+    @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: Time.zone.today)
 
     @overview_from_date = 30.days.ago.to_date
     @overview_to_date = Time.zone.today
@@ -55,29 +104,9 @@ class ReportsController < ApplicationController
     @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
   end
 
-  def costs
-    @sku_costs = Ec::SkuCost.includes(:sku).order(:sku_code)
-    @wb_costs = Ec::SkuPlatformCost.includes(:sku, :cost).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
-    @ozon_costs = Ec::SkuPlatformCost.includes(:sku, :cost).where(platform: "ozon").order(:sku_code, :delivery_mode, :company_type)
+  def sku_predicted_cost_params
+    params.require(:ec_sku_predicted_cost).permit(:cost_money, :cost_currency, :effective_from, :effective_to, :note)
   end
-
-  def sku_sales
-    @period = params[:period].presence_in(%w[day week month]) || "day"
-    @grain = params[:grain].presence_in(%w[store platform sku]) || "store"
-    @from_date = parse_report_date(params[:from_date]) || 30.days.ago.to_date
-    @to_date = parse_report_date(params[:to_date]) || Time.zone.today
-    @stores = Ec::Store.order(:platform, :store_name)
-    @skus = Ec::Sku.order(:sku_code)
-    @selected_sku_codes = selected_sku_codes
-    @selected_platform = params[:platform].presence_in(Ec::Order::PLATFORMS.values)
-    @selected_store_id = params[:store_id].presence
-    @sku_sales_rows = build_sku_sales_rows
-    @sku_sales_summary = build_sku_sales_summary(@sku_sales_rows)
-    @sku_sales_chart_series = build_sku_sales_chart_series(@sku_sales_rows)
-    @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
-  end
-
-  private
 
   def report_value(value)
     return "-" if value.nil? || value == ""

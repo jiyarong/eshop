@@ -283,9 +283,9 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "select[name=?]", "timezone" do
-      assert_select "option[value=?][selected]", "shanghai", "上海"
-      assert_select "option[value=?]", "utc", "UTC"
-      assert_select "option[value=?]", "russia", "俄区"
+      assert_select "option[value=?][selected]", "shanghai", "上海 (UTC+08:00)"
+      assert_select "option[value=?]", "utc", "UTC (UTC+00:00)"
+      assert_select "option[value=?]", "russia", "莫斯科 (UTC+03:00)"
     end
     assert_select "a[href=?]", "/orders/#{boundary_order.id}"
     assert_select "td", "2026-06-02 00:30"
@@ -304,10 +304,23 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "option[value=?][selected]", "utc", "UTC"
+    assert_select "option[value=?][selected]", "utc", "UTC (UTC+00:00)"
     assert_select "a[href=?]", "/orders/#{boundary_order.id}", count: 0
   ensure
     boundary_order&.destroy
+  end
+
+  test "index renders date filters with replaceable date picker controller" do
+    get "/orders", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".order-date-timezone label[for=?]", "timezone", "日期时区"
+    assert_select ".order-date-timezone select[name=?]", "timezone"
+    assert_select "[data-controller='date-picker'][data-date-picker-date-format-value='Y-m-d']", count: 4
+    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[ordered_at_gteq]"
+    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[ordered_at_lteq_end_of_day]"
+    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[in_process_at_gteq]"
+    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[in_process_at_lteq_end_of_day]"
   end
 
   test "index paginates order list" do

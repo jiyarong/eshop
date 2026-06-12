@@ -1,8 +1,8 @@
 class OrdersController < ApplicationController
   ORDER_TIMEZONES = {
-    "utc" => { label: "UTC", name: "UTC" },
-    "shanghai" => { label: "上海", name: "Asia/Shanghai" },
-    "russia" => { label: "俄区", name: "Europe/Moscow" }
+    "utc" => { label: "UTC (UTC+00:00)", name: "UTC" },
+    "shanghai" => { label: "上海 (UTC+08:00)", name: "Asia/Shanghai" },
+    "russia" => { label: "莫斯科 (UTC+03:00)", name: "Europe/Moscow" }
   }.freeze
   DEFAULT_ORDER_TIMEZONE = "shanghai"
 

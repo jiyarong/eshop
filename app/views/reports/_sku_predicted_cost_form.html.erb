@@ -1,0 +1,36 @@
+<%= form_with model: predicted_cost, scope: :ec_sku_predicted_cost, url: report_sku_predicted_costs_path(sku.sku_code), method: :post, data: (local_assigns[:modal] ? { turbo_frame: "_top" } : {}) do |form| %>
+  <% if predicted_cost.errors.any? %>
+    <div class="panel error-box">
+      <%= predicted_cost.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <div class="report-form modal-form-grid">
+    <div class="field">
+      <%= form.label :cost_money, "预测成本" %>
+      <%= form.number_field :cost_money, step: "0.01", min: "0.01" %>
+    </div>
+    <div class="field">
+      <%= form.label :cost_currency, "币种" %>
+      <%= form.select :cost_currency, Ec::SkuPredictedCost::CURRENCIES.map { |currency| [currency, currency] } %>
+    </div>
+    <div class="field">
+      <%= form.label :effective_from, "开始日期" %>
+      <%= form.date_field :effective_from %>
+    </div>
+    <div class="field">
+      <%= form.label :effective_to, "结束日期" %>
+      <%= form.date_field :effective_to %>
+    </div>
+    <div class="field modal-form-grid__wide">
+      <%= form.label :note, "备注" %>
+      <%= form.text_field :note %>
+    </div>
+    <div class="modal-form-actions">
+      <%= form.submit "保存", class: "button" %>
+      <% if local_assigns[:modal] %>
+        <button class="button button-secondary" type="button" data-action="modal#close">取消</button>
+      <% end %>
+    </div>
+  </div>
+<% end %>

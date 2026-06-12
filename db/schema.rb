@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -370,6 +370,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.decimal "wb_logistics_base_rub", precision: 8, scale: 2
     t.decimal "wb_return_rate", precision: 8, scale: 6
     t.index ["sku_code", "platform", "delivery_mode", "company_type"], name: "idx_ec_sku_platform_costs_unique", unique: true
+  end
+
+  create_table "ec_sku_predicted_costs", force: :cascade do |t|
+    t.string "cost_currency", default: "CNY", null: false
+    t.decimal "cost_money", precision: 12, scale: 4, null: false
+    t.datetime "created_at", null: false
+    t.date "effective_from", null: false
+    t.date "effective_to"
+    t.text "note"
+    t.string "sku_code", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sku_code", "effective_from"], name: "idx_ec_sku_predicted_costs_sku_from"
   end
 
   create_table "ec_sku_store_assignments", force: :cascade do |t|
@@ -1770,6 +1782,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"

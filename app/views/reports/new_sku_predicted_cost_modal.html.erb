@@ -1,0 +1,13 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal" role="dialog" aria-modal="true" aria-labelledby="sku-predicted-cost-modal-title">
+      <div class="erp-modal__header">
+        <h2 id="sku-predicted-cost-modal-title">新增预测成本</h2>
+        <button class="icon-button" type="button" aria-label="关闭" data-action="modal#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <%= render "sku_predicted_cost_form", sku: @sku, predicted_cost: @predicted_cost, modal: true %>
+    </section>
+  </div>
+<% end %>

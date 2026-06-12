@@ -61,6 +61,14 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_match(/\.hd-inner\s*\{[^}]*width:\s*100%/m, css)
   end
 
+  test "javascript entry does not emit competing application css build" do
+    js = Rails.root.join("app/javascript/application.js").read
+    css = Rails.root.join("app/assets/stylesheets/application.css").read
+
+    assert_no_match(/import\s+["'][^"']+\.css["']/, js)
+    assert_includes css, '@import "flatpickr/dist/flatpickr.css";'
+  end
+
   test "locale switcher supports russian and persists selected locale" do
     get "/reports/inventory", params: { locale: "ru" }, headers: { "Accept" => "text/html" }
 

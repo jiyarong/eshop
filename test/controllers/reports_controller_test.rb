@@ -234,6 +234,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     @sales_store&.destroy
     @wb_sales_store&.destroy
     Ec::SkuPlatformCost.where(sku_code: @sku.sku_code).delete_all
+    Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuPredictedCost)
     Ec::SkuCost.where(sku_code: @sku.sku_code).delete_all
     Ec::InventorySnapshot.where(sku_code: @sku.sku_code).delete_all
     Ec::InventoryTotal.where(sku_code: @sku.sku_code).delete_all
@@ -295,10 +296,28 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "sku detail renders cost tab" do
+    Ec::SkuPredictedCost.create!(
+      sku_code: @sku.sku_code,
+      cost_money: 15.75,
+      cost_currency: "USD",
+      effective_from: Date.new(2026, 6, 1),
+      effective_to: Date.new(2026, 6, 30),
+      note: "首批测算"
+    )
+
     get "/reports/skus/#{@sku.sku_code}", params: { tab: "costs" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select ".sku-detail-tabs a[aria-current='page']", "成本情况"
+    assert_select "h2", "预测成本配置"
+    assert_select "turbo-frame#erp_modal"
+    assert_select "a[href=?][data-turbo-frame=?]", "/reports/skus/#{@sku.sku_code}/predicted_costs/new", "erp_modal", "新增预测成本"
+    assert_select "form[action=?]", "/reports/skus/#{@sku.sku_code}/predicted_costs", count: 0
+    assert_select "td", "15.75"
+    assert_select "td", "USD"
+    assert_select "td", "2026-06-01"
+    assert_select "td", "2026-06-30"
+    assert_select "td", "首批测算"
     assert_select "h2", "SKU 基础成本"
     assert_select "h2", "WB 成本"
     assert_select "h2", "Ozon 成本"
@@ -306,6 +325,40 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "fbs"
     assert_select "td", "1000.00"
     assert_select "td", "1200.00"
+  end
+
+  test "new sku predicted cost renders modal form" do
+    get "/reports/skus/#{@sku.sku_code}/predicted_costs/new", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal[role='dialog']"
+    assert_select "h2", "新增预测成本"
+    assert_select "form[action=?][method=?][data-turbo-frame=?]", "/reports/skus/#{@sku.sku_code}/predicted_costs", "post", "_top"
+    assert_select "input[name='ec_sku_predicted_cost[cost_money]']"
+    assert_select "select[name='ec_sku_predicted_cost[cost_currency]'] option[selected]", "CNY"
+    assert_select "input[name='ec_sku_predicted_cost[effective_from]']"
+  end
+
+  test "creates sku predicted cost with default currency from cost tab" do
+    assert_difference -> { Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).count }, 1 do
+      post "/reports/skus/#{@sku.sku_code}/predicted_costs", params: {
+        ec_sku_predicted_cost: {
+          cost_money: "18.50",
+          effective_from: "2026-07-01",
+          effective_to: "2026-07-31",
+          note: "旺季预测"
+        }
+      }, headers: { "Accept" => "text/html" }
+    end
+
+    created = Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).order(:created_at).last
+    assert_equal 18.50.to_d, created.cost_money
+    assert_equal "CNY", created.cost_currency
+    assert_equal Date.new(2026, 7, 1), created.effective_from
+    assert_equal Date.new(2026, 7, 31), created.effective_to
+    assert_equal "旺季预测", created.note
+    assert_redirected_to "/reports/skus/#{@sku.sku_code}?tab=costs"
   end
 
   test "sku detail renders store sales tab without other sku data" do

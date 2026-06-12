@@ -11,6 +11,8 @@
   </div>
 </div>
 
+<%= turbo_frame_tag "erp_modal" %>
+
 <section class="panel sku-detail-hero">
   <div class="sku-detail-identity">
     <span class="status-pill <%= @sku.is_active ? "is-active" : "is-muted" %>">
@@ -132,6 +134,47 @@
       </div>
     </section>
   <% elsif @active_tab == "costs" %>
+    <section class="panel">
+      <div class="table-section-header">
+        <h2 class="section-title">预测成本配置</h2>
+        <%= link_to new_report_sku_predicted_cost_path(@sku.sku_code), class: "button", data: { turbo_frame: "erp_modal" } do %>
+          新增预测成本
+        <% end %>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>预测成本</th>
+              <th>币种</th>
+              <th>开始日期</th>
+              <th>结束日期</th>
+              <th>备注</th>
+              <th>录入时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @predicted_costs.any? %>
+              <% @predicted_costs.each do |cost| %>
+                <tr>
+                  <td><%= report_value(cost.cost_money) %></td>
+                  <td><%= cost.cost_currency %></td>
+                  <td><%= cost.effective_from %></td>
+                  <td><%= report_value(cost.effective_to) %></td>
+                  <td><%= report_value(cost.note) %></td>
+                  <td><%= report_value(cost.created_at&.strftime("%Y-%m-%d %H:%M")) %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="6" class="empty-state">暂无预测成本配置</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel">
       <h2 class="section-title">SKU 基础成本</h2>
       <% if @sku_cost %>

@@ -1,2 +1,7 @@
 #!/usr/bin/env ruby
-exec "./bin/rails", "server", *ARGV
+require "shellwords"
+
+rails_command = ["./bin/rails", "server", *ARGV].shelljoin
+watch_command = "npm run watch"
+
+exec "npx", "concurrently", "-n", "rails,assets", rails_command, watch_command

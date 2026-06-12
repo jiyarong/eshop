@@ -8,6 +8,7 @@ module Ec
     has_many :platform_costs,    class_name: 'Ec::SkuPlatformCost',     foreign_key: :sku_code, primary_key: :sku_code
     has_many :store_assignments, class_name: 'Ec::SkuStoreAssignment',  foreign_key: :sku_code, primary_key: :sku_code
     has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
+    has_many :predicted_costs,   class_name: 'Ec::SkuPredictedCost',    foreign_key: :sku_code, primary_key: :sku_code
 
     validates :sku_code, presence: true, uniqueness: true
     before_validation { self.sku_code = sku_code&.upcase }
@@ -21,6 +22,15 @@ module Ec
 
     def ozon_products
       RawOzon::Product.where(offer_id: sku_code)
+    end
+
+    def predicted_cost_on(date)
+      target_date = date.to_date
+      predicted_costs
+        .where("effective_from <= ?", target_date)
+        .where("effective_to IS NULL OR effective_to >= ?", target_date)
+        .order(effective_from: :desc, id: :desc)
+        .first
     end
   end
 end

@@ -35,33 +35,24 @@
         </select>
       </div>
 
-      <div class="field">
-        <label for="timezone">时区</label>
-        <select id="timezone" name="timezone">
-          <% order_timezone_options.each do |label, value| %>
-            <option value="<%= value %>" <%= "selected" if @selected_timezone == value %>><%= label %></option>
-          <% end %>
-        </select>
-      </div>
-
-      <div class="field">
+      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
         <label for="from_date">开始日期</label>
-        <input id="from_date" type="date" name="q[ordered_at_gteq]" value="<%= @date_params["ordered_at_gteq"] %>">
+        <input id="from_date" type="text" inputmode="numeric" name="q[ordered_at_gteq]" value="<%= @date_params["ordered_at_gteq"] %>" data-date-picker-target="input">
       </div>
 
-      <div class="field">
+      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
         <label for="to_date">结束日期</label>
-        <input id="to_date" type="date" name="q[ordered_at_lteq_end_of_day]" value="<%= @date_params["ordered_at_lteq_end_of_day"] %>">
+        <input id="to_date" type="text" inputmode="numeric" name="q[ordered_at_lteq_end_of_day]" value="<%= @date_params["ordered_at_lteq_end_of_day"] %>" data-date-picker-target="input">
       </div>
 
-      <div class="field">
+      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
         <label for="process_from_date">处理开始</label>
-        <input id="process_from_date" type="date" name="q[in_process_at_gteq]" value="<%= @date_params["in_process_at_gteq"] %>">
+        <input id="process_from_date" type="text" inputmode="numeric" name="q[in_process_at_gteq]" value="<%= @date_params["in_process_at_gteq"] %>" data-date-picker-target="input">
       </div>
 
-      <div class="field">
+      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
         <label for="process_to_date">处理结束</label>
-        <input id="process_to_date" type="date" name="q[in_process_at_lteq_end_of_day]" value="<%= @date_params["in_process_at_lteq_end_of_day"] %>">
+        <input id="process_to_date" type="text" inputmode="numeric" name="q[in_process_at_lteq_end_of_day]" value="<%= @date_params["in_process_at_lteq_end_of_day"] %>" data-date-picker-target="input">
       </div>
 
       <div class="field">
