@@ -1,21 +1,21 @@
 <h1 class="page-title"><%= @batch.batch_code %></h1>
 
 <section class="panel">
-  <p><%= link_to "编辑", erp_edit_sku_batch_path(@batch), class: "button" %></p>
+  <p><%= link_to t("erp.common.actions.edit"), erp_edit_sku_batch_path(@batch, current_locale_params), class: "button" %></p>
   <dl class="definition-list">
     <dt>SKU</dt>
     <dd><%= @batch.sku_code %></dd>
-    <dt>商品名</dt>
+    <dt><%= t("erp.sku_batches.fields.product_name") %></dt>
     <dd><%= @batch.sku&.product_name %></dd>
-    <dt>采购数量</dt>
+    <dt><%= t("erp.sku_batches.fields.purchased_quantity") %></dt>
     <dd><%= @batch.purchased_quantity %></dd>
-    <dt>到货数量</dt>
+    <dt><%= t("erp.sku_batches.fields.received_quantity") %></dt>
     <dd><%= @batch.received_quantity %></dd>
-    <dt>采购成本</dt>
+    <dt><%= t("erp.sku_batches.fields.purchase_cost") %></dt>
     <dd><%= erp_value(@summary[:purchase_cost_cny]) %></dd>
-    <dt>分摊费用</dt>
+    <dt><%= t("erp.sku_batches.fields.allocated_cost") %></dt>
     <dd><%= erp_value(@summary[:allocated_cost_cny]) %></dd>
-    <dt>单件批次成本</dt>
+    <dt><%= t("erp.sku_batches.fields.unit_batch_cost") %></dt>
     <dd><%= erp_value(@summary[:unit_cost_cny]) %></dd>
   </dl>
 </section>

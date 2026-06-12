@@ -1,4 +1,4 @@
-<% content_for :page_heading, "产品管理" %>
+<% content_for :page_heading, t("erp.skus.index.title") %>
 
 <% total_visible_skus = @master_sku_entries.sum { |entry| entry[:skus].size } + @orphan_skus.size %>
 
@@ -7,22 +7,21 @@
 
   <div class="page-h">
     <div>
-      <h1>产品管理</h1>
+      <h1><%= t("erp.skus.index.title") %></h1>
       <p class="sub">Master Product · SKU Variant · Batch Inventory</p>
     </div>
     <div class="hstack product-page-actions">
       <%#= link_to erp_sku_categories_path, class: "btn btn-outline" do %>
 <!--        <i class="bi bi-diagram-3" aria-hidden="true"></i>-->
-<!--        类别管理-->
       <%# end %>
-      <%= link_to erp_new_master_sku_path, class: "btn btn-primary", data: { turbo_frame: "erp_modal" } do %>
+      <%= link_to erp_new_master_sku_path(current_locale_params), class: "btn btn-primary", data: { turbo_frame: "erp_modal" } do %>
         <i class="bi bi-plus-lg" aria-hidden="true"></i>
-        新增产品
+        <%= t("erp.skus.actions.add_product") %>
       <% end %>
     </div>
   </div>
 
-  <section class="product-summary-grid" aria-label="产品概览">
+  <section class="product-summary-grid" aria-label="<%= t("erp.skus.index.product_overview") %>">
     <div class="product-summary-card">
       <span class="summary-label">Master SKU</span>
       <strong class="summary-value"><%= @product_counts[:master_total] %></strong>
@@ -32,11 +31,11 @@
       <strong class="summary-value"><%= @product_counts[:sku_total] %></strong>
     </div>
     <div class="product-summary-card">
-      <span class="summary-label">批次</span>
+      <span class="summary-label"><%= t("erp.common.batches") %></span>
       <strong class="summary-value"><%= @product_counts[:batch_total] %></strong>
     </div>
     <div class="product-summary-card">
-      <span class="summary-label">启用产品</span>
+      <span class="summary-label"><%= t("erp.skus.index.active_products") %></span>
       <strong class="summary-value"><%= @product_counts[:active_master_total] %></strong>
     </div>
   </section>
@@ -45,23 +44,23 @@
     <%= form_with url: erp_skus_path, method: :get, local: true, class: "product-filter-form" do |form| %>
       <div class="product-search-control">
         <i class="bi bi-search" aria-hidden="true"></i>
-        <%= form.search_field :q, value: @q, placeholder: "搜索 Master SKU、中文名或俄文名…", class: "input" %>
+        <%= form.search_field :q, value: @q, placeholder: t("erp.skus.filters.search_placeholder"), class: "input" %>
       </div>
       <div class="field product-filter-field">
-        <%= form.label :status, "状态", class: "label" %>
-        <%= form.select :status, [["全部", "all"], ["启用", "active"], ["停用", "inactive"]], { selected: @status }, class: "select" %>
+        <%= form.label :status, t("erp.common.status"), class: "label" %>
+        <%= form.select :status, [[t("erp.common.filter_options.all"), "all"], [t("erp.common.statuses.enabled"), "active"], [t("erp.common.statuses.disabled"), "inactive"]], { selected: @status }, class: "select" %>
       </div>
       <div class="field product-filter-field">
-        <%= form.label :category_id, "类别", class: "label" %>
-        <%= form.collection_select :category_id, @categories, :id, :name, { include_blank: "全部类别", selected: @category_id }, class: "select" %>
+        <%= form.label :category_id, t("erp.common.category"), class: "label" %>
+        <%= form.collection_select :category_id, @categories, :id, :name, { include_blank: t("erp.skus.filters.all_categories"), selected: @category_id }, class: "select" %>
       </div>
       <button class="btn btn-primary" type="submit">
         <i class="bi bi-search" aria-hidden="true"></i>
-        筛选
+        <%= t("erp.common.actions.filter") %>
       </button>
       <%= link_to erp_skus_path, class: "btn btn-outline" do %>
         <i class="bi bi-x-lg" aria-hidden="true"></i>
-        重置
+        <%= t("erp.common.actions.reset") %>
       <% end %>
       <div class="spacer"></div>
       <span class="text-sm text-muted"><%= @master_sku_entries.size %> · <%= total_visible_skus %> SKU</span>
@@ -74,12 +73,12 @@
         <tr>
           <th style="width: 36px"></th>
           <th style="width: 160px">Master SKU</th>
-          <th style="min-width: 220px">中文名</th>
-          <th style="min-width: 260px">俄文名</th>
+          <th style="min-width: 220px"><%= t("erp.common.chinese_name") %></th>
+          <th style="min-width: 260px"><%= t("erp.common.russian_name") %></th>
           <th style="width: 120px">SKU</th>
-          <th style="width: 120px">批次</th>
-          <th style="width: 120px">状态</th>
-          <th style="width: 150px; text-align: right">操作</th>
+          <th style="width: 120px"><%= t("erp.common.batches") %></th>
+          <th style="width: 120px"><%= t("erp.common.status") %></th>
+          <th style="width: 150px; text-align: right"><%= t("erp.common.actions.actions") %></th>
         </tr>
       </thead>
       <tbody>
@@ -89,31 +88,31 @@
           <% batch_total = skus.sum { |sku| sku.batches.size } %>
           <tr class="master open">
             <td>
-              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= master_sku.master_sku_code %>" aria-label="收起 <%= master_sku.master_sku_code %>" aria-expanded="true">
+              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= master_sku.master_sku_code %>" aria-label="<%= t("erp.common.actions.collapse_named", name: master_sku.master_sku_code) %>" aria-expanded="true">
                 <i class="bi bi-chevron-down" aria-hidden="true"></i>
               </button>
             </td>
             <td><span class="code-text"><%= master_sku.master_sku_code %></span></td>
             <td><span class="zh-name"><%= erp_value(master_sku.product_name) %></span></td>
             <td><span class="ru-name"><%= erp_value(master_sku.product_name_ru) %></span></td>
-            <td><span class="num"><%= skus.size %></span> 个 SKU</td>
-            <td><span class="num"><%= batch_total %></span> 个批次</td>
+            <td><span class="num"><%= skus.size %></span> <%= t("erp.skus.units.sku", count: skus.size) %></td>
+            <td><span class="num"><%= batch_total %></span> <%= t("erp.skus.units.batch", count: batch_total) %></td>
             <td>
               <% if master_sku.is_active %>
                 <span class="badge badge-suc">Active</span>
               <% else %>
-                <span class="badge badge-sec">停用</span>
+                <span class="badge badge-sec"><%= t("erp.common.statuses.disabled") %></span>
               <% end %>
             </td>
             <td>
               <div class="row-actions">
-                <%= link_to erp_edit_master_sku_path(master_sku), class: "ico-btn", title: "编辑产品", data: { turbo_frame: "erp_modal" } do %>
+                <%= link_to erp_edit_master_sku_path(master_sku, current_locale_params), class: "ico-btn", title: t("erp.skus.actions.edit_product"), data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
-                  <span class="sr-only">编辑产品</span>
+                  <span class="sr-only"><%= t("erp.skus.actions.edit_product") %></span>
                 <% end if can?(:manage_skus) %>
-                <%= link_to erp_new_sku_path(master_sku_id: master_sku.id), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
+                <%= link_to erp_new_sku_path(current_locale_params.merge(master_sku_id: master_sku.id)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                  新增 SKU
+                  <%= t("erp.skus.actions.add_sku") %>
                 <% end %>
               </div>
             </td>
@@ -122,18 +121,18 @@
             <td colspan="8">
               <div class="sub-shell">
                 <div class="sub-h">
-                  <span>SKU 变体 · <%= skus.size %> 个</span>
+                  <span><%= t("erp.skus.index.sku_variants", count: skus.size) %></span>
                 </div>
                 <% if skus.any? %>
                   <table class="sub-tbl">
                     <thead>
                       <tr>
                         <th style="width: 180px">SKU</th>
-                        <th>属性</th>
-                        <th style="width: 120px; text-align: right">采购</th>
-                        <th style="width: 120px; text-align: right">入库</th>
-                        <th style="width: 110px">批次</th>
-                        <th style="width: 170px; text-align: right">操作</th>
+                        <th><%= t("erp.skus.fields.attributes") %></th>
+                        <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.purchased") %></th>
+                        <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.received") %></th>
+                        <th style="width: 110px"><%= t("erp.common.batches") %></th>
+                        <th style="width: 170px; text-align: right"><%= t("erp.common.actions.actions") %></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -143,7 +142,7 @@
                         <% received_quantity = sku.batches.sum(&:received_quantity) %>
                         <tr class="sku-row open">
                           <td>
-                            <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleSku" data-label="<%= sku.sku_code %> 批次" aria-label="收起 <%= sku.sku_code %> 批次" aria-expanded="true">
+                            <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleSku" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.collapse_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="true">
                               <i class="bi bi-chevron-down" aria-hidden="true"></i>
                             </button>
                             <%= link_to sku.sku_code, erp_sku_path(sku), class: "code-text sub" %>
@@ -154,17 +153,17 @@
                           </td>
                           <td style="text-align: right"><span class="stock-num"><%= purchased_quantity %></span></td>
                           <td style="text-align: right"><span class="stock-num"><%= received_quantity %></span></td>
-                          <td><span class="badge badge-sec"><%= sku.batches.size %> 批</span></td>
+                          <td><span class="badge badge-sec"><%= sku.batches.size %> <%= t("erp.skus.units.batch_short", count: sku.batches.size) %></span></td>
                           <td>
                             <div class="row-actions">
-                              <%= link_to "查看", erp_sku_path(sku), class: "btn btn-ghost btn-sm" %>
-                              <%= link_to erp_edit_sku_path(sku), class: "ico-btn", title: "编辑", data: { turbo_frame: "erp_modal" } do %>
+                              <%= link_to t("erp.common.actions.view"), erp_sku_path(sku, current_locale_params), class: "btn btn-ghost btn-sm" %>
+                              <%= link_to erp_edit_sku_path(sku, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
                                 <i class="bi bi-pencil" aria-hidden="true"></i>
-                                <span class="sr-only">编辑</span>
+                                <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
                               <% end if can?(:manage_skus) %>
-                              <%= link_to erp_new_sku_batch_path(sku_code: sku.sku_code), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
+                              <%= link_to erp_new_sku_batch_path(current_locale_params.merge(sku_code: sku.sku_code)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
                                 <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                                新增批次
+                                <%= t("erp.sku_batches.actions.add_batch") %>
                               <% end %>
                             </div>
                           </td>
@@ -174,23 +173,23 @@
                             <div class="batch-shell">
                               <div class="batch-h">
                                 <div>
-                                  <span class="batch-title">批次清单</span>
-                                  <span><%= sku.batches.size %> 个批次</span>
+                                  <span class="batch-title"><%= t("erp.skus.index.batch_list") %></span>
+                                  <span><%= sku.batches.size %> <%= t("erp.skus.units.batch", count: sku.batches.size) %></span>
                                 </div>
-                                <span>已展示最近 <%= batches.size %> / <%= sku.batches.size %> 个批次</span>
+                                <span><%= t("erp.skus.index.showing_recent_batches", shown: batches.size, total: sku.batches.size) %></span>
                               </div>
                               <% if batches.any? %>
                                 <table class="batch-tbl">
                                   <thead>
                                     <tr>
-                                      <th>批号</th>
-                                      <th style="width: 112px">采购日期</th>
-                                      <th style="width: 112px">出境日期</th>
-                                      <th style="width: 126px">境外交付日期</th>
-                                      <th style="width: 100px; text-align: right">采购数量</th>
-                                      <th style="width: 100px; text-align: right">入库数量</th>
-                                      <th style="width: 110px">状态</th>
-                                      <th style="width: 80px; text-align: right">操作</th>
+                                      <th><%= t("erp.sku_batches.fields.batch_code") %></th>
+                                      <th style="width: 112px"><%= t("erp.sku_batches.fields.purchase_date") %></th>
+                                      <th style="width: 112px"><%= t("erp.sku_batches.fields.departure_date") %></th>
+                                      <th style="width: 126px"><%= t("erp.sku_batches.fields.overseas_delivery_date") %></th>
+                                      <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
+                                      <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.received_quantity") %></th>
+                                      <th style="width: 110px"><%= t("erp.common.status") %></th>
+                                      <th style="width: 80px; text-align: right"><%= t("erp.common.actions.actions") %></th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -205,9 +204,9 @@
                                         <td><span class="badge badge-sec"><%= batch.status %></span></td>
                                         <td>
                                           <div class="row-actions">
-                                            <%= link_to erp_edit_sku_batch_path(batch), class: "ico-btn", title: "编辑", data: { turbo_frame: "erp_modal" } do %>
+                                            <%= link_to erp_edit_sku_batch_path(batch, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
                                               <i class="bi bi-pencil" aria-hidden="true"></i>
-                                              <span class="sr-only">编辑</span>
+                                              <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
                                             <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
                                           </div>
                                         </td>
@@ -216,7 +215,7 @@
                                   </tbody>
                                 </table>
                               <% else %>
-                                <div class="nested-empty-state">还没有批次记录。</div>
+                                <div class="nested-empty-state"><%= t("erp.skus.empty.no_batches") %></div>
                               <% end %>
                             </div>
                           </td>
@@ -225,7 +224,7 @@
                     </tbody>
                   </table>
                 <% else %>
-                  <div class="nested-empty-state">当前筛选条件下没有 SKU。</div>
+                  <div class="nested-empty-state"><%= t("erp.skus.empty.no_skus") %></div>
                 <% end %>
               </div>
             </td>
@@ -236,32 +235,32 @@
           <% batches = sku.batches.sort_by { |batch| [batch.received_on || Date.new(1900, 1, 1), batch.id || 0] }.reverse.first(10) %>
           <tr class="master open">
             <td>
-              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= sku.sku_code %> 批次" aria-label="收起 <%= sku.sku_code %> 批次" aria-expanded="true">
+              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.collapse_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="true">
                 <i class="bi bi-chevron-down" aria-hidden="true"></i>
               </button>
             </td>
-            <td><span class="code-text">未归档</span></td>
+            <td><span class="code-text"><%= t("erp.skus.index.unfiled") %></span></td>
             <td><span class="zh-name"><%= erp_value(sku.product_name) %></span></td>
             <td><span class="ru-name"><%= erp_value(sku.product_name_ru) %></span></td>
             <td><span class="code-text sub"><%= sku.sku_code %></span></td>
-            <td><span class="num"><%= sku.batches.size %></span> 个批次</td>
+            <td><span class="num"><%= sku.batches.size %></span> <%= t("erp.skus.units.batch", count: sku.batches.size) %></td>
             <td>
               <% if sku.is_active %>
                 <span class="badge badge-suc">Active</span>
               <% else %>
-                <span class="badge badge-sec">下架</span>
+                <span class="badge badge-sec"><%= t("erp.skus.statuses.inactive") %></span>
               <% end %>
             </td>
             <td>
               <div class="row-actions">
-                <%= link_to "查看", erp_sku_path(sku), class: "btn btn-ghost btn-sm" %>
-                <%= link_to erp_edit_sku_path(sku), class: "ico-btn", title: "编辑", data: { turbo_frame: "erp_modal" } do %>
+                <%= link_to t("erp.common.actions.view"), erp_sku_path(sku, current_locale_params), class: "btn btn-ghost btn-sm" %>
+                <%= link_to erp_edit_sku_path(sku, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
-                  <span class="sr-only">编辑</span>
+                  <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
                 <% end if can?(:manage_skus) %>
-                <%= link_to erp_new_sku_batch_path(sku_code: sku.sku_code), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
+                <%= link_to erp_new_sku_batch_path(current_locale_params.merge(sku_code: sku.sku_code)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                  新增批次
+                  <%= t("erp.sku_batches.actions.add_batch") %>
                 <% end %>
               </div>
             </td>
@@ -272,21 +271,21 @@
                 <div class="batch-shell batch-shell--orphan">
                   <div class="batch-h">
                     <div>
-                      <span class="batch-title">批次清单</span>
-                      <span><%= sku.batches.size %> 个批次</span>
+                      <span class="batch-title"><%= t("erp.skus.index.batch_list") %></span>
+                      <span><%= sku.batches.size %> <%= t("erp.skus.units.batch", count: sku.batches.size) %></span>
                     </div>
                   </div>
                   <table class="batch-tbl">
                     <thead>
                       <tr>
-                        <th>批号</th>
-                        <th>采购日期</th>
-                        <th>出境日期</th>
-                        <th>境外交付日期</th>
-                        <th style="text-align: right">采购数量</th>
-                        <th style="text-align: right">入库数量</th>
-                        <th>状态</th>
-                        <th style="text-align: right">操作</th>
+                        <th><%= t("erp.sku_batches.fields.batch_code") %></th>
+                        <th><%= t("erp.sku_batches.fields.purchase_date") %></th>
+                        <th><%= t("erp.sku_batches.fields.departure_date") %></th>
+                        <th><%= t("erp.sku_batches.fields.overseas_delivery_date") %></th>
+                        <th style="text-align: right"><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
+                        <th style="text-align: right"><%= t("erp.sku_batches.fields.received_quantity") %></th>
+                        <th><%= t("erp.common.status") %></th>
+                        <th style="text-align: right"><%= t("erp.common.actions.actions") %></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -301,9 +300,9 @@
                           <td><span class="badge badge-sec"><%= batch.status %></span></td>
                           <td>
                             <div class="row-actions">
-                              <%= link_to erp_edit_sku_batch_path(batch), class: "ico-btn", title: "编辑", data: { turbo_frame: "erp_modal" } do %>
+                              <%= link_to erp_edit_sku_batch_path(batch, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
                                 <i class="bi bi-pencil" aria-hidden="true"></i>
-                                <span class="sr-only">编辑</span>
+                                <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
                               <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
                             </div>
                           </td>
@@ -321,7 +320,7 @@
           <tr>
             <td colspan="8" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
-              没有找到匹配的产品。
+              <%= t("erp.skus.empty.no_products") %>
             </td>
           </tr>
         <% end %>

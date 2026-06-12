@@ -1,28 +1,28 @@
-<% content_for :page_heading, "店铺设置" %>
+<% content_for :page_heading, t("erp.stores.index.title") %>
 
 <div class="store-management product-management">
   <%= turbo_frame_tag "erp_modal" %>
 
   <div class="page-h">
     <div>
-      <h1>店铺设置</h1>
+      <h1><%= t("erp.stores.index.title") %></h1>
       <p class="sub">Shop Platform · Company Scale · Registration Country</p>
     </div>
     <div class="hstack product-page-actions">
-      <%= link_to erp_new_store_path, class: "btn btn-primary", data: { turbo_frame: "erp_modal" } do %>
+      <%= link_to erp_new_store_path(current_locale_params), class: "btn btn-primary", data: { turbo_frame: "erp_modal" } do %>
         <i class="bi bi-plus-lg" aria-hidden="true"></i>
-        新增店铺
+        <%= t("erp.stores.actions.add_store") %>
       <% end %>
     </div>
   </div>
 
-  <section class="product-summary-grid" aria-label="店铺概览">
+  <section class="product-summary-grid" aria-label="<%= t("erp.stores.index.store_overview") %>">
     <div class="product-summary-card">
-      <span class="summary-label">全部店铺</span>
+      <span class="summary-label"><%= t("erp.stores.index.all_stores") %></span>
       <strong class="summary-value"><%= @store_counts[:total] %></strong>
     </div>
     <div class="product-summary-card">
-      <span class="summary-label">已激活</span>
+      <span class="summary-label"><%= t("erp.common.statuses.active") %></span>
       <strong class="summary-value"><%= @store_counts[:active] %></strong>
     </div>
     <div class="product-summary-card">
@@ -39,34 +39,34 @@
     <%= form_with url: erp_stores_path, method: :get, local: true, class: "product-filter-form" do |form| %>
       <div class="product-search-control">
         <i class="bi bi-search" aria-hidden="true"></i>
-        <%= form.search_field :q, value: @q, placeholder: "搜索店铺名称或备注…", class: "input" %>
+        <%= form.search_field :q, value: @q, placeholder: t("erp.stores.filters.search_placeholder"), class: "input" %>
       </div>
       <div class="field product-filter-field">
-        <%= form.label :platform, "平台", class: "label" %>
-        <%= form.select :platform, store_platform_options, { include_blank: "全部平台", selected: @platform }, class: "select" %>
+        <%= form.label :platform, t("erp.common.platform"), class: "label" %>
+        <%= form.select :platform, store_platform_options, { include_blank: t("erp.stores.filters.all_platforms"), selected: @platform }, class: "select" %>
       </div>
       <div class="field product-filter-field">
-        <%= form.label :company_type, "规模", class: "label" %>
-        <%= form.select :company_type, store_company_type_options, { include_blank: "全部规模", selected: @company_type }, class: "select" %>
+        <%= form.label :company_type, t("erp.stores.fields.scale"), class: "label" %>
+        <%= form.select :company_type, store_company_type_options, { include_blank: t("erp.stores.filters.all_scales"), selected: @company_type }, class: "select" %>
       </div>
       <div class="field product-filter-field">
-        <%= form.label :registration_country, "国家", class: "label" %>
-        <%= form.select :registration_country, store_country_options, { include_blank: "全部国家", selected: @registration_country }, class: "select" %>
+        <%= form.label :registration_country, t("erp.stores.fields.country"), class: "label" %>
+        <%= form.select :registration_country, store_country_options, { include_blank: t("erp.stores.filters.all_countries"), selected: @registration_country }, class: "select" %>
       </div>
       <div class="field product-filter-field">
-        <%= form.label :status, "状态", class: "label" %>
-        <%= form.select :status, [["全部", "all"], ["已激活", "active"], ["未激活", "inactive"]], { selected: @status }, class: "select" %>
+        <%= form.label :status, t("erp.common.status"), class: "label" %>
+        <%= form.select :status, [[t("erp.common.filter_options.all"), "all"], [t("erp.common.statuses.active"), "active"], [t("erp.common.statuses.inactive"), "inactive"]], { selected: @status }, class: "select" %>
       </div>
       <button class="btn btn-primary" type="submit">
         <i class="bi bi-search" aria-hidden="true"></i>
-        筛选
+        <%= t("erp.common.actions.filter") %>
       </button>
       <%= link_to erp_stores_path, class: "btn btn-outline" do %>
         <i class="bi bi-x-lg" aria-hidden="true"></i>
-        重置
+        <%= t("erp.common.actions.reset") %>
       <% end %>
       <div class="spacer"></div>
-      <span class="text-sm text-muted"><%= @stores.size %> 个店铺</span>
+      <span class="text-sm text-muted"><%= t("erp.stores.index.store_count", count: @stores.size) %></span>
     <% end %>
   </section>
 
@@ -74,14 +74,14 @@
     <table class="prod-tbl store-tbl">
       <thead>
         <tr>
-          <th style="width: 120px">店铺 ID</th>
-          <th style="width: 110px">平台</th>
-          <th style="min-width: 220px">名称</th>
-          <th style="width: 150px">公司规模类型</th>
-          <th style="width: 150px">公司注册国</th>
-          <th style="width: 120px">是否激活</th>
-          <th style="min-width: 180px">备注</th>
-          <th style="width: 110px; text-align: right">操作</th>
+          <th style="width: 120px"><%= t("erp.stores.fields.store_id") %></th>
+          <th style="width: 110px"><%= t("erp.common.platform") %></th>
+          <th style="min-width: 220px"><%= t("erp.common.name") %></th>
+          <th style="width: 150px"><%= t("erp.stores.fields.company_scale") %></th>
+          <th style="width: 150px"><%= t("erp.stores.fields.registration_country") %></th>
+          <th style="width: 120px"><%= t("erp.stores.fields.is_active") %></th>
+          <th style="min-width: 180px"><%= t("erp.common.memo") %></th>
+          <th style="width: 110px; text-align: right"><%= t("erp.common.actions.actions") %></th>
         </tr>
       </thead>
       <tbody>
@@ -94,17 +94,17 @@
             <td><%= store_country_label(store.registration_country) %></td>
             <td>
               <% if store.is_active %>
-                <span class="badge badge-suc"><span class="dot"></span>已激活</span>
+                <span class="badge badge-suc"><span class="dot"></span><%= t("erp.common.statuses.active") %></span>
               <% else %>
-                <span class="badge badge-sec"><span class="dot dot-muted"></span>未激活</span>
+                <span class="badge badge-sec"><span class="dot dot-muted"></span><%= t("erp.common.statuses.inactive") %></span>
               <% end %>
             </td>
             <td><span class="text-muted"><%= erp_value(store.memo) %></span></td>
             <td>
               <div class="row-actions">
-                <%= link_to erp_edit_store_path(store), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
+                <%= link_to erp_edit_store_path(store, current_locale_params), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                  编辑
+                  <%= t("erp.common.actions.edit") %>
                 <% end if can?(:manage_skus) %>
               </div>
             </td>
@@ -113,7 +113,7 @@
         <% if @stores.empty? %>
           <tr>
             <td colspan="8">
-              <div class="nested-empty-state">当前筛选条件下没有店铺。</div>
+              <div class="nested-empty-state"><%= t("erp.stores.empty.no_stores") %></div>
             </td>
           </tr>
         <% end %>

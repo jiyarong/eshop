@@ -7,32 +7,32 @@
 
   <div class="report-form modal-form-grid">
     <div class="field">
-      <%= form.label :platform, "平台" %>
+      <%= form.label :platform, t("erp.common.platform") %>
       <%= form.select :platform, store_platform_options %>
     </div>
     <div class="field">
-      <%= form.label :company_type, "公司规模类型" %>
+      <%= form.label :company_type, t("erp.stores.fields.company_scale") %>
       <%= form.select :company_type, store_company_type_options %>
     </div>
     <div class="field modal-form-grid__wide">
-      <%= form.label :store_name, "名称" %>
-      <%= form.text_field :store_name, placeholder: "例如：明斯克 Ozon 店铺" %>
+      <%= form.label :store_name, t("erp.common.name") %>
+      <%= form.text_field :store_name, placeholder: t("erp.stores.form.store_name_placeholder") %>
     </div>
     <div class="field">
-      <%= form.label :registration_country, "公司注册国" %>
-      <%= form.select :registration_country, store_country_options, { include_blank: "请选择" } %>
+      <%= form.label :registration_country, t("erp.stores.fields.registration_country") %>
+      <%= form.select :registration_country, store_country_options, { include_blank: t("erp.common.please_select") } %>
     </div>
     <div class="field">
-      <%= form.label :is_active, "是否激活" %>
+      <%= form.label :is_active, t("erp.stores.fields.is_active") %>
       <label class="switch-checkbox">
         <%= form.check_box :is_active %>
-        <span>未激活的店铺不会进入 1.0 运营工作流。</span>
+        <span><%= t("erp.stores.form.inactive_hint") %></span>
       </label>
     </div>
     <div class="field modal-form-grid__wide">
-      <%= form.label :memo, "备注" %>
+      <%= form.label :memo, t("erp.common.memo") %>
       <%= form.text_field :memo %>
     </div>
-    <%= form.submit "保存", class: "button" %>
+    <%= form.submit t("common.actions.save"), class: "button" %>
   </div>
 <% end %>

@@ -34,12 +34,37 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", @sku.sku_code
   end
 
+  test "index localizes visible chrome in english" do
+    get "/erp/sku_batches", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "SKU Batches"
+    assert_select "a[href=?]", erp_new_sku_batch_path(locale: "en"), "Add SKU batch"
+    assert_select "th", "Batch number"
+    assert_select "th", "Product name"
+    assert_select "th", "Purchased quantity"
+    assert_select "th", "Received quantity"
+    assert_select "th", "Purchase unit price"
+  end
+
   test "show renders batch cost summary" do
     get "/erp/sku_batches/#{@batch.id}", headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "h1", @batch.batch_code
     assert_select "dt", "单件批次成本"
+  end
+
+  test "show localizes visible chrome in english" do
+    get "/erp/sku_batches/#{@batch.id}", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", @batch.batch_code
+    assert_select "a[href=?]", erp_edit_sku_batch_path(@batch, locale: "en"), "Edit"
+    assert_select "dt", "Product name"
+    assert_select "dt", "Purchase cost"
+    assert_select "dt", "Allocated cost"
+    assert_select "dt", "Unit batch cost"
   end
 
   test "new renders form" do
@@ -68,6 +93,19 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".erp-modal"
     assert_select "h2", "编辑批次"
     assert_select "form[action='#{erp_sku_batch_path(@batch)}'][data-turbo-frame='_top']"
+  end
+
+  test "batch modal form localizes visible chrome in english" do
+    get "/erp/sku_batches/#{@batch.id}/edit", params: { locale: "en" }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "h2", "Edit batch"
+    assert_select "button[aria-label=?]", "Close"
+    assert_select "label", "Batch number"
+    assert_select "label", "Status"
+    assert_select "label", "Expected arrival"
+    assert_select "label", "Actual arrival"
+    assert_select "input[type='submit'][value=?]", "Save"
   end
 
   test "create batch returns to sku list" do

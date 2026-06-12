@@ -102,6 +102,35 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{erp_edit_sku_batch_path(@batch)}'][data-turbo-frame='erp_modal']", text: "编辑"
   end
 
+  test "index localizes visible chrome in english" do
+    get "/erp/skus", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "Product Management"
+    assert_select ".product-page-actions a", text: "Add product"
+    assert_select ".product-summary-grid[aria-label=?]", "Product overview"
+    assert_select ".summary-label", "Batches"
+    assert_select ".summary-label", "Active products"
+    assert_select "input[placeholder=?]", "Search Master SKU, Chinese name, or Russian name..."
+    assert_select "label", "Status"
+    assert_select "option", "All"
+    assert_select "option", "Enabled"
+    assert_select "label", "Category"
+    assert_select "option", "All categories"
+    assert_select "button", "Filter"
+    assert_select "a", "Reset"
+    assert_select ".prod-tbl thead th", text: "Chinese name"
+    assert_select ".prod-tbl thead th", text: "Actions"
+    assert_select ".sub-h", text: "SKU variants · 1 item"
+    assert_select ".batch-title", text: "Batch list"
+    assert_select ".batch-tbl th", text: "Purchase date"
+    assert_select ".badge.badge-suc", text: "Active"
+    assert_select ".badge.badge-sec", text: "Inactive"
+    assert_select "a[href='#{erp_new_master_sku_path(locale: "en")}'][data-turbo-frame='erp_modal']", text: "Add product"
+    assert_select "a[href='#{erp_new_sku_path(locale: "en", master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "Add SKU"
+    assert_select "a[href='#{erp_new_sku_batch_path(locale: "en", sku_code: @sku.sku_code)}'][data-turbo-frame='erp_modal']", text: "Add batch"
+  end
+
   test "index filters products by keyword and status" do
     get "/erp/skus", params: { q: @master_sku.master_sku_code.downcase, status: "active" }, headers: { "Accept" => "text/html" }
 
@@ -144,6 +173,19 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", "编辑 SKU"
     assert_select "form[action='#{erp_sku_path(@sku)}'][data-turbo-frame='_top']"
     assert_select "input[name='ec_sku[product_name]'][value=?]", @sku.product_name
+  end
+
+  test "sku modal form localizes visible chrome in english" do
+    get "/erp/skus/#{@sku.id}/edit", params: { locale: "en" }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "h2", "Edit SKU"
+    assert_select "button[aria-label=?]", "Close"
+    assert_select "label", "SKU code"
+    assert_select "label", "Chinese name"
+    assert_select "label", "Listed"
+    assert_select "option", "None"
+    assert_select "input[type='submit'][value=?]", "Save"
   end
 
   test "create sku returns to sku list" do

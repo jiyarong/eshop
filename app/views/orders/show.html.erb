@@ -1,26 +1,26 @@
 <main class="page">
-  <h1 class="page-title">订单 <%= @order.external_order_number %></h1>
+  <h1 class="page-title"><%= t("orders.show.title", number: @order.external_order_number) %></h1>
 
   <section class="panel">
     <div class="report-meta">
-      <%= link_to "返回订单中心", orders_path %>
+      <%= link_to t("orders.actions.back_to_orders"), orders_path %>
     </div>
 
     <div class="summary-grid">
       <div class="weekly-profit-summary-card">
-        <div class="summary-label">平台 / 店铺</div>
+        <div class="summary-label"><%= t("orders.show.summary.platform_store") %></div>
         <div class="summary-value"><%= platform_label(@order.platform) %> / <%= @order.store.store_name %></div>
       </div>
       <div class="weekly-profit-summary-card">
-        <div class="summary-label">统一状态</div>
+        <div class="summary-label"><%= t("orders.show.summary.unified_status") %></div>
         <div class="summary-value"><%= order_status_label(@order.order_status) %></div>
       </div>
       <div class="weekly-profit-summary-card">
-        <div class="summary-label">源状态</div>
+        <div class="summary-label"><%= t("orders.fields.source_status") %></div>
         <div class="summary-value"><%= display_value(@order.source_status) %></div>
       </div>
       <div class="weekly-profit-summary-card">
-        <div class="summary-label">城市 / 国家</div>
+        <div class="summary-label"><%= t("orders.show.summary.city_country") %></div>
         <div class="summary-value"><%= display_value([@order.buyer_city, @order.buyer_country].compact_blank.join(" / ")) %></div>
       </div>
     </div>
@@ -28,40 +28,40 @@
 
   <div class="report-stack">
     <section class="panel">
-      <h2 class="section-title">订单信息</h2>
+      <h2 class="section-title"><%= t("orders.show.sections.order_information") %></h2>
       <div class="table-scroll">
         <table>
           <tbody>
-            <tr><th>平台订单 ID</th><td><%= display_value(@order.external_order_id) %></td></tr>
-            <tr><th>平台订单号</th><td><%= display_value(@order.external_order_number) %></td></tr>
-            <tr><th>源子状态</th><td><%= display_value(@order.source_substatus) %></td></tr>
-            <tr><th>下单时间</th><td><%= @order.ordered_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
-            <tr><th>处理时间</th><td><%= @order.in_process_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
-            <tr><th>完成时间</th><td><%= @order.completed_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
-            <tr><th>取消时间</th><td><%= @order.cancelled_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
-            <tr><th>支付方式</th><td><%= display_value(@order.payment_method_source) %></td></tr>
-            <tr><th>同步时间</th><td><%= @order.synced_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td></tr>
+            <tr><th><%= t("orders.fields.external_order_id") %></th><td><%= display_value(@order.external_order_id) %></td></tr>
+            <tr><th><%= t("orders.fields.external_order_number") %></th><td><%= display_value(@order.external_order_number) %></td></tr>
+            <tr><th><%= t("orders.fields.source_substatus") %></th><td><%= display_value(@order.source_substatus) %></td></tr>
+            <tr><th><%= t("orders.fields.ordered_at") %></th><td><%= display_time(@order.ordered_at) %></td></tr>
+            <tr><th><%= t("orders.fields.in_process_at") %></th><td><%= display_time(@order.in_process_at) %></td></tr>
+            <tr><th><%= t("orders.fields.completed_at") %></th><td><%= display_time(@order.completed_at) %></td></tr>
+            <tr><th><%= t("orders.fields.cancelled_at") %></th><td><%= display_time(@order.cancelled_at) %></td></tr>
+            <tr><th><%= t("orders.fields.payment_method") %></th><td><%= display_value(@order.payment_method_source) %></td></tr>
+            <tr><th><%= t("orders.fields.synced_at") %></th><td><%= display_time(@order.synced_at) %></td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">履约与追踪</h2>
+      <h2 class="section-title"><%= t("orders.show.sections.fulfillment_tracking") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>模式</th>
-              <th>状态</th>
-              <th>源状态</th>
-              <th>源子状态</th>
-              <th>仓库</th>
-              <th>配送方式</th>
-              <th>运单号</th>
-              <th>发货时间</th>
-              <th>签收时间</th>
-              <th>原始来源</th>
+              <th><%= t("orders.fields.mode") %></th>
+              <th><%= t("orders.fields.status") %></th>
+              <th><%= t("orders.fields.source_status") %></th>
+              <th><%= t("orders.fields.source_substatus") %></th>
+              <th><%= t("orders.fields.warehouse") %></th>
+              <th><%= t("orders.fields.delivery_method") %></th>
+              <th><%= t("orders.fields.tracking_number") %></th>
+              <th><%= t("orders.fields.shipped_at") %></th>
+              <th><%= t("orders.fields.delivered_at") %></th>
+              <th><%= t("orders.fields.raw_source") %></th>
             </tr>
           </thead>
           <tbody>
@@ -74,8 +74,8 @@
                 <td><%= display_value(fulfillment.warehouse_name) %></td>
                 <td><%= display_value(fulfillment.delivery_method_name || fulfillment.delivery_type_source) %></td>
                 <td><%= display_value(fulfillment.tracking_number) %></td>
-                <td><%= fulfillment.shipped_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
-                <td><%= fulfillment.delivered_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+                <td><%= display_time(fulfillment.shipped_at) %></td>
+                <td><%= display_time(fulfillment.delivered_at) %></td>
                 <td><%= display_value(fulfillment.raw_source_type) %>#<%= display_value(fulfillment.raw_source_id) %></td>
               </tr>
             <% end %>
@@ -85,22 +85,22 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">商品明细</h2>
+      <h2 class="section-title"><%= t("orders.show.sections.items") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>平台 SKU</th>
+              <th><%= t("orders.fields.platform_sku") %></th>
               <th>Offer ID</th>
-              <th>内部 SKU</th>
-              <th>商品名称</th>
-              <th>源商品名</th>
-              <th>数量</th>
-              <th>单价</th>
-              <th>原价</th>
-              <th>币种</th>
-              <th>佣金</th>
-              <th>折扣</th>
+              <th><%= t("orders.fields.internal_sku") %></th>
+              <th><%= t("orders.fields.product_name") %></th>
+              <th><%= t("orders.fields.source_product_name") %></th>
+              <th><%= t("orders.fields.quantity") %></th>
+              <th><%= t("orders.fields.unit_price") %></th>
+              <th><%= t("orders.fields.old_price") %></th>
+              <th><%= t("orders.fields.currency") %></th>
+              <th><%= t("orders.fields.commission") %></th>
+              <th><%= t("orders.fields.discount") %></th>
             </tr>
           </thead>
           <tbody>
@@ -126,24 +126,24 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">SKU 具体情况</h2>
+      <h2 class="section-title"><%= t("orders.show.sections.sku_details") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>图片</th>
-              <th>商品名称</th>
+              <th><%= t("orders.fields.image") %></th>
+              <th><%= t("orders.fields.product_name") %></th>
               <th>Ozon Product ID</th>
-              <th>平台 SKU</th>
+              <th><%= t("orders.fields.platform_sku") %></th>
               <th>Offer ID</th>
-              <th>价格</th>
-              <th>营销价</th>
-              <th>原价</th>
-              <th>币种</th>
-              <th>FBO 现货 / 预留</th>
-              <th>FBS 现货 / 预留</th>
-              <th>条码</th>
-              <th>同步时间</th>
+              <th><%= t("orders.fields.price") %></th>
+              <th><%= t("orders.fields.marketing_price") %></th>
+              <th><%= t("orders.fields.old_price") %></th>
+              <th><%= t("orders.fields.currency") %></th>
+              <th><%= t("orders.fields.fbo_stock") %></th>
+              <th><%= t("orders.fields.fbs_stock") %></th>
+              <th><%= t("orders.fields.barcode") %></th>
+              <th><%= t("orders.fields.synced_at") %></th>
             </tr>
           </thead>
           <tbody>
@@ -173,12 +173,12 @@
                   <td><%= stock ? "#{stock.present_fbo.to_i} / #{stock.reserved_fbo.to_i}" : "-" %></td>
                   <td><%= stock ? "#{stock.present_fbs.to_i} / #{stock.reserved_fbs.to_i}" : "-" %></td>
                   <td><%= display_value(product.barcodes&.join(" / ")) %></td>
-                  <td><%= [product.synced_at, price&.synced_at, stock&.synced_at].compact.max&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+                  <td><%= display_time([product.synced_at, price&.synced_at, stock&.synced_at].compact.max) %></td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="13">暂无 Ozon SKU 原始商品信息</td>
+                <td colspan="13"><%= t("orders.show.empty_sku_details") %></td>
               </tr>
             <% end %>
           </tbody>
@@ -187,15 +187,15 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">原始数据关联</h2>
+      <h2 class="section-title"><%= t("orders.show.sections.source_links") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>来源类型</th>
-              <th>来源 ID</th>
-              <th>角色</th>
-              <th>同步时间</th>
+              <th><%= t("orders.fields.source_type") %></th>
+              <th><%= t("orders.fields.source_id") %></th>
+              <th><%= t("orders.fields.role") %></th>
+              <th><%= t("orders.fields.synced_at") %></th>
             </tr>
           </thead>
           <tbody>
@@ -204,7 +204,7 @@
                 <td><%= link.source_type %></td>
                 <td><%= link.source_id %></td>
                 <td><%= link.source_role %></td>
-                <td><%= link.synced_at&.strftime("%Y-%m-%d %H:%M") || "-" %></td>
+                <td><%= display_time(link.synced_at) %></td>
               </tr>
             <% end %>
           </tbody>

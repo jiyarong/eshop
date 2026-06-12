@@ -295,6 +295,39 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assignment&.destroy
   end
 
+  test "sku detail localizes basic tab in english" do
+    assignment = Ec::SkuStoreAssignment.create!(
+      sku_code: @sku.sku_code,
+      store_key: "ozon1_nevastal",
+      platform: "ozon",
+      external_id: "EXT-#{@sku_code}",
+      listed_at: Date.new(2026, 6, 1),
+      owner_name: "运营 #{@sku_code}",
+      is_active: true
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".resource-eyebrow", "SKU Details"
+    assert_select "a.button", "Back to list"
+    assert_select "a.button", "Edit profile"
+    assert_select ".status-pill", "Active"
+    assert_select ".summary-label", "Last 30 days net sales"
+    assert_select ".sku-detail-tabs a[aria-current='page']", "Basic"
+    assert_select "h2", "Basic information"
+    assert_select "dt", "Chinese name"
+    assert_select "dt", "Status"
+    assert_select "dd", "Active"
+    assert_select "h2", "Product attributes"
+    assert_select "dt", "Owner"
+    assert_select "h2", "Store listing configuration"
+    assert_select "th", "External ID"
+    assert_select "td", "Enabled"
+  ensure
+    assignment&.destroy
+  end
+
   test "sku detail renders cost tab" do
     Ec::SkuPredictedCost.create!(
       sku_code: @sku.sku_code,
@@ -327,6 +360,60 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "1200.00"
   end
 
+  test "sku detail localizes costs stores and trend tabs in english" do
+    Ec::SkuPredictedCost.create!(
+      sku_code: @sku.sku_code,
+      cost_money: 15.75,
+      cost_currency: "USD",
+      effective_from: Date.new(2026, 6, 1),
+      note: "首批测算"
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: { locale: "en", tab: "costs" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "Costs"
+    assert_select "h2", "Predicted cost configuration"
+    assert_select "a[href=?][data-turbo-frame=?]", "/reports/skus/#{@sku.sku_code}/predicted_costs/new?locale=en", "erp_modal", "Add predicted cost"
+    assert_select "th", "Predicted cost"
+    assert_select "h2", "SKU base cost"
+
+    sign_in @current_user
+    get "/reports/skus/#{@sku.sku_code}", params: {
+      locale: "en",
+      tab: "stores",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "Store sales"
+    assert_select "label", "Start date"
+    assert_select "option", "All platforms"
+    assert_select "button", "Search"
+    assert_select ".summary-label", "Units sold"
+    assert_select "h2", "Store sales"
+    assert_select "th", "Last ordered at"
+
+    sign_in @current_user
+    get "/reports/skus/#{@sku.sku_code}", params: {
+      locale: "en",
+      tab: "trend",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "Sales trend"
+    assert_select "label", "Period"
+    assert_select "option", "Day"
+    assert_select "option", "Summary"
+    assert_select "h2", "Net sales / Revenue trend"
+    assert_select "h2", "Trend details"
+    assert_select "script#sku-detail-sales-chart-data[type=?]", "application/json", /Net sales/
+    assert_select "script#sku-detail-sales-chart-data[type=?]", "application/json", /Revenue/
+  end
+
   test "new sku predicted cost renders modal form" do
     get "/reports/skus/#{@sku.sku_code}/predicted_costs/new", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
 
@@ -338,6 +425,19 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='ec_sku_predicted_cost[cost_money]']"
     assert_select "select[name='ec_sku_predicted_cost[cost_currency]'] option[selected]", "CNY"
     assert_select "input[name='ec_sku_predicted_cost[effective_from]']"
+  end
+
+  test "new sku predicted cost localizes modal form in english" do
+    get "/reports/skus/#{@sku.sku_code}/predicted_costs/new", params: { locale: "en" }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "h2", "Add predicted cost"
+    assert_select "button[aria-label=?]", "Close"
+    assert_select "label", "Predicted cost"
+    assert_select "label", "Currency"
+    assert_select "label", "Start date"
+    assert_select "input[type='submit'][value=?]", "Save"
+    assert_select "button", "Cancel"
   end
 
   test "creates sku predicted cost with default currency from cost tab" do

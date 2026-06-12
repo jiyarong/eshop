@@ -1,6 +1,6 @@
 module Erp
   class BaseController < ApplicationController
-    helper_method :erp_value
+    helper_method :erp_value, :current_locale_params
     before_action -> { require_permission!(:view_erp) }
 
     private
@@ -18,6 +18,10 @@ module Erp
       return format("%.2f", value) if value.is_a?(Float) || value.is_a?(BigDecimal)
 
       value
+    end
+
+    def current_locale_params
+      params[:locale].present? ? { locale: params[:locale] } : {}
     end
   end
 end

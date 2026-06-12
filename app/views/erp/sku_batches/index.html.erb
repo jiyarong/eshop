@@ -1,18 +1,18 @@
-<h1 class="page-title">SKU 批次</h1>
+<h1 class="page-title"><%= t("erp.sku_batches.index.title") %></h1>
 
 <section class="panel">
-  <p><%= link_to "新增 SKU 批次", erp_new_sku_batch_path, class: "button" %></p>
+  <p><%= link_to t("erp.sku_batches.actions.add_sku_batch"), erp_new_sku_batch_path(current_locale_params), class: "button" %></p>
   <div class="table-scroll">
     <table>
       <thead>
         <tr>
-          <th>批次号</th>
+          <th><%= t("erp.sku_batches.fields.batch_code") %></th>
           <th>SKU</th>
-          <th>商品名</th>
-          <th>状态</th>
-          <th>采购数量</th>
-          <th>到货数量</th>
-          <th>采购单价</th>
+          <th><%= t("erp.sku_batches.fields.product_name") %></th>
+          <th><%= t("erp.common.status") %></th>
+          <th><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
+          <th><%= t("erp.sku_batches.fields.received_quantity") %></th>
+          <th><%= t("erp.sku_batches.fields.purchase_unit_price") %></th>
         </tr>
       </thead>
       <tbody>

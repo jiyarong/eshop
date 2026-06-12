@@ -50,6 +50,35 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{erp_edit_store_path(@store)}'][data-turbo-frame='erp_modal']", text: "编辑"
   end
 
+  test "index localizes visible chrome in english" do
+    get "/erp/stores", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "Store Settings"
+    assert_select ".product-page-actions a", text: "Add store"
+    assert_select ".product-summary-grid[aria-label=?]", "Store overview"
+    assert_select ".summary-label", "All stores"
+    assert_select ".summary-label", "Active"
+    assert_select "input[placeholder=?]", "Search store name or notes..."
+    assert_select "label", "Platform"
+    assert_select "option", "All platforms"
+    assert_select "label", "Scale"
+    assert_select "option", "Small"
+    assert_select "option", "General"
+    assert_select "label", "Country"
+    assert_select "option", "Belarus"
+    assert_select "option", "Russia"
+    assert_select "label", "Status"
+    assert_select "button", "Filter"
+    assert_select "a", "Reset"
+    assert_select ".prod-tbl thead th", text: "Store ID"
+    assert_select ".prod-tbl thead th", text: "Company scale"
+    assert_select ".prod-tbl thead th", text: "Registration country"
+    assert_select ".badge.badge-suc", text: "Active"
+    assert_select "a[href='#{erp_new_store_path(locale: "en")}'][data-turbo-frame='erp_modal']", text: "Add store"
+    assert_select "a[href='#{erp_edit_store_path(@store, locale: "en")}'][data-turbo-frame='erp_modal']", text: "Edit"
+  end
+
   test "index filters stores" do
     inactive_store = Ec::Store.create!(
       platform: "wb",
@@ -89,6 +118,21 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select ".erp-modal"
     assert_select "h2", "新增店铺"
     assert_select "form[action='/erp/stores'][data-turbo-frame='_top']"
+  end
+
+  test "store modal form localizes visible chrome in english" do
+    get "/erp/stores/new", params: { locale: "en" }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "h2", "Add store"
+    assert_select "button[aria-label=?]", "Close"
+    assert_select "label", "Platform"
+    assert_select "label", "Company scale"
+    assert_select "label", "Name"
+    assert_select "input[placeholder=?]", "Example: Minsk Ozon store"
+    assert_select "option", "Please select"
+    assert_select ".switch-checkbox span", "Inactive stores will not enter the 1.0 operations workflow."
+    assert_select "input[type='submit'][value=?]", "Save"
   end
 
   test "create store returns to store list" do

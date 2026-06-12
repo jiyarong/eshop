@@ -1,13 +1,13 @@
-<% content_for :page_heading, "SKU 详情" %>
+<% content_for :page_heading, t("reports.sku_detail.title") %>
 
 <div class="resource-header">
   <div>
-    <p class="resource-eyebrow">SKU 详情</p>
+    <p class="resource-eyebrow"><%= t("reports.sku_detail.title") %></p>
     <h1 class="page-title"><%= @sku.sku_code %></h1>
   </div>
   <div class="resource-actions">
-    <%= link_to "返回列表", "/reports/skus", class: "button button-secondary" %>
-    <%= link_to "编辑资料", erp_edit_sku_path(@sku), class: "button" %>
+    <%= link_to t("reports.sku_detail.actions.back_to_list"), "/reports/skus", class: "button button-secondary" %>
+    <%= link_to t("reports.sku_detail.actions.edit_profile"), erp_edit_sku_path(@sku), class: "button" %>
   </div>
 </div>
 
@@ -16,7 +16,7 @@
 <section class="panel sku-detail-hero">
   <div class="sku-detail-identity">
     <span class="status-pill <%= @sku.is_active ? "is-active" : "is-muted" %>">
-      <%= @sku.is_active ? "上架" : "下架" %>
+      <%= t(@sku.is_active ? "reports.sku_detail.status.active" : "reports.sku_detail.status.inactive") %>
     </span>
     <h2><%= report_value(@sku.product_name) %></h2>
     <p><%= report_value(@sku.product_name_ru) %></p>
@@ -24,92 +24,92 @@
 
   <div class="summary-grid">
     <div class="weekly-profit-summary-card">
-      <div class="summary-label">最近30天净销量</div>
+      <div class="summary-label"><%= t("reports.sku_detail.summary.last_30_days_net_sales") %></div>
       <div class="summary-value"><%= @overview_summary[:net_quantity] %></div>
     </div>
     <div class="weekly-profit-summary-card">
-      <div class="summary-label">最近30天销售额</div>
+      <div class="summary-label"><%= t("reports.sku_detail.summary.last_30_days_revenue") %></div>
       <div class="summary-value"><%= report_value(@overview_summary[:gross_revenue]) %></div>
     </div>
     <div class="weekly-profit-summary-card">
-      <div class="summary-label">最近30天退货</div>
+      <div class="summary-label"><%= t("reports.sku_detail.summary.last_30_days_returns") %></div>
       <div class="summary-value"><%= @overview_summary[:return_quantity] %></div>
     </div>
     <div class="weekly-profit-summary-card">
-      <div class="summary-label">涉及店铺</div>
+      <div class="summary-label"><%= t("reports.sku_detail.summary.store_count") %></div>
       <div class="summary-value"><%= @overview_store_count %></div>
     </div>
   </div>
 </section>
 
-<nav class="sku-detail-tabs" aria-label="SKU详情分组">
-  <% [["basic", "基础配置"], ["costs", "成本情况"], ["stores", "各店铺销量情况"], ["trend", "销量历史趋势"]].each do |tab, label| %>
-    <%= link_to label, sku_detail_tab_path(tab), aria: (@active_tab == tab ? { current: "page" } : nil) %>
+<nav class="sku-detail-tabs" aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>">
+  <% %w[basic costs stores trend].each do |tab| %>
+    <%= link_to t("reports.sku_detail.tabs.#{tab}"), sku_detail_tab_path(tab), aria: (@active_tab == tab ? { current: "page" } : nil) %>
   <% end %>
 </nav>
 
 <div class="report-stack">
   <% if @active_tab == "basic" %>
     <section class="panel">
-      <h2 class="section-title">基础信息</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.basic_information") %></h2>
       <dl class="definition-list">
-        <dt>SKU编码</dt>
+        <dt><%= t("reports.sku_detail.fields.sku_code") %></dt>
         <dd><%= @sku.sku_code %></dd>
-        <dt>中文名</dt>
+        <dt><%= t("reports.sku_detail.fields.product_name") %></dt>
         <dd><%= report_value(@sku.product_name) %></dd>
-        <dt>俄文名</dt>
+        <dt><%= t("reports.sku_detail.fields.product_name_ru") %></dt>
         <dd><%= report_value(@sku.product_name_ru) %></dd>
-        <dt>类目</dt>
+        <dt><%= t("reports.sku_detail.fields.category") %></dt>
         <dd><%= report_value(@sku.sku_category&.name) %></dd>
-        <dt>主SKU</dt>
+        <dt><%= t("reports.sku_detail.fields.master_sku") %></dt>
         <dd><%= report_value(@sku.master_sku&.master_sku_code) %></dd>
-        <dt>状态</dt>
-        <dd><%= @sku.is_active ? "上架" : "下架" %></dd>
-        <dt>创建时间</dt>
-        <dd><%= report_value(@sku.created_at&.strftime("%Y-%m-%d %H:%M")) %></dd>
-        <dt>更新时间</dt>
-        <dd><%= report_value(@sku.updated_at&.strftime("%Y-%m-%d %H:%M")) %></dd>
+        <dt><%= t("reports.sku_detail.fields.status") %></dt>
+        <dd><%= t(@sku.is_active ? "reports.sku_detail.status.active" : "reports.sku_detail.status.inactive") %></dd>
+        <dt><%= t("reports.sku_detail.fields.created_at") %></dt>
+        <dd><%= display_time(@sku.created_at) %></dd>
+        <dt><%= t("reports.sku_detail.fields.updated_at") %></dt>
+        <dd><%= display_time(@sku.updated_at) %></dd>
       </dl>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">商品属性</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.product_attributes") %></h2>
       <dl class="definition-list">
-        <dt>颜色</dt>
+        <dt><%= t("reports.sku_detail.fields.color") %></dt>
         <dd><%= report_value(@sku.color) %></dd>
-        <dt>规格</dt>
+        <dt><%= t("reports.sku_detail.fields.spec") %></dt>
         <dd><%= report_value(@sku.spec) %></dd>
-        <dt>尺寸</dt>
+        <dt><%= t("reports.sku_detail.fields.size") %></dt>
         <dd><%= report_value(@sku.size) %></dd>
-        <dt>重量 kg</dt>
+        <dt><%= t("reports.sku_detail.fields.weight_kg") %></dt>
         <dd><%= report_value(@sku.weight_kg) %></dd>
-        <dt>体积 L</dt>
+        <dt><%= t("reports.sku_detail.fields.volume_l") %></dt>
         <dd><%= report_value(@sku.volume_l) %></dd>
-        <dt>型号</dt>
+        <dt><%= t("reports.sku_detail.fields.model") %></dt>
         <dd><%= report_value(@sku.model) %></dd>
-        <dt>品质</dt>
+        <dt><%= t("reports.sku_detail.fields.quality_grade") %></dt>
         <dd><%= report_value(@sku.quality_grade) %></dd>
-        <dt>特点</dt>
+        <dt><%= t("reports.sku_detail.fields.features") %></dt>
         <dd><%= report_value(@sku.features) %></dd>
-        <dt>负责人</dt>
+        <dt><%= t("reports.sku_detail.fields.owner") %></dt>
         <dd><%= report_value(@sku.owner_name) %></dd>
-        <dt>备注</dt>
+        <dt><%= t("reports.sku_detail.fields.note") %></dt>
         <dd><%= report_value(@sku.memo) %></dd>
       </dl>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">店铺上架配置</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.store_listing_configuration") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>平台</th>
-              <th>店铺</th>
-              <th>状态</th>
-              <th>外部 ID</th>
-              <th>上架日期</th>
-              <th>负责人</th>
+              <th><%= t("reports.sku_detail.fields.platform") %></th>
+              <th><%= t("reports.sku_detail.fields.store") %></th>
+              <th><%= t("reports.sku_detail.fields.status") %></th>
+              <th><%= t("reports.sku_detail.fields.external_id") %></th>
+              <th><%= t("reports.sku_detail.fields.listed_at") %></th>
+              <th><%= t("reports.sku_detail.fields.owner") %></th>
             </tr>
           </thead>
           <tbody>
@@ -118,7 +118,7 @@
                 <tr>
                   <td><%= platform_label_for_sales(assignment.platform) %></td>
                   <td><%= assignment.store_display_name %></td>
-                  <td><%= assignment.is_active ? "启用" : "停用" %></td>
+                  <td><%= t(assignment.is_active ? "reports.sku_detail.status.enabled" : "reports.sku_detail.status.disabled") %></td>
                   <td><%= report_value(assignment.external_id) %></td>
                   <td><%= report_value(assignment.listed_at) %></td>
                   <td><%= report_value(assignment.owner_name) %></td>
@@ -126,7 +126,7 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="6" class="empty-state">暂无店铺上架配置</td>
+                <td colspan="6" class="empty-state"><%= t("reports.sku_detail.empty.store_assignments") %></td>
               </tr>
             <% end %>
           </tbody>
@@ -136,21 +136,21 @@
   <% elsif @active_tab == "costs" %>
     <section class="panel">
       <div class="table-section-header">
-        <h2 class="section-title">预测成本配置</h2>
-        <%= link_to new_report_sku_predicted_cost_path(@sku.sku_code), class: "button", data: { turbo_frame: "erp_modal" } do %>
-          新增预测成本
+        <h2 class="section-title"><%= t("reports.sku_detail.sections.predicted_cost_configuration") %></h2>
+        <%= link_to new_report_sku_predicted_cost_path(@sku.sku_code, request.query_parameters.slice(:locale)), class: "button", data: { turbo_frame: "erp_modal" } do %>
+          <%= t("reports.sku_detail.actions.add_predicted_cost") %>
         <% end %>
       </div>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>预测成本</th>
-              <th>币种</th>
-              <th>开始日期</th>
-              <th>结束日期</th>
-              <th>备注</th>
-              <th>录入时间</th>
+              <th><%= t("reports.sku_detail.fields.predicted_cost") %></th>
+              <th><%= t("reports.sku_detail.fields.currency") %></th>
+              <th><%= t("reports.sku_detail.fields.start_date") %></th>
+              <th><%= t("reports.sku_detail.fields.end_date") %></th>
+              <th><%= t("reports.sku_detail.fields.note") %></th>
+              <th><%= t("reports.sku_detail.fields.created_at") %></th>
             </tr>
           </thead>
           <tbody>
@@ -162,12 +162,12 @@
                   <td><%= cost.effective_from %></td>
                   <td><%= report_value(cost.effective_to) %></td>
                   <td><%= report_value(cost.note) %></td>
-                  <td><%= report_value(cost.created_at&.strftime("%Y-%m-%d %H:%M")) %></td>
+                  <td><%= display_time(cost.created_at) %></td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="6" class="empty-state">暂无预测成本配置</td>
+                <td colspan="6" class="empty-state"><%= t("reports.sku_detail.empty.predicted_costs") %></td>
               </tr>
             <% end %>
           </tbody>
@@ -176,22 +176,22 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">SKU 基础成本</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.sku_base_cost") %></h2>
       <% if @sku_cost %>
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>采购价 CNY</th>
-                <th>到白俄运费 CNY</th>
-                <th>清关杂费 CNY</th>
-                <th>关税额 CNY</th>
-                <th>进口增值税 CNY</th>
-                <th>货物总成本 CNY</th>
-                <th>包装尺寸</th>
-                <th>升量 L</th>
-                <th>杂费 CNY</th>
-                <th>货损率</th>
+                <th><%= t("reports.sku_detail.fields.purchase_price_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.freight_to_by_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.customs_misc_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.customs_duty_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.import_vat_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.goods_cost_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.package_size") %></th>
+                <th><%= t("reports.sku_detail.fields.volume_l") %></th>
+                <th><%= t("reports.sku_detail.fields.misc_cost_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.damage_rate") %></th>
               </tr>
             </thead>
             <tbody>
@@ -211,25 +211,25 @@
           </table>
         </div>
       <% else %>
-        <div class="empty-state">暂无成本数据</div>
+        <div class="empty-state"><%= t("reports.sku_detail.empty.cost_data") %></div>
       <% end %>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">WB 成本</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.wb_cost") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>配送模式</th>
-              <th>公司类型</th>
-              <th>目标售价 RUB</th>
-              <th>收入 CNY</th>
-              <th>平台运费 CNY</th>
-              <th>广告费 CNY</th>
-              <th>最终成本 CNY</th>
-              <th>利润 CNY</th>
-              <th>利润率</th>
+              <th><%= t("reports.sku_detail.fields.delivery_mode") %></th>
+              <th><%= t("reports.sku_detail.fields.company_type") %></th>
+              <th><%= t("reports.sku_detail.fields.target_price_rub") %></th>
+              <th><%= t("reports.sku_detail.fields.revenue_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.platform_freight_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.ad_spend_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.total_cost_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.profit_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.margin") %></th>
             </tr>
           </thead>
           <tbody>
@@ -249,7 +249,7 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="9" class="empty-state">暂无 WB 成本数据</td>
+                <td colspan="9" class="empty-state"><%= t("reports.sku_detail.empty.wb_costs") %></td>
               </tr>
             <% end %>
           </tbody>
@@ -258,22 +258,22 @@
     </section>
 
     <section class="panel">
-      <h2 class="section-title">Ozon 成本</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.ozon_cost") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>配送模式</th>
-              <th>公司类型</th>
-              <th>俄罗斯售价 RUB</th>
-              <th>白俄售价 RUB</th>
-              <th>俄罗斯收入 CNY</th>
-              <th>白俄收入 CNY</th>
-              <th>平台运费 CNY</th>
-              <th>俄罗斯最终成本 CNY</th>
-              <th>白俄最终成本 CNY</th>
-              <th>俄罗斯利润 CNY</th>
-              <th>白俄利润 CNY</th>
+              <th><%= t("reports.sku_detail.fields.delivery_mode") %></th>
+              <th><%= t("reports.sku_detail.fields.company_type") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_price_rub") %></th>
+              <th><%= t("reports.sku_detail.fields.by_price_rub") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_revenue_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.by_revenue_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.platform_freight_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_total_cost_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.by_total_cost_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_profit_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.by_profit_cny") %></th>
             </tr>
           </thead>
           <tbody>
@@ -295,7 +295,7 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="11" class="empty-state">暂无 Ozon 成本数据</td>
+                <td colspan="11" class="empty-state"><%= t("reports.sku_detail.empty.ozon_costs") %></td>
               </tr>
             <% end %>
           </tbody>
@@ -307,83 +307,83 @@
       <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, html: { class: "report-form" } do %>
         <input type="hidden" name="tab" value="stores">
         <div class="field">
-          <label for="from_date">开始日期</label>
+          <label for="from_date"><%= t("reports.sku_detail.filters.start_date") %></label>
           <input id="from_date" type="date" name="from_date" value="<%= @from_date %>">
         </div>
         <div class="field">
-          <label for="to_date">结束日期</label>
+          <label for="to_date"><%= t("reports.sku_detail.filters.end_date") %></label>
           <input id="to_date" type="date" name="to_date" value="<%= @to_date %>">
         </div>
         <div class="field">
-          <label for="platform">平台</label>
+          <label for="platform"><%= t("reports.sku_detail.filters.platform") %></label>
           <select id="platform" name="platform">
-            <option value="">全部平台</option>
+            <option value=""><%= t("reports.sku_detail.filters.all_platforms") %></option>
             <option value="ozon" <%= "selected" if @selected_platform == "ozon" %>>Ozon</option>
             <option value="wb" <%= "selected" if @selected_platform == "wb" %>>WB</option>
             <option value="amazon" <%= "selected" if @selected_platform == "amazon" %>>Amazon</option>
           </select>
         </div>
         <div class="field">
-          <label for="store_id">店铺</label>
+          <label for="store_id"><%= t("reports.sku_detail.filters.store") %></label>
           <select id="store_id" name="store_id">
-            <option value="">全部店铺</option>
+            <option value=""><%= t("reports.sku_detail.filters.all_stores") %></option>
             <% @stores.each do |store| %>
               <option value="<%= store.id %>" <%= "selected" if @selected_store_id.to_s == store.id.to_s %>><%= store.platform.upcase %> / <%= store.store_name %></option>
             <% end %>
           </select>
         </div>
-        <button class="button" type="submit">查询</button>
+        <button class="button" type="submit"><%= t("reports.sku_detail.filters.submit") %></button>
       <% end %>
     </section>
 
     <section class="panel">
       <div class="summary-grid">
         <div class="weekly-profit-summary-card">
-          <div class="summary-label">销售件数</div>
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.units_sold") %></div>
           <div class="summary-value"><%= @sku_sales_summary[:sales_quantity] %></div>
         </div>
         <div class="weekly-profit-summary-card">
-          <div class="summary-label">退货件数</div>
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.returned_units") %></div>
           <div class="summary-value"><%= @sku_sales_summary[:return_quantity] %></div>
         </div>
         <div class="weekly-profit-summary-card">
-          <div class="summary-label">净销量</div>
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.net_sales") %></div>
           <div class="summary-value"><%= @sku_sales_summary[:net_quantity] %></div>
         </div>
         <div class="weekly-profit-summary-card">
-          <div class="summary-label">订单数</div>
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.order_count") %></div>
           <div class="summary-value"><%= @sku_sales_summary[:order_count] %></div>
         </div>
         <div class="weekly-profit-summary-card">
-          <div class="summary-label">销售额</div>
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.revenue") %></div>
           <div class="summary-value"><%= report_value(@sku_sales_summary[:gross_revenue]) %></div>
         </div>
         <div class="weekly-profit-summary-card">
-          <div class="summary-label">均价</div>
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.average_price") %></div>
           <div class="summary-value"><%= @sku_sales_summary[:sales_quantity].positive? ? report_value(@sku_sales_summary[:gross_revenue] / @sku_sales_summary[:sales_quantity]) : "-" %></div>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">店铺销量</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.store_sales") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>平台</th>
-              <th>店铺</th>
-              <th>销售件数</th>
-              <th>退货件数</th>
-              <th>净销量</th>
-              <th>订单数</th>
-              <th>销售额</th>
+              <th><%= t("reports.sku_detail.fields.platform") %></th>
+              <th><%= t("reports.sku_detail.fields.store") %></th>
+              <th><%= t("reports.sku_detail.metrics.units_sold") %></th>
+              <th><%= t("reports.sku_detail.metrics.returned_units") %></th>
+              <th><%= t("reports.sku_detail.metrics.net_sales") %></th>
+              <th><%= t("reports.sku_detail.metrics.order_count") %></th>
+              <th><%= t("reports.sku_detail.metrics.revenue") %></th>
               <th>Payout</th>
-              <th>佣金</th>
-              <th>折扣</th>
-              <th>均价</th>
-              <th>履约模式</th>
-              <th>最近出单时间</th>
+              <th><%= t("reports.sku_detail.metrics.commission") %></th>
+              <th><%= t("reports.sku_detail.metrics.discount") %></th>
+              <th><%= t("reports.sku_detail.metrics.average_price") %></th>
+              <th><%= t("reports.sku_detail.fields.fulfillment_mode") %></th>
+              <th><%= t("reports.sku_detail.fields.last_ordered_at") %></th>
             </tr>
           </thead>
           <tbody>
@@ -402,12 +402,12 @@
                   <td><%= report_value(row[:discount]) %></td>
                   <td><%= report_value(row[:average_unit_price]) %></td>
                   <td><%= report_value(row[:fulfillment_types]) %></td>
-                  <td><%= report_value(row[:last_ordered_at]&.strftime("%Y-%m-%d %H:%M")) %></td>
+                  <td><%= display_time(row[:last_ordered_at]) %></td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="13" class="empty-state">当前筛选范围内没有订单数据</td>
+                <td colspan="13" class="empty-state"><%= t("reports.sku_detail.empty.order_data") %></td>
               </tr>
             <% end %>
           </tbody>
@@ -419,35 +419,35 @@
       <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, html: { class: "report-form" } do %>
         <input type="hidden" name="tab" value="trend">
         <div class="field">
-          <label for="trend_from_date">开始日期</label>
+          <label for="trend_from_date"><%= t("reports.sku_detail.filters.start_date") %></label>
           <input id="trend_from_date" type="date" name="from_date" value="<%= @from_date %>">
         </div>
         <div class="field">
-          <label for="trend_to_date">结束日期</label>
+          <label for="trend_to_date"><%= t("reports.sku_detail.filters.end_date") %></label>
           <input id="trend_to_date" type="date" name="to_date" value="<%= @to_date %>">
         </div>
         <div class="field">
-          <label for="period">周期</label>
+          <label for="period"><%= t("reports.sku_detail.filters.period") %></label>
           <select id="period" name="period">
-            <option value="day" <%= "selected" if @period == "day" %>>日</option>
-            <option value="week" <%= "selected" if @period == "week" %>>周</option>
-            <option value="month" <%= "selected" if @period == "month" %>>月</option>
+            <option value="day" <%= "selected" if @period == "day" %>><%= t("reports.sku_detail.periods.day") %></option>
+            <option value="week" <%= "selected" if @period == "week" %>><%= t("reports.sku_detail.periods.week") %></option>
+            <option value="month" <%= "selected" if @period == "month" %>><%= t("reports.sku_detail.periods.month") %></option>
           </select>
         </div>
         <div class="field">
-          <label for="grain">维度</label>
+          <label for="grain"><%= t("reports.sku_detail.filters.grain") %></label>
           <select id="grain" name="grain">
-            <option value="store" <%= "selected" if @grain == "store" %>>店铺</option>
-            <option value="platform" <%= "selected" if @grain == "platform" %>>平台</option>
-            <option value="sku" <%= "selected" if @grain == "sku" %>>汇总</option>
+            <option value="store" <%= "selected" if @grain == "store" %>><%= t("reports.sku_detail.grains.store") %></option>
+            <option value="platform" <%= "selected" if @grain == "platform" %>><%= t("reports.sku_detail.grains.platform") %></option>
+            <option value="sku" <%= "selected" if @grain == "sku" %>><%= t("reports.sku_detail.grains.sku") %></option>
           </select>
         </div>
-        <button class="button" type="submit">查询</button>
+        <button class="button" type="submit"><%= t("reports.sku_detail.filters.submit") %></button>
       <% end %>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">净销量 / 销售额趋势</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.sales_trend_chart") %></h2>
       <% if @sku_sales_chart_series.any? %>
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
         <div id="sku-detail-sales-chart" data-chart="sku-detail-sales" style="width: 100%; height: 360px;"></div>
@@ -470,34 +470,34 @@
           })();
         </script>
       <% else %>
-        <div class="empty-state">当前筛选范围内没有订单数据</div>
+        <div class="empty-state"><%= t("reports.sku_detail.empty.order_data") %></div>
       <% end %>
     </section>
 
     <section class="panel">
-      <h2 class="section-title">趋势明细</h2>
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.trend_details") %></h2>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>周期</th>
+              <th><%= t("reports.sku_detail.fields.period") %></th>
               <th>SKU</th>
               <% unless @grain == "sku" %>
-                <th>平台</th>
+                <th><%= t("reports.sku_detail.fields.platform") %></th>
               <% end %>
               <% if @grain == "store" %>
-                <th>店铺</th>
+                <th><%= t("reports.sku_detail.fields.store") %></th>
               <% end %>
-              <th>销售件数</th>
-              <th>退货件数</th>
-              <th>净销量</th>
-              <th>订单数</th>
-              <th>销售额</th>
+              <th><%= t("reports.sku_detail.metrics.units_sold") %></th>
+              <th><%= t("reports.sku_detail.metrics.returned_units") %></th>
+              <th><%= t("reports.sku_detail.metrics.net_sales") %></th>
+              <th><%= t("reports.sku_detail.metrics.order_count") %></th>
+              <th><%= t("reports.sku_detail.metrics.revenue") %></th>
               <th>Payout</th>
-              <th>佣金</th>
-              <th>折扣</th>
-              <th>均价</th>
-              <th>履约模式</th>
+              <th><%= t("reports.sku_detail.metrics.commission") %></th>
+              <th><%= t("reports.sku_detail.metrics.discount") %></th>
+              <th><%= t("reports.sku_detail.metrics.average_price") %></th>
+              <th><%= t("reports.sku_detail.fields.fulfillment_mode") %></th>
             </tr>
           </thead>
           <tbody>
@@ -526,7 +526,7 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="<%= @grain == "store" ? 14 : (@grain == "platform" ? 13 : 12) %>" class="empty-state">当前筛选范围内没有订单数据</td>
+                <td colspan="<%= @grain == "store" ? 14 : (@grain == "platform" ? 13 : 12) %>" class="empty-state"><%= t("reports.sku_detail.empty.order_data") %></td>
               </tr>
             <% end %>
           </tbody>

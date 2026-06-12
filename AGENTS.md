@@ -14,6 +14,7 @@
 - 新报表页面使用 Rails 自带页面体系：Controller + ERB + Turbo/Hotwire 风格交互。
 - 当前 Rails 项目是 `api_only` 配置，但已经通过 `ApplicationController` 支持明确的 HTML 请求。
 - JSON API 仍要保留 `.json` 路径能力，避免破坏已有接口测试和后续集成。
+- 页面上展示给用户看的文本都应通过 Rails I18n 管理，不要在 ERB、helper、controller 或前端脚本中新增硬编码展示文案。
 - 现有页面布局在 `app/views/layouts/application.html.erb`，报表导航已经包含：
   - `/weekly_profit_reports`：周利润报表
   - `/reports/inventory`：库存

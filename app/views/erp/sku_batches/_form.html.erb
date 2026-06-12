@@ -11,37 +11,37 @@
       <%= form.collection_select :sku_code, sku_options, :sku_code, :sku_code %>
     </div>
     <div class="field">
-      <%= form.label :batch_code, "批次号" %>
+      <%= form.label :batch_code, t("erp.sku_batches.fields.batch_code") %>
       <%= form.text_field :batch_code %>
     </div>
     <div class="field">
-      <%= form.label :status, "状态" %>
+      <%= form.label :status, t("erp.common.status") %>
       <%= form.select :status, Ec::SkuBatch::STATUSES %>
     </div>
     <div class="field">
-      <%= form.label :purchased_quantity, "采购数量" %>
+      <%= form.label :purchased_quantity, t("erp.sku_batches.fields.purchased_quantity") %>
       <%= form.number_field :purchased_quantity, min: 0 %>
     </div>
     <div class="field">
-      <%= form.label :received_quantity, "到货数量" %>
+      <%= form.label :received_quantity, t("erp.sku_batches.fields.received_quantity") %>
       <%= form.number_field :received_quantity, min: 0 %>
     </div>
     <div class="field">
-      <%= form.label :purchase_unit_price_cny, "采购单价" %>
+      <%= form.label :purchase_unit_price_cny, t("erp.sku_batches.fields.purchase_unit_price") %>
       <%= form.number_field :purchase_unit_price_cny, min: 0, step: "0.0001" %>
     </div>
     <div class="field">
-      <%= form.label :expected_arrival_on, "预计到货" %>
+      <%= form.label :expected_arrival_on, t("erp.sku_batches.fields.expected_arrival") %>
       <%= form.date_field :expected_arrival_on %>
     </div>
     <div class="field">
-      <%= form.label :received_on, "实际到货" %>
+      <%= form.label :received_on, t("erp.sku_batches.fields.actual_arrival") %>
       <%= form.date_field :received_on %>
     </div>
     <div class="field">
-      <%= form.label :memo, "备注" %>
+      <%= form.label :memo, t("erp.common.memo") %>
       <%= form.text_field :memo %>
     </div>
-    <%= form.submit "保存", class: "button" %>
+    <%= form.submit t("common.actions.save"), class: "button" %>
   </div>
 <% end %>

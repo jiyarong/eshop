@@ -223,6 +223,23 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", "/orders/#{@order.id}"
   end
 
+  test "index localizes visible chrome in english" do
+    get "/orders", params: { locale: "en", platform: "ozon", q: "0128619527" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "Orders"
+    assert_select "label", "Platform"
+    assert_select "option", "All platforms"
+    assert_select "label", "Search"
+    assert_select "input[placeholder=?]", "Order number / Fulfillment / SKU"
+    assert_select ".summary-label", "Orders"
+    assert_select ".summary-label", "Processing"
+    assert_select "th", "Platform"
+    assert_select "th", "Platform order number"
+    assert_select "td", "Shipped"
+    assert_select "a[href=?]", "/orders/#{@order.id}", "View details"
+  end
+
   test "index links wb order number to seller order feed" do
     get "/orders", params: { platform: "wb", q: "WB-G-#{@token}" }, headers: { "Accept" => "text/html" }
 
@@ -331,9 +348,9 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "订单 0128619527-0157-LONG-ORDER"
     assert_select "th", "完成时间"
-    assert_select "td", "2026-06-04 10:00"
+    assert_select "td", "2026-06-04 18:00"
     assert_select "th", "取消时间"
-    assert_select "td", "2026-06-05 11:30"
+    assert_select "td", "2026-06-05 19:30"
     assert_select "h2", "履约与追踪"
     assert_select "th", { text: "履约单号", count: 0 }
     assert_select "td", { text: "0128619527-0157-1", count: 0 }
@@ -361,5 +378,26 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "123456"
     assert_select "th", { text: "来源 Key", count: 0 }
     assert_select "details", { text: /查看订单源片段/, count: 0 }
+  end
+
+  test "show localizes visible chrome in english" do
+    get "/orders/#{@order.id}", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "Order 0128619527-0157-LONG-ORDER"
+    assert_select "a[href=?]", "/orders", "Back to orders"
+    assert_select ".summary-label", "Platform / Store"
+    assert_select ".summary-label", "Unified status"
+    assert_select "h2", "Order information"
+    assert_select "th", "Platform order ID"
+    assert_select "h2", "Fulfillment and tracking"
+    assert_select "th", "Tracking number"
+    assert_select "h2", "Items"
+    assert_select "th", "Internal SKU"
+    assert_select "h2", "SKU details"
+    assert_select "th", "FBO available / reserved"
+    assert_select "h2", "Source links"
+    assert_select "th", "Source type"
+    assert_select "td", "Shipped"
   end
 end

@@ -2,8 +2,8 @@
   <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
     <section class="erp-modal erp-modal--wide" role="dialog" aria-modal="true" aria-labelledby="sku-batch-modal-title">
       <div class="erp-modal__header">
-        <h2 id="sku-batch-modal-title">新增批次</h2>
-        <button class="icon-button" type="button" aria-label="关闭" data-action="modal#close">
+        <h2 id="sku-batch-modal-title"><%= t("erp.sku_batches.actions.add_batch") %></h2>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
           <i class="bi bi-x-lg" aria-hidden="true"></i>
         </button>
       </div>

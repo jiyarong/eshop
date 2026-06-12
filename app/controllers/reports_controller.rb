@@ -271,22 +271,20 @@ class ReportsController < ApplicationController
   end
 
   def platform_label_for_sales(platform)
-    {
-      "ozon" => "Ozon",
-      "wb" => "WB",
-      "amazon" => "Amazon"
-    }.fetch(platform.to_s, platform.to_s)
+    t("common.platforms.#{platform}", default: platform.to_s)
   end
 
   def build_sku_sales_chart_option(series)
     periods = @sku_sales_rows.map { |row| row[:period_start].to_s }.uniq.sort
+    net_sales_label = t("reports.sku_detail.metrics.net_sales")
+    revenue_label = t("reports.sku_detail.metrics.revenue")
     {
       color: %w[#176b87 #b42318 #167044 #7c3aed #a15c07 #0f766e],
       tooltip: { trigger: "axis" },
       legend: {
         type: "scroll",
         top: 0,
-        data: series.flat_map { |item| ["#{sku_sales_series_name(item)} 净销量", "#{sku_sales_series_name(item)} 销售额"] }
+        data: series.flat_map { |item| ["#{sku_sales_series_name(item)} #{net_sales_label}", "#{sku_sales_series_name(item)} #{revenue_label}"] }
       },
       grid: {
         left: 48,
@@ -301,15 +299,15 @@ class ReportsController < ApplicationController
         data: periods
       },
       yAxis: [
-        { type: "value", name: "净销量", minInterval: 1 },
-        { type: "value", name: "销售额" }
+        { type: "value", name: net_sales_label, minInterval: 1 },
+        { type: "value", name: revenue_label }
       ],
       series: series.flat_map do |item|
         values_by_period = item[:rows].index_by { |row| row[:period_start].to_s }
         name = sku_sales_series_name(item)
         [
           {
-            name: "#{name} 净销量",
+            name: "#{name} #{net_sales_label}",
             type: "line",
             smooth: true,
             symbolSize: 7,
@@ -317,7 +315,7 @@ class ReportsController < ApplicationController
             data: periods.map { |period| values_by_period[period]&.fetch(:net_quantity, 0) || 0 }
           },
           {
-            name: "#{name} 销售额",
+            name: "#{name} #{revenue_label}",
             type: "line",
             smooth: true,
             symbolSize: 7,

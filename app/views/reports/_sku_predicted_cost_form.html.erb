@@ -7,29 +7,29 @@
 
   <div class="report-form modal-form-grid">
     <div class="field">
-      <%= form.label :cost_money, "预测成本" %>
+      <%= form.label :cost_money, t("reports.sku_predicted_cost.fields.cost_money") %>
       <%= form.number_field :cost_money, step: "0.01", min: "0.01" %>
     </div>
     <div class="field">
-      <%= form.label :cost_currency, "币种" %>
+      <%= form.label :cost_currency, t("reports.sku_predicted_cost.fields.cost_currency") %>
       <%= form.select :cost_currency, Ec::SkuPredictedCost::CURRENCIES.map { |currency| [currency, currency] } %>
     </div>
     <div class="field">
-      <%= form.label :effective_from, "开始日期" %>
+      <%= form.label :effective_from, t("reports.sku_predicted_cost.fields.effective_from") %>
       <%= form.date_field :effective_from %>
     </div>
     <div class="field">
-      <%= form.label :effective_to, "结束日期" %>
+      <%= form.label :effective_to, t("reports.sku_predicted_cost.fields.effective_to") %>
       <%= form.date_field :effective_to %>
     </div>
     <div class="field modal-form-grid__wide">
-      <%= form.label :note, "备注" %>
+      <%= form.label :note, t("reports.sku_predicted_cost.fields.note") %>
       <%= form.text_field :note %>
     </div>
     <div class="modal-form-actions">
-      <%= form.submit "保存", class: "button" %>
+      <%= form.submit t("common.actions.save"), class: "button" %>
       <% if local_assigns[:modal] %>
-        <button class="button button-secondary" type="button" data-action="modal#close">取消</button>
+        <button class="button button-secondary" type="button" data-action="modal#close"><%= t("common.actions.cancel") %></button>
       <% end %>
     </div>
   </div>

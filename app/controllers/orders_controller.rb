@@ -112,23 +112,11 @@ class OrdersController < ApplicationController
   end
 
   def order_status_label(status)
-    {
-      "pending" => "待处理",
-      "processing" => "处理中",
-      "shipped" => "配送中",
-      "delivered" => "已签收",
-      "cancelled" => "已取消",
-      "returned" => "已退货",
-      "unknown" => "未知"
-    }.fetch(status.to_s, status.to_s)
+    t("orders.statuses.#{status}", default: status.to_s)
   end
 
   def platform_label(platform)
-    {
-      "ozon" => "Ozon",
-      "wb" => "WB",
-      "amazon" => "Amazon"
-    }.fetch(platform.to_s, platform.to_s)
+    t("common.platforms.#{platform}", default: platform.to_s)
   end
 
   def fulfillment_label(value)
@@ -166,8 +154,8 @@ class OrdersController < ApplicationController
 
   def order_status_title(order)
     [
-      "源状态: #{display_value(order.source_status)}",
-      "源子状态: #{display_value(order.source_substatus)}"
+      "#{t('orders.fields.source_status')}: #{display_value(order.source_status)}",
+      "#{t('orders.fields.source_substatus')}: #{display_value(order.source_substatus)}"
     ].join("\n")
   end
 

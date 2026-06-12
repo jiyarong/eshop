@@ -77,21 +77,21 @@ module Erp
     end
 
     def validate_store_form(store)
-      store.errors.add(:company_type, "请选择公司规模类型") if store.company_type.blank?
-      store.errors.add(:registration_country, "请选择公司注册国") if store.registration_country.blank?
+      store.errors.add(:company_type, t("erp.stores.errors.company_type_blank")) if store.company_type.blank?
+      store.errors.add(:registration_country, t("erp.stores.errors.registration_country_blank")) if store.registration_country.blank?
       store.errors.empty?
     end
 
     def store_platform_options
-      [["Ozon", "ozon"], ["WB", "wb"]]
+      %w[ozon wb].map { |platform| [t("common.platforms.#{platform}"), platform] }
     end
 
     def store_company_type_options
-      [["小规模", "small"], ["普通", "general"]]
+      %w[small general].map { |type| [t("erp.stores.company_types.#{type}"), type] }
     end
 
     def store_country_options
-      Ec::Store::REGISTRATION_COUNTRIES.map { |value, label| [label, value] }
+      Ec::Store::REGISTRATION_COUNTRIES.keys.map { |value| [t("erp.stores.countries.#{value}"), value] }
     end
 
     def store_platform_label(platform)
