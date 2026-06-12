@@ -18,8 +18,8 @@ module RawOzon
           page = 0
           loop do
             resp = @client.post('/v1/analytics/product-queries', {
-              date_from: @from.iso8601,
-              date_to:   Date.current.iso8601,
+              date_from: @from.to_date.to_time.utc.iso8601,
+              date_to:   Date.current.to_time.utc.iso8601,
               skus:      slice,
               page:      page,
               page_size: page_size,
@@ -66,8 +66,8 @@ module RawOzon
           page = 0
           loop do
             resp = @client.post('/v1/analytics/product-queries/details', {
-              date_from:    @from.iso8601,
-              date_to:      Date.current.iso8601,
+              date_from:    @from.to_date.to_time.utc.iso8601,
+              date_to:      Date.current.to_time.utc.iso8601,
               skus:         slice,
               limit_by_sku: 15,
               page:         page,
