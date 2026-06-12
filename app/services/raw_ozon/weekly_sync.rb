@@ -9,6 +9,7 @@ module RawOzon
       sync_analytics_stocks
       sync_promotions
       sync_finance_realization
+      sync_product_queries
     ].freeze
   end
 end

@@ -22,6 +22,7 @@ module RawOzon
     include Syncs::Analytics
     include Syncs::AnalyticsStocks
     include Syncs::Promotions
+    include Syncs::ProductQueries
 
     def self.run(days: nil, sync_keys: nil)
       stores = Ec::Store.where(platform: 'ozon', is_active: true)

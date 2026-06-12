@@ -19,6 +19,7 @@ module RawWb
       sync_finance_details
       sync_paid_storage
       sync_ad_settled_fees
+      sync_search_terms
     ].freeze
 
     # 按需同步指定账号、指定时段的广告费（当报告日期不是自然周边界时调用）
