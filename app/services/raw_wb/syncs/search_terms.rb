@@ -9,7 +9,7 @@ module RawWb
         total = 0
         nm_ids.each_slice(10) do |slice|
           offset = 0
-          limit  = 100
+          limit  = 20  # Jam tariff max
           loop do
             body = {
               nmIds:         slice,
