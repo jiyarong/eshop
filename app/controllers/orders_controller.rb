@@ -1,21 +1,12 @@
 class OrdersController < ApplicationController
-  ORDER_TIMEZONES = {
-    "utc" => { label: "UTC (UTC+00:00)", name: "UTC" },
-    "shanghai" => { label: "上海 (UTC+08:00)", name: "Asia/Shanghai" },
-    "russia" => { label: "莫斯科 (UTC+03:00)", name: "Europe/Moscow" }
-  }.freeze
-  DEFAULT_ORDER_TIMEZONE = "shanghai"
-
   helper_method :order_status_label, :platform_label, :fulfillment_label, :display_value, :money_value,
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
-                :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
-                :order_timezone_options, :order_time_value
+                :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value
   before_action -> { require_permission!(:view_reports) }
 
   def index
-    @selected_timezone = selected_timezone
-    @order_time_zone = ActiveSupport::TimeZone[ORDER_TIMEZONES.fetch(@selected_timezone).fetch(:name)]
+    @order_time_zone = user_time_zone
     @q_params = normalized_ransack_params
     @date_params = date_filter_params(@q_params)
     @stores = Ec::Store.order(:platform, :store_name)
@@ -118,18 +109,6 @@ class OrdersController < ApplicationController
     return unless date
 
     @order_time_zone.local(date.year, date.month, date.day).public_send(boundary)
-  end
-
-  def selected_timezone
-    params[:timezone].presence_in(ORDER_TIMEZONES.keys) || DEFAULT_ORDER_TIMEZONE
-  end
-
-  def order_timezone_options
-    ORDER_TIMEZONES.map { |key, config| [config.fetch(:label), key] }
-  end
-
-  def order_time_value(value)
-    value&.in_time_zone(@order_time_zone)&.strftime("%Y-%m-%d %H:%M") || "-"
   end
 
   def order_status_label(status)

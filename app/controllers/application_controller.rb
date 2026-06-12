@@ -1,7 +1,7 @@
 class ApplicationController < ActionController::Base
   include Devise::Controllers::Helpers
 
-  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale
+  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale, :user_time_zone
 
   prepend_before_action :set_locale
   before_action :redirect_guest_with_locale, if: :html_request?
@@ -50,6 +50,10 @@ class ApplicationController < ActionController::Base
 
   def can?(permission)
     current_user&.can?(permission)
+  end
+
+  def user_time_zone
+    User.profile_time_zone(current_user&.time_zone)
   end
 
   def require_permission!(permission)

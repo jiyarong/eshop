@@ -1,0 +1,19 @@
+<h1 class="page-title">个人设置</h1>
+
+<section class="panel">
+  <%= form_with model: @user, url: profile_path, method: :patch do |form| %>
+    <% if @user.errors.any? %>
+      <div class="panel error-box">
+        <%= @user.errors.full_messages.join("；") %>
+      </div>
+    <% end %>
+
+    <div class="report-form">
+      <div class="field">
+        <%= form.label :time_zone, "时间展示时区" %>
+        <%= form.select :time_zone, User.time_zone_options %>
+      </div>
+      <%= form.submit "保存", class: "button" %>
+    </div>
+  <% end %>
+</section>

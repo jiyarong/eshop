@@ -259,7 +259,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: "OLDER-#{@token}-20", count: 0 }
   end
 
-  test "index filters order dates in selected timezone and defaults to shanghai" do
+  test "index filters order dates in current user time zone and defaults to shanghai" do
     boundary_order = Ec::Order.create!(
       platform: "ozon",
       store: @store,
@@ -282,19 +282,14 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "select[name=?]", "timezone" do
-      assert_select "option[value=?][selected]", "shanghai", "上海 (UTC+08:00)"
-      assert_select "option[value=?]", "utc", "UTC (UTC+00:00)"
-      assert_select "option[value=?]", "russia", "莫斯科 (UTC+03:00)"
-    end
     assert_select "a[href=?]", "/orders/#{boundary_order.id}"
     assert_select "td", "2026-06-02 00:30"
 
+    @current_user.update!(time_zone: "UTC")
     sign_in @current_user
 
     get "/orders",
         params: {
-          timezone: "utc",
           q: {
             platform_eq: "ozon",
             ordered_at_gteq: "2026-06-02",
@@ -304,7 +299,6 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "option[value=?][selected]", "utc", "UTC (UTC+00:00)"
     assert_select "a[href=?]", "/orders/#{boundary_order.id}", count: 0
   ensure
     boundary_order&.destroy
@@ -314,8 +308,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     get "/orders", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".order-date-timezone label[for=?]", "timezone", "日期时区"
-    assert_select ".order-date-timezone select[name=?]", "timezone"
+    assert_select ".order-date-timezone", count: 0
     assert_select "[data-controller='date-picker'][data-date-picker-date-format-value='Y-m-d']", count: 4
     assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[ordered_at_gteq]"
     assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[ordered_at_lteq_end_of_day]"

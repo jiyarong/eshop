@@ -1,15 +1,33 @@
 class User < ApplicationRecord
+  DEFAULT_TIME_ZONE = "Asia/Shanghai"
+  TIME_ZONE_OPTIONS = {
+    DEFAULT_TIME_ZONE => "上海 (UTC+08:00)",
+    "UTC" => "UTC (UTC+00:00)",
+    "Europe/Moscow" => "莫斯科 (UTC+03:00)"
+  }.freeze
+
   devise :database_authenticatable,
          :recoverable,
          :rememberable,
          :validatable,
          :trackable
 
+  before_validation :set_default_time_zone
+
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
   has_many :feedback_tasks, dependent: :destroy
 
   validates :active, inclusion: { in: [true, false] }
+  validates :time_zone, inclusion: { in: TIME_ZONE_OPTIONS.keys, message: "不在可选范围内" }
+
+  def self.time_zone_options
+    TIME_ZONE_OPTIONS.map { |name, label| [label, name] }
+  end
+
+  def self.profile_time_zone(name)
+    ActiveSupport::TimeZone[name.presence_in(TIME_ZONE_OPTIONS.keys) || DEFAULT_TIME_ZONE]
+  end
 
   def active_for_authentication?
     super && active?
@@ -25,5 +43,11 @@ class User < ApplicationRecord
 
   def can?(permission)
     roles.any? { |role| role.allows?(permission) }
+  end
+
+  private
+
+  def set_default_time_zone
+    self.time_zone = DEFAULT_TIME_ZONE if time_zone.blank?
   end
 end

@@ -23,6 +23,8 @@ Rails.application.routes.draw do
   get "reports/costs"     => "reports#costs"
 
   resources :orders, only: [:index, :show]
+  post "profile" => "profiles#update"
+  resource :profile, only: [:edit, :update]
 
   resources :feedback_tasks, only: [:create]
 
