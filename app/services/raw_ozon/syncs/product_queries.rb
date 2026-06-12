@@ -69,6 +69,7 @@ module RawOzon
           end
 
           # ── 2. 词级明细 ────────────────────────────────────────────────────
+          detail_page_size = 100  # /details endpoint max is 100
           page = 0
           loop do
             resp = @client.post('/v1/analytics/product-queries/details', {
@@ -77,7 +78,7 @@ module RawOzon
               skus:         slice,
               limit_by_sku: 15,
               page:         page,
-              page_size:    page_size,
+              page_size:    detail_page_size,
               sort_by:      'BY_SEARCHES',
               sort_dir:     'DESCENDING',
             })
@@ -112,7 +113,7 @@ module RawOzon
                               position view_conversion order_count gmv synced_at]
             ) if rows.any?
 
-            break if queries.size < page_size
+            break if queries.size < detail_page_size
             page += 1
           end
 
