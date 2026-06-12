@@ -9,6 +9,12 @@ module RawOzon
                                .uniq
         return 0 if skus.empty?
 
+        # API is weekly-aligned (Sunday–Sunday); always query the last complete week
+        week_end   = Date.current.prev_occurring(:sunday)
+        week_start = week_end - 6
+        q_from = week_start.to_time.utc.iso8601
+        q_to   = week_end.to_time.utc.iso8601
+
         synced_at  = Time.current
         total      = 0
         page_size  = 1000
@@ -18,8 +24,8 @@ module RawOzon
           page = 0
           loop do
             resp = @client.post('/v1/analytics/product-queries', {
-              date_from: @from.to_date.to_time.utc.iso8601,
-              date_to:   Date.current.to_time.utc.iso8601,
+              date_from: q_from,
+              date_to:   q_to,
               skus:      slice,
               page:      page,
               page_size: page_size,
@@ -66,8 +72,8 @@ module RawOzon
           page = 0
           loop do
             resp = @client.post('/v1/analytics/product-queries/details', {
-              date_from:    @from.to_date.to_time.utc.iso8601,
-              date_to:      Date.current.to_time.utc.iso8601,
+              date_from:    q_from,
+              date_to:      q_to,
               skus:         slice,
               limit_by_sku: 15,
               page:         page,
