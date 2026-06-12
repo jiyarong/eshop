@@ -591,6 +591,40 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: @second_sku.sku_code, count: 0 }
   end
 
+  test "sku sales report localizes visible chrome in english" do
+    get "/reports/sku_sales", params: {
+      locale: "en",
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "SKU Sales"
+    assert_select "label", "Analysis grain"
+    assert_select "option", "Store"
+    assert_select "label", "Platform"
+    assert_select "option", "All platforms"
+    assert_select "label", "Period"
+    assert_select "option", "Day"
+    assert_select "label", "Start date"
+    assert_select "button", "Search"
+    assert_select ".summary-label", "Units sold"
+    assert_select ".summary-label", "Returned units"
+    assert_select ".summary-label", "Net sales"
+    assert_select ".summary-label", "Revenue"
+    assert_select "h2", "Net sales / Revenue trend"
+    assert_select "h2", "Details"
+    assert_select "th", "Period"
+    assert_select "th", "Product name"
+    assert_select "th", "Average price"
+    assert_select "th", "Fulfillment mode"
+    assert_select "script#sku-sales-chart-data[type=?]", "application/json", /Net sales/
+    assert_select "script#sku-sales-chart-data[type=?]", "application/json", /Revenue/
+  end
+
   test "sku sales report aggregates by platform and sku grains" do
     get "/reports/sku_sales", params: {
       sku_codes: [@sku.sku_code, @second_sku.sku_code],

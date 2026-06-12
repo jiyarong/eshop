@@ -307,6 +307,14 @@ en:
         effective_to: "End date"
         note: "Note"
       new_title: "Add predicted cost"
+    sku_sales:
+      fields:
+        product_name: "Product name"
+      filters:
+        grain: "Analysis grain"
+      sections:
+        details: "Details"
+      title: "SKU Sales"
   erp:
     common:
       actions:

@@ -279,6 +279,14 @@ zh:
         effective_to: "结束日期"
         note: "备注"
       new_title: "新增预测成本"
+    sku_sales:
+      fields:
+        product_name: "商品名"
+      filters:
+        grain: "分析粒度"
+      sections:
+        details: "明细表"
+      title: "SKU 销量统计"
   erp:
     common:
       actions:

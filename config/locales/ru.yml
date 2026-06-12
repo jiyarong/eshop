@@ -278,6 +278,14 @@ ru:
         effective_to: "Дата окончания"
         note: "Примечание"
       new_title: "Добавить прогнозную себестоимость"
+    sku_sales:
+      fields:
+        product_name: "Название товара"
+      filters:
+        grain: "Гранулярность анализа"
+      sections:
+        details: "Детали"
+      title: "Продажи SKU"
   erp:
     common:
       actions:
