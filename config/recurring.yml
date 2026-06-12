@@ -17,12 +17,6 @@ production:
     command: "RawWb::DailySync.run"
     schedule: every day at 20:00 in Asia/Shanghai
 
-  sync_daily_morning:
-    command: "Ec::OrderImport::Runner.run"
-    schedule: every day at 8:30 in Asia/Shanghai
-  sync_daily_evening:
-    command: "Ec::OrderImport::Runner.run"
-    schedule: every day at 20:30 in Asia/Shanghai
   # WB weekly sync. days:8 gives 1-day overlap to catch late settlement data.
   wb_weekly_sync:
     command: "RawWb::WeeklySync.run(days: 8)"

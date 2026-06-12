@@ -59,6 +59,7 @@ module RawWb
         raise "Ec::Store##{store.id} (#{store.store_name}) has no linked WB account" unless account
         results[store.id] = new(account, days: days || self::DEFAULT_DAYS).run(sync_keys: sync_keys)
       end
+      Ec::OrderImport::Ozon.new.call
     end
 
     def initialize(account, days:)
