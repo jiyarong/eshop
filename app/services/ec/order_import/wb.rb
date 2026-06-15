@@ -16,9 +16,12 @@ module Ec
         978 => "EUR"
       }.freeze
 
-      def call
+      def call(synced_since: nil)
         total = 0
-        RawWb::Order.includes(:account).find_each do |raw_order|
+        scope = RawWb::Order.includes(:account)
+        scope = scope.where("raw_wb_orders.synced_at >= ?", synced_since) if synced_since
+
+        scope.find_each do |raw_order|
           total += import_order(raw_order)
         end
         total

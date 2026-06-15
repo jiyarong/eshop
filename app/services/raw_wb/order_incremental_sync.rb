@@ -1,7 +1,7 @@
 module RawWb
   # Lightweight order-only sync intended for frequent scheduling.
   class OrderIncrementalSync < BaseSync
-    DEFAULT_DAYS = 2
+    DEFAULT_DAYS = 1
     LOCK_NAME = "raw_wb:daily_sync"
 
     STEPS = %i[

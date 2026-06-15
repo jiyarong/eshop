@@ -113,6 +113,7 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       is_active: true
     )
     imported = false
+    synced_since_values = []
 
     with_singleton_method(RawWb::OrderIncrementalSync, :new, ->(*) {
       Object.new.tap do |runner|
@@ -120,13 +121,19 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       end
     }) do
       with_singleton_method(Ec::OrderImport::Wb, :new, -> {
-        Object.new.tap { |importer| importer.define_singleton_method(:call) { imported = true } }
+        Object.new.tap do |importer|
+          importer.define_singleton_method(:call) do |synced_since: nil|
+            imported = true
+            synced_since_values << synced_since
+          end
+        end
       }) do
         RawWb::OrderIncrementalSync.run
       end
     end
 
     assert_equal true, imported
+    assert_instance_of ActiveSupport::TimeWithZone, synced_since_values.first
   ensure
     Ec::Store.where(id: store&.id).delete_all
     RawWb::SellerAccount.where(id: account&.id).delete_all
@@ -214,6 +221,7 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       is_active: true
     )
     imported = false
+    synced_since_values = []
 
     with_singleton_method(RawOzon::OrderIncrementalSync, :new, ->(*) {
       Object.new.tap do |runner|
@@ -221,13 +229,19 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       end
     }) do
       with_singleton_method(Ec::OrderImport::Ozon, :new, -> {
-        Object.new.tap { |importer| importer.define_singleton_method(:call) { imported = true } }
+        Object.new.tap do |importer|
+          importer.define_singleton_method(:call) do |synced_since: nil|
+            imported = true
+            synced_since_values << synced_since
+          end
+        end
       }) do
         RawOzon::OrderIncrementalSync.run
       end
     end
 
     assert_equal true, imported
+    assert_instance_of ActiveSupport::TimeWithZone, synced_since_values.first
   ensure
     Ec::Store.where(id: store&.id).delete_all
     RawOzon::SellerAccount.where(id: account&.id).delete_all

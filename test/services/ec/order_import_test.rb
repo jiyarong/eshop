@@ -215,6 +215,61 @@ module Ec
       assert_equal @wb_order, wb_order.source_links.first.source
     end
 
+    test "wb import can limit raw orders by synced_at" do
+      old_raw = RawWb::Order.create!(
+        account: @wb_account,
+        wb_order_id: 88_001,
+        order_uid: "WB-OLD-#{@token}",
+        srid: "WB-OLD-SRID-#{@token}",
+        delivery_type: "fbs",
+        article: "WBOLD",
+        supplier_status: "confirm",
+        wb_status: "waiting",
+        created_at: Time.zone.parse("2026-06-01 09:00:00"),
+        updated_at: Time.zone.parse("2026-06-01 09:05:00"),
+        synced_at: Time.zone.parse("2026-06-01 09:10:00")
+      )
+      cutoff = Time.zone.parse("2026-06-04 00:00:00")
+
+      result = Ec::OrderImport::Wb.new.call(synced_since: cutoff)
+
+      assert_equal 1, result
+      assert_nil Ec::Order.find_by(platform: "wb", external_order_id: old_raw.srid)
+      assert Ec::Order.find_by(platform: "wb", external_order_number: "WB-G-#{@token}")
+    ensure
+      Ec::OrderSourceLink.where(source_key: old_raw&.wb_order_id&.to_s).delete_all
+      Ec::OrderItem.where(offer_id: "WBOLD").delete_all
+      Ec::OrderFulfillment.where(external_fulfillment_id: old_raw&.wb_order_id&.to_s).delete_all
+      Ec::Order.where(platform: "wb", external_order_id: old_raw&.srid).delete_all
+      old_raw&.destroy
+    end
+
+    test "ozon import can limit raw postings by synced_at" do
+      old_posting = RawOzon::PostingFbo.create!(
+        account: @ozon_account,
+        posting_number: "OZON-OLD-FBO-#{@token}",
+        order_id: 200_001,
+        order_number: "OZON-OLD-ORDER-#{@token}",
+        status: "delivered",
+        raw_json: {},
+        created_at: Time.zone.parse("2026-06-01 09:00:00"),
+        synced_at: Time.zone.parse("2026-06-01 09:10:00")
+      )
+      cutoff = Time.zone.parse("2026-06-02 00:00:00")
+
+      result = Ec::OrderImport::Ozon.new.call(synced_since: cutoff)
+
+      assert_equal 2, result
+      assert_nil Ec::Order.find_by(platform: "ozon", external_order_number: old_posting.order_number)
+      assert Ec::Order.find_by(platform: "ozon", external_order_number: "OZON-ORDER-#{@token}")
+      assert Ec::Order.find_by(platform: "ozon", external_order_number: "OZON-ORDER-FBS-#{@token}")
+    ensure
+      Ec::OrderSourceLink.where(source_key: old_posting&.posting_number).delete_all
+      Ec::OrderFulfillment.where(external_fulfillment_id: old_posting&.posting_number).delete_all
+      Ec::Order.where(platform: "ozon", external_order_number: old_posting&.order_number).delete_all
+      old_posting&.destroy
+    end
+
     private
   end
 end

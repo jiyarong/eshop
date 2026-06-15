@@ -18,12 +18,17 @@ module Ec
       }.freeze
       CANCELLATION_TIME_KEYS = %w[cancelled_at canceled_at cancel_date cancelled_date cancellation_date].freeze
 
-      def call
+      def call(synced_since: nil)
         total = 0
-        RawOzon::PostingFbo.includes(:account).find_each do |posting|
+        fbo_scope = RawOzon::PostingFbo.includes(:account)
+        fbo_scope = fbo_scope.where("raw_ozon_postings_fbo.synced_at >= ?", synced_since) if synced_since
+        fbo_scope.find_each do |posting|
           total += import_posting(posting, "fbo", "RawOzon::PostingFbo")
         end
-        RawOzon::PostingFbs.includes(:account).find_each do |posting|
+
+        fbs_scope = RawOzon::PostingFbs.includes(:account)
+        fbs_scope = fbs_scope.where("raw_ozon_postings_fbs.synced_at >= ?", synced_since) if synced_since
+        fbs_scope.find_each do |posting|
           total += import_posting(posting, "fbs", "RawOzon::PostingFbs")
         end
         total

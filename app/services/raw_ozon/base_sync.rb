@@ -27,12 +27,13 @@ module RawOzon
       stores = Ec::Store.where(platform: 'ozon', is_active: true)
       raise ArgumentError, 'No active Ozon stores found in ec_stores' if stores.none?
 
+      order_import_synced_since = Time.current
       stores.each_with_object({}) do |store, results|
         account = store.raw_ozon_account
         raise "Ec::Store##{store.id} (#{store.store_name}) has no linked Ozon account" unless account
         results[store.id] = new(account, days: days || self::DEFAULT_DAYS).run(sync_keys: sync_keys)
       end
-      Ec::OrderImport::Ozon.new.call
+      Ec::OrderImport::Ozon.new.call(synced_since: order_import_synced_since)
     end
 
     def initialize(account, days:)
