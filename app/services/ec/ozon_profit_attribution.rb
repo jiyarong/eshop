@@ -136,29 +136,12 @@ module Ec
       perf_ppc   = @ppc_by_sku.values.sum
       perf_promo = @promotion_by_sku.values.sum
 
-      if perf_ppc > 0 && accrual_ppc > 0
-        ratio = accrual_ppc / perf_ppc
-        @ppc_by_sku.transform_values! { |v| (v * ratio).round(2) }
-        # 修正取整累积误差，加到最大 SKU 上
-        diff = accrual_ppc.round(2) - @ppc_by_sku.values.sum.round(2)
-        if diff.abs > 0 && (top = @ppc_by_sku.max_by { |_, v| v })
-          @ppc_by_sku[top[0]] = (@ppc_by_sku[top[0]] + diff).round(2)
-        end
-      end
-
-      if perf_promo > 0 && accrual_promo > 0
-        ratio = accrual_promo / perf_promo
-        @promotion_by_sku.transform_values! { |v| (v * ratio).round(2) }
-        diff = accrual_promo.round(2) - @promotion_by_sku.values.sum.round(2)
-        if diff.abs > 0 && (top = @promotion_by_sku.max_by { |_, v| v })
-          @promotion_by_sku[top[0]] = (@promotion_by_sku[top[0]] + diff).round(2)
-        end
-      end
-
-      # Performance 返回 0 但 accrual 有扣费时，记录孤儿金额 → 写入 unallocated
-      # 无法按 SKU 拆分（Performance 未返回明细），整体进未分摊
-      @orphaned_ppc_total   = (perf_ppc   == 0 && accrual_ppc   > 0) ? accrual_ppc   : 0.0
-      @orphaned_promo_total = (perf_promo == 0 && accrual_promo > 0) ? accrual_promo : 0.0
+      # Performance per-SKU 数据保持原值，不强行放大以匹配 accrual 总额。
+      # accrual 与 Performance 的差额（无 SKU 归属的活动花费）整体进孤儿，写入 unallocated。
+      # 原因：部分广告活动类型（自动策略等）Performance API 不返回 per-SKU 行，
+      #        强行按比例放大会严重失真（见 W24 NEVASTAL PPC 16× 问题）。
+      @orphaned_ppc_total   = [accrual_ppc   - perf_ppc,   0.0].max.round(2)
+      @orphaned_promo_total = [accrual_promo - perf_promo, 0.0].max.round(2)
     end
 
     # 返回可以直接查库的 [[period_from, period_to], ...] 组合，nil 表示需要去拉接口
