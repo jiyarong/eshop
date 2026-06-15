@@ -24,5 +24,11 @@ module RawWb
       sync_balance
       sync_ad_balance
     ].freeze
+
+    def self.run(days: nil, sync_keys: nil)
+      SyncRunLock.with_lock(OrderIncrementalSync::LOCK_NAME, wait: true, logger: Rails.logger) do
+        super(days: days, sync_keys: sync_keys)
+      end
+    end
   end
 end

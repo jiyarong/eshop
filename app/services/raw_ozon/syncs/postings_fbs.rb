@@ -3,7 +3,7 @@ module RawOzon
     module PostingsFbs
       # POST /v3/posting/fbs/list (offset pagination，30天分窗避免 PERIOD_IS_TOO_LONG)
       def sync_postings_fbs
-        total     = 0
+        result    = empty_sync_count
         synced_at = Time.current
 
         date_chunks(chunk_days: 30).each do |from, to|
@@ -20,6 +20,10 @@ module RawOzon
             break if postings.empty?
 
             posting_rows = postings.map { |p| build_posting_fbs(p, synced_at) }
+            merge_sync_count!(
+              result,
+              upsert_count_result(posting_rows, model: RawOzon::PostingFbs, unique_key: :posting_number)
+            )
             RawOzon::PostingFbs.upsert_all(posting_rows, unique_by: [:account_id, :posting_number],
                                             update_only: posting_fbs_update_cols)
 
@@ -31,7 +35,6 @@ module RawOzon
               RawOzon::PostingItem.insert_all(item_rows)
             end
 
-            total  += posting_rows.size
             offset += 50
             break unless resp.dig('result', 'has_next')
             sleep 0.5
@@ -39,7 +42,7 @@ module RawOzon
           sleep 1
         end
 
-        total
+        result
       end
 
       private

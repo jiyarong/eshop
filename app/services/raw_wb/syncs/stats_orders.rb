@@ -16,6 +16,7 @@ module RawWb
         end
 
         rows = rows.uniq { |r| r[:srid] }
+        result = upsert_count_result(rows, model: RawWb::StatsOrder, unique_key: %i[account_id srid])
         RawWb::StatsOrder.upsert_all(rows, unique_by: %i[account_id srid],
           update_only: stats_order_update_cols)
 
@@ -32,7 +33,7 @@ module RawWb
           end
         end
 
-        rows.size
+        result
       end
 
       private

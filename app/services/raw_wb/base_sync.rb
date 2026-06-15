@@ -59,7 +59,7 @@ module RawWb
         raise "Ec::Store##{store.id} (#{store.store_name}) has no linked WB account" unless account
         results[store.id] = new(account, days: days || self::DEFAULT_DAYS).run(sync_keys: sync_keys)
       end
-      Ec::OrderImport::Ozon.new.call
+      Ec::OrderImport::Wb.new.call
     end
 
     def initialize(account, days:)
@@ -85,8 +85,8 @@ module RawWb
         begin
           log "  → #{step}..."
           count = public_send(step)
-          @results[step] = { ok: count }
-          log "  ✓ #{step}: #{count} records"
+          @results[step] = count.is_a?(Hash) ? count : { ok: count }
+          log "  ✓ #{step}: #{format_step_result(count)}"
           sleep 2
         rescue WbClient::ApiError => e
           @results[step] = { error: e.message }
@@ -182,6 +182,45 @@ module RawWb
 
     def safe_utf8(str)
       str.to_s.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
+    end
+
+    def upsert_count_result(rows, model:, unique_key:)
+      fetched = rows.size
+      existing = if unique_key.is_a?(Array)
+        unique_values = rows.map { |row| unique_key.map { |key| row.fetch(key) } }.uniq
+        unique_values.count do |values|
+          conditions = unique_key.zip(values).to_h
+          model.exists?(conditions)
+        end
+      else
+        keys = rows.map { |row| row.fetch(unique_key) }.compact
+        model.where(unique_key => keys).distinct.count(unique_key)
+      end
+      {
+        ok: fetched,
+        fetched: fetched,
+        created: fetched - existing,
+        updated: existing,
+      }
+    end
+
+    def empty_sync_count
+      { ok: 0, fetched: 0, created: 0, updated: 0 }
+    end
+
+    def merge_sync_count!(target, source)
+      target[:ok] += source[:ok].to_i
+      target[:fetched] += source[:fetched].to_i
+      target[:created] += source[:created].to_i
+      target[:updated] += source[:updated].to_i
+      target
+    end
+
+    def format_step_result(result)
+      return "#{result} records" unless result.is_a?(Hash)
+
+      fetched = result.fetch(:fetched, result[:ok])
+      "fetched=#{fetched}, created=#{result[:created].to_i}, updated=#{result[:updated].to_i}, records=#{result[:ok].to_i}"
     end
 
     def log(msg, level: :info)

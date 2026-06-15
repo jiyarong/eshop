@@ -66,8 +66,8 @@ module RawOzon
         begin
           log "  → #{step}..."
           count = public_send(step)
-          @results[step] = { ok: count }
-          log "  ✓ #{step}: #{count} records"
+          @results[step] = count.is_a?(Hash) ? count : { ok: count }
+          log "  ✓ #{step}: #{format_step_result(count)}"
           sleep 1
         rescue OzonClient::ApiError => e
           @results[step] = { error: e.message }
@@ -168,6 +168,37 @@ module RawOzon
         cursor = chunk_end + 1
       end
       chunks
+    end
+
+    def upsert_count_result(rows, model:, unique_key:)
+      fetched = rows.size
+      keys = rows.map { |row| row.fetch(unique_key) }.compact
+      existing = model.where(account_id: @account.id, unique_key => keys).distinct.count(unique_key)
+      {
+        ok: fetched,
+        fetched: fetched,
+        created: fetched - existing,
+        updated: existing,
+      }
+    end
+
+    def empty_sync_count
+      { ok: 0, fetched: 0, created: 0, updated: 0 }
+    end
+
+    def merge_sync_count!(target, source)
+      target[:ok] += source[:ok].to_i
+      target[:fetched] += source[:fetched].to_i
+      target[:created] += source[:created].to_i
+      target[:updated] += source[:updated].to_i
+      target
+    end
+
+    def format_step_result(result)
+      return "#{result} records" unless result.is_a?(Hash)
+
+      fetched = result.fetch(:fetched, result[:ok])
+      "fetched=#{fetched}, created=#{result[:created].to_i}, updated=#{result[:updated].to_i}, records=#{result[:ok].to_i}"
     end
 
     def log(msg, level: :info)

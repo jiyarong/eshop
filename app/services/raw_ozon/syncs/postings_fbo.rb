@@ -4,7 +4,7 @@ module RawOzon
       # POST /v2/posting/fbo/list (offset pagination)
       def sync_postings_fbo
         offset    = 0
-        total     = 0
+        result    = empty_sync_count
         synced_at = Time.current
         limit     = 50
 
@@ -20,6 +20,10 @@ module RawOzon
           break if postings.empty?
 
           posting_rows = postings.map { |p| build_posting_fbo(p, synced_at) }
+          merge_sync_count!(
+            result,
+            upsert_count_result(posting_rows, model: RawOzon::PostingFbo, unique_key: :posting_number)
+          )
           RawOzon::PostingFbo.upsert_all(posting_rows, unique_by: [:account_id, :posting_number],
                                           update_only: posting_fbo_update_cols)
 
@@ -31,13 +35,12 @@ module RawOzon
             RawOzon::PostingItem.insert_all(item_rows)
           end
 
-          total  += posting_rows.size
           offset += limit
           break if postings.size < limit
           sleep 0.5
         end
 
-        total
+        result
       end
 
       private

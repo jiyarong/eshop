@@ -9,8 +9,9 @@ module RawWb
         return 0 if orders.empty?
 
         rows = orders.map { |o| build_order(o, synced_at) }
+        result = upsert_count_result(rows, model: RawWb::Order, unique_key: :wb_order_id)
         RawWb::Order.upsert_all(rows, unique_by: :wb_order_id, update_only: order_update_cols, record_timestamps: false)
-        rows.size
+        result
       end
     end
   end

@@ -17,6 +17,10 @@ production:
     command: "RawWb::DailySync.run"
     schedule: every day at 20:00 in Asia/Shanghai
 
+  wb_order_incremental_sync:
+    command: "RawWb::OrderIncrementalSync.run"
+    schedule: every 5 minutes
+
   # WB weekly sync. days:8 gives 1-day overlap to catch late settlement data.
   wb_weekly_sync:
     command: "RawWb::WeeklySync.run(days: 8)"
@@ -60,6 +64,10 @@ production:
   ozon_daily_sync_evening:
     command: "RawOzon::DailySync.run"
     schedule: every day at 20:30 in Asia/Shanghai
+
+  ozon_order_incremental_sync:
+    command: "RawOzon::OrderIncrementalSync.run"
+    schedule: every 5 minutes
 
   ozon_weekly_sync:
     command: "RawOzon::WeeklySync.run(days: 8)"
