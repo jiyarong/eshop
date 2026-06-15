@@ -1,6 +1,7 @@
 zh:
   app:
     name: "辕隆 ERP"
+    brand_latin: "Yuanlong ERP"
     subtitle: "电商经营中台"
     topbar_eyebrow: "管理控制台"
     version: "Admin Console 1.0"
@@ -13,6 +14,36 @@ zh:
     zh: "中"
     en: "EN"
     ru: "RU"
+  auth:
+    title: "登录 · 辕隆 ERP"
+    aside_label: "系统概览"
+    kicker: "跨平台经营数据"
+    aside_title: "从订单、库存到利润，一屏进入日常运营。"
+    aside_body: "面向 WB、Ozon 等平台的只读经营视图，帮助团队快速核对关键数据。"
+    fields:
+      email: "邮箱"
+      password: "密码"
+      remember_me: "记住登录"
+    metrics:
+      profit: "利润"
+      profit_value: "周报"
+      inventory: "库存"
+      inventory_value: "快照"
+      cost: "成本"
+      cost_value: "核算"
+    sign_in:
+      eyebrow: "安全登录"
+      title: "登录"
+      subtitle: "使用你的内部账号进入辕隆 ERP。"
+      submit: "登录"
+      forgot_password: "忘记密码？"
+  devise:
+    failure:
+      invalid: "邮箱或密码错误。"
+      not_found_in_database: "邮箱或密码错误。"
+      unauthenticated: "请先登录。"
+    sessions:
+      signed_out: "已退出登录。"
   navigation:
     sections:
       dashboard: "经营看板"

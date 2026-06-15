@@ -1,19 +1,35 @@
-<h1 class="page-title">登录</h1>
+<% content_for :title, t("auth.sign_in.title") %>
 
-<section class="panel">
-  <%= form_with model: resource, as: resource_name, url: session_path(resource_name), class: "report-form" do |form| %>
-    <div class="field">
-      <%= form.label :email, "邮箱" %>
+<div class="auth-copy">
+  <p class="auth-eyebrow"><%= t("auth.sign_in.eyebrow") %></p>
+  <h1 id="auth_title"><%= t("auth.sign_in.title") %></h1>
+  <p><%= t("auth.sign_in.subtitle") %></p>
+</div>
+
+<%= form_with model: resource, as: resource_name, url: session_path(resource_name), class: "auth-form", data: { turbo: false } do |form| %>
+  <div class="field">
+    <%= form.label :email, t("auth.fields.email") %>
+    <div class="auth-input">
+      <i class="bi bi-envelope" aria-hidden="true"></i>
       <%= form.email_field :email, autofocus: true, autocomplete: "email" %>
     </div>
-    <div class="field">
-      <%= form.label :password, "密码" %>
+  </div>
+
+  <div class="field">
+    <%= form.label :password, t("auth.fields.password") %>
+    <div class="auth-input">
+      <i class="bi bi-lock" aria-hidden="true"></i>
       <%= form.password_field :password, autocomplete: "current-password" %>
     </div>
-    <div class="field">
-      <%= form.label :remember_me, "记住登录" %>
+  </div>
+
+  <div class="auth-form__row">
+    <label class="auth-check" for="user_remember_me">
       <%= form.check_box :remember_me %>
-    </div>
-    <%= form.submit "登录", class: "button" %>
-  <% end %>
-</section>
+      <span><%= t("auth.fields.remember_me") %></span>
+    </label>
+    <%= link_to t("auth.sign_in.forgot_password"), new_password_path(resource_name, request.query_parameters.slice(:locale)), class: "auth-link" %>
+  </div>
+
+  <%= form.submit t("auth.sign_in.submit"), class: "button auth-submit" %>
+<% end %>

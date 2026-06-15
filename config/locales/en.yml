@@ -30,6 +30,7 @@
 en:
   app:
     name: "Yuanlong ERP"
+    brand_latin: "Yuanlong ERP"
     subtitle: "Commerce Operations"
     topbar_eyebrow: "Management Console"
     version: "Admin Console 1.0"
@@ -42,6 +43,36 @@ en:
     zh: "中"
     en: "EN"
     ru: "RU"
+  auth:
+    title: "Sign in · Yuanlong ERP"
+    aside_label: "System overview"
+    kicker: "Cross-platform operations"
+    aside_title: "Orders, inventory, and profit enter one daily workspace."
+    aside_body: "Read-only operating views for WB, Ozon, and related platform data."
+    fields:
+      email: "Email"
+      password: "Password"
+      remember_me: "Remember me"
+    metrics:
+      profit: "Profit"
+      profit_value: "Weekly"
+      inventory: "Inventory"
+      inventory_value: "Snapshot"
+      cost: "Cost"
+      cost_value: "Ledger"
+    sign_in:
+      eyebrow: "Secure access"
+      title: "Sign in"
+      subtitle: "Use your internal account to enter Yuanlong ERP."
+      submit: "Sign in"
+      forgot_password: "Forgot password?"
+  devise:
+    failure:
+      invalid: "Invalid email or password."
+      not_found_in_database: "Invalid email or password."
+      unauthenticated: "Please sign in first."
+    sessions:
+      signed_out: "Signed out successfully."
   navigation:
     sections:
       dashboard: "Dashboard"

@@ -1,6 +1,7 @@
 ru:
   app:
     name: "Юаньлун ERP"
+    brand_latin: "Yuanlong ERP"
     subtitle: "Центр e-commerce операций"
     topbar_eyebrow: "Панель управления"
     version: "Admin Console 1.0"
@@ -13,6 +14,36 @@ ru:
     zh: "中"
     en: "EN"
     ru: "RU"
+  auth:
+    title: "Вход · Юаньлун ERP"
+    aside_label: "Обзор системы"
+    kicker: "Операции на платформах"
+    aside_title: "Заказы, склад и прибыль в одном рабочем пространстве."
+    aside_body: "Просмотровые операционные отчеты для данных WB, Ozon и связанных платформ."
+    fields:
+      email: "Email"
+      password: "Пароль"
+      remember_me: "Запомнить меня"
+    metrics:
+      profit: "Прибыль"
+      profit_value: "Неделя"
+      inventory: "Склад"
+      inventory_value: "Срез"
+      cost: "Затраты"
+      cost_value: "Учет"
+    sign_in:
+      eyebrow: "Безопасный доступ"
+      title: "Вход"
+      subtitle: "Используйте внутренний аккаунт для входа в Юаньлун ERP."
+      submit: "Войти"
+      forgot_password: "Забыли пароль?"
+  devise:
+    failure:
+      invalid: "Неверный email или пароль."
+      not_found_in_database: "Неверный email или пароль."
+      unauthenticated: "Сначала войдите в систему."
+    sessions:
+      signed_out: "Вы вышли из системы."
   navigation:
     sections:
       dashboard: "Панель"

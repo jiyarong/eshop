@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale == :zh ? "zh-CN" : I18n.locale %>">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="turbo-cache-control" content="no-preview">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <title><%= content_for?(:title) ? "#{yield(:title)} · #{t("app.name")}" : t("auth.title") %></title>
+    <%= favicon_link_tag "/favicon.png", type: "image/png" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", type: "module", "data-turbo-track": "reload", defer: true %>
+  </head>
+  <body class="auth-shell">
+    <% locale_path = ->(locale) { url_for(request.query_parameters.merge(locale: locale)) } %>
+
+    <main class="auth-layout">
+      <section class="auth-panel" aria-labelledby="auth_title">
+        <div class="auth-locale">
+          <nav class="locale-switcher" aria-label="<%= t("locale.switcher_label") %>">
+            <% available_locales.each do |locale| %>
+              <%= link_to t("locale.#{locale}"), locale_path.call(locale), class: "locale-switcher__link", aria: (I18n.locale == locale ? { current: "page" } : nil) %>
+            <% end %>
+          </nav>
+        </div>
+
+        <div class="auth-brand">
+          <span class="erp-brand__mark" aria-hidden="true">Y</span>
+          <span>
+            <span class="auth-brand__name"><%= t("app.brand_latin") %></span>
+            <span class="auth-brand__meta"><%= t("app.subtitle") %></span>
+          </span>
+        </div>
+
+        <% flash.each do |type, message| %>
+          <% next if message.blank? %>
+          <div class="auth-alert auth-alert--<%= type %>" role="alert">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <span><%= message %></span>
+          </div>
+        <% end %>
+
+        <%= yield %>
+      </section>
+
+      <aside class="auth-aside" aria-label="<%= t("auth.aside_label") %>">
+        <div class="auth-aside__inner">
+          <p class="auth-kicker"><%= t("auth.kicker") %></p>
+          <h2><%= t("auth.aside_title") %></h2>
+          <p><%= t("auth.aside_body") %></p>
+          <dl class="auth-metrics">
+            <div>
+              <dt><%= t("auth.metrics.profit") %></dt>
+              <dd><%= t("auth.metrics.profit_value") %></dd>
+            </div>
+            <div>
+              <dt><%= t("auth.metrics.inventory") %></dt>
+              <dd><%= t("auth.metrics.inventory_value") %></dd>
+            </div>
+            <div>
+              <dt><%= t("auth.metrics.cost") %></dt>
+              <dd><%= t("auth.metrics.cost_value") %></dd>
+            </div>
+          </dl>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>

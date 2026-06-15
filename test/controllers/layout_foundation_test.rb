@@ -42,7 +42,8 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".erp-account-menu"
     assert_select ".erp-account-menu__email", text: @current_user.email
     assert_select ".erp-account-menu__panel a", text: "修改密码"
-    assert_select ".erp-account-menu__panel form[action='#{destroy_user_session_path}'] button", text: "退出"
+    assert_select ".erp-account-menu__panel form[action='#{destroy_user_session_path}'][method='post'] button", text: "退出"
+    assert_select ".erp-account-menu__panel form[action='#{destroy_user_session_path}'] input[name='_method'][value='delete']", 0
     assert_select ".erp-topbar__actions .erp-account-menu", 1
     assert_select ".erp-topbar__actions .erp-user", 0
   end
@@ -88,7 +89,32 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "html[lang='ru']"
-    assert_select ".erp-topbar__heading", "Юаньлун ERP"
+    assert_select "body.auth-shell"
+    assert_select ".erp-topbar", 0
+    assert_select "h1", text: "Вход"
     assert_select ".locale-switcher__link[aria-current='page']", text: "RU"
+  end
+
+  test "sign in page uses auth layout with locale switcher" do
+    sign_out @current_user
+
+    get "/users/sign_in", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "html[lang='en']"
+    assert_select "body.auth-shell"
+    assert_select "body.erp-shell", 0
+    assert_select ".erp-sidebar", 0
+    assert_select ".erp-topbar", 0
+    assert_select ".auth-layout"
+    assert_select ".auth-locale .locale-switcher[aria-label='Language']"
+    assert_select ".auth-locale .locale-switcher__link[aria-current='page']", text: "EN"
+    assert_select "a.locale-switcher__link[href*='locale=zh']", text: "中"
+    assert_select "a.locale-switcher__link[href*='locale=ru']", text: "RU"
+    assert_select "h1", text: "Sign in"
+    assert_select "label[for='user_email']", text: "Email"
+    assert_select "label[for='user_password']", text: "Password"
+    assert_select "label[for='user_remember_me']", text: "Remember me"
+    assert_select "form.auth-form[data-turbo='false'] input[type='submit'][value='Sign in']"
   end
 end
