@@ -213,11 +213,13 @@ en:
         add_predicted_cost: "Add predicted cost"
         back_to_list: "Back to list"
         edit_profile: "Edit profile"
+        manage_product_bindings: "Manage product bindings"
       empty:
         cost_data: "No cost data"
         order_data: "No order data in the selected range"
         ozon_costs: "No Ozon cost data"
         predicted_costs: "No predicted cost configuration"
+        sku_products: "No platform product bindings"
         store_assignments: "No store listing configuration"
         wb_costs: "No WB cost data"
       fields:
@@ -254,7 +256,10 @@ en:
         period: "Period"
         platform: "Platform"
         platform_freight_cny: "Platform freight CNY"
+        platform_product_name: "Platform product name"
+        platform_sku_id: "Platform SKU ID"
         predicted_cost: "Predicted cost"
+        product_id: "Product ID"
         product_name: "Chinese name"
         product_name_ru: "Russian name"
         profit_cny: "Profit CNY"
@@ -307,6 +312,7 @@ en:
         ozon_cost: "Ozon costs"
         predicted_cost_configuration: "Predicted cost configuration"
         product_attributes: "Product attributes"
+        platform_product_bindings: "Platform product bindings"
         sales_trend_chart: "Net sales / Revenue trend"
         sku_base_cost: "SKU base cost"
         store_listing_configuration: "Store listing configuration"
@@ -395,6 +401,32 @@ en:
         unit_batch_cost: "Unit batch cost"
       index:
         title: "SKU Batches"
+    sku_products:
+      actions:
+        add_binding: "Add binding"
+        back_to_sku: "Back to SKU details"
+        delete: "Delete"
+        search: "Search"
+      empty:
+        no_bindings: "No platform product bindings yet."
+        no_raw_product_selected: "Select a platform product"
+      fields:
+        offer_id: "Offer ID"
+        platform_sku_id: "Platform SKU ID"
+        product_id: "Product ID"
+        product_name: "Platform product name"
+        raw_product: "Platform product"
+        store: "Store"
+      filters:
+        raw_product_query: "Search platform products"
+        raw_product_query_placeholder: "Store / product ID / Offer ID / platform SKU / product name"
+      index:
+        eyebrow: "ERP SKU"
+        title: "Platform Product Bindings"
+      sections:
+        add_binding: "Add binding"
+        current_bindings: "Current bindings"
+        erp_sku: "ERP SKU"
     skus:
       actions:
         add_product: "Add product"

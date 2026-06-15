@@ -184,11 +184,13 @@ ru:
         add_predicted_cost: "Добавить прогнозную себестоимость"
         back_to_list: "Назад к списку"
         edit_profile: "Редактировать данные"
+        manage_product_bindings: "Настроить связи товаров"
       empty:
         cost_data: "Нет данных о себестоимости"
         order_data: "Нет заказов в выбранном диапазоне"
         ozon_costs: "Нет данных о себестоимости Ozon"
         predicted_costs: "Нет настроек прогнозной себестоимости"
+        sku_products: "Нет связей с товарами платформ"
         store_assignments: "Нет настроек размещения в магазинах"
         wb_costs: "Нет данных о себестоимости WB"
       fields:
@@ -225,7 +227,10 @@ ru:
         period: "Период"
         platform: "Платформа"
         platform_freight_cny: "Доставка платформы CNY"
+        platform_product_name: "Название товара платформы"
+        platform_sku_id: "ID SKU платформы"
         predicted_cost: "Прогнозная себестоимость"
+        product_id: "ID товара"
         product_name: "Название на китайском"
         product_name_ru: "Название на русском"
         profit_cny: "Прибыль CNY"
@@ -278,6 +283,7 @@ ru:
         ozon_cost: "Себестоимость Ozon"
         predicted_cost_configuration: "Прогнозная себестоимость"
         product_attributes: "Атрибуты товара"
+        platform_product_bindings: "Связи товаров платформ"
         sales_trend_chart: "Тренд чистых продаж / выручки"
         sku_base_cost: "Базовая себестоимость SKU"
         store_listing_configuration: "Размещение по магазинам"
@@ -366,6 +372,32 @@ ru:
         unit_batch_cost: "Себестоимость единицы партии"
       index:
         title: "Партии SKU"
+    sku_products:
+      actions:
+        add_binding: "Добавить связь"
+        back_to_sku: "Назад к деталям SKU"
+        delete: "Удалить"
+        search: "Найти"
+      empty:
+        no_bindings: "Связей с товарами платформ пока нет."
+        no_raw_product_selected: "Выберите товар платформы"
+      fields:
+        offer_id: "Offer ID"
+        platform_sku_id: "ID SKU платформы"
+        product_id: "ID товара"
+        product_name: "Название товара платформы"
+        raw_product: "Товар платформы"
+        store: "Магазин"
+      filters:
+        raw_product_query: "Поиск товаров платформ"
+        raw_product_query_placeholder: "Магазин / ID товара / Offer ID / SKU платформы / название"
+      index:
+        eyebrow: "ERP SKU"
+        title: "Связи товаров платформ"
+      sections:
+        add_binding: "Добавить связь"
+        current_bindings: "Текущие связи"
+        erp_sku: "ERP SKU"
     skus:
       actions:
         add_product: "Добавить продукт"

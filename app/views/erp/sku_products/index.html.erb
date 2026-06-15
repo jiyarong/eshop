@@ -1,0 +1,100 @@
+<% content_for :page_heading, t("erp.sku_products.index.title") %>
+
+<div class="resource-header">
+  <div>
+    <p class="resource-eyebrow"><%= t("erp.sku_products.index.eyebrow") %></p>
+    <h1 class="page-title"><%= t("erp.sku_products.index.title") %></h1>
+  </div>
+  <div class="resource-actions">
+    <%= link_to t("erp.sku_products.actions.back_to_sku"), report_sku_path(@sku.sku_code), class: "button button-secondary" %>
+  </div>
+</div>
+
+<div class="report-stack">
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.sku_products.sections.erp_sku") %></h2>
+    <dl class="definition-list">
+      <dt><%= t("erp.skus.fields.sku_code") %></dt>
+      <dd><%= @sku.sku_code %></dd>
+      <dt><%= t("erp.common.chinese_name") %></dt>
+      <dd><%= erp_value(@sku.product_name) %></dd>
+      <dt><%= t("erp.common.russian_name") %></dt>
+      <dd><%= erp_value(@sku.product_name_ru) %></dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.sku_products.sections.current_bindings") %></h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th><%= t("erp.common.platform") %></th>
+            <th><%= t("erp.skus.fields.sku_code") %></th>
+            <th><%= t("erp.sku_products.fields.store") %></th>
+            <th><%= t("erp.sku_products.fields.product_id") %></th>
+            <th><%= t("erp.sku_products.fields.offer_id") %></th>
+            <th><%= t("erp.sku_products.fields.platform_sku_id") %></th>
+            <th><%= t("erp.sku_products.fields.product_name") %></th>
+            <th><%= t("erp.common.actions.actions") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @sku_products.any? %>
+            <% @sku_products.each do |binding| %>
+              <tr>
+                <td><%= t("common.platforms.#{binding.platform}", default: binding.platform) %></td>
+                <td><%= binding.sku_code %></td>
+                <td><%= binding.store.store_name %></td>
+                <td><%= binding.product_id %></td>
+                <td><%= erp_value(binding.offer_id) %></td>
+                <td><%= erp_value(binding.platform_sku_id) %></td>
+                <td><%= erp_value(binding.product_name) %></td>
+                <td>
+                  <%= button_to t("erp.sku_products.actions.delete"), erp_sku_sku_product_path(@sku, binding), method: :delete, class: "button button-secondary" %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="8" class="empty-state"><%= t("erp.sku_products.empty.no_bindings") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.sku_products.sections.add_binding") %></h2>
+
+    <%= form_with url: erp_sku_sku_products_path(@sku), method: :get, local: true, html: { class: "report-form" } do |form| %>
+      <div class="field">
+        <%= form.label :raw_product_query, t("erp.sku_products.filters.raw_product_query") %>
+        <%= form.search_field :raw_product_query, value: @raw_product_query, placeholder: t("erp.sku_products.filters.raw_product_query_placeholder") %>
+      </div>
+
+      <button class="button button-secondary" type="submit"><%= t("erp.sku_products.actions.search") %></button>
+      <%= link_to t("erp.common.actions.reset"), erp_sku_sku_products_path(@sku), class: "button button-secondary" %>
+    <% end %>
+
+    <% if @sku_product.errors.any? %>
+      <div class="panel error-box">
+        <ul>
+          <% @sku_product.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form_with model: @sku_product, scope: :ec_sku_product, url: erp_sku_sku_products_path(@sku), method: :post, local: true, html: { class: "report-form" } do |form| %>
+      <div class="field">
+        <%= form.label :raw_product_key, t("erp.sku_products.fields.raw_product") %>
+        <%= form.select :raw_product_key, @raw_product_options, { include_blank: t("erp.sku_products.empty.no_raw_product_selected") } %>
+      </div>
+
+      <button class="button" type="submit"><%= t("erp.sku_products.actions.add_binding") %></button>
+    <% end %>
+  </section>
+</div>

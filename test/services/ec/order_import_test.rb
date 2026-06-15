@@ -18,6 +18,26 @@ module Ec
         company_type: "general",
         ozon_raw_account_id: @ozon_account.id
       )
+      @ozon_sku = Ec::Sku.create!(
+        sku_code: "ERP-OZON-#{@token}",
+        product_name: "Ozon ERP SKU #{@token}"
+      )
+      @ozon_product = RawOzon::Product.create!(
+        account: @ozon_account,
+        ozon_product_id: 9_001_001,
+        offer_id: "XCQ707",
+        name: "Ozon 平台商品",
+        raw_json: { "sku" => 3_902_460_130 },
+        synced_at: Time.zone.parse("2026-06-02 03:00:00")
+      )
+      Ec::SkuProduct.create!(
+        sku_code: @ozon_sku.sku_code,
+        store: @ozon_store,
+        product_id: @ozon_product.ozon_product_id.to_s,
+        offer_id: @ozon_product.offer_id,
+        platform_sku_id: @ozon_product.raw_json["sku"].to_s,
+        product_name: @ozon_product.name
+      )
 
       @wb_account = RawWb::SellerAccount.create!(
         name: "WB 导入店",
@@ -29,6 +49,24 @@ module Ec
         store_name: "WB 导入店",
         company_type: "small",
         wb_raw_account_id: @wb_account.id
+      )
+      @wb_sku = Ec::Sku.create!(
+        sku_code: "ERP-WB-#{@token}",
+        product_name: "WB ERP SKU #{@token}"
+      )
+      @wb_product = RawWb::Product.create!(
+        account: @wb_account,
+        nm_id: 123_456,
+        vendor_code: "WB707",
+        title: "WB 平台商品",
+        synced_at: Time.zone.parse("2026-06-04 08:00:00")
+      )
+      Ec::SkuProduct.create!(
+        sku_code: @wb_sku.sku_code,
+        store: @wb_store,
+        product_id: @wb_product.nm_id.to_s,
+        offer_id: @wb_product.vendor_code,
+        product_name: @wb_product.title
       )
 
       @ozon_fbo = RawOzon::PostingFbo.create!(
@@ -168,9 +206,12 @@ module Ec
         @wb_order&.wb_order_id.to_s
       ].compact).delete_all
       Ec::Order.where(store_id: [@ozon_store&.id, @wb_store&.id]).delete_all
+      Ec::SkuProduct.where(store_id: [@ozon_store&.id, @wb_store&.id]).delete_all if defined?(Ec::SkuProduct)
       RawOzon::PostingItem.where(account_id: @ozon_account&.id).delete_all
       RawWb::StatsSale.where(account_id: @wb_account&.id).delete_all
       RawWb::StatsOrder.where(account_id: @wb_account&.id).delete_all
+      RawOzon::Product.where(account_id: @ozon_account&.id).delete_all
+      RawWb::Product.where(account_id: @wb_account&.id).delete_all
       @ozon_fbo&.destroy
       @ozon_fbs&.destroy
       @wb_order&.destroy
@@ -178,6 +219,8 @@ module Ec
       @wb_store&.destroy
       @ozon_account&.destroy
       @wb_account&.destroy
+      @ozon_sku&.destroy
+      @wb_sku&.destroy
     end
 
     test "imports ozon and wb raw orders into normalized orders" do
@@ -198,6 +241,7 @@ module Ec
       assert_equal @ozon_fbo, ozon_order.source_links.first.source
       assert_equal "XCQ707", ozon_order.items.first.offer_id
       assert_equal "3902460130", ozon_order.items.first.platform_sku_id
+      assert_equal @ozon_sku.sku_code, ozon_order.items.first.sku_code
 
       ozon_fbs_order = Ec::Order.find_by!(platform: "ozon", external_order_number: "OZON-ORDER-FBS-#{@token}")
       assert_equal "shipped", ozon_fbs_order.order_status
@@ -212,6 +256,7 @@ module Ec
       assert_equal Time.zone.parse("2026-06-05 10:30:00"), wb_order.cancelled_at
       assert_equal "WB-SRID-#{@token}", wb_order.external_order_id
       assert_equal "WB707", wb_order.items.first.offer_id
+      assert_equal @wb_sku.sku_code, wb_order.items.first.sku_code
       assert_equal @wb_order, wb_order.source_links.first.source
     end
 

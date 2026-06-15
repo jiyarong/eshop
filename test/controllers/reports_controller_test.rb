@@ -18,15 +18,32 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       product_name_ru: "Второй тестовый товар",
       is_active: true
     )
+    @sales_ozon_account = RawOzon::SellerAccount.create!(
+      client_id: "reports-ozon-#{@sku_code}",
+      api_key: "test-key",
+      company_name: "销量统计 Ozon Raw #{@sku_code}",
+      company_type: "general"
+    )
     @sales_store = Ec::Store.create!(
       platform: "ozon",
       store_name: "销量统计 Ozon 店 #{@sku_code}",
-      company_type: "general"
+      company_type: "general",
+      ozon_raw_account_id: @sales_ozon_account.id
     )
     @wb_sales_store = Ec::Store.create!(
       platform: "wb",
       store_name: "销量统计 WB 店 #{@sku_code}",
-      company_type: "small"
+      company_type: "small",
+      wb_raw_account_id: 910_000 + @sku_code.hash.abs % 10_000
+    )
+
+    RawOzon::Product.create!(
+      account: @sales_ozon_account,
+      ozon_product_id: 9_876_543_210,
+      offer_id: "OFFER-#{@sku_code}",
+      name: "Ozon 绑定商品",
+      raw_json: { "sku" => 3_902_460_130 },
+      synced_at: Time.zone.parse("2026-06-01 09:00:00")
     )
 
     @inventory_snapshot = Ec::InventorySnapshot.create!(
@@ -126,9 +143,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       platform: "ozon",
       store: @sales_store,
       external_item_id: "SALE-I-#{@sku_code}",
-      platform_sku_id: "OZON-SKU-#{@sku_code}",
-      offer_id: @sku.sku_code,
-      sku_code: @sku.sku_code,
+      platform_sku_id: "3902460130",
+      offer_id: "OFFER-#{@sku_code}",
       product_name_source: "销量统计测试商品",
       quantity: 2,
       unit_price: 100,
@@ -161,9 +177,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       platform: "ozon",
       store: @sales_store,
       external_item_id: "RETURN-I-#{@sku_code}",
-      platform_sku_id: "OZON-SKU-#{@sku_code}",
-      offer_id: @sku.sku_code,
-      sku_code: @sku.sku_code,
+      platform_sku_id: "3902460130",
+      offer_id: "OFFER-#{@sku_code}",
       product_name_source: "销量统计测试商品",
       quantity: 1,
       unit_price: 100,
@@ -187,9 +202,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       platform: "wb",
       store: @wb_sales_store,
       external_item_id: "WB-SALE-I-#{@sku_code}",
-      platform_sku_id: "WB-SKU-#{@sku_code}",
-      offer_id: @sku.sku_code,
-      sku_code: @sku.sku_code,
+      platform_sku_id: "123456",
+      offer_id: "WB-OFFER-#{@sku_code}",
       product_name_source: "销量统计 WB 测试商品",
       quantity: 3,
       unit_price: 50,
@@ -197,6 +211,22 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       commission_amount: 15,
       discount_amount: 6,
       currency_code: "BYN"
+    )
+
+    Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: @sales_store,
+      product_id: "9876543210",
+      offer_id: "OFFER-#{@sku_code}",
+      platform_sku_id: "3902460130",
+      product_name: "Ozon 绑定商品"
+    )
+    Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: @wb_sales_store,
+      product_id: "123456",
+      offer_id: "WB-OFFER-#{@sku_code}",
+      product_name: "WB 绑定商品"
     )
 
     @second_sku_order = Ec::Order.create!(
@@ -231,6 +261,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::Order.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all
+    Ec::SkuProduct.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all if defined?(Ec::SkuProduct)
+    RawOzon::Product.where(account_id: @sales_ozon_account&.id).delete_all
+    @sales_ozon_account&.destroy
     @sales_store&.destroy
     @wb_sales_store&.destroy
     Ec::SkuPlatformCost.where(sku_code: @sku.sku_code).delete_all

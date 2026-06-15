@@ -171,9 +171,19 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       raw_json: { "product_id" => @raw_product.ozon_product_id },
       synced_at: Time.zone.parse("2026-06-02 05:10:00")
     )
+
+    @sku_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: @store,
+      product_id: @raw_product.ozon_product_id.to_s,
+      offer_id: @raw_product.offer_id,
+      platform_sku_id: @raw_product.raw_json["sku"].to_s,
+      product_name: @raw_product.name
+    )
   end
 
   teardown do
+    Ec::SkuProduct.where(id: @sku_product&.id).delete_all if defined?(Ec::SkuProduct)
     RawOzon::ProductStock.where(account_id: @ozon_account&.id).delete_all
     RawOzon::ProductPrice.where(account_id: @ozon_account&.id).delete_all
     RawOzon::Product.where(account_id: @ozon_account&.id).delete_all

@@ -185,11 +185,13 @@ zh:
         add_predicted_cost: "新增预测成本"
         back_to_list: "返回列表"
         edit_profile: "编辑资料"
+        manage_product_bindings: "维护平台商品绑定"
       empty:
         cost_data: "暂无成本数据"
         order_data: "当前筛选范围内没有订单数据"
         ozon_costs: "暂无 Ozon 成本数据"
         predicted_costs: "暂无预测成本配置"
+        sku_products: "暂无平台商品绑定"
         store_assignments: "暂无店铺上架配置"
         wb_costs: "暂无 WB 成本数据"
       fields:
@@ -226,7 +228,10 @@ zh:
         period: "周期"
         platform: "平台"
         platform_freight_cny: "平台运费 CNY"
+        platform_product_name: "平台商品名"
+        platform_sku_id: "平台 SKU ID"
         predicted_cost: "预测成本"
+        product_id: "商品 ID"
         product_name: "中文名"
         product_name_ru: "俄文名"
         profit_cny: "利润 CNY"
@@ -279,6 +284,7 @@ zh:
         ozon_cost: "Ozon 成本"
         predicted_cost_configuration: "预测成本配置"
         product_attributes: "商品属性"
+        platform_product_bindings: "平台商品绑定"
         sales_trend_chart: "净销量 / 销售额趋势"
         sku_base_cost: "SKU 基础成本"
         store_listing_configuration: "店铺上架配置"
@@ -367,6 +373,32 @@ zh:
         unit_batch_cost: "单件批次成本"
       index:
         title: "SKU 批次"
+    sku_products:
+      actions:
+        add_binding: "新增绑定"
+        back_to_sku: "返回 SKU 详情"
+        delete: "删除"
+        search: "搜索"
+      empty:
+        no_bindings: "暂无平台商品绑定。"
+        no_raw_product_selected: "请选择平台商品"
+      fields:
+        offer_id: "Offer ID"
+        platform_sku_id: "平台 SKU ID"
+        product_id: "商品 ID"
+        product_name: "平台商品名"
+        raw_product: "平台商品"
+        store: "店铺"
+      filters:
+        raw_product_query: "搜索平台商品"
+        raw_product_query_placeholder: "店铺 / 商品 ID / Offer ID / 平台 SKU / 商品名"
+      index:
+        eyebrow: "ERP SKU"
+        title: "平台商品绑定"
+      sections:
+        add_binding: "新增绑定"
+        current_bindings: "当前绑定"
+        erp_sku: "ERP SKU"
     skus:
       actions:
         add_product: "新增产品"

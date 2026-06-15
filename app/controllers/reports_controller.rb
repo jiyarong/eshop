@@ -61,13 +61,14 @@ class ReportsController < ApplicationController
   private
 
   def load_sku_detail(active_tab: nil)
-    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments, :predicted_costs).find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments, :sku_products, :predicted_costs).find_by!(sku_code: params[:sku_code].to_s.upcase)
     @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
     @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @ozon_costs = @sku.platform_costs.select { |cost| cost.platform == "ozon" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
+    @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: Time.zone.today)
 
@@ -184,16 +185,35 @@ class ReportsController < ApplicationController
     scope = Ec::OrderItem
       .joins(:order, :store)
       .left_joins(:fulfillment)
-      .joins("LEFT JOIN ec_skus ON ec_skus.sku_code = ec_order_items.sku_code")
+      .joins(<<~SQL.squish)
+        LEFT JOIN ec_sku_products ON ec_sku_products.store_id = ec_order_items.store_id
+          AND ec_sku_products.product_id = CASE
+            WHEN ec_order_items.platform = 'ozon' THEN (
+              SELECT raw_ozon_products.ozon_product_id::text
+              FROM raw_ozon_products
+              JOIN ec_stores product_stores ON product_stores.ozon_raw_account_id = raw_ozon_products.account_id
+              WHERE product_stores.id = ec_order_items.store_id
+                AND (
+                  raw_ozon_products.ozon_product_id::text = ec_order_items.platform_sku_id
+                  OR raw_ozon_products.raw_json ->> 'sku' = ec_order_items.platform_sku_id
+                  OR raw_ozon_products.offer_id = ec_order_items.offer_id
+                )
+              ORDER BY raw_ozon_products.id
+              LIMIT 1
+            )
+            ELSE COALESCE(ec_order_items.platform_sku_id, ec_order_items.offer_id)
+          END
+      SQL
+      .joins("LEFT JOIN ec_skus ON ec_skus.sku_code = COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code)")
       .where(ec_orders: { ordered_at: from_date.beginning_of_day..to_date.end_of_day })
     if sku_codes.present?
-      scope = scope.where("ec_order_items.sku_code IN (:skus) OR ec_order_items.offer_id IN (:skus)", skus: sku_codes)
+      scope = scope.where("COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code) IN (:skus)", skus: sku_codes)
     end
     scope = scope.where(ec_order_items: { platform: platform }) if platform.present?
     scope = scope.where(ec_order_items: { store_id: store_id }) if store_id.present?
 
     period_sql = period == "range" ? "'#{from_date}'::date" : "DATE_TRUNC('#{period}', ec_orders.ordered_at)"
-    sku_sql = "COALESCE(ec_order_items.sku_code, ec_order_items.offer_id, ec_order_items.platform_sku_id)"
+    sku_sql = "COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code, ec_order_items.offer_id, ec_order_items.platform_sku_id)"
     platform_sql = grain == "sku" ? "NULL" : "ec_order_items.platform"
     store_sql = grain == "store" ? "ec_stores.store_name" : "NULL"
     group_columns = ["period_start", sku_sql]

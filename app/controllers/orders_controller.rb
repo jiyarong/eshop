@@ -14,14 +14,14 @@ class OrdersController < ApplicationController
     @orders_scope = @search.result(distinct: true)
     @summary = build_summary(@orders_scope)
     @orders = @orders_scope.page(params[:page]).per(20)
-    @sku_by_code = sku_lookup_for(@orders.flat_map(&:items))
+    @sku_by_item_id = sku_lookup_for(@orders.flat_map(&:items))
   end
 
   def show
     @order = Ec::Order
       .includes(:store, :fulfillments, { items: :sku }, :source_links)
       .find(params[:id])
-    @sku_by_code = sku_lookup_for(@order.items)
+    @sku_by_item_id = sku_lookup_for(@order.items)
     @ozon_product_details_by_item_id = ozon_product_details_lookup(@order)
   end
 
@@ -178,14 +178,34 @@ class OrdersController < ApplicationController
   end
 
   def sku_for_order_item(item)
-    item.sku || @sku_by_code&.[](item.offer_id.to_s.upcase)
+    item.sku || @sku_by_item_id&.[](item.id)
   end
 
   def sku_lookup_for(items)
-    codes = items.flat_map { |item| [item.sku_code, item.offer_id&.upcase] }.compact_blank.uniq
-    return {} if codes.empty?
+    product_ids_by_item_id = items.each_with_object({}) do |item, result|
+      product_id = product_id_for_order_item(item)
+      result[item.id] = product_id if product_id.present?
+    end
+    return {} if product_ids_by_item_id.empty?
 
-    Ec::Sku.where(sku_code: codes).index_by(&:sku_code)
+    bindings = Ec::SkuProduct
+      .includes(:sku)
+      .where(store_id: items.map(&:store_id).uniq, product_id: product_ids_by_item_id.values.uniq)
+      .index_by { |binding| [binding.store_id, binding.product_id] }
+
+    items.each_with_object({}) do |item, result|
+      binding = bindings[[item.store_id, product_ids_by_item_id[item.id]]]
+      result[item.id] = binding.sku if binding&.sku
+    end
+  end
+
+  def product_id_for_order_item(item)
+    case item.platform
+    when "wb"
+      item.platform_sku_id.presence
+    when "ozon"
+      ozon_product_for_item(item)&.ozon_product_id&.to_s
+    end
   end
 
   def ozon_product_details_lookup(order)
@@ -207,12 +227,8 @@ class OrdersController < ApplicationController
     stocks_by_product_id = RawOzon::ProductStock
       .where(account_id: account_id, ozon_product_id: product_ids)
       .index_by(&:ozon_product_id)
-    products_by_sku = products.group_by { |product| product.raw_json&.dig("sku").to_s.presence }.compact
-    products_by_offer = products.group_by { |product| product.offer_id.to_s.upcase.presence }.compact
-
     items.each_with_object({}) do |item, result|
-      product = products_by_sku[item.platform_sku_id.to_s].to_a.first ||
-        products_by_offer[item.offer_id.to_s.upcase].to_a.first
+      product = ozon_product_for_item(item, products)
       next unless product
 
       result[item.id] = {
@@ -241,6 +257,32 @@ class OrdersController < ApplicationController
     return RawOzon::Product.none if clauses.empty?
 
     scope.where(clauses.join(" OR "), values).to_a
+  end
+
+  def ozon_product_for_item(item, products = nil)
+    products ||= matching_ozon_products_for_items([item])
+    products_by_sku = products.group_by { |product| product.raw_json&.dig("sku").to_s.presence }.compact
+    products_by_offer = products.group_by { |product| product.offer_id.to_s.upcase.presence }.compact
+    products_by_product_id = products.index_by { |product| product.ozon_product_id.to_s }
+
+    products_by_product_id[item.platform_sku_id.to_s] ||
+      products_by_sku[item.platform_sku_id.to_s].to_a.first ||
+      products_by_offer[item.offer_id.to_s.upcase].to_a.first
+  end
+
+  def matching_ozon_products_for_items(items)
+    grouped = items.select { |item| item.platform == "ozon" }.group_by(&:store)
+    grouped.values.flat_map do |store_items|
+      store = store_items.first.store
+      account_id = store.ozon_raw_account_id
+      next [] unless account_id
+
+      matching_ozon_products(
+        account_id,
+        store_items.map(&:offer_id).compact_blank,
+        store_items.map(&:platform_sku_id).compact_blank
+      )
+    end
   end
 
   def first_image_url(value)

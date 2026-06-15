@@ -113,6 +113,8 @@ module Ec
         existing.delete_all
         source_items.each do |item|
           fin = financial_product(posting, item)
+          product = product_for(posting.account_id, item)
+          sku_product = sku_product_for(store, product&.ozon_product_id)
           Ec::OrderItem.create!(
             order: order,
             fulfillment: fulfillment,
@@ -121,7 +123,7 @@ module Ec
             external_item_id: "#{posting.posting_number}:#{item.ozon_sku || item.offer_id}",
             platform_sku_id: item.ozon_sku&.to_s,
             offer_id: item.offer_id,
-            sku_code: Ec::Sku.find_by(sku_code: item.offer_id&.upcase)&.sku_code,
+            sku_code: sku_product&.sku_code,
             product_name_source: item.name,
             quantity: item.quantity,
             unit_price: item.price,
@@ -142,6 +144,18 @@ module Ec
         Array(posting.financial_data&.dig("products")).find do |product|
           product["product_id"].to_s == item.ozon_sku.to_s
         end || {}
+      end
+
+      def product_for(account_id, item)
+        scope = RawOzon::Product.where(account_id: account_id)
+        scope.find_by("raw_json ->> 'sku' = ?", item.ozon_sku.to_s) ||
+          scope.find_by(offer_id: item.offer_id)
+      end
+
+      def sku_product_for(store, product_id)
+        return unless product_id
+
+        Ec::SkuProduct.find_by(store: store, product_id: product_id.to_s)
       end
 
       def upsert_source_link(order, fulfillment, item, source_type, source_id, source_key)

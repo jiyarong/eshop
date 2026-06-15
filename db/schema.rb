@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_12_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -382,6 +382,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000002) do
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code", "effective_from"], name: "idx_ec_sku_predicted_costs_sku_from"
+  end
+
+  create_table "ec_sku_products", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "offer_id"
+    t.string "platform", null: false
+    t.string "platform_sku_id"
+    t.string "product_id", null: false
+    t.string "product_name"
+    t.string "sku_code", null: false
+    t.bigint "store_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sku_code", "store_id"], name: "idx_ec_sku_products_sku_store"
+    t.index ["store_id", "product_id"], name: "idx_ec_sku_products_unique_store_product", unique: true
+    t.index ["store_id"], name: "index_ec_sku_products_on_store_id"
   end
 
   create_table "ec_sku_store_assignments", force: :cascade do |t|
@@ -1784,6 +1799,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000002) do
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_products", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_products", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"

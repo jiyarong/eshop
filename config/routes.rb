@@ -60,7 +60,9 @@ Rails.application.routes.draw do
     get "cost_allocations/:id/edit" => "cost_allocations#edit", as: :edit_cost_allocation
     resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]
-    resources :skus, except: [:destroy]
+    resources :skus, except: [:destroy] do
+      resources :sku_products, path: :products, only: [:index, :create, :destroy]
+    end
     post "skus/:id" => "skus#update"
     resources :stores, except: [:show, :destroy]
     resources :sku_batches, except: [:destroy]

@@ -93,6 +93,7 @@ module Ec
       end
 
       def import_item(raw_order, store, order, fulfillment)
+        sku_product = sku_product_for(store, raw_order.nm_id)
         Ec::OrderItem.where(order: order, fulfillment: fulfillment).delete_all
         Ec::OrderItem.create!(
           order: order,
@@ -102,7 +103,7 @@ module Ec
           external_item_id: raw_order.wb_order_id.to_s,
           platform_sku_id: raw_order.nm_id&.to_s,
           offer_id: raw_order.article,
-          sku_code: Ec::Sku.find_by(sku_code: raw_order.article&.upcase)&.sku_code,
+          sku_code: sku_product&.sku_code,
           product_name_source: raw_order.article,
           quantity: 1,
           unit_price: raw_order.converted_price || raw_order.price,
@@ -110,6 +111,12 @@ module Ec
           item_payload: raw_order.attributes.slice("nm_id", "article", "barcode", "price", "converted_price"),
           synced_at: raw_order.synced_at
         )
+      end
+
+      def sku_product_for(store, product_id)
+        return unless product_id
+
+        Ec::SkuProduct.find_by(store: store, product_id: product_id.to_s)
       end
 
       def upsert_source_link(order, fulfillment, raw_order)
