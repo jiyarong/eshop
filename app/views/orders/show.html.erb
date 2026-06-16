@@ -37,8 +37,6 @@
             <tr><th><%= t("orders.fields.source_substatus") %></th><td><%= display_value(@order.source_substatus) %></td></tr>
             <tr><th><%= t("orders.fields.ordered_at") %></th><td><%= display_time(@order.ordered_at) %></td></tr>
             <tr><th><%= t("orders.fields.in_process_at") %></th><td><%= display_time(@order.in_process_at) %></td></tr>
-            <tr><th><%= t("orders.fields.completed_at") %></th><td><%= display_time(@order.completed_at) %></td></tr>
-            <tr><th><%= t("orders.fields.cancelled_at") %></th><td><%= display_time(@order.cancelled_at) %></td></tr>
             <tr><th><%= t("orders.fields.payment_method") %></th><td><%= display_value(@order.payment_method_source) %></td></tr>
             <tr><th><%= t("orders.fields.synced_at") %></th><td><%= display_time(@order.synced_at) %></td></tr>
           </tbody>

@@ -85,10 +85,12 @@ zh:
       cancel: "取消"
       close: "关闭"
       save: "保存"
+    "no": "否"
     platforms:
       amazon: "Amazon"
       ozon: "Ozon"
       wb: "WB"
+    "yes": "是"
   orders:
     actions:
       back_to_orders: "返回订单中心"
@@ -130,6 +132,7 @@ zh:
       source_status: "源状态"
       source_substatus: "源子状态"
       source_type: "来源类型"
+      sku_linked: "SKU已关联？"
       status: "状态"
       store: "店铺"
       synced_at: "同步时间"
@@ -382,14 +385,19 @@ zh:
       empty:
         no_bindings: "暂无平台商品绑定。"
         no_raw_product_selected: "请选择平台商品"
+        no_raw_products: "没有找到可绑定的平台商品。"
       fields:
         offer_id: "Offer ID"
         platform_sku_id: "平台 SKU ID"
         product_id: "商品 ID"
         product_name: "平台商品名"
         raw_product: "平台商品"
+        select: "选择"
         store: "店铺"
       filters:
+        all_platforms: "全部平台"
+        available_only: "可绑定"
+        platform: "平台"
         raw_product_query: "搜索平台商品"
         raw_product_query_placeholder: "店铺 / 商品 ID / Offer ID / 平台 SKU / 商品名"
       index:
@@ -399,6 +407,9 @@ zh:
         add_binding: "新增绑定"
         current_bindings: "当前绑定"
         erp_sku: "ERP SKU"
+      status:
+        available: "可绑定"
+        bound: "已绑定"
     skus:
       actions:
         add_product: "新增产品"

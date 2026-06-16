@@ -509,8 +509,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       platform: "ozon",
       store: @sales_store,
       external_item_id: "EXTRA-SALE-I-#{@sku_code}",
-      platform_sku_id: "OZON-SKU-#{@sku_code}",
-      offer_id: @sku.sku_code,
+      platform_sku_id: "3902460130",
+      offer_id: "OFFER-#{@sku_code}",
       sku_code: @sku.sku_code,
       product_name_source: "销量统计测试商品",
       quantity: 5,
@@ -540,6 +540,58 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   ensure
     extra_order&.items&.delete_all
     extra_order&.destroy
+  end
+
+  test "sku detail store sales ignores unbound order item sku code" do
+    unbound_product_id = "9876543211"
+    RawOzon::Product.create!(
+      account: @sales_ozon_account,
+      ozon_product_id: unbound_product_id,
+      offer_id: "UNBOUND-OFFER-#{@sku_code}",
+      name: "Ozon 未绑定商品",
+      raw_json: { "sku" => "3902460131" },
+      synced_at: Time.zone.parse("2026-06-01 09:00:00")
+    )
+    unbound_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "UNBOUND-SALE-#{@sku_code}",
+      external_order_number: "UNBOUND-SALE-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:UNBOUND-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-04 10:00:00"),
+      synced_at: Time.zone.parse("2026-06-04 10:10:00")
+    )
+    unbound_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "UNBOUND-SALE-I-#{@sku_code}",
+      platform_sku_id: "3902460131",
+      offer_id: "UNBOUND-OFFER-#{@sku_code}",
+      sku_code: @sku.sku_code,
+      product_name_source: "未绑定商品",
+      quantity: 9,
+      unit_price: 100,
+      payout: 900,
+      commission_amount: 90,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: {
+      tab: "stores",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", { text: "10", count: 0 }
+    assert_select "td", { text: "11", count: 0 }
+    assert_select "td", { text: "1200.00", count: 0 }
+  ensure
+    unbound_order&.items&.delete_all
+    unbound_order&.destroy
+    RawOzon::Product.where(account_id: @sales_ozon_account&.id, ozon_product_id: unbound_product_id).delete_all
   end
 
   test "sku detail renders sales trend tab" do

@@ -2,7 +2,8 @@ class OrdersController < ApplicationController
   helper_method :order_status_label, :platform_label, :fulfillment_label, :display_value, :money_value,
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
-                :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value
+                :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
+                :order_sku_linked?
   before_action -> { require_permission!(:view_reports) }
 
   def index
@@ -179,6 +180,10 @@ class OrdersController < ApplicationController
 
   def sku_for_order_item(item)
     item.sku || @sku_by_item_id&.[](item.id)
+  end
+
+  def order_sku_linked?(order)
+    order.items.any? && order.items.all? { |item| @sku_by_item_id&.key?(item.id) }
   end
 
   def sku_lookup_for(items)

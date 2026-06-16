@@ -213,8 +213,11 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "配送中"
     assert_select "th", { text: "源状态", count: 0 }
     assert_select "th", { text: "源子状态", count: 0 }
+    assert_select "th", { text: "处理时间", count: 0 }
+    assert_select "th", "SKU已关联？"
     assert_select "td", { text: "delivering", count: 0 }
     assert_select "td", { text: "posting_on_way_to_city", count: 0 }
+    assert_select "td", "是"
     assert_select "td", "配送中" do |elements|
       assert_equal "源状态: delivering\n源子状态: posting_on_way_to_city", elements.first["title"]
     end
@@ -271,6 +274,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name=?][value=?]", "q[external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont]", "WB-G-#{@token}"
     assert_select "td", "WB"
     assert_select "td", "订单中心 WB 店"
+    assert_select "td", "否"
     assert_select "td", { text: "订单中心 Ozon 店", count: 0 }
   end
 

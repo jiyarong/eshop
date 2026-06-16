@@ -46,9 +46,19 @@
                 <td><%= t("common.platforms.#{binding.platform}", default: binding.platform) %></td>
                 <td><%= binding.sku_code %></td>
                 <td><%= binding.store.store_name %></td>
-                <td><%= binding.product_id %></td>
+                <td>
+                  <% if binding.platform == "ozon" && binding.product_id.present? %>
+                    <%= link_to binding.product_id, ozon_product_edit_url(binding.product_id), target: "_blank", rel: "noreferrer noopener" %>
+                  <% elsif binding.platform == "wb" && binding.product_id.present? %>
+                    <%= link_to binding.product_id, wb_product_edit_url(binding.product_id), target: "_blank", rel: "noreferrer noopener" %>
+                  <% else %>
+                    <%= binding.product_id %>
+                  <% end %>
+                </td>
                 <td><%= erp_value(binding.offer_id) %></td>
-                <td><%= erp_value(binding.platform_sku_id) %></td>
+                <td>
+                  <%= erp_value(binding.platform_sku_id) %>
+                </td>
                 <td><%= erp_value(binding.product_name) %></td>
                 <td>
                   <%= button_to t("erp.sku_products.actions.delete"), erp_sku_sku_product_path(@sku, binding), method: :delete, class: "button button-secondary" %>
@@ -74,6 +84,20 @@
         <%= form.search_field :raw_product_query, value: @raw_product_query, placeholder: t("erp.sku_products.filters.raw_product_query_placeholder") %>
       </div>
 
+      <div class="field">
+        <%= form.label :raw_product_platform, t("erp.sku_products.filters.platform") %>
+        <%= form.select :raw_product_platform,
+                        [["#{t("erp.sku_products.filters.all_platforms")}", ""], [t("common.platforms.ozon"), "ozon"], [t("common.platforms.wb"), "wb"]],
+                        { selected: @raw_product_platform } %>
+      </div>
+
+      <div class="field">
+        <label>
+          <%= check_box_tag :available_only, "1", @available_only %>
+          <%= t("erp.sku_products.filters.available_only") %>
+        </label>
+      </div>
+
       <button class="button button-secondary" type="submit"><%= t("erp.sku_products.actions.search") %></button>
       <%= link_to t("erp.common.actions.reset"), erp_sku_sku_products_path(@sku), class: "button button-secondary" %>
     <% end %>
@@ -88,12 +112,59 @@
       </div>
     <% end %>
 
-    <%= form_with model: @sku_product, scope: :ec_sku_product, url: erp_sku_sku_products_path(@sku), method: :post, local: true, html: { class: "report-form" } do |form| %>
-      <div class="field">
-        <%= form.label :raw_product_key, t("erp.sku_products.fields.raw_product") %>
-        <%= form.select :raw_product_key, @raw_product_options, { include_blank: t("erp.sku_products.empty.no_raw_product_selected") } %>
-      </div>
+    <%= form_with url: erp_sku_sku_products_path(@sku), method: :post, local: true do %>
+      <div class="table-scroll">
+        <table class="raw-product-options">
+          <thead>
+            <tr>
+              <th><%= t("erp.sku_products.fields.select") %></th>
+              <th><%= t("erp.common.platform") %></th>
+              <th><%= t("erp.sku_products.fields.store") %></th>
+              <th><%= t("erp.sku_products.fields.product_id") %></th>
+              <th><%= t("erp.sku_products.fields.offer_id") %></th>
+              <th><%= t("erp.sku_products.fields.platform_sku_id") %></th>
+              <th><%= t("erp.sku_products.fields.product_name") %></th>
+              <th><%= t("erp.common.status") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @raw_product_options.any? %>
+              <% @raw_product_options.each do |product| %>
+                <tr>
+                  <td>
+                    <% if product[:bound] %>
+                      -
+                    <% else %>
+                      <%= check_box_tag "raw_product_keys[]", product[:key], false, id: "raw_product_#{product[:key].parameterize}" %>
+                    <% end %>
+                  </td>
+                  <td><%= t("common.platforms.#{product[:platform]}", default: product[:platform]) %></td>
+                  <td><%= product[:store_name] %></td>
+                  <td>
+                    <% if product[:platform] == "ozon" && product[:product_id].present? %>
+                      <%= link_to product[:product_id], ozon_product_edit_url(product[:product_id]), target: "_blank", rel: "noreferrer noopener" %>
+                    <% elsif product[:platform] == "wb" && product[:product_id].present? %>
+                      <%= link_to product[:product_id], wb_product_edit_url(product[:product_id]), target: "_blank", rel: "noreferrer noopener" %>
+                    <% else %>
+                      <%= product[:product_id] %></td>
+                    <% end %>
 
+                  <td><%= erp_value(product[:offer_id]) %></td>
+                  <td>
+                    <%= erp_value(product[:platform_sku_id]) %>
+                  </td>
+                  <td><%= erp_value(product[:product_name]) %></td>
+                  <td><%= product[:bound] ? t("erp.sku_products.status.bound") : t("erp.sku_products.status.available") %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="8" class="empty-state"><%= t("erp.sku_products.empty.no_raw_products") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
       <button class="button" type="submit"><%= t("erp.sku_products.actions.add_binding") %></button>
     <% end %>
   </section>

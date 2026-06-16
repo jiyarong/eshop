@@ -75,7 +75,7 @@ class ReportsController < ApplicationController
     @overview_from_date = 30.days.ago.to_date
     @overview_to_date = Time.zone.today
     @overview_rows = sku_detail_sales_rows(
-      sku_codes: [@sku.sku_code],
+      sku_products: @sku_products,
       from_date: @overview_from_date,
       to_date: @overview_to_date,
       period: "day",
@@ -92,7 +92,7 @@ class ReportsController < ApplicationController
     @selected_store_id = params[:store_id].presence
 
     @sku_sales_rows = sku_detail_sales_rows(
-      sku_codes: [@sku.sku_code],
+      sku_products: @sku_products,
       from_date: @from_date,
       to_date: @to_date,
       period: sku_detail_sales_period,
@@ -144,9 +144,9 @@ class ReportsController < ApplicationController
     rows.sort_by { |row| [row[:period_start], row[:sku_code].to_s, row[:platform].to_s, row[:store_name].to_s] }
   end
 
-  def sku_detail_sales_rows(sku_codes:, from_date:, to_date:, period:, grain:, platform: nil, store_id: nil)
+  def sku_detail_sales_rows(sku_products:, from_date:, to_date:, period:, grain:, platform: nil, store_id: nil)
     rows = sku_sales_relation_for(
-      sku_codes: sku_codes,
+      sku_product_ids: sku_products.map(&:id),
       from_date: from_date,
       to_date: to_date,
       period: period,
@@ -181,7 +181,7 @@ class ReportsController < ApplicationController
     }
   end
 
-  def sku_sales_relation_for(sku_codes:, from_date:, to_date:, period:, grain:, platform: nil, store_id: nil)
+  def sku_sales_relation_for(sku_codes: nil, sku_product_ids: nil, from_date:, to_date:, period:, grain:, platform: nil, store_id: nil)
     scope = Ec::OrderItem
       .joins(:order, :store)
       .left_joins(:fulfillment)
@@ -206,7 +206,9 @@ class ReportsController < ApplicationController
       SQL
       .joins("LEFT JOIN ec_skus ON ec_skus.sku_code = COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code)")
       .where(ec_orders: { ordered_at: from_date.beginning_of_day..to_date.end_of_day })
-    if sku_codes.present?
+    if !sku_product_ids.nil?
+      scope = scope.where(ec_sku_products: { id: sku_product_ids })
+    elsif sku_codes.present?
       scope = scope.where("COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code) IN (:skus)", skus: sku_codes)
     end
     scope = scope.where(ec_order_items: { platform: platform }) if platform.present?

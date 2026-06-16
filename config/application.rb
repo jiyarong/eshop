@@ -50,5 +50,6 @@ module EcommerceManage
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use config.session_store, config.session_options
     config.middleware.use ActionDispatch::Flash
+    config.middleware.use Rack::MethodOverride
   end
 end

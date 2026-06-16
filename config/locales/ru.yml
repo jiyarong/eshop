@@ -84,10 +84,12 @@ ru:
       cancel: "Отмена"
       close: "Закрыть"
       save: "Сохранить"
+    "no": "Нет"
     platforms:
       amazon: "Amazon"
       ozon: "Ozon"
       wb: "WB"
+    "yes": "Да"
   orders:
     actions:
       back_to_orders: "Назад к заказам"
@@ -129,6 +131,7 @@ ru:
       source_status: "Статус источника"
       source_substatus: "Подстатус источника"
       source_type: "Тип источника"
+      sku_linked: "SKU связан?"
       status: "Статус"
       store: "Магазин"
       synced_at: "Время синхронизации"
@@ -381,14 +384,19 @@ ru:
       empty:
         no_bindings: "Связей с товарами платформ пока нет."
         no_raw_product_selected: "Выберите товар платформы"
+        no_raw_products: "Товары платформ не найдены."
       fields:
         offer_id: "Offer ID"
         platform_sku_id: "ID SKU платформы"
         product_id: "ID товара"
         product_name: "Название товара платформы"
         raw_product: "Товар платформы"
+        select: "Выбрать"
         store: "Магазин"
       filters:
+        all_platforms: "Все платформы"
+        available_only: "Только доступные"
+        platform: "Платформа"
         raw_product_query: "Поиск товаров платформ"
         raw_product_query_placeholder: "Магазин / ID товара / Offer ID / SKU платформы / название"
       index:
@@ -398,6 +406,9 @@ ru:
         add_binding: "Добавить связь"
         current_bindings: "Текущие связи"
         erp_sku: "ERP SKU"
+      status:
+        available: "Доступен"
+        bound: "Связан"
     skus:
       actions:
         add_product: "Добавить продукт"

@@ -113,10 +113,12 @@ en:
       cancel: "Cancel"
       close: "Close"
       save: "Save"
+    "no": "No"
     platforms:
       amazon: "Amazon"
       ozon: "Ozon"
       wb: "WB"
+    "yes": "Yes"
   orders:
     actions:
       back_to_orders: "Back to orders"
@@ -158,6 +160,7 @@ en:
       source_status: "Source status"
       source_substatus: "Source substatus"
       source_type: "Source type"
+      sku_linked: "SKU linked?"
       status: "Status"
       store: "Store"
       synced_at: "Synced at"
@@ -410,14 +413,19 @@ en:
       empty:
         no_bindings: "No platform product bindings yet."
         no_raw_product_selected: "Select a platform product"
+        no_raw_products: "No platform products found."
       fields:
         offer_id: "Offer ID"
         platform_sku_id: "Platform SKU ID"
         product_id: "Product ID"
         product_name: "Platform product name"
         raw_product: "Platform product"
+        select: "Select"
         store: "Store"
       filters:
+        all_platforms: "All platforms"
+        available_only: "Available only"
+        platform: "Platform"
         raw_product_query: "Search platform products"
         raw_product_query_placeholder: "Store / product ID / Offer ID / platform SKU / product name"
       index:
@@ -427,6 +435,9 @@ en:
         add_binding: "Add binding"
         current_bindings: "Current bindings"
         erp_sku: "ERP SKU"
+      status:
+        available: "Available"
+        bound: "Bound"
     skus:
       actions:
         add_product: "Add product"

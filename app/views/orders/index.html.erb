@@ -106,7 +106,7 @@
                 <th><%= t("orders.fields.status") %></th>
                 <th><%= t("orders.fields.external_order_number") %></th>
                 <th><%= t("orders.fields.ordered_at") %></th>
-                <th><%= t("orders.fields.in_process_at") %></th>
+                <th><%= t("orders.fields.sku_linked") %></th>
                 <th><%= t("orders.fields.city") %></th>
                 <th><%= t("orders.fields.sku_quantity") %></th>
                 <th><%= t("orders.fields.synced_at") %></th>
@@ -127,7 +127,7 @@
                     <% end %>
                   </td>
                   <td><%= display_time(order.ordered_at) %></td>
-                  <td><%= display_time(order.in_process_at) %></td>
+                  <td><%= t(order_sku_linked?(order) ? "common.yes" : "common.no") %></td>
                   <td><%= display_value(order.buyer_city) %></td>
                   <td>
                     <% order.items.each_with_index do |item, index| %>
