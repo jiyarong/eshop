@@ -1,20 +1,24 @@
 module RawOzon
   module Syncs
     module Returns
-      # POST /v1/returns/list (last_id pagination, FBO+FBS 统一)
+      # POST /v1/returns/list — uses has_next + items.last['id'] pagination (not resp['last_id'])
       def sync_returns
         synced_at = Time.current
-        fetch_last_id_paginated(
-          path:      '/v1/returns/list',
-          body:      { filter: {} },
-          items_key: 'returns',
-          limit:     100,
-          initial_last_id: 0,
-        ) do |items|
+        last_id   = 0
+        total     = 0
+        loop do
+          resp  = @client.post('/v1/returns/list', { filter: {}, limit: 100, last_id: last_id })
+          items = Array(resp['returns'])
+          break if items.empty?
           rows = items.map { |r| build_return(r, synced_at) }
           RawOzon::Return.upsert_all(rows, unique_by: [:account_id, :return_id],
-                                     update_only: %i[visual_status storage compensation_status synced_at]) if rows.any?
+                                     update_only: %i[visual_status storage compensation_status synced_at])
+          total  += items.size
+          break unless resp['has_next']
+          last_id = items.last['id']
+          sleep 0.3
         end
+        total
       end
 
       private
