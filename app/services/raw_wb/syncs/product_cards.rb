@@ -34,6 +34,13 @@ module RawWb
               update_only: %i[tech_size wb_size barcode skus])
           end
 
+          characteristic_rows = cards.flat_map { |c| build_characteristic_rows(c, id_map) }
+          if characteristic_rows.any?
+            product_ids = characteristic_rows.map { |r| r[:product_id] }.uniq
+            RawWb::ProductCharacteristic.where(product_id: product_ids).delete_all
+            RawWb::ProductCharacteristic.insert_all(characteristic_rows)
+          end
+
           total += product_rows.size
 
           next_cursor = data['cursor']
@@ -78,6 +85,24 @@ module RawWb
             wb_size:    s['wbSize'],
             barcode:    Array(s['skus']).first,
             skus:       Array(s['skus']),
+          }
+        end
+      end
+
+      def build_characteristic_rows(c, id_map)
+        nm_id      = c['nmID']
+        product_id = id_map[nm_id]
+        return [] unless product_id
+
+        Array(c['characteristics']).filter_map do |characteristic|
+          charc_id = characteristic['id']
+          next if charc_id.blank?
+
+          {
+            product_id: product_id,
+            charc_id:   charc_id,
+            charc_name: characteristic['name'],
+            value:      characteristic['value'],
           }
         end
       end

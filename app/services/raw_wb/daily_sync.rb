@@ -6,6 +6,7 @@ module RawWb
     DEFAULT_DAYS = 2
 
     STEPS = %i[
+      sync_product_cards
       sync_new_orders
       sync_orders
       sync_stats_orders
