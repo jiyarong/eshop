@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -818,11 +818,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
 
   create_table "raw_ozon_product_attributes", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.jsonb "attributes", default: []
     t.string "barcode"
     t.jsonb "complex_attributes", default: []
     t.string "offer_id"
     t.bigint "ozon_product_id", null: false
+    t.jsonb "product_attributes", default: []
     t.jsonb "raw_json", null: false
     t.datetime "synced_at"
     t.index ["account_id", "ozon_product_id"], name: "idx_on_account_id_ozon_product_id_d42e28fd23", unique: true

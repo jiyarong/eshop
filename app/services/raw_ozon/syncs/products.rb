@@ -27,6 +27,33 @@ module RawOzon
         total
       end
 
+      # POST /v4/product/info/attributes (batch by locally synced products)
+      def sync_product_attributes
+        products = RawOzon::Product.where(account_id: @account.id).select(:ozon_product_id)
+        return empty_sync_count if products.none?
+
+        synced_at = Time.current
+        total = empty_sync_count
+
+        products.in_batches(of: 100) do |relation|
+          product_ids = relation.pluck(:ozon_product_id)
+          next if product_ids.empty?
+
+          resp = @client.post(
+            '/v4/product/info/attributes',
+            { filter: { product_id: product_ids, visibility: 'ALL' }, limit: 100, last_id: '' }
+          )
+          items = Array(resp['result'])
+          rows = items.map { |p| build_product_attribute(p, synced_at) }
+          merge_sync_count!(
+            total,
+            rows.any? ? upsert_product_attributes(rows) : empty_sync_count
+          )
+        end
+
+        total
+      end
+
       private
 
       def build_product(p, synced_at)
@@ -52,6 +79,25 @@ module RawOzon
           created_at:              p['created_at'],
           synced_at:               synced_at,
         }
+      end
+
+      def build_product_attribute(p, synced_at)
+        {
+          account_id:           @account.id,
+          ozon_product_id:      p['id'] || p['product_id'],
+          offer_id:             p['offer_id'],
+          product_attributes:   Array(p['attributes']),
+          complex_attributes:   Array(p['complex_attributes']),
+          barcode:              p['barcode'],
+          raw_json:             p,
+          synced_at:            synced_at,
+        }
+      end
+
+      def upsert_product_attributes(rows)
+        result = upsert_count_result(rows, model: RawOzon::ProductAttribute, unique_key: :ozon_product_id)
+        RawOzon::ProductAttribute.upsert_all(rows, unique_by: [:account_id, :ozon_product_id])
+        result
       end
     end
   end

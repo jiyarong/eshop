@@ -8,6 +8,8 @@ module RawOzon
       sync_postings_fbo
       sync_returns
       sync_product_prices
+      sync_products
+      sync_product_attributes
       sync_product_stocks
       sync_finance_transactions
       sync_finance_accrual_by_day
