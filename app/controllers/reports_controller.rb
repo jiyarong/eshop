@@ -252,7 +252,7 @@ class ReportsController < ApplicationController
 
   def sku_sales_relation
     sku_sales_relation_for(
-      sku_codes: @selected_sku_codes,
+      sku_product_ids: sku_product_ids_for(@selected_sku_codes),
       from_date: @from_date,
       to_date: @to_date,
       period: @period,
@@ -260,6 +260,12 @@ class ReportsController < ApplicationController
       platform: @selected_platform,
       store_id: @selected_store_id
     )
+  end
+
+  def sku_product_ids_for(sku_codes)
+    return nil if sku_codes.blank?
+
+    Ec::SkuProduct.where(sku_code: sku_codes).pluck(:id)
   end
 
   def build_sku_sales_summary(rows)

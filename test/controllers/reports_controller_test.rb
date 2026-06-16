@@ -254,6 +254,22 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       discount_amount: 4,
       currency_code: "BYN"
     )
+    RawOzon::Product.create!(
+      account: @sales_ozon_account,
+      ozon_product_id: 9_876_543_211,
+      offer_id: @second_sku.sku_code,
+      name: "第二个 Ozon 绑定商品",
+      raw_json: { "sku" => "OZON-SKU-#{@second_sku_code}" },
+      synced_at: Time.zone.parse("2026-06-01 09:00:00")
+    )
+    Ec::SkuProduct.create!(
+      sku_code: @second_sku.sku_code,
+      store: @sales_store,
+      product_id: "9876543211",
+      offer_id: @second_sku.sku_code,
+      platform_sku_id: "OZON-SKU-#{@second_sku_code}",
+      product_name: "第二个 Ozon 绑定商品"
+    )
 
   end
 
@@ -543,7 +559,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "sku detail store sales ignores unbound order item sku code" do
-    unbound_product_id = "9876543211"
+    unbound_product_id = "9876543221"
     RawOzon::Product.create!(
       account: @sales_ozon_account,
       ozon_product_id: unbound_product_id,
@@ -585,9 +601,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "td", { text: "10", count: 0 }
-    assert_select "td", { text: "11", count: 0 }
-    assert_select "td", { text: "1200.00", count: 0 }
+    assert_select "td", { text: "2026-06-04", count: 0 }
+    assert_select "td", { text: "9", count: 0 }
+    assert_select "td", { text: "900.00", count: 0 }
   ensure
     unbound_order&.items&.delete_all
     unbound_order&.destroy
@@ -708,6 +724,60 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "Fulfillment mode"
     assert_select "script#sku-sales-chart-data[type=?]", "application/json", /Net sales/
     assert_select "script#sku-sales-chart-data[type=?]", "application/json", /Revenue/
+  end
+
+  test "sku sales report uses product bindings instead of order item sku code" do
+    unbound_product_id = "9876543222"
+    RawOzon::Product.create!(
+      account: @sales_ozon_account,
+      ozon_product_id: unbound_product_id,
+      offer_id: "UNBOUND-SALES-OFFER-#{@sku_code}",
+      name: "Ozon 未绑定销量商品",
+      raw_json: { "sku" => "3902460131" },
+      synced_at: Time.zone.parse("2026-06-01 09:00:00")
+    )
+    unbound_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "UNBOUND-SALES-#{@sku_code}",
+      external_order_number: "UNBOUND-SALES-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:UNBOUND-SALES-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-04 10:00:00"),
+      synced_at: Time.zone.parse("2026-06-04 10:10:00")
+    )
+    unbound_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "UNBOUND-SALES-I-#{@sku_code}",
+      platform_sku_id: "3902460131",
+      offer_id: "UNBOUND-SALES-OFFER-#{@sku_code}",
+      sku_code: @sku.sku_code,
+      product_name_source: "未绑定销量商品",
+      quantity: 9,
+      unit_price: 100,
+      payout: 900,
+      commission_amount: 90,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", { text: "2026-06-04", count: 0 }
+    assert_select "td", { text: "9", count: 0 }
+    assert_select "td", { text: "900.00", count: 0 }
+  ensure
+    unbound_order&.items&.delete_all
+    unbound_order&.destroy
+    RawOzon::Product.where(account_id: @sales_ozon_account&.id, ozon_product_id: unbound_product_id).delete_all
   end
 
   test "sku sales report aggregates by platform and sku grains" do
