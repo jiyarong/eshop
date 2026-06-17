@@ -2,7 +2,7 @@ module RawWb
   module Syncs
     module SupplyItems
       # FBW 送货明细（supplies-api 域名，与 marketplace-api 不同）
-      # Step 1: POST /api/v1/supplies — 拉已完成的 FBW 送货单列表
+      # Step 1: POST /api/v1/supplies — 拉全量 FBW 送货单列表（无日期/状态过滤）
       # Step 2: GET  /api/v1/supplies/{id}/goods — 每单的货物明细
       def sync_supply_items
         supply_ids = fetch_fbw_supply_ids
@@ -28,13 +28,9 @@ module RawWb
       private
 
       def fetch_fbw_supply_ids
-        resp = @client.post(:supplies, '/api/v1/supplies', {
-          dates:     [{ from: '2025-01-01', till: Date.current.to_s, type: 'factDate' }],
-          statusIDs: [5, 6],
-          limit:     1000,
-        })
+        resp = @client.post(:supplies, '/api/v1/supplies', { limit: 1000 })
         items = resp.is_a?(Array) ? resp : Array(resp['supplies'] || [])
-        items.map { |s| s['supplyID'] || s['id'] }.compact
+        items.filter_map { |s| s['supplyID'] || s['id'] }
       rescue RawWb::WbClient::ApiError => e
         log "  ⚠ fetch_fbw_supply_ids failed: #{e.message}", level: :warn
         []
