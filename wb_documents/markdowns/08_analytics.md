@@ -50,9 +50,68 @@
 |------|------|------|
 | POST | `/api/v2/search-report/report` | 搜索报告主页数据 |
 | POST | `/api/v2/search-report/table/groups` | 搜索词分组分页 |
-| POST | `/api/v2/search-report/table/details` | 分组内商品详情分页 |
-| POST | `/api/v2/search-report/product/search-texts` | 某商品的搜索词列表 |
-| POST | `/api/v2/search-report/product/orders` | 按搜索词维度查询下单量和排名 |
+| POST | `/api/v2/search-report/table/details` | 分组内商品详情分组分页 |
+| POST | `/api/v2/search-report/product/search-texts` | 某商品的搜索词列表（已验证可用） |
+| POST | `/api/v2/search-report/product/orders` | 按搜索词维度查询下单量和排名（参数格式待确认，测试时持续400） |
+
+### `/api/v2/search-report/product/search-texts` 请求参数（已验证）
+
+**注意**：此接口使用 `:seller_analytics` 服务键，即 `seller-analytics-api.wildberries.ru`。
+
+```json
+{
+  "nmIds": [12345678],          // 必填，Array，商品 nmId 列表（每次最多 10 个）
+  "currentPeriod": {
+    "start": "2026-06-01",      // ISO8601 日期
+    "end":   "2026-06-07"
+  },
+  "topOrderBy": "orders",       // 必填，排序基准字段（"orders" | "openCard" 等）
+  "orderBy": {
+    "field": "orders",
+    "mode":  "desc"
+  },
+  "limit":  100,                // 每页条数，最大 100
+  "offset": 0                   // 分页偏移
+}
+```
+
+**响应结构**：
+```json
+{
+  "data": {
+    "items": [
+      {
+        "text":           "поисковый запрос",   // 搜索词
+        "nmId":           12345678,
+        "vendorCode":     "MY-SKU",
+        "subjectName":    "Электрочайники",
+        "brandName":      "MyBrand",
+        "name":           "Чайник MyBrand 1.7л",
+        "rating":         4.8,
+        "feedbackRating": 4.7,
+        "price": { "minPrice": 1200.0, "maxPrice": 1500.0 },
+        "avgPosition":    { "current": 8.3 },
+        "medianPosition": { "current": 7.0 },   // 中位排名（比均值更稳定）
+        "frequency":      { "current": 15000 }, // 周搜索量
+        "weekFrequency":  12000,
+        "openCard":       { "current": 320,  "percentile": 72 },
+        "addToCart":      { "current": 48,   "percentile": 68 },
+        "openToCart":     { "current": 0.15, "percentile": 65 }, // 点击→加购转化率
+        "cartToOrder":    { "current": 0.42, "percentile": 70 }, // 加购→下单转化率
+        "orders":         { "current": 20,   "percentile": 71 },
+        "visibility":     { "current": 85 }  // 在该词搜索结果中的可见度 %
+      }
+    ]
+  }
+}
+```
+
+**实现注意事项**：
+- 每次最多传 10 个 nmId，多个商品需循环分批（`each_slice(10)`）
+- `offset` 分页：`break if items.size < limit`
+- `medianPosition` 是综合 SEO 排名的推荐基准；用 `openCard` 加权平均可得到单品综合排名
+- 综合 SEO 排名公式：`Σ(medianPosition_i × openCard_i) / Σ(openCard_i)`
+- 无需特殊订阅（普通账号即可访问）
 
 ---
 
