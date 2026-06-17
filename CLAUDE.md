@@ -1060,6 +1060,35 @@ Tab 命名：`WOD:W{n}-{店名}`，例 `WOD:W21-Такси Линк`
 
 ---
 
+## 线上调试 — Rails Runner 正确用法
+
+在生产容器内执行临时 Ruby 脚本（只读调试）：
+
+```bash
+# 1. 本地写脚本
+cat > /tmp/debug.rb << 'RUBY'
+# ... ruby 代码 ...
+RUBY
+
+# 2. 上传到宿主机 → 复制进容器 → 执行
+scp /tmp/debug.rb root@eshop.evexport.cn:/tmp/debug.rb && \
+  ssh root@eshop.evexport.cn "docker cp /tmp/debug.rb eshop_manage-web-<VERSION>:/tmp/debug.rb && \
+  docker exec eshop_manage-web-<VERSION> bin/rails runner /tmp/debug.rb" \
+  2>&1 | grep -v "image_processing\|image variants"
+```
+
+**关键注意事项：**
+- 获取账号必须通过 `Ec::Store`，不能直接用 `RawWb::SellerAccount.first`（token 来源不对会 401）：
+  ```ruby
+  store = Ec::Store.where(platform: 'wb', is_active: true).first
+  account = store.raw_wb_account
+  client = RawWb::WbClient.new(account.api_token)
+  ```
+- 容器 VERSION 从 `docker ps` 或 kamal 日志里取，当前为 `2b76f771d6e8d15ffaca475a7486571688464915`
+- `bin/kamal app exec --reuse` 方式在多行代码含中文/括号时 shell 转义会出错，推荐文件方式
+
+---
+
 ## 运维与调度
 
 ### 自动调度

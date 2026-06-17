@@ -1,22 +1,23 @@
 module RawOzon
   module Syncs
     module PostingsFbs
-      # POST /v3/posting/fbs/list (offset pagination，30天分窗避免 PERIOD_IS_TOO_LONG)
+      # POST /v4/posting/fbs/list (cursor pagination, max 1 year per request)
+      # Uses date_chunks(30) to stay well within the 1-year limit.
       def sync_postings_fbs
         result    = empty_sync_count
         synced_at = Time.current
 
         date_chunks(chunk_days: 30).each do |from, to|
-          offset = 0
+          cursor = ''
           loop do
-            resp = @client.post('/v3/posting/fbs/list', {
-              dir:    'asc',
-              filter: { since: from.beginning_of_day.iso8601, to: to.end_of_day.iso8601, status: '' },
-              limit:  50,
-              offset: offset,
-              with:   { analytics_data: true, financial_data: true },
+            resp = @client.post('/v4/posting/fbs/list', {
+              cursor:   cursor,
+              filter:   { since: from.beginning_of_day.iso8601, to: to.end_of_day.iso8601, statuses: [] },
+              limit:    100,
+              sort_dir: 'ASC',
+              with:     { analytics_data: true, financial_data: true },
             })
-            postings = Array(resp.dig('result', 'postings'))
+            postings = Array(resp['postings'])
             break if postings.empty?
 
             posting_rows = postings.map { |p| build_posting_fbs(p, synced_at) }
@@ -35,8 +36,8 @@ module RawOzon
               RawOzon::PostingItem.insert_all(item_rows)
             end
 
-            offset += 50
-            break unless resp.dig('result', 'has_next')
+            cursor = resp['cursor'].to_s
+            break unless resp['has_next']
             sleep 0.5
           end
           sleep 1
@@ -64,7 +65,7 @@ module RawOzon
           is_express:                   p['is_express'] || false,
           is_multibox:                  p['is_multibox'] || false,
           multi_box_qty:                p['multi_box_qty'] || 1,
-          customer_id:                  p.dig('customer', 'id'),
+          customer_id:                  p.dig('customer', 'customer_id'),
           addressee_name:               p.dig('addressee', 'name'),
           financial_data:               p['financial_data'],
           analytics_data:               p['analytics_data'],
@@ -89,6 +90,7 @@ module RawOzon
         Array(p['products']).map do |item|
           fin_product = Array(p.dig('financial_data', 'products'))
                           .find { |fp| fp['product_id'] == item['sku'] } || {}
+          price_obj = item['price']
           {
             account_id:         @account.id,
             posting_number:     p['posting_number'],
@@ -97,12 +99,12 @@ module RawOzon
             offer_id:           item['offer_id'],
             name:               item['name'],
             quantity:           item['quantity'].to_i,
-            price:              item['price'].to_f,
-            old_price:          item['old_price'].to_f,
-            currency_code:      item['currency_code'],
+            price:              price_obj.is_a?(Hash) ? price_obj['amount'].to_f : price_obj.to_f,
+            old_price:          fin_product['old_price'].to_f,
+            currency_code:      price_obj.is_a?(Hash) ? price_obj['currency'] : item['currency_code'],
             payout:             fin_product['payout'].to_f,
-            commission_amount:  fin_product['commission_amount'].to_f,
-            commission_percent: fin_product['commission_percent'].to_f,
+            commission_amount:  fin_product.dig('commission', 'amount').to_f,
+            commission_percent: fin_product.dig('commission', 'percent').to_f,
             raw_json:           item,
             synced_at:          synced_at,
           }
