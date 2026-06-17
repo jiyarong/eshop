@@ -340,12 +340,20 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", assignment.store_display_name
     assert_select "td", "EXT-#{@sku_code}"
     assert_select "td", "2026-06-01"
-    assert_select "a[href=?][target=?]",
-                  "https://seller.ozon.ru/app/products/3902460130/edit/general-info",
-                  "_blank"
-    assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products", "管理绑定"
   ensure
     assignment&.destroy
+  end
+
+  test "sku detail renders platform product bindings through shared table" do
+    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h2", "平台商品绑定"
+    assert_select "td", "销量统计 Ozon 店 #{@sku_code}"
+    assert_select "td", "Ozon 绑定商品"
+    binding = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
+    assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products/#{binding.id}", "9876543210"
+    assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products"
   end
 
   test "sku detail localizes basic tab in english" do

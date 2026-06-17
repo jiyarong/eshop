@@ -378,20 +378,28 @@ ru:
     sku_products:
       actions:
         add_binding: "Добавить связь"
+        back_to_bindings: "Назад к связям товаров платформ"
         back_to_sku: "Назад к деталям SKU"
         delete: "Удалить"
+        open_platform_product: "Открыть кабинет платформы"
         search: "Найти"
       empty:
+        no_attributes: "Атрибутов товара платформы пока нет."
         no_bindings: "Связей с товарами платформ пока нет."
+        no_raw_product_details: "Детали соответствующего товара платформы не найдены."
         no_raw_product_selected: "Выберите товар платформы"
         no_raw_products: "Товары платформ не найдены."
       fields:
+        attribute_id: "ID атрибута"
+        attribute_name: "Название атрибута"
+        attribute_value: "Значение атрибута"
         offer_id: "Offer ID"
         platform_sku_id: "ID SKU платформы"
         product_id: "ID товара"
         product_name: "Название товара платформы"
         raw_product: "Товар платформы"
         select: "Выбрать"
+        synced_at: "Время синхронизации"
         store: "Магазин"
       filters:
         all_platforms: "Все платформы"
@@ -402,13 +410,30 @@ ru:
       index:
         eyebrow: "ERP SKU"
         title: "Связи товаров платформ"
+      ozon_fields:
+        barcode: "Штрихкод"
+        currency_code: "Валюта"
+        description_category_id: "Description Category ID"
+        type_id: "Type ID"
       sections:
         add_binding: "Добавить связь"
+        binding_summary: "Информация о связи"
         current_bindings: "Текущие связи"
         erp_sku: "ERP SKU"
+        product_attributes: "Атрибуты товара"
+      show:
+        eyebrow: "Товар платформы"
+        ozon_attributes: "Атрибуты товара Ozon"
+        title: "Детали товара платформы"
+        wb_attributes: "Атрибуты товара WB"
       status:
         available: "Доступен"
         bound: "Связан"
+      wb_fields:
+        brand: "Бренд"
+        subject: "Subject"
+        subject_id: "Subject ID"
+        wb_category: "Категория WB"
     skus:
       actions:
         add_product: "Добавить продукт"

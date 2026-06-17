@@ -61,7 +61,7 @@ Rails.application.routes.draw do
     resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]
     resources :skus, except: [:destroy] do
-      resources :sku_products, path: :products, only: [:index, :create, :destroy]
+      resources :sku_products, path: :products, only: [:index, :show, :create, :destroy]
     end
     post "skus/:id" => "skus#update"
     resources :stores, except: [:show, :destroy]

@@ -137,42 +137,14 @@
 <!--      </div>-->
 <!--    </section>-->
 
-    <section class="panel">
-      <div  class="table-section-header">
-      <h2 class="section-title"><%= t("reports.sku_detail.sections.platform_product_bindings") %></h2>
-      <%= link_to t("reports.sku_detail.actions.manage_product_bindings"), erp_sku_sku_products_path(@sku), class: "button" %>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th><%= t("reports.sku_detail.fields.platform") %></th>
-              <th><%= t("reports.sku_detail.fields.store") %></th>
-              <th><%= t("reports.sku_detail.fields.product_id") %></th>
-              <th><%= t("reports.sku_detail.fields.offer_id") %></th>
-              <th><%= t("reports.sku_detail.fields.platform_product_name") %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @sku_products.any? %>
-              <% @sku_products.each do |product| %>
-                <tr>
-                  <td><%= platform_label_for_sales(product.platform) %></td>
-                  <td><%= product.store.store_name %></td>
-                  <td><%= product.product_id %></td>
-                  <td><%= report_value(product.offer_id) %></td>
-                  <td><%= report_value(product.product_name) %></td>
-                </tr>
-              <% end %>
-            <% else %>
-              <tr>
-                <td colspan="6" class="empty-state"><%= t("reports.sku_detail.empty.sku_products") %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <%= render "shared/sku_product_bindings",
+               sku: @sku,
+               sku_products: @sku_products,
+               title_i18n_key: "reports.sku_detail.sections.platform_product_bindings",
+               empty_i18n_key: "reports.sku_detail.empty.sku_products",
+               show_sku_code: false,
+               show_actions: false,
+               actions_path: erp_sku_sku_products_path(@sku) %>
   <% elsif @active_tab == "costs" %>
     <section class="panel">
       <div class="table-section-header">

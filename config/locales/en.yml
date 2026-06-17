@@ -407,20 +407,28 @@ en:
     sku_products:
       actions:
         add_binding: "Add binding"
+        back_to_bindings: "Back to platform product bindings"
         back_to_sku: "Back to SKU details"
         delete: "Delete"
+        open_platform_product: "Open platform admin"
         search: "Search"
       empty:
+        no_attributes: "No platform product attributes yet."
         no_bindings: "No platform product bindings yet."
+        no_raw_product_details: "No matching platform product details found."
         no_raw_product_selected: "Select a platform product"
         no_raw_products: "No platform products found."
       fields:
+        attribute_id: "Attribute ID"
+        attribute_name: "Attribute name"
+        attribute_value: "Attribute value"
         offer_id: "Offer ID"
         platform_sku_id: "Platform SKU ID"
         product_id: "Product ID"
         product_name: "Platform product name"
         raw_product: "Platform product"
         select: "Select"
+        synced_at: "Synced at"
         store: "Store"
       filters:
         all_platforms: "All platforms"
@@ -431,13 +439,30 @@ en:
       index:
         eyebrow: "ERP SKU"
         title: "Platform Product Bindings"
+      ozon_fields:
+        barcode: "Barcode"
+        currency_code: "Currency"
+        description_category_id: "Description Category ID"
+        type_id: "Type ID"
       sections:
         add_binding: "Add binding"
+        binding_summary: "Binding summary"
         current_bindings: "Current bindings"
         erp_sku: "ERP SKU"
+        product_attributes: "Product attributes"
+      show:
+        eyebrow: "Platform product"
+        ozon_attributes: "Ozon product attributes"
+        title: "Platform product details"
+        wb_attributes: "WB product attributes"
       status:
         available: "Available"
         bound: "Bound"
+      wb_fields:
+        brand: "Brand"
+        subject: "Subject"
+        subject_id: "Subject ID"
+        wb_category: "WB category"
     skus:
       actions:
         add_product: "Add product"

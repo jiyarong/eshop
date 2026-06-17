@@ -23,52 +23,13 @@
     </dl>
   </section>
 
-  <section class="panel">
-    <h2 class="section-title"><%= t("erp.sku_products.sections.current_bindings") %></h2>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th><%= t("erp.common.platform") %></th>
-            <th><%= t("erp.skus.fields.sku_code") %></th>
-            <th><%= t("erp.sku_products.fields.store") %></th>
-            <th><%= t("erp.sku_products.fields.product_id") %></th>
-            <th><%= t("erp.sku_products.fields.offer_id") %></th>
-            <th><%= t("erp.sku_products.fields.product_name") %></th>
-            <th><%= t("erp.common.actions.actions") %></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% if @sku_products.any? %>
-            <% @sku_products.each do |binding| %>
-              <tr>
-                <td><%= t("common.platforms.#{binding.platform}", default: binding.platform) %></td>
-                <td><%= binding.sku_code %></td>
-                <td><%= binding.store.store_name %></td>
-                <td>
-                  <% edit_url = product_edit_url(binding.platform, binding.platform_sku_id.presence || binding.product_id) %>
-                  <% if edit_url %>
-                    <%= link_to binding.product_id, edit_url, target: "_blank", rel: "noreferrer noopener" %>
-                  <% else %>
-                    <%= binding.product_id %>
-                  <% end %>
-                </td>
-                <td><%= erp_value(binding.offer_id) %></td>
-                <td><%= erp_value(binding.product_name) %></td>
-                <td>
-                  <%= button_to t("erp.sku_products.actions.delete"), erp_sku_sku_product_path(@sku, binding), method: :delete, class: "button button-secondary" %>
-                </td>
-              </tr>
-            <% end %>
-          <% else %>
-            <tr>
-              <td colspan="8" class="empty-state"><%= t("erp.sku_products.empty.no_bindings") %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </section>
+  <%= render "shared/sku_product_bindings",
+             sku: @sku,
+             sku_products: @sku_products,
+             title_i18n_key: "erp.sku_products.sections.current_bindings",
+             empty_i18n_key: "erp.sku_products.empty.no_bindings",
+             show_sku_code: true,
+             show_actions: true %>
 
   <section class="panel">
     <h2 class="section-title"><%= t("erp.sku_products.sections.add_binding") %></h2>

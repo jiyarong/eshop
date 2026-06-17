@@ -1,6 +1,6 @@
 module Erp
   class BaseController < ApplicationController
-    helper_method :erp_value, :current_locale_params, :product_edit_url
+    helper_method :erp_value, :current_locale_params
     before_action -> { require_permission!(:view_erp) }
 
     private
@@ -24,17 +24,5 @@ module Erp
       params[:locale].present? ? { locale: params[:locale] } : {}
     end
 
-    def product_edit_url(platform, platform_sku_id)
-      return if platform_sku_id.blank?
-
-      encoded_id = ERB::Util.url_encode(platform_sku_id.to_s)
-
-      case platform.to_s
-      when "ozon"
-        "https://seller.ozon.ru/app/products/#{encoded_id}/edit/general-info"
-      when "wb"
-        "https://seller.wildberries.ru/new-goods/card?nmID=#{encoded_id}&type=EXIST_CARD"
-      end
-    end
   end
 end

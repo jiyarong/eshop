@@ -379,20 +379,28 @@ zh:
     sku_products:
       actions:
         add_binding: "新增绑定"
+        back_to_bindings: "返回平台商品绑定"
         back_to_sku: "返回 SKU 详情"
         delete: "删除"
+        open_platform_product: "打开平台后台"
         search: "搜索"
       empty:
+        no_attributes: "暂无平台商品属性。"
         no_bindings: "暂无平台商品绑定。"
+        no_raw_product_details: "没有找到对应平台商品详情。"
         no_raw_product_selected: "请选择平台商品"
         no_raw_products: "没有找到可绑定的平台商品。"
       fields:
+        attribute_id: "属性 ID"
+        attribute_name: "属性名"
+        attribute_value: "属性值"
         offer_id: "Offer ID"
         platform_sku_id: "平台 SKU ID"
         product_id: "商品 ID"
         product_name: "平台商品名"
         raw_product: "平台商品"
         select: "选择"
+        synced_at: "同步时间"
         store: "店铺"
       filters:
         all_platforms: "全部平台"
@@ -403,13 +411,30 @@ zh:
       index:
         eyebrow: "ERP SKU"
         title: "平台商品绑定"
+      ozon_fields:
+        barcode: "条码"
+        currency_code: "币种"
+        description_category_id: "Description Category ID"
+        type_id: "Type ID"
       sections:
         add_binding: "新增绑定"
+        binding_summary: "绑定信息"
         current_bindings: "当前绑定"
         erp_sku: "ERP SKU"
+        product_attributes: "商品属性"
+      show:
+        eyebrow: "平台商品"
+        ozon_attributes: "Ozon 商品属性"
+        title: "平台商品详情"
+        wb_attributes: "WB 商品属性"
       status:
         available: "可绑定"
         bound: "已绑定"
+      wb_fields:
+        brand: "品牌"
+        subject: "Subject"
+        subject_id: "Subject ID"
+        wb_category: "WB 类别"
     skus:
       actions:
         add_product: "新增产品"

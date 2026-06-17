@@ -4,6 +4,8 @@ module Erp
   class SkuProductsControllerTest < ActionDispatch::IntegrationTest
     setup do
       @token = SecureRandom.hex(4).upcase
+      @ozon_product_id = 80_000_000 + @token.hex % 9_000_000
+      @wb_nm_id = 70_000_000 + @token.hex % 9_000_000
       @current_user = create_user_with_roles("sku-products-#{@token.downcase}@example.com", "manager")
       sign_in @current_user
 
@@ -26,11 +28,52 @@ module Erp
       )
       @raw_ozon_product = RawOzon::Product.create!(
         account: @ozon_account,
-        ozon_product_id: 8_888_001,
+        ozon_product_id: @ozon_product_id,
         offer_id: "RAW-OZON-#{@token}",
         name: "可选 Ozon 平台商品 #{@token}",
+        description_category_id: 12_345,
+        type_id: 67_890,
+        currency_code: "RUB",
         raw_json: { "sku" => 4_444_001 },
         synced_at: Time.zone.parse("2026-06-15 10:00:00")
+      )
+      @bound_raw_ozon_product = RawOzon::Product.create!(
+        account: @ozon_account,
+        ozon_product_id: @ozon_product_id + 1,
+        offer_id: "BOUND-OZON-#{@token}",
+        name: "已绑定 Ozon 平台商品 #{@token}",
+        description_category_id: 12_345,
+        type_id: 67_890,
+        currency_code: "RUB",
+        raw_json: { "sku" => 3_902_460_130 },
+        synced_at: Time.zone.parse("2026-06-15 10:00:00")
+      )
+      @raw_ozon_attribute = RawOzon::ProductAttribute.create!(
+        account: @ozon_account,
+        ozon_product_id: @bound_raw_ozon_product.ozon_product_id,
+        offer_id: @bound_raw_ozon_product.offer_id,
+        barcode: "460000000001",
+        product_attributes: [
+          {
+            "id" => 85,
+            "name" => "Brand",
+            "values" => [{ "dictionary_value_id" => 971_082_156, "value" => "Test Brand #{@token}" }]
+          },
+          {
+            "id" => 1001,
+            "name" => "Material",
+            "values" => [{ "value" => "Steel" }, { "value" => "Glass" }]
+          }
+        ],
+        complex_attributes: [
+          {
+            "id" => 2001,
+            "name" => "Package",
+            "values" => [{ "value" => "Box #{@token}" }]
+          }
+        ],
+        raw_json: {},
+        synced_at: Time.zone.parse("2026-06-15 10:05:00")
       )
       @wb_account = RawWb::SellerAccount.create!(
         name: "绑定页面 WB Raw #{@token}",
@@ -45,24 +88,35 @@ module Erp
       )
       @raw_wb_product = RawWb::Product.create!(
         account: @wb_account,
-        nm_id: 7_777_001,
+        nm_id: @wb_nm_id,
         vendor_code: "RAW-WB-#{@token}",
+        brand: "WB Brand #{@token}",
         title: "可选 WB 平台商品 #{@token}",
+        subject_name: "WB Subject #{@token}",
+        wb_category: "WB Category #{@token}",
         synced_at: Time.zone.parse("2026-06-15 10:20:00")
+      )
+      @raw_wb_characteristic = RawWb::ProductCharacteristic.create!(
+        product: @raw_wb_product,
+        charc_id: 12,
+        charc_name: "Color",
+        value: ["black", "white"]
       )
       @binding = Ec::SkuProduct.create!(
         sku_code: @sku.sku_code,
         store: @store,
-        product_id: "9876543210",
-        offer_id: "OFFER-#{@token}",
+        product_id: @bound_raw_ozon_product.ozon_product_id.to_s,
+        offer_id: @bound_raw_ozon_product.offer_id,
         platform_sku_id: "3902460130",
-        product_name: "已绑定平台商品"
+        product_name: @bound_raw_ozon_product.name
       )
     end
 
     teardown do
       Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuProduct)
+      RawOzon::ProductAttribute.where(account_id: @ozon_account&.id).delete_all
       RawOzon::Product.where(account_id: @ozon_account&.id).delete_all
+      RawWb::ProductCharacteristic.where(product_id: RawWb::Product.where(account_id: @wb_account&.id).select(:id)).delete_all
       RawWb::Product.where(account_id: @wb_account&.id).delete_all
       @ozon_account&.destroy
       @wb_store&.destroy
@@ -80,11 +134,9 @@ module Erp
       assert_select "h1", "平台商品绑定"
       assert_select "td", @sku.sku_code
       assert_select "td", "绑定页面 Ozon 店 #{@token}"
-      assert_select "td", "9876543210"
-      assert_select "td", "OFFER-#{@token}"
-      assert_select "a[href=?][target=?]",
-                    "https://seller.ozon.ru/app/products/3902460130/edit/general-info",
-                    "_blank"
+      assert_select "td", @bound_raw_ozon_product.ozon_product_id.to_s
+      assert_select "td", "BOUND-OZON-#{@token}"
+      assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products/#{@binding.id}", @bound_raw_ozon_product.ozon_product_id.to_s
       assert_select "form[action=?][method=?]", "/erp/skus/#{@sku.id}/products", "post"
       assert_select "select[name=?]", "raw_product_platform"
       assert_select "input[type=?][name=?]", "checkbox", "available_only"
@@ -108,9 +160,53 @@ module Erp
       get "/erp/skus/#{@sku.id}/products", headers: { "Accept" => "text/html" }
 
       assert_response :success
-      assert_select "a[href=?][target=?]",
-                    "https://seller.wildberries.ru/new-goods/card?nmID=7777001&type=EXIST_CARD",
-                    "_blank"
+      assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products/#{wb_binding.id}", "7777001"
+    ensure
+      wb_binding&.destroy
+    end
+
+    test "show renders ozon product attributes with the ozon template" do
+      get "/erp/skus/#{@sku.id}/products/#{@binding.id}", headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "h1", "已绑定 Ozon 平台商品 #{@token}"
+      assert_select "body", text: /Ozon 商品属性/
+      assert_select "dt", "Description Category ID"
+      assert_select "dd", "12345"
+      assert_select "dt", "Type ID"
+      assert_select "dd", "67890"
+      assert_select "td", "Brand"
+      assert_select "td", "Test Brand #{@token}"
+      assert_select "td", "Material"
+      assert_select "td", "Steel, Glass"
+      assert_select "td", "Package"
+      assert_select "td", "Box #{@token}"
+      assert_select "body", text: /WB 商品属性/, count: 0
+    end
+
+    test "show renders wb product characteristics with the wb template" do
+      wb_binding = Ec::SkuProduct.create!(
+        sku_code: @sku.sku_code,
+        store: @wb_store,
+        product_id: @raw_wb_product.nm_id.to_s,
+        offer_id: @raw_wb_product.vendor_code,
+        product_name: @raw_wb_product.title
+      )
+
+      get "/erp/skus/#{@sku.id}/products/#{wb_binding.id}", headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "h1", "可选 WB 平台商品 #{@token}"
+      assert_select "body", text: /WB 商品属性/
+      assert_select "dt", "品牌"
+      assert_select "dd", "WB Brand #{@token}"
+      assert_select "dt", "WB 类别"
+      assert_select "dd", "WB Category #{@token}"
+      assert_select "dt", "Subject"
+      assert_select "dd", "WB Subject #{@token}"
+      assert_select "td", "Color"
+      assert_select "td", "black, white"
+      assert_select "body", text: /Ozon 商品属性/, count: 0
     ensure
       wb_binding&.destroy
     end
