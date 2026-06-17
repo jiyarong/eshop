@@ -125,10 +125,11 @@ module GoogleSheets
 
       RawOzon::SellerAccount.all.each do |acct|
         svc = Ec::OzonProfitAttribution.new(
-          account_id:   acct.id,
-          from_date:    from_date,
-          to_date:      to_date,
-          rate_cny_rub: rate.rate_cny_rub
+          account_id:            acct.id,
+          from_date:             from_date,
+          to_date:               to_date,
+          rate_cny_rub:          rate.rate_cny_rub,
+          sync_missing_ad_costs: false
         ).call
 
         shop = acct.company_name.to_s.strip
