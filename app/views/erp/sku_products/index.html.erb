@@ -79,6 +79,8 @@
               <th><%= t("erp.sku_products.fields.product_id") %></th>
               <th><%= t("erp.sku_products.fields.offer_id") %></th>
               <th><%= t("erp.sku_products.fields.product_name") %></th>
+              <th><%= t("erp.sku_products.fields.product_attributes_link") %></th>
+              <th><%= t("erp.sku_products.fields.store_link") %></th>
               <th><%= t("erp.common.status") %></th>
             </tr>
           </thead>
@@ -95,22 +97,24 @@
                   </td>
                   <td><%= t("common.platforms.#{product[:platform]}", default: product[:platform]) %></td>
                   <td><%= product[:store_name] %></td>
+                  <td><%= product[:product_id] %></td>
+                  <td><%= erp_value(product[:offer_id]) %></td>
+                  <td><%= erp_value(product[:product_name]) %></td>
+                  <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(product[:platform], product[:store_id], product[:product_id]) %></td>
                   <td>
                     <% edit_url = product_edit_url(product[:platform], product[:platform_sku_id].presence || product[:product_id]) %>
                     <% if edit_url %>
-                      <%= link_to product[:product_id], edit_url, target: "_blank", rel: "noreferrer noopener" %>
+                      <%= link_to t("erp.sku_products.actions.open_platform_product"), edit_url, target: "_blank", rel: "noreferrer noopener" %>
                     <% else %>
-                      <%= product[:product_id] %>
+                      -
                     <% end %>
                   </td>
-                  <td><%= erp_value(product[:offer_id]) %></td>
-                  <td><%= erp_value(product[:product_name]) %></td>
                   <td><%= product[:bound] ? t("erp.sku_products.status.bound") : t("erp.sku_products.status.available") %></td>
                 </tr>
               <% end %>
             <% else %>
               <tr>
-                <td colspan="8" class="empty-state"><%= t("erp.sku_products.empty.no_raw_products") %></td>
+                <td colspan="10" class="empty-state"><%= t("erp.sku_products.empty.no_raw_products") %></td>
               </tr>
             <% end %>
           </tbody>

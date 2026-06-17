@@ -17,6 +17,8 @@
           <th><%= t("erp.sku_products.fields.product_id") %></th>
           <th><%= t("erp.sku_products.fields.offer_id") %></th>
           <th><%= t("erp.sku_products.fields.product_name") %></th>
+          <th><%= t("erp.sku_products.fields.product_attributes_link") %></th>
+          <th><%= t("erp.sku_products.fields.store_link") %></th>
           <% if local_assigns[:show_actions] %>
             <th><%= t("erp.common.actions.actions") %></th>
           <% end %>
@@ -31,11 +33,18 @@
                 <td><%= binding.sku_code %></td>
               <% end %>
               <td><%= binding.store.store_name %></td>
-              <td>
-                <%= link_to binding.product_id, erp_sku_sku_product_path(sku, binding) %>
-              </td>
+              <td><%= binding.product_id %></td>
               <td><%= binding.offer_id.presence || "-" %></td>
               <td><%= binding.product_name.presence || "-" %></td>
+              <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(binding.platform, binding.store_id, binding.product_id) %></td>
+              <td>
+                <% edit_url = product_edit_url(binding.platform, binding.platform_sku_id.presence || binding.product_id) %>
+                <% if edit_url %>
+                  <%= link_to t("erp.sku_products.actions.open_platform_product"), edit_url, target: "_blank", rel: "noreferrer noopener" %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
               <% if local_assigns[:show_actions] %>
                 <td>
                   <%= button_to t("erp.sku_products.actions.delete"), erp_sku_sku_product_path(sku, binding), method: :delete, class: "button button-secondary" %>
@@ -45,7 +54,7 @@
           <% end %>
         <% else %>
           <tr>
-            <td colspan="<%= 5 + (local_assigns[:show_sku_code] ? 1 : 0) + (local_assigns[:show_actions] ? 1 : 0) %>" class="empty-state"><%= t(empty_i18n_key) %></td>
+            <td colspan="<%= 7 + (local_assigns[:show_sku_code] ? 1 : 0) + (local_assigns[:show_actions] ? 1 : 0) %>" class="empty-state"><%= t(empty_i18n_key) %></td>
           </tr>
         <% end %>
       </tbody>

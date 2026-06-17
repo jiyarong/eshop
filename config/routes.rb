@@ -58,10 +58,11 @@ Rails.application.routes.draw do
     get "purchase_orders/:id/edit" => "purchase_orders#edit", as: :edit_purchase_order
     get "cost_allocations/new" => "cost_allocations#new", as: :new_cost_allocation
     get "cost_allocations/:id/edit" => "cost_allocations#edit", as: :edit_cost_allocation
+    get "platform_products/:platform/:store_id/:product_id" => "platform_products#show", as: :platform_product
     resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]
     resources :skus, except: [:destroy] do
-      resources :sku_products, path: :products, only: [:index, :show, :create, :destroy]
+      resources :sku_products, path: :products, only: [:index, :create, :destroy]
     end
     post "skus/:id" => "skus#update"
     resources :stores, except: [:show, :destroy]

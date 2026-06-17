@@ -2,17 +2,10 @@ module Erp
   class SkuProductsController < BaseController
     before_action :set_sku
     before_action -> { require_permission!(:manage_skus) }, only: [:create, :destroy]
-    helper_method :sku_product_attribute_value
 
     def index
       load_page_data
       @sku_product = @sku.sku_products.new
-    end
-
-    def show
-      @sku_product = @sku.sku_products.includes(:store).find(params[:id])
-      @raw_product = raw_product_for(@sku_product)
-      @raw_product_attribute = raw_product_attribute_for(@sku_product)
     end
 
     def create
@@ -37,32 +30,6 @@ module Erp
 
     def set_sku
       @sku = Ec::Sku.find(params[:sku_id])
-    end
-
-    def raw_product_for(sku_product)
-      case sku_product.platform
-      when "ozon"
-        RawOzon::Product.find_by(account_id: sku_product.store.ozon_raw_account_id, ozon_product_id: sku_product.product_id)
-      when "wb"
-        RawWb::Product.includes(:subject, :product_characteristics).find_by(account_id: sku_product.store.wb_raw_account_id, nm_id: sku_product.product_id)
-      end
-    end
-
-    def raw_product_attribute_for(sku_product)
-      return unless sku_product.platform == "ozon"
-
-      RawOzon::ProductAttribute.find_by(account_id: sku_product.store.ozon_raw_account_id, ozon_product_id: sku_product.product_id)
-    end
-
-    def sku_product_attribute_value(value)
-      case value
-      when Array
-        value.map { |item| sku_product_attribute_value(item) }.reject(&:blank?).join(", ")
-      when Hash
-        value["value"].presence || value["name"].presence || value.to_json
-      else
-        erp_value(value)
-      end
     end
 
     def load_page_data
@@ -175,6 +142,7 @@ module Erp
       {
         key: key,
         platform: store.platform,
+        store_id: store.id,
         store_name: store.store_name,
         product_id: product_id,
         offer_id: offer_id,

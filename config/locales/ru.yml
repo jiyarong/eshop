@@ -378,11 +378,11 @@ ru:
     sku_products:
       actions:
         add_binding: "Добавить связь"
-        back_to_bindings: "Назад к связям товаров платформ"
         back_to_sku: "Назад к деталям SKU"
         delete: "Удалить"
         open_platform_product: "Открыть кабинет платформы"
         search: "Найти"
+        view_attributes: "Атрибуты"
       empty:
         no_attributes: "Атрибутов товара платформы пока нет."
         no_bindings: "Связей с товарами платформ пока нет."
@@ -397,8 +397,10 @@ ru:
         platform_sku_id: "ID SKU платформы"
         product_id: "ID товара"
         product_name: "Название товара платформы"
+        product_attributes_link: "Атрибуты товара"
         raw_product: "Товар платформы"
         select: "Выбрать"
+        store_link: "Ссылка магазина"
         synced_at: "Время синхронизации"
         store: "Магазин"
       filters:
@@ -420,6 +422,7 @@ ru:
         binding_summary: "Информация о связи"
         current_bindings: "Текущие связи"
         erp_sku: "ERP SKU"
+        platform_product_summary: "Информация о товаре платформы"
         product_attributes: "Атрибуты товара"
       show:
         eyebrow: "Товар платформы"

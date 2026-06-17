@@ -3,11 +3,10 @@
 <div class="resource-header">
   <div>
     <p class="resource-eyebrow"><%= t("erp.sku_products.show.eyebrow") %></p>
-    <h1 class="page-title"><%= erp_value(@sku_product.product_name) %></h1>
+    <h1 class="page-title"><%= erp_value(@raw_product.try(:name) || @raw_product.try(:title)) %></h1>
   </div>
   <div class="resource-actions">
-    <%= link_to t("erp.sku_products.actions.back_to_bindings"), erp_sku_sku_products_path(@sku), class: "button button-secondary" %>
-    <% edit_url = product_edit_url(@sku_product.platform, @sku_product.platform_sku_id.presence || @sku_product.product_id) %>
+    <% edit_url = product_edit_url(@platform, @platform == "ozon" ? @raw_product.raw_json&.dig("sku").presence || @product_id : @product_id) %>
     <% if edit_url %>
       <%= link_to t("erp.sku_products.actions.open_platform_product"), edit_url, target: "_blank", rel: "noreferrer noopener", class: "button" %>
     <% end %>
@@ -16,27 +15,25 @@
 
 <div class="report-stack">
   <section class="panel">
-    <h2 class="section-title"><%= t("erp.sku_products.sections.binding_summary") %></h2>
+    <h2 class="section-title"><%= t("erp.sku_products.sections.platform_product_summary") %></h2>
     <dl class="definition-list">
-      <dt><%= t("erp.skus.fields.sku_code") %></dt>
-      <dd><%= @sku.sku_code %></dd>
       <dt><%= t("erp.common.platform") %></dt>
-      <dd><%= t("common.platforms.#{@sku_product.platform}", default: @sku_product.platform) %></dd>
+      <dd><%= t("common.platforms.#{@platform}", default: @platform) %></dd>
       <dt><%= t("erp.sku_products.fields.store") %></dt>
-      <dd><%= @sku_product.store.store_name %></dd>
+      <dd><%= @store.store_name %></dd>
       <dt><%= t("erp.sku_products.fields.product_id") %></dt>
-      <dd><%= @sku_product.product_id %></dd>
+      <dd><%= @product_id %></dd>
       <dt><%= t("erp.sku_products.fields.offer_id") %></dt>
-      <dd><%= erp_value(@sku_product.offer_id) %></dd>
+      <dd><%= erp_value(@raw_product.try(:offer_id) || @raw_product.try(:vendor_code)) %></dd>
       <dt><%= t("erp.sku_products.fields.platform_sku_id") %></dt>
-      <dd><%= erp_value(@sku_product.platform_sku_id) %></dd>
+      <dd><%= erp_value(@raw_product.try(:raw_json)&.dig("sku")) %></dd>
       <dt><%= t("erp.sku_products.fields.product_name") %></dt>
-      <dd><%= erp_value(@sku_product.product_name) %></dd>
+      <dd><%= erp_value(@raw_product.try(:name) || @raw_product.try(:title)) %></dd>
     </dl>
   </section>
 
   <% if @raw_product %>
-    <%= render "erp/sku_products/#{@sku_product.platform}_product_details" %>
+    <%= render "erp/platform_products/#{@platform}_product_details" %>
   <% else %>
     <section class="panel">
       <p class="empty-state"><%= t("erp.sku_products.empty.no_raw_product_details") %></p>

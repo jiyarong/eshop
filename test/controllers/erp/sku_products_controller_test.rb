@@ -132,16 +132,24 @@ module Erp
 
       assert_response :success
       assert_select "h1", "平台商品绑定"
+      assert_select "th", "商品属性"
+      assert_select "th", "店铺链接"
       assert_select "td", @sku.sku_code
       assert_select "td", "绑定页面 Ozon 店 #{@token}"
       assert_select "td", @bound_raw_ozon_product.ozon_product_id.to_s
       assert_select "td", "BOUND-OZON-#{@token}"
-      assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products/#{@binding.id}", @bound_raw_ozon_product.ozon_product_id.to_s
+      assert_select "a[href=?]", "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}", "查看属性"
+      assert_select "a[href=?][target=?]", "https://seller.ozon.ru/app/products/3902460130/edit/general-info", "_blank"
       assert_select "form[action=?][method=?]", "/erp/skus/#{@sku.id}/products", "post"
       assert_select "select[name=?]", "raw_product_platform"
       assert_select "input[type=?][name=?]", "checkbox", "available_only"
       assert_select "table.raw-product-options"
+      assert_select "table.raw-product-options th", "商品属性"
+      assert_select "table.raw-product-options th", "店铺链接"
       assert_select "input[type=?][name=?][value=?]", "checkbox", "raw_product_keys[]", "ozon:#{@store.id}:#{@raw_ozon_product.ozon_product_id}"
+      assert_select "table.raw-product-options a[href=?]",
+                    "/erp/platform_products/ozon/#{@store.id}/#{@raw_ozon_product.ozon_product_id}",
+                    "查看属性"
       assert_select "table.raw-product-options a[href=?][target=?]",
                     "https://seller.ozon.ru/app/products/4444001/edit/general-info",
                     "_blank"
@@ -160,40 +168,45 @@ module Erp
       get "/erp/skus/#{@sku.id}/products", headers: { "Accept" => "text/html" }
 
       assert_response :success
-      assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products/#{wb_binding.id}", "7777001"
+      assert_select "a[href=?]", "/erp/platform_products/wb/#{@wb_store.id}/7777001", "查看属性"
+      assert_select "a[href=?][target=?]", "https://seller.wildberries.ru/new-goods/card?nmID=7777001&type=EXIST_CARD", "_blank"
     ensure
       wb_binding&.destroy
     end
 
-    test "show renders ozon product attributes with the ozon template" do
-      get "/erp/skus/#{@sku.id}/products/#{@binding.id}", headers: { "Accept" => "text/html" }
+    test "platform product show renders unbound ozon product attributes with the ozon template" do
+      RawOzon::ProductAttribute.create!(
+        account: @ozon_account,
+        ozon_product_id: @raw_ozon_product.ozon_product_id,
+        offer_id: @raw_ozon_product.offer_id,
+        product_attributes: [
+          {
+            "id" => 85,
+            "name" => "Brand",
+            "values" => [{ "value" => "Unbound Brand #{@token}" }]
+          }
+        ],
+        complex_attributes: [],
+        raw_json: {},
+        synced_at: Time.zone.parse("2026-06-15 10:05:00")
+      )
+
+      get "/erp/platform_products/ozon/#{@store.id}/#{@raw_ozon_product.ozon_product_id}", headers: { "Accept" => "text/html" }
 
       assert_response :success
-      assert_select "h1", "已绑定 Ozon 平台商品 #{@token}"
+      assert_select "h1", "可选 Ozon 平台商品 #{@token}"
       assert_select "body", text: /Ozon 商品属性/
       assert_select "dt", "Description Category ID"
       assert_select "dd", "12345"
       assert_select "dt", "Type ID"
       assert_select "dd", "67890"
       assert_select "td", "Brand"
-      assert_select "td", "Test Brand #{@token}"
-      assert_select "td", "Material"
-      assert_select "td", "Steel, Glass"
-      assert_select "td", "Package"
-      assert_select "td", "Box #{@token}"
+      assert_select "td", "Unbound Brand #{@token}"
       assert_select "body", text: /WB 商品属性/, count: 0
     end
 
-    test "show renders wb product characteristics with the wb template" do
-      wb_binding = Ec::SkuProduct.create!(
-        sku_code: @sku.sku_code,
-        store: @wb_store,
-        product_id: @raw_wb_product.nm_id.to_s,
-        offer_id: @raw_wb_product.vendor_code,
-        product_name: @raw_wb_product.title
-      )
-
-      get "/erp/skus/#{@sku.id}/products/#{wb_binding.id}", headers: { "Accept" => "text/html" }
+    test "platform product show renders unbound wb product characteristics with the wb template" do
+      get "/erp/platform_products/wb/#{@wb_store.id}/#{@raw_wb_product.nm_id}", headers: { "Accept" => "text/html" }
 
       assert_response :success
       assert_select "h1", "可选 WB 平台商品 #{@token}"
@@ -207,8 +220,6 @@ module Erp
       assert_select "td", "Color"
       assert_select "td", "black, white"
       assert_select "body", text: /Ozon 商品属性/, count: 0
-    ensure
-      wb_binding&.destroy
     end
 
     test "index filters raw product options by search keyword" do

@@ -379,11 +379,11 @@ zh:
     sku_products:
       actions:
         add_binding: "新增绑定"
-        back_to_bindings: "返回平台商品绑定"
         back_to_sku: "返回 SKU 详情"
         delete: "删除"
         open_platform_product: "打开平台后台"
         search: "搜索"
+        view_attributes: "查看属性"
       empty:
         no_attributes: "暂无平台商品属性。"
         no_bindings: "暂无平台商品绑定。"
@@ -398,8 +398,10 @@ zh:
         platform_sku_id: "平台 SKU ID"
         product_id: "商品 ID"
         product_name: "平台商品名"
+        product_attributes_link: "商品属性"
         raw_product: "平台商品"
         select: "选择"
+        store_link: "店铺链接"
         synced_at: "同步时间"
         store: "店铺"
       filters:
@@ -421,6 +423,7 @@ zh:
         binding_summary: "绑定信息"
         current_bindings: "当前绑定"
         erp_sku: "ERP SKU"
+        platform_product_summary: "平台商品信息"
         product_attributes: "商品属性"
       show:
         eyebrow: "平台商品"

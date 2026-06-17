@@ -407,11 +407,11 @@ en:
     sku_products:
       actions:
         add_binding: "Add binding"
-        back_to_bindings: "Back to platform product bindings"
         back_to_sku: "Back to SKU details"
         delete: "Delete"
         open_platform_product: "Open platform admin"
         search: "Search"
+        view_attributes: "View attributes"
       empty:
         no_attributes: "No platform product attributes yet."
         no_bindings: "No platform product bindings yet."
@@ -426,8 +426,10 @@ en:
         platform_sku_id: "Platform SKU ID"
         product_id: "Product ID"
         product_name: "Platform product name"
+        product_attributes_link: "Product attributes"
         raw_product: "Platform product"
         select: "Select"
+        store_link: "Store link"
         synced_at: "Synced at"
         store: "Store"
       filters:
@@ -449,6 +451,7 @@ en:
         binding_summary: "Binding summary"
         current_bindings: "Current bindings"
         erp_sku: "ERP SKU"
+        platform_product_summary: "Platform product summary"
         product_attributes: "Product attributes"
       show:
         eyebrow: "Platform product"
