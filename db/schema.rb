@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_17_110013) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -850,6 +850,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
     t.index ["account_id"], name: "index_raw_ozon_product_prices_on_account_id"
   end
 
+  create_table "raw_ozon_product_queries", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "category"
+    t.string "currency"
+    t.decimal "gmv", precision: 15, scale: 2
+    t.string "name"
+    t.string "offer_id"
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.decimal "position", precision: 10, scale: 2
+    t.bigint "sku", null: false
+    t.datetime "synced_at"
+    t.bigint "unique_search_users"
+    t.bigint "unique_view_users"
+    t.decimal "view_conversion", precision: 10, scale: 4
+    t.index ["account_id", "period_from", "sku"], name: "idx_ozon_product_queries_unique", unique: true
+    t.index ["account_id"], name: "index_raw_ozon_product_queries_on_account_id"
+  end
+
+  create_table "raw_ozon_product_query_details", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "currency"
+    t.decimal "gmv", precision: 15, scale: 2
+    t.bigint "order_count"
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.decimal "position", precision: 10, scale: 2
+    t.string "query", null: false
+    t.integer "query_index"
+    t.bigint "sku", null: false
+    t.datetime "synced_at"
+    t.bigint "unique_search_users"
+    t.bigint "unique_view_users"
+    t.decimal "view_conversion", precision: 10, scale: 4
+    t.index ["account_id", "period_from", "sku", "query"], name: "idx_ozon_product_query_details_unique", unique: true
+    t.index ["account_id"], name: "index_raw_ozon_product_query_details_on_account_id"
+  end
+
   create_table "raw_ozon_product_stocks", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "offer_id"
@@ -1182,12 +1220,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
 
   create_table "raw_wb_analytics_search_terms", force: :cascade do |t|
     t.bigint "account_id", null: false
+    t.bigint "add_to_cart"
+    t.integer "add_to_cart_percentile"
     t.decimal "avg_position", precision: 10, scale: 2
+    t.string "brand_name"
+    t.decimal "cart_to_order", precision: 10, scale: 4
+    t.integer "cart_to_order_percentile"
+    t.decimal "feedback_rating", precision: 5, scale: 2
     t.bigint "frequency"
     t.string "keyword"
+    t.decimal "median_position", precision: 10, scale: 2
     t.bigint "nm_id"
+    t.bigint "open_card"
+    t.integer "open_card_percentile"
+    t.decimal "open_to_cart", precision: 10, scale: 4
+    t.integer "open_to_cart_percentile"
     t.bigint "orders", default: 0
+    t.integer "orders_percentile"
+    t.decimal "price_max", precision: 15, scale: 2
+    t.decimal "price_min", precision: 15, scale: 2
+    t.string "product_name"
+    t.decimal "rating", precision: 5, scale: 2
     t.date "stat_date", null: false
+    t.string "subject_name"
+    t.string "vendor_code"
+    t.integer "visibility"
+    t.bigint "week_frequency"
     t.index ["account_id", "stat_date", "keyword", "nm_id"], name: "idx_raw_wb_search_terms_unique", unique: true
     t.index ["account_id"], name: "index_raw_wb_analytics_search_terms_on_account_id"
   end
@@ -1620,13 +1678,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
     t.bigint "nm_id"
     t.decimal "price_with_disc", precision: 15, scale: 2
     t.datetime "sale_date", null: false
+    t.string "sale_id"
     t.string "srid"
     t.string "subject"
     t.string "supplier_article"
     t.datetime "synced_at"
     t.string "tech_size"
     t.decimal "total_price", precision: 15, scale: 2
-    t.index ["account_id", "srid"], name: "idx_raw_wb_stats_sales_account_srid", unique: true, where: "(srid IS NOT NULL)"
+    t.index ["account_id", "sale_id"], name: "index_raw_wb_stats_sales_on_account_id_and_sale_id", unique: true
     t.index ["account_id"], name: "index_raw_wb_stats_sales_on_account_id"
   end
 
@@ -1669,7 +1728,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
     t.string "name"
     t.datetime "scan_dt"
     t.datetime "supply_created_at"
-    t.string "supply_type", default: "fbs"
     t.datetime "synced_at"
     t.string "wb_supply_id"
     t.index ["account_id"], name: "index_raw_wb_supplies_on_account_id"
@@ -1798,7 +1856,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
-  add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code", name: "fk_rails_ec_sku_predicted_costs_sku_code"
   add_foreign_key "ec_sku_products", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_products", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
@@ -1825,6 +1883,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_000001) do
   add_foreign_key "raw_ozon_postings_fbs", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_product_attributes", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_product_prices", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_product_queries", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_product_query_details", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_product_stocks", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_products", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_promotions", "raw_ozon_seller_accounts", column: "account_id"

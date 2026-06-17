@@ -30,7 +30,6 @@ module RawWb
           account_id:        @account.id,
           wb_supply_id:      s['id'].to_s,
           name:              s['name'],
-          supply_type:       s['type'] || 'fbs',
           is_done:           s['done'] || false,
           supply_created_at: s['createdAt'],
           closed_at:         s['closedAt'],

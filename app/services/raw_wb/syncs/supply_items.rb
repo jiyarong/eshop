@@ -28,7 +28,10 @@ module RawWb
       private
 
       def fetch_fbw_supply_ids
-        resp = @client.post(:supplies, '/api/v1/supplies', { limit: 1000 })
+        resp = @client.post(:supplies, '/api/v1/supplies', {
+          dates:  [{ from: '2023-01-01', till: Date.current.to_s, type: 'factDate' }],
+          limit:  1000,
+        })
         items = resp.is_a?(Array) ? resp : Array(resp['supplies'] || [])
         items.filter_map { |s| s['supplyID'] || s['id'] }
       rescue RawWb::WbClient::ApiError => e
