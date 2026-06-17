@@ -340,6 +340,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", assignment.store_display_name
     assert_select "td", "EXT-#{@sku_code}"
     assert_select "td", "2026-06-01"
+    assert_select "a[href=?][target=?]",
+                  "https://seller.ozon.ru/app/products/3902460130/edit/general-info",
+                  "_blank"
+    assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products", "管理绑定"
   ensure
     assignment&.destroy
   end

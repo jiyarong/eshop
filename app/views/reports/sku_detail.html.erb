@@ -98,47 +98,50 @@
       </dl>
     </section>
 
-    <section class="panel">
-      <div class="table-section-header">
-        <h2 class="section-title"><%= t("reports.sku_detail.sections.store_listing_configuration") %></h2>
-        <%= link_to t("reports.sku_detail.actions.manage_product_bindings"), erp_sku_sku_products_path(@sku), class: "button" %>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th><%= t("reports.sku_detail.fields.platform") %></th>
-              <th><%= t("reports.sku_detail.fields.store") %></th>
-              <th><%= t("reports.sku_detail.fields.status") %></th>
-              <th><%= t("reports.sku_detail.fields.external_id") %></th>
-              <th><%= t("reports.sku_detail.fields.listed_at") %></th>
-              <th><%= t("reports.sku_detail.fields.owner") %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @store_assignments.any? %>
-              <% @store_assignments.each do |assignment| %>
-                <tr>
-                  <td><%= platform_label_for_sales(assignment.platform) %></td>
-                  <td><%= assignment.store_display_name %></td>
-                  <td><%= t(assignment.is_active ? "reports.sku_detail.status.enabled" : "reports.sku_detail.status.disabled") %></td>
-                  <td><%= report_value(assignment.external_id) %></td>
-                  <td><%= report_value(assignment.listed_at) %></td>
-                  <td><%= report_value(assignment.owner_name) %></td>
-                </tr>
-              <% end %>
-            <% else %>
-              <tr>
-                <td colspan="6" class="empty-state"><%= t("reports.sku_detail.empty.store_assignments") %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </section>
+<!--    <section class="panel">-->
+<!--      <div class="table-section-header">-->
+<!--        <h2 class="section-title"><%#= t("reports.sku_detail.sections.store_listing_configuration") %></h2>-->
+
+<!--      </div>-->
+<!--      <div class="table-scroll">-->
+<!--        <table>-->
+<!--          <thead>-->
+<!--            <tr>-->
+<!--              <th><%#= t("reports.sku_detail.fields.platform") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.store") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.status") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.external_id") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.listed_at") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.owner") %></th>-->
+<!--            </tr>-->
+<!--          </thead>-->
+<!--          <tbody>-->
+            <%# if @store_assignments.any? %>
+              <%# @store_assignments.each do |assignment| %>
+<!--                <tr>-->
+<!--                  <td><%#= platform_label_for_sales(assignment.platform) %></td>-->
+<!--                  <td><%#= assignment.store_display_name %></td>-->
+<!--                  <td><%#= t(assignment.is_active ? "reports.sku_detail.status.enabled" : "reports.sku_detail.status.disabled") %></td>-->
+<!--                  <td><%#= report_value(assignment.external_id) %></td>-->
+<!--                  <td><%#= report_value(assignment.listed_at) %></td>-->
+<!--                  <td><%#= report_value(assignment.owner_name) %></td>-->
+<!--                </tr>-->
+              <%# end %>
+            <%# else %>
+<!--              <tr>-->
+<!--                <td colspan="6" class="empty-state"><%#= t("reports.sku_detail.empty.store_assignments") %></td>-->
+<!--              </tr>-->
+            <%# end %>
+<!--          </tbody>-->
+<!--        </table>-->
+<!--      </div>-->
+<!--    </section>-->
 
     <section class="panel">
+      <div  class="table-section-header">
       <h2 class="section-title"><%= t("reports.sku_detail.sections.platform_product_bindings") %></h2>
+      <%= link_to t("reports.sku_detail.actions.manage_product_bindings"), erp_sku_sku_products_path(@sku), class: "button" %>
+      </div>
       <div class="table-scroll">
         <table>
           <thead>
@@ -147,7 +150,6 @@
               <th><%= t("reports.sku_detail.fields.store") %></th>
               <th><%= t("reports.sku_detail.fields.product_id") %></th>
               <th><%= t("reports.sku_detail.fields.offer_id") %></th>
-              <th><%= t("reports.sku_detail.fields.platform_sku_id") %></th>
               <th><%= t("reports.sku_detail.fields.platform_product_name") %></th>
             </tr>
           </thead>
@@ -159,7 +161,6 @@
                   <td><%= product.store.store_name %></td>
                   <td><%= product.product_id %></td>
                   <td><%= report_value(product.offer_id) %></td>
-                  <td><%= report_value(product.platform_sku_id) %></td>
                   <td><%= report_value(product.product_name) %></td>
                 </tr>
               <% end %>

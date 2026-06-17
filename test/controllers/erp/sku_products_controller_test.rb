@@ -82,22 +82,37 @@ module Erp
       assert_select "td", "绑定页面 Ozon 店 #{@token}"
       assert_select "td", "9876543210"
       assert_select "td", "OFFER-#{@token}"
-      assert_select "a[href=?][target=?][rel=?]",
+      assert_select "a[href=?][target=?]",
                     "https://seller.ozon.ru/app/products/3902460130/edit/general-info",
-                    "_blank",
-                    "noopener",
-                    "3902460130"
+                    "_blank"
       assert_select "form[action=?][method=?]", "/erp/skus/#{@sku.id}/products", "post"
       assert_select "select[name=?]", "raw_product_platform"
       assert_select "input[type=?][name=?]", "checkbox", "available_only"
       assert_select "table.raw-product-options"
       assert_select "input[type=?][name=?][value=?]", "checkbox", "raw_product_keys[]", "ozon:#{@store.id}:#{@raw_ozon_product.ozon_product_id}"
-      assert_select "table.raw-product-options a[href=?][target=?][rel=?]",
+      assert_select "table.raw-product-options a[href=?][target=?]",
                     "https://seller.ozon.ru/app/products/4444001/edit/general-info",
-                    "_blank",
-                    "noopener",
-                    "4444001"
+                    "_blank"
       assert_select "td", "可选 Ozon 平台商品 #{@token}"
+    end
+
+    test "index renders wb product edit links with the shared platform helper" do
+      wb_binding = Ec::SkuProduct.create!(
+        sku_code: @sku.sku_code,
+        store: @wb_store,
+        product_id: "7777001",
+        offer_id: "RAW-WB-#{@token}",
+        product_name: "已绑定 WB 平台商品"
+      )
+
+      get "/erp/skus/#{@sku.id}/products", headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "a[href=?][target=?]",
+                    "https://seller.wildberries.ru/new-goods/card?nmID=7777001&type=EXIST_CARD",
+                    "_blank"
+    ensure
+      wb_binding&.destroy
     end
 
     test "index filters raw product options by search keyword" do

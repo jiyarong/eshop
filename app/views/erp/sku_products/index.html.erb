@@ -34,7 +34,6 @@
             <th><%= t("erp.sku_products.fields.store") %></th>
             <th><%= t("erp.sku_products.fields.product_id") %></th>
             <th><%= t("erp.sku_products.fields.offer_id") %></th>
-            <th><%= t("erp.sku_products.fields.platform_sku_id") %></th>
             <th><%= t("erp.sku_products.fields.product_name") %></th>
             <th><%= t("erp.common.actions.actions") %></th>
           </tr>
@@ -47,18 +46,14 @@
                 <td><%= binding.sku_code %></td>
                 <td><%= binding.store.store_name %></td>
                 <td>
-                  <% if binding.platform == "ozon" && binding.product_id.present? %>
-                    <%= link_to binding.product_id, ozon_product_edit_url(binding.product_id), target: "_blank", rel: "noreferrer noopener" %>
-                  <% elsif binding.platform == "wb" && binding.product_id.present? %>
-                    <%= link_to binding.product_id, wb_product_edit_url(binding.product_id), target: "_blank", rel: "noreferrer noopener" %>
+                  <% edit_url = product_edit_url(binding.platform, binding.platform_sku_id.presence || binding.product_id) %>
+                  <% if edit_url %>
+                    <%= link_to binding.product_id, edit_url, target: "_blank", rel: "noreferrer noopener" %>
                   <% else %>
                     <%= binding.product_id %>
                   <% end %>
                 </td>
                 <td><%= erp_value(binding.offer_id) %></td>
-                <td>
-                  <%= erp_value(binding.platform_sku_id) %>
-                </td>
                 <td><%= erp_value(binding.product_name) %></td>
                 <td>
                   <%= button_to t("erp.sku_products.actions.delete"), erp_sku_sku_product_path(@sku, binding), method: :delete, class: "button button-secondary" %>
@@ -122,7 +117,6 @@
               <th><%= t("erp.sku_products.fields.store") %></th>
               <th><%= t("erp.sku_products.fields.product_id") %></th>
               <th><%= t("erp.sku_products.fields.offer_id") %></th>
-              <th><%= t("erp.sku_products.fields.platform_sku_id") %></th>
               <th><%= t("erp.sku_products.fields.product_name") %></th>
               <th><%= t("erp.common.status") %></th>
             </tr>
@@ -141,18 +135,14 @@
                   <td><%= t("common.platforms.#{product[:platform]}", default: product[:platform]) %></td>
                   <td><%= product[:store_name] %></td>
                   <td>
-                    <% if product[:platform] == "ozon" && product[:product_id].present? %>
-                      <%= link_to product[:product_id], ozon_product_edit_url(product[:product_id]), target: "_blank", rel: "noreferrer noopener" %>
-                    <% elsif product[:platform] == "wb" && product[:product_id].present? %>
-                      <%= link_to product[:product_id], wb_product_edit_url(product[:product_id]), target: "_blank", rel: "noreferrer noopener" %>
+                    <% edit_url = product_edit_url(product[:platform], product[:platform_sku_id].presence || product[:product_id]) %>
+                    <% if edit_url %>
+                      <%= link_to product[:product_id], edit_url, target: "_blank", rel: "noreferrer noopener" %>
                     <% else %>
-                      <%= product[:product_id] %></td>
+                      <%= product[:product_id] %>
                     <% end %>
-
-                  <td><%= erp_value(product[:offer_id]) %></td>
-                  <td>
-                    <%= erp_value(product[:platform_sku_id]) %>
                   </td>
+                  <td><%= erp_value(product[:offer_id]) %></td>
                   <td><%= erp_value(product[:product_name]) %></td>
                   <td><%= product[:bound] ? t("erp.sku_products.status.bound") : t("erp.sku_products.status.available") %></td>
                 </tr>
