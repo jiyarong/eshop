@@ -1,0 +1,46 @@
+<section class="panel">
+  <h2 class="section-title"><%= t("erp.sku_products.show.ozon_attributes") %></h2>
+  <dl class="definition-list">
+    <dt><%= t("erp.sku_products.ozon_fields.description_category_id") %></dt>
+    <dd><%= erp_value(@raw_product.description_category_id) %></dd>
+    <dt><%= t("erp.sku_products.ozon_fields.type_id") %></dt>
+    <dd><%= erp_value(@raw_product.type_id) %></dd>
+    <dt><%= t("erp.sku_products.ozon_fields.currency_code") %></dt>
+    <dd><%= erp_value(@raw_product.currency_code) %></dd>
+    <dt><%= t("erp.sku_products.ozon_fields.barcode") %></dt>
+    <dd><%= erp_value(@raw_product_attribute&.barcode) %></dd>
+    <dt><%= t("erp.sku_products.fields.synced_at") %></dt>
+    <dd><%= display_time([@raw_product.synced_at, @raw_product_attribute&.synced_at].compact.max) %></dd>
+  </dl>
+</section>
+
+<section class="panel">
+  <h2 class="section-title"><%= t("erp.sku_products.sections.product_attributes") %></h2>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th><%= t("erp.sku_products.fields.attribute_id") %></th>
+          <th><%= t("erp.sku_products.fields.attribute_name") %></th>
+          <th><%= t("erp.sku_products.fields.attribute_value") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% attributes = Array(@raw_product_attribute&.product_attributes) + Array(@raw_product_attribute&.complex_attributes) %>
+        <% if attributes.any? %>
+          <% attributes.each do |attribute| %>
+            <tr>
+              <td><%= erp_value(attribute["id"]) %></td>
+              <td><%= erp_value(attribute["name"]) %></td>
+              <td><%= sku_product_attribute_value(attribute["values"]) %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="3" class="empty-state"><%= t("erp.sku_products.empty.no_attributes") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
