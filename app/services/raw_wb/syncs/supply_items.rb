@@ -29,7 +29,7 @@ module RawWb
 
       def fetch_fbw_supply_ids
         resp = @client.post(:supplies, '/api/v1/supplies', {
-          dates:  [{ from: '2023-01-01', till: Date.current.to_s, type: 'factDate' }],
+          dates:  [{ from: '2023-01-01', till: Date.current.to_s, type: 'createDate' }],
           limit:  1000,
         })
         items = resp.is_a?(Array) ? resp : Array(resp['supplies'] || [])
@@ -40,7 +40,7 @@ module RawWb
       end
 
       def fetch_supply_goods(supply_id)
-        resp = @client.get(:supplies, "/api/v1/supplies/#{supply_id}/goods")
+        resp = @client.get(:supplies, "/api/v1/supplies/#{supply_id}/goods", { limit: 1000 })
         resp.is_a?(Array) ? resp : Array(resp['goods'] || [])
       rescue RawWb::WbClient::ApiError => e
         log "  ⚠ fetch_supply_goods #{supply_id} failed: #{e.message}", level: :warn
