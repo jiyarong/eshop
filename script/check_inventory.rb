@@ -90,9 +90,10 @@ def calc_book_stock(sku_code)
       .where(nm_id: wb_nm_ids)
       .sum(:accepted_qty)
 
-  # WB: 退货（raw_wb_goods_returns JOIN ec_order_fulfillments → ec_orders，过滤取消单）
-  # order_id → ec_order_fulfillments.external_fulfillment_id（wb_order_id），镜像 Ozon return 逻辑
-  wb_goods_return = wb_nm_ids.empty? ? 0 :
+  # WB: 退货（只计 completed_dt 有值的，货真正到手才算有效退货）
+  # FBS 退货：有 order_id，JOIN ec_order_fulfillments 过滤取消单
+  # FBW 退货：order_id 为空（WB 不暴露 FBW 订单），直接按 nm_id 计数
+  wb_gr_fbs = wb_nm_ids.empty? ? 0 :
     RawWb::GoodsReturn
       .joins(<<~SQL)
         JOIN ec_order_fulfillments
@@ -102,14 +103,18 @@ def calc_book_stock(sku_code)
           ON ec_orders.id = ec_order_fulfillments.order_id
       SQL
       .where(raw_wb_goods_returns: { nm_id: wb_nm_ids })
+      .where.not(raw_wb_goods_returns: { completed_dt: nil })
       .where.not(ec_orders: { order_status: "cancelled" })
       .count
+  wb_gr_fbw = wb_nm_ids.empty? ? 0 :
+    RawWb::GoodsReturn.where(nm_id: wb_nm_ids, order_id: nil).where.not(completed_dt: nil).count
+  wb_goods_return = wb_gr_fbs + wb_gr_fbw
 
   wb_net     = wb_fbs + wb_supply - wb_goods_return
   net_sales  = wb_net + ozon_sold - ozon_returns
   book_stock = purchased - net_sales
 
-  { purchased:, wb_fbs:, wb_supply:, wb_goods_return:, wb_net:,
+  { purchased:, wb_fbs:, wb_supply:, wb_gr_fbs:, wb_gr_fbw:, wb_goods_return:, wb_net:,
     ozon_sold:, ozon_returns:, net_sales:, book_stock: }
 end
 
@@ -251,7 +256,8 @@ SKU_CODES.each do |sku_code|
   row "WB 部分（FBS − FBW送仓 + 退货）", bs[:wb_net]
   row "  └ FBS 全量订单",           bs[:wb_fbs],         "COUNT(raw_wb_orders delivery_type=fbs)"
   row "  └ FBW 送仓总量",           bs[:wb_supply],      "SUM(supply_items.accepted_qty)"
-  row "  └ 退货",                   bs[:wb_goods_return],"COUNT(raw_wb_goods_returns)"
+  row "  └ 退货（FBS）",             bs[:wb_gr_fbs],      "有 order_id，过滤取消单"
+  row "  └ 退货（FBW）",             bs[:wb_gr_fbw],      "无 order_id，直接计数"
   row "Ozon 部分（销售 − 退货）",   bs[:ozon_sold].to_i - bs[:ozon_returns].to_i
   row "  └ Ozon 销售",              bs[:ozon_sold]
   row "  − Ozon 退货",              bs[:ozon_returns],   "SUM(raw_ozon_returns.quantity)"
@@ -346,9 +352,9 @@ end
 
 csv_path = Rails.root.join("tmp", "inventory_#{run_at.strftime('%Y%m%d_%H%M%S')}.csv")
 CSV.open(csv_path, "w") do |csv|
-  csv << %w[SKU 采购 WB_FBS WB_FBW送仓 WB退货 WB净额 Ozon销售 Ozon退货 净销售 账面库存 WB_FBW在库 WB_FBS在库 Ozon_FBO Ozon_FBS 平台在库 白俄可用]
+  csv << %w[SKU 采购 WB_FBS WB_FBW送仓 WB退货_FBS WB退货_FBW WB退货合计 WB净额 Ozon销售 Ozon退货 净销售 账面库存 WB_FBW在库 WB_FBS在库 Ozon_FBO Ozon_FBS 平台在库 白俄可用]
   results.each do |r|
-    csv << r.values_at(:sku_code, :purchased, :wb_fbs, :wb_supply, :wb_goods_return, :wb_net,
+    csv << r.values_at(:sku_code, :purchased, :wb_fbs, :wb_supply, :wb_gr_fbs, :wb_gr_fbw, :wb_goods_return, :wb_net,
                        :ozon_sold, :ozon_returns, :net_sales, :book_stock,
                        :wb_fbw, :wb_fbs_stock, :ozon_fbo, :ozon_fbs, :platform_total, :blr_available)
   end
