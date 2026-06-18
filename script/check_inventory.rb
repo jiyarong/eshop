@@ -115,17 +115,10 @@ end
 
 # ─── 二、白俄可用库存（实时 API + DB 快照）──────────────────────────────────
 
-# WB FBW 在库（实时 API）
-# GET /api/v1/warehouse_remains（seller-analytics-api），3 步异步报告
-def wb_fbw_from_api(sku_code)
-  results = []
-  RawWb::SellerAccount.where(is_active: true).each do |account|
-    nm_ids = Ec::SkuProduct
-      .joins(:store)
-      .where(sku_code: sku_code, platform: "wb", ec_stores: { wb_raw_account_id: account.id })
-      .pluck(:product_id)
-    next if nm_ids.empty?
-
+# WB FBW 报告预拉取（每账号一次，供所有 SKU 共用）
+# 返回 { account_id => { name:, report: [...] } }
+def prefetch_wb_fbw_reports
+  RawWb::SellerAccount.where(is_active: true).each_with_object({}) do |account, cache|
     begin
       client  = RawWb::WbClient.new(account.api_token)
       task_id = client.get(:seller_analytics, "/api/v1/warehouse_remains", groupByNm: true).dig("data", "taskId")
@@ -134,10 +127,31 @@ def wb_fbw_from_api(sku_code)
         sleep 3
       end
       report = client.get(:seller_analytics, "/api/v1/warehouse_remains/tasks/#{task_id}/download")
-      stock  = Array(report).select { |r| nm_ids.include?(r["nmId"].to_s) }.sum { |r| r["quantity"].to_i }
-      results << { account: account.name, nm_ids:, stock: }
+      cache[account.id] = { name: account.name, report: Array(report) }
     rescue => e
-      results << { account: account.name, nm_ids:, stock: 0, note: "API 错误: #{e.message.truncate(80)}" }
+      cache[account.id] = { name: account.name, report: [], error: e.message.truncate(80) }
+    end
+  end
+end
+
+# WB FBW 在库（从预拉取缓存查询，不再单独触发 API）
+def wb_fbw_from_api(sku_code, fbw_cache)
+  results = []
+  RawWb::SellerAccount.where(is_active: true).each do |account|
+    nm_ids = Ec::SkuProduct
+      .joins(:store)
+      .where(sku_code: sku_code, platform: "wb", ec_stores: { wb_raw_account_id: account.id })
+      .pluck(:product_id)
+    next if nm_ids.empty?
+
+    cached = fbw_cache[account.id] || {}
+    if cached[:error]
+      results << { account: cached[:name] || account.name, nm_ids:, stock: 0, note: "API 错误: #{cached[:error]}" }
+    else
+      stock = cached[:report]
+        .select { |r| nm_ids.include?(r["nmId"].to_s) }
+        .sum { |r| Array(r["warehouses"]).find { |w| w["warehouseName"] == "Всего находится на складах" }&.dig("quantity").to_i }
+      results << { account: cached[:name] || account.name, nm_ids:, stock: }
     end
   end
   results
@@ -223,6 +237,10 @@ results = []
 puts "\n库存计算调试脚本  #{run_at.strftime('%Y-%m-%d %H:%M:%S')}"
 puts "SKU 列表：#{SKU_CODES.join(', ')}"
 
+puts "\n预拉取 WB FBW 库存报告（每账号一次）..."
+fbw_cache = prefetch_wb_fbw_reports
+puts "  完成，共 #{fbw_cache.size} 个账号"
+
 SKU_CODES.each do |sku_code|
   h1("SKU: #{sku_code}")
 
@@ -249,7 +267,7 @@ SKU_CODES.each do |sku_code|
   total_ozon_fbs = 0
 
   h3("WB FBW 在库  实时 GET /api/v1/warehouse_remains（seller-analytics-api，异步报告）")
-  wb_fbw_rows = wb_fbw_from_api(sku_code)
+  wb_fbw_rows = wb_fbw_from_api(sku_code, fbw_cache)
   if wb_fbw_rows.empty?
     puts "    （无 WB 账号或该 SKU 无 WB 商品）"
   else
