@@ -328,35 +328,70 @@ SKU_CODES.each do |sku_code|
   sep("─")
   row "白俄可用库存",          blr_available
 
+  wb_fbw_by_store  = wb_fbw_rows.each_with_object({}) { |r, h| h[r[:account]] = r[:stock].to_i }
+  wb_fbs_by_store  = wb_fbs_rows.each_with_object({}) { |r, h| h[r[:account]] = r[:stock].to_i }
+  ozon_fbo_by_store = ozon_rows.each_with_object({}) { |r, h| h[r[:account]] = r[:fbo].to_i }
+  ozon_fbs_by_store = ozon_rows.each_with_object({}) { |r, h| h[r[:account]] = r[:fbs].to_i }
+
   results << {
     sku_code:,
-    purchased:       bs[:purchased],
-    wb_fbs:          bs[:wb_fbs],
-    wb_supply:       bs[:wb_supply],
-    wb_goods_return: bs[:wb_goods_return],
-    wb_net:          bs[:wb_net],
-    ozon_sold:       bs[:ozon_sold],
-    ozon_returns:    bs[:ozon_returns],
-    net_sales:       bs[:net_sales],
-    book_stock:      bs[:book_stock],
-    wb_fbw:          total_wb_fbw,
-    wb_fbs_stock:    total_wb_fbs,
-    ozon_fbo:        total_ozon_fbo,
-    ozon_fbs:        total_ozon_fbs,
-    platform_total:  total_platform,
+    purchased:        bs[:purchased],
+    wb_fbs:           bs[:wb_fbs],
+    wb_supply:        bs[:wb_supply],
+    wb_gr_fbs:        bs[:wb_gr_fbs],
+    wb_gr_fbw:        bs[:wb_gr_fbw],
+    wb_goods_return:  bs[:wb_goods_return],
+    wb_net:           bs[:wb_net],
+    ozon_sold:        bs[:ozon_sold],
+    ozon_returns:     bs[:ozon_returns],
+    net_sales:        bs[:net_sales],
+    book_stock:       bs[:book_stock],
+    wb_fbw:           total_wb_fbw,
+    wb_fbs_stock:     total_wb_fbs,
+    ozon_fbo:         total_ozon_fbo,
+    ozon_fbs:         total_ozon_fbs,
+    platform_total:   total_platform,
     blr_available:,
+    wb_fbw_by_store:,
+    wb_fbs_by_store:,
+    ozon_fbo_by_store:,
+    ozon_fbs_by_store:,
   }
 end
 
 # ─── CSV 汇总表 ──────────────────────────────────────────────────────────────
 
+wb_fbw_stores  = results.flat_map { |r| r[:wb_fbw_by_store].keys }.uniq
+wb_fbs_stores  = results.flat_map { |r| r[:wb_fbs_by_store].keys }.uniq
+ozon_stores    = results.flat_map { |r| r[:ozon_fbo_by_store].keys }.uniq
+
 csv_path = Rails.root.join("tmp", "inventory_#{run_at.strftime('%Y%m%d_%H%M%S')}.csv")
 CSV.open(csv_path, "w") do |csv|
-  csv << %w[SKU 采购 WB_FBS WB_FBW送仓 WB退货_FBS WB退货_FBW WB退货合计 WB净额 Ozon销售 Ozon退货 净销售 账面库存 WB_FBW在库 WB_FBS在库 Ozon_FBO Ozon_FBS 平台在库 白俄可用]
+  header = %w[SKU 采购 WB_FBS WB_FBW送仓 WB退货_FBS WB退货_FBW WB退货合计 WB净额 Ozon销售 Ozon退货 净销售 账面库存]
+  wb_fbw_stores.each  { |s| header << "WB_FBW_#{s}" }
+  header << "WB_FBW合计"
+  wb_fbs_stores.each  { |s| header << "WB_FBS_#{s}" }
+  header << "WB_FBS合计"
+  ozon_stores.each    { |s| header << "Ozon_FBO_#{s}" }
+  header << "Ozon_FBO合计"
+  ozon_stores.each    { |s| header << "Ozon_FBS_#{s}" }
+  header << "Ozon_FBS合计"
+  header += %w[平台在库 白俄可用]
+  csv << header
+
   results.each do |r|
-    csv << r.values_at(:sku_code, :purchased, :wb_fbs, :wb_supply, :wb_gr_fbs, :wb_gr_fbw, :wb_goods_return, :wb_net,
-                       :ozon_sold, :ozon_returns, :net_sales, :book_stock,
-                       :wb_fbw, :wb_fbs_stock, :ozon_fbo, :ozon_fbs, :platform_total, :blr_available)
+    row = r.values_at(:sku_code, :purchased, :wb_fbs, :wb_supply, :wb_gr_fbs, :wb_gr_fbw, :wb_goods_return, :wb_net,
+                      :ozon_sold, :ozon_returns, :net_sales, :book_stock)
+    wb_fbw_stores.each  { |s| row << r[:wb_fbw_by_store][s].to_i }
+    row << r[:wb_fbw]
+    wb_fbs_stores.each  { |s| row << r[:wb_fbs_by_store][s].to_i }
+    row << r[:wb_fbs_stock]
+    ozon_stores.each    { |s| row << r[:ozon_fbo_by_store][s].to_i }
+    row << r[:ozon_fbo]
+    ozon_stores.each    { |s| row << r[:ozon_fbs_by_store][s].to_i }
+    row << r[:ozon_fbs]
+    row += r.values_at(:platform_total, :blr_available)
+    csv << row
   end
 end
 
