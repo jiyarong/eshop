@@ -105,7 +105,7 @@ def calc_book_stock(sku_code)
       .where.not(ec_orders: { order_status: "cancelled" })
       .count
 
-  wb_net     = wb_fbs - wb_supply + wb_goods_return
+  wb_net     = wb_fbs + wb_supply - wb_goods_return
   net_sales  = wb_net + ozon_sold - ozon_returns
   book_stock = purchased - net_sales
 
