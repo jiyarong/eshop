@@ -49,6 +49,7 @@ module RawWb
     include Syncs::AdSettledFees
     include Syncs::SupplyItems
     include Syncs::FbsStocks
+    include Syncs::ArchiveOrders
 
     def self.run(days: nil, sync_keys: nil)
       stores = Ec::Store.where(platform: 'wb', is_active: true)
