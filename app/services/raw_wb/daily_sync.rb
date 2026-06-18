@@ -24,6 +24,7 @@ module RawWb
       sync_product_prices
       sync_balance
       sync_ad_balance
+      sync_goods_return
     ].freeze
 
     def self.run(days: nil, sync_keys: nil)

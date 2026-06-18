@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_031522) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1359,6 +1359,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_031522) do
     t.index ["account_id", "shk_id"], name: "idx_raw_wb_finance_details_shk"
   end
 
+  create_table "raw_wb_goods_returns", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "barcode"
+    t.string "brand"
+    t.datetime "completed_dt"
+    t.string "dst_office_address"
+    t.integer "dst_office_id"
+    t.datetime "expired_dt"
+    t.integer "is_status_active"
+    t.bigint "nm_id"
+    t.date "order_dt"
+    t.bigint "order_id"
+    t.datetime "ready_to_return_dt"
+    t.string "reason"
+    t.string "return_type"
+    t.bigint "shk_id", null: false
+    t.string "srid"
+    t.string "status"
+    t.string "sticker_id"
+    t.string "subject_name"
+    t.datetime "synced_at"
+    t.string "tech_size"
+    t.index ["account_id", "shk_id"], name: "index_raw_wb_goods_returns_on_account_id_and_shk_id", unique: true
+    t.index ["account_id"], name: "index_raw_wb_goods_returns_on_account_id"
+    t.index ["nm_id"], name: "index_raw_wb_goods_returns_on_nm_id"
+    t.index ["order_id"], name: "index_raw_wb_goods_returns_on_order_id"
+  end
+
   create_table "raw_wb_order_metas", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "meta_type"
@@ -1723,14 +1751,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_031522) do
 
   create_table "raw_wb_supplies", force: :cascade do |t|
     t.bigint "account_id", null: false
+    t.integer "box_type_id"
     t.datetime "closed_at"
+    t.datetime "fact_date", precision: nil
+    t.boolean "is_box_on_pallet"
     t.boolean "is_done", default: false
     t.string "name"
+    t.bigint "preorder_id"
     t.datetime "scan_dt"
     t.integer "status_id"
     t.datetime "supply_created_at"
+    t.datetime "supply_date", precision: nil
     t.datetime "synced_at"
+    t.datetime "updated_at_wb", precision: nil
     t.string "wb_supply_id"
+    t.index ["account_id", "preorder_id"], name: "idx_raw_wb_supplies_account_preorder", unique: true
     t.index ["account_id"], name: "index_raw_wb_supplies_on_account_id"
     t.index ["wb_supply_id"], name: "index_raw_wb_supplies_on_wb_supply_id", unique: true
   end
@@ -1910,6 +1945,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_031522) do
   add_foreign_key "raw_wb_chats", "raw_wb_orders", column: "order_id"
   add_foreign_key "raw_wb_chats", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_finance_details", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_goods_returns", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_order_metas", "raw_wb_orders", column: "order_id"
   add_foreign_key "raw_wb_order_status_histories", "raw_wb_orders", column: "order_id"
   add_foreign_key "raw_wb_orders", "raw_wb_seller_accounts", column: "account_id"
