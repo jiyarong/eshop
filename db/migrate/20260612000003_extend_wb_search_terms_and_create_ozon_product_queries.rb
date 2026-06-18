@@ -1,29 +1,29 @@
 class ExtendWbSearchTermsAndCreateOzonProductQueries < ActiveRecord::Migration[8.0]
   def change
     # ── 1. 扩展 raw_wb_analytics_search_terms ──────────────────────────────
-    add_column :raw_wb_analytics_search_terms, :median_position,      :decimal, precision: 10, scale: 2
-    add_column :raw_wb_analytics_search_terms, :open_card,            :bigint
-    add_column :raw_wb_analytics_search_terms, :open_card_percentile, :integer
-    add_column :raw_wb_analytics_search_terms, :add_to_cart,          :bigint
-    add_column :raw_wb_analytics_search_terms, :add_to_cart_percentile, :integer
-    add_column :raw_wb_analytics_search_terms, :open_to_cart,         :decimal, precision: 10, scale: 4
-    add_column :raw_wb_analytics_search_terms, :open_to_cart_percentile, :integer
-    add_column :raw_wb_analytics_search_terms, :orders_percentile,    :integer
-    add_column :raw_wb_analytics_search_terms, :cart_to_order,        :decimal, precision: 10, scale: 4
-    add_column :raw_wb_analytics_search_terms, :cart_to_order_percentile, :integer
-    add_column :raw_wb_analytics_search_terms, :visibility,           :integer
-    add_column :raw_wb_analytics_search_terms, :week_frequency,       :bigint
-    add_column :raw_wb_analytics_search_terms, :vendor_code,          :string
-    add_column :raw_wb_analytics_search_terms, :subject_name,         :string
-    add_column :raw_wb_analytics_search_terms, :brand_name,           :string
-    add_column :raw_wb_analytics_search_terms, :product_name,         :string
-    add_column :raw_wb_analytics_search_terms, :rating,               :decimal, precision: 5, scale: 2
-    add_column :raw_wb_analytics_search_terms, :feedback_rating,      :decimal, precision: 5, scale: 2
-    add_column :raw_wb_analytics_search_terms, :price_min,            :decimal, precision: 15, scale: 2
-    add_column :raw_wb_analytics_search_terms, :price_max,            :decimal, precision: 15, scale: 2
+    add_column :raw_wb_analytics_search_terms, :median_position,      :decimal, precision: 10, scale: 2, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :open_card,            :bigint, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :open_card_percentile, :integer, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :add_to_cart,          :bigint, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :add_to_cart_percentile, :integer, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :open_to_cart,         :decimal, precision: 10, scale: 4, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :open_to_cart_percentile, :integer, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :orders_percentile,    :integer, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :cart_to_order,        :decimal, precision: 10, scale: 4, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :cart_to_order_percentile, :integer, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :visibility,           :integer, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :week_frequency,       :bigint, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :vendor_code,          :string, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :subject_name,         :string, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :brand_name,           :string, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :product_name,         :string, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :rating,               :decimal, precision: 5, scale: 2, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :feedback_rating,      :decimal, precision: 5, scale: 2, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :price_min,            :decimal, precision: 15, scale: 2, if_not_exists: true
+    add_column :raw_wb_analytics_search_terms, :price_max,            :decimal, precision: 15, scale: 2, if_not_exists: true
 
     # ── 2. Ozon：SKU 级搜索汇总（/v1/analytics/product-queries）─────────────
-    create_table :raw_ozon_product_queries do |t|
+    create_table :raw_ozon_product_queries, if_not_exists: true do |t|
       t.references :account, null: false, foreign_key: { to_table: :raw_ozon_seller_accounts }
       t.date    :period_from,          null: false
       t.date    :period_to,            null: false
@@ -43,7 +43,7 @@ class ExtendWbSearchTermsAndCreateOzonProductQueries < ActiveRecord::Migration[8
     end
 
     # ── 3. Ozon：词级搜索明细（/v1/analytics/product-queries/details）────────
-    create_table :raw_ozon_product_query_details do |t|
+    create_table :raw_ozon_product_query_details, if_not_exists: true do |t|
       t.references :account, null: false, foreign_key: { to_table: :raw_ozon_seller_accounts }
       t.date    :period_from,          null: false
       t.date    :period_to,            null: false

@@ -33,10 +33,32 @@ module RawWb
           limit:  1000,
         })
         items = resp.is_a?(Array) ? resp : Array(resp['supplies'] || [])
+        upsert_supplies_from_v1(items)
         items.filter_map { |s| s['supplyID'] || s['id'] }
       rescue RawWb::WbClient::ApiError => e
         log "  ⚠ fetch_fbw_supply_ids failed: #{e.message}", level: :warn
         []
+      end
+
+      def upsert_supplies_from_v1(items)
+        rows = items.map do |s|
+          {
+            account_id:       @account.id,
+            wb_supply_id:     s['supplyID']&.to_s,
+            preorder_id:      s['preorderID'],
+            status_id:        s['statusID'],
+            box_type_id:      s['boxTypeID'],
+            is_box_on_pallet: s['isBoxOnPallet'],
+            supply_created_at: s['createDate'],
+            supply_date:      s['supplyDate'],
+            fact_date:        s['factDate'],
+            updated_at_wb:    s['updatedDate'],
+            synced_at:        Time.current,
+          }
+        end
+        RawWb::Supply.upsert_all(rows, unique_by: :idx_raw_wb_supplies_account_preorder,
+          update_only: %i[wb_supply_id status_id box_type_id is_box_on_pallet
+                          supply_date fact_date updated_at_wb synced_at])
       end
 
       def fetch_supply_goods(supply_id)
