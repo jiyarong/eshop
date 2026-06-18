@@ -8,8 +8,9 @@ module RawWb
         synced_at = Time.current
 
         date_chunks(chunk_days: 31).each do |chunk_from, chunk_to|
-          data  = @client.get(:seller_analytics, '/api/v1/analytics/goods-return',
-                              dateFrom: chunk_from.iso8601, dateTo: chunk_to.iso8601)
+          data = fetch_goods_return_chunk(chunk_from, chunk_to)
+          next if data.nil?
+
           items = Array(data.is_a?(Hash) ? data['report'] || data['data'] : data)
           next if items.empty?
 
@@ -24,6 +25,17 @@ module RawWb
       end
 
       private
+
+      def fetch_goods_return_chunk(from, to, retries: 0)
+        @client.get(:seller_analytics, '/api/v1/analytics/goods-return',
+                    dateFrom: from.iso8601, dateTo: to.iso8601)
+      rescue RawWb::WbClient::RetryableError => e
+        raise if retries >= 3
+        wait = 65
+        log "  ⏳ goods-return 429, waiting #{wait}s before retry (#{retries + 1}/3)...", level: :warn
+        sleep wait
+        fetch_goods_return_chunk(from, to, retries: retries + 1)
+      end
 
       def build_goods_return(r, synced_at)
         {
