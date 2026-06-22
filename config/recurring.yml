@@ -92,7 +92,7 @@ production:
 
   weekly_profit_report:
     command: "GoogleSheets::WeeklyProfitReportRunner.run"
-    schedule: every monday at 15:00 in Asia/Shanghai
+    schedule: every monday at 17:00 in Asia/Shanghai
 
   # Sync W-2 and W-1 Ozon ad performance with natural-week boundaries.
   ozon_performance_weekly_sync:
@@ -111,7 +111,7 @@ production:
   # Pre-report sync for core WB profit attribution sources.
   wb_profit_sources_prereport_sync:
     command: "RawWb::WeeklySync.run(days: 8, sync_keys: [:sync_ad_campaigns, :sync_finance_details, :sync_paid_storage, :sync_ad_settled_fees])"
-    schedule: every monday at 13:10 in Asia/Shanghai
+    schedule: every monday at 16:10 in Asia/Shanghai
 
   # Refresh W-2 and W-1 Ozon accrual_by_day before weekly report generation.
   ozon_accrual_prereport_sync:
