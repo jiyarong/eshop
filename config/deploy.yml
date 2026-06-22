@@ -62,6 +62,7 @@ env:
 # "bin/kamal logs -r job" will tail logs from the first server in the job section.
 aliases:
   console: app exec --interactive --reuse "bin/rails console"
+  runner: app exec --interactive --reuse "bin/rails runner"
   shell: app exec --interactive --reuse "bash"
   logs: app logs -f --tail=200
   dbc: app exec --interactive --reuse "bin/rails dbconsole"

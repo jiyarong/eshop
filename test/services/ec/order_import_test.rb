@@ -202,22 +202,12 @@ module Ec
     end
 
     teardown do
-      Ec::OrderSourceLink.where(source_key: [
-        @ozon_fbo&.posting_number,
-        @ozon_fbs&.posting_number,
-        @wb_order&.wb_order_id.to_s,
-        @wb_order&.g_number,
-        "WB-STATS-G-#{@token}"
-      ].compact).delete_all
-      Ec::OrderItem.where(offer_id: ["XCQ707", "FBS707", "WB707", "WB707-STATS", "WBSTATSONLY-#{@token}"]).delete_all
-      Ec::OrderFulfillment.where(external_fulfillment_id: [
-        @ozon_fbo&.posting_number,
-        @ozon_fbs&.posting_number,
-        @wb_order&.wb_order_id.to_s,
-        @wb_order&.srid,
-        "WB-STATS-SRID-#{@token}"
-      ].compact).delete_all
-      Ec::Order.where(store_id: [@ozon_store&.id, @wb_store&.id]).delete_all
+      order_scope = Ec::Order.where(store_id: [@ozon_store&.id, @wb_store&.id].compact)
+      fulfillment_scope = Ec::OrderFulfillment.where(order_id: order_scope.select(:id))
+      Ec::OrderSourceLink.where(order_id: order_scope.select(:id)).or(Ec::OrderSourceLink.where(fulfillment_id: fulfillment_scope.select(:id))).delete_all
+      Ec::OrderItem.where(order_id: order_scope.select(:id)).or(Ec::OrderItem.where(fulfillment_id: fulfillment_scope.select(:id))).delete_all
+      fulfillment_scope.delete_all
+      order_scope.delete_all
       Ec::SkuProduct.where(store_id: [@ozon_store&.id, @wb_store&.id]).delete_all if defined?(Ec::SkuProduct)
       RawOzon::PostingItem.where(account_id: @ozon_account&.id).delete_all
       RawWb::StatsSale.where(account_id: @wb_account&.id).delete_all
@@ -262,11 +252,12 @@ module Ec
       assert_nil ozon_fbs_order.fulfillments.first.delivered_at
       assert_equal "TRACK-#{@token}", ozon_fbs_order.fulfillments.first.tracking_number
 
-      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-G-#{@token}")
+      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-SRID-#{@token}")
       assert_equal "cancelled", wb_order.order_status
       assert_equal Time.zone.parse("2026-06-06 11:00:00"), wb_order.completed_at
       assert_equal Time.zone.parse("2026-06-05 10:30:00"), wb_order.cancelled_at
       assert_equal "WB-SRID-#{@token}", wb_order.external_order_id
+      assert_equal 1, Ec::Order.where(platform: "wb", external_order_id: "WB-SRID-#{@token}").count
       assert_equal "WB707", wb_order.items.first.offer_id
       assert_equal @wb_sku.sku_code, wb_order.items.first.sku_code
       assert_equal @wb_order, wb_order.source_links.first.source
@@ -292,7 +283,7 @@ module Ec
 
       assert_operator result, :>=, 2
       assert_nil Ec::Order.find_by(platform: "wb", external_order_id: old_raw.srid)
-      assert Ec::Order.find_by(platform: "wb", external_order_number: "WB-G-#{@token}")
+      assert Ec::Order.find_by(platform: "wb", external_order_number: "WB-SRID-#{@token}")
     ensure
       Ec::OrderSourceLink.where(source_key: old_raw&.wb_order_id&.to_s).delete_all
       Ec::OrderItem.where(offer_id: "WBOLD").delete_all
@@ -304,7 +295,7 @@ module Ec
     test "wb import updates existing orders when matching stats orders synced later" do
       first_cutoff = Time.zone.parse("2026-06-04 00:00:00")
       Ec::OrderImport::Wb.new.call(synced_since: first_cutoff)
-      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-G-#{@token}")
+      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-SRID-#{@token}")
       wb_order.update!(cancelled_at: nil)
       @wb_order.update!(synced_at: Time.zone.parse("2026-06-04 09:10:00"))
       stats_order = RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid)
@@ -339,7 +330,7 @@ module Ec
       result = Ec::OrderImport::Wb.new.call(synced_since: Time.zone.parse("2026-06-08 00:00:00"))
 
       assert_operator result, :>=, 1
-      stats_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-STATS-G-#{@token}")
+      stats_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-STATS-SRID-#{@token}")
       assert_equal "WB-STATS-SRID-#{@token}", stats_order.external_order_id
       assert_equal "processing", stats_order.order_status
       assert_equal Time.zone.parse("2026-06-08 09:00:00"), stats_order.ordered_at
@@ -363,7 +354,7 @@ module Ec
 
       Ec::OrderImport::Wb.new.call(synced_since: Time.zone.parse("2026-06-04 00:00:00"))
 
-      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-G-#{@token}")
+      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-SRID-#{@token}")
       assert_equal Time.zone.parse("2026-06-09 15:00:00"), wb_order.cancelled_at
       assert_equal "Stats Cover Region", wb_order.buyer_city
       assert_equal "WB707-STATS", wb_order.items.first.offer_id

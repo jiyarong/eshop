@@ -70,8 +70,8 @@ module Ec
       end
 
       def upsert_order(raw_order, store)
-        external_number = raw_order.g_number.presence || raw_order.srid.presence || raw_order.wb_order_id.to_s
-        order_key = "wb:#{store.id}:#{external_number}"
+        external_number = order_identifier(raw_order)
+        order_key = wb_order_key(store, external_number)
         stats_sale = stats_record_for(RawWb::StatsSale, raw_order)
         stats_order = stats_record_for(RawWb::StatsOrder, raw_order)
         order = Ec::Order.find_or_initialize_by(platform: "wb", store: store, order_key: order_key)
@@ -97,8 +97,8 @@ module Ec
       end
 
       def upsert_order_from_stats(stats_order, store)
-        external_number = stats_order.g_number.presence || stats_order.srid
-        order_key = "wb:#{store.id}:#{external_number}"
+        external_number = order_identifier(stats_order)
+        order_key = wb_order_key(store, external_number)
         stats_sale = stats_record_for(RawWb::StatsSale, stats_order)
         order = order_from_stats(stats_order, store, order_key)
         order.assign_attributes(
@@ -124,14 +124,16 @@ module Ec
       end
 
       def order_from_stats(stats_order, store, order_key)
-        order = Ec::Order.find_by(platform: "wb", store: store, order_key: order_key)
-        return order if order
-
-        return Ec::Order.new(platform: "wb", store: store, order_key: order_key) if stats_order.g_number.blank?
-
-        srid_key = "wb:#{store.id}:#{stats_order.srid}"
-        Ec::Order.find_by(platform: "wb", store: store, order_key: srid_key) ||
+        Ec::Order.find_by(platform: "wb", store: store, order_key: order_key) ||
           Ec::Order.new(platform: "wb", store: store, order_key: order_key)
+      end
+
+      def order_identifier(source)
+        source.srid.presence || (source.wb_order_id.to_s if source.respond_to?(:wb_order_id))
+      end
+
+      def wb_order_key(store, identifier)
+        "wb:#{store.id}:#{identifier}"
       end
 
       def upsert_fulfillment(raw_order, store, order)
@@ -254,7 +256,7 @@ module Ec
           order: order,
           fulfillment: fulfillment,
           platform: "wb",
-          source_key: stats_order.g_number.presence || stats_order.srid,
+          source_key: stats_order.srid,
           synced_at: stats_order.synced_at
         )
         link.save!
