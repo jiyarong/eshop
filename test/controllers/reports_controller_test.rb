@@ -30,11 +30,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       company_type: "general",
       ozon_raw_account_id: @sales_ozon_account.id
     )
+    @sales_wb_account = RawWb::SellerAccount.create!(
+      name: "销量统计 WB Raw #{@sku_code}",
+      api_token: "test-token",
+      company_type: "small"
+    )
     @wb_sales_store = Ec::Store.create!(
       platform: "wb",
       store_name: "销量统计 WB 店 #{@sku_code}",
       company_type: "small",
-      wb_raw_account_id: 910_000 + @sku_code.hash.abs % 10_000
+      wb_raw_account_id: @sales_wb_account.id
     )
 
     RawOzon::Product.create!(
@@ -280,9 +285,12 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::Order.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all
     Ec::SkuProduct.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all if defined?(Ec::SkuProduct)
     RawOzon::Product.where(account_id: @sales_ozon_account&.id).delete_all
+    RawOzon::Return.where(account_id: @sales_ozon_account&.id).delete_all
+    RawWb::GoodsReturn.where(account_id: @wb_sales_store&.wb_raw_account_id).delete_all
     @sales_ozon_account&.destroy
     @sales_store&.destroy
     @wb_sales_store&.destroy
+    @sales_wb_account&.destroy
     Ec::SkuPlatformCost.where(sku_code: @sku.sku_code).delete_all
     Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuPredictedCost)
     Ec::SkuCost.where(sku_code: @sku.sku_code).delete_all
@@ -609,6 +617,39 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "2026-06-22 10:00"
   ensure
     Ec::SkuBatch.where(batch_code: "INV-#{@sku_code}").delete_all
+  end
+
+  test "sku detail inventory overview reads platform returns from raw return tables" do
+    RawOzon::Return.create!(
+      account: @sales_ozon_account,
+      return_id: 10_000_000 + @sku_code.hash.abs % 1_000_000,
+      return_schema: "FBO",
+      return_type: "Return",
+      posting_number: "OZON-RETURN-#{@sku_code}",
+      ozon_sku: 3_902_460_130,
+      offer_id: "OFFER-#{@sku_code}",
+      product_name: "Ozon 绑定商品",
+      quantity: 2,
+      raw_json: {},
+      synced_at: Time.zone.parse("2026-06-22 09:00:00")
+    )
+    RawWb::GoodsReturn.create!(
+      account_id: @wb_sales_store.wb_raw_account_id,
+      shk_id: 20_000_000 + @sku_code.hash.abs % 1_000_000,
+      nm_id: 123_456,
+      barcode: "WB-RETURN-#{@sku_code}",
+      status: "ready_to_return",
+      synced_at: Time.zone.parse("2026-06-22 09:00:00")
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", "销量统计 Ozon 店 #{@sku_code}"
+    assert_select "td", "销量统计 WB 店 #{@sku_code}"
+    assert_select ".summary-value", "3"
+    assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>2<\/td>/m, response.body)
+    assert_match(/销量统计 WB 店 #{@sku_code}.*?<td>1<\/td>/m, response.body)
   end
 
   test "sku detail store sales ignores unbound order item sku code" do
