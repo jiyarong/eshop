@@ -274,6 +274,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::SkuInventoryLevel.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuInventoryLevel)
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::Order.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all
@@ -571,6 +572,43 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   ensure
     extra_order&.items&.delete_all
     extra_order&.destroy
+  end
+
+  test "sku detail renders inventory overview tab" do
+    Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "INV-#{@sku_code}",
+      status: "received",
+      purchased_quantity: 12,
+      received_quantity: 10,
+      purchase_unit_price_cny: 1
+    )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
+      platform: "ozon",
+      account_id: @sales_ozon_account.id,
+      store_name: @sales_store.store_name,
+      fulfillment_type: "fbo",
+      quantity: 4,
+      is_latest: true,
+      synced_at: User.profile_time_zone(@current_user.time_zone).local(2026, 6, 22, 10, 0),
+      metadata: {}
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "库存概况"
+    assert_select ".summary-label", "入库数量"
+    assert_select ".summary-value", "10"
+    assert_select "h2", "库存校对汇总"
+    assert_select "td", "销量统计 Ozon 店 #{@sku_code}"
+    assert_select "td", "4"
+    assert_select "h2", "最新平台在库"
+    assert_select "td", "FBO"
+    assert_select "td", "2026-06-22 10:00"
+  ensure
+    Ec::SkuBatch.where(batch_code: "INV-#{@sku_code}").delete_all
   end
 
   test "sku detail store sales ignores unbound order item sku code" do

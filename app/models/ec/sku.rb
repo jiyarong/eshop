@@ -10,6 +10,7 @@ module Ec
     has_many :sku_products,      class_name: 'Ec::SkuProduct',          foreign_key: :sku_code, primary_key: :sku_code, dependent: :destroy
     has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
     has_many :predicted_costs,   class_name: 'Ec::SkuPredictedCost',    foreign_key: :sku_code, primary_key: :sku_code
+    has_many :inventory_levels,  class_name: 'Ec::SkuInventoryLevel',   foreign_key: :sku_code, primary_key: :sku_code
 
     validates :sku_code, presence: true, uniqueness: true
     before_validation { self.sku_code = sku_code&.upcase }
@@ -32,6 +33,10 @@ module Ec
         .where("effective_to IS NULL OR effective_to >= ?", target_date)
         .order(effective_from: :desc, id: :desc)
         .first
+    end
+
+    def inventory_overview
+      Ec::SkuInventoryOverview.new(self).call
     end
   end
 end

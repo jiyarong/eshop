@@ -81,6 +81,10 @@ production:
     command: "Ec::InventorySnapshotSync.run_and_push_to_sheets"
     schedule: every day at 9:00 in Asia/Shanghai
 
+  sku_inventory_snapshot_sync:
+    command: "Ec::SkuInventorySnapshotSync.run"
+    schedule: every hour
+
   # Fetch current-week CBR rate for W-1/W-2 report fallback.
   cbr_rate_fetch:
     command: "Ec::CbrRateFetcher.fetch_and_store"

@@ -43,7 +43,7 @@
 </section>
 
 <nav class="sku-detail-tabs" aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>">
-  <% %w[basic costs stores trend].each do |tab| %>
+  <% %w[basic inventory costs stores trend].each do |tab| %>
     <%= link_to t("reports.sku_detail.tabs.#{tab}"), sku_detail_tab_path(tab), aria: (@active_tab == tab ? { current: "page" } : nil) %>
   <% end %>
 </nav>
@@ -145,6 +145,99 @@
                show_sku_code: false,
                show_actions: false,
                actions_path: erp_sku_sku_products_path(@sku) %>
+  <% elsif @active_tab == "inventory" %>
+    <section class="panel">
+      <div class="summary-grid">
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.inventory.received_quantity") %></div>
+          <div class="summary-value"><%= @inventory_summary[:received_quantity] %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.inventory.sales_quantity") %></div>
+          <div class="summary-value"><%= @inventory_summary[:sales_quantity] %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.inventory.return_quantity") %></div>
+          <div class="summary-value"><%= @inventory_summary[:return_quantity] %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.inventory.platform_stock") %></div>
+          <div class="summary-value"><%= @inventory_summary[:platform_stock] %></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.inventory_reconciliation") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.fields.platform") %></th>
+              <th><%= t("reports.sku_detail.fields.store") %></th>
+              <th><%= t("reports.sku_detail.inventory.sales_quantity") %></th>
+              <th><%= t("reports.sku_detail.inventory.return_quantity") %></th>
+              <th><%= t("reports.sku_detail.inventory.supply_quantity") %></th>
+              <th><%= t("reports.sku_detail.inventory.platform_stock") %></th>
+              <th><%= t("reports.sku_detail.inventory.latest_synced_at") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @inventory_store_rows.any? %>
+              <% @inventory_store_rows.each do |row| %>
+                <tr>
+                  <td><%= platform_label_for_sales(row[:platform]) %></td>
+                  <td><%= report_value(row[:store_name]) %></td>
+                  <td><%= row[:sales_quantity] %></td>
+                  <td><%= row[:return_quantity] %></td>
+                  <td><%= row[:supply_quantity] %></td>
+                  <td><%= row[:platform_stock] %></td>
+                  <td><%= display_time(row[:latest_synced_at]) %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="7" class="empty-state"><%= t("reports.sku_detail.empty.inventory_overview") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.latest_inventory_levels") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.fields.platform") %></th>
+              <th><%= t("reports.sku_detail.fields.store") %></th>
+              <th><%= t("reports.sku_detail.fields.fulfillment_mode") %></th>
+              <th><%= t("reports.sku_detail.inventory.quantity") %></th>
+              <th><%= t("reports.sku_detail.inventory.latest_synced_at") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @latest_inventory_levels.any? %>
+              <% @latest_inventory_levels.each do |level| %>
+                <tr>
+                  <td><%= platform_label_for_sales(level.platform) %></td>
+                  <td><%= report_value(level.store_name) %></td>
+                  <td><%= level.fulfillment_type.upcase %></td>
+                  <td><%= level.quantity %></td>
+                  <td><%= display_time(level.synced_at) %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="5" class="empty-state"><%= t("reports.sku_detail.empty.inventory_levels") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
   <% elsif @active_tab == "costs" %>
     <section class="panel">
       <div class="table-section-header">

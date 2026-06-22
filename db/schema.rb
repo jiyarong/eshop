@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_22_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -338,6 +338,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "idx_ec_sku_costs_sku_code", unique: true
+  end
+
+  create_table "ec_sku_inventory_levels", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "fulfillment_type", null: false
+    t.boolean "is_latest", default: true, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "platform", null: false
+    t.integer "quantity", default: 0, null: false
+    t.string "sku_code", null: false
+    t.bigint "store_id"
+    t.string "store_name"
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sku_code", "platform", "account_id", "fulfillment_type", "synced_at"], name: "idx_ec_sku_inventory_levels_history"
+    t.index ["sku_code", "platform", "account_id", "fulfillment_type"], name: "idx_ec_sku_inventory_levels_latest", unique: true, where: "is_latest"
+    t.index ["sku_code"], name: "index_ec_sku_inventory_levels_on_sku_code"
   end
 
   create_table "ec_sku_platform_costs", force: :cascade do |t|
@@ -1891,6 +1909,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
   add_foreign_key "ec_sku_batches", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_products", "ec_skus", column: "sku_code", primary_key: "sku_code"

@@ -3,7 +3,7 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
 
-  SKU_DETAIL_TABS = %w[basic costs stores trend].freeze
+  SKU_DETAIL_TABS = %w[basic inventory costs stores trend].freeze
 
   def inventory
     @snapshots = Ec::InventorySnapshot.includes(:sku).order(:sku_code, :platform, :account_id)
@@ -61,7 +61,7 @@ class ReportsController < ApplicationController
   private
 
   def load_sku_detail(active_tab: nil)
-    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments, :sku_products, :predicted_costs).find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments, :inventory_levels, :sku_products, :predicted_costs).find_by!(sku_code: params[:sku_code].to_s.upcase)
     @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
@@ -83,6 +83,7 @@ class ReportsController < ApplicationController
     )
     @overview_summary = build_sku_sales_summary(@overview_rows)
     @overview_store_count = @overview_rows.map { |row| [row[:platform], row[:store_name]] }.uniq.count
+    load_sku_inventory_overview if @active_tab == "inventory"
 
     @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
     @to_date = parse_report_date(params[:to_date]) || Time.zone.today
@@ -107,6 +108,13 @@ class ReportsController < ApplicationController
 
   def sku_predicted_cost_params
     params.require(:ec_sku_predicted_cost).permit(:cost_money, :cost_currency, :effective_from, :effective_to, :note)
+  end
+
+  def load_sku_inventory_overview
+    @inventory_overview = @sku.inventory_overview
+    @inventory_summary = @inventory_overview[:summary]
+    @inventory_store_rows = @inventory_overview[:store_rows]
+    @latest_inventory_levels = @inventory_overview[:latest_levels]
   end
 
   def report_value(value)
