@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_22_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_22_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1444,6 +1444,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_000001) do
     t.datetime "synced_at"
     t.datetime "updated_at"
     t.bigint "warehouse_id"
+    t.string "warehouse_type"
     t.string "wb_office"
     t.bigint "wb_order_id"
     t.string "wb_status"
@@ -1706,6 +1707,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_000001) do
     t.string "tech_size"
     t.decimal "total_price", precision: 15, scale: 2
     t.string "warehouse_name"
+    t.string "warehouse_type"
     t.index ["account_id", "srid"], name: "idx_raw_wb_stats_orders_account_srid", unique: true, where: "(srid IS NOT NULL)"
     t.index ["account_id"], name: "index_raw_wb_stats_orders_on_account_id"
   end

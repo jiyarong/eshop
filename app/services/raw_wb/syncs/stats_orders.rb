@@ -20,15 +20,21 @@ module RawWb
         RawWb::StatsOrder.upsert_all(rows, unique_by: %i[account_id srid],
           update_only: stats_order_update_cols)
 
-        # Backfill g_number into orders table via srid cross-reference
-        srid_to_gnumber = rows.each_with_object({}) do |r, h|
-          h[r[:srid]] = r[:g_number] if r[:srid].present? && r[:g_number].present?
+        # Backfill fields available only in Statistics orders into marketplace orders.
+        srid_to_order_fields = rows.each_with_object({}) do |r, h|
+          next if r[:srid].blank?
+
+          fields = {}
+          fields[:g_number] = r[:g_number] if r[:g_number].present?
+          fields[:warehouse_type] = r[:warehouse_type] if r[:warehouse_type].present?
+          h[r[:srid]] = fields if fields.any?
         end
-        if srid_to_gnumber.any?
-          srid_to_gnumber.each_slice(500) do |slice|
-            slice.each do |srid, g_number|
-              RawWb::Order.where(account_id: @account.id, srid: srid, g_number: nil)
-                          .update_all(g_number: g_number)
+        if srid_to_order_fields.any?
+          srid_to_order_fields.each_slice(500) do |slice|
+            slice.each do |srid, fields|
+              scope = RawWb::Order.where(account_id: @account.id, srid: srid)
+              scope.where(g_number: nil).update_all(g_number: fields[:g_number]) if fields[:g_number]
+              scope.where(warehouse_type: nil).update_all(warehouse_type: fields[:warehouse_type]) if fields[:warehouse_type]
             end
           end
         end
@@ -51,6 +57,7 @@ module RawWb
           total_price:      r['totalPrice'],
           discount_percent: r['discountPercent'],
           warehouse_name:   r['warehouseName'],
+          warehouse_type:   r['warehouseType'],
           oblast:           r['oblast'],
           nm_id:            r['nmId'],
           subject:          r['subject'],
@@ -65,7 +72,7 @@ module RawWb
       end
 
       def stats_order_update_cols
-        %i[last_change_date is_cancel cancel_date synced_at]
+        %i[last_change_date warehouse_type is_cancel cancel_date synced_at]
       end
     end
   end

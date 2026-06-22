@@ -169,6 +169,86 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "wb orders sync does not overwrite warehouse type when marketplace response omits it" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-warehouse-type-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    RawWb::Order.create!(
+      account: account,
+      wb_order_id: 2_001,
+      srid: "rid-2001",
+      delivery_type: "fbs",
+      warehouse_type: "Склад продавца",
+      supplier_status: "new",
+      wb_status: "waiting",
+      created_at: Time.zone.parse("2026-06-01 10:00:00"),
+      updated_at: Time.zone.parse("2026-06-01 10:00:00")
+    )
+    sync = RawWb::OrderIncrementalSync.new(account, days: 2)
+    sync.instance_variable_set(:@client, FakeWbClient.new(
+      "orders" => [
+        wb_order_payload(2_001)
+      ],
+      "next" => 0
+    ))
+
+    result = sync.sync_orders
+
+    assert_equal 1, result[:ok]
+    assert_equal "Склад продавца", RawWb::Order.find_by!(wb_order_id: 2_001).warehouse_type
+  ensure
+    RawWb::Order.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  test "wb stats orders sync stores and updates warehouse type" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-stats-warehouse-type-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    srid = "stats-rid-#{token}"
+    RawWb::Order.create!(
+      account: account,
+      wb_order_id: 3_001,
+      srid: srid,
+      delivery_type: "fbs",
+      supplier_status: "new",
+      wb_status: "waiting",
+      created_at: Time.zone.parse("2026-06-01 10:00:00"),
+      updated_at: Time.zone.parse("2026-06-01 10:00:00")
+    )
+    RawWb::StatsOrder.create!(
+      account: account,
+      g_number: "G-#{token}",
+      order_date: Time.zone.parse("2026-06-01 10:00:00"),
+      last_change_date: Time.zone.parse("2026-06-01 10:00:00"),
+      barcode: "BAR-#{token}",
+      warehouse_type: "Склад WB",
+      is_cancel: false,
+      srid: srid,
+      synced_at: Time.zone.parse("2026-06-01 10:05:00")
+    )
+    sync = RawWb::OrderIncrementalSync.new(account, days: 2)
+    sync.instance_variable_set(:@client, FakeWbClient.new([
+      wb_stats_order_payload(srid).merge("warehouseType" => "Склад продавца")
+    ]))
+
+    result = sync.sync_stats_orders
+
+    assert_equal({ ok: 1, fetched: 1, created: 0, updated: 1 }, result)
+    assert_equal "Склад продавца", RawWb::StatsOrder.find_by!(account: account, srid: srid).warehouse_type
+    assert_equal "Склад продавца", RawWb::Order.find_by!(account: account, srid: srid).warehouse_type
+  ensure
+    RawWb::Order.where(account_id: account&.id).delete_all
+    RawWb::StatsOrder.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
   test "ozon incremental sync skips automatically when the lock is busy" do
     called = false
     release_lock = Queue.new
@@ -349,6 +429,27 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       "convertedPrice" => 10_000,
       "currencyCode" => 643,
       "createdAt" => Time.zone.parse("2026-06-10 10:00:00")
+    }
+  end
+
+  def wb_stats_order_payload(srid)
+    {
+      "gNumber" => "G-#{srid}",
+      "date" => Time.zone.parse("2026-06-10 10:00:00"),
+      "lastChangeDate" => Time.zone.parse("2026-06-10 10:05:00"),
+      "supplierArticle" => "SKU-#{srid}",
+      "barcode" => "BAR-#{srid}",
+      "totalPrice" => 120,
+      "discountPercent" => 10,
+      "warehouseName" => "Подольск",
+      "oblast" => "Москва",
+      "nmId" => 123,
+      "subject" => "subject",
+      "category" => "category",
+      "brand" => "brand",
+      "isCancel" => false,
+      "orderType" => "Клиентский",
+      "srid" => srid
     }
   end
 
