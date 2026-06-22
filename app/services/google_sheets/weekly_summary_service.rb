@@ -138,8 +138,10 @@ module GoogleSheets
           revenue    = (r[:sales_revenue]         * rub_cny).round(2)
           ads        = (-(r[:ppc_cost].to_f + r[:promotion_cost].to_f) * rub_cny).round(2)
           goods_cost = (-r[:goods_cost].to_f       * rub_cny).round(2)
-          pre_tax    = (r[:pre_tax_profit].to_f    * rub_cny).round(2)
-          after_tax  = (r[:after_tax_profit].to_f  * rub_cny).round(2)
+          # Fallback to book_profit_after_ad when cost data is missing (nil).
+          # Equivalent to goods_cost=0, matching WB behaviour for unconfigured SKUs.
+          pre_tax    = ((r[:pre_tax_profit]    || r[:book_profit_after_ad]).to_f * rub_cny).round(2)
+          after_tax  = ((r[:after_tax_profit]  || r[:book_profit_after_ad]).to_f * rub_cny).round(2)
           tax        = (pre_tax - after_tax).round(2)
 
           rows << { sku: r[:sku_code], platform: 'Ozon', shop: shop,
