@@ -99,7 +99,7 @@
                   <td><%= product[:store_name] %></td>
                   <td><%= product[:product_id] %></td>
                   <td><%= erp_value(product[:offer_id]) %></td>
-                  <td><%= erp_value(product[:product_name]) %></td>
+                  <td><span data-controller="long-text" data-long-text-limit-value="50"><%= erp_value(product[:product_name]) %></span></td>
                   <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(product[:platform], product[:store_id], product[:product_id]) %></td>
                   <td>
                     <% edit_url = product_edit_url(product[:platform], product[:platform_sku_id].presence || product[:product_id]) %>

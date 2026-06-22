@@ -536,6 +536,29 @@ th {
   background: var(--erp-surface-soft);
 }
 
+.long-text {
+  cursor: help;
+  text-decoration: underline dotted rgba(105, 115, 134, 0.55);
+  text-underline-offset: 3px;
+}
+
+.long-text-tooltip {
+  position: fixed;
+  z-index: 1200;
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: #182235;
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(24, 34, 53, 0.24);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
 details {
   max-width: 420px;
 }

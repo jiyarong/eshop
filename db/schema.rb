@@ -1753,7 +1753,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
     t.bigint "account_id", null: false
     t.integer "box_type_id"
     t.datetime "closed_at"
-    t.datetime "fact_date", precision: nil
+    t.datetime "fact_date"
     t.boolean "is_box_on_pallet"
     t.boolean "is_done", default: false
     t.string "name"
@@ -1761,9 +1761,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
     t.datetime "scan_dt"
     t.integer "status_id"
     t.datetime "supply_created_at"
-    t.datetime "supply_date", precision: nil
+    t.datetime "supply_date"
     t.datetime "synced_at"
-    t.datetime "updated_at_wb", precision: nil
+    t.datetime "updated_at_wb"
     t.string "wb_supply_id"
     t.index ["account_id", "preorder_id"], name: "idx_raw_wb_supplies_account_preorder", unique: true
     t.index ["account_id"], name: "index_raw_wb_supplies_on_account_id"
@@ -1892,7 +1892,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_120000) do
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
-  add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code", name: "fk_rails_ec_sku_predicted_costs_sku_code"
+  add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_products", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_products", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
