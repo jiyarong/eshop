@@ -1,13 +1,25 @@
 require "test_helper"
 
 class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
+  class FakeClient
+    def complete(_request)
+      {
+        content: "## 结论摘要\n库存数据不足，需要补充确认。",
+        usage: { "total_tokens" => 12 }
+      }
+    end
+  end
+
   setup do
     @token = SecureRandom.hex(4)
     @user = create_user_with_roles("ai-controller-#{@token}@example.com", "manager")
     @agent = Agent.ensure_fixed!("business_analysis")
+    @old_default_client = ErpAI::DefaultClient.default_client
+    ErpAI::DefaultClient.default_client = FakeClient.new
   end
 
   teardown do
+    ErpAI::DefaultClient.default_client = @old_default_client
     Message.where(conversation: Conversation.where(user: @user)).delete_all if defined?(Message)
     Conversation.where(user: @user).delete_all if defined?(Conversation)
     Agent.where(id: @agent.id).delete_all if defined?(Agent) && @agent&.id
@@ -37,6 +49,7 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
     body = JSON.parse(response.body)
     assert_equal "inventory", body.fetch("conversation").fetch("module_name")
-    assert_match "数据不足", body.fetch("assistant_message").fetch("content")
+    assert_match "库存数据不足", body.fetch("assistant_message").fetch("content")
+    assert_equal({ "total_tokens" => 12 }, body.fetch("assistant_message").fetch("usage"))
   end
 end

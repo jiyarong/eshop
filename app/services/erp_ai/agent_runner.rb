@@ -43,6 +43,7 @@ module ErpAI
       permission_names = user.roles.flat_map(&:permissions).uniq.map(&:to_s).sort.join("、")
       [
         "当前用户角色和权限范围：#{role_names.presence || '无角色'}；#{permission_names.presence || '无权限'}",
+        "当前用户界面语言：#{I18n.locale}",
         "当前 ERP 模块：#{conversation.module_name.presence || '未指定'}",
         "当前页面对象：#{conversation.business_object_type.presence || '未指定'} #{conversation.business_object_id.presence || ''}".strip,
         "用户选择的时间范围：#{conversation.time_range.presence || '未指定'}",

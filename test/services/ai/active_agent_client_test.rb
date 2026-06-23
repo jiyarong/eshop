@@ -52,4 +52,25 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal "分析完成", result.fetch(:content)
     assert_equal({ "total_tokens" => 18 }, result.fetch(:usage))
   end
+
+  test "default client delegates to active agent client" do
+    old_default_client = ErpAI::DefaultClient.default_client
+    ErpAI::DefaultClient.default_client = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent)
+
+    result = ErpAI::DefaultClient.new.complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "翻译库存" }],
+      tools: []
+    )
+
+    params = FakeAgent.last_generation.params
+    assert_equal "custom-model", params.fetch(:model)
+    assert_equal "翻译库存", params.fetch(:messages).first.fetch(:content)
+    assert_equal "分析完成", result.fetch(:content)
+  ensure
+    ErpAI::DefaultClient.default_client = old_default_client
+  end
 end

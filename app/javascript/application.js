@@ -4,6 +4,7 @@ import DatePickerController from "./controllers/date_picker_controller";
 import FeedbackController from "./controllers/feedback_controller";
 import LongTextController from "./controllers/long_text_controller";
 import ModalController from "./controllers/modal_controller";
+import PageTranslationController from "./controllers/page_translation_controller";
 import ProductTreeController from "./controllers/product_tree_controller";
 import ShellController from "./controllers/shell_controller";
 
@@ -12,5 +13,6 @@ Stimulus.register("date-picker", DatePickerController);
 Stimulus.register("feedback", FeedbackController);
 Stimulus.register("long-text", LongTextController);
 Stimulus.register("modal", ModalController);
+Stimulus.register("page-translation", PageTranslationController);
 Stimulus.register("product-tree", ProductTreeController);
 Stimulus.register("shell", ShellController);

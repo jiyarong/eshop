@@ -112,6 +112,35 @@
                 <% end %>
               </nav>
               <% if user_signed_in? %>
+                <div
+                  class="page-translation-controls"
+                  data-controller="page-translation"
+                  data-page-translation-target-locale-value="<%= I18n.locale %>"
+                  data-page-translation-ignore>
+                  <button
+                    class="page-translation-controls__button"
+                    type="button"
+                    data-page-translation-target="translateButton"
+                    data-action="page-translation#translate"
+                    data-loading-label="<%= t("page_translation.loading") %>"
+                    data-done-label="<%= t("page_translation.done") %>"
+                    data-error-label="<%= t("page_translation.error") %>"><%= t("page_translation.translate") %></button>
+                  <button
+                    class="page-translation-controls__button"
+                    type="button"
+                    data-page-translation-target="originalButton"
+                    data-action="page-translation#showOriginal"
+                    disabled><%= t("page_translation.original") %></button>
+                  <button
+                    class="page-translation-controls__button"
+                    type="button"
+                    data-page-translation-target="translationButton"
+                    data-action="page-translation#showTranslation"
+                    disabled><%= t("page_translation.translation") %></button>
+                  <span class="page-translation-controls__status" data-page-translation-target="status"></span>
+                </div>
+              <% end %>
+              <% if user_signed_in? %>
                 <div class="hd-divider" aria-hidden="true"></div>
                 <details class="erp-account-menu">
                   <summary>

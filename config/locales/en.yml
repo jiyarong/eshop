@@ -43,6 +43,13 @@ en:
     zh: "中"
     en: "EN"
     ru: "RU"
+  page_translation:
+    translate: "Translate"
+    original: "Original"
+    translation: "Translation"
+    loading: "Translating"
+    done: "Translated"
+    error: "Translation failed"
   auth:
     title: "Sign in · Yuanlong ERP"
     aside_label: "System overview"

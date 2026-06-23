@@ -14,6 +14,13 @@ zh:
     zh: "中"
     en: "EN"
     ru: "RU"
+  page_translation:
+    translate: "翻译"
+    original: "原文"
+    translation: "译文"
+    loading: "翻译中"
+    done: "已翻译"
+    error: "翻译失败"
   auth:
     title: "登录 · 辕隆 ERP"
     aside_label: "系统概览"

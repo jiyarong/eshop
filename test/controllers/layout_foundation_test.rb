@@ -39,6 +39,11 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".locale-switcher__link[aria-current='page']", text: "中"
     assert_select "a.locale-switcher__link[href*='locale=en']", text: "EN"
     assert_select "a.locale-switcher__link[href*='locale=ru']", text: "RU"
+    assert_select ".page-translation-controls[data-controller='page-translation']"
+    assert_select ".page-translation-controls[data-page-translation-target-locale-value='zh']"
+    assert_select "button[data-action='page-translation#translate']", text: "翻译"
+    assert_select "button[data-action='page-translation#showOriginal']", text: "原文"
+    assert_select "button[data-action='page-translation#showTranslation']", text: "译文"
     assert_select ".erp-account-menu"
     assert_select ".erp-account-menu__email", text: @current_user.email
     assert_select ".erp-account-menu__panel a", text: "修改密码"
@@ -68,6 +73,8 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
 
     assert_no_match(/import\s+["'][^"']+\.css["']/, js)
     assert_includes css, '@import "flatpickr/dist/flatpickr.css";'
+    assert_includes js, 'import PageTranslationController from "./controllers/page_translation_controller";'
+    assert_includes js, 'Stimulus.register("page-translation", PageTranslationController);'
   end
 
   test "locale switcher supports russian and persists selected locale" do
@@ -108,6 +115,7 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".erp-topbar", 0
     assert_select ".auth-layout"
     assert_select ".auth-locale .locale-switcher[aria-label='Language']"
+    assert_select ".page-translation-controls", 0
     assert_select ".auth-locale .locale-switcher__link[aria-current='page']", text: "EN"
     assert_select "a.locale-switcher__link[href*='locale=zh']", text: "中"
     assert_select "a.locale-switcher__link[href*='locale=ru']", text: "RU"

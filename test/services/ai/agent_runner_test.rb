@@ -57,17 +57,20 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   test "injects ERP context and query-only tools into LLM request" do
     client = FakeClient.new
 
-    ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client).ask(
-      question: "分析库存异常",
-      module_name: "inventory",
-      time_range: { "from" => "2026-05-01", "to" => "2026-05-31" },
-      data_summary: "库存数据摘要"
-    )
+    I18n.with_locale(:ru) do
+      ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client).ask(
+        question: "分析库存异常",
+        module_name: "inventory",
+        time_range: { "from" => "2026-05-01", "to" => "2026-05-31" },
+        data_summary: "库存数据摘要"
+      )
+    end
 
     request = client.request
     assert_equal "fake-model", request.fetch(:model)
     assert_equal 0.3, request.fetch(:temperature)
     assert_includes request.fetch(:system_prompt), "嵌入 ERP 系统的业务分析 AI Agent"
+    assert_includes request.fetch(:context), "当前用户界面语言：ru"
     assert_includes request.fetch(:context), "当前 ERP 模块：inventory"
     assert_includes request.fetch(:context), "当前用户角色和权限范围"
     assert_includes request.fetch(:context), "库存数据摘要"

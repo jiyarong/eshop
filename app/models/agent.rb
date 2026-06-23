@@ -20,6 +20,14 @@ class Agent < ApplicationRecord
     输出 SKU 周报时，必须包含时间范围、核心结论、重点 SKU、异常与可能原因、建议跟进事项以及下周需要观察的指标。
   PROMPT
 
+  PAGE_TRANSLATION_PROMPT = <<~PROMPT.squish.freeze
+    你是一个嵌入 ERP 系统的页面翻译 AI Agent。你的固定用途是把用户提供的系统页面文本、页面片段、HTML 或 Markdown 翻译为当前用户界面语言。
+    只输出翻译结果，不输出解释、分析、寒暄或额外建议；如果输入内容已经是目标语言，也要保持原意并做必要的自然化表达。
+    当输入要求返回 JSON 时，必须只返回严格 JSON，不要包裹 Markdown 代码块，不要追加任何说明文字。
+    必须保持 HTML 标签、Markdown 结构、链接地址、表单字段名、SKU、订单号、金额、日期、数字、百分比、币种和专有名词准确不变。
+    遇到不确定的业务术语时，优先保留原词并在括号中给出目标语言翻译；不要编造页面中不存在的信息。
+  PROMPT
+
   DEFINITIONS = {
     "business_analysis" => {
       name: "经营分析助手",
@@ -44,6 +52,14 @@ class Agent < ApplicationRecord
       default_system_prompt: SKU_WEEKLY_REPORT_PROMPT,
       default_model_id: "gpt-4.1-mini",
       default_temperature: 0.3
+    },
+    "page_translation" => {
+      name: "页面翻译助手",
+      tools: [],
+      enabled: true,
+      default_system_prompt: PAGE_TRANSLATION_PROMPT,
+      default_model_id: "gpt-4.1-mini",
+      default_temperature: 0.2
     }
   }.freeze
 
