@@ -11,8 +11,10 @@ module RawWb
     ].freeze
 
     def self.run(days: nil, sync_keys: nil)
-      SyncRunLock.with_lock(LOCK_NAME, wait: false, logger: Rails.logger) do
-        super(days: days, sync_keys: sync_keys)
+      Time.use_zone("Europe/Moscow") do
+        SyncRunLock.with_lock(LOCK_NAME, wait: false, logger: Rails.logger) do
+          super(days: days, sync_keys: sync_keys)
+        end
       end
     end
   end
