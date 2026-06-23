@@ -205,7 +205,7 @@ class WeeklyProfitReportsController < ApplicationController
     end
   end
 
-  def default_period(today = Date.current)
+  def default_period(today = user_today)
     this_monday = today.beginning_of_week(:monday)
     [(this_monday - 7.days).to_s, (this_monday - 1.day).to_s]
   end

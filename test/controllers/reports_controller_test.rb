@@ -241,8 +241,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       external_order_number: "SECOND-SALE-#{@sku_code}",
       order_key: "ozon:#{@sales_store.id}:SECOND-SALE-#{@sku_code}",
       order_status: "delivered",
-      ordered_at: Time.zone.parse("2026-06-08 16:00:00"),
-      synced_at: Time.zone.parse("2026-06-08 16:10:00")
+      ordered_at: Time.zone.parse("2026-06-08 08:00:00"),
+      synced_at: Time.zone.parse("2026-06-08 08:10:00")
     )
     @second_sku_order.items.create!(
       platform: "ozon",
@@ -312,6 +312,19 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "7"
     assert_select "td", "16"
     assert_select "td", "23"
+  end
+
+  test "inventory report renders synced times in current user time zone" do
+    @current_user.update!(time_zone: "Europe/Moscow")
+    sign_in @current_user
+    @inventory_snapshot.update!(synced_at: Time.utc(2026, 5, 30, 10, 0, 0))
+    @inventory_total.update!(synced_at: Time.utc(2026, 5, 30, 10, 0, 0))
+
+    get "/reports/inventory", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", "2026-05-30 13:00"
+    assert_select "td", { text: "2026-05-30 10:00", count: 0 }
   end
 
   test "skus report renders sku master data" do
@@ -784,6 +797,104 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "2026-06-08"
     assert_select "td", "3"
     assert_select "td", { text: @second_sku.sku_code, count: 0 }
+  end
+
+  test "sku sales report filters date range in current user time zone" do
+    boundary_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "REPORT-TZ-#{@sku_code}",
+      external_order_number: "REPORT-TZ-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:REPORT-TZ-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.utc(2026, 6, 1, 16, 30, 0),
+      synced_at: Time.utc(2026, 6, 1, 16, 35, 0)
+    )
+    boundary_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "REPORT-TZ-I-#{@sku_code}",
+      platform_sku_id: "3902460130",
+      offer_id: "OFFER-#{@sku_code}",
+      product_name_source: "用户时区边界商品",
+      quantity: 7,
+      unit_price: 100,
+      payout: 700,
+      commission_amount: 70,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-02",
+      to_date: "2026-06-02"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", "2026-06-02"
+    assert_select "td", "7"
+
+    @current_user.update!(time_zone: "UTC")
+    sign_in @current_user
+
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-02",
+      to_date: "2026-06-02"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", { text: "2026-06-02", count: 0 }
+    assert_select "td", { text: "7", count: 0 }
+  ensure
+    boundary_order&.items&.delete_all
+    boundary_order&.destroy
+  end
+
+  test "sku sales report groups periods in current user time zone" do
+    boundary_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "REPORT-GROUP-TZ-#{@sku_code}",
+      external_order_number: "REPORT-GROUP-TZ-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:REPORT-GROUP-TZ-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.utc(2026, 6, 1, 16, 30, 0),
+      synced_at: Time.utc(2026, 6, 1, 16, 35, 0)
+    )
+    boundary_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "REPORT-GROUP-TZ-I-#{@sku_code}",
+      platform_sku_id: "3902460130",
+      offer_id: "OFFER-#{@sku_code}",
+      product_name_source: "用户时区分组商品",
+      quantity: 7,
+      unit_price: 100,
+      payout: 700,
+      commission_amount: 70,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-01",
+      to_date: "2026-06-02"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_match(/2026-06-02.*?<td>7<\/td>/m, response.body)
+  ensure
+    boundary_order&.items&.delete_all
+    boundary_order&.destroy
   end
 
   test "sku sales report localizes visible chrome in english" do

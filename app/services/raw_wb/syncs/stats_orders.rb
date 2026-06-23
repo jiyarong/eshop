@@ -72,7 +72,7 @@ module RawWb
       end
 
       def stats_order_update_cols
-        %i[last_change_date warehouse_type is_cancel cancel_date synced_at]
+        %i[last_change_date order_date warehouse_type is_cancel cancel_date synced_at]
       end
     end
   end

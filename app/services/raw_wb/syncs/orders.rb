@@ -74,7 +74,7 @@ module RawWb
           order_uid srid delivery_type nm_id chrt_id article barcode
           supplier_status wb_status price converted_price currency_code
           wb_office required_meta optional_meta buyer_info is_zero_order
-          updated_at synced_at
+          updated_at synced_at created_at
         ]
       end
     end

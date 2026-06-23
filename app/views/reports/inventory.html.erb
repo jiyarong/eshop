@@ -29,7 +29,7 @@
               <td><%= snapshot.supply %></td>
               <td><%= snapshot.sold %></td>
               <td><%= snapshot.fbs %></td>
-              <td><%= snapshot.synced_at&.strftime("%Y-%m-%d %H:%M") %></td>
+              <td><%= display_time(snapshot.synced_at) %></td>
             </tr>
           <% end %>
         </tbody>
@@ -67,7 +67,7 @@
               <td><%= total.total_fbs %></td>
               <td><%= total.blr_warehouse %></td>
               <td><%= total.total_available %></td>
-              <td><%= total.synced_at&.strftime("%Y-%m-%d %H:%M") %></td>
+              <td><%= display_time(total.synced_at) %></td>
             </tr>
           <% end %>
         </tbody>

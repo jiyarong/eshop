@@ -56,6 +56,37 @@ class ApplicationController < ActionController::Base
     User.profile_time_zone(current_user&.time_zone)
   end
 
+  def user_today
+    Time.current.in_time_zone(user_time_zone).to_date
+  end
+
+  def parse_user_date(value)
+    return if value.blank?
+
+    Date.iso8601(value.to_s)
+  rescue Date::Error, ArgumentError
+    nil
+  end
+
+  def time_in_user_zone(value, boundary)
+    date = parse_user_date(value)
+    return unless date
+
+    time_for_user_date(date).public_send(boundary)
+  end
+
+  def user_date_range(from_date, to_date)
+    time_for_user_date(from_date).beginning_of_day..time_for_user_date(to_date).end_of_day
+  end
+
+  def user_time_zone_sql
+    ActiveRecord::Base.connection.quote(user_time_zone.tzinfo.name)
+  end
+
+  def time_for_user_date(date)
+    user_time_zone.local(date.year, date.month, date.day)
+  end
+
   def require_permission!(permission)
     return if can?(permission)
 

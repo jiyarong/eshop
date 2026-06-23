@@ -20,7 +20,7 @@ class ReportsController < ApplicationController
 
   def new_sku_predicted_cost
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @predicted_cost = @sku.predicted_costs.new(cost_currency: "CNY", effective_from: Time.zone.today)
+    @predicted_cost = @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
     render :new_sku_predicted_cost_modal
   end
 
@@ -45,8 +45,8 @@ class ReportsController < ApplicationController
   def sku_sales
     @period = params[:period].presence_in(%w[day week month]) || "day"
     @grain = params[:grain].presence_in(%w[store platform sku]) || "store"
-    @from_date = parse_report_date(params[:from_date]) || 30.days.ago.to_date
-    @to_date = parse_report_date(params[:to_date]) || Time.zone.today
+    @from_date = parse_report_date(params[:from_date]) || (user_today - 30.days)
+    @to_date = parse_report_date(params[:to_date]) || user_today
     @stores = Ec::Store.order(:platform, :store_name)
     @skus = Ec::Sku.order(:sku_code)
     @selected_sku_codes = selected_sku_codes
@@ -70,10 +70,10 @@ class ReportsController < ApplicationController
     @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
-    @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: Time.zone.today)
+    @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
-    @overview_from_date = 30.days.ago.to_date
-    @overview_to_date = Time.zone.today
+    @overview_from_date = user_today - 30.days
+    @overview_to_date = user_today
     @overview_rows = sku_detail_sales_rows(
       sku_products: @sku_products,
       from_date: @overview_from_date,
@@ -86,7 +86,7 @@ class ReportsController < ApplicationController
     load_sku_inventory_overview if @active_tab == "inventory"
 
     @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
-    @to_date = parse_report_date(params[:to_date]) || Time.zone.today
+    @to_date = parse_report_date(params[:to_date]) || user_today
     @period = params[:period].presence_in(%w[day week month]) || "day"
     @grain = params[:grain].presence_in(%w[store platform sku]) || "store"
     @selected_platform = params[:platform].presence_in(Ec::Order::PLATFORMS.values)
@@ -127,8 +127,8 @@ class ReportsController < ApplicationController
   def parse_report_date(value)
     return if value.blank?
 
-    Date.parse(value.to_s)
-  rescue ArgumentError
+    Date.iso8601(value.to_s)
+  rescue Date::Error, ArgumentError
     nil
   end
 
@@ -213,7 +213,7 @@ class ReportsController < ApplicationController
           END
       SQL
       .joins("LEFT JOIN ec_skus ON ec_skus.sku_code = COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code)")
-      .where(ec_orders: { ordered_at: from_date.beginning_of_day..to_date.end_of_day })
+      .where(ec_orders: { ordered_at: user_date_range(from_date, to_date) })
     if !sku_product_ids.nil?
       scope = scope.where(ec_sku_products: { id: sku_product_ids })
     elsif sku_codes.present?
@@ -222,7 +222,8 @@ class ReportsController < ApplicationController
     scope = scope.where(ec_order_items: { platform: platform }) if platform.present?
     scope = scope.where(ec_order_items: { store_id: store_id }) if store_id.present?
 
-    period_sql = period == "range" ? "'#{from_date}'::date" : "DATE_TRUNC('#{period}', ec_orders.ordered_at)"
+    ordered_at_in_user_zone_sql = "(ec_orders.ordered_at AT TIME ZONE 'UTC') AT TIME ZONE #{user_time_zone_sql}"
+    period_sql = period == "range" ? "'#{from_date}'::date" : "DATE_TRUNC('#{period}', #{ordered_at_in_user_zone_sql})"
     sku_sql = "COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code, ec_order_items.offer_id, ec_order_items.platform_sku_id)"
     platform_sql = grain == "sku" ? "NULL" : "ec_order_items.platform"
     store_sql = grain == "store" ? "ec_stores.store_name" : "NULL"

@@ -72,8 +72,8 @@ class OrdersController < ApplicationController
     end_of_day_key = :"#{attribute}_lteq_end_of_day"
     end_key = :"#{attribute}_lteq"
 
-    query[start_key] = time_in_selected_zone(query[start_key], :beginning_of_day)
-    query[end_key] ||= time_in_selected_zone(query[end_of_day_key], :end_of_day)
+    query[start_key] = time_in_user_zone(query[start_key], :beginning_of_day)
+    query[end_key] ||= time_in_user_zone(query[end_of_day_key], :end_of_day)
     query.delete(end_of_day_key)
   end
 
@@ -95,21 +95,6 @@ class OrdersController < ApplicationController
       delivered: rows.fetch("delivered", 0),
       closed: rows.fetch("cancelled", 0) + rows.fetch("returned", 0)
     }
-  end
-
-  def parse_date(value)
-    return if value.blank?
-
-    Date.parse(value.to_s)
-  rescue ArgumentError
-    nil
-  end
-
-  def time_in_selected_zone(value, boundary)
-    date = parse_date(value)
-    return unless date
-
-    @order_time_zone.local(date.year, date.month, date.day).public_send(boundary)
   end
 
   def order_status_label(status)
