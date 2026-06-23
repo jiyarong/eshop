@@ -17,8 +17,20 @@ class BusinessAnalysisAgent < ActiveAgent::Base
       model: params.fetch(:model),
       temperature: params.fetch(:temperature)
     }
-    options[:reasoning_effort] = "medium" if params.fetch(:thinking_enabled)
+    if deepseek_model?(options[:model])
+      options[:request_options] = {
+        extra_body: {
+          thinking: { type: params.fetch(:thinking_enabled) ? "enabled" : "disabled" }
+        }
+      }
+    end
 
     prompt(*messages, **options)
+  end
+
+  private
+
+  def deepseek_model?(model)
+    model.to_s.start_with?("deepseek")
   end
 end

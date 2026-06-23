@@ -38,9 +38,9 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
     assert_equal "系统提示词\n\nERP 上下文", generation.messages.first.fetch(:content)
   end
 
-  test "adds thinking option only when enabled" do
+  test "sets DeepSeek thinking request option from agent configuration" do
     enabled_generation = BusinessAnalysisAgent.with(
-      model: "custom-model",
+      model: "deepseek-chat",
       temperature: 0.2,
       system_prompt: "系统提示词",
       context: "ERP 上下文",
@@ -50,6 +50,22 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
     ).analyze
 
     disabled_generation = BusinessAnalysisAgent.with(
+      model: "deepseek-chat",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "分析库存" }],
+      tools: [],
+      thinking_enabled: false
+    ).analyze
+
+    assert_equal({ thinking: { type: "enabled" } }, enabled_generation.options.dig(:request_options, :extra_body))
+    assert_equal({ thinking: { type: "disabled" } }, disabled_generation.options.dig(:request_options, :extra_body))
+    assert_not enabled_generation.options.key?(:reasoning_effort)
+  end
+
+  test "does not send DeepSeek thinking option to non DeepSeek models" do
+    generation = BusinessAnalysisAgent.with(
       model: "custom-model",
       temperature: 0.2,
       system_prompt: "系统提示词",
@@ -59,7 +75,6 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
       thinking_enabled: false
     ).analyze
 
-    assert_equal "medium", enabled_generation.options.fetch(:reasoning_effort)
-    assert_not disabled_generation.options.key?(:reasoning_effort)
+    assert_not generation.options.key?(:request_options)
   end
 end

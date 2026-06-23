@@ -11,7 +11,7 @@ const bundle = await build({
   write: false,
 });
 
-const [{ collectTextNodes, parseTranslationContent, applyTranslations, restoreOriginalText }] = await Promise.all(
+const [{ collectTextNodes, parseTranslationContent, applyTranslations, restoreOriginalText, translationStateLabel }] = await Promise.all(
   bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)),
 );
 
@@ -94,4 +94,26 @@ test("parseTranslationContent accepts only translation arrays", () => {
   assert.deepEqual(parseTranslationContent('[{"id":"t0","text":"Inventory"}]'), [{ id: "t0", text: "Inventory" }]);
   assert.throws(() => parseTranslationContent("数据不足：当前系统尚未配置可用的 AI 模型客户端。"));
   assert.throws(() => parseTranslationContent('{"id":"t0","text":"Inventory"}'));
+});
+
+test("parseTranslationContent accepts wrapped translation responses", () => {
+  assert.deepEqual(
+    parseTranslationContent('{"translations":[{"id":"t0","text":"Inventory"}]}'),
+    [{ id: "t0", text: "Inventory" }],
+  );
+});
+
+test("translationStateLabel maps AI translation state to visible summary text", () => {
+  const labels = {
+    idleLabel: "未翻译",
+    loadingLabel: "翻译中",
+    doneLabel: "已翻译",
+    errorLabel: "翻译失败",
+  };
+
+  assert.equal(translationStateLabel(labels, "idle"), "未翻译");
+  assert.equal(translationStateLabel(labels, "loading"), "翻译中");
+  assert.equal(translationStateLabel(labels, "done"), "已翻译");
+  assert.equal(translationStateLabel(labels, "error"), "翻译失败");
+  assert.equal(translationStateLabel(labels, "unknown"), "");
 });

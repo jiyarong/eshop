@@ -210,7 +210,96 @@ a {
   min-width: 0;
 }
 
-.locale-switcher {
+.topbar-dropdown {
+  position: relative;
+}
+
+.topbar-dropdown summary {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--erp-border);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: var(--erp-surface-soft);
+  color: var(--erp-text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.topbar-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.topbar-dropdown summary:hover,
+.topbar-dropdown[open] summary {
+  border-color: #cbd5e1;
+  background: #fff;
+}
+
+.topbar-dropdown summary i {
+  color: var(--erp-muted);
+  font-size: 12px;
+}
+
+.topbar-dropdown__label {
+  color: var(--erp-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.topbar-dropdown__value {
+  color: var(--erp-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.topbar-dropdown__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 72;
+  min-width: 190px;
+  border: 1px solid var(--erp-border);
+  border-radius: 7px;
+  padding: 6px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.14);
+}
+
+.topbar-dropdown__item {
+  width: 100%;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--erp-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.topbar-dropdown__item:hover:not(:disabled) {
+  color: var(--erp-text);
+  background: #eef2f7;
+  text-decoration: none;
+}
+
+.topbar-dropdown__item:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.auth-locale .locale-switcher {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -240,51 +329,72 @@ a {
   background: #eef2f7;
 }
 
-.locale-switcher__link[aria-current="page"] {
-  background: var(--erp-sidebar);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(24, 34, 53, 0.12);
+.locale-switcher__link[aria-current="page"],
+.locale-switcher__item[aria-current="page"] {
+  background: #eef2ff;
+  color: #4338ca;
 }
 
 .page-translation-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 32px;
-  padding: 3px;
-  border: 1px solid var(--erp-border);
-  border-radius: 7px;
-  background: var(--erp-surface-soft);
+  min-width: 134px;
+}
+
+.page-translation-controls summary {
+  padding-left: 9px;
+}
+
+.page-translation-controls__copy {
+  display: grid;
+  gap: 1px;
+  line-height: 1.1;
+}
+
+.page-translation-controls__title {
+  color: var(--erp-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.page-translation-controls__summary-status {
+  color: var(--erp-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.page-translation-controls[data-translation-state="loading"] summary {
+  border-color: #818cf8;
+  background: #eef2ff;
+}
+
+.page-translation-controls[data-translation-state="done"] .page-translation-controls__summary-status {
+  color: #047857;
+}
+
+.page-translation-controls[data-translation-state="error"] .page-translation-controls__summary-status {
+  color: #b91c1c;
 }
 
 .page-translation-controls__button {
-  min-height: 26px;
-  border: 0;
-  border-radius: 5px;
-  padding: 0 8px;
-  background: transparent;
-  color: var(--erp-muted);
-  font: inherit;
+  justify-content: flex-start;
   font-size: 12px;
-  font-weight: 750;
-  cursor: pointer;
 }
 
-.page-translation-controls__button:hover:not(:disabled) {
-  color: var(--erp-text);
-  background: #eef2f7;
+.page-translation-controls__button i {
+  width: 14px;
+  color: var(--erp-muted);
 }
 
-.page-translation-controls__button:disabled {
-  cursor: default;
-  opacity: 0.55;
+.page-translation-controls__panel {
+  min-width: 206px;
 }
 
 .page-translation-controls__status {
-  max-width: 88px;
+  display: block;
+  min-height: 20px;
+  margin: 4px 6px 0;
   overflow: hidden;
   color: var(--erp-muted);
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1642,7 +1752,7 @@ body {
   font-size: 18px;
 }
 
-.locale-switcher {
+.auth-locale .locale-switcher {
   border-color: var(--border);
   border-radius: var(--radius-sm);
   background: #fff;
@@ -2492,7 +2602,7 @@ body.erp-shell .erp-topbar__mobile-menu:hover {
   color: #0f172a;
 }
 
-body.erp-shell .locale-switcher {
+body.erp-shell .auth-locale .locale-switcher {
   background: #fff;
   border-color: #e2e8f0;
 }

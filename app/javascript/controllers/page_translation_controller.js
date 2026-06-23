@@ -38,7 +38,8 @@ export function restoreOriginalText(entries) {
 }
 
 export function parseTranslationContent(content) {
-  const translations = JSON.parse(content);
+  const parsedContent = JSON.parse(content);
+  const translations = Array.isArray(parsedContent) ? parsedContent : parsedContent?.translations;
   if (!Array.isArray(translations)) throw new Error("Translation content must be an array");
 
   translations.forEach((translation) => {
@@ -48,6 +49,10 @@ export function parseTranslationContent(content) {
   });
 
   return translations;
+}
+
+export function translationStateLabel(labels, state) {
+  return labels?.[`${state}Label`] || "";
 }
 
 function walkTextNodes(node, visit) {
@@ -85,11 +90,12 @@ export default class extends Controller {
     targetLocale: String,
   };
 
-  static targets = ["translateButton", "originalButton", "translationButton", "status"];
+  static targets = ["translateButton", "originalButton", "translationButton", "status", "summary", "summaryStatus"];
 
   connect() {
     this.entries = [];
     this.translations = [];
+    this.setState("idle");
   }
 
   async translate() {
@@ -97,6 +103,7 @@ export default class extends Controller {
     if (this.entries.length === 0) return;
 
     this.setBusy(true);
+    this.setState("loading");
     this.setStatus(this.translateButtonTarget.dataset.loadingLabel);
 
     try {
@@ -104,8 +111,10 @@ export default class extends Controller {
       this.translations = translations;
       applyTranslations(this.entries, this.translations);
       this.setMode("translation");
+      this.setState("done");
       this.setStatus(this.translateButtonTarget.dataset.doneLabel);
     } catch (_error) {
+      this.setState("error");
       this.setStatus(this.translateButtonTarget.dataset.errorLabel);
     } finally {
       this.setBusy(false);
@@ -163,5 +172,12 @@ export default class extends Controller {
 
   setStatus(text) {
     if (this.hasStatusTarget) this.statusTarget.textContent = text || "";
+  }
+
+  setState(state) {
+    this.element.dataset.translationState = state;
+    if (!this.hasSummaryStatusTarget) return;
+
+    this.summaryStatusTarget.textContent = translationStateLabel(this.summaryStatusTarget.dataset, state);
   }
 }

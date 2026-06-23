@@ -106,39 +106,76 @@
               <span class="erp-topbar__heading"><%= content_for?(:page_heading) ? yield(:page_heading) : t("app.name") %></span>
             </div>
             <div class="hd-right erp-topbar__actions">
-              <nav class="locale-switcher" aria-label="<%= t("locale.switcher_label") %>">
-                <% available_locales.each do |locale| %>
-                  <%= link_to t("locale.#{locale}"), locale_path.call(locale), class: "locale-switcher__link", aria: (I18n.locale == locale ? { current: "page" } : nil) %>
-                <% end %>
-              </nav>
+              <details class="topbar-dropdown locale-switcher" aria-label="<%= t("locale.switcher_label") %>">
+                <summary>
+                  <span class="topbar-dropdown__label"><%= t("locale.switcher_label") %></span>
+                  <span class="topbar-dropdown__value"><%= t("locale.#{I18n.locale}") %></span>
+                  <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <div class="topbar-dropdown__panel locale-switcher__panel">
+                  <% available_locales.each do |locale| %>
+                    <%= link_to locale_path.call(locale), class: "topbar-dropdown__item locale-switcher__item", aria: (I18n.locale == locale ? { current: "page" } : nil) do %>
+                      <span><%= t("locale.names.#{locale}") %></span>
+                      <% if I18n.locale == locale %>
+                        <i class="bi bi-check2" aria-hidden="true"></i>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                </div>
+              </details>
               <% if user_signed_in? %>
-                <div
-                  class="page-translation-controls"
+                <details
+                  class="topbar-dropdown page-translation-controls"
                   data-controller="page-translation"
                   data-page-translation-target-locale-value="<%= I18n.locale %>"
                   data-page-translation-ignore>
+                  <summary data-page-translation-target="summary">
+                    <i class="bi bi-translate" aria-hidden="true"></i>
+                    <span class="page-translation-controls__copy">
+                      <span class="page-translation-controls__title"><%= t("page_translation.title") %></span>
+                      <span
+                        class="page-translation-controls__summary-status"
+                        data-page-translation-target="summaryStatus"
+                        data-idle-label="<%= t("page_translation.idle") %>"
+                        data-loading-label="<%= t("page_translation.loading") %>"
+                        data-done-label="<%= t("page_translation.done") %>"
+                        data-error-label="<%= t("page_translation.error") %>"><%= t("page_translation.idle") %></span>
+                    </span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                  </summary>
+                  <div class="topbar-dropdown__panel page-translation-controls__panel">
                   <button
-                    class="page-translation-controls__button"
+                    class="topbar-dropdown__item page-translation-controls__button"
                     type="button"
                     data-page-translation-target="translateButton"
                     data-action="page-translation#translate"
                     data-loading-label="<%= t("page_translation.loading") %>"
                     data-done-label="<%= t("page_translation.done") %>"
-                    data-error-label="<%= t("page_translation.error") %>"><%= t("page_translation.translate") %></button>
+                    data-error-label="<%= t("page_translation.error") %>">
+                    <i class="bi bi-stars" aria-hidden="true"></i>
+                    <span><%= t("page_translation.translate") %></span>
+                  </button>
                   <button
-                    class="page-translation-controls__button"
+                    class="topbar-dropdown__item page-translation-controls__button"
                     type="button"
                     data-page-translation-target="originalButton"
                     data-action="page-translation#showOriginal"
-                    disabled><%= t("page_translation.original") %></button>
+                    disabled>
+                    <i class="bi bi-file-text" aria-hidden="true"></i>
+                    <span><%= t("page_translation.original") %></span>
+                  </button>
                   <button
-                    class="page-translation-controls__button"
+                    class="topbar-dropdown__item page-translation-controls__button"
                     type="button"
                     data-page-translation-target="translationButton"
                     data-action="page-translation#showTranslation"
-                    disabled><%= t("page_translation.translation") %></button>
+                    disabled>
+                    <i class="bi bi-translate" aria-hidden="true"></i>
+                    <span><%= t("page_translation.translation") %></span>
+                  </button>
                   <span class="page-translation-controls__status" data-page-translation-target="status"></span>
-                </div>
+                  </div>
+                </details>
               <% end %>
               <% if user_signed_in? %>
                 <div class="hd-divider" aria-hidden="true"></div>
