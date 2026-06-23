@@ -44,6 +44,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "编辑 AI Agent"
     assert_select "input[name='agent[model_id]'][value=?]", @agent.model_id
     assert_select "input[name='agent[temperature]'][value=?]", @agent.temperature.to_s
+    assert_select "input[name='agent[thinking_enabled]'][type='checkbox']"
     assert_select "textarea[name='agent[system_prompt]']"
     assert_select "input[name='agent[name]']", false
     assert_select "input[name='agent[tools]']", false
@@ -60,7 +61,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
         tools: ["router"],
         system_prompt: "自定义补货分析提示词",
         model_id: "deepseek-chat",
-        temperature: "0.45"
+        temperature: "0.45",
+        thinking_enabled: "1"
       }
     }
 
@@ -72,6 +74,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "自定义补货分析提示词", @agent.system_prompt
     assert_equal "deepseek-chat", @agent.model_id
     assert_equal 0.45, @agent.temperature.to_f
+    assert @agent.thinking_enabled?
   end
 
   test "super admin can update tunable fields with browser post fallback" do
@@ -81,7 +84,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
       agent: {
         system_prompt: "POST 表单提交提示词",
         model_id: "deepseek-chat",
-        temperature: "0.35"
+        temperature: "0.35",
+        thinking_enabled: "0"
       }
     }
 
@@ -90,5 +94,6 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "POST 表单提交提示词", @agent.system_prompt
     assert_equal "deepseek-chat", @agent.model_id
     assert_equal 0.35, @agent.temperature.to_f
+    assert_not @agent.thinking_enabled?
   end
 end

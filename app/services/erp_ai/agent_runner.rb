@@ -20,6 +20,7 @@ module ErpAI
       response = client.complete(
         model: agent.model_id,
         temperature: agent.temperature.to_f,
+        thinking_enabled: agent.thinking_enabled?,
         system_prompt: agent.system_prompt,
         context: build_context(conversation, data_summary),
         messages: conversation.messages.order(:created_at, :id).map { |message| serialize_message(message) },

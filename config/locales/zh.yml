@@ -89,6 +89,7 @@ zh:
       other: "其他"
   common:
     actions:
+      back: "返回"
       cancel: "取消"
       close: "关闭"
       save: "保存"
@@ -98,6 +99,21 @@ zh:
       ozon: "Ozon"
       wb: "WB"
     "yes": "是"
+  admin:
+    agents:
+      edit:
+        title: "编辑 AI Agent"
+      fields:
+        model_id: "模型"
+        name: "名称"
+        status: "状态"
+        system_prompt: "提示词"
+        temperature: "Temperature"
+        thinking_enabled: "启用 Thinking"
+        tools: "工具"
+      statuses:
+        disabled: "停用"
+        enabled: "启用"
   orders:
     actions:
       back_to_orders: "返回订单中心"

@@ -13,10 +13,12 @@ class BusinessAnalysisAgent < ActiveAgent::Base
       *params.fetch(:messages)
     ]
 
-    prompt(
-      *messages,
+    options = {
       model: params.fetch(:model),
       temperature: params.fetch(:temperature)
-    )
+    }
+    options[:reasoning_effort] = "medium" if params.fetch(:thinking_enabled)
+
+    prompt(*messages, **options)
   end
 end

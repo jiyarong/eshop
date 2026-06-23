@@ -21,7 +21,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
       password_confirmation: "password123"
     )
     @agent = Agent.ensure_fixed!("business_analysis")
-    @agent.update!(model_id: "fake-model", temperature: 0.3)
+    @agent.update!(model_id: "fake-model", temperature: 0.3, thinking_enabled: true)
   end
 
   teardown do
@@ -69,6 +69,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     request = client.request
     assert_equal "fake-model", request.fetch(:model)
     assert_equal 0.3, request.fetch(:temperature)
+    assert_equal true, request.fetch(:thinking_enabled)
     assert_includes request.fetch(:system_prompt), "嵌入 ERP 系统的业务分析 AI Agent"
     assert_includes request.fetch(:context), "当前用户界面语言：ru"
     assert_includes request.fetch(:context), "当前 ERP 模块：inventory"

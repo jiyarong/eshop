@@ -1,15 +1,15 @@
-<h1 class="page-title">编辑 AI Agent</h1>
+<h1 class="page-title"><%= t("admin.agents.edit.title") %></h1>
 
 <section class="panel">
   <dl class="summary-list">
     <dt>Code</dt>
     <dd><%= @agent.code %></dd>
-    <dt>名称</dt>
+    <dt><%= t("admin.agents.fields.name") %></dt>
     <dd><%= @agent.name %></dd>
-    <dt>工具</dt>
+    <dt><%= t("admin.agents.fields.tools") %></dt>
     <dd><%= @agent.tools.join(" / ") %></dd>
-    <dt>状态</dt>
-    <dd><%= @agent.enabled? ? "启用" : "停用" %></dd>
+    <dt><%= t("admin.agents.fields.status") %></dt>
+    <dd><%= @agent.enabled? ? t("admin.agents.statuses.enabled") : t("admin.agents.statuses.disabled") %></dd>
   </dl>
 
   <%= form_with model: @agent, url: admin_agent_path(@agent.code), method: :patch do |form| %>
@@ -22,23 +22,27 @@
     <div class="report-stack">
       <div class="report-form">
         <div class="field">
-          <%= form.label :model_id, "模型" %>
+          <%= form.label :model_id, t("admin.agents.fields.model_id") %>
           <%= form.text_field :model_id %>
         </div>
         <div class="field">
-          <%= form.label :temperature, "Temperature" %>
+          <%= form.label :temperature, t("admin.agents.fields.temperature") %>
           <%= form.number_field :temperature, min: 0, max: 1, step: 0.01 %>
+        </div>
+        <div class="field">
+          <%= form.label :thinking_enabled, t("admin.agents.fields.thinking_enabled") %>
+          <%= form.check_box :thinking_enabled %>
         </div>
       </div>
 
       <div class="field">
-        <%= form.label :system_prompt, "提示词" %>
+        <%= form.label :system_prompt, t("admin.agents.fields.system_prompt") %>
         <%= form.text_area :system_prompt, rows: 18 %>
       </div>
 
       <div class="report-form">
-        <%= form.submit "保存", class: "button" %>
-        <%= link_to "返回", admin_agents_path, class: "button" %>
+        <%= form.submit t("common.actions.save"), class: "button" %>
+        <%= link_to t("common.actions.back"), admin_agents_path, class: "button" %>
       </div>
     </div>
   <% end %>

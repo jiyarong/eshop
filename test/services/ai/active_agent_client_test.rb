@@ -38,7 +38,8 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
       system_prompt: "系统提示词",
       context: "ERP 上下文",
       messages: [{ role: "user", content: "分析库存" }],
-      tools: [{ name: "query_inventory_data" }]
+      tools: [{ name: "query_inventory_data" }],
+      thinking_enabled: true
     )
 
     params = FakeAgent.last_generation.params
@@ -49,6 +50,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal "ERP 上下文", params.fetch(:context)
     assert_equal [{ role: "user", content: "分析库存" }], params.fetch(:messages)
     assert_equal [{ name: "query_inventory_data" }], params.fetch(:tools)
+    assert_equal true, params.fetch(:thinking_enabled)
     assert_equal "分析完成", result.fetch(:content)
     assert_equal({ "total_tokens" => 18 }, result.fetch(:usage))
   end
@@ -63,12 +65,14 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
       system_prompt: "系统提示词",
       context: "ERP 上下文",
       messages: [{ role: "user", content: "翻译库存" }],
-      tools: []
+      tools: [],
+      thinking_enabled: false
     )
 
     params = FakeAgent.last_generation.params
     assert_equal "custom-model", params.fetch(:model)
     assert_equal "翻译库存", params.fetch(:messages).first.fetch(:content)
+    assert_equal false, params.fetch(:thinking_enabled)
     assert_equal "分析完成", result.fetch(:content)
   ensure
     ErpAI::DefaultClient.default_client = old_default_client

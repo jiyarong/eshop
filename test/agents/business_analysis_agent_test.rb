@@ -11,7 +11,8 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
         { role: "user", content: "分析库存" },
         { role: "assistant", content: "已有结论" }
       ],
-      tools: []
+      tools: [],
+      thinking_enabled: false
     ).analyze
 
     assert_equal [
@@ -29,10 +30,36 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
       system_prompt: "系统提示词",
       context: "ERP 上下文",
       messages: [{ role: "user", content: "分析库存" }],
-      tools: []
+      tools: [],
+      thinking_enabled: false
     ).analyze
 
     assert_equal ["system", "user"], generation.messages.map { |message| message.fetch(:role) }
     assert_equal "系统提示词\n\nERP 上下文", generation.messages.first.fetch(:content)
+  end
+
+  test "adds thinking option only when enabled" do
+    enabled_generation = BusinessAnalysisAgent.with(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "分析库存" }],
+      tools: [],
+      thinking_enabled: true
+    ).analyze
+
+    disabled_generation = BusinessAnalysisAgent.with(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "分析库存" }],
+      tools: [],
+      thinking_enabled: false
+    ).analyze
+
+    assert_equal "medium", enabled_generation.options.fetch(:reasoning_effort)
+    assert_not disabled_generation.options.key?(:reasoning_effort)
   end
 end

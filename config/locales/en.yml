@@ -117,6 +117,7 @@ en:
       other: "Other"
   common:
     actions:
+      back: "Back"
       cancel: "Cancel"
       close: "Close"
       save: "Save"
@@ -126,6 +127,21 @@ en:
       ozon: "Ozon"
       wb: "WB"
     "yes": "Yes"
+  admin:
+    agents:
+      edit:
+        title: "Edit AI Agent"
+      fields:
+        model_id: "Model"
+        name: "Name"
+        status: "Status"
+        system_prompt: "Prompt"
+        temperature: "Temperature"
+        thinking_enabled: "Enable Thinking"
+        tools: "Tools"
+      statuses:
+        disabled: "Disabled"
+        enabled: "Enabled"
   orders:
     actions:
       back_to_orders: "Back to orders"

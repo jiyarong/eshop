@@ -8,6 +8,7 @@ module ErpAI
       response = agent_class.with(
         model: request.fetch(:model),
         temperature: request.fetch(:temperature),
+        thinking_enabled: request.fetch(:thinking_enabled),
         system_prompt: request.fetch(:system_prompt),
         context: request.fetch(:context),
         messages: request.fetch(:messages),

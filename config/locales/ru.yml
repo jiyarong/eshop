@@ -88,6 +88,7 @@ ru:
       other: "Другое"
   common:
     actions:
+      back: "Назад"
       cancel: "Отмена"
       close: "Закрыть"
       save: "Сохранить"
@@ -97,6 +98,21 @@ ru:
       ozon: "Ozon"
       wb: "WB"
     "yes": "Да"
+  admin:
+    agents:
+      edit:
+        title: "Редактировать AI Agent"
+      fields:
+        model_id: "Модель"
+        name: "Название"
+        status: "Статус"
+        system_prompt: "Промпт"
+        temperature: "Temperature"
+        thinking_enabled: "Включить Thinking"
+        tools: "Инструменты"
+      statuses:
+        disabled: "Отключен"
+        enabled: "Включен"
   orders:
     actions:
       back_to_orders: "Назад к заказам"

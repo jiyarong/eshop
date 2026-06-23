@@ -29,7 +29,7 @@ module Admin
     end
 
     def agent_params
-      params.require(:agent).permit(:system_prompt, :model_id, :temperature)
+      params.require(:agent).permit(:system_prompt, :model_id, :temperature, :thinking_enabled)
     end
   end
 end
