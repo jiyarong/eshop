@@ -215,9 +215,11 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", { text: "源子状态", count: 0 }
     assert_select "th", { text: "处理时间", count: 0 }
     assert_select "th", "SKU已关联？"
+    assert_select "th", "履约模式"
     assert_select "td", { text: "delivering", count: 0 }
     assert_select "td", { text: "posting_on_way_to_city", count: 0 }
     assert_select "td", "是"
+    assert_select "td", "FBO"
     assert_select "td", "配送中" do |elements|
       assert_equal "源状态: delivering\n源子状态: posting_on_way_to_city", elements.first["title"]
     end
@@ -248,8 +250,10 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select ".summary-label", "Orders"
     assert_select ".summary-label", "Processing"
     assert_select "th", "Platform"
+    assert_select "th", "Fulfillment mode"
     assert_select "th", "Platform order number"
     assert_select "td", "Shipped"
+    assert_select "td", "FBO"
     assert_select "a[href=?]", "/orders/#{@order.id}", "View details"
   end
 

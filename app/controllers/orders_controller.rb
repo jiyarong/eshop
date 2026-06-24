@@ -3,7 +3,7 @@ class OrdersController < ApplicationController
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
                 :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
-                :order_sku_linked?
+                :order_sku_linked?, :order_fulfillment_types
   before_action -> { require_permission!(:view_reports) }
 
   def index
@@ -107,6 +107,11 @@ class OrdersController < ApplicationController
 
   def fulfillment_label(value)
     value.to_s.upcase.presence || "-"
+  end
+
+  def order_fulfillment_types(order)
+    labels = order.fulfillments.map(&:fulfillment_type).compact_blank.uniq.map { |type| fulfillment_label(type) }
+    labels.presence&.join(" / ") || "-"
   end
 
   def display_value(value)

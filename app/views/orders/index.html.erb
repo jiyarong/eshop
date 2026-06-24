@@ -104,6 +104,7 @@
                 <th><%= t("orders.fields.platform") %></th>
                 <th><%= t("orders.fields.store") %></th>
                 <th><%= t("orders.fields.status") %></th>
+                <th><%= t("orders.fields.fulfillment_mode") %></th>
                 <th><%= t("orders.fields.external_order_number") %></th>
                 <th><%= t("orders.fields.ordered_at") %></th>
                 <th><%= t("orders.fields.sku_linked") %></th>
@@ -119,6 +120,7 @@
                   <td><%= platform_label(order.platform) %></td>
                   <td><%= order.store.store_name %></td>
                   <td title="<%= order_status_title(order) %>"><%= order_status_label(order.order_status) %></td>
+                  <td><%= order_fulfillment_types(order) %></td>
                   <td>
                     <% if platform_order_url(order).present? %>
                       <%= link_to truncated_order_number(order), platform_order_url(order), title: display_value(order.external_order_number), target: "_blank", rel: "noopener" %>

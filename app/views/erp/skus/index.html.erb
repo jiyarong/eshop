@@ -86,9 +86,9 @@
           <% master_sku = entry[:master_sku] %>
           <% skus = entry[:skus] %>
           <% batch_total = skus.sum { |sku| sku.batches.size } %>
-          <tr class="master open">
+          <tr class="master">
             <td>
-              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= master_sku.master_sku_code %>" aria-label="<%= t("erp.common.actions.collapse_named", name: master_sku.master_sku_code) %>" aria-expanded="true">
+              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= master_sku.master_sku_code %>" aria-label="<%= t("erp.common.actions.expand_named", name: master_sku.master_sku_code) %>" aria-expanded="false">
                 <i class="bi bi-chevron-down" aria-hidden="true"></i>
               </button>
             </td>
@@ -117,7 +117,7 @@
               </div>
             </td>
           </tr>
-          <tr class="sub-row">
+          <tr class="sub-row" hidden>
             <td colspan="8">
               <div class="sub-shell">
                 <div class="sub-h">
@@ -140,9 +140,9 @@
                         <% batches = sku.batches.sort_by { |batch| [batch.received_on || Date.new(1900, 1, 1), batch.id || 0] }.reverse.first(10) %>
                         <% purchased_quantity = sku.batches.sum(&:purchased_quantity) %>
                         <% received_quantity = sku.batches.sum(&:received_quantity) %>
-                        <tr class="sku-row open">
+                        <tr class="sku-row">
                           <td>
-                            <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleSku" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.collapse_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="true">
+                            <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleSku" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.expand_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="false">
                               <i class="bi bi-chevron-down" aria-hidden="true"></i>
                             </button>
                             <%= link_to sku.sku_code, erp_sku_path(sku), class: "code-text sub" %>
@@ -168,7 +168,7 @@
                             </div>
                           </td>
                         </tr>
-                        <tr class="batch-row">
+                        <tr class="batch-row" hidden>
                           <td colspan="6">
                             <div class="batch-shell">
                               <div class="batch-h">
@@ -233,9 +233,9 @@
 
         <% @orphan_skus.each do |sku| %>
           <% batches = sku.batches.sort_by { |batch| [batch.received_on || Date.new(1900, 1, 1), batch.id || 0] }.reverse.first(10) %>
-          <tr class="master open">
+          <tr class="master">
             <td>
-              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.collapse_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="true">
+              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.expand_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="false">
                 <i class="bi bi-chevron-down" aria-hidden="true"></i>
               </button>
             </td>
@@ -266,7 +266,7 @@
             </td>
           </tr>
           <% if batches.any? %>
-            <tr class="batch-row">
+            <tr class="batch-row" hidden>
               <td colspan="8">
                 <div class="batch-shell batch-shell--orphan">
                   <div class="batch-h">
