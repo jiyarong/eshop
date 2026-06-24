@@ -10,6 +10,29 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
     def get(*)
       @response
     end
+
+    def post(*)
+      { "orders" => [] }
+    end
+  end
+
+  class FakeWbOrderStatusClient
+    attr_reader :post_calls
+
+    def initialize(get_response:, status_response:)
+      @get_response = get_response
+      @status_response = status_response
+      @post_calls = []
+    end
+
+    def get(*)
+      @get_response
+    end
+
+    def post(*args)
+      @post_calls << args
+      @status_response
+    end
   end
 
   class FakeOzonClient
@@ -199,6 +222,198 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
 
     assert_equal 1, result[:ok]
     assert_equal "Склад продавца", RawWb::Order.find_by!(wb_order_id: 2_001).warehouse_type
+  ensure
+    RawWb::Order.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  test "wb orders sync refreshes statuses after importing orders" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-status-refresh-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    RawWb::Order.create!(
+      account: account,
+      wb_order_id: 2_101,
+      srid: "rid-2101",
+      delivery_type: "fbs",
+      supplier_status: "new",
+      wb_status: "waiting",
+      created_at: Time.zone.parse("2026-06-01 10:00:00"),
+      updated_at: Time.zone.parse("2026-06-01 10:00:00")
+    )
+    client = FakeWbOrderStatusClient.new(
+      get_response: {
+        "orders" => [wb_order_payload(2_101)],
+        "next" => 0
+      },
+      status_response: {
+        "orders" => [
+          { "id" => 2_101, "supplierStatus" => "complete", "wbStatus" => "sold" }
+        ]
+      }
+    )
+    sync = RawWb::OrderIncrementalSync.new(account, days: 2)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_orders
+
+    assert_equal [
+      [:marketplace, "/api/v3/orders/status", { orders: [2_101] }]
+    ], client.post_calls
+    order = RawWb::Order.find_by!(account: account, wb_order_id: 2_101)
+    assert_equal "complete", order.supplier_status
+    assert_equal "sold", order.wb_status
+  ensure
+    RawWb::Order.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  test "wb orders sync refreshes linked ec order statuses" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-ec-status-refresh-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    store = Ec::Store.create!(
+      platform: "wb",
+      store_name: "wb-ec-status-store-#{token}",
+      company_type: "small",
+      wb_raw_account_id: account.id,
+      is_active: true
+    )
+    raw_order = RawWb::Order.create!(
+      account: account,
+      wb_order_id: 2_151,
+      srid: "rid-2151",
+      delivery_type: "fbs",
+      supplier_status: "confirm",
+      wb_status: "waiting",
+      created_at: Time.zone.parse("2026-06-01 10:00:00"),
+      updated_at: Time.zone.parse("2026-06-01 10:00:00"),
+      synced_at: Time.zone.parse("2026-06-01 10:05:00")
+    )
+    ec_order = Ec::Order.create!(
+      platform: "wb",
+      store: store,
+      order_key: "wb:#{store.id}:#{raw_order.srid}",
+      external_order_id: raw_order.srid,
+      external_order_number: raw_order.srid,
+      order_status: "processing",
+      source_status: "waiting",
+      source_substatus: "confirm"
+    )
+    fulfillment = Ec::OrderFulfillment.create!(
+      platform: "wb",
+      store: store,
+      order: ec_order,
+      external_fulfillment_id: raw_order.wb_order_id.to_s,
+      fulfillment_key: "wb:#{store.id}:#{raw_order.wb_order_id}",
+      fulfillment_type: "fbs",
+      status: "processing",
+      source_status: "waiting",
+      source_substatus: "confirm",
+      raw_source_type: "RawWb::Order",
+      raw_source_id: raw_order.id
+    )
+    Ec::OrderSourceLink.create!(
+      order: ec_order,
+      fulfillment: fulfillment,
+      platform: "wb",
+      source_type: "RawWb::Order",
+      source_id: raw_order.id,
+      source_role: "primary",
+      source_key: raw_order.wb_order_id.to_s
+    )
+    client = FakeWbOrderStatusClient.new(
+      get_response: {
+        "orders" => [],
+        "next" => 0
+      },
+      status_response: {
+        "orders" => [
+          { "id" => 2_151, "supplierStatus" => "complete", "wbStatus" => "sold" }
+        ]
+      }
+    )
+    sync = RawWb::OrderIncrementalSync.new(account, days: 2)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_orders
+
+    ec_order.reload
+    fulfillment.reload
+    assert_equal "delivered", ec_order.order_status
+    assert_equal "sold", ec_order.source_status
+    assert_equal "complete", ec_order.source_substatus
+    assert_equal "delivered", fulfillment.status
+    assert_equal "sold", fulfillment.source_status
+    assert_equal "complete", fulfillment.source_substatus
+  ensure
+    Ec::OrderSourceLink.where(order_id: ec_order&.id).delete_all
+    Ec::OrderFulfillment.where(order_id: ec_order&.id).delete_all
+    Ec::Order.where(id: ec_order&.id).delete_all
+    Ec::Store.where(id: store&.id).delete_all
+    RawWb::Order.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  test "wb orders sync skips final statuses when refreshing statuses" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-final-status-skip-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    RawWb::Order.create!(
+      account: account,
+      wb_order_id: 2_201,
+      srid: "rid-2201",
+      delivery_type: "fbs",
+      supplier_status: "confirm",
+      wb_status: "waiting",
+      created_at: Time.zone.parse("2026-06-01 10:00:00"),
+      updated_at: Time.zone.parse("2026-06-01 10:00:00")
+    )
+    RawWb::Order.create!(
+      account: account,
+      wb_order_id: 2_202,
+      srid: "rid-2202",
+      delivery_type: "fbs",
+      supplier_status: "complete",
+      wb_status: "sold",
+      created_at: Time.zone.parse("2026-06-01 10:00:00"),
+      updated_at: Time.zone.parse("2026-06-01 10:00:00")
+    )
+    client = FakeWbOrderStatusClient.new(
+      get_response: {
+        "orders" => [],
+        "next" => 0
+      },
+      status_response: {
+        "orders" => [
+          { "id" => 2_201, "supplierStatus" => "complete", "wbStatus" => "sold" },
+          { "id" => 2_202, "supplierStatus" => "new", "wbStatus" => "waiting" }
+        ]
+      }
+    )
+    sync = RawWb::OrderIncrementalSync.new(account, days: 2)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_orders
+
+    assert_equal [
+      [:marketplace, "/api/v3/orders/status", { orders: [2_201] }]
+    ], client.post_calls
+    processing_order = RawWb::Order.find_by!(account: account, wb_order_id: 2_201)
+    final_order = RawWb::Order.find_by!(account: account, wb_order_id: 2_202)
+    assert_equal "complete", processing_order.supplier_status
+    assert_equal "sold", processing_order.wb_status
+    assert_equal "complete", final_order.supplier_status
+    assert_equal "sold", final_order.wb_status
   ensure
     RawWb::Order.where(account_id: account&.id).delete_all
     RawWb::SellerAccount.where(id: account&.id).delete_all
