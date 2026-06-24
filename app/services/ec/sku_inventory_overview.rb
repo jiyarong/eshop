@@ -66,12 +66,11 @@ module Ec
     def order_rows
       @order_rows ||= begin
         rows = Hash.new { |hash, key| hash[key] = { sales_quantity: 0 } }
-        condition_sql = order_item_match_sql
-        return rows if condition_sql.blank?
 
         Ec::OrderItem
           .joins(:order, :store)
-          .where(condition_sql)
+          .joins(order_item_sku_product_join_sql)
+          .where(ec_sku_products: { sku_code: @sku.sku_code })
           .where.not(ec_orders: { order_status: "cancelled" })
           .select(
             "ec_order_items.platform",
@@ -91,23 +90,17 @@ module Ec
       end
     end
 
-    def order_item_match_sql
-      predicates = ["ec_order_items.sku_code = #{ActiveRecord::Base.connection.quote(@sku.sku_code)}"]
-      @sku.sku_products.each do |product|
-        ids = [product.product_id, product.platform_sku_id, product.offer_id].compact_blank.uniq
-        next if ids.empty?
-
-        quoted_ids = ids.map { |value| ActiveRecord::Base.connection.quote(value.to_s) }.join(", ")
-        predicates << ActiveRecord::Base.sanitize_sql_array(
-          [
-            "(ec_order_items.platform = ? AND ec_order_items.store_id = ? AND (ec_order_items.platform_sku_id IN (#{quoted_ids}) OR ec_order_items.offer_id IN (#{quoted_ids})))",
-            product.platform,
-            product.store_id
-          ]
-        )
-      end
-
-      predicates.join(" OR ")
+    def order_item_sku_product_join_sql
+      <<~SQL.squish
+        INNER JOIN ec_sku_products
+          ON ec_sku_products.store_id = ec_order_items.store_id
+         AND ec_sku_products.platform = ec_order_items.platform
+         AND (
+           (ec_order_items.platform = 'ozon' AND ec_sku_products.platform_sku_id = ec_order_items.platform_sku_id)
+           OR
+           (ec_order_items.platform = 'wb' AND ec_sku_products.product_id = ec_order_items.platform_sku_id)
+         )
+      SQL
     end
 
     def return_rows

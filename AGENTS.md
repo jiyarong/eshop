@@ -155,6 +155,17 @@ cd frontend
 - 工作区经常存在无关脏改动，例如 `.idea/`、`config/database.yml`、根目录 `node_modules/`、`docs/` 临时文件、`yarn.lock`。不要回滚或提交这些无关改动。
 - 提交时只 `git add` 本次任务相关路径。
 
+## 订单与 SKU 关联策略
+
+- 订单报表、库存销量、SKU 销量等统计逻辑不要用 `ec_order_items.sku_code` 作为 SKU 归属依据。
+- SKU 与订单商品的归属应从 `ec_sku_products` 硬关联：
+  - 先通过 `ec_sku_products.sku_code` 确定内部 SKU。
+  - 必须同时限定 `ec_sku_products.store_id = ec_order_items.store_id` 和 `ec_sku_products.platform = ec_order_items.platform`。
+  - Ozon 使用 `ec_sku_products.platform_sku_id = ec_order_items.platform_sku_id`。
+  - WB 使用 `ec_sku_products.product_id = ec_order_items.platform_sku_id`。
+- `ec_order_items.sku_code` 可能由导入流程写入，但只能作为冗余展示/排查线索；报表统计不能用它兜底匹配，避免未绑定或误绑定商品被算入 SKU。
+- `offer_id` 不参与订单到 SKU 的报表统计归属匹配，除非后续业务明确重新定义绑定规则。
+
 ## 实现风格
 
 - 变更保持小而直接，优先复用现有 `Ec::*` 业务服务和数据库模型。

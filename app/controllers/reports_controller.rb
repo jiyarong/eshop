@@ -139,13 +139,12 @@ class ReportsController < ApplicationController
 
   def wb_sales_by_fulfillment(sku)
     rows = Hash.new(0)
-    condition_sql = inventory_order_item_match_sql(sku, platform: "wb")
-    return rows if condition_sql.blank?
 
     Ec::OrderItem
       .joins(:order)
       .left_joins(:fulfillment)
-      .where(condition_sql)
+      .joins(order_item_sku_product_join_sql)
+      .where(ec_sku_products: { sku_code: sku.sku_code })
       .where(ec_order_items: { platform: "wb" })
       .where.not(ec_orders: { order_status: %w[cancelled returned] })
       .group("COALESCE(ec_order_fulfillments.fulfillment_type, 'unknown')")
@@ -157,23 +156,17 @@ class ReportsController < ApplicationController
     rows
   end
 
-  def inventory_order_item_match_sql(sku, platform:)
-    predicates = ["ec_order_items.sku_code = #{ActiveRecord::Base.connection.quote(sku.sku_code)}"]
-    sku.sku_products.select { |product| product.platform == platform }.each do |product|
-      ids = [product.product_id, product.platform_sku_id, product.offer_id].compact_blank.uniq
-      next if ids.empty?
-
-      quoted_ids = ids.map { |value| ActiveRecord::Base.connection.quote(value.to_s) }.join(", ")
-      predicates << ActiveRecord::Base.sanitize_sql_array(
-        [
-          "(ec_order_items.platform = ? AND ec_order_items.store_id = ? AND (ec_order_items.platform_sku_id IN (#{quoted_ids}) OR ec_order_items.offer_id IN (#{quoted_ids})))",
-          product.platform,
-          product.store_id
-        ]
-      )
-    end
-
-    predicates.join(" OR ")
+  def order_item_sku_product_join_sql
+    <<~SQL.squish
+      INNER JOIN ec_sku_products
+        ON ec_sku_products.store_id = ec_order_items.store_id
+       AND ec_sku_products.platform = ec_order_items.platform
+       AND (
+         (ec_order_items.platform = 'ozon' AND ec_sku_products.platform_sku_id = ec_order_items.platform_sku_id)
+         OR
+         (ec_order_items.platform = 'wb' AND ec_sku_products.product_id = ec_order_items.platform_sku_id)
+       )
+    SQL
   end
 
   def inventory_sku_filter_pattern
@@ -309,38 +302,20 @@ class ReportsController < ApplicationController
     scope = Ec::OrderItem
       .joins(:order, :store)
       .left_joins(:fulfillment)
-      .joins(<<~SQL.squish)
-        LEFT JOIN ec_sku_products ON ec_sku_products.store_id = ec_order_items.store_id
-          AND ec_sku_products.product_id = CASE
-            WHEN ec_order_items.platform = 'ozon' THEN (
-              SELECT raw_ozon_products.ozon_product_id::text
-              FROM raw_ozon_products
-              JOIN ec_stores product_stores ON product_stores.ozon_raw_account_id = raw_ozon_products.account_id
-              WHERE product_stores.id = ec_order_items.store_id
-                AND (
-                  raw_ozon_products.ozon_product_id::text = ec_order_items.platform_sku_id
-                  OR raw_ozon_products.raw_json ->> 'sku' = ec_order_items.platform_sku_id
-                  OR raw_ozon_products.offer_id = ec_order_items.offer_id
-                )
-              ORDER BY raw_ozon_products.id
-              LIMIT 1
-            )
-            ELSE COALESCE(ec_order_items.platform_sku_id, ec_order_items.offer_id)
-          END
-      SQL
-      .joins("LEFT JOIN ec_skus ON ec_skus.sku_code = COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code)")
+      .joins(order_item_sku_product_join_sql)
+      .joins("LEFT JOIN ec_skus ON ec_skus.sku_code = ec_sku_products.sku_code")
       .where(ec_orders: { ordered_at: user_date_range(from_date, to_date) })
     if !sku_product_ids.nil?
       scope = scope.where(ec_sku_products: { id: sku_product_ids })
     elsif sku_codes.present?
-      scope = scope.where("COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code) IN (:skus)", skus: sku_codes)
+      scope = scope.where(ec_sku_products: { sku_code: sku_codes })
     end
     scope = scope.where(ec_order_items: { platform: platform }) if platform.present?
     scope = scope.where(ec_order_items: { store_id: store_id }) if store_id.present?
 
     ordered_at_in_user_zone_sql = "(ec_orders.ordered_at AT TIME ZONE 'UTC') AT TIME ZONE #{user_time_zone_sql}"
     period_sql = period == "range" ? "'#{from_date}'::date" : "DATE_TRUNC('#{period}', #{ordered_at_in_user_zone_sql})"
-    sku_sql = "COALESCE(ec_sku_products.sku_code, ec_order_items.sku_code, ec_order_items.offer_id, ec_order_items.platform_sku_id)"
+    sku_sql = "ec_sku_products.sku_code"
     platform_sql = grain == "sku" ? "NULL" : "ec_order_items.platform"
     store_sql = grain == "store" ? "ec_stores.store_name" : "NULL"
     group_columns = ["period_start", sku_sql]

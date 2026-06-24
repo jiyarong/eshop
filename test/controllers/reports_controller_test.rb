@@ -497,6 +497,53 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">16<\/td>.*?<td class="numeric">8<\/td>.*?<td class="numeric">8<\/td>/m, response.body)
   end
 
+  test "inventory report wb fulfillment sales ignore sku code without sku product binding" do
+    fulfillment = @wb_sales_order.fulfillments.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_fulfillment_id: "WB-UNBOUND-F-#{@sku_code}",
+      fulfillment_key: "wb:#{@wb_sales_store.id}:WB-UNBOUND-F-#{@sku_code}",
+      fulfillment_type: "fbs",
+      status: "delivered"
+    )
+    unbound_order = Ec::Order.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_order_id: "WB-UNBOUND-SALE-#{@sku_code}",
+      external_order_number: "WB-UNBOUND-SALE-#{@sku_code}",
+      order_key: "wb:#{@wb_sales_store.id}:WB-UNBOUND-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-09 09:00:00"),
+      synced_at: Time.zone.parse("2026-06-09 09:10:00")
+    )
+    unbound_order.items.create!(
+      fulfillment: fulfillment,
+      platform: "wb",
+      store: @wb_sales_store,
+      external_item_id: "WB-UNBOUND-SALE-I-#{@sku_code}",
+      platform_sku_id: "WB-UNBOUND-#{@sku_code}",
+      offer_id: "WB-OFFER-#{@sku_code}",
+      sku_code: @sku.sku_code,
+      product_name_source: "未绑定 WB 履约商品",
+      quantity: 9,
+      unit_price: 50,
+      payout: 450,
+      commission_amount: 45,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+
+    get "/reports/inventory", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">0<\/td>.*?<td class="numeric">3<\/td>/m, response.body)
+    assert_select "td", { text: "9", count: 0 }
+  ensure
+    unbound_order&.items&.delete_all
+    unbound_order&.destroy
+    fulfillment&.destroy
+  end
+
   test "inventory report filters by sku query" do
     get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
 
@@ -875,6 +922,84 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "2026-06-22 10:00"
   ensure
     Ec::SkuBatch.where(batch_code: "INV-#{@sku_code}").delete_all
+  end
+
+  test "sku detail inventory overview counts order items linked by sku product ids" do
+    other_sku = Ec::Sku.create!(
+      sku_code: "OTHER-INV-#{@sku_code}",
+      product_name: "库存概况其他商品"
+    )
+    other_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "OTHER-INV-SALE-#{@sku_code}",
+      external_order_number: "OTHER-INV-SALE-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:OTHER-INV-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-04 10:00:00"),
+      synced_at: Time.zone.parse("2026-06-04 10:10:00")
+    )
+    other_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "OTHER-INV-SALE-I-#{@sku_code}",
+      platform_sku_id: "3902460130",
+      offer_id: "OFFER-#{@sku_code}",
+      sku_code: other_sku.sku_code,
+      product_name_source: "库存概况其他商品",
+      quantity: 9,
+      unit_price: 100,
+      payout: 900,
+      commission_amount: 90,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>11<\/td>/m, response.body)
+  ensure
+    other_order&.items&.delete_all
+    other_order&.destroy
+    Ec::Sku.with_deleted.where(sku_code: other_sku&.sku_code).delete_all
+  end
+
+  test "sku detail inventory overview ignores sku code without sku product id binding" do
+    unbound_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "UNBOUND-INV-SALE-#{@sku_code}",
+      external_order_number: "UNBOUND-INV-SALE-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:UNBOUND-INV-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-04 10:00:00"),
+      synced_at: Time.zone.parse("2026-06-04 10:10:00")
+    )
+    unbound_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "UNBOUND-INV-SALE-I-#{@sku_code}",
+      platform_sku_id: "UNBOUND-INV-#{@sku_code}",
+      offer_id: "UNBOUND-INV-OFFER-#{@sku_code}",
+      sku_code: @sku.sku_code,
+      product_name_source: "库存概况未绑定商品",
+      quantity: 9,
+      unit_price: 100,
+      payout: 900,
+      commission_amount: 90,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>2<\/td>/m, response.body)
+    assert_select "td", { text: "9", count: 0 }
+  ensure
+    unbound_order&.items&.delete_all
+    unbound_order&.destroy
   end
 
   test "sku detail inventory overview reads platform returns from raw return tables" do
