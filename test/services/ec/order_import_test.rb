@@ -321,6 +321,7 @@ module Ec
         barcode: "460000000099",
         total_price: 456.78,
         warehouse_name: "Stats Warehouse",
+        warehouse_type: "Склад WB",
         oblast: "Stats Region",
         nm_id: @wb_product.nm_id,
         srid: "WB-STATS-SRID-#{@token}",
@@ -338,6 +339,29 @@ module Ec
       assert_equal "WBSTATSONLY-#{@token}", stats_order.items.first.offer_id
       assert_equal BigDecimal("456.78"), stats_order.items.first.unit_price
       assert_equal @wb_sku.sku_code, stats_order.items.first.sku_code
+      assert_equal "fbw", stats_order.fulfillments.first.fulfillment_type
+    end
+
+    test "wb stats order import maps seller warehouse type to fbs fulfillment" do
+      RawWb::StatsOrder.create!(
+        account: @wb_account,
+        g_number: "WB-STATS-FBS-G-#{@token}",
+        order_date: Time.zone.parse("2026-06-08 10:00:00"),
+        last_change_date: Time.zone.parse("2026-06-08 10:30:00"),
+        supplier_article: "WBSTATSFBS-#{@token}",
+        barcode: "460000000098",
+        total_price: 123.45,
+        warehouse_name: "Seller Warehouse",
+        warehouse_type: "Склад продавца",
+        nm_id: @wb_product.nm_id,
+        srid: "WB-STATS-FBS-SRID-#{@token}",
+        synced_at: Time.zone.parse("2026-06-08 10:35:00")
+      )
+
+      Ec::OrderImport::Wb.new.call(synced_since: Time.zone.parse("2026-06-08 00:00:00"))
+
+      stats_order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-STATS-FBS-SRID-#{@token}")
+      assert_equal "fbs", stats_order.fulfillments.first.fulfillment_type
     end
 
     test "wb import lets stats orders overwrite matching raw order data" do

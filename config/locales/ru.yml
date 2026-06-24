@@ -211,6 +211,34 @@ ru:
       shipped: "В доставке"
       total: "Заказы"
   reports:
+    inventory:
+      empty: "Нет данных по складу"
+      fields:
+        belarus_available: "Доступно Беларусь"
+        book_stock: "Учетный остаток"
+        net_sales: "Чистые продажи"
+        ozon_fbo: "Ozon_FBO"
+        ozon_fbs: "Ozon_FBS"
+        ozon_return: "Возвраты Ozon"
+        ozon_sales: "Продажи Ozon"
+        platform_stock: "Остаток платформ"
+        purchase_quantity: "Закупка"
+        sku: "SKU"
+        synced_at: "Обновлено"
+        wb_fbs: "WB_FBS"
+        wb_fbs_available: "WB_FBS остаток"
+        wb_fbw: "WB_FBW"
+        wb_fbw_available: "WB_FBW остаток"
+        wb_net: "WB нетто"
+        wb_return: "Возвраты WB"
+      filters:
+        reset: "Сбросить"
+        sku: "SKU"
+        sku_placeholder: "Введите SKU"
+        submit: "Фильтр"
+      sections:
+        inventory_list: "Список склада"
+      title: "Отчет по складу"
     sku_detail:
       actions:
         add_predicted_cost: "Добавить прогнозную себестоимость"

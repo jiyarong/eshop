@@ -588,6 +588,19 @@ textarea {
   overflow-x: auto;
 }
 
+.inventory-list-table {
+  min-width: 1480px;
+}
+
+.inventory-list-table th,
+.inventory-list-table td {
+  padding: 8px 10px;
+}
+
+.inventory-list-table td.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
 .definition-list {
   display: grid;
   grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);

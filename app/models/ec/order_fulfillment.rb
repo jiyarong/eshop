@@ -4,6 +4,7 @@ module Ec
 
     FULFILLMENT_TYPES = {
       fbo: "fbo",
+      fbw: "fbw",
       fbs: "fbs",
       fba: "fba",
       fbm: "fbm",

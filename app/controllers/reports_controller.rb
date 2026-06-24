@@ -6,8 +6,8 @@ class ReportsController < ApplicationController
   SKU_DETAIL_TABS = %w[basic inventory costs stores trend].freeze
 
   def inventory
-    @snapshots = Ec::InventorySnapshot.includes(:sku).order(:sku_code, :platform, :account_id)
-    @totals = Ec::InventoryTotal.includes(:sku).order(:sku_code)
+    @sku_query = params[:sku].to_s.strip
+    @inventory_rows = build_inventory_rows
   end
 
   def skus
@@ -108,6 +108,96 @@ class ReportsController < ApplicationController
 
   def sku_predicted_cost_params
     params.require(:ec_sku_predicted_cost).permit(:cost_money, :cost_currency, :effective_from, :effective_to, :note)
+  end
+
+  def build_inventory_rows
+    inventory_skus_scope.includes(:batches, :sku_products, inventory_levels: :store).order(:sku_code).map do |sku|
+      overview = sku.inventory_overview
+      summary = overview[:summary]
+      store_rows = overview[:store_rows]
+      latest_levels = overview[:latest_levels]
+      wb_rows = store_rows.select { |row| row[:platform] == "wb" }
+      ozon_rows = store_rows.select { |row| row[:platform] == "ozon" }
+      wb_fulfillment_sales = wb_sales_by_fulfillment(sku)
+      wb_net = wb_rows.sum { |row| row[:sales_quantity] } - wb_rows.sum { |row| row[:return_quantity] }
+      ozon_sales = ozon_rows.sum { |row| row[:sales_quantity] }
+      ozon_return = ozon_rows.sum { |row| row[:return_quantity] }
+
+      {
+        sku_code: sku.sku_code,
+        purchase_quantity: summary[:received_quantity],
+        wb_fbs: wb_fulfillment_sales["fbs"],
+        wb_fbw: wb_fulfillment_sales["fbw"],
+        wb_return: wb_rows.sum { |row| row[:return_quantity] },
+        wb_net: wb_net,
+        ozon_sales: ozon_sales,
+        ozon_return: ozon_return,
+        net_sales: wb_net + ozon_sales - ozon_return,
+        book_stock: summary[:book_stock],
+        wb_fbw_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbw"),
+        wb_fbs_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbs"),
+        ozon_fbo: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbo"),
+        ozon_fbs: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbs"),
+        platform_stock: summary[:platform_stock],
+        belarus_available: summary[:available_stock]
+      }
+    end
+  end
+
+  def inventory_skus_scope
+    scope = Ec::Sku.all
+    return scope if @sku_query.blank?
+
+    scope.where("LOWER(sku_code) LIKE ?", inventory_sku_filter_pattern)
+  end
+
+  def latest_inventory_quantity(levels, platform:, fulfillment_type:)
+    levels.sum do |level|
+      level.platform == platform && level.fulfillment_type == fulfillment_type ? level.quantity : 0
+    end
+  end
+
+  def wb_sales_by_fulfillment(sku)
+    rows = Hash.new(0)
+    condition_sql = inventory_order_item_match_sql(sku, platform: "wb")
+    return rows if condition_sql.blank?
+
+    Ec::OrderItem
+      .joins(:order)
+      .left_joins(:fulfillment)
+      .where(condition_sql)
+      .where(ec_order_items: { platform: "wb" })
+      .where.not(ec_orders: { order_status: %w[cancelled returned] })
+      .group("COALESCE(ec_order_fulfillments.fulfillment_type, 'unknown')")
+      .sum(:quantity)
+      .each do |fulfillment_type, quantity|
+        rows[fulfillment_type.to_s] = quantity.to_i
+      end
+
+    rows
+  end
+
+  def inventory_order_item_match_sql(sku, platform:)
+    predicates = ["ec_order_items.sku_code = #{ActiveRecord::Base.connection.quote(sku.sku_code)}"]
+    sku.sku_products.select { |product| product.platform == platform }.each do |product|
+      ids = [product.product_id, product.platform_sku_id, product.offer_id].compact_blank.uniq
+      next if ids.empty?
+
+      quoted_ids = ids.map { |value| ActiveRecord::Base.connection.quote(value.to_s) }.join(", ")
+      predicates << ActiveRecord::Base.sanitize_sql_array(
+        [
+          "(ec_order_items.platform = ? AND ec_order_items.store_id = ? AND (ec_order_items.platform_sku_id IN (#{quoted_ids}) OR ec_order_items.offer_id IN (#{quoted_ids})))",
+          product.platform,
+          product.store_id
+        ]
+      )
+    end
+
+    predicates.join(" OR ")
+  end
+
+  def inventory_sku_filter_pattern
+    "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query.downcase)}%"
   end
 
   def load_sku_inventory_overview

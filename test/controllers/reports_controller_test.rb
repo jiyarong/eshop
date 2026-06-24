@@ -63,13 +63,47 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       synced_at: Time.zone.parse("2026-05-30 10:00")
     )
 
+    @inventory_ozon_snapshot = Ec::InventorySnapshot.create!(
+      sku_code: @sku.sku_code,
+      platform: "ozon",
+      account_id: 1,
+      store_name: "Nevastal",
+      stock: 4,
+      supply: 6,
+      sold: 2,
+      fbs: 3,
+      synced_at: Time.zone.parse("2026-05-30 11:00")
+    )
+
     @inventory_total = Ec::InventoryTotal.create!(
       sku_code: @sku.sku_code,
-      total_supply: 3,
-      total_stock: 7,
-      total_sold: 5,
-      total_fbs: 1,
+      total_supply: 9,
+      total_stock: 11,
+      total_sold: 7,
+      total_fbs: 4,
       total_received: 20,
+      synced_at: Time.zone.parse("2026-05-30 10:00")
+    )
+
+    @second_inventory_snapshot = Ec::InventorySnapshot.create!(
+      sku_code: @second_sku.sku_code,
+      platform: "wb",
+      account_id: 3,
+      store_name: "WorldChoice",
+      stock: 99,
+      supply: 100,
+      sold: 1,
+      fbs: 0,
+      synced_at: Time.zone.parse("2026-05-30 10:00")
+    )
+
+    @second_inventory_total = Ec::InventoryTotal.create!(
+      sku_code: @second_sku.sku_code,
+      total_supply: 100,
+      total_stock: 99,
+      total_sold: 1,
+      total_fbs: 0,
+      total_received: 100,
       synced_at: Time.zone.parse("2026-05-30 10:00")
     )
 
@@ -294,36 +328,198 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuPlatformCost.where(sku_code: @sku.sku_code).delete_all
     Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuPredictedCost)
     Ec::SkuCost.where(sku_code: @sku.sku_code).delete_all
+    Ec::SkuBatch.where(sku_code: [@sku.sku_code, @second_sku.sku_code]).delete_all if defined?(Ec::SkuBatch)
     Ec::InventorySnapshot.where(sku_code: @sku.sku_code).delete_all
     Ec::InventoryTotal.where(sku_code: @sku.sku_code).delete_all
+    Ec::InventorySnapshot.where(sku_code: @second_sku.sku_code).delete_all
+    Ec::InventoryTotal.where(sku_code: @second_sku.sku_code).delete_all
     @second_sku&.destroy
     @sku&.destroy
     UserRole.joins(:user).where("users.email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
     User.where("email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
   end
 
-  test "inventory report renders inventory snapshot and totals" do
+  test "inventory report renders inventory overview totals" do
+    wb_fbw_fulfillment = @wb_sales_order.fulfillments.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_fulfillment_id: "WB-SALE-F-#{@sku_code}",
+      fulfillment_key: "wb:#{@wb_sales_store.id}:WB-SALE-F-#{@sku_code}",
+      fulfillment_type: "fbw",
+      status: "delivered"
+    )
+    @wb_sales_order.items.update_all(fulfillment_id: wb_fbw_fulfillment.id)
+    wb_fbs_order = Ec::Order.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_order_id: "WB-FBS-SALE-#{@sku_code}",
+      external_order_number: "WB-FBS-SALE-#{@sku_code}",
+      order_key: "wb:#{@wb_sales_store.id}:WB-FBS-SALE-#{@sku_code}",
+      order_status: "delivered",
+      ordered_at: Time.zone.parse("2026-06-09 09:00:00"),
+      synced_at: Time.zone.parse("2026-06-09 09:10:00")
+    )
+    wb_fbs_fulfillment = wb_fbs_order.fulfillments.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_fulfillment_id: "WB-FBS-SALE-F-#{@sku_code}",
+      fulfillment_key: "wb:#{@wb_sales_store.id}:WB-FBS-SALE-F-#{@sku_code}",
+      fulfillment_type: "fbs",
+      status: "delivered"
+    )
+    wb_fbs_order.items.create!(
+      fulfillment: wb_fbs_fulfillment,
+      platform: "wb",
+      store: @wb_sales_store,
+      external_item_id: "WB-FBS-SALE-I-#{@sku_code}",
+      platform_sku_id: "123456",
+      offer_id: "WB-OFFER-#{@sku_code}",
+      product_name_source: "销量统计 WB FBS 测试商品",
+      quantity: 5,
+      unit_price: 50,
+      payout: 200,
+      commission_amount: 20,
+      discount_amount: 8,
+      currency_code: "BYN"
+    )
+    ozon_cancelled_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_order_id: "CANCEL-OZON-#{@sku_code}",
+      external_order_number: "CANCEL-OZON-#{@sku_code}",
+      order_key: "ozon:#{@sales_store.id}:CANCEL-OZON-#{@sku_code}",
+      order_status: "cancelled",
+      ordered_at: Time.zone.parse("2026-06-09 10:00:00"),
+      synced_at: Time.zone.parse("2026-06-09 10:10:00")
+    )
+    ozon_cancelled_order.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      external_item_id: "CANCEL-OZON-I-#{@sku_code}",
+      platform_sku_id: "3902460130",
+      offer_id: "OFFER-#{@sku_code}",
+      product_name_source: "取消 Ozon 测试商品",
+      quantity: 11,
+      unit_price: 100,
+      payout: 0,
+      commission_amount: 0,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+    wb_cancelled_order = Ec::Order.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      external_order_id: "CANCEL-WB-#{@sku_code}",
+      external_order_number: "CANCEL-WB-#{@sku_code}",
+      order_key: "wb:#{@wb_sales_store.id}:CANCEL-WB-#{@sku_code}",
+      order_status: "cancelled",
+      ordered_at: Time.zone.parse("2026-06-09 11:00:00"),
+      synced_at: Time.zone.parse("2026-06-09 11:10:00")
+    )
+    wb_cancelled_order.items.create!(
+      fulfillment: wb_cancelled_order.fulfillments.create!(
+        platform: "wb",
+        store: @wb_sales_store,
+        external_fulfillment_id: "CANCEL-WB-F-#{@sku_code}",
+        fulfillment_key: "wb:#{@wb_sales_store.id}:CANCEL-WB-F-#{@sku_code}",
+        fulfillment_type: "fbs",
+        status: "cancelled"
+      ),
+      platform: "wb",
+      store: @wb_sales_store,
+      external_item_id: "CANCEL-WB-I-#{@sku_code}",
+      platform_sku_id: "123456",
+      offer_id: "WB-OFFER-#{@sku_code}",
+      product_name_source: "取消 WB 测试商品",
+      quantity: 13,
+      unit_price: 50,
+      payout: 0,
+      commission_amount: 0,
+      discount_amount: 0,
+      currency_code: "BYN"
+    )
+    RawOzon::Return.create!(
+      account: @sales_ozon_account,
+      return_id: 30_000_000 + @sku_code.hash.abs % 1_000_000,
+      return_schema: "FBO",
+      return_type: "Return",
+      posting_number: "INV-OZON-RETURN-#{@sku_code}",
+      ozon_sku: 3_902_460_130,
+      offer_id: "OFFER-#{@sku_code}",
+      product_name: "Ozon 绑定商品",
+      quantity: 2,
+      raw_json: {},
+      synced_at: Time.zone.parse("2026-06-22 09:00:00")
+    )
+    Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "LIST-#{@sku_code}",
+      status: "received",
+      purchased_quantity: 30,
+      received_quantity: 24,
+      purchase_unit_price_cny: 1
+    )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
+      platform: "ozon",
+      account_id: @sales_ozon_account.id,
+      store_name: @sales_store.store_name,
+      store: @sales_store,
+      fulfillment_type: "fbo",
+      quantity: 8,
+      is_latest: true,
+      synced_at: User.profile_time_zone(@current_user.time_zone).local(2026, 6, 22, 10, 0),
+      metadata: {}
+    )
+
     get "/reports/inventory", headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "h1", "库存报表"
+    assert_select "th", "采购"
+    assert_select "th", "WB_FBW"
+    assert_select "th", "Ozon_FBO"
+    assert_select "th", "白俄可用"
+    assert_select "tbody tr", count: 2
     assert_select "td", @sku_code
-    assert_select "td", "TaxiLink"
-    assert_select "td", "7"
+    assert_select "a[href=?]", "/reports/skus/#{@sku_code}", @sku_code
+    assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">5<\/td>.*?<td class="numeric">3<\/td>.*?<td class="numeric">0<\/td>.*?<td class="numeric">8<\/td>.*?<td class="numeric">2<\/td>.*?<td class="numeric">2<\/td>.*?<td class="numeric">8<\/td>/m, response.body)
+    assert_select "td", "24"
     assert_select "td", "16"
-    assert_select "td", "23"
+    assert_select "td", "8"
   end
 
-  test "inventory report renders synced times in current user time zone" do
+  test "inventory report filters by sku query" do
+    get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[name='sku'][value=?]", @sku_code.downcase
+    assert_select "td", @sku_code
+    assert_select "td", { text: @second_sku_code, count: 0 }
+    assert_select "tbody tr", count: 1
+  end
+
+  test "inventory report does not render synced time column" do
     @current_user.update!(time_zone: "Europe/Moscow")
     sign_in @current_user
-    @inventory_snapshot.update!(synced_at: Time.utc(2026, 5, 30, 10, 0, 0))
-    @inventory_total.update!(synced_at: Time.utc(2026, 5, 30, 10, 0, 0))
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
+      platform: "ozon",
+      account_id: @sales_ozon_account.id,
+      store_name: @sales_store.store_name,
+      store: @sales_store,
+      fulfillment_type: "fbo",
+      quantity: 4,
+      is_latest: true,
+      synced_at: Time.utc(2026, 5, 30, 10, 0, 0),
+      metadata: {}
+    )
 
     get "/reports/inventory", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "td", "2026-05-30 13:00"
+    assert_select "th", { text: "同步时间", count: 0 }
+    assert_select "td", { text: "2026-05-30 13:00", count: 0 }
     assert_select "td", { text: "2026-05-30 10:00", count: 0 }
   end
 

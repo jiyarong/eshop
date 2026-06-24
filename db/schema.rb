@@ -1914,7 +1914,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_000001) do
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
-  add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code", name: "fk_rails_ec_sku_predicted_costs_sku_code"
   add_foreign_key "ec_sku_products", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_products", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"

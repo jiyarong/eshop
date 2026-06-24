@@ -240,6 +240,34 @@ en:
       shipped: "Shipped"
       total: "Orders"
   reports:
+    inventory:
+      empty: "No inventory data"
+      fields:
+        belarus_available: "Belarus available"
+        book_stock: "Book stock"
+        net_sales: "Net sales"
+        ozon_fbo: "Ozon_FBO"
+        ozon_fbs: "Ozon_FBS"
+        ozon_return: "Ozon returns"
+        ozon_sales: "Ozon sales"
+        platform_stock: "Platform stock"
+        purchase_quantity: "Purchased"
+        sku: "SKU"
+        synced_at: "Synced at"
+        wb_fbs: "WB_FBS"
+        wb_fbs_available: "WB_FBS stock"
+        wb_fbw: "WB_FBW"
+        wb_fbw_available: "WB_FBW stock"
+        wb_net: "WB net"
+        wb_return: "WB returns"
+      filters:
+        reset: "Reset"
+        sku: "SKU"
+        sku_placeholder: "Enter SKU"
+        submit: "Filter"
+      sections:
+        inventory_list: "Inventory List"
+      title: "Inventory Report"
     sku_detail:
       actions:
         add_predicted_cost: "Add predicted cost"

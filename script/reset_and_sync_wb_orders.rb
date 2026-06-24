@@ -104,3 +104,30 @@ puts "\n[#{elapsed(started_at)}] Rebuilding Ec::Order from WB raw data"
 imported = Ec::OrderImport::Wb.new.call
 puts "[#{elapsed(started_at)}] Imported Ec::Order records=#{imported}"
 puts "[#{elapsed(started_at)}] Done"
+
+
+mapping = {
+  "Склад WB" => "fbw",
+  "Склад продавца" => "fbs"
+}
+
+updated = Hash.new(0)
+skipped = 0
+
+Ec::OrderFulfillment.where(platform: "wb", raw_source_type: "RawWb::StatsOrder").find_each do |fulfillment|
+  stats_order = RawWb::StatsOrder.find_by(id: fulfillment.raw_source_id)
+
+  unless stats_order
+    skipped += 1
+    next
+  end
+
+  fulfillment_type = mapping.fetch(stats_order.warehouse_type, "unknown")
+  next if fulfillment.fulfillment_type == fulfillment_type
+
+  fulfillment.update!(fulfillment_type: fulfillment_type)
+  updated[fulfillment_type] += 1
+end
+
+puts "Updated: #{updated.inspect}"
+puts "Skipped missing stats orders: #{skipped}"

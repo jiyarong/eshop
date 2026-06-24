@@ -1,73 +1,69 @@
-<h1 class="page-title">库存报表</h1>
+<h1 class="page-title"><%= t("reports.inventory.title") %></h1>
 
 <div class="report-stack">
   <section class="panel">
-    <h2 class="section-title">店铺库存</h2>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>SKU</th>
-            <th>商品名</th>
-            <th>平台</th>
-            <th>店铺</th>
-            <th>库存</th>
-            <th>送仓</th>
-            <th>售出</th>
-            <th>FBS</th>
-            <th>同步时间</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @snapshots.each do |snapshot| %>
-            <tr>
-              <td><%= snapshot.sku_code %></td>
-              <td><%= snapshot.sku&.product_name %></td>
-              <td><%= snapshot.platform %></td>
-              <td><%= snapshot.store_name %></td>
-              <td><%= snapshot.stock %></td>
-              <td><%= snapshot.supply %></td>
-              <td><%= snapshot.sold %></td>
-              <td><%= snapshot.fbs %></td>
-              <td><%= display_time(snapshot.synced_at) %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+    <%= form_with url: "/reports/inventory", method: :get, local: true, html: { class: "report-form" } do |form| %>
+      <div class="field">
+        <%= form.label :sku, t("reports.inventory.filters.sku") %>
+        <%= form.search_field :sku, value: @sku_query, placeholder: t("reports.inventory.filters.sku_placeholder") %>
+      </div>
+
+      <%= form.button t("reports.inventory.filters.submit"), class: "button", type: "submit" %>
+      <% if @sku_query.present? %>
+        <%= link_to t("reports.inventory.filters.reset"), "/reports/inventory", class: "button button-secondary" %>
+      <% end %>
+    <% end %>
   </section>
 
   <section class="panel">
-    <h2 class="section-title">库存汇总</h2>
+    <h2 class="section-title"><%= t("reports.inventory.sections.inventory_list") %></h2>
     <div class="table-scroll">
-      <table>
+      <table class="inventory-list-table">
         <thead>
           <tr>
-            <th>SKU</th>
-            <th>商品名</th>
-            <th>总入库</th>
-            <th>总送仓</th>
-            <th>总库存</th>
-            <th>总售出</th>
-            <th>FBS 总计</th>
-            <th>白俄仓推算</th>
-            <th>总可售</th>
-            <th>同步时间</th>
+            <th><%= t("reports.inventory.fields.sku") %></th>
+            <th><%= t("reports.inventory.fields.purchase_quantity") %></th>
+            <th><%= t("reports.inventory.fields.wb_fbs") %></th>
+            <th><%= t("reports.inventory.fields.wb_fbw") %></th>
+            <th><%= t("reports.inventory.fields.wb_return") %></th>
+            <th><%= t("reports.inventory.fields.wb_net") %></th>
+            <th><%= t("reports.inventory.fields.ozon_sales") %></th>
+            <th><%= t("reports.inventory.fields.ozon_return") %></th>
+            <th><%= t("reports.inventory.fields.net_sales") %></th>
+            <th><%= t("reports.inventory.fields.book_stock") %></th>
+            <th><%= t("reports.inventory.fields.wb_fbw_available") %></th>
+            <th><%= t("reports.inventory.fields.wb_fbs_available") %></th>
+            <th><%= t("reports.inventory.fields.ozon_fbo") %></th>
+            <th><%= t("reports.inventory.fields.ozon_fbs") %></th>
+            <th><%= t("reports.inventory.fields.platform_stock") %></th>
+            <th><%= t("reports.inventory.fields.belarus_available") %></th>
           </tr>
         </thead>
         <tbody>
-          <% @totals.each do |total| %>
+          <% if @inventory_rows.any? %>
+            <% @inventory_rows.each do |row| %>
+              <tr>
+                <td><%= link_to truncate(row[:sku_code]), report_sku_path(row[:sku_code], tab: 'inventory') %></td>
+                <td class="numeric"><%= row[:purchase_quantity] %></td>
+                <td class="numeric"><%= row[:wb_fbs] %></td>
+                <td class="numeric"><%= row[:wb_fbw] %></td>
+                <td class="numeric"><%= row[:wb_return] %></td>
+                <td class="numeric"><%= row[:wb_net] %></td>
+                <td class="numeric"><%= row[:ozon_sales] %></td>
+                <td class="numeric"><%= row[:ozon_return] %></td>
+                <td class="numeric"><%= row[:net_sales] %></td>
+                <td class="numeric"><%= row[:book_stock] %></td>
+                <td class="numeric"><%= row[:wb_fbw_available] %></td>
+                <td class="numeric"><%= row[:wb_fbs_available] %></td>
+                <td class="numeric"><%= row[:ozon_fbo] %></td>
+                <td class="numeric"><%= row[:ozon_fbs] %></td>
+                <td class="numeric"><%= row[:platform_stock] %></td>
+                <td class="numeric"><%= row[:belarus_available] %></td>
+              </tr>
+            <% end %>
+          <% else %>
             <tr>
-              <td><%= total.sku_code %></td>
-              <td><%= total.sku&.product_name %></td>
-              <td><%= total.total_received %></td>
-              <td><%= total.total_supply %></td>
-              <td><%= total.total_stock %></td>
-              <td><%= total.total_sold %></td>
-              <td><%= total.total_fbs %></td>
-              <td><%= total.blr_warehouse %></td>
-              <td><%= total.total_available %></td>
-              <td><%= display_time(total.synced_at) %></td>
+              <td colspan="16" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>

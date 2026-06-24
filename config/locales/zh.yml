@@ -212,6 +212,34 @@ zh:
       shipped: "配送中"
       total: "订单数"
   reports:
+    inventory:
+      empty: "暂无库存数据"
+      fields:
+        belarus_available: "白俄可用"
+        book_stock: "账面库存"
+        net_sales: "净销售"
+        ozon_fbo: "Ozon_FBO"
+        ozon_fbs: "Ozon_FBS"
+        ozon_return: "Ozon退货"
+        ozon_sales: "Ozon销售"
+        platform_stock: "平台在库"
+        purchase_quantity: "采购"
+        sku: "SKU"
+        synced_at: "同步时间"
+        wb_fbs: "WB_FBS"
+        wb_fbs_available: "WB_FBS在库"
+        wb_fbw: "WB_FBW"
+        wb_fbw_available: "WB_FBW在库"
+        wb_net: "WB净额"
+        wb_return: "WB退货"
+      filters:
+        reset: "重置"
+        sku: "SKU"
+        sku_placeholder: "输入 SKU"
+        submit: "筛选"
+      sections:
+        inventory_list: "库存列表"
+      title: "库存报表"
     sku_detail:
       actions:
         add_predicted_cost: "新增预测成本"

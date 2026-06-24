@@ -166,7 +166,7 @@ module Ec
           order: order,
           external_fulfillment_id: fulfillment_id,
           fulfillment_key: fulfillment.fulfillment_key.presence || fulfillment_key,
-          fulfillment_type: "unknown",
+          fulfillment_type: fulfillment_type_from_warehouse_type(stats_order.warehouse_type),
           status: stats_order.is_cancel? ? "cancelled" : "processing",
           source_status: stats_order.order_type,
           source_substatus: stats_order.is_cancel? ? "cancelled" : nil,
@@ -222,6 +222,17 @@ module Ec
           ),
           synced_at: stats_order.synced_at
         )
+      end
+
+      def fulfillment_type_from_warehouse_type(warehouse_type)
+        case warehouse_type
+        when "Склад WB"
+          "fbw"
+        when "Склад продавца"
+          "fbs"
+        else
+          "unknown"
+        end
       end
 
       def sku_product_for(store, product_id)
