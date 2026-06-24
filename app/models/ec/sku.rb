@@ -15,8 +15,24 @@ module Ec
     validates :sku_code, presence: true, uniqueness: true
     before_validation { self.sku_code = sku_code&.upcase }
 
+    default_scope { where(deleted_at: nil) }
+
     scope :active,   -> { where(is_active: true) }
     scope :inactive, -> { where(is_active: false) }
+    scope :with_deleted, -> { unscope(where: :deleted_at) }
+    scope :deleted, -> { with_deleted.where.not(deleted_at: nil) }
+
+    def destroy
+      soft_delete
+    end
+
+    def destroy!
+      soft_delete!
+    end
+
+    def deleted?
+      deleted_at.present?
+    end
 
     def wb_products
       RawWb::Product.where(vendor_code: sku_code)
@@ -37,6 +53,20 @@ module Ec
 
     def inventory_overview
       Ec::SkuInventoryOverview.new(self).call
+    end
+
+    private
+
+    def soft_delete
+      return true if deleted?
+
+      update(deleted_at: Time.current)
+    end
+
+    def soft_delete!
+      return true if deleted?
+
+      update!(deleted_at: Time.current)
     end
   end
 end

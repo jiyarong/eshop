@@ -122,24 +122,28 @@ class ReportsController < ApplicationController
       wb_net = wb_rows.sum { |row| row[:sales_quantity] } - wb_rows.sum { |row| row[:return_quantity] }
       ozon_sales = ozon_rows.sum { |row| row[:sales_quantity] }
       ozon_return = ozon_rows.sum { |row| row[:return_quantity] }
+      purchase_quantity = summary[:received_quantity]
+      net_sales = wb_net + ozon_sales - ozon_return
+      platform_stock = summary[:platform_stock]
+      book_stock = purchase_quantity - net_sales
 
       {
         sku_code: sku.sku_code,
-        purchase_quantity: summary[:received_quantity],
+        purchase_quantity: purchase_quantity,
         wb_fbs: wb_fulfillment_sales["fbs"],
         wb_fbw: wb_fulfillment_sales["fbw"],
         wb_return: wb_rows.sum { |row| row[:return_quantity] },
         wb_net: wb_net,
         ozon_sales: ozon_sales,
         ozon_return: ozon_return,
-        net_sales: wb_net + ozon_sales - ozon_return,
-        book_stock: summary[:book_stock],
+        net_sales: net_sales,
+        book_stock: book_stock,
         wb_fbw_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbw"),
         wb_fbs_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbs"),
         ozon_fbo: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbo"),
         ozon_fbs: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbs"),
-        platform_stock: summary[:platform_stock],
-        belarus_available: summary[:available_stock]
+        platform_stock: platform_stock,
+        belarus_available: book_stock - platform_stock
       }
     end
   end

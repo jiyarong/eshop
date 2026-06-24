@@ -8,7 +8,7 @@ class Erp::MasterSkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    Ec::Sku.where("sku_code LIKE ?", "%#{@token}%").delete_all
+    Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-master-skus-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-master-skus-#{@token.downcase}%").delete_all

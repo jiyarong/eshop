@@ -1,7 +1,7 @@
 module Erp
   class SkusController < BaseController
-    before_action :set_sku, only: [:show, :edit, :update]
-    before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update]
+    before_action :set_sku, only: [:show, :edit, :update, :destroy]
+    before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update, :destroy]
 
     def index
       @categories = Ec::SkuCategory.active.order(:position, :code)
@@ -74,6 +74,11 @@ module Erp
         load_master_sku_options
         render_modal_or_page(:edit, :edit_modal, status: :unprocessable_entity)
       end
+    end
+
+    def destroy
+      @sku.destroy!
+      redirect_to erp_skus_path
     end
 
     private

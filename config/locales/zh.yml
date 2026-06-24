@@ -516,6 +516,8 @@ zh:
       actions:
         add_product: "新增产品"
         add_sku: "新增 SKU"
+        confirm_delete_sku: "确认删除这个 SKU？"
+        delete_sku: "删除 SKU"
         edit_product: "编辑产品"
         edit_sku: "编辑 SKU"
       empty:

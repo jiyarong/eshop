@@ -19,7 +19,7 @@ class Erp::PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
     Ec::PurchaseOrder.where(id: order_ids).delete_all
     Ec::Supplier.where(id: @supplier.id).delete_all
     Ec::SkuBatch.where(id: @batch.id).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-orders-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-orders-#{@token.downcase}%").delete_all
   end

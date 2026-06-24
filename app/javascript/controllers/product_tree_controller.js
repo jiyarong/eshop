@@ -1,5 +1,13 @@
 import { Controller } from "@hotwired/stimulus";
 
+export function setToggleIcon(button, expanded) {
+  const icon = button.querySelector("i");
+  if (!icon) return;
+
+  icon.classList.toggle("bi-chevron-right", !expanded);
+  icon.classList.toggle("bi-chevron-down", expanded);
+}
+
 export default class extends Controller {
   toggleMaster(event) {
     const button = event.currentTarget;
@@ -29,6 +37,7 @@ export default class extends Controller {
 
   updateButton(button, expanded) {
     button.setAttribute("aria-expanded", expanded ? "true" : "false");
+    setToggleIcon(button, expanded);
     const label = button.dataset.label || "详情";
     button.setAttribute("aria-label", `${expanded ? "收起" : "展开"} ${label}`);
   }

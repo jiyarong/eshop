@@ -500,6 +500,8 @@ ru:
       actions:
         add_product: "Добавить продукт"
         add_sku: "Добавить SKU"
+        confirm_delete_sku: "Удалить этот SKU?"
+        delete_sku: "Удалить SKU"
         edit_product: "Редактировать продукт"
         edit_sku: "Редактировать SKU"
       empty:

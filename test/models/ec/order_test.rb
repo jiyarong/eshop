@@ -69,7 +69,7 @@ module Ec
       @store&.destroy
       @raw_posting&.destroy
       @raw_account&.destroy
-      @sku&.destroy
+      Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     end
 
     test "records normalized marketplace order and links back to raw posting" do

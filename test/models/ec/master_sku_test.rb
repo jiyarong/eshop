@@ -6,7 +6,7 @@ class Ec::MasterSkuTest < ActiveSupport::TestCase
   end
 
   teardown do
-    Ec::Sku.where("sku_code LIKE ?", "%#{@token}%").delete_all
+    Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all if defined?(Ec::MasterSku)
   end
 

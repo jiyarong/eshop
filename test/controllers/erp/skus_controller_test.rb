@@ -44,7 +44,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
 
   teardown do
     Ec::SkuBatch.where("batch_code LIKE ?", "%#{@token}%").delete_all
-    Ec::Sku.where("sku_code LIKE ?", "%#{@token}%").delete_all
+    Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all if defined?(Ec::MasterSku)
     Ec::SkuCategory.where(id: @category.id).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
@@ -80,6 +80,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr.batch-row[hidden]", minimum: 1
     assert_select "button.product-tree-toggle[data-action='product-tree#toggleMaster'][aria-expanded='false']", minimum: 1
     assert_select "button.product-tree-toggle[data-action='product-tree#toggleSku'][aria-expanded='false']", minimum: 1
+    assert_select "button.product-tree-toggle[aria-expanded='false'] i.bi-chevron-right", minimum: 1
+    assert_select "button.product-tree-toggle[aria-expanded='false'] i.bi-chevron-down", count: 0
     assert_select ".sub-h", text: "SKU 变体 · 1 个"
     assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
     assert_select ".batch-title", text: "批次清单"
@@ -102,6 +104,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{erp_edit_master_sku_path(@master_sku)}'][data-turbo-frame='erp_modal']", text: "编辑产品"
     assert_select "a[href='#{erp_new_sku_path(master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "新增 SKU"
     assert_select "a[href='#{erp_edit_sku_path(@sku)}'][data-turbo-frame='erp_modal']", text: "编辑"
+    assert_select "a[href='#{erp_sku_path(@sku)}'][data-turbo-method='delete'][data-turbo-confirm=?]", "确认删除这个 SKU？", minimum: 1
     assert_select "a[href='#{erp_new_sku_batch_path(sku_code: @sku.sku_code)}'][data-turbo-frame='erp_modal']", text: "新增批次"
     assert_select "a[href='#{erp_edit_sku_batch_path(@batch)}'][data-turbo-frame='erp_modal']", text: "编辑"
   end
@@ -132,6 +135,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".badge.badge-sec", text: "Inactive"
     assert_select "a[href='#{erp_new_master_sku_path(locale: "en")}'][data-turbo-frame='erp_modal']", text: "Add product"
     assert_select "a[href='#{erp_new_sku_path(locale: "en", master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "Add SKU"
+    assert_select "a[href='#{erp_sku_path(@sku, locale: "en")}'][data-turbo-method='delete']", minimum: 1 do |links|
+      assert_equal "Delete this SKU?", links.first["data-turbo-confirm"]
+    end
     assert_select "a[href='#{erp_new_sku_batch_path(locale: "en", sku_code: @sku.sku_code)}'][data-turbo-frame='erp_modal']", text: "Add batch"
   end
 
@@ -142,6 +148,20 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='q'][value=?]", @master_sku.master_sku_code.downcase
     assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
     assert_no_match @inactive_sku.sku_code, response.body
+  end
+
+  test "index does not render expand toggle for unfiled sku without batches" do
+    orphan = Ec::Sku.create!(
+      sku_code: "SKU-ORPHAN-#{@token}",
+      product_name: "无批次商品",
+      is_active: true
+    )
+
+    get "/erp/skus", params: { q: orphan.sku_code }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td .code-text.sub", orphan.sku_code
+    assert_select "button.product-tree-toggle[data-action='product-tree#toggleMaster']", count: 0
   end
 
   test "show redirects to sku report detail" do
@@ -257,6 +277,22 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal "更新商品", @sku.product_name
     assert_equal "蓝色", @sku.color
     assert_not @sku.is_active
+  end
+
+  test "destroy soft deletes sku and hides it from index" do
+    assert_no_difference "Ec::Sku.with_deleted.count" do
+      delete "/erp/skus/#{@sku.id}"
+    end
+
+    assert_redirected_to "/erp/skus"
+    assert_not_nil Ec::Sku.with_deleted.find(@sku.id).deleted_at
+    assert_nil Ec::Sku.find_by(id: @sku.id)
+
+    sign_in @current_user
+    get "/erp/skus", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_no_match @sku.sku_code, response.body
   end
 
   test "invalid modal update rerenders sku form" do

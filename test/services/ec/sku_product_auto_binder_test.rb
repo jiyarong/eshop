@@ -54,8 +54,7 @@ module Ec
       @wb_store&.destroy
       @ozon_account&.destroy
       @wb_account&.destroy
-      @ozon_sku&.destroy
-      @wb_sku&.destroy
+      Ec::Sku.with_deleted.where(id: [@ozon_sku&.id, @wb_sku&.id].compact).delete_all
     end
 
     test "binds raw products whose sku code matches an erp sku" do

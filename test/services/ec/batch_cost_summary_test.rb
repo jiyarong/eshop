@@ -27,7 +27,7 @@ class Ec::BatchCostSummaryTest < ActiveSupport::TestCase
     end
     Ec::CostAllocation.where(allocation_no: "BCS-ALLOC-#{@token}").delete_all if defined?(Ec::CostAllocation)
     Ec::SkuBatch.where(id: @batch.id).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
   end
 
   test "calculates batch unit cost with locked allocations" do

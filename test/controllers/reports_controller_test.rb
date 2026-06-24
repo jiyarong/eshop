@@ -320,6 +320,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuProduct.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all if defined?(Ec::SkuProduct)
     RawOzon::Product.where(account_id: @sales_ozon_account&.id).delete_all
     RawOzon::Return.where(account_id: @sales_ozon_account&.id).delete_all
+    RawOzon::SupplyOrder.where(account_id: @sales_ozon_account&.id).delete_all
     RawWb::GoodsReturn.where(account_id: @wb_sales_store&.wb_raw_account_id).delete_all
     @sales_ozon_account&.destroy
     @sales_store&.destroy
@@ -459,6 +460,14 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       received_quantity: 24,
       purchase_unit_price_cny: 1
     )
+    RawOzon::SupplyOrder.create!(
+      account: @sales_ozon_account,
+      supply_order_id: "INV-SUPPLY-#{@sku_code}",
+      status: "COMPLETED",
+      items: { "3902460130" => 6 },
+      raw_json: {},
+      synced_at: Time.zone.parse("2026-06-22 08:00:00")
+    )
     Ec::SkuInventoryLevel.create!(
       sku_code: @sku.sku_code,
       platform: "ozon",
@@ -482,11 +491,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "白俄可用"
     assert_select "tbody tr", count: 2
     assert_select "td", @sku_code
-    assert_select "a[href=?]", "/reports/skus/#{@sku_code}", @sku_code
+    assert_select "a[href=?]", "/reports/skus/#{@sku_code}?tab=inventory", @sku_code
     assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">5<\/td>.*?<td class="numeric">3<\/td>.*?<td class="numeric">0<\/td>.*?<td class="numeric">8<\/td>.*?<td class="numeric">2<\/td>.*?<td class="numeric">2<\/td>.*?<td class="numeric">8<\/td>/m, response.body)
     assert_select "td", "24"
-    assert_select "td", "16"
-    assert_select "td", "8"
+    assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">16<\/td>.*?<td class="numeric">8<\/td>.*?<td class="numeric">8<\/td>/m, response.body)
   end
 
   test "inventory report filters by sku query" do

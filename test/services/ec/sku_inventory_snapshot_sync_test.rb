@@ -8,7 +8,7 @@ class Ec::SkuInventorySnapshotSyncTest < ActiveSupport::TestCase
 
   teardown do
     Ec::SkuInventoryLevel.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuInventoryLevel)
-    @sku&.destroy
+    Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
   end
 
   test "creates historical rows and keeps only the newest row latest per sku store and kind" do

@@ -23,7 +23,7 @@ class Erp::CostAllocationsControllerTest < ActionDispatch::IntegrationTest
     Ec::CostAllocationItem.where(cost_allocation_id: allocation_ids).delete_all
     Ec::CostAllocation.where(id: allocation_ids).delete_all
     Ec::SkuBatch.where(id: @batch.id).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-allocations-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-allocations-#{@token.downcase}%").delete_all
   end

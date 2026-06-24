@@ -20,7 +20,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     Ec::CostAllocationItem.where(sku_batch_id: batch_ids).delete_all
     Ec::PurchaseOrderItem.where(sku_batch_id: batch_ids).delete_all
     Ec::SkuBatch.where(id: batch_ids).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-batches-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-batches-#{@token.downcase}%").delete_all
   end

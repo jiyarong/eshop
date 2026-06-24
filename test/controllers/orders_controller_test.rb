@@ -197,7 +197,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     Ec::OrderFulfillment.where(order_id: @order&.id).delete_all
     @order&.destroy
     @store&.destroy
-    @sku&.destroy
+    Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "orders-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "orders-#{@token.downcase}%").delete_all
   end

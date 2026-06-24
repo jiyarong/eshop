@@ -45,7 +45,7 @@ module Ec
       @wb_store&.destroy
       @ozon_account&.destroy
       @wb_account&.destroy
-      @sku&.destroy
+      Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     end
 
     test "returns raw ozon and wb products without sku product bindings" do

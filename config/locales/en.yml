@@ -544,6 +544,8 @@ en:
       actions:
         add_product: "Add product"
         add_sku: "Add SKU"
+        confirm_delete_sku: "Delete this SKU?"
+        delete_sku: "Delete SKU"
         edit_product: "Edit product"
         edit_sku: "Edit SKU"
       empty:

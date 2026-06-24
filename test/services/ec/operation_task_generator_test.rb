@@ -18,7 +18,7 @@ class Ec::OperationTaskGeneratorTest < ActiveSupport::TestCase
   teardown do
     Ec::OperationTask.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::OperationTask)
     Ec::InventoryTotal.where(sku_code: @sku.sku_code).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
   end
 
   test "creates replenish task for low available inventory" do

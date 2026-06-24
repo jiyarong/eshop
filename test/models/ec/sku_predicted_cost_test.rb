@@ -8,7 +8,7 @@ class Ec::SkuPredictedCostTest < ActiveSupport::TestCase
 
   teardown do
     Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuPredictedCost)
-    @sku&.destroy
+    Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
   end
 
   test "defaults currency to CNY and belongs to sku" do

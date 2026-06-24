@@ -7,7 +7,7 @@ class Ec::SkuTest < ActiveSupport::TestCase
   end
 
   teardown do
-    Ec::Sku.where(sku_code: "SKU-MGMT-#{@token}").delete_all
+    Ec::Sku.with_deleted.where(sku_code: "SKU-MGMT-#{@token}").delete_all
     Ec::SkuCategory.where(id: @category.id).delete_all
   end
 
@@ -35,5 +35,20 @@ class Ec::SkuTest < ActiveSupport::TestCase
     assert_equal "黑色", sku.color
     assert_equal 1.25.to_d, sku.weight_kg
     assert_equal 3.5.to_d, sku.volume_l
+  end
+
+  test "soft-deleted skus are hidden from default queries" do
+    sku = Ec::Sku.create!(
+      sku_code: "sku-mgmt-#{@token}",
+      product_name: "中文商品",
+      is_active: true
+    )
+
+    sku.destroy!
+
+    assert_not_nil sku.deleted_at
+    assert_nil Ec::Sku.find_by(sku_code: sku.sku_code)
+    assert_equal sku.id, Ec::Sku.with_deleted.find_by!(sku_code: sku.sku_code).id
+    assert_equal [sku.id], Ec::Sku.deleted.where(sku_code: sku.sku_code).pluck(:id)
   end
 end

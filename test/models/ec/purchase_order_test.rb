@@ -23,7 +23,7 @@ class Ec::PurchaseOrderTest < ActiveSupport::TestCase
     Ec::PurchaseOrder.where(order_no: "PO-#{@token}").delete_all if defined?(Ec::PurchaseOrder)
     Ec::Supplier.where(id: @supplier.id).delete_all if defined?(Ec::Supplier)
     Ec::SkuBatch.where(id: @batch.id).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
   end
 
   test "purchase order has items linked to sku batches" do

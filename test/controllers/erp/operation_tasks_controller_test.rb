@@ -18,7 +18,7 @@ class Erp::OperationTasksControllerTest < ActionDispatch::IntegrationTest
 
   teardown do
     Ec::OperationTask.where(id: @task.id).delete_all if defined?(Ec::OperationTask)
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-tasks-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-tasks-#{@token.downcase}%").delete_all
   end

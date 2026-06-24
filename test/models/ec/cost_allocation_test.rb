@@ -18,7 +18,7 @@ class Ec::CostAllocationTest < ActiveSupport::TestCase
     end
     Ec::CostAllocation.where(allocation_no: "ALLOC-#{@token}").delete_all if defined?(Ec::CostAllocation)
     Ec::SkuBatch.where(id: @batch.id).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
   end
 
   test "locked allocation requires item total to match total amount" do

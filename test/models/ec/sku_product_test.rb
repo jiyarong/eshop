@@ -15,7 +15,7 @@ module Ec
     teardown do
       Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuProduct)
       @store&.destroy
-      @sku&.destroy
+      Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     end
 
     test "binds one store product to one erp sku" do

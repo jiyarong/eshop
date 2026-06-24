@@ -8,7 +8,7 @@ class Ec::SkuBatchTest < ActiveSupport::TestCase
 
   teardown do
     Ec::SkuBatch.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuBatch)
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
   end
 
   test "belongs to sku and normalizes batch code" do

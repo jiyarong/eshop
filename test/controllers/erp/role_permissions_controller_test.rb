@@ -8,7 +8,7 @@ class Erp::RolePermissionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    Ec::Sku.where("sku_code LIKE ?", "%#{@token.upcase}%").delete_all
+    Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token.upcase}%").delete_all
     if defined?(UserRole)
       UserRole.joins(:user).where("users.email LIKE ?", "%#{@token}%").delete_all
     end

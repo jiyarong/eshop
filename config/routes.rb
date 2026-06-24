@@ -61,7 +61,7 @@ Rails.application.routes.draw do
     get "platform_products/:platform/:store_id/:product_id" => "platform_products#show", as: :platform_product
     resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]
-    resources :skus, except: [:destroy] do
+    resources :skus do
       resources :sku_products, path: :products, only: [:index, :create, :destroy]
     end
     post "skus/:id" => "skus#update"

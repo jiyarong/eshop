@@ -122,7 +122,7 @@ module Erp
       @wb_store&.destroy
       @wb_account&.destroy
       @store&.destroy
-      @sku&.destroy
+      Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
       UserRole.joins(:user).where("users.email LIKE ?", "sku-products-#{@token.downcase}%").delete_all
       User.where("email LIKE ?", "sku-products-#{@token.downcase}%").delete_all
     end

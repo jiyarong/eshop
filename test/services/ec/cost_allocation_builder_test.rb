@@ -10,7 +10,7 @@ class Ec::CostAllocationBuilderTest < ActiveSupport::TestCase
 
   teardown do
     Ec::SkuBatch.where(sku_code: @sku.sku_code).delete_all
-    @sku.destroy
+    Ec::Sku.with_deleted.where(id: @sku.id).delete_all
   end
 
   test "allocates by quantity" do
