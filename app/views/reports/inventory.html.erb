@@ -37,6 +37,8 @@
             <th><%= t("reports.inventory.fields.ozon_fbs") %></th>
             <th><%= t("reports.inventory.fields.platform_stock") %></th>
             <th><%= t("reports.inventory.fields.belarus_available") %></th>
+            <th><%= t("reports.inventory.fields.cache_updated_at") %></th>
+            <th><%= t("reports.inventory.fields.actions") %></th>
           </tr>
         </thead>
         <tbody>
@@ -59,11 +61,15 @@
                 <td class="numeric"><%= row[:ozon_fbs] %></td>
                 <td class="numeric"><%= row[:platform_stock] %></td>
                 <td class="numeric"><%= row[:belarus_available] %></td>
+                <td><%= display_time(row[:cache_updated_at]) %></td>
+                <td>
+                  <%= button_to t("reports.inventory.actions.refresh_cache"), refresh_report_inventory_cache_path(row[:sku_code]), params: { sku: @sku_query.presence, locale: params[:locale].presence }, class: "button button-secondary", form: { class: "inline-form" } %>
+                </td>
               </tr>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="16" class="empty-state"><%= t("reports.inventory.empty") %></td>
+              <td colspan="18" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>

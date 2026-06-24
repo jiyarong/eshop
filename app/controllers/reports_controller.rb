@@ -10,6 +10,14 @@ class ReportsController < ApplicationController
     @inventory_rows = build_inventory_rows
   end
 
+  def refresh_inventory_cache
+    sku_code = params[:sku_code].to_s.upcase
+    Rails.cache.delete(inventory_row_cache_key(sku_code))
+
+    redirect_params = params.permit(:sku, :locale).to_h.compact_blank
+    redirect_to redirect_params.present? ? "/reports/inventory?#{redirect_params.to_query}" : "/reports/inventory"
+  end
+
   def skus
     @skus = Ec::Sku.order(:sku_code)
   end
@@ -112,39 +120,7 @@ class ReportsController < ApplicationController
 
   def build_inventory_rows
     inventory_skus_scope.includes(:batches, :sku_products, inventory_levels: :store).order(:sku_code).map do |sku|
-      overview = sku.inventory_overview
-      summary = overview[:summary]
-      store_rows = overview[:store_rows]
-      latest_levels = overview[:latest_levels]
-      wb_rows = store_rows.select { |row| row[:platform] == "wb" }
-      ozon_rows = store_rows.select { |row| row[:platform] == "ozon" }
-      wb_fulfillment_sales = wb_sales_by_fulfillment(sku)
-      wb_net = wb_rows.sum { |row| row[:sales_quantity] } - wb_rows.sum { |row| row[:return_quantity] }
-      ozon_sales = ozon_rows.sum { |row| row[:sales_quantity] }
-      ozon_return = ozon_rows.sum { |row| row[:return_quantity] }
-      purchase_quantity = summary[:received_quantity]
-      net_sales = wb_net + ozon_sales - ozon_return
-      platform_stock = summary[:platform_stock]
-      book_stock = purchase_quantity - net_sales
-
-      {
-        sku_code: sku.sku_code,
-        purchase_quantity: purchase_quantity,
-        wb_fbs: wb_fulfillment_sales["fbs"],
-        wb_fbw: wb_fulfillment_sales["fbw"],
-        wb_return: wb_rows.sum { |row| row[:return_quantity] },
-        wb_net: wb_net,
-        ozon_sales: ozon_sales,
-        ozon_return: ozon_return,
-        net_sales: net_sales,
-        book_stock: book_stock,
-        wb_fbw_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbw"),
-        wb_fbs_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbs"),
-        ozon_fbo: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbo"),
-        ozon_fbs: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbs"),
-        platform_stock: platform_stock,
-        belarus_available: book_stock - platform_stock
-      }
+      fetch_inventory_row(sku)
     end
   end
 
@@ -202,6 +178,52 @@ class ReportsController < ApplicationController
 
   def inventory_sku_filter_pattern
     "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query.downcase)}%"
+  end
+
+  def fetch_inventory_row(sku)
+    Rails.cache.fetch(inventory_row_cache_key(sku.sku_code), expires_in: 30.minutes) do
+      build_inventory_row(sku).merge(cache_updated_at: Time.current)
+    end
+  end
+
+  def build_inventory_row(sku)
+    overview = sku.inventory_overview
+    summary = overview[:summary]
+    store_rows = overview[:store_rows]
+    latest_levels = overview[:latest_levels]
+    wb_rows = store_rows.select { |row| row[:platform] == "wb" }
+    ozon_rows = store_rows.select { |row| row[:platform] == "ozon" }
+    wb_fulfillment_sales = wb_sales_by_fulfillment(sku)
+    wb_net = wb_rows.sum { |row| row[:sales_quantity] } - wb_rows.sum { |row| row[:return_quantity] }
+    ozon_sales = ozon_rows.sum { |row| row[:sales_quantity] }
+    ozon_return = ozon_rows.sum { |row| row[:return_quantity] }
+    purchase_quantity = summary[:received_quantity]
+    net_sales = wb_net + ozon_sales - ozon_return
+    platform_stock = summary[:platform_stock]
+    book_stock = purchase_quantity - net_sales
+
+    {
+      sku_code: sku.sku_code,
+      purchase_quantity: purchase_quantity,
+      wb_fbs: wb_fulfillment_sales["fbs"],
+      wb_fbw: wb_fulfillment_sales["fbw"],
+      wb_return: wb_rows.sum { |row| row[:return_quantity] },
+      wb_net: wb_net,
+      ozon_sales: ozon_sales,
+      ozon_return: ozon_return,
+      net_sales: net_sales,
+      book_stock: book_stock,
+      wb_fbw_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbw"),
+      wb_fbs_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbs"),
+      ozon_fbo: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbo"),
+      ozon_fbs: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbs"),
+      platform_stock: platform_stock,
+      belarus_available: book_stock - platform_stock
+    }
+  end
+
+  def inventory_row_cache_key(sku_code)
+    "reports/inventory/rows/#{sku_code}"
   end
 
   def load_sku_inventory_overview

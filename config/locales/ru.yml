@@ -27,6 +27,8 @@ ru:
     loading: "Переводится"
     done: "Переведено"
     error: "Ошибка перевода"
+    json_error: "Неверный формат перевода"
+    no_change: "Текст не изменился"
   auth:
     title: "Вход · Юаньлун ERP"
     aside_label: "Обзор системы"
@@ -213,10 +215,14 @@ ru:
       total: "Заказы"
   reports:
     inventory:
+      actions:
+        refresh_cache: "Обновить кеш"
       empty: "Нет данных по складу"
       fields:
+        actions: "Действия"
         belarus_available: "Доступно Беларусь"
         book_stock: "Учетный остаток"
+        cache_updated_at: "Кеш обновлен"
         net_sales: "Чистые продажи"
         ozon_fbo: "Ozon_FBO"
         ozon_fbs: "Ozon_FBS"

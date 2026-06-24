@@ -56,6 +56,8 @@ en:
     loading: "Translating"
     done: "Translated"
     error: "Translation failed"
+    json_error: "Invalid translation format"
+    no_change: "No text changed"
   auth:
     title: "Sign in · Yuanlong ERP"
     aside_label: "System overview"
@@ -242,10 +244,14 @@ en:
       total: "Orders"
   reports:
     inventory:
+      actions:
+        refresh_cache: "Refresh cache"
       empty: "No inventory data"
       fields:
+        actions: "Actions"
         belarus_available: "Belarus available"
         book_stock: "Book stock"
+        cache_updated_at: "Cache updated at"
         net_sales: "Net sales"
         ozon_fbo: "Ozon_FBO"
         ozon_fbs: "Ozon_FBS"

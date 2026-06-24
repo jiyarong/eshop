@@ -507,7 +507,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", count: 1
   end
 
-  test "inventory report does not render synced time column" do
+  test "inventory report renders cache updated time and refresh button" do
     @current_user.update!(time_zone: "Europe/Moscow")
     sign_in @current_user
     Ec::SkuInventoryLevel.create!(
@@ -526,9 +526,50 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     get "/reports/inventory", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "th", { text: "同步时间", count: 0 }
-    assert_select "td", { text: "2026-05-30 13:00", count: 0 }
-    assert_select "td", { text: "2026-05-30 10:00", count: 0 }
+    assert_select "th", "缓存更新时间"
+    assert_select "form[action=?][method=?]", "/reports/inventory/#{@sku_code}/refresh_cache", "post"
+    assert_match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/, response.body)
+  end
+
+  test "inventory report caches each sku row until refresh" do
+    cache_store = ActiveSupport::Cache::MemoryStore.new
+    original_cache_store = Rails.cache
+
+    Rails.cache = cache_store
+
+    begin
+      get "/reports/inventory", headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "td", { text: "24", count: 0 }
+
+      Ec::SkuBatch.create!(
+        sku_code: @sku.sku_code,
+        batch_code: "CACHE-#{@sku_code}",
+        status: "received",
+        purchased_quantity: 30,
+        received_quantity: 24,
+        purchase_unit_price_cny: 1
+      )
+
+      sign_in @current_user
+      get "/reports/inventory", headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "td", { text: "24", count: 0 }
+
+      sign_in @current_user
+      post "/reports/inventory/#{@sku_code}/refresh_cache", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
+
+      assert_redirected_to "/reports/inventory?sku=#{@sku_code.downcase}"
+
+      sign_in @current_user
+      get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
+      assert_response :success
+      assert_select "td", "24"
+    ensure
+      Rails.cache = original_cache_store
+    end
   end
 
   test "skus report renders sku master data" do

@@ -73,7 +73,7 @@
             <section class="erp-nav__section">
               <p class="erp-nav__label"><%= section[:label] %></p>
               <% section[:links].each do |link| %>
-                <%= link_to link[:path], class: "erp-nav__link", aria: (link[:active] ? { current: "page" } : nil), data: { action: "shell#closeSidebar" } do %>
+                <%= link_to link[:path], class: "erp-nav__link", aria: (link[:active] ? { current: "page" } : nil), data: { action: "shell#closeSidebar", turbo_prefetch: false } do %>
                   <i class="bi <%= link[:icon] %>" aria-hidden="true"></i>
                   <span><%= link[:label] %></span>
                 <% end %>
@@ -139,7 +139,9 @@
                         data-idle-label="<%= t("page_translation.idle") %>"
                         data-loading-label="<%= t("page_translation.loading") %>"
                         data-done-label="<%= t("page_translation.done") %>"
-                        data-error-label="<%= t("page_translation.error") %>"><%= t("page_translation.idle") %></span>
+                        data-error-label="<%= t("page_translation.error") %>"
+                        data-json-error-label="<%= t("page_translation.json_error") %>"
+                        data-no-change-label="<%= t("page_translation.no_change") %>"><%= t("page_translation.idle") %></span>
                     </span>
                     <i class="bi bi-chevron-down" aria-hidden="true"></i>
                   </summary>
@@ -151,7 +153,9 @@
                     data-action="page-translation#translate"
                     data-loading-label="<%= t("page_translation.loading") %>"
                     data-done-label="<%= t("page_translation.done") %>"
-                    data-error-label="<%= t("page_translation.error") %>">
+                    data-error-label="<%= t("page_translation.error") %>"
+                    data-json-error-label="<%= t("page_translation.json_error") %>"
+                    data-no-change-label="<%= t("page_translation.no_change") %>">
                     <i class="bi bi-stars" aria-hidden="true"></i>
                     <span><%= t("page_translation.translate") %></span>
                   </button>

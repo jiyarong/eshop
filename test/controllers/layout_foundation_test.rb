@@ -35,6 +35,8 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".erp-topbar"
     assert_select ".erp-brand__name", "Yuanlong ERP"
     assert_select ".erp-nav__link[aria-current='page']", text: "库存"
+    assert_select ".erp-nav__link[data-turbo-prefetch='false']", minimum: 1
+    assert_select ".erp-nav__link:not([data-turbo-prefetch='false'])", 0
     assert_select ".topbar-dropdown.locale-switcher[aria-label='语言切换']"
     assert_select ".locale-switcher .topbar-dropdown__value", text: "中"
     assert_select ".locale-switcher__item[aria-current='page']", text: "中文"
@@ -45,7 +47,11 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".page-translation-controls summary[data-page-translation-target='summary']"
     assert_select ".page-translation-controls__title", text: "AI 翻译"
     assert_select ".page-translation-controls__summary-status", text: "未翻译"
+    assert_select ".page-translation-controls__summary-status[data-json-error-label='翻译结果格式异常']"
+    assert_select ".page-translation-controls__summary-status[data-no-change-label='翻译无变化']"
     assert_select "button[data-action='page-translation#translate']", text: "开始翻译"
+    assert_select "button[data-action='page-translation#translate'][data-json-error-label='翻译结果格式异常']"
+    assert_select "button[data-action='page-translation#translate'][data-no-change-label='翻译无变化']"
     assert_select "button[data-action='page-translation#showOriginal']", text: "查看原文"
     assert_select "button[data-action='page-translation#showTranslation']", text: "查看译文"
     assert_select ".erp-account-menu"

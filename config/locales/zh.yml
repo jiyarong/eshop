@@ -27,6 +27,8 @@ zh:
     loading: "翻译中"
     done: "已翻译"
     error: "翻译失败"
+    json_error: "翻译结果格式异常"
+    no_change: "翻译无变化"
   auth:
     title: "登录 · 辕隆 ERP"
     aside_label: "系统概览"
@@ -214,10 +216,14 @@ zh:
       total: "订单数"
   reports:
     inventory:
+      actions:
+        refresh_cache: "刷新缓存"
       empty: "暂无库存数据"
       fields:
+        actions: "操作"
         belarus_available: "白俄可用"
         book_stock: "账面库存"
+        cache_updated_at: "缓存更新时间"
         net_sales: "净销售"
         ozon_fbo: "Ozon_FBO"
         ozon_fbs: "Ozon_FBS"

@@ -96,6 +96,7 @@ module RawWb
       def refresh_order_statuses
         order_ids = RawWb::Order
           .where(account_id: @account.id)
+          .where("created_at >= ?", 90.days.ago)
           .where.not(supplier_status: FINAL_SUPPLIER_STATUSES)
           .where.not(wb_status: FINAL_WB_STATUSES)
           .where.not("supplier_status LIKE ?", "%cancel%")

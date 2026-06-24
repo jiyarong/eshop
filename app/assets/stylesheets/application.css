@@ -370,7 +370,9 @@ a {
   color: #047857;
 }
 
-.page-translation-controls[data-translation-state="error"] .page-translation-controls__summary-status {
+.page-translation-controls[data-translation-state="error"] .page-translation-controls__summary-status,
+.page-translation-controls[data-translation-state="jsonError"] .page-translation-controls__summary-status,
+.page-translation-controls[data-translation-state="noChange"] .page-translation-controls__summary-status {
   color: #b91c1c;
 }
 

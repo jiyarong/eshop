@@ -45,6 +45,7 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "翻译"
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "保持 HTML"
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "JSON"
+    assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "省略"
   end
 
   test "seeds all fixed agents without overwriting tunable fields" do
