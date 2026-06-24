@@ -452,6 +452,19 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       raw_json: {},
       synced_at: Time.zone.parse("2026-06-22 09:00:00")
     )
+    RawOzon::Return.create!(
+      account: @sales_ozon_account,
+      return_id: 31_000_000 + @sku_code.hash.abs % 1_000_000,
+      return_schema: "FBO",
+      return_type: "Return",
+      posting_number: "CANCEL-OZON-#{@sku_code}",
+      ozon_sku: 3_902_460_130,
+      offer_id: "OFFER-#{@sku_code}",
+      product_name: "Ozon 取消订单退货商品",
+      quantity: 7,
+      raw_json: {},
+      synced_at: Time.zone.parse("2026-06-22 09:05:00")
+    )
     Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,
       batch_code: "LIST-#{@sku_code}",

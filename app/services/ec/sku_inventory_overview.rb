@@ -130,6 +130,18 @@ module Ec
                   OR raw_ozon_returns.ozon_sku::text = ec_sku_products.platform_sku_id
                 )
             )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM ec_orders
+              WHERE ec_orders.platform = 'ozon'
+                AND ec_orders.store_id = ec_stores.id
+                AND ec_orders.order_status = 'cancelled'
+                AND (
+                  ec_orders.external_order_number = raw_ozon_returns.posting_number
+                  OR ec_orders.external_order_number = raw_ozon_returns.order_number
+                  OR ec_orders.external_order_id = raw_ozon_returns.order_id::text
+                )
+            )
           SQL
           @sku.sku_code
         )
