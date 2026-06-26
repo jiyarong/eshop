@@ -47,7 +47,7 @@ GEM
       erubi (~> 1.11)
       rails-dom-testing (~> 2.2)
       rails-html-sanitizer (~> 1.6)
-    activeagent (1.0.1)
+    activeagent (1.0.2)
       actionpack (>= 7.2, <= 9.0)
       actionview (>= 7.2, <= 9.0)
       activejob (>= 7.2, <= 9.0)
@@ -460,7 +460,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
-  activeagent (~> 1.0)
+  activeagent (~> 1.0.2)
   annotate
   bootsnap
   brakeman

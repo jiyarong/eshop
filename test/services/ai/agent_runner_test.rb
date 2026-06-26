@@ -13,6 +13,86 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     end
   end
 
+  class ToolLoopClient
+    attr_reader :requests
+
+    def initialize
+      @requests = []
+    end
+
+    def complete(request)
+      @requests << request
+      if requests.size == 1
+        {
+          content: nil,
+          tool_calls: [
+            {
+              id: "call_1",
+              name: "mcp__search__web_search",
+              arguments: { "query" => "SKU-1" }
+            }
+          ],
+          usage: { "prompt_tokens" => 10 }
+        }
+      else
+        {
+          content: "工具查询后，SKU-1 需要补货。",
+          tool_calls: [],
+          usage: { "total_tokens" => 30 }
+        }
+      end
+    end
+  end
+
+  class AlwaysToolClient
+    attr_reader :requests
+
+    def initialize
+      @requests = []
+    end
+
+    def complete(request)
+      @requests << request
+      {
+        content: nil,
+        tool_calls: [
+          {
+            id: "call_#{requests.size}",
+            name: "mcp__search__web_search",
+            arguments: { "query" => "loop" }
+          }
+        ],
+        usage: {}
+      }
+    end
+  end
+
+  class FakeMcpClient
+    def list_tools
+      [
+        {
+          "name" => "web_search",
+          "description" => "Search web",
+          "inputSchema" => { "type" => "object" }
+        }
+      ]
+    end
+
+    def call_tool(tool_name, arguments)
+      {
+        "tool_name" => tool_name,
+        "arguments" => arguments,
+        "content" => [{ "type" => "text", "text" => "库存数据" }]
+      }
+    end
+  end
+
+  class FakeServerRegistry
+    def clients
+      { "search" => FakeMcpClient.new }
+    end
+  end
+
   setup do
     @token = SecureRandom.hex(4)
     @user = User.create!(
@@ -78,5 +158,48 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_includes request.fetch(:tools).map { |tool| tool.fetch(:name) }, "query_inventory_data"
     assert_not_includes request.fetch(:tools).map { |tool| tool.fetch(:name) }, "router"
     assert_not_includes request.fetch(:tools).map { |tool| tool.fetch(:name) }, "export_pdf"
+  end
+
+  test "executes MCP tool calls and asks model again with tool result" do
+    client = ToolLoopClient.new
+
+    conversation = ErpAI::AgentRunner.new(
+      agent: @agent,
+      user: @user,
+      client: client,
+      server_registry: FakeServerRegistry.new,
+      max_tool_rounds: 2
+    ).ask(question: "查一下 SKU-1")
+
+    messages = conversation.messages.order(:created_at, :id)
+    assert_equal ["user", "assistant", "tool", "assistant"], messages.pluck(:role)
+    assert_equal 2, client.requests.size
+    assert_includes client.requests.first.fetch(:tools).map { |tool| tool.fetch(:name) }, "mcp__search__web_search"
+    second_request_messages = client.requests.second.fetch(:messages)
+    assistant_tool_request = second_request_messages[-2]
+    assert_equal "assistant", assistant_tool_request.fetch(:role)
+    assert_not assistant_tool_request.key?(:tool_calls)
+    assert_includes assistant_tool_request.fetch(:content), "mcp__search__web_search"
+    assert_equal "user", second_request_messages.last.fetch(:role)
+    assert_not second_request_messages.last.key?(:tool_call_id)
+    assert_includes second_request_messages.last.fetch(:content), "库存数据"
+    assert_match "需要补货", messages.last.content
+  end
+
+  test "stores final assistant message when max tool rounds is reached" do
+    client = AlwaysToolClient.new
+
+    conversation = ErpAI::AgentRunner.new(
+      agent: @agent,
+      user: @user,
+      client: client,
+      server_registry: FakeServerRegistry.new,
+      max_tool_rounds: 1
+    ).ask(question: "一直调用工具")
+
+    messages = conversation.messages.order(:created_at, :id)
+    assert_equal ["user", "assistant", "tool", "assistant"], messages.pluck(:role)
+    assert_equal 1, client.requests.size
+    assert_includes messages.last.content, "工具调用次数已达到上限"
   end
 end

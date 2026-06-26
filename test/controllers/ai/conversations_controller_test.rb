@@ -52,4 +52,18 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_match "库存数据不足", body.fetch("assistant_message").fetch("content")
     assert_equal({ "total_tokens" => 12 }, body.fetch("assistant_message").fetch("usage"))
   end
+
+  test "creates general agent conversation with only question" do
+    sign_in @user
+
+    post "/ai/conversations.json", params: {
+      agent_code: "general_agent",
+      question: "帮我总结外部资料"
+    }
+
+    assert_response :created
+    body = JSON.parse(response.body)
+    assert_nil body.fetch("conversation").fetch("module_name")
+    assert_match "库存数据不足", body.fetch("assistant_message").fetch("content")
+  end
 end
