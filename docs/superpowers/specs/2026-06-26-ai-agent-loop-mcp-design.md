@@ -10,12 +10,12 @@ The Rails app already has a fixed AI agent architecture:
 - `ErpAI::ActiveAgentClient` delegates to `BusinessAnalysisAgent`, which uses ActiveAgent's OpenAI chat provider.
 - `ErpAI::ToolRegistry` currently exposes query-only ERP tool definitions by name, but there is no tool executor and no loop.
 
-The requested feature is to implement an AI Agent loop and connect it to an external generic AI MCP service. First version scope is remote HTTP MCP only. Local stdio MCP servers are out of scope.
+The requested feature is to implement an AI Agent loop and connect it to external generic AI MCP services. First version scope is remote HTTP MCP only. Local stdio MCP servers are out of scope.
 
 ## Goals
 
 - Let the assistant perform bounded multi-step reasoning with tool calls.
-- Support remote HTTP MCP servers as tool providers.
+- Support multiple named remote HTTP MCP servers as tool providers.
 - Preserve existing conversation persistence and controller API shape.
 - Keep the first version small and testable.
 - Prevent infinite tool-call loops.
@@ -30,14 +30,31 @@ The requested feature is to implement an AI Agent loop and connect it to an exte
 
 ## Configuration
 
-MCP configuration is read from environment variables:
+MCP server configuration is read from environment variables:
 
-- `ERP_AI_MCP_ENDPOINT`: remote MCP endpoint URL.
-- `ERP_AI_MCP_BEARER_TOKEN`: optional bearer token.
-- `ERP_AI_MCP_PROTOCOL_VERSION`: defaults to `2025-06-18`.
+- `ERP_AI_MCP_SERVERS`: JSON array of remote MCP server configs.
 - `ERP_AI_MAX_TOOL_ROUNDS`: defaults to `4`.
 
-If `ERP_AI_MCP_ENDPOINT` is blank, MCP tools are unavailable and the runner behaves like the current single-response flow, except through the new loop code path.
+Example:
+
+```json
+[
+  {
+    "name": "search",
+    "endpoint": "https://mcp-search.example.com/mcp",
+    "bearer_token": "secret-token",
+    "protocol_version": "2025-06-18"
+  },
+  {
+    "name": "docs",
+    "endpoint": "https://mcp-docs.example.com/mcp"
+  }
+]
+```
+
+Each server `name` must be unique and must contain only lowercase letters, numbers, and underscores. Each server `endpoint` is required. `bearer_token` is optional. `protocol_version` defaults to `2025-06-18`.
+
+If `ERP_AI_MCP_SERVERS` is blank or empty, MCP tools are unavailable and the runner behaves like the current single-response flow, except through the new loop code path.
 
 ## Architecture
 
@@ -53,14 +70,25 @@ Responsible for MCP JSON-RPC over HTTP:
 - Sends `MCP-Protocol-Version`.
 - Sends `Authorization: Bearer ...` when a token is configured.
 
-The first version parses JSON responses directly. If a server returns SSE, the client extracts the final JSON-RPC response from `data:` events when possible. Complex MCP server-to-client requests are out of scope.
+One client instance represents one configured MCP server. The first version parses JSON responses directly. If a server returns SSE, the client extracts the final JSON-RPC response from `data:` events when possible. Complex MCP server-to-client requests are out of scope.
+
+### `ErpAI::Mcp::ServerRegistry`
+
+Builds configured MCP clients from `ERP_AI_MCP_SERVERS`:
+
+- Parses and validates the server config JSON.
+- Enforces unique server names.
+- Skips invalid server entries and exposes no tools for them.
+- Returns named `ErpAI::Mcp::HttpClient` instances.
+- Does not log bearer tokens.
 
 ### `ErpAI::Mcp::ToolAdapter`
 
 Converts MCP tool definitions into model-visible tool definitions:
 
-- Prefixes external MCP tool names as `mcp__external__<tool_name>`.
+- Prefixes external MCP tool names as `mcp__<server_name>__<tool_name>`.
 - Preserves the original MCP name in metadata.
+- Preserves the originating MCP server name in metadata.
 - Keeps MCP input schema when present.
 - Avoids collisions with existing ERP tool names.
 
@@ -68,9 +96,10 @@ Converts MCP tool definitions into model-visible tool definitions:
 
 Dispatches requested tool calls:
 
-- Executes `mcp__external__...` names through `ErpAI::Mcp::HttpClient#call_tool`.
+- Executes `mcp__<server_name>__...` names through the matching `ErpAI::Mcp::HttpClient#call_tool`.
 - Returns a normalized tool result with tool call id, tool name, and serialized result content.
 - Rejects unknown tools with a structured error result instead of raising into the runner.
+- Rejects unknown MCP server names with a structured error result.
 
 Existing ERP query tool names remain registered, but they are not executed by this first MCP implementation unless a concrete executor is added later.
 
@@ -99,7 +128,7 @@ When the max round limit is reached, the runner stores a final assistant message
   tool_calls: [
     {
       id: "call_1",
-      name: "mcp__external__tool_name",
+      name: "mcp__search__tool_name",
       arguments: { "key" => "value" }
     }
   ],
@@ -118,13 +147,14 @@ The existing `messages` table has `role`, `content`, and `usage`. To avoid a mig
 Examples:
 
 - Assistant tool request: `{"tool_calls":[...]}`
-- Tool result: `{"tool_call_id":"call_1","name":"mcp__external__search","result":{...}}`
+- Tool result: `{"tool_call_id":"call_1","name":"mcp__search__web_search","result":{...}}`
 
 This keeps the first version surgical. A future migration can add explicit JSONB columns if richer inspection is needed.
 
 ## Error Handling
 
-- Missing MCP endpoint means no MCP tools are listed.
+- Missing or empty MCP server configuration means no MCP tools are listed.
+- Invalid MCP server entries are ignored for tool discovery and produce structured errors if referenced by a tool call.
 - MCP HTTP errors become structured tool error messages.
 - Invalid JSON or invalid SSE payloads become structured tool error messages.
 - Unknown tool names become structured tool error messages.
@@ -133,6 +163,7 @@ This keeps the first version surgical. A future migration can add explicit JSONB
 ## Security
 
 - Only configured MCP endpoints are callable.
+- MCP server names are validated before they are used in model-visible tool names.
 - Tool names are namespace-prefixed before they reach the model.
 - The runner does not expose MCP tokens to messages.
 - This first version does not add write-capable ERP tools.
@@ -143,7 +174,8 @@ This keeps the first version surgical. A future migration can add explicit JSONB
 Add focused tests:
 
 - `ErpAI::Mcp::HttpClient` sends correct JSON-RPC requests and headers for `initialize`, `tools/list`, and `tools/call`.
-- `ErpAI::Mcp::ToolAdapter` prefixes MCP tool names and preserves input schema.
+- `ErpAI::Mcp::ServerRegistry` parses multiple MCP server configs, enforces unique names, and hides invalid entries.
+- `ErpAI::Mcp::ToolAdapter` prefixes MCP tool names with server namespace and preserves input schema.
 - `ErpAI::ToolExecutor` dispatches MCP tools and returns structured errors for unknown tools.
 - `ErpAI::AgentRunner` executes model tool calls, persists tool messages, then persists the final assistant answer.
 - `ErpAI::AgentRunner` stops at the configured max tool rounds.
