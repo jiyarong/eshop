@@ -92,7 +92,7 @@ module ErpAI
     end
 
     def current_tool_executor
-      @current_tool_executor ||= @tool_executor || ErpAI::ToolExecutor.new(mcp_clients: mcp_clients)
+      @current_tool_executor ||= @tool_executor || ErpAI::ToolExecutor.new(mcp_clients: mcp_clients, mcp_tool_filters: mcp_tool_filters)
     end
 
     def build_context(conversation, data_summary)
@@ -115,7 +115,7 @@ module ErpAI
 
     def mcp_tools
       mcp_clients.flat_map do |server_name, mcp_client|
-        ErpAI::Mcp::ToolAdapter.adapt(server_name: server_name, tools: mcp_client.list_tools)
+        ErpAI::Mcp::ToolAdapter.adapt(server_name: server_name, tools: filtered_mcp_tools(server_name, mcp_client.list_tools))
       rescue StandardError
         []
       end
@@ -123,6 +123,19 @@ module ErpAI
 
     def mcp_clients
       @mcp_clients ||= server_registry.clients
+    end
+
+    def mcp_tool_filters
+      @mcp_tool_filters ||= server_registry.respond_to?(:tool_filters) ? server_registry.tool_filters : {}
+    end
+
+    def filtered_mcp_tools(server_name, tools)
+      allowed_tools = mcp_tool_filters[server_name]
+      return tools if allowed_tools.blank?
+
+      Array(tools).select do |tool|
+        allowed_tools.include?(tool["name"] || tool[:name])
+      end
     end
 
     def serialize_message(message)
