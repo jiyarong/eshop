@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_29_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -401,6 +401,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code", "effective_from"], name: "idx_ec_sku_predicted_costs_sku_from"
+  end
+
+  create_table "ec_sku_product_operators", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "sku_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["sku_product_id", "user_id"], name: "idx_ec_sku_product_operators_unique", unique: true
+    t.index ["sku_product_id"], name: "index_ec_sku_product_operators_on_sku_product_id"
+    t.index ["user_id"], name: "index_ec_sku_product_operators_on_user_id"
   end
 
   create_table "ec_sku_products", force: :cascade do |t|
@@ -1007,6 +1017,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
   create_table "raw_ozon_returns", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.jsonb "compensation_status"
+    t.datetime "final_moment"
     t.string "offer_id"
     t.bigint "order_id"
     t.string "order_number"
@@ -1017,6 +1028,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
     t.string "product_name"
     t.integer "quantity", default: 1
     t.jsonb "raw_json", null: false
+    t.datetime "return_date"
     t.bigint "return_id", null: false
     t.string "return_reason_name"
     t.string "return_schema", null: false
@@ -1024,10 +1036,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
     t.jsonb "storage"
     t.datetime "synced_at"
     t.jsonb "target_place"
+    t.datetime "visual_change_moment"
     t.string "visual_status"
+    t.index ["account_id", "final_moment"], name: "idx_raw_ozon_returns_account_final_moment"
     t.index ["account_id", "posting_number"], name: "index_raw_ozon_returns_on_account_id_and_posting_number"
+    t.index ["account_id", "return_date"], name: "idx_raw_ozon_returns_account_return_date"
     t.index ["account_id", "return_id"], name: "index_raw_ozon_returns_on_account_id_and_return_id", unique: true
     t.index ["account_id", "return_schema"], name: "index_raw_ozon_returns_on_account_id_and_return_schema"
+    t.index ["account_id", "visual_change_moment"], name: "idx_raw_ozon_returns_account_visual_change_moment"
     t.index ["account_id", "visual_status"], name: "index_raw_ozon_returns_on_account_id_and_visual_status"
     t.index ["account_id"], name: "index_raw_ozon_returns_on_account_id"
   end
@@ -1917,6 +1933,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code", name: "fk_rails_ec_sku_predicted_costs_sku_code"
+  add_foreign_key "ec_sku_product_operators", "ec_sku_products", column: "sku_product_id"
+  add_foreign_key "ec_sku_product_operators", "users"
   add_foreign_key "ec_sku_products", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_products", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"

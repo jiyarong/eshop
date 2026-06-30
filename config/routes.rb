@@ -66,7 +66,9 @@ Rails.application.routes.draw do
       resources :sku_products, path: :products, only: [:index, :create, :destroy]
     end
     post "skus/:id" => "skus#update"
-    resources :stores, except: [:show, :destroy]
+    resources :stores, except: [:destroy] do
+      patch "sku_products/:id/operators" => "store_sku_product_operators#update", as: :sku_product_operators
+    end
     resources :sku_batches, except: [:destroy]
     resources :suppliers, only: [:index, :show]
     resources :purchase_orders, except: [:destroy]

@@ -196,6 +196,168 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_not @store.is_active
   end
 
+  test "sku product can have multiple operator users" do
+    sku = Ec::Sku.create!(
+      sku_code: "STORE-OPS-#{token_suffix}",
+      product_name: "店铺运营 SKU #{token_suffix}",
+      is_active: true
+    )
+    product = Ec::SkuProduct.create!(
+      sku_code: sku.sku_code,
+      store: @store,
+      product_id: "P-#{token_suffix}",
+      offer_id: "OFFER-#{token_suffix}",
+      product_name: "店铺运营商品 #{token_suffix}"
+    )
+    operator_a = create_user_with_roles("store-operator-a-#{@token.downcase}@example.com", "operator")
+    operator_b = create_user_with_roles("store-operator-b-#{@token.downcase}@example.com", "operator")
+
+    product.operators = [operator_a, operator_b]
+    product.save!
+
+    assert_equal [operator_a.email, operator_b.email].sort, product.reload.operators.map(&:email).sort
+    assert_includes operator_a.reload.operated_sku_products, product
+  ensure
+    Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
+    Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
+    UserRole.joins(:user).where("users.email LIKE ?", "store-operator-%#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "store-operator-%#{@token.downcase}%").delete_all
+  end
+
+  test "show renders store products and current operators for manager" do
+    sku = Ec::Sku.create!(
+      sku_code: "STORE-SHOW-#{token_suffix}",
+      product_name: "店铺详情 SKU #{token_suffix}",
+      is_active: true
+    )
+    product = Ec::SkuProduct.create!(
+      sku_code: sku.sku_code,
+      store: @store,
+      product_id: "SHOW-#{token_suffix}",
+      offer_id: "SHOW-OFFER-#{token_suffix}",
+      product_name: "店铺详情商品 #{token_suffix}"
+    )
+    operator = create_user_with_roles("store-show-operator-#{@token.downcase}@example.com", "operator")
+    product.operators = [operator]
+
+    get "/erp/stores/#{@store.id}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", @store.store_name
+    assert_select "dt", "店铺 ID"
+    assert_select "dd", "SHOP-%03d" % @store.id
+    assert_select "h2", "店铺商品"
+    assert_select "td", sku.sku_code
+    assert_select "td", "SHOW-#{token_suffix}"
+    assert_select "td", "SHOW-OFFER-#{token_suffix}"
+    assert_select "td", "店铺详情商品 #{token_suffix}"
+    assert_select ".operator-list", operator.email
+    assert_select "form[action=?][method=?]", "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", "post"
+    assert_select "input[type=?][name=?][value=?]", "checkbox", "operator_ids[]", operator.id.to_s
+  ensure
+    Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
+    Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
+    UserRole.joins(:user).where("users.email LIKE ?", "store-show-operator-#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "store-show-operator-#{@token.downcase}%").delete_all
+  end
+
+  test "show hides operator management form for read only erp user" do
+    readonly_user = create_user_with_roles("store-readonly-#{@token.downcase}@example.com", "operator")
+    sign_in readonly_user
+    sku = Ec::Sku.create!(
+      sku_code: "STORE-READ-#{token_suffix}",
+      product_name: "只读店铺 SKU #{token_suffix}",
+      is_active: true
+    )
+    product = Ec::SkuProduct.create!(
+      sku_code: sku.sku_code,
+      store: @store,
+      product_id: "READ-#{token_suffix}",
+      product_name: "只读店铺商品 #{token_suffix}"
+    )
+
+    get "/erp/stores/#{@store.id}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", "READ-#{token_suffix}"
+    assert_select "form[action=?]", "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", count: 0
+  ensure
+    sign_in @current_user
+    Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
+    UserRole.joins(:user).where("users.email LIKE ?", "store-readonly-#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "store-readonly-#{@token.downcase}%").delete_all
+  end
+
+  test "update operators replaces assigned user set" do
+    sku = Ec::Sku.create!(
+      sku_code: "STORE-UPD-#{token_suffix}",
+      product_name: "更新运营 SKU #{token_suffix}",
+      is_active: true
+    )
+    product = Ec::SkuProduct.create!(
+      sku_code: sku.sku_code,
+      store: @store,
+      product_id: "UPD-#{token_suffix}",
+      product_name: "更新运营商品 #{token_suffix}"
+    )
+    old_operator = create_user_with_roles("store-old-operator-#{@token.downcase}@example.com", "operator")
+    new_operator = create_user_with_roles("store-new-operator-#{@token.downcase}@example.com", "operator")
+    inactive_operator = create_user_with_roles("store-inactive-operator-#{@token.downcase}@example.com", "operator")
+    inactive_operator.update!(active: false)
+    product.operators = [old_operator]
+
+    patch "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", params: {
+      operator_ids: [new_operator.id.to_s, inactive_operator.id.to_s]
+    }
+
+    assert_redirected_to "/erp/stores/#{@store.id}"
+    assert_equal [new_operator.id], product.reload.operator_ids
+  ensure
+    Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
+    Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
+    UserRole.joins(:user).where("users.email LIKE ?", "store-%operator-#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "store-%operator-#{@token.downcase}%").delete_all
+  end
+
+  test "update operators only updates products under the current store" do
+    other_store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "其他 Ozon 店 #{token_suffix}",
+      company_type: "general",
+      registration_country: "belarus",
+      is_active: true
+    )
+    sku = Ec::Sku.create!(
+      sku_code: "STORE-WRONG-#{token_suffix}",
+      product_name: "错误店铺 SKU #{token_suffix}",
+      is_active: true
+    )
+    product = Ec::SkuProduct.create!(
+      sku_code: sku.sku_code,
+      store: other_store,
+      product_id: "WRONG-#{token_suffix}",
+      product_name: "错误店铺商品 #{token_suffix}"
+    )
+    operator = create_user_with_roles("store-wrong-operator-#{@token.downcase}@example.com", "operator")
+
+    patch "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", params: {
+      operator_ids: [operator.id.to_s]
+    }
+
+    assert_response :not_found
+    assert_empty product.reload.operators
+  ensure
+    Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
+    other_store&.destroy
+    UserRole.joins(:user).where("users.email LIKE ?", "store-wrong-operator-#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "store-wrong-operator-#{@token.downcase}%").delete_all
+  end
+
   private
 
   def token_suffix
