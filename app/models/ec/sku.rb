@@ -1,5 +1,7 @@
 module Ec
   class Sku < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = 'ec_skus'
 
     belongs_to :master_sku, class_name: "Ec::MasterSku", optional: true

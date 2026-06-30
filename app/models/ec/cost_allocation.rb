@@ -1,5 +1,7 @@
 module Ec
   class CostAllocation < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = "ec_cost_allocations"
 
     COST_TYPES = %w[international_freight customs certification warehouse misc].freeze

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_30_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -125,6 +125,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
     t.datetime "updated_at", null: false
     t.index ["is_active"], name: "index_ec_master_skus_on_is_active"
     t.index ["master_sku_code"], name: "index_ec_master_skus_on_master_sku_code", unique: true
+  end
+
+  create_table "ec_operation_logs", force: :cascade do |t|
+    t.string "action", null: false
+    t.jsonb "changeset", default: [], null: false
+    t.datetime "created_at", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
+    t.bigint "user_id"
+    t.index ["action"], name: "index_ec_operation_logs_on_action"
+    t.index ["created_at"], name: "index_ec_operation_logs_on_created_at"
+    t.index ["record_type", "record_id"], name: "index_ec_operation_logs_on_record_type_and_record_id"
+    t.index ["user_id"], name: "index_ec_operation_logs_on_user_id"
   end
 
   create_table "ec_operation_tasks", force: :cascade do |t|
@@ -1925,6 +1938,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
   add_foreign_key "conversations", "users"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
+  add_foreign_key "ec_operation_logs", "users", on_delete: :nullify
   add_foreign_key "ec_order_fulfillments", "ec_orders", column: "order_id"
   add_foreign_key "ec_order_fulfillments", "ec_stores", column: "store_id"
   add_foreign_key "ec_order_items", "ec_order_fulfillments", column: "fulfillment_id"

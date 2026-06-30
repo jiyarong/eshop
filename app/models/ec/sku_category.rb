@@ -2,6 +2,8 @@ require "set"
 
 module Ec
   class SkuCategory < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = "ec_sku_categories"
 
     belongs_to :parent, class_name: "Ec::SkuCategory", optional: true

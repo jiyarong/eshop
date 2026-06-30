@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
 
   prepend_before_action :set_locale
   before_action :redirect_guest_with_locale, if: :html_request?
+  around_action :set_current_user
 
   before_action do
     next if params[:format].present?
@@ -14,6 +15,13 @@ class ApplicationController < ActionController::Base
   before_action :authenticate_user!, if: :html_request?
 
   private
+
+  def set_current_user
+    Current.user = current_user
+    yield
+  ensure
+    Current.user = nil
+  end
 
   def set_locale
     if params[:locale].present? && available_locales.include?(params[:locale].to_sym)

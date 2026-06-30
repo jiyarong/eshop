@@ -1,5 +1,7 @@
 module Ec
   class Store < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = 'ec_stores'
 
     enum :platform,     { wb: 'wb', ozon: 'ozon', amazon: 'amazon' }, validate: true

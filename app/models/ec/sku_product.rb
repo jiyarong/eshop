@@ -1,5 +1,7 @@
 module Ec
   class SkuProduct < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = "ec_sku_products"
 
     belongs_to :sku, class_name: "Ec::Sku", foreign_key: :sku_code, primary_key: :sku_code
