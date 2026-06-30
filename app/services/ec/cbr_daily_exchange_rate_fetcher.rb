@@ -85,6 +85,7 @@ module Ec
         base_currency: BASE_CURRENCY,
         currency_code: currency_code,
         rate_to_base: rate_to_base.round(8),
+        rate_from_base: (BigDecimal("1") / rate_to_base).round(8),
         source: SOURCE,
         source_date: source_date,
         created_at: timestamp,

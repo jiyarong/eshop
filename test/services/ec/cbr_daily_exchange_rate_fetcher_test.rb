@@ -30,10 +30,14 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
     june_3_usd = Ec::DailyExchangeRate.find_by!(rate_date: @to_date, currency_code: "USD")
 
     assert_equal BigDecimal("7.00000000"), june_1_usd.rate_to_base
+    assert_equal BigDecimal("0.14285714"), june_1_usd.rate_from_base
     assert_equal BigDecimal("0.10000000"), june_1_rub.rate_to_base
+    assert_equal BigDecimal("10.00000000"), june_1_rub.rate_from_base
     assert_equal BigDecimal("2.50000000"), june_1_byn.rate_to_base
+    assert_equal BigDecimal("0.40000000"), june_1_byn.rate_from_base
     assert_equal Date.new(2026, 6, 1), june_2_usd.source_date
     assert_equal BigDecimal("8.00000000"), june_3_usd.rate_to_base
+    assert_equal BigDecimal("0.12500000"), june_3_usd.rate_from_base
     assert_equal Date.new(2026, 6, 3), june_3_usd.source_date
   end
 
@@ -43,6 +47,7 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
       base_currency: "CNY",
       currency_code: "USD",
       rate_to_base: 1,
+      rate_from_base: 1,
       source: "manual",
       source_date: @from_date
     )
@@ -56,7 +61,22 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
     updated = Ec::DailyExchangeRate.find_by!(rate_date: @from_date, currency_code: "USD")
 
     assert_equal BigDecimal("7.00000000"), updated.rate_to_base
+    assert_equal BigDecimal("0.14285714"), updated.rate_from_base
     assert_equal "cbr", updated.source
+  end
+
+  test "stores rate_from_base from the unrounded conversion rate" do
+    date = Date.new(2026, 6, 3)
+    fetcher = Ec::CbrDailyExchangeRateFetcher.new(from_date: date, to_date: date)
+
+    with_stubbed_records(fetcher, precise_records) do
+      fetcher.fetch_and_store
+    end
+
+    rub = Ec::DailyExchangeRate.find_by!(rate_date: date, currency_code: "RUB")
+
+    assert_equal BigDecimal("0.09129419"), rub.rate_to_base
+    assert_equal BigDecimal("10.95360000"), rub.rate_from_base
   end
 
   test "carries forward earlier official rates when requested range starts on a non official day" do
@@ -75,8 +95,11 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
     byn = Ec::DailyExchangeRate.find_by!(rate_date: @from_date, currency_code: "BYN")
 
     assert_equal BigDecimal("7.00000000"), usd.rate_to_base
+    assert_equal BigDecimal("0.14285714"), usd.rate_from_base
     assert_equal BigDecimal("0.10000000"), rub.rate_to_base
+    assert_equal BigDecimal("10.00000000"), rub.rate_from_base
     assert_equal BigDecimal("2.50000000"), byn.rate_to_base
+    assert_equal BigDecimal("0.40000000"), byn.rate_from_base
     assert_equal Date.new(2026, 5, 30), usd.source_date
     assert_equal Date.new(2026, 5, 30), rub.source_date
     assert_equal Date.new(2026, 5, 30), byn.source_date
@@ -201,6 +224,20 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
       },
       "BYN" => {
         Date.new(2026, 5, 30) => BigDecimal("25")
+      }
+    }
+  end
+
+  def precise_records
+    {
+      "USD" => {
+        Date.new(2026, 6, 3) => BigDecimal("72.5597")
+      },
+      "CNY" => {
+        Date.new(2026, 6, 3) => BigDecimal("10.9536")
+      },
+      "BYN" => {
+        Date.new(2026, 6, 3) => BigDecimal("26.2770")
       }
     }
   end

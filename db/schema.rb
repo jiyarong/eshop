@@ -78,6 +78,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
     t.datetime "created_at", null: false
     t.string "currency_code", null: false
     t.date "rate_date", null: false
+    t.decimal "rate_from_base", precision: 18, scale: 8, null: false
     t.decimal "rate_to_base", precision: 18, scale: 8, null: false
     t.string "source", default: "cbr", null: false
     t.date "source_date"

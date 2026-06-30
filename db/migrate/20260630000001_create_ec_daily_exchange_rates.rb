@@ -5,6 +5,7 @@ class CreateEcDailyExchangeRates < ActiveRecord::Migration[8.0]
       t.string :base_currency, null: false, default: "CNY"
       t.string :currency_code, null: false
       t.decimal :rate_to_base, precision: 18, scale: 8, null: false
+      t.decimal :rate_from_base, precision: 18, scale: 8, null: false
       t.string :source, null: false, default: "cbr"
       t.date :source_date
       t.timestamps

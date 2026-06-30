@@ -16,6 +16,7 @@ class Ec::DailyExchangeRateTest < ActiveSupport::TestCase
       base_currency: "cny",
       currency_code: "usd",
       rate_to_base: 7.12345678,
+      rate_from_base: 0.14038130,
       source: "CBR",
       source_date: @date
     )
@@ -31,11 +32,26 @@ class Ec::DailyExchangeRateTest < ActiveSupport::TestCase
       base_currency: "CNY",
       currency_code: "USD",
       rate_to_base: 0,
+      rate_from_base: 1,
       source: "cbr"
     )
 
     assert_not rate.valid?
     assert rate.errors.of_kind?(:rate_to_base, :greater_than)
+  end
+
+  test "requires positive rate_from_base" do
+    rate = Ec::DailyExchangeRate.new(
+      rate_date: @date,
+      base_currency: "CNY",
+      currency_code: "USD",
+      rate_to_base: 7,
+      rate_from_base: 0,
+      source: "cbr"
+    )
+
+    assert_not rate.valid?
+    assert rate.errors.of_kind?(:rate_from_base, :greater_than)
   end
 
   test "enforces one rate per date base and currency" do
@@ -44,6 +60,7 @@ class Ec::DailyExchangeRateTest < ActiveSupport::TestCase
       base_currency: "CNY",
       currency_code: "USD",
       rate_to_base: 7.1,
+      rate_from_base: 0.14084507,
       source: "cbr",
       source_date: @date
     )
@@ -53,6 +70,7 @@ class Ec::DailyExchangeRateTest < ActiveSupport::TestCase
       base_currency: "CNY",
       currency_code: "USD",
       rate_to_base: 7.2,
+      rate_from_base: 0.13888889,
       source: "cbr",
       source_date: @date
     )
