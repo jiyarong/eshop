@@ -575,6 +575,7 @@ zh:
     stores:
       actions:
         add_store: "新增店铺"
+        bind_operators: "绑定运营人员"
         edit_store: "编辑店铺"
         save_operators: "保存运营人员"
       company_types:
@@ -605,6 +606,7 @@ zh:
         search_placeholder: "搜索店铺名称或备注…"
       form:
         inactive_hint: "未激活的店铺不会进入 1.0 运营工作流。"
+        operator_select_hint: "可多选，留空保存后将解除所有运营人员。"
         store_name_placeholder: "例如：明斯克 Ozon 店铺"
       index:
         all_stores: "全部店铺"

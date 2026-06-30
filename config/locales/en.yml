@@ -603,6 +603,7 @@ en:
     stores:
       actions:
         add_store: "Add store"
+        bind_operators: "Assign operators"
         edit_store: "Edit store"
         save_operators: "Save operators"
       company_types:
@@ -633,6 +634,7 @@ en:
         search_placeholder: "Search store name or notes..."
       form:
         inactive_hint: "Inactive stores will not enter the 1.0 operations workflow."
+        operator_select_hint: "Select multiple operators, or leave empty to unassign all."
         store_name_placeholder: "Example: Minsk Ozon store"
       index:
         all_stores: "All stores"

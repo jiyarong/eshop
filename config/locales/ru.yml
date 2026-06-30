@@ -559,6 +559,7 @@ ru:
     stores:
       actions:
         add_store: "Добавить магазин"
+        bind_operators: "Назначить операторов"
         edit_store: "Редактировать магазин"
         save_operators: "Сохранить операторов"
       company_types:
@@ -589,6 +590,7 @@ ru:
         search_placeholder: "Поиск названия магазина или примечаний..."
       form:
         inactive_hint: "Неактивные магазины не входят в операционный процесс 1.0."
+        operator_select_hint: "Можно выбрать несколько операторов или оставить пустым, чтобы снять всех."
         store_name_placeholder: "Например: магазин Ozon Минск"
       index:
         all_stores: "Все магазины"

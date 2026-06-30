@@ -47,21 +47,28 @@
             <th><%= t("erp.stores.fields.operators") %></th>
             <th><%= t("erp.sku_products.fields.product_attributes_link") %></th>
             <th><%= t("erp.sku_products.fields.store_link") %></th>
-            <% if can?(:manage_skus) %>
-              <th><%= t("erp.common.actions.actions") %></th>
-            <% end %>
           </tr>
         </thead>
         <tbody>
           <% if @sku_products.any? %>
             <% @sku_products.each do |product| %>
+              <% dialog_id = "operator-dialog-#{product.id}" %>
+              <% operator_names = product.operators.map(&:email).join(", ").presence || t("erp.stores.empty.no_operators") %>
               <tr>
-                <td><%= product.sku_code %></td>
+                <td><%= link_to product.sku_code, report_sku_path(product.sku_code) %></td>
                 <td><%= product.product_id %></td>
                 <td><%= erp_value(product.offer_id) %></td>
                 <td><span data-controller="long-text" data-long-text-limit-value="50"><%= erp_value(product.product_name) %></span></td>
                 <td>
-                  <span class="operator-list"><%= product.operators.map(&:email).join(", ").presence || t("erp.stores.empty.no_operators") %></span>
+                  <span class="operator-list">
+                    <% if can?(:manage_skus) %>
+                      <button class="operator-list__trigger" type="button" data-controller="operator-dialog" data-action="click->operator-dialog#open" data-operator-dialog-id="<%= dialog_id %>">
+                        <%= operator_names %>
+                      </button>
+                    <% else %>
+                      <%= operator_names %>
+                    <% end %>
+                  </span>
                 </td>
                 <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(product.platform, product.store_id, product.product_id) %></td>
                 <td>
@@ -74,17 +81,31 @@
                 </td>
                 <% if can?(:manage_skus) %>
                   <td>
-                    <%= form_with url: erp_store_sku_product_operators_path(@store, product), method: :patch, local: true, class: "operator-assignment-form" do %>
-                      <div class="operator-checkboxes">
-                        <% @operator_candidates.each do |user| %>
-                          <label>
-                            <%= check_box_tag "operator_ids[]", user.id, product.operator_ids.include?(user.id) %>
-                            <%= user.email %>
-                          </label>
+                    <dialog id="<%= dialog_id %>" class="operator-assignment-dialog" data-controller="operator-dialog" data-action="click->operator-dialog#closeOnBackdrop">
+                      <div class="operator-assignment-dialog__content">
+                        <div class="erp-modal__header">
+                          <h3><%= t("erp.stores.actions.bind_operators") %></h3>
+                          <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="operator-dialog#close">
+                            <i class="bi bi-x-lg"></i>
+                          </button>
+                        </div>
+                        <%= form_with url: erp_store_sku_product_operators_path(@store, product), method: :patch, local: true, class: "operator-assignment-form" do %>
+                          <div class="field">
+                            <label for="<%= "#{dialog_id}-operator-ids" %>"><%= t("erp.stores.fields.operators") %></label>
+                            <select id="<%= "#{dialog_id}-operator-ids" %>" name="operator_ids[]" multiple="multiple" class="select operator-assignment-select" aria-describedby="<%= "#{dialog_id}-hint" %>">
+                              <% @operator_candidates.each do |user| %>
+                                <option value="<%= user.id %>"<%= " selected=\"selected\"".html_safe if product.operator_ids.include?(user.id) %>><%= user.email %></option>
+                              <% end %>
+                            </select>
+                            <p id="<%= "#{dialog_id}-hint" %>" class="form-hint"><%= t("erp.stores.form.operator_select_hint") %></p>
+                          </div>
+                          <div class="modal-form-actions">
+                            <button class="button button-secondary" type="button" data-action="operator-dialog#close"><%= t("common.actions.cancel") %></button>
+                            <button class="button" type="submit"><%= t("erp.stores.actions.save_operators") %></button>
+                          </div>
                         <% end %>
                       </div>
-                      <button class="button button-secondary" type="submit"><%= t("erp.stores.actions.save_operators") %></button>
-                    <% end %>
+                    </dialog>
                   </td>
                 <% end %>
               </tr>

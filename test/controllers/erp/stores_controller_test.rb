@@ -238,6 +238,12 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
       offer_id: "SHOW-OFFER-#{token_suffix}",
       product_name: "店铺详情商品 #{token_suffix}"
     )
+    unassigned_product = Ec::SkuProduct.create!(
+      sku_code: sku.sku_code,
+      store: @store,
+      product_id: "SHOW-EMPTY-#{token_suffix}",
+      product_name: "未绑定运营商品 #{token_suffix}"
+    )
     operator = create_user_with_roles("store-show-operator-#{@token.downcase}@example.com", "operator")
     product.operators = [operator]
 
@@ -252,9 +258,19 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "SHOW-#{token_suffix}"
     assert_select "td", "SHOW-OFFER-#{token_suffix}"
     assert_select "td", "店铺详情商品 #{token_suffix}"
-    assert_select ".operator-list", operator.email
+    assert_select "td", "SHOW-EMPTY-#{token_suffix}"
+    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: operator.email
+    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{unassigned_product.id}", text: "未绑定"
     assert_select "form[action=?][method=?]", "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", "post"
-    assert_select "input[type=?][name=?][value=?]", "checkbox", "operator_ids[]", operator.id.to_s
+    assert_select "dialog#operator-dialog-#{product.id}.operator-assignment-dialog" do
+      assert_select "h3", "绑定运营人员"
+      assert_select "select[multiple='multiple'][name='operator_ids[]']" do
+        assert_select "option[selected='selected'][value=?]", operator.id.to_s, text: operator.email
+      end
+      assert_select "button[type='submit']", "保存运营人员"
+    end
+    assert_select "td > button[type='button']", text: "绑定运营人员", count: 0
+    assert_select "input[type=?][name=?]", "checkbox", "operator_ids[]", count: 0
   ensure
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
