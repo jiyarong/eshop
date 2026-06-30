@@ -4,11 +4,11 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
   setup do
     @from_date = Date.new(2026, 6, 1)
     @to_date = Date.new(2026, 6, 3)
-    Ec::DailyExchangeRate.where(rate_date: @from_date..@to_date).delete_all
+    cleanup_daily_exchange_rates
   end
 
   teardown do
-    Ec::DailyExchangeRate.where(rate_date: @from_date..@to_date).delete_all
+    cleanup_daily_exchange_rates
   end
 
   test "stores CNY anchored daily rates and carries forward missing official days" do
@@ -109,6 +109,14 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
   end
 
   private
+
+  def cleanup_daily_exchange_rates
+    Ec::DailyExchangeRate.where(
+      rate_date: @from_date..@to_date,
+      base_currency: "CNY",
+      currency_code: ["USD", "RUB", "BYN"]
+    ).delete_all
+  end
 
   def with_no_sleep(fetcher)
     fetcher.define_singleton_method(:sleep) { |_seconds| }
