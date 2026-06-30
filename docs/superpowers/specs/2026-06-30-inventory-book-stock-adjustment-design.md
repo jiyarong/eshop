@@ -105,6 +105,87 @@ The script output should explicitly show:
 - WB FBW supply is removed from inventory quantity formulas
 - `supply_quantity` is explicitly documented as excluded from inventory quantity calculations
 
+## Future UI Data Contract
+
+The latest design draft in `docs/design/releases/1.0.11-current/ui_kits/admin/screens/SkuInventory.jsx` is still mock-driven, but it is useful as a contract sketch for the eventual Rails page.
+
+The future page needs three layers of data:
+
+### 1. SKU list rows
+
+Each row needs at least:
+
+- `sku_code`
+- localized or source product name
+- `incoming_quantity`
+- `book_inventory_quantity`
+- `platform_inventory_quantity`
+- `overseas_available_quantity`
+- enough data to determine whether the row should be visually flagged as low stock
+
+### 2. SKU detail overview summary
+
+The drawer-style detail view expects a compact summary with:
+
+- `incoming_quantity`
+- `book_inventory_quantity`
+- `platform_inventory_quantity`
+- `overseas_available_quantity`
+
+These are presentation-level aggregates and should come from real backend calculations, not be reverse-derived from mock layout data.
+
+### 3. SKU detail tab payloads
+
+The design implies three tab payloads:
+
+- `incoming_batches`
+  - batch identifier or label
+  - expected arrival or equivalent date
+  - quantity
+
+- `book_inventory`
+  - mini summary values:
+    - `purchase_quantity`
+    - platform-level sales and return figures needed to explain `book_inventory_quantity`
+  - batch rows:
+    - batch label
+    - batch type
+    - adjustment note
+    - signed quantity
+  - order distribution rows:
+    - platform
+    - store label
+    - counts by order-status bucket
+  - return distribution rows:
+    - platform
+    - store label
+    - return quantity
+  - formula inputs:
+    - received total
+    - platform sales totals
+    - platform return totals
+    - adjustment totals grouped by batch type
+
+- `platform_inventory`
+  - platform summary buckets
+  - shop rows split by fulfillment bucket
+  - formula inputs:
+    - `book_inventory_quantity`
+    - total platform inventory
+    - `overseas_available_quantity`
+
+## Mock-Only Assumptions To Reject
+
+The current design file contains several placeholders that should not be treated as backend truth:
+
+- order distribution is artificially derived from `sales30d` and fixed weights
+- return counts are artificially derived from fixed return rates
+- `bookInventoryTotal` in the mock is not computed from the real inventory formula
+- platform bucket naming in the mock is inconsistent with the current business vocabulary
+- the mock uses `untrackable_defect`, while the current model enum is `untrackable_defective`
+
+When the real page is implemented later, the backend must provide actual counts and formulas from database and platform-derived data instead of reproducing these mock approximations.
+
 ## Testing
 
 Add a direct service test for `Ec::SkuInventoryOverview` that covers:
