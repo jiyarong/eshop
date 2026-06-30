@@ -410,6 +410,7 @@ zh:
     common:
       actions:
         actions: "操作"
+        back: "返回"
         collapse_named: "收起 %{name}"
         edit: "编辑"
         expand_named: "展开 %{name}"
@@ -574,7 +575,9 @@ zh:
     stores:
       actions:
         add_store: "新增店铺"
+        bind_operators: "绑定运营人员"
         edit_store: "编辑店铺"
+        save_operators: "保存运营人员"
       company_types:
         general: "普通"
         small: "小规模"
@@ -582,6 +585,9 @@ zh:
         belarus: "白俄罗斯"
         russia: "俄罗斯"
       empty:
+        no_operators: "未绑定"
+        no_products: "这个店铺还没有绑定平台商品。"
+        no_unbound_raw_products: "这个店铺没有未绑定的平台商品。"
         no_stores: "当前筛选条件下没有店铺。"
       errors:
         company_type_blank: "请选择公司规模类型"
@@ -590,6 +596,7 @@ zh:
         company_scale: "公司规模类型"
         country: "国家"
         is_active: "是否激活"
+        operators: "运营人员"
         registration_country: "公司注册国"
         scale: "规模"
         store_id: "店铺 ID"
@@ -600,6 +607,7 @@ zh:
         search_placeholder: "搜索店铺名称或备注…"
       form:
         inactive_hint: "未激活的店铺不会进入 1.0 运营工作流。"
+        operator_select_hint: "可多选，留空保存后将解除所有运营人员。"
         store_name_placeholder: "例如：明斯克 Ozon 店铺"
       index:
         all_stores: "全部店铺"
@@ -608,3 +616,8 @@ zh:
           other: "%{count} 个店铺"
         store_overview: "店铺概览"
         title: "店铺设置"
+      show:
+        eyebrow: "店铺详情"
+        products: "店铺商品"
+        summary: "店铺信息"
+        unbound_raw_products: "未绑定平台商品"

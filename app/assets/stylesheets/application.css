@@ -829,6 +829,71 @@ pre {
   font-size: 18px;
 }
 
+.erp-modal__header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.operator-assignment-dialog {
+  width: min(520px, calc(100% - 32px));
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface);
+  box-shadow: 0 24px 70px rgba(24, 34, 53, 0.26);
+  padding: 0;
+}
+
+.operator-assignment-dialog::backdrop {
+  background: rgba(24, 34, 53, 0.42);
+}
+
+.operator-assignment-dialog__content {
+  padding: 18px;
+}
+
+.operator-list__trigger {
+  display: inline;
+  border: 0;
+  background: transparent;
+  color: var(--erp-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 760;
+  line-height: 1.35;
+  padding: 0;
+  text-align: left;
+  text-transform: none;
+}
+
+.operator-list__trigger:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.operator-list__trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.operator-assignment-form {
+  display: grid;
+  gap: 14px;
+}
+
+.operator-assignment-select {
+  min-height: 180px;
+  padding: 8px;
+  text-transform: none;
+}
+
+.form-hint {
+  margin: 0;
+  color: var(--erp-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .icon-button {
   width: 34px;
   height: 34px;

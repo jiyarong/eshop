@@ -59,6 +59,13 @@ module Ec
       refute_includes rows.map(&:product_id).map(&:to_s), @bound_wb_product.nm_id.to_s
     end
 
+    test "filters unbound raw products by store" do
+      rows = Ec::UnboundRawProductReport.call(store_id: @ozon_store.id)
+
+      assert_equal [@ozon_store.id], rows.map(&:store_id).uniq
+      assert_equal [@unbound_ozon_product.ozon_product_id.to_s], rows.map(&:product_id).map(&:to_s)
+    end
+
     private
 
     def create_ozon_product!(product_id, offer_id, name)

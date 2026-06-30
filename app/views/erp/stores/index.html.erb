@@ -89,7 +89,7 @@
           <tr class="master">
             <td><span class="code-text"><%= store_public_id(store) %></span></td>
             <td><span class="badge badge-pri"><%= store_platform_label(store.platform).upcase %></span></td>
-            <td><span class="zh-name"><%= store.store_name %></span></td>
+            <td><%= link_to store.store_name, erp_store_path(store, current_locale_params), class: "zh-name" %></td>
             <td><%= store_company_type_label(store.company_type) %></td>
             <td><%= store_country_label(store.registration_country) %></td>
             <td>
@@ -102,6 +102,10 @@
             <td><span class="text-muted"><%= erp_value(store.memo) %></span></td>
             <td>
               <div class="row-actions">
+                <%= link_to erp_store_path(store, current_locale_params), class: "btn btn-ghost btn-sm" do %>
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                  <%= t("erp.common.actions.view") %>
+                <% end %>
                 <%= link_to erp_edit_store_path(store, current_locale_params), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-pencil-square" aria-hidden="true"></i>
                   <%= t("erp.common.actions.edit") %>

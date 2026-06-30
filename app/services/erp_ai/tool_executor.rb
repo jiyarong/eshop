@@ -1,7 +1,8 @@
 module ErpAI
   class ToolExecutor
-    def initialize(mcp_clients:)
+    def initialize(mcp_clients:, mcp_tool_filters: {})
       @mcp_clients = mcp_clients
+      @mcp_tool_filters = mcp_tool_filters
     end
 
     def call(id:, name:, arguments:)
@@ -10,6 +11,7 @@ module ErpAI
 
       client = mcp_clients[parsed.fetch(:server_name)]
       return error_result(id, name, "unknown_mcp_server", "Unknown MCP server: #{parsed.fetch(:server_name)}") if client.nil?
+      return error_result(id, name, "mcp_tool_not_allowed", "MCP tool is not allowed: #{name}") unless allowed_mcp_tool?(parsed)
 
       {
         tool_call_id: id,
@@ -24,7 +26,12 @@ module ErpAI
 
     private
 
-    attr_reader :mcp_clients
+    attr_reader :mcp_clients, :mcp_tool_filters
+
+    def allowed_mcp_tool?(parsed)
+      allowed_tools = mcp_tool_filters[parsed.fetch(:server_name)]
+      allowed_tools.blank? || allowed_tools.include?(parsed.fetch(:tool_name))
+    end
 
     def error_result(id, name, code, message)
       {

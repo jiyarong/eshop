@@ -35,7 +35,7 @@ Rails.application.routes.draw do
 
   namespace :admin do
     mount MissionControl::Jobs::Engine, at: "/jobs"
-
+    mount SimpleApm::Engine => "/apm"
     get "users/new" => "users#new", as: :new_user
     get "users/:id/edit" => "users#edit", as: :edit_user
     post "agents/:id" => "agents#update"
@@ -66,7 +66,9 @@ Rails.application.routes.draw do
       resources :sku_products, path: :products, only: [:index, :create, :destroy]
     end
     post "skus/:id" => "skus#update"
-    resources :stores, except: [:show, :destroy]
+    resources :stores, except: [:destroy] do
+      patch "sku_products/:id/operators" => "store_sku_product_operators#update", as: :sku_product_operators
+    end
     resources :sku_batches, except: [:destroy]
     resources :suppliers, only: [:index, :show]
     resources :purchase_orders, except: [:destroy]

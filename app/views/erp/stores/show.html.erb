@@ -1,0 +1,167 @@
+<% content_for :page_heading, @store.store_name %>
+
+<div class="resource-header">
+  <div>
+    <p class="resource-eyebrow"><%= t("erp.stores.show.eyebrow") %></p>
+    <h1 class="page-title"><%= @store.store_name %></h1>
+  </div>
+  <div class="resource-actions">
+    <%= link_to t("erp.common.actions.back"), erp_stores_path(current_locale_params), class: "button button-secondary" %>
+    <% if can?(:manage_skus) %>
+      <%= link_to t("erp.common.actions.edit"), erp_edit_store_path(@store, current_locale_params), class: "button" %>
+    <% end %>
+  </div>
+</div>
+
+<div class="report-stack">
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.stores.show.summary") %></h2>
+    <dl class="definition-list">
+      <dt><%= t("erp.stores.fields.store_id") %></dt>
+      <dd><%= store_public_id(@store) %></dd>
+      <dt><%= t("erp.common.platform") %></dt>
+      <dd><%= store_platform_label(@store.platform) %></dd>
+      <dt><%= t("erp.common.name") %></dt>
+      <dd><%= @store.store_name %></dd>
+      <dt><%= t("erp.stores.fields.company_scale") %></dt>
+      <dd><%= store_company_type_label(@store.company_type) %></dd>
+      <dt><%= t("erp.stores.fields.registration_country") %></dt>
+      <dd><%= store_country_label(@store.registration_country) %></dd>
+      <dt><%= t("erp.stores.fields.is_active") %></dt>
+      <dd><%= @store.is_active ? t("erp.common.statuses.active") : t("erp.common.statuses.inactive") %></dd>
+      <dt><%= t("erp.common.memo") %></dt>
+      <dd><%= erp_value(@store.memo) %></dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.stores.show.products") %></h2>
+    <div class="table-scroll">
+      <table class="raw-product-options">
+        <thead>
+          <tr>
+            <th><%= t("erp.skus.fields.sku_code") %></th>
+            <th><%= t("erp.sku_products.fields.product_id") %></th>
+            <th><%= t("erp.sku_products.fields.offer_id") %></th>
+            <th><%= t("erp.sku_products.fields.product_name") %></th>
+            <th><%= t("erp.stores.fields.operators") %></th>
+            <th><%= t("erp.sku_products.fields.product_attributes_link") %></th>
+            <th><%= t("erp.sku_products.fields.store_link") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @sku_products.any? %>
+            <% @sku_products.each do |product| %>
+              <% dialog_id = "operator-dialog-#{product.id}" %>
+              <% operator_names = product.operators.map(&:email).join(", ").presence || t("erp.stores.empty.no_operators") %>
+              <tr>
+                <td><%= link_to product.sku_code, report_sku_path(product.sku_code) %></td>
+                <td><%= product.product_id %></td>
+                <td><%= erp_value(product.offer_id) %></td>
+                <td><span data-controller="long-text" data-long-text-limit-value="50"><%= erp_value(product.product_name) %></span></td>
+                <td>
+                  <span class="operator-list">
+                    <% if can?(:manage_skus) %>
+                      <button class="operator-list__trigger" type="button" data-controller="operator-dialog" data-action="click->operator-dialog#open" data-operator-dialog-id="<%= dialog_id %>">
+                        <%= operator_names %>
+                      </button>
+                    <% else %>
+                      <%= operator_names %>
+                    <% end %>
+                  </span>
+                </td>
+                <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(product.platform, product.store_id, product.product_id) %></td>
+                <td>
+                  <% edit_url = product_edit_url(product.platform, product.product_id || product.platform_sku_id.presence) %>
+                  <% if edit_url %>
+                    <%= link_to t("erp.sku_products.actions.open_platform_product"), edit_url, target: "_blank", rel: "noreferrer noopener" %>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <% if can?(:manage_skus) %>
+                  <td>
+                    <dialog id="<%= dialog_id %>" class="operator-assignment-dialog" data-controller="operator-dialog" data-action="click->operator-dialog#closeOnBackdrop">
+                      <div class="operator-assignment-dialog__content">
+                        <div class="erp-modal__header">
+                          <h3><%= t("erp.stores.actions.bind_operators") %></h3>
+                          <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="operator-dialog#close">
+                            <i class="bi bi-x-lg"></i>
+                          </button>
+                        </div>
+                        <%= form_with url: erp_store_sku_product_operators_path(@store, product), method: :patch, local: true, class: "operator-assignment-form" do %>
+                          <div class="field">
+                            <label for="<%= "#{dialog_id}-operator-ids" %>"><%= t("erp.stores.fields.operators") %></label>
+                            <select id="<%= "#{dialog_id}-operator-ids" %>" name="operator_ids[]" multiple="multiple" class="select operator-assignment-select" aria-describedby="<%= "#{dialog_id}-hint" %>">
+                              <% @operator_candidates.each do |user| %>
+                                <option value="<%= user.id %>"<%= " selected=\"selected\"".html_safe if product.operator_ids.include?(user.id) %>><%= user.email %></option>
+                              <% end %>
+                            </select>
+                            <p id="<%= "#{dialog_id}-hint" %>" class="form-hint"><%= t("erp.stores.form.operator_select_hint") %></p>
+                          </div>
+                          <div class="modal-form-actions">
+                            <button class="button button-secondary" type="button" data-action="operator-dialog#close"><%= t("common.actions.cancel") %></button>
+                            <button class="button" type="submit"><%= t("erp.stores.actions.save_operators") %></button>
+                          </div>
+                        <% end %>
+                      </div>
+                    </dialog>
+                  </td>
+                <% end %>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="<%= can?(:manage_skus) ? 8 : 7 %>" class="empty-state"><%= t("erp.stores.empty.no_products") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.stores.show.unbound_raw_products") %></h2>
+    <div class="table-scroll">
+      <table class="raw-product-options">
+        <thead>
+          <tr>
+            <th><%= t("erp.sku_products.fields.product_id") %></th>
+            <th><%= t("erp.sku_products.fields.offer_id") %></th>
+            <th><%= t("erp.sku_products.fields.platform_sku_id") %></th>
+            <th><%= t("erp.sku_products.fields.product_name") %></th>
+            <th><%= t("erp.sku_products.fields.synced_at") %></th>
+            <th><%= t("erp.sku_products.fields.product_attributes_link") %></th>
+            <th><%= t("erp.sku_products.fields.store_link") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @unbound_raw_products.any? %>
+            <% @unbound_raw_products.each do |product| %>
+              <tr>
+                <td><%= product.product_id %></td>
+                <td><%= erp_value(product.offer_id) %></td>
+                <td><%= erp_value(product.platform_sku_id) %></td>
+                <td><span data-controller="long-text" data-long-text-limit-value="50"><%= erp_value(product.product_name) %></span></td>
+                <td><%= display_time(product.synced_at) %></td>
+                <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(product.platform, product.store_id, product.product_id) %></td>
+                <td>
+                  <% edit_url = product_edit_url(product.platform, product.product_id || product.platform_sku_id.presence) %>
+                  <% if edit_url %>
+                    <%= link_to t("erp.sku_products.actions.open_platform_product"), edit_url, target: "_blank", rel: "noreferrer noopener" %>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="7" class="empty-state"><%= t("erp.stores.empty.no_unbound_raw_products") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

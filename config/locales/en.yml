@@ -438,6 +438,7 @@ en:
     common:
       actions:
         actions: "Actions"
+        back: "Back"
         collapse_named: "Collapse %{name}"
         edit: "Edit"
         expand_named: "Expand %{name}"
@@ -602,7 +603,9 @@ en:
     stores:
       actions:
         add_store: "Add store"
+        bind_operators: "Assign operators"
         edit_store: "Edit store"
+        save_operators: "Save operators"
       company_types:
         general: "General"
         small: "Small"
@@ -610,6 +613,9 @@ en:
         belarus: "Belarus"
         russia: "Russia"
       empty:
+        no_operators: "Unassigned"
+        no_products: "This store has no platform product bindings yet."
+        no_unbound_raw_products: "This store has no unbound platform products."
         no_stores: "No stores match the current filters."
       errors:
         company_type_blank: "Please select a company scale"
@@ -618,6 +624,7 @@ en:
         company_scale: "Company scale"
         country: "Country"
         is_active: "Active"
+        operators: "Operators"
         registration_country: "Registration country"
         scale: "Scale"
         store_id: "Store ID"
@@ -628,6 +635,7 @@ en:
         search_placeholder: "Search store name or notes..."
       form:
         inactive_hint: "Inactive stores will not enter the 1.0 operations workflow."
+        operator_select_hint: "Select multiple operators, or leave empty to unassign all."
         store_name_placeholder: "Example: Minsk Ozon store"
       index:
         all_stores: "All stores"
@@ -636,4 +644,9 @@ en:
           other: "%{count} stores"
         store_overview: "Store overview"
         title: "Store Settings"
+      show:
+        eyebrow: "Store detail"
+        products: "Store products"
+        summary: "Store information"
+        unbound_raw_products: "Unbound platform products"
   hello: "Hello world"
