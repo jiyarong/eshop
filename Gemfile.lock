@@ -1,13 +1,3 @@
-PATH
-  remote: /Users/xyy/ai/simple_apm
-  specs:
-    simple_apm (1.0.13)
-      callsite (>= 0.0.1)
-      get_process_mem (>= 1.0)
-      rails (~> 8.1)
-      redis-namespace (>= 1.5)
-      sprockets-rails (>= 3.5)
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -417,6 +407,12 @@ GEM
       faraday (>= 0.17.5, < 3.a)
       jwt (>= 1.5, < 4.0)
       multi_json (~> 1.10)
+    simple_apm (1.1.0)
+      callsite (>= 0.0.1)
+      get_process_mem (>= 1.0)
+      rails (~> 8.1)
+      redis-namespace (>= 1.5)
+      sprockets-rails (>= 3.5)
     solid_cable (3.0.12)
       actioncable (>= 7.2)
       activejob (>= 7.2)
@@ -514,7 +510,7 @@ DEPENDENCIES
   ransack
   redis (~> 5.0)
   rubocop-rails-omakase
-  simple_apm!
+  simple_apm (>= 1.1)
   solid_cable
   solid_cache
   solid_queue
