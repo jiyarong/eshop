@@ -59,7 +59,73 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
     assert_equal "cbr", updated.source
   end
 
+  test "carries forward earlier official rates when requested range starts on a non official day" do
+    fetcher = Ec::CbrDailyExchangeRateFetcher.new(from_date: @from_date, to_date: @from_date)
+
+    with_stubbed_records(fetcher, lookback_records) do
+      summary = fetcher.fetch_and_store
+
+      assert_equal @from_date, summary[:from_date]
+      assert_equal @from_date, summary[:to_date]
+      assert_equal 3, summary[:rows_upserted]
+    end
+
+    usd = Ec::DailyExchangeRate.find_by!(rate_date: @from_date, currency_code: "USD")
+    rub = Ec::DailyExchangeRate.find_by!(rate_date: @from_date, currency_code: "RUB")
+    byn = Ec::DailyExchangeRate.find_by!(rate_date: @from_date, currency_code: "BYN")
+
+    assert_equal BigDecimal("7.00000000"), usd.rate_to_base
+    assert_equal BigDecimal("0.10000000"), rub.rate_to_base
+    assert_equal BigDecimal("2.50000000"), byn.rate_to_base
+    assert_equal Date.new(2026, 5, 30), usd.source_date
+    assert_equal Date.new(2026, 5, 30), rub.source_date
+    assert_equal Date.new(2026, 5, 30), byn.source_date
+  end
+
+  test "requests lookback window and retries three times after the initial attempt" do
+    fetcher = Ec::CbrDailyExchangeRateFetcher.new(from_date: @from_date, to_date: @to_date)
+    attempts = 0
+    request_paths = []
+    test_case = self
+    xml = cbr_xml
+
+    with_no_sleep(fetcher) do
+      with_stubbed_http_start(lambda do |_host, _port, _options, block|
+        attempts += 1
+        raise "temporary CBR failure" if attempts < 4
+
+        block.call(test_case.send(:fake_http, request_paths, xml))
+      end) do
+        fetcher.send(:request_xml, "R01235")
+      end
+    end
+
+    query = Rack::Utils.parse_query(request_paths.last.split("?", 2).last)
+
+    assert_equal 4, attempts
+    assert_equal "18/05/2026", query.fetch("date_req1")
+    assert_equal "03/06/2026", query.fetch("date_req2")
+    assert_equal "R01235", query.fetch("VAL_NM_RQ")
+  end
+
   private
+
+  def with_no_sleep(fetcher)
+    fetcher.define_singleton_method(:sleep) { |_seconds| }
+    yield
+  ensure
+    fetcher.singleton_class.remove_method(:sleep)
+  end
+
+  def with_stubbed_http_start(handler)
+    original_method = Net::HTTP.method(:start)
+    Net::HTTP.define_singleton_method(:start) do |host, port, **options, &block|
+      handler.call(host, port, options, block)
+    end
+    yield
+  ensure
+    Net::HTTP.define_singleton_method(:start, original_method)
+  end
 
   def with_stubbed_records(fetcher, records)
     original_method = fetcher.method(:fetch_currency_records)
@@ -67,6 +133,37 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
     yield
   ensure
     fetcher.define_singleton_method(:fetch_currency_records, original_method)
+  end
+
+  def fake_http(request_paths, xml)
+    http = Object.new
+    response = fake_http_response(xml)
+    http.define_singleton_method(:get) do |request_path|
+      request_paths << request_path
+      response
+    end
+    http
+  end
+
+  def fake_http_response(xml)
+    response = Object.new
+    response.define_singleton_method(:is_a?) { |klass| klass == Net::HTTPSuccess || super(klass) }
+    response.define_singleton_method(:body) { xml.encode("Windows-1251") }
+    response.define_singleton_method(:code) { "200" }
+    response
+  end
+
+  def cbr_xml
+    <<~XML
+      <?xml version="1.0" encoding="windows-1251"?>
+      <ValCurs>
+        <Record Date="30.05.2026" Id="R01235">
+          <Nominal>1</Nominal>
+          <Value>70,0000</Value>
+          <VunitRate>70,0000</VunitRate>
+        </Record>
+      </ValCurs>
+    XML
   end
 
   def stubbed_records
@@ -82,6 +179,20 @@ class Ec::CbrDailyExchangeRateFetcherTest < ActiveSupport::TestCase
       "BYN" => {
         Date.new(2026, 6, 1) => BigDecimal("25"),
         Date.new(2026, 6, 3) => BigDecimal("30")
+      }
+    }
+  end
+
+  def lookback_records
+    {
+      "USD" => {
+        Date.new(2026, 5, 30) => BigDecimal("70")
+      },
+      "CNY" => {
+        Date.new(2026, 5, 30) => BigDecimal("10")
+      },
+      "BYN" => {
+        Date.new(2026, 5, 30) => BigDecimal("25")
       }
     }
   end

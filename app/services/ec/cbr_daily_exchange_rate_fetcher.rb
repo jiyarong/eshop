@@ -8,6 +8,7 @@ module Ec
     SOURCE = "cbr".freeze
     CURRENCIES = { "USD" => "R01235", "CNY" => "R01375", "BYN" => "R01090B" }.freeze
     STORED_CURRENCIES = ["USD", "RUB", "BYN"].freeze
+    LOOKBACK_DAYS = 14
 
     def self.fetch_and_store(from_date: 1.year.ago.to_date, to_date: Date.current)
       new(from_date: from_date, to_date: to_date).fetch_and_store
@@ -50,10 +51,11 @@ module Ec
 
       (@from_date..@to_date).each do |date|
         CURRENCIES.each_key do |currency_code|
-          if records.fetch(currency_code).key?(date)
+          source_date = records.fetch(currency_code).keys.select { |record_date| record_date <= date }.max
+          if source_date
             latest[currency_code] = {
-              rate: records.fetch(currency_code).fetch(date),
-              source_date: date
+              rate: records.fetch(currency_code).fetch(source_date),
+              source_date: source_date
             }
           end
         end
@@ -93,7 +95,7 @@ module Ec
     def request_xml(cbr_code)
       uri = URI(CBR_DYNAMIC_URL)
       uri.query = URI.encode_www_form(
-        date_req1: @from_date.strftime("%d/%m/%Y"),
+        date_req1: (@from_date - LOOKBACK_DAYS.days).strftime("%d/%m/%Y"),
         date_req2: @to_date.strftime("%d/%m/%Y"),
         VAL_NM_RQ: cbr_code
       )
@@ -108,7 +110,7 @@ module Ec
         end
       rescue => e
         retries += 1
-        raise e if retries >= 3
+        raise e if retries > 3
 
         sleep retries * 5
         retry
