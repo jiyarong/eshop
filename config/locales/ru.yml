@@ -81,6 +81,7 @@ ru:
     users: "Пользователи"
     agents: "AI Agent"
     feedback_tasks: "Задачи изменений"
+    operation_logs: "История операций"
   feedback:
     title: "Отправить предложение"
     issue_type: "Тип проблемы"
@@ -108,6 +109,43 @@ ru:
       wb: "WB"
     "yes": "Да"
   admin:
+    operation_logs:
+      title: "История операций"
+      empty: "Нет операций для текущих фильтров."
+      system_user: "Система"
+      actions:
+        create: "Создание"
+        update: "Обновление"
+        destroy: "Удаление"
+      fields:
+        action: "Действие"
+        changeset: "Изменения"
+        created_at: "Время"
+        record_id: "ID записи"
+        record_type: "Модель"
+        user: "Пользователь"
+      filters:
+        all_record_types: "Все модели"
+        all_users: "Все пользователи"
+        from_date: "Дата начала"
+        record_type: "Модель"
+        reset: "Сброс"
+        submit: "Поиск"
+        to_date: "Дата окончания"
+        user: "Пользователь"
+      record_types:
+        ec:
+          cost_allocation: "Распределение затрат"
+          master_sku: "Master SKU"
+          purchase_order: "Закупка"
+          sku: "SKU"
+          sku_batch: "Партия"
+          sku_category: "Категория SKU"
+          sku_cost: "Стоимость SKU"
+          sku_platform_cost: "Стоимость платформы"
+          sku_product: "Связь товара магазина"
+          store: "Магазин"
+          supplier: "Поставщик"
     agents:
       edit:
         title: "Редактировать AI Agent"

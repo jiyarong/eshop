@@ -110,6 +110,7 @@ en:
     users: "Users"
     agents: "AI Agents"
     feedback_tasks: "Change Tasks"
+    operation_logs: "Operation History"
   feedback:
     title: "Submit Change Feedback"
     issue_type: "Issue Type"
@@ -137,6 +138,43 @@ en:
       wb: "WB"
     "yes": "Yes"
   admin:
+    operation_logs:
+      title: "Operation History"
+      empty: "No operation records match the current filters."
+      system_user: "System"
+      actions:
+        create: "Create"
+        update: "Update"
+        destroy: "Delete"
+      fields:
+        action: "Action"
+        changeset: "Changes"
+        created_at: "Time"
+        record_id: "Record ID"
+        record_type: "Model"
+        user: "User"
+      filters:
+        all_record_types: "All models"
+        all_users: "All users"
+        from_date: "Start date"
+        record_type: "Model"
+        reset: "Reset"
+        submit: "Search"
+        to_date: "End date"
+        user: "User"
+      record_types:
+        ec:
+          cost_allocation: "Cost Allocation"
+          master_sku: "Master SKU"
+          purchase_order: "Purchase Order"
+          sku: "SKU"
+          sku_batch: "Batch"
+          sku_category: "SKU Category"
+          sku_cost: "SKU Cost"
+          sku_platform_cost: "Platform Cost"
+          sku_product: "Store Product Binding"
+          store: "Store"
+          supplier: "Supplier"
     agents:
       edit:
         title: "Edit AI Agent"

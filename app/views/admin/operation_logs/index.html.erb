@@ -1,0 +1,71 @@
+<h1 class="page-title"><%= t("admin.operation_logs.title") %></h1>
+
+<section class="panel">
+  <%= form_with url: admin_operation_logs_path, method: :get, local: true, html: { class: "report-form" } do |form| %>
+    <div class="field">
+      <%= form.label :user_id, t("admin.operation_logs.filters.user") %>
+      <%= form.select :user_id,
+        options_from_collection_for_select(@users, :id, :email, @user_id),
+        { include_blank: t("admin.operation_logs.filters.all_users") } %>
+    </div>
+    <div class="field">
+      <%= form.label :record_type, t("admin.operation_logs.filters.record_type") %>
+      <%= form.select :record_type,
+        options_for_select(@record_type_options.map { |record_type| [t("admin.operation_logs.record_types.#{record_type.underscore.tr("/", ".")}", default: record_type), record_type] }, @record_type),
+        { include_blank: t("admin.operation_logs.filters.all_record_types") } %>
+    </div>
+    <div class="field">
+      <%= form.label :from_date, t("admin.operation_logs.filters.from_date") %>
+      <%= form.date_field :from_date, value: @from_date&.iso8601 %>
+    </div>
+    <div class="field">
+      <%= form.label :to_date, t("admin.operation_logs.filters.to_date") %>
+      <%= form.date_field :to_date, value: @to_date&.iso8601 %>
+    </div>
+    <%= form.button t("admin.operation_logs.filters.submit"), class: "button", type: "submit" %>
+    <%= link_to t("admin.operation_logs.filters.reset"), admin_operation_logs_path, class: "button button-secondary" %>
+  <% end %>
+</section>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th><%= t("admin.operation_logs.fields.created_at") %></th>
+          <th><%= t("admin.operation_logs.fields.user") %></th>
+          <th><%= t("admin.operation_logs.fields.record_type") %></th>
+          <th><%= t("admin.operation_logs.fields.record_id") %></th>
+          <th><%= t("admin.operation_logs.fields.action") %></th>
+          <th><%= t("admin.operation_logs.fields.changeset") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @operation_logs.each do |operation_log| %>
+          <tr>
+            <td><%= display_time(operation_log.created_at) %></td>
+            <td><%= operation_log.user&.email || t("admin.operation_logs.system_user") %></td>
+            <td><%= t("admin.operation_logs.record_types.#{operation_log.record_type.underscore.tr("/", ".")}", default: operation_log.record_type) %></td>
+            <td><%= operation_log.record_id %></td>
+            <td><%= t("admin.operation_logs.actions.#{operation_log.action}", default: operation_log.action) %></td>
+            <td>
+              <% operation_log.changeset.each do |change| %>
+                <div class="operation-log-change">
+                  <strong><%= change["field"] %></strong>
+                  <span><%= change["from"].presence || "-" %></span>
+                  <span aria-hidden="true">→</span>
+                  <span><%= change["to"].presence || "-" %></span>
+                </div>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @operation_logs.empty? %>
+          <tr>
+            <td colspan="6" class="empty-state"><%= t("admin.operation_logs.empty") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

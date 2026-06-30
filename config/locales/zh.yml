@@ -81,6 +81,7 @@ zh:
     users: "用户管理"
     agents: "AI Agent"
     feedback_tasks: "改动任务"
+    operation_logs: "操作历史"
   feedback:
     title: "提交改动建议"
     issue_type: "问题类型"
@@ -108,6 +109,43 @@ zh:
       wb: "WB"
     "yes": "是"
   admin:
+    operation_logs:
+      title: "操作历史"
+      empty: "当前筛选条件下暂无操作记录。"
+      system_user: "系统"
+      actions:
+        create: "创建"
+        update: "更新"
+        destroy: "删除"
+      fields:
+        action: "操作"
+        changeset: "变更内容"
+        created_at: "时间"
+        record_id: "记录 ID"
+        record_type: "模型"
+        user: "操作人"
+      filters:
+        all_record_types: "全部模型"
+        all_users: "全部用户"
+        from_date: "开始日期"
+        record_type: "模型"
+        reset: "重置"
+        submit: "查询"
+        to_date: "结束日期"
+        user: "用户"
+      record_types:
+        ec:
+          cost_allocation: "费用分摊"
+          master_sku: "Master SKU"
+          purchase_order: "采购单"
+          sku: "SKU"
+          sku_batch: "批次"
+          sku_category: "SKU 类别"
+          sku_cost: "SKU 成本"
+          sku_platform_cost: "平台成本"
+          sku_product: "店铺商品关联"
+          store: "店铺"
+          supplier: "供应商"
     agents:
       edit:
         title: "编辑 AI Agent"

@@ -42,6 +42,7 @@ Rails.application.routes.draw do
     resources :agents, only: [:index, :edit, :update], param: :id
     resources :users, except: [:destroy]
     resources :feedback_tasks, only: [:index, :show, :update]
+    resources :operation_logs, only: [:index]
   end
 
   namespace :erp do
