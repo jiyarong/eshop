@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_29_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -71,6 +71,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_000001) do
     t.index ["allocation_no"], name: "index_ec_cost_allocations_on_allocation_no", unique: true
     t.index ["cost_type"], name: "index_ec_cost_allocations_on_cost_type"
     t.index ["status"], name: "index_ec_cost_allocations_on_status"
+  end
+
+  create_table "ec_daily_exchange_rates", force: :cascade do |t|
+    t.string "base_currency", default: "CNY", null: false
+    t.datetime "created_at", null: false
+    t.string "currency_code", null: false
+    t.date "rate_date", null: false
+    t.decimal "rate_from_base", precision: 18, scale: 8, null: false
+    t.decimal "rate_to_base", precision: 18, scale: 8, null: false
+    t.string "source", default: "cbr", null: false
+    t.date "source_date"
+    t.datetime "updated_at", null: false
+    t.index ["rate_date", "base_currency", "currency_code"], name: "index_ec_daily_exchange_rates_unique_daily_currency", unique: true
   end
 
   create_table "ec_inventory_snapshots", force: :cascade do |t|

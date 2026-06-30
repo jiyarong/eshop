@@ -90,6 +90,11 @@ production:
     command: "Ec::CbrRateFetcher.fetch_and_store"
     schedule: every monday at 8:30 in Asia/Shanghai
 
+  # Fetch CNY-anchored daily CBR rates for USD/RUB/BYN, with recent overlap.
+  cbr_daily_exchange_rate_fetch:
+    command: "Ec::CbrDailyExchangeRateFetcher.fetch_and_store(from_date: 7.days.ago.to_date, to_date: Date.current)"
+    schedule: every day at 8:40 in Asia/Shanghai
+
   weekly_profit_report:
     command: "GoogleSheets::WeeklyProfitReportRunner.run"
     schedule: every monday at 17:00 in Asia/Shanghai
