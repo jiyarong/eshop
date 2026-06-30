@@ -3,11 +3,11 @@ require "test_helper"
 class Ec::DailyExchangeRateTest < ActiveSupport::TestCase
   setup do
     @date = Date.new(2026, 6, 30)
-    Ec::DailyExchangeRate.where(rate_date: @date).delete_all if defined?(Ec::DailyExchangeRate)
+    cleanup_daily_exchange_rates
   end
 
   teardown do
-    Ec::DailyExchangeRate.where(rate_date: @date).delete_all if defined?(Ec::DailyExchangeRate)
+    cleanup_daily_exchange_rates
   end
 
   test "normalizes currencies and source before validation" do
@@ -35,7 +35,7 @@ class Ec::DailyExchangeRateTest < ActiveSupport::TestCase
     )
 
     assert_not rate.valid?
-    assert_includes rate.errors[:rate_to_base], "must be greater than 0"
+    assert rate.errors.of_kind?(:rate_to_base, :greater_than)
   end
 
   test "enforces one rate per date base and currency" do
@@ -58,6 +58,18 @@ class Ec::DailyExchangeRateTest < ActiveSupport::TestCase
     )
 
     assert_not duplicate.valid?
-    assert_includes duplicate.errors[:currency_code], "has already been taken"
+    assert duplicate.errors.of_kind?(:currency_code, :taken)
+  end
+
+  private
+
+  def cleanup_daily_exchange_rates
+    return unless defined?(Ec::DailyExchangeRate)
+
+    Ec::DailyExchangeRate.where(
+      rate_date: @date,
+      base_currency: "CNY",
+      currency_code: "USD"
+    ).delete_all
   end
 end

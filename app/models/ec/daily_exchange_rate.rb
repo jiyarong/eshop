@@ -5,8 +5,8 @@ module Ec
     before_validation :normalize_codes
 
     validates :rate_date, :base_currency, :currency_code, :rate_to_base, :source, presence: true
-    validates :rate_to_base, numericality: { greater_than: 0, message: "must be greater than 0" }
-    validates :currency_code, uniqueness: { scope: [:rate_date, :base_currency], message: "has already been taken" }
+    validates :rate_to_base, numericality: { greater_than: 0 }
+    validates :currency_code, uniqueness: { scope: [:rate_date, :base_currency] }
 
     private
 
