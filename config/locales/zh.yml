@@ -587,6 +587,7 @@ zh:
       empty:
         no_operators: "未绑定"
         no_products: "这个店铺还没有绑定平台商品。"
+        no_unbound_raw_products: "这个店铺没有未绑定的平台商品。"
         no_stores: "当前筛选条件下没有店铺。"
       errors:
         company_type_blank: "请选择公司规模类型"
@@ -619,3 +620,4 @@ zh:
         eyebrow: "店铺详情"
         products: "店铺商品"
         summary: "店铺信息"
+        unbound_raw_products: "未绑定平台商品"

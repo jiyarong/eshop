@@ -13,8 +13,12 @@ module Ec
       :synced_at
     )
 
-    def self.call
-      new.call
+    def self.call(store_id: nil)
+      new(store_id: store_id).call
+    end
+
+    def initialize(store_id: nil)
+      @store_id = store_id
     end
 
     def call
@@ -28,6 +32,7 @@ module Ec
         .joins("JOIN ec_stores ON ec_stores.platform = 'ozon' AND ec_stores.ozon_raw_account_id = raw_ozon_products.account_id")
         .joins("LEFT JOIN ec_sku_products ON ec_sku_products.store_id = ec_stores.id AND ec_sku_products.product_id = raw_ozon_products.ozon_product_id::text")
         .joins("LEFT JOIN raw_ozon_seller_accounts ON raw_ozon_seller_accounts.id = raw_ozon_products.account_id")
+        .then { |scope| @store_id ? scope.where(ec_stores: { id: @store_id }) : scope }
         .where(ec_sku_products: { id: nil })
         .order("ec_stores.store_name", "raw_ozon_products.offer_id", "raw_ozon_products.ozon_product_id")
         .pluck(
@@ -62,6 +67,7 @@ module Ec
         .joins("JOIN ec_stores ON ec_stores.platform = 'wb' AND ec_stores.wb_raw_account_id = raw_wb_products.account_id")
         .joins("LEFT JOIN ec_sku_products ON ec_sku_products.store_id = ec_stores.id AND ec_sku_products.product_id = raw_wb_products.nm_id::text")
         .joins("LEFT JOIN raw_wb_seller_accounts ON raw_wb_seller_accounts.id = raw_wb_products.account_id")
+        .then { |scope| @store_id ? scope.where(ec_stores: { id: @store_id }) : scope }
         .where(ec_sku_products: { id: nil })
         .order("ec_stores.store_name", "raw_wb_products.vendor_code", "raw_wb_products.nm_id")
         .pluck(

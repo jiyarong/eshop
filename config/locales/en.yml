@@ -615,6 +615,7 @@ en:
       empty:
         no_operators: "Unassigned"
         no_products: "This store has no platform product bindings yet."
+        no_unbound_raw_products: "This store has no unbound platform products."
         no_stores: "No stores match the current filters."
       errors:
         company_type_blank: "Please select a company scale"
@@ -647,4 +648,5 @@ en:
         eyebrow: "Store detail"
         products: "Store products"
         summary: "Store information"
+        unbound_raw_products: "Unbound platform products"
   hello: "Hello world"

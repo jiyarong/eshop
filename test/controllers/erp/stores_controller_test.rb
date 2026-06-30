@@ -226,16 +226,39 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "show renders store products and current operators for manager" do
+    raw_account = RawOzon::SellerAccount.create!(
+      company_name: "Store Show Ozon #{@token}",
+      client_id: "store-show-ozon-#{@token}",
+      api_key: "api-key-#{@token}",
+      company_type: "general"
+    )
+    @store.update!(ozon_raw_account_id: raw_account.id)
     sku = Ec::Sku.create!(
       sku_code: "STORE-SHOW-#{token_suffix}",
       product_name: "店铺详情 SKU #{token_suffix}",
       is_active: true
     )
+    RawOzon::Product.create!(
+      account: raw_account,
+      ozon_product_id: "70#{@token.hex % 1_000_000}",
+      offer_id: "BOUND-RAW-OFFER-#{token_suffix}",
+      name: "已绑定平台商品 #{token_suffix}",
+      raw_json: { "sku" => "BOUND-RAW-SKU-#{token_suffix}" },
+      synced_at: Time.zone.parse("2026-06-15 10:00:00")
+    )
+    unbound_raw_product = RawOzon::Product.create!(
+      account: raw_account,
+      ozon_product_id: "71#{@token.hex % 1_000_000}",
+      offer_id: "UNBOUND-RAW-OFFER-#{token_suffix}",
+      name: "未绑定平台商品 #{token_suffix}",
+      raw_json: { "sku" => "UNBOUND-RAW-SKU-#{token_suffix}" },
+      synced_at: Time.zone.parse("2026-06-16 11:30:00")
+    )
     product = Ec::SkuProduct.create!(
       sku_code: sku.sku_code,
       store: @store,
-      product_id: "SHOW-#{token_suffix}",
-      offer_id: "SHOW-OFFER-#{token_suffix}",
+      product_id: "70#{@token.hex % 1_000_000}",
+      offer_id: "BOUND-RAW-OFFER-#{token_suffix}",
       product_name: "店铺详情商品 #{token_suffix}"
     )
     unassigned_product = Ec::SkuProduct.create!(
@@ -255,10 +278,17 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select "dd", "SHOP-%03d" % @store.id
     assert_select "h2", "店铺商品"
     assert_select "td", sku.sku_code
-    assert_select "td", "SHOW-#{token_suffix}"
-    assert_select "td", "SHOW-OFFER-#{token_suffix}"
+    assert_select "td", "70#{@token.hex % 1_000_000}"
+    assert_select "td", "BOUND-RAW-OFFER-#{token_suffix}"
     assert_select "td", "店铺详情商品 #{token_suffix}"
     assert_select "td", "SHOW-EMPTY-#{token_suffix}"
+    assert_select "h2", "未绑定平台商品"
+    assert_select "td", unbound_raw_product.ozon_product_id.to_s
+    assert_select "td", "UNBOUND-RAW-OFFER-#{token_suffix}"
+    assert_select "td", "UNBOUND-RAW-SKU-#{token_suffix}"
+    assert_select "td", "未绑定平台商品 #{token_suffix}"
+    assert_includes response.body, "2026-06-16 19:30"
+    assert_no_match "已绑定平台商品 #{token_suffix}", response.body
     assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: operator.email
     assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{unassigned_product.id}", text: "未绑定"
     assert_select "form[action=?][method=?]", "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", "post"
@@ -274,6 +304,8 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
   ensure
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
+    RawOzon::Product.where(account_id: raw_account&.id).delete_all if raw_account
+    raw_account&.destroy
     Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
     UserRole.joins(:user).where("users.email LIKE ?", "store-show-operator-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "store-show-operator-#{@token.downcase}%").delete_all
