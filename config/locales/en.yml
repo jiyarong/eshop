@@ -101,6 +101,7 @@ en:
     sku_sales: "SKU Sales"
     costs: "Costs"
     erp_skus: "SKU Management"
+    erp_stores: "Store Settings"
     sku_categories: "SKU Categories"
     sku_batches: "ERP Batches"
     purchase_orders: "Purchase Orders"

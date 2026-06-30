@@ -72,6 +72,7 @@ ru:
     sku_sales: "Продажи SKU"
     costs: "Затраты"
     erp_skus: "Управление SKU"
+    erp_stores: "Настройки магазинов"
     sku_categories: "Категории SKU"
     sku_batches: "Партии ERP"
     purchase_orders: "Закупки"
