@@ -1,7 +1,7 @@
-batches = [["108", "SLHL001-1"],
-           ["108", "SLHL001-2"],
-           ["108", "SLHL002-1"],
-           ["108", "SLHL002-2"],
+batches = [["216", "SLHL001-1"],
+           ["162", "SLHL001-2"],
+           ["216", "SLHL002-1"],
+           ["162", "SLHL002-2"],
            ["200", "ZJ091"],
            ["200", "ZJ092"],
            ["300", "ZJ093"],
@@ -25,15 +25,17 @@ batches = [["108", "SLHL001-1"],
            ["150", "KJ-214-SV"],
            ["150", "KJ-214-GD"],
            ["100", "KJ-217-BK"],
+           ["200", "KJ-217-GY"],
            ["500", "ZJ090"],
            ["150", "LDD010"],
            ["150", "LDD009"],
            ["180", "LDD008"],
            ["120", "LDD007"],
            ["300", "LDD006"],
-           ["120", "LDD001-GD"],
-           ["198", "LDD001-BK"],
-           ["120", "LDD002"],
+           ["300", "LDD001-GD"],
+           ["1146", "LDD001-BK"],
+           ["798", "LDD002"],
+           ["300", "LDD002"],
            ["520", "CYQ95-WT"],
            ["280", "CYQ95-BK"],
            ["192", "XC001"],
@@ -61,7 +63,7 @@ batches = [["108", "SLHL001-1"],
            ["400", "KJ-226-GD"],
            ["200", "KJ-226-GY"],
            ["200", "KJ-226-SV"],
-           ["2000"],
+           ["2000", "CZY001"],
            ["600", "KJ-207-GD"],
            ["400", "KJ-207-WT"],
            ["400", "KJ-207-GY"],
@@ -70,49 +72,57 @@ batches = [["108", "SLHL001-1"],
            ["198", "LDD003"],
            ["210", "LDD004"],
            ["210", "LDD005"],
-           ["200"],
-           ["150"],
-           ["150"],
-           ["204"],
-           ["500"],
-           ["498"],
-           ["498"],
-           ["200"],
-           ["200"],
+           ["200", "JZJG-01_01"],
+           ["150", "JZDJ-WS"],
+           ["150", "JZDJ-YS"],
+           ["204", "JDCCJ-01"],
+           ["500", "JZJG-01_01"],
+           ["498", "JZDJ-WS"],
+           ["498", "JZDJ-YS"],
+           ["200", "JD-ZQTB310"],
+           ["200", "JD-ZQTB-206"],
            ["804", "JXZ-Grey-01"],
            ["804", "JXZ-White-02"],
-           ["1200", "CYQ97-BK"],
-           ["", "CYQ97-WT"],
-           ["400", "KJ-217-WT"],
+           ["600", "CYQ97-BK"],
+           ["600", "CYQ97-WT"],
+           ["700", "KJ-217-WT"],
            ["200", "KJ-217-GD"],
            ["200", "KJ-228-WT"],
            ["200", "KJ-228-BK"],
-           ["200", "KJ-228-SV"],
+           ["470", "KJ-228-SV"],
            ["504", "XCQ707"],
-           ["500"],
+           ["500", "JD-ZQTB-206"],
            ["600", "KJ-217-GD"],
            ["1200", "CYQ97-WT"],
            ["400", "CYQ97-BK"],
            ["100", "HZX001"],
            ["100", "HZX002"],
            ["400", "KJ-217-GD"],
-           ["280", "KJ-228-SV"]]
-batches.each do |num, sku|
-  next if num.blank? || sku.blank?
-  s = Ec::Sku.find_by(sku_code: [sku, sku.upcase])
-  if s.nil?
-    puts "Sku not found: #{sku}"
-    next
+           ["270", "KJ-228-SV"]]
+ApplicationRecord.connection.transaction do
+  Ec::SkuBatch.where("purchased_quantity>0").delete_all
+  batches.each do |num, sku|
+    next if num.blank? || sku.blank?
+    s = Ec::Sku.find_by(sku_code: [sku, sku.upcase])
+    if s.nil?
+      puts "Sku not found: #{sku}"
+      next
+    end
+    batch_code = "INIT-#{s.sku_code}-#{num}"
+    batch = Ec::SkuBatch.find_by batch_code: batch_code
+    batch_code = "INIT-#{s.sku_code}-#{num}-#{SecureRandom.hex(4)}" if batch.present?
+    price = Ec::SkuCost.find_by(sku_code: s.sku_code)&.purchase_price_cny || 0
+    Ec::SkuBatch.create!(
+      sku_code: s.sku_code,
+      batch_code: batch_code,
+      status: :received,
+      purchase_unit_price_cny: price,
+      purchased_quantity: num.to_i,
+      received_quantity: num.to_i
+    )
   end
-
-  Ec::SkuBatch.create!(
-    sku_code: s.sku_code,
-    batch_code: "#{s.sku_code}-#{num}",
-    status: :received,
-    purchased_quantity: num.to_i,
-    received_quantity: num.to_i
-  )
 end
+
 
 
 ozon_products = [["1139480385", "KJ-207-GD"],
