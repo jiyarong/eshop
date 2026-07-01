@@ -16,24 +16,19 @@
     <% active_link = ->(prefixes) { Array(prefixes).any? { |prefix| current_path == prefix || current_path.start_with?("#{prefix}/") } } %>
     <% nav_sections = [
       {
-        label: t("navigation.sections.dashboard"),
-        links: [
-          { label: t("navigation.weekly_profit_reports"), path: "/weekly_profit_reports", icon: "bi-graph-up-arrow", active: active_link.call("/weekly_profit_reports") }
-        ]
-      },
-      {
-        label: t("navigation.sections.operations"),
-        links: [
-          { label: t("navigation.inventory"), path: "/reports/inventory", icon: "bi-box-seam", active: current_path == "/reports/inventory" },
-          { label: t("navigation.orders"), path: "/orders", icon: "bi-receipt", active: active_link.call("/orders") },
-          { label: t("navigation.sku_sales"), path: "/reports/sku_sales", icon: "bi-bar-chart-line", active: current_path == "/reports/sku_sales" },
-          { label: t("navigation.costs"), path: "/reports/costs", icon: "bi-cash-coin", active: current_path == "/reports/costs" }
-        ]
-      },
-      {
-        label: t("navigation.sections.erp"),
+        label: t("navigation.sections.sku"),
         links: [
           { label: t("navigation.erp_skus"), path: "/erp/skus", icon: "bi-grid-3x3-gap", active: active_link.call("/erp/skus") },
+          { label: t("navigation.inventory"), path: "/reports/inventory", icon: "bi-box-seam", active: current_path == "/reports/inventory" }
+        ]
+      },
+      {
+        label: t("navigation.sections.draft"),
+        links: [
+          { label: t("navigation.weekly_profit_reports"), path: "/weekly_profit_reports", icon: "bi-graph-up-arrow", active: active_link.call("/weekly_profit_reports") },
+          { label: t("navigation.orders"), path: "/orders", icon: "bi-receipt", active: active_link.call("/orders") },
+          { label: t("navigation.sku_sales"), path: "/reports/sku_sales", icon: "bi-bar-chart-line", active: current_path == "/reports/sku_sales" },
+          { label: t("navigation.costs"), path: "/reports/costs", icon: "bi-cash-coin", active: current_path == "/reports/costs" },
           { label: t("navigation.erp_stores"), path: "/erp/stores", icon: "bi-shop", active: active_link.call("/erp/stores") },
           # { label: t("navigation.sku_categories"), path: "/erp/sku_categories", icon: "bi-diagram-3", active: active_link.call("/erp/sku_categories") },
           { label: t("navigation.sku_batches"), path: "/erp/sku_batches", icon: "bi-layers", active: active_link.call("/erp/sku_batches") },
@@ -52,7 +47,7 @@
     <% if can?(:manage_feedback_tasks) %>
       <% admin_links << { label: t("navigation.feedback_tasks"), path: "/admin/feedback_tasks", icon: "bi-chat-square-text", active: active_link.call("/admin/feedback_tasks") } %>
     <% end %>
-    <% nav_sections << { label: t("navigation.sections.administration"), links: admin_links } if admin_links.any? %>
+    <% nav_sections.find { |section| section[:label] == t("navigation.sections.draft") }[:links].concat(admin_links) if admin_links.any? %>
     <% locale_path = ->(locale) { url_for(request.query_parameters.merge(locale: locale)) } %>
 
     <div

@@ -394,7 +394,12 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tbody tr.inventory-list-table__row", count: 10
-    assert_select "nav.pagination"
+    assert_select ".inventory-pagination-bar"
+    assert_select ".inventory-pagination-bar .pagination-nav"
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 1/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 1-10 条，共 24 条/
+    assert_select ".inventory-pagination-bar .pagination-jump-input[value='1']"
+    assert_select ".inventory-pagination-bar .pg-btn", "2"
 
     sign_in @current_user
     with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
@@ -405,9 +410,78 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tbody tr.inventory-list-table__row", count: 10
-    assert_select "nav.pagination"
-    assert_select "span.page.current", "2"
-    assert_select "a[href*='page=2'][href*='sku=pag-']"
+    assert_select ".inventory-pagination-bar"
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 22 条/
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='sku=pag-']"
+    assert_select ".inventory-pagination-bar a[href*='page=3'][href*='sku=pag-']"
+    assert_select ".inventory-pagination-bar form[action='/reports/inventory'] input[name='sku'][value='pag-']"
+    assert_select ".inventory-pagination-bar .pagination-jump-input[value='2']"
+  ensure
+    extra_skus&.each(&:destroy)
+  end
+
+  test "inventory report jump pagination clamps and falls back to current page" do
+    extra_skus = 22.times.map do |index|
+      Ec::Sku.create!(
+        sku_code: format("JMP-%02d-%s", index, @sku_code.delete_prefix("TST-")),
+        product_name: "跳页商品#{index}",
+        is_active: true
+      )
+    end
+
+    fake_query_factory = lambda do |sku, metrics:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku_code: sku.sku_code,
+            product_name: sku.product_name,
+            product_name_ru: nil,
+            incoming_quantity: 0,
+            book_stock: 0,
+            platform_stock: 0,
+            available_stock: 0,
+            daily_sales_velocity: nil,
+            turnover_days: nil,
+            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
+          }
+        end
+      end
+    end
+
+    fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          sku_codes.index_with { |_| {} }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        get "/reports/inventory",
+            params: { page: 2, current_page: 2, jump_page: 99, sku: "jmp-" },
+            headers: { "Accept" => "text/html" }
+      end
+    end
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 3/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 21-22 条，共 22 条/
+
+    sign_in @current_user
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        get "/reports/inventory",
+            params: { page: 2, current_page: 2, jump_page: "bad", sku: "jmp-" },
+            headers: { "Accept" => "text/html" }
+      end
+    end
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 24 条/
   ensure
     extra_skus&.each(&:destroy)
   end

@@ -62,8 +62,10 @@ zh:
   navigation:
     sections:
       dashboard: "经营看板"
+      draft: "Draft & Testing"
       operations: "运营报表"
       erp: "ERP 管理"
+      sku: "SKU"
       administration: "系统管理"
     weekly_profit_reports: "周利润报表"
     inventory: "库存"
@@ -260,6 +262,12 @@ zh:
         refresh_cache: "刷新缓存"
         previous_page: "上一页"
         view_details: "查看明细"
+      pagination:
+        aria_label: "库存分页"
+        jump_action: "确定"
+        jump_label: "跳至"
+        page_chip: "第 %{page}/%{pages} 页"
+        summary: "显示第 %{from}-%{to} 条，共 %{total} 条"
       batch_types:
         normal: "正常批次"
         other: "其他"

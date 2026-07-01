@@ -62,8 +62,10 @@ ru:
   navigation:
     sections:
       dashboard: "Панель"
+      draft: "Draft & Testing"
       operations: "Операции"
       erp: "ERP"
+      sku: "SKU"
       administration: "Администрирование"
     weekly_profit_reports: "Недельная прибыль"
     inventory: "Склад"
@@ -260,6 +262,12 @@ ru:
         refresh_cache: "Обновить кеш"
         previous_page: "Предыдущая страница"
         view_details: "Подробнее"
+      pagination:
+        aria_label: "Пагинация склада"
+        jump_action: "OK"
+        jump_label: "К стр."
+        page_chip: "Стр. %{page}/%{pages}"
+        summary: "Показаны %{from}-%{to} из %{total} строк"
       batch_types:
         normal: "Обычная партия"
         other: "Другое"

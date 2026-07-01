@@ -140,7 +140,12 @@ class ReportsController < ApplicationController
   end
 
   def build_inventory_rows
-    skus = inventory_skus_scope.order(:sku_code).page(params[:page]).per(10)
+    current_page = inventory_page_param
+    scope = inventory_skus_scope.order(:sku_code)
+    skus = scope.page(current_page).per(10)
+    if skus.total_pages.positive? && current_page > skus.total_pages
+      skus = scope.page(skus.total_pages).per(10)
+    end
     metrics_by_sku = Ec::InventoryVelocityMetricsQuery.new(
       sku_codes: skus.map(&:sku_code),
       date_to: user_today,
@@ -157,6 +162,16 @@ class ReportsController < ApplicationController
       limit: skus.limit_value,
       offset: skus.offset_value
     )
+  end
+
+  def inventory_page_param
+    requested_page = params[:jump_page].presence || params[:page].presence
+    current_page = params[:current_page].presence || params[:page].presence
+
+    page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
+    page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
+    page = 1 if page.to_i <= 0
+    page
   end
 
   def inventory_skus_scope

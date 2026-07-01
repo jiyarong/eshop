@@ -86,9 +86,7 @@
     </div>
 
     <% if @inventory_rows.respond_to?(:total_pages) && @inventory_rows.total_pages > 1 %>
-      <div class="inventory-list-pagination">
-        <%= paginate @inventory_rows, params: request.query_parameters %>
-      </div>
+      <%= render "inventory_pagination", inventory_rows: @inventory_rows %>
     <% end %>
   </section>
 
