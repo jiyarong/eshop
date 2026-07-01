@@ -10,6 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
+
 ActiveRecord::Schema[8.1].define(version: 2026_06_30_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
@@ -319,7 +320,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_000002) do
 
   create_table "ec_sku_batches", force: :cascade do |t|
     t.string "batch_code", null: false
+    t.integer "batch_type", default: 1, null: false
     t.datetime "created_at", null: false
+    t.string "defect_offset_note"
     t.date "expected_arrival_on"
     t.text "memo"
     t.decimal "purchase_unit_price_cny", precision: 12, scale: 4, default: "0.0", null: false

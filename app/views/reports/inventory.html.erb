@@ -2,17 +2,24 @@
 
 <div class="report-stack">
   <section class="panel">
-    <%= form_with url: "/reports/inventory", method: :get, local: true, html: { class: "report-form" } do |form| %>
+    <form action="/reports/inventory" method="get" class="report-form">
+      <% if params[:locale].present? %>
+        <input type="hidden" name="locale" value="<%= params[:locale] %>">
+      <% end %>
       <div class="field">
-        <%= form.label :sku, t("reports.inventory.filters.sku") %>
-        <%= form.search_field :sku, value: @sku_query, placeholder: t("reports.inventory.filters.sku_placeholder") %>
+        <label for="inventory_sku"><%= t("reports.inventory.filters.sku") %></label>
+        <input id="inventory_sku"
+               type="search"
+               name="sku"
+               value="<%= @sku_query %>"
+               placeholder="<%= t("reports.inventory.filters.sku_placeholder") %>">
       </div>
 
-      <%= form.button t("reports.inventory.filters.submit"), class: "button", type: "submit" %>
+      <button class="button" type="submit"><%= t("reports.inventory.filters.submit") %></button>
       <% if @sku_query.present? %>
         <%= link_to t("reports.inventory.filters.reset"), "/reports/inventory", class: "button button-secondary" %>
       <% end %>
-    <% end %>
+    </form>
   </section>
 
   <section class="panel">
@@ -22,58 +29,68 @@
         <thead>
           <tr>
             <th><%= t("reports.inventory.fields.sku") %></th>
-            <th><%= t("reports.inventory.fields.purchase_quantity") %></th>
-            <th><%= t("reports.inventory.fields.wb_fbs") %></th>
-            <th><%= t("reports.inventory.fields.wb_fbw") %></th>
-            <th><%= t("reports.inventory.fields.wb_return") %></th>
-            <th><%= t("reports.inventory.fields.wb_net") %></th>
-            <th><%= t("reports.inventory.fields.ozon_sales") %></th>
-            <th><%= t("reports.inventory.fields.ozon_return") %></th>
-            <th><%= t("reports.inventory.fields.net_sales") %></th>
-            <th><%= t("reports.inventory.fields.book_stock") %></th>
-            <th><%= t("reports.inventory.fields.wb_fbw_available") %></th>
-            <th><%= t("reports.inventory.fields.wb_fbs_available") %></th>
-            <th><%= t("reports.inventory.fields.ozon_fbo") %></th>
-            <th><%= t("reports.inventory.fields.ozon_fbs") %></th>
+            <th><%= t("reports.sku_detail.fields.product_name") %></th>
+            <th><%= t("reports.inventory.fields.pending_stock", default: "待入库库存") %></th>
+            <th><%= t("reports.inventory.fields.book_available_stock", default: "账面可用库存") %></th>
             <th><%= t("reports.inventory.fields.platform_stock") %></th>
-            <th><%= t("reports.inventory.fields.belarus_available") %></th>
-            <th><%= t("reports.inventory.fields.cache_updated_at") %></th>
+            <th><%= t("reports.inventory.fields.overseas_available_stock", default: "境外当前可用") %></th>
+            <th><%= t("reports.inventory.fields.daily_sales_velocity", default: "日均销量") %></th>
+            <th><%= t("reports.inventory.fields.turnover_days", default: "周转天数") %></th>
             <th><%= t("reports.inventory.fields.actions") %></th>
           </tr>
         </thead>
         <tbody>
           <% if @inventory_rows.any? %>
             <% @inventory_rows.each do |row| %>
-              <tr>
-                <td><%= link_to truncate(row[:sku_code]), report_sku_path(row[:sku_code], tab: 'inventory') %></td>
-                <td class="numeric"><%= row[:purchase_quantity] %></td>
-                <td class="numeric"><%= row[:wb_fbs] %></td>
-                <td class="numeric"><%= row[:wb_fbw] %></td>
-                <td class="numeric"><%= row[:wb_return] %></td>
-                <td class="numeric"><%= row[:wb_net] %></td>
-                <td class="numeric"><%= row[:ozon_sales] %></td>
-                <td class="numeric"><%= row[:ozon_return] %></td>
-                <td class="numeric"><%= row[:net_sales] %></td>
-                <td class="numeric"><%= row[:book_stock] %></td>
-                <td class="numeric"><%= row[:wb_fbw_available] %></td>
-                <td class="numeric"><%= row[:wb_fbs_available] %></td>
-                <td class="numeric"><%= row[:ozon_fbo] %></td>
-                <td class="numeric"><%= row[:ozon_fbs] %></td>
-                <td class="numeric"><%= row[:platform_stock] %></td>
-                <td class="numeric"><%= row[:belarus_available] %></td>
-                <td><%= display_time(row[:cache_updated_at]) %></td>
+              <% available_stock = row[:available_stock].to_i %>
+              <% book_stock = row[:book_stock].to_i %>
+              <% platform_stock = row[:platform_stock].to_i %>
+              <% incoming_quantity = row[:incoming_quantity].to_i %>
+              <% daily_sales_velocity = row[:daily_sales_velocity] %>
+              <% turnover_days = row[:turnover_days] %>
+              <tr class="inventory-list-table__row">
                 <td>
-                  <%= button_to t("reports.inventory.actions.refresh_cache"), refresh_report_inventory_cache_path(row[:sku_code]), params: { sku: @sku_query.presence, locale: params[:locale].presence }, class: "button button-secondary", form: { class: "inline-form" } %>
+                  <%= link_to row[:sku_code],
+                              report_inventory_detail_path(row[:sku_code], locale: params[:locale].presence),
+                              class: "inventory-list-table__sku-link",
+                              data: { turbo_frame: "inventory_drawer" } %>
+                </td>
+                <td class="inventory-list-table__name-cell">
+                  <div class="inventory-list-table__name"><%= report_value(row[:product_name]) %></div>
+                  <div class="inventory-list-table__subline"><%= report_value(row[:product_name_ru]) %></div>
+                </td>
+                <td class="numeric inventory-list-table__metric inventory-list-table__metric--warning"><%= incoming_quantity %></td>
+                <td class="numeric inventory-list-table__metric"><%= book_stock %></td>
+                <td class="numeric inventory-list-table__metric"><%= platform_stock %></td>
+                <td class="numeric inventory-list-table__metric inventory-list-table__metric--primary"><%= available_stock %></td>
+                <td class="numeric inventory-list-table__metric"><%= daily_sales_velocity.present? ? format("%.2f", daily_sales_velocity.to_d) : "-" %></td>
+                <td class="numeric inventory-list-table__metric"><%= turnover_days.present? ? format("%.2f", turnover_days.to_d) : "-" %></td>
+                <td class="inventory-list-table__actions-cell">
+                  <div class="resource-actions inventory-list-table__actions">
+                    <%= link_to t("reports.inventory.actions.view_details"),
+                                report_inventory_detail_path(row[:sku_code], locale: params[:locale].presence),
+                                class: "inventory-list-table__detail-link",
+                                data: { turbo_frame: "inventory_drawer" },
+                                aria: { label: t("reports.inventory.actions.view_details") } %>
+                  </div>
                 </td>
               </tr>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="18" class="empty-state"><%= t("reports.inventory.empty") %></td>
+              <td colspan="9" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
+
+    <% if @inventory_rows.respond_to?(:total_pages) && @inventory_rows.total_pages > 1 %>
+      <div class="inventory-list-pagination">
+        <%= paginate @inventory_rows, params: request.query_parameters %>
+      </div>
+    <% end %>
   </section>
+
+  <%= turbo_frame_tag "inventory_drawer" %>
 </div>

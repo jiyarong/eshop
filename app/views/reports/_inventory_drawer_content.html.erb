@@ -1,0 +1,306 @@
+<div class="inventory-drawer__content">
+  <section class="inventory-section">
+    <div class="inventory-section__header">
+      <div>
+        <h3 class="section-title"><%= t("reports.inventory.drawer.sections.overview") %></h3>
+      </div>
+    </div>
+
+    <div class="inventory-metric-grid">
+      <div class="inventory-metric-card inventory-metric-card--warning inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.tabs.incoming") %></span>
+        <strong class="inventory-metric-card__value"><%= inventory_detail[:incoming_quantity].to_i %></strong>
+      </div>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.tabs.book") %></span>
+        <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:summary, :book_stock).to_i %></strong>
+      </div>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.tabs.platform") %></span>
+        <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:summary, :platform_stock).to_i %></strong>
+      </div>
+      <div class="inventory-metric-card inventory-metric-card--primary inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.overseas_available_stock") %></span>
+        <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:summary, :available_stock).to_i %></strong>
+      </div>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.daily_sales_velocity") %></span>
+        <strong class="inventory-metric-card__value">
+          <%= inventory_detail[:daily_sales_velocity].present? ? format("%.2f", inventory_detail[:daily_sales_velocity].to_d) : "-" %>
+        </strong>
+      </div>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.turnover_days") %></span>
+        <strong class="inventory-metric-card__value">
+          <%= inventory_detail[:turnover_days].present? ? format("%.2f", inventory_detail[:turnover_days].to_d) : "-" %>
+        </strong>
+      </div>
+    </div>
+  </section>
+
+  <% active_tab = inventory_detail[:active_detail_tab].presence || "incoming" %>
+  <section class="inventory-section inventory-detail-shell">
+    <nav class="erp-tabs erp-tabs--underline inventory-detail-tabs" aria-label="<%= t("reports.inventory.title") %>">
+      <% %w[incoming book platform].each do |tab| %>
+        <% label = t("reports.inventory.drawer.tabs.#{tab}") %>
+        <% path = report_inventory_detail_path(sku.sku_code, detail_tab: tab, book_batch_page: (tab == "book" ? 1 : nil)) %>
+        <%= link_to label,
+                    path,
+                    class: "erp-tabs__link inventory-detail-tabs__link",
+                    aria: (active_tab == tab ? { current: "page" } : nil),
+                    data: { turbo_frame: "inventory_drawer_content" } %>
+      <% end %>
+    </nav>
+
+    <div class="inventory-detail-body">
+      <% if active_tab == "incoming" %>
+        <section class="inventory-detail-panel">
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.inbound_batches") %></h4>
+          </div>
+          <div class="table-scroll">
+            <table class="inventory-detail-table">
+              <thead>
+                <tr>
+                  <th><%= t("reports.inventory.fields.batch_code") %></th>
+                  <th><%= t("reports.sku_detail.fields.status") %></th>
+                  <th><%= t("reports.inventory.fields.expected_arrival_on") %></th>
+                  <th><%= t("reports.inventory.fields.purchase_quantity") %></th>
+                  <th><%= t("reports.inventory.fields.memo") %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if inventory_detail[:incoming_batches].any? %>
+                  <% inventory_detail[:incoming_batches].each do |row| %>
+                    <tr>
+                      <td><%= row[:batch_code] %></td>
+                      <td><%= report_value(row[:status]) %></td>
+                      <td><%= row[:expected_arrival_on].present? ? I18n.l(row[:expected_arrival_on], format: "%Y-%m-%d") : "-" %></td>
+                      <td><%= row[:purchased_quantity] %></td>
+                      <td><%= report_value(row[:memo]) %></td>
+                    </tr>
+                  <% end %>
+                <% else %>
+                  <tr><td colspan="5" class="empty-state"><%= t("reports.inventory.empty") %></td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      <% end %>
+
+      <% if active_tab == "book" %>
+        <section class="inventory-detail-panel">
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.tabs.book") %></h4>
+          </div>
+
+          <div class="inventory-mini-grid">
+            <% inventory_detail[:book_mini_stats].to_a.each do |item| %>
+              <div class="inventory-mini-card">
+                <span><%= t("reports.inventory.drawer.formulas.#{item[:key]}") %></span>
+                <strong>
+                  <%= item[:format] == :decimal ? (item[:value].present? ? format("%.2f", item[:value].to_d) : "-") : item[:value].to_i %>
+                  <% if item[:unit_key].present? && item[:value].present? %>
+                    <em><%= t("reports.inventory.drawer.labels.#{item[:unit_key]}") %></em>
+                  <% end %>
+                </strong>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.batch_list") %></h4>
+          </div>
+          <div class="table-scroll">
+            <table class="inventory-book-batch-table">
+              <thead>
+                <tr>
+                  <th><%= t("reports.inventory.fields.batch_code") %></th>
+                  <th><%= t("reports.inventory.fields.batch_type") %></th>
+                  <th><%= t("reports.inventory.fields.defect_offset_note") %></th>
+                  <th><%= t("reports.sku_detail.inventory.received_quantity") %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if inventory_detail[:book_batches].any? %>
+                  <% inventory_detail[:book_batches].each do |row| %>
+                    <tr>
+                      <td><%= row[:batch_code] %></td>
+                      <td>
+                        <span class="inventory-batch-chip inventory-batch-chip--<%= row[:batch_type] %>">
+                          <%= t("reports.inventory.batch_types.#{row[:batch_type]}", default: row[:batch_type].to_s) %>
+                        </span>
+                      </td>
+                      <td><%= report_value(row[:defect_offset_note]) %></td>
+                      <td class="<%= "inventory-book-batch-table__negative" if row[:received_quantity].to_i.negative? %>"><%= row[:received_quantity].to_i %></td>
+                    </tr>
+                  <% end %>
+                <% else %>
+                  <tr><td colspan="4" class="empty-state"><%= t("reports.inventory.empty") %></td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <% pagination = inventory_detail[:book_batch_pagination] || {} %>
+          <% if pagination[:total_pages].to_i > 1 %>
+            <div class="inventory-pagination">
+              <div class="inventory-pagination__meta">
+                <%= t("reports.inventory.drawer.labels.page_info",
+                      total: pagination[:total_count].to_i,
+                      page: pagination[:page].to_i,
+                      pages: pagination[:total_pages].to_i) %>
+              </div>
+              <div class="inventory-pagination__actions">
+                <% previous_page = pagination[:page].to_i - 1 %>
+                <% next_page = pagination[:page].to_i + 1 %>
+                <% if previous_page >= 1 %>
+                  <%= link_to t("reports.inventory.actions.previous_page"),
+                              report_inventory_detail_path(sku.sku_code, detail_tab: "book", book_batch_page: previous_page),
+                              class: "button button-secondary",
+                              data: { turbo_frame: "inventory_drawer_content" } %>
+                <% end %>
+                <% if next_page <= pagination[:total_pages].to_i %>
+                  <%= link_to t("reports.inventory.actions.next_page"),
+                              report_inventory_detail_path(sku.sku_code, detail_tab: "book", book_batch_page: next_page),
+                              class: "button button-secondary",
+                              data: { turbo_frame: "inventory_drawer_content" } %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.sales_distribution") %></h4>
+          </div>
+          <div class="table-scroll">
+            <table class="inventory-distribution-table">
+              <thead>
+                <tr>
+                  <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
+                  <% inventory_detail.dig(:book_sales_distribution, :columns).to_a.each do |column| %>
+                    <th><%= t("reports.inventory.drawer.distribution_columns.#{column}") %></th>
+                  <% end %>
+                </tr>
+              </thead>
+              <tbody>
+                <% inventory_detail.dig(:book_sales_distribution, :rows).to_a.each do |row| %>
+                  <tr>
+                    <td><%= row[:store_label] %></td>
+                    <% inventory_detail.dig(:book_sales_distribution, :columns).to_a.each do |column_key| %>
+                      <td><%= row.dig(:counts, column_key).to_i %></td>
+                    <% end %>
+                  </tr>
+                <% end %>
+                <% if (summary_row = inventory_detail.dig(:book_sales_distribution, :summary_row)).present? %>
+                  <tr class="inventory-distribution-table__summary">
+                    <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
+                    <% inventory_detail.dig(:book_sales_distribution, :columns).to_a.each do |column_key| %>
+                      <td><%= summary_row.dig(:counts, column_key).to_i %></td>
+                    <% end %>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.return_distribution") %></h4>
+          </div>
+          <div class="table-scroll">
+            <table class="inventory-distribution-table inventory-distribution-table--narrow">
+              <thead>
+                <tr>
+                  <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
+                  <th><%= t("reports.inventory.drawer.labels.return_count") %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% inventory_detail.dig(:return_distribution, :rows).to_a.each do |row| %>
+                  <tr>
+                    <td><%= row[:store_label] %></td>
+                    <td><%= row[:return_count].to_i %></td>
+                  </tr>
+                <% end %>
+                <% if (summary_row = inventory_detail.dig(:return_distribution, :summary_row)).present? %>
+                  <tr class="inventory-distribution-table__summary">
+                    <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
+                    <td><%= summary_row[:return_count].to_i %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="inventory-formula">
+            <h4 class="inventory-formula__title"><%= t("reports.inventory.drawer.sections.formula") %></h4>
+            <div class="inventory-formula__line">
+              <% inventory_detail.dig(:book_formula, :items).to_a.each_with_index do |item, index| %>
+                <span><%= "#{index.zero? ? '' : " #{item[:operator]} "}#{t("reports.inventory.drawer.formulas.#{item[:key]}")} #{item[:value].to_i}" %></span>
+              <% end %>
+              <strong>= <%= inventory_detail.dig(:book_formula, :result).to_i %></strong>
+            </div>
+          </div>
+        </section>
+      <% end %>
+
+      <% if active_tab == "platform" %>
+        <section class="inventory-detail-panel">
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.platform_overview") %></h4>
+          </div>
+
+          <div class="inventory-mini-grid inventory-mini-grid--platform">
+            <% inventory_detail[:platform_mini_stats].to_a.each do |item| %>
+              <div class="inventory-mini-card">
+                <span><%= t("reports.inventory.fields.#{item[:key]}") %></span>
+                <strong>
+                  <%= item[:format] == :decimal ? (item[:value].present? ? format("%.2f", item[:value].to_d) : "-") : item[:value].to_i %>
+                  <% if item[:unit_key].present? && item[:value].present? %>
+                    <em><%= t("reports.inventory.drawer.labels.#{item[:unit_key]}") %></em>
+                  <% end %>
+                </strong>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.shop_breakdown") %></h4>
+          </div>
+          <div class="table-scroll">
+            <table class="inventory-distribution-table inventory-distribution-table--narrow">
+              <thead>
+                <tr>
+                  <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
+                  <th>FBO</th>
+                  <th>FBS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% inventory_detail[:platform_shop_rows].to_a.each do |row| %>
+                  <tr>
+                    <td><%= row[:store_label] %></td>
+                    <td><%= row[:fbo].to_i %></td>
+                    <td><%= row[:fbs].to_i %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="inventory-formula">
+            <h4 class="inventory-formula__title"><%= t("reports.inventory.drawer.sections.formula") %></h4>
+            <p class="inventory-formula__description"><%= t("reports.inventory.drawer.formulas.#{inventory_detail.dig(:platform_formula, :description_key)}") %></p>
+            <div class="inventory-formula__line">
+              <% inventory_detail.dig(:platform_formula, :items).to_a.each_with_index do |item, index| %>
+                <span><%= "#{index.zero? ? '' : " #{item[:operator]} "}#{t("reports.inventory.drawer.formulas.#{item[:key]}")} #{item[:value].to_i}" %></span>
+              <% end %>
+              <strong>= <%= inventory_detail.dig(:platform_formula, :result).to_i %></strong>
+            </div>
+          </div>
+        </section>
+      <% end %>
+    </div>
+  </section>
+</div>

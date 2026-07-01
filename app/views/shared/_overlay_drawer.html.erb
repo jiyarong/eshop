@@ -1,0 +1,23 @@
+<turbo-frame id="<%= frame_id %>">
+  <div class="erp-modal-backdrop inventory-drawer-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal erp-modal--wide inventory-drawer" role="dialog" aria-modal="true" aria-labelledby="<%= title_id %>">
+      <div class="erp-modal__header inventory-drawer__header">
+        <div>
+          <% if local_assigns[:eyebrow].present? %>
+            <p class="resource-eyebrow inventory-drawer__kicker"><%= eyebrow %></p>
+          <% end %>
+          <h2 id="<%= title_id %>"><%= title %></h2>
+          <% if local_assigns[:subtitle].present? %>
+            <div class="inventory-drawer__subline">
+              <span class="inventory-drawer__code"><%= subtitle %></span>
+            </div>
+          <% end %>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <%= body %>
+    </section>
+  </div>
+</turbo-frame>

@@ -7,7 +7,7 @@
 #   bundle exec rails runner script/check_inventory.rb KJ-228-BK CYQ97-WT
 #
 # 输出分两大节：
-#   一、账面库存：采购 − 净销售（含退货扣除），纯 DB 计算
+#   一、账面库存：总入库 − 净销售（含退货扣除），纯 DB 计算
 #   二、白俄可用库存：账面库存 − 各平台在库
 #
 # WB FBW 在库：读 raw_wb_stocks 快照（warehouse_remains 需单独申请 Analytics token）
@@ -38,9 +38,16 @@ end
 # ─── 一、账面库存（纯 DB，不调 API）────────────────────────────────────────
 
 def calc_book_stock(sku_code)
-  purchased = Ec::SkuBatch
-    .where(sku_code: sku_code, status: %w[received closed])
+  purchase_quantity = Ec::SkuBatch
+    .where(sku_code: sku_code, status: %w[received closed], batch_type: :normal)
     .sum(:received_quantity)
+
+  adjustment_quantity = Ec::SkuBatch
+    .where(sku_code: sku_code, status: %w[received closed])
+    .where.not(batch_type: Ec::SkuBatch.batch_types[:normal])
+    .sum(:received_quantity)
+
+  received_quantity = purchase_quantity + adjustment_quantity
 
   # 通过 ec_sku_products 取各平台原生商品 ID，不依赖 ec_order_items.sku_code
   # （sku_code 在订单导入时回填，若当时 ec_sku_products 无该映射则为 NULL）
@@ -74,48 +81,30 @@ def calc_book_stock(sku_code)
       .where.not(ec_orders: { order_status: "cancelled" })
       .sum("raw_ozon_returns.quantity")
 
-  # WB: 全量 FBS 订单（ec_order_items JOIN ec_order_fulfillments，fulfillment_type='fbs'）
-  wb_fbs = wb_nm_ids.empty? ? 0 :
-    not_cancelled.(
-      Ec::OrderItem
-        .joins(:fulfillment)
-        .where(platform: "wb", platform_sku_id: wb_nm_ids)
-        .where(ec_order_fulfillments: { fulfillment_type: "fbs" })
-    ).sum(:quantity)
+  # WB: 全量订单（不再限制 FBS）
+  wb_sales = wb_nm_ids.empty? ? 0 :
+    not_cancelled.(Ec::OrderItem.where(platform: "wb", platform_sku_id: wb_nm_ids)).sum(:quantity)
 
-  # WB: FBW 送仓总量（supply_items JOIN supplies，用 wb_supply_id + account_id 关联）
-  wb_supply = wb_nm_ids.empty? ? 0 :
-    RawWb::SupplyItem
-      .joins("INNER JOIN raw_wb_supplies ON raw_wb_supplies.wb_supply_id = raw_wb_supply_items.wb_supply_id AND raw_wb_supplies.account_id = raw_wb_supply_items.account_id")
-      .where(nm_id: wb_nm_ids)
-      .sum(:accepted_qty)
+  # WB: 退货直接按 nm_id 统计，不再关联订单
+  wb_goods_return = wb_nm_ids.empty? ? 0 :
+    RawWb::GoodsReturn.where(nm_id: wb_nm_ids).where.not(completed_dt: nil).count
 
-  # WB: 退货（只计 completed_dt 有值的，货真正到手才算有效退货）
-  # FBS 退货：有 order_id，JOIN ec_order_fulfillments 过滤取消单
-  # FBW 退货：order_id 为空（WB 不暴露 FBW 订单），直接按 nm_id 计数
-  wb_gr_fbs = wb_nm_ids.empty? ? 0 :
-    RawWb::GoodsReturn
-      .joins(<<~SQL)
-        JOIN ec_order_fulfillments
-          ON ec_order_fulfillments.platform = 'wb'
-         AND ec_order_fulfillments.external_fulfillment_id = raw_wb_goods_returns.order_id::text
-        JOIN ec_orders
-          ON ec_orders.id = ec_order_fulfillments.order_id
-      SQL
-      .where(raw_wb_goods_returns: { nm_id: wb_nm_ids })
-      .where.not(raw_wb_goods_returns: { completed_dt: nil })
-      .where.not(ec_orders: { order_status: "cancelled" })
-      .count
-  wb_gr_fbw = wb_nm_ids.empty? ? 0 :
-    RawWb::GoodsReturn.where(nm_id: wb_nm_ids, order_id: nil).where.not(completed_dt: nil).count
-  wb_goods_return = wb_gr_fbs + wb_gr_fbw
-
-  wb_net     = wb_fbs + wb_supply - wb_goods_return
+  wb_net     = wb_sales - wb_goods_return
   net_sales  = wb_net + ozon_sold - ozon_returns
-  book_stock = purchased - net_sales
+  book_stock = received_quantity - net_sales
 
-  { purchased:, wb_fbs:, wb_supply:, wb_gr_fbs:, wb_gr_fbw:, wb_goods_return:, wb_net:,
-    ozon_sold:, ozon_returns:, net_sales:, book_stock: }
+  {
+    purchase_quantity:,
+    adjustment_quantity:,
+    received_quantity:,
+    wb_sales:,
+    wb_goods_return:,
+    wb_net:,
+    ozon_sold:,
+    ozon_returns:,
+    net_sales:,
+    book_stock:
+  }
 end
 
 # ─── 二、白俄可用库存（实时 API + DB 快照）──────────────────────────────────
@@ -252,18 +241,18 @@ SKU_CODES.each do |sku_code|
   h2("一、账面库存（DB，不调 API）")
   bs = calc_book_stock(sku_code)
 
-  row "采购数量（received/closed）", bs[:purchased]
-  row "WB 部分（FBS − FBW送仓 + 退货）", bs[:wb_net]
-  row "  └ FBS 全量订单",           bs[:wb_fbs],         "COUNT(raw_wb_orders delivery_type=fbs)"
-  row "  └ FBW 送仓总量",           bs[:wb_supply],      "SUM(supply_items.accepted_qty)"
-  row "  └ 退货（FBS）",             bs[:wb_gr_fbs],      "有 order_id，过滤取消单"
-  row "  └ 退货（FBW）",             bs[:wb_gr_fbw],      "无 order_id，直接计数"
+  row "采购数量（normal）",         bs[:purchase_quantity]
+  row "补正调整数量（non-normal）", bs[:adjustment_quantity]
+  row "总入库（received/closed）",  bs[:received_quantity]
+  row "WB 部分（销售 − 退货）",     bs[:wb_net]
+  row "  └ WB 销售",               bs[:wb_sales],       "SUM(ec_order_items.quantity)"
+  row "  └ WB 退货",               bs[:wb_goods_return], "COUNT(raw_wb_goods_returns by nm_id)"
   row "Ozon 部分（销售 − 退货）",   bs[:ozon_sold].to_i - bs[:ozon_returns].to_i
   row "  └ Ozon 销售",              bs[:ozon_sold]
   row "  − Ozon 退货",              bs[:ozon_returns],   "SUM(raw_ozon_returns.quantity)"
   row "净销售数量",                  bs[:net_sales]
   sep("·")
-  row "账面库存 = 采购 − 净销售",    bs[:book_stock]
+  row "账面库存 = 总入库 − 净销售",  bs[:book_stock]
 
   h2("二、白俄可用库存（各平台在库）")
 
@@ -335,11 +324,10 @@ SKU_CODES.each do |sku_code|
 
   results << {
     sku_code:,
-    purchased:        bs[:purchased],
-    wb_fbs:           bs[:wb_fbs],
-    wb_supply:        bs[:wb_supply],
-    wb_gr_fbs:        bs[:wb_gr_fbs],
-    wb_gr_fbw:        bs[:wb_gr_fbw],
+    purchase_quantity: bs[:purchase_quantity],
+    adjustment_quantity: bs[:adjustment_quantity],
+    received_quantity: bs[:received_quantity],
+    wb_sales:         bs[:wb_sales],
     wb_goods_return:  bs[:wb_goods_return],
     wb_net:           bs[:wb_net],
     ozon_sold:        bs[:ozon_sold],
@@ -367,7 +355,7 @@ ozon_stores    = results.flat_map { |r| r[:ozon_fbo_by_store].keys }.uniq
 
 csv_path = Rails.root.join("tmp", "inventory_#{run_at.strftime('%Y%m%d_%H%M%S')}.csv")
 CSV.open(csv_path, "w") do |csv|
-  header = %w[SKU 采购 WB_FBS WB_FBW送仓 WB退货_FBS WB退货_FBW WB退货合计 WB净额 Ozon销售 Ozon退货 净销售 账面库存]
+  header = %w[SKU 采购数量 补正调整数量 总入库 WB销售 WB退货 WB净额 Ozon销售 Ozon退货 净销售 账面库存]
   wb_fbw_stores.each  { |s| header << "WB_FBW_#{s}" }
   header << "WB_FBW合计"
   wb_fbs_stores.each  { |s| header << "WB_FBS_#{s}" }
@@ -380,7 +368,7 @@ CSV.open(csv_path, "w") do |csv|
   csv << header
 
   results.each do |r|
-    row = r.values_at(:sku_code, :purchased, :wb_fbs, :wb_supply, :wb_gr_fbs, :wb_gr_fbw, :wb_goods_return, :wb_net,
+    row = r.values_at(:sku_code, :purchase_quantity, :adjustment_quantity, :received_quantity, :wb_sales, :wb_goods_return, :wb_net,
                       :ozon_sold, :ozon_returns, :net_sales, :book_stock)
     wb_fbw_stores.each  { |s| row << r[:wb_fbw_by_store][s].to_i }
     row << r[:wb_fbw]

@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   get "weekly_profit_reports"          => "weekly_profit_reports#show"
 
   get "reports/inventory" => "reports#inventory"
+  get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
   post "reports/inventory/:sku_code/refresh_cache" => "reports#refresh_inventory_cache", as: :refresh_report_inventory_cache
   get "reports/skus"      => "reports#skus"
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku

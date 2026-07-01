@@ -10,6 +10,27 @@ class ReportsController < ApplicationController
     @inventory_rows = build_inventory_rows
   end
 
+  def inventory_detail
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @inventory_detail = Ec::InventoryPageDetailQuery.new(
+      @sku,
+      detail_tab: params[:detail_tab],
+      book_batch_page: params[:book_batch_page],
+      date_to: user_today,
+      time_zone: user_time_zone
+    ).call
+
+    if turbo_frame_request?
+      if request.headers["Turbo-Frame"] == "inventory_drawer_content"
+        render partial: "reports/inventory_drawer_content_frame", locals: { inventory_detail: @inventory_detail, sku: @sku }
+      else
+        render :inventory_detail
+      end
+    else
+      render :inventory_detail
+    end
+  end
+
   def refresh_inventory_cache
     sku_code = params[:sku_code].to_s.upcase
     Rails.cache.delete(inventory_row_cache_key(sku_code))
@@ -119,9 +140,23 @@ class ReportsController < ApplicationController
   end
 
   def build_inventory_rows
-    inventory_skus_scope.includes(:batches, :sku_products, inventory_levels: :store).order(:sku_code).map do |sku|
-      fetch_inventory_row(sku)
+    skus = inventory_skus_scope.order(:sku_code).page(params[:page]).per(10)
+    metrics_by_sku = Ec::InventoryVelocityMetricsQuery.new(
+      sku_codes: skus.map(&:sku_code),
+      date_to: user_today,
+      time_zone: user_time_zone
+    ).call
+
+    rows = skus.map do |sku|
+      fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {})
     end
+
+    Kaminari.paginate_array(
+      rows,
+      total_count: skus.total_count,
+      limit: skus.limit_value,
+      offset: skus.offset_value
+    )
   end
 
   def inventory_skus_scope
@@ -131,29 +166,8 @@ class ReportsController < ApplicationController
     scope.where("LOWER(sku_code) LIKE ?", inventory_sku_filter_pattern)
   end
 
-  def latest_inventory_quantity(levels, platform:, fulfillment_type:)
-    levels.sum do |level|
-      level.platform == platform && level.fulfillment_type == fulfillment_type ? level.quantity : 0
-    end
-  end
-
-  def wb_sales_by_fulfillment(sku)
-    rows = Hash.new(0)
-
-    Ec::OrderItem
-      .joins(:order)
-      .left_joins(:fulfillment)
-      .joins(order_item_sku_product_join_sql)
-      .where(ec_sku_products: { sku_code: sku.sku_code })
-      .where(ec_order_items: { platform: "wb" })
-      .where.not(ec_orders: { order_status: %w[cancelled returned] })
-      .group("COALESCE(ec_order_fulfillments.fulfillment_type, 'unknown')")
-      .sum(:quantity)
-      .each do |fulfillment_type, quantity|
-        rows[fulfillment_type.to_s] = quantity.to_i
-      end
-
-    rows
+  def inventory_sku_filter_pattern
+    "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query.downcase)}%"
   end
 
   def order_item_sku_product_join_sql
@@ -169,50 +183,20 @@ class ReportsController < ApplicationController
     SQL
   end
 
-  def inventory_sku_filter_pattern
-    "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query.downcase)}%"
-  end
-
-  def fetch_inventory_row(sku)
-    Rails.cache.fetch(inventory_row_cache_key(sku.sku_code), expires_in: 30.minutes) do
-      build_inventory_row(sku).merge(cache_updated_at: Time.current)
+  def fetch_inventory_row(sku, metrics: {})
+    row = Rails.cache.fetch(inventory_row_cache_key(sku.sku_code), expires_in: 30.minutes) do
+      Ec::InventoryPageRowQuery.new(sku, metrics: metrics).call
     end
-  end
 
-  def build_inventory_row(sku)
-    overview = sku.inventory_overview
-    summary = overview[:summary]
-    store_rows = overview[:store_rows]
-    latest_levels = overview[:latest_levels]
-    wb_rows = store_rows.select { |row| row[:platform] == "wb" }
-    ozon_rows = store_rows.select { |row| row[:platform] == "ozon" }
-    wb_fulfillment_sales = wb_sales_by_fulfillment(sku)
-    wb_net = wb_rows.sum { |row| row[:sales_quantity] } - wb_rows.sum { |row| row[:return_quantity] }
-    ozon_sales = ozon_rows.sum { |row| row[:sales_quantity] }
-    ozon_return = ozon_rows.sum { |row| row[:return_quantity] }
-    purchase_quantity = summary[:received_quantity]
-    net_sales = wb_net + ozon_sales - ozon_return
-    platform_stock = summary[:platform_stock]
-    book_stock = purchase_quantity - net_sales
+    daily_sales_velocity = metrics[:daily_sales_velocity]
+    book_stock = row[:book_stock].to_d
+    turnover_days = daily_sales_velocity.to_d.positive? ? (book_stock / daily_sales_velocity.to_d) : nil
 
-    {
-      sku_code: sku.sku_code,
-      purchase_quantity: purchase_quantity,
-      wb_fbs: wb_fulfillment_sales["fbs"],
-      wb_fbw: wb_fulfillment_sales["fbw"],
-      wb_return: wb_rows.sum { |row| row[:return_quantity] },
-      wb_net: wb_net,
-      ozon_sales: ozon_sales,
-      ozon_return: ozon_return,
-      net_sales: net_sales,
-      book_stock: book_stock,
-      wb_fbw_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbw"),
-      wb_fbs_available: latest_inventory_quantity(latest_levels, platform: "wb", fulfillment_type: "fbs"),
-      ozon_fbo: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbo"),
-      ozon_fbs: latest_inventory_quantity(latest_levels, platform: "ozon", fulfillment_type: "fbs"),
-      platform_stock: platform_stock,
-      belarus_available: book_stock - platform_stock
-    }
+    row.merge(
+      daily_sales_velocity: metrics[:daily_sales_velocity],
+      turnover_days: turnover_days,
+      cache_updated_at: Time.current
+    )
   end
 
   def inventory_row_cache_key(sku_code)

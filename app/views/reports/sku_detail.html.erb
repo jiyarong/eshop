@@ -42,9 +42,12 @@
   </div>
 </section>
 
-<nav class="sku-detail-tabs" aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>">
+<nav class="erp-tabs erp-tabs--underline sku-detail-tabs" aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>">
   <% %w[basic inventory costs stores trend].each do |tab| %>
-    <%= link_to t("reports.sku_detail.tabs.#{tab}"), sku_detail_tab_path(tab), aria: (@active_tab == tab ? { current: "page" } : nil) %>
+    <%= link_to t("reports.sku_detail.tabs.#{tab}"),
+                sku_detail_tab_path(tab),
+                class: "erp-tabs__link sku-detail-tabs__link",
+                aria: (@active_tab == tab ? { current: "page" } : nil) %>
   <% end %>
 </nav>
 
