@@ -51,62 +51,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       synced_at: Time.zone.parse("2026-06-01 09:00:00")
     )
 
-    @inventory_snapshot = Ec::InventorySnapshot.create!(
-      sku_code: @sku.sku_code,
-      platform: "wb",
-      account_id: 2,
-      store_name: "TaxiLink",
-      stock: 7,
-      supply: 3,
-      sold: 5,
-      fbs: 1,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
-    @inventory_ozon_snapshot = Ec::InventorySnapshot.create!(
-      sku_code: @sku.sku_code,
-      platform: "ozon",
-      account_id: 1,
-      store_name: "Nevastal",
-      stock: 4,
-      supply: 6,
-      sold: 2,
-      fbs: 3,
-      synced_at: Time.zone.parse("2026-05-30 11:00")
-    )
-
-    @inventory_total = Ec::InventoryTotal.create!(
-      sku_code: @sku.sku_code,
-      total_supply: 9,
-      total_stock: 11,
-      total_sold: 7,
-      total_fbs: 4,
-      total_received: 20,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
-    @second_inventory_snapshot = Ec::InventorySnapshot.create!(
-      sku_code: @second_sku.sku_code,
-      platform: "wb",
-      account_id: 3,
-      store_name: "WorldChoice",
-      stock: 99,
-      supply: 100,
-      sold: 1,
-      fbs: 0,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
-    @second_inventory_total = Ec::InventoryTotal.create!(
-      sku_code: @second_sku.sku_code,
-      total_supply: 100,
-      total_stock: 99,
-      total_sold: 1,
-      total_fbs: 0,
-      total_received: 100,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
     @sku_cost = Ec::SkuCost.create!(
       sku_code: @sku.sku_code,
       purchase_price_cny: 10,
@@ -330,10 +274,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuPredictedCost)
     Ec::SkuCost.where(sku_code: @sku.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: [@sku.sku_code, @second_sku.sku_code]).delete_all if defined?(Ec::SkuBatch)
-    Ec::InventorySnapshot.where(sku_code: @sku.sku_code).delete_all
-    Ec::InventoryTotal.where(sku_code: @sku.sku_code).delete_all
-    Ec::InventorySnapshot.where(sku_code: @second_sku.sku_code).delete_all
-    Ec::InventoryTotal.where(sku_code: @second_sku.sku_code).delete_all
     @second_sku&.destroy
     @sku&.destroy
     UserRole.joins(:user).where("users.email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
@@ -481,7 +421,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
-    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 24 条/
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 22 条/
   ensure
     extra_skus&.each(&:destroy)
   end

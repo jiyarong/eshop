@@ -77,10 +77,6 @@ production:
     command: "RawOzon::SetupSync.run"
     schedule: every month on the 1st at 5:00 in Asia/Shanghai
 
-  inventory_snapshot_sync:
-    command: "Ec::InventorySnapshotSync.run_and_push_to_sheets"
-    schedule: every day at 9:00 in Asia/Shanghai
-
   sku_inventory_snapshot_sync:
     command: "Ec::SkuInventorySnapshotSync.run"
     schedule: every hour

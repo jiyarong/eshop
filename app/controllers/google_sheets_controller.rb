@@ -20,8 +20,6 @@ class GoogleSheetsController < ApplicationController
                GoogleSheets::SkuCostImportService.new.call
              when "WB_COST", "OZON_COST"
                GoogleSheets::PlatformCostImportService.new.call
-             when "Inventory"
-               GoogleSheets::InventorySnapshotImportService.new.call
              else
                { skipped: true, sheet: sheet }
              end
