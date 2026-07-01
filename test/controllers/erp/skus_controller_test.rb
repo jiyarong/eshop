@@ -43,6 +43,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::OperationLog.where(record_type: "Ec::Sku", record_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).delete_all if defined?(Ec::OperationLog)
     Ec::SkuBatch.where("batch_code LIKE ?", "%#{@token}%").delete_all
     Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all if defined?(Ec::MasterSku)
@@ -277,6 +278,27 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal "更新商品", @sku.product_name
     assert_equal "蓝色", @sku.color
     assert_not @sku.is_active
+  end
+
+  test "update sku records operation log with signed in user" do
+    assert_difference "Ec::OperationLog.count", 1 do
+      patch "/erp/skus/#{@sku.id}", params: {
+        ec_sku: {
+          product_name: "审计更新商品",
+          color: "绿色"
+        }
+      }
+    end
+
+    log = Ec::OperationLog.order(:created_at).last
+    assert_equal @current_user, log.user
+    assert_equal "Ec::Sku", log.record_type
+    assert_equal @sku.id, log.record_id
+    assert_equal "update", log.action
+    assert_equal [
+      { "field" => "product_name", "from" => "页面商品", "to" => "审计更新商品" },
+      { "field" => "color", "from" => "白色", "to" => "绿色" }
+    ], log.changeset
   end
 
   test "destroy soft deletes sku and hides it from index" do

@@ -44,4 +44,17 @@ class ErpAI::ToolExecutorTest < ActiveSupport::TestCase
 
     assert_equal "unknown_mcp_server", result.fetch(:error).fetch(:code)
   end
+
+  test "returns structured error for MCP tools outside configured allowlist" do
+    client = FakeMcpClient.new
+    executor = ErpAI::ToolExecutor.new(
+      mcp_clients: { "search" => client },
+      mcp_tool_filters: { "search" => ["web_search"] }
+    )
+
+    result = executor.call(id: "call_4", name: "mcp__search__fetch_page", arguments: {})
+
+    assert_nil client.tool_name
+    assert_equal "mcp_tool_not_allowed", result.fetch(:error).fetch(:code)
+  end
 end

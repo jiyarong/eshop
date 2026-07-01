@@ -1,6 +1,6 @@
 module Erp
   class StoresController < BaseController
-    before_action :set_store, only: [:edit, :update]
+    before_action :set_store, only: [:show, :edit, :update]
     before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update]
     helper_method :store_platform_options, :store_company_type_options, :store_country_options,
       :store_platform_label, :store_company_type_label, :store_country_label, :store_public_id
@@ -30,6 +30,12 @@ module Erp
         ozon: Ec::Store.where(platform: "ozon").count,
         wb: Ec::Store.where(platform: "wb").count
       }
+    end
+
+    def show
+      @sku_products = @store.sku_products.includes(:sku, :operators).ordered
+      @unbound_raw_products = Ec::UnboundRawProductReport.call(store_id: @store.id)
+      @operator_candidates = operator_candidates
     end
 
     def new
@@ -63,6 +69,15 @@ module Erp
 
     def set_store
       @store = Ec::Store.find(params[:id])
+    end
+
+    def operator_candidates
+      User
+        .where(active: true)
+        .left_joins(:roles)
+        .select("users.*, MIN(CASE WHEN roles.code = 'operator' THEN 0 ELSE 1 END) AS operator_sort")
+        .group("users.id")
+        .order("operator_sort ASC, users.email ASC")
     end
 
     def store_params

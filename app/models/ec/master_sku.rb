@@ -1,5 +1,7 @@
 module Ec
   class MasterSku < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = "ec_master_skus"
 
     has_many :skus, class_name: "Ec::Sku", foreign_key: :master_sku_id, dependent: :nullify

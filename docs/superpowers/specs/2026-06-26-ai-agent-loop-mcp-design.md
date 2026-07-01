@@ -30,31 +30,28 @@ The requested feature is to implement an AI Agent loop and connect it to externa
 
 ## Configuration
 
-MCP server configuration is read from environment variables:
+MCP server configuration is read from `config/mcp_servers.yml`:
 
-- `ERP_AI_MCP_SERVERS`: JSON array of remote MCP server configs.
 - `ERP_AI_MAX_TOOL_ROUNDS`: defaults to `4`.
 
 Example:
 
-```json
-[
-  {
-    "name": "search",
-    "endpoint": "https://mcp-search.example.com/mcp",
-    "bearer_token": "secret-token",
-    "protocol_version": "2025-06-18"
-  },
-  {
-    "name": "docs",
-    "endpoint": "https://mcp-docs.example.com/mcp"
-  }
-]
+```yaml
+production:
+  - name: search
+    endpoint: https://mcp-search.example.com/mcp
+    bearer_token: secret-token
+    protocol_version: "2025-06-18"
+    tools:
+      - web_search
+      - fetch_page
+  - name: docs
+    endpoint: https://mcp-docs.example.com/mcp
 ```
 
-Each server `name` must be unique and must contain only lowercase letters, numbers, and underscores. Each server `endpoint` is required. `bearer_token` is optional. `protocol_version` defaults to `2025-06-18`.
+Each server `name` must be unique and must contain only lowercase letters, numbers, and underscores. Each server `endpoint` is required. `bearer_token` is optional. `protocol_version` defaults to `2025-06-18`. `tools` is optional; when it is blank or omitted, all tools from that MCP server are exposed. When it contains tool names, only those tools are exposed and executable.
 
-If `ERP_AI_MCP_SERVERS` is blank or empty, MCP tools are unavailable and the runner behaves like the current single-response flow, except through the new loop code path.
+If the current environment has no configured MCP servers, MCP tools are unavailable and the runner behaves like the current single-response flow, except through the new loop code path.
 
 ## Architecture
 
@@ -74,11 +71,12 @@ One client instance represents one configured MCP server. The first version pars
 
 ### `ErpAI::Mcp::ServerRegistry`
 
-Builds configured MCP clients from `ERP_AI_MCP_SERVERS`:
+Builds configured MCP clients from `config/mcp_servers.yml`:
 
-- Parses and validates the server config JSON.
+- Parses and validates the server config YAML.
 - Enforces unique server names.
 - Skips invalid server entries and exposes no tools for them.
+- Tracks optional per-server MCP tool allowlists.
 - Returns named `ErpAI::Mcp::HttpClient` instances.
 - Does not log bearer tokens.
 

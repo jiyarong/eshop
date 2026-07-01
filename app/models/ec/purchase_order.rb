@@ -1,5 +1,7 @@
 module Ec
   class PurchaseOrder < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = "ec_purchase_orders"
 
     STATUSES = %w[draft ordered partially_received received cancelled].freeze

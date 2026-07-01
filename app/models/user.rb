@@ -17,6 +17,12 @@ class User < ApplicationRecord
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
   has_many :feedback_tasks, dependent: :destroy
+  has_many :sku_product_operator_assignments,
+    class_name: "Ec::SkuProductOperator",
+    dependent: :destroy
+  has_many :operated_sku_products,
+    through: :sku_product_operator_assignments,
+    source: :sku_product
 
   validates :active, inclusion: { in: [true, false] }
   validates :time_zone, inclusion: { in: TIME_ZONE_OPTIONS.keys, message: "不在可选范围内" }

@@ -101,6 +101,7 @@ en:
     sku_sales: "SKU Sales"
     costs: "Costs"
     erp_skus: "SKU Management"
+    erp_stores: "Store Settings"
     sku_categories: "SKU Categories"
     sku_batches: "ERP Batches"
     purchase_orders: "Purchase Orders"
@@ -109,6 +110,7 @@ en:
     users: "Users"
     agents: "AI Agents"
     feedback_tasks: "Change Tasks"
+    operation_logs: "Operation History"
   feedback:
     title: "Submit Change Feedback"
     issue_type: "Issue Type"
@@ -136,6 +138,43 @@ en:
       wb: "WB"
     "yes": "Yes"
   admin:
+    operation_logs:
+      title: "Operation History"
+      empty: "No operation records match the current filters."
+      system_user: "System"
+      actions:
+        create: "Create"
+        update: "Update"
+        destroy: "Delete"
+      fields:
+        action: "Action"
+        changeset: "Changes"
+        created_at: "Time"
+        record_id: "Record ID"
+        record_type: "Model"
+        user: "User"
+      filters:
+        all_record_types: "All models"
+        all_users: "All users"
+        from_date: "Start date"
+        record_type: "Model"
+        reset: "Reset"
+        submit: "Search"
+        to_date: "End date"
+        user: "User"
+      record_types:
+        ec:
+          cost_allocation: "Cost Allocation"
+          master_sku: "Master SKU"
+          purchase_order: "Purchase Order"
+          sku: "SKU"
+          sku_batch: "Batch"
+          sku_category: "SKU Category"
+          sku_cost: "SKU Cost"
+          sku_platform_cost: "Platform Cost"
+          sku_product: "Store Product Binding"
+          store: "Store"
+          supplier: "Supplier"
     agents:
       edit:
         title: "Edit AI Agent"
@@ -501,6 +540,7 @@ en:
     common:
       actions:
         actions: "Actions"
+        back: "Back"
         collapse_named: "Collapse %{name}"
         edit: "Edit"
         expand_named: "Expand %{name}"
@@ -665,7 +705,9 @@ en:
     stores:
       actions:
         add_store: "Add store"
+        bind_operators: "Assign operators"
         edit_store: "Edit store"
+        save_operators: "Save operators"
       company_types:
         general: "General"
         small: "Small"
@@ -673,6 +715,9 @@ en:
         belarus: "Belarus"
         russia: "Russia"
       empty:
+        no_operators: "Unassigned"
+        no_products: "This store has no platform product bindings yet."
+        no_unbound_raw_products: "This store has no unbound platform products."
         no_stores: "No stores match the current filters."
       errors:
         company_type_blank: "Please select a company scale"
@@ -681,6 +726,7 @@ en:
         company_scale: "Company scale"
         country: "Country"
         is_active: "Active"
+        operators: "Operators"
         registration_country: "Registration country"
         scale: "Scale"
         store_id: "Store ID"
@@ -691,6 +737,7 @@ en:
         search_placeholder: "Search store name or notes..."
       form:
         inactive_hint: "Inactive stores will not enter the 1.0 operations workflow."
+        operator_select_hint: "Select multiple operators, or leave empty to unassign all."
         store_name_placeholder: "Example: Minsk Ozon store"
       index:
         all_stores: "All stores"
@@ -699,4 +746,9 @@ en:
           other: "%{count} stores"
         store_overview: "Store overview"
         title: "Store Settings"
+      show:
+        eyebrow: "Store detail"
+        products: "Store products"
+        summary: "Store information"
+        unbound_raw_products: "Unbound platform products"
   hello: "Hello world"

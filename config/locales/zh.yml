@@ -81,6 +81,7 @@ zh:
     users: "用户管理"
     agents: "AI Agent"
     feedback_tasks: "改动任务"
+    operation_logs: "操作历史"
   feedback:
     title: "提交改动建议"
     issue_type: "问题类型"
@@ -108,6 +109,43 @@ zh:
       wb: "WB"
     "yes": "是"
   admin:
+    operation_logs:
+      title: "操作历史"
+      empty: "当前筛选条件下暂无操作记录。"
+      system_user: "系统"
+      actions:
+        create: "创建"
+        update: "更新"
+        destroy: "删除"
+      fields:
+        action: "操作"
+        changeset: "变更内容"
+        created_at: "时间"
+        record_id: "记录 ID"
+        record_type: "模型"
+        user: "操作人"
+      filters:
+        all_record_types: "全部模型"
+        all_users: "全部用户"
+        from_date: "开始日期"
+        record_type: "模型"
+        reset: "重置"
+        submit: "查询"
+        to_date: "结束日期"
+        user: "用户"
+      record_types:
+        ec:
+          cost_allocation: "费用分摊"
+          master_sku: "Master SKU"
+          purchase_order: "采购单"
+          sku: "SKU"
+          sku_batch: "批次"
+          sku_category: "SKU 类别"
+          sku_cost: "SKU 成本"
+          sku_platform_cost: "平台成本"
+          sku_product: "店铺商品关联"
+          store: "店铺"
+          supplier: "供应商"
     agents:
       edit:
         title: "编辑 AI Agent"
@@ -473,6 +511,7 @@ zh:
     common:
       actions:
         actions: "操作"
+        back: "返回"
         collapse_named: "收起 %{name}"
         edit: "编辑"
         expand_named: "展开 %{name}"
@@ -637,7 +676,9 @@ zh:
     stores:
       actions:
         add_store: "新增店铺"
+        bind_operators: "绑定运营人员"
         edit_store: "编辑店铺"
+        save_operators: "保存运营人员"
       company_types:
         general: "普通"
         small: "小规模"
@@ -645,6 +686,9 @@ zh:
         belarus: "白俄罗斯"
         russia: "俄罗斯"
       empty:
+        no_operators: "未绑定"
+        no_products: "这个店铺还没有绑定平台商品。"
+        no_unbound_raw_products: "这个店铺没有未绑定的平台商品。"
         no_stores: "当前筛选条件下没有店铺。"
       errors:
         company_type_blank: "请选择公司规模类型"
@@ -653,6 +697,7 @@ zh:
         company_scale: "公司规模类型"
         country: "国家"
         is_active: "是否激活"
+        operators: "运营人员"
         registration_country: "公司注册国"
         scale: "规模"
         store_id: "店铺 ID"
@@ -663,6 +708,7 @@ zh:
         search_placeholder: "搜索店铺名称或备注…"
       form:
         inactive_hint: "未激活的店铺不会进入 1.0 运营工作流。"
+        operator_select_hint: "可多选，留空保存后将解除所有运营人员。"
         store_name_placeholder: "例如：明斯克 Ozon 店铺"
       index:
         all_stores: "全部店铺"
@@ -671,3 +717,8 @@ zh:
           other: "%{count} 个店铺"
         store_overview: "店铺概览"
         title: "店铺设置"
+      show:
+        eyebrow: "店铺详情"
+        products: "店铺商品"
+        summary: "店铺信息"
+        unbound_raw_products: "未绑定平台商品"

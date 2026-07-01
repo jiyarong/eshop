@@ -1,5 +1,7 @@
 module Ec
   class SkuPlatformCost < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = 'ec_sku_platform_costs'
 
     belongs_to :sku,  class_name: 'Ec::Sku',     foreign_key: :sku_code, primary_key: :sku_code

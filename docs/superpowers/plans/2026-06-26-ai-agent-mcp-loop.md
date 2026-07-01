@@ -20,7 +20,7 @@
 
 - [ ] **Step 1: Write failing server registry tests**
 
-Add tests proving `ERP_AI_MCP_SERVERS` can define multiple named servers, rejects duplicate or invalid names, and returns no clients when blank.
+Add tests proving `config/mcp_servers.yml` can define multiple named servers, rejects duplicate or invalid names, returns no clients when blank, and tracks optional per-server tool allowlists.
 
 - [ ] **Step 2: Run server registry tests and verify RED**
 

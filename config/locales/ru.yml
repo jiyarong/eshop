@@ -72,6 +72,7 @@ ru:
     sku_sales: "Продажи SKU"
     costs: "Затраты"
     erp_skus: "Управление SKU"
+    erp_stores: "Настройки магазинов"
     sku_categories: "Категории SKU"
     sku_batches: "Партии ERP"
     purchase_orders: "Закупки"
@@ -80,6 +81,7 @@ ru:
     users: "Пользователи"
     agents: "AI Agent"
     feedback_tasks: "Задачи изменений"
+    operation_logs: "История операций"
   feedback:
     title: "Отправить предложение"
     issue_type: "Тип проблемы"
@@ -107,6 +109,43 @@ ru:
       wb: "WB"
     "yes": "Да"
   admin:
+    operation_logs:
+      title: "История операций"
+      empty: "Нет операций для текущих фильтров."
+      system_user: "Система"
+      actions:
+        create: "Создание"
+        update: "Обновление"
+        destroy: "Удаление"
+      fields:
+        action: "Действие"
+        changeset: "Изменения"
+        created_at: "Время"
+        record_id: "ID записи"
+        record_type: "Модель"
+        user: "Пользователь"
+      filters:
+        all_record_types: "Все модели"
+        all_users: "Все пользователи"
+        from_date: "Дата начала"
+        record_type: "Модель"
+        reset: "Сброс"
+        submit: "Поиск"
+        to_date: "Дата окончания"
+        user: "Пользователь"
+      record_types:
+        ec:
+          cost_allocation: "Распределение затрат"
+          master_sku: "Master SKU"
+          purchase_order: "Закупка"
+          sku: "SKU"
+          sku_batch: "Партия"
+          sku_category: "Категория SKU"
+          sku_cost: "Стоимость SKU"
+          sku_platform_cost: "Стоимость платформы"
+          sku_product: "Связь товара магазина"
+          store: "Магазин"
+          supplier: "Поставщик"
     agents:
       edit:
         title: "Редактировать AI Agent"
@@ -457,6 +496,7 @@ ru:
     common:
       actions:
         actions: "Действия"
+        back: "Назад"
         collapse_named: "Свернуть %{name}"
         edit: "Редактировать"
         expand_named: "Развернуть %{name}"
@@ -621,7 +661,9 @@ ru:
     stores:
       actions:
         add_store: "Добавить магазин"
+        bind_operators: "Назначить операторов"
         edit_store: "Редактировать магазин"
+        save_operators: "Сохранить операторов"
       company_types:
         general: "Общая"
         small: "Малая"
@@ -629,6 +671,8 @@ ru:
         belarus: "Беларусь"
         russia: "Россия"
       empty:
+        no_operators: "Не назначено"
+        no_products: "У этого магазина пока нет связей с товарами платформ."
         no_stores: "Магазинов по текущим фильтрам нет."
       errors:
         company_type_blank: "Выберите размер компании"
@@ -637,6 +681,7 @@ ru:
         company_scale: "Размер компании"
         country: "Страна"
         is_active: "Активен"
+        operators: "Операторы"
         registration_country: "Страна регистрации"
         scale: "Размер"
         store_id: "ID магазина"
@@ -647,6 +692,7 @@ ru:
         search_placeholder: "Поиск названия магазина или примечаний..."
       form:
         inactive_hint: "Неактивные магазины не входят в операционный процесс 1.0."
+        operator_select_hint: "Можно выбрать несколько операторов или оставить пустым, чтобы снять всех."
         store_name_placeholder: "Например: магазин Ozon Минск"
       index:
         all_stores: "Все магазины"
@@ -655,3 +701,7 @@ ru:
           other: "%{count} магазинов"
         store_overview: "Обзор магазинов"
         title: "Настройки магазинов"
+      show:
+        eyebrow: "Детали магазина"
+        products: "Товары магазина"
+        summary: "Информация о магазине"

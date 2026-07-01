@@ -74,6 +74,11 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
           "name" => "web_search",
           "description" => "Search web",
           "inputSchema" => { "type" => "object" }
+        },
+        {
+          "name" => "fetch_page",
+          "description" => "Fetch page",
+          "inputSchema" => { "type" => "object" }
         }
       ]
     end
@@ -90,6 +95,16 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   class FakeServerRegistry
     def clients
       { "search" => FakeMcpClient.new }
+    end
+  end
+
+  class FilteredServerRegistry
+    def clients
+      { "search" => FakeMcpClient.new }
+    end
+
+    def tool_filters
+      { "search" => ["web_search"] }
     end
   end
 
@@ -184,6 +199,21 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_not second_request_messages.last.key?(:tool_call_id)
     assert_includes second_request_messages.last.fetch(:content), "库存数据"
     assert_match "需要补货", messages.last.content
+  end
+
+  test "only exposes MCP tools allowed by server config" do
+    client = FakeClient.new
+
+    ErpAI::AgentRunner.new(
+      agent: @agent,
+      user: @user,
+      client: client,
+      server_registry: FilteredServerRegistry.new
+    ).ask(question: "查一下 SKU-1")
+
+    tool_names = client.request.fetch(:tools).map { |tool| tool.fetch(:name) }
+    assert_includes tool_names, "mcp__search__web_search"
+    assert_not_includes tool_names, "mcp__search__fetch_page"
   end
 
   test "stores final assistant message when max tool rounds is reached" do

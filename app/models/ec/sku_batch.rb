@@ -1,5 +1,7 @@
 module Ec
   class SkuBatch < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = "ec_sku_batches"
 
     STATUSES = %w[draft ordered in_transit received closed].freeze

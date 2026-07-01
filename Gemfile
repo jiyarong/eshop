@@ -37,6 +37,7 @@ gem "redis", "~> 5.0"
 gem "bootsnap", require: false
 gem "google-apis-sheets_v4"
 gem "google-apis-drive_v3"
+gem 'simple_apm', '>= 1.1'
 
 # Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
 gem "kamal", require: false
