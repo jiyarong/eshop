@@ -1,0 +1,18 @@
+<% if turbo_frame_request? %>
+  <%= render "reports/inventory_drawer", inventory_detail: @inventory_detail, sku: @sku %>
+<% else %>
+  <% content_for :page_heading, t("reports.inventory.title") %>
+
+  <div class="resource-header">
+    <div>
+      <p class="resource-eyebrow"><%= t("reports.inventory.title") %></p>
+      <h1 class="page-title"><%= @sku.sku_code %></h1>
+    </div>
+    <div class="resource-actions">
+      <%= link_to t("reports.inventory.actions.back_to_inventory"), "/reports/inventory", class: "button button-secondary" %>
+      <%= link_to t("reports.sku_detail.actions.back_to_list"), report_sku_path(@sku.sku_code, tab: "inventory"), class: "button button-secondary" %>
+    </div>
+  </div>
+
+  <%= render "reports/inventory_drawer_content_frame", inventory_detail: @inventory_detail, sku: @sku %>
+<% end %>

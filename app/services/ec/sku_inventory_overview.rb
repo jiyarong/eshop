@@ -18,21 +18,42 @@ module Ec
     private
 
     def summary(store_rows, latest_levels)
-      purchased = @sku.batches.where(status: %w[received closed]).sum(:received_quantity).to_i
       sold = store_rows.sum { |row| row[:sales_quantity] }
       returned = store_rows.sum { |row| row[:return_quantity] }
       supply = store_rows.sum { |row| row[:supply_quantity] }
       platform_stock = latest_levels.sum(&:quantity)
+      batches = batch_summary
+      received = batches[:received_quantity]
 
       {
-        received_quantity: purchased,
+        purchase_quantity: batches[:purchase_quantity],
+        adjustment_quantity: batches[:adjustment_quantity],
+        received_quantity: received,
         sales_quantity: sold,
         return_quantity: returned,
         supply_quantity: supply,
         platform_stock: platform_stock,
-        book_stock: purchased - sold + returned - supply,
-        available_stock: purchased - sold + returned - platform_stock
+        book_stock: received - sold + returned,
+        available_stock: received - sold + returned - platform_stock
       }
+    end
+
+    def batch_summary
+      @batch_summary ||= begin
+        rows = @sku.batches
+          .where(status: %w[received closed])
+          .group(:batch_type)
+          .sum(:received_quantity)
+
+        purchase_quantity = rows.fetch("normal", 0).to_i
+        adjustment_quantity = rows.except("normal").values.sum(&:to_i)
+
+        {
+          purchase_quantity: purchase_quantity,
+          adjustment_quantity: adjustment_quantity,
+          received_quantity: purchase_quantity + adjustment_quantity
+        }
+      end
     end
 
     def build_store_rows(latest_levels)
@@ -46,7 +67,7 @@ module Ec
 
       store_keys.map do |key|
         platform, store_id, store_name, account_id = key
-        orders = order_rows[key] || { sales_quantity: 0 }
+        orders = order_rows[key] || { sales_quantity: 0, order_status_counts: empty_order_status_counts }
         levels = latest_levels.select { |level| key_for(level.platform, level.store_id, level.store_name, level.account_id) == key }
 
         {
@@ -55,6 +76,7 @@ module Ec
           store_name: store_name,
           account_id: account_id,
           sales_quantity: orders[:sales_quantity].to_i,
+          order_status_counts: empty_order_status_counts.merge(orders[:order_status_counts] || {}),
           return_quantity: return_rows[key].to_i,
           supply_quantity: supply_quantity_for(platform, key),
           platform_stock: levels.sum(&:quantity),
@@ -65,7 +87,7 @@ module Ec
 
     def order_rows
       @order_rows ||= begin
-        rows = Hash.new { |hash, key| hash[key] = { sales_quantity: 0 } }
+        rows = Hash.new { |hash, key| hash[key] = { sales_quantity: 0, order_status_counts: empty_order_status_counts } }
 
         Ec::OrderItem
           .joins(:order, :store)
@@ -76,14 +98,18 @@ module Ec
             "ec_order_items.platform",
             "ec_order_items.store_id",
             "ec_stores.store_name",
+            "ec_orders.order_status",
             "CASE WHEN ec_order_items.platform = 'wb' THEN ec_stores.wb_raw_account_id ELSE ec_stores.ozon_raw_account_id END AS account_id",
-            "SUM(CASE WHEN ec_orders.order_status = 'returned' THEN 0 ELSE ec_order_items.quantity END) AS sales_quantity"
+            "SUM(CASE WHEN ec_orders.order_status = 'returned' THEN 0 ELSE ec_order_items.quantity END) AS sales_quantity",
+            "SUM(ec_order_items.quantity) AS status_quantity"
           )
-          .group("ec_order_items.platform", "ec_order_items.store_id", "ec_stores.store_name", "ec_stores.wb_raw_account_id", "ec_stores.ozon_raw_account_id")
+          .group("ec_order_items.platform", "ec_order_items.store_id", "ec_stores.store_name", "ec_orders.order_status", "ec_stores.wb_raw_account_id", "ec_stores.ozon_raw_account_id")
           .each do |row|
-            rows[key_for(row.platform, row.store_id, row.store_name, row.account_id)] = {
-              sales_quantity: row.sales_quantity.to_i
-            }
+            key = key_for(row.platform, row.store_id, row.store_name, row.account_id)
+            status_key = bucket_for_order_status(row.order_status)
+            current = rows[key]
+            current[:sales_quantity] += row.sales_quantity.to_i
+            current[:order_status_counts][status_key] += row.status_quantity.to_i if status_key.present?
           end
 
         rows
@@ -246,6 +272,25 @@ module Ec
 
     def supply_quantity_for(platform, key)
       platform == "wb" ? wb_supply_rows[key].to_i : ozon_supply_rows[key].to_i
+    end
+
+    def empty_order_status_counts
+      {
+        "pending" => 0,
+        "processing" => 0,
+        "shipping" => 0,
+        "signed" => 0
+      }
+    end
+
+    def bucket_for_order_status(order_status)
+      case order_status.to_s
+      when "pending" then "pending"
+      when "processing" then "processing"
+      when "shipped" then "shipping"
+      when "delivered" then "signed"
+      else nil
+      end
     end
 
     def key_for(platform, store_id, store_name, account_id)

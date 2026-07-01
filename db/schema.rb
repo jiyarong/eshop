@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -293,7 +293,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
 
   create_table "ec_sku_batches", force: :cascade do |t|
     t.string "batch_code", null: false
+    t.integer "batch_type", default: 1, null: false
     t.datetime "created_at", null: false
+    t.string "defect_offset_note"
     t.date "expected_arrival_on"
     t.text "memo"
     t.decimal "purchase_unit_price_cny", precision: 12, scale: 4, default: "0.0", null: false
@@ -1007,6 +1009,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
   create_table "raw_ozon_returns", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.jsonb "compensation_status"
+    t.datetime "final_moment"
     t.string "offer_id"
     t.bigint "order_id"
     t.string "order_number"
@@ -1017,6 +1020,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
     t.string "product_name"
     t.integer "quantity", default: 1
     t.jsonb "raw_json", null: false
+    t.datetime "return_date"
     t.bigint "return_id", null: false
     t.string "return_reason_name"
     t.string "return_schema", null: false
@@ -1024,10 +1028,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
     t.jsonb "storage"
     t.datetime "synced_at"
     t.jsonb "target_place"
+    t.datetime "visual_change_moment"
     t.string "visual_status"
+    t.index ["account_id", "final_moment"], name: "idx_raw_ozon_returns_account_final_moment"
     t.index ["account_id", "posting_number"], name: "index_raw_ozon_returns_on_account_id_and_posting_number"
+    t.index ["account_id", "return_date"], name: "idx_raw_ozon_returns_account_return_date"
     t.index ["account_id", "return_id"], name: "index_raw_ozon_returns_on_account_id_and_return_id", unique: true
     t.index ["account_id", "return_schema"], name: "index_raw_ozon_returns_on_account_id_and_return_schema"
+    t.index ["account_id", "visual_change_moment"], name: "idx_raw_ozon_returns_account_visual_change_moment"
     t.index ["account_id", "visual_status"], name: "index_raw_ozon_returns_on_account_id_and_visual_status"
     t.index ["account_id"], name: "index_raw_ozon_returns_on_account_id"
   end

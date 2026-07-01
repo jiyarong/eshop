@@ -340,223 +340,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     User.where("email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
   end
 
-  test "inventory report renders inventory overview totals" do
-    wb_fbw_fulfillment = @wb_sales_order.fulfillments.create!(
-      platform: "wb",
-      store: @wb_sales_store,
-      external_fulfillment_id: "WB-SALE-F-#{@sku_code}",
-      fulfillment_key: "wb:#{@wb_sales_store.id}:WB-SALE-F-#{@sku_code}",
-      fulfillment_type: "fbw",
-      status: "delivered"
-    )
-    @wb_sales_order.items.update_all(fulfillment_id: wb_fbw_fulfillment.id)
-    wb_fbs_order = Ec::Order.create!(
-      platform: "wb",
-      store: @wb_sales_store,
-      external_order_id: "WB-FBS-SALE-#{@sku_code}",
-      external_order_number: "WB-FBS-SALE-#{@sku_code}",
-      order_key: "wb:#{@wb_sales_store.id}:WB-FBS-SALE-#{@sku_code}",
-      order_status: "delivered",
-      ordered_at: Time.zone.parse("2026-06-09 09:00:00"),
-      synced_at: Time.zone.parse("2026-06-09 09:10:00")
-    )
-    wb_fbs_fulfillment = wb_fbs_order.fulfillments.create!(
-      platform: "wb",
-      store: @wb_sales_store,
-      external_fulfillment_id: "WB-FBS-SALE-F-#{@sku_code}",
-      fulfillment_key: "wb:#{@wb_sales_store.id}:WB-FBS-SALE-F-#{@sku_code}",
-      fulfillment_type: "fbs",
-      status: "delivered"
-    )
-    wb_fbs_order.items.create!(
-      fulfillment: wb_fbs_fulfillment,
-      platform: "wb",
-      store: @wb_sales_store,
-      external_item_id: "WB-FBS-SALE-I-#{@sku_code}",
-      platform_sku_id: "123456",
-      offer_id: "WB-OFFER-#{@sku_code}",
-      product_name_source: "销量统计 WB FBS 测试商品",
-      quantity: 5,
-      unit_price: 50,
-      payout: 200,
-      commission_amount: 20,
-      discount_amount: 8,
-      currency_code: "BYN"
-    )
-    ozon_cancelled_order = Ec::Order.create!(
-      platform: "ozon",
-      store: @sales_store,
-      external_order_id: "CANCEL-OZON-#{@sku_code}",
-      external_order_number: "CANCEL-OZON-#{@sku_code}",
-      order_key: "ozon:#{@sales_store.id}:CANCEL-OZON-#{@sku_code}",
-      order_status: "cancelled",
-      ordered_at: Time.zone.parse("2026-06-09 10:00:00"),
-      synced_at: Time.zone.parse("2026-06-09 10:10:00")
-    )
-    ozon_cancelled_order.items.create!(
-      platform: "ozon",
-      store: @sales_store,
-      external_item_id: "CANCEL-OZON-I-#{@sku_code}",
-      platform_sku_id: "3902460130",
-      offer_id: "OFFER-#{@sku_code}",
-      product_name_source: "取消 Ozon 测试商品",
-      quantity: 11,
-      unit_price: 100,
-      payout: 0,
-      commission_amount: 0,
-      discount_amount: 0,
-      currency_code: "BYN"
-    )
-    wb_cancelled_order = Ec::Order.create!(
-      platform: "wb",
-      store: @wb_sales_store,
-      external_order_id: "CANCEL-WB-#{@sku_code}",
-      external_order_number: "CANCEL-WB-#{@sku_code}",
-      order_key: "wb:#{@wb_sales_store.id}:CANCEL-WB-#{@sku_code}",
-      order_status: "cancelled",
-      ordered_at: Time.zone.parse("2026-06-09 11:00:00"),
-      synced_at: Time.zone.parse("2026-06-09 11:10:00")
-    )
-    wb_cancelled_order.items.create!(
-      fulfillment: wb_cancelled_order.fulfillments.create!(
-        platform: "wb",
-        store: @wb_sales_store,
-        external_fulfillment_id: "CANCEL-WB-F-#{@sku_code}",
-        fulfillment_key: "wb:#{@wb_sales_store.id}:CANCEL-WB-F-#{@sku_code}",
-        fulfillment_type: "fbs",
-        status: "cancelled"
-      ),
-      platform: "wb",
-      store: @wb_sales_store,
-      external_item_id: "CANCEL-WB-I-#{@sku_code}",
-      platform_sku_id: "123456",
-      offer_id: "WB-OFFER-#{@sku_code}",
-      product_name_source: "取消 WB 测试商品",
-      quantity: 13,
-      unit_price: 50,
-      payout: 0,
-      commission_amount: 0,
-      discount_amount: 0,
-      currency_code: "BYN"
-    )
-    RawOzon::Return.create!(
-      account: @sales_ozon_account,
-      return_id: 30_000_000 + @sku_code.hash.abs % 1_000_000,
-      return_schema: "FBO",
-      return_type: "Return",
-      posting_number: "INV-OZON-RETURN-#{@sku_code}",
-      ozon_sku: 3_902_460_130,
-      offer_id: "OFFER-#{@sku_code}",
-      product_name: "Ozon 绑定商品",
-      quantity: 2,
-      raw_json: {},
-      synced_at: Time.zone.parse("2026-06-22 09:00:00")
-    )
-    RawOzon::Return.create!(
-      account: @sales_ozon_account,
-      return_id: 31_000_000 + @sku_code.hash.abs % 1_000_000,
-      return_schema: "FBO",
-      return_type: "Return",
-      posting_number: "CANCEL-OZON-#{@sku_code}",
-      ozon_sku: 3_902_460_130,
-      offer_id: "OFFER-#{@sku_code}",
-      product_name: "Ozon 取消订单退货商品",
-      quantity: 7,
-      raw_json: {},
-      synced_at: Time.zone.parse("2026-06-22 09:05:00")
-    )
-    Ec::SkuBatch.create!(
-      sku_code: @sku.sku_code,
-      batch_code: "LIST-#{@sku_code}",
-      status: "received",
-      purchased_quantity: 30,
-      received_quantity: 24,
-      purchase_unit_price_cny: 1
-    )
-    RawOzon::SupplyOrder.create!(
-      account: @sales_ozon_account,
-      supply_order_id: "INV-SUPPLY-#{@sku_code}",
-      status: "COMPLETED",
-      items: { "3902460130" => 6 },
-      raw_json: {},
-      synced_at: Time.zone.parse("2026-06-22 08:00:00")
-    )
-    Ec::SkuInventoryLevel.create!(
-      sku_code: @sku.sku_code,
-      platform: "ozon",
-      account_id: @sales_ozon_account.id,
-      store_name: @sales_store.store_name,
-      store: @sales_store,
-      fulfillment_type: "fbo",
-      quantity: 8,
-      is_latest: true,
-      synced_at: User.profile_time_zone(@current_user.time_zone).local(2026, 6, 22, 10, 0),
-      metadata: {}
-    )
-
-    get "/reports/inventory", headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "h1", "库存报表"
-    assert_select "th", "采购"
-    assert_select "th", "WB_FBW"
-    assert_select "th", "Ozon_FBO"
-    assert_select "th", "白俄可用"
-    assert_select "tbody tr", count: 2
-    assert_select "td", @sku_code
-    assert_select "a[href=?]", "/reports/skus/#{@sku_code}?tab=inventory", @sku_code
-    assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">5<\/td>.*?<td class="numeric">3<\/td>.*?<td class="numeric">0<\/td>.*?<td class="numeric">8<\/td>.*?<td class="numeric">2<\/td>.*?<td class="numeric">2<\/td>.*?<td class="numeric">8<\/td>/m, response.body)
-    assert_select "td", "24"
-    assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">16<\/td>.*?<td class="numeric">8<\/td>.*?<td class="numeric">8<\/td>/m, response.body)
-  end
-
-  test "inventory report wb fulfillment sales ignore sku code without sku product binding" do
-    fulfillment = @wb_sales_order.fulfillments.create!(
-      platform: "wb",
-      store: @wb_sales_store,
-      external_fulfillment_id: "WB-UNBOUND-F-#{@sku_code}",
-      fulfillment_key: "wb:#{@wb_sales_store.id}:WB-UNBOUND-F-#{@sku_code}",
-      fulfillment_type: "fbs",
-      status: "delivered"
-    )
-    unbound_order = Ec::Order.create!(
-      platform: "wb",
-      store: @wb_sales_store,
-      external_order_id: "WB-UNBOUND-SALE-#{@sku_code}",
-      external_order_number: "WB-UNBOUND-SALE-#{@sku_code}",
-      order_key: "wb:#{@wb_sales_store.id}:WB-UNBOUND-SALE-#{@sku_code}",
-      order_status: "delivered",
-      ordered_at: Time.zone.parse("2026-06-09 09:00:00"),
-      synced_at: Time.zone.parse("2026-06-09 09:10:00")
-    )
-    unbound_order.items.create!(
-      fulfillment: fulfillment,
-      platform: "wb",
-      store: @wb_sales_store,
-      external_item_id: "WB-UNBOUND-SALE-I-#{@sku_code}",
-      platform_sku_id: "WB-UNBOUND-#{@sku_code}",
-      offer_id: "WB-OFFER-#{@sku_code}",
-      sku_code: @sku.sku_code,
-      product_name_source: "未绑定 WB 履约商品",
-      quantity: 9,
-      unit_price: 50,
-      payout: 450,
-      commission_amount: 45,
-      discount_amount: 0,
-      currency_code: "BYN"
-    )
-
-    get "/reports/inventory", headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_match(/#{Regexp.escape(@sku_code)}.*?<td class="numeric">0<\/td>.*?<td class="numeric">3<\/td>/m, response.body)
-    assert_select "td", { text: "9", count: 0 }
-  ensure
-    unbound_order&.items&.delete_all
-    unbound_order&.destroy
-    fulfillment&.destroy
-  end
-
   test "inventory report filters by sku query" do
     get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
 
@@ -567,33 +350,280 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", count: 1
   end
 
-  test "inventory report renders cache updated time and refresh button" do
-    @current_user.update!(time_zone: "Europe/Moscow")
-    sign_in @current_user
-    Ec::SkuInventoryLevel.create!(
-      sku_code: @sku.sku_code,
-      platform: "ozon",
-      account_id: @sales_ozon_account.id,
-      store_name: @sales_store.store_name,
-      store: @sales_store,
-      fulfillment_type: "fbo",
-      quantity: 4,
-      is_latest: true,
-      synced_at: Time.utc(2026, 5, 30, 10, 0, 0),
-      metadata: {}
-    )
+  test "inventory report paginates rows with 10 per page by default" do
+    extra_skus = 22.times.map do |index|
+      Ec::Sku.create!(
+        sku_code: format("PAG-%02d-%s", index, @sku_code.delete_prefix("TST-")),
+        product_name: "分页商品#{index}",
+        is_active: true
+      )
+    end
 
-    get "/reports/inventory", headers: { "Accept" => "text/html" }
+    fake_query_factory = lambda do |sku, metrics:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku_code: sku.sku_code,
+            product_name: sku.product_name,
+            product_name_ru: nil,
+            incoming_quantity: 0,
+            book_stock: 0,
+            platform_stock: 0,
+            available_stock: 0,
+            daily_sales_velocity: nil,
+            turnover_days: nil,
+            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
+          }
+        end
+      end
+    end
+
+    fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          sku_codes.index_with { |_| {} }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        get "/reports/inventory", headers: { "Accept" => "text/html" }
+      end
+    end
 
     assert_response :success
-    assert_select "th", "缓存更新时间"
-    assert_select "form[action=?][method=?]", "/reports/inventory/#{@sku_code}/refresh_cache", "post"
-    assert_match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/, response.body)
+    assert_select "tbody tr.inventory-list-table__row", count: 10
+    assert_select "nav.pagination"
+
+    sign_in @current_user
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        get "/reports/inventory", params: { page: 2, sku: "pag-" }, headers: { "Accept" => "text/html" }
+      end
+    end
+
+    assert_response :success
+    assert_select "tbody tr.inventory-list-table__row", count: 10
+    assert_select "nav.pagination"
+    assert_select "span.page.current", "2"
+    assert_select "a[href*='page=2'][href*='sku=pag-']"
+  ensure
+    extra_skus&.each(&:destroy)
+  end
+
+  test "inventory report uses inventory page row query for each filtered sku" do
+    calls = []
+    fake_query_factory = lambda do |sku, metrics:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          calls << sku.sku_code
+          {
+            sku_code: sku.sku_code,
+            product_name: "商品 #{sku.sku_code}",
+            product_name_ru: "Товар #{sku.sku_code}",
+            incoming_quantity: 0,
+            book_stock: 14,
+            platform_stock: 0,
+            available_stock: 7,
+            daily_sales_velocity: nil,
+            turnover_days: nil,
+            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
+          }
+        end
+      end
+    end
+
+    velocity_calls = []
+    fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          velocity_calls << [sku_codes, date_to, time_zone.name]
+          {
+            @sku_code => { daily_sales_velocity: BigDecimal("1.23") }
+          }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
+      end
+    end
+
+    assert_response :success
+    assert_equal [@sku_code], calls
+    assert_equal 1, velocity_calls.size
+    assert_equal [@sku_code], velocity_calls.first[0]
+    assert_kind_of Date, velocity_calls.first[1]
+    assert_equal @current_user.time_zone, velocity_calls.first[2]
+    assert_select "turbo-frame#inventory_drawer"
+    assert_select "table.inventory-list-table"
+    assert_select "th", I18n.t("reports.inventory.fields.pending_stock", default: "待入库库存")
+    assert_select "th", I18n.t("reports.inventory.fields.book_available_stock", default: "账面可用库存")
+    assert_select "th", I18n.t("reports.inventory.fields.platform_stock")
+    assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock", default: "境外当前可用")
+    assert_select "th", { text: I18n.t("reports.inventory.fields.cache_updated_at"), count: 0 }
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(7)", "1.23"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "11.38"
+    assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@sku_code}", "inventory_drawer"
+    assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", "/reports/inventory/#{@sku_code}", "inventory_drawer"
+    assert_select "form[action=?]", "/reports/inventory/#{@sku_code}/refresh_cache", count: 0
+    assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@second_sku_code}", "inventory_drawer", count: 0
+  end
+
+  test "inventory detail non turbo request renders standalone inventory detail page" do
+    query_calls = []
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, date_to:, time_zone:|
+      query_calls << [sku.sku_code, detail_tab, book_batch_page, date_to, time_zone.name]
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku_code: sku.sku_code,
+            product_name: "standalone stub",
+            product_name_ru: "standalone stub ru",
+            active_detail_tab: detail_tab,
+            summary: {
+              book_stock: 10,
+              platform_stock: 4,
+              available_stock: 6
+            },
+            incoming_quantity: 1,
+            incoming_batches: [],
+            book_batches: [],
+            book_batch_pagination: { page: 1, page_size: 10, total_count: 0, total_pages: 1 },
+            store_reconciliation_rows: [],
+            platform_breakdown: []
+          }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageDetailQuery, fake_query_factory) do
+      get "/reports/inventory/#{@sku_code}", headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_equal 1, query_calls.size
+    assert_equal [@sku_code, nil, nil], query_calls.first.first(3)
+    assert_kind_of Date, query_calls.first[3]
+    assert_equal @current_user.time_zone, query_calls.first[4]
+    assert_select "h1", @sku_code
+    assert_select ".erp-modal[role='dialog']", count: 0
+    assert_select "a[href=?]", "/reports/inventory"
+  end
+
+  test "inventory detail turbo frame request renders drawer content" do
+    query_calls = []
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, date_to:, time_zone:|
+      query_calls << [sku.sku_code, detail_tab, book_batch_page, date_to, time_zone.name]
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku_code: sku.sku_code,
+            product_name: "stub",
+            product_name_ru: "stub ru",
+            active_detail_tab: detail_tab,
+            summary: {
+              book_stock: 12,
+              platform_stock: 5,
+              available_stock: 7,
+              purchase_quantity: 20,
+              adjustment_quantity: -2,
+              received_quantity: 18,
+              sales_quantity: 9,
+              return_quantity: 3
+            },
+            daily_sales_velocity: BigDecimal("1.23"),
+            turnover_days: BigDecimal("5.67"),
+            incoming_quantity: 0,
+            incoming_batches: [{ batch_code: "IN-1", status: "in_transit", expected_arrival_on: Date.new(2026, 7, 1), purchased_quantity: 8, memo: "memo" }],
+            book_batches: [{ batch_code: "BOOK-1", status: "received", batch_type: "wb_fbw_offset", received_quantity: 12, defect_offset_note: "note", received_on: Date.new(2026, 6, 20) }],
+            book_batch_pagination: { page: book_batch_page.to_i, page_size: 10, total_count: 0, total_pages: 1 },
+            book_mini_stats: [
+              { key: "purchase_quantity", value: 20, unit_key: "quantity" },
+              { key: "wb_net_sales", value: 5, unit_key: "quantity" },
+              { key: "ozon_net_sales", value: 4, unit_key: "quantity" }
+            ],
+            book_sales_distribution: {
+              columns: %w[pending processing shipping signed],
+              rows: [
+                { store_label: "Ozon * 店铺1", counts: { "pending" => 1, "processing" => 2, "shipping" => 0, "signed" => 3 } }
+              ],
+              summary_row: { store_label_key: "summary", counts: { "pending" => 1, "processing" => 2, "shipping" => 0, "signed" => 3 } }
+            },
+            return_distribution: {
+              rows: [
+                { store_label: "Ozon * 店铺1", return_count: 1 }
+              ],
+              summary_row: { store_label_key: "summary", return_count: 1 }
+            },
+            book_formula: {
+              items: [
+                { key: "purchase_quantity", value: 20, operator: "+" },
+                { key: "wb_net_sales", value: 5, operator: "-" },
+                { key: "ozon_net_sales", value: 4, operator: "-" },
+                { key: "wb_returns", value: 1, operator: "+" },
+                { key: "ozon_returns", value: 0, operator: "+" }
+              ],
+              result: 12
+            },
+            platform_mini_stats: [
+              { key: "ozon_fbo", value: 5, unit_key: "quantity" },
+              { key: "ozon_fbs", value: 0, unit_key: "quantity" },
+              { key: "wb_fbo", value: 0, unit_key: "quantity" },
+              { key: "wb_fbs", value: 0, unit_key: "quantity" }
+            ],
+            platform_shop_rows: [
+              { store_label: "OZON * 店铺1", fbo: 5, fbs: 0 }
+            ],
+            platform_formula: {
+              items: [
+                { key: "book_inventory", value: 12, operator: "+" },
+                { key: "platform_inventory_total", value: 5, operator: "-" }
+              ],
+              result: 7,
+              description_key: "overseas_available"
+            },
+            store_reconciliation_rows: [],
+            platform_breakdown: [{ platform: "ozon", fulfillment_type: "fbo", store_name: "店铺", quantity: 5, latest_synced_at: Time.zone.parse("2026-06-22 10:00:00") }]
+          }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageDetailQuery, fake_query_factory) do
+      get "/reports/inventory/#{@sku_code}",
+        params: { detail_tab: "book", book_batch_page: "2" },
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+    end
+
+    assert_response :success
+    assert_equal 1, query_calls.size
+    assert_equal [@sku_code, "book", "2"], query_calls.first.first(3)
+    assert_kind_of Date, query_calls.first[3]
+    assert_equal @current_user.time_zone, query_calls.first[4]
+    assert_select "turbo-frame#inventory_drawer_content"
+    assert_select ".erp-modal[role='dialog']", count: 0
+    assert_select "h3", I18n.t("reports.inventory.drawer.sections.overview", default: "概览")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.daily_sales_velocity")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.turnover_days")
+    assert_select ".inventory-metric-card__value", "1.23"
+    assert_select ".inventory-metric-card__value", "5.67"
+    assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.book")
+    assert_select ".inventory-detail-shell > .inventory-detail-body", count: 1
+    assert_select ".inventory-detail-panel--scrollable", count: 0
+    assert_select "h4", I18n.t("reports.inventory.drawer.sections.batch_list")
+    assert_select "h4", I18n.t("reports.inventory.drawer.sections.sales_distribution")
+    assert_select "h4", I18n.t("reports.inventory.drawer.sections.return_distribution")
+    assert_select ".inventory-formula__title", I18n.t("reports.inventory.drawer.sections.formula")
   end
 
   test "inventory report caches each sku row until refresh" do
     cache_store = ActiveSupport::Cache::MemoryStore.new
     original_cache_store = Rails.cache
+    cache_key = "reports/inventory/rows/#{@sku_code}"
 
     Rails.cache = cache_store
 
@@ -601,7 +631,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       get "/reports/inventory", headers: { "Accept" => "text/html" }
 
       assert_response :success
-      assert_select "td", { text: "24", count: 0 }
+      first_cached_row = Rails.cache.read(cache_key)
+      assert first_cached_row.present?
 
       Ec::SkuBatch.create!(
         sku_code: @sku.sku_code,
@@ -616,7 +647,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       get "/reports/inventory", headers: { "Accept" => "text/html" }
 
       assert_response :success
-      assert_select "td", { text: "24", count: 0 }
+      second_cached_row = Rails.cache.read(cache_key)
+      assert_equal first_cached_row.except(:cache_updated_at), second_cached_row.except(:cache_updated_at)
 
       sign_in @current_user
       post "/reports/inventory/#{@sku_code}/refresh_cache", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
@@ -626,7 +658,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       sign_in @current_user
       get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
       assert_response :success
-      assert_select "td", "24"
+      refreshed_cached_row = Rails.cache.read(cache_key)
+      assert_operator refreshed_cached_row[:book_stock], :>, second_cached_row[:book_stock]
     ensure
       Rails.cache = original_cache_store
     end
@@ -1399,6 +1432,18 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: "销量统计 Ozon 店 #{@sku_code}", count: 0 }
     assert_select "td", @sku.sku_code
     assert_select "td", @second_sku.sku_code
+  end
+
+  private
+
+  def with_stubbed_constructor(klass, replacement)
+    singleton_class = klass.singleton_class
+    original_new = singleton_class.instance_method(:new)
+
+    singleton_class.send(:define_method, :new, &replacement)
+    yield
+  ensure
+    singleton_class.send(:define_method, :new, original_new)
   end
 
 end

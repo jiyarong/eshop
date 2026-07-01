@@ -1,0 +1,12 @@
+<% drawer_body = capture do %>
+  <%= render "reports/inventory_drawer_content_frame", inventory_detail: inventory_detail, sku: sku %>
+<% end %>
+
+<%= render "shared/overlay_drawer",
+           frame_id: "inventory_drawer",
+           title_id: "inventory-drawer-title",
+           title: inventory_detail[:product_name].presence || inventory_detail[:sku_code],
+           eyebrow: t("reports.inventory.drawer.title"),
+           subtitle: inventory_detail[:sku_code],
+           close_path: "/reports/inventory",
+           body: drawer_body %>
