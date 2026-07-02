@@ -33,8 +33,13 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
 
     assert_equal true, missing_cost[:missing_cost]
     assert_equal false, missing_cost[:calculable]
+    assert_equal BigDecimal("2.0"), missing_cost[:average_daily_net_sales]
+    assert_equal BigDecimal("360.0"), missing_cost[:projected_stock_qty_180d]
+    assert_equal BigDecimal("180.0"), missing_cost[:average_inventory_qty]
+    assert_equal BigDecimal("5.93863411415374463873309138898060046189376443418"), missing_cost[:projected_months_to_clear]
     assert_nil missing_cost[:predicted_storage_cost_cny]
     assert_nil missing_cost[:predicted_interest_cost_cny]
+    assert_nil missing_cost[:cost_base_cny]
     assert_nil missing_cost[:adjusted_operating_net_profit_cny]
     assert_nil missing_cost[:roi]
 
@@ -48,8 +53,13 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
 
     assert_equal true, missing_volume[:missing_volume]
     assert_equal false, missing_volume[:calculable]
+    assert_equal BigDecimal("2.0"), missing_volume[:average_daily_net_sales]
+    assert_equal BigDecimal("360.0"), missing_volume[:projected_stock_qty_180d]
+    assert_equal BigDecimal("180.0"), missing_volume[:average_inventory_qty]
+    assert_equal BigDecimal("5.93863411415374463873309138898060046189376443418"), missing_volume[:projected_months_to_clear]
     assert_nil missing_volume[:predicted_storage_cost_cny]
     assert_nil missing_volume[:predicted_interest_cost_cny]
+    assert_nil missing_volume[:cost_base_cny]
     assert_nil missing_volume[:adjusted_operating_net_profit_cny]
     assert_nil missing_volume[:roi]
   end

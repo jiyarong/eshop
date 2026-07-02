@@ -20,8 +20,6 @@ module Ec
     end
 
     def call
-      return invalid_payload(missing_cost: true) if unit_goods_cost_cny.blank? || unit_goods_cost_cny <= 0
-      return invalid_payload(missing_volume: true) if unit_volume_l.blank? || unit_volume_l <= 0
       return invalid_payload(invalid_date_range: true) if days_count <= 0
       return invalid_payload(non_positive_net_sales: true) if net_sales_quantity <= 0
 
@@ -31,6 +29,20 @@ module Ec
       projected_weekly_sales = average_daily_net_sales * DAYS_PER_WEEK
       projected_weeks_to_clear = projected_stock_qty_180d / projected_weekly_sales
       projected_months_to_clear = projected_weeks_to_clear / WEEKS_PER_MONTH
+      missing_cost = unit_goods_cost_cny.blank? || unit_goods_cost_cny <= 0
+      missing_volume = unit_volume_l.blank? || unit_volume_l <= 0
+
+      if missing_cost || missing_volume
+        return projection_only_payload(
+          average_daily_net_sales: average_daily_net_sales,
+          projected_stock_qty_180d: projected_stock_qty_180d,
+          average_inventory_qty: average_inventory_qty,
+          projected_months_to_clear: projected_months_to_clear,
+          missing_cost: missing_cost,
+          missing_volume: missing_volume
+        )
+      end
+
       unit_volume_m3 = unit_volume_l / LITERS_PER_CUBIC_METER
       predicted_storage_cost_cny =
         average_inventory_qty *
@@ -72,6 +84,32 @@ module Ec
     private
 
     attr_reader :net_sales_quantity, :operating_profit_cny, :days_count, :unit_goods_cost_cny, :unit_volume_l
+
+    def projection_only_payload(
+      average_daily_net_sales:,
+      projected_stock_qty_180d:,
+      average_inventory_qty:,
+      projected_months_to_clear:,
+      missing_cost:,
+      missing_volume:
+    )
+      {
+        missing_cost: missing_cost,
+        missing_volume: missing_volume,
+        invalid_date_range: false,
+        non_positive_net_sales: false,
+        calculable: false,
+        average_daily_net_sales: average_daily_net_sales,
+        projected_stock_qty_180d: projected_stock_qty_180d,
+        average_inventory_qty: average_inventory_qty,
+        projected_months_to_clear: projected_months_to_clear,
+        predicted_storage_cost_cny: nil,
+        predicted_interest_cost_cny: nil,
+        cost_base_cny: nil,
+        adjusted_operating_net_profit_cny: nil,
+        roi: nil
+      }
+    end
 
     def invalid_payload(missing_cost: false, missing_volume: false, invalid_date_range: false, non_positive_net_sales: false)
       {
