@@ -53,4 +53,40 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
     assert_nil missing_volume[:adjusted_operating_net_profit_cny]
     assert_nil missing_volume[:roi]
   end
+
+  test "returns blank roi when date range is invalid" do
+    invalid_date_range = Ec::ProjectedStockRoiCalculator.call(
+      net_sales_quantity: 14,
+      operating_profit_cny: BigDecimal("337.5"),
+      days_count: 0,
+      unit_goods_cost_cny: BigDecimal("10"),
+      unit_volume_l: BigDecimal("1.0")
+    )
+
+    assert_equal true, invalid_date_range[:invalid_date_range]
+    assert_equal false, invalid_date_range[:calculable]
+    assert_nil invalid_date_range[:average_daily_net_sales]
+    assert_nil invalid_date_range[:predicted_storage_cost_cny]
+    assert_nil invalid_date_range[:predicted_interest_cost_cny]
+    assert_nil invalid_date_range[:adjusted_operating_net_profit_cny]
+    assert_nil invalid_date_range[:roi]
+  end
+
+  test "returns blank roi when net sales are non-positive" do
+    non_positive_net_sales = Ec::ProjectedStockRoiCalculator.call(
+      net_sales_quantity: 0,
+      operating_profit_cny: BigDecimal("337.5"),
+      days_count: 7,
+      unit_goods_cost_cny: BigDecimal("10"),
+      unit_volume_l: BigDecimal("1.0")
+    )
+
+    assert_equal true, non_positive_net_sales[:non_positive_net_sales]
+    assert_equal false, non_positive_net_sales[:calculable]
+    assert_nil non_positive_net_sales[:average_daily_net_sales]
+    assert_nil non_positive_net_sales[:predicted_storage_cost_cny]
+    assert_nil non_positive_net_sales[:predicted_interest_cost_cny]
+    assert_nil non_positive_net_sales[:adjusted_operating_net_profit_cny]
+    assert_nil non_positive_net_sales[:roi]
+  end
 end
