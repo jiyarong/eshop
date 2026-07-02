@@ -75,6 +75,8 @@ module Ec
           projected_stock_qty_180d: roi_result.fetch(:projected_stock_qty_180d),
           average_inventory_qty: roi_result.fetch(:average_inventory_qty),
           projected_months_to_clear: roi_result.fetch(:projected_months_to_clear),
+          projected_unit_profit_cny: roi_result.fetch(:projected_unit_profit_cny),
+          projected_operating_net_profit_cny: roi_result.fetch(:projected_operating_net_profit_cny),
           predicted_storage_cost_cny: roi_result.fetch(:predicted_storage_cost_cny),
           predicted_interest_cost_cny: roi_result.fetch(:predicted_interest_cost_cny),
           cost_base_cny: roi_result.fetch(:cost_base_cny),

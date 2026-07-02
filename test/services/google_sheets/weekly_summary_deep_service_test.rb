@@ -39,21 +39,13 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
     assert_equal "WSU-DEEP:W22!A1:Z", writes.fetch(:cleared_range)
 
     assert_equal "SKU", values[0][0]
-    assert_equal "ROI(180D)", values[0][12]
+    assert_equal "ROI(按180天备货)", values[0][12]
 
     sku_a_row = values.find { |row| row[0] == "WSUDEEP-A" }
     sku_b_row = values.find { |row| row[0] == "WSUDEEP-B" }
     total_row = values.find { |row| row[0] == "合计 / Итого" }
 
     sku_a = Ec::Sku.find_by!(sku_code: "WSUDEEP-A")
-    expected_roi = Ec::ProjectedStockRoiCalculator.call(
-      net_sales_quantity: 8,
-      operating_profit_cny: BigDecimal("55"),
-      days_count: 7,
-      unit_goods_cost_cny: sku_a.cost.goods_cost_cny,
-      unit_volume_l: sku_a.cost.pkg_volume_l
-    )[:roi]
-
     assert_equal 8, sku_a_row[1]
     assert_equal 160, sku_a_row[2]
     assert_equal 16, sku_a_row[3]
@@ -65,11 +57,10 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
     assert_in_delta 6.875, sku_a_row[9].to_f, 0.001
     assert_in_delta 10.0, sku_a_row[10].to_f, 0.001
     assert_in_delta 114.58, sku_a_row[11].to_f, 0.1
-    assert_in_delta (expected_roi * 100).to_f.round(2), sku_a_row[12].to_f, 0.001
-    assert_equal 6, sku_a_row[13]
-    assert_equal 120, sku_a_row[14]
-    assert_in_delta 33.3, sku_a_row[15].to_f, 0.1
-    assert_in_delta 33.3, sku_a_row[16].to_f, 0.1
+    assert_equal BigDecimal("12.5600"), sku_a.cost.goods_cost_cny
+    assert_equal BigDecimal("1.0"), sku_a.cost.pkg_volume_l
+    assert_in_delta 49.4, sku_a_row[12].to_f, 0.1
+    assert_equal 13, sku_a_row.size
 
     assert_equal 2, sku_b_row[1]
     assert_nil sku_b_row[12]

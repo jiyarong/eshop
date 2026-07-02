@@ -78,12 +78,14 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: BigDecimal("180.0"),
           average_inventory_qty: BigDecimal("90.0"),
           projected_months_to_clear: BigDecimal("5.93863411415374463873309138898060046189376443418"),
+          projected_unit_profit_cny: BigDecimal("50.0"),
+          projected_operating_net_profit_cny: BigDecimal("9000.0"),
           predicted_storage_cost_cny: BigDecimal("64.137248432860442098317387000990484988452655889144"),
           predicted_interest_cost_cny: BigDecimal("183.8601121741999340151765094028393903002309468822128"),
           cost_base_cny: BigDecimal("6192.0"),
           operating_net_profit_cny: BigDecimal("500"),
-          adjusted_operating_net_profit_cny: BigDecimal("252.0026393929396238865061035961701247113163972286432"),
-          roi: BigDecimal("252.0026393929396238865061035961701247113163972286432") / BigDecimal("6192")
+          adjusted_operating_net_profit_cny: BigDecimal("8752.0026393929396238865061035961701247113163972286432"),
+          roi: BigDecimal("8752.0026393929396238865061035961701247113163972286432") / BigDecimal("6192")
         },
         result[:total]
       )
@@ -97,12 +99,14 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: BigDecimal("144.0"),
           average_inventory_qty: BigDecimal("72.0"),
           projected_months_to_clear: BigDecimal("5.93863411415374463873309138898060046189376443418"),
+          projected_unit_profit_cny: BigDecimal("40.0"),
+          projected_operating_net_profit_cny: BigDecimal("5760.0"),
           predicted_storage_cost_cny: BigDecimal("51.3097987462883536786539096007923879907621247113152"),
           predicted_interest_cost_cny: BigDecimal("147.08808973935994721214120752227151224018475750577024"),
           cost_base_cny: BigDecimal("4953.6"),
           operating_net_profit_cny: BigDecimal("320"),
-          adjusted_operating_net_profit_cny: BigDecimal("121.60211151435169910920488287693609976905311778291456"),
-          roi: BigDecimal("121.60211151435169910920488287693609976905311778291456") / BigDecimal("4953.6")
+          adjusted_operating_net_profit_cny: BigDecimal("5561.60211151435169910920488287693609976905311778291456"),
+          roi: BigDecimal("5561.60211151435169910920488287693609976905311778291456") / BigDecimal("4953.6")
         },
         result.dig(:platforms, :wb)
       )
@@ -116,12 +120,14 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: BigDecimal("36.0"),
           average_inventory_qty: BigDecimal("18.0"),
           projected_months_to_clear: BigDecimal("5.93863411415374463873309138898060046189376443418"),
+          projected_unit_profit_cny: BigDecimal("90.0"),
+          projected_operating_net_profit_cny: BigDecimal("3240.0"),
           predicted_storage_cost_cny: BigDecimal("12.8274496865720884196634774001980969976905311778288"),
           predicted_interest_cost_cny: BigDecimal("36.77202243483998680303530188056787806004618937644256"),
           cost_base_cny: BigDecimal("1238.4"),
           operating_net_profit_cny: BigDecimal("180"),
-          adjusted_operating_net_profit_cny: BigDecimal("130.40052787858792477730122071923402494226327944572864"),
-          roi: BigDecimal("130.40052787858792477730122071923402494226327944572864") / BigDecimal("1238.4")
+          adjusted_operating_net_profit_cny: BigDecimal("3190.40052787858792477730122071923402494226327944572864"),
+          roi: BigDecimal("3190.40052787858792477730122071923402494226327944572864") / BigDecimal("1238.4")
         },
         result.dig(:platforms, :ozon)
       )
@@ -315,6 +321,8 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: nil,
           average_inventory_qty: nil,
           projected_months_to_clear: nil,
+          projected_unit_profit_cny: nil,
+          projected_operating_net_profit_cny: nil,
           predicted_storage_cost_cny: nil,
           predicted_interest_cost_cny: nil,
           cost_base_cny: nil,
@@ -334,12 +342,14 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: BigDecimal("72.0"),
           average_inventory_qty: BigDecimal("36.0"),
           projected_months_to_clear: BigDecimal("5.93863411415374463873309138898060046189376443418"),
+          projected_unit_profit_cny: BigDecimal("30.0"),
+          projected_operating_net_profit_cny: BigDecimal("2160.0"),
           predicted_storage_cost_cny: BigDecimal("25.6548993731441768393269548003961939953810623556576"),
           predicted_interest_cost_cny: BigDecimal("73.54404486967997360607060376113575612009237875288512"),
           cost_base_cny: BigDecimal("2476.8"),
           operating_net_profit_cny: BigDecimal("120"),
-          adjusted_operating_net_profit_cny: BigDecimal("20.80105575717584955460244143846804988452655889145728"),
-          roi: BigDecimal("20.80105575717584955460244143846804988452655889145728") / BigDecimal("2476.8")
+          adjusted_operating_net_profit_cny: BigDecimal("2060.80105575717584955460244143846804988452655889145728"),
+          roi: BigDecimal("2060.80105575717584955460244143846804988452655889145728") / BigDecimal("2476.8")
         },
         result.dig(:platforms, :wb)
       )
@@ -353,6 +363,8 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: nil,
           average_inventory_qty: nil,
           projected_months_to_clear: nil,
+          projected_unit_profit_cny: nil,
+          projected_operating_net_profit_cny: nil,
           predicted_storage_cost_cny: nil,
           predicted_interest_cost_cny: nil,
           cost_base_cny: nil,
@@ -426,6 +438,8 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: BigDecimal("72.0"),
           average_inventory_qty: BigDecimal("36.0"),
           projected_months_to_clear: BigDecimal("5.93863411415374463873309138898060046189376443418"),
+          projected_unit_profit_cny: BigDecimal("30.0"),
+          projected_operating_net_profit_cny: BigDecimal("2160.0"),
           predicted_storage_cost_cny: nil,
           predicted_interest_cost_cny: nil,
           cost_base_cny: nil,
@@ -445,6 +459,8 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           projected_stock_qty_180d: BigDecimal("72.0"),
           average_inventory_qty: BigDecimal("36.0"),
           projected_months_to_clear: BigDecimal("5.93863411415374463873309138898060046189376443418"),
+          projected_unit_profit_cny: BigDecimal("30.0"),
+          projected_operating_net_profit_cny: BigDecimal("2160.0"),
           predicted_storage_cost_cny: nil,
           predicted_interest_cost_cny: nil,
           cost_base_cny: nil,
@@ -566,6 +582,8 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
       projected_stock_qty_180d: BigDecimal("180.0"),
       average_inventory_qty: BigDecimal("90.0"),
       projected_months_to_clear: BigDecimal("5.938022042467"),
+      projected_unit_profit_cny: BigDecimal("50.0"),
+      projected_operating_net_profit_cny: BigDecimal("9000.0"),
       predicted_storage_cost_cny: BigDecimal("6.41306372582644"),
       predicted_interest_cost_cny: BigDecimal("183.7206478060048"),
       cost_base_cny: BigDecimal("6192.0"),

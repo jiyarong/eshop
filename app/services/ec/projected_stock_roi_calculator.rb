@@ -29,6 +29,8 @@ module Ec
       projected_weekly_sales = average_daily_net_sales * DAYS_PER_WEEK
       projected_weeks_to_clear = projected_stock_qty_180d / projected_weekly_sales
       projected_months_to_clear = projected_weeks_to_clear / WEEKS_PER_MONTH
+      projected_unit_profit_cny = operating_profit_cny / net_sales_quantity
+      projected_operating_net_profit_cny = projected_stock_qty_180d * projected_unit_profit_cny
       missing_cost = unit_goods_cost_cny.blank? || unit_goods_cost_cny <= 0
       missing_volume = unit_volume_l.blank? || unit_volume_l <= 0
 
@@ -38,6 +40,8 @@ module Ec
           projected_stock_qty_180d: projected_stock_qty_180d,
           average_inventory_qty: average_inventory_qty,
           projected_months_to_clear: projected_months_to_clear,
+          projected_unit_profit_cny: projected_unit_profit_cny,
+          projected_operating_net_profit_cny: projected_operating_net_profit_cny,
           missing_cost: missing_cost,
           missing_volume: missing_volume
         )
@@ -56,7 +60,7 @@ module Ec
         MONTHLY_INTEREST_RATE
       cost_base_cny = projected_stock_qty_180d * unit_goods_cost_cny
       adjusted_operating_net_profit_cny =
-        operating_profit_cny -
+        projected_operating_net_profit_cny -
         predicted_storage_cost_cny -
         predicted_interest_cost_cny
 
@@ -70,6 +74,8 @@ module Ec
         projected_stock_qty_180d: projected_stock_qty_180d,
         average_inventory_qty: average_inventory_qty,
         projected_months_to_clear: projected_months_to_clear,
+        projected_unit_profit_cny: projected_unit_profit_cny,
+        projected_operating_net_profit_cny: projected_operating_net_profit_cny,
         predicted_storage_cost_cny: predicted_storage_cost_cny,
         predicted_interest_cost_cny: predicted_interest_cost_cny,
         cost_base_cny: cost_base_cny,
@@ -90,6 +96,8 @@ module Ec
       projected_stock_qty_180d:,
       average_inventory_qty:,
       projected_months_to_clear:,
+      projected_unit_profit_cny:,
+      projected_operating_net_profit_cny:,
       missing_cost:,
       missing_volume:
     )
@@ -103,6 +111,8 @@ module Ec
         projected_stock_qty_180d: projected_stock_qty_180d,
         average_inventory_qty: average_inventory_qty,
         projected_months_to_clear: projected_months_to_clear,
+        projected_unit_profit_cny: projected_unit_profit_cny,
+        projected_operating_net_profit_cny: projected_operating_net_profit_cny,
         predicted_storage_cost_cny: nil,
         predicted_interest_cost_cny: nil,
         cost_base_cny: nil,
@@ -122,6 +132,8 @@ module Ec
         projected_stock_qty_180d: nil,
         average_inventory_qty: nil,
         projected_months_to_clear: nil,
+        projected_unit_profit_cny: nil,
+        projected_operating_net_profit_cny: nil,
         predicted_storage_cost_cny: nil,
         predicted_interest_cost_cny: nil,
         cost_base_cny: nil,

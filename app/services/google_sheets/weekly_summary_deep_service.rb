@@ -3,19 +3,17 @@ module GoogleSheets
     HDR_ZH = [
       "SKU", "净销量", "销售额(CNY)", "广告费(CNY)", "货物成本(CNY)",
       "税前毛利(CNY)", "税/营业税(CNY)", "税后净利(CNY)", "利润率%",
-      "平均每单利润", "广告占比%", "成本回报率%", "ROI(180D)",
-      "上周净销量", "上周销售额(CNY)", "销量环比%", "销售额环比%"
+      "平均每单利润", "广告占比%", "成本回报率%", "ROI(按180天备货)"
     ].freeze
 
     HDR_RU = [
       "Артикул", "Чистые продажи", "Выручка(CNY)", "Реклама(CNY)", "Себестоимость(CNY)",
       "До налогов(CNY)", "Налог(CNY)", "Чистая прибыль(CNY)", "Рентабельность%",
-      "Ср. прибыль/заказ", "Доля рекламы%", "Окупаемость себестоимости%", "ROI(180D)",
-      "Продажи пр.н.", "Выручка пр.н.(CNY)", "Δ продаж%", "Δ выручки%"
+      "Ср. прибыль/заказ", "Доля рекламы%", "Окупаемость себестоимости%", "ROI(180 дней запаса)"
     ].freeze
 
-    COL_TYPES = %i[text int num num num num num num pct num pct pct num int num pct pct].freeze
-    COL_WIDTHS = [120, 80, 100, 100, 100, 100, 100, 100, 80, 100, 90, 100, 90, 80, 100, 80, 80].freeze
+    COL_TYPES = %i[text int num num num num num num pct num pct pct num].freeze
+    COL_WIDTHS = [120, 80, 100, 100, 100, 100, 100, 100, 80, 100, 90, 100, 120].freeze
 
     def self.run(from_date:, to_date:, week_label:)
       new(from_date: from_date, to_date: to_date, week_label: week_label).call
@@ -67,7 +65,6 @@ module GoogleSheets
 
     def build_data_rows(rows, prev_map)
       rows.sort_by { |row| -row[:after_tax].to_d }.map do |row|
-        prev = prev_map[row[:sku]]
         roi_result = projected_roi_for(row)
 
         [
@@ -83,11 +80,7 @@ module GoogleSheets
           ratio(row[:after_tax], row[:net_sales]),
           percentage(row[:ads], row[:revenue]),
           percentage(row[:after_tax], row[:goods_cost]),
-          roi_result[:roi] && (BigDecimal(roi_result[:roi].to_s) * 100).round(2),
-          prev&.dig(:net_sales),
-          prev&.dig(:revenue),
-          percentage_change(row[:net_sales], prev&.dig(:net_sales)),
-          percentage_change(row[:revenue], prev&.dig(:revenue))
+          roi_result[:roi] && (BigDecimal(roi_result[:roi].to_s) * 100).round(2)
         ]
       end
     end
@@ -106,7 +99,6 @@ module GoogleSheets
         sum_decimal(rows, :tax),
         total_after_tax,
         percentage(total_after_tax, total_revenue),
-        nil, nil, nil, nil,
         nil, nil, nil, nil
       ]
     end
@@ -177,13 +169,6 @@ module GoogleSheets
       return nil if denominator_value <= 0
 
       ((BigDecimal(numerator.to_s) / denominator_value) * 100).round(2)
-    end
-
-    def percentage_change(current_value, previous_value)
-      previous_decimal = BigDecimal(previous_value.to_s)
-      return nil if previous_value.nil? || previous_decimal <= 0
-
-      (((BigDecimal(current_value.to_s) - previous_decimal) / previous_decimal) * 100).round(2)
     end
 
     def sum_decimal(rows, key)
