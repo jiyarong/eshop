@@ -23,6 +23,21 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
   end
 
   test "returns blank roi when cost or volume inputs are unusable" do
+    missing_cost = Ec::ProjectedStockRoiCalculator.call(
+      net_sales_quantity: 14,
+      operating_profit_cny: BigDecimal("337.5"),
+      days_count: 7,
+      unit_goods_cost_cny: nil,
+      unit_volume_l: BigDecimal("1.0")
+    )
+
+    assert_equal true, missing_cost[:missing_cost]
+    assert_equal false, missing_cost[:calculable]
+    assert_nil missing_cost[:predicted_storage_cost_cny]
+    assert_nil missing_cost[:predicted_interest_cost_cny]
+    assert_nil missing_cost[:adjusted_operating_net_profit_cny]
+    assert_nil missing_cost[:roi]
+
     missing_volume = Ec::ProjectedStockRoiCalculator.call(
       net_sales_quantity: 14,
       operating_profit_cny: BigDecimal("337.5"),

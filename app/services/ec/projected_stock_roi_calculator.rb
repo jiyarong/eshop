@@ -15,13 +15,13 @@ module Ec
       @net_sales_quantity = decimal(net_sales_quantity)
       @operating_profit_cny = decimal(operating_profit_cny)
       @days_count = decimal(days_count)
-      @unit_goods_cost_cny = decimal(unit_goods_cost_cny)
-      @unit_volume_l = decimal(unit_volume_l)
+      @unit_goods_cost_cny = optional_decimal(unit_goods_cost_cny)
+      @unit_volume_l = optional_decimal(unit_volume_l)
     end
 
     def call
-      return invalid_payload(missing_cost: true) if unit_goods_cost_cny <= 0
-      return invalid_payload(missing_volume: true) if unit_volume_l <= 0
+      return invalid_payload(missing_cost: true) if unit_goods_cost_cny.blank? || unit_goods_cost_cny <= 0
+      return invalid_payload(missing_volume: true) if unit_volume_l.blank? || unit_volume_l <= 0
       return invalid_payload(invalid_date_range: true) if days_count <= 0
       return invalid_payload(non_positive_net_sales: true) if net_sales_quantity <= 0
 
@@ -94,6 +94,12 @@ module Ec
 
     def decimal(value)
       BigDecimal(value.to_s)
+    end
+
+    def optional_decimal(value)
+      return nil if value.nil?
+
+      decimal(value)
     end
   end
 end
