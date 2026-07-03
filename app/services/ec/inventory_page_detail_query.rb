@@ -6,9 +6,7 @@ module Ec
     ORDER_STATUS_COLUMNS = %w[pending processing shipping signed].freeze
     PLATFORM_BUCKETS = [
       { key: "ozon_fbo", platform: "ozon", fulfillment_type: "fbo" },
-      { key: "ozon_fbs", platform: "ozon", fulfillment_type: "fbs" },
-      { key: "wb_fbo", platform: "wb", fulfillment_type: "fbw" },
-      { key: "wb_fbs", platform: "wb", fulfillment_type: "fbs" }
+      { key: "wb_fbo", platform: "wb", fulfillment_type: "fbw" }
     ].freeze
     def initialize(sku, detail_tab:, book_batch_page:, date_to: nil, time_zone: nil)
       @sku = sku
@@ -32,6 +30,7 @@ module Ec
         summary: overview[:summary],
         daily_sales_velocity: velocity_metrics[:daily_sales_velocity],
         turnover_days: velocity_metrics[:turnover_days],
+        turnover_days_with_procurement: velocity_metrics[:turnover_days_with_procurement],
         incoming_quantity: incoming_batches.sum { |row| row[:purchased_quantity].to_i },
         incoming_batches: incoming_batches,
         book_batches: paginate_book_batches(book_batches, pagination[:page]),
@@ -42,6 +41,7 @@ module Ec
         book_formula: book_formula(overview[:summary]),
         platform_mini_stats: platform_mini_stats(overview[:latest_levels]),
         platform_shop_rows: platform_shop_rows(overview[:latest_levels]),
+        platform_shop_summary_row: platform_shop_summary_row(overview[:latest_levels]),
         platform_formula: platform_formula(overview[:summary], overview[:latest_levels]),
         store_reconciliation_rows: overview[:store_rows],
         platform_breakdown: platform_breakdown(overview[:latest_levels])
@@ -63,6 +63,14 @@ module Ec
             memo: batch.memo
           }
         end
+    end
+
+    def procurement_batches_scope
+      @sku.batches.where(status: INCOMING_STATUSES, batch_type: :normal)
+    end
+
+    def procurement_quantity
+      procurement_batches_scope.sum(:purchased_quantity).to_i
     end
 
     def book_batches_scope
@@ -208,13 +216,21 @@ module Ec
       end.sort_by { |row| row[:store_label] }
     end
 
-    def platform_formula(summary, levels)
-      platform_total = levels.sum(&:quantity).to_i
+    def platform_shop_summary_row(levels)
+      rows = platform_shop_rows(levels)
 
+      {
+        store_label_key: "summary",
+        fbo: rows.sum { |row| row[:fbo].to_i },
+        fbs: rows.sum { |row| row[:fbs].to_i }
+      }
+    end
+
+    def platform_formula(summary, _levels)
       {
         items: [
           formula_item("book_inventory", summary[:book_stock], "+"),
-          formula_item("platform_inventory_total", platform_total, "-")
+          formula_item("platform_inventory_total", summary[:fbo_fbw_stock], "-")
         ],
         result: summary[:available_stock].to_i,
         description_key: "overseas_available"
@@ -290,9 +306,11 @@ module Ec
 
         daily_sales_velocity = metrics[:daily_sales_velocity]
         book_stock = summary[:book_stock].to_d
+        procurement_stock = procurement_quantity.to_d
 
         metrics.merge(
-          turnover_days: daily_sales_velocity.to_d.positive? ? (book_stock / daily_sales_velocity.to_d) : nil
+          turnover_days: daily_sales_velocity.to_d.positive? ? (book_stock / daily_sales_velocity.to_d) : nil,
+          turnover_days_with_procurement: daily_sales_velocity.to_d.positive? ? ((book_stock + procurement_stock) / daily_sales_velocity.to_d) : nil
         )
       end
     end

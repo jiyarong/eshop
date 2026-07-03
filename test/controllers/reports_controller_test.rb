@@ -427,6 +427,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "inventory report uses inventory page row query for each filtered sku" do
+    Rails.cache.delete("reports/inventory/rows/#{@sku_code}")
     calls = []
     fake_query_factory = lambda do |sku, metrics:|
       Object.new.tap do |query|
@@ -436,12 +437,13 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             sku_code: sku.sku_code,
             product_name: "商品 #{sku.sku_code}",
             product_name_ru: "Товар #{sku.sku_code}",
-            incoming_quantity: 0,
+            incoming_quantity: 12,
             book_stock: 14,
-            platform_stock: 0,
+            platform_stock: 6,
             available_stock: 7,
-            daily_sales_velocity: nil,
-            turnover_days: nil,
+            daily_sales_velocity: BigDecimal("1.23"),
+            turnover_days: BigDecimal("11.38"),
+            turnover_days_with_procurement: BigDecimal("20.51"),
             cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
           }
         end
@@ -449,12 +451,13 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
 
     velocity_calls = []
+    expected_sku_code = @sku_code
     fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           velocity_calls << [sku_codes, date_to, time_zone.name]
           {
-            @sku_code => { daily_sales_velocity: BigDecimal("1.23") }
+            expected_sku_code => { daily_sales_velocity: BigDecimal("1.23") }
           }
         end
       end
@@ -474,13 +477,17 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @current_user.time_zone, velocity_calls.first[2]
     assert_select "turbo-frame#inventory_drawer"
     assert_select "table.inventory-list-table"
-    assert_select "th", I18n.t("reports.inventory.fields.pending_stock", default: "待入库库存")
-    assert_select "th", I18n.t("reports.inventory.fields.book_available_stock", default: "账面可用库存")
+    assert_select "h2.section-title", text: I18n.t("reports.inventory.sections.inventory_list"), count: 0
+    assert_select "th", I18n.t("reports.inventory.fields.pending_stock")
+    assert_select "th", I18n.t("reports.inventory.fields.book_available_stock")
     assert_select "th", I18n.t("reports.inventory.fields.platform_stock")
-    assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock", default: "境外当前可用")
+    assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock")
     assert_select "th", { text: I18n.t("reports.inventory.fields.cache_updated_at"), count: 0 }
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(5)", "6"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(7)", "1.23"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "11.38"
+    assert_select "th", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "21.14"
     assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@sku_code}", "inventory_drawer"
     assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", "/reports/inventory/#{@sku_code}", "inventory_drawer"
     assert_select "form[action=?]", "/reports/inventory/#{@sku_code}/refresh_cache", count: 0
@@ -541,7 +548,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             active_detail_tab: detail_tab,
             summary: {
               book_stock: 12,
-              platform_stock: 5,
+              platform_stock: 8,
+              fbo_fbw_stock: 5,
               available_stock: 7,
               purchase_quantity: 20,
               adjustment_quantity: -2,
@@ -551,6 +559,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             },
             daily_sales_velocity: BigDecimal("1.23"),
             turnover_days: BigDecimal("5.67"),
+            turnover_days_with_procurement: BigDecimal("8.91"),
             incoming_quantity: 0,
             incoming_batches: [{ batch_code: "IN-1", status: "in_transit", expected_arrival_on: Date.new(2026, 7, 1), purchased_quantity: 8, memo: "memo" }],
             book_batches: [{ batch_code: "BOOK-1", status: "received", batch_type: "wb_fbw_offset", received_quantity: 12, defect_offset_note: "note", received_on: Date.new(2026, 6, 20) }],
@@ -585,17 +594,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             },
             platform_mini_stats: [
               { key: "ozon_fbo", value: 5, unit_key: "quantity" },
-              { key: "ozon_fbs", value: 0, unit_key: "quantity" },
-              { key: "wb_fbo", value: 0, unit_key: "quantity" },
-              { key: "wb_fbs", value: 0, unit_key: "quantity" }
+              { key: "wb_fbo", value: 0, unit_key: "quantity" }
             ],
             platform_shop_rows: [
               { store_label: "OZON * 店铺1", fbo: 5, fbs: 0 }
             ],
+            platform_shop_summary_row: { store_label_key: "summary", fbo: 5, fbs: 0 },
             platform_formula: {
               items: [
                 { key: "book_inventory", value: 12, operator: "+" },
-                { key: "platform_inventory_total", value: 5, operator: "-" }
+                { key: "platform_inventory_total", value: 3, operator: "-" }
               ],
               result: 7,
               description_key: "overseas_available"
@@ -621,10 +629,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#inventory_drawer_content"
     assert_select ".erp-modal[role='dialog']", count: 0
     assert_select "h3", I18n.t("reports.inventory.drawer.sections.overview", default: "概览")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.pending_stock")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.platform_stock")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.overseas_available_stock")
     assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.daily_sales_velocity")
     assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.turnover_days")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
+    assert_select ".inventory-metric-card__value", text: "5", count: 1
     assert_select ".inventory-metric-card__value", "1.23"
     assert_select ".inventory-metric-card__value", "5.67"
+    assert_select ".inventory-metric-card__value", "8.91"
     assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.book")
     assert_select ".inventory-detail-shell > .inventory-detail-body", count: 1
     assert_select ".inventory-detail-panel--scrollable", count: 0
@@ -632,6 +646,73 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.sales_distribution")
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.return_distribution")
     assert_select ".inventory-formula__title", I18n.t("reports.inventory.drawer.sections.formula")
+  end
+
+  test "inventory detail platform tab uses fbo fbw stock in platform formula" do
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, date_to:, time_zone:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku_code: sku.sku_code,
+            product_name: "stub",
+            product_name_ru: "stub ru",
+            active_detail_tab: detail_tab,
+            summary: {
+              book_stock: 12,
+              platform_stock: 8,
+              fbo_fbw_stock: 3,
+              available_stock: 9
+            },
+            daily_sales_velocity: BigDecimal("1.23"),
+            turnover_days: BigDecimal("5.67"),
+            turnover_days_with_procurement: BigDecimal("8.91"),
+            incoming_quantity: 0,
+            incoming_batches: [],
+            book_batches: [],
+            book_batch_pagination: { page: 1, page_size: 10, total_count: 0, total_pages: 1 },
+            book_mini_stats: [],
+            book_sales_distribution: { columns: [], rows: [], summary_row: nil },
+            return_distribution: { rows: [], summary_row: nil },
+            book_formula: { items: [], result: 12 },
+            platform_mini_stats: [
+              { key: "ozon_fbo", value: 3, unit_key: "quantity" },
+              { key: "wb_fbo", value: 0, unit_key: "quantity" }
+            ],
+            platform_shop_rows: [
+              { store_label: "OZON * 店铺1", fbo: 3, fbs: 5 }
+            ],
+            platform_shop_summary_row: { store_label_key: "summary", fbo: 3, fbs: 5 },
+            platform_formula: {
+              items: [
+                { key: "book_inventory", value: 12, operator: "+" },
+                { key: "platform_inventory_total", value: 3, operator: "-" }
+              ],
+              result: 9,
+              description_key: "overseas_available"
+            },
+            store_reconciliation_rows: [],
+            platform_breakdown: []
+          }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageDetailQuery, fake_query_factory) do
+      get "/reports/inventory/#{@sku_code}",
+        params: { detail_tab: "platform" },
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+    end
+
+    assert_response :success
+    assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.platform")
+    assert_select ".inventory-formula__description", I18n.t("reports.inventory.drawer.formulas.overseas_available")
+    assert_select ".inventory-formula__line", /账面可用库存 12 - FBO\/FBW在库 3/
+    assert_select ".inventory-formula__line strong", "= 9"
+    assert_select ".inventory-mini-card", text: /Ozon_FBS/, count: 0
+    assert_select ".inventory-mini-card", text: /WB_FBS/, count: 0
+    assert_select ".inventory-distribution-table__summary td", I18n.t("reports.inventory.drawer.labels.summary")
+    assert_select ".inventory-distribution-table__summary td", "3"
+    assert_select ".inventory-distribution-table__summary td", "5"
   end
 
   test "inventory report caches each sku row until refresh" do

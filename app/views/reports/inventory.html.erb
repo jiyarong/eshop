@@ -23,19 +23,19 @@
   </section>
 
   <section class="panel">
-    <h2 class="section-title"><%= t("reports.inventory.sections.inventory_list") %></h2>
     <div class="table-scroll">
       <table class="inventory-list-table">
         <thead>
           <tr>
             <th><%= t("reports.inventory.fields.sku") %></th>
             <th><%= t("reports.sku_detail.fields.product_name") %></th>
-            <th><%= t("reports.inventory.fields.pending_stock", default: "待入库库存") %></th>
-            <th><%= t("reports.inventory.fields.book_available_stock", default: "账面可用库存") %></th>
+            <th><%= t("reports.inventory.fields.pending_stock") %></th>
+            <th><%= t("reports.inventory.fields.book_available_stock") %></th>
             <th><%= t("reports.inventory.fields.platform_stock") %></th>
-            <th><%= t("reports.inventory.fields.overseas_available_stock", default: "境外当前可用") %></th>
-            <th><%= t("reports.inventory.fields.daily_sales_velocity", default: "日均销量") %></th>
-            <th><%= t("reports.inventory.fields.turnover_days", default: "周转天数") %></th>
+            <th><%= t("reports.inventory.fields.overseas_available_stock") %></th>
+            <th><%= t("reports.inventory.fields.daily_sales_velocity") %></th>
+            <th><%= t("reports.inventory.fields.turnover_days") %></th>
+            <th><%= t("reports.inventory.fields.turnover_days_with_procurement") %></th>
             <th><%= t("reports.inventory.fields.actions") %></th>
           </tr>
         </thead>
@@ -48,6 +48,7 @@
               <% incoming_quantity = row[:incoming_quantity].to_i %>
               <% daily_sales_velocity = row[:daily_sales_velocity] %>
               <% turnover_days = row[:turnover_days] %>
+              <% turnover_days_with_procurement = row[:turnover_days_with_procurement] %>
               <tr class="inventory-list-table__row">
                 <td>
                   <%= link_to row[:sku_code],
@@ -65,6 +66,7 @@
                 <td class="numeric inventory-list-table__metric inventory-list-table__metric--primary"><%= available_stock %></td>
                 <td class="numeric inventory-list-table__metric"><%= daily_sales_velocity.present? ? format("%.2f", daily_sales_velocity.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days.present? ? format("%.2f", turnover_days.to_d) : "-" %></td>
+                <td class="numeric inventory-list-table__metric"><%= turnover_days_with_procurement.present? ? format("%.2f", turnover_days_with_procurement.to_d) : "-" %></td>
                 <td class="inventory-list-table__actions-cell">
                   <div class="resource-actions inventory-list-table__actions">
                     <%= link_to t("reports.inventory.actions.view_details"),
@@ -78,7 +80,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="9" class="empty-state"><%= t("reports.inventory.empty") %></td>
+              <td colspan="10" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>

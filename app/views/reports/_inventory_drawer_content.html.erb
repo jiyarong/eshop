@@ -8,16 +8,16 @@
 
     <div class="inventory-metric-grid">
       <div class="inventory-metric-card inventory-metric-card--warning inventory-metric-card--compact">
-        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.tabs.incoming") %></span>
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.pending_stock") %></span>
         <strong class="inventory-metric-card__value"><%= inventory_detail[:incoming_quantity].to_i %></strong>
       </div>
       <div class="inventory-metric-card inventory-metric-card--compact">
-        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.tabs.book") %></span>
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.book_available_stock") %></span>
         <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:summary, :book_stock).to_i %></strong>
       </div>
       <div class="inventory-metric-card inventory-metric-card--compact">
-        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.tabs.platform") %></span>
-        <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:summary, :platform_stock).to_i %></strong>
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.platform_stock") %></span>
+        <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:summary, :fbo_fbw_stock).to_i %></strong>
       </div>
       <div class="inventory-metric-card inventory-metric-card--primary inventory-metric-card--compact">
         <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.overseas_available_stock") %></span>
@@ -33,6 +33,12 @@
         <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.turnover_days") %></span>
         <strong class="inventory-metric-card__value">
           <%= inventory_detail[:turnover_days].present? ? format("%.2f", inventory_detail[:turnover_days].to_d) : "-" %>
+        </strong>
+      </div>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.turnover_days_with_procurement") %></span>
+        <strong class="inventory-metric-card__value">
+          <%= inventory_detail[:turnover_days_with_procurement].present? ? format("%.2f", inventory_detail[:turnover_days_with_procurement].to_d) : "-" %>
         </strong>
       </div>
     </div>
@@ -283,6 +289,13 @@
                     <td><%= row[:store_label] %></td>
                     <td><%= row[:fbo].to_i %></td>
                     <td><%= row[:fbs].to_i %></td>
+                  </tr>
+                <% end %>
+                <% if (summary_row = inventory_detail[:platform_shop_summary_row]).present? %>
+                  <tr class="inventory-distribution-table__summary">
+                    <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
+                    <td><%= summary_row[:fbo].to_i %></td>
+                    <td><%= summary_row[:fbs].to_i %></td>
                   </tr>
                 <% end %>
               </tbody>

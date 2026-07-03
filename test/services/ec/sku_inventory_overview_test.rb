@@ -223,6 +223,18 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       synced_at: Time.zone.parse("2026-06-16 10:05:00"),
       metadata: {}
     )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
+      platform: "wb",
+      account_id: @wb_account.id,
+      store: @wb_store,
+      store_name: @wb_store.store_name,
+      fulfillment_type: "fbs",
+      quantity: 3,
+      is_latest: true,
+      synced_at: Time.zone.parse("2026-06-16 10:10:00"),
+      metadata: {}
+    )
   end
 
   teardown do
@@ -252,7 +264,8 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 21, summary[:sales_quantity]
     assert_equal 3, summary[:return_quantity]
     assert_equal 200, summary[:supply_quantity]
-    assert_equal 10, summary[:platform_stock]
+    assert_equal 13, summary[:platform_stock]
+    assert_equal 10, summary[:fbo_fbw_stock]
     assert_equal 8, summary[:book_stock]
     assert_equal(-2, summary[:available_stock])
 

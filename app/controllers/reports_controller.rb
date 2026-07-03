@@ -205,11 +205,14 @@ class ReportsController < ApplicationController
 
     daily_sales_velocity = metrics[:daily_sales_velocity]
     book_stock = row[:book_stock].to_d
+    procurement_stock = row[:incoming_quantity].to_d
     turnover_days = daily_sales_velocity.to_d.positive? ? (book_stock / daily_sales_velocity.to_d) : nil
+    turnover_days_with_procurement = daily_sales_velocity.to_d.positive? ? ((book_stock + procurement_stock) / daily_sales_velocity.to_d) : nil
 
     row.merge(
       daily_sales_velocity: metrics[:daily_sales_velocity],
       turnover_days: turnover_days,
+      turnover_days_with_procurement: turnover_days_with_procurement,
       cache_updated_at: Time.current
     )
   end
