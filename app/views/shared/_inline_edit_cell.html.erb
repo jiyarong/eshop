@@ -1,0 +1,28 @@
+<%= turbo_frame_tag frame_id do %>
+  <% if editing %>
+    <div class="inline-edit-cell inline-edit-cell--editing" data-controller="inline-cell">
+      <%= form_with model: record, url: update_path, method: :patch do |form| %>
+        <%= hidden_field_tag :inline_field, field %>
+        <%= hidden_field_tag "inline_context[frame_id]", frame_id %>
+        <%= hidden_field_tag "inline_context[feedback_target]", feedback_target %>
+        <% case input_kind.to_sym
+           when :text %>
+          <%= form.text_field field, value: value, class: "inline-edit-cell__input", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown blur->inline-cell#submit" }, aria: { label: label } %>
+        <% when :number %>
+          <%= form.number_field field, value: value, class: "inline-edit-cell__input inline-edit-cell__input--number", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown blur->inline-cell#submit" }, aria: { label: label } %>
+        <% when :date %>
+          <%= form.date_field field, value: value, class: "inline-edit-cell__input", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown blur->inline-cell#submit change->inline-cell#submit" }, aria: { label: label } %>
+        <% when :select %>
+          <%= form.select field, options_for_select(options, value), {}, class: "inline-edit-cell__input", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown change->inline-cell#submit blur->inline-cell#submit" }, aria: { label: label } %>
+        <% end %>
+      <% end %>
+      <% if error_messages.present? %>
+        <div class="inline-edit-cell__error error-box"><%= error_messages.join("；") %></div>
+      <% end %>
+    </div>
+  <% else %>
+    <button type="button" class="inline-edit-cell inline-edit-cell--display <%= "inline-edit-cell--align-right" if align == :right %>" data-controller="inline-cell" data-action="inline-cell#activate" data-inline-cell-edit-url-value="<%= edit_url %>">
+      <span><%= display_value.presence || "-" %></span>
+    </button>
+  <% end %>
+<% end %>
