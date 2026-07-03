@@ -22,6 +22,7 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
     assert_in_delta 3600.0, result[:cost_base_cny].to_f, 0.000001
     assert_in_delta 8464.78, result[:adjusted_operating_net_profit_cny].to_f, 0.2
     assert_in_delta 2.3513, result[:roi].to_f, 0.001
+    assert_in_delta 4.7549, result[:annualized_return].to_f, 0.001
   end
 
   test "returns blank roi when cost or volume inputs are unusable" do
@@ -46,6 +47,7 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
     assert_nil missing_cost[:cost_base_cny]
     assert_nil missing_cost[:adjusted_operating_net_profit_cny]
     assert_nil missing_cost[:roi]
+    assert_nil missing_cost[:annualized_return]
 
     missing_volume = Ec::ProjectedStockRoiCalculator.call(
       net_sales_quantity: 14,
@@ -68,6 +70,7 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
     assert_nil missing_volume[:cost_base_cny]
     assert_nil missing_volume[:adjusted_operating_net_profit_cny]
     assert_nil missing_volume[:roi]
+    assert_nil missing_volume[:annualized_return]
   end
 
   test "returns blank roi when date range is invalid" do
@@ -88,6 +91,7 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
     assert_nil invalid_date_range[:predicted_interest_cost_cny]
     assert_nil invalid_date_range[:adjusted_operating_net_profit_cny]
     assert_nil invalid_date_range[:roi]
+    assert_nil invalid_date_range[:annualized_return]
   end
 
   test "returns blank roi when net sales are non-positive" do
@@ -108,5 +112,6 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
     assert_nil non_positive_net_sales[:predicted_interest_cost_cny]
     assert_nil non_positive_net_sales[:adjusted_operating_net_profit_cny]
     assert_nil non_positive_net_sales[:roi]
+    assert_nil non_positive_net_sales[:annualized_return]
   end
 end

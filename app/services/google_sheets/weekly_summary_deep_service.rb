@@ -3,17 +3,17 @@ module GoogleSheets
     HDR_ZH = [
       "SKU", "净销量", "销售额(CNY)", "广告费(CNY)", "货物成本(CNY)",
       "税前毛利(CNY)", "税/营业税(CNY)", "税后净利(CNY)", "利润率%",
-      "平均每单利润", "广告占比%", "成本回报率%", "ROI(按180天备货)"
+      "平均每单利润", "广告占比%", "成本回报率%", "ROI(按180天备货)", "年化(按180天备货)"
     ].freeze
 
     HDR_RU = [
       "Артикул", "Чистые продажи", "Выручка(CNY)", "Реклама(CNY)", "Себестоимость(CNY)",
       "До налогов(CNY)", "Налог(CNY)", "Чистая прибыль(CNY)", "Рентабельность%",
-      "Ср. прибыль/заказ", "Доля рекламы%", "Окупаемость себестоимости%", "ROI(180 дней запаса)"
+      "Ср. прибыль/заказ", "Доля рекламы%", "Окупаемость себестоимости%", "ROI(180 дней запаса)", "Годовая доходность (180 дней запаса)"
     ].freeze
 
-    COL_TYPES = %i[text int num num num num num num pct num pct pct num].freeze
-    COL_WIDTHS = [120, 80, 100, 100, 100, 100, 100, 100, 80, 100, 90, 100, 120].freeze
+    COL_TYPES = %i[text int num num num num num num pct num pct pct num num].freeze
+    COL_WIDTHS = [120, 80, 100, 100, 100, 100, 100, 100, 80, 100, 90, 100, 120, 130].freeze
 
     def self.run(from_date:, to_date:, week_label:)
       new(from_date: from_date, to_date: to_date, week_label: week_label).call
@@ -80,7 +80,8 @@ module GoogleSheets
           ratio(row[:after_tax], row[:net_sales]),
           percentage(row[:ads], row[:revenue]),
           percentage(row[:after_tax], row[:goods_cost]),
-          roi_result[:roi] && (BigDecimal(roi_result[:roi].to_s) * 100).round(2)
+          roi_result[:roi] && (BigDecimal(roi_result[:roi].to_s) * 100).round(2),
+          roi_result[:annualized_return] && (BigDecimal(roi_result[:annualized_return].to_s) * 100).round(2)
         ]
       end
     end
@@ -99,7 +100,7 @@ module GoogleSheets
         sum_decimal(rows, :tax),
         total_after_tax,
         percentage(total_after_tax, total_revenue),
-        nil, nil, nil, nil
+        nil, nil, nil, nil, nil
       ]
     end
 

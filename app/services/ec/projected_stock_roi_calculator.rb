@@ -2,6 +2,7 @@ module Ec
   class ProjectedStockRoiCalculator
     PROJECTED_DAYS = BigDecimal("180")
     DAYS_PER_WEEK = BigDecimal("7")
+    WEEKS_PER_YEAR = BigDecimal("52")
     WEEKS_PER_MONTH = BigDecimal("4.33")
     STORAGE_FEE_CNY_PER_M3_MONTH = BigDecimal("100")
     MONTHLY_INTEREST_RATE = BigDecimal("0.01")
@@ -34,12 +35,14 @@ module Ec
       missing_cost = unit_goods_cost_cny.blank? || unit_goods_cost_cny <= 0
       missing_volume = unit_volume_l.blank? || unit_volume_l <= 0
 
+      annualized_return = nil
       if missing_cost || missing_volume
         return projection_only_payload(
           average_daily_net_sales: average_daily_net_sales,
           projected_stock_qty_180d: projected_stock_qty_180d,
           average_inventory_qty: average_inventory_qty,
           projected_months_to_clear: projected_months_to_clear,
+          projected_weeks_to_clear: projected_weeks_to_clear,
           projected_unit_profit_cny: projected_unit_profit_cny,
           projected_operating_net_profit_cny: projected_operating_net_profit_cny,
           missing_cost: missing_cost,
@@ -63,6 +66,11 @@ module Ec
         projected_operating_net_profit_cny -
         predicted_storage_cost_cny -
         predicted_interest_cost_cny
+      roi = Ec::RoiCalculator.for_profit_and_cost_base(
+        operating_profit: adjusted_operating_net_profit_cny,
+        cost_base: cost_base_cny
+      )[:roi]
+      annualized_return = roi && (roi * (WEEKS_PER_YEAR / projected_weeks_to_clear))
 
       {
         missing_cost: false,
@@ -73,6 +81,7 @@ module Ec
         average_daily_net_sales: average_daily_net_sales,
         projected_stock_qty_180d: projected_stock_qty_180d,
         average_inventory_qty: average_inventory_qty,
+        projected_weeks_to_clear: projected_weeks_to_clear,
         projected_months_to_clear: projected_months_to_clear,
         projected_unit_profit_cny: projected_unit_profit_cny,
         projected_operating_net_profit_cny: projected_operating_net_profit_cny,
@@ -80,10 +89,8 @@ module Ec
         predicted_interest_cost_cny: predicted_interest_cost_cny,
         cost_base_cny: cost_base_cny,
         adjusted_operating_net_profit_cny: adjusted_operating_net_profit_cny,
-        roi: Ec::RoiCalculator.for_profit_and_cost_base(
-          operating_profit: adjusted_operating_net_profit_cny,
-          cost_base: cost_base_cny
-        )[:roi]
+        roi: roi,
+        annualized_return: annualized_return
       }
     end
 
@@ -95,6 +102,7 @@ module Ec
       average_daily_net_sales:,
       projected_stock_qty_180d:,
       average_inventory_qty:,
+      projected_weeks_to_clear:,
       projected_months_to_clear:,
       projected_unit_profit_cny:,
       projected_operating_net_profit_cny:,
@@ -110,6 +118,7 @@ module Ec
         average_daily_net_sales: average_daily_net_sales,
         projected_stock_qty_180d: projected_stock_qty_180d,
         average_inventory_qty: average_inventory_qty,
+        projected_weeks_to_clear: projected_weeks_to_clear,
         projected_months_to_clear: projected_months_to_clear,
         projected_unit_profit_cny: projected_unit_profit_cny,
         projected_operating_net_profit_cny: projected_operating_net_profit_cny,
@@ -117,7 +126,8 @@ module Ec
         predicted_interest_cost_cny: nil,
         cost_base_cny: nil,
         adjusted_operating_net_profit_cny: nil,
-        roi: nil
+        roi: nil,
+        annualized_return: nil
       }
     end
 
@@ -131,6 +141,7 @@ module Ec
         average_daily_net_sales: nil,
         projected_stock_qty_180d: nil,
         average_inventory_qty: nil,
+        projected_weeks_to_clear: nil,
         projected_months_to_clear: nil,
         projected_unit_profit_cny: nil,
         projected_operating_net_profit_cny: nil,
@@ -138,7 +149,8 @@ module Ec
         predicted_interest_cost_cny: nil,
         cost_base_cny: nil,
         adjusted_operating_net_profit_cny: nil,
-        roi: nil
+        roi: nil,
+        annualized_return: nil
       }
     end
 
