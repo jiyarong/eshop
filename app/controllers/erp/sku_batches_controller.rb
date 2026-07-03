@@ -81,8 +81,7 @@ module Erp
 
     def update_inline_field
       field = inline_field_name(INLINE_EDITABLE_FIELDS)
-      frame_id = inline_context_param(:frame_id)
-      feedback_target = inline_context_param(:feedback_target)
+      frame_id, feedback_target = canonical_inline_targets(field)
 
       permitted_value = params.require(:ec_sku_batch).permit(field)[field]
 
@@ -138,6 +137,24 @@ module Erp
       return I18n.t("erp.sku_batches.statuses.#{batch.public_send(field)}") if field == "status"
 
       helper.sku_batch_inline_display_value(batch, field)
+    end
+
+    def canonical_inline_targets(field)
+      helper = view_context
+      frame_id = helper.sku_batch_inline_frame_id(@batch, field)
+      feedback_target = helper.sku_batch_inline_feedback_target(@batch.sku)
+
+      validate_inline_target!(:frame_id, frame_id)
+      validate_inline_target!(:feedback_target, feedback_target)
+
+      [frame_id, feedback_target]
+    end
+
+    def validate_inline_target!(key, expected_value)
+      provided_value = inline_context_param(key)
+      return if provided_value.blank? || provided_value == expected_value
+
+      raise ActionController::BadRequest, "Mismatched inline target"
     end
   end
 end
