@@ -26,16 +26,16 @@ module InlineEditableResponse
     end
   end
 
-  def render_inline_edit_success(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:, cell_content: nil)
+  def render_inline_edit_success(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:)
     render turbo_stream: [
-      inline_cell_stream(frame_id: frame_id, cell_partial: cell_partial, cell_locals: cell_locals, cell_content: cell_content),
+      turbo_stream.replace(frame_id, partial: cell_partial, locals: cell_locals),
       turbo_stream.update(feedback_target, inline_feedback_markup(tone: :success, message: message))
     ]
   end
 
-  def render_inline_edit_failure(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:, cell_content: nil)
+  def render_inline_edit_failure(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:)
     render status: :unprocessable_entity, turbo_stream: [
-      inline_cell_stream(frame_id: frame_id, cell_partial: cell_partial, cell_locals: cell_locals, cell_content: cell_content),
+      turbo_stream.replace(frame_id, partial: cell_partial, locals: cell_locals),
       turbo_stream.update(feedback_target, inline_feedback_markup(tone: :error, message: message))
     ]
   end
@@ -45,11 +45,5 @@ module InlineEditableResponse
     classes << "error-box" if tone.to_sym == :error
 
     view_context.tag.div(message, class: classes.join(" "), role: "status", aria: { live: "polite" })
-  end
-
-  def inline_cell_stream(frame_id:, cell_partial:, cell_locals:, cell_content:)
-    return turbo_stream.replace(frame_id, cell_content) if cell_content.present?
-
-    turbo_stream.replace(frame_id, partial: cell_partial, locals: cell_locals)
   end
 end

@@ -100,7 +100,6 @@ module Erp
           feedback_target: feedback_target,
           cell_partial: "shared/inline_edit_cell",
           cell_locals: inline_cell_locals(@batch, field, feedback_target, editing: true),
-          cell_content: inline_failure_cell_content(@batch, field, feedback_target),
           message: I18n.t("erp.inline_edit.messages.save_failed")
         )
       end
@@ -139,19 +138,6 @@ module Erp
       return I18n.t("erp.sku_batches.statuses.#{batch.public_send(field)}") if field == "status"
 
       helper.sku_batch_inline_display_value(batch, field)
-    end
-
-    def inline_failure_cell_content(batch, field, feedback_target)
-      html = render_to_string(
-        partial: "shared/inline_edit_cell",
-        formats: [:html],
-        locals: inline_cell_locals(batch, field, feedback_target, editing: true)
-      )
-
-      html.sub(
-        %r{</form>\s*(<div class="inline-edit-cell__error error-box">.*?</div>)}m,
-        '\1</form>'
-      )
     end
   end
 end

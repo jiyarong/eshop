@@ -15,9 +15,9 @@
         <% when :select %>
           <%= form.select field, options_for_select(options, value), {}, class: "inline-edit-cell__input", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown change->inline-cell#submit blur->inline-cell#submit" }, aria: { label: label } %>
         <% end %>
-      <% end %>
-      <% if error_messages.present? %>
-        <div class="inline-edit-cell__error error-box"><%= error_messages.join("；") %></div>
+        <% if error_messages.present? %>
+          <div class="inline-edit-cell__error error-box"><%= error_messages.join("；") %></div>
+        <% end %>
       <% end %>
     </div>
   <% else %>
