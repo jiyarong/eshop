@@ -182,4 +182,55 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", "编辑批次"
     assert_select ".error-box"
   end
+
+  test "inline update returns turbo stream cell and feedback on success" do
+    patch "/erp/sku_batches/#{@batch.id}",
+      params: {
+        inline_field: "status",
+        inline_context: {
+          frame_id: "sku_batch_#{@batch.id}_status_cell",
+          feedback_target: "batch-inline-feedback--sku-#{@sku.id}"
+        },
+        ec_sku_batch: {
+          status: "received"
+        }
+      },
+      headers: {
+        "Accept" => "text/vnd.turbo-stream.html"
+      }
+
+    assert_response :success
+    assert_equal "text/vnd.turbo-stream.html; charset=utf-8", response.media_type + "; charset=utf-8"
+
+    @batch.reload
+    assert_equal "received", @batch.status
+    assert_includes response.body, %(target="sku_batch_#{@batch.id}_status_cell")
+    assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
+    assert_includes response.body, "received"
+  end
+
+  test "inline update keeps edit state and feedback on failure" do
+    patch "/erp/sku_batches/#{@batch.id}",
+      params: {
+        inline_field: "batch_code",
+        inline_context: {
+          frame_id: "sku_batch_#{@batch.id}_batch_code_cell",
+          feedback_target: "batch-inline-feedback--sku-#{@sku.id}"
+        },
+        ec_sku_batch: {
+          batch_code: ""
+        }
+      },
+      headers: {
+        "Accept" => "text/vnd.turbo-stream.html"
+      }
+
+    assert_response :unprocessable_entity
+
+    @batch.reload
+    assert_equal "ERP-BATCH-#{@token}", @batch.batch_code
+    assert_includes response.body, %(target="sku_batch_#{@batch.id}_batch_code_cell")
+    assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
+    assert_includes response.body, "error-box"
+  end
 end
