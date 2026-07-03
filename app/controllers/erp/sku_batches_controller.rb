@@ -30,6 +30,15 @@ module Erp
     end
 
     def edit
+      if params[:edit_inline].present?
+        field = inline_field_name(INLINE_EDITABLE_FIELDS)
+        feedback_target = params.dig(:inline_context, :feedback_target)
+
+        render partial: "shared/inline_edit_cell",
+          locals: inline_cell_locals(@batch, field, feedback_target, editing: true)
+        return
+      end
+
       load_sku_options
       render_modal_or_page(:edit, :edit_modal)
     end
@@ -114,7 +123,7 @@ module Erp
         frame_id: helper.sku_batch_inline_frame_id(batch, field),
         feedback_target: feedback_target,
         update_path: erp_sku_batch_path(batch, current_locale_params),
-        edit_url: erp_sku_batch_path(
+        edit_url: erp_edit_sku_batch_path(
           batch,
           current_locale_params.merge(
             inline_field: field,
