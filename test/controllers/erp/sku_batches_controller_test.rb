@@ -197,7 +197,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       },
       headers: {
         "Accept" => "text/vnd.turbo-stream.html"
-    }
+      }
 
     assert_response :success
     assert_equal "text/vnd.turbo-stream.html", response.media_type
@@ -211,7 +211,8 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "received"
     assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
     assert_select "turbo-stream[action='update'][target='batch-inline-feedback--sku-#{@sku.id}']" do
-      assert_select "template", I18n.t("common.actions.save")
+      assert_select "template .panel"
+      assert_select "template .panel.error-box", 0
     end
   end
 
