@@ -66,6 +66,8 @@ module Ec
         projected_operating_net_profit_cny -
         predicted_storage_cost_cny -
         predicted_interest_cost_cny
+      annualized_net_profit_cny =
+        adjusted_operating_net_profit_cny * (WEEKS_PER_YEAR / projected_weeks_to_clear)
       roi = Ec::RoiCalculator.for_profit_and_cost_base(
         operating_profit: adjusted_operating_net_profit_cny,
         cost_base: cost_base_cny
@@ -89,6 +91,7 @@ module Ec
         predicted_interest_cost_cny: predicted_interest_cost_cny,
         cost_base_cny: cost_base_cny,
         adjusted_operating_net_profit_cny: adjusted_operating_net_profit_cny,
+        annualized_net_profit_cny: annualized_net_profit_cny,
         roi: roi,
         annualized_return: annualized_return
       }
@@ -126,6 +129,7 @@ module Ec
         predicted_interest_cost_cny: nil,
         cost_base_cny: nil,
         adjusted_operating_net_profit_cny: nil,
+        annualized_net_profit_cny: nil,
         roi: nil,
         annualized_return: nil
       }
@@ -149,6 +153,7 @@ module Ec
         predicted_interest_cost_cny: nil,
         cost_base_cny: nil,
         adjusted_operating_net_profit_cny: nil,
+        annualized_net_profit_cny: nil,
         roi: nil,
         annualized_return: nil
       }

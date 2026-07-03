@@ -41,6 +41,7 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
     assert_equal "SKU", values[0][0]
     assert_equal "ROI(按180天备货)", values[0][12]
     assert_equal "年化(按180天备货)", values[0][13]
+    assert_equal "年化净利(按180天备货)", values[0][14]
 
     sku_a_row = values.find { |row| row[0] == "WSUDEEP-A" }
     sku_b_row = values.find { |row| row[0] == "WSUDEEP-B" }
@@ -62,11 +63,13 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
     assert_equal BigDecimal("1.0"), sku_a.cost.pkg_volume_l
     assert_in_delta 49.4, sku_a_row[12].to_f, 0.1
     assert_in_delta 99.85, sku_a_row[13].to_f, 0.1
-    assert_equal 14, sku_a_row.size
+    assert_in_delta 2581.33, sku_a_row[14].to_f, 0.1
+    assert_equal 15, sku_a_row.size
 
     assert_equal 2, sku_b_row[1]
     assert_nil sku_b_row[12]
     assert_nil sku_b_row[13]
+    assert_nil sku_b_row[14]
 
     assert_equal 10, total_row[1]
     assert_equal 180, total_row[2]

@@ -82,6 +82,7 @@ module Ec
           cost_base_cny: roi_result.fetch(:cost_base_cny),
           operating_net_profit_cny: bucket.fetch(:operating_net_profit_cny),
           adjusted_operating_net_profit_cny: roi_result.fetch(:adjusted_operating_net_profit_cny),
+          annualized_net_profit_cny: roi_result.fetch(:annualized_net_profit_cny),
           roi: roi_result.fetch(:roi)
         },
         missing_cost: missing_cost,

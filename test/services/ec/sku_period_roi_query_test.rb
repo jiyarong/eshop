@@ -85,6 +85,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: BigDecimal("6192.0"),
           operating_net_profit_cny: BigDecimal("500"),
           adjusted_operating_net_profit_cny: BigDecimal("8752.0026393929396238865061035961701247113163972286432"),
+          annualized_net_profit_cny: BigDecimal("17698.494226327944572748267898383169602258147292820671154127350709398766816965431274142497305619707488"),
           roi: BigDecimal("8752.0026393929396238865061035961701247113163972286432") / BigDecimal("6192")
         },
         result[:total]
@@ -106,6 +107,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: BigDecimal("4953.6"),
           operating_net_profit_cny: BigDecimal("320"),
           adjusted_operating_net_profit_cny: BigDecimal("5561.60211151435169910920488287693609976905311778291456"),
+          annualized_net_profit_cny: BigDecimal("11246.7953810623556581986143187065680373620733898069369233018805675190134535723450193139978444957659904"),
           roi: BigDecimal("5561.60211151435169910920488287693609976905311778291456") / BigDecimal("4953.6")
         },
         result.dig(:platforms, :wb)
@@ -127,6 +129,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: BigDecimal("1238.4"),
           operating_net_profit_cny: BigDecimal("180"),
           adjusted_operating_net_profit_cny: BigDecimal("3190.40052787858792477730122071923402494226327944572864"),
+          annualized_net_profit_cny: BigDecimal("6451.6988452655889145496535796766015648960739030137342308254701418797533633930862548284994611239414976"),
           roi: BigDecimal("3190.40052787858792477730122071923402494226327944572864") / BigDecimal("1238.4")
         },
         result.dig(:platforms, :ozon)
@@ -328,6 +331,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: nil,
           operating_net_profit_cny: BigDecimal("-80"),
           adjusted_operating_net_profit_cny: nil,
+          annualized_net_profit_cny: nil,
           roi: nil
         },
         result[:total]
@@ -349,6 +353,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: BigDecimal("2476.8"),
           operating_net_profit_cny: BigDecimal("120"),
           adjusted_operating_net_profit_cny: BigDecimal("2060.80105575717584955460244143846804988452655889145728"),
+          annualized_net_profit_cny: BigDecimal("4167.3976905311778290993071593533001964588144726786684616509402837595067267861725096569989222478829952"),
           roi: BigDecimal("2060.80105575717584955460244143846804988452655889145728") / BigDecimal("2476.8")
         },
         result.dig(:platforms, :wb)
@@ -370,6 +375,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: nil,
           operating_net_profit_cny: BigDecimal("-200"),
           adjusted_operating_net_profit_cny: nil,
+          annualized_net_profit_cny: nil,
           roi: nil
         },
         result.dig(:platforms, :ozon)
@@ -445,6 +451,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: nil,
           operating_net_profit_cny: BigDecimal("120"),
           adjusted_operating_net_profit_cny: nil,
+          annualized_net_profit_cny: nil,
           roi: nil
         },
         result[:total]
@@ -466,6 +473,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
           cost_base_cny: nil,
           operating_net_profit_cny: BigDecimal("120"),
           adjusted_operating_net_profit_cny: nil,
+          annualized_net_profit_cny: nil,
           roi: nil
         },
         result.dig(:platforms, :wb)
@@ -588,6 +596,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
       predicted_interest_cost_cny: BigDecimal("183.7206478060048"),
       cost_base_cny: BigDecimal("6192.0"),
       adjusted_operating_net_profit_cny: BigDecimal("309.86628846816876"),
+      annualized_net_profit_cny: BigDecimal("638.39107213375495"),
       roi: BigDecimal("0.05004299942961124")
     }
 
