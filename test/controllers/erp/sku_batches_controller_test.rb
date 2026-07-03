@@ -197,16 +197,17 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       },
       headers: {
         "Accept" => "text/vnd.turbo-stream.html"
-      }
+    }
 
     assert_response :success
-    assert_equal "text/vnd.turbo-stream.html; charset=utf-8", response.media_type + "; charset=utf-8"
+    assert_equal "text/vnd.turbo-stream.html", response.media_type
 
     @batch.reload
     assert_equal "received", @batch.status
-    assert_includes response.body, %(target="sku_batch_#{@batch.id}_status_cell")
-    assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
-    assert_includes response.body, "received"
+    assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_status_cell']" do
+      assert_select "template", /received/
+    end
+    assert_select "turbo-stream[action='update'][target='batch-inline-feedback--sku-#{@sku.id}']"
   end
 
   test "inline update keeps edit state and feedback on failure" do
@@ -229,8 +230,11 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
 
     @batch.reload
     assert_equal "ERP-BATCH-#{@token}", @batch.batch_code
-    assert_includes response.body, %(target="sku_batch_#{@batch.id}_batch_code_cell")
-    assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
-    assert_includes response.body, "error-box"
+    assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_batch_code_cell']" do
+      assert_select "template input[name='ec_sku_batch[batch_code]']"
+    end
+    assert_select "turbo-stream[action='update'][target='batch-inline-feedback--sku-#{@sku.id}']" do
+      assert_select "template .error-box"
+    end
   end
 end
