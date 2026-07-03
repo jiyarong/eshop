@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_30_000011) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_03_094657) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1906,6 +1906,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_000011) do
     t.index ["code"], name: "index_roles_on_code", unique: true
   end
 
+  create_table "user_api_keys", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "encrypted_token"
+    t.datetime "last_used_at"
+    t.string "name", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["revoked_at"], name: "index_user_api_keys_on_revoked_at"
+    t.index ["token_digest"], name: "index_user_api_keys_on_token_digest", unique: true
+    t.index ["user_id", "name"], name: "index_user_api_keys_on_user_id_and_name", unique: true
+    t.index ["user_id"], name: "index_user_api_keys_on_user_id"
+  end
+
   create_table "user_roles", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "role_id", null: false
@@ -2056,6 +2071,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_000011) do
   add_foreign_key "raw_wb_supply_orders", "raw_wb_supplies", column: "supply_id"
   add_foreign_key "raw_wb_sync_tasks", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_warehouses", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "user_api_keys", "users"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
 end

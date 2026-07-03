@@ -137,7 +137,37 @@ en:
       ozon: "Ozon"
       wb: "WB"
     "yes": "Yes"
+  profiles:
+    api_keys:
+      actions: "Actions"
+      active_status: "Active"
+      copy: "Copy"
+      copy_mcp_config: "Copy MCP Config"
+      create: "Generate API Key"
+      created: "API Key generated."
+      generated_hint: "Copy and save this token now. It is shown only once."
+      last_used_at: "Last used"
+      name: "Name"
+      revoke: "Revoke"
+      revoked: "API Key revoked."
+      revoked_status: "Revoked"
+      status: "Status"
+      title: "MCP API Keys"
+      token: "Token"
   admin:
+    users:
+      api_keys:
+        actions: "Actions"
+        active_status: "Active"
+        create: "Generate API Key"
+        created: "API Key generated. Save it now: %{token}"
+        last_used_at: "Last used"
+        name: "Name"
+        revoke: "Revoke"
+        revoked: "API Key revoked."
+        revoked_status: "Revoked"
+        status: "Status"
+        title: "API Keys"
     operation_logs:
       title: "Operation History"
       empty: "No operation records match the current filters."

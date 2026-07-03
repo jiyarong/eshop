@@ -6,6 +6,7 @@ Rails.application.routes.draw do
 
   root  'erp/skus#index'
   get "up" => "rails/health#show", as: :rails_health_check
+  post "mcp" => "mcp#create"
 
   # Google Sheets 连通性测试
   post "google_sheets/ping"    => "google_sheets#ping"
@@ -26,7 +27,10 @@ Rails.application.routes.draw do
 
   resources :orders, only: [:index, :show]
   post "profile" => "profiles#update"
-  resource :profile, only: [:edit, :update]
+  resource :profile, only: [:edit, :update] do
+    post "api_keys" => "profiles#create_api_key"
+    patch "api_keys/:api_key_id/revoke" => "profiles#revoke_api_key", as: :revoke_api_key
+  end
 
   resources :feedback_tasks, only: [:create]
 
@@ -41,7 +45,10 @@ Rails.application.routes.draw do
     get "users/:id/edit" => "users#edit", as: :edit_user
     post "agents/:id" => "agents#update"
     resources :agents, only: [:index, :edit, :update], param: :id
-    resources :users, except: [:destroy]
+    resources :users, except: [:destroy] do
+      post "api_keys" => "users#create_api_key", on: :member
+      patch "api_keys/:api_key_id/revoke" => "users#revoke_api_key", on: :member, as: :revoke_api_key
+    end
     resources :feedback_tasks, only: [:index, :show, :update]
     resources :operation_logs, only: [:index]
   end

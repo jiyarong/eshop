@@ -11,3 +11,41 @@
     <dd><%= @user.last_sign_in_at || "-" %></dd>
   </dl>
 </section>
+
+<section class="panel">
+  <h2><%= t("admin.users.api_keys.title") %></h2>
+  <%= form_with url: api_keys_admin_user_path(@user), method: :post, local: true do |form| %>
+    <%= fields_for :api_key do |api_key_fields| %>
+      <%= api_key_fields.label :name, t("admin.users.api_keys.name") %>
+      <%= api_key_fields.text_field :name, value: "MCP" %>
+    <% end %>
+    <%= form.submit t("admin.users.api_keys.create") %>
+  <% end %>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th><%= t("admin.users.api_keys.name") %></th>
+        <th><%= t("admin.users.api_keys.last_used_at") %></th>
+        <th><%= t("admin.users.api_keys.status") %></th>
+        <th><%= t("admin.users.api_keys.actions") %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @user.api_keys.order(created_at: :desc).each do |api_key| %>
+        <tr>
+          <td><%= api_key.name %></td>
+          <td><%= api_key.last_used_at || "-" %></td>
+          <td><%= api_key.revoked_at.present? ? t("admin.users.api_keys.revoked_status") : t("admin.users.api_keys.active_status") %></td>
+          <td>
+            <% if api_key.revoked_at.blank? %>
+              <%= button_to t("admin.users.api_keys.revoke"), revoke_api_key_admin_user_path(@user, api_key), method: :patch %>
+            <% else %>
+              -
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>

@@ -8,6 +8,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    UserApiKey.joins(:user).where("users.email LIKE ?", "%#{@token}%").delete_all if defined?(UserApiKey)
     if defined?(UserRole)
       UserRole.joins(:user).where("users.email LIKE ?", "%#{@token}%").delete_all
     end
@@ -50,6 +51,25 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to "/admin/users/#{created.id}"
     assert created.has_role?("purchaser")
     assert created.has_role?("finance")
+  end
+
+  test "super admin can generate and revoke user api key" do
+    sign_in_as(@admin)
+
+    assert_difference "UserApiKey.where(user: @viewer).count", 1 do
+      post "/admin/users/#{@viewer.id}/api_keys", params: { api_key: { name: "AI" } }, headers: { "Accept" => "text/html" }
+    end
+
+    api_key = UserApiKey.where(user: @viewer).order(:created_at).last
+    assert_redirected_to "/admin/users/#{@viewer.id}"
+    assert_match(/mcp_/, flash[:notice])
+    assert_nil api_key.revoked_at
+
+    sign_in_as(@admin)
+    patch "/admin/users/#{@viewer.id}/api_keys/#{api_key.id}/revoke", headers: { "Accept" => "text/html" }
+
+    assert_redirected_to "/admin/users/#{@viewer.id}"
+    assert UserApiKey.find(api_key.id).revoked_at.present?
   end
 
   private

@@ -17,3 +17,71 @@
     </div>
   <% end %>
 </section>
+
+<section class="panel">
+  <h2><%= t("profiles.api_keys.title") %></h2>
+
+  <% if flash[:api_key_token].present? %>
+    <div class="notice-box" data-controller="clipboard" data-clipboard-text-value="<%= flash[:api_key_token] %>">
+      <p><%= t("profiles.api_keys.generated_hint") %></p>
+      <code class="api-key-token"><%= UserApiKey.truncate_raw_token(flash[:api_key_token]) %></code>
+      <button type="button" class="button" data-action="clipboard#copy"><%= t("profiles.api_keys.copy") %></button>
+      <span data-controller="clipboard" data-clipboard-text-value="<%= UserApiKey.mcp_server_config_json_for(flash[:api_key_token]) %>">
+        <button type="button" class="button" data-action="clipboard#copy"><%= t("profiles.api_keys.copy_mcp_config") %></button>
+      </span>
+    </div>
+  <% end %>
+
+  <%= form_with url: api_keys_profile_path, method: :post, local: true do |form| %>
+    <%= fields_for :api_key do |api_key_fields| %>
+      <div class="report-form">
+        <div class="field">
+          <%= api_key_fields.label :name, t("profiles.api_keys.name") %>
+          <%= api_key_fields.text_field :name, value: "MCP" %>
+        </div>
+        <%= form.submit t("profiles.api_keys.create"), class: "button" %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th><%= t("profiles.api_keys.name") %></th>
+        <th><%= t("profiles.api_keys.token") %></th>
+        <th><%= t("profiles.api_keys.last_used_at") %></th>
+        <th><%= t("profiles.api_keys.status") %></th>
+        <th><%= t("profiles.api_keys.actions") %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% current_user.api_keys.order(created_at: :desc).each do |api_key| %>
+        <tr>
+          <td><%= api_key.name %></td>
+          <td>
+            <% if api_key.raw_token.present? %>
+              <span data-controller="clipboard" data-clipboard-text-value="<%= api_key.raw_token %>">
+                <code class="api-key-token"><%= api_key.truncated_token %></code>
+                <button type="button" class="button" data-action="clipboard#copy"><%= t("profiles.api_keys.copy") %></button>
+              </span>
+              <span data-controller="clipboard" data-clipboard-text-value="<%= api_key.mcp_server_config_json %>">
+                <button type="button" class="button" data-action="clipboard#copy"><%= t("profiles.api_keys.copy_mcp_config") %></button>
+              </span>
+            <% else %>
+              -
+            <% end %>
+          </td>
+          <td><%= api_key.last_used_at || "-" %></td>
+          <td><%= api_key.revoked_at.present? ? t("profiles.api_keys.revoked_status") : t("profiles.api_keys.active_status") %></td>
+          <td>
+            <% if api_key.revoked_at.blank? %>
+              <%= button_to t("profiles.api_keys.revoke"), revoke_api_key_profile_path(api_key), method: :patch %>
+            <% else %>
+              -
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
