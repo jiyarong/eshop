@@ -121,8 +121,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell", count: 1
     assert_select "turbo-frame#sku_batch_#{@batch.id}_status_cell", count: 1
     assert_select "#batch-inline-feedback--sku-#{@sku.id}", count: 1
-    assert_select "tr.batch-row[hidden]" do
-      assert_select ".batch-tbl td .barcode", text: @batch.created_at.to_date.to_s
+    assert_select "tr.batch-row[hidden] table.batch-tbl tbody tr", count: 1 do
+      assert_select "td:nth-of-type(2) .barcode", text: @batch.created_at.to_date.to_s
     end
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell", count: 0
     assert_match @batch.created_at.to_date.to_s, response.body
