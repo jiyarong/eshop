@@ -32,7 +32,7 @@ module Erp
     def edit
       if params[:edit_inline].present?
         field = inline_field_name(INLINE_EDITABLE_FIELDS)
-        feedback_target = params.dig(:inline_context, :feedback_target)
+        _, feedback_target = canonical_inline_targets(field)
 
         render partial: "shared/inline_edit_cell",
           locals: inline_cell_locals(@batch, field, feedback_target, editing: true)
