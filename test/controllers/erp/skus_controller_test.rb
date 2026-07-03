@@ -114,13 +114,16 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     get "/erp/skus", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell"
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell"
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_on_cell"
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell"
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell"
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_status_cell"
-    assert_select "#batch-inline-feedback--sku-#{@sku.id}"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_on_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_status_cell", count: 1
+    assert_select "#batch-inline-feedback--sku-#{@sku.id}", count: 1
+    assert_select "tr.batch-row[hidden]" do
+      assert_select ".batch-tbl td .barcode", text: @batch.created_at.to_date.to_s
+    end
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell", count: 0
     assert_match @batch.created_at.to_date.to_s, response.body
   end
