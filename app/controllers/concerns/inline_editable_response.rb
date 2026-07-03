@@ -21,8 +21,10 @@ module InlineEditableResponse
 
     if context.respond_to?(:permit)
       context.permit(:frame_id, :feedback_target)[key.to_s]
-    else
+    elsif context.respond_to?(:to_h)
       context.to_h[key.to_s]
+    else
+      raise ActionController::BadRequest, "Invalid inline_context"
     end
   end
 
