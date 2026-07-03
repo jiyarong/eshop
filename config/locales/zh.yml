@@ -81,6 +81,7 @@ zh:
     users: "用户管理"
     agents: "AI Agent"
     feedback_tasks: "改动任务"
+    mcp_debug: "MCP调试"
     operation_logs: "操作历史"
   feedback:
     title: "提交改动建议"
@@ -126,6 +127,16 @@ zh:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    mcp_debug:
+      arguments: "参数 JSON"
+      error: "错误"
+      result: "执行结果"
+      run: "执行"
+      selected_tool: "当前 MCP 工具"
+      title: "MCP调试"
+      tool: "工具"
+      tools: "系统 MCP 工具"
+      user: "用户"
     users:
       api_keys:
         actions: "操作"

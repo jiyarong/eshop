@@ -51,6 +51,8 @@ Rails.application.routes.draw do
     end
     resources :feedback_tasks, only: [:index, :show, :update]
     resources :operation_logs, only: [:index]
+    get "mcp_debug" => "mcp_debug#show"
+    post "mcp_debug" => "mcp_debug#create"
   end
 
   namespace :erp do

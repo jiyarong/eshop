@@ -157,6 +157,11 @@ a {
   font-size: 12px;
 }
 
+.json-viewer--scroll {
+  max-height: 420px;
+  overflow: auto;
+}
+
 .erp-main {
   min-width: 0;
   display: grid;

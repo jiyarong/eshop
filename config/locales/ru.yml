@@ -81,6 +81,7 @@ ru:
     users: "Пользователи"
     agents: "AI Agent"
     feedback_tasks: "Задачи изменений"
+    mcp_debug: "MCP debug"
     operation_logs: "История операций"
   feedback:
     title: "Отправить предложение"
@@ -126,6 +127,16 @@ ru:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    mcp_debug:
+      arguments: "JSON параметры"
+      error: "Ошибка"
+      result: "Результат"
+      run: "Выполнить"
+      selected_tool: "Выбранный MCP tool"
+      title: "MCP debug"
+      tool: "Tool"
+      tools: "Системные MCP tools"
+      user: "Пользователь"
     users:
       api_keys:
         actions: "Действия"

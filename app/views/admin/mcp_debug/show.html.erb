@@ -1,0 +1,56 @@
+<h1 class="page-title"><%= t("admin.mcp_debug.title") %></h1>
+
+<section class="panel">
+  <%= form_with url: admin_mcp_debug_path, method: :get, local: true do |form| %>
+    <div class="report-form">
+      <div class="field">
+        <%= form.label :user_id, t("admin.mcp_debug.user") %>
+        <%= select_tag :user_id, options_from_collection_for_select(@users, :id, :email, @selected_user_id) %>
+      </div>
+      <div class="field">
+        <%= form.label :tool_name, t("admin.mcp_debug.tool") %>
+        <%= select_tag :tool_name,
+          options_for_select(@tools.map { |tool| ["#{tool.fetch(:name)} - #{tool.fetch(:description)}", tool.fetch(:name)] }, @selected_tool_name),
+          onchange: "this.form.querySelector('[name=run]').value = ''; this.form.requestSubmit()" %>
+      </div>
+
+      <% mcp_tool_properties(@selected_tool).each do |name, schema| %>
+        <div class="field">
+          <%= label_tag "tool_arguments_#{name}", "#{name} - #{schema[:description] || schema["description"]}" %>
+          <% enum_values = schema[:enum] || schema["enum"] %>
+          <% if enum_values.present? %>
+            <%= select_tag "tool_arguments[#{name}]", options_for_select([["", ""]] + enum_values.map { |value| [value, value] }, @tool_arguments[name.to_s]) %>
+          <% else %>
+            <%= text_field_tag "tool_arguments[#{name}]", @tool_arguments[name.to_s], type: (schema[:type] || schema["type"]) == "integer" ? "number" : "text" %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= hidden_field_tag :run, "1" %>
+      <%= form.submit t("admin.mcp_debug.run"), class: "button" %>
+    </div>
+  <% end %>
+</section>
+
+<% if @error.present? %>
+  <section class="panel error-box">
+    <h2><%= t("admin.mcp_debug.error") %></h2>
+    <pre><%= @error %></pre>
+  </section>
+<% end %>
+
+<% unless @result.nil? %>
+  <section class="panel mcp-debug-result">
+    <h2><%= t("admin.mcp_debug.result") %></h2>
+    <div class="json-viewer json-viewer--scroll">
+      <%= json_tree(@result) %>
+    </div>
+  </section>
+<% end %>
+
+<section class="panel mcp-debug-tool-schema">
+  <h2><%= t("admin.mcp_debug.selected_tool") %></h2>
+  <div class="json-viewer json-viewer--scroll">
+    <%= json_tree(@selected_tool) %>
+  </div>
+</section>
