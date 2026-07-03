@@ -110,6 +110,21 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{erp_edit_sku_batch_path(@batch)}'][data-turbo-frame='erp_modal']", text: "编辑"
   end
 
+  test "inventory batch rows render inline editable cell frames" do
+    get "/erp/skus", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_on_cell"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_status_cell"
+    assert_select "#batch-inline-feedback--sku-#{@sku.id}"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell", count: 0
+    assert_match @batch.created_at.to_date.to_s, response.body
+  end
+
   test "index localizes visible chrome in english" do
     get "/erp/skus", params: { locale: "en" }, headers: { "Accept" => "text/html" }
 
