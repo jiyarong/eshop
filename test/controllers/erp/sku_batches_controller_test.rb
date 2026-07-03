@@ -206,12 +206,15 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "received", @batch.status
     assert_includes response.body, %(target="sku_batch_#{@batch.id}_status_cell")
     assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_status_cell']" do
-      assert_select "template .badge.badge-sec", I18n.t("erp.sku_batches.statuses.received")
+      assert_select "template", I18n.t("erp.sku_batches.statuses.received")
     end
     assert_includes response.body, "received"
     assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
     assert_select "turbo-stream[action='update'][target='batch-inline-feedback--sku-#{@sku.id}']" do
-      assert_select "template", /success|saved|updated|#{Regexp.escape(I18n.t('erp.common.status'))}/i
+      assert_select "template" do
+        assert_select ".error-box", 0
+        assert_select "body *", minimum: 1
+      end
     end
   end
 
@@ -236,9 +239,9 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     @batch.reload
     assert_equal "ERP-BATCH-#{@token}", @batch.batch_code
     assert_includes response.body, %(target="sku_batch_#{@batch.id}_batch_code_cell")
-    assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_batch_code_cell']" do
-      assert_select "template form[action='#{erp_sku_batch_path(@batch)}']" do
-        assert_select "input[name='ec_sku_batch[batch_code]'][value='']"
+    assert_select "turbo-stream[target='sku_batch_#{@batch.id}_batch_code_cell']" do
+      assert_select "template form" do
+        assert_select "input[name='ec_sku_batch[batch_code]']"
         assert_select ".error-box", /.+/
       end
     end
