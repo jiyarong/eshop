@@ -208,7 +208,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_status_cell']" do
       assert_select "template", I18n.t("erp.sku_batches.statuses.received")
     end
-    assert_includes response.body, "received"
+    assert_includes response.body, I18n.t("erp.sku_batches.statuses.received")
     assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
     assert_select "turbo-stream[action='update'][target='batch-inline-feedback--sku-#{@sku.id}']" do
       assert_select "template .panel"

@@ -3138,13 +3138,13 @@ tr.master.open .chev,
 
 .sub-row > td,
 .batch-row > td {
-  padding: 0 !important;
-  background: var(--gray-50) !important;
+  padding: 8px 0 !important;
+  background: transparent !important;
   border-bottom: 1px solid var(--gray-200) !important;
 }
 
 .sub-shell {
-  padding: 4px 14px 14px;
+  padding: 12px 14px 18px;
   border-left: 3px solid var(--color-primary);
   background: linear-gradient(to right, rgba(99, 102, 241, .03), transparent 60%);
 }
@@ -3163,7 +3163,7 @@ tr.master.open .chev,
 }
 
 .sub-h {
-  padding: 10px 4px 8px;
+  padding: 2px 4px 12px;
 }
 
 .sub-tbl {
@@ -3194,14 +3194,14 @@ tr.master.open .chev,
   vertical-align: middle;
 }
 
-.sub-tbl tr:hover td,
+.sub-tbl tr.sku-row:hover td,
 .batch-tbl tr:hover td {
   background: var(--gray-50) !important;
 }
 
 .batch-shell {
-  padding: 0 0 0 34px;
-  background: var(--gray-50);
+  padding: 10px 0 16px 34px;
+  background: transparent;
 }
 
 .batch-shell--orphan {
@@ -3209,7 +3209,7 @@ tr.master.open .chev,
 }
 
 .batch-h {
-  padding: 8px 12px 7px;
+  padding: 4px 12px 12px;
   border-top: 1px solid var(--gray-100);
 }
 
@@ -3221,6 +3221,99 @@ tr.master.open .chev,
   width: 100%;
   min-width: 880px;
   border-collapse: collapse;
+  background: transparent;
+}
+
+.batch-tbl turbo-frame {
+  display: block;
+}
+
+.inline-edit-cell {
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.inline-edit-cell--display {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background-color .16s ease, box-shadow .16s ease;
+}
+
+.inline-edit-cell--display:hover,
+.inline-edit-cell--display:focus-visible {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .16);
+  outline: none;
+}
+
+.inline-edit-cell--align-right {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.inline-edit-cell--editing {
+  padding: 3px 0;
+}
+
+.inline-edit-cell__input {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--fg);
+  font: inherit;
+}
+
+.inline-edit-cell__input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+}
+
+.inline-edit-cell__input--number {
+  text-align: right;
+}
+
+.inline-edit-cell__error {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.inline-edit-feedback-slot {
+  padding: 10px 0 0;
+}
+
+.inline-edit-feedback {
+  min-height: 20px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.inline-edit-feedback--success {
+  background: rgba(34, 197, 94, .09);
+  color: #166534;
+}
+
+.inline-edit-feedback--error {
+  background: rgba(239, 68, 68, .08);
+}
+
+.inline-edit-feedback--empty {
+  min-height: 0;
+  padding: 0;
   background: transparent;
 }
 

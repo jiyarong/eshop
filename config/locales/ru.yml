@@ -542,16 +542,27 @@ ru:
         batch_code: "Номер партии"
         departure_date: "Дата отправки"
         expected_arrival: "Ожидаемое прибытие"
+        expected_arrival_on: "Дата отправки"
         overseas_delivery_date: "Дата зарубежной доставки"
         product_name: "Название товара"
         purchase_cost: "Стоимость закупки"
         purchase_date: "Дата закупки"
         purchase_unit_price: "Закупочная цена"
         purchased_quantity: "Закуплено"
+        received_on: "Дата зарубежной доставки"
         received_quantity: "Получено"
         unit_batch_cost: "Себестоимость единицы партии"
+      statuses:
+        draft: "Черновик"
+        ordered: "Заказано"
+        in_transit: "В пути"
+        received: "Получено"
       index:
         title: "Партии SKU"
+    inline_edit:
+      messages:
+        save_failed: "Не удалось сохранить. Проверьте значение и повторите."
+        saved: "Сохранено"
     sku_products:
       actions:
         add_binding: "Добавить связь"

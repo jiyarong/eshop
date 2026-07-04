@@ -586,16 +586,27 @@ en:
         batch_code: "Batch number"
         departure_date: "Departure date"
         expected_arrival: "Expected arrival"
+        expected_arrival_on: "Departure date"
         overseas_delivery_date: "Overseas delivery date"
         product_name: "Product name"
         purchase_cost: "Purchase cost"
         purchase_date: "Purchase date"
         purchase_unit_price: "Purchase unit price"
         purchased_quantity: "Purchased quantity"
+        received_on: "Overseas delivery date"
         received_quantity: "Received quantity"
         unit_batch_cost: "Unit batch cost"
+      statuses:
+        draft: "Draft"
+        ordered: "Ordered"
+        in_transit: "In transit"
+        received: "Received"
       index:
         title: "SKU Batches"
+    inline_edit:
+      messages:
+        save_failed: "Save failed. Check the value and try again."
+        saved: "Saved"
     sku_products:
       actions:
         add_binding: "Add binding"

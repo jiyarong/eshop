@@ -557,16 +557,27 @@ zh:
         batch_code: "批次号"
         departure_date: "出境日期"
         expected_arrival: "预计到货"
+        expected_arrival_on: "出境日期"
         overseas_delivery_date: "境外交付日期"
         product_name: "商品名"
         purchase_cost: "采购成本"
         purchase_date: "采购日期"
         purchase_unit_price: "采购单价"
         purchased_quantity: "采购数量"
+        received_on: "境外交付日期"
         received_quantity: "到货数量"
         unit_batch_cost: "单件批次成本"
+      statuses:
+        draft: "草稿"
+        ordered: "已下单"
+        in_transit: "运输中"
+        received: "已到货"
       index:
         title: "SKU 批次"
+    inline_edit:
+      messages:
+        save_failed: "保存失败，请检查后重试"
+        saved: "已保存"
     sku_products:
       actions:
         add_binding: "新增绑定"

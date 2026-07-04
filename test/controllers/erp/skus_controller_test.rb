@@ -94,7 +94,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "采购单价", response.body
     assert_no_match "成本价", response.body
     assert_no_match "仓库", response.body
-    assert_select ".batch-tbl td .barcode", text: @batch.batch_code
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select ".batch-tbl td", text: "180"
     assert_select "td", "页面主产品"
     assert_select ".attr-zh", text: @category.name

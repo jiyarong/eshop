@@ -57,5 +57,43 @@ module Erp
 
       []
     end
+
+    def sku_batch_inline_cell_locals(batch, field, locale_params: current_locale_params)
+      field = field.to_sym
+      feedback_target = sku_batch_inline_feedback_target(batch.sku)
+      config = sku_batch_inline_config(field)
+
+      {
+        record: batch,
+        field: field.to_s,
+        frame_id: sku_batch_inline_frame_id(batch, field),
+        feedback_target: feedback_target,
+        update_path: erp_sku_batch_path(batch, locale_params),
+        edit_url: erp_edit_sku_batch_path(
+          batch,
+          locale_params.merge(
+            inline_field: field,
+            edit_inline: true,
+            inline_context: { feedback_target: feedback_target }
+          )
+        ),
+        label: I18n.t("erp.sku_batches.fields.#{field}"),
+        input_kind: config[:input_kind],
+        value: batch.public_send(field),
+        display_value: display_value_for_inline_field(batch, field),
+        options: sku_batch_inline_options(field),
+        editing: false,
+        error_messages: [],
+        align: config[:align]
+      }
+    end
+
+    private
+
+    def display_value_for_inline_field(batch, field)
+      return I18n.t("erp.sku_batches.statuses.#{batch.status}") if field.to_sym == :status
+
+      sku_batch_inline_display_value(batch, field)
+    end
   end
 end
