@@ -70,8 +70,17 @@ class Ec::InventoryVelocityMetricsQueryTest < ActiveSupport::TestCase
       time_zone: ActiveSupport::TimeZone["Asia/Shanghai"]
     ).call
 
-    assert_equal BigDecimal("6.5"), metrics.dig(@sku.sku_code, :daily_sales_velocity)
-    assert_equal BigDecimal("14"), metrics.dig(@other_sku.sku_code, :daily_sales_velocity)
+    expected_sku_velocity =
+      (BigDecimal("7") / BigDecimal("7") * BigDecimal("0.5")) +
+      (BigDecimal("22") / BigDecimal("15") * BigDecimal("0.3")) +
+      (BigDecimal("52") / BigDecimal("30") * BigDecimal("0.2"))
+    expected_other_sku_velocity =
+      (BigDecimal("14") / BigDecimal("7") * BigDecimal("0.5")) +
+      (BigDecimal("14") / BigDecimal("15") * BigDecimal("0.3")) +
+      (BigDecimal("14") / BigDecimal("30") * BigDecimal("0.2"))
+
+    assert_equal expected_sku_velocity, metrics.dig(@sku.sku_code, :daily_sales_velocity)
+    assert_equal expected_other_sku_velocity, metrics.dig(@other_sku.sku_code, :daily_sales_velocity)
     assert_nil metrics.dig(@sku.sku_code, :turnover_days)
     assert_nil metrics.dig(@other_sku.sku_code, :turnover_days)
   end

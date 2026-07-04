@@ -7,7 +7,9 @@ class ReportsController < ApplicationController
 
   def inventory
     @sku_query = params[:sku].to_s.strip
-    @inventory_rows = build_inventory_rows
+    scope = inventory_skus_scope.order(:sku_code)
+    @inventory_volume_summary = build_inventory_volume_summary(scope)
+    @inventory_rows = build_inventory_rows(scope)
   end
 
   def inventory_detail
@@ -34,6 +36,7 @@ class ReportsController < ApplicationController
   def refresh_inventory_cache
     sku_code = params[:sku_code].to_s.upcase
     Rails.cache.delete(inventory_row_cache_key(sku_code))
+    Rails.cache.delete(inventory_volume_summary_cache_key(params[:sku]))
 
     redirect_params = params.permit(:sku, :locale).to_h.compact_blank
     redirect_to redirect_params.present? ? "/reports/inventory?#{redirect_params.to_query}" : "/reports/inventory"
@@ -139,9 +142,8 @@ class ReportsController < ApplicationController
     params.require(:ec_sku_predicted_cost).permit(:cost_money, :cost_currency, :effective_from, :effective_to, :note)
   end
 
-  def build_inventory_rows
+  def build_inventory_rows(scope)
     current_page = inventory_page_param
-    scope = inventory_skus_scope.order(:sku_code)
     skus = scope.page(current_page).per(10)
     if skus.total_pages.positive? && current_page > skus.total_pages
       skus = scope.page(skus.total_pages).per(10)
@@ -164,6 +166,16 @@ class ReportsController < ApplicationController
     )
   end
 
+  def build_inventory_volume_summary(scope)
+    Rails.cache.fetch(inventory_volume_summary_cache_key, expires_in: 30.minutes) do
+      rows = scope.map do |sku|
+        fetch_inventory_row(sku)
+      end
+
+      Ec::InventoryVolumeSummaryBuilder.call(rows)
+    end
+  end
+
   def inventory_page_param
     requested_page = params[:jump_page].presence || params[:page].presence
     current_page = params[:current_page].presence || params[:page].presence
@@ -175,7 +187,7 @@ class ReportsController < ApplicationController
   end
 
   def inventory_skus_scope
-    scope = Ec::Sku.all
+    scope = Ec::Sku.includes(:cost)
     return scope if @sku_query.blank?
 
     scope.where("LOWER(sku_code) LIKE ?", inventory_sku_filter_pattern)
@@ -218,7 +230,12 @@ class ReportsController < ApplicationController
   end
 
   def inventory_row_cache_key(sku_code)
-    "reports/inventory/rows/#{sku_code}"
+    "reports/inventory/rows/v2/#{sku_code}"
+  end
+
+  def inventory_volume_summary_cache_key(sku_query = @sku_query)
+    normalized_query = sku_query.to_s.strip.downcase
+    "reports/inventory/volume-summary/v1/#{Digest::SHA256.hexdigest(normalized_query)}"
   end
 
   def load_sku_inventory_overview

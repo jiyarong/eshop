@@ -383,6 +383,9 @@ en:
         sku: "SKU"
         sku_placeholder: "Enter SKU"
         submit: "Filter"
+      labels:
+        dimensions_cm: "%{length} × %{width} × %{height} cm"
+        estimated_volume_m3: "%{volume} m³"
       sections:
         inventory_list: "Inventory List"
       title: "Inventory Report"

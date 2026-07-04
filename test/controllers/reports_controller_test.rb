@@ -285,7 +285,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "input[name='sku'][value=?]", @sku_code.downcase
-    assert_select "td", @sku_code
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
     assert_select "td", { text: @second_sku_code, count: 0 }
     assert_select "tbody tr", count: 1
   end
@@ -427,7 +427,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "inventory report uses inventory page row query for each filtered sku" do
-    Rails.cache.delete("reports/inventory/rows/#{@sku_code}")
+    Rails.cache.delete("reports/inventory/rows/v2/#{@sku_code}")
     calls = []
     fake_query_factory = lambda do |sku, metrics:|
       Object.new.tap do |query|
@@ -441,6 +441,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             book_stock: 14,
             platform_stock: 6,
             available_stock: 7,
+            pkg_length_cm: BigDecimal("10"),
+            pkg_width_cm: BigDecimal("20"),
+            pkg_height_cm: BigDecimal("30"),
+            unit_volume_l: BigDecimal("6.0"),
             daily_sales_velocity: BigDecimal("1.23"),
             turnover_days: BigDecimal("11.38"),
             turnover_days_with_procurement: BigDecimal("20.51"),
@@ -483,7 +487,12 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", I18n.t("reports.inventory.fields.platform_stock")
     assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock")
     assert_select "th", { text: I18n.t("reports.inventory.fields.cache_updated_at"), count: 0 }
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(5)", "6"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__subline", "10 × 20 × 30 cm"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(3) .inventory-list-table__subline", "0.0720 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(4) .inventory-list-table__subline", "0.0840 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) > div:first-child", "6"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) .inventory-list-table__subline", "0.0360 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(6) .inventory-list-table__subline", "0.0420 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(7)", "1.23"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "11.38"
     assert_select "th", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
@@ -718,7 +727,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   test "inventory report caches each sku row until refresh" do
     cache_store = ActiveSupport::Cache::MemoryStore.new
     original_cache_store = Rails.cache
-    cache_key = "reports/inventory/rows/#{@sku_code}"
+    cache_key = "reports/inventory/rows/v2/#{@sku_code}"
 
     Rails.cache = cache_store
 

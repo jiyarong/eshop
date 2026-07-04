@@ -354,6 +354,9 @@ zh:
         sku: "SKU"
         sku_placeholder: "输入 SKU"
         submit: "筛选"
+      labels:
+        dimensions_cm: "%{length} × %{width} × %{height} cm"
+        estimated_volume_m3: "%{volume} m³"
       sections:
         inventory_list: "库存列表"
       title: "库存报表"

@@ -33,6 +33,28 @@ module ApplicationHelper
     value.in_time_zone(user_time_zone).strftime(format)
   end
 
+  def inventory_dimensions_text(length_cm, width_cm, height_cm)
+    return if [length_cm, width_cm, height_cm].any?(&:blank?)
+
+    t(
+      "reports.inventory.labels.dimensions_cm",
+      length: inventory_dimension_value(length_cm),
+      width: inventory_dimension_value(width_cm),
+      height: inventory_dimension_value(height_cm)
+    )
+  end
+
+  def inventory_estimated_volume_text(quantity, unit_volume_l)
+    return if unit_volume_l.blank? || unit_volume_l.to_d <= 0
+
+    estimated_volume_m3 = quantity.to_d * unit_volume_l.to_d / 1000
+    t("reports.inventory.labels.estimated_volume_m3", volume: format("%.4f", estimated_volume_m3))
+  end
+
+  def inventory_volume_m3_text(volume_m3)
+    t("reports.inventory.labels.estimated_volume_m3", volume: format("%.4f", volume_m3.to_d))
+  end
+
   def user_time_zone
     User.profile_time_zone(current_user&.time_zone)
   end
@@ -48,5 +70,11 @@ module ApplicationHelper
     when "wb"
       "https://seller.wildberries.ru/new-goods/card?nmID=#{encoded_id}&type=EXIST_CARD"
     end
+  end
+
+  private
+
+  def inventory_dimension_value(value)
+    value.to_d.to_s("F").sub(/\.0+\z/, "").sub(/(\.\d*?)0+\z/, '\1')
   end
 end

@@ -354,6 +354,9 @@ ru:
         sku: "SKU"
         sku_placeholder: "Введите SKU"
         submit: "Фильтр"
+      labels:
+        dimensions_cm: "%{length} × %{width} × %{height} cm"
+        estimated_volume_m3: "%{volume} m³"
       sections:
         inventory_list: "Список склада"
       title: "Отчет по складу"
