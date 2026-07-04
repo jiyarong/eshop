@@ -211,20 +211,13 @@ class ReportsController < ApplicationController
   end
 
   def fetch_inventory_row(sku, metrics: {})
-    row = Rails.cache.fetch(inventory_row_cache_key(sku.sku_code), expires_in: 30.minutes) do
-      Ec::InventoryPageRowQuery.new(sku, metrics: metrics).call
+    raw_row = Rails.cache.fetch(inventory_row_cache_key(sku.sku_code), expires_in: 30.minutes) do
+      Ec::InventoryPageRowQuery.new(sku).call
     end
 
-    daily_sales_velocity = metrics[:daily_sales_velocity]
-    book_stock = row[:book_stock].to_d
-    procurement_stock = row[:incoming_quantity].to_d
-    turnover_days = daily_sales_velocity.to_d.positive? ? (book_stock / daily_sales_velocity.to_d) : nil
-    turnover_days_with_procurement = daily_sales_velocity.to_d.positive? ? ((book_stock + procurement_stock) / daily_sales_velocity.to_d) : nil
-
-    row.merge(
-      daily_sales_velocity: metrics[:daily_sales_velocity],
-      turnover_days: turnover_days,
-      turnover_days_with_procurement: turnover_days_with_procurement,
+    Ec::InventoryReportRowMetricsBuilder.call(
+      raw_row,
+      metrics: metrics,
       cache_updated_at: Time.current
     )
   end
