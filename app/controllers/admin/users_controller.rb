@@ -1,6 +1,6 @@
 module Admin
   class UsersController < BaseController
-    before_action :set_user, only: [:show, :edit, :update]
+    before_action :set_user, only: [:show, :edit, :update, :create_api_key, :revoke_api_key]
     before_action :load_roles, only: [:new, :edit, :create, :update]
 
     def index
@@ -41,6 +41,19 @@ module Admin
       end
     end
 
+    def create_api_key
+      raw_token, = UserApiKey.generate_for!(@user, name: api_key_name)
+
+      redirect_to admin_user_path(@user), notice: t("admin.users.api_keys.created", token: raw_token)
+    end
+
+    def revoke_api_key
+      api_key = @user.api_keys.find(params[:api_key_id])
+      api_key.update!(revoked_at: Time.current)
+
+      redirect_to admin_user_path(@user), notice: t("admin.users.api_keys.revoked")
+    end
+
     private
 
     def set_user
@@ -53,6 +66,10 @@ module Admin
 
     def user_params
       params.require(:user).permit(:email, :password, :password_confirmation, :active)
+    end
+
+    def api_key_name
+      params.fetch(:api_key, {}).permit(:name)[:name].presence || "MCP"
     end
 
     def role_ids

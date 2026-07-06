@@ -43,6 +43,7 @@
       <% admin_links << { label: t("navigation.users"), path: "/admin/users", icon: "bi-people", active: active_link.call("/admin/users") } %>
       <% admin_links << { label: t("navigation.agents"), path: "/admin/agents", icon: "bi-cpu", active: active_link.call("/admin/agents") } %>
       <% admin_links << { label: t("navigation.operation_logs"), path: "/admin/operation_logs", icon: "bi-clock-history", active: active_link.call("/admin/operation_logs") } %>
+      <% admin_links << { label: t("navigation.mcp_debug"), path: "/admin/mcp_debug", icon: "bi-braces", active: active_link.call("/admin/mcp_debug") } %>
     <% end %>
     <% if can?(:manage_feedback_tasks) %>
       <% admin_links << { label: t("navigation.feedback_tasks"), path: "/admin/feedback_tasks", icon: "bi-chat-square-text", active: active_link.call("/admin/feedback_tasks") } %>
