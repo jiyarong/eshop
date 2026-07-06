@@ -80,7 +80,7 @@ Rails.application.routes.draw do
     resources :stores, except: [:destroy] do
       patch "sku_products/:id/operators" => "store_sku_product_operators#update", as: :sku_product_operators
     end
-    resources :sku_batches, except: [:destroy]
+    resources :sku_batches
     resources :suppliers, only: [:index, :show]
     resources :purchase_orders, except: [:destroy]
     resources :cost_allocations, except: [:destroy]

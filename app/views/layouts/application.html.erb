@@ -200,6 +200,9 @@
         </header>
 
         <main class="main erp-content">
+          <div id="global_toast" class="global-toast-stack" aria-live="polite" aria-atomic="true">
+            <%= render "shared/flash_toasts" %>
+          </div>
           <div class="page">
             <%= yield %>
           </div>

@@ -5,6 +5,10 @@ module Erp
         input_kind: :text,
         value_key: :batch_code
       },
+      purchase_date: {
+        input_kind: :date,
+        value_key: :purchase_date
+      },
       expected_arrival_on: {
         input_kind: :date,
         value_key: :expected_arrival_on
@@ -34,7 +38,11 @@ module Erp
     end
 
     def sku_batch_inline_feedback_target(sku)
-      "batch-inline-feedback--sku-#{sku.id}"
+      inline_edit_toast_target
+    end
+
+    def inline_edit_toast_target
+      "global_toast"
     end
 
     def sku_batch_inline_config(field)
@@ -43,7 +51,7 @@ module Erp
 
     def sku_batch_inline_display_value(batch, field)
       case field.to_sym
-      when :expected_arrival_on, :received_on
+      when :purchase_date, :expected_arrival_on, :received_on
         erp_value(batch.public_send(field))
       when :status
         batch.status

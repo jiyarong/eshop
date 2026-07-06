@@ -8,7 +8,7 @@
   <div class="page-h">
     <div>
       <h1><%= t("erp.skus.index.title") %></h1>
-      <p class="sub">Master Product · SKU Variant · Batch Inventory</p>
+      <p class="sub"><%= t("erp.skus.index.hierarchy") %></p>
     </div>
     <div class="hstack product-page-actions">
       <%#= link_to erp_sku_categories_path, class: "btn btn-outline" do %>
@@ -23,7 +23,7 @@
 
   <section class="product-summary-grid" aria-label="<%= t("erp.skus.index.product_overview") %>">
     <div class="product-summary-card">
-      <span class="summary-label">Master SKU</span>
+      <span class="summary-label"><%= t("erp.skus.fields.master_sku") %></span>
       <strong class="summary-value"><%= @product_counts[:master_total] %></strong>
     </div>
     <div class="product-summary-card">
@@ -72,7 +72,7 @@
       <thead>
         <tr>
           <th style="width: 36px"></th>
-          <th style="width: 160px">Master SKU</th>
+          <th style="width: 160px"><%= t("erp.skus.fields.master_sku") %></th>
           <th style="min-width: 220px"><%= t("erp.common.chinese_name") %></th>
           <th style="min-width: 260px"><%= t("erp.common.russian_name") %></th>
           <th style="width: 120px">SKU</th>
@@ -88,7 +88,7 @@
           <% batch_total = skus.sum { |sku| sku.batches.size } %>
           <tr class="master">
             <td>
-              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= master_sku.master_sku_code %>" aria-label="<%= t("erp.common.actions.expand_named", name: master_sku.master_sku_code) %>" aria-expanded="false">
+              <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= master_sku.master_sku_code %>" data-tree-key="master-<%= master_sku.id %>" aria-label="<%= t("erp.common.actions.expand_named", name: master_sku.master_sku_code) %>" aria-expanded="false">
                 <i class="bi bi-chevron-right" aria-hidden="true"></i>
               </button>
             </td>
@@ -142,7 +142,7 @@
                         <% received_quantity = sku.batches.sum(&:received_quantity) %>
                         <tr class="sku-row">
                           <td>
-                            <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleSku" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.expand_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="false">
+                            <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleSku" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" data-tree-key="sku-<%= sku.id %>" aria-label="<%= t("erp.common.actions.expand_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="false">
                               <i class="bi bi-chevron-right" aria-hidden="true"></i>
                             </button>
                             <%= link_to sku.sku_code, erp_sku_path(sku), class: "code-text sub" %>
@@ -165,7 +165,7 @@
                                 <i class="bi bi-trash" aria-hidden="true"></i>
                                 <span class="sr-only"><%= t("erp.skus.actions.delete_sku") %></span>
                               <% end if can?(:manage_skus) %>
-                              <%= link_to erp_new_sku_batch_path(current_locale_params.merge(sku_code: sku.sku_code)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
+                              <%= link_to erp_new_sku_batch_path(current_locale_params.merge(sku_code: sku.sku_code, return_to: current_page_return_to)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
                                 <i class="bi bi-plus-lg" aria-hidden="true"></i>
                                 <%= t("erp.sku_batches.actions.add_batch") %>
                               <% end %>
@@ -183,7 +183,6 @@
                                 <span><%= t("erp.skus.index.showing_recent_batches", shown: batches.size, total: sku.batches.size) %></span>
                               </div>
                               <% if batches.any? %>
-                                <% feedback_target = sku_batch_inline_feedback_target(sku) %>
                                 <table class="batch-tbl">
                                   <thead>
                                     <tr>
@@ -203,7 +202,9 @@
                                         <td>
                                           <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :batch_code) %>
                                         </td>
-                                        <td><span class="barcode"><%= erp_value(batch.created_at&.to_date) %></span></td>
+                                        <td>
+                                          <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchase_date) %>
+                                        </td>
                                         <td>
                                           <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :expected_arrival_on) %>
                                         </td>
@@ -221,9 +222,13 @@
                                         </td>
                                         <td>
                                           <div class="row-actions">
-                                            <%= link_to erp_edit_sku_batch_path(batch, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
+                                            <%= link_to erp_edit_sku_batch_path(batch, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
                                               <i class="bi bi-pencil" aria-hidden="true"></i>
                                               <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
+                                            <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
+                                            <%= link_to erp_sku_batch_path(batch, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.sku_batches.actions.delete_batch"), data: { turbo_method: :delete, turbo_confirm: t("erp.sku_batches.actions.confirm_delete_batch") } do %>
+                                              <i class="bi bi-trash" aria-hidden="true"></i>
+                                              <span class="sr-only"><%= t("erp.sku_batches.actions.delete_batch") %></span>
                                             <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
                                           </div>
                                         </td>
@@ -231,9 +236,6 @@
                                     <% end %>
                                   </tbody>
                                 </table>
-                                <div id="<%= feedback_target %>" class="inline-edit-feedback-slot">
-                                  <%= render "shared/inline_edit_feedback", tone: :empty, message: nil %>
-                                </div>
                               <% else %>
                                 <div class="nested-empty-state"><%= t("erp.skus.empty.no_batches") %></div>
                               <% end %>
@@ -256,7 +258,7 @@
           <tr class="master">
             <td>
               <% if batches.any? %>
-                <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" aria-label="<%= t("erp.common.actions.expand_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="false">
+                <button class="chev product-tree-toggle" type="button" data-action="product-tree#toggleMaster" data-label="<%= t("erp.skus.index.sku_batches_label", sku: sku.sku_code) %>" data-tree-key="orphan-sku-<%= sku.id %>" aria-label="<%= t("erp.common.actions.expand_named", name: t("erp.skus.index.sku_batches_label", sku: sku.sku_code)) %>" aria-expanded="false">
                   <i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </button>
               <% end %>
@@ -284,7 +286,7 @@
                   <i class="bi bi-trash" aria-hidden="true"></i>
                   <span class="sr-only"><%= t("erp.skus.actions.delete_sku") %></span>
                 <% end if can?(:manage_skus) %>
-                <%= link_to erp_new_sku_batch_path(current_locale_params.merge(sku_code: sku.sku_code)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
+                <%= link_to erp_new_sku_batch_path(current_locale_params.merge(sku_code: sku.sku_code, return_to: current_page_return_to)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-plus-lg" aria-hidden="true"></i>
                   <%= t("erp.sku_batches.actions.add_batch") %>
                 <% end %>
@@ -301,7 +303,6 @@
                       <span><%= sku.batches.size %> <%= t("erp.skus.units.batch", count: sku.batches.size) %></span>
                     </div>
                   </div>
-                  <% feedback_target = sku_batch_inline_feedback_target(sku) %>
                   <table class="batch-tbl">
                     <thead>
                       <tr>
@@ -321,7 +322,9 @@
                           <td>
                             <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :batch_code) %>
                           </td>
-                          <td><span class="barcode"><%= erp_value(batch.created_at&.to_date) %></span></td>
+                          <td>
+                            <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchase_date) %>
+                          </td>
                           <td>
                             <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :expected_arrival_on) %>
                           </td>
@@ -339,9 +342,13 @@
                           </td>
                           <td>
                             <div class="row-actions">
-                              <%= link_to erp_edit_sku_batch_path(batch, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
+                              <%= link_to erp_edit_sku_batch_path(batch, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
                                 <i class="bi bi-pencil" aria-hidden="true"></i>
                                 <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
+                              <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
+                              <%= link_to erp_sku_batch_path(batch, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.sku_batches.actions.delete_batch"), data: { turbo_method: :delete, turbo_confirm: t("erp.sku_batches.actions.confirm_delete_batch") } do %>
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                <span class="sr-only"><%= t("erp.sku_batches.actions.delete_batch") %></span>
                               <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
                             </div>
                           </td>
@@ -349,9 +356,6 @@
                       <% end %>
                     </tbody>
                   </table>
-                  <div id="<%= feedback_target %>" class="inline-edit-feedback-slot">
-                    <%= render "shared/inline_edit_feedback", tone: :empty, message: nil %>
-                  </div>
                 </div>
               </td>
             </tr>

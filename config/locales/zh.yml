@@ -73,7 +73,7 @@ zh:
     skus: "SKU"
     sku_sales: "SKU 销量"
     costs: "成本"
-    erp_skus: "SKU 管理"
+    erp_skus: "SPU 管理"
     erp_stores: "店铺设置"
     sku_categories: "SKU 类别"
     sku_batches: "ERP 批次"
@@ -179,7 +179,7 @@ zh:
       record_types:
         ec:
           cost_allocation: "费用分摊"
-          master_sku: "Master SKU"
+          master_sku: "SPU"
           purchase_order: "采购单"
           sku: "SKU"
           sku_batch: "批次"
@@ -442,7 +442,7 @@ zh:
         last_ordered_at: "最近出单时间"
         listed_at: "上架日期"
         margin: "利润率"
-        master_sku: "主SKU"
+        master_sku: "SPU"
         misc_cost_cny: "杂费 CNY"
         model: "型号"
         note: "备注"
@@ -593,6 +593,8 @@ zh:
       actions:
         add_batch: "新增批次"
         add_sku_batch: "新增 SKU 批次"
+        confirm_delete_batch: "确认删除这个批次？"
+        delete_batch: "删除批次"
         edit_batch: "编辑批次"
         edit_sku_batch: "编辑 SKU 批次"
       fields:
@@ -618,6 +620,9 @@ zh:
         received: "已到货"
       index:
         title: "SKU 批次"
+      messages:
+        delete_blocked: "该批次已被其他记录引用，无法删除"
+        deleted: "批次已删除"
     inline_edit:
       messages:
         save_failed: "保存失败，请检查后重试"
@@ -686,11 +691,11 @@ zh:
         wb_category: "WB 类别"
     skus:
       actions:
-        add_product: "新增产品"
+        add_product: "新增 SPU"
         add_sku: "新增 SKU"
         confirm_delete_sku: "确认删除这个 SKU？"
         delete_sku: "删除 SKU"
-        edit_product: "编辑产品"
+        edit_product: "编辑 SPU"
         edit_sku: "编辑 SKU"
       empty:
         no_batches: "还没有批次记录。"
@@ -701,6 +706,7 @@ zh:
         color: "颜色"
         features: "特点"
         listed: "上架"
+        master_sku: "SPU"
         model: "型号"
         purchased: "采购"
         quality_grade: "品质"
@@ -712,17 +718,18 @@ zh:
         weight_kg: "重量 kg"
       filters:
         all_categories: "全部类别"
-        search_placeholder: "搜索 Master SKU、中文名或俄文名…"
+        search_placeholder: "搜索 SPU、中文名或俄文名…"
       index:
-        active_products: "启用产品"
+        active_products: "启用 SPU"
         batch_list: "批次清单"
+        hierarchy: "SPU · SKU · 批次库存"
         product_overview: "产品概览"
         showing_recent_batches: "已展示最近 %{shown} / %{total} 个批次"
         sku_batches_label: "%{sku} 批次"
         sku_variants:
           one: "SKU 变体 · %{count} 个"
           other: "SKU 变体 · %{count} 个"
-        title: "产品管理"
+        title: "SPU 管理"
         unfiled: "未归档"
       statuses:
         active: "上架"

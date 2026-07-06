@@ -16,7 +16,7 @@ class FeedbackTaskTest < ActiveSupport::TestCase
     task = FeedbackTask.create!(
       user: @user,
       page_url: "/erp/skus?status=active",
-      page_title: "SKU 管理",
+      page_title: "SPU 管理",
       issue_type: "layout",
       description: "按钮位置不明显",
       suggestion: "放到表格上方",

@@ -48,6 +48,7 @@ module Ec
         sku_code
         batch_code
         status
+        purchase_date
         purchased_quantity
         received_quantity
         purchase_unit_price_cny
