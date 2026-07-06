@@ -307,7 +307,6 @@ ru:
       actions:
         back_to_inventory: "Назад к складу"
         next_page: "Следующая страница"
-        refresh_cache: "Обновить кеш"
         previous_page: "Предыдущая страница"
         view_details: "Подробнее"
       pagination:
@@ -370,7 +369,6 @@ ru:
         belarus_available: "Доступно Беларусь"
         book_available_stock: "Доступно по учету"
         book_stock: "Учетный остаток"
-        cache_updated_at: "Кеш обновлен"
         daily_sales_velocity: "Среднедневные продажи"
         defect_offset_note: "Примечание к корректировке"
         expected_arrival_on: "Ожидаемая дата поступления"
@@ -398,10 +396,14 @@ ru:
         wb_net: "WB нетто"
         wb_return: "Возвраты WB"
       filters:
+        procurement_turnover_days_max: "Дни оборачиваемости с закупкой <="
+        procurement_turnover_days_min: "Дни оборачиваемости с закупкой >="
         reset: "Сбросить"
         sku: "SKU"
-        sku_placeholder: "Введите SKU"
-        submit: "Фильтр"
+        sku_placeholder: "Поиск по коду SKU"
+        submit: "Найти"
+        turnover_days_max: "Дни оборачиваемости <="
+        turnover_days_min: "Дни оборачиваемости >="
       labels:
         dimensions_cm: "%{length} × %{width} × %{height} cm"
         estimated_volume_m3: "%{volume} m³"

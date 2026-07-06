@@ -1,5 +1,5 @@
 class ReportsController < ApplicationController
-  helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales
+  helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
 
@@ -7,7 +7,16 @@ class ReportsController < ApplicationController
 
   def inventory
     @sku_query = params[:sku].to_s.strip
+    @turnover_days_min_query = params[:turnover_days_min].to_s.strip
+    @turnover_days_max_query = params[:turnover_days_max].to_s.strip
+    @procurement_turnover_days_min_query = params[:procurement_turnover_days_min].to_s.strip
+    @procurement_turnover_days_max_query = params[:procurement_turnover_days_max].to_s.strip
+    @turnover_days_min = parse_decimal(@turnover_days_min_query)
+    @turnover_days_max = parse_decimal(@turnover_days_max_query)
+    @procurement_turnover_days_min = parse_decimal(@procurement_turnover_days_min_query)
+    @procurement_turnover_days_max = parse_decimal(@procurement_turnover_days_max_query)
     scope = inventory_skus_scope.order(:sku_code)
+    scope = apply_inventory_turnover_filter(scope)
     @inventory_volume_summary = build_inventory_volume_summary(scope)
     @inventory_rows = build_inventory_rows(scope)
   end
@@ -31,15 +40,6 @@ class ReportsController < ApplicationController
     else
       render :inventory_detail
     end
-  end
-
-  def refresh_inventory_cache
-    sku_code = params[:sku_code].to_s.upcase
-    Rails.cache.delete(inventory_row_cache_key(sku_code))
-    Rails.cache.delete(inventory_volume_summary_cache_key(params[:sku]))
-
-    redirect_params = params.permit(:sku, :locale).to_h.compact_blank
-    redirect_to redirect_params.present? ? "/reports/inventory?#{redirect_params.to_query}" : "/reports/inventory"
   end
 
   def skus
@@ -167,13 +167,11 @@ class ReportsController < ApplicationController
   end
 
   def build_inventory_volume_summary(scope)
-    Rails.cache.fetch(inventory_volume_summary_cache_key, expires_in: 30.minutes) do
-      rows = scope.map do |sku|
-        fetch_inventory_row(sku)
-      end
-
-      Ec::InventoryVolumeSummaryBuilder.call(rows)
+    rows = scope.map do |sku|
+      fetch_inventory_row(sku)
     end
+
+    Ec::InventoryVolumeSummaryBuilder.call(rows)
   end
 
   def inventory_page_param
@@ -190,32 +188,75 @@ class ReportsController < ApplicationController
     scope = Ec::Sku.includes(:cost)
     return scope if @sku_query.blank?
 
-    scope.where("LOWER(sku_code) LIKE ?", inventory_sku_filter_pattern)
+    scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)
+  end
+
+  def apply_inventory_turnover_filter(scope)
+    return scope unless inventory_turnover_filter_active?
+
+    sku_codes = scope.pluck(:sku_code)
+    return scope.none if sku_codes.empty?
+
+    metrics_by_sku = Ec::InventoryTurnoverMetricsQuery.new(
+      sku_codes: sku_codes,
+      date_to: user_today,
+      time_zone: user_time_zone
+    ).call
+
+    matching_sku_codes = sku_codes.select do |sku_code|
+      inventory_turnover_matches_all?(
+        turnover_days: metrics_by_sku.dig(sku_code, :turnover_days),
+        turnover_days_with_procurement: metrics_by_sku.dig(sku_code, :turnover_days_with_procurement)
+      )
+    end
+
+    scope.where(sku_code: matching_sku_codes)
   end
 
   def inventory_sku_filter_pattern
     "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query.downcase)}%"
   end
 
+  def inventory_turnover_filter_active?
+    @turnover_days_min.present? || @turnover_days_max.present? ||
+      @procurement_turnover_days_min.present? || @procurement_turnover_days_max.present?
+  end
+
+  def inventory_filters_active?
+    @sku_query.present? || inventory_turnover_filter_active?
+  end
+
+  def inventory_turnover_matches_all?(turnover_days:, turnover_days_with_procurement:)
+    inventory_turnover_range_matches?(
+      value: turnover_days,
+      min_value: @turnover_days_min,
+      max_value: @turnover_days_max
+    ) && inventory_turnover_range_matches?(
+      value: turnover_days_with_procurement,
+      min_value: @procurement_turnover_days_min,
+      max_value: @procurement_turnover_days_max
+    )
+  end
+
+  def inventory_turnover_range_matches?(value:, min_value:, max_value:)
+    return true if min_value.blank? && max_value.blank?
+    return false if value.blank?
+    return false if value.negative? && !min_value&.negative?
+
+    min_matches = min_value.nil? || value >= min_value
+    max_matches = max_value.nil? || value <= max_value
+
+    min_matches && max_matches
+  end
+
   def fetch_inventory_row(sku, metrics: {})
-    raw_row = Rails.cache.fetch(inventory_row_cache_key(sku.sku_code), expires_in: 30.minutes) do
-      Ec::InventoryPageRowQuery.new(sku).call
-    end
+    raw_row = Ec::InventoryPageRowQuery.new(sku).call
 
     Ec::InventoryReportRowMetricsBuilder.call(
       raw_row,
       metrics: metrics,
       cache_updated_at: Time.current
     )
-  end
-
-  def inventory_row_cache_key(sku_code)
-    "reports/inventory/rows/v2/#{sku_code}"
-  end
-
-  def inventory_volume_summary_cache_key(sku_query = @sku_query)
-    normalized_query = sku_query.to_s.strip.downcase
-    "reports/inventory/volume-summary/v1/#{Digest::SHA256.hexdigest(normalized_query)}"
   end
 
   def load_sku_inventory_overview
@@ -237,6 +278,14 @@ class ReportsController < ApplicationController
 
     Date.iso8601(value.to_s)
   rescue Date::Error, ArgumentError
+    nil
+  end
+
+  def parse_decimal(value)
+    return if value.blank?
+
+    BigDecimal(value.to_s)
+  rescue ArgumentError
     nil
   end
 

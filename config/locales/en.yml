@@ -336,7 +336,6 @@ en:
       actions:
         back_to_inventory: "Back to inventory"
         next_page: "Next page"
-        refresh_cache: "Refresh cache"
         previous_page: "Previous page"
         view_details: "View details"
       pagination:
@@ -399,7 +398,6 @@ en:
         belarus_available: "Belarus available"
         book_available_stock: "Book available stock"
         book_stock: "Book stock"
-        cache_updated_at: "Cache updated at"
         daily_sales_velocity: "Daily sales velocity"
         defect_offset_note: "Offset note"
         expected_arrival_on: "Expected arrival date"
@@ -427,10 +425,14 @@ en:
         wb_net: "WB net"
         wb_return: "WB returns"
       filters:
+        procurement_turnover_days_max: "Turnover days (with procurement) <="
+        procurement_turnover_days_min: "Turnover days (with procurement) >="
         reset: "Reset"
         sku: "SKU"
-        sku_placeholder: "Enter SKU"
-        submit: "Filter"
+        sku_placeholder: "Search by SKU code"
+        submit: "Search"
+        turnover_days_max: "Turnover days <="
+        turnover_days_min: "Turnover days >="
       labels:
         dimensions_cm: "%{length} × %{width} × %{height} cm"
         estimated_volume_m3: "%{volume} m³"

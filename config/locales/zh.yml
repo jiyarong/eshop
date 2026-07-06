@@ -317,7 +317,6 @@ zh:
       actions:
         back_to_inventory: "返回库存列表"
         next_page: "下一页"
-        refresh_cache: "刷新缓存"
         previous_page: "上一页"
         view_details: "查看明细"
       pagination:
@@ -380,7 +379,6 @@ zh:
         belarus_available: "白俄可用"
         book_available_stock: "账面可用库存"
         book_stock: "账面库存"
-        cache_updated_at: "缓存更新时间"
         daily_sales_velocity: "日均销量"
         defect_offset_note: "补正备注"
         expected_arrival_on: "预计到货日期"
@@ -409,9 +407,13 @@ zh:
         wb_return: "WB退货"
       filters:
         reset: "重置"
-        sku: "SKU"
-        sku_placeholder: "输入 SKU"
-        submit: "筛选"
+        procurement_turnover_days_min: "周转天数(含采购) >="
+        procurement_turnover_days_max: "周转天数(含采购) <="
+        sku: "SKU编码"
+        sku_placeholder: "输入 SKU 编码搜索"
+        submit: "查询"
+        turnover_days_min: "周转天数 >="
+        turnover_days_max: "周转天数 <="
       labels:
         dimensions_cm: "%{length} × %{width} × %{height} cm"
         estimated_volume_m3: "%{volume} m³"

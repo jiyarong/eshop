@@ -290,6 +290,170 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", count: 1
   end
 
+  test "inventory report renders localized turnover filter labels in chinese" do
+    get "/reports/inventory", params: { locale: "zh" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "label[for='inventory_sku']", text: "SKU编码"
+    assert_select "label[for='inventory_turnover_days_min']", text: "周转天数 >="
+    assert_select "label[for='inventory_turnover_days_max']", text: "周转天数 <="
+    assert_select "label[for='inventory_procurement_turnover_days_min']", text: "周转天数(含采购) >="
+    assert_select "label[for='inventory_procurement_turnover_days_max']", text: "周转天数(含采购) <="
+    assert_select "label", text: "Turnover days >=", count: 0
+    assert_select "label", text: "Turnover days <=", count: 0
+  end
+
+  test "inventory report filters by turnover ranges" do
+    token = SecureRandom.hex(4).upcase
+    sku_a = Ec::Sku.create!(sku_code: "TURN-A-#{token}", product_name: "周转范围商品A", is_active: true)
+    sku_b = Ec::Sku.create!(sku_code: "TURN-B-#{token}", product_name: "周转范围商品B", is_active: true)
+    sku_c = Ec::Sku.create!(sku_code: "TURN-C-#{token}", product_name: "周转范围商品C", is_active: true)
+    sku_d = Ec::Sku.create!(sku_code: "TURN-D-#{token}", product_name: "周转范围商品D", is_active: true)
+
+    account = RawOzon::SellerAccount.create!(
+      company_name: "turnover-filter-#{token}",
+      client_id: "turnover-filter-client-#{token}",
+      api_key: "turnover-filter-key-#{token}",
+      company_type: "small"
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "周转筛选店 #{token}",
+      company_type: "small",
+      ozon_raw_account_id: account.id,
+      is_active: true
+    )
+
+    [
+      [sku_a, "TURN-PROD-A-#{token}", "TURN-SKU-A-#{token}", "TURN-OFFER-A-#{token}"],
+      [sku_b, "TURN-PROD-B-#{token}", "TURN-SKU-B-#{token}", "TURN-OFFER-B-#{token}"],
+      [sku_c, "TURN-PROD-C-#{token}", "TURN-SKU-C-#{token}", "TURN-OFFER-C-#{token}"],
+      [sku_d, "TURN-PROD-D-#{token}", "TURN-SKU-D-#{token}", "TURN-OFFER-D-#{token}"]
+    ].each do |sku, product_id, platform_sku_id, offer_id|
+      Ec::SkuProduct.create!(
+        sku_code: sku.sku_code,
+        store: store,
+        product_id: product_id,
+        platform_sku_id: platform_sku_id,
+        offer_id: offer_id
+      )
+    end
+
+    [
+      [sku_a, 29],
+      [sku_b, 43],
+      [sku_c, 15],
+      [sku_d, 5]
+    ].each do |sku, received_quantity|
+      Ec::SkuBatch.create!(
+        sku_code: sku.sku_code,
+        batch_code: "TURN-BATCH-#{sku.sku_code}",
+        status: "received",
+        batch_type: :normal,
+        purchased_quantity: received_quantity,
+        received_quantity: received_quantity,
+        purchase_unit_price_cny: 1
+      )
+    end
+
+    Ec::SkuBatch.create!(
+      sku_code: sku_b.sku_code,
+      batch_code: "TURN-INCOMING-#{sku_b.sku_code}",
+      status: "ordered",
+      batch_type: :normal,
+      purchased_quantity: 100,
+      received_quantity: 0,
+      purchase_unit_price_cny: 1
+    )
+
+    [
+      [sku_a, "TURN-ORDER-A-#{token}", "TURN-SKU-A-#{token}", "TURN-OFFER-A-#{token}", 14],
+      [sku_b, "TURN-ORDER-B-#{token}", "TURN-SKU-B-#{token}", "TURN-OFFER-B-#{token}", 28],
+      [sku_d, "TURN-ORDER-D-#{token}", "TURN-SKU-D-#{token}", "TURN-OFFER-D-#{token}", 14]
+    ].each do |sku, external_id, platform_sku_id, offer_id, quantity|
+      ordered_at = 2.days.ago.change(hour: 10, min: 0, sec: 0)
+      order = Ec::Order.create!(
+        platform: "ozon",
+        store: store,
+        external_order_id: external_id,
+        external_order_number: external_id,
+        order_key: "ozon:#{store.id}:#{external_id}",
+        order_status: "delivered",
+        ordered_at: ordered_at,
+        synced_at: ordered_at + 5.minutes
+      )
+      order.items.create!(
+        platform: "ozon",
+        store: store,
+        external_item_id: "#{external_id}-I",
+        platform_sku_id: platform_sku_id,
+        offer_id: offer_id,
+        product_name_source: sku.product_name,
+        quantity: quantity,
+        unit_price: 100,
+        payout: 80,
+        commission_amount: 10,
+        discount_amount: 0,
+        currency_code: "BYN"
+      )
+    end
+
+    get "/reports/inventory",
+        params: { sku: "turn-", turnover_days_min: "10", turnover_days_max: "12" },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[name='turnover_days_min'][value='10']"
+    assert_select "input[name='turnover_days_max'][value='12']"
+    assert_select "input[name='procurement_turnover_days_min'][value='']"
+    assert_select "input[name='procurement_turnover_days_max'][value='']"
+    assert_select "input[name='include_blank_turnover']", count: 0
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", sku_a.sku_code
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", text: sku_b.sku_code, count: 0
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", text: sku_c.sku_code, count: 0
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", text: sku_d.sku_code, count: 0
+
+    sign_in @current_user
+    get "/reports/inventory",
+        params: { sku: "turn-", turnover_days_max: "150" },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "tbody tr.inventory-list-table__row", count: 2
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", sku_a.sku_code
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", sku_b.sku_code
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", text: sku_c.sku_code, count: 0
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", text: sku_d.sku_code, count: 0
+
+    sign_in @current_user
+    get "/reports/inventory",
+        params: { sku: "turn-", procurement_turnover_days_min: "40", procurement_turnover_days_max: "45" },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[name='procurement_turnover_days_min'][value='40']"
+    assert_select "input[name='procurement_turnover_days_max'][value='45']"
+    assert_select "tbody tr.inventory-list-table__row", count: 1
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", sku_b.sku_code
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", text: sku_a.sku_code, count: 0
+
+    sign_in @current_user
+    get "/reports/inventory",
+        params: { sku: "turn-", procurement_turnover_days_min: "40", procurement_turnover_days_max: "45", turnover_days_min: "10", turnover_days_max: "11" },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "tbody tr.inventory-list-table__row", count: 0
+  ensure
+    Ec::OrderItem.joins(:order).where(ec_orders: { store_id: store&.id }).delete_all if defined?(store)
+    Ec::Order.where(store_id: store&.id).delete_all if defined?(store)
+    Ec::SkuBatch.where(sku_code: [sku_a&.sku_code, sku_b&.sku_code, sku_c&.sku_code, sku_d&.sku_code].compact).delete_all
+    Ec::SkuProduct.where(sku_code: [sku_a&.sku_code, sku_b&.sku_code, sku_c&.sku_code, sku_d&.sku_code].compact).delete_all
+    Ec::Store.where(id: store&.id).delete_all if defined?(store)
+    RawOzon::SellerAccount.where(id: account&.id).delete_all if defined?(account)
+    Ec::Sku.with_deleted.where(id: [sku_a&.id, sku_b&.id, sku_c&.id, sku_d&.id].compact).delete_all
+  end
+
   test "inventory report paginates rows with 10 per page by default" do
     extra_skus = 22.times.map do |index|
       Ec::Sku.create!(
@@ -299,7 +463,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
-    fake_query_factory = lambda do |sku, metrics:|
+    fake_query_factory = lambda do |sku|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -371,7 +535,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
-    fake_query_factory = lambda do |sku, metrics:|
+    fake_query_factory = lambda do |sku|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -427,9 +591,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "inventory report uses inventory page row query for each filtered sku" do
-    Rails.cache.delete("reports/inventory/rows/v2/#{@sku_code}")
     calls = []
-    fake_query_factory = lambda do |sku, metrics:|
+    fake_query_factory = lambda do |sku|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           calls << sku.sku_code
@@ -474,7 +637,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_equal [@sku_code], calls
+    assert_equal [@sku_code, @sku_code], calls
     assert_equal 1, velocity_calls.size
     assert_equal [@sku_code], velocity_calls.first[0]
     assert_kind_of Date, velocity_calls.first[1]
@@ -486,7 +649,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", I18n.t("reports.inventory.fields.book_available_stock")
     assert_select "th", I18n.t("reports.inventory.fields.platform_stock")
     assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock")
-    assert_select "th", { text: I18n.t("reports.inventory.fields.cache_updated_at"), count: 0 }
     assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__subline", "10 × 20 × 30 cm"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(3) .inventory-list-table__subline", "0.0720 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(4) .inventory-list-table__subline", "0.0840 m³"
@@ -499,7 +661,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "21.14"
     assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@sku_code}", "inventory_drawer"
     assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", "/reports/inventory/#{@sku_code}", "inventory_drawer"
-    assert_select "form[action=?]", "/reports/inventory/#{@sku_code}/refresh_cache", count: 0
     assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@second_sku_code}", "inventory_drawer", count: 0
   end
 
@@ -724,49 +885,35 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-distribution-table__summary td", "5"
   end
 
-  test "inventory report caches each sku row until refresh" do
-    cache_store = ActiveSupport::Cache::MemoryStore.new
-    original_cache_store = Rails.cache
-    cache_key = "reports/inventory/rows/v2/#{@sku_code}"
+  test "inventory report recalculates each sku row on every request" do
+    live_sku = Ec::Sku.create!(
+      sku_code: "LIVE-#{@sku_code.delete_prefix("TST-")}",
+      product_name: "实时库存商品",
+      is_active: true
+    )
 
-    Rails.cache = cache_store
+    get "/reports/inventory", params: { sku: live_sku.sku_code.downcase }, headers: { "Accept" => "text/html" }
 
-    begin
-      get "/reports/inventory", headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(4) > div:first-child", "0"
 
-      assert_response :success
-      first_cached_row = Rails.cache.read(cache_key)
-      assert first_cached_row.present?
+    Ec::SkuBatch.create!(
+      sku_code: live_sku.sku_code,
+      batch_code: "LIVE-BATCH-#{@sku_code}",
+      status: "received",
+      purchased_quantity: 30,
+      received_quantity: 24,
+      purchase_unit_price_cny: 1
+    )
 
-      Ec::SkuBatch.create!(
-        sku_code: @sku.sku_code,
-        batch_code: "CACHE-#{@sku_code}",
-        status: "received",
-        purchased_quantity: 30,
-        received_quantity: 24,
-        purchase_unit_price_cny: 1
-      )
+    sign_in @current_user
+    get "/reports/inventory", params: { sku: live_sku.sku_code.downcase }, headers: { "Accept" => "text/html" }
 
-      sign_in @current_user
-      get "/reports/inventory", headers: { "Accept" => "text/html" }
-
-      assert_response :success
-      second_cached_row = Rails.cache.read(cache_key)
-      assert_equal first_cached_row.except(:cache_updated_at), second_cached_row.except(:cache_updated_at)
-
-      sign_in @current_user
-      post "/reports/inventory/#{@sku_code}/refresh_cache", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
-
-      assert_redirected_to "/reports/inventory?sku=#{@sku_code.downcase}"
-
-      sign_in @current_user
-      get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
-      assert_response :success
-      refreshed_cached_row = Rails.cache.read(cache_key)
-      assert_operator refreshed_cached_row[:book_stock], :>, second_cached_row[:book_stock]
-    ensure
-      Rails.cache = original_cache_store
-    end
+    assert_response :success
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(4) > div:first-child", "24"
+  ensure
+    Ec::SkuBatch.where(sku_code: live_sku&.sku_code).delete_all
+    live_sku&.destroy
   end
 
   test "skus report renders sku master data" do
