@@ -7,14 +7,14 @@ module Admin::McpDebugHelper
     case value
     when Hash
       content_tag(:details, class: "json-node", open: true) do
-        concat content_tag(:summary, "{ #{value.size} }")
+        concat content_tag(:summary, "{")
         concat content_tag(:ul) {
           safe_join(value.map { |key, child| content_tag(:li) { tag.strong(key.to_s) + ": ".html_safe + json_tree(child) } })
         }
       end
     when Array
       content_tag(:details, class: "json-node", open: true) do
-        concat content_tag(:summary, "[ #{value.size} ]")
+        concat content_tag(:summary, "[]")
         concat content_tag(:ol) {
           safe_join(value.map { |child| content_tag(:li) { json_tree(child) } })
         }
