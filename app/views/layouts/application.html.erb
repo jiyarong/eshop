@@ -187,7 +187,7 @@
                   </summary>
                   <div class="erp-account-menu__panel">
                     <%= link_to "个人设置", edit_profile_path, class: "erp-account-menu__item" %>
-                    <%= link_to t("app.change_password"), new_user_password_path, class: "erp-account-menu__item" %>
+                    <%= link_to t("app.change_password"), password_profile_path, class: "erp-account-menu__item" %>
                     <%= button_to t("app.sign_out"), destroy_user_session_path, class: "erp-account-menu__item erp-account-menu__button" %>
                   </div>
                 </details>

@@ -141,6 +141,13 @@ en:
       wb: "WB"
     "yes": "Yes"
   profiles:
+    password:
+      current_password: "Current password"
+      new_password: "New password"
+      password_confirmation: "Confirm new password"
+      submit: "Update password"
+      title: "Change password"
+      updated: "Password updated."
     api_keys:
       actions: "Actions"
       active_status: "Active"

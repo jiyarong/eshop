@@ -112,6 +112,13 @@ ru:
       wb: "WB"
     "yes": "Да"
   profiles:
+    password:
+      current_password: "Текущий пароль"
+      new_password: "Новый пароль"
+      password_confirmation: "Подтвердите новый пароль"
+      submit: "Обновить пароль"
+      title: "Изменить пароль"
+      updated: "Пароль обновлен."
     api_keys:
       actions: "Действия"
       active_status: "Активен"

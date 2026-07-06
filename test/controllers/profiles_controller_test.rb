@@ -39,6 +39,84 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "UTC", @user.reload.time_zone
   end
 
+  test "user can change password from profile password page" do
+    sign_out @user
+    post user_session_path,
+      params: { user: { email: @user.email, password: "password123" } },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to root_path
+
+    get "/profile/password", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "form[action=?][method='post']", "/profile/password" do
+      assert_select "input[name='_method'][value='patch']"
+      assert_select "input[name=?]", "password_change[current_password]"
+      assert_select "input[name=?]", "password_change[password]"
+      assert_select "input[name=?]", "password_change[password_confirmation]"
+    end
+
+    patch "/profile/password",
+      params: {
+        password_change: {
+          current_password: "password123",
+          password: "new-password-123",
+          password_confirmation: "new-password-123"
+        }
+      },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to "/profile/edit"
+    assert @user.reload.valid_password?("new-password-123")
+  end
+
+  test "password mismatch renders localized validation message" do
+    sign_out @user
+    post user_session_path,
+      params: { user: { email: @user.email, password: "password123" } },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to root_path
+
+    patch "/profile/password",
+      params: {
+        password_change: {
+          current_password: "password123",
+          password: "new-password-123",
+          password_confirmation: "different-password"
+        }
+      },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :unprocessable_entity
+    assert_no_match "Translation missing", response.body
+    assert_match(/确认新密码\s*与新密码不一致/, response.body)
+  end
+
+  test "short password renders localized validation message" do
+    sign_out @user
+    post user_session_path,
+      params: { user: { email: @user.email, password: "password123" } },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to root_path
+
+    patch "/profile/password",
+      params: {
+        password_change: {
+          current_password: "password123",
+          password: "short",
+          password_confirmation: "short"
+        }
+      },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :unprocessable_entity
+    assert_no_match "Translation missing", response.body
+    assert_match(/新密码\s*过短/, response.body)
+  end
+
   test "user can generate own api key and copy the raw token once" do
     assert_difference "UserApiKey.where(user: @user).count", 1 do
       post "/profile/api_keys", params: { api_key: { name: "AI" } }, headers: { "Accept" => "text/html" }

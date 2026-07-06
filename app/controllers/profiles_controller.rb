@@ -12,6 +12,22 @@ class ProfilesController < ApplicationController
     end
   end
 
+  def edit_password
+    @user = current_user
+  end
+
+  def update_password
+    @user = current_user
+
+    if @user.update_with_password(password_params)
+      bypass_sign_in @user
+      redirect_to edit_profile_path, notice: t("profiles.password.updated")
+    else
+      @user.clean_up_passwords
+      render :edit_password, status: :unprocessable_entity
+    end
+  end
+
   def create_api_key
     raw_token, = UserApiKey.generate_for!(current_user, name: api_key_name)
 
@@ -34,6 +50,10 @@ class ProfilesController < ApplicationController
 
   def profile_params
     params.require(:user).permit(:time_zone)
+  end
+
+  def password_params
+    params.require(:password_change).permit(:current_password, :password, :password_confirmation)
   end
 
   def api_key_name

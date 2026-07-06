@@ -28,6 +28,8 @@ Rails.application.routes.draw do
   resources :orders, only: [:index, :show]
   post "profile" => "profiles#update"
   resource :profile, only: [:edit, :update] do
+    get "password" => "profiles#edit_password"
+    patch "password" => "profiles#update_password"
     post "api_keys" => "profiles#create_api_key"
     patch "api_keys/:api_key_id/revoke" => "profiles#revoke_api_key", as: :revoke_api_key
   end

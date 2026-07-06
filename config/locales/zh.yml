@@ -59,6 +59,16 @@ zh:
       unauthenticated: "请先登录。"
     sessions:
       signed_out: "已退出登录。"
+  activerecord:
+    attributes:
+      user:
+        current_password: "当前密码"
+        password: "新密码"
+        password_confirmation: "确认新密码"
+  errors:
+    messages:
+      confirmation: "与%{attribute}不一致"
+      too_short: "过短，至少需要 %{count} 个字符"
   navigation:
     sections:
       dashboard: "经营看板"
@@ -112,6 +122,13 @@ zh:
       wb: "WB"
     "yes": "是"
   profiles:
+    password:
+      current_password: "当前密码"
+      new_password: "新密码"
+      password_confirmation: "确认新密码"
+      submit: "更新密码"
+      title: "修改密码"
+      updated: "密码已更新。"
     api_keys:
       actions: "操作"
       active_status: "启用"
