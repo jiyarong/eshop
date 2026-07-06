@@ -31,21 +31,30 @@ module InlineEditableResponse
   def render_inline_edit_success(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:)
     render turbo_stream: [
       turbo_stream.replace(frame_id, partial: cell_partial, locals: cell_locals),
-      turbo_stream.update(feedback_target, inline_feedback_markup(tone: :success, message: message))
+      turbo_stream.update(feedback_target, global_toast_markup(tone: :success, message: message))
     ]
   end
 
   def render_inline_edit_failure(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:)
     render status: :unprocessable_entity, turbo_stream: [
       turbo_stream.replace(frame_id, partial: cell_partial, locals: cell_locals),
-      turbo_stream.update(feedback_target, inline_feedback_markup(tone: :error, message: message))
+      turbo_stream.update(feedback_target, global_toast_markup(tone: :error, message: message))
     ]
   end
 
-  def inline_feedback_markup(tone:, message:)
-    classes = ["panel", "inline-edit-feedback", "inline-edit-feedback--#{tone}"]
+  def global_toast_markup(tone:, message:)
+    classes = ["panel", "global-toast", "global-toast--#{tone}"]
     classes << "error-box" if tone.to_sym == :error
 
-    view_context.tag.div(message, class: classes.join(" "), role: "status", aria: { live: "polite" })
+    view_context.tag.div(
+      message,
+      class: classes.join(" "),
+      role: "status",
+      data: {
+        controller: "toast",
+        toast_delay_value: 2400
+      },
+      aria: { live: "polite" }
+    )
   end
 end

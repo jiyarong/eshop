@@ -5,6 +5,10 @@
     </div>
   <% end %>
 
+  <% if params[:return_to].present? %>
+    <%= hidden_field_tag :return_to, params[:return_to] %>
+  <% end %>
+
   <div class="report-form">
     <div class="field">
       <%= form.label :sku_code, "SKU" %>
@@ -17,6 +21,10 @@
     <div class="field">
       <%= form.label :status, t("erp.common.status") %>
       <%= form.select :status, Ec::SkuBatch::STATUSES %>
+    </div>
+    <div class="field">
+      <%= form.label :purchase_date, t("erp.sku_batches.fields.purchase_date") %>
+      <%= form.date_field :purchase_date %>
     </div>
     <div class="field">
       <%= form.label :purchased_quantity, t("erp.sku_batches.fields.purchased_quantity") %>

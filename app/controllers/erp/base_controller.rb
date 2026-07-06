@@ -1,6 +1,6 @@
 module Erp
   class BaseController < ApplicationController
-    helper_method :erp_value, :current_locale_params
+    helper_method :erp_value, :current_locale_params, :current_page_return_to
     before_action -> { require_permission!(:view_erp) }
 
     private
@@ -22,6 +22,14 @@ module Erp
 
     def current_locale_params
       params[:locale].present? ? { locale: params[:locale] } : {}
+    end
+
+    def current_page_return_to
+      request.fullpath
+    end
+
+    def safe_return_to(fallback)
+      url_from(params[:return_to].presence)&.to_s.presence || fallback
     end
 
   end

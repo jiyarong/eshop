@@ -4,6 +4,7 @@ module Erp
 
     INLINE_EDITABLE_FIELDS = %w[
       batch_code
+      purchase_date
       expected_arrival_on
       received_on
       purchased_quantity
@@ -11,8 +12,8 @@ module Erp
       status
     ].freeze
 
-    before_action :set_batch, only: [:show, :edit, :update]
-    before_action -> { require_any_permission!(:manage_purchases, :manage_inventory) }, only: [:new, :create, :edit, :update]
+    before_action :set_batch, only: [:show, :edit, :update, :destroy]
+    before_action -> { require_any_permission!(:manage_purchases, :manage_inventory) }, only: [:new, :create, :edit, :update, :destroy]
 
     def index
       @batches = Ec::SkuBatch.includes(:sku).order(created_at: :desc)
@@ -46,7 +47,7 @@ module Erp
     def create
       @batch = Ec::SkuBatch.new(batch_params)
       if @batch.save
-        redirect_to erp_skus_path
+        redirect_to safe_return_to(erp_skus_path(current_locale_params))
       else
         load_sku_options
         render_modal_or_page(:new, :new_modal, status: :unprocessable_entity)
@@ -57,17 +58,29 @@ module Erp
       return update_inline_field if inline_edit_request?
 
       if @batch.update(batch_params)
-        redirect_to erp_skus_path
+        redirect_to safe_return_to(erp_skus_path(current_locale_params))
       else
         load_sku_options
         render_modal_or_page(:edit, :edit_modal, status: :unprocessable_entity)
       end
     end
 
+    def destroy
+      if @batch.cost_allocation_items.exists? || @batch.purchase_order_items.exists?
+        redirect_to safe_return_to(erp_skus_path(current_locale_params)), alert: t("erp.sku_batches.messages.delete_blocked"), status: :see_other
+        return
+      end
+
+      @batch.destroy!
+      redirect_to safe_return_to(erp_skus_path(current_locale_params)), notice: t("erp.sku_batches.messages.deleted"), status: :see_other
+    rescue ActiveRecord::InvalidForeignKey, ActiveRecord::DeleteRestrictionError
+      redirect_to safe_return_to(erp_skus_path(current_locale_params)), alert: t("erp.sku_batches.messages.delete_blocked"), status: :see_other
+    end
+
     private
 
     def set_batch
-      @batch = Ec::SkuBatch.includes(:sku, :cost_allocation_items).find(params[:id])
+      @batch = Ec::SkuBatch.includes(:sku, :cost_allocation_items, :purchase_order_items).find(params[:id])
     end
 
     def load_sku_options
@@ -79,6 +92,7 @@ module Erp
         :sku_code,
         :batch_code,
         :status,
+        :purchase_date,
         :purchased_quantity,
         :received_quantity,
         :purchase_unit_price_cny,

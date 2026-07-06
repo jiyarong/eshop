@@ -1,0 +1,8 @@
+<% flash.each do |type, message| %>
+  <% tone = type.to_s == "notice" ? "success" : "error" %>
+  <% classes = ["panel", "global-toast", "global-toast--#{tone}"] %>
+  <% classes << "error-box" if tone == "error" %>
+  <div class="<%= classes.join(" ") %>" role="status" aria-live="polite" data-controller="toast" data-toast-delay-value="2400">
+    <%= message %>
+  </div>
+<% end %>

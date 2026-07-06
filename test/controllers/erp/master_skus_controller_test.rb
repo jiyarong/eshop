@@ -20,7 +20,7 @@ class Erp::MasterSkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-frame#erp_modal"
     assert_select ".erp-modal"
-    assert_select "h2", "新增产品"
+    assert_select "h2", "新增 SPU"
     assert_select "form[action='/erp/master_skus'][data-turbo-frame='_top']"
     assert_select "input[name='ec_master_sku[master_sku_code]']"
   end
@@ -37,7 +37,7 @@ class Erp::MasterSkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-frame#erp_modal"
     assert_select ".erp-modal"
-    assert_select "h2", "编辑产品"
+    assert_select "h2", "编辑 SPU"
     assert_select "form[action='#{erp_master_sku_path(master_sku)}'][data-turbo-frame='_top']"
     assert_select "input[name='ec_master_sku[product_name]'][value=?]", "待编辑主产品"
   end
@@ -109,7 +109,7 @@ class Erp::MasterSkusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_select "turbo-frame#erp_modal"
-    assert_select "h2", "编辑产品"
+    assert_select "h2", "编辑 SPU"
     assert_select ".error-box"
   end
 end

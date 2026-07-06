@@ -73,7 +73,7 @@ ru:
     skus: "SKU"
     sku_sales: "Продажи SKU"
     costs: "Затраты"
-    erp_skus: "Управление SKU"
+    erp_skus: "Управление SPU"
     erp_stores: "Настройки магазинов"
     sku_categories: "Категории SKU"
     sku_batches: "Партии ERP"
@@ -186,7 +186,7 @@ ru:
       record_types:
         ec:
           cost_allocation: "Распределение затрат"
-          master_sku: "Master SKU"
+          master_sku: "SPU"
           purchase_order: "Закупка"
           sku: "SKU"
           sku_batch: "Партия"
@@ -447,7 +447,7 @@ ru:
         last_ordered_at: "Последний заказ"
         listed_at: "Дата размещения"
         margin: "Маржа"
-        master_sku: "Master SKU"
+        master_sku: "SPU"
         misc_cost_cny: "Прочие расходы CNY"
         model: "Модель"
         note: "Примечание"
@@ -585,6 +585,8 @@ ru:
       actions:
         add_batch: "Добавить партию"
         add_sku_batch: "Добавить партию SKU"
+        confirm_delete_batch: "Удалить эту партию?"
+        delete_batch: "Удалить партию"
         edit_batch: "Редактировать партию"
         edit_sku_batch: "Редактировать партию SKU"
       fields:
@@ -610,6 +612,9 @@ ru:
         received: "Получено"
       index:
         title: "Партии SKU"
+      messages:
+        delete_blocked: "Эта партия используется в других записях и не может быть удалена."
+        deleted: "Партия удалена."
     inline_edit:
       messages:
         save_failed: "Не удалось сохранить. Проверьте значение и повторите."
@@ -678,11 +683,11 @@ ru:
         wb_category: "Категория WB"
     skus:
       actions:
-        add_product: "Добавить продукт"
+        add_product: "Добавить SPU"
         add_sku: "Добавить SKU"
         confirm_delete_sku: "Удалить этот SKU?"
         delete_sku: "Удалить SKU"
-        edit_product: "Редактировать продукт"
+        edit_product: "Редактировать SPU"
         edit_sku: "Редактировать SKU"
       empty:
         no_batches: "Записей партий пока нет."
@@ -693,6 +698,7 @@ ru:
         color: "Цвет"
         features: "Особенности"
         listed: "Размещен"
+        master_sku: "SPU"
         model: "Модель"
         purchased: "Закуплено"
         quality_grade: "Качество"
@@ -704,17 +710,18 @@ ru:
         weight_kg: "Вес kg"
       filters:
         all_categories: "Все категории"
-        search_placeholder: "Поиск Master SKU, китайского или русского названия..."
+        search_placeholder: "Поиск SPU, китайского или русского названия..."
       index:
-        active_products: "Активные продукты"
+        active_products: "Активные SPU"
         batch_list: "Список партий"
+        hierarchy: "SPU · SKU · Склад партий"
         product_overview: "Обзор продуктов"
         showing_recent_batches: "Показаны последние %{shown} / %{total} партий"
         sku_batches_label: "Партии %{sku}"
         sku_variants:
           one: "Варианты SKU · %{count}"
           other: "Варианты SKU · %{count}"
-        title: "Управление продуктами"
+        title: "Управление SPU"
         unfiled: "Без группы"
       statuses:
         active: "Активен"

@@ -9,6 +9,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     @batch = Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,
       batch_code: "ERP-BATCH-#{@token}",
+      purchase_date: Date.new(2026, 6, 1),
       purchased_quantity: 100,
       received_quantity: 80,
       purchase_unit_price_cny: 12.5
@@ -32,6 +33,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "SKU 批次"
     assert_select "td", @batch.batch_code
     assert_select "td", @sku.sku_code
+    assert_select "a[data-turbo-method='delete'][data-turbo-confirm=?][href=?]", "确认删除这个批次？", erp_sku_batch_path(@batch, return_to: "/erp/sku_batches"), minimum: 1
   end
 
   test "index localizes visible chrome in english" do
@@ -39,12 +41,15 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "SKU Batches"
-    assert_select "a[href=?]", erp_new_sku_batch_path(locale: "en"), "Add SKU batch"
+    assert_select "a[href=?]", erp_new_sku_batch_path(locale: "en", return_to: "/erp/sku_batches?locale=en"), "Add SKU batch"
     assert_select "th", "Batch number"
     assert_select "th", "Product name"
     assert_select "th", "Purchased quantity"
     assert_select "th", "Received quantity"
     assert_select "th", "Purchase unit price"
+    assert_select "a[href='#{erp_sku_batch_path(@batch, locale: "en", return_to: "/erp/sku_batches?locale=en")}'][data-turbo-method='delete']", minimum: 1 do |links|
+      assert_equal "Delete this batch?", links.first["data-turbo-confirm"]
+    end
   end
 
   test "show renders batch cost summary" do
@@ -73,26 +78,31 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "新增 SKU 批次"
     assert_select "form[action='/erp/sku_batches']"
+    assert_select "input[name='ec_sku_batch[purchase_date]']"
   end
 
   test "modal new renders batch form with selected sku" do
-    get "/erp/sku_batches/new", params: { sku_code: @sku.sku_code }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+    get "/erp/sku_batches/new", params: { sku_code: @sku.sku_code, return_to: "/erp/skus?status=active" }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
 
     assert_response :success
     assert_select "turbo-frame#erp_modal"
     assert_select ".erp-modal"
     assert_select "form[action='/erp/sku_batches'][data-turbo-frame='_top']"
     assert_select "select[name='ec_sku_batch[sku_code]'] option[selected='selected'][value=?]", @sku.sku_code
+    assert_select "input[name='ec_sku_batch[purchase_date]']"
+    assert_select "input[name='return_to'][value='/erp/skus?status=active']"
   end
 
   test "modal edit renders batch form" do
-    get "/erp/sku_batches/#{@batch.id}/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+    get "/erp/sku_batches/#{@batch.id}/edit", params: { return_to: "/erp/skus?q=ERP" }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
 
     assert_response :success
     assert_select "turbo-frame#erp_modal"
     assert_select ".erp-modal"
     assert_select "h2", "编辑批次"
     assert_select "form[action='#{erp_sku_batch_path(@batch)}'][data-turbo-frame='_top']"
+    assert_select "input[name='ec_sku_batch[purchase_date]'][value=?]", @batch.purchase_date.to_s
+    assert_select "input[name='return_to'][value='/erp/skus?q=ERP']"
   end
 
   test "batch modal form localizes visible chrome in english" do
@@ -103,18 +113,21 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label=?]", "Close"
     assert_select "label", "Batch number"
     assert_select "label", "Status"
+    assert_select "label", "Purchase date"
     assert_select "label", "Expected arrival"
     assert_select "label", "Actual arrival"
     assert_select "input[type='submit'][value=?]", "Save"
   end
 
-  test "create batch returns to sku list" do
+  test "create batch returns to supplied page context" do
     assert_difference "Ec::SkuBatch.count", 1 do
       post "/erp/sku_batches", params: {
+        return_to: "/erp/skus?status=active&q=batch",
         ec_sku_batch: {
           sku_code: @sku.sku_code,
           batch_code: "created-batch-#{@token}",
           status: "ordered",
+          purchase_date: "2026-06-10",
           purchased_quantity: "120",
           received_quantity: "20",
           purchase_unit_price_cny: "11.5",
@@ -125,8 +138,9 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     end
 
     created = Ec::SkuBatch.find_by!(batch_code: "CREATED-BATCH-#{@token}")
-    assert_redirected_to "/erp/skus"
+    assert_redirected_to "/erp/skus?status=active&q=batch"
     assert_equal "ordered", created.status
+    assert_equal Date.new(2026, 6, 10), created.purchase_date
     assert_equal 120, created.purchased_quantity
   end
 
@@ -146,7 +160,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".error-box"
   end
 
-  test "edit and update batch returns to sku list" do
+  test "edit and update batch returns to supplied page context" do
     get "/erp/sku_batches/#{@batch.id}/edit", headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -154,18 +168,52 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
 
     sign_in @current_user
     patch "/erp/sku_batches/#{@batch.id}", params: {
+      return_to: "/erp/skus?status=inactive",
       ec_sku_batch: {
         status: "received",
+        purchase_date: "2026-06-02",
         received_quantity: "100",
         received_on: "2026-06-20"
       }
     }
 
-    assert_redirected_to "/erp/skus"
+    assert_redirected_to "/erp/skus?status=inactive"
     @batch.reload
     assert_equal "received", @batch.status
+    assert_equal Date.new(2026, 6, 2), @batch.purchase_date
     assert_equal 100, @batch.received_quantity
     assert_equal Date.new(2026, 6, 20), @batch.received_on
+  end
+
+  test "inline update persists purchase date" do
+    patch "/erp/sku_batches/#{@batch.id}",
+      params: {
+        inline_field: "purchase_date",
+        inline_context: {
+          frame_id: "sku_batch_#{@batch.id}_purchase_date_cell"
+        },
+        ec_sku_batch: {
+          purchase_date: "2026-06-11"
+        }
+      },
+      headers: {
+        "Accept" => "text/vnd.turbo-stream.html"
+      }
+
+    assert_response :success
+    @batch.reload
+    assert_equal Date.new(2026, 6, 11), @batch.purchase_date
+    assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_purchase_date_cell']" do
+      assert_select "template", "2026-06-11"
+    end
+  end
+
+  test "destroy batch returns to sku list" do
+    assert_difference "Ec::SkuBatch.count", -1 do
+      delete "/erp/sku_batches/#{@batch.id}"
+    end
+
+    assert_redirected_to "/erp/skus"
   end
 
   test "invalid modal update rerenders batch form" do
@@ -188,8 +236,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       params: {
         inline_field: "status",
         inline_context: {
-          frame_id: "sku_batch_#{@batch.id}_status_cell",
-          feedback_target: "batch-inline-feedback--sku-#{@sku.id}"
+          frame_id: "sku_batch_#{@batch.id}_status_cell"
         },
         ec_sku_batch: {
           status: "received"
@@ -209,10 +256,10 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       assert_select "template", I18n.t("erp.sku_batches.statuses.received")
     end
     assert_includes response.body, I18n.t("erp.sku_batches.statuses.received")
-    assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
-    assert_select "turbo-stream[action='update'][target='batch-inline-feedback--sku-#{@sku.id}']" do
-      assert_select "template .panel"
-      assert_select "template .panel.error-box", 0
+    assert_includes response.body, %(target="global_toast")
+    assert_select "turbo-stream[action='update'][target='global_toast']" do
+      assert_select "template .global-toast.global-toast--success", I18n.t("erp.inline_edit.messages.saved")
+      assert_select "template .global-toast.error-box", 0
     end
   end
 
@@ -221,8 +268,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       params: {
         inline_field: "batch_code",
         inline_context: {
-          frame_id: "sku_batch_#{@batch.id}_batch_code_cell",
-          feedback_target: "batch-inline-feedback--sku-#{@sku.id}"
+          frame_id: "sku_batch_#{@batch.id}_batch_code_cell"
         },
         ec_sku_batch: {
           batch_code: ""
@@ -244,10 +290,10 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
         assert_select ".error-box", /.+/
       end
     end
-    assert_includes response.body, %(target="batch-inline-feedback--sku-#{@sku.id}")
+    assert_includes response.body, %(target="global_toast")
     assert_includes response.body, "error-box"
-    assert_select "turbo-stream[action='update'][target='batch-inline-feedback--sku-#{@sku.id}']" do
-      assert_select "template .error-box"
+    assert_select "turbo-stream[action='update'][target='global_toast']" do
+      assert_select "template .global-toast.global-toast--error.error-box", I18n.t("erp.inline_edit.messages.save_failed")
     end
   end
 end

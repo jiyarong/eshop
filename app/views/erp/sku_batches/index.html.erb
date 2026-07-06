@@ -1,7 +1,7 @@
 <h1 class="page-title"><%= t("erp.sku_batches.index.title") %></h1>
 
 <section class="panel">
-  <p><%= link_to t("erp.sku_batches.actions.add_sku_batch"), erp_new_sku_batch_path(current_locale_params), class: "button" %></p>
+  <p><%= link_to t("erp.sku_batches.actions.add_sku_batch"), erp_new_sku_batch_path(current_locale_params.merge(return_to: current_page_return_to)), class: "button" %></p>
   <div class="table-scroll">
     <table>
       <thead>
@@ -13,6 +13,7 @@
           <th><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
           <th><%= t("erp.sku_batches.fields.received_quantity") %></th>
           <th><%= t("erp.sku_batches.fields.purchase_unit_price") %></th>
+          <th><%= t("erp.common.actions.actions") %></th>
         </tr>
       </thead>
       <tbody>
@@ -25,6 +26,18 @@
             <td><%= batch.purchased_quantity %></td>
             <td><%= batch.received_quantity %></td>
             <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
+            <td>
+              <div class="row-actions">
+                <%= link_to erp_edit_sku_batch_path(batch, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                  <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
+                <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
+                <%= link_to erp_sku_batch_path(batch, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.sku_batches.actions.delete_batch"), data: { turbo_method: :delete, turbo_confirm: t("erp.sku_batches.actions.confirm_delete_batch") } do %>
+                  <i class="bi bi-trash" aria-hidden="true"></i>
+                  <span class="sr-only"><%= t("erp.sku_batches.actions.delete_batch") %></span>
+                <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
+              </div>
+            </td>
           </tr>
         <% end %>
       </tbody>

@@ -102,7 +102,7 @@ en:
     skus: "SKU"
     sku_sales: "SKU Sales"
     costs: "Costs"
-    erp_skus: "SKU Management"
+    erp_skus: "SPU Management"
     erp_stores: "Store Settings"
     sku_categories: "SKU Categories"
     sku_batches: "ERP Batches"
@@ -215,7 +215,7 @@ en:
       record_types:
         ec:
           cost_allocation: "Cost Allocation"
-          master_sku: "Master SKU"
+          master_sku: "SPU"
           purchase_order: "Purchase Order"
           sku: "SKU"
           sku_batch: "Batch"
@@ -478,7 +478,7 @@ en:
         last_ordered_at: "Last ordered at"
         listed_at: "Listed at"
         margin: "Margin"
-        master_sku: "Master SKU"
+        master_sku: "SPU"
         misc_cost_cny: "Misc cost CNY"
         model: "Model"
         note: "Note"
@@ -629,6 +629,8 @@ en:
       actions:
         add_batch: "Add batch"
         add_sku_batch: "Add SKU batch"
+        confirm_delete_batch: "Delete this batch?"
+        delete_batch: "Delete batch"
         edit_batch: "Edit batch"
         edit_sku_batch: "Edit SKU batch"
       fields:
@@ -654,6 +656,9 @@ en:
         received: "Received"
       index:
         title: "SKU Batches"
+      messages:
+        delete_blocked: "This batch is referenced by other records and cannot be deleted."
+        deleted: "Batch deleted."
     inline_edit:
       messages:
         save_failed: "Save failed. Check the value and try again."
@@ -722,11 +727,11 @@ en:
         wb_category: "WB category"
     skus:
       actions:
-        add_product: "Add product"
+        add_product: "Add SPU"
         add_sku: "Add SKU"
         confirm_delete_sku: "Delete this SKU?"
         delete_sku: "Delete SKU"
-        edit_product: "Edit product"
+        edit_product: "Edit SPU"
         edit_sku: "Edit SKU"
       empty:
         no_batches: "No batch records yet."
@@ -737,6 +742,7 @@ en:
         color: "Color"
         features: "Features"
         listed: "Listed"
+        master_sku: "SPU"
         model: "Model"
         purchased: "Purchased"
         quality_grade: "Quality"
@@ -748,17 +754,18 @@ en:
         weight_kg: "Weight kg"
       filters:
         all_categories: "All categories"
-        search_placeholder: "Search Master SKU, Chinese name, or Russian name..."
+        search_placeholder: "Search SPU, Chinese name, or Russian name..."
       index:
-        active_products: "Active products"
+        active_products: "Active SPUs"
         batch_list: "Batch list"
+        hierarchy: "SPU · SKU · Batch Inventory"
         product_overview: "Product overview"
         showing_recent_batches: "Showing latest %{shown} / %{total} batches"
         sku_batches_label: "%{sku} batches"
         sku_variants:
           one: "SKU variants · %{count} item"
           other: "SKU variants · %{count} items"
-        title: "Product Management"
+        title: "SPU Management"
         unfiled: "Unfiled"
       statuses:
         active: "Active"

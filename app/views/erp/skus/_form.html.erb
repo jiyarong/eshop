@@ -7,7 +7,7 @@
 
   <div class="report-form">
     <div class="field">
-      <%= form.label :master_sku_id, "Master SKU" %>
+      <%= form.label :master_sku_id, t("erp.skus.fields.master_sku") %>
       <%= form.collection_select :master_sku_id, master_sku_options, :id, :master_sku_code, { include_blank: t("erp.common.none") } %>
     </div>
     <div class="field">

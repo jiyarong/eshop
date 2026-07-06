@@ -8,7 +8,7 @@ class Admin::FeedbackTasksControllerTest < ActionDispatch::IntegrationTest
     @task = FeedbackTask.create!(
       user: @viewer,
       page_url: "/erp/skus",
-      page_title: "SKU 管理",
+      page_title: "SPU 管理",
       issue_type: "layout",
       description: "表格太宽",
       selector: "main table"

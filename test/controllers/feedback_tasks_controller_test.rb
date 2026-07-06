@@ -19,12 +19,12 @@ class FeedbackTasksControllerTest < ActionDispatch::IntegrationTest
       post "/feedback_tasks", params: {
         feedback_task: {
           page_url: "/erp/skus",
-          page_title: "SKU 管理",
+          page_title: "SPU 管理",
           issue_type: "copy",
           description: "字段名称不清楚",
           suggestion: "改成业务人员能理解的名称",
           selector: "main h1",
-          element_text: "SKU 管理",
+          element_text: "SPU 管理",
           element_rect: { x: 24, y: 80, width: 120, height: 32 },
           scroll_x: 0,
           scroll_y: 0,

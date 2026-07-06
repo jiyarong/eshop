@@ -27,6 +27,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
       sku_code: @sku.sku_code,
       batch_code: "BATCH-#{@token}-A",
       status: "received",
+      purchase_date: Date.parse("2026-05-12"),
       purchased_quantity: 200,
       received_quantity: 180,
       purchase_unit_price_cny: 12.5,
@@ -56,10 +57,10 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     get "/erp/skus", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "h1", "产品管理"
+    assert_select "h1", "SPU 管理"
     assert_select ".product-management"
     assert_select ".page-h"
-    assert_select ".product-page-actions a", text: "新增产品"
+    assert_select ".product-page-actions a", text: "新增 SPU"
     assert_no_match "Import", response.body
     assert_no_match "展开全部", response.body
     assert_no_match "收起全部", response.body
@@ -70,7 +71,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".product-summary-card", 4
     assert_select ".card.product-list-card"
     assert_select ".prod-tbl"
-    assert_select ".prod-tbl thead th", text: "Master SKU"
+    assert_select ".prod-tbl thead th", text: "SPU"
     assert_select ".prod-tbl thead th", text: "中文名"
     assert_select ".prod-tbl thead th", text: "俄文名"
     assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
@@ -101,13 +102,14 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".badge.badge-suc", text: "Active"
     assert_select ".badge.badge-sec", text: "下架"
     assert_select "turbo-frame#erp_modal"
-    assert_select "a[href='#{erp_new_master_sku_path}'][data-turbo-frame='erp_modal']", text: "新增产品"
-    assert_select "a[href='#{erp_edit_master_sku_path(@master_sku)}'][data-turbo-frame='erp_modal']", text: "编辑产品"
+    assert_select "a[href='#{erp_new_master_sku_path}'][data-turbo-frame='erp_modal']", text: "新增 SPU"
+    assert_select "a[href='#{erp_edit_master_sku_path(@master_sku)}'][data-turbo-frame='erp_modal']", text: "编辑 SPU"
     assert_select "a[href='#{erp_new_sku_path(master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "新增 SKU"
     assert_select "a[href='#{erp_edit_sku_path(@sku)}'][data-turbo-frame='erp_modal']", text: "编辑"
     assert_select "a[href='#{erp_sku_path(@sku)}'][data-turbo-method='delete'][data-turbo-confirm=?]", "确认删除这个 SKU？", minimum: 1
-    assert_select "a[href='#{erp_new_sku_batch_path(sku_code: @sku.sku_code)}'][data-turbo-frame='erp_modal']", text: "新增批次"
-    assert_select "a[href='#{erp_edit_sku_batch_path(@batch)}'][data-turbo-frame='erp_modal']", text: "编辑"
+    assert_select "a[href='#{erp_new_sku_batch_path(sku_code: @sku.sku_code, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "新增批次"
+    assert_select "a[href='#{erp_edit_sku_batch_path(@batch, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "编辑"
+    assert_select "a[data-turbo-method='delete'][data-turbo-confirm=?][href=?]", "确认删除这个批次？", erp_sku_batch_path(@batch, return_to: "/erp/skus"), minimum: 1
   end
 
   test "inventory batch rows render inline editable cell frames" do
@@ -115,29 +117,30 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell", count: 1
     assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell", count: 1
     assert_select "turbo-frame#sku_batch_#{@batch.id}_received_on_cell", count: 1
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell", count: 1
     assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell", count: 1
     assert_select "turbo-frame#sku_batch_#{@batch.id}_status_cell", count: 1
-    assert_select "#batch-inline-feedback--sku-#{@sku.id}", count: 1
+    assert_select "#global_toast", count: 1
+    assert_select "#batch-inline-feedback--sku-#{@sku.id}", count: 0
     assert_select "tr.batch-row[hidden] table.batch-tbl tbody tr", count: 1 do
-      assert_select "td:nth-of-type(2) .barcode", text: @batch.created_at.to_date.to_s
+      assert_select "td:nth-of-type(2) .inline-edit-cell--display", text: @batch.purchase_date.to_s
     end
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell", count: 0
-    assert_match @batch.created_at.to_date.to_s, response.body
+    assert_match @batch.purchase_date.to_s, response.body
   end
 
   test "index localizes visible chrome in english" do
     get "/erp/skus", params: { locale: "en" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "h1", "Product Management"
-    assert_select ".product-page-actions a", text: "Add product"
+    assert_select "h1", "SPU Management"
+    assert_select ".product-page-actions a", text: "Add SPU"
     assert_select ".product-summary-grid[aria-label=?]", "Product overview"
     assert_select ".summary-label", "Batches"
-    assert_select ".summary-label", "Active products"
-    assert_select "input[placeholder=?]", "Search Master SKU, Chinese name, or Russian name..."
+    assert_select ".summary-label", "Active SPUs"
+    assert_select "input[placeholder=?]", "Search SPU, Chinese name, or Russian name..."
     assert_select "label", "Status"
     assert_select "option", "All"
     assert_select "option", "Enabled"
@@ -152,12 +155,15 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".batch-tbl th", text: "Purchase date"
     assert_select ".badge.badge-suc", text: "Active"
     assert_select ".badge.badge-sec", text: "Inactive"
-    assert_select "a[href='#{erp_new_master_sku_path(locale: "en")}'][data-turbo-frame='erp_modal']", text: "Add product"
+    assert_select "a[href='#{erp_new_master_sku_path(locale: "en")}'][data-turbo-frame='erp_modal']", text: "Add SPU"
     assert_select "a[href='#{erp_new_sku_path(locale: "en", master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "Add SKU"
     assert_select "a[href='#{erp_sku_path(@sku, locale: "en")}'][data-turbo-method='delete']", minimum: 1 do |links|
       assert_equal "Delete this SKU?", links.first["data-turbo-confirm"]
     end
-    assert_select "a[href='#{erp_new_sku_batch_path(locale: "en", sku_code: @sku.sku_code)}'][data-turbo-frame='erp_modal']", text: "Add batch"
+    assert_select "a[href='#{erp_new_sku_batch_path(locale: "en", sku_code: @sku.sku_code, return_to: "/erp/skus?locale=en")}'][data-turbo-frame='erp_modal']", text: "Add batch"
+    assert_select "a[href='#{erp_sku_batch_path(@batch, locale: "en", return_to: "/erp/skus?locale=en")}'][data-turbo-method='delete']", minimum: 1 do |links|
+      assert_equal "Delete this batch?", links.first["data-turbo-confirm"]
+    end
   end
 
   test "index filters products by keyword and status" do
