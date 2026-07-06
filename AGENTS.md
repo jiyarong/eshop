@@ -17,6 +17,46 @@
 - 页面上展示给用户看的文本都应通过 Rails I18n 管理，不要在 ERB、helper、controller 或前端脚本中新增硬编码展示文案。
 - 现有页面布局在 `app/views/layouts/application.html.erb`
 
+## 当前报表现状
+
+- 报表导航当前包含：
+  - `/weekly_profit_reports`
+  - `/reports/inventory`
+  - `/reports/skus`
+  - `/reports/costs`
+- 新报表优先继续走 Rails 页面，不要新开 React/Vite 报表承载层。
+
+### 库存报表
+
+- 入口：`GET /reports/inventory`
+- 详情入口：`GET /reports/inventory/:sku_code`
+- 当前页面读取链路：
+  - 列表页：`ReportsController#inventory` + `Ec::InventoryPageRowQuery`
+  - 详情页：`ReportsController#inventory_detail` + `Ec::InventoryPageDetailQuery`
+  - SKU 汇总：`Ec::SkuInventoryOverview`
+- 当前库存基础表：
+  - `ec_sku_inventory_levels` / `Ec::SkuInventoryLevel`
+  - `ec_sku_batches` / `Ec::SkuBatch`
+  - `ec_order_items`、`ec_orders`
+  - `raw_wb_goods_returns`、`raw_ozon_returns`
+  - `raw_wb_supply_items`、`raw_ozon_supply_orders`
+- 平台库存快照刷新：
+  - 定时任务：`config/recurring.yml` 中的 `Ec::SkuInventorySnapshotSync.run`
+  - 频率：生产每小时一次
+  - 写入方式：抓平台当前库存后写入 `Ec::SkuInventoryLevel`，并维护 `is_latest`
+- 页面查询约束：
+  - `/reports/inventory` 和详情页 GET 请求保持只读
+  - 不要在页面请求里直接调平台 API
+  - 不要在页面请求里触发同步、写库或补数据
+- 旧机制状态：
+  - `Ec::InventorySnapshot`
+  - `Ec::InventoryTotal`
+  - `Ec::InventorySnapshotSync`
+  - `GoogleSheets::InventorySnapshotWriteService`
+  - `GoogleSheets::InventorySnapshotImportService`
+  - `Ec::OperationTaskGenerator`
+  - 以上整套旧库存快照/汇总机制已从项目移除，不应再作为当前实现参考
+
 ## 生产部署
 
 - 生产部署使用 Kamal：`kamal deploy -c config/deploy.yml`。

@@ -22,20 +22,41 @@
     </form>
   </section>
 
+  <section class="panel inventory-volume-summary">
+    <div class="summary-grid">
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.inventory.fields.pending_stock") %></div>
+        <div class="summary-value"><%= inventory_volume_m3_text(@inventory_volume_summary[:pending_stock_volume_m3]) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.inventory.fields.book_available_stock") %></div>
+        <div class="summary-value"><%= inventory_volume_m3_text(@inventory_volume_summary[:book_available_stock_volume_m3]) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.inventory.fields.platform_stock") %></div>
+        <div class="summary-value"><%= inventory_volume_m3_text(@inventory_volume_summary[:platform_stock_volume_m3]) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.inventory.fields.overseas_available_stock") %></div>
+        <div class="summary-value"><%= inventory_volume_m3_text(@inventory_volume_summary[:overseas_available_stock_volume_m3]) %></div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel">
-    <h2 class="section-title"><%= t("reports.inventory.sections.inventory_list") %></h2>
     <div class="table-scroll">
       <table class="inventory-list-table">
         <thead>
           <tr>
             <th><%= t("reports.inventory.fields.sku") %></th>
             <th><%= t("reports.sku_detail.fields.product_name") %></th>
-            <th><%= t("reports.inventory.fields.pending_stock", default: "待入库库存") %></th>
-            <th><%= t("reports.inventory.fields.book_available_stock", default: "账面可用库存") %></th>
+            <th><%= t("reports.inventory.fields.pending_stock") %></th>
+            <th><%= t("reports.inventory.fields.book_available_stock") %></th>
             <th><%= t("reports.inventory.fields.platform_stock") %></th>
-            <th><%= t("reports.inventory.fields.overseas_available_stock", default: "境外当前可用") %></th>
-            <th><%= t("reports.inventory.fields.daily_sales_velocity", default: "日均销量") %></th>
-            <th><%= t("reports.inventory.fields.turnover_days", default: "周转天数") %></th>
+            <th><%= t("reports.inventory.fields.overseas_available_stock") %></th>
+            <th><%= t("reports.inventory.fields.daily_sales_velocity") %></th>
+            <th><%= t("reports.inventory.fields.turnover_days") %></th>
+            <th><%= t("reports.inventory.fields.turnover_days_with_procurement") %></th>
             <th><%= t("reports.inventory.fields.actions") %></th>
           </tr>
         </thead>
@@ -46,25 +67,55 @@
               <% book_stock = row[:book_stock].to_i %>
               <% platform_stock = row[:platform_stock].to_i %>
               <% incoming_quantity = row[:incoming_quantity].to_i %>
+              <% dimensions_text = inventory_dimensions_text(row[:pkg_length_cm], row[:pkg_width_cm], row[:pkg_height_cm]) %>
+              <% incoming_volume_text = inventory_estimated_volume_text(incoming_quantity, row[:unit_volume_l]) %>
+              <% book_volume_text = inventory_estimated_volume_text(book_stock, row[:unit_volume_l]) %>
+              <% platform_volume_text = inventory_estimated_volume_text(platform_stock, row[:unit_volume_l]) %>
+              <% available_volume_text = inventory_estimated_volume_text(available_stock, row[:unit_volume_l]) %>
               <% daily_sales_velocity = row[:daily_sales_velocity] %>
               <% turnover_days = row[:turnover_days] %>
+              <% turnover_days_with_procurement = row[:turnover_days_with_procurement] %>
               <tr class="inventory-list-table__row">
                 <td>
                   <%= link_to row[:sku_code],
                               report_inventory_detail_path(row[:sku_code], locale: params[:locale].presence),
                               class: "inventory-list-table__sku-link",
                               data: { turbo_frame: "inventory_drawer" } %>
+                  <% if dimensions_text.present? %>
+                    <div class="inventory-list-table__subline"><%= dimensions_text %></div>
+                  <% end %>
                 </td>
                 <td class="inventory-list-table__name-cell">
                   <div class="inventory-list-table__name"><%= report_value(row[:product_name]) %></div>
                   <div class="inventory-list-table__subline"><%= report_value(row[:product_name_ru]) %></div>
                 </td>
-                <td class="numeric inventory-list-table__metric inventory-list-table__metric--warning"><%= incoming_quantity %></td>
-                <td class="numeric inventory-list-table__metric"><%= book_stock %></td>
-                <td class="numeric inventory-list-table__metric"><%= platform_stock %></td>
-                <td class="numeric inventory-list-table__metric inventory-list-table__metric--primary"><%= available_stock %></td>
+                <td class="numeric inventory-list-table__metric inventory-list-table__metric--warning">
+                  <div><%= incoming_quantity %></div>
+                  <% if incoming_volume_text.present? %>
+                    <div class="inventory-list-table__subline"><%= incoming_volume_text %></div>
+                  <% end %>
+                </td>
+                <td class="numeric inventory-list-table__metric">
+                  <div><%= book_stock %></div>
+                  <% if book_volume_text.present? %>
+                    <div class="inventory-list-table__subline"><%= book_volume_text %></div>
+                  <% end %>
+                </td>
+                <td class="numeric inventory-list-table__metric">
+                  <div><%= platform_stock %></div>
+                  <% if platform_volume_text.present? %>
+                    <div class="inventory-list-table__subline"><%= platform_volume_text %></div>
+                  <% end %>
+                </td>
+                <td class="numeric inventory-list-table__metric inventory-list-table__metric--primary">
+                  <div><%= available_stock %></div>
+                  <% if available_volume_text.present? %>
+                    <div class="inventory-list-table__subline"><%= available_volume_text %></div>
+                  <% end %>
+                </td>
                 <td class="numeric inventory-list-table__metric"><%= daily_sales_velocity.present? ? format("%.2f", daily_sales_velocity.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days.present? ? format("%.2f", turnover_days.to_d) : "-" %></td>
+                <td class="numeric inventory-list-table__metric"><%= turnover_days_with_procurement.present? ? format("%.2f", turnover_days_with_procurement.to_d) : "-" %></td>
                 <td class="inventory-list-table__actions-cell">
                   <div class="resource-actions inventory-list-table__actions">
                     <%= link_to t("reports.inventory.actions.view_details"),
@@ -78,7 +129,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="9" class="empty-state"><%= t("reports.inventory.empty") %></td>
+              <td colspan="10" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>
@@ -86,9 +137,7 @@
     </div>
 
     <% if @inventory_rows.respond_to?(:total_pages) && @inventory_rows.total_pages > 1 %>
-      <div class="inventory-list-pagination">
-        <%= paginate @inventory_rows, params: request.query_parameters %>
-      </div>
+      <%= render "inventory_pagination", inventory_rows: @inventory_rows %>
     <% end %>
   </section>
 

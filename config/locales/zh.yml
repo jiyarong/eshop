@@ -62,8 +62,10 @@ zh:
   navigation:
     sections:
       dashboard: "经营看板"
+      draft: "Draft & Testing"
       operations: "运营报表"
       erp: "ERP 管理"
+      sku: "SKU"
       administration: "系统管理"
     weekly_profit_reports: "周利润报表"
     inventory: "库存"
@@ -301,6 +303,12 @@ zh:
         refresh_cache: "刷新缓存"
         previous_page: "上一页"
         view_details: "查看明细"
+      pagination:
+        aria_label: "库存分页"
+        jump_action: "确定"
+        jump_label: "跳至"
+        page_chip: "第 %{page}/%{pages} 页"
+        summary: "显示第 %{from}-%{to} 条，共 %{total} 条"
       batch_types:
         normal: "正常批次"
         other: "其他"
@@ -316,10 +324,10 @@ zh:
         formulas:
           book_inventory: "账面可用库存"
           other_adjustment: "其他调整"
-          overseas_available: "境外当前可用 = 账面可用库存 - 平台在库总和"
+          overseas_available: "FBS库存 = 账面可用库存 - FBO/FBW在库"
           ozon_net_sales: "OZON净销量"
           ozon_returns: "OZON总退货"
-          platform_inventory_total: "平台在库总和"
+          platform_inventory_total: "FBO/FBW在库"
           purchase_quantity: "普通入库"
           untrackable_defective: "不可追溯的损耗"
           wb_fbw_offset: "WB FBW补正"
@@ -366,17 +374,18 @@ zh:
         ozon_fbs: "Ozon_FBS"
         ozon_return: "Ozon退货"
         ozon_sales: "Ozon销售"
-        overseas_available_stock: "境外当前可用"
-        pending_stock: "待入库库存"
-        platform_stock: "平台在库"
+        overseas_available_stock: "FBS库存"
+        pending_stock: "采购中库存"
+        platform_stock: "FBO/FBW在库"
         purchase_quantity: "采购"
         received_on: "入库日期"
         sku: "SKU"
         synced_at: "同步时间"
         turnover_days: "周转天数"
+        turnover_days_with_procurement: "周转天数(含采购)"
         wb_fbs: "WB_FBS"
         wb_fbs_available: "WB_FBS在库"
-        wb_fbo: "WB_FBO在库"
+        wb_fbo: "WB_FBW在库"
         wb_fbw: "WB_FBW"
         wb_fbw_available: "WB_FBW在库"
         wb_net: "WB净额"
@@ -386,6 +395,9 @@ zh:
         sku: "SKU"
         sku_placeholder: "输入 SKU"
         submit: "筛选"
+      labels:
+        dimensions_cm: "%{length} × %{width} × %{height} cm"
+        estimated_volume_m3: "%{volume} m³"
       sections:
         inventory_list: "库存列表"
       title: "库存报表"
@@ -589,16 +601,27 @@ zh:
         batch_code: "批次号"
         departure_date: "出境日期"
         expected_arrival: "预计到货"
+        expected_arrival_on: "出境日期"
         overseas_delivery_date: "境外交付日期"
         product_name: "商品名"
         purchase_cost: "采购成本"
         purchase_date: "采购日期"
         purchase_unit_price: "采购单价"
         purchased_quantity: "采购数量"
+        received_on: "境外交付日期"
         received_quantity: "到货数量"
         unit_batch_cost: "单件批次成本"
+      statuses:
+        draft: "草稿"
+        ordered: "已下单"
+        in_transit: "运输中"
+        received: "已到货"
       index:
         title: "SKU 批次"
+    inline_edit:
+      messages:
+        save_failed: "保存失败，请检查后重试"
+        saved: "已保存"
     sku_products:
       actions:
         add_binding: "新增绑定"

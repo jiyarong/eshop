@@ -23,46 +23,6 @@
       <%= form.text_field :product_name_ru %>
     </div>
     <div class="field">
-      <%= form.label :sku_category_id, t("erp.common.category") %>
-      <%= form.collection_select :sku_category_id, category_options, :id, :name, { include_blank: t("erp.common.none") } %>
-    </div>
-    <div class="field">
-      <%= form.label :color, t("erp.skus.fields.color") %>
-      <%= form.text_field :color %>
-    </div>
-    <div class="field">
-      <%= form.label :spec, t("erp.skus.fields.spec") %>
-      <%= form.text_field :spec %>
-    </div>
-    <div class="field">
-      <%= form.label :size, t("erp.skus.fields.size") %>
-      <%= form.text_field :size %>
-    </div>
-    <div class="field">
-      <%= form.label :weight_kg, t("erp.skus.fields.weight_kg") %>
-      <%= form.number_field :weight_kg, step: "0.0001" %>
-    </div>
-    <div class="field">
-      <%= form.label :volume_l, t("erp.skus.fields.volume_l") %>
-      <%= form.number_field :volume_l, step: "0.0001" %>
-    </div>
-    <div class="field">
-      <%= form.label :model, t("erp.skus.fields.model") %>
-      <%= form.text_field :model %>
-    </div>
-    <div class="field">
-      <%= form.label :quality_grade, t("erp.skus.fields.quality_grade") %>
-      <%= form.text_field :quality_grade %>
-    </div>
-    <div class="field">
-      <%= form.label :features, t("erp.skus.fields.features") %>
-      <%= form.text_field :features %>
-    </div>
-    <div class="field">
-      <%= form.label :owner_name, t("erp.common.owner") %>
-      <%= form.text_field :owner_name %>
-    </div>
-    <div class="field">
       <%= form.label :is_active, t("erp.skus.fields.listed") %>
       <%= form.check_box :is_active %>
     </div>

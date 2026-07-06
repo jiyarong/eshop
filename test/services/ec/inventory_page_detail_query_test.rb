@@ -111,11 +111,17 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
     ], payload[:book_mini_stats].map { |row| [row[:key], row[:value]] }
     assert_equal [
       ["ozon_fbo", 3],
-      ["ozon_fbs", 0],
-      ["wb_fbo", 5],
-      ["wb_fbs", 0]
+      ["wb_fbo", 5]
     ], payload[:platform_mini_stats].map { |row| [row[:key], row[:value]] }
+    assert_equal(
+      { store_label_key: "summary", fbo: 8, fbs: 0 },
+      payload[:platform_shop_summary_row]
+    )
     assert_equal "overseas_available", payload[:platform_formula][:description_key]
+    assert_equal [
+      { key: "book_inventory", value: summary[:book_stock], operator: "+" },
+      { key: "platform_inventory_total", value: summary[:fbo_fbw_stock], operator: "-" }
+    ], payload[:platform_formula][:items]
     assert_equal summary[:available_stock], payload[:platform_formula][:result]
   ensure
     Ec::SkuInventoryLevel.where(sku_code: sku&.sku_code).delete_all
@@ -382,6 +388,60 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
     assert_nil payload.dig(:book_sales_distribution, :summary_row)
     assert_equal [], payload.dig(:return_distribution, :rows)
     assert_nil payload.dig(:return_distribution, :summary_row)
+  ensure
+    Ec::SkuInventoryLevel.where(sku_code: sku&.sku_code).delete_all
+    Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(sku_code: sku&.sku_code).delete_all
+  end
+
+  test "calculates procurement-inclusive turnover from normal procurement batches only" do
+    token = SecureRandom.hex(4).upcase
+    sku = Ec::Sku.create!(sku_code: "DETAIL-PROC-#{token}", product_name: "采购周转测试商品")
+
+    Ec::SkuBatch.create!(
+      sku_code: sku.sku_code,
+      batch_code: "DETAIL-PROC-REC-#{token}",
+      status: "received",
+      batch_type: :normal,
+      purchased_quantity: 0,
+      received_quantity: 24,
+      purchase_unit_price_cny: 1
+    )
+    Ec::SkuBatch.create!(
+      sku_code: sku.sku_code,
+      batch_code: "DETAIL-PROC-DRAFT-#{token}",
+      status: "draft",
+      batch_type: :normal,
+      purchased_quantity: 6,
+      received_quantity: 0,
+      purchase_unit_price_cny: 1
+    )
+    Ec::SkuBatch.create!(
+      sku_code: sku.sku_code,
+      batch_code: "DETAIL-PROC-OFFSET-#{token}",
+      status: "ordered",
+      batch_type: :wb_fbw_offset,
+      purchased_quantity: 50,
+      received_quantity: 0,
+      purchase_unit_price_cny: 1
+    )
+
+    fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku.sku_code => { daily_sales_velocity: BigDecimal("3.0") }
+          }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+      payload = Ec::InventoryPageDetailQuery.new(sku, detail_tab: "book", book_batch_page: 1).call
+
+      assert_in_delta 8.0, payload[:turnover_days].to_f, 0.01
+      assert_in_delta 10.0, payload[:turnover_days_with_procurement].to_f, 0.01
+    end
   ensure
     Ec::SkuInventoryLevel.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all

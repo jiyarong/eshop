@@ -51,62 +51,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       synced_at: Time.zone.parse("2026-06-01 09:00:00")
     )
 
-    @inventory_snapshot = Ec::InventorySnapshot.create!(
-      sku_code: @sku.sku_code,
-      platform: "wb",
-      account_id: 2,
-      store_name: "TaxiLink",
-      stock: 7,
-      supply: 3,
-      sold: 5,
-      fbs: 1,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
-    @inventory_ozon_snapshot = Ec::InventorySnapshot.create!(
-      sku_code: @sku.sku_code,
-      platform: "ozon",
-      account_id: 1,
-      store_name: "Nevastal",
-      stock: 4,
-      supply: 6,
-      sold: 2,
-      fbs: 3,
-      synced_at: Time.zone.parse("2026-05-30 11:00")
-    )
-
-    @inventory_total = Ec::InventoryTotal.create!(
-      sku_code: @sku.sku_code,
-      total_supply: 9,
-      total_stock: 11,
-      total_sold: 7,
-      total_fbs: 4,
-      total_received: 20,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
-    @second_inventory_snapshot = Ec::InventorySnapshot.create!(
-      sku_code: @second_sku.sku_code,
-      platform: "wb",
-      account_id: 3,
-      store_name: "WorldChoice",
-      stock: 99,
-      supply: 100,
-      sold: 1,
-      fbs: 0,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
-    @second_inventory_total = Ec::InventoryTotal.create!(
-      sku_code: @second_sku.sku_code,
-      total_supply: 100,
-      total_stock: 99,
-      total_sold: 1,
-      total_fbs: 0,
-      total_received: 100,
-      synced_at: Time.zone.parse("2026-05-30 10:00")
-    )
-
     @sku_cost = Ec::SkuCost.create!(
       sku_code: @sku.sku_code,
       purchase_price_cny: 10,
@@ -330,10 +274,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuPredictedCost)
     Ec::SkuCost.where(sku_code: @sku.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: [@sku.sku_code, @second_sku.sku_code]).delete_all if defined?(Ec::SkuBatch)
-    Ec::InventorySnapshot.where(sku_code: @sku.sku_code).delete_all
-    Ec::InventoryTotal.where(sku_code: @sku.sku_code).delete_all
-    Ec::InventorySnapshot.where(sku_code: @second_sku.sku_code).delete_all
-    Ec::InventoryTotal.where(sku_code: @second_sku.sku_code).delete_all
     @second_sku&.destroy
     @sku&.destroy
     UserRole.joins(:user).where("users.email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
@@ -345,7 +285,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "input[name='sku'][value=?]", @sku_code.downcase
-    assert_select "td", @sku_code
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
     assert_select "td", { text: @second_sku_code, count: 0 }
     assert_select "tbody tr", count: 1
   end
@@ -394,7 +334,12 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tbody tr.inventory-list-table__row", count: 10
-    assert_select "nav.pagination"
+    assert_select ".inventory-pagination-bar"
+    assert_select ".inventory-pagination-bar .pagination-nav"
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 1/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 1-10 条，共 24 条/
+    assert_select ".inventory-pagination-bar .pagination-jump-input[value='1']"
+    assert_select ".inventory-pagination-bar .pg-btn", "2"
 
     sign_in @current_user
     with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
@@ -405,14 +350,84 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tbody tr.inventory-list-table__row", count: 10
-    assert_select "nav.pagination"
-    assert_select "span.page.current", "2"
-    assert_select "a[href*='page=2'][href*='sku=pag-']"
+    assert_select ".inventory-pagination-bar"
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 22 条/
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='sku=pag-']"
+    assert_select ".inventory-pagination-bar a[href*='page=3'][href*='sku=pag-']"
+    assert_select ".inventory-pagination-bar form[action='/reports/inventory'] input[name='sku'][value='pag-']"
+    assert_select ".inventory-pagination-bar .pagination-jump-input[value='2']"
+  ensure
+    extra_skus&.each(&:destroy)
+  end
+
+  test "inventory report jump pagination clamps and falls back to current page" do
+    extra_skus = 22.times.map do |index|
+      Ec::Sku.create!(
+        sku_code: format("JMP-%02d-%s", index, @sku_code.delete_prefix("TST-")),
+        product_name: "跳页商品#{index}",
+        is_active: true
+      )
+    end
+
+    fake_query_factory = lambda do |sku, metrics:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku_code: sku.sku_code,
+            product_name: sku.product_name,
+            product_name_ru: nil,
+            incoming_quantity: 0,
+            book_stock: 0,
+            platform_stock: 0,
+            available_stock: 0,
+            daily_sales_velocity: nil,
+            turnover_days: nil,
+            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
+          }
+        end
+      end
+    end
+
+    fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          sku_codes.index_with { |_| {} }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        get "/reports/inventory",
+            params: { page: 2, current_page: 2, jump_page: 99, sku: "jmp-" },
+            headers: { "Accept" => "text/html" }
+      end
+    end
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 3/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 21-22 条，共 22 条/
+
+    sign_in @current_user
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        get "/reports/inventory",
+            params: { page: 2, current_page: 2, jump_page: "bad", sku: "jmp-" },
+            headers: { "Accept" => "text/html" }
+      end
+    end
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 22 条/
   ensure
     extra_skus&.each(&:destroy)
   end
 
   test "inventory report uses inventory page row query for each filtered sku" do
+    Rails.cache.delete("reports/inventory/rows/v2/#{@sku_code}")
     calls = []
     fake_query_factory = lambda do |sku, metrics:|
       Object.new.tap do |query|
@@ -422,12 +437,17 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             sku_code: sku.sku_code,
             product_name: "商品 #{sku.sku_code}",
             product_name_ru: "Товар #{sku.sku_code}",
-            incoming_quantity: 0,
+            incoming_quantity: 12,
             book_stock: 14,
-            platform_stock: 0,
+            platform_stock: 6,
             available_stock: 7,
-            daily_sales_velocity: nil,
-            turnover_days: nil,
+            pkg_length_cm: BigDecimal("10"),
+            pkg_width_cm: BigDecimal("20"),
+            pkg_height_cm: BigDecimal("30"),
+            unit_volume_l: BigDecimal("6.0"),
+            daily_sales_velocity: BigDecimal("1.23"),
+            turnover_days: BigDecimal("11.38"),
+            turnover_days_with_procurement: BigDecimal("20.51"),
             cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
           }
         end
@@ -435,12 +455,13 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
 
     velocity_calls = []
+    expected_sku_code = @sku_code
     fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           velocity_calls << [sku_codes, date_to, time_zone.name]
           {
-            @sku_code => { daily_sales_velocity: BigDecimal("1.23") }
+            expected_sku_code => { daily_sales_velocity: BigDecimal("1.23") }
           }
         end
       end
@@ -460,13 +481,22 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @current_user.time_zone, velocity_calls.first[2]
     assert_select "turbo-frame#inventory_drawer"
     assert_select "table.inventory-list-table"
-    assert_select "th", I18n.t("reports.inventory.fields.pending_stock", default: "待入库库存")
-    assert_select "th", I18n.t("reports.inventory.fields.book_available_stock", default: "账面可用库存")
+    assert_select "h2.section-title", text: I18n.t("reports.inventory.sections.inventory_list"), count: 0
+    assert_select "th", I18n.t("reports.inventory.fields.pending_stock")
+    assert_select "th", I18n.t("reports.inventory.fields.book_available_stock")
     assert_select "th", I18n.t("reports.inventory.fields.platform_stock")
-    assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock", default: "境外当前可用")
+    assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock")
     assert_select "th", { text: I18n.t("reports.inventory.fields.cache_updated_at"), count: 0 }
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__subline", "10 × 20 × 30 cm"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(3) .inventory-list-table__subline", "0.0720 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(4) .inventory-list-table__subline", "0.0840 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) > div:first-child", "6"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) .inventory-list-table__subline", "0.0360 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(6) .inventory-list-table__subline", "0.0420 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(7)", "1.23"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "11.38"
+    assert_select "th", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "21.14"
     assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@sku_code}", "inventory_drawer"
     assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", "/reports/inventory/#{@sku_code}", "inventory_drawer"
     assert_select "form[action=?]", "/reports/inventory/#{@sku_code}/refresh_cache", count: 0
@@ -527,7 +557,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             active_detail_tab: detail_tab,
             summary: {
               book_stock: 12,
-              platform_stock: 5,
+              platform_stock: 8,
+              fbo_fbw_stock: 5,
               available_stock: 7,
               purchase_quantity: 20,
               adjustment_quantity: -2,
@@ -537,6 +568,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             },
             daily_sales_velocity: BigDecimal("1.23"),
             turnover_days: BigDecimal("5.67"),
+            turnover_days_with_procurement: BigDecimal("8.91"),
             incoming_quantity: 0,
             incoming_batches: [{ batch_code: "IN-1", status: "in_transit", expected_arrival_on: Date.new(2026, 7, 1), purchased_quantity: 8, memo: "memo" }],
             book_batches: [{ batch_code: "BOOK-1", status: "received", batch_type: "wb_fbw_offset", received_quantity: 12, defect_offset_note: "note", received_on: Date.new(2026, 6, 20) }],
@@ -571,17 +603,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             },
             platform_mini_stats: [
               { key: "ozon_fbo", value: 5, unit_key: "quantity" },
-              { key: "ozon_fbs", value: 0, unit_key: "quantity" },
-              { key: "wb_fbo", value: 0, unit_key: "quantity" },
-              { key: "wb_fbs", value: 0, unit_key: "quantity" }
+              { key: "wb_fbo", value: 0, unit_key: "quantity" }
             ],
             platform_shop_rows: [
               { store_label: "OZON * 店铺1", fbo: 5, fbs: 0 }
             ],
+            platform_shop_summary_row: { store_label_key: "summary", fbo: 5, fbs: 0 },
             platform_formula: {
               items: [
                 { key: "book_inventory", value: 12, operator: "+" },
-                { key: "platform_inventory_total", value: 5, operator: "-" }
+                { key: "platform_inventory_total", value: 3, operator: "-" }
               ],
               result: 7,
               description_key: "overseas_available"
@@ -607,10 +638,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#inventory_drawer_content"
     assert_select ".erp-modal[role='dialog']", count: 0
     assert_select "h3", I18n.t("reports.inventory.drawer.sections.overview", default: "概览")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.pending_stock")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.platform_stock")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.overseas_available_stock")
     assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.daily_sales_velocity")
     assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.turnover_days")
+    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
+    assert_select ".inventory-metric-card__value", text: "5", count: 1
     assert_select ".inventory-metric-card__value", "1.23"
     assert_select ".inventory-metric-card__value", "5.67"
+    assert_select ".inventory-metric-card__value", "8.91"
     assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.book")
     assert_select ".inventory-detail-shell > .inventory-detail-body", count: 1
     assert_select ".inventory-detail-panel--scrollable", count: 0
@@ -620,10 +657,77 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-formula__title", I18n.t("reports.inventory.drawer.sections.formula")
   end
 
+  test "inventory detail platform tab uses fbo fbw stock in platform formula" do
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, date_to:, time_zone:|
+      Object.new.tap do |query|
+        query.define_singleton_method(:call) do
+          {
+            sku_code: sku.sku_code,
+            product_name: "stub",
+            product_name_ru: "stub ru",
+            active_detail_tab: detail_tab,
+            summary: {
+              book_stock: 12,
+              platform_stock: 8,
+              fbo_fbw_stock: 3,
+              available_stock: 9
+            },
+            daily_sales_velocity: BigDecimal("1.23"),
+            turnover_days: BigDecimal("5.67"),
+            turnover_days_with_procurement: BigDecimal("8.91"),
+            incoming_quantity: 0,
+            incoming_batches: [],
+            book_batches: [],
+            book_batch_pagination: { page: 1, page_size: 10, total_count: 0, total_pages: 1 },
+            book_mini_stats: [],
+            book_sales_distribution: { columns: [], rows: [], summary_row: nil },
+            return_distribution: { rows: [], summary_row: nil },
+            book_formula: { items: [], result: 12 },
+            platform_mini_stats: [
+              { key: "ozon_fbo", value: 3, unit_key: "quantity" },
+              { key: "wb_fbo", value: 0, unit_key: "quantity" }
+            ],
+            platform_shop_rows: [
+              { store_label: "OZON * 店铺1", fbo: 3, fbs: 5 }
+            ],
+            platform_shop_summary_row: { store_label_key: "summary", fbo: 3, fbs: 5 },
+            platform_formula: {
+              items: [
+                { key: "book_inventory", value: 12, operator: "+" },
+                { key: "platform_inventory_total", value: 3, operator: "-" }
+              ],
+              result: 9,
+              description_key: "overseas_available"
+            },
+            store_reconciliation_rows: [],
+            platform_breakdown: []
+          }
+        end
+      end
+    end
+
+    with_stubbed_constructor(Ec::InventoryPageDetailQuery, fake_query_factory) do
+      get "/reports/inventory/#{@sku_code}",
+        params: { detail_tab: "platform" },
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+    end
+
+    assert_response :success
+    assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.platform")
+    assert_select ".inventory-formula__description", I18n.t("reports.inventory.drawer.formulas.overseas_available")
+    assert_select ".inventory-formula__line", /账面可用库存 12 - FBO\/FBW在库 3/
+    assert_select ".inventory-formula__line strong", "= 9"
+    assert_select ".inventory-mini-card", text: /Ozon_FBS/, count: 0
+    assert_select ".inventory-mini-card", text: /WB_FBS/, count: 0
+    assert_select ".inventory-distribution-table__summary td", I18n.t("reports.inventory.drawer.labels.summary")
+    assert_select ".inventory-distribution-table__summary td", "3"
+    assert_select ".inventory-distribution-table__summary td", "5"
+  end
+
   test "inventory report caches each sku row until refresh" do
     cache_store = ActiveSupport::Cache::MemoryStore.new
     original_cache_store = Rails.cache
-    cache_key = "reports/inventory/rows/#{@sku_code}"
+    cache_key = "reports/inventory/rows/v2/#{@sku_code}"
 
     Rails.cache = cache_store
 

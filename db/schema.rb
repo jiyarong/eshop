@@ -86,35 +86,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_094657) do
     t.index ["rate_date", "base_currency", "currency_code"], name: "index_ec_daily_exchange_rates_unique_daily_currency", unique: true
   end
 
-  create_table "ec_inventory_snapshots", force: :cascade do |t|
-    t.integer "account_id", null: false
-    t.datetime "created_at", null: false
-    t.integer "fbs", default: 0, null: false
-    t.string "platform", null: false
-    t.string "sku_code", null: false
-    t.integer "sold", default: 0, null: false
-    t.integer "stock", default: 0, null: false
-    t.string "store_name"
-    t.integer "supply", default: 0, null: false
-    t.datetime "synced_at"
-    t.datetime "updated_at", null: false
-    t.index ["sku_code", "platform", "account_id"], name: "idx_ec_inventory_snapshots_unique", unique: true
-    t.index ["sku_code"], name: "index_ec_inventory_snapshots_on_sku_code"
-  end
-
-  create_table "ec_inventory_totals", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "sku_code", null: false
-    t.datetime "synced_at"
-    t.integer "total_fbs", default: 0, null: false
-    t.integer "total_received", default: 0, null: false
-    t.integer "total_sold", default: 0, null: false
-    t.integer "total_stock", default: 0, null: false
-    t.integer "total_supply", default: 0, null: false
-    t.datetime "updated_at", null: false
-    t.index ["sku_code"], name: "index_ec_inventory_totals_on_sku_code", unique: true
-  end
-
   create_table "ec_master_skus", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "is_active", default: true, null: false

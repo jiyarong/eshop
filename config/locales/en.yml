@@ -91,8 +91,10 @@ en:
   navigation:
     sections:
       dashboard: "Dashboard"
+      draft: "Draft & Testing"
       operations: "Operations"
       erp: "ERP"
+      sku: "SKU"
       administration: "Administration"
     weekly_profit_reports: "Weekly Profit"
     inventory: "Inventory"
@@ -330,6 +332,12 @@ en:
         refresh_cache: "Refresh cache"
         previous_page: "Previous page"
         view_details: "View details"
+      pagination:
+        aria_label: "Inventory pagination"
+        jump_action: "Go"
+        jump_label: "Go to"
+        page_chip: "Page %{page}/%{pages}"
+        summary: "Showing %{from}-%{to} of %{total} rows"
       batch_types:
         normal: "Normal"
         other: "Other"
@@ -345,10 +353,10 @@ en:
         formulas:
           book_inventory: "Book inventory"
           other_adjustment: "Other adjustment"
-          overseas_available: "Overseas available now = Book inventory - Total platform inventory"
+          overseas_available: "FBS stock = Book inventory - FBO/FBW stock"
           ozon_net_sales: "OZON net sales"
           ozon_returns: "OZON total returns"
-          platform_inventory_total: "Total platform inventory"
+          platform_inventory_total: "FBO/FBW stock"
           purchase_quantity: "Normal receipt"
           untrackable_defective: "Untrackable defect"
           wb_fbw_offset: "WB FBW adjustment"
@@ -395,17 +403,18 @@ en:
         ozon_fbs: "Ozon_FBS"
         ozon_return: "Ozon returns"
         ozon_sales: "Ozon sales"
-        overseas_available_stock: "Current overseas available"
-        pending_stock: "Pending inbound stock"
-        platform_stock: "Platform stock"
+        overseas_available_stock: "FBS stock"
+        pending_stock: "Procurement stock"
+        platform_stock: "FBO/FBW stock"
         purchase_quantity: "Purchased"
         received_on: "Received on"
         sku: "SKU"
         synced_at: "Synced at"
         turnover_days: "Turnover days"
+        turnover_days_with_procurement: "Turnover days (with procurement)"
         wb_fbs: "WB_FBS"
         wb_fbs_available: "WB_FBS stock"
-        wb_fbo: "WB_FBO stock"
+        wb_fbo: "WB_FBW stock"
         wb_fbw: "WB_FBW"
         wb_fbw_available: "WB_FBW stock"
         wb_net: "WB net"
@@ -415,6 +424,9 @@ en:
         sku: "SKU"
         sku_placeholder: "Enter SKU"
         submit: "Filter"
+      labels:
+        dimensions_cm: "%{length} × %{width} × %{height} cm"
+        estimated_volume_m3: "%{volume} m³"
       sections:
         inventory_list: "Inventory List"
       title: "Inventory Report"
@@ -618,16 +630,27 @@ en:
         batch_code: "Batch number"
         departure_date: "Departure date"
         expected_arrival: "Expected arrival"
+        expected_arrival_on: "Departure date"
         overseas_delivery_date: "Overseas delivery date"
         product_name: "Product name"
         purchase_cost: "Purchase cost"
         purchase_date: "Purchase date"
         purchase_unit_price: "Purchase unit price"
         purchased_quantity: "Purchased quantity"
+        received_on: "Overseas delivery date"
         received_quantity: "Received quantity"
         unit_batch_cost: "Unit batch cost"
+      statuses:
+        draft: "Draft"
+        ordered: "Ordered"
+        in_transit: "In transit"
+        received: "Received"
       index:
         title: "SKU Batches"
+    inline_edit:
+      messages:
+        save_failed: "Save failed. Check the value and try again."
+        saved: "Saved"
     sku_products:
       actions:
         add_binding: "Add binding"

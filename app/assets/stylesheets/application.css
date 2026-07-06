@@ -699,53 +699,205 @@ textarea {
   text-underline-offset: 3px;
 }
 
-.inventory-list-pagination {
+.inventory-pagination-bar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-top: 14px;
 }
 
-.inventory-list-pagination .pagination {
+.inventory-pagination-bar .pagination-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.inventory-list-pagination .pagination span,
-.inventory-list-pagination .pagination a {
-  min-width: 32px;
-  min-height: 32px;
+.inventory-pagination-bar__summary {
+  color: var(--erp-muted);
+  font-size: 13px;
+}
+
+.inventory-pagination-bar .pagination-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
-  border: 1px solid var(--erp-border);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--erp-text);
-  font-size: 12px;
+  min-width: 72px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(40, 86, 217, 0.12);
+  border-radius: 999px;
+  background: rgba(40, 86, 217, 0.08);
+  color: var(--erp-brand-dark);
+  font-size: 11px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.inventory-pagination-bar .pagination-shell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 6px;
+  border: 1px solid var(--erp-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(24, 34, 53, 0.06);
+}
+
+.inventory-pagination-bar .pagination-shell:focus-within {
+  border-color: rgba(40, 86, 217, 0.24);
+  box-shadow: 0 0 0 3px rgba(40, 86, 217, 0.08);
+}
+
+.inventory-pagination-bar .pagination-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inventory-pagination-bar .pg-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #334155;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   text-decoration: none;
 }
 
-.inventory-list-pagination .pagination a:hover {
-  border-color: var(--erp-brand);
-  color: var(--erp-brand);
+.inventory-pagination-bar .pg-btn:hover {
+  background: rgba(40, 86, 217, 0.08);
+  border-color: rgba(40, 86, 217, 0.12);
+  color: var(--erp-brand-dark);
+  box-shadow: none;
 }
 
-.inventory-list-pagination .pagination .current {
-  border-color: var(--erp-brand);
+.inventory-pagination-bar .pg-btn.on {
   background: var(--erp-brand);
+  border-color: var(--erp-brand);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(40, 86, 217, 0.16);
+}
+
+.inventory-pagination-bar .pg-btn.on:hover {
+  background: var(--erp-brand-dark);
+  border-color: var(--erp-brand-dark);
   color: #fff;
 }
 
-.inventory-list-pagination .pagination .gap,
-.inventory-list-pagination .pagination .first,
-.inventory-list-pagination .pagination .last {
-  display: none;
+.inventory-pagination-bar .pg-btn-nav {
+  font-size: 16px;
+}
+
+.inventory-pagination-bar .pg-btn[aria-disabled="true"] {
+  color: #cbd5e1;
+  background: transparent;
+  border-color: transparent;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.inventory-pagination-bar .pg-ell {
+  width: 20px;
+  height: 28px;
+  color: var(--erp-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.inventory-pagination-bar .pagination-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--erp-border);
+  flex: 0 0 auto;
+}
+
+.inventory-pagination-bar .pagination-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.inventory-pagination-bar .pagination-jump-label {
+  font-size: 11px;
+  color: var(--erp-muted);
+  white-space: nowrap;
+}
+
+.inventory-pagination-bar .pagination-jump-input {
+  width: 44px;
+  height: 28px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  padding: 0 8px;
+  background: var(--erp-surface-soft);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--erp-text);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.inventory-pagination-bar .pagination-jump-input:focus {
+  outline: none;
+  border-color: rgba(40, 86, 217, 0.35);
+  box-shadow: 0 0 0 3px rgba(40, 86, 217, 0.12);
+  background: #fff;
+}
+
+.inventory-pagination-bar .pg-btn-jump {
+  min-width: 40px;
+  padding: 0 9px;
+  background: var(--erp-surface-soft);
+  border-color: #eef2f7;
+}
+
+.inventory-pagination-bar .pg-btn-jump:hover {
+  background: rgba(40, 86, 217, 0.08);
+}
+
+@media (max-width: 640px) {
+  .inventory-pagination-bar,
+  .inventory-pagination-bar .pagination-meta {
+    align-items: flex-start;
+  }
+
+  .inventory-pagination-bar .pagination-shell {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .inventory-pagination-bar .pagination-nav {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .inventory-pagination-bar .pagination-divider {
+    display: none;
+  }
+
+  .inventory-pagination-bar .pagination-jump {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 2px;
+  }
 }
 
 .inventory-detail-table {
@@ -2991,13 +3143,13 @@ tr.master.open .chev,
 
 .sub-row > td,
 .batch-row > td {
-  padding: 0 !important;
-  background: var(--gray-50) !important;
+  padding: 8px 0 !important;
+  background: transparent !important;
   border-bottom: 1px solid var(--gray-200) !important;
 }
 
 .sub-shell {
-  padding: 4px 14px 14px;
+  padding: 12px 14px 18px;
   border-left: 3px solid var(--color-primary);
   background: linear-gradient(to right, rgba(99, 102, 241, .03), transparent 60%);
 }
@@ -3016,7 +3168,7 @@ tr.master.open .chev,
 }
 
 .sub-h {
-  padding: 10px 4px 8px;
+  padding: 2px 4px 12px;
 }
 
 .sub-tbl {
@@ -3047,14 +3199,14 @@ tr.master.open .chev,
   vertical-align: middle;
 }
 
-.sub-tbl tr:hover td,
+.sub-tbl tr.sku-row:hover td,
 .batch-tbl tr:hover td {
   background: var(--gray-50) !important;
 }
 
 .batch-shell {
-  padding: 0 0 0 34px;
-  background: var(--gray-50);
+  padding: 10px 0 16px 34px;
+  background: transparent;
 }
 
 .batch-shell--orphan {
@@ -3062,7 +3214,7 @@ tr.master.open .chev,
 }
 
 .batch-h {
-  padding: 8px 12px 7px;
+  padding: 4px 12px 12px;
   border-top: 1px solid var(--gray-100);
 }
 
@@ -3074,6 +3226,99 @@ tr.master.open .chev,
   width: 100%;
   min-width: 880px;
   border-collapse: collapse;
+  background: transparent;
+}
+
+.batch-tbl turbo-frame {
+  display: block;
+}
+
+.inline-edit-cell {
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.inline-edit-cell--display {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background-color .16s ease, box-shadow .16s ease;
+}
+
+.inline-edit-cell--display:hover,
+.inline-edit-cell--display:focus-visible {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .16);
+  outline: none;
+}
+
+.inline-edit-cell--align-right {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.inline-edit-cell--editing {
+  padding: 3px 0;
+}
+
+.inline-edit-cell__input {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--fg);
+  font: inherit;
+}
+
+.inline-edit-cell__input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+}
+
+.inline-edit-cell__input--number {
+  text-align: right;
+}
+
+.inline-edit-cell__error {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.inline-edit-feedback-slot {
+  padding: 10px 0 0;
+}
+
+.inline-edit-feedback {
+  min-height: 20px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.inline-edit-feedback--success {
+  background: rgba(34, 197, 94, .09);
+  color: #166534;
+}
+
+.inline-edit-feedback--error {
+  background: rgba(239, 68, 68, .08);
+}
+
+.inline-edit-feedback--empty {
+  min-height: 0;
+  padding: 0;
   background: transparent;
 }
 

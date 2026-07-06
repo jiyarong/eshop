@@ -183,6 +183,7 @@
                                 <span><%= t("erp.skus.index.showing_recent_batches", shown: batches.size, total: sku.batches.size) %></span>
                               </div>
                               <% if batches.any? %>
+                                <% feedback_target = sku_batch_inline_feedback_target(sku) %>
                                 <table class="batch-tbl">
                                   <thead>
                                     <tr>
@@ -199,13 +200,25 @@
                                   <tbody>
                                     <% batches.each do |batch| %>
                                       <tr>
-                                        <td><span class="barcode"><%= batch.batch_code %></span></td>
+                                        <td>
+                                          <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :batch_code) %>
+                                        </td>
                                         <td><span class="barcode"><%= erp_value(batch.created_at&.to_date) %></span></td>
-                                        <td><span class="barcode"><%= erp_value(batch.expected_arrival_on) %></span></td>
-                                        <td><span class="barcode"><%= erp_value(batch.received_on) %></span></td>
-                                        <td style="text-align: right"><%= batch.purchased_quantity %></td>
-                                        <td style="text-align: right"><%= batch.received_quantity %></td>
-                                        <td><span class="badge badge-sec"><%= batch.status %></span></td>
+                                        <td>
+                                          <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :expected_arrival_on) %>
+                                        </td>
+                                        <td>
+                                          <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_on) %>
+                                        </td>
+                                        <td>
+                                          <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchased_quantity) %>
+                                        </td>
+                                        <td>
+                                          <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_quantity) %>
+                                        </td>
+                                        <td>
+                                          <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :status) %>
+                                        </td>
                                         <td>
                                           <div class="row-actions">
                                             <%= link_to erp_edit_sku_batch_path(batch, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
@@ -218,6 +231,9 @@
                                     <% end %>
                                   </tbody>
                                 </table>
+                                <div id="<%= feedback_target %>" class="inline-edit-feedback-slot">
+                                  <%= render "shared/inline_edit_feedback", tone: :empty, message: nil %>
+                                </div>
                               <% else %>
                                 <div class="nested-empty-state"><%= t("erp.skus.empty.no_batches") %></div>
                               <% end %>
@@ -285,6 +301,7 @@
                       <span><%= sku.batches.size %> <%= t("erp.skus.units.batch", count: sku.batches.size) %></span>
                     </div>
                   </div>
+                  <% feedback_target = sku_batch_inline_feedback_target(sku) %>
                   <table class="batch-tbl">
                     <thead>
                       <tr>
@@ -301,13 +318,25 @@
                     <tbody>
                       <% batches.each do |batch| %>
                         <tr>
-                          <td><span class="barcode"><%= batch.batch_code %></span></td>
+                          <td>
+                            <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :batch_code) %>
+                          </td>
                           <td><span class="barcode"><%= erp_value(batch.created_at&.to_date) %></span></td>
-                          <td><span class="barcode"><%= erp_value(batch.expected_arrival_on) %></span></td>
-                          <td><span class="barcode"><%= erp_value(batch.received_on) %></span></td>
-                          <td style="text-align: right"><%= batch.purchased_quantity %></td>
-                          <td style="text-align: right"><%= batch.received_quantity %></td>
-                          <td><span class="badge badge-sec"><%= batch.status %></span></td>
+                          <td>
+                            <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :expected_arrival_on) %>
+                          </td>
+                          <td>
+                            <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_on) %>
+                          </td>
+                          <td>
+                            <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchased_quantity) %>
+                          </td>
+                          <td>
+                            <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_quantity) %>
+                          </td>
+                          <td>
+                            <%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :status) %>
+                          </td>
                           <td>
                             <div class="row-actions">
                               <%= link_to erp_edit_sku_batch_path(batch, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
@@ -320,6 +349,9 @@
                       <% end %>
                     </tbody>
                   </table>
+                  <div id="<%= feedback_target %>" class="inline-edit-feedback-slot">
+                    <%= render "shared/inline_edit_feedback", tone: :empty, message: nil %>
+                  </div>
                 </div>
               </td>
             </tr>

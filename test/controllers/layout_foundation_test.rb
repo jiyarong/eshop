@@ -35,6 +35,11 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".erp-topbar"
     assert_select ".erp-brand__name", "Yuanlong ERP"
     assert_select ".erp-nav__link[aria-current='page']", text: "库存"
+    assert_select ".erp-nav__label", text: "SKU"
+    assert_select ".erp-nav__label", text: "Draft & Testing"
+    assert_select ".erp-nav__label", text: "运营报表", count: 0
+    assert_select ".erp-nav__label", text: "ERP 管理", count: 0
+    assert_select ".erp-nav__link[href='/erp/skus']", text: "SKU 管理"
     assert_select ".erp-nav__link[data-turbo-prefetch='false']", minimum: 1
     assert_select ".erp-nav__link:not([data-turbo-prefetch='false'])", 0
     assert_select ".topbar-dropdown.locale-switcher[aria-label='语言切换']"
@@ -94,6 +99,8 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select "html[lang='ru']"
     assert_select ".erp-topbar__heading", "Юаньлун ERP"
     assert_select ".erp-nav__link[aria-current='page']", text: "Склад"
+    assert_select ".erp-nav__label", text: "SKU"
+    assert_select ".erp-nav__label", text: "Draft & Testing"
     assert_select ".locale-switcher .topbar-dropdown__value", text: "RU"
     assert_select ".locale-switcher__item[aria-current='page']", text: "Русский"
     assert_match(/locale=/, response.headers["Set-Cookie"])

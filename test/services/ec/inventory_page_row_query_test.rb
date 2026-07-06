@@ -5,6 +5,12 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
   test "builds redesigned inventory list row from real sku data" do
     token = SecureRandom.hex(4).upcase
     sku = Ec::Sku.create!(sku_code: "ROW-#{token}", product_name: "行测试商品")
+    Ec::SkuCost.create!(
+      sku_code: sku.sku_code,
+      pkg_length_cm: 10,
+      pkg_width_cm: 20,
+      pkg_height_cm: 30
+    )
 
     Ec::SkuBatch.create!(
       sku_code: sku.sku_code,
@@ -50,11 +56,16 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     assert_equal sku.sku_code, row[:sku_code]
     assert_equal "行测试商品", row[:product_name]
     assert_equal summary[:book_stock], row[:book_stock]
-    assert_equal summary[:platform_stock], row[:platform_stock]
+    assert_equal summary[:fbo_fbw_stock], row[:platform_stock]
     assert_equal summary[:available_stock], row[:available_stock]
+    assert_equal BigDecimal("10"), row[:pkg_length_cm]
+    assert_equal BigDecimal("20"), row[:pkg_width_cm]
+    assert_equal BigDecimal("30"), row[:pkg_height_cm]
+    assert_equal BigDecimal("6.0"), row[:unit_volume_l]
     assert_nil row[:daily_sales_velocity]
     assert_nil row[:turnover_days]
   ensure
+    Ec::SkuCost.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(sku_code: sku&.sku_code).delete_all
   end
@@ -77,12 +88,14 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
       sku,
       metrics: {
         daily_sales_velocity: BigDecimal("2.4"),
-        turnover_days: BigDecimal("4.1667")
+        turnover_days: BigDecimal("4.1667"),
+        turnover_days_with_procurement: BigDecimal("8.3333")
       }
     ).call
 
     assert_equal BigDecimal("2.4"), row[:daily_sales_velocity]
     assert_equal BigDecimal("4.1667"), row[:turnover_days]
+    assert_equal BigDecimal("8.3333"), row[:turnover_days_with_procurement]
   ensure
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(sku_code: sku&.sku_code).delete_all

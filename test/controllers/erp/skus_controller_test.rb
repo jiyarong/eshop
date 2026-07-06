@@ -94,7 +94,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "采购单价", response.body
     assert_no_match "成本价", response.body
     assert_no_match "仓库", response.body
-    assert_select ".batch-tbl td .barcode", text: @batch.batch_code
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select ".batch-tbl td", text: "180"
     assert_select "td", "页面主产品"
     assert_select ".attr-zh", text: @category.name
@@ -108,6 +108,24 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{erp_sku_path(@sku)}'][data-turbo-method='delete'][data-turbo-confirm=?]", "确认删除这个 SKU？", minimum: 1
     assert_select "a[href='#{erp_new_sku_batch_path(sku_code: @sku.sku_code)}'][data-turbo-frame='erp_modal']", text: "新增批次"
     assert_select "a[href='#{erp_edit_sku_batch_path(@batch)}'][data-turbo-frame='erp_modal']", text: "编辑"
+  end
+
+  test "inventory batch rows render inline editable cell frames" do
+    get "/erp/skus", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_on_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell", count: 1
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_status_cell", count: 1
+    assert_select "#batch-inline-feedback--sku-#{@sku.id}", count: 1
+    assert_select "tr.batch-row[hidden] table.batch-tbl tbody tr", count: 1 do
+      assert_select "td:nth-of-type(2) .barcode", text: @batch.created_at.to_date.to_s
+    end
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell", count: 0
+    assert_match @batch.created_at.to_date.to_s, response.body
   end
 
   test "index localizes visible chrome in english" do
