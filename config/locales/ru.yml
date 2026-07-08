@@ -304,6 +304,14 @@ ru:
       shipped: "В доставке"
       total: "Заказы"
   weekly_profit_reports:
+    comparison:
+      note: "База сравнения: предыдущий диапазон той же длины по естественным неделям"
+      unavailable: "-"
+      turned_positive: "вышло в плюс"
+      turned_negative: "ушло в минус"
+      improved: "улучшение"
+      worsened: "ухудшение"
+      versus_previous: "vs прошлый период"
     empty_state: "Выберите завершенный недельный период и тип отчета."
     empty_unallocated: "Нераспределенных расходов нет"
     columns:
@@ -319,6 +327,7 @@ ru:
         export_count: "Экспортные заказы"
         goods_cost: "Себестоимость"
         net_qty: "Чистые продажи"
+        net_sales_count: "Чистые продажи"
         nm_id: "nmId"
         order_count: "Заказы"
         ozon_sku_id: "SKU"
@@ -376,6 +385,7 @@ ru:
       store_not_found: "Магазин не найден или отключен."
     filters:
       date_range: "Диапазон дат"
+      export_xlsx: "Экспорт XLSX"
       report_type: "Тип отчета"
       report_type_options:
         wr: "WR"

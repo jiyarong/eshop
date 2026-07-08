@@ -14,7 +14,7 @@ class Ec::WeeklySummaryDeepQueryTest < ActiveSupport::TestCase
     Ec::Sku.where(sku_code: @sku_codes).delete_all
   end
 
-  test "run aggregates rows by sku for wsu deep payload" do
+  test "run aggregates rows by sku for wsu deep payload with comparison data" do
     query = Ec::WeeklySummaryDeepQuery.new(
       from_date: Date.new(2026, 5, 25),
       to_date: Date.new(2026, 5, 31),
@@ -46,6 +46,66 @@ class Ec::WeeklySummaryDeepQueryTest < ActiveSupport::TestCase
     assert_equal 8, payload.dig(:rows, 0, :net_sales)
     assert_in_delta 34.38, payload.dig(:rows, 0, :margin_pct).to_f, 0.1
     assert_in_delta 49.4, payload.dig(:rows, 0, :projected_roi_pct).to_f, 0.1
+    assert_equal "2026-05-18", payload.dig(:comparison, :period, :from_date)
+    assert_equal "2026-05-24", payload.dig(:comparison, :period, :to_date)
+    assert_equal "positive", payload.dig(:comparison, :rows, "WSUDEEP-A", :after_tax, :semantic)
+    assert_equal "negative", payload.dig(:comparison, :rows, "WSUDEEP-A", :ads, :semantic)
+  end
+
+  test "run tolerates nil current comparison metrics when previous period has values" do
+    query = Ec::WeeklySummaryDeepQuery.new(
+      from_date: Date.new(2026, 5, 25),
+      to_date: Date.new(2026, 5, 31),
+      rate: RateStub.new(BigDecimal("7.2"), BigDecimal("0.28"))
+    )
+
+    query.define_singleton_method(:collect_rows) do |from_date, _to_date, _rate|
+      rows = if from_date == Date.new(2026, 5, 25)
+        [
+          { sku: "WSUDEEP-A", platform: "WB", shop: "WB-1", net_sales: 0, revenue: 0, ads: 0, goods_cost: 30, pre_tax: 0, tax: 0, after_tax: 0 }
+        ]
+      else
+        [
+          { sku: "WSUDEEP-A", platform: "WB", shop: "WB-1", net_sales: 4, revenue: 80, ads: 8, goods_cost: 24, pre_tax: 30, tax: 4, after_tax: 26 }
+        ]
+      end
+      [rows, { wb: 0, ozon: 0 }]
+    end
+
+    payload = query.run
+
+    assert_equal "none", payload.dig(:comparison, :rows, "WSUDEEP-A", :average_profit_per_order, :trend)
+    assert_equal "none", payload.dig(:comparison, :rows, "WSUDEEP-A", :projected_roi_pct, :trend)
+    assert_equal "none", payload.dig(:comparison, :rows, "WSUDEEP-A", :annualized_return_pct, :trend)
+  end
+
+  test "run tolerates blank numeric strings in current rows when previous period has numeric values" do
+    query = Ec::WeeklySummaryDeepQuery.new(
+      from_date: Date.new(2026, 5, 25),
+      to_date: Date.new(2026, 5, 31),
+      rate: RateStub.new(BigDecimal("7.2"), BigDecimal("0.28"))
+    )
+
+    query.define_singleton_method(:collect_rows) do |from_date, _to_date, _rate|
+      rows = if from_date == Date.new(2026, 5, 25)
+        [
+          { sku: "WSUDEEP-A", platform: "WB", shop: "WB-1", net_sales: "", revenue: "", ads: "", goods_cost: "", pre_tax: "", tax: "", after_tax: "" }
+        ]
+      else
+        [
+          { sku: "WSUDEEP-A", platform: "WB", shop: "WB-1", net_sales: 4, revenue: 80, ads: 8, goods_cost: 24, pre_tax: 30, tax: 4, after_tax: 26 }
+        ]
+      end
+      [rows, { wb: "", ozon: 0 }]
+    end
+
+    payload = query.run
+
+    assert_equal 0.0, payload.dig(:summary, :total_sales_revenue)
+    assert_equal 0.0, payload.dig(:summary, :total_after_tax)
+    assert_equal "down", payload.dig(:comparison, :rows, "WSUDEEP-A", :revenue, :trend)
+    assert_equal "none", payload.dig(:comparison, :rows, "WSUDEEP-A", :margin_pct, :trend)
+    assert_equal "none", payload.dig(:comparison, :rows, "WSUDEEP-A", :projected_roi_pct, :trend)
   end
 
   private

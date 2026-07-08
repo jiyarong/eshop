@@ -3,7 +3,7 @@ require "test_helper"
 class Ec::WeeklySummaryQueryTest < ActiveSupport::TestCase
   RateStub = Struct.new(:rate_cny_rub, :rate_byn_rub)
 
-  test "run returns wsu payload with shared summary totals" do
+  test "run returns wsu payload with shared summary totals and comparison payload" do
     query = Ec::WeeklySummaryQuery.new(
       from_date: Date.new(2026, 5, 25),
       to_date: Date.new(2026, 5, 31),
@@ -34,6 +34,12 @@ class Ec::WeeklySummaryQueryTest < ActiveSupport::TestCase
     assert_equal 19.0, payload.dig(:summary, :total_after_tax)
     assert_equal(-2.9, payload.dig(:summary, :unallocated_total))
     assert_equal "SKU-WB", payload.dig(:rows, 0, :sku)
-    assert_equal 100.0, payload.dig(:rows, 0, :sales_change_pct)
+    assert_equal "2026-05-18", payload.dig(:comparison, :period, :from_date)
+    assert_equal "2026-05-24", payload.dig(:comparison, :period, :to_date)
+    assert_equal 100.0, payload.dig(:comparison, :rows, "SKU-WB|WB|WB-1", :net_sales, :delta_pct)
+    assert_equal "positive", payload.dig(:comparison, :rows, "SKU-WB|WB|WB-1", :revenue, :semantic)
+    assert_equal "negative", payload.dig(:comparison, :rows, "SKU-WB|WB|WB-1", :ads, :semantic)
+    assert_not payload[:rows].first.key?(:previous_net_sales)
+    assert_not payload[:rows].first.key?(:sales_change_pct)
   end
 end

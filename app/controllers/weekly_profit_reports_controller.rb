@@ -6,7 +6,7 @@ class WeeklyProfitReportsController < ApplicationController
     "wb" => %i[nm_id vendor_code region sales_qty return_qty net_qty settlement delivery storage ad goods_cost pre_tax tax after_tax],
     "ozon" => %i[ozon_sku_id sku_code sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
   }.freeze
-  WSU_COLUMNS = %i[sku platform shop net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct previous_net_sales previous_revenue sales_change_pct revenue_change_pct].freeze
+  WSU_COLUMNS = %i[sku platform shop net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct].freeze
   WSU_DEEP_COLUMNS = %i[sku net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct average_profit_per_order ad_ratio_pct cost_return_pct projected_roi_pct annualized_return_pct annualized_net_profit_cny].freeze
   WR_SUMMARY_KEYS = {
     "wb" => %i[total_sales_qty total_return_qty total_net total_goods_cost total_pre_tax total_tax total_after_tax unallocated_rows],
@@ -21,7 +21,12 @@ class WeeklyProfitReportsController < ApplicationController
                 :weekly_profit_report_table_columns,
                 :weekly_profit_report_unallocated_rows,
                 :weekly_profit_report_unallocated_columns,
-                :weekly_profit_report_value
+                :weekly_profit_report_value,
+                :weekly_profit_report_comparison_note,
+                :weekly_profit_report_row_comparison,
+                :weekly_profit_report_unallocated_comparison,
+                :weekly_profit_report_comparison_label,
+                :weekly_profit_report_comparison_class
 
   def accounts
     render json: {
@@ -35,6 +40,11 @@ class WeeklyProfitReportsController < ApplicationController
     return render_index if html_index_request?
 
     @report = run_report_query(parse_request_params)
+    if request.format.xlsx?
+      export = WeeklyProfitReports::XlsxExportService.call(report: @report)
+      return send_data export[:data], filename: export[:filename], type: WeeklyProfitReports::XlsxExportService::MIME_TYPE, disposition: :attachment
+    end
+
     respond_to do |format|
       format.html { render partial: "weekly_profit_reports/results", status: :ok }
       format.json { render json: { success: true, data: @report, message: "ok" } }
@@ -203,7 +213,8 @@ class WeeklyProfitReportsController < ApplicationController
       {
         key: key,
         label: t("weekly_profit_reports.summary.#{report[:report_type]}.#{key}"),
-        value: weekly_profit_report_value(report[:summary], key)
+        value: weekly_profit_report_value(report[:summary], key),
+        comparison: report.dig(:comparison, :summary, key)
       }
     end
   end
@@ -259,5 +270,132 @@ class WeeklyProfitReportsController < ApplicationController
     return format("%.2f", value) if value.is_a?(Float) || value.is_a?(BigDecimal)
 
     value
+  end
+
+  def weekly_profit_report_comparison_note(report)
+    comparison_period = report.dig(:comparison, :period)
+    return nil unless comparison_period
+
+    "#{t('weekly_profit_reports.comparison.note')} (#{comparison_period[:from_date] || comparison_period['from_date']} ~ #{comparison_period[:to_date] || comparison_period['to_date']})"
+  end
+
+  def weekly_profit_report_row_comparison(report, row, key)
+    row_key = weekly_profit_report_row_key(report, row)
+    return nil if row_key.nil?
+
+    report.dig(:comparison, :rows, row_key, key) ||
+      report.dig(:comparison, :rows, row_key.to_s, key) ||
+      report.dig(:comparison, :rows, row_key.to_s, key.to_s)
+  end
+
+  def weekly_profit_report_unallocated_comparison(report, row)
+    row_key = weekly_profit_report_unallocated_row_key(report, row)
+    return nil if row_key.nil?
+
+    report.dig(:comparison, :extras, :unallocated, row_key, :amount) ||
+      report.dig(:comparison, :extras, :unallocated, row_key.to_s, :amount) ||
+      report.dig(:comparison, :extras, :unallocated, row_key.to_s, "amount")
+  end
+
+  def weekly_profit_report_comparison_label(comparison, include_vs: false)
+    return t("weekly_profit_reports.comparison.unavailable") if comparison.nil?
+
+    state = weekly_profit_report_comparison_state(comparison)
+    return t("weekly_profit_reports.comparison.unavailable") if state[:type] == :unavailable
+
+    suffix = include_vs ? " #{t('weekly_profit_reports.comparison.versus_previous')}" : ""
+
+    case state[:type]
+    when :turned_positive
+      "#{comparison_arrow('up')} #{t('weekly_profit_reports.comparison.turned_positive')}#{suffix}"
+    when :turned_negative
+      "#{comparison_arrow('down')} #{t('weekly_profit_reports.comparison.turned_negative')}#{suffix}"
+    when :improved
+      "#{comparison_arrow('up')} #{t('weekly_profit_reports.comparison.improved')}#{suffix}"
+    when :worsened
+      "#{comparison_arrow('down')} #{t('weekly_profit_reports.comparison.worsened')}#{suffix}"
+    else
+      "#{comparison_arrow(state[:trend])} #{format('%.2f', state[:delta_pct])}%#{suffix}"
+    end
+  end
+
+  def weekly_profit_report_comparison_class(comparison)
+    semantic = comparison&.dig(:semantic) || comparison&.dig("semantic")
+    case semantic
+    when "positive" then "is-positive"
+    when "negative" then "is-negative"
+    when "neutral" then "is-neutral"
+    else "is-none"
+    end
+  end
+
+  def weekly_profit_report_row_key(report, row)
+    case report[:report_type]
+    when "wr"
+      if report.dig(:meta, :platform) == "wb"
+        row[:vendor_code].presence || row["vendor_code"].presence || (row[:nm_id] || row["nm_id"]).to_s
+      else
+        row[:sku_code].presence || row["sku_code"].presence || (row[:ozon_sku_id] || row["ozon_sku_id"]).to_s
+      end
+    when "wsu"
+      [row[:sku] || row["sku"], row[:platform] || row["platform"], row[:shop] || row["shop"]].join("|")
+    when "wsu_deep"
+      (row[:sku] || row["sku"]).to_s
+    end
+  end
+
+  def weekly_profit_report_unallocated_row_key(report, row)
+    if report.dig(:meta, :platform) == "ozon"
+      [row[:type_id] || row["type_id"], row[:type_name] || row["type_name"], row[:posting_number] || row["posting_number"]].join("|")
+    else
+      (row[:name] || row["name"]).to_s
+    end
+  end
+
+  def weekly_profit_report_comparison_state(comparison)
+    trend = comparison_value(comparison, :trend)
+    return { type: :unavailable } if trend == "none"
+
+    current = comparison_decimal(comparison, :current)
+    previous = comparison_decimal(comparison, :previous)
+    delta_pct = comparison_value(comparison, :delta_pct)
+
+    if current && previous
+      return { type: :turned_positive } if previous.negative? && current.positive?
+      return { type: :turned_negative } if previous.positive? && current.negative?
+      return { type: :improved } if previous.negative? && current.zero?
+
+      if previous.negative? && current.negative?
+        return { type: :improved } if current > previous
+        return { type: :worsened } if current < previous
+      end
+    end
+
+    return { type: :unavailable } if delta_pct.nil?
+
+    {
+      type: :percentage,
+      trend: trend,
+      delta_pct: delta_pct
+    }
+  end
+
+  def comparison_arrow(trend)
+    case trend
+    when "up" then "↗"
+    when "down" then "↘"
+    else "→"
+    end
+  end
+
+  def comparison_value(comparison, key)
+    comparison[key] || comparison[key.to_s]
+  end
+
+  def comparison_decimal(comparison, key)
+    value = comparison_value(comparison, key)
+    return nil if value.blank?
+
+    BigDecimal(value.to_s)
   end
 end

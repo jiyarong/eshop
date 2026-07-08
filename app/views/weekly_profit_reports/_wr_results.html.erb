@@ -4,6 +4,7 @@
       <%= report.dig(:meta, :account, :name) %> · <%= report.dig(:meta, :platform).to_s.upcase %> ·
       <%= report.dig(:period, :from_date) %> ~ <%= report.dig(:period, :to_date) %>
     </p>
+    <p class="weekly-profit-comparison-note"><%= weekly_profit_report_comparison_note(report) %></p>
     <%= render "weekly_profit_reports/summary_cards", cards: weekly_profit_report_summary_cards(report) %>
   </section>
 
@@ -22,7 +23,15 @@
           <% report[:rows].each do |row| %>
             <tr>
               <% weekly_profit_report_table_columns(report).each do |key, _label| %>
-                <td><%= weekly_profit_report_value(row, key) %></td>
+                <% comparison = weekly_profit_report_row_comparison(report, row, key) %>
+                <td>
+                  <div class="weekly-profit-table-value"><%= weekly_profit_report_value(row, key) %></div>
+                  <% if comparison.present? %>
+                    <div class="weekly-profit-table-comparison <%= weekly_profit_report_comparison_class(comparison) %>">
+                      <%= weekly_profit_report_comparison_label(comparison) %>
+                    </div>
+                  <% end %>
+                </td>
               <% end %>
             </tr>
           <% end %>
@@ -52,7 +61,15 @@
             <% rows.each do |row| %>
               <tr>
                 <% weekly_profit_report_unallocated_columns(report).each do |key, _label| %>
-                  <td><%= weekly_profit_report_value(row, key) %></td>
+                  <% comparison = (key == :amount ? weekly_profit_report_unallocated_comparison(report, row) : nil) %>
+                  <td>
+                    <div class="weekly-profit-table-value"><%= weekly_profit_report_value(row, key) %></div>
+                    <% if comparison.present? %>
+                      <div class="weekly-profit-table-comparison <%= weekly_profit_report_comparison_class(comparison) %>">
+                        <%= weekly_profit_report_comparison_label(comparison) %>
+                      </div>
+                    <% end %>
+                  </td>
                 <% end %>
               </tr>
             <% end %>

@@ -637,6 +637,12 @@ textarea {
   color: var(--erp-muted);
 }
 
+.weekly-profit-comparison-note {
+  margin: -6px 0 12px;
+  color: var(--erp-muted);
+  font-size: 12px;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -659,6 +665,34 @@ textarea {
   margin-top: 6px;
   font-size: 20px;
   font-weight: 760;
+}
+
+.weekly-profit-comparison-trend,
+.weekly-profit-table-comparison {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.weekly-profit-comparison-trend.is-positive,
+.weekly-profit-table-comparison.is-positive {
+  color: #0f9d58;
+}
+
+.weekly-profit-comparison-trend.is-negative,
+.weekly-profit-table-comparison.is-negative {
+  color: #d93025;
+}
+
+.weekly-profit-comparison-trend.is-neutral,
+.weekly-profit-comparison-trend.is-none,
+.weekly-profit-table-comparison.is-neutral,
+.weekly-profit-table-comparison.is-none {
+  color: var(--erp-muted);
+}
+
+.weekly-profit-table-value {
+  line-height: 1.3;
 }
 
 .section-title {

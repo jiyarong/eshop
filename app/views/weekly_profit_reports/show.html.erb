@@ -11,6 +11,7 @@
                    to_date: @to_date,
                    submit_on_apply: true %>
         <button class="button weekly-profit-submit-button" type="submit"><%= t("weekly_profit_reports.filters.submit") %></button>
+        <button class="button weekly-profit-submit-button" type="submit" formaction="/weekly_profit_reports" formmethod="get" formtarget="_top" data-turbo="false" name="format" value="xlsx"><%= t("weekly_profit_reports.filters.export_xlsx") %></button>
       </div>
     </div>
 

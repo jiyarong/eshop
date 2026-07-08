@@ -314,6 +314,14 @@ zh:
       shipped: "配送中"
       total: "订单数"
   weekly_profit_reports:
+    comparison:
+      note: "环比基准：上一等长自然周范围"
+      unavailable: "-"
+      turned_positive: "转正"
+      turned_negative: "转负"
+      improved: "改善"
+      worsened: "恶化"
+      versus_previous: "vs 上一周期"
     empty_state: "请选择周期和归集类型后查询"
     empty_unallocated: "无未分摊费用"
     columns:
@@ -329,6 +337,7 @@ zh:
         export_count: "出口订单数"
         goods_cost: "货物成本"
         net_qty: "净销量"
+        net_sales_count: "净销量"
         nm_id: "nmId"
         order_count: "订单数"
         ozon_sku_id: "SKU"
@@ -386,6 +395,7 @@ zh:
       store_not_found: "店铺不存在或未启用"
     filters:
       date_range: "时间范围"
+      export_xlsx: "导出 XLSX"
       report_type: "归集类型"
       report_type_options:
         wr: "WR"

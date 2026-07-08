@@ -73,6 +73,22 @@ class Ec::ProjectedStockRoiCalculatorTest < ActiveSupport::TestCase
     assert_nil missing_volume[:annualized_return]
   end
 
+  test "treats blank string cost inputs as missing instead of raising" do
+    result = Ec::ProjectedStockRoiCalculator.call(
+      net_sales_quantity: 14,
+      operating_profit_cny: BigDecimal("337.5"),
+      days_count: 7,
+      unit_goods_cost_cny: "",
+      unit_volume_l: ""
+    )
+
+    assert_equal true, result[:missing_cost]
+    assert_equal true, result[:missing_volume]
+    assert_equal false, result[:calculable]
+    assert_nil result[:roi]
+    assert_nil result[:annualized_return]
+  end
+
   test "returns blank roi when date range is invalid" do
     invalid_date_range = Ec::ProjectedStockRoiCalculator.call(
       net_sales_quantity: 14,

@@ -60,6 +60,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[name='from_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 7.days).iso8601
       assert_select "input[name='to_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 1.day).iso8601
       assert_select "button[type='submit']", text: "查询"
+      assert_select "button[type='submit'][formaction='/weekly_profit_reports'][name='format'][value='xlsx']", text: "导出 XLSX"
     end
     assert_select "input[name='report_type'][type='hidden'][value='wr']", count: 1
     assert_select "input[name='store_ref'][type='hidden'][value=?]", "wb:#{@wb_account.id}"
@@ -117,6 +118,14 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     payload = {
       report_type: "wr",
       period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      comparison: {
+        period: { from_date: "2026-05-11", to_date: "2026-05-17" },
+        summary: {
+          total_after_tax: { current: 88.5, previous: 70.0, delta_value: 18.5, delta_pct: 26.43, trend: "up", semantic: "positive" }
+        },
+        rows: {},
+        extras: {}
+      },
       meta: { platform: "wb", account: { name: "WB Test Shop" } },
       summary: { total_after_tax: 88.5 },
       rows: [{ nm_id: 123 }],
@@ -145,6 +154,8 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal true, body["success"]
     assert_equal "wr", body.dig("data", "report_type")
     assert_equal "wb", body.dig("data", "meta", "platform")
+    assert_equal "2026-05-11", body.dig("data", "comparison", "period", "from_date")
+    assert_equal "positive", body.dig("data", "comparison", "summary", "total_after_tax", "semantic")
   ensure
     query_class.define_singleton_method(:run, original_run)
   end
@@ -153,6 +164,24 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     payload = {
       report_type: "wr",
       period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      comparison: {
+        period: { from_date: "2026-05-11", to_date: "2026-05-17" },
+        summary: {
+          total_after_tax: { current: 88.5, previous: 70.0, delta_value: 18.5, delta_pct: 26.43, trend: "up", semantic: "positive" }
+        },
+        rows: {
+          "KJ-228" => {
+            after_tax: { current: 88.5, previous: 70.0, delta_value: 18.5, delta_pct: 26.43, trend: "up", semantic: "positive" }
+          }
+        },
+        extras: {
+          unallocated: {
+            "未归属费用" => {
+              amount: { current: 12.3, previous: 15.0, delta_value: -2.7, delta_pct: -18.0, trend: "down", semantic: "positive" }
+            }
+          }
+        }
+      },
       meta: {
         platform: "wb",
         account: { name: "WB Test Shop" },
@@ -179,10 +208,14 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#weekly_profit_report_results" do
+      assert_select ".weekly-profit-comparison-note", text: /上一等长自然周范围/
       assert_select ".weekly-profit-summary-card", minimum: 1
-      assert_select "td", "KJ-228"
-      assert_select "td", "88.50"
-      assert_select "td", "未归属费用"
+      assert_select ".weekly-profit-comparison-trend", minimum: 1
+      assert_select ".weekly-profit-table-value", minimum: 1
+      assert_select ".weekly-profit-table-comparison", minimum: 1
+      assert_select ".weekly-profit-table-value", text: "KJ-228"
+      assert_select ".weekly-profit-table-value", text: "88.50"
+      assert_select ".weekly-profit-table-value", text: "未归属费用"
     end
   ensure
     query_class.define_singleton_method(:run, original_run)
@@ -225,9 +258,22 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     payload = {
       report_type: "wsu",
       period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      comparison: {
+        period: { from_date: "2026-05-11", to_date: "2026-05-17" },
+        summary: {
+          total_after_tax: { current: 30.0, previous: 20.0, delta_value: 10.0, delta_pct: 50.0, trend: "up", semantic: "positive" }
+        },
+        rows: {
+          "KJ-228|WB|WB Test Shop" => {
+            revenue: { current: 100.0, previous: 50.0, delta_value: 50.0, delta_pct: 100.0, trend: "up", semantic: "positive" },
+            ads: { current: 10.0, previous: 5.0, delta_value: 5.0, delta_pct: 100.0, trend: "up", semantic: "negative" },
+            margin_pct: { current: 30.0, previous: 20.0, delta_value: 10.0, delta_pct: 50.0, trend: "up", semantic: "positive" }
+          }
+        }
+      },
       meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
       summary: { total_sales_revenue: 100.0, total_after_tax: 30.0, total_margin_pct: 30.0, unallocated_total: -5.0, after_tax_with_unallocated: 25.0 },
-      rows: [{ sku: "KJ-228", platform: "WB", shop: "WB Test Shop", net_sales: 2, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 35.0, tax: 5.0, after_tax: 30.0, margin_pct: 30.0, previous_net_sales: 1, previous_revenue: 50.0, sales_change_pct: 100.0, revenue_change_pct: 100.0 }],
+      rows: [{ sku: "KJ-228", platform: "WB", shop: "WB Test Shop", net_sales: 2, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 35.0, tax: 5.0, after_tax: 30.0, margin_pct: 30.0 }],
       extras: {}
     }
 
@@ -246,10 +292,14 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#weekly_profit_report_results" do
+      assert_select ".weekly-profit-comparison-note", text: /上一等长自然周范围/
       assert_select ".weekly-profit-summary-card", minimum: 1
-      assert_select "td", "KJ-228"
-      assert_select "td", "WB Test Shop"
-      assert_select "td", "30.00%"
+      assert_select ".weekly-profit-comparison-trend", minimum: 1
+      assert_select ".weekly-profit-table-value", minimum: 1
+      assert_select ".weekly-profit-table-comparison", minimum: 1
+      assert_select ".weekly-profit-table-value", text: "KJ-228"
+      assert_select ".weekly-profit-table-value", text: "WB Test Shop"
+      assert_select ".weekly-profit-table-value", text: "30.00%"
     end
   ensure
     query_class.define_singleton_method(:run, original_run)
@@ -286,5 +336,156 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "wsu_deep", body.dig("data", "report_type")
   ensure
     query_class.define_singleton_method(:run, original_run)
+  end
+
+  test "show renders wsu deep result for turbo frame request" do
+    payload = {
+      report_type: "wsu_deep",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      comparison: {
+        period: { from_date: "2026-05-11", to_date: "2026-05-17" },
+        summary: {
+          total_after_tax: { current: 50.0, previous: 40.0, delta_value: 10.0, delta_pct: 25.0, trend: "up", semantic: "positive" }
+        },
+        rows: {
+          "KJ-228" => {
+            after_tax: { current: 50.0, previous: 40.0, delta_value: 10.0, delta_pct: 25.0, trend: "up", semantic: "positive" },
+            ad_ratio_pct: { current: 10.0, previous: 12.0, delta_value: -2.0, delta_pct: -16.67, trend: "down", semantic: "positive" }
+          }
+        }
+      },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sku_count: 1, total_net_sales: 4, total_sales_revenue: 100.0, total_after_tax: 50.0, unallocated_total: -5.0, after_tax_with_unallocated: 45.0 },
+      rows: [{ sku: "KJ-228", net_sales: 4, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 60.0, tax: 10.0, after_tax: 50.0, margin_pct: 50.0, average_profit_per_order: 12.5, ad_ratio_pct: 10.0, cost_return_pct: 250.0, projected_roi_pct: 55.0, annualized_return_pct: 110.0, annualized_net_profit_cny: 800.0 }],
+      extras: {}
+    }
+
+    query_class = Ec::WeeklySummaryDeepQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: {
+      report_type: "wsu_deep",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => "text/html",
+      "Turbo-Frame" => "weekly_profit_report_results"
+    }
+
+    assert_response :success
+    assert_select "turbo-frame#weekly_profit_report_results" do
+      assert_select ".weekly-profit-comparison-note", text: /上一等长自然周范围/
+      assert_select ".weekly-profit-summary-card", minimum: 1
+      assert_select ".weekly-profit-comparison-trend", minimum: 1
+      assert_select ".weekly-profit-table-value", minimum: 1
+      assert_select ".weekly-profit-table-comparison", minimum: 1
+      assert_select ".weekly-profit-table-value", text: "KJ-228"
+      assert_select ".weekly-profit-table-value", text: "800.00"
+    end
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
+  test "show renders readable comparison labels when previous values are negative" do
+    payload = {
+      report_type: "wsu_deep",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      comparison: {
+        period: { from_date: "2026-05-11", to_date: "2026-05-17" },
+        summary: {
+          total_after_tax: { current: 50.0, previous: -40.0, delta_value: 90.0, delta_pct: -225.0, trend: "up", semantic: "positive" }
+        },
+        rows: {
+          "TURN-POSITIVE" => {
+            annualized_net_profit_cny: { current: 800.0, previous: -200.0, delta_value: 1000.0, delta_pct: -500.0, trend: "up", semantic: "positive" }
+          },
+          "WORSE-LOSS" => {
+            annualized_net_profit_cny: { current: -300.0, previous: -100.0, delta_value: -200.0, delta_pct: 200.0, trend: "down", semantic: "negative" }
+          },
+          "BETTER-LOSS" => {
+            annualized_net_profit_cny: { current: 0.0, previous: -120.0, delta_value: 120.0, delta_pct: -100.0, trend: "up", semantic: "positive" }
+          }
+        }
+      },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sku_count: 3, total_net_sales: 4, total_sales_revenue: 100.0, total_after_tax: 50.0, unallocated_total: -5.0, after_tax_with_unallocated: 45.0 },
+      rows: [
+        { sku: "TURN-POSITIVE", net_sales: 4, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 60.0, tax: 10.0, after_tax: 50.0, margin_pct: 50.0, average_profit_per_order: 12.5, ad_ratio_pct: 10.0, cost_return_pct: 250.0, projected_roi_pct: 55.0, annualized_return_pct: 110.0, annualized_net_profit_cny: 800.0 },
+        { sku: "WORSE-LOSS", net_sales: 1, revenue: 10.0, ads: 2.0, goods_cost: 3.0, pre_tax: -20.0, tax: 0.0, after_tax: -20.0, margin_pct: -200.0, average_profit_per_order: -20.0, ad_ratio_pct: 20.0, cost_return_pct: -666.0, projected_roi_pct: -50.0, annualized_return_pct: -100.0, annualized_net_profit_cny: -300.0 },
+        { sku: "BETTER-LOSS", net_sales: 0, revenue: 0.0, ads: 0.0, goods_cost: 0.0, pre_tax: 0.0, tax: 0.0, after_tax: 0.0, margin_pct: nil, average_profit_per_order: nil, ad_ratio_pct: nil, cost_return_pct: nil, projected_roi_pct: nil, annualized_return_pct: nil, annualized_net_profit_cny: 0.0 }
+      ],
+      extras: {}
+    }
+
+    query_class = Ec::WeeklySummaryDeepQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: {
+      report_type: "wsu_deep",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => "text/html",
+      "Turbo-Frame" => "weekly_profit_report_results"
+    }
+
+    assert_response :success
+    assert_select "turbo-frame#weekly_profit_report_results" do
+      assert_includes response.body, "↗ 转正"
+      assert_includes response.body, "↘ 恶化"
+      assert_includes response.body, "↗ 改善"
+      refute_includes response.body, "↗ -500.00%"
+      refute_includes response.body, "↘ 200.00%"
+      refute_includes response.body, "↗ -100.00%"
+    end
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
+  test "show exports xlsx for current filter" do
+    payload = {
+      report_type: "wsu",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sales_revenue: 100.0 },
+      rows: [{ sku: "KJ-228", platform: "WB", shop: "WB Test Shop" }],
+      extras: {}
+    }
+    export_result = {
+      filename: "weekly-profit-wsu-w21-2026-05-18_to_2026-05-24.xlsx",
+      data: "xlsx-binary"
+    }
+
+    query_class = Ec::WeeklySummaryQuery
+    export_class = WeeklyProfitReports::XlsxExportService
+    original_query_run = query_class.method(:run)
+    original_export_call = export_class.method(:call)
+    captured_report = nil
+
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+    export_class.define_singleton_method(:call) do |report:|
+      captured_report = report
+      export_result
+    end
+
+    get "/weekly_profit_reports", params: {
+      format: "xlsx",
+      report_type: "wsu",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => WeeklyProfitReports::XlsxExportService::MIME_TYPE
+    }
+
+    assert_response :success
+    assert_equal payload, captured_report
+    assert_equal "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", response.media_type
+    assert_equal "xlsx-binary", response.body
+    assert_match(/attachment;.*weekly-profit-wsu-w21-2026-05-18_to_2026-05-24\.xlsx/, response.headers["Content-Disposition"])
+  ensure
+    query_class.define_singleton_method(:run, original_query_run)
+    export_class.define_singleton_method(:call, original_export_call)
   end
 end

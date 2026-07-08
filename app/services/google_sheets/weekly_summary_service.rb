@@ -43,6 +43,7 @@ module GoogleSheets
 
       query = Ec::WeeklySummaryQuery.run(from_date: @from_date, to_date: @to_date)
       row_hashes = query[:rows]
+      comparisons = query.dig(:comparison, :rows) || {}
       summary = query[:summary]
 
       tab = "WSU:#{@week_label}"
@@ -52,7 +53,7 @@ module GoogleSheets
       sid_pre = sheet_id(tab)
       batch_update([req_clear_format(sid_pre)]) if sid_pre
 
-      data_rows = build_query_data_rows(row_hashes)
+      data_rows = build_query_data_rows(row_hashes, comparisons)
       total_row = build_query_total_row(row_hashes)
 
       all_rows  = [HDR_ZH, HDR_RU] + data_rows + [total_row]
@@ -82,8 +83,9 @@ module GoogleSheets
 
     private
 
-    def build_query_data_rows(rows)
+    def build_query_data_rows(rows, comparisons)
       rows.map do |row|
+        comparison = comparisons[[row[:sku], row[:platform], row[:shop]].join("|")] || {}
         [
           row[:sku],
           row[:platform],
@@ -96,10 +98,10 @@ module GoogleSheets
           row[:tax],
           row[:after_tax],
           row[:margin_pct],
-          row[:previous_net_sales],
-          row[:previous_revenue],
-          row[:sales_change_pct],
-          row[:revenue_change_pct]
+          comparison.dig(:net_sales, :previous),
+          comparison.dig(:revenue, :previous),
+          comparison.dig(:net_sales, :delta_pct),
+          comparison.dig(:revenue, :delta_pct)
         ]
       end
     end
