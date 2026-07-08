@@ -1,0 +1,8 @@
+<div class="summary-grid">
+  <% cards.each do |card| %>
+    <div class="weekly-profit-summary-card">
+      <div class="summary-label"><%= card[:label] %></div>
+      <div class="summary-value"><%= card[:value] %></div>
+    </div>
+  <% end %>
+</div>

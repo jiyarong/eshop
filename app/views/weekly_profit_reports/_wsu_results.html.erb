@@ -1,0 +1,32 @@
+<div class="report-stack">
+  <section class="panel">
+    <p class="report-meta">
+      <%= report.dig(:period, :from_date) %> ~ <%= report.dig(:period, :to_date) %>
+    </p>
+    <%= render "weekly_profit_reports/summary_cards", cards: weekly_profit_report_summary_cards(report) %>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title"><%= t("weekly_profit_reports.sections.wsu_rows") %></h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <% weekly_profit_report_table_columns(report).each do |_key, label| %>
+              <th><%= label %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% report[:rows].each do |row| %>
+            <tr>
+              <% weekly_profit_report_table_columns(report).each do |key, _label| %>
+                <td><%= weekly_profit_report_value(row, key) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

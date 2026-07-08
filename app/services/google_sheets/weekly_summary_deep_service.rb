@@ -20,16 +20,9 @@ module GoogleSheets
     end
 
     def call
-      rows, @unalloc_cny = collect_rows(@from_date, @to_date, @rate)
-
-      prev_from = @from_date - 7
-      prev_to   = @to_date - 7
-      prev_rate = Ec::WeeklyRate.resolve(prev_from)
-      prev_rows, _ = prev_rate ? collect_rows(prev_from, prev_to, prev_rate) : [[], nil]
-
-      aggregated_rows = aggregate_rows_by_sku(rows)
-      @current_skus = aggregated_rows.map { |row| row[:sku] }
-      prev_map = aggregate_rows_by_sku(prev_rows).index_by { |row| row[:sku] }
+      query = Ec::WeeklySummaryDeepQuery.run(from_date: @from_date, to_date: @to_date)
+      row_hashes = query[:rows]
+      summary = query[:summary]
 
       tab = "WSU-DEEP:#{@week_label}"
       @spreadsheet_sheets = nil
@@ -38,13 +31,13 @@ module GoogleSheets
       sid_pre = sheet_id(tab)
       batch_update([req_clear_format(sid_pre)]) if sid_pre
 
-      data_rows = build_data_rows(aggregated_rows, prev_map)
-      total_row = build_total_row(aggregated_rows)
+      data_rows = build_query_data_rows(row_hashes)
+      total_row = build_query_total_row(row_hashes)
       all_rows = [HDR_ZH, HDR_RU] + data_rows + [total_row]
       write_to_sheet(range: "#{tab}!A1", values: all_rows)
 
       summary_offset = all_rows.size + 3
-      write_to_sheet(range: "#{tab}!A#{summary_offset + 1}", values: build_summary(aggregated_rows))
+      write_to_sheet(range: "#{tab}!A#{summary_offset + 1}", values: build_query_summary_rows(summary))
 
       @spreadsheet_sheets = nil
       sid = sheet_id(tab)
@@ -62,6 +55,69 @@ module GoogleSheets
     end
 
     private
+
+    def build_query_data_rows(rows)
+      rows.map do |row|
+        [
+          row[:sku],
+          row[:net_sales],
+          row[:revenue],
+          row[:ads],
+          row[:goods_cost],
+          row[:pre_tax],
+          row[:tax],
+          row[:after_tax],
+          row[:margin_pct],
+          row[:average_profit_per_order],
+          row[:ad_ratio_pct],
+          row[:cost_return_pct],
+          row[:projected_roi_pct],
+          row[:annualized_return_pct],
+          row[:annualized_net_profit_cny]
+        ]
+      end
+    end
+
+    def build_query_total_row(rows)
+      total_revenue = rows.sum { |row| row[:revenue].to_f }.round(2)
+      total_after_tax = rows.sum { |row| row[:after_tax].to_f }.round(2)
+      [
+        "合计 / Итого",
+        rows.sum { |row| row[:net_sales].to_i },
+        total_revenue,
+        rows.sum { |row| row[:ads].to_f }.round(2),
+        rows.sum { |row| row[:goods_cost].to_f }.round(2),
+        rows.sum { |row| row[:pre_tax].to_f }.round(2),
+        rows.sum { |row| row[:tax].to_f }.round(2),
+        total_after_tax,
+        total_revenue.zero? ? nil : ((total_after_tax / total_revenue) * 100).round(2),
+        nil, nil, nil, nil, nil, nil
+      ]
+    end
+
+    def build_query_summary_rows(summary)
+      [
+        ["项目", "金额(CNY)"],
+        ["数据周期", summary[:period_label]],
+        ["汇率 CNY/RUB", summary[:rate_cny_rub]],
+        ["汇率 BYN/RUB", summary[:rate_byn_rub]],
+        [],
+        ["── 合计 ──", ""],
+        ["总SKU数", summary[:total_sku_count]],
+        ["总净销量", summary[:total_net_sales]],
+        ["总销售额", summary[:total_sales_revenue]],
+        ["总广告费", summary[:total_ads]],
+        ["总货物成本", summary[:total_goods_cost]],
+        ["总税前毛利", summary[:total_pre_tax]],
+        ["总税后净利", summary[:total_after_tax]],
+        ["综合利润率", summary[:total_margin_pct] ? "#{summary[:total_margin_pct]}%" : "N/A"],
+        [],
+        ["── 未分摊费用（参考，负=成本）──", ""],
+        ["未分摊合计", summary[:unallocated_total]],
+        ["税后净利（不含未分摊）", summary[:total_after_tax]],
+        ["税后净利（含未分摊）", summary[:after_tax_with_unallocated]]
+      ]
+    end
 
     def build_data_rows(rows, prev_map)
       rows.sort_by { |row| -row[:after_tax].to_d }.map do |row|

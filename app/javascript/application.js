@@ -12,6 +12,7 @@ import ProductTreeController from "./controllers/product_tree_controller";
 import ShellController from "./controllers/shell_controller";
 import TimeRangeSelectorController from "./controllers/time_range_selector_controller";
 import ToastController from "./controllers/toast_controller";
+import WeeklyProfitFilterController from "./controllers/weekly_profit_filter_controller";
 
 window.Stimulus = Application.start();
 Stimulus.register("clipboard", ClipboardController);
@@ -26,3 +27,4 @@ Stimulus.register("product-tree", ProductTreeController);
 Stimulus.register("shell", ShellController);
 Stimulus.register("time-range-selector", TimeRangeSelectorController);
 Stimulus.register("toast", ToastController);
+Stimulus.register("weekly-profit-filter", WeeklyProfitFilterController);

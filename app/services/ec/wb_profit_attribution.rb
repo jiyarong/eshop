@@ -149,9 +149,13 @@ module Ec
     #   4. 按各 nm_id 白俄/出口销量比例拆到两个 bucket
 
     def load_ad_costs
-      fees = RawWb::AdSettledFee
-        .where(account_id: @account_id)
-        .where('period_from = ? AND period_to = ?', @from_date, @to_date)
+      periods = resolve_ad_fee_periods
+      return if periods.blank?
+
+      fees = periods
+        .reduce(RawWb::AdSettledFee.none) { |scope, (from_date, to_date)|
+          scope.or(ad_settled_fee_scope(from_date, to_date))
+        }
         .to_a
       return if fees.empty?
 
@@ -217,6 +221,35 @@ module Ec
           nm_ids.each { |nm_id| distribute_ad(nm_id, per_nm, implied_rate) }
         end
       end
+    end
+
+    def resolve_ad_fee_periods
+      return [[@from_date, @to_date]] if ad_settled_fee_scope(@from_date, @to_date).exists?
+      return nil unless multi_week_range?
+
+      week_pairs = (((@to_date - @from_date).to_i + 1) / 7).times.map do |index|
+        week_from = @from_date + (index * 7)
+        [week_from, week_from + 6]
+      end
+
+      all_present = week_pairs.all? do |week_from, week_to|
+        ad_settled_fee_scope(week_from, week_to).exists?
+      end
+
+      all_present ? week_pairs : nil
+    end
+
+    def multi_week_range?
+      days = (@to_date - @from_date).to_i + 1
+      days >= 14 && (days % 7).zero? && @from_date.cwday == 1 && @to_date.cwday == 7
+    end
+
+    def ad_settled_fee_scope(from_date, to_date)
+      RawWb::AdSettledFee.where(
+        account_id: @account_id,
+        period_from: from_date,
+        period_to: to_date
+      )
     end
 
     # nm_id 的广告费（RUB）→ BYN，按白俄/出口销量比例写入两个 bucket

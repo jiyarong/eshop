@@ -23,27 +23,31 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    Ec::WeeklyRate.where(week_start: Date.parse("2026-05-18")).delete_all
+    Ec::WeeklyRate.where(week_start: [Date.parse("2026-05-18"), Date.parse("2026-05-25")]).delete_all
     @ozon_account&.destroy
     @wb_account&.destroy
     UserRole.joins(:user).where("users.email = ?", @current_user.email).delete_all
     @current_user.destroy
   end
 
-  test "accounts returns active wb and ozon shops" do
+  test "accounts returns flat active wb and ozon shop options" do
     get "/weekly_profit_reports/accounts"
 
     assert_response :success
     body = JSON.parse(response.body)
-    wb_account = body.dig("data", "wb").find { |account| account["id"] == @wb_account.id }
-    ozon_account = body.dig("data", "ozon").find { |account| account["id"] == @ozon_account.id }
+    wb_account = body.fetch("data").find { |account| account["ref"] == "wb:#{@wb_account.id}" }
+    ozon_account = body.fetch("data").find { |account| account["ref"] == "ozon:#{@ozon_account.id}" }
 
     assert_equal true, body["success"]
+    assert_equal "wb", wb_account["platform"]
     assert_equal "WB Test Shop", wb_account["name"]
+    assert_equal "WB · WB Test Shop", wb_account["label"]
+    assert_equal "ozon", ozon_account["platform"]
     assert_equal "Ozon Test Shop", ozon_account["name"]
+    assert_equal "Ozon · Ozon Test Shop", ozon_account["label"]
   end
 
-  test "index renders weekly profit report page as html" do
+  test "index renders weekly profit report page with report type and store filters" do
     get "/weekly_profit_reports", headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -51,48 +55,127 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "周利润报表"
     assert_select "form[action=?][method=?]", "/weekly_profit_reports", "get"
     assert_select "[data-controller='time-range-selector']", count: 1
-    assert_select "label[for=?]", "weekly-profit-time-range-trigger", "时间范围"
-    assert_select "input[name='from_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 7.days).iso8601
-    assert_select "input[name='to_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 1.day).iso8601
-    assert_select "button[aria-controls='weekly-profit-time-range-popover']", count: 1
-    assert_select "#weekly-profit-time-range-popover[role='dialog']", count: 1
-    assert_select "input#weekly-profit-from-date", count: 0
-    assert_select "input#weekly-profit-to-date", count: 0
-    assert_select "turbo-frame#weekly_profit_report_results"
-    assert_select "option[value=?]", "wb"
-    assert_select "option[value=?]", "ozon"
-    assert_select "option[value=?]", @wb_account.id.to_s, text: "WB Test Shop"
-    assert_select "option[value=?]", @ozon_account.id.to_s, text: "Ozon Test Shop"
+    assert_select ".field--time-range" do
+      assert_select "label[for=?]", "weekly-profit-time-range-trigger", "时间范围"
+      assert_select "input[name='from_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 7.days).iso8601
+      assert_select "input[name='to_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 1.day).iso8601
+      assert_select "button[type='submit']", text: "查询"
+    end
+    assert_select "input[name='report_type'][type='hidden'][value='wr']", count: 1
+    assert_select "input[name='store_ref'][type='hidden'][value=?]", "wb:#{@wb_account.id}"
+    assert_select "[data-weekly-profit-tag-group='report-type']", count: 1
+    assert_select "button[data-weekly-profit-tag][data-value='wr'].is-active[aria-pressed='true']", text: "WR"
+    assert_select "button[data-weekly-profit-tag][data-value='wsu']", text: "WSU"
+    assert_select "button[data-weekly-profit-tag][data-value='wsu_deep']", text: "WSU-DEEP"
+    assert_select "[data-weekly-profit-store-field]:not(.is-disabled)[aria-disabled='false']", count: 1
+    assert_select "[data-weekly-profit-tag-group='store']", count: 1
+    assert_select "button[data-weekly-profit-store-tag][data-value=?].is-active[aria-pressed='true']", "wb:#{@wb_account.id}", text: "WB · WB Test Shop"
+    assert_select "button[data-weekly-profit-store-tag][data-value=?]", "ozon:#{@ozon_account.id}", text: "Ozon · Ozon Test Shop"
   end
 
-  test "show renders weekly profit report result for turbo frame request" do
-    rate = Ec::WeeklyRate.find_or_initialize_by(week_start: Date.parse("2026-05-18"))
-    rate.update!(rate_cny_rub: 10.93, rate_byn_rub: 26.41)
+  test "show requires store ref for wr" do
+    get "/weekly_profit_reports.json", params: {
+      report_type: "wr",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }
 
-    service = Struct.new(:results, :unallocated, :summary).new(
-      [{ nm_id: 123, vendor_code: "KJ-228", region: "Moscow", after_tax: 88.5 }],
-      { "未归属费用" => 12.3 },
-      { total_after_tax: 88.5, total_goods_cost: 20.0 }
-    )
+    assert_response :bad_request
+    body = JSON.parse(response.body)
+    assert_equal false, body["success"]
+    assert_match(/store_ref/, body["message"])
+  end
 
-    original_new = Ec::WbProfitAttribution.method(:new)
-    Ec::WbProfitAttribution.define_singleton_method(:new) { |**_kwargs| service }
-    service.define_singleton_method(:call) { service }
+  test "show rejects non natural week range" do
+    get "/weekly_profit_reports.json", params: {
+      report_type: "wsu",
+      from_date: "2026-05-19",
+      to_date: "2026-05-24"
+    }
 
-    begin
-      get "/weekly_profit_reports", params: {
-        platform: "wb",
-        account_id: @wb_account.id,
-        from_date: "2026-05-18",
-        to_date: "2026-05-24"
-      }, headers: {
-        "Accept" => "text/html",
-        "Turbo-Frame" => "weekly_profit_report_results"
-      }
-    ensure
-      Ec::WbProfitAttribution.define_singleton_method(:new, original_new)
-      service.singleton_class.remove_method(:call)
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_equal false, body["success"]
+  end
+
+  test "show rejects current week range" do
+    monday = Date.current.beginning_of_week(:monday)
+    sunday = monday + 6.days
+
+    get "/weekly_profit_reports.json", params: {
+      report_type: "wsu",
+      from_date: monday.iso8601,
+      to_date: sunday.iso8601
+    }
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_equal false, body["success"]
+  end
+
+  test "show dispatches wr query for wb store ref" do
+    payload = {
+      report_type: "wr",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { platform: "wb", account: { name: "WB Test Shop" } },
+      summary: { total_after_tax: 88.5 },
+      rows: [{ nm_id: 123 }],
+      extras: { unallocated: { "未归属费用" => 12.3 } }
+    }
+
+    query_class = Ec::WeeklyProfitReportQuery
+    original_run = query_class.method(:run)
+    test_case = self
+    query_class.define_singleton_method(:run) do |**kwargs|
+      test_case.assert_equal "wb:#{test_case.instance_variable_get(:@wb_account).id}", kwargs[:store_ref]
+      test_case.assert_equal Date.parse("2026-05-18"), kwargs[:from_date]
+      test_case.assert_equal Date.parse("2026-05-24"), kwargs[:to_date]
+      payload
     end
+
+    get "/weekly_profit_reports.json", params: {
+      report_type: "wr",
+      store_ref: "wb:#{@wb_account.id}",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal true, body["success"]
+    assert_equal "wr", body.dig("data", "report_type")
+    assert_equal "wb", body.dig("data", "meta", "platform")
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
+  test "show renders wr result for turbo frame request" do
+    payload = {
+      report_type: "wr",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: {
+        platform: "wb",
+        account: { name: "WB Test Shop" },
+        rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 }
+      },
+      summary: { total_after_tax: 88.5, total_goods_cost: 20.0, total_sales_qty: 3, total_return_qty: 1, total_net: 100.0, total_pre_tax: 90.0, total_tax: 1.5, unallocated_rows: 1 },
+      rows: [{ nm_id: 123, vendor_code: "KJ-228", region: "Moscow", sales_qty: 3, return_qty: 1, net_qty: 2, settlement: 100.0, delivery: 10.0, storage: 5.0, ad: 2.0, goods_cost: 20.0, pre_tax: 90.0, tax: 1.5, after_tax: 88.5 }],
+      extras: { unallocated: { "未归属费用" => 12.3 } }
+    }
+
+    query_class = Ec::WeeklyProfitReportQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: {
+      report_type: "wr",
+      store_ref: "wb:#{@wb_account.id}",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => "text/html",
+      "Turbo-Frame" => "weekly_profit_report_results"
+    }
 
     assert_response :success
     assert_select "turbo-frame#weekly_profit_report_results" do
@@ -101,191 +184,107 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select "td", "88.50"
       assert_select "td", "未归属费用"
     end
+  ensure
+    query_class.define_singleton_method(:run, original_run)
   end
 
-  test "show requires platform account and dates" do
-    get "/weekly_profit_reports.json"
+  test "show dispatches wsu query" do
+    payload = {
+      report_type: "wsu",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sales_revenue: 100.0 },
+      rows: [{ sku: "KJ-228", platform: "WB" }],
+      extras: {}
+    }
 
-    assert_response :bad_request
-    body = JSON.parse(response.body)
-    assert_equal false, body["success"]
-    assert_match(/platform/, body["message"])
-  end
+    query_class = Ec::WeeklySummaryQuery
+    original_run = query_class.method(:run)
+    test_case = self
+    query_class.define_singleton_method(:run) do |**kwargs|
+      test_case.assert_equal Date.parse("2026-05-18"), kwargs[:from_date]
+      test_case.assert_equal Date.parse("2026-05-24"), kwargs[:to_date]
+      payload
+    end
 
-  test "show rejects unsupported platform" do
     get "/weekly_profit_reports.json", params: {
-      platform: "amazon",
-      account_id: @wb_account.id,
+      report_type: "wsu",
       from_date: "2026-05-18",
       to_date: "2026-05-24"
     }
 
-    assert_response :bad_request
+    assert_response :success
     body = JSON.parse(response.body)
-    assert_equal false, body["success"]
-    assert_match(/platform/, body["message"])
+    assert_equal true, body["success"]
+    assert_equal "wsu", body.dig("data", "report_type")
+  ensure
+    query_class.define_singleton_method(:run, original_run)
   end
 
-  test "show returns 422 when weekly rate is missing" do
-    Ec::WeeklyRate.where(week_start: Date.parse("2026-05-18")).delete_all
-    original_resolve = Ec::WeeklyRate.method(:resolve)
-    Ec::WeeklyRate.define_singleton_method(:resolve) { |*_args| raise "weekly rate should not be resolved" }
+  test "show renders wsu result for turbo frame request" do
+    payload = {
+      report_type: "wsu",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sales_revenue: 100.0, total_after_tax: 30.0, total_margin_pct: 30.0, unallocated_total: -5.0, after_tax_with_unallocated: 25.0 },
+      rows: [{ sku: "KJ-228", platform: "WB", shop: "WB Test Shop", net_sales: 2, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 35.0, tax: 5.0, after_tax: 30.0, margin_pct: 30.0, previous_net_sales: 1, previous_revenue: 50.0, sales_change_pct: 100.0, revenue_change_pct: 100.0 }],
+      extras: {}
+    }
 
-    begin
-      get "/weekly_profit_reports.json", params: {
-        platform: "wb",
-        account_id: @wb_account.id,
-        from_date: "2026-05-18",
-        to_date: "2026-05-24"
-      }
-    ensure
-      Ec::WeeklyRate.define_singleton_method(:resolve, original_resolve)
+    query_class = Ec::WeeklySummaryQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: {
+      report_type: "wsu",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => "text/html",
+      "Turbo-Frame" => "weekly_profit_report_results"
+    }
+
+    assert_response :success
+    assert_select "turbo-frame#weekly_profit_report_results" do
+      assert_select ".weekly-profit-summary-card", minimum: 1
+      assert_select "td", "KJ-228"
+      assert_select "td", "WB Test Shop"
+      assert_select "td", "30.00%"
     end
-
-    assert_response :unprocessable_entity
-    body = JSON.parse(response.body)
-    assert_equal false, body["success"]
-    assert_match(/汇率/, body["message"])
+  ensure
+    query_class.define_singleton_method(:run, original_run)
   end
 
-  test "show returns 404 for missing shop without resolving weekly rate" do
-    original_resolve = Ec::WeeklyRate.method(:resolve)
-    Ec::WeeklyRate.define_singleton_method(:resolve) { |*_args| raise "weekly rate should not be resolved" }
+  test "show dispatches wsu deep query" do
+    payload = {
+      report_type: "wsu_deep",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_after_tax: 50.0 },
+      rows: [{ sku: "KJ-228", net_sales: 4 }],
+      extras: {}
+    }
 
-    begin
-      get "/weekly_profit_reports.json", params: {
-        platform: "wb",
-        account_id: @wb_account.id + 1_000_000,
-        from_date: "2026-05-18",
-        to_date: "2026-05-24"
-      }
-    ensure
-      Ec::WeeklyRate.define_singleton_method(:resolve, original_resolve)
-    end
-
-    assert_response :not_found
-    body = JSON.parse(response.body)
-    assert_equal false, body["success"]
-    assert_match(/店铺/, body["message"])
-  end
-
-  test "show returns 500 when attribution service raises argument error" do
-    rate = Ec::WeeklyRate.find_or_initialize_by(week_start: Date.parse("2026-05-18"))
-    rate.update!(rate_cny_rub: 10.93, rate_byn_rub: 26.41)
-    service = Object.new
-
-    original_new = Ec::WbProfitAttribution.method(:new)
-
-    Ec::WbProfitAttribution.define_singleton_method(:new) { |**_kwargs| service }
-    service.define_singleton_method(:call) { raise ArgumentError, "sensitive service details" }
-
-    begin
-      get "/weekly_profit_reports.json", params: {
-        platform: "wb",
-        account_id: @wb_account.id,
-        from_date: "2026-05-18",
-        to_date: "2026-05-24"
-      }
-    ensure
-      Ec::WbProfitAttribution.define_singleton_method(:new, original_new)
-      service.singleton_class.remove_method(:call)
-    end
-
-    assert_response :internal_server_error
-    body = JSON.parse(response.body)
-    assert_equal false, body["success"]
-    assert_equal "internal server error", body["message"]
-  end
-
-  test "show returns wb weekly profit payload" do
-    rate = Ec::WeeklyRate.find_or_initialize_by(week_start: Date.parse("2026-05-18"))
-    rate.update!(rate_cny_rub: 10.93, rate_byn_rub: 26.41)
-
-    service = Struct.new(:results, :unallocated, :summary).new(
-      [{ nm_id: 123, vendor_code: "KJ-228", after_tax: 88.5 }],
-      { "未归属费用" => 12.3 },
-      { total_after_tax: 88.5, tax_regime: "usn" }
-    )
-
-    original_new = Ec::WbProfitAttribution.method(:new)
+    query_class = Ec::WeeklySummaryDeepQuery
+    original_run = query_class.method(:run)
     test_case = self
-    account_id = @wb_account.id
-
-    Ec::WbProfitAttribution.define_singleton_method(:new) do |**kwargs|
-      test_case.assert_equal account_id, kwargs[:account_id]
+    query_class.define_singleton_method(:run) do |**kwargs|
       test_case.assert_equal Date.parse("2026-05-18"), kwargs[:from_date]
       test_case.assert_equal Date.parse("2026-05-24"), kwargs[:to_date]
-      test_case.assert_equal rate.rate_cny_rub, kwargs[:rate_cny_rub]
-      test_case.assert_equal rate.rate_byn_rub, kwargs[:rate_byn_rub]
-      service
+      payload
     end
-    service.define_singleton_method(:call) { service }
 
-    begin
-      get "/weekly_profit_reports.json", params: {
-        platform: "wb",
-        account_id: @wb_account.id,
-        from_date: "2026-05-18",
-        to_date: "2026-05-24"
-      }
-    ensure
-      Ec::WbProfitAttribution.define_singleton_method(:new, original_new)
-      service.singleton_class.remove_method(:call)
-    end
+    get "/weekly_profit_reports.json", params: {
+      report_type: "wsu_deep",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }
 
     assert_response :success
     body = JSON.parse(response.body)
     assert_equal true, body["success"]
-    assert_equal "wb", body.dig("data", "platform")
-    assert_equal "WB Test Shop", body.dig("data", "account", "name")
-    assert_equal 88.5, body.dig("data", "summary", "total_after_tax")
-    assert_equal 123, body.dig("data", "rows", 0, "nm_id")
-    assert_equal 12.3, body.dig("data", "unallocated", "未归属费用")
-  end
-
-  test "show returns ozon weekly profit payload" do
-    rate = Ec::WeeklyRate.find_or_initialize_by(week_start: Date.parse("2026-05-18"))
-    rate.update!(rate_cny_rub: 10.93, rate_byn_rub: 26.41)
-
-    service = Struct.new(:results, :unallocated, :summary).new(
-      [{ ozon_sku_id: "111", sku_code: "KJ-228", after_tax_profit: 150.0 }],
-      { total: -20.0, rows: [{ type_id: 96, type_name: "Fine", amount: -20.0 }] },
-      { total_after_tax_profit: 150.0, sku_count: 1 }
-    )
-
-    original_new = Ec::OzonProfitAttribution.method(:new)
-    test_case = self
-    account_id = @ozon_account.id
-
-    Ec::OzonProfitAttribution.define_singleton_method(:new) do |**kwargs|
-      test_case.assert_equal account_id, kwargs[:account_id]
-      test_case.assert_equal Date.parse("2026-05-18"), kwargs[:from_date]
-      test_case.assert_equal Date.parse("2026-05-24"), kwargs[:to_date]
-      test_case.assert_equal 10.93, kwargs[:rate_cny_rub]
-      test_case.assert_equal false, kwargs[:sync_missing_ad_costs]
-      service
-    end
-    service.define_singleton_method(:call) { service }
-
-    begin
-      get "/weekly_profit_reports.json", params: {
-        platform: "ozon",
-        account_id: @ozon_account.id,
-        from_date: "2026-05-18",
-        to_date: "2026-05-24"
-      }
-    ensure
-      Ec::OzonProfitAttribution.define_singleton_method(:new, original_new)
-      service.singleton_class.remove_method(:call)
-    end
-
-    assert_response :success
-    body = JSON.parse(response.body)
-    assert_equal true, body["success"]
-    assert_equal "ozon", body.dig("data", "platform")
-    assert_equal "Ozon Test Shop", body.dig("data", "account", "name")
-    assert_equal 150.0, body.dig("data", "summary", "total_after_tax_profit")
-    assert_equal "111", body.dig("data", "rows", 0, "ozon_sku_id")
-    assert_equal(-20.0, body.dig("data", "unallocated", "total"))
+    assert_equal "wsu_deep", body.dig("data", "report_type")
+  ensure
+    query_class.define_singleton_method(:run, original_run)
   end
 end

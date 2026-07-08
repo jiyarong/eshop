@@ -162,6 +162,22 @@ export function hasCompleteDateRange(fromDate, toDate) {
   return Boolean(fromDate && toDate);
 }
 
+export function rangeSpanInDays({ fromDate, toDate }) {
+  const payload = buildApplyPayload({ draftStart: fromDate, draftEnd: toDate });
+  const span = compareDates(payload.toDate, payload.fromDate) / MS_PER_DAY;
+  return span + 1;
+}
+
+export function shiftDateRangeBySpan({ fromDate, toDate, direction }) {
+  const payload = buildApplyPayload({ draftStart: fromDate, draftEnd: toDate });
+  const spanDays = rangeSpanInDays(payload);
+
+  return {
+    fromDate: normalizeDateValue(addDays(payload.fromDate, spanDays * direction)),
+    toDate: normalizeDateValue(addDays(payload.toDate, spanDays * direction)),
+  };
+}
+
 function cloneRange(range) {
   return {
     start: normalizeDate(range.start),
@@ -244,6 +260,7 @@ export default class extends Controller {
     "monthsGrid",
     "popover",
     "preset",
+    "shiftControl",
     "summaryDates",
     "summaryTag",
     "toInput",
@@ -402,6 +419,38 @@ export default class extends Controller {
     this.renderPopover();
   }
 
+  shiftAppliedRange(event) {
+    event.preventDefault();
+
+    if (!this.hasAppliedRange) return;
+
+    const direction = Number(event.currentTarget.dataset.direction || "0");
+    if (direction === 0) return;
+
+    const payload = shiftDateRangeBySpan({
+      fromDate: normalizeDateValue(this.appliedRange.start),
+      toDate: normalizeDateValue(this.appliedRange.end),
+      direction,
+    });
+
+    this.fromInputTarget.value = payload.fromDate;
+    this.toInputTarget.value = payload.toDate;
+    this.appliedRange = {
+      start: normalizeDate(payload.fromDate),
+      end: normalizeDate(payload.toDate),
+      mode: this.appliedRange.mode,
+      preset: resolvePreset({ ...payload, today: normalizeDateValue(this.today) }),
+    };
+    this.draftRange = cloneRange(this.appliedRange);
+    this.pendingAnchor = null;
+    this.visibleMonth = startOfMonth(this.appliedRange.end);
+    this.render();
+
+    if (this.submitOnApplyValue) {
+      this.element.closest("form")?.requestSubmit();
+    }
+  }
+
   render() {
     this.renderTrigger();
     if (this.isOpen) {
@@ -410,6 +459,8 @@ export default class extends Controller {
   }
 
   renderTrigger() {
+    this.renderShiftControls();
+
     if (!this.hasAppliedRange) {
       this.summaryTagTarget.textContent = "";
       this.summaryTagTarget.hidden = true;
@@ -437,6 +488,13 @@ export default class extends Controller {
 
     this.summaryDatesTarget.textContent = summaryText;
     this.triggerTarget.classList.remove("is-placeholder");
+  }
+
+  renderShiftControls() {
+    this.shiftControlTargets.forEach((control) => {
+      control.disabled = !this.hasAppliedRange;
+      control.setAttribute("aria-disabled", this.hasAppliedRange ? "false" : "true");
+    });
   }
 
   renderPopover() {

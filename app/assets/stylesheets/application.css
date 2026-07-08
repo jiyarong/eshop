@@ -457,14 +457,109 @@ a {
   gap: 14px;
 }
 
+.field--time-range {
+  flex: 1 1 100%;
+}
+
+.weekly-profit-time-range-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.weekly-profit-time-range-row .time-range-field {
+  flex: 1 1 320px;
+}
+
+.weekly-profit-submit-button {
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.weekly-profit-filter-block {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface-soft);
+}
+
 .field {
   display: grid;
   gap: 6px;
 }
 
-.field label {
+.field--full {
+  width: 100%;
+}
+
+.field label,
+.field-label {
   color: var(--erp-muted);
   font-size: 13px;
+}
+
+.weekly-profit-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.weekly-profit-filter-tag {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--erp-border-strong);
+  border-radius: 999px;
+  padding: 0 8px;
+  background: #fff;
+  color: var(--erp-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.weekly-profit-filter-tag:hover {
+  border-color: var(--erp-brand);
+}
+
+.weekly-profit-filter-tag:focus-visible {
+  outline: 2px solid rgba(31, 78, 255, 0.18);
+  outline-offset: 2px;
+}
+
+.weekly-profit-filter-tag.is-active {
+  border-color: var(--erp-brand);
+  background: #edf2ff;
+  color: var(--erp-brand-dark);
+  box-shadow: inset 0 0 0 1px rgba(31, 78, 255, 0.08);
+}
+
+.weekly-profit-store-field {
+  transition: opacity 0.16s ease;
+}
+
+.weekly-profit-store-field.is-disabled {
+  opacity: 0.56;
+}
+
+.weekly-profit-store-field.is-disabled .weekly-profit-filter-tag {
+  cursor: not-allowed;
+  border-color: var(--erp-border);
+  background: #f5f7fa;
+  color: var(--erp-muted);
+}
+
+.weekly-profit-store-field.is-disabled .weekly-profit-filter-tag.is-active {
+  background: #eef1f6;
+  color: var(--erp-muted);
 }
 
 select,
@@ -3634,15 +3729,23 @@ body.auth-shell .auth-submit:hover {
   min-width: min(100%, 320px);
 }
 
+.time-range-trigger-shell {
+  display: inline-flex;
+  align-items: stretch;
+  width: min(100%, 452px);
+}
+
 .time-range-trigger {
-  width: min(100%, 390px);
+  flex: 1 1 auto;
   min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   border: 1px solid var(--erp-border-strong);
-  border-radius: 6px;
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
   padding: 0 12px;
   background: #fff;
   color: var(--erp-text);
@@ -3650,7 +3753,37 @@ body.auth-shell .auth-submit:hover {
   cursor: pointer;
 }
 
+.time-range-trigger-shift {
+  width: 32px;
+  min-height: 38px;
+  border: 1px solid var(--erp-border-strong);
+  background: #fff;
+  color: var(--erp-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.time-range-trigger-shift:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.time-range-trigger-shift:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.time-range-trigger-shift:hover:not(:disabled) {
+  background: rgba(60, 90, 220, 0.08);
+  color: var(--erp-brand-dark);
+}
+
+.time-range-trigger-shift:disabled {
+  cursor: not-allowed;
+  color: var(--erp-muted);
+  background: #f7f8fb;
+}
+
 .time-range-trigger:focus-visible,
+.time-range-trigger-shift:focus-visible,
 .time-range-chip:focus-visible,
 .time-range-icon-button:focus-visible,
 .time-range-preset-button:focus-visible,

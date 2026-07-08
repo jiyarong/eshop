@@ -11,7 +11,7 @@ const bundle = await build({
   write: false,
 });
 
-const [{ buildApplyPayload, buildThisMonthRange, calculatePopoverOffset, formatWeekIndexLabel, hasCompleteDateRange, isInsideComponentClick, normalizeDateValue, resetDraftToCurrentWeek, resolvePreset, resolveSummaryTagLabel }] = await Promise.all(
+const [{ buildApplyPayload, buildThisMonthRange, calculatePopoverOffset, formatWeekIndexLabel, hasCompleteDateRange, isInsideComponentClick, normalizeDateValue, rangeSpanInDays, resetDraftToCurrentWeek, resolvePreset, resolveSummaryTagLabel, shiftDateRangeBySpan }] = await Promise.all(
   bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)),
 );
 
@@ -96,6 +96,53 @@ test("hasCompleteDateRange requires both bounds", () => {
   assert.equal(hasCompleteDateRange("2026-06-01", "2026-06-08"), true);
   assert.equal(hasCompleteDateRange("", "2026-06-08"), false);
   assert.equal(hasCompleteDateRange("2026-06-01", ""), false);
+});
+
+test("rangeSpanInDays counts both range endpoints", () => {
+  assert.equal(rangeSpanInDays({ fromDate: "2026-07-01", toDate: "2026-07-07" }), 7);
+  assert.equal(rangeSpanInDays({ fromDate: "2026-07-01", toDate: "2026-07-01" }), 1);
+});
+
+test("shiftDateRangeBySpan moves a week range to the previous period", () => {
+  assert.deepEqual(
+    shiftDateRangeBySpan({
+      fromDate: "2026-07-01",
+      toDate: "2026-07-07",
+      direction: -1,
+    }),
+    {
+      fromDate: "2026-06-24",
+      toDate: "2026-06-30",
+    },
+  );
+});
+
+test("shiftDateRangeBySpan moves a single-day range to the next period", () => {
+  assert.deepEqual(
+    shiftDateRangeBySpan({
+      fromDate: "2026-07-01",
+      toDate: "2026-07-01",
+      direction: 1,
+    }),
+    {
+      fromDate: "2026-07-02",
+      toDate: "2026-07-02",
+    },
+  );
+});
+
+test("shiftDateRangeBySpan moves a 28-day range by its full span", () => {
+  assert.deepEqual(
+    shiftDateRangeBySpan({
+      fromDate: "2026-06-15",
+      toDate: "2026-07-12",
+      direction: 1,
+    }),
+    {
+      fromDate: "2026-07-13",
+      toDate: "2026-08-09",
+    },
+  );
 });
 
 test("buildApplyPayload writes normalized draft dates", () => {

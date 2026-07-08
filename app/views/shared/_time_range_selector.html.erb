@@ -4,6 +4,7 @@
   end_date = local_assigns[:to_date]
   start_value = start_date.present? ? start_date.to_date.iso8601 : ""
   end_value = end_date.present? ? end_date.to_date.iso8601 : ""
+  has_range = start_value.present? && end_value.present?
   submit_on_apply = local_assigns.fetch(:submit_on_apply, false)
 %>
 
@@ -25,21 +26,43 @@
   <input type="hidden" name="from_date" value="<%= start_value %>" data-time-range-selector-target="fromInput">
   <input type="hidden" name="to_date" value="<%= end_value %>" data-time-range-selector-target="toInput">
 
-  <button
-    id="<%= "#{component_id}-trigger" %>"
-    class="time-range-trigger"
-    type="button"
-    aria-haspopup="dialog"
-    aria-expanded="false"
-    aria-controls="<%= "#{component_id}-popover" %>"
-    data-action="time-range-selector#toggle"
-    data-time-range-selector-target="trigger">
-    <span class="time-range-trigger-value">
-      <span class="time-range-trigger-tag" hidden data-time-range-selector-target="summaryTag"></span>
-      <span data-time-range-selector-target="summaryDates"></span>
-    </span>
-    <span class="time-range-trigger-icon" aria-hidden="true"></span>
-  </button>
+  <div class="time-range-trigger-shell">
+    <button
+      class="time-range-trigger-shift"
+      type="button"
+      aria-label="<%= t("shared.time_range.jumps.previous_period") %>"
+      aria-disabled="<%= has_range ? "false" : "true" %>"
+      data-direction="-1"
+      data-action="time-range-selector#shiftAppliedRange"
+      data-time-range-selector-target="shiftControl"
+      <%= "disabled" unless has_range %>>‹</button>
+
+    <button
+      id="<%= "#{component_id}-trigger" %>"
+      class="time-range-trigger"
+      type="button"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="<%= "#{component_id}-popover" %>"
+      data-action="time-range-selector#toggle"
+      data-time-range-selector-target="trigger">
+      <span class="time-range-trigger-value">
+        <span class="time-range-trigger-tag" hidden data-time-range-selector-target="summaryTag"></span>
+        <span data-time-range-selector-target="summaryDates"></span>
+      </span>
+      <span class="time-range-trigger-icon" aria-hidden="true"></span>
+    </button>
+
+    <button
+      class="time-range-trigger-shift"
+      type="button"
+      aria-label="<%= t("shared.time_range.jumps.next_period") %>"
+      aria-disabled="<%= has_range ? "false" : "true" %>"
+      data-direction="1"
+      data-action="time-range-selector#shiftAppliedRange"
+      data-time-range-selector-target="shiftControl"
+      <%= "disabled" unless has_range %>>›</button>
+  </div>
 
   <section
     id="<%= "#{component_id}-popover" %>"
