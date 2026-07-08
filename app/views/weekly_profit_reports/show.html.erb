@@ -1,9 +1,9 @@
-<h1 class="page-title">周利润报表</h1>
+<h1 class="page-title"><%= t("weekly_profit_reports.title") %></h1>
 
 <section class="panel">
   <form class="report-form" action="/weekly_profit_reports" method="get" data-turbo-frame="weekly_profit_report_results">
     <div class="field">
-      <label for="weekly-profit-platform">平台</label>
+      <label for="weekly-profit-platform"><%= t("weekly_profit_reports.filters.platform") %></label>
       <select id="weekly-profit-platform" name="platform" required data-weekly-profit-platform>
         <option value="wb" <%= "selected" if @platform == "wb" %>>WB</option>
         <option value="ozon" <%= "selected" if @platform == "ozon" %>>Ozon</option>
@@ -11,7 +11,7 @@
     </div>
 
     <div class="field">
-      <label for="weekly-profit-account">店铺</label>
+      <label for="weekly-profit-account"><%= t("weekly_profit_reports.filters.store") %></label>
       <select id="weekly-profit-account" name="account_id" required>
         <optgroup label="WB">
           <% @accounts[:wb].each do |account| %>
@@ -26,23 +26,22 @@
       </select>
     </div>
 
-    <div class="field">
-      <label for="weekly-profit-from-date">开始日期</label>
-      <input id="weekly-profit-from-date" type="date" name="from_date" value="<%= @from_date %>" required>
+    <div class="field field--time-range">
+      <label for="weekly-profit-time-range-trigger"><%= t("weekly_profit_reports.filters.date_range") %></label>
+      <%= render "shared/time_range_selector",
+                 id: "weekly-profit-time-range",
+                 from_date: @from_date,
+                 to_date: @to_date,
+                 submit_on_apply: true %>
     </div>
 
-    <div class="field">
-      <label for="weekly-profit-to-date">结束日期</label>
-      <input id="weekly-profit-to-date" type="date" name="to_date" value="<%= @to_date %>" required>
-    </div>
-
-    <button class="button" type="submit">查询</button>
+    <button class="button" type="submit"><%= t("weekly_profit_reports.filters.submit") %></button>
   </form>
 </section>
 
 <turbo-frame id="weekly_profit_report_results">
   <section class="panel empty-state">
-    请选择平台、店铺和周期后查询
+    <%= t("weekly_profit_reports.empty_state") %>
   </section>
 </turbo-frame>
 

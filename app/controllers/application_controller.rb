@@ -1,7 +1,7 @@
 class ApplicationController < ActionController::Base
   include Devise::Controllers::Helpers
 
-  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale, :user_time_zone
+  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale, :user_time_zone, :user_today
 
   prepend_before_action :set_locale
   before_action :redirect_guest_with_locale, if: :html_request?

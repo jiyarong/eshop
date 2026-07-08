@@ -1063,7 +1063,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".sku-detail-tabs a[aria-current='page']", "Store sales"
-    assert_select "label", "Start date"
+    assert_select "label", "Date range"
     assert_select "option", "All platforms"
     assert_select "button", "Search"
     assert_select ".summary-label", "Units sold"
@@ -1384,6 +1384,24 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     RawOzon::Product.where(account_id: @sales_ozon_account&.id, ozon_product_id: unbound_product_id).delete_all
   end
 
+  test "sku detail stores tab renders shared time range selector and preserves tab" do
+    get "/reports/skus/#{@sku.sku_code}", params: {
+      tab: "stores",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "[data-controller='time-range-selector']", count: 1
+    assert_select "input[name='tab'][value='stores']", count: 1
+    assert_select "input[name='from_date'][type='hidden'][value='2026-06-01']", count: 1
+    assert_select "input[name='to_date'][type='hidden'][value='2026-06-08']", count: 1
+    assert_select "button[aria-controls='sku-detail-stores-time-range-popover']", count: 1
+    assert_select "#sku-detail-stores-time-range-popover[role='dialog']", count: 1
+    assert_select "input#from_date[type='date']", count: 0
+    assert_select "input#to_date[type='date']", count: 0
+  end
+
   test "sku detail renders sales trend tab" do
     get "/reports/skus/#{@sku.sku_code}", params: {
       tab: "trend",
@@ -1403,6 +1421,28 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "2026-06-01"
     assert_select "td", "2026-06-08"
     assert_select "td", { text: @second_sku.sku_code, count: 0 }
+  end
+
+  test "sku detail trend tab renders shared time range selector and preserves period controls" do
+    get "/reports/skus/#{@sku.sku_code}", params: {
+      tab: "trend",
+      period: "week",
+      grain: "platform",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "[data-controller='time-range-selector']", count: 1
+    assert_select "input[name='tab'][value='trend']", count: 1
+    assert_select "input[name='from_date'][type='hidden'][value='2026-06-01']", count: 1
+    assert_select "input[name='to_date'][type='hidden'][value='2026-06-08']", count: 1
+    assert_select "button[aria-controls='sku-detail-trend-time-range-popover']", count: 1
+    assert_select "#sku-detail-trend-time-range-popover[role='dialog']", count: 1
+    assert_select "select[name='period'] option[selected][value='week']", count: 1
+    assert_select "select[name='grain'] option[selected][value='platform']", count: 1
+    assert_select "input#trend_from_date[type='date']", count: 0
+    assert_select "input#trend_to_date[type='date']", count: 0
   end
 
   test "sku detail returns not found for missing sku" do
@@ -1464,6 +1504,25 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "2026-06-08"
     assert_select "td", "3"
     assert_select "td", { text: @second_sku.sku_code, count: 0 }
+  end
+
+  test "sku sales report renders shared time range selector" do
+    get "/reports/sku_sales", params: {
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "[data-controller='time-range-selector']", count: 1
+    assert_select "input[name='from_date'][type='hidden'][value='2026-06-01']", count: 1
+    assert_select "input[name='to_date'][type='hidden'][value='2026-06-08']", count: 1
+    assert_select "button[aria-controls='sku-sales-time-range-popover']", count: 1
+    assert_select "#sku-sales-time-range-popover[role='dialog']", count: 1
+    assert_select "input#from_date[type='date']", count: 0
+    assert_select "input#to_date[type='date']", count: 0
   end
 
   test "sku sales report filters date range in current user time zone" do
@@ -1582,7 +1641,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "option", "All platforms"
     assert_select "label", "Period"
     assert_select "option", "Day"
-    assert_select "label", "Start date"
+    assert_select "label", "Date range"
     assert_select "button", "Search"
     assert_select ".summary-label", "Units sold"
     assert_select ".summary-label", "Returned units"
@@ -1596,6 +1655,26 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "Fulfillment mode"
     assert_select "script#sku-sales-chart-data[type=?]", "application/json", /Net sales/
     assert_select "script#sku-sales-chart-data[type=?]", "application/json", /Revenue/
+  end
+
+  test "sku sales report uses compact russian time range labels" do
+    get "/reports/sku_sales", params: {
+      locale: "ru",
+      sku_codes: [@sku.sku_code],
+      grain: "store",
+      period: "day",
+      from_date: "2026-06-01",
+      to_date: "2026-06-08"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "label", "Диапазон дат"
+    assert_select ".time-range-section-block h2", "Быстро"
+    assert_select ".time-range-preset-button", "2 недели"
+    assert_select ".time-range-preset-button", "4 недели"
+    assert_select ".time-range-preset-button", "Месяц"
+    assert_select ".time-range-footer-actions button", "Сброс недели"
+    assert_select ".time-range-footer-actions button", "Применить"
   end
 
   test "sku sales report uses product bindings instead of order item sku code" do

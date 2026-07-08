@@ -50,6 +50,14 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.media_type, "text/html"
     assert_select "h1", "周利润报表"
     assert_select "form[action=?][method=?]", "/weekly_profit_reports", "get"
+    assert_select "[data-controller='time-range-selector']", count: 1
+    assert_select "label[for=?]", "weekly-profit-time-range-trigger", "时间范围"
+    assert_select "input[name='from_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 7.days).iso8601
+    assert_select "input[name='to_date'][type='hidden'][value=?]", (Date.current.beginning_of_week(:monday) - 1.day).iso8601
+    assert_select "button[aria-controls='weekly-profit-time-range-popover']", count: 1
+    assert_select "#weekly-profit-time-range-popover[role='dialog']", count: 1
+    assert_select "input#weekly-profit-from-date", count: 0
+    assert_select "input#weekly-profit-to-date", count: 0
     assert_select "turbo-frame#weekly_profit_report_results"
     assert_select "option[value=?]", "wb"
     assert_select "option[value=?]", "ozon"

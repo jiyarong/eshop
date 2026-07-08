@@ -273,6 +273,7 @@ zh:
       all_platforms: "全部平台"
       all_statuses: "全部状态"
       all_stores: "全部店铺"
+      date_range: "时间范围"
       from_date: "开始日期"
       process_from_date: "处理开始"
       process_to_date: "处理结束"
@@ -312,6 +313,14 @@ zh:
       processing: "待处理/处理中"
       shipped: "配送中"
       total: "订单数"
+  weekly_profit_reports:
+    empty_state: "请选择平台、店铺和周期后查询"
+    filters:
+      date_range: "时间范围"
+      platform: "平台"
+      store: "店铺"
+      submit: "查询"
+    title: "周利润报表"
   reports:
     inventory:
       actions:
@@ -497,6 +506,7 @@ zh:
       filters:
         all_platforms: "全部平台"
         all_stores: "全部店铺"
+        date_range: "时间范围"
         end_date: "结束日期"
         grain: "维度"
         period: "周期"
@@ -812,3 +822,34 @@ zh:
         products: "店铺商品"
         summary: "店铺信息"
         unbound_raw_products: "未绑定平台商品"
+  shared:
+    time_range:
+      actions:
+        apply: "应用筛选"
+        reset_this_week: "重置本周"
+      aria_label: "时间范围选择器"
+      jumps:
+        next_month: "下一月"
+        next_week: "+1周"
+        previous_month: "上一月"
+        previous_week: "-1周"
+        this_week: "本周"
+      presets:
+        last_2_weeks: "近2周"
+        last_4_weeks: "近1月"
+        last_week: "上周"
+        this_week: "本周"
+        this_month: "本月"
+      placeholder: "选择时间范围"
+      shortcuts_title: "快捷范围"
+      summary:
+        to: "至"
+      title: "自然周优先选择"
+      weekdays:
+        fri: "周五"
+        mon: "周一"
+        sat: "周六"
+        sun: "周日"
+        thu: "周四"
+        tue: "周二"
+        wed: "周三"

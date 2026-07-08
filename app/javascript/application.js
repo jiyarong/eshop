@@ -10,6 +10,7 @@ import OperatorDialogController from "./controllers/operator_dialog_controller";
 import PageTranslationController from "./controllers/page_translation_controller";
 import ProductTreeController from "./controllers/product_tree_controller";
 import ShellController from "./controllers/shell_controller";
+import TimeRangeSelectorController from "./controllers/time_range_selector_controller";
 import ToastController from "./controllers/toast_controller";
 
 window.Stimulus = Application.start();
@@ -23,4 +24,5 @@ Stimulus.register("operator-dialog", OperatorDialogController);
 Stimulus.register("page-translation", PageTranslationController);
 Stimulus.register("product-tree", ProductTreeController);
 Stimulus.register("shell", ShellController);
+Stimulus.register("time-range-selector", TimeRangeSelectorController);
 Stimulus.register("toast", ToastController);

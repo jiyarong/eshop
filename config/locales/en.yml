@@ -292,6 +292,7 @@ en:
       all_platforms: "All platforms"
       all_statuses: "All statuses"
       all_stores: "All stores"
+      date_range: "Date range"
       from_date: "Start date"
       process_from_date: "Processing start"
       process_to_date: "Processing end"
@@ -331,6 +332,14 @@ en:
       processing: "Processing"
       shipped: "Shipped"
       total: "Orders"
+  weekly_profit_reports:
+    empty_state: "Choose a platform, store, and period to run the report."
+    filters:
+      date_range: "Date range"
+      platform: "Platform"
+      store: "Store"
+      submit: "Search"
+    title: "Weekly Profit"
   reports:
     inventory:
       actions:
@@ -516,6 +525,7 @@ en:
       filters:
         all_platforms: "All platforms"
         all_stores: "All stores"
+        date_range: "Date range"
         end_date: "End date"
         grain: "Dimension"
         period: "Period"
@@ -831,4 +841,35 @@ en:
         products: "Store products"
         summary: "Store information"
         unbound_raw_products: "Unbound platform products"
+  shared:
+    time_range:
+      actions:
+        apply: "Apply filters"
+        reset_this_week: "Reset to this week"
+      aria_label: "Time range selector"
+      jumps:
+        next_month: "Next month"
+        next_week: "+1 week"
+        previous_month: "Previous month"
+        previous_week: "-1 week"
+        this_week: "This week"
+      presets:
+        last_2_weeks: "Last 2 weeks"
+        last_4_weeks: "Last 4 weeks"
+        last_week: "Last week"
+        this_week: "This week"
+        this_month: "This month"
+      placeholder: "Select date range"
+      shortcuts_title: "Quick ranges"
+      summary:
+        to: "to"
+      title: "Natural week first"
+      weekdays:
+        fri: "Fri"
+        mon: "Mon"
+        sat: "Sat"
+        sun: "Sun"
+        thu: "Thu"
+        tue: "Tue"
+        wed: "Wed"
   hello: "Hello world"

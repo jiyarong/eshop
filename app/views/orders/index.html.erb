@@ -35,14 +35,13 @@
         </select>
       </div>
 
-      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
-        <label for="from_date"><%= t("orders.filters.from_date") %></label>
-        <input id="from_date" type="text" inputmode="numeric" name="q[ordered_at_gteq]" value="<%= @date_params["ordered_at_gteq"] %>" data-date-picker-target="input">
-      </div>
-
-      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
-        <label for="to_date"><%= t("orders.filters.to_date") %></label>
-        <input id="to_date" type="text" inputmode="numeric" name="q[ordered_at_lteq_end_of_day]" value="<%= @date_params["ordered_at_lteq_end_of_day"] %>" data-date-picker-target="input">
+      <div class="field field--time-range">
+        <label for="orders-time-range-trigger"><%= t("orders.filters.date_range") %></label>
+        <%= render "shared/time_range_selector",
+                   id: "orders-time-range",
+                   from_date: @date_params["ordered_at_gteq"],
+                   to_date: @date_params["ordered_at_lteq_end_of_day"],
+                   submit_on_apply: true %>
       </div>
 
       <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
