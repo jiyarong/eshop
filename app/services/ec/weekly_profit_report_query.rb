@@ -141,7 +141,7 @@ module Ec
     def wr_unallocated_rows(unallocated)
       unallocated ||= {}
       if @platform == "ozon"
-        Array(unallocated[:rows] || unallocated["rows"]).map(&:symbolize_keys)
+        WeeklyProfitReports::OzonUnallocatedRows.normalize(unallocated)
       else
         unallocated.map { |name, amount| { name: name, amount: amount } }
       end
@@ -149,7 +149,7 @@ module Ec
 
     def wr_unallocated_row_key(row)
       if @platform == "ozon"
-        [row[:type_id], row[:type_name], row[:posting_number]].join("|")
+        row[:type_id]
       else
         row[:name].to_s
       end

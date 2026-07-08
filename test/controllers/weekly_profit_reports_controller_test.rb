@@ -256,6 +256,70 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     query_class.define_singleton_method(:run, original_run)
   end
 
+  test "show renders ozon unallocated rows grouped by type instead of raw posting rows" do
+    payload = {
+      report_type: "wr",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      comparison: {
+        period: { from_date: "2026-05-11", to_date: "2026-05-17" },
+        summary: {},
+        rows: {},
+        extras: {
+          unallocated: {
+            96 => {
+              amount: { current: 3.5, previous: 2.0, delta_value: 1.5, delta_pct: 75.0, trend: "up", semantic: "negative" }
+            }
+          }
+        }
+      },
+      meta: {
+        platform: "ozon",
+        account: { name: "Ozon Test Shop" },
+        rates: { rate_cny_rub: 10.93 }
+      },
+      summary: { total_after_tax_profit: 88.5, total_goods_cost: 20.0, total_sales_revenue: 100.0, unallocated_total: -8.0 },
+      rows: [{ ozon_sku_id: "OZ-1", sku_code: "SKU-OZ", sales_revenue: 100.0, commission: 10.0, delivery_charge: 5.0, total_ad_cost: 8.0, order_count: 3, net_sales_count: 2, blr_count: 1, export_count: 0, goods_cost: 20.0, pre_tax_profit: 90.0, after_tax_profit: 88.5, after_tax_margin_pct: 88.5 }],
+      extras: {
+        unallocated: {
+          total: -8.0,
+          rows: [
+            { type_id: 96, type_name: "AcceleratedReviewCollection", posting_number: "POST-1", amount: 1.2 },
+            { type_id: 96, type_name: "AcceleratedReviewCollection", posting_number: "POST-2", amount: 2.3 },
+            { type_id: 41, type_name: "PPC", posting_number: "POST-3", amount: 4.0 },
+            { type_id: 41, type_name: "PPC", posting_number: nil, amount: 5.0, orphaned: true }
+          ]
+        }
+      }
+    }
+
+    query_class = Ec::WeeklyProfitReportQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: {
+      report_type: "wr",
+      store_ref: "ozon:#{@ozon_account.id}",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => "text/html",
+      "Turbo-Frame" => "weekly_profit_report_results"
+    }
+
+    assert_response :success
+    assert_select "turbo-frame#weekly_profit_report_results" do
+      assert_select ".weekly-profit-table-value", text: "Ускоренная проверка (AcceleratedReviewCollection)"
+      assert_select ".weekly-profit-table-value", text: "3.50"
+      assert_select ".weekly-profit-table-value", text: "PPC (нет данных Performance)"
+      assert_select ".weekly-profit-table-value", text: "5.00"
+      assert_select ".weekly-profit-table-value", text: "POST-1", count: 0
+      assert_select ".weekly-profit-table-value", text: "POST-2", count: 0
+      assert_select ".weekly-profit-table-value", text: "POST-3", count: 0
+    end
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
   test "show dispatches wsu query" do
     payload = {
       report_type: "wsu",

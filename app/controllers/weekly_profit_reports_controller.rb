@@ -247,7 +247,7 @@ class WeeklyProfitReportsController < ApplicationController
 
     unallocated = report.dig(:extras, :unallocated) || {}
     if report.dig(:meta, :platform) == "ozon"
-      Array(unallocated[:rows] || unallocated["rows"])
+      WeeklyProfitReports::OzonUnallocatedRows.normalize(unallocated)
     else
       unallocated.map { |name, amount| { "name" => name, "amount" => amount } }
     end
@@ -255,7 +255,7 @@ class WeeklyProfitReportsController < ApplicationController
 
   def weekly_profit_report_unallocated_columns(report)
     if report.dig(:meta, :platform) == "ozon"
-      %i[type_id type_name posting_number amount].map do |key|
+      %i[type_id type_name amount].map do |key|
         [key, t("weekly_profit_reports.unallocated.ozon.#{key}")]
       end
     else
@@ -352,7 +352,7 @@ class WeeklyProfitReportsController < ApplicationController
 
   def weekly_profit_report_unallocated_row_key(report, row)
     if report.dig(:meta, :platform) == "ozon"
-      [row[:type_id] || row["type_id"], row[:type_name] || row["type_name"], row[:posting_number] || row["posting_number"]].join("|")
+      row[:type_id] || row["type_id"]
     else
       (row[:name] || row["name"]).to_s
     end
