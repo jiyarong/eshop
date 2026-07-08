@@ -48,6 +48,26 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "index renders weekly profit report page with report type and store filters" do
+    payload = {
+      report_type: "wr",
+      period: { from_date: (Date.current.beginning_of_week(:monday) - 7.days).iso8601, to_date: (Date.current.beginning_of_week(:monday) - 1.day).iso8601 },
+      comparison: {
+        period: { from_date: (Date.current.beginning_of_week(:monday) - 14.days).iso8601, to_date: (Date.current.beginning_of_week(:monday) - 8.days).iso8601 },
+        summary: {
+          total_after_tax: { current: 88.5, previous: 70.0, delta_value: 18.5, delta_pct: 26.43, trend: "up", semantic: "positive" }
+        },
+        rows: {},
+        extras: {}
+      },
+      meta: { platform: "wb", account: { name: "WB Test Shop" } },
+      summary: { total_after_tax: 88.5, total_goods_cost: 20.0, total_sales_qty: 3, total_return_qty: 1, total_net: 100.0, total_pre_tax: 90.0, total_tax: 1.5, unallocated_rows: 1 },
+      rows: [{ nm_id: 123, vendor_code: "KJ-228", region: "Moscow", sales_qty: 3, return_qty: 1, net_qty: 2, settlement: 100.0, delivery: 10.0, storage: 5.0, ad: 2.0, goods_cost: 20.0, pre_tax: 90.0, tax: 1.5, after_tax: 88.5 }],
+      extras: { unallocated: { "未归属费用" => 12.3 } }
+    }
+    query_class = Ec::WeeklyProfitReportQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
     get "/weekly_profit_reports", headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -72,6 +92,21 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-weekly-profit-tag-group='store']", count: 1
     assert_select "button[data-weekly-profit-store-tag][data-value=?].is-active[aria-pressed='true']", "wb:#{@wb_account.id}", text: "WB · WB Test Shop"
     assert_select "button[data-weekly-profit-store-tag][data-value=?]", "ozon:#{@ozon_account.id}", text: "Ozon · Ozon Test Shop"
+    assert_select "turbo-frame#weekly_profit_report_results"
+    assert_select ".weekly-profit-summary-card", minimum: 1
+    assert_select ".weekly-profit-table-value", text: "KJ-228"
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
+  test "index keeps empty state when there is no default store to query" do
+    @wb_account.destroy!
+    @ozon_account.destroy!
+
+    get "/weekly_profit_reports", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "turbo-frame#weekly_profit_report_results .empty-state", text: /请选择周期和归集类型后查询/
   end
 
   test "show requires store ref for wr" do

@@ -73,6 +73,12 @@ class WeeklyProfitReportsController < ApplicationController
     @report_type = params[:report_type].presence_in(REPORT_TYPES) || "wr"
     @selected_store_ref = params[:store_ref].presence || @store_options.first&.dig(:ref)
     @from_date, @to_date = default_period
+    @report = run_report_query(
+      report_type: @report_type,
+      store_ref: @selected_store_ref,
+      from_date: Date.iso8601(@from_date),
+      to_date: Date.iso8601(@to_date)
+    ) if @report_type == "wr" && @selected_store_ref.present?
     render :show
   end
 

@@ -1,4 +1,7 @@
+<% wrap_frame = local_assigns.fetch(:wrap_frame, true) %>
+<% if wrap_frame %>
 <turbo-frame id="weekly_profit_report_results">
+<% end %>
   <% case @report[:report_type] %>
   <% when "wr" %>
     <%= render "weekly_profit_reports/wr_results", report: @report %>
@@ -7,4 +10,6 @@
   <% when "wsu_deep" %>
     <%= render "weekly_profit_reports/wsu_deep_results", report: @report %>
   <% end %>
+<% if wrap_frame %>
 </turbo-frame>
+<% end %>

@@ -62,7 +62,11 @@
 </section>
 
 <turbo-frame id="weekly_profit_report_results">
-  <section class="panel empty-state">
-    <%= t("weekly_profit_reports.empty_state") %>
-  </section>
+  <% if @report.present? %>
+    <%= render "weekly_profit_reports/results", wrap_frame: false %>
+  <% else %>
+    <section class="panel empty-state">
+      <%= t("weekly_profit_reports.empty_state") %>
+    </section>
+  <% end %>
 </turbo-frame>
