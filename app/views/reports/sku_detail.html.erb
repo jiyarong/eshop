@@ -63,7 +63,8 @@
         <dt><%= t("reports.sku_detail.fields.product_name_ru") %></dt>
         <dd><%= report_value(@sku.product_name_ru) %></dd>
         <dt><%= t("reports.sku_detail.fields.category") %></dt>
-        <dd><%= report_value(@sku.sku_category&.name) %></dd>
+        <% category_parts = [@sku.primary_ec_category&.localized_name, @sku.secondary_ec_category&.localized_name].compact %>
+        <dd><%= report_value(category_parts.any? ? category_parts.join(" / ") : nil) %></dd>
         <dt><%= t("reports.sku_detail.fields.master_sku") %></dt>
         <dd><%= report_value(@sku.master_sku&.master_sku_code) %></dd>
         <dt><%= t("reports.sku_detail.fields.status") %></dt>

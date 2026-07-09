@@ -955,6 +955,51 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assignment&.destroy
   end
 
+  test "sku detail renders master sku category instead of sku category" do
+    sku_category = Ec::SkuCategory.create!(
+      code: "SKU-CAT-#{@sku_code}",
+      name: "SKU 变体类别 #{@sku_code}"
+    )
+    parent_category = Ec::Category.create!(
+      source: "test",
+      source_type: "category",
+      source_id: "sku-detail-master-parent-#{@sku_code}",
+      origin_name: "Master parent #{@sku_code}",
+      origin_language: "en",
+      name_cn: "SPU 父类 #{@sku_code}",
+      name_en: "SPU parent #{@sku_code}"
+    )
+    child_category = Ec::Category.create!(
+      source: "test",
+      source_type: "category",
+      source_id: "sku-detail-master-child-#{@sku_code}",
+      origin_name: "Master child #{@sku_code}",
+      origin_language: "en",
+      name_cn: "SPU 子类 #{@sku_code}",
+      name_en: "SPU child #{@sku_code}",
+      parent: parent_category
+    )
+    master_sku = Ec::MasterSku.create!(
+      master_sku_code: "MASTER-#{@sku_code}",
+      product_name: "SPU 测试商品",
+      ec_category: child_category
+    )
+    @sku.update!(master_sku: master_sku, sku_category: sku_category)
+
+    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "dt", "类目"
+    assert_select "dd", "SPU 父类 #{@sku_code} / SPU 子类 #{@sku_code}"
+    assert_select "dd", { text: "SKU 变体类别 #{@sku_code}", count: 0 }
+  ensure
+    @sku&.update!(master_sku: nil, sku_category: nil) if @sku&.persisted?
+    master_sku&.destroy
+    child_category&.destroy
+    parent_category&.destroy
+    sku_category&.destroy
+  end
+
   test "sku detail renders platform product bindings through shared table" do
     get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
 

@@ -93,7 +93,16 @@ class ReportsController < ApplicationController
   private
 
   def load_sku_detail(active_tab: nil)
-    @sku = Ec::Sku.includes(:master_sku, :sku_category, :cost, :platform_costs, :store_assignments, :inventory_levels, :sku_products, :predicted_costs).find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @sku = Ec::Sku.includes(
+      { master_sku: { ec_category: :parent } },
+      :sku_category,
+      :cost,
+      :platform_costs,
+      :store_assignments,
+      :inventory_levels,
+      :sku_products,
+      :predicted_costs
+    ).find_by!(sku_code: params[:sku_code].to_s.upcase)
     @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
