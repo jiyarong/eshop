@@ -71,6 +71,34 @@ class RawWbCategorySyncTest < ActiveSupport::TestCase
     assert_equal "Кроссовки #{@token}", subject.name_ru
   end
 
+  test "sync_subjects mirrors existing raw WB subjects even when API page omits them" do
+    sync = build_sync
+
+    with_singleton_method(Ec::CategoryTranslationSync, :translate_pending_for_source, ->(_source) {}) do
+      sync.sync_categories
+    end
+    raw_category = RawWb::Category.find_by!(wb_id: category_wb_id)
+    omitted_subject = RawWb::Subject.create!(
+      wb_id: omitted_subject_wb_id,
+      name: "Пропущенный subject #{@token}",
+      category: raw_category,
+      synced_at: 1.day.ago
+    )
+
+    with_singleton_method(Ec::CategoryTranslationSync, :translate_pending_for_source, ->(_source) {}) do
+      sync.sync_subjects
+    end
+
+    ec_subject = Ec::Category.find_by!(
+      source: "wb",
+      source_type: "RawWb::Subject",
+      source_id: omitted_subject.id.to_s
+    )
+    assert_equal "Пропущенный subject #{@token}", ec_subject.origin_name
+  ensure
+    RawWb::Subject.where(wb_id: omitted_subject_wb_id).delete_all
+  end
+
   private
 
   def build_sync
@@ -96,6 +124,10 @@ class RawWbCategorySyncTest < ActiveSupport::TestCase
 
   def subject_wb_id
     @subject_wb_id ||= @token.hex % 1_000_000 + 20_000
+  end
+
+  def omitted_subject_wb_id
+    @omitted_subject_wb_id ||= @token.hex % 1_000_000 + 30_000
   end
 
   def with_singleton_method(klass, method_name, replacement)

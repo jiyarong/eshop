@@ -1,0 +1,104 @@
+<% selected_category_id = local_assigns[:selected_category_id].presence %>
+<% selected_category = selected_category_id ? Ec::Category.find_by(id: selected_category_id) : nil %>
+<% selected_parent_id = selected_category&.parent_id || selected_category&.id %>
+<% selected_child_id = selected_category&.parent_id ? selected_category_id : nil %>
+<% parent_categories = local_assigns[:parent_categories] || Ec::Category.where(parent_id: nil).order(Ec::Category.localized_name_order, :id) %>
+<% child_categories = selected_parent_id ? Ec::Category.where(parent_id: selected_parent_id).order(Ec::Category.localized_name_order, :id) : [] %>
+<% field_name = local_assigns.fetch(:field_name, "category_id") %>
+<% field_id = local_assigns[:field_id].presence || field_name.to_s.gsub(/[^a-zA-Z0-9_-]+/, "_").sub(/_+\z/, "") %>
+<% selected_label = if selected_category&.parent_id
+  [selected_category.parent.localized_name, selected_category.localized_name].join(" / ")
+elsif selected_category
+  selected_category.localized_name
+end %>
+
+<div
+  class="category-selector"
+  data-controller="category-selector"
+  data-action="click->category-selector#stopClick"
+  data-category-selector-children-url-value="<%= erp_categories_path(format: :json) %>"
+  data-category-selector-selected-category-id-value="<%= selected_category_id %>">
+  <%= hidden_field_tag field_name, selected_category_id.to_s, data: { category_selector_target: "selected" } %>
+  <div class="field category-selector__field">
+    <%= label_tag field_id, local_assigns[:label] || t("category_selector.label") %>
+    <button
+      id="<%= field_id %>"
+      type="button"
+      class="category-selector__trigger"
+      data-category-selector-target="trigger"
+      data-action="category-selector#toggle"
+      aria-expanded="false">
+      <span
+        class="<%= "category-selector__placeholder" if selected_label.blank? %>"
+        data-category-selector-target="display"
+        data-placeholder="<%= t("category_selector.placeholder") %>"><%= selected_label.presence || t("category_selector.placeholder") %></span>
+      <i class="bi bi-chevron-down" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div
+    class="category-selector__panel"
+    data-category-selector-target="panel"
+    data-action="keydown->category-selector#closeOnEscape"
+    hidden>
+    <div class="category-selector__search-row">
+      <label class="category-selector__search" for="<%= "#{field_id}_search" %>">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input
+          id="<%= "#{field_id}_search" %>"
+          type="search"
+          autocomplete="off"
+          placeholder="<%= t("category_selector.search_placeholder") %>"
+          data-category-selector-target="search"
+          data-action="input->category-selector#searchChanged">
+      </label>
+      <button type="button" class="category-selector__cancel" data-action="category-selector#close"><%= t("category_selector.cancel") %></button>
+    </div>
+    <div class="category-selector__columns">
+      <div
+        class="category-selector__list"
+        data-category-selector-target="parentList"
+        data-active-parent-id="<%= selected_parent_id %>"
+        data-loading-label="<%= t("category_selector.loading") %>"
+        data-error-label="<%= t("category_selector.load_failed") %>"
+        data-no-results-label="<%= t("category_selector.no_results") %>">
+        <% parent_categories.each do |category| %>
+          <button
+            type="button"
+            class="category-selector__option"
+            data-original-option="true"
+            data-category-id="<%= category.id %>"
+            data-category-name="<%= category.localized_name %>"
+            data-action="category-selector#selectParent"
+            aria-selected="<%= category.id == selected_parent_id ? "true" : "false" %>">
+            <span><%= category.localized_name %></span>
+          </button>
+        <% end %>
+      </div>
+      <div
+        class="category-selector__list"
+        data-category-selector-target="childList"
+        data-empty-label="<%= t("category_selector.no_children") %>"
+        data-loading-label="<%= t("category_selector.loading") %>"
+        data-error-label="<%= t("category_selector.load_failed") %>"
+        data-no-results-label="<%= t("category_selector.no_results") %>">
+        <% if child_categories.any? %>
+          <% child_categories.each do |category| %>
+            <button
+              type="button"
+              class="category-selector__option"
+              data-category-id="<%= category.id %>"
+              data-category-name="<%= category.localized_name %>"
+              data-parent-id="<%= selected_parent_id %>"
+              data-parent-name="<%= selected_category&.parent&.localized_name || selected_category&.localized_name %>"
+              data-action="category-selector#selectChild"
+              aria-selected="<%= category.id == selected_child_id ? "true" : "false" %>">
+              <span><%= category.localized_name %></span>
+            </button>
+          <% end %>
+        <% else %>
+          <div class="category-selector__empty"><%= t("category_selector.no_children") %></div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

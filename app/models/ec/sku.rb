@@ -57,6 +57,18 @@ module Ec
       Ec::SkuInventoryOverview.new(self).call
     end
 
+    def ec_category
+      master_sku&.ec_category
+    end
+
+    def primary_ec_category
+      master_sku&.primary_ec_category
+    end
+
+    def secondary_ec_category
+      master_sku&.secondary_ec_category
+    end
+
     private
 
     def soft_delete

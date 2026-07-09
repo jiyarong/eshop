@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_08_085107) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_033142) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -110,12 +110,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_08_085107) do
 
   create_table "ec_master_skus", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigint "ec_category_id"
     t.boolean "is_active", default: true, null: false
     t.string "master_sku_code", null: false
     t.text "memo"
     t.string "product_name"
     t.string "product_name_ru"
     t.datetime "updated_at", null: false
+    t.index ["ec_category_id"], name: "index_ec_master_skus_on_ec_category_id"
     t.index ["is_active"], name: "index_ec_master_skus_on_is_active"
     t.index ["master_sku_code"], name: "index_ec_master_skus_on_master_sku_code", unique: true
   end
@@ -1950,6 +1952,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_08_085107) do
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
+  add_foreign_key "ec_master_skus", "ec_categories"
   add_foreign_key "ec_operation_logs", "users", on_delete: :nullify
   add_foreign_key "ec_order_fulfillments", "ec_orders", column: "order_id"
   add_foreign_key "ec_order_fulfillments", "ec_stores", column: "store_id"

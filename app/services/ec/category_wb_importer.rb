@@ -13,8 +13,23 @@ module Ec
       new.import_subjects(raw_rows)
     end
 
+    def self.import_all_categories
+      new.import_raw_categories(RawWb::Category.all)
+    end
+
+    def self.import_all_subjects
+      new.import_raw_subjects(RawWb::Subject.all)
+    end
+
     def import_categories(raw_rows)
-      raw_categories = RawWb::Category.where(wb_id: Array(raw_rows).filter_map { |row| row[:wb_id] })
+      import_raw_categories(RawWb::Category.where(wb_id: Array(raw_rows).filter_map { |row| row[:wb_id] }))
+    end
+
+    def import_subjects(raw_rows)
+      import_raw_subjects(RawWb::Subject.where(wb_id: Array(raw_rows).filter_map { |row| row[:wb_id] }))
+    end
+
+    def import_raw_categories(raw_categories)
       rows = raw_categories.filter_map do |raw_category|
         next if raw_category.name.blank?
 
@@ -31,8 +46,8 @@ module Ec
       rows.size
     end
 
-    def import_subjects(raw_rows)
-      raw_subjects = RawWb::Subject.where(wb_id: Array(raw_rows).filter_map { |row| row[:wb_id] }).includes(:category)
+    def import_raw_subjects(raw_subjects)
+      raw_subjects = raw_subjects.includes(:category) if raw_subjects.respond_to?(:includes)
       parent_id_by_raw_category_id = parent_id_by_raw_category_id(raw_subjects.map(&:category_id))
       rows = raw_subjects.filter_map do |raw_subject|
         next if raw_subject.name.blank?

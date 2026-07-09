@@ -73,6 +73,7 @@ Rails.application.routes.draw do
     get "cost_allocations/new" => "cost_allocations#new", as: :new_cost_allocation
     get "cost_allocations/:id/edit" => "cost_allocations#edit", as: :edit_cost_allocation
     get "platform_products/:platform/:store_id/:product_id" => "platform_products#show", as: :platform_product
+    resources :categories, only: [:index]
     resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]
     resources :skus do

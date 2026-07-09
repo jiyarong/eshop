@@ -18,6 +18,12 @@
       <%= form.label :product_name_ru, "俄文名" %>
       <%= form.text_field :product_name_ru %>
     </div>
+    <div class="modal-form-grid__wide">
+      <%= render "shared/category_selector",
+                 field_name: "ec_master_sku[ec_category_id]",
+                 field_id: "ec_master_sku_ec_category_id",
+                 selected_category_id: master_sku.ec_category_id %>
+    </div>
     <div class="field">
       <%= form.label :is_active, "启用" %>
       <%= form.check_box :is_active %>

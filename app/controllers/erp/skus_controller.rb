@@ -9,7 +9,7 @@ module Erp
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
       @category_id = params[:category_id].presence
 
-      scope = Ec::MasterSku.includes(skus: [:sku_category, :batches]).order(:master_sku_code)
+      scope = Ec::MasterSku.includes({ ec_category: :parent }, skus: [:sku_category, :batches]).order(:master_sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = scope.joins(:skus).where(ec_skus: { sku_category_id: @category_id }).distinct if @category_id.present?

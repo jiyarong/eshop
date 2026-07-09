@@ -40,6 +40,7 @@ module Erp
         :master_sku_code,
         :product_name,
         :product_name_ru,
+        :ec_category_id,
         :is_active,
         :memo
       )

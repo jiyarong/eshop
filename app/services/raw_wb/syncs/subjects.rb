@@ -25,17 +25,17 @@ module RawWb
             }
           end
           RawWb::Subject.upsert_all(rows, unique_by: :wb_id, update_only: %i[name category_id synced_at]) if rows.any?
-          if rows.any?
-            Ec::CategoryWbImporter.import_subjects(rows)
-            imported_ec_categories = true
-          end
+          imported_ec_categories = true if rows.any?
           total += rows.size
           break if items.size < limit
           offset += limit
           sleep 0.7
         end
 
-        Ec::CategoryTranslationSync.translate_pending_for_source("wb") if imported_ec_categories
+        if imported_ec_categories
+          Ec::CategoryWbImporter.import_all_subjects
+          Ec::CategoryTranslationSync.translate_pending_for_source("wb")
+        end
         total
       end
     end

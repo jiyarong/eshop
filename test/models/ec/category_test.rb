@@ -55,6 +55,26 @@ class Ec::CategoryTest < ActiveSupport::TestCase
     assert duplicate.errors[:source_id].any?
   end
 
+  test "localized_name uses current locale and falls back to available names" do
+    category = Ec::Category.create!(
+      source: "test",
+      source_type: "category",
+      source_id: source_id("localized"),
+      origin_name: "Оригинал",
+      origin_language: "ru",
+      name_cn: "中文类目",
+      name_en: "English category",
+      name_ru: "Русская категория"
+    )
+
+    assert_equal "中文类目", category.localized_name(:zh)
+    assert_equal "English category", category.localized_name(:en)
+    assert_equal "Русская категория", category.localized_name(:ru)
+
+    category.name_cn = ""
+    assert_equal "English category", category.localized_name(:zh)
+  end
+
   private
 
   def source_id(suffix)
@@ -62,6 +82,6 @@ class Ec::CategoryTest < ActiveSupport::TestCase
   end
 
   def source_ids
-    %w[parent child duplicate].map { |suffix| source_id(suffix) }
+    %w[parent child duplicate localized].map { |suffix| source_id(suffix) }
   end
 end

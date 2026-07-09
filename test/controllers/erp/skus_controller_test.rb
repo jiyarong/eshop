@@ -6,10 +6,30 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     @current_user = create_user_with_roles("erp-skus-#{@token.downcase}@example.com", "manager")
     sign_in @current_user
     @category = Ec::SkuCategory.create!(code: "SKU-PAGE-CAT-#{@token}", name: "SKU 页面类目")
+    @platform_category_parent = Ec::Category.create!(
+      source: "test",
+      source_type: "category",
+      source_id: platform_category_source_id("parent"),
+      origin_name: "Platform Parent #{@token}",
+      origin_language: "en",
+      name_cn: "平台父类 #{@token}",
+      name_en: "Platform Parent #{@token}"
+    )
+    @platform_category_child = Ec::Category.create!(
+      source: "test",
+      source_type: "subject",
+      source_id: platform_category_source_id("child"),
+      parent: @platform_category_parent,
+      origin_name: "Platform Child #{@token}",
+      origin_language: "en",
+      name_cn: "平台子类 #{@token}",
+      name_en: "Platform Child #{@token}"
+    )
     @master_sku = Ec::MasterSku.create!(
       master_sku_code: "MASTER-#{@token}",
       product_name: "页面主产品",
       product_name_ru: "Главный товар",
+      ec_category: @platform_category_child,
       is_active: true
     )
     @sku = Ec::Sku.create!(
@@ -49,6 +69,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all if defined?(Ec::MasterSku)
     Ec::SkuCategory.where(id: @category.id).delete_all
+    Ec::Category.where(source: "test", source_id: platform_category_source_ids).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
   end
@@ -74,7 +95,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl thead th", text: "SPU"
     assert_select ".prod-tbl thead th", text: "中文名"
     assert_select ".prod-tbl thead th", text: "俄文名"
+    assert_select ".prod-tbl thead th", text: "平台类目"
     assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".prod-tbl tr.master .platform-category", text: "平台父类 #{@token} / 平台子类 #{@token}"
     assert_select ".product-list-card[data-controller='product-tree']"
     assert_select "tr.master.open", count: 0
     assert_select "tr.sku-row.open", count: 0
@@ -149,7 +172,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "button", "Filter"
     assert_select "a", "Reset"
     assert_select ".prod-tbl thead th", text: "Chinese name"
+    assert_select ".prod-tbl thead th", text: "Platform category"
     assert_select ".prod-tbl thead th", text: "Actions"
+    assert_select ".prod-tbl tr.master .platform-category", text: "Platform Parent #{@token} / Platform Child #{@token}"
     assert_select ".sub-h", text: "SKU variants · 1 item"
     assert_select ".batch-title", text: "Batch list"
     assert_select ".batch-tbl th", text: "Purchase date"
@@ -354,5 +379,15 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".erp-modal"
     assert_select "h2", "编辑 SKU"
     assert_select ".error-box"
+  end
+
+  private
+
+  def platform_category_source_id(suffix)
+    "#{@token}-#{suffix}"
+  end
+
+  def platform_category_source_ids
+    %w[parent child].map { |suffix| platform_category_source_id(suffix) }
   end
 end

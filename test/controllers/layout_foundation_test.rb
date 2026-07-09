@@ -88,6 +88,8 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
 
     assert_no_match(/import\s+["'][^"']+\.css["']/, js)
     assert_includes css, '@import "flatpickr/dist/flatpickr.css";'
+    assert_includes js, 'import CategorySelectorController from "./controllers/category_selector_controller";'
+    assert_includes js, 'Stimulus.register("category-selector", CategorySelectorController);'
     assert_includes js, 'import PageTranslationController from "./controllers/page_translation_controller";'
     assert_includes js, 'Stimulus.register("page-translation", PageTranslationController);'
   end
