@@ -19,10 +19,11 @@ module RawWb
           cards = Array(data['cards'])
           break if cards.empty?
 
-          product_rows = cards.filter_map { |c| build_product_card(c) }
+          subject_id_by_wb_id = RawWb::Subject.where(wb_id: cards.filter_map { |c| c['subjectID'] }).pluck(:wb_id, :id).to_h
+          product_rows = cards.filter_map { |c| build_product_card(c, subject_id_by_wb_id) }
           if product_rows.any?
             RawWb::Product.upsert_all(product_rows, unique_by: :nm_id,
-              update_only: %i[imt_id brand title description subject_name synced_at])
+              update_only: %i[imt_id brand title description subject_id subject_name synced_at])
           end
 
           # Sync SKUs for this batch
@@ -54,7 +55,7 @@ module RawWb
 
       private
 
-      def build_product_card(c)
+      def build_product_card(c, subject_id_by_wb_id)
         nm_id = c['nmID']
         return nil if nm_id.blank?
         {
@@ -65,6 +66,7 @@ module RawWb
           brand:        c['brand'],
           title:        c['title'],
           description:  c['description'],
+          subject_id:   subject_id_by_wb_id[c['subjectID']],
           subject_name: c['subjectName'],
           synced_at:    Time.current,
         }

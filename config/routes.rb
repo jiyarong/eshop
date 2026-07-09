@@ -89,6 +89,10 @@ Rails.application.routes.draw do
     resources :operation_tasks, only: [:index, :show]
   end
 
+  namespace :raw_wb do
+    get "categories/tree" => "categories#tree"
+  end
+
   # 暂时屏蔽所有业务接口
   # namespace :raw_wb do
   #   resources :seller_accounts

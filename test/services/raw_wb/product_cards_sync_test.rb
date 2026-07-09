@@ -65,6 +65,47 @@ class RawWbProductCardsSyncTest < ActiveSupport::TestCase
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "sync_product_cards stores subject association from subjectID" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-subject-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    category = RawWb::Category.create!(wb_id: unique_wb_id(token, 1), name: "WB category #{token}")
+    subject = RawWb::Subject.create!(wb_id: unique_wb_id(token, 2), name: "WB subject #{token}", category: category)
+    client = FakeWbClient.new([
+      {
+        "cards" => [
+          {
+            "nmID" => 77_201,
+            "imtID" => 88_201,
+            "vendorCode" => "WB-SUBJECT-#{token}",
+            "brand" => "Test Brand",
+            "title" => "WB subject product #{token}",
+            "description" => "Product with subject",
+            "subjectName" => subject.name,
+            "subjectID" => subject.wb_id,
+            "characteristics" => [],
+            "sizes" => []
+          }
+        ]
+      }
+    ])
+    sync = RawWb::WeeklySync.new(account, days: 7)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_product_cards
+
+    product = RawWb::Product.find_by!(account_id: account.id, nm_id: 77_201)
+    assert_equal subject.id, product.subject_id
+  ensure
+    RawWb::Product.where(account_id: account&.id).delete_all
+    RawWb::Subject.where(id: subject&.id).delete_all
+    RawWb::Category.where(id: category&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
   test "sync_product_cards replaces existing characteristics for synced products" do
     token = SecureRandom.hex(6)
     account = RawWb::SellerAccount.create!(
@@ -113,5 +154,11 @@ class RawWbProductCardsSyncTest < ActiveSupport::TestCase
     RawWb::ProductCharacteristic.where(product_id: RawWb::Product.where(account_id: account&.id).select(:id)).delete_all
     RawWb::Product.where(account_id: account&.id).delete_all
     RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  private
+
+  def unique_wb_id(token, offset)
+    token.hex % 1_000_000 + offset
   end
 end

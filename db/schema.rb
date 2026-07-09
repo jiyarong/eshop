@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_03_094657) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_08_085107) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -44,6 +44,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_094657) do
     t.index ["module_name", "business_object_type", "business_object_id"], name: "idx_conversations_on_erp_context"
     t.index ["user_id", "created_at"], name: "index_conversations_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_conversations_on_user_id"
+  end
+
+  create_table "ec_categories", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name_cn"
+    t.string "name_en"
+    t.string "name_ru"
+    t.string "origin_language", null: false
+    t.string "origin_name", null: false
+    t.bigint "parent_id"
+    t.string "source", null: false
+    t.string "source_id", null: false
+    t.string "source_type", null: false
+    t.datetime "synced_at"
+    t.datetime "translated_at"
+    t.text "translation_error"
+    t.datetime "updated_at", null: false
+    t.index ["origin_language"], name: "index_ec_categories_on_origin_language"
+    t.index ["parent_id"], name: "index_ec_categories_on_parent_id"
+    t.index ["source", "source_type", "source_id"], name: "index_ec_categories_on_source_and_source_type_and_source_id", unique: true
+    t.index ["source"], name: "index_ec_categories_on_source"
+    t.index ["source_type"], name: "index_ec_categories_on_source_type"
   end
 
   create_table "ec_cost_allocation_items", force: :cascade do |t|
@@ -295,6 +317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_094657) do
     t.string "defect_offset_note"
     t.date "expected_arrival_on"
     t.text "memo"
+    t.date "purchase_date"
     t.decimal "purchase_unit_price_cny", precision: 12, scale: 4, default: "0.0", null: false
     t.integer "purchased_quantity", default: 0, null: false
     t.date "received_on"
@@ -1924,6 +1947,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_094657) do
 
   add_foreign_key "conversations", "agents"
   add_foreign_key "conversations", "users"
+  add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_operation_logs", "users", on_delete: :nullify

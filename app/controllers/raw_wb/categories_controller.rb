@@ -8,6 +8,10 @@ module RawWb
       @categories = @categories.page(params[:page]).per(params[:per_page] || 20)
     end
 
+    def tree
+      @categories = RawWb::Category.includes(:subjects).order(:name)
+    end
+
     def show; end
 
     def create

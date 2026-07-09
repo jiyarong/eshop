@@ -29,12 +29,14 @@ module RawOzon
       raise ArgumentError, 'No active Ozon stores found in ec_stores' if stores.none?
 
       order_import_synced_since = Time.current
-      stores.each_with_object({}) do |store, results|
+      results = stores.each_with_object({}) do |store, store_results|
         account = store.raw_ozon_account
         raise "Ec::Store##{store.id} (#{store.store_name}) has no linked Ozon account" unless account
-        results[store.id] = new(account, days: days || self::DEFAULT_DAYS).run(sync_keys: sync_keys)
+        store_results[store.id] = new(account, days: days || self::DEFAULT_DAYS).run(sync_keys: sync_keys)
       end
-      Ec::OrderImport::Ozon.new.call(synced_since: order_import_synced_since)
+      import_count = Ec::OrderImport::Ozon.new.call(synced_since: order_import_synced_since)
+      results[:order_import] = import_count.is_a?(Hash) ? import_count : { ok: import_count }
+      results
     end
 
     def initialize(account, days:)

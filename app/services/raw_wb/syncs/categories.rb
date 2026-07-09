@@ -10,6 +10,8 @@ module RawWb
         return 0 if rows.empty?
 
         RawWb::Category.upsert_all(rows, unique_by: :wb_id, update_only: %i[name synced_at])
+        Ec::CategoryWbImporter.import_categories(rows)
+        Ec::CategoryTranslationSync.translate_pending_for_source("wb")
         rows.size
       end
     end

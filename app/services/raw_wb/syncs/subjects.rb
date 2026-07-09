@@ -7,6 +7,7 @@ module RawWb
         total          = 0
         limit          = 1000
         category_cache = RawWb::Category.pluck(:wb_id, :id).to_h
+        imported_ec_categories = false
 
         loop do
           data  = @client.get(:content, '/content/v2/object/all', limit: limit, offset: offset)
@@ -24,12 +25,17 @@ module RawWb
             }
           end
           RawWb::Subject.upsert_all(rows, unique_by: :wb_id, update_only: %i[name category_id synced_at]) if rows.any?
+          if rows.any?
+            Ec::CategoryWbImporter.import_subjects(rows)
+            imported_ec_categories = true
+          end
           total += rows.size
           break if items.size < limit
           offset += limit
           sleep 0.7
         end
 
+        Ec::CategoryTranslationSync.translate_pending_for_source("wb") if imported_ec_categories
         total
       end
     end

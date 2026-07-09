@@ -42,7 +42,7 @@ class Agent < ApplicationRecord
       tools: ErpAI::ToolRegistry.default_tool_names,
       enabled: true,
       default_system_prompt: DEFAULT_SYSTEM_PROMPT,
-      default_model_id: "gpt-4.1-mini",
+      default_model_id: "deepseek-v4-flash",
       default_temperature: 0.3
     },
     "sku_replenishment_advisor" => {
@@ -50,7 +50,7 @@ class Agent < ApplicationRecord
       tools: ErpAI::ToolRegistry.default_tool_names,
       enabled: true,
       default_system_prompt: SKU_REPLENISHMENT_PROMPT,
-      default_model_id: "gpt-4.1-mini",
+      default_model_id: "deepseek-v4-flash",
       default_temperature: 0.3
     },
     "sku_weekly_report_advisor" => {
@@ -58,7 +58,7 @@ class Agent < ApplicationRecord
       tools: ErpAI::ToolRegistry.default_tool_names,
       enabled: true,
       default_system_prompt: SKU_WEEKLY_REPORT_PROMPT,
-      default_model_id: "gpt-4.1-mini",
+      default_model_id: "deepseek-v4-flash",
       default_temperature: 0.3
     },
     "page_translation" => {
@@ -66,7 +66,7 @@ class Agent < ApplicationRecord
       tools: [],
       enabled: true,
       default_system_prompt: PAGE_TRANSLATION_PROMPT,
-      default_model_id: "gpt-4.1-mini",
+      default_model_id: "deepseek-v4-flash",
       default_temperature: 0.2
     },
     "general_agent" => {
@@ -74,7 +74,7 @@ class Agent < ApplicationRecord
       tools: [],
       enabled: true,
       default_system_prompt: GENERAL_AGENT_PROMPT,
-      default_model_id: "gpt-4.1-mini",
+      default_model_id: "deepseek-v4-flash",
       default_temperature: 0.3
     }
   }.freeze
