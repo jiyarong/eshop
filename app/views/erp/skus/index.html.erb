@@ -51,8 +51,55 @@
         <%= form.select :status, [[t("erp.common.filter_options.all"), "all"], [t("erp.common.statuses.enabled"), "active"], [t("erp.common.statuses.disabled"), "inactive"]], { selected: @status }, class: "select" %>
       </div>
       <div class="field product-filter-field">
-        <%= form.label :category_id, t("erp.common.category"), class: "label" %>
-        <%= form.collection_select :category_id, @categories, :id, :name, { include_blank: t("erp.skus.filters.all_categories"), selected: @category_id }, class: "select" %>
+        <%= form.label :category_ids, t("erp.common.category"), class: "label" %>
+        <% selected_category_labels = @category_options.select { |_label, id| @category_ids.include?(id) }.map(&:first) %>
+        <% category_summary = if selected_category_labels.empty?
+          t("erp.skus.filters.all_categories")
+        elsif selected_category_labels.one?
+          selected_category_labels.first
+        else
+          t("erp.skus.filters.selected_categories", count: selected_category_labels.size)
+        end %>
+        <div class="category-multiselect"
+             data-controller="category-multiselect"
+             data-all-label="<%= t("erp.skus.filters.all_categories") %>"
+             data-selected-count-label="<%= t("erp.skus.filters.selected_categories", count: "%{count}") %>">
+          <button class="category-multiselect__trigger"
+                  type="button"
+                  data-category-multiselect-target="trigger"
+                  data-action="category-multiselect#toggle"
+                  aria-expanded="false">
+            <span data-category-multiselect-target="summary"><%= category_summary %></span>
+            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+          </button>
+          <div class="category-multiselect__panel" data-category-multiselect-target="panel" data-action="keydown->category-multiselect#closeOnEscape" hidden>
+            <label class="category-multiselect__search">
+              <span class="sr-only"><%= t("erp.skus.filters.category_search_placeholder") %></span>
+              <input type="search"
+                     placeholder="<%= t("erp.skus.filters.category_search_placeholder") %>"
+                     data-category-multiselect-target="search"
+                     data-action="input->category-multiselect#filter keydown.enter->category-multiselect#preventSubmit">
+              <i class="bi bi-search" aria-hidden="true"></i>
+            </label>
+            <div class="category-multiselect__list" role="listbox" aria-multiselectable="true">
+              <% @category_options.each do |label, id| %>
+                <% selected = @category_ids.include?(id) %>
+                <label class="category-multiselect__option <%= "is-selected" if selected %>"
+                       role="option"
+                       aria-selected="<%= selected ? "true" : "false" %>"
+                       data-category-multiselect-target="option"
+                       data-category-multiselect-label="<%= label.downcase %>">
+                  <%= check_box_tag "category_ids[]", id, selected, data: { action: "category-multiselect#sync" } %>
+                  <span class="category-multiselect__check" aria-hidden="true">
+                    <i class="bi bi-check-lg"></i>
+                  </span>
+                  <span class="category-multiselect__label"><%= label %></span>
+                </label>
+              <% end %>
+              <div class="category-multiselect__empty" data-category-multiselect-target="empty" hidden><%= t("erp.skus.filters.no_categories") %></div>
+            </div>
+          </div>
+        </div>
       </div>
       <button class="btn btn-primary" type="submit">
         <i class="bi bi-search" aria-hidden="true"></i>

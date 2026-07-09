@@ -1,5 +1,6 @@
 import "@hotwired/turbo-rails";
 import { Application } from "@hotwired/stimulus";
+import CategoryMultiselectController from "./controllers/category_multiselect_controller";
 import CategorySelectorController from "./controllers/category_selector_controller";
 import ClipboardController from "./controllers/clipboard_controller";
 import DatePickerController from "./controllers/date_picker_controller";
@@ -14,6 +15,7 @@ import ShellController from "./controllers/shell_controller";
 import ToastController from "./controllers/toast_controller";
 
 window.Stimulus = Application.start();
+Stimulus.register("category-multiselect", CategoryMultiselectController);
 Stimulus.register("category-selector", CategorySelectorController);
 Stimulus.register("clipboard", ClipboardController);
 Stimulus.register("date-picker", DatePickerController);

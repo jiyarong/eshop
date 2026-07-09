@@ -724,7 +724,10 @@ ru:
         weight_kg: "Вес kg"
       filters:
         all_categories: "Все категории"
-        search_placeholder: "Поиск SPU, китайского или русского названия..."
+        category_search_placeholder: "Поиск категорий"
+        no_categories: "Подходящих категорий нет"
+        selected_categories: "Выбрано категорий: %{count}"
+        search_placeholder: "Поиск SPU, SKU, китайского или русского названия..."
       index:
         active_products: "Активные SPU"
         batch_list: "Список партий"

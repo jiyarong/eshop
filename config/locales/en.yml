@@ -768,7 +768,10 @@ en:
         weight_kg: "Weight kg"
       filters:
         all_categories: "All categories"
-        search_placeholder: "Search SPU, Chinese name, or Russian name..."
+        category_search_placeholder: "Search categories"
+        no_categories: "No matching categories"
+        selected_categories: "%{count} categories selected"
+        search_placeholder: "Search SPU, SKU, Chinese name, or Russian name..."
       index:
         active_products: "Active SPUs"
         batch_list: "Batch list"

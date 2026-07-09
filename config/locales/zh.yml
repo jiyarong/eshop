@@ -749,7 +749,10 @@ zh:
         weight_kg: "重量 kg"
       filters:
         all_categories: "全部类别"
-        search_placeholder: "搜索 SPU、中文名或俄文名…"
+        category_search_placeholder: "按类目搜索"
+        no_categories: "没有匹配的类目"
+        selected_categories: "已选 %{count} 个类目"
+        search_placeholder: "搜索 SPU、SKU、中文名或俄文名…"
       index:
         active_products: "启用 SPU"
         batch_list: "批次清单"

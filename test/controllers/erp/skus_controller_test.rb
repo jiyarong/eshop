@@ -87,7 +87,13 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "收起全部", response.body
     assert_select ".card.product-filter-card form[action='/erp/skus'][method='get']"
     assert_select "input[name='q']"
-    assert_select "select[name='category_id']"
+    assert_select ".category-multiselect[data-controller='category-multiselect']"
+    assert_select ".category-multiselect__trigger[aria-expanded='false']", text: "全部类别"
+    assert_select ".category-multiselect__panel[hidden]", count: 1
+    assert_select ".category-multiselect input[type='search'][placeholder=?]", "按类目搜索"
+    assert_select ".category-multiselect input[name='category_ids[]'][value=?]", @platform_category_child.id.to_s, count: 1
+    assert_select ".category-multiselect__option", text: "平台父类 #{@token} / 平台子类 #{@token}", count: 1
+    assert_select ".category-multiselect__option", text: @category.name, count: 0
     assert_select ".product-summary-grid", 1
     assert_select ".product-summary-card", 4
     assert_select ".card.product-list-card"
@@ -163,12 +169,13 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".product-summary-grid[aria-label=?]", "Product overview"
     assert_select ".summary-label", "Batches"
     assert_select ".summary-label", "Active SPUs"
-    assert_select "input[placeholder=?]", "Search SPU, Chinese name, or Russian name..."
+    assert_select "input[placeholder=?]", "Search SPU, SKU, Chinese name, or Russian name..."
+    assert_select ".category-multiselect__trigger", text: "All categories"
+    assert_select ".category-multiselect input[type='search'][placeholder=?]", "Search categories"
     assert_select "label", "Status"
     assert_select "option", "All"
     assert_select "option", "Enabled"
     assert_select "label", "Category"
-    assert_select "option", "All categories"
     assert_select "button", "Filter"
     assert_select "a", "Reset"
     assert_select ".prod-tbl thead th", text: "Chinese name"
@@ -198,6 +205,79 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='q'][value=?]", @master_sku.master_sku_code.downcase
     assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
     assert_no_match @inactive_sku.sku_code, response.body
+  end
+
+  test "index filters master sku by full child sku code" do
+    get "/erp/skus", params: { q: @sku.sku_code, status: "active" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
+    assert_no_match @inactive_sku.sku_code, response.body
+  end
+
+  test "index filters by multiple master sku platform categories" do
+    other_parent = Ec::Category.create!(
+      source: "test",
+      source_type: "category",
+      source_id: platform_category_source_id("other-parent"),
+      origin_name: "Other Parent #{@token}",
+      origin_language: "en",
+      name_cn: "其他父类 #{@token}",
+      name_en: "Other Parent #{@token}"
+    )
+    other_child = Ec::Category.create!(
+      source: "test",
+      source_type: "subject",
+      source_id: platform_category_source_id("other-child"),
+      parent: other_parent,
+      origin_name: "Other Child #{@token}",
+      origin_language: "en",
+      name_cn: "其他子类 #{@token}",
+      name_en: "Other Child #{@token}"
+    )
+    other_master_sku = Ec::MasterSku.create!(
+      master_sku_code: "MASTER-OTHER-#{@token}",
+      product_name: "其他主产品",
+      ec_category: other_child,
+      is_active: true
+    )
+    Ec::Sku.create!(
+      master_sku: other_master_sku,
+      sku_code: "SKU-OTHER-#{@token}",
+      product_name: "其他商品",
+      is_active: true
+    )
+
+    get "/erp/skus", params: { category_ids: [@platform_category_child.id, other_child.id] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".category-multiselect__trigger", text: "已选 2 个类目"
+    assert_select ".category-multiselect__panel[hidden]", count: 1
+    assert_select ".category-multiselect input[name='category_ids[]'][checked='checked']", count: 2
+    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".prod-tbl tr.master .code-text", text: other_master_sku.master_sku_code
+
+    sign_in @current_user
+    get "/erp/skus", params: { category_ids: [other_child.id] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".prod-tbl tr.master .code-text", text: other_master_sku.master_sku_code
+    assert_no_match @master_sku.master_sku_code, response.body
+  end
+
+  test "index lists each master sku platform category once" do
+    Ec::MasterSku.create!(
+      master_sku_code: "MASTER-DUP-#{@token}",
+      product_name: "重复类别主产品",
+      ec_category: @platform_category_child,
+      is_active: true
+    )
+
+    get "/erp/skus", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".category-multiselect input[name='category_ids[]'][value=?]", @platform_category_child.id.to_s, count: 1
   end
 
   test "index does not render expand toggle for unfiled sku without batches" do
@@ -388,6 +468,6 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   def platform_category_source_ids
-    %w[parent child].map { |suffix| platform_category_source_id(suffix) }
+    %w[parent child other-parent other-child].map { |suffix| platform_category_source_id(suffix) }
   end
 end

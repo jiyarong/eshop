@@ -4,21 +4,21 @@ module Erp
     before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update, :destroy]
 
     def index
-      @categories = Ec::SkuCategory.active.order(:position, :code)
+      @category_options = master_sku_category_options
       @q = params[:q].to_s.strip
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
-      @category_id = params[:category_id].presence
+      @category_ids = selected_category_ids
 
       scope = Ec::MasterSku.includes({ ec_category: :parent }, skus: [:sku_category, :batches]).order(:master_sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
-      scope = scope.joins(:skus).where(ec_skus: { sku_category_id: @category_id }).distinct if @category_id.present?
+      scope = scope.where(ec_category_id: @category_ids) if @category_ids.any?
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
-        scope = scope.where(
-          "ec_master_skus.master_sku_code ILIKE :keyword OR ec_master_skus.product_name ILIKE :keyword OR ec_master_skus.product_name_ru ILIKE :keyword",
+        scope = scope.left_joins(:skus).where(
+          "ec_master_skus.master_sku_code ILIKE :keyword OR ec_master_skus.product_name ILIKE :keyword OR ec_master_skus.product_name_ru ILIKE :keyword OR ec_skus.sku_code ILIKE :keyword OR ec_skus.product_name ILIKE :keyword OR ec_skus.product_name_ru ILIKE :keyword OR ec_skus.owner_name ILIKE :keyword",
           keyword: keyword
-        )
+        ).distinct
       end
 
       @master_skus = scope.to_a
@@ -96,10 +96,11 @@ module Erp
     end
 
     def orphan_sku_scope
+      return [] if @category_ids.any?
+
       scope = Ec::Sku.includes(:sku_category, :batches).where(master_sku_id: nil).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
-      scope = scope.where(sku_category_id: @category_id) if @category_id.present?
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.where(
@@ -111,9 +112,26 @@ module Erp
     end
 
     def skus_for_display(skus)
-      visible_skus = skus.sort_by(&:sku_code)
-      visible_skus = visible_skus.select { |sku| sku.sku_category_id == @category_id.to_i } if @category_id.present?
-      visible_skus
+      skus.sort_by(&:sku_code)
+    end
+
+    def selected_category_ids
+      Array(params[:category_ids].presence || params[:category_id])
+        .reject(&:blank?)
+        .filter_map { |value| Integer(value, exception: false) }
+        .uniq
+    end
+
+    def master_sku_category_options
+      category_ids = Ec::MasterSku.where.not(ec_category_id: nil).distinct.select(:ec_category_id)
+
+      Ec::Category.where(id: category_ids).includes(:parent).to_a
+        .map { |category| [master_sku_category_label(category), category.id] }
+        .sort_by { |label, id| [label.downcase, id] }
+    end
+
+    def master_sku_category_label(category)
+      [category.parent&.localized_name, category.localized_name].compact.join(" / ")
     end
 
     def sku_params
