@@ -15,8 +15,44 @@
                placeholder="<%= t("reports.inventory.filters.sku_placeholder") %>">
       </div>
 
+      <div class="field">
+        <label for="inventory_turnover_days_min"><%= t("reports.inventory.filters.turnover_days_min") %></label>
+        <input id="inventory_turnover_days_min"
+               type="number"
+               step="0.01"
+               name="turnover_days_min"
+               value="<%= @turnover_days_min_query %>">
+      </div>
+
+      <div class="field">
+        <label for="inventory_turnover_days_max"><%= t("reports.inventory.filters.turnover_days_max") %></label>
+        <input id="inventory_turnover_days_max"
+               type="number"
+               step="0.01"
+               name="turnover_days_max"
+               value="<%= @turnover_days_max_query %>">
+      </div>
+
+      <div class="field">
+        <label for="inventory_procurement_turnover_days_min"><%= t("reports.inventory.filters.procurement_turnover_days_min") %></label>
+        <input id="inventory_procurement_turnover_days_min"
+               type="number"
+               step="0.01"
+               name="procurement_turnover_days_min"
+               value="<%= @procurement_turnover_days_min_query %>">
+      </div>
+
+      <div class="field">
+        <label for="inventory_procurement_turnover_days_max"><%= t("reports.inventory.filters.procurement_turnover_days_max") %></label>
+        <input id="inventory_procurement_turnover_days_max"
+               type="number"
+               step="0.01"
+               name="procurement_turnover_days_max"
+               value="<%= @procurement_turnover_days_max_query %>">
+      </div>
+
       <button class="button" type="submit"><%= t("reports.inventory.filters.submit") %></button>
-      <% if @sku_query.present? %>
+      <% if inventory_filters_active? %>
         <%= link_to t("reports.inventory.filters.reset"), "/reports/inventory", class: "button button-secondary" %>
       <% end %>
     </form>

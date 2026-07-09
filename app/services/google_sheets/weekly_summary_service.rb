@@ -41,13 +41,10 @@ module GoogleSheets
     def call
       puts "→ WeeklySummaryService #{@week_label} (#{@from_date}~#{@to_date}) CNY/RUB=#{@rate.rate_cny_rub} BYN/RUB=#{@rate.rate_byn_rub}"
 
-      rows, @unalloc_cny = collect_rows(@from_date, @to_date, @rate)
-
-      prev_from = @from_date - 7
-      prev_to   = @to_date   - 7
-      prev_rate = Ec::WeeklyRate.resolve(prev_from)
-      prev_rows, _ = prev_rate ? collect_rows(prev_from, prev_to, prev_rate) : [[], nil]
-      prev_map  = prev_rows.index_by { |r| [r[:sku], r[:platform], r[:shop]] }
+      query = Ec::WeeklySummaryQuery.run(from_date: @from_date, to_date: @to_date)
+      row_hashes = query[:rows]
+      comparisons = query.dig(:comparison, :rows) || {}
+      summary = query[:summary]
 
       tab = "WSU:#{@week_label}"
       @spreadsheet_sheets = nil
@@ -56,15 +53,15 @@ module GoogleSheets
       sid_pre = sheet_id(tab)
       batch_update([req_clear_format(sid_pre)]) if sid_pre
 
-      data_rows = build_data_rows(rows, prev_map)
-      total_row = build_total_row(rows)
+      data_rows = build_query_data_rows(row_hashes, comparisons)
+      total_row = build_query_total_row(row_hashes)
 
       all_rows  = [HDR_ZH, HDR_RU] + data_rows + [total_row]
       write_to_sheet(range: "#{tab}!A1", values: all_rows)
 
       # ── 摘要区（隔3行，纵向） ──────────────────────────────────────────────
       summary_offset = all_rows.size + 3
-      write_to_sheet(range: "#{tab}!A#{summary_offset + 1}", values: build_summary(rows))
+      write_to_sheet(range: "#{tab}!A#{summary_offset + 1}", values: build_query_summary_rows(summary))
 
       # ── 样式 ──────────────────────────────────────────────────────────────
       @spreadsheet_sheets = nil
@@ -85,6 +82,86 @@ module GoogleSheets
     end
 
     private
+
+    def build_query_data_rows(rows, comparisons)
+      rows.map do |row|
+        comparison = comparisons[[row[:sku], row[:platform], row[:shop]].join("|")] || {}
+        [
+          row[:sku],
+          row[:platform],
+          row[:shop],
+          row[:net_sales],
+          row[:revenue],
+          row[:ads],
+          row[:goods_cost],
+          row[:pre_tax],
+          row[:tax],
+          row[:after_tax],
+          row[:margin_pct],
+          comparison.dig(:net_sales, :previous),
+          comparison.dig(:revenue, :previous),
+          comparison.dig(:net_sales, :delta_pct),
+          comparison.dig(:revenue, :delta_pct)
+        ]
+      end
+    end
+
+    def build_query_total_row(rows)
+      total_revenue = rows.sum { |row| row[:revenue].to_f }.round(2)
+      total_after_tax = rows.sum { |row| row[:after_tax].to_f }.round(2)
+      margin = total_revenue.zero? ? nil : ((total_after_tax / total_revenue) * 100).round(1)
+
+      [
+        "合计 / Итого", "", "",
+        rows.sum { |row| row[:net_sales].to_i },
+        total_revenue,
+        rows.sum { |row| row[:ads].to_f }.round(2),
+        rows.sum { |row| row[:goods_cost].to_f }.round(2),
+        rows.sum { |row| row[:pre_tax].to_f }.round(2),
+        rows.sum { |row| row[:tax].to_f }.round(2),
+        total_after_tax,
+        margin, "", "", "", ""
+      ]
+    end
+
+    def build_query_summary_rows(summary)
+      [
+        ["项目", "金额(CNY)"],
+        ["数据周期", summary[:period_label]],
+        ["汇率 CNY/RUB", summary[:rate_cny_rub]],
+        ["汇率 BYN/RUB", summary[:rate_byn_rub]],
+        [],
+        ["── WB ──", ""],
+        ["销售额", summary[:wb_sales_revenue]],
+        ["广告费", summary[:wb_ads]],
+        ["货物成本", summary[:wb_goods_cost]],
+        ["税前毛利", summary[:wb_pre_tax]],
+        ["税后净利", summary[:wb_after_tax]],
+        [],
+        ["── Ozon ──", ""],
+        ["销售额", summary[:ozon_sales_revenue]],
+        ["广告费", summary[:ozon_ads]],
+        ["货物成本", summary[:ozon_goods_cost]],
+        ["税前毛利", summary[:ozon_pre_tax]],
+        ["税后净利", summary[:ozon_after_tax]],
+        [],
+        ["── 合计 ──", ""],
+        ["总销售额", summary[:total_sales_revenue]],
+        ["总税后净利", summary[:total_after_tax]],
+        ["综合利润率", summary[:total_margin_pct] ? "#{summary[:total_margin_pct]}%" : "N/A"],
+        [],
+        ["── 未分摊费用（参考，负=成本）──", ""],
+        ["WB 未分摊", summary[:wb_unallocated]],
+        ["Ozon 未分摊（含孤儿广告）", summary[:ozon_unallocated]],
+        ["未分摊合计", summary[:unallocated_total]],
+        [],
+        ["── 含未分摊利润 ──", ""],
+        ["税后净利（不含未分摊）", summary[:total_after_tax]],
+        ["未分摊净影响", summary[:unallocated_total]],
+        ["税后净利（含未分摊）", summary[:after_tax_with_unallocated]],
+        ["综合利润率（含未分摊）", summary[:margin_with_unallocated_pct] ? "#{summary[:margin_with_unallocated_pct]}%" : "N/A"]
+      ]
+    end
 
     # ── 数据采集 ──────────────────────────────────────────────────────────────
 

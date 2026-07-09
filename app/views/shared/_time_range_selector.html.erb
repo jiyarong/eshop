@@ -1,0 +1,116 @@
+<%
+  component_id = local_assigns.fetch(:id)
+  start_date = local_assigns[:from_date]
+  end_date = local_assigns[:to_date]
+  start_value = start_date.present? ? start_date.to_date.iso8601 : ""
+  end_value = end_date.present? ? end_date.to_date.iso8601 : ""
+  has_range = start_value.present? && end_value.present?
+  submit_on_apply = local_assigns.fetch(:submit_on_apply, false)
+%>
+
+<div
+  class="time-range-field"
+  data-controller="time-range-selector"
+  data-time-range-selector-locale-value="<%= I18n.locale %>"
+  data-time-range-selector-placeholder-value="<%= t("shared.time_range.placeholder") %>"
+  data-time-range-selector-range-separator-value="<%= t("shared.time_range.summary.to") %>"
+  data-time-range-selector-submit-on-apply-value="<%= submit_on_apply %>"
+  data-time-range-selector-today-value="<%= user_today.iso8601 %>"
+  data-weekday-mon="<%= t("shared.time_range.weekdays.mon") %>"
+  data-weekday-tue="<%= t("shared.time_range.weekdays.tue") %>"
+  data-weekday-wed="<%= t("shared.time_range.weekdays.wed") %>"
+  data-weekday-thu="<%= t("shared.time_range.weekdays.thu") %>"
+  data-weekday-fri="<%= t("shared.time_range.weekdays.fri") %>"
+  data-weekday-sat="<%= t("shared.time_range.weekdays.sat") %>"
+  data-weekday-sun="<%= t("shared.time_range.weekdays.sun") %>">
+  <input type="hidden" name="from_date" value="<%= start_value %>" data-time-range-selector-target="fromInput">
+  <input type="hidden" name="to_date" value="<%= end_value %>" data-time-range-selector-target="toInput">
+
+  <div class="time-range-trigger-shell">
+    <button
+      class="time-range-trigger-shift"
+      type="button"
+      aria-label="<%= t("shared.time_range.jumps.previous_period") %>"
+      aria-disabled="<%= has_range ? "false" : "true" %>"
+      data-direction="-1"
+      data-action="time-range-selector#shiftAppliedRange"
+      data-time-range-selector-target="shiftControl"
+      <%= "disabled" unless has_range %>>‹</button>
+
+    <button
+      id="<%= "#{component_id}-trigger" %>"
+      class="time-range-trigger"
+      type="button"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-controls="<%= "#{component_id}-popover" %>"
+      data-action="time-range-selector#toggle"
+      data-time-range-selector-target="trigger">
+      <span class="time-range-trigger-value">
+        <span class="time-range-trigger-tag" hidden data-time-range-selector-target="summaryTag"></span>
+        <span data-time-range-selector-target="summaryDates"></span>
+      </span>
+      <span class="time-range-trigger-icon" aria-hidden="true"></span>
+    </button>
+
+    <button
+      class="time-range-trigger-shift"
+      type="button"
+      aria-label="<%= t("shared.time_range.jumps.next_period") %>"
+      aria-disabled="<%= has_range ? "false" : "true" %>"
+      data-direction="1"
+      data-action="time-range-selector#shiftAppliedRange"
+      data-time-range-selector-target="shiftControl"
+      <%= "disabled" unless has_range %>>›</button>
+  </div>
+
+  <section
+    id="<%= "#{component_id}-popover" %>"
+    class="time-range-popover"
+    role="dialog"
+    aria-modal="false"
+    aria-label="<%= t("shared.time_range.aria_label") %>"
+    hidden
+    data-time-range-selector-target="popover">
+    <div class="time-range-layout">
+      <div class="time-range-calendar-pane">
+        <div class="time-range-pane-header">
+          <div class="time-range-pane-title"><%= t("shared.time_range.title") %></div>
+          <div class="time-range-week-jumps">
+            <button class="time-range-chip" type="button" data-direction="-1" data-action="time-range-selector#shiftWeek" data-time-range-selector-target="weekJump"><%= t("shared.time_range.jumps.previous_week") %></button>
+            <button class="time-range-chip" type="button" data-direction="0" data-action="time-range-selector#shiftWeek" data-time-range-selector-target="weekJump"><%= t("shared.time_range.jumps.this_week") %></button>
+            <button class="time-range-chip" type="button" data-direction="1" data-action="time-range-selector#shiftWeek" data-time-range-selector-target="weekJump"><%= t("shared.time_range.jumps.next_week") %></button>
+          </div>
+        </div>
+
+        <div class="time-range-month-header">
+          <div class="time-range-visible-range" data-time-range-selector-target="visibleRange"></div>
+          <div class="time-range-month-nav">
+            <button class="time-range-icon-button" type="button" aria-label="<%= t("shared.time_range.jumps.previous_month") %>" data-action="time-range-selector#previousMonth">‹</button>
+            <button class="time-range-icon-button" type="button" aria-label="<%= t("shared.time_range.jumps.next_month") %>" data-action="time-range-selector#nextMonth">›</button>
+          </div>
+        </div>
+
+        <div class="time-range-month-grid" data-time-range-selector-target="monthsGrid"></div>
+      </div>
+
+      <aside class="time-range-side-pane">
+        <section class="time-range-section-block">
+          <h2><%= t("shared.time_range.shortcuts_title") %></h2>
+          <div class="time-range-preset-grid">
+            <button class="time-range-preset-button" type="button" data-preset="thisWeek" data-label="<%= t("shared.time_range.presets.this_week") %>" data-action="time-range-selector#selectPreset" data-time-range-selector-target="preset"><%= t("shared.time_range.presets.this_week") %></button>
+            <button class="time-range-preset-button" type="button" data-preset="lastWeek" data-label="<%= t("shared.time_range.presets.last_week") %>" data-action="time-range-selector#selectPreset" data-time-range-selector-target="preset"><%= t("shared.time_range.presets.last_week") %></button>
+            <button class="time-range-preset-button" type="button" data-preset="last2Weeks" data-label="<%= t("shared.time_range.presets.last_2_weeks") %>" data-action="time-range-selector#selectPreset" data-time-range-selector-target="preset"><%= t("shared.time_range.presets.last_2_weeks") %></button>
+            <button class="time-range-preset-button" type="button" data-preset="last4Weeks" data-label="<%= t("shared.time_range.presets.last_4_weeks") %>" data-action="time-range-selector#selectPreset" data-time-range-selector-target="preset"><%= t("shared.time_range.presets.last_4_weeks") %></button>
+            <button class="time-range-preset-button" type="button" data-preset="thisMonth" data-label="<%= t("shared.time_range.presets.this_month") %>" data-action="time-range-selector#selectPreset" data-time-range-selector-target="preset"><%= t("shared.time_range.presets.this_month") %></button>
+          </div>
+        </section>
+
+        <div class="time-range-footer-actions">
+          <button class="button button-secondary time-range-footer-button" type="button" data-action="time-range-selector#reset"><%= t("shared.time_range.actions.reset_this_week") %></button>
+          <button class="button time-range-footer-button" type="button" data-action="time-range-selector#apply"><%= t("shared.time_range.actions.apply") %></button>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>

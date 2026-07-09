@@ -164,7 +164,7 @@ module Ec
     end
 
     def optional_decimal(value)
-      return nil if value.nil?
+      return nil if value.blank?
 
       decimal(value)
     end

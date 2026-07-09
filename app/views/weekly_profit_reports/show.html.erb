@@ -1,70 +1,72 @@
-<h1 class="page-title">周利润报表</h1>
+<h1 class="page-title"><%= t("weekly_profit_reports.title") %></h1>
 
 <section class="panel">
-  <form class="report-form" action="/weekly_profit_reports" method="get" data-turbo-frame="weekly_profit_report_results">
-    <div class="field">
-      <label for="weekly-profit-platform">平台</label>
-      <select id="weekly-profit-platform" name="platform" required data-weekly-profit-platform>
-        <option value="wb" <%= "selected" if @platform == "wb" %>>WB</option>
-        <option value="ozon" <%= "selected" if @platform == "ozon" %>>Ozon</option>
-      </select>
+  <form class="report-form" action="/weekly_profit_reports" method="get" data-turbo-frame="weekly_profit_report_results" data-controller="weekly-profit-filter">
+    <div class="field field--time-range">
+      <label for="weekly-profit-time-range-trigger"><%= t("weekly_profit_reports.filters.date_range") %></label>
+      <div class="weekly-profit-time-range-row">
+        <%= render "shared/time_range_selector",
+                   id: "weekly-profit-time-range",
+                   from_date: @from_date,
+                   to_date: @to_date,
+                   submit_on_apply: true %>
+        <button class="button weekly-profit-submit-button" type="submit"><%= t("weekly_profit_reports.filters.submit") %></button>
+        <button class="button weekly-profit-submit-button" type="submit" formaction="/weekly_profit_reports" formmethod="get" formtarget="_top" data-turbo="false" name="format" value="xlsx"><%= t("weekly_profit_reports.filters.export_xlsx") %></button>
+      </div>
     </div>
 
-    <div class="field">
-      <label for="weekly-profit-account">店铺</label>
-      <select id="weekly-profit-account" name="account_id" required>
-        <optgroup label="WB">
-          <% @accounts[:wb].each do |account| %>
-            <option value="<%= account.id %>" data-platform="wb"><%= account.name %></option>
+    <div class="weekly-profit-filter-block">
+      <div class="field field--full">
+        <span class="field-label"><%= t("weekly_profit_reports.filters.report_type") %></span>
+        <input type="hidden" name="report_type" value="<%= @report_type %>" data-weekly-profit-filter-target="reportTypeInput">
+        <div class="weekly-profit-tag-row" data-weekly-profit-tag-group="report-type" role="group" aria-label="<%= t("weekly_profit_reports.filters.report_type") %>">
+          <% WeeklyProfitReportsController::REPORT_TYPES.each do |report_type| %>
+            <% active = @report_type == report_type %>
+            <button
+              type="button"
+              class="weekly-profit-filter-tag<%= " is-active" if active %>"
+              data-weekly-profit-tag
+              data-weekly-profit-filter-target="reportButton"
+              data-value="<%= report_type %>"
+              data-action="weekly-profit-filter#selectReportType"
+              aria-pressed="<%= active ? "true" : "false" %>">
+              <%= t("weekly_profit_reports.filters.report_type_options.#{report_type}") %>
+            </button>
           <% end %>
-        </optgroup>
-        <optgroup label="Ozon">
-          <% @accounts[:ozon].each do |account| %>
-            <option value="<%= account.id %>" data-platform="ozon"><%= account.company_name %></option>
+        </div>
+      </div>
+
+      <% store_selection_enabled = @report_type == "wr" %>
+      <div class="field field--full weekly-profit-store-field<%= " is-disabled" unless store_selection_enabled %>" data-weekly-profit-store-field data-weekly-profit-filter-target="storeField" aria-disabled="<%= store_selection_enabled ? "false" : "true" %>">
+        <span class="field-label"><%= t("weekly_profit_reports.filters.store") %></span>
+        <input type="hidden" name="store_ref" value="<%= @selected_store_ref %>" data-weekly-profit-filter-target="storeInput">
+        <div class="weekly-profit-tag-row" data-weekly-profit-tag-group="store" role="group" aria-label="<%= t("weekly_profit_reports.filters.store") %>">
+          <% @store_options.each do |store| %>
+            <% active = @selected_store_ref == store[:ref] %>
+            <button
+              type="button"
+              class="weekly-profit-filter-tag<%= " is-active" if active %>"
+              data-weekly-profit-store-tag
+              data-weekly-profit-filter-target="storeButton"
+              data-value="<%= store[:ref] %>"
+              data-action="weekly-profit-filter#selectStore"
+              aria-pressed="<%= active ? "true" : "false" %>"
+              <%= "disabled" unless store_selection_enabled %>>
+              <%= store[:label] %>
+            </button>
           <% end %>
-        </optgroup>
-      </select>
+        </div>
+      </div>
     </div>
-
-    <div class="field">
-      <label for="weekly-profit-from-date">开始日期</label>
-      <input id="weekly-profit-from-date" type="date" name="from_date" value="<%= @from_date %>" required>
-    </div>
-
-    <div class="field">
-      <label for="weekly-profit-to-date">结束日期</label>
-      <input id="weekly-profit-to-date" type="date" name="to_date" value="<%= @to_date %>" required>
-    </div>
-
-    <button class="button" type="submit">查询</button>
   </form>
 </section>
 
 <turbo-frame id="weekly_profit_report_results">
-  <section class="panel empty-state">
-    请选择平台、店铺和周期后查询
-  </section>
+  <% if @report.present? %>
+    <%= render "weekly_profit_reports/results", wrap_frame: false %>
+  <% else %>
+    <section class="panel empty-state">
+      <%= t("weekly_profit_reports.empty_state") %>
+    </section>
+  <% end %>
 </turbo-frame>
-
-<script>
-  document.addEventListener("turbo:load", () => {
-    const platformSelect = document.querySelector("[data-weekly-profit-platform]");
-    const accountSelect = document.getElementById("weekly-profit-account");
-    if (!platformSelect || !accountSelect) return;
-
-    const syncAccounts = () => {
-      const platform = platformSelect.value;
-      Array.from(accountSelect.options).forEach((option) => {
-        option.hidden = option.dataset.platform !== platform;
-      });
-      const selected = accountSelect.selectedOptions[0];
-      if (!selected || selected.hidden) {
-        const firstVisible = Array.from(accountSelect.options).find((option) => !option.hidden);
-        accountSelect.value = firstVisible ? firstVisible.value : "";
-      }
-    };
-
-    platformSelect.addEventListener("change", syncAccounts);
-    syncAccounts();
-  });
-</script>

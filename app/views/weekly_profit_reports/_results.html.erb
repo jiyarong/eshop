@@ -1,84 +1,15 @@
+<% wrap_frame = local_assigns.fetch(:wrap_frame, true) %>
+<% if wrap_frame %>
 <turbo-frame id="weekly_profit_report_results">
-  <div class="report-stack">
-    <section class="panel">
-      <p class="report-meta">
-        <%= @report[:account][:name] %> · <%= @report[:period][:from_date] %> ~ <%= @report[:period][:to_date] %>
-      </p>
-      <div class="summary-grid">
-        <% weekly_profit_summary_keys(@report).each do |key| %>
-          <div class="weekly-profit-summary-card">
-            <div class="summary-label"><%= weekly_profit_summary_label(key) %></div>
-            <div class="summary-value"><%= weekly_profit_value(@report[:summary], key) %></div>
-          </div>
-        <% end %>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">SKU 明细</h2>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <% weekly_profit_column_keys(@report).each do |key| %>
-                <th><%= key %></th>
-              <% end %>
-            </tr>
-          </thead>
-          <tbody>
-            <% @report[:rows].each do |row| %>
-              <tr>
-                <% weekly_profit_column_keys(@report).each do |key| %>
-                  <td><%= weekly_profit_value(row, key) %></td>
-                <% end %>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2 class="section-title">未分摊费用</h2>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <% if @report[:platform] == "ozon" %>
-                <th>type_id</th>
-                <th>type_name</th>
-                <th>posting_number</th>
-                <th>amount</th>
-              <% else %>
-                <th>name</th>
-                <th>amount</th>
-              <% end %>
-            </tr>
-          </thead>
-          <tbody>
-            <% rows = weekly_profit_unallocated_rows(@report) %>
-            <% if rows.empty? %>
-              <tr>
-                <td colspan="4">无未分摊费用</td>
-              </tr>
-            <% else %>
-              <% rows.each do |row| %>
-                <tr>
-                  <% if @report[:platform] == "ozon" %>
-                    <td><%= weekly_profit_value(row, "type_id") %></td>
-                    <td><%= weekly_profit_value(row, "type_name") %></td>
-                    <td><%= weekly_profit_value(row, "posting_number") %></td>
-                    <td><%= weekly_profit_value(row, "amount") %></td>
-                  <% else %>
-                    <td><%= weekly_profit_value(row, "name") %></td>
-                    <td><%= weekly_profit_value(row, "amount") %></td>
-                  <% end %>
-                </tr>
-              <% end %>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
+<% end %>
+  <% case @report[:report_type] %>
+  <% when "wr" %>
+    <%= render "weekly_profit_reports/wr_results", report: @report %>
+  <% when "wsu" %>
+    <%= render "weekly_profit_reports/wsu_results", report: @report %>
+  <% when "wsu_deep" %>
+    <%= render "weekly_profit_reports/wsu_deep_results", report: @report %>
+  <% end %>
+<% if wrap_frame %>
 </turbo-frame>
+<% end %>

@@ -1,60 +1,37 @@
 class WeeklyProfitReportsController < ApplicationController
   before_action -> { require_permission!(:view_reports) }, except: [:accounts]
 
+  REPORT_TYPES = %w[wr wsu wsu_deep].freeze
+  WR_COLUMNS = {
+    "wb" => %i[nm_id vendor_code region sales_qty return_qty net_qty settlement delivery storage ad goods_cost pre_tax tax after_tax],
+    "ozon" => %i[ozon_sku_id sku_code sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
+  }.freeze
+  WSU_COLUMNS = %i[sku platform shop net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct].freeze
+  WSU_DEEP_COLUMNS = %i[sku net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct average_profit_per_order ad_ratio_pct cost_return_pct projected_roi_pct annualized_return_pct annualized_net_profit_cny].freeze
+  WR_SUMMARY_KEYS = {
+    "wb" => %i[total_sales_qty total_return_qty total_net total_goods_cost total_pre_tax total_tax total_after_tax unallocated_rows],
+    "ozon" => %i[sku_count total_sales_revenue total_orders total_returns total_ad total_goods_cost total_after_tax_profit unallocated_total]
+  }.freeze
+  WSU_SUMMARY_KEYS = %i[total_sales_revenue total_after_tax total_margin_pct unallocated_total after_tax_with_unallocated].freeze
+  WSU_DEEP_SUMMARY_KEYS = %i[total_sku_count total_net_sales total_sales_revenue total_after_tax unallocated_total after_tax_with_unallocated].freeze
+
   rescue_from ActionController::ParameterMissing, with: :render_bad_request
 
-  WB_COLUMNS = %w[
-    nm_id vendor_code region sales_qty return_qty net_qty settlement delivery storage ad goods_cost pre_tax tax after_tax
-  ].freeze
-
-  OZON_COLUMNS = %w[
-    ozon_sku_id sku_code sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count
-    export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct
-  ].freeze
-
-  SUMMARY_LABELS = {
-    "total_sales_qty" => "销售件数",
-    "total_return_qty" => "退货件数",
-    "total_net" => "账面小计",
-    "total_goods_cost" => "货物成本",
-    "total_pre_tax" => "税前利润",
-    "total_tax" => "税额",
-    "total_after_tax" => "税后净利",
-    "unallocated_rows" => "未分摊行数",
-    "sku_count" => "SKU 数",
-    "total_sales_revenue" => "销售收入",
-    "total_orders" => "订单数",
-    "total_returns" => "退货数",
-    "total_ad" => "广告费",
-    "total_after_tax_profit" => "税后净利",
-    "unallocated_total" => "未分摊合计"
-  }.freeze
-
-  WB_SUMMARY_KEYS = %w[
-    total_sales_qty total_return_qty total_net total_goods_cost total_pre_tax total_tax total_after_tax unallocated_rows
-  ].freeze
-
-  OZON_SUMMARY_KEYS = %w[
-    sku_count total_sales_revenue total_orders total_returns total_ad total_goods_cost total_after_tax_profit unallocated_total
-  ].freeze
-
-  DEFAULT_COLUMNS = {
-    "wb" => WB_COLUMNS,
-    "ozon" => OZON_COLUMNS
-  }.freeze
-
-  SUMMARY_KEYS = {
-    "wb" => WB_SUMMARY_KEYS,
-    "ozon" => OZON_SUMMARY_KEYS
-  }.freeze
+  helper_method :weekly_profit_report_summary_cards,
+                :weekly_profit_report_table_columns,
+                :weekly_profit_report_unallocated_rows,
+                :weekly_profit_report_unallocated_columns,
+                :weekly_profit_report_value,
+                :weekly_profit_report_comparison_note,
+                :weekly_profit_report_row_comparison,
+                :weekly_profit_report_unallocated_comparison,
+                :weekly_profit_report_comparison_label,
+                :weekly_profit_report_comparison_class
 
   def accounts
     render json: {
       success: true,
-      data: {
-        wb: wb_accounts.map { |account| account_payload("wb", account) },
-        ozon: ozon_accounts.map { |account| account_payload("ozon", account) }
-      },
+      data: store_options,
       message: "ok"
     }
   end
@@ -62,135 +39,132 @@ class WeeklyProfitReportsController < ApplicationController
   def show
     return render_index if html_index_request?
 
-    parsed = parse_request_params
-    return unless parsed
-
-    platform = parsed[:platform]
-    account_id = parsed[:account_id]
-    from_date = parsed[:from_date]
-    to_date = parsed[:to_date]
-
-    unless %w[wb ozon].include?(platform)
-      return render_error("unsupported platform: #{platform}", :bad_request)
+    @report = run_report_query(parse_request_params)
+    if request.format.xlsx?
+      export = WeeklyProfitReports::XlsxExportService.call(report: @report)
+      return send_data export[:data], filename: export[:filename], type: WeeklyProfitReports::XlsxExportService::MIME_TYPE, disposition: :attachment
     end
 
-    account = find_account!(platform, account_id)
-    rate = Ec::WeeklyRate.find_by(week_start: from_date.beginning_of_week)
-    unless rate
-      return render_error("当前周期没有汇率：#{from_date.beginning_of_week}", :unprocessable_entity)
-    end
-
-    service = build_service(platform, account_id, from_date, to_date, rate).call
-
-    @report = report_payload(platform, account, from_date, to_date, rate, service)
     respond_to do |format|
       format.html { render partial: "weekly_profit_reports/results", status: :ok }
       format.json { render json: { success: true, data: @report, message: "ok" } }
     end
+  rescue ActionController::ParameterMissing => e
+    render_bad_request(e)
   rescue ActiveRecord::RecordNotFound
-    render_error("店铺不存在或未启用", :not_found)
+    render_error(t("weekly_profit_reports.errors.store_not_found"), :not_found)
+  rescue ArgumentError => e
+    status = case e.message
+    when "invalid_week_range", "current_week_unsupported", "missing_weekly_rate"
+      :unprocessable_entity
+    else
+      :bad_request
+    end
+    render_error(error_message_for(e.message), status)
   rescue => e
     Rails.logger.error("[WeeklyProfitReports] #{e.class}: #{e.message}")
     render_error("internal server error", :internal_server_error)
   end
 
-  helper_method :weekly_profit_column_keys,
-                :weekly_profit_summary_keys,
-                :weekly_profit_summary_label,
-                :weekly_profit_unallocated_rows,
-                :weekly_profit_value
-
   private
 
   def render_index
-    @accounts = { wb: wb_accounts, ozon: ozon_accounts }
-    @platform = params[:platform].presence_in(%w[wb ozon]) || "wb"
+    @store_options = store_options
+    @report_type = params[:report_type].presence_in(REPORT_TYPES) || "wr"
+    @selected_store_ref = params[:store_ref].presence || @store_options.first&.dig(:ref)
     @from_date, @to_date = default_period
+    @report = run_report_query(
+      report_type: @report_type,
+      store_ref: @selected_store_ref,
+      from_date: Date.iso8601(@from_date),
+      to_date: Date.iso8601(@to_date)
+    ) if @report_type == "wr" && @selected_store_ref.present?
     render :show
   end
 
   def html_index_request?
-    request.format.html? && !params.key?(:platform)
+    request.format.html? && !params.key?(:report_type)
   end
 
   def parse_request_params
-    {
-      platform: params.require(:platform).to_s,
-      account_id: Integer(params.require(:account_id)),
+    report_type = params.require(:report_type).to_s
+    raise ArgumentError, "invalid_report_type" unless REPORT_TYPES.include?(report_type)
+
+    parsed = {
+      report_type: report_type,
       from_date: parse_date(params.require(:from_date)),
       to_date: parse_date(params.require(:to_date))
     }
-  rescue ActionController::ParameterMissing, ArgumentError => e
-    render_bad_request(e)
-    nil
+    validate_period!(parsed[:from_date], parsed[:to_date])
+
+    if report_type == "wr"
+      parsed[:store_ref] = params.require(:store_ref).to_s
+    end
+
+    parsed
   end
 
   def parse_date(value)
     Date.iso8601(value.to_s)
   rescue Date::Error
-    raise ArgumentError, "invalid date: #{value}"
+    raise ArgumentError, "invalid_date"
   end
 
-  def wb_accounts
-    RawWb::SellerAccount.where(is_active: true).order(:id)
+  def validate_period!(from_date, to_date)
+    raise ArgumentError, "invalid_week_range" unless from_date.cwday == 1 && to_date.cwday == 7
+    raise ArgumentError, "invalid_week_range" unless (((to_date - from_date).to_i + 1) % 7).zero?
+    raise ArgumentError, "invalid_week_range" if to_date < from_date
+
+    current_monday = user_today.beginning_of_week(:monday)
+    raise ArgumentError, "current_week_unsupported" if to_date >= current_monday
   end
 
-  def ozon_accounts
-    RawOzon::SellerAccount.where(is_active: true).order(:id)
-  end
-
-  def find_account!(platform, account_id)
-    case platform
-    when "wb"
-      RawWb::SellerAccount.where(is_active: true).find(account_id)
-    when "ozon"
-      RawOzon::SellerAccount.where(is_active: true).find(account_id)
+  def run_report_query(parsed)
+    case parsed[:report_type]
+    when "wr"
+      Ec::WeeklyProfitReportQuery.run(
+        store_ref: parsed[:store_ref],
+        from_date: parsed[:from_date],
+        to_date: parsed[:to_date]
+      )
+    when "wsu"
+      Ec::WeeklySummaryQuery.run(
+        from_date: parsed[:from_date],
+        to_date: parsed[:to_date]
+      )
+    when "wsu_deep"
+      Ec::WeeklySummaryDeepQuery.run(
+        from_date: parsed[:from_date],
+        to_date: parsed[:to_date]
+      )
+    else
+      raise ArgumentError, "invalid_report_type"
     end
   end
 
-  def account_payload(platform, account)
-    {
-      id: account.id,
-      name: platform == "wb" ? account.name : account.company_name
-    }
+  def store_options
+    wb_store_options + ozon_store_options
   end
 
-  def report_payload(platform, account, from_date, to_date, rate, service)
-    {
-      platform: platform,
-      account: account_payload(platform, account),
-      period: { from_date: from_date.to_s, to_date: to_date.to_s },
-      rates: rate_payload(platform, rate),
-      summary: service.summary,
-      rows: service.results,
-      unallocated: service.unallocated
-    }
+  def wb_store_options
+    RawWb::SellerAccount.where(is_active: true).order(:id).map do |account|
+      {
+        ref: "wb:#{account.id}",
+        platform: "wb",
+        name: account.name,
+        label: "WB · #{account.name}"
+      }
+    end
   end
 
-  def rate_payload(platform, rate)
-    payload = { rate_cny_rub: rate.rate_cny_rub }
-    payload[:rate_byn_rub] = rate.rate_byn_rub if platform == "wb"
-    payload
-  end
-
-  def build_service(platform, account_id, from_date, to_date, rate)
-    case platform
-    when "wb"
-      Ec::WbProfitAttribution.new(
-        account_id: account_id,
-        from_date: from_date,
-        to_date: to_date,
-        rate_cny_rub: rate.rate_cny_rub,
-        rate_byn_rub: rate.rate_byn_rub
-      )
-    when "ozon"
-      Ec::OzonProfitAttribution.new(
-        account_id: account_id,
-        from_date: from_date,
-        to_date: to_date,
-        rate_cny_rub: rate.rate_cny_rub,
-        sync_missing_ad_costs: false
-      )
+  def ozon_store_options
+    RawOzon::SellerAccount.where(is_active: true).order(:id).map do |account|
+      {
+        ref: "ozon:#{account.id}",
+        platform: "ozon",
+        name: account.company_name,
+        label: "Ozon · #{account.company_name}"
+      }
     end
   end
 
@@ -210,32 +184,224 @@ class WeeklyProfitReportsController < ApplicationController
     [(this_monday - 7.days).to_s, (this_monday - 1.day).to_s]
   end
 
-  def weekly_profit_column_keys(report)
-    DEFAULT_COLUMNS.fetch(report[:platform])
+  def error_message_for(code)
+    case code
+    when "invalid_report_type"
+      t("weekly_profit_reports.errors.invalid_report_type")
+    when "invalid_store_ref"
+      t("weekly_profit_reports.errors.invalid_store_ref")
+    when "invalid_date"
+      t("weekly_profit_reports.errors.invalid_date")
+    when "invalid_week_range"
+      t("weekly_profit_reports.errors.invalid_week_range")
+    when "current_week_unsupported"
+      t("weekly_profit_reports.errors.current_week_unsupported")
+    when "missing_weekly_rate"
+      t("weekly_profit_reports.errors.missing_weekly_rate")
+    else
+      code
+    end
   end
 
-  def weekly_profit_summary_keys(report)
-    SUMMARY_KEYS.fetch(report[:platform])
+  def weekly_profit_report_summary_cards(report)
+    keys = case report[:report_type]
+    when "wr"
+      WR_SUMMARY_KEYS.fetch(report.dig(:meta, :platform))
+    when "wsu"
+      WSU_SUMMARY_KEYS
+    when "wsu_deep"
+      WSU_DEEP_SUMMARY_KEYS
+    else
+      []
+    end
+
+    keys.map do |key|
+      {
+        key: key,
+        label: t("weekly_profit_reports.summary.#{report[:report_type]}.#{key}"),
+        value: weekly_profit_report_value(report[:summary], key),
+        comparison: report.dig(:comparison, :summary, key)
+      }
+    end
   end
 
-  def weekly_profit_summary_label(key)
-    SUMMARY_LABELS.fetch(key.to_s, key.to_s)
+  def weekly_profit_report_table_columns(report)
+    keys = case report[:report_type]
+    when "wr"
+      WR_COLUMNS.fetch(report.dig(:meta, :platform))
+    when "wsu"
+      WSU_COLUMNS
+    when "wsu_deep"
+      WSU_DEEP_COLUMNS
+    else
+      []
+    end
+
+    keys.map do |key|
+      [key, t("weekly_profit_reports.columns.#{report[:report_type]}.#{key}")]
+    end
   end
 
-  def weekly_profit_unallocated_rows(report)
-    unallocated = report[:unallocated] || {}
-    if report[:platform] == "ozon"
-      Array(unallocated[:rows] || unallocated["rows"])
+  def weekly_profit_report_unallocated_rows(report)
+    return [] unless report[:report_type] == "wr"
+
+    unallocated = report.dig(:extras, :unallocated) || {}
+    if report.dig(:meta, :platform) == "ozon"
+      WeeklyProfitReports::OzonUnallocatedRows.normalize(unallocated)
     else
       unallocated.map { |name, amount| { "name" => name, "amount" => amount } }
     end
   end
 
-  def weekly_profit_value(row, key)
-    value = row[key] || row[key.to_sym]
+  def weekly_profit_report_unallocated_columns(report)
+    if report.dig(:meta, :platform) == "ozon"
+      %i[type_id type_name amount].map do |key|
+        [key, t("weekly_profit_reports.unallocated.ozon.#{key}")]
+      end
+    else
+      %i[name amount].map do |key|
+        [key, t("weekly_profit_reports.unallocated.wb.#{key}")]
+      end
+    end
+  end
+
+  def weekly_profit_report_value(row, key)
+    value = row[key] || row[key.to_s]
     return "-" if value.nil? || value == ""
+
+    if key.to_s.end_with?("_pct") || key.to_s.include?("margin")
+      return "#{format('%.2f', value)}%" if value.is_a?(Numeric) || value.is_a?(BigDecimal)
+    end
+
     return format("%.2f", value) if value.is_a?(Float) || value.is_a?(BigDecimal)
 
     value
+  end
+
+  def weekly_profit_report_comparison_note(report)
+    comparison_period = report.dig(:comparison, :period)
+    return nil unless comparison_period
+
+    "#{t('weekly_profit_reports.comparison.note')} (#{comparison_period[:from_date] || comparison_period['from_date']} ~ #{comparison_period[:to_date] || comparison_period['to_date']})"
+  end
+
+  def weekly_profit_report_row_comparison(report, row, key)
+    row_key = weekly_profit_report_row_key(report, row)
+    return nil if row_key.nil?
+
+    report.dig(:comparison, :rows, row_key, key) ||
+      report.dig(:comparison, :rows, row_key.to_s, key) ||
+      report.dig(:comparison, :rows, row_key.to_s, key.to_s)
+  end
+
+  def weekly_profit_report_unallocated_comparison(report, row)
+    row_key = weekly_profit_report_unallocated_row_key(report, row)
+    return nil if row_key.nil?
+
+    report.dig(:comparison, :extras, :unallocated, row_key, :amount) ||
+      report.dig(:comparison, :extras, :unallocated, row_key.to_s, :amount) ||
+      report.dig(:comparison, :extras, :unallocated, row_key.to_s, "amount")
+  end
+
+  def weekly_profit_report_comparison_label(comparison, include_vs: false)
+    return t("weekly_profit_reports.comparison.unavailable") if comparison.nil?
+
+    state = weekly_profit_report_comparison_state(comparison)
+    return t("weekly_profit_reports.comparison.unavailable") if state[:type] == :unavailable
+
+    suffix = include_vs ? " #{t('weekly_profit_reports.comparison.versus_previous')}" : ""
+
+    case state[:type]
+    when :turned_positive
+      "#{comparison_arrow('up')} #{t('weekly_profit_reports.comparison.turned_positive')}#{suffix}"
+    when :turned_negative
+      "#{comparison_arrow('down')} #{t('weekly_profit_reports.comparison.turned_negative')}#{suffix}"
+    when :improved
+      "#{comparison_arrow('up')} #{t('weekly_profit_reports.comparison.improved')}#{suffix}"
+    when :worsened
+      "#{comparison_arrow('down')} #{t('weekly_profit_reports.comparison.worsened')}#{suffix}"
+    else
+      "#{comparison_arrow(state[:trend])} #{format('%.2f', state[:delta_pct])}%#{suffix}"
+    end
+  end
+
+  def weekly_profit_report_comparison_class(comparison)
+    semantic = comparison&.dig(:semantic) || comparison&.dig("semantic")
+    case semantic
+    when "positive" then "is-positive"
+    when "negative" then "is-negative"
+    when "neutral" then "is-neutral"
+    else "is-none"
+    end
+  end
+
+  def weekly_profit_report_row_key(report, row)
+    case report[:report_type]
+    when "wr"
+      if report.dig(:meta, :platform) == "wb"
+        row[:vendor_code].presence || row["vendor_code"].presence || (row[:nm_id] || row["nm_id"]).to_s
+      else
+        row[:sku_code].presence || row["sku_code"].presence || (row[:ozon_sku_id] || row["ozon_sku_id"]).to_s
+      end
+    when "wsu"
+      [row[:sku] || row["sku"], row[:platform] || row["platform"], row[:shop] || row["shop"]].join("|")
+    when "wsu_deep"
+      (row[:sku] || row["sku"]).to_s
+    end
+  end
+
+  def weekly_profit_report_unallocated_row_key(report, row)
+    if report.dig(:meta, :platform) == "ozon"
+      row[:type_id] || row["type_id"]
+    else
+      (row[:name] || row["name"]).to_s
+    end
+  end
+
+  def weekly_profit_report_comparison_state(comparison)
+    trend = comparison_value(comparison, :trend)
+    return { type: :unavailable } if trend == "none"
+
+    current = comparison_decimal(comparison, :current)
+    previous = comparison_decimal(comparison, :previous)
+    delta_pct = comparison_value(comparison, :delta_pct)
+
+    if current && previous
+      return { type: :turned_positive } if previous.negative? && current.positive?
+      return { type: :turned_negative } if previous.positive? && current.negative?
+      return { type: :improved } if previous.negative? && current.zero?
+
+      if previous.negative? && current.negative?
+        return { type: :improved } if current > previous
+        return { type: :worsened } if current < previous
+      end
+    end
+
+    return { type: :unavailable } if delta_pct.nil?
+
+    {
+      type: :percentage,
+      trend: trend,
+      delta_pct: delta_pct
+    }
+  end
+
+  def comparison_arrow(trend)
+    case trend
+    when "up" then "↗"
+    when "down" then "↘"
+    else "→"
+    end
+  end
+
+  def comparison_value(comparison, key)
+    comparison[key] || comparison[key.to_s]
+  end
+
+  def comparison_decimal(comparison, key)
+    value = comparison_value(comparison, key)
+    return nil if value.blank?
+
+    BigDecimal(value.to_s)
   end
 end

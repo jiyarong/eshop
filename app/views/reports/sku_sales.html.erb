@@ -50,14 +50,13 @@
         </select>
       </div>
 
-      <div class="field">
-        <label for="from_date"><%= t("reports.sku_detail.filters.start_date") %></label>
-        <input id="from_date" type="date" name="from_date" value="<%= @from_date %>">
-      </div>
-
-      <div class="field">
-        <label for="to_date"><%= t("reports.sku_detail.filters.end_date") %></label>
-        <input id="to_date" type="date" name="to_date" value="<%= @to_date %>">
+      <div class="field field--time-range">
+        <label for="sku-sales-time-range-trigger"><%= t("reports.sku_detail.filters.date_range") %></label>
+        <%= render "shared/time_range_selector",
+                   id: "sku-sales-time-range",
+                   from_date: @from_date,
+                   to_date: @to_date,
+                   submit_on_apply: true %>
       </div>
 
       <button class="button" type="submit"><%= t("reports.sku_detail.filters.submit") %></button>

@@ -244,6 +244,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Orders"
     assert_select "label", "Platform"
+    assert_select "label[for=?]", "orders-time-range-trigger", "Date range"
     assert_select "option", "All platforms"
     assert_select "label", "Search"
     assert_select "input[placeholder=?]", "Order number / Fulfillment / SKU"
@@ -294,6 +295,35 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: "OLDER-#{@token}-20", count: 0 }
   end
 
+  test "index maps top-level range picker params into ordered_at filters" do
+    boundary_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @store,
+      external_order_id: "TOP-LEVEL-DAY-#{@token}",
+      external_order_number: "TOP-LEVEL-DAY-#{@token}",
+      order_key: "ozon:#{@store.id}:TOP-LEVEL-DAY-#{@token}",
+      order_status: "processing",
+      ordered_at: Time.zone.parse("2026-06-01 16:30:00"),
+      synced_at: Time.zone.parse("2026-06-01 16:35:00")
+    )
+
+    get "/orders",
+        params: {
+          platform: "ozon",
+          from_date: "2026-06-02",
+          to_date: "2026-06-02"
+        },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[name='from_date'][type='hidden'][value='2026-06-02']", count: 1
+    assert_select "input[name='to_date'][type='hidden'][value='2026-06-02']", count: 1
+    assert_select "a[href=?]", "/orders/#{boundary_order.id}"
+    assert_select "td", "2026-06-02 00:30"
+  ensure
+    boundary_order&.destroy
+  end
+
   test "index filters order dates in current user time zone and defaults to shanghai" do
     boundary_order = Ec::Order.create!(
       platform: "ozon",
@@ -339,14 +369,20 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     boundary_order&.destroy
   end
 
-  test "index renders date filters with replaceable date picker controller" do
+  test "index renders order time range selector and keeps processing date pickers" do
     get "/orders", headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select ".order-date-timezone", count: 0
-    assert_select "[data-controller='date-picker'][data-date-picker-date-format-value='Y-m-d']", count: 4
-    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[ordered_at_gteq]"
-    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[ordered_at_lteq_end_of_day]"
+    assert_select "[data-controller='time-range-selector']", count: 1
+    assert_select "label[for=?]", "orders-time-range-trigger", "时间范围"
+    assert_select "input[name='from_date'][type='hidden']", count: 1
+    assert_select "input[name='to_date'][type='hidden']", count: 1
+    assert_select "button[aria-controls='orders-time-range-popover']", count: 1
+    assert_select "#orders-time-range-popover[role='dialog']", count: 1
+    assert_select "input[name='q[ordered_at_gteq]']", count: 0
+    assert_select "input[name='q[ordered_at_lteq_end_of_day]']", count: 0
+    assert_select "[data-controller='date-picker'][data-date-picker-date-format-value='Y-m-d']", count: 2
     assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[in_process_at_gteq]"
     assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[in_process_at_lteq_end_of_day]"
   end

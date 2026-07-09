@@ -1,7 +1,7 @@
 class ApplicationController < ActionController::Base
   include Devise::Controllers::Helpers
 
-  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale, :user_time_zone
+  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale, :user_time_zone, :user_today
 
   prepend_before_action :set_locale
   before_action :redirect_guest_with_locale, if: :html_request?
@@ -24,9 +24,11 @@ class ApplicationController < ActionController::Base
   end
 
   def set_locale
-    if params[:locale].present? && available_locales.include?(params[:locale].to_sym)
+    requested_locale = requested_locale_from_params
+
+    if requested_locale.present?
       cookies.signed[:locale] = {
-        value: params[:locale],
+        value: requested_locale,
         expires: 1.year.from_now,
         same_site: :lax
       }
@@ -36,12 +38,22 @@ class ApplicationController < ActionController::Base
   end
 
   def current_locale
+    requested_locale = requested_locale_from_params
+    return requested_locale if requested_locale.present?
+
     locale = cookies.signed[:locale].presence&.to_sym
     available_locales.include?(locale) ? locale : I18n.default_locale
   end
 
   def available_locales
     I18n.available_locales
+  end
+
+  def requested_locale_from_params
+    return unless params[:locale].present?
+
+    locale = params[:locale].to_sym
+    available_locales.include?(locale) ? locale : nil
   end
 
   def redirect_guest_with_locale

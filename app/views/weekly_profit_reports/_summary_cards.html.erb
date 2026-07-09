@@ -1,0 +1,11 @@
+<div class="summary-grid">
+  <% cards.each do |card| %>
+    <div class="weekly-profit-summary-card">
+      <div class="summary-label"><%= card[:label] %></div>
+      <div class="summary-value"><%= card[:value] %></div>
+      <div class="weekly-profit-comparison-trend <%= weekly_profit_report_comparison_class(card[:comparison]) %>">
+        <%= weekly_profit_report_comparison_label(card[:comparison], include_vs: true) %>
+      </div>
+    </div>
+  <% end %>
+</div>

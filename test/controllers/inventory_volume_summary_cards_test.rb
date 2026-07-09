@@ -6,11 +6,9 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     @token = SecureRandom.hex(4).upcase
     @current_user = create_user_with_roles("inventory-summary-#{@token.downcase}@example.com", "manager")
     sign_in @current_user
-    Rails.cache.clear
   end
 
   teardown do
-    Rails.cache.clear
     sku_codes = Ec::Sku.with_deleted.where("sku_code LIKE ?", "SUM-%-#{@token}").pluck(:sku_code)
     Ec::SkuCost.where(sku_code: sku_codes).delete_all
     Ec::SkuBatch.where(sku_code: sku_codes).delete_all
@@ -50,7 +48,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     row_payloads[skus[10]].merge!(platform_stock: 3, available_stock: 4, unit_volume_l: BigDecimal("1.5"))
     row_payloads[skus[11]].merge!(incoming_quantity: -9, unit_volume_l: BigDecimal("5.0"))
 
-    fake_query_factory = lambda do |sku, metrics:|
+    fake_query_factory = lambda do |sku|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           row_payloads.fetch(sku)
@@ -103,7 +101,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", skus[11].sku_code
   end
 
-  test "inventory report caches filtered volume summary until refresh invalidates it" do
+  test "inventory report recalculates filtered volume summary on every request" do
     sku = Ec::Sku.create!(
       sku_code: "SUM-CACHE-#{@token}",
       product_name: "缓存商品",
@@ -126,7 +124,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     }
 
     summary_builder_calls = 0
-    fake_query_factory = lambda do |requested_sku, metrics:|
+    fake_query_factory = lambda do |requested_sku|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           row_payload
@@ -150,109 +148,30 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
       summary_builder_calls += 1
       summary_output
     end
-    cache_store = ActiveSupport::Cache::MemoryStore.new
 
-    with_stubbed_method(Rails, :cache, -> { cache_store }) do
-      with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
-        with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
-          with_stubbed_method(Ec::InventoryVolumeSummaryBuilder, :call, summary_builder_stub) do
-            get "/reports/inventory", params: { sku: "cache-#{@token.downcase}" }, headers: { "Accept" => "text/html" }
-            assert_response :success
-            assert_summary_card_value(I18n.t("reports.inventory.fields.pending_stock"), "0.0150 m³")
+    with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
+      with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
+        with_stubbed_method(Ec::InventoryVolumeSummaryBuilder, :call, summary_builder_stub) do
+          get "/reports/inventory", params: { sku: "cache-#{@token.downcase}" }, headers: { "Accept" => "text/html" }
+          assert_response :success
+          assert_summary_card_value(I18n.t("reports.inventory.fields.pending_stock"), "0.0150 m³")
 
-            summary_output = {
-              pending_stock_volume_m3: BigDecimal("0.1111"),
-              book_available_stock_volume_m3: BigDecimal("0.2222"),
-              platform_stock_volume_m3: BigDecimal("0.3333"),
-              overseas_available_stock_volume_m3: BigDecimal("0.4444")
-            }
+          summary_output = {
+            pending_stock_volume_m3: BigDecimal("0.1111"),
+            book_available_stock_volume_m3: BigDecimal("0.2222"),
+            platform_stock_volume_m3: BigDecimal("0.3333"),
+            overseas_available_stock_volume_m3: BigDecimal("0.4444")
+          }
 
-            sign_in @current_user
-            get "/reports/inventory", params: { sku: "cache-#{@token.downcase}" }, headers: { "Accept" => "text/html" }
-            assert_response :success
-            assert_summary_card_value(I18n.t("reports.inventory.fields.pending_stock"), "0.0150 m³")
-
-            sign_in @current_user
-            post "/reports/inventory/#{sku.sku_code}/refresh_cache",
-                 params: { sku: "cache-#{@token.downcase}" },
-                 headers: { "Accept" => "text/html" }
-            assert_redirected_to "/reports/inventory?sku=cache-#{@token.downcase}"
-
-            sign_in @current_user
-            get "/reports/inventory", params: { sku: "cache-#{@token.downcase}" }, headers: { "Accept" => "text/html" }
-            assert_response :success
-            assert_summary_card_value(I18n.t("reports.inventory.fields.pending_stock"), "0.1111 m³")
-          end
+          sign_in @current_user
+          get "/reports/inventory", params: { sku: "cache-#{@token.downcase}" }, headers: { "Accept" => "text/html" }
+          assert_response :success
+          assert_summary_card_value(I18n.t("reports.inventory.fields.pending_stock"), "0.1111 m³")
         end
       end
     end
 
     assert_operator summary_builder_calls, :>=, 2
-  end
-
-  test "refresh inventory cache invalidates unfiltered volume summary cache" do
-    sku = Ec::Sku.create!(
-      sku_code: "SUM-REFRESH-#{@token}",
-      product_name: "刷新商品",
-      is_active: true
-    )
-
-    row_payload = {
-      sku_code: sku.sku_code,
-      product_name: sku.product_name,
-      product_name_ru: nil,
-      incoming_quantity: 10,
-      book_stock: 5,
-      platform_stock: 3,
-      available_stock: 4,
-      unit_volume_l: BigDecimal("1.5"),
-      daily_sales_velocity: nil,
-      turnover_days: nil,
-      turnover_days_with_procurement: nil,
-      cache_updated_at: Time.zone.parse("2026-07-04 10:00:00")
-    }
-
-    fake_query_factory = lambda do |requested_sku, metrics:|
-      Object.new.tap do |query|
-        query.define_singleton_method(:call) do
-          row_payload
-        end
-      end
-    end
-    fake_velocity_factory = lambda do |sku_codes:, date_to:, time_zone:|
-      Object.new.tap do |query|
-        query.define_singleton_method(:call) do
-          sku_codes.index_with { |_| {} }
-        end
-      end
-    end
-    cache_store = ActiveSupport::Cache::MemoryStore.new
-
-    with_stubbed_method(Rails, :cache, -> { cache_store }) do
-      with_stubbed_constructor(Ec::InventoryPageRowQuery, fake_query_factory) do
-        with_stubbed_constructor(Ec::InventoryVelocityMetricsQuery, fake_velocity_factory) do
-          get "/reports/inventory", headers: { "Accept" => "text/html" }
-          assert_response :success
-          assert_summary_card_value(I18n.t("reports.inventory.fields.pending_stock"), "0.0150 m³")
-
-          row_payload = row_payload.merge(
-            incoming_quantity: 20,
-            book_stock: 10,
-            platform_stock: 6,
-            available_stock: 8
-          )
-
-          sign_in @current_user
-          post "/reports/inventory/#{sku.sku_code}/refresh_cache", headers: { "Accept" => "text/html" }
-          assert_redirected_to "/reports/inventory"
-
-          sign_in @current_user
-          get "/reports/inventory", headers: { "Accept" => "text/html" }
-          assert_response :success
-          assert_summary_card_value(I18n.t("reports.inventory.fields.pending_stock"), "0.0300 m³")
-        end
-      end
-    end
   end
 
   private

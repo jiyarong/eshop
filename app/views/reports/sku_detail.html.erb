@@ -414,13 +414,13 @@
     <section class="panel">
       <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, html: { class: "report-form" } do %>
         <input type="hidden" name="tab" value="stores">
-        <div class="field">
-          <label for="from_date"><%= t("reports.sku_detail.filters.start_date") %></label>
-          <input id="from_date" type="date" name="from_date" value="<%= @from_date %>">
-        </div>
-        <div class="field">
-          <label for="to_date"><%= t("reports.sku_detail.filters.end_date") %></label>
-          <input id="to_date" type="date" name="to_date" value="<%= @to_date %>">
+        <div class="field field--time-range">
+          <label for="sku-detail-stores-time-range-trigger"><%= t("reports.sku_detail.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "sku-detail-stores-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
         </div>
         <div class="field">
           <label for="platform"><%= t("reports.sku_detail.filters.platform") %></label>
@@ -526,13 +526,13 @@
     <section class="panel">
       <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, html: { class: "report-form" } do %>
         <input type="hidden" name="tab" value="trend">
-        <div class="field">
-          <label for="trend_from_date"><%= t("reports.sku_detail.filters.start_date") %></label>
-          <input id="trend_from_date" type="date" name="from_date" value="<%= @from_date %>">
-        </div>
-        <div class="field">
-          <label for="trend_to_date"><%= t("reports.sku_detail.filters.end_date") %></label>
-          <input id="trend_to_date" type="date" name="to_date" value="<%= @to_date %>">
+        <div class="field field--time-range">
+          <label for="sku-detail-trend-time-range-trigger"><%= t("reports.sku_detail.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "sku-detail-trend-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
         </div>
         <div class="field">
           <label for="period"><%= t("reports.sku_detail.filters.period") %></label>

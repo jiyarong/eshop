@@ -227,24 +227,12 @@ module GoogleSheets
     end
 
     def unallocated_rows(unalloc)
-      rows = unalloc[:rows] || []
+      rows = WeeklyProfitReports::OzonUnallocatedRows.normalize(unalloc)
       return [] if rows.empty?
 
-      label_map = {
-        96 => 'Ускоренная проверка (AcceleratedReviewCollection)',
-        94 => 'Штраф за задержку отгрузки (DefectFine)',
-        1  => 'Эквайринг: не привязан к заказу',
-        52 => 'Подписка Premium (PremiumSubscription)',
-        41 => 'PPC (нет данных Performance)',
-        54 => 'Продвижение (нет данных Performance)',
-      }
-      grouped = rows.reject { |r| [41, 54].include?(r[:type_id].to_i) && !r[:orphaned] }
-                    .group_by { |r| r[:type_id].to_i }
-
       result = [['未分摊费用 / Нераспределённые расходы']]
-      grouped.each do |tid, group|
-        result << [nil, label_map[tid] || "type_id=#{tid}", nil,
-                   group.sum { |r| r[:amount].to_f }.round(2)]
+      rows.each do |row|
+        result << [nil, row[:type_name], nil, row[:amount]]
       end
       result << [nil, '合计 / Итого', nil, unalloc[:total].to_f.round(2)]
       result
