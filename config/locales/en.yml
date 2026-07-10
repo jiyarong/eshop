@@ -959,8 +959,10 @@ en:
     stores:
       actions:
         add_store: "Add store"
+        bind_responsible_users: "Assign responsible users"
         bind_operators: "Assign operators"
         edit_store: "Edit store"
+        save_responsible_users: "Save responsible users"
         save_operators: "Save operators"
       company_types:
         general: "General"
@@ -969,6 +971,7 @@ en:
         belarus: "Belarus"
         russia: "Russia"
       empty:
+        no_developers: "Unassigned"
         no_operators: "Unassigned"
         no_products: "This store has no platform product bindings yet."
         no_unbound_raw_products: "This store has no unbound platform products."
@@ -979,6 +982,7 @@ en:
       fields:
         company_scale: "Company scale"
         country: "Country"
+        developers: "Developers"
         is_active: "Active"
         operators: "Operators"
         registration_country: "Registration country"
@@ -991,7 +995,7 @@ en:
         search_placeholder: "Search store name or notes..."
       form:
         inactive_hint: "Inactive stores will not enter the 1.0 operations workflow."
-        operator_select_hint: "Select multiple operators, or leave empty to unassign all."
+        operator_select_hint: "Select developers and operators separately, or leave a role empty to unassign it."
         store_name_placeholder: "Example: Minsk Ozon store"
       index:
         all_stores: "All stores"

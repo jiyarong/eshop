@@ -216,6 +216,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     product.save!
 
     assert_equal [operator_a.email, operator_b.email].sort, product.reload.operators.map(&:email).sort
+    assert_equal ["operator"], product.operator_assignments.pluck(:role).uniq
     assert_includes operator_a.reload.operated_sku_products, product
   ensure
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
@@ -268,7 +269,9 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
       product_name: "未绑定运营商品 #{token_suffix}"
     )
     operator = create_user_with_roles("store-show-operator-#{@token.downcase}@example.com", "operator")
+    developer = create_user_with_roles("store-show-developer-#{@token.downcase}@example.com", "operator")
     product.operators = [operator]
+    Ec::SkuProductOperator.create!(sku_product: product, user: developer, role: "developer")
 
     get "/erp/stores/#{@store.id}", headers: { "Accept" => "text/html" }
 
@@ -282,6 +285,8 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "BOUND-RAW-OFFER-#{token_suffix}"
     assert_select "td", "店铺详情商品 #{token_suffix}"
     assert_select "td", "SHOW-EMPTY-#{token_suffix}"
+    assert_select ".raw-product-options thead th", text: "开发人员"
+    assert_select ".raw-product-options thead th", text: "运营人员"
     assert_select "h2", "未绑定平台商品"
     assert_select "td", unbound_raw_product.ozon_product_id.to_s
     assert_select "td", "UNBOUND-RAW-OFFER-#{token_suffix}"
@@ -289,17 +294,22 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "未绑定平台商品 #{token_suffix}"
     assert_includes response.body, "2026-06-16 19:30"
     assert_no_match "已绑定平台商品 #{token_suffix}", response.body
+    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: developer.email
     assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: operator.email
     assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{unassigned_product.id}", text: "未绑定"
     assert_select "form[action=?][method=?]", "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", "post"
     assert_select "dialog#operator-dialog-#{product.id}.operator-assignment-dialog" do
-      assert_select "h3", "绑定运营人员"
+      assert_select "h3", "绑定职责人员"
+      assert_select "select[multiple='multiple'][name='developer_ids[]']" do
+        assert_select "option[selected='selected'][value=?]", developer.id.to_s, text: developer.email
+      end
       assert_select "select[multiple='multiple'][name='operator_ids[]']" do
         assert_select "option[selected='selected'][value=?]", operator.id.to_s, text: operator.email
       end
-      assert_select "button[type='submit']", "保存运营人员"
+      assert_select "button[type='submit']", "保存职责人员"
     end
     assert_select "td > button[type='button']", text: "绑定运营人员", count: 0
+    assert_select "input[type=?][name=?]", "checkbox", "developer_ids[]", count: 0
     assert_select "input[type=?][name=?]", "checkbox", "operator_ids[]", count: 0
   ensure
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
@@ -307,8 +317,8 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     RawOzon::Product.where(account_id: raw_account&.id).delete_all if raw_account
     raw_account&.destroy
     Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
-    UserRole.joins(:user).where("users.email LIKE ?", "store-show-operator-#{@token.downcase}%").delete_all
-    User.where("email LIKE ?", "store-show-operator-#{@token.downcase}%").delete_all
+    UserRole.joins(:user).where("users.email LIKE ?", "store-show-%#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "store-show-%#{@token.downcase}%").delete_all
   end
 
   test "show hides operator management form for read only erp user" do
@@ -353,22 +363,31 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     )
     old_operator = create_user_with_roles("store-old-operator-#{@token.downcase}@example.com", "operator")
     new_operator = create_user_with_roles("store-new-operator-#{@token.downcase}@example.com", "operator")
+    old_developer = create_user_with_roles("store-old-developer-#{@token.downcase}@example.com", "operator")
+    new_developer = create_user_with_roles("store-new-developer-#{@token.downcase}@example.com", "operator")
     inactive_operator = create_user_with_roles("store-inactive-operator-#{@token.downcase}@example.com", "operator")
     inactive_operator.update!(active: false)
     product.operators = [old_operator]
+    Ec::SkuProductOperator.create!(sku_product: product, user: old_developer, role: "developer")
 
     patch "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", params: {
+      developer_ids: [new_developer.id.to_s],
       operator_ids: [new_operator.id.to_s, inactive_operator.id.to_s]
     }
 
     assert_redirected_to "/erp/stores/#{@store.id}"
     assert_equal [new_operator.id], product.reload.operator_ids
+    assert_equal [new_developer.id], product.developer_ids
+    assert_equal(
+      { new_developer.id => "developer", new_operator.id => "operator" },
+      product.operator_assignments.pluck(:user_id, :role).to_h
+    )
   ensure
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
-    UserRole.joins(:user).where("users.email LIKE ?", "store-%operator-#{@token.downcase}%").delete_all
-    User.where("email LIKE ?", "store-%operator-#{@token.downcase}%").delete_all
+    UserRole.joins(:user).where("users.email LIKE ?", "store-%#{@token.downcase}%").delete_all
+    User.where("email LIKE ?", "store-%#{@token.downcase}%").delete_all
   end
 
   test "update operators only updates products under the current store" do

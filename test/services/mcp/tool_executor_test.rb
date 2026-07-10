@@ -27,7 +27,7 @@ module Mcp
         platform_sku_id: "WB-SKU-#{@token}",
         product_name: "平台商品 #{@token}"
       )
-      Ec::SkuProduct.create!(
+      @other_sku_product = Ec::SkuProduct.create!(
         sku_code: @other_sku.sku_code,
         store: @other_store,
         platform: @other_store.platform,
@@ -36,6 +36,7 @@ module Mcp
         product_name: "其他平台商品 #{@token}"
       )
       Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @user)
+      Ec::SkuProductOperator.create!(sku_product: @other_sku_product, user: @user, role: "developer")
     end
 
     teardown do

@@ -10,7 +10,12 @@ module Mcp
       scope = Ec::SkuProduct.includes(:sku, :store).joins(:sku, :store)
       return scope if global_user?
 
-      scope.joins(:operator_assignments).where(ec_sku_product_operators: { user_id: user.id })
+      scope.joins(:operator_assignments).where(
+        ec_sku_product_operators: {
+          user_id: user.id,
+          role: Ec::SkuProductOperator.roles.fetch("operator")
+        }
+      )
     end
 
     def sku_codes

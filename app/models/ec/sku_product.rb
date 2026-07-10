@@ -10,7 +10,16 @@ module Ec
       class_name: "Ec::SkuProductOperator",
       foreign_key: :sku_product_id,
       dependent: :destroy
-    has_many :operators, through: :operator_assignments, source: :user
+    has_many :operator_role_assignments,
+      -> { where(role: Ec::SkuProductOperator.roles.fetch("operator")) },
+      class_name: "Ec::SkuProductOperator",
+      foreign_key: :sku_product_id
+    has_many :developer_role_assignments,
+      -> { where(role: Ec::SkuProductOperator.roles.fetch("developer")) },
+      class_name: "Ec::SkuProductOperator",
+      foreign_key: :sku_product_id
+    has_many :operators, through: :operator_role_assignments, source: :user
+    has_many :developers, through: :developer_role_assignments, source: :user
 
     validates :sku_code, :store, :platform, :product_id, presence: true
     validates :product_id, uniqueness: { scope: :store_id }

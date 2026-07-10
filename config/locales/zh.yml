@@ -940,8 +940,10 @@ zh:
     stores:
       actions:
         add_store: "新增店铺"
+        bind_responsible_users: "绑定职责人员"
         bind_operators: "绑定运营人员"
         edit_store: "编辑店铺"
+        save_responsible_users: "保存职责人员"
         save_operators: "保存运营人员"
       company_types:
         general: "普通"
@@ -950,6 +952,7 @@ zh:
         belarus: "白俄罗斯"
         russia: "俄罗斯"
       empty:
+        no_developers: "未绑定"
         no_operators: "未绑定"
         no_products: "这个店铺还没有绑定平台商品。"
         no_unbound_raw_products: "这个店铺没有未绑定的平台商品。"
@@ -960,6 +963,7 @@ zh:
       fields:
         company_scale: "公司规模类型"
         country: "国家"
+        developers: "开发人员"
         is_active: "是否激活"
         operators: "运营人员"
         registration_country: "公司注册国"
@@ -972,7 +976,7 @@ zh:
         search_placeholder: "搜索店铺名称或备注…"
       form:
         inactive_hint: "未激活的店铺不会进入 1.0 运营工作流。"
-        operator_select_hint: "可多选，留空保存后将解除所有运营人员。"
+        operator_select_hint: "可分别选择开发、运营人员；留空保存后将解除对应职责人员。"
         store_name_placeholder: "例如：明斯克 Ozon 店铺"
       index:
         all_stores: "全部店铺"

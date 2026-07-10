@@ -33,7 +33,7 @@ module Erp
     end
 
     def show
-      @sku_products = @store.sku_products.includes(:sku, :operators).ordered
+      @sku_products = @store.sku_products.includes(:sku, :operators, :developers).ordered
       @unbound_raw_products = Ec::UnboundRawProductReport.call(store_id: @store.id)
       @operator_candidates = operator_candidates
     end

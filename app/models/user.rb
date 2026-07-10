@@ -21,8 +21,11 @@ class User < ApplicationRecord
   has_many :sku_product_operator_assignments,
     class_name: "Ec::SkuProductOperator",
     dependent: :destroy
+  has_many :operated_sku_product_assignments,
+    -> { where(role: Ec::SkuProductOperator.roles.fetch("operator")) },
+    class_name: "Ec::SkuProductOperator"
   has_many :operated_sku_products,
-    through: :sku_product_operator_assignments,
+    through: :operated_sku_product_assignments,
     source: :sku_product
 
   validates :active, inclusion: { in: [true, false] }
