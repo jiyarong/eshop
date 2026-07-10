@@ -26,7 +26,7 @@
             <td><%= agent.code %></td>
             <td><%= agent.name %></td>
             <td><%= agent.model_id %></td>
-            <td><%= agent.skills.order(:name).pluck(:name).join(" / ").presence || t("common.empty_value") %></td>
+            <td><%= agent.skills.sort_by(&:name).map(&:name).join(" / ").presence || t("common.empty_value") %></td>
             <td><%= agent.enabled? ? t("admin.agents.statuses.enabled") : t("admin.agents.statuses.disabled") %></td>
             <td><%= display_time(agent.updated_at) %></td>
             <td><%= link_to t("common.actions.edit"), edit_admin_agent_path(agent.code) %></td>

@@ -24,7 +24,7 @@
             <td><%= skill.name %></td>
             <td><%= skill.description %></td>
             <td><%= skill.version %></td>
-            <td><%= skill.agents.order(:name).pluck(:name).join(" / ").presence || t("common.empty_value") %></td>
+            <td><%= skill.agents.sort_by(&:name).map(&:name).join(" / ").presence || t("common.empty_value") %></td>
             <td class="table-actions">
               <%= link_to t("common.actions.view"), admin_skill_path(skill) %>
               <%= link_to t("common.actions.edit"), edit_admin_skill_path(skill) %>

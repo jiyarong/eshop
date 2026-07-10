@@ -3,7 +3,7 @@ module Admin
     before_action :set_skill, only: [ :show, :edit, :update, :download ]
 
     def index
-      @skills = Skill.with_attached_archive.order(:name)
+      @skills = Skill.includes(:agents).with_attached_archive.order(:name)
     end
 
     def show
@@ -74,14 +74,18 @@ module Admin
         description: package.description,
         skill_md: package.skill_md
       )
-      return false unless @skill.save
+      saved = false
+      Skill.transaction do
+        saved = @skill.save
+        raise ActiveRecord::Rollback unless saved
 
-      @skill.archive.attach(
-        io: StringIO.new(package.archive_data),
-        filename: "#{package.name}.zip",
-        content_type: "application/zip"
-      )
-      true
+        @skill.archive.attach(
+          io: StringIO.new(package.archive_data),
+          filename: "#{package.name}.zip",
+          content_type: "application/zip"
+        )
+      end
+      saved
     end
   end
 end

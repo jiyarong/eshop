@@ -5,7 +5,7 @@ module Admin
     before_action :load_skills, only: [ :new, :create, :edit, :update ]
 
     def index
-      @agents = Agent.order(:code)
+      @agents = Agent.includes(:skills).order(:code)
     end
 
     def edit
