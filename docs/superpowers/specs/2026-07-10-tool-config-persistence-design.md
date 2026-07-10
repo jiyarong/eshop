@@ -184,6 +184,13 @@
 - 工具脚本作为独立前端资源加载
 - `renderer_key` 决定当前 definition 使用哪个 partial 和脚本
 
+首版接入原则：
+
+- 不重写 `WB Pallet Optimizer` 的核心计算逻辑
+- 不先改造成 React、Stimulus 组件化或其他模块化前端体系
+- 优先保留原有 DOM 结构、元素 `id`、全局函数入口和交互行为
+- 首版只替换页面壳层与持久化适配层，确保计算结果和现有 HTML 工具保持一致
+
 例如：
 
 - `renderer_key = "wb_pallet_optimizer_v1"`
