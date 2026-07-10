@@ -1,17 +1,21 @@
-<div class="page-heading-row">
+<% content_for :title, t("admin.agents.index.title") %>
+<% content_for :page_heading, t("admin.agents.index.title") %>
+
+<div class="ai-admin-heading">
   <h1 class="page-title"><%= t("admin.agents.index.title") %></h1>
-  <div class="page-actions">
-    <%= link_to t("admin.skills.index.title"), admin_skills_path, class: "button button-secondary" %>
-    <%= link_to t("admin.agents.actions.new"), new_admin_agent_path, class: "button" %>
-  </div>
+  <%= link_to new_admin_agent_path, class: "button" do %>
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    <span><%= t("admin.agents.actions.new") %></span>
+  <% end %>
 </div>
 
-<section class="panel">
+<%= render "admin/shared/ai_navigation", section: :agents %>
+
+<section class="panel ai-table-panel">
   <div class="table-scroll">
-    <table>
+    <table class="ai-admin-table ai-agent-table">
       <thead>
         <tr>
-          <th><%= t("admin.agents.fields.code") %></th>
           <th><%= t("admin.agents.fields.name") %></th>
           <th><%= t("admin.agents.fields.model_id") %></th>
           <th><%= t("admin.agents.fields.skills") %></th>
@@ -23,13 +27,47 @@
       <tbody>
         <% @agents.each do |agent| %>
           <tr>
-            <td><%= agent.code %></td>
-            <td><%= agent.name %></td>
-            <td><%= agent.model_id %></td>
-            <td><%= agent.skills.sort_by(&:name).map(&:name).join(" / ").presence || t("common.empty_value") %></td>
-            <td><%= agent.enabled? ? t("admin.agents.statuses.enabled") : t("admin.agents.statuses.disabled") %></td>
+            <td>
+              <div class="ai-agent-identity">
+                <% if agent.avatar.attached? %>
+                  <%= image_tag agent.avatar, class: "ai-agent-avatar", alt: t("admin.agents.avatar_alt", name: agent.name) %>
+                <% else %>
+                  <span class="ai-agent-avatar ai-agent-avatar--fallback" aria-hidden="true"><%= agent.name.to_s.first&.upcase %></span>
+                <% end %>
+                <div class="ai-agent-identity__copy">
+                  <strong><%= agent.name %></strong>
+                  <code><%= agent.code %></code>
+                  <% if agent.description.present? %>
+                    <span><%= agent.description %></span>
+                  <% end %>
+                </div>
+              </div>
+            </td>
+            <td><code class="ai-model-code"><%= agent.model_id %></code></td>
+            <td>
+              <div class="ai-tag-list">
+                <% if agent.skills.any? %>
+                  <% agent.skills.sort_by(&:name).each do |skill| %>
+                    <span class="ai-tag"><%= skill.name %></span>
+                  <% end %>
+                <% else %>
+                  <span class="ai-empty-value"><%= t("common.empty_value") %></span>
+                <% end %>
+              </div>
+            </td>
+            <td>
+              <span class="status-pill <%= agent.enabled? ? "is-active" : "is-muted" %>">
+                <span class="status-pill__dot" aria-hidden="true"></span>
+                <%= agent.enabled? ? t("admin.agents.statuses.enabled") : t("admin.agents.statuses.disabled") %>
+              </span>
+            </td>
             <td><%= display_time(agent.updated_at) %></td>
-            <td><%= link_to t("common.actions.edit"), edit_admin_agent_path(agent.code) %></td>
+            <td>
+              <%= link_to edit_admin_agent_path(agent.code), class: "ai-row-action" do %>
+                <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span><%= t("common.actions.edit") %></span>
+              <% end %>
+            </td>
           </tr>
         <% end %>
       </tbody>

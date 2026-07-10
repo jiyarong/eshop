@@ -1,5 +1,16 @@
-<h1 class="page-title"><%= t("admin.agents.edit.title") %></h1>
+<% content_for :title, t("admin.agents.edit.title") %>
+<% content_for :page_heading, @agent.name %>
 
-<section class="panel">
-  <%= render "form", agent: @agent, skills: @skills %>
-</section>
+<div class="ai-admin-heading">
+  <div>
+    <h1 class="page-title"><%= t("admin.agents.edit.title") %></h1>
+    <code class="ai-heading-code"><%= @agent.code %></code>
+  </div>
+  <%= link_to admin_agents_path, class: "button button-secondary" do %>
+    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    <span><%= t("common.actions.back") %></span>
+  <% end %>
+</div>
+
+<%= render "admin/shared/ai_navigation", section: :agents %>
+<%= render "form", agent: @agent, skills: @skills %>

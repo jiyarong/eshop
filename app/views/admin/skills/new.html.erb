@@ -1,39 +1,82 @@
-<h1 class="page-title"><%= t("admin.skills.new.title") %></h1>
+<% content_for :title, t("admin.skills.new.title") %>
+<% content_for :page_heading, t("admin.skills.new.title") %>
 
-<div class="segmented-links" aria-label="<%= t("admin.skills.new.mode") %>">
-  <%= link_to t("admin.skills.modes.markdown"), new_admin_skill_path(mode: "markdown"), class: @mode == "markdown" ? "is-active" : nil %>
-  <%= link_to t("admin.skills.modes.upload"), new_admin_skill_path(mode: "upload"), class: @mode == "upload" ? "is-active" : nil %>
+<div class="ai-admin-heading">
+  <h1 class="page-title"><%= t("admin.skills.new.title") %></h1>
+  <%= link_to admin_skills_path, class: "button button-secondary" do %>
+    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    <span><%= t("common.actions.back") %></span>
+  <% end %>
 </div>
 
-<section class="panel">
-  <%= form_with model: [:admin, @skill], multipart: true do |form| %>
-    <%= hidden_field_tag :creation_mode, @mode %>
-    <% if @skill.errors.any? %>
-      <div class="panel error-box"><%= @skill.errors.full_messages.join(t("common.list_separator")) %></div>
-    <% end %>
+<%= render "admin/shared/ai_navigation", section: :skills %>
 
-    <div class="report-stack">
-      <div class="field">
-        <%= form.label :version, t("admin.skills.fields.version") %>
-        <%= form.text_field :version, required: true %>
-      </div>
+<div class="segmented-links ai-creation-modes" aria-label="<%= t("admin.skills.new.mode") %>">
+  <%= link_to new_admin_skill_path(mode: "markdown"), class: @mode == "markdown" ? "is-active" : nil, aria: (@mode == "markdown" ? { current: "page" } : nil) do %>
+    <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
+    <span><%= t("admin.skills.modes.markdown") %></span>
+  <% end %>
+  <%= link_to new_admin_skill_path(mode: "upload"), class: @mode == "upload" ? "is-active" : nil, aria: (@mode == "upload" ? { current: "page" } : nil) do %>
+    <i class="bi bi-file-earmark-zip" aria-hidden="true"></i>
+    <span><%= t("admin.skills.modes.upload") %></span>
+  <% end %>
+</div>
 
+<%= form_with model: [:admin, @skill], multipart: true, class: "ai-skill-form" do |form| %>
+  <%= hidden_field_tag :creation_mode, @mode %>
+  <% if @skill.errors.any? %>
+    <div class="error-box ai-form-errors" role="alert">
+      <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+      <span><%= @skill.errors.full_messages.join(t("common.list_separator")) %></span>
+    </div>
+  <% end %>
+
+  <div class="ai-skill-editor-layout">
+    <section class="panel ai-skill-editor-panel">
       <% if @mode == "upload" %>
-        <div class="field">
-          <%= form.label :archive, t("admin.skills.fields.archive") %>
-          <%= form.file_field :archive, accept: ".zip,application/zip", required: true %>
+        <div class="field field--full">
+          <%= form.label :archive, class: "ai-upload-zone" do %>
+            <span class="ai-upload-zone__icon" aria-hidden="true"><i class="bi bi-cloud-arrow-up"></i></span>
+            <strong><%= t("admin.skills.fields.archive") %></strong>
+            <%= form.file_field :archive, accept: ".zip,application/zip", required: true %>
+          <% end %>
         </div>
       <% else %>
         <div class="field field--full">
           <%= form.label :skill_md, t("admin.skills.fields.skill_md") %>
-          <%= form.text_area :skill_md, rows: 24, required: true, class: "code-editor" %>
+          <%= form.text_area :skill_md,
+            rows: 27,
+            required: true,
+            class: "code-editor ai-skill-code-editor",
+            placeholder: t("admin.skills.placeholders.skill_md") %>
         </div>
       <% end %>
+    </section>
 
-      <div class="page-actions">
-        <%= form.submit t("common.actions.save"), class: "button" %>
-        <%= link_to t("common.actions.back"), admin_skills_path, class: "button button-secondary" %>
+    <aside class="panel ai-skill-meta-panel">
+      <div class="ai-form-section__heading">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        <h2><%= t("admin.skills.sections.package") %></h2>
       </div>
-    </div>
-  <% end %>
-</section>
+      <div class="field">
+        <%= form.label :version, t("admin.skills.fields.version") %>
+        <%= form.text_field :version, required: true, class: "code-input" %>
+      </div>
+      <dl class="ai-requirements-list">
+        <div><dt><%= t("admin.skills.requirements.frontmatter") %></dt><dd>name, description</dd></div>
+        <div><dt><%= t("admin.skills.requirements.encoding") %></dt><dd>UTF-8</dd></div>
+        <div><dt><%= t("admin.skills.requirements.filename") %></dt><dd>SKILL.md</dd></div>
+      </dl>
+      <div class="ai-side-actions">
+        <%= form.button class: "button", type: "submit" do %>
+          <i class="bi bi-check-lg" aria-hidden="true"></i>
+          <span><%= t("common.actions.save") %></span>
+        <% end %>
+        <%= link_to admin_skills_path, class: "button button-secondary" do %>
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+          <span><%= t("common.actions.cancel") %></span>
+        <% end %>
+      </div>
+    </aside>
+  </div>
+<% end %>

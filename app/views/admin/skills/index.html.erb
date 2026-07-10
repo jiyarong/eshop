@@ -1,19 +1,23 @@
-<div class="page-heading-row">
+<% content_for :title, t("admin.skills.index.title") %>
+<% content_for :page_heading, t("admin.skills.index.title") %>
+
+<div class="ai-admin-heading">
   <h1 class="page-title"><%= t("admin.skills.index.title") %></h1>
-  <div class="page-actions">
-    <%= link_to t("admin.agents.index.title"), admin_agents_path, class: "button button-secondary" %>
-    <%= link_to t("admin.skills.actions.new"), new_admin_skill_path, class: "button" %>
-  </div>
+  <%= link_to new_admin_skill_path, class: "button" do %>
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    <span><%= t("admin.skills.actions.new") %></span>
+  <% end %>
 </div>
 
-<section class="panel">
+<%= render "admin/shared/ai_navigation", section: :skills %>
+
+<section class="panel ai-table-panel">
   <div class="table-scroll">
-    <table>
+    <table class="ai-admin-table ai-skill-table">
       <thead>
         <tr>
           <th><%= t("admin.skills.fields.name") %></th>
           <th><%= t("admin.skills.fields.description") %></th>
-          <th><%= t("admin.skills.fields.version") %></th>
           <th><%= t("admin.skills.fields.agents") %></th>
           <th><%= t("admin.skills.fields.actions") %></th>
         </tr>
@@ -21,15 +25,43 @@
       <tbody>
         <% @skills.each do |skill| %>
           <tr>
-            <td><%= skill.name %></td>
-            <td><%= skill.description %></td>
-            <td><%= skill.version %></td>
-            <td><%= skill.agents.sort_by(&:name).map(&:name).join(" / ").presence || t("common.empty_value") %></td>
-            <td class="table-actions">
-              <%= link_to t("common.actions.view"), admin_skill_path(skill) %>
-              <%= link_to t("common.actions.edit"), edit_admin_skill_path(skill) %>
-              <%= link_to t("admin.skills.actions.download"), download_admin_skill_path(skill) %>
+            <td>
+              <div class="ai-skill-identity">
+                <span class="ai-skill-icon" aria-hidden="true"><i class="bi bi-puzzle"></i></span>
+                <div>
+                  <strong><%= skill.name %></strong>
+                  <span class="ai-version"><%= t("admin.skills.version_label", version: skill.version) %></span>
+                </div>
+              </div>
             </td>
+            <td><div class="ai-description-clamp"><%= skill.description %></div></td>
+            <td>
+              <div class="ai-tag-list">
+                <% if skill.agents.any? %>
+                  <% skill.agents.sort_by(&:name).each do |agent| %>
+                    <%= link_to agent.name, edit_admin_agent_path(agent.code), class: "ai-tag ai-tag--link" %>
+                  <% end %>
+                <% else %>
+                  <span class="ai-empty-value"><%= t("common.empty_value") %></span>
+                <% end %>
+              </div>
+            </td>
+            <td class="table-actions">
+              <%= link_to admin_skill_path(skill), class: "ai-row-action" do %>
+                <i class="bi bi-eye" aria-hidden="true"></i><span><%= t("common.actions.view") %></span>
+              <% end %>
+              <%= link_to edit_admin_skill_path(skill), class: "ai-row-action" do %>
+                <i class="bi bi-pencil" aria-hidden="true"></i><span><%= t("common.actions.edit") %></span>
+              <% end %>
+              <%= link_to download_admin_skill_path(skill), class: "ai-row-action" do %>
+                <i class="bi bi-download" aria-hidden="true"></i><span><%= t("admin.skills.actions.download") %></span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @skills.empty? %>
+          <tr>
+            <td colspan="4" class="empty-state"><%= t("admin.skills.index.empty") %></td>
           </tr>
         <% end %>
       </tbody>

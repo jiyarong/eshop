@@ -168,6 +168,8 @@ zh:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    ai_navigation:
+      label: "AI 配置导航"
     sub2_usage:
       title: "AI 用量看板"
       currency_value: "$%{value}"
@@ -291,6 +293,9 @@ zh:
         updated_at: "更新时间"
       index:
         title: "AI Agent 管理"
+      hints:
+        enabled: "停用后不再通过 API 提供"
+        thinking: "允许模型使用推理模式"
       new:
         title: "新增 AI Agent"
       notices:
@@ -298,6 +303,10 @@ zh:
         updated: "AI Agent 已更新。"
       placeholders:
         recommended_prompts: "每行一个预设问题"
+      sections:
+        identity: "基本信息"
+        model: "模型配置"
+        prompts: "提示词与预设问题"
       statuses:
         disabled: "停用"
         enabled: "启用"
@@ -338,7 +347,9 @@ zh:
         name: "名称"
         skill_md: "SKILL.md"
         version: "版本"
+      empty_agents: "尚未关联 Agent"
       index:
+        empty: "暂无 Skill。"
         title: "AI Skills 管理"
       modes:
         markdown: "直接创建 SKILL.md"
@@ -349,6 +360,24 @@ zh:
       notices:
         created: "Skill 已创建。"
         updated: "Skill 已更新。"
+      placeholders:
+        skill_md: |-
+          ---
+          name: my-skill
+          description: 说明何时以及为何使用此 Skill
+          ---
+
+          # Instructions
+
+          在此编写执行步骤。
+      requirements:
+        encoding: "编码"
+        filename: "文件名"
+        frontmatter: "Frontmatter"
+      sections:
+        details: "Skill 信息"
+        package: "包信息"
+      version_label: "v%{version}"
   orders:
     actions:
       back_to_orders: "返回订单中心"

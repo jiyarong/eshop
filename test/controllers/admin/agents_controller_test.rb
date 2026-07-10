@@ -49,9 +49,10 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "AI Agent 管理"
-    assert_select "td", "sku_replenishment_advisor"
-    assert_select "td", "SKU 补货建议助手"
-    assert_select "a[href=?]", "/admin/agents/sku_replenishment_advisor/edit", "编辑"
+    assert_select ".ai-admin-tabs a[aria-current='page']", "AI Agent 管理"
+    assert_select ".ai-agent-identity code", "sku_replenishment_advisor"
+    assert_select ".ai-agent-identity strong", "SKU 补货建议助手"
+    assert_select "a.ai-row-action[href=?]", "/admin/agents/sku_replenishment_advisor/edit"
   end
 
   test "non admin cannot manage agents" do
@@ -79,6 +80,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='agent[avatar]'][type='file']"
     assert_select "input[name='agent[tools]']", false
     assert_select "input[name='agent[enabled]'][type='checkbox']"
+    assert_select ".ai-editor-layout"
+    assert_select ".ai-form-actions button[type='submit']"
   end
 
   test "super admin can render a new agent form" do

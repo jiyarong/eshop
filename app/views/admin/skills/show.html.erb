@@ -1,20 +1,68 @@
-<div class="page-heading-row">
-  <h1 class="page-title"><%= @skill.name %></h1>
+<% content_for :title, @skill.name %>
+<% content_for :page_heading, @skill.name %>
+
+<div class="ai-admin-heading">
+  <div class="ai-skill-title">
+    <span class="ai-skill-icon" aria-hidden="true"><i class="bi bi-puzzle"></i></span>
+    <div>
+      <h1 class="page-title"><%= @skill.name %></h1>
+      <span class="ai-version"><%= t("admin.skills.version_label", version: @skill.version) %></span>
+    </div>
+  </div>
   <div class="page-actions">
-    <%= link_to t("common.actions.edit"), edit_admin_skill_path(@skill), class: "button" %>
-    <%= link_to t("admin.skills.actions.download"), download_admin_skill_path(@skill), class: "button button-secondary" %>
-    <%= link_to t("common.actions.back"), admin_skills_path, class: "button button-secondary" %>
+    <%= link_to edit_admin_skill_path(@skill), class: "button" do %>
+      <i class="bi bi-pencil" aria-hidden="true"></i>
+      <span><%= t("common.actions.edit") %></span>
+    <% end %>
+    <%= link_to download_admin_skill_path(@skill), class: "button button-secondary" do %>
+      <i class="bi bi-download" aria-hidden="true"></i>
+      <span><%= t("admin.skills.actions.download") %></span>
+    <% end %>
   </div>
 </div>
 
-<section class="panel">
-  <dl class="summary-list">
-    <dt><%= t("admin.skills.fields.description") %></dt>
-    <dd><%= @skill.description %></dd>
-    <dt><%= t("admin.skills.fields.version") %></dt>
-    <dd><%= @skill.version %></dd>
-  </dl>
+<%= render "admin/shared/ai_navigation", section: :skills %>
 
-  <h2 class="section-title"><%= t("admin.skills.fields.skill_md") %></h2>
-  <pre class="code-viewer"><code><%= @skill.skill_md %></code></pre>
-</section>
+<div class="ai-skill-show-layout">
+  <section class="panel ai-skill-code-panel">
+    <div class="ai-form-section__heading">
+      <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
+      <h2><%= t("admin.skills.fields.skill_md") %></h2>
+    </div>
+    <pre class="code-viewer"><code><%= @skill.skill_md %></code></pre>
+  </section>
+
+  <aside class="ai-editor-sidebar">
+    <section class="panel ai-side-panel">
+      <div class="ai-form-section__heading">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        <h2><%= t("admin.skills.sections.details") %></h2>
+      </div>
+      <dl class="ai-skill-details">
+        <dt><%= t("admin.skills.fields.description") %></dt>
+        <dd><%= @skill.description %></dd>
+        <dt><%= t("admin.skills.fields.version") %></dt>
+        <dd><%= @skill.version %></dd>
+      </dl>
+    </section>
+    <section class="panel ai-side-panel">
+      <div class="ai-form-section__heading">
+        <i class="bi bi-cpu" aria-hidden="true"></i>
+        <h2><%= t("admin.skills.fields.agents") %></h2>
+        <span class="ai-section-count"><%= @skill.agents.size %></span>
+      </div>
+      <% if @skill.agents.any? %>
+        <div class="ai-linked-agents">
+          <% @skill.agents.sort_by(&:name).each do |agent| %>
+            <%= link_to edit_admin_agent_path(agent.code) do %>
+              <span><strong><%= agent.name %></strong><code><%= agent.code %></code></span>
+              <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="ai-side-empty"><span><%= t("admin.skills.empty_agents") %></span></div>
+      <% end %>
+    </section>
+  </aside>
+</div>

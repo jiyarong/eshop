@@ -190,6 +190,8 @@ en:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    ai_navigation:
+      label: "AI configuration navigation"
     sub2_usage:
       title: "AI Usage"
       currency_value: "$%{value}"
@@ -313,6 +315,9 @@ en:
         updated_at: "Updated at"
       index:
         title: "AI Agent Management"
+      hints:
+        enabled: "Disabled agents are omitted from the API"
+        thinking: "Allow the model to use reasoning mode"
       new:
         title: "New AI Agent"
       notices:
@@ -320,6 +325,10 @@ en:
         updated: "AI Agent updated."
       placeholders:
         recommended_prompts: "One prompt per line"
+      sections:
+        identity: "Basic information"
+        model: "Model configuration"
+        prompts: "Prompt and recommendations"
       statuses:
         disabled: "Disabled"
         enabled: "Enabled"
@@ -360,7 +369,9 @@ en:
         name: "Name"
         skill_md: "SKILL.md"
         version: "Version"
+      empty_agents: "Not assigned to an agent"
       index:
+        empty: "No skills yet."
         title: "AI Skills Management"
       modes:
         markdown: "Create SKILL.md"
@@ -371,6 +382,24 @@ en:
       notices:
         created: "Skill created."
         updated: "Skill updated."
+      placeholders:
+        skill_md: |-
+          ---
+          name: my-skill
+          description: Describe when and why to use this skill
+          ---
+
+          # Instructions
+
+          Add the workflow here.
+      requirements:
+        encoding: "Encoding"
+        filename: "Filename"
+        frontmatter: "Frontmatter"
+      sections:
+        details: "Skill details"
+        package: "Package details"
+      version_label: "v%{version}"
   orders:
     actions:
       back_to_orders: "Back to orders"

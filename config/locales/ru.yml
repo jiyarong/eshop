@@ -161,6 +161,8 @@ ru:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    ai_navigation:
+      label: "Навигация по настройкам AI"
     sub2_usage:
       title: "Использование AI"
       currency_value: "$%{value}"
@@ -284,6 +286,9 @@ ru:
         updated_at: "Обновлено"
       index:
         title: "Управление AI Agent"
+      hints:
+        enabled: "Отключенные агенты не доступны через API"
+        thinking: "Разрешить модели использовать режим рассуждения"
       new:
         title: "Новый AI Agent"
       notices:
@@ -291,6 +296,10 @@ ru:
         updated: "AI Agent обновлен."
       placeholders:
         recommended_prompts: "Один вопрос на строку"
+      sections:
+        identity: "Основная информация"
+        model: "Настройки модели"
+        prompts: "Промпт и готовые вопросы"
       statuses:
         disabled: "Отключен"
         enabled: "Включен"
@@ -331,7 +340,9 @@ ru:
         name: "Название"
         skill_md: "SKILL.md"
         version: "Версия"
+      empty_agents: "Не связан с Agent"
       index:
+        empty: "Skills пока нет."
         title: "Управление AI Skills"
       modes:
         markdown: "Создать SKILL.md"
@@ -342,6 +353,24 @@ ru:
       notices:
         created: "Skill создан."
         updated: "Skill обновлен."
+      placeholders:
+        skill_md: |-
+          ---
+          name: my-skill
+          description: Опишите, когда и зачем использовать этот Skill
+          ---
+
+          # Instructions
+
+          Добавьте шаги выполнения.
+      requirements:
+        encoding: "Кодировка"
+        filename: "Имя файла"
+        frontmatter: "Frontmatter"
+      sections:
+        details: "Информация о Skill"
+        package: "Информация о пакете"
+      version_label: "v%{version}"
   orders:
     actions:
       back_to_orders: "Назад к заказам"

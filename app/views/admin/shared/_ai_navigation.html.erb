@@ -1,0 +1,14 @@
+<nav class="ai-admin-tabs" aria-label="<%= t("admin.ai_navigation.label") %>">
+  <%= link_to admin_agents_path,
+    class: "ai-admin-tabs__link",
+    aria: (section == :agents ? { current: "page" } : nil) do %>
+    <i class="bi bi-cpu" aria-hidden="true"></i>
+    <span><%= t("admin.agents.index.title") %></span>
+  <% end %>
+  <%= link_to admin_skills_path,
+    class: "ai-admin-tabs__link",
+    aria: (section == :skills ? { current: "page" } : nil) do %>
+    <i class="bi bi-puzzle" aria-hidden="true"></i>
+    <span><%= t("admin.skills.index.title") %></span>
+  <% end %>
+</nav>

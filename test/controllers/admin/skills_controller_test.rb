@@ -38,6 +38,14 @@ class Admin::SkillsControllerTest < ActionDispatch::IntegrationTest
     get admin_skill_path(skill), headers: { "Accept" => "text/html" }
     assert_response :success
     assert_select "pre", text: /direct-skill-#{@token}/
+    assert_select ".ai-skill-show-layout"
+
+    sign_in @admin
+    get admin_skills_path, headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".ai-skill-table th", count: 4
+    assert_select ".ai-description-clamp", "Skill description"
+    assert_select "a.ai-row-action[href=?]", download_admin_skill_path(skill)
 
     sign_in @admin
     get download_admin_skill_path(skill), headers: { "Accept" => "text/html" }
@@ -50,8 +58,9 @@ class Admin::SkillsControllerTest < ActionDispatch::IntegrationTest
 
     get new_admin_skill_path, headers: { "Accept" => "text/html" }
     assert_response :success
-    assert_select "textarea[name='skill[skill_md]']"
+    assert_select "textarea[name='skill[skill_md]'][placeholder*='name: my-skill']"
     assert_select "input[name='skill[archive]']", false
+    assert_select ".ai-creation-modes a[aria-current='page']", "直接创建 SKILL.md"
 
     sign_in @admin
     get new_admin_skill_path(mode: "upload"), headers: { "Accept" => "text/html" }
