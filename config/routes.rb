@@ -19,6 +19,9 @@ Rails.application.routes.draw do
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
   get "reports/skus"      => "reports#skus"
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
+  post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments
+  get "reports/skus/:sku_code/attachments/:attachment_id" => "reports#download_sku_attachment", as: :report_sku_attachment
+  delete "reports/skus/:sku_code/attachments/:attachment_id" => "reports#destroy_sku_attachment"
   get "reports/skus/:sku_code/predicted_costs/new" => "reports#new_sku_predicted_cost", as: :new_report_sku_predicted_cost
   post "reports/skus/:sku_code/predicted_costs" => "reports#create_sku_predicted_cost", as: :report_sku_predicted_costs
   get "reports/sku_sales" => "reports#sku_sales"

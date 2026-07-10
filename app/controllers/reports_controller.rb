@@ -1,9 +1,13 @@
+require "cgi"
+require "digest"
+
 class ReportsController < ApplicationController
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
+  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment]
 
-  SKU_DETAIL_TABS = %w[basic inventory costs stores trend].freeze
+  SKU_DETAIL_TABS = %w[basic inventory costs stores trend attachments].freeze
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -68,6 +72,57 @@ class ReportsController < ApplicationController
     end
   end
 
+  def create_sku_attachment
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    uploaded_file = sku_attachment_file_param
+    attach_type = sku_attachment_type_param
+
+    if uploaded_file.blank? || !Ec::Attachment.attach_types.key?(attach_type)
+      redirect_to sku_attachments_tab_path(@sku), alert: t("reports.sku_detail.attachments.upload_failed")
+      return
+    end
+
+    attachment = build_sku_attachment(uploaded_file, attach_type)
+    attachment.save!
+    attachment.attach_file!(io: uploaded_file.tempfile, content_type: uploaded_file.content_type)
+    @sku.attachment_links.create!(ec_attachment: attachment)
+
+    redirect_to sku_attachments_tab_path(@sku), notice: t("reports.sku_detail.attachments.uploaded")
+  rescue ActiveRecord::RecordInvalid, ActiveStorage::IntegrityError
+    attachment&.file&.purge if attachment&.file&.attached?
+    attachment&.destroy
+    redirect_to sku_attachments_tab_path(@sku), alert: t("reports.sku_detail.attachments.upload_failed")
+  end
+
+  def download_sku_attachment
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    attachment = sku_attachment_for(@sku)
+
+    if attachment.file.service.is_a?(ActiveStorage::Service::QiniuService)
+      redirect_to qiniu_attachment_download_url(attachment), allow_other_host: true
+      return
+    end
+
+    send_data attachment.file.download,
+              filename: attachment.filename,
+              type: attachment.file.content_type || "application/octet-stream",
+              disposition: "attachment"
+  end
+
+  def destroy_sku_attachment
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    attachment = sku_attachment_for(@sku)
+    link = @sku.attachment_links.find_by!(ec_attachment: attachment)
+
+    link.destroy!
+    if attachment.attachment_links.reload.none?
+      attachment.file.purge if attachment.file.attached?
+      attachment.destroy!
+    end
+
+    redirect_to sku_attachments_tab_path(@sku), notice: t("reports.sku_detail.attachments.deleted")
+  end
+
   def costs
     @sku_costs = Ec::SkuCost.includes(:sku).order(:sku_code)
     @wb_costs = Ec::SkuPlatformCost.includes(:sku, :cost).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
@@ -101,7 +156,8 @@ class ReportsController < ApplicationController
       :store_assignments,
       :inventory_levels,
       :sku_products,
-      :predicted_costs
+      :predicted_costs,
+      attachments: { file_attachment: :blob }
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
     @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
     @stores = Ec::Store.order(:platform, :store_name)
@@ -111,6 +167,7 @@ class ReportsController < ApplicationController
     @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
+    @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
     @overview_from_date = user_today - 30.days
@@ -149,6 +206,64 @@ class ReportsController < ApplicationController
 
   def sku_predicted_cost_params
     params.require(:ec_sku_predicted_cost).permit(:cost_money, :cost_currency, :effective_from, :effective_to, :note)
+  end
+
+  def sku_attachment_file_param
+    params.dig(:ec_attachment, :file)
+  end
+
+  def sku_attachment_type_param
+    params.dig(:ec_attachment, :attach_type).to_s
+  end
+
+  def build_sku_attachment(uploaded_file, attach_type)
+    filename = File.basename(uploaded_file.original_filename.to_s)
+    filename = "attachment" if filename.blank? || filename == "."
+    Ec::Attachment.new(
+      attach_type: attach_type,
+      filename: filename,
+      qiniu_hash: uploaded_file_digest(uploaded_file),
+      oss_path: sku_attachment_oss_path(filename)
+    )
+  end
+
+  def uploaded_file_digest(uploaded_file)
+    uploaded_file.rewind
+    Digest::SHA256.hexdigest(uploaded_file.read)
+  ensure
+    uploaded_file.rewind if uploaded_file.respond_to?(:rewind)
+  end
+
+  def sku_attachment_oss_path(filename)
+    safe_filename = filename.to_s.gsub(/[^\w.\-]+/, "_")
+    safe_filename = "attachment" if safe_filename.blank?
+    "ec/skus/#{@sku.id}/attachments/#{SecureRandom.uuid}/#{safe_filename}"
+  end
+
+  def sku_attachment_for(sku)
+    sku.attachments.with_attached_file.find(params[:attachment_id])
+  end
+
+  def qiniu_attachment_download_url(attachment)
+    service = attachment.file.service
+    key = attachment.file.blob.key
+    fop = "attname=#{URI::DEFAULT_PARSER.escape(attachment.filename)}"
+
+    if service.bucket_private
+      Qiniu::Auth.authorize_download_url_2(
+        service.domain,
+        key,
+        schema: service.protocol,
+        fop: fop,
+        expires_in: ActiveStorage.service_urls_expire_in
+      )
+    else
+      "#{service.protocol}://#{service.domain}/#{CGI.escape(key)}?#{fop}"
+    end
+  end
+
+  def sku_attachments_tab_path(sku)
+    report_sku_path(sku.sku_code, request.query_parameters.merge(tab: "attachments").except(:sku_code, :attachment_id))
   end
 
   def build_inventory_rows(scope)

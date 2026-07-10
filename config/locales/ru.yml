@@ -563,9 +563,26 @@ ru:
       actions:
         add_predicted_cost: "Добавить прогнозную себестоимость"
         back_to_list: "Назад к списку"
+        delete_attachment: "Удалить"
+        download_attachment: "Скачать"
         edit_profile: "Редактировать данные"
         manage_product_bindings: "Настроить связи товаров"
+        upload_attachment: "Загрузить файл"
+      attachments:
+        actions: "Действия"
+        attach_type: "Тип файла"
+        attach_types:
+          invoice: "Счет"
+          sales_contract: "Договор продажи"
+        delete_confirm: "Удалить этот файл?"
+        deleted: "Файл удален"
+        file: "Файл"
+        file_size: "Размер файла"
+        filename: "Имя файла"
+        upload_failed: "Не удалось загрузить файл"
+        uploaded: "Файл загружен"
       empty:
+        attachments: "Нет файлов"
         cost_data: "Нет данных о себестоимости"
         order_data: "Нет заказов в выбранном диапазоне"
         ozon_costs: "Нет данных о себестоимости Ozon"
@@ -660,6 +677,8 @@ ru:
         month: "Месяц"
         week: "Неделя"
       sections:
+        attachment_list: "Файлы"
+        attachments: "Загрузить файл"
         basic_information: "Основная информация"
         ozon_cost: "Себестоимость Ozon"
         predicted_cost_configuration: "Прогнозная себестоимость"
@@ -683,6 +702,7 @@ ru:
         store_count: "Магазины"
       tabs:
         aria_label: "Разделы SKU"
+        attachments: "Файлы"
         basic: "Основное"
         costs: "Себестоимость"
         stores: "Продажи по магазинам"

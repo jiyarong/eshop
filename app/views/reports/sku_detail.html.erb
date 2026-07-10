@@ -43,7 +43,7 @@
 </section>
 
 <nav class="erp-tabs erp-tabs--underline sku-detail-tabs" aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>">
-  <% %w[basic inventory costs stores trend].each do |tab| %>
+  <% %w[basic inventory costs attachments stores trend].each do |tab| %>
     <%= link_to t("reports.sku_detail.tabs.#{tab}"),
                 sku_detail_tab_path(tab),
                 class: "erp-tabs__link sku-detail-tabs__link",
@@ -405,6 +405,83 @@
             <% else %>
               <tr>
                 <td colspan="11" class="empty-state"><%= t("reports.sku_detail.empty.ozon_costs") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% elsif @active_tab == "attachments" %>
+    <% if can?(:manage_skus) %>
+      <section class="panel">
+        <h2 class="section-title"><%= t("reports.sku_detail.sections.attachments") %></h2>
+        <%= form_with scope: :ec_attachment,
+                      url: report_sku_attachments_path(@sku.sku_code, request.query_parameters.slice(:locale)),
+                      method: :post,
+                      local: true,
+                      html: { class: "report-form", multipart: true } do |form| %>
+          <div class="field">
+            <%= form.label :attach_type, t("reports.sku_detail.attachments.attach_type") %>
+            <%= form.select :attach_type,
+                            Ec::Attachment.attach_types.keys.map { |type| [t("reports.sku_detail.attachments.attach_types.#{type}"), type] },
+                            {},
+                            required: true %>
+          </div>
+          <div class="field">
+            <%= form.label :file, t("reports.sku_detail.attachments.file") %>
+            <%= form.file_field :file, required: true %>
+          </div>
+          <button class="button" type="submit">
+            <i class="bi bi-upload" aria-hidden="true"></i>
+            <span><%= t("reports.sku_detail.actions.upload_attachment") %></span>
+          </button>
+        <% end %>
+      </section>
+    <% end %>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.attachment_list") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.attachments.filename") %></th>
+              <th><%= t("reports.sku_detail.attachments.attach_type") %></th>
+              <th><%= t("reports.sku_detail.attachments.file_size") %></th>
+              <th><%= t("reports.sku_detail.fields.created_at") %></th>
+              <th><%= t("reports.sku_detail.attachments.actions") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @attachments.any? %>
+              <% @attachments.each do |attachment| %>
+                <tr>
+                  <td><%= attachment.filename %></td>
+                  <td><%= t("reports.sku_detail.attachments.attach_types.#{attachment.attach_type}") %></td>
+                  <td><%= attachment.file.attached? ? number_to_human_size(attachment.file.byte_size) : "-" %></td>
+                  <td><%= display_time(attachment.created_at) %></td>
+                  <td>
+                    <div class="table-row-actions">
+                      <%= link_to report_sku_attachment_path(@sku.sku_code, attachment, request.query_parameters.slice(:locale)), class: "button button-secondary" do %>
+                        <i class="bi bi-download" aria-hidden="true"></i>
+                        <span><%= t("reports.sku_detail.actions.download_attachment") %></span>
+                      <% end %>
+                      <% if can?(:manage_skus) %>
+                        <%= button_to report_sku_attachment_path(@sku.sku_code, attachment, request.query_parameters.slice(:locale)),
+                                      method: :delete,
+                                      class: "button button-secondary",
+                                      form: { data: { turbo_confirm: t("reports.sku_detail.attachments.delete_confirm") } } do %>
+                          <i class="bi bi-trash" aria-hidden="true"></i>
+                          <span><%= t("reports.sku_detail.actions.delete_attachment") %></span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="5" class="empty-state"><%= t("reports.sku_detail.empty.attachments") %></td>
               </tr>
             <% end %>
           </tbody>

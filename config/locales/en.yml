@@ -592,9 +592,26 @@ en:
       actions:
         add_predicted_cost: "Add predicted cost"
         back_to_list: "Back to list"
+        delete_attachment: "Delete"
+        download_attachment: "Download"
         edit_profile: "Edit profile"
         manage_product_bindings: "Manage product bindings"
+        upload_attachment: "Upload attachment"
+      attachments:
+        actions: "Actions"
+        attach_type: "Attachment type"
+        attach_types:
+          invoice: "Invoice"
+          sales_contract: "Sales contract"
+        delete_confirm: "Delete this attachment?"
+        deleted: "Attachment deleted"
+        file: "File"
+        file_size: "File size"
+        filename: "Filename"
+        upload_failed: "Attachment upload failed"
+        uploaded: "Attachment uploaded"
       empty:
+        attachments: "No attachments"
         cost_data: "No cost data"
         inventory_levels: "No platform inventory snapshots"
         inventory_overview: "No inventory reconciliation data"
@@ -701,6 +718,8 @@ en:
         month: "Month"
         week: "Week"
       sections:
+        attachment_list: "Attachments"
+        attachments: "Upload attachment"
         basic_information: "Basic information"
         inventory_reconciliation: "Inventory reconciliation"
         latest_inventory_levels: "Latest platform inventory"
@@ -726,6 +745,7 @@ en:
         store_count: "Stores"
       tabs:
         aria_label: "SKU detail sections"
+        attachments: "Attachments"
         basic: "Basic"
         costs: "Costs"
         inventory: "Inventory"

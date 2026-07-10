@@ -573,9 +573,26 @@ zh:
       actions:
         add_predicted_cost: "新增预测成本"
         back_to_list: "返回列表"
+        delete_attachment: "删除"
+        download_attachment: "下载"
         edit_profile: "编辑资料"
         manage_product_bindings: "维护平台商品绑定"
+        upload_attachment: "上传附件"
+      attachments:
+        actions: "操作"
+        attach_type: "附件类型"
+        attach_types:
+          invoice: "发票"
+          sales_contract: "销售合同"
+        delete_confirm: "确认删除这个附件？"
+        deleted: "附件已删除"
+        file: "文件"
+        file_size: "文件大小"
+        filename: "文件名"
+        upload_failed: "附件上传失败"
+        uploaded: "附件已上传"
       empty:
+        attachments: "暂无附件"
         cost_data: "暂无成本数据"
         inventory_levels: "暂无平台在库快照"
         inventory_overview: "暂无库存校对数据"
@@ -682,6 +699,8 @@ zh:
         month: "月"
         week: "周"
       sections:
+        attachment_list: "附件列表"
+        attachments: "上传附件"
         basic_information: "基础信息"
         inventory_reconciliation: "库存校对汇总"
         latest_inventory_levels: "最新平台在库"
@@ -707,6 +726,7 @@ zh:
         store_count: "涉及店铺"
       tabs:
         aria_label: "SKU详情分组"
+        attachments: "附件"
         basic: "基础配置"
         costs: "成本情况"
         inventory: "库存概况"
