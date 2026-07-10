@@ -889,6 +889,26 @@ textarea {
   min-width: 240px;
 }
 
+.report-tools-table__actions {
+  width: 1%;
+  min-width: 96px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.report-tools-table__actions form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.report-tools-table__actions-placeholder {
+  color: var(--erp-muted);
+}
+
+.report-tools-table__delete-button {
+  box-shadow: none;
+}
+
 .report-tools-table__link {
   color: var(--erp-text);
   font-weight: 700;
@@ -3190,6 +3210,36 @@ body {
 .button:hover {
   background: var(--erp-brand-dark);
   color: #fff;
+}
+
+.btn-danger {
+  background: var(--erp-danger-text);
+  border-color: var(--erp-danger-text);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #820014;
+  border-color: #820014;
+  color: #fff;
+}
+
+.btn-danger.link-button {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  color: var(--erp-danger-text);
+  box-shadow: none;
+}
+
+.btn-danger.link-button:hover {
+  background: transparent;
+  border-color: transparent;
+  color: #820014;
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .btn-outline,

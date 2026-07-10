@@ -90,6 +90,41 @@ class ReportsToolConfigurationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "WB Config #{@token}", configuration.name
   end
 
+  test "owner can destroy a configuration and returns to tools list" do
+    configuration = Ec::ToolConfiguration.create!(
+      tool_definition: @definition,
+      name: "WB Config #{@token}",
+      config_json: { "exchange" => "12" },
+      created_by: @current_user
+    )
+
+    assert_difference "Ec::ToolConfiguration.count", -1 do
+      delete "/reports/tool_configurations/#{configuration.id}",
+        params: {
+          return_to: "/reports/tools?q=WB+Config+#{@token}&tool_type=#{@definition.tool_type}"
+        }
+    end
+
+    assert_redirected_to "/reports/tools?q=WB+Config+#{@token}&tool_type=#{@definition.tool_type}"
+    assert_nil Ec::ToolConfiguration.find_by(id: configuration.id)
+  end
+
+  test "non owner cannot destroy a configuration" do
+    configuration = Ec::ToolConfiguration.create!(
+      tool_definition: @definition,
+      name: "WB Config #{@token}",
+      config_json: { "exchange" => "12" },
+      created_by: @other_user
+    )
+
+    assert_no_difference "Ec::ToolConfiguration.count" do
+      delete "/reports/tool_configurations/#{configuration.id}"
+    end
+
+    assert_response :forbidden
+    assert Ec::ToolConfiguration.exists?(configuration.id)
+  end
+
   test "show exposes overwrite and save as actions based on ownership" do
     own_configuration = Ec::ToolConfiguration.create!(
       tool_definition: @definition,

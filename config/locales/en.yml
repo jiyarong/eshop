@@ -486,6 +486,8 @@ en:
     tools:
       actions:
         add_configuration: "Add configuration"
+        delete: "Delete"
+        delete_confirm: "Delete this configuration?"
         open_tool: "Open tool"
         overwrite: "Overwrite"
         save_configuration: "Save configuration"
@@ -504,6 +506,7 @@ en:
         tool_type: "Tool type"
         version: "Version"
       fields:
+        actions: "Actions"
         creator: "Creator"
         name: "Name"
         tool_type: "Tool type"

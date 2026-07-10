@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   get "reports/tool_configurations/:id/edit" => "reports/tool_configurations#edit", as: :edit_report_tool_configuration
   post "reports/tool_configurations" => "reports/tool_configurations#create", as: :report_tool_configurations
   patch "reports/tool_configurations/:id" => "reports/tool_configurations#update"
+  delete "reports/tool_configurations/:id" => "reports/tool_configurations#destroy"
   get "reports/skus"      => "reports#skus"
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments

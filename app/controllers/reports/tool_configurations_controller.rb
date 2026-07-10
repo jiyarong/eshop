@@ -3,7 +3,7 @@ module Reports
     helper_method :current_locale_params
 
     before_action -> { require_permission!(:view_reports) }
-    before_action :load_tool_configuration, only: [:show, :edit, :update]
+    before_action :load_tool_configuration, only: [:show, :edit, :update, :destroy]
 
     def show
       render "reports/tools/show"
@@ -34,6 +34,13 @@ module Reports
       end
     end
 
+    def destroy
+      return render plain: "Forbidden", status: :forbidden unless owner?(@tool_configuration)
+
+      @tool_configuration.destroy!
+      redirect_to safe_return_to_path, status: :see_other
+    end
+
     private
 
     def load_tool_configuration
@@ -54,6 +61,13 @@ module Reports
 
     def current_locale_params
       params[:locale].present? ? { locale: params[:locale] } : {}
+    end
+
+    def safe_return_to_path
+      return_to = params[:return_to].to_s
+      return return_to if return_to.start_with?(reports_tools_path)
+
+      reports_tools_path(current_locale_params)
     end
   end
 end

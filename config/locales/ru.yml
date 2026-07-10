@@ -457,6 +457,8 @@ ru:
     tools:
       actions:
         add_configuration: "Добавить конфигурацию"
+        delete: "Удалить"
+        delete_confirm: "Удалить эту конфигурацию?"
         open_tool: "Открыть инструмент"
         overwrite: "Сохранить поверх"
         save_configuration: "Сохранить конфигурацию"
@@ -475,6 +477,7 @@ ru:
         tool_type: "Тип инструмента"
         version: "Версия"
       fields:
+        actions: "Действия"
         creator: "Создал"
         name: "Название"
         tool_type: "Тип инструмента"

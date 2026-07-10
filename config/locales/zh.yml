@@ -467,6 +467,8 @@ zh:
     tools:
       actions:
         add_configuration: "新增配置"
+        delete: "删除"
+        delete_confirm: "确认删除这个配置吗？"
         open_tool: "打开工具"
         overwrite: "覆盖保存"
         save_configuration: "保存配置"
@@ -485,12 +487,13 @@ zh:
         tool_type: "工具类型"
         version: "版本"
       fields:
+        actions: "操作"
         creator: "创建人"
         name: "名称"
         tool_type: "工具类型"
         version: "版本"
       history:
-        title: "配置历史"
+        title: "测算历史"
       index:
         subtitle: "共享测算配置库"
         title: "测算工具"

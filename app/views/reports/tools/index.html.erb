@@ -55,6 +55,7 @@
             <th><%= t("reports.tools.fields.tool_type") %></th>
             <th><%= t("reports.tools.fields.version") %></th>
             <th><%= t("reports.tools.fields.creator") %></th>
+            <th><%= t("reports.tools.fields.actions") %></th>
           </tr>
         </thead>
         <tbody>
@@ -70,11 +71,23 @@
                 <td class="report-tools-table__type"><%= configuration.tool_definition.tool_type %></td>
                 <td class="numeric report-tools-table__version"><%= configuration.tool_definition.version %></td>
                 <td class="report-tools-table__creator"><%= configuration.created_by.email %></td>
+                <td class="report-tools-table__actions">
+                  <% if configuration.created_by_id == current_user.id %>
+                    <%= button_to t("reports.tools.actions.delete"),
+                                  report_tool_configuration_path(configuration),
+                                  method: :delete,
+                                  params: { return_to: request.fullpath },
+                                  form: { data: { turbo_confirm: t("reports.tools.actions.delete_confirm") } },
+                                  class: "btn btn-danger link-button btn-sm report-tools-table__delete-button" %>
+                  <% else %>
+                    <span class="report-tools-table__actions-placeholder">-</span>
+                  <% end %>
+                </td>
               </tr>
             <% end %>
           <% else %>
             <tr>
-              <td colspan="4" class="empty-state"><%= t("reports.tools.empty") %></td>
+              <td colspan="5" class="empty-state"><%= t("reports.tools.empty") %></td>
             </tr>
           <% end %>
         </tbody>

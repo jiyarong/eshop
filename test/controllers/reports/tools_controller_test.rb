@@ -48,8 +48,9 @@ class ReportsToolsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".resource-header.report-tools-index__header .resource-actions a[href='/reports/tools/new'][data-turbo-frame='erp_modal']", text: "打开工具"
     assert_select ".report-tools-index__filters.panel"
     assert_select ".report-tools-index__history.panel"
-    assert_select "h2.section-title", "配置历史"
+    assert_select "h2.section-title", "测算历史"
     assert_select "td", "WB Config #{@token}"
+    assert_select "th", "操作"
     assert_select "turbo-frame#erp_modal"
     assert_select "turbo-frame#tool_drawer"
     assert_select "form[action='/reports/tools'][method='get']"
@@ -61,6 +62,7 @@ class ReportsToolsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='creator']"
     assert_select ".table-scroll"
     assert_select "table.inventory-list-table.report-tools-table"
+    assert_select "form.button_to[action='#{report_tool_configuration_path(Ec::ToolConfiguration.find_by!(name: "WB Config #{@token}"))}'] button", text: "删除", count: 0
     assert_select ".store-management", count: 0
     assert_select ".prod-tbl", count: 0
     assert_select "a[href='#{report_tool_configuration_path(Ec::ToolConfiguration.find_by!(name: "WB Config #{@token}"))}'][data-turbo-frame='tool_drawer']"
@@ -113,6 +115,43 @@ class ReportsToolsControllerTest < ActionDispatch::IntegrationTest
     assert_select "select[name='tool_type'] option[selected][value='roi_calculator_#{@token}']"
     assert_select "input[name='version'][value='2']"
     assert_select "input[name='creator'][value='#{@current_user.email}']"
+  end
+
+  test "index shows delete action only for current user's configurations" do
+    own_definition = Ec::ToolDefinition.create!(
+      tool_type: "wb_pallet_optimizer_own_#{@token}",
+      version: 1,
+      name: "WB Own #{@token}",
+      slug: "wb-own-#{@token.downcase}",
+      renderer_key: "wb_pallet_optimizer_v1",
+      created_by: @current_user
+    )
+    other_definition = Ec::ToolDefinition.create!(
+      tool_type: "wb_pallet_optimizer_other_#{@token}",
+      version: 1,
+      name: "WB Other #{@token}",
+      slug: "wb-other-#{@token.downcase}",
+      renderer_key: "wb_pallet_optimizer_v1",
+      created_by: @definition_creator
+    )
+    own_configuration = Ec::ToolConfiguration.create!(
+      tool_definition: own_definition,
+      name: "Own Config #{@token}",
+      config_json: { "exchange" => "12" },
+      created_by: @current_user
+    )
+    other_configuration = Ec::ToolConfiguration.create!(
+      tool_definition: other_definition,
+      name: "Other Config #{@token}",
+      config_json: { "exchange" => "13" },
+      created_by: @definition_creator
+    )
+
+    get "/reports/tools", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "form.button_to[action='#{report_tool_configuration_path(own_configuration)}'] button.btn-danger.link-button", text: "删除"
+    assert_select "form.button_to[action='#{report_tool_configuration_path(other_configuration)}']", count: 0
   end
 
   test "index preloads drawer from shared configuration url" do
