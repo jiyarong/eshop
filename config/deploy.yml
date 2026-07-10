@@ -43,6 +43,8 @@ env:
     - OPENAI_HOST
     - OPENAI_API_KEY
     - OPENAI_MODEL
+    - QINIU_ACCESS_KEY
+    - QINIU_SECRET_KEY
   clear:
     KAMAL_CONTAINER: true
     DB_HOST: eshop_manage-postgres

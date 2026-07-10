@@ -13,6 +13,8 @@ module Ec
     has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
     has_many :predicted_costs,   class_name: 'Ec::SkuPredictedCost',    foreign_key: :sku_code, primary_key: :sku_code
     has_many :inventory_levels,  class_name: 'Ec::SkuInventoryLevel',   foreign_key: :sku_code, primary_key: :sku_code
+    has_many :attachment_links,  class_name: "Ec::AttachmentLink",      as: :attachable, dependent: :destroy
+    has_many :attachments,       through: :attachment_links,            source: :ec_attachment
 
     validates :sku_code, presence: true, uniqueness: true
     before_validation { self.sku_code = sku_code&.upcase }

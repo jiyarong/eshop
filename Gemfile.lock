@@ -68,6 +68,10 @@ GEM
       activerecord (= 8.1.3)
       activesupport (= 8.1.3)
       marcel (~> 1.0)
+    activestorage_qiniu (0.2.2)
+      qiniu (~> 6.9)
+      rails (>= 5.1.6.2)
+      retries (~> 0.0.5)
     activesupport (8.1.3)
       base64
       bigdecimal
@@ -118,6 +122,7 @@ GEM
       railties (>= 7.0)
       responders
       warden (~> 1.2.3)
+    domain_name (0.6.20240107)
     dotenv (3.2.0)
     drb (2.2.3)
     ed25519 (1.4.0)
@@ -174,6 +179,9 @@ GEM
       os (>= 0.9, < 2.0)
       signet (>= 0.16, < 2.a)
     htmlentities (4.4.2)
+    http-accept (1.7.0)
+    http-cookie (1.1.6)
+      domain_name (~> 0.5)
     i18n (1.14.8)
       concurrent-ruby (~> 1.0)
     importmap-rails (2.2.3)
@@ -230,6 +238,10 @@ GEM
       net-pop
       net-smtp
     marcel (1.2.1)
+    mime-types (3.7.0)
+      logger
+      mime-types-data (~> 3.2025, >= 3.2025.0507)
+    mime-types-data (3.2026.0701)
     mini_mime (1.1.5)
     minitest (6.0.5)
       drb (~> 2.0)
@@ -262,6 +274,7 @@ GEM
     net-smtp (0.5.1)
       net-protocol
     net-ssh (7.3.2)
+    netrc (0.11.0)
     nio4r (2.7.5)
     nokogiri (1.19.3-aarch64-linux-gnu)
       racc (~> 1.4)
@@ -311,6 +324,10 @@ GEM
     public_suffix (7.0.5)
     puma (8.0.1)
       nio4r (~> 2.0)
+    qiniu (6.9.1)
+      mime-types (~> 3.1)
+      rest-client (~> 2.0)
+      rexml (~> 3.2)
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.6)
@@ -377,7 +394,14 @@ GEM
     responders (3.2.0)
       actionpack (>= 7.0)
       railties (>= 7.0)
+    rest-client (2.1.0)
+      http-accept (>= 1.7.0, < 2.0)
+      http-cookie (>= 1.0.2, < 2.0)
+      mime-types (>= 1.16, < 4.0)
+      netrc (~> 0.8)
     retriable (3.4.1)
+    retries (0.0.5)
+    rexml (3.4.4)
     rubocop (1.86.1)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -496,6 +520,7 @@ PLATFORMS
 
 DEPENDENCIES
   activeagent (~> 1.0.2)
+  activestorage_qiniu
   annotate
   bootsnap
   brakeman

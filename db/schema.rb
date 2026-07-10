@@ -10,9 +10,37 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_09_033142) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_09_080550) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
 
   create_table "agents", force: :cascade do |t|
     t.string "code", null: false
@@ -44,6 +72,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_033142) do
     t.index ["module_name", "business_object_type", "business_object_id"], name: "idx_conversations_on_erp_context"
     t.index ["user_id", "created_at"], name: "index_conversations_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_conversations_on_user_id"
+  end
+
+  create_table "ec_attachment_links", force: :cascade do |t|
+    t.bigint "attachable_id", null: false
+    t.string "attachable_type", null: false
+    t.datetime "created_at", null: false
+    t.bigint "ec_attachment_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["attachable_type", "attachable_id", "ec_attachment_id"], name: "idx_ec_attachment_links_unique_attachable", unique: true
+    t.index ["attachable_type", "attachable_id"], name: "index_ec_attachment_links_on_attachable"
+    t.index ["ec_attachment_id"], name: "index_ec_attachment_links_on_ec_attachment_id"
+  end
+
+  create_table "ec_attachments", force: :cascade do |t|
+    t.integer "attach_type", null: false
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "oss_path", null: false
+    t.string "qiniu_hash", null: false
+    t.datetime "updated_at", null: false
+    t.index ["attach_type"], name: "index_ec_attachments_on_attach_type"
+    t.index ["oss_path"], name: "index_ec_attachments_on_oss_path", unique: true
+    t.index ["qiniu_hash"], name: "index_ec_attachments_on_qiniu_hash"
   end
 
   create_table "ec_categories", force: :cascade do |t|
@@ -1947,8 +1998,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_09_033142) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "conversations", "agents"
   add_foreign_key "conversations", "users"
+  add_foreign_key "ec_attachment_links", "ec_attachments"
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
