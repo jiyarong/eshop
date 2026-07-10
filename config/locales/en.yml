@@ -111,6 +111,7 @@ en:
       administration: "Administration"
     weekly_profit_reports: "Weekly Profit"
     inventory: "Inventory"
+    tools: "Tools"
     orders: "Orders"
     skus: "SKU"
     sku_sales: "SKU Sales"
@@ -146,6 +147,7 @@ en:
       back: "Back"
       cancel: "Cancel"
       close: "Close"
+      open: "Open"
       save: "Save"
     "no": "No"
     platforms:
@@ -481,6 +483,47 @@ en:
         amount: "Amount"
         name: "Name"
   reports:
+    tools:
+      actions:
+        add_configuration: "Add configuration"
+        open_tool: "Open tool"
+        overwrite: "Overwrite"
+        save_configuration: "Save configuration"
+        save_as: "Save as"
+      empty: "No configurations match the current filters."
+      drawer:
+        eyebrow: "Tool"
+      filters:
+        all_tool_types: "All tool types"
+        creator: "Creator"
+        creator_placeholder: "Enter creator email"
+        q: "Keyword"
+        q_placeholder: "Name / Tool type / Creator"
+        reset: "Reset"
+        submit: "Search"
+        tool_type: "Tool type"
+        version: "Version"
+      fields:
+        creator: "Creator"
+        name: "Name"
+        tool_type: "Tool type"
+        version: "Version"
+      history:
+        title: "Configuration History"
+      index:
+        subtitle: "Shared scenario configuration library"
+        title: "Tools"
+      new:
+        subtitle: "Choose a tool and open the latest version for that type"
+        title: "Open tool"
+        tool_label: "Tool"
+      save_name:
+        label: "Configuration name"
+        title: "Save configuration"
+      renderers:
+        wb_pallet_optimizer:
+          saved_configs: "Saved configurations"
+          title: "WB Pallet Optimizer"
     inventory:
       actions:
         back_to_inventory: "Back to inventory"

@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB平台送仓计算器</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2C3E50; --secondary: #34495E; --accent: #2980B9;
+            --success: #27AE60; --warning: #F39C12; --danger: #C0392B;
+            --bg: #F0F3F4; --card-bg: #FFFFFF; --border: #D5DBDB;
+            --text-main: #2C3E50; --text-light: #7F8C8D;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text-main); font-size: 13px; line-height: 1.5; overflow-y: scroll; overflow-x: hidden;}
+        
+        .header { background: var(--primary); color: white; padding: 10px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;}
+        .header h1 { font-size: 1.2rem; margin: 0; font-weight: 500; letter-spacing: 0.5px;}
+        .global-settings { display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 20px;}
+        .global-settings input { width: 60px; padding: 3px 5px; border-radius: 4px; border: none; text-align: center; font-weight: bold; background: #fff;}
+        .lang-switch { display: flex; gap: 10px; font-weight: 600; font-size: 0.9rem;}
+        .lang-btn { cursor: pointer; transition: opacity 0.2s; user-select: none; opacity: 0.5;}
+        .lang-btn.active { opacity: 1; border-bottom: 2px solid white; padding-bottom: 2px;}
+
+        .container { display: flex; flex-wrap: nowrap; gap: 15px; padding: 15px; max-width: 1920px; margin: 0 auto; align-items: flex-start; }
+        
+        .history-panel { flex: 0 0 240px; background: #FAFCFC; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: sticky; top: 65px; height: calc(100vh - 85px); display: flex; flex-direction: column; overflow: hidden; transition: flex 0.3s ease; }
+        .history-panel.collapsed { flex: 0 0 44px; cursor: pointer; }
+        .history-panel.collapsed .history-list { display: none; }
+        .history-panel.collapsed .history-header-title { display: none; }
+        .history-header { padding: 12px 15px; background: var(--secondary); color: white; font-weight: 600; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;}
+        .history-toggle { padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.2); transition: transform 0.3s, background 0.2s; font-size: 0.8rem; }
+        .history-header:hover .history-toggle { background: rgba(255,255,255,0.4); }
+        .history-panel.collapsed .history-toggle { margin: 0 auto; transform: rotate(180deg); }
+        
+        .history-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-thumb { background: #BDC3C7; border-radius: 2px; }
+        
+        .sku-group { margin-bottom: 10px; border: 1px solid #EAEDED; border-radius: 6px; background: var(--card-bg); overflow: hidden; }
+        .sku-group-title { padding: 8px 10px; background: #EBEDEF; font-weight: 600; font-size: 0.85rem; color: var(--primary); border-bottom: 1px solid #EAEDED; display: flex; justify-content: space-between; align-items: center;}
+        .sku-group-title .badge { background: var(--primary); color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.7rem; }
+        .sku-record { padding: 8px 10px; border-bottom: 1px solid #F2F3F4; cursor: pointer; transition: background 0.2s; position: relative;}
+        .sku-record:hover { background: #F8F9F9; }
+        .sku-record.active { background: #EAF2F8; border-left: 3px solid var(--accent); }
+        .sku-record-title { font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 2px; padding-right: 20px;}
+        .sku-record-time { font-size: 0.7rem; color: var(--text-light); }
+        .sku-record-delete { position: absolute; right: 10px; top: 10px; color: #D5DBDB; cursor: pointer; font-size: 1rem; }
+        .sku-record-delete:hover { color: var(--danger); }
+
+        .sidebar { flex: 0 0 340px; background: var(--card-bg); border-radius: 8px; padding: 15px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: sticky; top: 65px; height: calc(100vh - 85px); overflow-y: auto; }
+        .sidebar::-webkit-scrollbar { width: 5px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #BDC3C7; border-radius: 3px; }
+        
+        .save-module { background: #F4F6F7; padding: 12px; border-radius: 6px; border: 1px dashed var(--accent); margin-bottom: 15px; }
+        .save-module input[type="text"] { width: 100%; padding: 6px; border: 1px solid #BDC3C7; border-radius: 4px; font-size: 0.85rem; margin-bottom: 6px; }
+        .btn-group { display: flex; gap: 6px; margin-top: 5px;}
+        .btn { flex: 1; padding: 6px 0; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; color: white;}
+        .btn:hover { opacity: 0.9; }
+        .btn-save { background: var(--accent); }
+        .btn-savenew { background: var(--success); }
+        .btn-export { background: #8E44AD; }
+        .btn-import { background: #E67E22; }
+
+        .section-title { font-size: 0.9rem; font-weight: 600; color: var(--secondary); border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-bottom: 12px; margin-top: 18px; display: flex; justify-content: space-between; align-items: center;}
+        .sidebar .section-title:first-child { margin-top: 0; }
+        
+        .input-group { margin-bottom: 8px; }
+        .input-group label { display: block; font-size: 0.75rem; color: var(--text-light); margin-bottom: 3px; font-weight: 600;}
+        .input-row { display: flex; align-items: center; gap: 6px; }
+        .input-group input[type="number"], .wh-name-input { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; background-color: #FAFAFA; transition: border 0.2s, background-color 0.2s;}
+        .input-group input:focus, .wh-name-input:focus { border-color: var(--accent); background-color: #FFF; outline: none; }
+        .input-unit { font-size: 0.7rem; color: var(--text-light); width: 35px;}
+        .wh-name-input { width: 110px; padding: 2px 6px; font-weight: normal; color: var(--primary);}
+        
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 5px;}
+        .grid-3 input { text-align: center; }
+
+        .sub-group { margin-left: 4px; border-left: 3px solid #ECF0F1; padding-left: 10px; margin-bottom: 10px; background: #fdfefe; padding-top: 5px; padding-bottom: 5px; border-radius: 0 4px 4px 0;}
+        .group-header { font-size: 0.75rem; font-weight: bold; color: var(--primary); margin-bottom: 6px; background: #ECF0F1; padding: 3px 8px; border-radius: 4px; display: inline-block;}
+        
+        .sku-block { background: #FFFFFF; border: 1px solid #D5DBDB; border-radius: 6px; padding: 10px; margin-bottom: 12px; position: relative;}
+        .sku-block-header { font-weight: 600; color: var(--primary); margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #EAEDED; display: flex; justify-content: space-between; align-items: center;}
+        .sku-block-index { background: var(--accent); color: white; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.7rem; margin-right: 5px;}
+        .btn-remove-sku { background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; opacity: 0.7;}
+        .btn-remove-sku:hover { opacity: 1; text-decoration: underline; }
+        .calc-badge { display: block; font-size: 0.7rem; background: #E8F8F5; color: #117A65; padding: 4px 8px; border-radius: 4px; margin-top: 4px; border: 1px solid #A3E4D7; line-height: 1.4;}
+        .btn-add-sku { width: 100%; background: #F4F6F7; border: 1px dashed #BDC3C7; padding: 8px; border-radius: 6px; color: var(--primary); font-weight: 600; cursor: pointer; transition: all 0.2s;}
+        .btn-add-sku:hover { background: #EBEDEF; border-color: var(--primary);}
+
+        .main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 15px; }
+        
+        .kpi-card { background: var(--card-bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); border-top: 4px solid var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .btn-fill { background: #27AE60; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-left: 5px; vertical-align: middle; transition: opacity 0.2s; box-shadow: 0 2px 4px rgba(39,174,96,0.3);}
+        .btn-fill:hover { opacity: 0.85; }
+        
+        .details-table-wrapper { overflow-x: auto; margin-top: 15px; border-radius: 6px; border: 1px solid #EAEDED; }
+        table.ab-compare-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: white;}
+        table.ab-compare-table th { background-color: #F8F9F9; color: var(--secondary); font-weight: bold; text-align: center; padding: 10px 8px; border-bottom: 2px solid #D5DBDB; border-right: 1px solid #EAEDED;}
+        table.ab-compare-table th:first-child { text-align: left; padding-left: 15px; border-right: 2px solid #EAEDED;}
+        table.ab-compare-table td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #EAEDED; color: var(--text-main); vertical-align: middle; border-right: 1px solid #EAEDED; line-height: 1.5;}
+        table.ab-compare-table td:first-child { text-align: left; color: #34495E; font-weight: 600; padding-left: 15px; border-right: 2px solid #EAEDED;}
+
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px; }
+        .chart-card { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 6px rgba(0,0,0,0.02); display: flex; flex-direction: column;}
+        .chart-card h3 { font-size: 0.95rem; margin-bottom: 4px; color: var(--primary); display: flex; align-items: center; gap: 6px; border-bottom: 2px solid #E5E7E9; padding-bottom: 6px;}
+        .chart-desc { font-size: 0.75rem; color: var(--text-light); margin-bottom: 10px; margin-top: 6px;}
+        .chart-container { position: relative; width: 100%; flex: 1; min-height: 220px;}
+        .chart-container.large { min-height: 350px; }
+
+        .ab-opt-module { background: #FFFFFF; border: 2px solid #8E44AD; border-radius: 8px; overflow: hidden; margin-top: 5px; box-shadow: 0 4px 15px rgba(142, 68, 173, 0.15);}
+        .ab-opt-header { background: linear-gradient(to right, #F5EEF8, #FDEDEC); padding: 15px 20px; border-bottom: 1px solid #D2B4DE; display: flex; justify-content: space-between; align-items: center;}
+        .ab-opt-header h3 { color: #8E44AD; font-size: 1.1rem; margin: 0; font-weight: bold; display: flex; align-items: center; gap: 8px;}
+        .ab-opt-content { padding: 20px; background: #fdfefe; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px);}
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 600px; max-width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-height: 90vh; display: flex; flex-direction: column;}
+        .modal-content.large-modal { width: 920px; }
+        .modal-content h3 { margin-top: 0; color: var(--primary); margin-bottom: 15px; font-size: 1.15rem; display:flex; justify-content:space-between; align-items:center;}
+        .modal-content textarea { width: 100%; height: 250px; padding: 10px; border: 1px solid #BDC3C7; border-radius: 4px; font-family: monospace; font-size: 0.85rem; margin-bottom: 15px; resize: none; background: #F8F9F9;}
+        .modal-content textarea:focus { border-color: var(--accent); outline: none; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 data-i18n="title_main">WB平台送仓计算器</h1>
+        <div class="global-settings">
+            <div>
+                <label style="font-size: 0.8rem;" data-i18n="global_rate">全局汇率 (RUB/RMB):</label>
+                <input type="number" id="exchange" value="12" data-save="true" min="0" step="1">
+            </div>
+            <div class="lang-switch">
+                <span class="lang-btn active" id="lang_zh" onclick="setLang('zh')">🇨🇳 中文</span>
+                <span class="lang-btn" id="lang_ru" onclick="setLang('ru')">🇷🇺 Русский</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <div class="history-panel" id="history_panel">
+            <div class="history-header" onclick="document.getElementById('history_panel').classList.toggle('collapsed')">
+                <span class="history-header-title" data-i18n="history_title">📂 档案库</span>
+                <span class="history-toggle">◀</span>
+            </div>
+            <div class="history-list" id="history_list"></div>
+        </div>
+
+        <div class="sidebar" id="input_form">
+            <div class="save-module">
+                <input type="text" id="sku_name" data-i18n-ph="placeholder_sku" placeholder="档案名 (例: 混装托盘A)">
+                <input type="text" id="sku_remark" data-i18n-ph="placeholder_remark" placeholder="备注 (例: 走梁赞)">
+                <div class="btn-group">
+                    <button class="btn btn-save" onclick="saveRecord(false)" data-i18n="btn_save">💾 覆盖</button>
+                    <button class="btn btn-savenew" onclick="saveRecord(true)" data-i18n="btn_new">➕ 新档</button>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-export" onclick="openExportModal()" data-i18n="btn_export">📦 导出本组</button>
+                    <button class="btn btn-import" onclick="openImportModal()" data-i18n="btn_import">📥 导入</button>
+                </div>
+            </div>
+
+            <div class="section-title" data-i18n="sec_sku">📦 拼托发运档案 (最多3款)</div>
+            
+            <div id="skus_wrapper">
+                <!-- SKU 0 (主A) -->
+                <div class="sku-block" id="sku_block_0" style="display: block;">
+                    <div class="sku-block-header">
+                        <div>
+                            <span class="sku-block-index">1</span> <b data-i18n="lbl_sku_title">SKU A</b>
+                            <input type="text" id="sku_custom_name_0" data-i18n-ph="placeholder_cname" placeholder="自定名称(选填)" class="wh-name-input" data-save="true" style="margin-left: 8px;">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label data-i18n="sku_profit">单件初始净利(¥)</label>
+                        <input type="number" id="sku_profit_0" value="80" data-save="true" style="font-weight:bold; color:var(--accent);">
+                    </div>
+                    <div class="input-group">
+                        <label data-i18n="sku_dims">单品尺寸(cm)</label>
+                        <div class="grid-3">
+                            <input type="number" id="sku_l_0" value="40" min="0" step="0.1" data-save="true"><input type="number" id="sku_w_0" value="30" min="0" step="0.1" data-save="true"><input type="number" id="sku_h_0" value="15" min="0" step="0.1" data-save="true">
+                        </div>
+                        <div class="calc-badge">
+                            <span data-i18n="calc_exact_vol">单件精确体积:</span> <span id="calc_item_exact_0">--</span> L <br> <span data-i18n="calc_wb_vol">WB计费体积:</span> <strong id="calc_item_ceil_0">--</strong> L
+                        </div>
+                    </div>
+                    <div class="input-group" style="background:#fcfdfd; border:1px solid #EAEDED; padding:6px; border-radius:4px;">
+                        <label data-i18n="box_dims">外箱尺寸(cm) & 每箱装量</label>
+                        <div class="grid-3" style="margin-bottom:4px;">
+                            <input type="number" id="box_l_0" value="85" min="0" step="1" data-save="true"><input type="number" id="box_w_0" value="52" min="0" step="1" data-save="true"><input type="number" id="box_h_0" value="20" min="0" step="1" data-save="true">
+                        </div>
+                        <div class="input-row"><input type="number" id="box_qty_0" value="5" min="0" step="1" data-save="true"> <span class="input-unit" data-i18n="unit_box_qty">件/箱</span></div>
+                        <div id="sku_warning_0"></div>
+                    </div>
+                    <div class="input-row" style="margin-top:8px;">
+                        <div class="input-group" style="width:50%;">
+                            <label data-i18n="qty_carton" style="color:var(--danger);">备货(外箱)</label>
+                            <div class="input-row"><input type="number" id="sku_cartons_0" value="8" min="0" step="1" data-save="true" style="border-color:var(--danger); font-weight:bold;"> <span class="input-unit" data-i18n="lbl_carton">箱</span></div>
+                        </div>
+                        <div class="input-group" style="width:50%;">
+                            <label data-i18n="qty_plan" style="color:var(--danger);">备货(总件数)</label>
+                            <div class="input-row"><input type="number" id="sku_qty_0" value="40" min="0" step="1" data-save="true" style="border-color:var(--danger);"> <span class="input-unit" data-i18n="lbl_piece">件</span></div>
+                        </div>
+                    </div>
+                    <div class="input-group" style="margin-top:4px;">
+                        <label data-i18n="daily_sales">预计日均销量</label>
+                        <div class="input-row"><input type="number" id="sku_daily_0" value="1" min="0" step="0.1" data-save="true"> <span class="input-unit" data-i18n="unit_daily">件/天</span></div>
+                    </div>
+                </div>
+
+                <!-- SKU 1 (主B) -->
+                <div class="sku-block" id="sku_block_1" style="display: none;">
+                    <div class="sku-block-header">
+                        <div>
+                            <span class="sku-block-index" style="background:#9B59B6;">2</span> <b data-i18n="lbl_sku_title2">SKU B</b>
+                            <input type="text" id="sku_custom_name_1" data-i18n-ph="placeholder_cname" placeholder="自定名称(选填)" class="wh-name-input" data-save="true" style="margin-left: 8px;">
+                        </div>
+                        <button class="btn-remove-sku" onclick="removeSku(1)" data-i18n="btn_del">移除</button>
+                    </div>
+                    <div class="input-group"><label data-i18n="sku_profit">单件初始净利(¥)</label><input type="number" id="sku_profit_1" value="50" data-save="true" style="font-weight:bold;"></div>
+                    <div class="input-group">
+                        <label data-i18n="sku_dims">单品尺寸(cm)</label>
+                        <div class="grid-3"><input type="number" id="sku_l_1" value="20" min="0" step="0.1" data-save="true"><input type="number" id="sku_w_1" value="20" min="0" step="0.1" data-save="true"><input type="number" id="sku_h_1" value="10" min="0" step="0.1" data-save="true"></div>
+                        <div class="calc-badge">
+                            <span data-i18n="calc_exact_vol">单件精确体积:</span> <span id="calc_item_exact_1">--</span> L <br> <span data-i18n="calc_wb_vol">WB计费体积:</span> <strong id="calc_item_ceil_1">--</strong> L
+                        </div>
+                    </div>
+                    <div class="input-group" style="background:#fcfdfd; border:1px solid #EAEDED; padding:6px; border-radius:4px;">
+                        <label data-i18n="box_dims">外箱尺寸(cm) & 每箱装量</label>
+                        <div class="grid-3" style="margin-bottom:4px;"><input type="number" id="box_l_1" value="40" min="0" step="1" data-save="true"><input type="number" id="box_w_1" value="40" min="0" step="1" data-save="true"><input type="number" id="box_h_1" value="30" min="0" step="1" data-save="true"></div>
+                        <div class="input-row"><input type="number" id="box_qty_1" value="12" min="0" step="1" data-save="true"> <span class="input-unit" data-i18n="unit_box_qty">件/箱</span></div>
+                        <div id="sku_warning_1"></div>
+                    </div>
+                    <div class="input-row" style="margin-top:8px;">
+                        <div class="input-group" style="width:50%;"><label data-i18n="qty_carton" style="color:var(--danger);">备货(外箱)</label><div class="input-row"><input type="number" id="sku_cartons_1" value="12" min="0" step="1" data-save="true" style="border-color:var(--danger); font-weight:bold;"> <span class="input-unit" data-i18n="lbl_carton">箱</span></div></div>
+                        <div class="input-group" style="width:50%;"><label data-i18n="qty_plan" style="color:var(--danger);">备货(总件数)</label><div class="input-row"><input type="number" id="sku_qty_1" value="144" min="0" step="1" data-save="true" style="border-color:var(--danger);"> <span class="input-unit" data-i18n="lbl_piece">件</span></div></div>
+                    </div>
+                    <div class="input-group" style="margin-top:4px;"><label data-i18n="daily_sales">预计日均销量</label><div class="input-row"><input type="number" id="sku_daily_1" value="8" min="0" step="0.1" data-save="true"><span class="input-unit" data-i18n="unit_daily">件/天</span></div></div>
+                </div>
+
+                <!-- SKU 2 (补位C) -->
+                <div class="sku-block" id="sku_block_2" style="display: none; border-color: #27AE60;">
+                    <div class="sku-block-header" style="background:#E9F7EF;">
+                        <div>
+                            <span class="sku-block-index" style="background:#27AE60;">3</span> <b style="color:#27AE60;" data-i18n="lbl_sku_title3">SKU C</b>
+                            <input type="text" id="sku_custom_name_2" data-i18n-ph="placeholder_cname" placeholder="自定名称(选填)" class="wh-name-input" data-save="true" style="margin-left: 8px;">
+                        </div>
+                        <button class="btn-remove-sku" onclick="removeSku(2)" data-i18n="btn_del">移除</button>
+                    </div>
+                    <div style="font-size:0.75rem; color:#7F8C8D; margin-bottom:8px; line-height:1.4;">
+                        <span data-i18n="c_role_hint">提示：此款 SKU 作为补位商品，其体积会从托盘可用空间中被优先划走。</span>
+                    </div>
+                    <div class="input-group"><label data-i18n="sku_profit">单件初始净利(¥)</label><input type="number" id="sku_profit_2" value="30" data-save="true" style="font-weight:bold;"></div>
+                    <div class="input-group">
+                        <label data-i18n="sku_dims">单品尺寸(cm)</label>
+                        <div class="grid-3"><input type="number" id="sku_l_2" value="10" min="0" step="0.1" data-save="true"><input type="number" id="sku_w_2" value="10" min="0" step="0.1" data-save="true"><input type="number" id="sku_h_2" value="5" min="0" step="0.1" data-save="true"></div>
+                        <div class="calc-badge" style="border-color:#A9DFBF; background:#EAFAF1;">
+                            <span data-i18n="calc_exact_vol">单件精确体积:</span> <span id="calc_item_exact_2">--</span> L <br> <span data-i18n="calc_wb_vol">WB计费体积:</span> <strong id="calc_item_ceil_2">--</strong> L
+                        </div>
+                    </div>
+                    <div class="input-group" style="background:#fcfdfd; border:1px solid #EAEDED; padding:6px; border-radius:4px;">
+                        <label data-i18n="box_dims">外箱尺寸(cm) & 每箱装量</label>
+                        <div class="grid-3" style="margin-bottom:4px;"><input type="number" id="box_l_2" value="30" min="0" step="1" data-save="true"><input type="number" id="box_w_2" value="20" min="0" step="1" data-save="true"><input type="number" id="box_h_2" value="20" min="0" step="1" data-save="true"></div>
+                        <div class="input-row"><input type="number" id="box_qty_2" value="24" min="0" step="1" data-save="true"> <span class="input-unit" data-i18n="unit_box_qty">件/箱</span></div>
+                        <div id="sku_warning_2"></div>
+                    </div>
+                    <div class="input-row" style="margin-top:8px;">
+                        <div class="input-group" style="width:50%;"><label data-i18n="qty_carton_c" style="color:#27AE60; font-weight:bold;">补位发货(外箱)</label><div class="input-row"><input type="number" id="sku_cartons_2" value="0" min="0" step="1" data-save="true" style="border-color:#27AE60; font-weight:bold;"> <span class="input-unit" data-i18n="lbl_carton">箱</span></div></div>
+                        <div class="input-group" style="width:50%;"><label data-i18n="qty_plan_c" style="color:#27AE60; font-weight:bold;">补位发货(总件数)</label><div class="input-row"><input type="number" id="sku_qty_2" value="0" min="0" step="1" data-save="true" style="border-color:#27AE60;"> <span class="input-unit" data-i18n="lbl_piece">件</span></div></div>
+                    </div>
+                    <div class="input-group" style="margin-top:4px;"><label data-i18n="daily_sales">预计日均销量</label><div class="input-row"><input type="number" id="sku_daily_2" value="20" min="0" step="0.1" data-save="true"><span class="input-unit" data-i18n="unit_daily">件/天</span></div></div>
+                </div>
+            </div>
+            
+            <button class="btn-add-sku" id="btn_add_sku" onclick="addSku()" data-i18n="btn_add_sku">+ 增加补位商品</button>
+            <input type="hidden" id="active_skus" value="0" data-save="true">
+
+            <div class="section-title" data-i18n="sec_trans">🚚 运输干线基础资费</div>
+            <div class="input-group" style="background:#fcfdfd; border:1px solid #EAEDED; padding:8px; border-radius:4px;">
+                <label data-i18n="pallet_limit">托盘限高 (米) (含底座14.5cm)</label>
+                <div class="input-row"><input type="number" id="pallet_height" value="1.8" min="0" step="0.1" data-save="true"> <span class="input-unit">m</span></div>
+                <div class="calc-badge" style="margin-top: 4px;">
+                    <span data-i18n="pallet_usable">物理总容积:</span> <span id="calc_pallet_vol" class="hl">1588.8</span> L <br>
+                    <span style="font-size: 0.65rem; color: #95A5A6;" data-i18n="pallet_base_desc">(底板 120×80 cm，扣除底架后)</span>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span data-i18n="sec_transfer">🏢 第一段：发往中转仓</span>
+                <input type="text" id="transfer_wh_name" class="wh-name-input" value="莫斯科中转" data-i18n-ph="transfer_wh_ph" placeholder="中转仓名" data-save="true" style="width: 120px;">
+            </div>
+            <div class="sub-group" style="margin-bottom: 5px;">
+                <div class="input-group"><label data-i18n="s1_pallet">单托盘一口价(¥)</label><input type="number" id="s1_pallet_price" value="480" min="0" step="1" data-save="true"></div>
+                <div class="input-group"><label data-i18n="s1_carton">单外箱一口价(¥)</label><input type="number" id="s1_carton_price" value="50" min="0" step="1" data-save="true"></div>
+            </div>
+
+            <div class="section-title" style="border-bottom-color: var(--success); margin-top: 25px;">
+                <span style="color: var(--success);" data-i18n="sec_dest_wh">🎯 第二段：发往目的仓</span>
+                <input type="text" id="dest_wh_name" class="wh-name-input" value="电钢仓" data-i18n-ph="dest_wh_ph" placeholder="目的仓名" data-save="true" style="width: 120px;">
+            </div>
+            <div class="input-row">
+                <div class="input-group" style="width: 50%;"><label data-i18n="log_coef">物流系数(%)</label><input type="number" id="dest_log_coef" value="165" min="0" step="1" data-save="true"></div>
+                <div class="input-group" style="width: 50%;"><label data-i18n="str_coef">仓储系数(%)</label><input type="number" id="dest_store_coef" value="170" min="0" step="1" data-save="true"></div>
+            </div>
+            <div class="group-header" id="tail_route_title" style="margin-top:5px; color:var(--success); background:#EAFAF1;">第二段尾程 (中转 -> 目的仓)</div>
+            <div class="sub-group">
+                <div class="input-group"><label data-i18n="s2_pallet">单托盘费</label><div class="input-row"><input type="number" id="dest_s2_pallet" value="6000" min="0" step="1" data-save="true"><span class="input-unit">₽</span></div></div>
+                <div class="input-row">
+                    <div class="input-group" style="width: 50%;"><label>&lt;1500L(₽/L)</label><input type="number" id="dest_s2_vol_low" value="5" min="0" step="1" data-save="true"></div>
+                    <div class="input-group" style="width: 50%;"><label data-i18n="s2_vol_high_lbl" data-i18n-title="s2_vol_high_title" title="只要总方量≥1500L，全部方量均按此优惠价计算">&ge;1500L(整体享此价)</label><input type="number" id="dest_s2_vol_high" value="3" min="0" step="1" data-save="true"></div>
+                </div>
+                <div style="font-size:0.7rem; color:#7F8C8D; margin-top:4px;" data-i18n="s2_hint">* 注：尾程散装若总方量≥1500L，则全部方量均按此特惠价整体计费。</div>
+            </div>
+        </div>
+
+        <!-- 右侧主展示区 -->
+        <div class="main-content">
+            <!-- 核心 KPI 看板 (置顶) -->
+            <div class="kpi-card" style="border-top-color: var(--primary); padding: 15px;">
+                <div id="kpi1_detail_html"></div>
+            </div>
+
+            <!-- 组合协同寻优模型 -->
+            <div id="ab_opt_module" class="ab-opt-module" style="display: none;">
+                <div class="ab-opt-header">
+                    <h3 id="title_ab_chart" data-i18n="ab_panel_title">🎯 组合协同增量评估模型 (基于独立发货最优基准)</h3>
+                </div>
+                <div class="ab-opt-content">
+                    <div style="font-size: 0.85rem; color: #34495E; margin-bottom: 15px; line-height: 1.6;" id="ab_opt_desc"></div>
+                    <div class="chart-container large" style="width: 100%; position: relative;">
+                        <canvas id="abOptChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 单品发货寻优曲线 (全量展示) -->
+            <div class="chart-card" style="margin-top: 15px; background: transparent; border: none; box-shadow: none; padding: 0;">
+                <h3 style="border:none; margin-bottom:0;" id="title_indiv_chart" data-i18n="chart_indiv_title">📈 独立发货寻优曲线</h3>
+                <div class="chart-desc" style="text-align: left; margin-bottom: 0;" id="desc_indiv_chart" data-i18n="chart_indiv_sub">假设该商品独立发货，探测其在各种备货量下的单件利润极值</div>
+            </div>
+            <div class="charts-grid" id="indiv_charts_container" style="margin-top: 5px;"></div>
+
+        </div>
+    </div>
+
+    <!-- 基础 Modal (导出导入) -->
+    <div id="modal_overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal_title">Title</h3>
+            <textarea id="modal_textarea" placeholder="Paste JSON here..."></textarea>
+            <div class="modal-actions">
+                <button class="btn" style="background:#95A5A6; padding:8px 15px;" onclick="closeModal()" id="btn_cancel" data-i18n="btn_cancel">取消</button>
+                <button id="modal_confirm_btn" class="btn" style="background:var(--success); padding:8px 15px;" data-i18n="btn_confirm">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎯 点击穿透深度分析 Modal -->
+    <div id="details_modal_overlay" class="modal-overlay" style="align-items: center; padding: 20px;">
+        <div class="modal-content large-modal" style="background: #FDFEFE; border: 2px solid #8E44AD; padding: 0; overflow: hidden; box-shadow: 0 15px 40px rgba(142, 68, 173, 0.2);">
+            <div style="background: #F5EEF8; padding: 15px 25px; border-bottom: 1px solid #D2B4DE; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: bold; color: #8E44AD; font-size: 1.15rem;" data-i18n="details_modal_title">🎯 组合方案穿透分析 (基于独立发货最优基准)</span>
+                <span class="close-btn" onclick="closeDetailsModal()" style="font-size: 1.5rem; color: #7F8C8D; cursor: pointer;">&times;</span>
+            </div>
+            <div id="details_modal_content" style="padding: 20px 25px; overflow-y: auto; max-height: 70vh;"></div>
+            <div style="background: #F8F9F9; padding: 15px 25px; border-top: 1px solid #EAEDED; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <button id="btn_apply_modal" class="btn" style="background: var(--success); padding: 8px 20px;" onclick="applyModalPlan()" data-i18n="btn_apply">✅ 使用该组合方案</button>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <button class="btn" style="background: #95A5A6; padding: 8px 20px;" onclick="closeDetailsModal()" data-i18n="btn_close">关闭</button>
+                    <button id="btn_copy_modal" class="btn" style="background: #8E44AD; padding: 8px 20px;" onclick="copyModalDetails()" data-i18n="btn_copy">📋 复制分析报告</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================== 内置默认数据 (新环境首次加载) ==================
+        const DEFAULT_EXAMPLE = {
+            "skuName": "EXAMPLE: KAZAN KJ-207-GD",
+            "remark": "KJ-207-GD KJ-226-GD CYQ-97-WT",
+            "time": "2026/7/9 11:45:30",
+            "state": {
+              "exchange": "12",
+              "sku_custom_name_0": "KJ-207-GD",
+              "sku_profit_0": "150",
+              "sku_l_0": "42",
+              "sku_w_0": "5",
+              "sku_h_0": "63",
+              "box_l_0": "44",
+              "box_w_0": "30",
+              "box_h_0": "66",
+              "box_qty_0": "5",
+              "sku_cartons_0": "8",
+              "sku_qty_0": "40",
+              "sku_daily_0": "2",
+              "sku_custom_name_1": "KJ-226-GD",
+              "sku_profit_1": "180",
+              "sku_l_1": "77",
+              "sku_w_1": "17",
+              "sku_h_1": "7",
+              "box_l_1": "79",
+              "box_w_1": "36",
+              "box_h_1": "38",
+              "box_qty_1": "10",
+              "sku_cartons_1": "6",
+              "sku_qty_1": "60",
+              "sku_daily_1": "2",
+              "sku_custom_name_2": "CYQ-97-WT",
+              "sku_profit_2": "40",
+              "sku_l_2": "24.5",
+              "sku_w_2": "9.2",
+              "sku_h_2": "6.9",
+              "box_l_2": "48.5",
+              "box_w_2": "30",
+              "box_h_2": "51",
+              "box_qty_2": "40",
+              "sku_cartons_2": "3",
+              "sku_qty_2": "120",
+              "sku_daily_2": "5",
+              "active_skus": "2",
+              "pallet_height": "1.8",
+              "transfer_wh_name": "Обухово",
+              "s1_pallet_price": "480",
+              "s1_carton_price": "60",
+              "dest_wh_name": "Kazan",
+              "dest_log_coef": "220",
+              "dest_store_coef": "180",
+              "dest_s2_pallet": "12000",
+              "dest_s2_vol_low": "10",
+              "dest_s2_vol_high": "7.1"
+            }
+        };
+
+        // ================== 多语言字典 ==================
+        const dict = {
+            zh: {
+                title_main: "WB平台送仓计算器",
+                global_rate: "全局汇率 (RUB/RMB):",
+                history_title: "📂 档案库",
+                no_history: "暂无保存的档案记录",
+                btn_save: "💾 覆盖",
+                btn_new: "➕ 新档",
+                btn_export: "📦 导出本组",
+                btn_import: "📥 导入",
+                placeholder_sku: "档案名 (例: 混装托盘A)",
+                placeholder_remark: "备注 (例: 走梁赞)",
+                sec_sku: "📦 拼托发运档案 (最多3款)",
+                lbl_sku_title: "SKU A",
+                lbl_sku_title2: "SKU B",
+                lbl_sku_title3: "SKU C",
+                placeholder_cname: "自定名称(选填)",
+                btn_add_sku: "+ 增加补位商品",
+                btn_del: "移除",
+                sku_profit: "单件初始净利(¥)",
+                sku_dims: "单品尺寸(cm)",
+                calc_exact_vol: "单件精确体积:",
+                calc_wb_vol: "WB计费体积:",
+                box_dims: "外箱尺寸(cm) & 每箱装量",
+                unit_box_qty: "件/箱",
+                qty_carton: "备货(外箱)",
+                qty_plan: "备货(总件数)",
+                qty_carton_c: "补位发货(外箱)",
+                qty_plan_c: "补位发货(总件数)",
+                lbl_carton: "箱",
+                lbl_piece: "件",
+                daily_sales: "预计日均销量",
+                unit_daily: "件/天",
+                lbl_day: "天",
+                sec_trans: "🚚 运输干线基础资费",
+                pallet_limit: "托盘限高 (米) (含底座14.5cm)",
+                pallet_usable: "物理总容积:",
+                pallet_base_desc: "(底板 120×80 cm，扣除底架后)",
+                sec_transfer: "🏢 第一段：发往中转仓",
+                transfer_wh_ph: "中转仓名",
+                s1_pallet: "单托盘一口价(¥)",
+                s1_carton: "单外箱一口价(¥)",
+                sec_dest_wh: "🎯 第二段：发往目的仓",
+                dest_wh_ph: "目的仓名",
+                log_coef: "物流系数(%)",
+                str_coef: "仓储系数(%)",
+                s2_pallet: "单托盘费",
+                s2_vol_high_lbl: "&ge;1500L(整体享此价)",
+                s2_vol_high_title: "只要总方量≥1500L，全部方量均按此优惠价计算",
+                s2_hint: "* 注：尾程散装若总方量≥1500L，则全部方量均按此特惠价整体计费。",
+                chart_indiv_title: "📈 {0} 独立发货寻优曲线",
+                chart_indiv_sub: "假设该商品独立发货，探测其在各种备货量下的单件利润极值",
+                opt_best_solution: "【🏆最优解】",
+                opt_tt_mode: "发货运力: {0}",
+                opt_tt_total_box: "共{0}箱({1}件)",
+                opt_tt_turnover: "周转{0}天",
+                opt_tt_init_profit: "单件初始净利: ¥{0}",
+                opt_tt_trans: "- 均摊干线成本: ¥{0}",
+                opt_tt_log: "- 官仓派送费: ¥{0}",
+                opt_tt_store: "- 期内均化仓储: ¥{0}",
+                opt_tt_net: "= 预估单件净利: ¥{0}",
+                alert_enter_sku: "请输入档案组名称后再保存！",
+                alert_no_records: "暂无保存的档案，请先保存。",
+                import_title: "导入测算档案",
+                export_title: "导出档案",
+                import_success: "成功导入 {0} 条记录！",
+                import_invalid: "导入的数据格式无效。",
+                import_error: "导入失败:",
+                confirm_delete: "确定要永久删除这条测算档案吗？",
+                mode_mix_all: "{0} 托盘 + {1} 箱散发",
+                mode_carton_all: "纯散发 ({0}箱)",
+                mode_pallet_pure: "纯整托 ({0}托)",
+                btn_cancel: "取消",
+                btn_confirm: "确定",
+                btn_close: "关闭",
+                btn_apply: "✅ 使用该组合方案",
+                lbl_no_remark: "无备注",
+                btn_fill: "一键补满",
+                over_warn: "❌ <b>超载警告！</b> 托盘容积上限 <b>{0} L</b>，当前实发耗方 <b>{1} L</b>，溢出 <b>{2} L</b>。",
+                over_act_title: "🛠️ 智能减量建议 (基于纯物理体积)：",
+                over_act_desc: "👉 将 <b>{0}</b> 减少 <span style=\"color:var(--danger); font-weight:bold;\">{1}</span> 箱 <span style=\"color:#7F8C8D; font-size:0.75rem;\">(剩余 {2}箱)</span>",
+                over_fix: "一键削减",
+                over_none: "单品体积过大，无法通过扣减单一SKU回到一托盘内。",
+                ok_cap: "✅ <b>容量安全</b>：托盘容积上限 <b>{0} L</b>，当前实发耗方 <b>{1} L</b>，剩余空方 <b>{2} L</b>。",
+                ok_act_title: "🚀 剩余空间一键补满：",
+                ok_act_desc: "剩余空方还能再塞入 <b>{0} 箱</b> {1}",
+                c_role_hint: "提示：此款 SKU 作为补位商品，<b>其体积会从托盘可用空间中被优先划走</b>，剩余空间再交给主要商品进行配比寻优。",
+                ab_panel_title: "🎯 组合协同增量评估模型 (基于独立发货最优基准)",
+                ab_desc_basic: "<b>评价目标：</b> 寻找相比“各商品独立发货最优解”能创造最大 <b style=\"color:var(--danger);\">组合增量价值 (CIV)</b> 的黄金比例。<br>👉 <b>交互说明：</b> 鼠标悬浮柱体可预览概况，<b>点击任意柱体，可放大查看详细【组合穿透解析表】</b>。",
+                ab_desc_c_active: "<b>评价目标：</b> 寻找相比“各商品独立发货最优解”能创造最大 <b style=\"color:var(--danger);\">组合增量价值 (CIV)</b> 的黄金比例。<br><b>动态约束：</b> 当前已激活补位商品，扣除其预定的 <b style=\"color:#27AE60;\">{0} L</b> 空间后，在剩余的 <b>{1} L ({2}%)</b> 内进行黄金比例碰撞。<br>👉 <b>交互说明：</b> 鼠标悬浮预览，<b>点击柱体可放大查看详细【组合穿透解析表】，并一键套用该配比</b>。",
+                details_modal_title: "🎯 组合方案穿透分析 (基于独立发货最优基准)",
+                kpi_tooltip_click: "👉 点击查看各品类派送/仓储/干线明细与套用方案",
+                btn_copy: "📋 复制分析报告",
+                copied_success: "已复制!",
+                
+                th_compare_dim: "对比维度",
+                td_load_plan: "装载方案",
+                td_vol_ratio: "容积占比(分摊干线)",
+                td_est_turnover: "预估周转",
+                td_trans_cost: "均摊干线成本",
+                td_wb_logistics: "官仓派送费",
+                td_wb_storage: "期内均化仓储",
+                th_core_value: "--- 核心价值比对 ---",
+                td_indiv_base: "独立最优基准<br><span style=\"font-size:0.7rem;color:#7F8C8D;\">(独发单件最高利润)</span>",
+                td_combo_net: "组合单件净利",
+                td_profit_delta: "单件利润变化",
+                td_contrib: "本品增量贡献",
+                td_risk: "风险评估<br><span style=\"font-size:0.7rem;color:#7F8C8D;font-weight:normal;\">(滞销压测)</span>",
+                
+                td_trans_sub: "(总计: ¥{0}, 占{1}%)",
+                td_log_sub: "({0}₽ × {1}% / {2})",
+                td_store_sub: "((0.07+0.07×{0})₽ × {1}% × {2}天 / {3})",
+                td_base_sub: "({0}, {1}箱, {2}天)",
+                td_up_sub: "(¥{0} - ¥{1} - ¥{2} - ¥{3})",
+                
+                kpi_main_title: "📊 财务穿透分析 (发往 {0} | 基准:独立发货最优方案)",
+                kpi_civ_total: "组合增量总价值 (CIV):",
+                kpi_trans_mode: "当前运力计费判定:",
+                kpi_trans_total: "(干线总运费 ¥{0})",
+                kpi_vol_util: "托盘容积利用率:",
+                kpi_vol_used_max: "(总耗方: {0}L / 托盘上限: {1}L)",
+                
+                risk_none: "<span style=\"color:#95A5A6;\">无(未配货)</span>",
+                risk_low: "<span style=\"color:#27AE60;font-weight:bold;\">低</span>",
+                risk_med: "<span style=\"color:#F39C12;font-weight:bold;\">中等</span>",
+                risk_high: "<span style=\"color:#C0392B;font-weight:bold;\">高</span>",
+                risk_desc_med: "如果动销仅达成预计的1/3：<br>期内均化仓储费：¥{0}/件<br>组合单件净利：¥{1}<br>利润下降{2}%",
+                risk_desc_high: "如果动销仅达成预计的1/3：<br>期内均化仓储费：¥{0}/件<br>组合单件净利：¥{1}<br>利润下降{2}%<br><b style=\"color:#C0392B;\">考虑减少送仓规模</b>",
+                
+                copy_report_title: "【拼箱协同评估报告】",
+                copy_civ: "组合增量总价值 (CIV): {0} 元",
+                copy_vol: "托盘容积利用率: {0}% (总耗方: {1}L / 托盘上限: {2}L)",
+                copy_base: "--- 独立发货最优基准 ---",
+                copy_base_sku: "[{0}]: {1}({2}箱), {3}件, 周转{4}天, 单件最优净利 ¥{5}",
+                copy_combo: "--- 拼柜方案穿透明细 ---",
+                copy_combo_sku: "[{0}]: 拼柜 {1}箱 ({2}件) | 运费占比 {3}% | 预估周转 {4}天\n均摊干线: ¥{5}/件 (总¥{6})\n期内仓储: ¥{7}/件\n官仓派送: ¥{8}/件\n组合单件净利: ¥{9}\n>> 单件利润变化: {10} 元/件 ({11}%) | 本品增量贡献: {12} 元 ({13}%)",
+                
+                tt_risk_net: "1/3动销压测净利: ¥{0}",
+                tt_risk_lvl: "风险评估: {0}",
+                r_low: "🟩 低",
+                r_med: "🟧 中等",
+                r_high: "🟥 高 (抗跌性极差)"
+            },
+            ru: {
+                title_main: "Калькулятор отгрузок WB",
+                global_rate: "Курс (RUB/Юань):",
+                history_title: "📂 Архив",
+                no_history: "Нет записей",
+                btn_save: "💾 Сохранить",
+                btn_new: "➕ Создать",
+                btn_export: "📦 Экспорт",
+                btn_import: "📥 Импорт",
+                placeholder_sku: "Название (напр. Паллета Микс А)",
+                placeholder_remark: "Комментарий (напр. Рязань)",
+                sec_sku: "📦 Товары в паллете (до 3 SKU)",
+                lbl_sku_title: "SKU A (Основной)",
+                lbl_sku_title2: "SKU B",
+                lbl_sku_title3: "SKU C (Заполнитель)",
+                placeholder_cname: "Артикул (опц.)",
+                btn_add_sku: "+ Добавить товар",
+                btn_del: "Удалить",
+                sku_profit: "Старт. маржа 1шт (¥)",
+                sku_dims: "Габариты товара(см)",
+                calc_exact_vol: "Точный:",
+                calc_wb_vol: "Для WB:",
+                box_dims: "Габариты короба(см) & шт/кор",
+                unit_box_qty: "шт/кор",
+                qty_carton: "Отгрузка (кор.)",
+                qty_plan: "Отгрузка (всего шт)",
+                qty_carton_c: "Отгрузка доп. (кор.)",
+                qty_plan_c: "Отгрузка доп. (шт.)",
+                lbl_carton: "кор.",
+                lbl_piece: "шт.",
+                daily_sales: "Прогноз продаж в день",
+                unit_daily: "шт/день",
+                lbl_day: "дн.",
+                sec_trans: "🚚 Тарифы магистрали",
+                pallet_limit: "Макс. высота пал.(м) (с поддоном)",
+                pallet_usable: "Доступный объем:",
+                pallet_base_desc: "(Основание 120×80 см, без учета поддона)",
+                sec_transfer: "🏢 Этап 1: До транзита",
+                transfer_wh_ph: "Имя склада",
+                s1_pallet: "Цена паллеты(¥)",
+                s1_carton: "Цена короба(¥)",
+                sec_dest_wh: "🎯 Этап 2: До склада WB",
+                dest_wh_ph: "Имя склада",
+                log_coef: "Лог.(%)",
+                str_coef: "Хран.(%)",
+                s2_pallet: "Доставка паллеты",
+                s2_vol_high_lbl: "&ge;1500L (Единая цена)",
+                s2_vol_high_title: "Если общий объем ≥1500L, скидка применяется ко всему объему",
+                s2_hint: "* При объеме ≥1500L применяется скидка ко всему объему.",
+                chart_indiv_title: "📈 Кривая оптимизации: {0}",
+                chart_indiv_sub: "Поиск макс. маржи при отгрузке только одного товара",
+                opt_best_solution: "【🏆 Опт. решение】",
+                opt_tt_mode: "Тип отгрузки: {0}",
+                opt_tt_total_box: "Всего {0} кор. ({1} шт)",
+                opt_tt_turnover: "Оборачиваемость {0} дн.",
+                opt_tt_init_profit: "Старт. маржа 1шт: ¥{0}",
+                opt_tt_trans: "- Магистраль 1шт: ¥{0}",
+                opt_tt_log: "- Логистика WB: ¥{0}",
+                opt_tt_store: "- Хранение WB: ¥{0}",
+                opt_tt_net: "= Чистая маржа 1шт: ¥{0}",
+                lbl_chart_opt_tt: "Метод:",
+                lbl_chart_opt_net: " Чистая прибыль 1шт: ¥",
+                alert_enter_sku: "Введите название архива перед сохранением!",
+                alert_no_records: "Нет сохраненных записей для экспорта.",
+                import_title: "Импорт архива",
+                export_title: "Экспорт архива",
+                import_success: "Успешно загружено {0} записей!",
+                import_invalid: "Неверный формат данных импорта.",
+                import_error: "Ошибка импорта:",
+                confirm_delete: "Вы уверены, что хотите навсегда удалить этот расчет?",
+                mode_mix_all: "{0} Палл. + {1} кор.",
+                mode_carton_all: "Только короба ({0} кор.)",
+                mode_pallet_pure: "Только паллеты ({0} палл.)",
+                btn_cancel: "Отмена",
+                btn_confirm: "Подтвердить",
+                btn_close: "Закрыть",
+                btn_apply: "✅ Применить",
+                lbl_no_remark: "Без комментария",
+                btn_fill: "Добавить",
+                over_warn: "❌ <b>ПЕРЕГРУЗ ПАЛЛЕТЫ!</b> Лимит: <b>{0} L</b>, Занято: <b>{1} L</b>, Превышение: <b>{2} L</b>.",
+                over_act_title: "🛠️ Варианты решения (по объему):",
+                over_act_desc: "👉 Уменьшить <b>{0}</b> на <span style=\"color:var(--danger); font-weight:bold;\">{1}</span> кор. <span style=\"color:#7F8C8D; font-size:0.75rem;\">(останется {2} кор.)</span>",
+                over_fix: "Применить",
+                over_none: "Невозможно решить проблему уменьшением только одного SKU.",
+                ok_cap: "✅ <b>Объем в норме</b>: Лимит <b>{0} L</b>, Занято: <b>{1} L</b>, Свободно: <b>{2} L</b>.",
+                ok_act_title: "🚀 Заполнение пустого места:",
+                ok_act_desc: "Можно добавить еще <b>{0} кор.</b> {1}",
+                c_role_hint: "Примечание: Товар C служит заполнителем. Его объем вычитается из паллеты в первую очередь.",
+                ab_panel_title: "🎯 Модель оценки синергии (База CIV)",
+                ab_desc_basic: "<b>Цель:</b> Найти комбинацию, дающую максимальную <b style=\"color:var(--danger);\">Добавленную Стоимость (CIV)</b> по сравнению с оптимальной соло-отгрузкой.<br>👉 <b>Нажмите на столбец графика</b> для подробного анализа и применения.",
+                ab_desc_c_active: "<b>Динамика:</b> Товар-заполнитель забирает <b style=\"color:#27AE60;\">{0} L</b>. Оставшиеся <b>{1} L ({2}%)</b> делятся между SKU A и B.<br>👉 <b>Нажмите на столбец графика</b> для просмотра отчета и применения пропорции.",
+                details_modal_title: "🎯 Детальный финансовый анализ",
+                kpi_tooltip_click: "👉 Нажмите для просмотра деталей логистики/хранения",
+                btn_copy: "📋 Копировать отчет",
+                copied_success: "Скопировано!",
+                
+                th_compare_dim: "Показатели",
+                td_load_plan: "План отгрузки",
+                td_vol_ratio: "Доля объема (Маг.)",
+                td_est_turnover: "Оборачиваемость",
+                td_trans_cost: "Магистраль 1шт",
+                td_wb_logistics: "Логистика WB 1шт",
+                td_wb_storage: "Хранение WB",
+                th_core_value: "--- Сравнение прибыльности ---",
+                td_indiv_base: "База: Соло-отгрузка<br><span style=\"font-size:0.7rem;color:#7F8C8D;\">(Макс. маржа при соло)</span>",
+                td_combo_net: "Чистая маржа (Комбо)",
+                td_profit_delta: "Изменение маржи",
+                td_contrib: "Вклад в синергию (CIV)",
+                td_risk: "Оценка риска<br><span style=\"font-size:0.7rem;color:#7F8C8D;font-weight:normal;\">(Стресс-тест)</span>",
+                
+                td_trans_sub: "(Итого: ¥{0}, {1}%)",
+                td_log_sub: "({0}₽ × {1}% / {2})",
+                td_store_sub: "((0.07+0.07×{0})₽ × {1}% × {2}дн. / {3})",
+                td_base_sub: "({0}, {1} кор., {2} дн.)",
+                td_up_sub: "(¥{0} - ¥{1} - ¥{2} - ¥{3})",
+                
+                kpi_main_title: "📊 Финансовый анализ (Склад {0} | База: Соло-отгрузка)",
+                kpi_civ_total: "Общая добавочная стоимость (CIV):",
+                kpi_trans_mode: "Тарификация магистрали:",
+                kpi_trans_total: "(Итого маг. ¥{0})",
+                kpi_vol_util: "Использование объема:",
+                kpi_vol_used_max: "(Занято: {0}L / Лимит: {1}L)",
+                
+                risk_none: "<span style=\"color:#95A5A6;\">Нет (0 шт)</span>",
+                risk_low: "<span style=\"color:#27AE60;font-weight:bold;\">Низкий</span>",
+                risk_med: "<span style=\"color:#F39C12;font-weight:bold;\">Средний</span>",
+                risk_high: "<span style=\"color:#C0392B;font-weight:bold;\">Высокий</span>",
+                risk_desc_med: "При падении продаж до 1/3 от прогноза:<br>Хранение WB: ¥{0}/шт<br>Чистая маржа: ¥{1}<br>Падение прибыли: {2}%",
+                risk_desc_high: "При падении продаж до 1/3 от прогноза:<br>Хранение WB: ¥{0}/шт<br>Чистая маржа: ¥{1}<br>Падение прибыли: {2}%<br><b style=\"color:#C0392B;\">Рассмотрите уменьшение партии</b>",
+                
+                copy_report_title: "【Отчет оценки синергии комбинации】",
+                copy_civ: "Общая добавочная стоимость (CIV): {0} ¥",
+                copy_vol: "Использование объема: {0}% (Занято: {1}L / Лимит: {2}L)",
+                copy_base: "--- База: Оптимальная соло-отгрузка ---",
+                copy_base_sku: "[{0}]: {1} ({2} кор.), {3} шт., Оборот {4} дн., Опт. маржа 1шт ¥{5}",
+                copy_combo: "--- Детали комбинации ---",
+                copy_combo_sku: "[{0}]: Комбо {1} кор. ({2} шт.) | Доля маг. {3}% | Оборот {4} дн.\nМагистраль 1шт: ¥{5} (Итого ¥{6})\nХранение: ¥{7}/шт.\nЛогистика: ¥{8}/шт.\nЧистая маржа 1шт: ¥{9}\n>> Изм. маржи: {10} ¥/шт. ({11}%) | Вклад в синергию: {12} ¥ ({13}%)",
+                
+                tt_risk_net: "Стресс-маржа (спрос 1/3): ¥{0}",
+                tt_risk_lvl: "Оценка риска: {0}",
+                r_low: "🟩 Низкий",
+                r_med: "🟧 Средний",
+                r_high: "🟥 Высокий (Слабая устойчивость)"
+            }
+        };
+
+        let currentLang = 'zh';
+
+        function t(key, ...args) {
+            let str = dict[currentLang][key] || key;
+            if (args.length > 0) {
+                args.forEach((val, i) => { str = str.replace(new RegExp(`\\{${i}\\}`, 'g'), val); });
+            }
+            return str;
+        }
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.getElementById('lang_zh').classList.toggle('active', lang === 'zh');
+            document.getElementById('lang_ru').classList.toggle('active', lang === 'ru');
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                let key = el.getAttribute('data-i18n');
+                if (dict[lang][key]) el.innerHTML = dict[lang][key];
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                let key = el.getAttribute('data-i18n-title');
+                if (dict[lang][key]) el.title = dict[lang][key];
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                let key = el.getAttribute('data-i18n-ph');
+                if (dict[lang][key]) el.placeholder = dict[lang][key];
+            });
+            if(document.getElementById('btn_cancel')) document.getElementById('btn_cancel').innerText = t('btn_cancel');
+            if(document.getElementById('modal_confirm_btn')) document.getElementById('modal_confirm_btn').innerText = t('btn_confirm');
+            renderHistory();
+            calculateAll();
+        }
+
+        // --- 数据收集与恢复工具 ---
+        function collectCurrentState() {
+            let state = {};
+            document.querySelectorAll('input[data-save="true"]').forEach(el => {
+                if (el.type === 'checkbox') state[el.id] = el.checked;
+                else state[el.id] = el.value;
+            });
+            state.active_skus = document.getElementById('active_skus').value;
+            return state;
+        }
+
+        function restoreState(state) {
+            if (!state) return;
+            for (let key in state) {
+                let el = document.getElementById(key);
+                if (el) {
+                    if (el.type === 'checkbox') el.checked = state[key];
+                    else el.value = state[key];
+                }
+            }
+            if (state.active_skus !== undefined) {
+                setActiveSkusCount(parseInt(state.active_skus, 10));
+            }
+        }
+
+        // --- 核心历史记录 API ---
+        window.saveSessionState = function() {
+            try {
+                let state = collectCurrentState();
+                localStorage.setItem('wb_current_session', JSON.stringify(state));
+            } catch (e) { console.warn("Failed to save session state", e); }
+        };
+        
+        window.getRecords = function() {
+            try {
+                let records = JSON.parse(localStorage.getItem('wb_records') || '[]');
+                return records;
+            } catch (e) { return []; }
+        };
+        
+        window.renderHistory = function() { 
+            const list = document.getElementById('history_list');
+            if(!list) return;
+            let records = window.getRecords();
+            if (records.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:#95A5A6; font-size:0.8rem;">' + t('no_history') + '</div>';
+                return;
+            }
+            
+            let html = '';
+            let currentName = document.getElementById('sku_name').value.trim();
+            
+            [...records].reverse().forEach((r) => {
+                let isActive = r.skuName === currentName ? 'active' : '';
+                let safeName = r.skuName.replace(/'/g, "\\'");
+                html += `
+                <div class="sku-record ${isActive}" onclick="loadRecord('${safeName}')">
+                    <div class="sku-record-title">${r.skuName}</div>
+                    <div class="sku-record-time">${r.time} ${r.remark ? '- ' + r.remark : ''}</div>
+                    <div class="sku-record-delete" onclick="event.stopPropagation(); deleteRecord('${safeName}')">×</div>
+                </div>`;
+            });
+            list.innerHTML = html;
+        };
+        
+        window.saveRecord = function(isNew) {
+            let skuName = document.getElementById('sku_name').value.trim();
+            if (!skuName) {
+                alert(t('alert_enter_sku'));
+                return;
+            }
+            
+            let records = window.getRecords();
+            let state = collectCurrentState();
+            let newRecord = {
+                skuName: skuName,
+                remark: document.getElementById('sku_remark').value.trim(),
+                time: new Date().toLocaleString(),
+                state: state
+            };
+
+            let existingIdx = records.findIndex(r => r.skuName === skuName);
+
+            if (isNew) {
+                if(existingIdx >= 0) {
+                   newRecord.skuName = skuName + "_" + new Date().getTime().toString().slice(-4);
+                   document.getElementById('sku_name').value = newRecord.skuName;
+                }
+                records.push(newRecord);
+            } else {
+                if (existingIdx >= 0) records[existingIdx] = newRecord;
+                else records.push(newRecord);
+            }
+
+            localStorage.setItem('wb_records', JSON.stringify(records));
+            window.renderHistory();
+            alert(isNew ? "✅ 已存为新档案！" : "✅ 档案已覆盖更新！");
+        };
+
+        window.loadRecord = function(name) {
+            let records = window.getRecords();
+            let rec = records.find(r => r.skuName === name);
+            if (rec && rec.state) {
+                restoreState(rec.state);
+                document.getElementById('sku_name').value = rec.skuName;
+                document.getElementById('sku_remark').value = rec.remark || "";
+                calculateAll();
+                window.renderHistory();
+            }
+        };
+
+        window.deleteRecord = function(name) {
+            if (!confirm(t('confirm_delete'))) return;
+            let records = window.getRecords();
+            records = records.filter(r => r.skuName !== name);
+            localStorage.setItem('wb_records', JSON.stringify(records));
+            window.renderHistory();
+            if (document.getElementById('sku_name').value === name) {
+                document.getElementById('sku_name').value = "";
+            }
+        };
+
+        window.doImport = function() {
+            try {
+                let jsonStr = document.getElementById('modal_textarea').value;
+                let newRecords = JSON.parse(jsonStr);
+                if (!Array.isArray(newRecords)) throw new Error("不是有效的档案数组格式");
+                
+                let records = window.getRecords();
+                newRecords.forEach(nr => {
+                    if(nr.skuName && nr.state) {
+                        let idx = records.findIndex(r => r.skuName === nr.skuName);
+                        if (idx >= 0) records[idx] = nr;
+                        else records.push(nr);
+                    }
+                });
+                localStorage.setItem('wb_records', JSON.stringify(records));
+                window.renderHistory();
+                closeModal();
+                alert(t('import_success', newRecords.length));
+            } catch (e) {
+                alert(t('import_invalid') + "\n" + e.message);
+            }
+        };
+
+        function bindQtyInputs(idx) {
+            let cInp = document.getElementById(`sku_cartons_${idx}`);
+            let qInp = document.getElementById(`sku_qty_${idx}`);
+            let iInp = document.getElementById(`box_qty_${idx}`);
+            if(!cInp || !qInp || !iInp) return;
+
+            cInp.addEventListener('input', () => {
+                let ipb = parseInt(iInp.value)||1; let c = parseFloat(cInp.value)||0;
+                qInp.value = Math.round(c * ipb);
+                calculateAll();
+            });
+            qInp.addEventListener('input', () => {
+                let ipb = parseInt(iInp.value)||1; let q = parseFloat(qInp.value)||0;
+                cInp.value = (q / ipb).toFixed(1);
+                calculateAll();
+            });
+            iInp.addEventListener('input', () => {
+                let ipb = parseInt(iInp.value)||1; let c = parseFloat(cInp.value)||0;
+                qInp.value = Math.round(c * ipb);
+                calculateAll();
+            });
+        }
+
+        function initBindings() { for(let i=0; i<3; i++) bindQtyInputs(i); }
+
+        function getActiveSkus() {
+            let count = parseInt(document.getElementById('active_skus') ? document.getElementById('active_skus').value : "0", 10) || 0;
+            let arr = [0];
+            if (count >= 1) arr.push(1);
+            if (count >= 2) arr.push(2);
+            return arr;
+        }
+
+        function setActiveSkusCount(c) {
+            let el = document.getElementById('active_skus');
+            if(el) el.value = c;
+            let s1 = document.getElementById('sku_block_1');
+            let s2 = document.getElementById('sku_block_2');
+            let btn = document.getElementById('btn_add_sku');
+            if(s1) s1.style.display = (c >= 1) ? 'block' : 'none';
+            if(s2) s2.style.display = (c >= 2) ? 'block' : 'none';
+            if(btn) btn.style.display = (c >= 2) ? 'none' : 'block';
+        }
+
+        function addSku() {
+            let count = parseInt(document.getElementById('active_skus').value, 10);
+            if(count < 2) { setActiveSkusCount(count + 1); calculateAll(); }
+        }
+
+        function removeSku(idx) {
+            let count = parseInt(document.getElementById('active_skus').value, 10);
+            if(idx === 2) setActiveSkusCount(1);
+            if(idx === 1) {
+                if(count === 2) {
+                    ['sku_custom_name','sku_profit','sku_l','sku_w','sku_h','box_l','box_w','box_h','box_qty','sku_cartons','sku_qty','sku_daily'].forEach(f => {
+                        let el1 = document.getElementById(f+'_1'); let el2 = document.getElementById(f+'_2');
+                        if(el1 && el2) el1.value = el2.value;
+                    });
+                }
+                setActiveSkusCount(count - 1);
+            }
+            calculateAll();
+        }
+
+        function setSkuCartons(idx, cartons) {
+            let cInp = document.getElementById(`sku_cartons_${idx}`);
+            if(cInp) cInp.value = cartons;
+            let ipb = parseInt(document.getElementById(`box_qty_${idx}`).value)||1;
+            let qInp = document.getElementById(`sku_qty_${idx}`);
+            if(qInp) qInp.value = Math.round(cartons * ipb);
+            calculateAll();
+        }
+
+        window.setSkuCartons = setSkuCartons;
+        window.addSku = addSku;
+        window.removeSku = removeSku;
+        window.setLang = setLang;
+
+        function openExportModal() {
+            let skuName = document.getElementById('sku_name').value.trim();
+            if(!skuName) { alert(t('alert_enter_sku')); return; }
+            let records = getRecords().filter(r => r.skuName === skuName);
+            if(records.length === 0) { alert(t('alert_no_records')); return; }
+            document.getElementById('modal_title').innerText = t('export_title') + " - " + skuName;
+            document.getElementById('modal_textarea').value = JSON.stringify(records, null, 2);
+            document.getElementById('modal_textarea').removeAttribute('readonly');
+            document.getElementById('modal_confirm_btn').style.display = 'none';
+            document.getElementById('modal_overlay').style.display = 'flex';
+        }
+
+        function openImportModal() {
+            document.getElementById('modal_title').innerText = t('import_title');
+            document.getElementById('modal_textarea').value = "";
+            document.getElementById('modal_textarea').removeAttribute('readonly');
+            document.getElementById('modal_confirm_btn').style.display = 'inline-block';
+            document.getElementById('modal_confirm_btn').onclick = doImport;
+            document.getElementById('modal_overlay').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('modal_overlay').style.display = 'none'; }
+
+        // ================== 核心计算库 ==================
+        function getSingleSkuTransportCost(boxes, bpl, box_vol, s1_p, s1_c, exc, s2_p, s2_vl, s2_vh) {
+            if(boxes <= 0) return { mode: '-', isPallet: false, total_rmb: 0 };
+            let total_vol = boxes * box_vol;
+            let pure_carton_rmb = boxes * s1_c + (total_vol < 1500 ? total_vol * s2_vl : total_vol * s2_vh) / exc;
+
+            if (bpl <= 0) return { mode: t('mode_carton_all', boxes), isPallet: false, total_rmb: pure_carton_rmb };
+
+            let full_pals = Math.floor(boxes / bpl);
+            let rem_boxes = boxes % bpl;
+            let rem_vol = rem_boxes * box_vol;
+            let pallet_price_rmb = s1_p + (s2_p / exc);
+            
+            let pals_ceil = Math.ceil(boxes / bpl);
+            let pure_pallet_rmb = pals_ceil * pallet_price_rmb;
+
+            let mix_rmb = full_pals * pallet_price_rmb + rem_boxes * s1_c + (rem_vol < 1500 ? rem_vol * s2_vl : rem_vol * s2_vh) / exc;
+
+            if (full_pals === 0 && pure_pallet_rmb <= pure_carton_rmb) return { mode: t('mode_pallet_pure', pals_ceil), isPallet: true, total_rmb: pure_pallet_rmb };
+            if (mix_rmb <= pure_carton_rmb && mix_rmb <= pure_pallet_rmb) {
+                if (full_pals === 0) return { mode: t('mode_carton_all', boxes), isPallet: false, total_rmb: mix_rmb };
+                if (rem_boxes === 0) return { mode: t('mode_pallet_pure', full_pals), isPallet: true, total_rmb: mix_rmb };
+                return { mode: t('mode_mix_all', full_pals, rem_boxes), isPallet: false, total_rmb: mix_rmb };
+            } else if (pure_pallet_rmb <= pure_carton_rmb) return { mode: t('mode_pallet_pure', pals_ceil), isPallet: true, total_rmb: pure_pallet_rmb };
+            return { mode: t('mode_carton_all', boxes), isPallet: false, total_rmb: pure_carton_rmb };
+        }
+
+        function calcWBCosts(exact_vol, ceil_vol, log_coef, store_coef, hold_days, exc) {
+            let base_log_rub = 0; let log_form = '';
+            if (exact_vol <= 0.200) { base_log_rub = 23; log_form = '23'; }
+            else if (exact_vol <= 0.400) { base_log_rub = 26; log_form = '26'; }
+            else if (exact_vol <= 0.600) { base_log_rub = 29; log_form = '29'; }
+            else if (exact_vol <= 0.800) { base_log_rub = 30; log_form = '30'; }
+            else if (exact_vol <= 1.000) { base_log_rub = 32; log_form = '32'; }
+            else {
+                let extra_l = Math.max(0, ceil_vol - 1);
+                base_log_rub = 46 + (extra_l * 14);
+                log_form = `(46 + 14 * ${extra_l})`;
+            }
+            let log_rub = base_log_rub * (log_coef / 100);
+            let store_rub_per_day = (0.07 + 0.07 * Math.max(0, ceil_vol - 1)) * (store_coef / 100); 
+            let avg_hold_days = hold_days / 2;
+            let store_rub_total = store_rub_per_day * avg_hold_days;
+            return { log: log_rub / exc, store: store_rub_total / exc, base_log_rub: base_log_rub, log_form: log_form, store_rub_per_day: store_rub_per_day, avg_hold_days: avg_hold_days };
+        }
+
+        function optimizeTransportMixed(total_vol, total_cartons, p_vol, s1_p, s1_c, exc, s2_p, s2_vl, s2_vh) {
+            if(total_cartons <= 0) return { mode: '-', isPallet: false, total_rmb: 0 };
+            let t1_all_c = total_cartons * s1_c;
+            let t2_all_v_rub = total_vol < 1500 ? total_vol * s2_vl : total_vol * s2_vh;
+            let total_all_c = t1_all_c + t2_all_v_rub / exc;
+            let pals_ceil = Math.ceil(total_vol / p_vol);
+            let t1_all_p = pals_ceil * s1_p;
+            let t2_all_p_rub = pals_ceil * s2_p;
+            let total_all_p = t1_all_p + t2_all_p_rub / exc;
+
+            let full_pals = Math.floor(total_vol / p_vol);
+            let rem_vol = total_vol % p_vol;
+            let rem_cartons = Math.ceil(rem_vol / (total_vol / total_cartons)); 
+            let t1_mix = full_pals * s1_p + rem_cartons * s1_c;
+            let t2_mix_rub = full_pals * s2_p + (rem_vol < 1500 ? rem_vol * s2_vl : rem_vol * s2_vh);
+            let total_mix = t1_mix + t2_mix_rub / exc;
+
+            if (full_pals === 0 && total_all_p <= total_all_c) return { mode: t('mode_pallet_pure', pals_ceil), isPallet: true, total_rmb: total_all_p };
+            if (total_mix <= total_all_c && total_mix <= total_all_p) {
+                if (full_pals === 0) return { mode: t('mode_carton_all', total_cartons), isPallet: false, total_rmb: total_mix };
+                if (rem_cartons === 0) return { mode: t('mode_pallet_pure', full_pals), isPallet: true, total_rmb: total_mix };
+                return { mode: t('mode_mix_all', full_pals, rem_cartons), isPallet: false, total_rmb: total_mix };
+            } else if (total_all_p <= total_all_c) return { mode: t('mode_pallet_pure', pals_ceil), isPallet: true, total_rmb: total_all_p };
+            return { mode: t('mode_carton_all', total_cartons), isPallet: false, total_rmb: total_all_c };
+        }
+
+        // 修改：核心取值函数。内部屏蔽掉影响图表崩溃的负数，但不打断用户的输入框
+        const getVal = (id) => { 
+            const el = document.getElementById(id); 
+            if (!el) return 0;
+            let val = parseFloat(el.value);
+            if (isNaN(val)) return 0;
+            // 利润特权：允许任意负数
+            if (id.includes('profit')) return val;
+            // 其他所有计算用到的数值：底层计算时绝对不能为负
+            return val < 0 ? 0 : val;
+        };
+        const setElText = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+        const setElHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+        // 风险评估算法计算函数 (全局复用)
+        function calcRisk(q, up, store, profit, trans, log) {
+            if (q <= 0) return t('risk_none');
+            
+            // 模拟销量降为1/3时，平均库存周期翻3倍，仓储费翻3倍
+            let newStore = store * 3;
+            let newUp = profit - trans - log - newStore;
+            let drop = up - newUp; 
+            let dropPct = (up > 0) ? (drop / up) * 100 : (newUp < up ? 999 : 0);
+            
+            if (dropPct <= 20 && newUp >= 0) {
+                return t('risk_low');
+            } else if (dropPct > 20 && dropPct <= 50 && newUp >= 0) {
+                return t('risk_med') + `<br><div style="font-size:0.75rem;color:#7F8C8D;font-weight:normal;margin-top:4px;line-height:1.4;">${t('risk_desc_med', newStore.toFixed(2), newUp.toFixed(2), dropPct.toFixed(1))}</div>`;
+            } else {
+                return t('risk_high') + `<br><div style="font-size:0.75rem;color:#7F8C8D;font-weight:normal;margin-top:4px;line-height:1.4;">${t('risk_desc_high', newStore.toFixed(2), newUp.toFixed(2), up > 0 ? dropPct.toFixed(1) : '>100')}</div>`;
+            }
+        }
+
+        let indivChartsObj = []; let abChartObj = null;
+
+        function calculateAll() {
+            try {
+                saveSessionState();
+                
+                let transferName = document.getElementById('transfer_wh_name') ? document.getElementById('transfer_wh_name').value || (currentLang==='zh'?'中转仓':'Транзит') : '';
+                let destName = document.getElementById('dest_wh_name') ? document.getElementById('dest_wh_name').value || (currentLang==='zh'?'目的仓':'Склад') : '';
+                let tailTitle = document.getElementById('tail_route_title');
+                if(tailTitle) tailTitle.innerText = currentLang === 'zh' ? `第二段尾程 (${transferName} ➔ ${destName})` : `Этап 2 (${transferName} ➔ ${destName})`;
+
+                // 核心计算用到的极值防御：无论 getVal 取出什么，底层最低按 1 或 0.1 等运算
+                const exc = Math.max(1, getVal('exchange'));
+                const pallet_height_m = Math.max(0.5, getVal('pallet_height')); 
+                const Z_max = Math.max(1, (pallet_height_m * 100) - 14.5); 
+                const pallet_vol = 120 * 80 * Z_max / 1000; 
+                setElText('calc_pallet_vol', pallet_vol.toFixed(1));
+
+                let s1_p = getVal('s1_pallet_price'), s1_c = getVal('s1_carton_price');
+                let dest_logC = getVal('dest_log_coef'), dest_strC = getVal('dest_store_coef');
+                let dest_s2_p = getVal('dest_s2_pallet'), dest_s2_vl = getVal('dest_s2_vol_low'), dest_s2_vh = getVal('dest_s2_vol_high');
+
+                let activeIdxs = getActiveSkus();
+                let skus = [];
+                let total_phy_vol = 0; let total_cartons = 0;
+                let vol_for_AB = pallet_vol; let skuC_info = null;
+
+                const getOptUnitProfit = (s) => {
+                    let min_c = Math.max(1, Math.ceil((s.daily * 14) / s.ipb));
+                    let end_c = Math.ceil((s.daily * 90) / s.ipb);
+                    if (s.pallet_bpl > 0) end_c = Math.max(end_c, s.pallet_bpl * 2);
+                    if (min_c > end_c) end_c = min_c; 
+                    end_c = Math.min(end_c, 1500); // 防卡死
+                    
+                    let max_up = -Infinity; let best_c = min_c; let best_mode = ""; let best_days = 0;
+                    
+                    for(let c = min_c; c <= end_c; c++) {
+                        let q = c * s.ipb; let d = q / s.daily;
+                        let opt = getSingleSkuTransportCost(c, s.pallet_bpl, s.box_vol, s1_p, s1_c, exc, dest_s2_p, dest_s2_vl, dest_s2_vh);
+                        let trans_u = opt.total_rmb / q;
+                        let wb = calcWBCosts(s.exact_vol, s.ceil_vol, dest_logC, dest_strC, d, exc);
+                        let up = s.profit - trans_u - wb.log - wb.store;
+                        if(up > max_up) { max_up = up; best_c = c; best_mode = opt.mode; best_days = d; }
+                    }
+                    return { up: max_up === -Infinity ? 0 : max_up, c: best_c, mode: best_mode, days: best_days, q: best_c * s.ipb };
+                };
+                
+                activeIdxs.forEach(i => {
+                    let l = Math.max(0.1, getVal(`sku_l_${i}`)); let w = Math.max(0.1, getVal(`sku_w_${i}`)); let h = Math.max(0.1, getVal(`sku_h_${i}`));
+                    let exact_vol = (l * w * h) / 1000; let ceil_vol = Math.ceil(exact_vol);
+                    setElText(`calc_item_exact_${i}`, exact_vol.toFixed(3)); setElText(`calc_item_ceil_${i}`, ceil_vol); 
+
+                    let bl = Math.max(1, getVal(`box_l_${i}`)); let bw = Math.max(1, getVal(`box_w_${i}`)); let bh = Math.max(1, getVal(`box_h_${i}`));
+                    let box_vol = Math.max(0.1, (bl * bw * bh) / 1000); 
+                    let pallet_bpl = Math.floor(pallet_vol / box_vol); 
+                    
+                    let ipb = Math.max(1, getVal(`box_qty_${i}`));
+                    let input_cartons = getVal(`sku_cartons_${i}`); let input_qty = getVal(`sku_qty_${i}`);
+                    let actual_cartons = Math.ceil(input_cartons); 
+                    
+                    let warnHtml = ''; let inner_vol_total = exact_vol * ipb;
+                    if (inner_vol_total > box_vol) warnHtml += `<div style="color:var(--danger); font-size:0.75rem; margin-top:4px;">❌ 错误: 内件总体积(${(inner_vol_total).toFixed(1)}L) > 外箱容积(${box_vol.toFixed(1)}L)</div>`;
+                    else if (inner_vol_total < box_vol * 0.7) warnHtml += `<div style="color:var(--warning); font-size:0.75rem; margin-top:4px;">⚠️ 提示: 外箱利用率 < 70%，装载过松</div>`;
+                    if (Math.abs(input_qty - input_cartons * ipb) > 0.01 && input_qty > 0) warnHtml += `<div style="color:var(--warning); font-size:0.75rem; margin-top:4px;">⚠️ 提示: 备货不满整箱，实发按 ${actual_cartons} 箱占方计费</div>`;
+                    if (document.getElementById(`sku_warning_${i}`)) document.getElementById(`sku_warning_${i}`).innerHTML = warnHtml;
+
+                    let profit = getVal(`sku_profit_${i}`); let daily = Math.max(0.001, getVal(`sku_daily_${i}`));
+                    let days = input_qty / daily; let phy_vol = actual_cartons * box_vol;
+                    let custom_name = document.getElementById(`sku_custom_name_${i}`) ? document.getElementById(`sku_custom_name_${i}`).value || `SKU ${['A','B','C'][i]}` : `SKU ${['A','B','C'][i]}`;
+
+                    let skuObj = { idx: i, custom_name, profit, exact_vol, ceil_vol, days, qty: input_qty, cartons: actual_cartons, raw_cartons: input_cartons, phy_vol, box_vol, ipb, daily, pallet_bpl };
+                    skuObj.baseOpt = getOptUnitProfit(skuObj);
+                    skus.push(skuObj);
+                    total_cartons += actual_cartons; total_phy_vol += phy_vol;
+                    
+                    if (i === 2) { vol_for_AB = Math.max(0.1, pallet_vol - phy_vol); skuC_info = { vol: phy_vol, cartons: actual_cartons }; }
+                });
+
+                setElText('out_total_boxes', total_cartons);
+                
+                let hintHtml = '';
+                if (skus.length > 0) {
+                    if (total_phy_vol > pallet_vol) {
+                        let excess_vol = total_phy_vol - pallet_vol;
+                        let overHtml = skus.map((s) => {
+                            let reduce_boxes = Math.ceil(excess_vol / s.box_vol); let new_boxes = s.cartons - reduce_boxes;
+                            if (new_boxes >= 0 && reduce_boxes > 0) return `<div style="margin-top:6px; font-size: 0.85rem;">${t('over_act_desc', s.custom_name, reduce_boxes, new_boxes)} <button class="btn-fill" onclick="setSkuCartons(${s.idx}, ${new_boxes})" style="background:#E67E22; float:right;">${t('over_fix')}</button><div style="clear:both;"></div></div>`;
+                            return '';
+                        }).join('');
+                        hintHtml = `<div style="color:var(--danger); font-size:0.9rem; margin-bottom: 10px;">${t('over_warn', pallet_vol.toFixed(1), total_phy_vol.toFixed(1), excess_vol.toFixed(1))}</div><div style="background:#FDEDEC; padding:12px; border-radius:6px; border:1px solid #F5B7B1;"><div style="font-weight:bold; color:var(--danger); margin-bottom: 6px;">${t('over_act_title')}</div>${overHtml || `<div style="color:#7F8C8D;">${t('over_none')}</div>`}</div>`;
+                    } else {
+                        let rem_vol = pallet_vol - total_phy_vol;
+                        let can_fit = skus.map((s) => {
+                            let max_add = Math.floor(rem_vol / s.box_vol);
+                            if(max_add <= 0) return '';
+                            return `<div style="margin-top:6px; font-size:0.85rem;"><span style="display:inline-block; color:#27AE60; font-weight:bold;">${t('ok_act_desc', max_add, s.custom_name)}</span> <button class="btn-fill" onclick="setSkuCartons(${s.idx}, ${s.cartons + max_add})" style="float:right;">${t('btn_fill')}</button><div style="clear:both;"></div></div>`;
+                        }).join('');
+                        hintHtml = `<div style="font-size:0.9rem; color:#27AE60; margin-bottom:10px;">${t('ok_cap', pallet_vol.toFixed(1), total_phy_vol.toFixed(1), rem_vol.toFixed(1))}</div>${can_fit ? `<div style="padding:12px; background:#EAFAF1; border-radius:6px; border:1px solid #A9DFBF;"><div style="font-weight:bold; color:#1E8449; margin-bottom: 6px;">${t('ok_act_title')}</div>${can_fit}</div>` : ''}`;
+                    }
+                }
+                
+                let opt_t = optimizeTransportMixed(total_phy_vol, total_cartons, pallet_vol, s1_p, s1_c, exc, dest_s2_p, dest_s2_vl, dest_s2_vh);
+                let current_total_civ = 0;
+                let tableHeaders = `<th style="width:18%;">${t('th_compare_dim')}</th>`; 
+                let trLoad = `<tr><td>${t('td_load_plan')}</td>`; 
+                let trRatio = `<tr><td>${t('td_vol_ratio')}</td>`; 
+                let trDays = `<tr style="background:#F4F6F7;"><td>${t('td_est_turnover')}</td>`; 
+                let trTrans = `<tr><td>${t('td_trans_cost')}</td>`; 
+                let trLog = `<tr><td>${t('td_wb_logistics')}</td>`; 
+                let trStore = `<tr><td>${t('td_wb_storage')}</td>`; 
+                let trBase = `<tr><td>${t('td_indiv_base')}</td>`; 
+                let trUp = `<tr><td>${t('td_combo_net')}</td>`; 
+                let trDelta = `<tr><td>${t('td_profit_delta')}</td>`; 
+                let trContrib = `<tr style="background:#FDF2E9;"><td style="font-weight:bold; color:var(--primary);">${t('td_contrib')}</td>`;
+                let trRisk = `<tr style="background:#F9EBEA;"><td style="font-weight:bold; color:var(--danger);">${t('td_risk')}</td>`;
+
+                skus.forEach(s => {
+                    let ratio = total_phy_vol > 0 ? (s.phy_vol / total_phy_vol) : 0;
+                    let trans_u = s.qty > 0 ? (opt_t.total_rmb * ratio) / s.qty : 0;
+                    let wb = calcWBCosts(s.exact_vol, s.ceil_vol, dest_logC, dest_strC, s.days, exc);
+                    let up = s.qty > 0 ? (s.profit - trans_u - wb.log - wb.store) : 0;
+                    let delta = s.qty > 0 ? (up - s.baseOpt.up) : 0;
+                    let contrib = delta * s.qty; current_total_civ += contrib;
+                    
+                    let pctDelta = s.baseOpt.up !== 0 ? (delta / Math.abs(s.baseOpt.up)) * 100 : 0;
+                    let curTotalProfit = up * s.qty; let pctContrib = curTotalProfit !== 0 ? (contrib / Math.abs(curTotalProfit)) * 100 : 0;
+                    const fmtP = (v) => (v > 0 ? '+' : '') + v.toFixed(2);
+                    let colorDelta = delta >= 0 ? '#27AE60' : '#C0392B'; let colorContrib = contrib >= 0 ? '#27AE60' : '#C0392B';
+                    
+                    tableHeaders += `<th>${s.custom_name}</th>`; 
+                    trLoad += `<td><b>${s.cartons}</b> ${t('lbl_carton')} (${s.qty} ${t('lbl_piece')})</td>`; 
+                    trRatio += `<td>${(ratio*100).toFixed(1)}%</td>`; 
+                    trDays += `<td><b>${s.days.toFixed(1)}</b> ${t('lbl_day')}</td>`;
+                    trTrans += `<td>¥${trans_u.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_trans_sub', (trans_u * s.qty).toFixed(2), (ratio*100).toFixed(1))}</span></td>`;
+                    trLog += `<td>¥${wb.log.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_log_sub', wb.base_log_rub, dest_logC, exc)}</span></td>`;
+                    trStore += `<td>¥${wb.store.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_store_sub', Math.max(0, s.ceil_vol - 1), dest_strC, (s.days/2).toFixed(1), exc)}</span></td>`;
+                    trBase += `<td><span style="font-size:0.95rem; font-weight:bold;">¥${s.baseOpt.up.toFixed(2)}</span><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_base_sub', s.baseOpt.mode||'-', s.baseOpt.c, s.baseOpt.days.toFixed(0))}</span></td>`;
+                    trUp += `<td><b style="font-size:1.05rem;">¥${up.toFixed(2)}</b><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_up_sub', s.profit.toFixed(2), trans_u.toFixed(2), wb.log.toFixed(2), wb.store.toFixed(2))}</span></td>`;
+                    trDelta += `<td style="color:${colorDelta}; font-weight:bold;">${fmtP(delta)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(pctDelta)}%)</span></td>`;
+                    trContrib += `<td style="color:${colorContrib}; font-weight:bold; font-size:1.05rem;">${fmtP(contrib)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(pctContrib)}%)</span></td>`;
+                    
+                    let riskStr = calcRisk(s.qty, up, wb.store, s.profit, trans_u, wb.log);
+                    trRisk += `<td>${riskStr}</td>`;
+                });
+
+                let trArray = [trLoad, trRatio, trDays, trTrans, trLog, trStore, trBase, trUp, trDelta, trContrib, trRisk];
+                let tbodyRows = trArray.map(tr => tr + `</tr>`).join('');
+
+                let civHtml = `<div style="margin-top: 15px; border-top: 1px dashed #D5DBDB; padding-top: 12px;"><div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;"><div style="font-weight:bold; color:var(--primary); font-size:1.05rem;">${t('kpi_main_title', destName)}</div><div style="text-align: right;"><div style="font-weight: bold; font-size:1.2rem; color: ${current_total_civ>=0?'#27AE60':'#C0392B'}; line-height: 1.2;">${t('kpi_civ_total')} ${(current_total_civ>0?'+':'')}${current_total_civ.toFixed(2)} <span style="font-size: 1rem;">¥</span></div><div style="font-size:0.85rem; color:#34495E; margin-top:2px;">${t('kpi_trans_mode')} <b style="color:var(--danger);">${opt_t.mode}</b> ${t('kpi_trans_total', opt_t.total_rmb.toFixed(2))}</div></div></div><div style="font-size: 0.85rem; color: #7F8C8D; margin-bottom: 8px;">${t('kpi_vol_util')} <b>${((total_phy_vol / pallet_vol)*100).toFixed(1)}%</b> ${t('kpi_vol_used_max', total_phy_vol.toFixed(1), pallet_vol.toFixed(1))}</div><div class="details-table-wrapper"><table class="ab-compare-table" style="background:#FFF;"><thead><tr>${tableHeaders}</tr></thead><tbody>${tbodyRows}</tbody></table></div></div>`;
+                setElHTML('kpi1_detail_html', hintHtml + civHtml);
+                
+                try { renderIndividualOptCharts(skus, s1_p, s1_c, exc, dest_s2_p, dest_s2_vl, dest_s2_vh, dest_logC, dest_strC, pallet_vol, destName); } catch(e) { console.error("Indiv Charts Error:", e); }
+                try { renderABOptimizationChart(skus, vol_for_AB, s1_p, s1_c, exc, dest_s2_p, dest_s2_vl, dest_s2_vh, dest_logC, dest_strC, pallet_vol, skuC_info, destName); } catch(e) { console.error("AB Chart Error:", e); }
+
+            } catch (error) {
+                console.error("Calculate Error:", error);
+                setElHTML('kpi1_detail_html', `<div style="color:red; padding: 20px; font-weight: bold;">系统计算异常！可能含有非法的空数据或零值，请检查左侧输入框。<br><span style="font-size:0.8rem; font-weight:normal;">详细报错: ${error.message}</span></div>`);
+            }
+        }
+
+        function renderIndividualOptCharts(skus, s1_p, s1_c, exc, s2_p, s2_vl, s2_vh, logC, strC, p_vol, destName) {
+            let container = document.getElementById('indiv_charts_container');
+            if(!container) return; container.innerHTML = '';
+            indivChartsObj.forEach(c => c.destroy()); indivChartsObj = [];
+            if (document.getElementById('title_indiv_chart')) document.getElementById('title_indiv_chart').innerHTML = t('chart_indiv_title', destName);
+
+            skus.forEach((s) => {
+                let div = document.createElement('div'); div.className = 'chart-card';
+                div.innerHTML = `<h3>${s.custom_name}</h3><div class="chart-container"><canvas id="indivChart_${s.idx}"></canvas></div>`;
+                container.appendChild(div);
+
+                let c_labels = []; 
+                let data_ds1 = []; // Dataset 1 (靠0轴更近的部分)
+                let data_ds2 = []; // Dataset 2 (离0轴更远的部分)
+                let bg_ds1 = [];   // Dataset 1 的颜色
+                let bg_ds2 = [];   // Dataset 2 的颜色
+                let c_tooltips = [];
+                
+                let start_c = Math.max(1, Math.ceil((s.daily * 14) / s.ipb));
+                let end_c = Math.ceil((s.daily * 90) / s.ipb);
+                if (s.pallet_bpl > 0) end_c = Math.max(end_c, s.pallet_bpl * 2);
+                if (start_c > end_c) end_c = start_c; 
+                end_c = Math.min(end_c, 1500); 
+                let best_c = s.baseOpt.c;
+
+                for (let c = start_c; c <= end_c; c++) {
+                    let test_qty = c * s.ipb; let test_days = test_qty / s.daily;
+                    let opt = getSingleSkuTransportCost(c, s.pallet_bpl, s.box_vol, s1_p, s1_c, exc, s2_p, s2_vl, s2_vh);
+                    let s1_u = test_qty > 0 ? opt.total_rmb / test_qty : 0;
+                    
+                    // 1. 正常情况计算
+                    let wb = calcWBCosts(s.exact_vol, s.ceil_vol, logC, strC, test_days, exc);
+                    let net_normal = s.profit - s1_u - wb.log - wb.store;
+                    
+                    // 2. 滞销 1/3 压测情况计算 (仓储费翻3倍)
+                    let store_stress = wb.store * 3;
+                    let net_stress = s.profit - s1_u - wb.log - store_stress;
+                    
+                    // 3. 风险评估文本
+                    let drop = net_normal - net_stress;
+                    let dropPct = (net_normal > 0) ? (drop / net_normal) * 100 : (net_stress < net_normal ? 999 : 0);
+                    
+                    let riskLabel = "";
+                    if (dropPct <= 20 && net_stress >= 0) {
+                        riskLabel = currentLang === 'zh' ? "🟩 低" : "🟩 Низкий";
+                    } else if (dropPct > 20 && dropPct <= 50 && net_stress >= 0) {
+                        riskLabel = currentLang === 'zh' ? "🟧 中等" : "🟧 Средний";
+                    } else {
+                        riskLabel = currentLang === 'zh' ? "🟥 高 (抗跌性极差)" : "🟥 Высокий (Слабая устойчивость)";
+                    }
+
+                    c_labels.push(`${c}${t('lbl_carton')} (${Math.round(test_days)}${t('lbl_day')})`);
+                    
+                    // 4. 零轴锚定·双向堆叠颜色与数据分配
+                    let hue_deep, hue_light;
+                    if (c === best_c) {
+                        hue_deep = 'rgba(211, 84, 0, 0.9)';   // 方案最优解: 深橙
+                        hue_light = 'rgba(243, 156, 18, 0.4)'; // 浅橙
+                    } else if (opt.isPallet) {
+                        hue_deep = 'rgba(142, 68, 173, 0.9)'; // 满托: 深紫
+                        hue_light = 'rgba(155, 89, 182, 0.4)'; // 浅紫
+                    } else {
+                        hue_deep = 'rgba(41, 128, 185, 0.9)'; // 散发: 深蓝
+                        hue_light = 'rgba(52, 152, 219, 0.4)'; // 浅蓝
+                    }
+                    let red_deep = 'rgba(192, 57, 43, 0.9)';  // 深红 (亏损警告)
+                    let red_light = 'rgba(231, 76, 60, 0.4)'; // 浅红
+
+                    if (net_normal >= 0 && net_stress >= 0) {
+                        // 稳赚区 (双正): 底盘是深色的滞销保底利润，上方是浅色的正常浮动空间
+                        data_ds1.push(net_stress);              bg_ds1.push(hue_deep);
+                        data_ds2.push(net_normal - net_stress); bg_ds2.push(hue_light);
+                    } else if (net_normal >= 0 && net_stress < 0) {
+                        // 破发区 (一正一负): 上方浅色为正常利润，下方深红向下扎破0轴
+                        data_ds1.push(net_normal);              bg_ds1.push(hue_light);
+                        data_ds2.push(net_stress);              bg_ds2.push(red_deep);
+                    } else { 
+                        // 血亏区 (双负): 上半部分浅红(正常就亏)，下半部分深红(滞销多亏的钱)
+                        data_ds1.push(net_normal);              bg_ds1.push(red_light);
+                        data_ds2.push(net_stress - net_normal); bg_ds2.push(red_deep);
+                    }
+                    
+                    // 5. Tooltip 文字构建
+                    let log_formula = s.exact_vol <= 1.0 ? `${wb.log_form}₽` : `${wb.log_form}₽`;
+                    let ttArray = [
+                        `${t('opt_tt_mode', opt.mode)} | ${t('opt_tt_total_box', c, test_qty)} | ${t('opt_tt_turnover', test_days.toFixed(1))}`,
+                        `-------------------------`,
+                        `${t('opt_tt_init_profit', s.profit.toFixed(2))}`,
+                        `${t('opt_tt_trans', s1_u.toFixed(2))}`,
+                        `${t('opt_tt_log', wb.log.toFixed(2))} ${t('td_log_sub', wb.base_log_rub, logC, exc)}`,
+                        `${t('opt_tt_store', wb.store.toFixed(2))} ${t('td_store_sub', Math.max(0, s.ceil_vol - 1), strC, (test_days/2).toFixed(1), exc)}`,
+                        `${t('opt_tt_net', net_normal.toFixed(2))}`,
+                        `-------------------------`,
+                        (currentLang === 'zh' ? `1/3动销压测净利: ¥${net_stress.toFixed(2)}` : `Стресс-маржа (спрос 1/3): ¥${net_stress.toFixed(2)}`),
+                        (currentLang === 'zh' ? `风险评估: ${riskLabel}` : `Оценка риска: ${riskLabel}`)
+                    ];
+
+                    if (c === best_c) ttArray.unshift(t('opt_best_solution'));
+                    c_tooltips.push({ fullText: ttArray, net_normal: net_normal });
+                }
+
+                let canvasEl = document.getElementById(`indivChart_${s.idx}`);
+                if(canvasEl) {
+                    let ctx = canvasEl.getContext('2d');
+                    let chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: { 
+                            labels: c_labels, 
+                            datasets: [
+                                {
+                                    data: data_ds1,
+                                    backgroundColor: bg_ds1,
+                                    stack: 'Stack 0',
+                                    borderRadius: 2
+                                },
+                                {
+                                    data: data_ds2,
+                                    backgroundColor: bg_ds2,
+                                    stack: 'Stack 0',
+                                    borderRadius: 2
+                                }
+                            ] 
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false // 悬停在列的任何位置都会触发，提高交互体验
+                            },
+                            plugins: { 
+                                legend: { display: false },
+                                tooltip: { 
+                                    // 拦截渲染，避免一张卡片里重复显示 DS1 和 DS2 两条不友好的分段数据
+                                    filter: (ttItem) => ttItem.datasetIndex === 0, 
+                                    callbacks: { 
+                                        title: () => null,
+                                        label: (ctx) => (currentLang === 'zh' ? '正常单件净利: ¥' : 'Норм. маржа 1шт: ¥') + c_tooltips[ctx.dataIndex].net_normal.toFixed(2), 
+                                        afterLabel: (ctx) => `\n` + c_tooltips[ctx.dataIndex].fullText.join('\n') 
+                                    } 
+                                }
+                            },
+                            scales: { 
+                                x: { stacked: true, ticks: { maxTicksLimit: 15, font:{size:10} }, grid: { display: false } }, 
+                                y: { 
+                                    stacked: true, 
+                                    title: { display: false },
+                                    // 给 0 轴（盈亏平衡线）绘制一条醒目的粗线，凸显“向下扎破”的视觉感受
+                                    grid: { color: (ctx) => ctx.tick.value === 0 ? '#2C3E50' : '#EAEDED', lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1 } 
+                                } 
+                            }
+                        }
+                    });
+                    indivChartsObj.push(chart);
+                }
+            });
+        }
+
+        // ================== A/B 双品满托推演 ==================
+        function renderABOptimizationChart(skus, usable_vol, s1_p, s1_c, exc, s2_p, s2_vl, s2_vh, logC, strC, original_pallet_vol, skuC_info, destName) {
+            let container = document.getElementById('ab_opt_module');
+            if (!container) return;
+
+            let skuA = skus.find(s => s.idx === 0);
+            let skuB = skus.find(s => s.idx === 1);
+            let skuC = skus.find(s => s.idx === 2);
+            let hasC = skuC !== undefined && skuC_info && skuC_info.cartons > 0;
+
+            if (!skuA || !skuB) { container.style.display = 'none'; return; }
+            container.style.display = 'block';
+
+            if (document.getElementById('title_ab_chart')) document.getElementById('title_ab_chart').innerHTML = `🎯 ${t('ab_panel_title')}`;
+            let descEl = document.getElementById('ab_opt_desc');
+            if (descEl) {
+                if (hasC) {
+                    let c_ratio = ((skuC_info.vol / original_pallet_vol) * 100).toFixed(1);
+                    descEl.innerHTML = t('ab_desc_c_active', skuC_info.vol.toFixed(1), usable_vol.toFixed(1), (100 - c_ratio).toFixed(1));
+                } else {
+                    descEl.innerHTML = t('ab_desc_basic');
+                }
+            }
+
+            let max_A = Math.floor(usable_vol / skuA.box_vol);
+            let pallet_cost_rmb = s1_p + (s2_p / exc);
+
+            let c_labels = []; let c_data_civ = []; let c_bg_colors = []; window.abChartDataDetails = [];
+            
+            let step = Math.max(1, Math.floor(max_A / 50));
+            let points = new Set();
+            
+            // 确保从 A=0 箱严格开始打底
+            points.add(0); 
+            
+            for(let cA = 0; cA <= max_A; cA += step) points.add(cA);
+            points.add(max_A);
+            let sorted_cA = Array.from(points).sort((a,b)=>a-b);
+
+            for(let cA of sorted_cA) {
+                let rem_vol = usable_vol - (cA * skuA.box_vol);
+                let cB = Math.floor(rem_vol / skuB.box_vol);
+                
+                let volA = cA * skuA.box_vol; let volB = cB * skuB.box_vol; let volC = hasC ? skuC_info.vol : 0;
+                let total_v = volA + volB + volC;
+                if (total_v === 0) continue;
+
+                let ratioA = volA / total_v; let ratioB = volB / total_v; let ratioC = hasC ? (volC / total_v) : 0;
+                let costA = pallet_cost_rmb * ratioA; let costB = pallet_cost_rmb * ratioB; let costC = hasC ? (pallet_cost_rmb * ratioC) : 0;
+
+                let qA = cA * skuA.ipb; let qB = cB * skuB.ipb; let cC = hasC ? skuC_info.cartons : 0; let qC = hasC ? cC * skuC.ipb : 0;
+                let daysA = qA > 0 ? qA / skuA.daily : 0; let daysB = qB > 0 ? qB / skuB.daily : 0; let daysC = qC > 0 ? qC / skuC.daily : 0;
+
+                let trans_u_A = qA > 0 ? costA / qA : 0; let trans_u_B = qB > 0 ? costB / qB : 0; let trans_u_C = qC > 0 ? costC / qC : 0;
+
+                let wbA = qA > 0 ? calcWBCosts(skuA.exact_vol, skuA.ceil_vol, logC, strC, daysA, exc) : {log:0, store:0, avg_hold_days:0, log_form:'0', base_log_rub:0};
+                let wbB = qB > 0 ? calcWBCosts(skuB.exact_vol, skuB.ceil_vol, logC, strC, daysB, exc) : {log:0, store:0, avg_hold_days:0, log_form:'0', base_log_rub:0};
+                let wbC = qC > 0 ? calcWBCosts(skuC.exact_vol, skuC.ceil_vol, logC, strC, daysC, exc) : {log:0, store:0, avg_hold_days:0, log_form:'0', base_log_rub:0};
+
+                let upA = qA > 0 ? (skuA.profit - trans_u_A - wbA.log - wbA.store) : 0;
+                let upB = qB > 0 ? (skuB.profit - trans_u_B - wbB.log - wbB.store) : 0;
+                let upC = qC > 0 ? (skuC.profit - trans_u_C - wbC.log - wbC.store) : 0;
+
+                let deltaA = qA > 0 ? (upA - skuA.baseOpt.up) : 0; let deltaB = qB > 0 ? (upB - skuB.baseOpt.up) : 0; let deltaC = (hasC && qC > 0) ? (upC - skuC.baseOpt.up) : 0;
+                let contribA = deltaA * qA; let contribB = deltaB * qB; let contribC = hasC ? (deltaC * qC) : 0;
+                let civ = contribA + contribB + contribC;
+
+                let pctDeltaA = skuA.baseOpt.up !== 0 ? (deltaA / Math.abs(skuA.baseOpt.up)) * 100 : 0;
+                let pctDeltaB = skuB.baseOpt.up !== 0 ? (deltaB / Math.abs(skuB.baseOpt.up)) * 100 : 0;
+                let pctDeltaC = (hasC && skuC.baseOpt.up !== 0) ? (deltaC / Math.abs(skuC.baseOpt.up)) * 100 : 0;
+                
+                let curNetA = upA * qA; let pctContribA = curNetA !== 0 ? (contribA / Math.abs(curNetA)) * 100 : 0;
+                let curNetB = upB * qB; let pctContribB = curNetB !== 0 ? (contribB / Math.abs(curNetB)) * 100 : 0;
+                let curNetC = upC * qC; let pctContribC = curNetC !== 0 ? (contribC / Math.abs(curNetC)) * 100 : 0;
+
+                c_labels.push(`A:${cA} / B:${cB}`); c_data_civ.push(civ); c_bg_colors.push(civ >= 0 ? 'rgba(39, 174, 96, 0.85)' : 'rgba(192, 57, 43, 0.85)');
+
+                window.abChartDataDetails.push({
+                    civ, titleA: skuA.custom_name, titleB: skuB.custom_name, titleC: hasC ? skuC.custom_name : '', hasC,
+                    cA, qA, ratioA, trans_u_A, daysA, storeA: wbA.store, logA: wbA.log, holdA: wbA.avg_hold_days, wbA: wbA, upA, deltaA, contribA, baseA: skuA.baseOpt, profitA: skuA.profit, ceil_vol_A: skuA.ceil_vol, pctDeltaA, pctContribA, exact_A: skuA.exact_vol,
+                    cB, qB, ratioB, trans_u_B, daysB, storeB: wbB.store, logB: wbB.log, holdB: wbB.avg_hold_days, wbB: wbB, upB, deltaB, contribB, baseB: skuB.baseOpt, profitB: skuB.profit, ceil_vol_B: skuB.ceil_vol, pctDeltaB, pctContribB, exact_B: skuB.exact_vol,
+                    cC, qC, ratioC, trans_u_C, daysC, storeC: wbC.store, logC: wbC.log, holdC: wbC.avg_hold_days, wbC: wbC, upC, deltaC, contribC, baseC: hasC ? skuC.baseOpt : null, profitC: hasC ? skuC.profit : 0, ceil_vol_C: hasC ? skuC.ceil_vol : 0, pctDeltaC, pctContribC, exact_C: hasC ? skuC.exact_vol : 0,
+                    total_v, usable_vol, pallet_vol: original_pallet_vol, exc, dest_logC: logC, dest_strC: strC
+                });
+            }
+
+            let canvasEl = document.getElementById(`abOptChart`);
+            if(canvasEl) {
+                if(abChartObj) abChartObj.destroy();
+                let ctx = canvasEl.getContext('2d');
+                abChartObj = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: c_labels, datasets: [{ label: 'CIV', data: c_data_civ, backgroundColor: c_bg_colors, borderRadius: 4 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        onClick: (e, elements) => { if (elements.length > 0) window.showDetailsModal(elements[0].index); },
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: { 
+                                titleFont: { size: 13 }, bodyFont: { size: 14, weight: 'bold' },
+                                callbacks: { 
+                                    label: (ctx) => ` CIV: ${ctx.raw > 0 ? '+' : ''}${ctx.raw.toFixed(0)} ¥`,
+                                    afterLabel: (ctx) => {
+                                        let d = window.abChartDataDetails[ctx.dataIndex];
+                                        let txt = `A: ${d.cA} ${t('lbl_carton')} | B: ${d.cB} ${t('lbl_carton')}` + (d.hasC ? ` | C: ${d.cC} ${t('lbl_carton')}` : '');
+                                        return txt + `\n` + t('kpi_tooltip_click');
+                                    }
+                                } 
+                            }
+                        },
+                        scales: { x: { ticks: { font:{size:9}, maxTicksLimit: 15 } }, y: { title: { display: true, text: 'CIV (¥)', font: { weight: 'bold' } }, grid: { color: (ctx) => ctx.tick.value === 0 ? '#2C3E50' : '#EAEDED', lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1 } } }
+                    }
+                });
+            }
+        }
+        
+        window.showDetailsModal = function(idx) {
+            let d = window.abChartDataDetails[idx];
+            if(!d) return;
+            const fmtP = (v) => (v > 0 ? '+' : '') + v.toFixed(2);
+            let colorA = d.deltaA >= 0 ? '#27AE60' : '#C0392B'; let colorB = d.deltaB >= 0 ? '#27AE60' : '#C0392B'; let colorC = d.hasC ? (d.deltaC >= 0 ? '#27AE60' : '#C0392B') : '';
+            
+            let riskA = calcRisk(d.qA, d.upA, d.storeA, d.profitA, d.trans_u_A, d.logA);
+            let riskB = calcRisk(d.qB, d.upB, d.storeB, d.profitB, d.trans_u_B, d.logB);
+            let riskC = d.hasC ? calcRisk(d.qC, d.upC, d.storeC, d.profitC, d.trans_u_C, d.logC) : '';
+
+            let tableHeaders = `<th style="width:22%;">${t('th_compare_dim')}</th><th style="width:${d.hasC?'26%':'39%'};"><span style="display:inline-block; width:8px; height:8px; background:#8E44AD; border-radius:50%; margin-right:4px;"></span>${d.titleA}</th><th style="width:${d.hasC?'26%':'39%'};"><span style="display:inline-block; width:8px; height:8px; background:#2980B9; border-radius:50%; margin-right:4px;"></span>${d.titleB}</th>`;
+            if(d.hasC) tableHeaders += `<th style="width:26%;"><span style="display:inline-block; width:8px; height:8px; background:#27AE60; border-radius:50%; margin-right:4px;"></span>${d.titleC}</th>`;
+
+            let html = `
+                <div style="margin-bottom: 15px; text-align: center;">
+                    <div style="font-size: 0.85rem; color: #7F8C8D;">${t('kpi_civ_total')}</div>
+                    <div style="font-size: 2.2rem; font-weight: bold; color: ${d.civ >= 0 ? '#27AE60' : '#C0392B'}; line-height: 1.2;">${fmtP(d.civ)} <span style="font-size: 1rem;">¥</span></div>
+                    <div style="font-size: 0.8rem; color: #34495E; margin-top: 4px;">${t('kpi_vol_util')} <b>${((d.total_v / d.pallet_vol)*100).toFixed(1)}%</b></div>
+                    <div style="font-size: 0.75rem; color: #95A5A6;">${t('kpi_vol_used_max', d.total_v.toFixed(1), d.pallet_vol.toFixed(1))}</div>
+                </div>
+                <div class="details-table-wrapper">
+                    <table class="ab-compare-table">
+                        <thead><tr>${tableHeaders}</tr></thead>
+                        <tbody>
+                            <tr><td>${t('td_load_plan')}</td><td><b>${d.cA}</b> ${t('lbl_carton')} (${d.qA} ${t('lbl_piece')})</td><td><b>${d.cB}</b> ${t('lbl_carton')} (${d.qB} ${t('lbl_piece')})</td>${d.hasC ? `<td><b>${d.cC}</b> ${t('lbl_carton')} (${d.qC} ${t('lbl_piece')})</td>` : ''}</tr>
+                            <tr><td>${t('td_vol_ratio')}</td><td>${(d.ratioA*100).toFixed(1)}%</td><td>${(d.ratioB*100).toFixed(1)}%</td>${d.hasC ? `<td>${(d.ratioC*100).toFixed(1)}%</td>` : ''}</tr>
+                            <tr style="background:#F4F6F7;"><td>${t('td_est_turnover')}</td><td><b>${d.daysA.toFixed(1)}</b> ${t('lbl_day')}</td><td><b>${d.daysB.toFixed(1)}</b> ${t('lbl_day')}</td>${d.hasC ? `<td><b>${d.daysC.toFixed(1)}</b> ${t('lbl_day')}</td>` : ''}</tr>
+                            
+                            <tr><td>${t('td_trans_cost')}</td>
+                                <td>¥${d.trans_u_A.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_trans_sub', (d.trans_u_A * d.qA).toFixed(2), (d.ratioA*100).toFixed(1))}</span></td>
+                                <td>¥${d.trans_u_B.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_trans_sub', (d.trans_u_B * d.qB).toFixed(2), (d.ratioB*100).toFixed(1))}</span></td>
+                                ${d.hasC ? `<td>¥${d.trans_u_C.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_trans_sub', (d.trans_u_C * d.qC).toFixed(2), (d.ratioC*100).toFixed(1))}</span></td>` : ''}
+                            </tr>
+                            <tr><td>${t('td_wb_logistics')}</td>
+                                <td>¥${d.logA.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_log_sub', d.wbA.base_log_rub, d.dest_logC, d.exc)}</span></td>
+                                <td>¥${d.logB.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_log_sub', d.wbB.base_log_rub, d.dest_logC, d.exc)}</span></td>
+                                ${d.hasC ? `<td>¥${d.logC.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_log_sub', d.wbC.base_log_rub, d.dest_logC, d.exc)}</span></td>` : ''}
+                            </tr>
+                            <tr><td>${t('td_wb_storage')}</td>
+                                <td>¥${d.storeA.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_store_sub', Math.max(0, d.ceil_vol_A - 1), d.dest_strC, d.holdA.toFixed(1), d.exc)}</span></td>
+                                <td>¥${d.storeB.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_store_sub', Math.max(0, d.ceil_vol_B - 1), d.dest_strC, d.holdB.toFixed(1), d.exc)}</span></td>
+                                ${d.hasC ? `<td>¥${d.storeC.toFixed(2)} /${t('lbl_piece')}<br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_store_sub', Math.max(0, d.ceil_vol_C - 1), d.dest_strC, d.holdC.toFixed(1), d.exc)}</span></td>` : ''}
+                            </tr>
+                            
+                            <tr style="background:#FDFEFE;"><td colspan="${d.hasC?4:3}" style="text-align:center; color:#95A5A6; font-size:0.75rem;">${t('th_core_value')}</td></tr>
+                            
+                            <tr>
+                                <td>${t('td_indiv_base')}</td>
+                                <td><span style="font-size:0.95rem; font-weight:bold;">¥${d.baseA.up.toFixed(2)}</span><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_base_sub', d.baseA.mode||'-', d.baseA.c, d.baseA.days.toFixed(0))}</span></td>
+                                <td><span style="font-size:0.95rem; font-weight:bold;">¥${d.baseB.up.toFixed(2)}</span><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_base_sub', d.baseB.mode||'-', d.baseB.c, d.baseB.days.toFixed(0))}</span></td>
+                                ${d.hasC && d.baseC ? `<td><span style="font-size:0.95rem; font-weight:bold;">¥${d.baseC.up.toFixed(2)}</span><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_base_sub', d.baseC.mode||'-', d.baseC.c, d.baseC.days.toFixed(0))}</span></td>` : ''}
+                            </tr>
+                            <tr><td>${t('td_combo_net')}</td>
+                                <td><b style="font-size:1.05rem;">¥${d.upA.toFixed(2)}</b><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_up_sub', d.profitA, d.trans_u_A.toFixed(2), d.logA.toFixed(2), d.storeA.toFixed(2))}</span></td>
+                                <td><b style="font-size:1.05rem;">¥${d.upB.toFixed(2)}</b><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_up_sub', d.profitB, d.trans_u_B.toFixed(2), d.logB.toFixed(2), d.storeB.toFixed(2))}</span></td>
+                                ${d.hasC ? `<td><b style="font-size:1.05rem;">¥${d.upC.toFixed(2)}</b><br><span style="font-size:0.7rem;color:#7F8C8D;">${t('td_up_sub', d.profitC, d.trans_u_C.toFixed(2), d.logC.toFixed(2), d.storeC.toFixed(2))}</span></td>` : ''}
+                            </tr>
+                            <tr><td>${t('td_profit_delta')}</td>
+                                <td style="color:${colorA}; font-weight:bold;">${fmtP(d.deltaA)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(d.pctDeltaA)}%)</span></td>
+                                <td style="color:${colorB}; font-weight:bold;">${fmtP(d.deltaB)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(d.pctDeltaB)}%)</span></td>
+                                ${d.hasC ? `<td style="color:${colorC}; font-weight:bold;">${fmtP(d.deltaC)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(d.pctDeltaC)}%)</span></td>` : ''}
+                            </tr>
+                            <tr style="background:#FDF2E9;"><td style="font-weight:bold; color:var(--primary);">${t('td_contrib')}</td>
+                                <td style="color:${colorA}; font-weight:bold; font-size:1.1rem;">${fmtP(d.contribA)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(d.pctContribA)}%)</span></td>
+                                <td style="color:${colorB}; font-weight:bold; font-size:1.1rem;">${fmtP(d.contribB)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(d.pctContribB)}%)</span></td>
+                                ${d.hasC ? `<td style="color:${colorC}; font-weight:bold; font-size:1.1rem;">${fmtP(d.contribC)}<br><span style="font-size:0.75rem;font-weight:normal;">(${fmtP(d.pctContribC)}%)</span></td>` : ''}
+                            </tr>
+                            <tr style="background:#F9EBEA;">
+                                <td style="font-weight:bold; color:var(--danger);">${t('td_risk')}</td>
+                                <td>${riskA}</td>
+                                <td>${riskB}</td>
+                                ${d.hasC ? `<td>${riskC}</td>` : ''}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('details_modal_content').innerHTML = html;
+            window.currentModalIdx = idx; 
+            document.getElementById('details_modal_overlay').style.display = 'flex';
+        }
+        
+        window.closeDetailsModal = () => document.getElementById('details_modal_overlay').style.display = 'none';
+        
+        window.applyModalPlan = function() {
+            let idx = window.currentModalIdx;
+            if(idx === undefined || idx < 0) return;
+            let d = window.abChartDataDetails[idx];
+            if(!d) return;
+
+            if(document.getElementById('sku_cartons_0')) { document.getElementById('sku_cartons_0').value = d.cA; document.getElementById('sku_qty_0').value = d.qA; }
+            if(document.getElementById('sku_cartons_1')) { document.getElementById('sku_cartons_1').value = d.cB; document.getElementById('sku_qty_1').value = d.qB; }
+            if(d.hasC && document.getElementById('sku_cartons_2')) { document.getElementById('sku_cartons_2').value = d.cC; document.getElementById('sku_qty_2').value = d.qC; }
+
+            closeDetailsModal(); calculateAll(); window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.copyModalDetails = function() {
+            let idx = window.currentModalIdx;
+            if(idx === undefined || idx < 0) return;
+            let d = window.abChartDataDetails[idx];
+            if(!d) return;
+            const fmtP = (v) => (v > 0 ? '+' : '') + v.toFixed(2);
+            
+            let text = `${t('copy_report_title')}\n${t('copy_civ', fmtP(d.civ))}\n${t('copy_vol', ((d.total_v / d.pallet_vol)*100).toFixed(1), d.total_v.toFixed(1), d.pallet_vol.toFixed(1))}\n\n${t('copy_base')}\n${t('copy_base_sku', d.titleA, d.baseA.mode, d.baseA.c, d.baseA.q, d.baseA.days.toFixed(0), d.baseA.up.toFixed(2))}\n${t('copy_base_sku', d.titleB, d.baseB.mode, d.baseB.c, d.baseB.q, d.baseB.days.toFixed(0), d.baseB.up.toFixed(2))}\n`;
+            if(d.hasC && d.baseC) text += `${t('copy_base_sku', d.titleC, d.baseC.mode, d.baseC.c, d.baseC.q, d.baseC.days.toFixed(0), d.baseC.up.toFixed(2))}\n`;
+
+            text += `\n${t('copy_combo')}\n${t('copy_combo_sku', d.titleA, d.cA, d.qA, (d.ratioA*100).toFixed(1), d.daysA.toFixed(0), d.trans_u_A.toFixed(2), (d.trans_u_A * d.qA).toFixed(2), d.storeA.toFixed(2), d.logA.toFixed(2), d.upA.toFixed(2), fmtP(d.deltaA), fmtP(d.pctDeltaA), fmtP(d.contribA), fmtP(d.pctContribA))}\n\n${t('copy_combo_sku', d.titleB, d.cB, d.qB, (d.ratioB*100).toFixed(1), d.daysB.toFixed(0), d.trans_u_B.toFixed(2), (d.trans_u_B * d.qB).toFixed(2), d.storeB.toFixed(2), d.logB.toFixed(2), d.upB.toFixed(2), fmtP(d.deltaB), fmtP(d.pctDeltaB), fmtP(d.contribB), fmtP(d.pctContribB))}\n`;
+
+            if(d.hasC) text += `\n${t('copy_combo_sku', d.titleC, d.cC, d.qC, (d.ratioC*100).toFixed(1), d.daysC.toFixed(0), d.trans_u_C.toFixed(2), (d.trans_u_C * d.qC).toFixed(2), d.storeC.toFixed(2), d.logC.toFixed(2), d.upC.toFixed(2), fmtP(d.deltaC), fmtP(d.pctDeltaC), fmtP(d.contribC), fmtP(d.pctContribC))}\n`;
+
+            const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+            let btn = document.getElementById('btn_copy_modal'); let oldText = btn.innerText; btn.innerText = t('copied_success') || "已复制!";
+            setTimeout(() => { btn.innerText = oldText; }, 2000);
+        };
+
+        // ================== 自动纠错清洗器 ==================
+        function initInputSanitizer() {
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                input.addEventListener('blur', function() {
+                    let val = parseFloat(this.value);
+                    if (isNaN(val)) return;
+
+                    // 利润允许负数，不干涉
+                    if (this.id.includes('profit')) return;
+
+                    let minAllow = 0;
+                    // 定义业务的最低底线
+                    if (this.id.includes('sku_l') || this.id.includes('sku_w') || this.id.includes('sku_h')) minAllow = 0.1;
+                    else if (this.id.includes('box_l') || this.id.includes('box_w') || this.id.includes('box_h')) minAllow = 1;
+                    else if (this.id.includes('box_qty')) minAllow = 1;
+                    else if (this.id.includes('sku_daily')) minAllow = 0.001;
+                    else if (this.id.includes('exchange')) minAllow = 1;
+
+                    // 如果离开了输入框，发现里面的值比允许的底线还小(比如负数或者0)，强制拉回底线并闪烁警告
+                    if (val < minAllow) {
+                        this.value = minAllow;
+                        this.style.backgroundColor = '#FDEDEC';
+                        this.style.borderColor = '#E74C3C';
+                        setTimeout(() => {
+                            this.style.backgroundColor = '';
+                            this.style.borderColor = '';
+                        }, 800);
+                        calculateAll(); 
+                    }
+                });
+            });
+        }
+
+        // ================== 生命周期初始化 ==================
+        document.addEventListener('DOMContentLoaded', () => {
+            // 0. 初始化内置 Example 数据 (如果在一台新电脑上没有任何记录)
+            try {
+                let records = JSON.parse(localStorage.getItem('wb_records') || '[]');
+                if (records.length === 0) {
+                    records.push(DEFAULT_EXAMPLE);
+                    localStorage.setItem('wb_records', JSON.stringify(records));
+                }
+            } catch(e) {}
+            
+            // 0.5 尝试恢复上次编辑的会话状态
+            try {
+                let savedSession = localStorage.getItem('wb_current_session');
+                // 如果没有上次的会话，且是新电脑，默认直接加载 EXAMPLE
+                if (savedSession) {
+                    restoreState(JSON.parse(savedSession));
+                } else {
+                    restoreState(DEFAULT_EXAMPLE.state);
+                    document.getElementById('sku_name').value = DEFAULT_EXAMPLE.skuName;
+                    document.getElementById('sku_remark').value = DEFAULT_EXAMPLE.remark;
+                }
+            } catch (e) {}
+
+            // 1. 建立箱数和件数的换算绑定
+            initBindings();
+            
+            // 2. 挂载输入框防负数纠错机制
+            initInputSanitizer();
+            
+            // 3. 挂载输入实时计算（只用 input，不要管奇葩数据，底层计算会防崩溃）
+            document.querySelectorAll('input, select').forEach(input => {
+                input.addEventListener('input', calculateAll);
+            });
+            
+            // 4. 设置默认语言，并触发初始渲染
+            setLang('zh');
+        });
+    </script>
+</body>
+</html>

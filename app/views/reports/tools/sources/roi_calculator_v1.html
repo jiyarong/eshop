@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU 成本与 ROI 智能测算台 | Калькулятор ROI</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #eff6ff;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --panel-bg: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-ru: #94a3b8; /* 俄文使用低饱和度色，避免喧宾夺主 */
+            --border-color: #e2e8f0;
+            --highlight-1: linear-gradient(135deg, #3b82f6, #2563eb);
+            --highlight-2: linear-gradient(135deg, #10b981, #059669);
+            --danger-text: #ef4444;
+            --success-text: #059669;
+            --warning-bg: #fffbeb;
+            --warning-border: #fcd34d;
+            --info-bg: #f0fdf4;
+            --info-border: #bbf7d0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-size: 14px; /* 恢复舒适的阅读字号 */
+            line-height: 1.5;
+            padding: 1.25rem;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            overflow: hidden; /* 锁定外层滚动 */
+        }
+
+        /* ----- 顶部操作台 ----- */
+        .top-bar {
+            background: var(--card-bg);
+            padding: 0.8rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-shrink: 0; 
+        }
+
+        .top-bar-item { display: flex; align-items: center; gap: 0.75rem; }
+        .top-bar-item .labels { display: flex; flex-direction: column; }
+        .top-bar-item .labels .zh { font-size: 14px; font-weight: 600; }
+        .top-bar-item .labels .ru { font-size: 11px; color: var(--text-ru); line-height: 1.2; }
+        
+        .top-bar-item input {
+            padding: 0.5rem 0.75rem; border: 1px solid var(--border-color);
+            border-radius: 0.5rem; font-size: 14px; outline: none; transition: border-color 0.2s;
+            background: var(--panel-bg);
+        }
+        .top-bar-item input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px var(--primary-light); }
+
+        .btn-save {
+            background: var(--primary); color: white; border: none; padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem; cursor: pointer; margin-left: auto; transition: background 0.2s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .btn-save:hover { background: var(--primary-hover); }
+        .btn-save .zh { font-size: 14px; font-weight: 600; }
+        .btn-save .ru { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+
+        /* ----- 主体三栏布局 ----- */
+        .main-container {
+            flex: 1;
+            min-height: 0; 
+            display: grid;
+            /* 经典比例：左侧边栏 260px，中间自适应，右侧略宽以展示结果 */
+            grid-template-columns: 260px minmax(400px, 1fr) minmax(380px, 1.1fr); 
+            gap: 1.25rem;
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .column-card {
+            background: var(--card-bg);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; 
+        }
+
+        .column-header {
+            padding: 1rem 1.25rem;
+            background: var(--card-bg); 
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0; 
+            display: flex; justify-content: space-between; align-items: baseline;
+        }
+        .column-header .zh { font-size: 16px; font-weight: 700; color: var(--text-main); }
+        .column-header .ru { font-size: 12px; color: var(--text-ru); font-weight: 500; }
+
+        .column-body { 
+            flex: 1; min-height: 0; overflow-y: auto; padding: 1.25rem; 
+        }
+
+        /* 优雅的内部滚动条 */
+        .column-body::-webkit-scrollbar { width: 6px; }
+        .column-body::-webkit-scrollbar-track { background: transparent; }
+        .column-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .column-body::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ----- 左栏：历史记录区 ----- */
+        .history-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .empty-tips { font-size: 13px; color: var(--text-muted); text-align: center; margin-top: 2rem; line-height: 1.6;}
+        .sku-group { border: 1px solid var(--border-color); border-radius: 0.5rem; overflow: hidden; }
+        .sku-group-header { background: var(--panel-bg); padding: 0.5rem 0.75rem; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--border-color); }
+        .history-item { padding: 0.6rem 0.75rem; border-bottom: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: flex-start; cursor: pointer; transition: background 0.2s; gap: 0.5rem; }
+        .history-item:last-child { border-bottom: none; }
+        .history-item:hover { background: var(--primary-light); }
+        .history-info { display: flex; flex-direction: column; gap: 4px; font-size: 12px; flex: 1; min-width: 0; }
+        .h-date { color: var(--text-muted); font-family: monospace; }
+        .h-remark { color: var(--text-main); word-wrap: break-word; overflow-wrap: break-word; }
+        .btn-delete { background: transparent; color: var(--text-muted); border: none; cursor: pointer; padding: 2px; font-size: 16px; line-height: 1; flex-shrink: 0; }
+        .btn-delete:hover { color: var(--danger-text); }
+
+        /* ----- 中栏：参数输入区 (核心重构：三列同行网格，完美治愈强迫症) ----- */
+        .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .input-item { 
+            display: grid; 
+            /* 布局：左侧标签150px，中间滑块自适应，右侧输入框带单位110px */
+            grid-template-columns: 150px 1fr 110px; 
+            align-items: center; 
+            gap: 1rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        .input-item:last-child { border-bottom: none; }
+        
+        .label-box { display: flex; flex-direction: column; }
+        .label-box .zh { font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .label-box .ru { font-size: 11px; color: var(--text-ru); margin-top: 2px; line-height: 1.1; }
+        
+        input[type="range"] { 
+            width: 100%; -webkit-appearance: none; height: 4px; background: var(--border-color); border-radius: 2px; outline: none; 
+        }
+        input[type="range"]::-webkit-slider-thumb { 
+            -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); background: var(--primary-hover); }
+        
+        .number-box {
+            display: flex; align-items: center; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 0.35rem; overflow: hidden;
+        }
+        .number-box:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); background: #fff;}
+        .number-box input[type="number"] {
+            width: 100%; border: none; background: transparent; padding: 0.4rem; font-size: 14px; text-align: center; font-family: monospace; font-weight: 600; outline: none; color: var(--text-main);
+        }
+        .number-box input[type="number"]::-webkit-inner-spin-button, .number-box input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .number-box .unit {
+            padding-right: 0.5rem; font-size: 12px; color: var(--text-muted); user-select: none;
+        }
+
+        /* ----- 右栏：结果展示区 ----- */
+        .section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); margin: 1rem 0 0.5rem 0; display: flex; justify-content: space-between; align-items: baseline;}
+        .section-title .ru { font-size: 11px; color: var(--text-ru); font-weight: 400; text-transform: uppercase;}
+        
+        .highlight-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .card { padding: 1rem; border-radius: 0.75rem; color: white; text-align: center; display: flex; flex-direction: column; justify-content: center;}
+        .card.roi { background: var(--highlight-1); }
+        .card.annual { background: var(--highlight-2); }
+        .card-title { font-size: 13px; opacity: 0.95; font-weight: 500; display: flex; flex-direction: column; align-items: center;}
+        .card-title .ru { font-size: 11px; opacity: 0.8; margin-top: 2px;}
+        .card-value { font-size: 26px; font-weight: 800; font-family: monospace; margin-top: 0.25rem;}
+
+        .mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .mini-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 0.6rem; border-radius: 0.5rem; text-align: center; }
+        .mini-card-title { display: flex; flex-direction: column; gap: 2px; margin-bottom: 0.25rem;}
+        .mini-card-title .zh { font-size: 12px; color: var(--text-muted); font-weight: 500; white-space: nowrap;}
+        .mini-card-title .ru { font-size: 10px; color: var(--text-ru); white-space: nowrap;}
+        .mini-card-value { font-size: 15px; font-weight: 700; color: var(--primary); font-family: monospace; }
+        .mini-card-value.unit { font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 2px; }
+
+        .details-list { list-style: none; background: var(--card-bg); border-radius: 0.5rem; padding: 0 0.75rem; border: 1px solid var(--border-color); }
+        .details-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px dashed var(--border-color); }
+        .details-list li:last-child { border-bottom: none; }
+        
+        .details-list li.breakeven-row { background-color: var(--info-bg); margin: 0 -0.75rem; padding: 0.6rem 0.75rem; border-top: 1px dashed var(--info-border); border-bottom: 1px dashed var(--info-border); }
+        .details-list li.total-row { border-top: 2px solid var(--border-color); border-bottom: 1px dashed var(--border-color); }
+        .details-list li.annual-row { background-color: var(--warning-bg); margin: 0 -0.75rem; padding: 0.6rem 0.75rem; border-radius: 0 0 0.5rem 0.5rem; border-top: 1px solid var(--warning-border); }
+        
+        .detail-label { display: flex; flex-direction: column; }
+        .detail-label .row { display: flex; align-items: baseline; gap: 6px; }
+        .detail-label .zh { font-weight: 600; color: var(--text-main); font-size: 13px; }
+        .detail-label .ru { font-size: 11px; color: var(--text-ru); }
+        .detail-note { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        
+        .detail-value { font-family: monospace; font-size: 15px; font-weight: 600; color: var(--text-main); text-align: right; flex-shrink: 0; margin-left: 0.5rem; }
+        .detail-value.final-profit { font-size: 18px; color: var(--primary); font-weight: 800; }
+        .detail-value.annual-profit { font-size: 20px; color: var(--success-text); font-weight: 800; }
+
+        /* ================= 响应式调整 ================= */
+        @media (max-width: 1200px) {
+            body { height: auto; overflow: auto; }
+            .main-container { grid-template-columns: 1fr 1fr; grid-auto-rows: auto; }
+            .column-card { height: auto; }
+            .column-body { overflow-y: visible; }
+            .column-card:nth-child(1) { grid-column: 1 / -1; max-height: 250px; display: flex;}
+            .column-card:nth-child(1) .column-body { overflow-y: auto; }
+            .top-bar { flex-wrap: wrap; }
+        }
+        @media (max-width: 768px) {
+            .main-container { grid-template-columns: 1fr; }
+            .input-item { grid-template-columns: 1fr 90px; gap: 0.5rem; } /* 手机端隐藏滑块节省空间 */
+            .input-item input[type="range"] { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="top-bar-item">
+        <div class="labels"><span class="zh">SKU</span><span class="ru">Артикул</span></div>
+        <input type="text" id="top-sku" placeholder="输入 SKU" style="width: 130px;">
+    </div>
+    <div class="top-bar-item">
+        <div class="labels"><span class="zh">测算日期</span><span class="ru">Дата расчета</span></div>
+        <input type="date" id="top-date">
+    </div>
+    <div class="top-bar-item">
+        <div class="labels"><span class="zh">测算备注</span><span class="ru">Примечание</span></div>
+        <input type="text" id="top-remark" placeholder="如：测品保守估计" style="width: 220px;">
+    </div>
+    <button class="btn-save" id="btn-save" onclick="saveRecord()">
+        <span class="zh">💾 保存记录</span>
+        <span class="ru">Сохранить</span>
+    </button>
+</div>
+
+<div class="main-container">
+    
+    <div class="column-card">
+        <div class="column-header">
+            <span class="zh">测算档案库</span><span class="ru">Архив расчетов</span>
+        </div>
+        <div class="column-body">
+            <div class="history-list" id="history-list"></div>
+        </div>
+    </div>
+
+    <div class="column-card">
+        <div class="column-header">
+            <span class="zh">业务参数配置</span><span class="ru">Ввод параметров</span>
+        </div>
+        <div class="column-body">
+            <div class="input-group">
+                
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">单件完税成本</span><span class="ru">Себест. с налогами</span></div>
+                    <input type="range" id="range-cost" min="0" max="2000" step="1" value="400">
+                    <div class="number-box"><input type="number" id="cost" value="400" step="any"><span class="unit">元</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">批次备货总量</span><span class="ru">Объем партии</span></div>
+                    <input type="range" id="range-totalQty" min="1" max="5000" step="1" value="200">
+                    <div class="number-box"><input type="number" id="totalQty" value="200" step="any"><span class="unit">个</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">周均预期动销</span><span class="ru">Продажи в нед.</span></div>
+                    <input type="range" id="range-weeklySales" min="1" max="500" step="1" value="12">
+                    <div class="number-box"><input type="number" id="weeklySales" value="12" step="any"><span class="unit">个</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">单件基础毛利</span><span class="ru">Базовая маржа</span></div>
+                    <input type="range" id="range-unitProfit" min="-500" max="2000" step="1" value="400">
+                    <div class="number-box"><input type="number" id="unitProfit" value="400" step="any"><span class="unit">元</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">商品长尺寸</span><span class="ru">Длина (cm)</span></div>
+                    <input type="range" id="range-len" min="1" max="300" step="0.1" value="52">
+                    <div class="number-box"><input type="number" id="len" value="52" step="any"><span class="unit">cm</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">商品宽尺寸</span><span class="ru">Ширина (cm)</span></div>
+                    <input type="range" id="range-width" min="1" max="300" step="0.1" value="5">
+                    <div class="number-box"><input type="number" id="width" value="5" step="any"><span class="unit">cm</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">商品高尺寸</span><span class="ru">Высота (cm)</span></div>
+                    <input type="range" id="range-height" min="1" max="300" step="0.1" value="85">
+                    <div class="number-box"><input type="number" id="height" value="85" step="any"><span class="unit">cm</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">单位月仓储费</span><span class="ru">Хранение за м³/мес</span></div>
+                    <input type="range" id="range-storageFee" min="0" max="500" step="1" value="50">
+                    <div class="number-box"><input type="number" id="storageFee" value="50" step="any"><span class="unit">元</span></div>
+                </div>
+
+                <div class="input-item">
+                    <div class="label-box"><span class="zh">资金占用月息</span><span class="ru">Ставка капитала</span></div>
+                    <input type="range" id="range-interestRate" min="0" max="5" step="0.1" value="1">
+                    <div class="number-box"><input type="number" id="interestRate" value="1" step="any"><span class="unit">%</span></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="column-card" style="background: var(--panel-bg);">
+        <div class="column-header">
+            <span class="zh">智能分析看板</span><span class="ru">Аналитический дашборд</span>
+        </div>
+        <div class="column-body">
+            
+            <div class="highlight-cards">
+                <div class="card roi">
+                    <div class="card-title"><span class="zh">全成本净投资回报</span><span class="ru">Чистый ROI</span></div>
+                    <div class="card-value" id="out-roi">0.00%</div>
+                </div>
+                <div class="card annual">
+                    <div class="card-title"><span class="zh">预估年化收益率</span><span class="ru">Годовая дох.</span></div>
+                    <div class="card-value" id="out-annual">0.00%</div>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span class="zh">周转与库存评估</span><span class="ru">Оценка запасов</span>
+            </div>
+            <div class="mini-grid">
+                <div class="mini-card">
+                    <div class="mini-card-title"><span class="zh">平均月动销</span><span class="ru">Прод./мес</span></div>
+                    <div class="mini-card-value"><span id="out-monthly-sales">0</span><span class="unit">个</span></div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><span class="zh">消化周期</span><span class="ru">Оборот</span></div>
+                    <div class="mini-card-value"><span id="out-months-clear">0.0</span><span class="unit">月</span></div>
+                </div>
+                <div class="mini-card" style="background-color: var(--warning-bg); border-color: var(--warning-border);">
+                    <div class="mini-card-title"><span class="zh">安全库存(3月)</span><span class="ru">Резерв(3м)</span></div>
+                    <div class="mini-card-value" style="color: #b45309;"><span id="out-safety-stock">0</span><span class="unit">个</span></div>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span class="zh">单位隐性成本解析</span><span class="ru">Скрытые расходы (1 шт.)</span>
+            </div>
+            <div class="mini-grid">
+                <div class="mini-card">
+                    <div class="mini-card-title"><span class="zh">物理体积</span><span class="ru">Объем(м³)</span></div>
+                    <div class="mini-card-value" style="color: var(--text-main); font-size: 13px;"><span id="out-volume">0</span></div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><span class="zh">单件月仓储</span><span class="ru">Хран./мес</span></div>
+                    <div class="mini-card-value">¥<span id="out-unit-storage">0.00</span></div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><span class="zh">单件月资金</span><span class="ru">Капитал</span></div>
+                    <div class="mini-card-value">¥<span id="out-unit-interest">0.00</span></div>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 1rem;">
+                <span class="zh">批次总盘核算</span><span class="ru">Итоговый расчет</span>
+            </div>
+            <ul class="details-list">
+                <li>
+                    <div class="detail-label">
+                        <div class="row"><span class="zh">原总毛利</span><span class="ru">Исх. прибыль</span></div>
+                    </div>
+                    <div class="detail-value">¥ <span id="out-orig-profit">0.00</span></div>
+                </li>
+                <li>
+                    <div class="detail-label">
+                        <div class="row"><span class="zh">总仓储成本 (-)</span><span class="ru">Хранение (-)</span></div>
+                    </div>
+                    <div class="detail-value" style="color: var(--danger-text);">- ¥ <span id="out-storage">0.00</span></div>
+                </li>
+                <li>
+                    <div class="detail-label">
+                        <div class="row"><span class="zh">总资金利息 (-)</span><span class="ru">Капитал (-)</span></div>
+                    </div>
+                    <div class="detail-value" style="color: var(--danger-text);">- ¥ <span id="out-interest">0.00</span></div>
+                </li>
+                
+                <li class="breakeven-row">
+                    <div class="detail-label">
+                        <div class="row"><span class="zh" style="color: var(--success-text);">回本临界点</span><span class="ru">Окупаемость</span></div>
+                        <div class="detail-note" id="out-breakeven-time">约 第 0.0 个月 / мес</div>
+                    </div>
+                    <div class="detail-value" style="color: var(--success-text); display:flex; flex-direction:column; justify-content:center;">
+                        <span id="out-breakeven-units">0</span> <span style="font-size:11px;font-weight:normal;color:var(--text-muted)">个/шт</span>
+                    </div>
+                </li>
+
+                <li class="total-row">
+                    <div class="detail-label">
+                        <div class="row"><span class="zh">实际净利沉淀</span><span class="ru">Чистая прибыль</span></div>
+                    </div>
+                    <div class="detail-value final-profit">¥ <span id="out-net-profit">0.00</span></div>
+                </li>
+                <li class="annual-row">
+                    <div class="detail-label">
+                        <div class="row"><span class="zh" style="color: var(--success-text);">年化净利折算</span><span class="ru">Годовая прибыль</span></div>
+                    </div>
+                    <div class="detail-value annual-profit">¥ <span id="out-annual-net-profit">0.00</span></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'sku_calc_v4_perfect_13inch';
+    let historyRecords = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    const inputMappings = [
+        { id: 'cost' }, { id: 'totalQty' }, { id: 'weeklySales' }, { id: 'unitProfit' },
+        { id: 'len' }, { id: 'width' }, { id: 'height' }, { id: 'storageFee' }, { id: 'interestRate' }
+    ];
+
+    const formatMoney = (num) => Number(num).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatNumber = (num, digits = 1) => Number(num).toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+    const calculate = () => {
+        const cost = parseFloat(document.getElementById('cost').value) || 0;
+        const totalQty = parseFloat(document.getElementById('totalQty').value) || 0;
+        const weeklySales = parseFloat(document.getElementById('weeklySales').value) || 0;
+        const unitProfit = parseFloat(document.getElementById('unitProfit').value) || 0;
+        const len = parseFloat(document.getElementById('len').value) || 0;
+        const width = parseFloat(document.getElementById('width').value) || 0;
+        const height = parseFloat(document.getElementById('height').value) || 0;
+        const storageFee = parseFloat(document.getElementById('storageFee').value) || 0;
+        const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
+
+        if (weeklySales <= 0 || totalQty <= 0 || cost <= 0) {
+            document.getElementById('out-roi').innerText = 'N/A';
+            document.getElementById('out-annual').innerText = 'N/A';
+            return;
+        }
+
+        const volume = (len * width * height) / 1000000;
+        const weeksToClear = totalQty / weeklySales;
+        const monthsToClear = weeksToClear / 4.33;
+        const avgInventory = totalQty / 2;
+        const origTotalProfit = totalQty * unitProfit;
+        const totalStorageCost = avgInventory * monthsToClear * volume * storageFee;
+        const totalInterest = avgInventory * monthsToClear * cost * (interestRate / 100);
+        const actualNetProfit = origTotalProfit - totalStorageCost - totalInterest;
+        const roi = actualNetProfit / (totalQty * cost);
+        const annualizedReturn = roi * (52 / weeksToClear);
+
+        const monthlySales = weeklySales * 4.33; 
+        const safetyStock = monthlySales * 3;    
+        const unitMonthlyStorage = volume * storageFee; 
+        const unitMonthlyInterest = cost * (interestRate / 100); 
+        const annualNetProfit = actualNetProfit * (52 / weeksToClear); 
+        
+        const totalInitialInvestment = totalQty * cost;
+        const unitRevenue = cost + unitProfit;
+        
+        let breakEvenUnitsText = "0", breakEvenTimeText = "";
+        if (unitRevenue > 0) {
+            const breakEvenUnits = Math.ceil(totalInitialInvestment / unitRevenue);
+            if (breakEvenUnits > totalQty) {
+                breakEvenUnitsText = ">" + totalQty;
+                breakEvenTimeText = "无法回本 / Не окупается";
+            } else {
+                breakEvenUnitsText = breakEvenUnits;
+                const monthsToBreakeven = breakEvenUnits / monthlySales;
+                breakEvenTimeText = "约 第 " + formatNumber(monthsToBreakeven, 1) + " 个月 / мес";
+            }
+        } else {
+            breakEvenUnitsText = "-"; 
+            breakEvenTimeText = "无法回本 / Не окупается";
+        }
+
+        document.getElementById('out-roi').innerText = (roi * 100).toFixed(2) + '%';
+        document.getElementById('out-annual').innerText = (annualizedReturn * 100).toFixed(2) + '%';
+        document.getElementById('out-monthly-sales').innerText = Math.round(monthlySales);
+        document.getElementById('out-months-clear').innerText = formatNumber(monthsToClear, 1);
+        document.getElementById('out-safety-stock').innerText = Math.round(safetyStock);
+        document.getElementById('out-volume').innerText = Number(volume).toLocaleString('zh-CN', { maximumFractionDigits: 5 });
+        document.getElementById('out-unit-storage').innerText = formatMoney(unitMonthlyStorage);
+        document.getElementById('out-unit-interest').innerText = formatMoney(unitMonthlyInterest);
+        document.getElementById('out-orig-profit').innerText = formatMoney(origTotalProfit);
+        document.getElementById('out-storage').innerText = formatMoney(totalStorageCost);
+        document.getElementById('out-interest').innerText = formatMoney(totalInterest);
+        document.getElementById('out-breakeven-units').innerText = breakEvenUnitsText;
+        document.getElementById('out-breakeven-time').innerText = breakEvenTimeText;
+        document.getElementById('out-net-profit').innerText = formatMoney(actualNetProfit);
+        document.getElementById('out-annual-net-profit').innerText = formatMoney(annualNetProfit);
+    };
+
+    const renderHistory = () => {
+        const container = document.getElementById('history-list');
+        container.innerHTML = '';
+
+        if (historyRecords.length === 0) {
+            container.innerHTML = '<div class="empty-tips">暂无记录<br><span style="font-size:11px; color:var(--text-ru)">Нет записей</span></div>';
+            return;
+        }
+
+        const grouped = historyRecords.reduce((acc, curr) => {
+            const sku = curr.sku || '未命名 SKU';
+            if (!acc[sku]) acc[sku] = [];
+            acc[sku].push(curr);
+            return acc;
+        }, {});
+
+        const sortedSkus = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+        sortedSkus.forEach(sku => {
+            const items = grouped[sku].sort((a, b) => b.timestamp - a.timestamp);
+            let itemsHtml = items.map(item => `
+                <div class="history-item" onclick="loadRecord(${item.timestamp})">
+                    <div class="history-info">
+                        <span class="h-date">📅 ${item.date}</span>
+                        <span class="h-remark">${item.remark || '<i style="color:#94a3b8">无备注 / Нет</i>'}</span>
+                    </div>
+                    <button class="btn-delete" onclick="deleteRecord(${item.timestamp}, event)" title="删除/Удалить">✖</button>
+                </div>
+            `).join('');
+
+            container.innerHTML += `<div class="sku-group"><div class="sku-group-header">📦 ${sku}</div>${itemsHtml}</div>`;
+        });
+    };
+
+    const saveRecord = () => {
+        const sku = document.getElementById('top-sku').value.trim();
+        const date = document.getElementById('top-date').value;
+        const remark = document.getElementById('top-remark').value.trim();
+
+        if (!sku) {
+            alert("请输入 SKU 名称 / Введите SKU");
+            document.getElementById('top-sku').focus();
+            return;
+        }
+
+        const params = {};
+        inputMappings.forEach(mapping => {
+            params[mapping.id] = document.getElementById(mapping.id).value;
+        });
+
+        historyRecords.unshift({ timestamp: Date.now(), sku, date, remark, params });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(historyRecords));
+        renderHistory();
+        
+        const btn = document.getElementById('btn-save');
+        const originHTML = btn.innerHTML;
+        btn.innerHTML = "<span class='zh'>✅ 已保存</span><span class='ru'>Сохранено</span>";
+        btn.style.background = "var(--success-text)";
+        setTimeout(() => { btn.innerHTML = originHTML; btn.style.background = "var(--primary)"; }, 1500);
+    };
+
+    window.loadRecord = (timestamp) => {
+        const record = historyRecords.find(r => r.timestamp === timestamp);
+        if (!record) return;
+        document.getElementById('top-sku').value = record.sku;
+        document.getElementById('top-date').value = record.date;
+        document.getElementById('top-remark').value = record.remark;
+        for (const [key, value] of Object.entries(record.params)) {
+            const numInput = document.getElementById(key);
+            const rangeInput = document.getElementById('range-' + key);
+            if (numInput) numInput.value = value;
+            if (rangeInput) rangeInput.value = value;
+        }
+        calculate();
+    };
+
+    window.deleteRecord = (timestamp, event) => {
+        event.stopPropagation(); 
+        if (confirm('确认删除？/ Удалить?')) {
+            historyRecords = historyRecords.filter(r => r.timestamp !== timestamp);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(historyRecords));
+            renderHistory();
+        }
+    };
+
+    const setTodayDate = () => {
+        document.getElementById('top-date').value = new Date().toISOString().split('T')[0];
+    };
+
+    inputMappings.forEach(mapping => {
+        const numInput = document.getElementById(mapping.id);
+        const rangeInput = document.getElementById('range-' + mapping.id);
+        rangeInput.addEventListener('input', (e) => { numInput.value = e.target.value; calculate(); });
+        numInput.addEventListener('input', (e) => { rangeInput.value = e.target.value; calculate(); });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setTodayDate();
+        renderHistory();
+        calculate();
+    });
+</script>
+</body>
+</html>

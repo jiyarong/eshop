@@ -1,0 +1,314 @@
+<%
+  source_template = Reports::ToolSourceTemplate.new(
+    path: Reports::ToolRendererResolver.source_path_for(tool_definition.renderer_key),
+    scope_class: "roi-tool-inline"
+  )
+  body_html = source_template.body_html.gsub(
+    /<button class="btn-save" id="btn-save" onclick="saveRecord\(\)">.*?<\/button>/m,
+    ""
+  )
+  inline_script = source_template.inline_script_content(
+    initializer_name: "initializeEmbeddedRoiCalculator",
+    wrap: true,
+    export_statements: [
+      "if (typeof calculate !== 'undefined') window.__roiCalculate = calculate;",
+      "if (typeof inputMappings !== 'undefined') window.__roiInputMappings = inputMappings;",
+      "if (typeof saveRecord !== 'undefined') window.saveRecord = saveRecord;"
+    ]
+  )
+%>
+<div class="roi-tool-surface">
+  <% source_template.external_script_urls.each do |script_url| %>
+    <script src="<%= script_url %>"></script>
+  <% end %>
+
+  <style>
+    <%= raw source_template.scoped_style_content %>
+
+    .roi-tool-inline {
+      min-height: 100%;
+    }
+
+    .roi-tool-inline .main-container {
+      max-width: none;
+      grid-template-columns: minmax(460px, 1fr) minmax(420px, 1.08fr);
+    }
+
+    .roi-tool-inline .top-bar {
+      gap: 1rem;
+      padding-right: 1.25rem;
+    }
+
+    .roi-tool-inline .column-body {
+      padding: 1rem 1.1rem;
+    }
+  </style>
+
+  <div class="roi-tool-inline roi-tool-shell roi-tool-shell--full" data-tool-inline-root>
+    <%= raw body_html %>
+  </div>
+
+  <div class="roi-tool-save-modal" data-tool-save-name-modal hidden>
+    <div class="roi-tool-save-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="tool-save-name-title">
+      <h3 id="tool-save-name-title"><%= t("reports.tools.save_name.title") %></h3>
+      <div class="field">
+        <label for="tool_configuration_name"><%= t("reports.tools.save_name.label") %></label>
+        <input id="tool_configuration_name" name="tool_configuration_name" class="input" type="text" data-tool-save-name-input>
+      </div>
+      <div class="roi-tool-save-modal__actions">
+        <button class="btn btn-outline" type="button" data-tool-save-name-cancel><%= t("common.actions.cancel") %></button>
+        <button class="btn btn-primary" type="button" data-tool-save-name-confirm><%= t("common.actions.save") %></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tool-renderer-page--full {
+    display: block;
+    min-height: 100%;
+    height: 100%;
+    margin: 0 -22px -22px;
+    overflow: auto;
+  }
+
+  .roi-tool-surface {
+    min-height: 100%;
+    background: #fff;
+  }
+
+  .roi-tool-save-modal[hidden] {
+    display: none;
+  }
+
+  .roi-tool-save-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1003;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(24, 34, 53, 0.42);
+  }
+
+  .roi-tool-save-modal__dialog {
+    width: min(420px, 100%);
+    padding: 18px;
+    border: 1px solid var(--erp-border, #d1d5db);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(24, 34, 53, 0.26);
+  }
+
+  .roi-tool-save-modal__dialog h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+  }
+
+  .roi-tool-save-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+  }
+</style>
+
+<script>
+  <%= raw inline_script %>
+</script>
+
+<script>
+  (() => {
+    const page = document.currentScript.closest(".tool-renderer-page");
+    if (!page || page.dataset.roiToolReady === "true") return;
+    page.dataset.roiToolReady = "true";
+
+    const drawer = page.closest(".inventory-drawer");
+    const toolRoot = page.querySelector("[data-tool-inline-root]");
+    const bootstrap = JSON.parse(page.querySelector("[data-tool-bootstrap]").textContent);
+    const csrfToken = document.querySelector("meta[name='csrf-token']")?.content;
+    const saveButton = drawer?.querySelector("[data-tool-action='save']");
+    const overwriteButton = drawer?.querySelector("[data-tool-action='overwrite']");
+    const saveAsButton = drawer?.querySelector("[data-tool-action='save_as']");
+    const parentFrame = page.closest("turbo-frame#tool_drawer");
+    const saveNameModal = page.querySelector("[data-tool-save-name-modal]");
+    const saveNameInput = page.querySelector("[data-tool-save-name-input]");
+    const saveNameCancelButton = page.querySelector("[data-tool-save-name-cancel]");
+    const saveNameConfirmButton = page.querySelector("[data-tool-save-name-confirm]");
+    let pendingPersistRequest = null;
+
+    window.collectCurrentState = () => {
+      const params = {};
+      (window.__roiInputMappings || []).forEach((mapping) => {
+        params[mapping.id] = document.getElementById(mapping.id)?.value || "";
+      });
+
+      return {
+        sku: document.getElementById("top-sku")?.value?.trim() || "",
+        date: document.getElementById("top-date")?.value || "",
+        remark: document.getElementById("top-remark")?.value?.trim() || "",
+        params
+      };
+    };
+
+    window.restoreState = (state = {}) => {
+      if (state.sku !== undefined && document.getElementById("top-sku")) {
+        document.getElementById("top-sku").value = state.sku;
+      }
+      if (state.date !== undefined && document.getElementById("top-date")) {
+        document.getElementById("top-date").value = state.date;
+      }
+      if (state.remark !== undefined && document.getElementById("top-remark")) {
+        document.getElementById("top-remark").value = state.remark;
+      }
+
+      Object.entries(state.params || {}).forEach(([key, value]) => {
+        const numberInput = document.getElementById(key);
+        const rangeInput = document.getElementById(`range-${key}`);
+        if (numberInput) numberInput.value = value;
+        if (rangeInput) rangeInput.value = value;
+      });
+    };
+
+    window.calculateAll = () => {
+      window.__roiCalculate?.();
+    };
+
+    const syncTopLevelUrl = () => {
+      if (!parentFrame) return;
+      const sharePath = page.dataset.toolSharePath;
+      if (!sharePath) return;
+      window.history.replaceState(window.history.state, "", sharePath);
+    };
+
+    const currentConfig = () => bootstrap.tool_configuration || {};
+
+    const suggestedName = () => {
+      const derivedName = document.getElementById("top-sku")?.value?.trim();
+      return derivedName || currentConfig().name || bootstrap.tool_definition.name;
+    };
+
+    const closeSaveNameModal = () => {
+      pendingPersistRequest = null;
+      if (!saveNameModal) return;
+      saveNameModal.hidden = true;
+    };
+
+    const openSaveNameModal = ({ method, url, defaultName }) => {
+      if (!saveNameModal || !saveNameInput) return;
+
+      pendingPersistRequest = { method, url };
+      saveNameInput.value = defaultName || "";
+      saveNameModal.hidden = false;
+      requestAnimationFrame(() => {
+        saveNameInput.focus();
+        saveNameInput.select();
+      });
+    };
+
+    const collectPayload = (recordName) => {
+      const state = window.collectCurrentState();
+      const name = recordName || suggestedName();
+
+      return {
+        ec_tool_configuration: {
+          tool_definition_id: bootstrap.tool_definition.id,
+          name: name,
+          active: true,
+          config_json: {
+            ...state,
+            _record_name: name
+          }
+        }
+      };
+    };
+
+    const persist = async ({ method, url, recordName }) => {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(collectPayload(recordName))
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
+      const body = await response.json();
+      bootstrap.tool_configuration = body.configuration || bootstrap.tool_configuration;
+      if (body.show_path && parentFrame) {
+        parentFrame.src = body.show_path;
+      } else if (body.show_path && window.Turbo) {
+        window.Turbo.visit(body.show_path);
+      }
+    };
+
+    const syncIntoTool = () => {
+      toolRoot.querySelector("#history-list")?.closest(".column-card")?.remove();
+
+      const mainContainer = toolRoot.querySelector(".main-container");
+      if (mainContainer) {
+        mainContainer.style.gridTemplateColumns = "minmax(460px, 1fr) minmax(420px, 1.08fr)";
+      }
+
+      const configuration = bootstrap.tool_configuration;
+      if (configuration?.config_json) {
+        window.restoreState(configuration.config_json);
+      }
+
+      window.calculateAll();
+    };
+
+    requestAnimationFrame(() => {
+      syncIntoTool();
+      syncTopLevelUrl();
+    });
+
+    saveAsButton?.addEventListener("click", () => {
+      openSaveNameModal({ method: "POST", url: page.dataset.toolCreatePath, defaultName: suggestedName() });
+    });
+
+    saveButton?.addEventListener("click", () => {
+      openSaveNameModal({ method: "POST", url: page.dataset.toolCreatePath, defaultName: suggestedName() });
+    });
+
+    overwriteButton?.addEventListener("click", () => {
+      openSaveNameModal({ method: "PATCH", url: page.dataset.toolUpdatePath, defaultName: suggestedName() });
+    });
+
+    saveNameCancelButton?.addEventListener("click", () => {
+      closeSaveNameModal();
+    });
+
+    saveNameModal?.addEventListener("click", (event) => {
+      if (event.target === saveNameModal) {
+        closeSaveNameModal();
+      }
+    });
+
+    saveNameInput?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      saveNameConfirmButton?.click();
+    });
+
+    saveNameConfirmButton?.addEventListener("click", async () => {
+      if (!pendingPersistRequest) return;
+
+      const recordName = saveNameInput?.value?.trim();
+      if (!recordName) {
+        saveNameInput?.focus();
+        return;
+      }
+
+      const request = pendingPersistRequest;
+      closeSaveNameModal();
+      await persist({ ...request, recordName });
+    });
+  })();
+</script>
