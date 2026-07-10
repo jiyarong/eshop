@@ -1,7 +1,14 @@
 <% content_for :page_heading, t("reports.tools.index.title") %>
 
-<h1 class="page-title"><%= t("reports.tools.index.title") %></h1>
-<p class="report-meta"><%= t("reports.tools.index.subtitle") %></p>
+<div class="resource-header report-tools-index__header">
+  <div>
+    <h1 class="page-title"><%= t("reports.tools.index.title") %></h1>
+    <p class="report-meta"><%= t("reports.tools.index.subtitle") %></p>
+  </div>
+  <div class="resource-actions">
+    <%= link_to t("reports.tools.actions.open_tool"), "/reports/tools/new", class: "btn btn-primary", data: { turbo_frame: "erp_modal" } %>
+  </div>
+</div>
 
 <div class="report-stack report-tools-index">
   <%= turbo_frame_tag "erp_modal" %>
@@ -32,7 +39,6 @@
       </div>
 
       <div class="report-tools-index__filter-actions">
-        <%= link_to t("reports.tools.actions.open_tool"), "/reports/tools/new", class: "btn btn-primary", data: { turbo_frame: "erp_modal" } %>
         <%= link_to t("reports.tools.filters.reset"), reports_tools_path, class: "btn btn-outline" %>
         <%= form.submit t("reports.tools.filters.submit"), class: "btn btn-primary" %>
       </div>

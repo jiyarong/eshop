@@ -833,6 +833,14 @@ textarea {
   gap: 14px;
 }
 
+.report-tools-index__header .page-title {
+  margin-bottom: 4px;
+}
+
+.report-tools-index__header .report-meta {
+  margin-bottom: 0;
+}
+
 .report-tools-index__filter-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
