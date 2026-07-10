@@ -40,6 +40,7 @@
     ] %>
     <% admin_links = [] %>
     <% if can?(:manage_users) %>
+      <% admin_links << { label: t("navigation.sub2_usage"), path: "/admin/sub2_usage", icon: "bi-speedometer2", active: active_link.call("/admin/sub2_usage") } %>
       <% admin_links << { label: t("navigation.users"), path: "/admin/users", icon: "bi-people", active: active_link.call("/admin/users") } %>
       <% admin_links << { label: t("navigation.agents"), path: "/admin/agents", icon: "bi-cpu", active: active_link.call("/admin/agents") } %>
       <% admin_links << { label: t("navigation.operation_logs"), path: "/admin/operation_logs", icon: "bi-clock-history", active: active_link.call("/admin/operation_logs") } %>

@@ -51,6 +51,7 @@ Rails.application.routes.draw do
   namespace :admin do
     mount MissionControl::Jobs::Engine, at: "/jobs"
     mount SimpleApm::Engine => "/apm"
+    resource :sub2_usage, only: :show
     get "users/new" => "users#new", as: :new_user
     get "users/:id/edit" => "users#edit", as: :edit_user
     post "agents/:id" => "agents#update"

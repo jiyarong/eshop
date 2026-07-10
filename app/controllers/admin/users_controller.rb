@@ -20,7 +20,8 @@ module Admin
     def create
       @user = User.new(user_params)
       assign_roles(@user)
-      if @user.save
+
+      if save_user_with_sub2_key
         redirect_to admin_user_path(@user)
       else
         render :new, status: :unprocessable_entity
@@ -78,6 +79,20 @@ module Admin
 
     def assign_roles(user)
       user.roles = Role.where(id: role_ids)
+    end
+
+    def save_user_with_sub2_key
+      return false unless @user.valid?
+
+      User.transaction do
+        @user.save!
+        Sub2UserApiKeyProvisioner.call(user: @user)
+      end
+      true
+    rescue Sub2UserApiKeyProvisioner::Error => error
+      Rails.logger.error("Sub2 API key provisioning failed for #{@user.email}: #{error.message}")
+      @user.errors.add(:base, t("admin.users.errors.sub2_api_key_creation_failed"))
+      false
     end
   end
 end

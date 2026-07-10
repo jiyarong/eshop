@@ -649,11 +649,16 @@ textarea {
   gap: 12px;
 }
 
-.weekly-profit-summary-card {
+.weekly-profit-summary-card,
+.sub2-usage-card {
   border: 1px solid var(--erp-border);
   border-radius: 8px;
   padding: 12px;
   background: var(--erp-surface-soft);
+}
+
+.sub2-usage-table {
+  min-width: 1540px;
 }
 
 .summary-label {

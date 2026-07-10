@@ -17,6 +17,7 @@ class User < ApplicationRecord
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
   has_many :api_keys, class_name: "UserApiKey", dependent: :destroy
+  has_one :sub2_user_api_key, dependent: :destroy
   has_many :access_tokens, class_name: "UserAccessToken", dependent: :destroy
   has_many :feedback_tasks, dependent: :destroy
   has_many :sku_product_operator_assignments,

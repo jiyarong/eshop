@@ -100,6 +100,7 @@ ru:
     cost_allocations: "Распределение затрат"
     operation_tasks: "Операционные задачи"
     users: "Пользователи"
+    sub2_usage: "Использование AI"
     agents: "AI Agent"
     feedback_tasks: "Задачи изменений"
     mcp_debug: "MCP debug"
@@ -155,6 +156,39 @@ ru:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    sub2_usage:
+      title: "Использование AI"
+      currency_value: "$%{value}"
+      filters:
+        start_date: "Дата начала"
+        end_date: "Дата окончания"
+        submit: "Применить"
+      overview:
+        title: "Обзор"
+      metrics:
+        total_requests: "Запросы"
+        total_input_tokens: "Входные токены"
+        total_output_tokens: "Выходные токены"
+        total_cache_tokens: "Токены кэша"
+        total_cache_creation_tokens: "Токены создания кэша"
+        total_cache_read_tokens: "Токены чтения кэша"
+        total_tokens: "Всего токенов"
+        total_cost: "Стоимость"
+        total_actual_cost: "Фактическая стоимость"
+        average_duration_ms: "Средняя длительность (мс)"
+      users:
+        title: "Использование ключей по пользователям"
+        user: "Пользователь"
+        key: "API-ключ"
+        remote_key_id: "ID удалённого ключа"
+        unbound: "Не привязан"
+      endpoints:
+        title: "Использование по интерфейсам"
+        endpoint: "Интерфейс"
+        empty: "За выбранные даты нет данных."
+      errors:
+        invalid_date_range: "Дата начала не может быть позже даты окончания."
+        unavailable: "Данные Sub2 временно недоступны. Проверьте настройки сервиса и повторите попытку."
     mcp_debug:
       arguments: "JSON параметры"
       error: "Ошибка"
@@ -166,6 +200,8 @@ ru:
       tools: "Системные MCP tools"
       user: "Пользователь"
     users:
+      errors:
+        sub2_api_key_creation_failed: "Не удалось создать API-ключ Sub2, поэтому пользователь не сохранён."
       fields:
         email: "Email"
         name: "Имя"

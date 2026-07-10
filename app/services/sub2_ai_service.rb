@@ -29,7 +29,9 @@ class Sub2AIService
     "#{@host}/v1"
   end
 
-  def login(email: ENV.fetch('SUB2AI_USER'){'demo@local.com'}, password: ENV.fetch('SUB2AI_PASSWORD'){'passwd'})
+  def login
+    email = ENV.fetch('ESHOP_SUB2AI_USER'){'demo@local.com'}
+    password = ENV.fetch('ESHOP_SUB2AI_PASSWORD'){'passwd'}
     post_json("/api/v1/auth/login", { email: email, password: password })
   end
 
@@ -46,7 +48,11 @@ class Sub2AIService
     res.find_all{|x|x['type']=='model'}.map{|x|x['id']}
   end
 
-  def create_api_key(access_token:, name:, group_id: 2, rate_limit_1d: 0, rate_limit_7d: 0)
+  def groups(access_token:)
+    get_json("/api/v1/groups/available", bearer_token: access_token)
+  end
+
+  def create_api_key(access_token:, name:, group_id: 3, rate_limit_1d: 0, rate_limit_7d: 0)
     post_json("/api/v1/keys", {
       name: name,
       group_id: group_id,
@@ -59,6 +65,14 @@ class Sub2AIService
     post_json("/api/v1/usage/dashboard/api-keys-usage", {
       api_key_ids: api_key_ids
     }, bearer_token: access_token)
+  end
+
+  def usage_stats(access_token:, start_date:, end_date:)
+    get_json(
+      "/api/v1/usage/stats",
+      params: { start_date: start_date.iso8601, end_date: end_date.iso8601 },
+      bearer_token: access_token
+    )
   end
 
   private
@@ -113,5 +127,9 @@ class Sub2AIService
     end
 
     body["data"]
+  rescue JSON::ParserError => error
+    raise Error, "Sub2AI API returned invalid JSON: #{error.message}"
+  rescue Timeout::Error, SocketError, SystemCallError => error
+    raise Error, "Sub2AI API request failed: #{error.message}"
   end
 end

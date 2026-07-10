@@ -107,6 +107,7 @@ zh:
     cost_allocations: "费用分摊"
     operation_tasks: "操作任务"
     users: "用户管理"
+    sub2_usage: "AI 用量看板"
     agents: "AI Agent"
     feedback_tasks: "改动任务"
     mcp_debug: "MCP调试"
@@ -162,6 +163,39 @@ zh:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    sub2_usage:
+      title: "AI 用量看板"
+      currency_value: "$%{value}"
+      filters:
+        start_date: "开始日期"
+        end_date: "结束日期"
+        submit: "查询"
+      overview:
+        title: "整体概况"
+      metrics:
+        total_requests: "请求数"
+        total_input_tokens: "输入 Token"
+        total_output_tokens: "输出 Token"
+        total_cache_tokens: "缓存 Token"
+        total_cache_creation_tokens: "缓存创建 Token"
+        total_cache_read_tokens: "缓存读取 Token"
+        total_tokens: "总 Token"
+        total_cost: "费用"
+        total_actual_cost: "实际费用"
+        average_duration_ms: "平均耗时（毫秒）"
+      users:
+        title: "用户 Key 使用情况"
+        user: "用户"
+        key: "API Key"
+        remote_key_id: "远端 Key ID"
+        unbound: "未绑定"
+      endpoints:
+        title: "接口使用情况"
+        endpoint: "接口"
+        empty: "所选日期内暂无接口用量。"
+      errors:
+        invalid_date_range: "开始日期不能晚于结束日期。"
+        unavailable: "暂时无法读取 Sub2 用量，请检查服务配置后重试。"
     mcp_debug:
       arguments: "参数 JSON"
       error: "错误"
@@ -173,6 +207,8 @@ zh:
       tools: "系统 MCP 工具"
       user: "用户"
     users:
+      errors:
+        sub2_api_key_creation_failed: "Sub2 API Key 创建失败，用户未保存。"
       fields:
         email: "邮箱"
         name: "姓名"

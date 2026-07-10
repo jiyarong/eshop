@@ -1,0 +1,121 @@
+<% content_for :title, t("admin.sub2_usage.title") %>
+<% content_for :page_heading, t("admin.sub2_usage.title") %>
+
+<h1 class="page-title"><%= t("admin.sub2_usage.title") %></h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <%= form_with url: admin_sub2_usage_path, method: :get, local: true, class: "report-form" do |form| %>
+      <div class="field">
+        <%= form.label :start_date, t("admin.sub2_usage.filters.start_date") %>
+        <%= form.date_field :start_date, value: @start_date.iso8601 %>
+      </div>
+      <div class="field">
+        <%= form.label :end_date, t("admin.sub2_usage.filters.end_date") %>
+        <%= form.date_field :end_date, value: @end_date.iso8601 %>
+      </div>
+      <%= form.button t("admin.sub2_usage.filters.submit"), class: "button", type: "submit" %>
+    <% end %>
+  </section>
+
+  <% if @error.present? %>
+    <section class="panel error-box"><%= @error %></section>
+  <% else %>
+    <section class="panel">
+      <h2 class="section-title"><%= t("admin.sub2_usage.overview.title") %></h2>
+      <div class="summary-grid">
+        <% %w[total_requests total_input_tokens total_output_tokens total_cache_tokens total_cache_creation_tokens total_cache_read_tokens total_tokens].each do |metric| %>
+          <div class="sub2-usage-card">
+            <div class="summary-label"><%= t("admin.sub2_usage.metrics.#{metric}") %></div>
+            <div class="summary-value"><%= number_with_delimiter(@stats.fetch(metric, 0)) %></div>
+          </div>
+        <% end %>
+        <% %w[total_cost total_actual_cost].each do |metric| %>
+          <div class="sub2-usage-card">
+            <div class="summary-label"><%= t("admin.sub2_usage.metrics.#{metric}") %></div>
+            <div class="summary-value"><%= t("admin.sub2_usage.currency_value", value: format("%.6f", @stats.fetch(metric, 0).to_d)) %></div>
+          </div>
+        <% end %>
+        <div class="sub2-usage-card">
+          <div class="summary-label"><%= t("admin.sub2_usage.metrics.average_duration_ms") %></div>
+          <div class="summary-value"><%= number_with_precision(@stats.fetch("average_duration_ms", 0), precision: 1) %></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("admin.sub2_usage.users.title") %></h2>
+      <div class="table-scroll">
+        <table class="sub2-usage-table">
+          <thead>
+            <tr>
+              <th><%= t("admin.sub2_usage.users.user") %></th>
+              <th><%= t("admin.sub2_usage.users.key") %></th>
+              <th><%= t("admin.sub2_usage.users.remote_key_id") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_requests") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_input_tokens") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_output_tokens") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_cache_tokens") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_cache_creation_tokens") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_cache_read_tokens") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_tokens") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_cost") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_actual_cost") %></th>
+              <th><%= t("admin.sub2_usage.metrics.average_duration_ms") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @user_rows.each do |row| %>
+              <tr>
+                <td><%= link_to row[:user].display_name, admin_user_path(row[:user]) %></td>
+                <td><%= row[:binding]&.masked_api_key.presence || t("admin.sub2_usage.users.unbound") %></td>
+                <td><%= row[:binding]&.remote_key_id || t("admin.sub2_usage.users.unbound") %></td>
+                <td><%= number_with_delimiter(row[:requests]) %></td>
+                <td><%= number_with_delimiter(row[:input_tokens]) %></td>
+                <td><%= number_with_delimiter(row[:output_tokens]) %></td>
+                <td><%= number_with_delimiter(row[:cache_tokens]) %></td>
+                <td><%= number_with_delimiter(row[:cache_creation_tokens]) %></td>
+                <td><%= number_with_delimiter(row[:cache_read_tokens]) %></td>
+                <td><%= number_with_delimiter(row[:total_tokens]) %></td>
+                <td><%= t("admin.sub2_usage.currency_value", value: format("%.6f", row[:cost].to_d)) %></td>
+                <td><%= t("admin.sub2_usage.currency_value", value: format("%.6f", row[:actual_cost].to_d)) %></td>
+                <td><%= number_with_precision(row[:average_duration_ms], precision: 1) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("admin.sub2_usage.endpoints.title") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("admin.sub2_usage.endpoints.endpoint") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_requests") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_tokens") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_cost") %></th>
+              <th><%= t("admin.sub2_usage.metrics.total_actual_cost") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% Array(@stats["endpoints"]).each do |endpoint| %>
+              <tr>
+                <td><%= endpoint["endpoint"] %></td>
+                <td><%= number_with_delimiter(endpoint["requests"].to_i) %></td>
+                <td><%= number_with_delimiter(endpoint["total_tokens"].to_i) %></td>
+                <td><%= t("admin.sub2_usage.currency_value", value: format("%.6f", endpoint["cost"].to_d)) %></td>
+                <td><%= t("admin.sub2_usage.currency_value", value: format("%.6f", endpoint["actual_cost"].to_d)) %></td>
+              </tr>
+            <% end %>
+            <% if Array(@stats["endpoints"]).empty? %>
+              <tr><td colspan="5" class="empty-state"><%= t("admin.sub2_usage.endpoints.empty") %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% end %>
+</div>

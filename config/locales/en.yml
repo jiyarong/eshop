@@ -129,6 +129,7 @@ en:
     cost_allocations: "Cost Allocations"
     operation_tasks: "Operation Tasks"
     users: "Users"
+    sub2_usage: "AI Usage"
     agents: "AI Agents"
     feedback_tasks: "Change Tasks"
     mcp_debug: "MCP Debug"
@@ -184,6 +185,39 @@ en:
       title: "MCP API Keys"
       token: "Token"
   admin:
+    sub2_usage:
+      title: "AI Usage"
+      currency_value: "$%{value}"
+      filters:
+        start_date: "Start date"
+        end_date: "End date"
+        submit: "Apply"
+      overview:
+        title: "Overview"
+      metrics:
+        total_requests: "Requests"
+        total_input_tokens: "Input tokens"
+        total_output_tokens: "Output tokens"
+        total_cache_tokens: "Cache tokens"
+        total_cache_creation_tokens: "Cache creation tokens"
+        total_cache_read_tokens: "Cache read tokens"
+        total_tokens: "Total tokens"
+        total_cost: "Cost"
+        total_actual_cost: "Actual cost"
+        average_duration_ms: "Average duration (ms)"
+      users:
+        title: "Usage by user key"
+        user: "User"
+        key: "API key"
+        remote_key_id: "Remote key ID"
+        unbound: "Not linked"
+      endpoints:
+        title: "Usage by endpoint"
+        endpoint: "Endpoint"
+        empty: "No endpoint usage for the selected dates."
+      errors:
+        invalid_date_range: "Start date cannot be after end date."
+        unavailable: "Sub2 usage is temporarily unavailable. Check the service configuration and try again."
     mcp_debug:
       arguments: "Arguments JSON"
       error: "Error"
@@ -195,6 +229,8 @@ en:
       tools: "System MCP Tools"
       user: "User"
     users:
+      errors:
+        sub2_api_key_creation_failed: "The Sub2 API key could not be created, so the user was not saved."
       fields:
         email: "Email"
         name: "Name"
