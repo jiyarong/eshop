@@ -1,0 +1,89 @@
+<%= form_with model: agent,
+  url: agent.persisted? ? admin_agent_path(agent.code) : admin_agents_path,
+  method: agent.persisted? ? :patch : :post,
+  multipart: true do |form| %>
+  <% if agent.errors.any? %>
+    <div class="panel error-box"><%= agent.errors.full_messages.join(t("common.list_separator")) %></div>
+  <% end %>
+
+  <div class="report-stack">
+    <div class="report-form">
+      <div class="field">
+        <%= form.label :code, t("admin.agents.fields.code") %>
+        <% if agent.persisted? %>
+          <%= form.text_field :code, disabled: true %>
+        <% else %>
+          <%= form.text_field :code, required: true %>
+        <% end %>
+      </div>
+      <div class="field">
+        <%= form.label :name, t("admin.agents.fields.name") %>
+        <%= form.text_field :name, required: true %>
+      </div>
+      <div class="field field--wide">
+        <%= form.label :description, t("admin.agents.fields.description") %>
+        <%= form.text_field :description %>
+      </div>
+    </div>
+
+    <div class="report-form">
+      <div class="field">
+        <%= form.label :model_id, t("admin.agents.fields.model_id") %>
+        <%= form.text_field :model_id, required: true %>
+      </div>
+      <div class="field">
+        <%= form.label :temperature, t("admin.agents.fields.temperature") %>
+        <%= form.number_field :temperature, min: 0, max: 1, step: 0.01, required: true %>
+      </div>
+      <label class="checkbox-option">
+        <%= form.check_box :thinking_enabled %>
+        <span><%= t("admin.agents.fields.thinking_enabled") %></span>
+      </label>
+      <label class="checkbox-option">
+        <%= form.check_box :enabled %>
+        <span><%= t("admin.agents.fields.enabled") %></span>
+      </label>
+    </div>
+
+    <div class="field field--full">
+      <%= form.label :system_prompt, t("admin.agents.fields.system_prompt") %>
+      <%= form.text_area :system_prompt, rows: 18, required: true %>
+    </div>
+
+    <div class="field field--full">
+      <%= form.label :recommended_prompts_text, t("admin.agents.fields.recommended_prompts") %>
+      <%= form.text_area :recommended_prompts_text,
+        rows: 8,
+        placeholder: t("admin.agents.placeholders.recommended_prompts") %>
+    </div>
+
+    <fieldset class="form-section">
+      <legend><%= t("admin.agents.fields.skills") %></legend>
+      <% if skills.any? %>
+        <div class="checkbox-grid">
+          <%= form.collection_check_boxes :skill_ids, skills, :id, :name do |checkbox| %>
+            <%= checkbox.label(class: "checkbox-option") do %>
+              <%= checkbox.check_box %>
+              <span><%= checkbox.text %></span>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="report-meta"><%= t("admin.agents.empty_skills") %></p>
+      <% end %>
+    </fieldset>
+
+    <div class="field">
+      <%= form.label :avatar, t("admin.agents.fields.avatar") %>
+      <% if agent.avatar.attached? %>
+        <%= image_tag agent.avatar, class: "agent-avatar-preview", alt: t("admin.agents.avatar_alt", name: agent.name) %>
+      <% end %>
+      <%= form.file_field :avatar, accept: "image/*" %>
+    </div>
+
+    <div class="page-actions">
+      <%= form.submit t("common.actions.save"), class: "button" %>
+      <%= link_to t("common.actions.back"), admin_agents_path, class: "button button-secondary" %>
+    </div>
+  </div>
+<% end %>

@@ -12,6 +12,7 @@ Rails.application.routes.draw do
     post "login" => "sessions#create"
     delete "logout" => "sessions#destroy"
     resource :profile, only: [:show, :update]
+    resources :agents, only: :index
   end
 
   # Google Sheets 连通性测试
@@ -55,7 +56,10 @@ Rails.application.routes.draw do
     get "users/new" => "users#new", as: :new_user
     get "users/:id/edit" => "users#edit", as: :edit_user
     post "agents/:id" => "agents#update"
-    resources :agents, only: [:index, :edit, :update], param: :id
+    resources :agents, only: [:index, :new, :create, :edit, :update], param: :id
+    resources :skills, only: [:index, :new, :create, :show, :edit, :update] do
+      get :download, on: :member
+    end
     resources :users, except: [:destroy] do
       post "api_keys" => "users#create_api_key", on: :member
       patch "api_keys/:api_key_id/revoke" => "users#revoke_api_key", on: :member, as: :revoke_api_key

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_080520) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_085140) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -42,12 +42,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_080520) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
+  create_table "agent_skills", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "skill_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id", "skill_id"], name: "index_agent_skills_on_agent_id_and_skill_id", unique: true
+    t.index ["agent_id"], name: "index_agent_skills_on_agent_id"
+    t.index ["skill_id"], name: "index_agent_skills_on_skill_id"
+  end
+
   create_table "agents", force: :cascade do |t|
     t.string "code", null: false
     t.datetime "created_at", null: false
+    t.text "description", default: "", null: false
     t.boolean "enabled", default: true, null: false
     t.string "model_id", null: false
     t.string "name", null: false
+    t.jsonb "recommended_prompts", default: [], null: false
     t.text "system_prompt", null: false
     t.decimal "temperature", precision: 3, scale: 2, default: "0.3", null: false
     t.boolean "thinking_enabled", default: false, null: false
@@ -1954,6 +1966,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_080520) do
     t.index ["code"], name: "index_roles_on_code", unique: true
   end
 
+  create_table "skills", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description", null: false
+    t.string "name", null: false
+    t.text "skill_md", null: false
+    t.datetime "updated_at", null: false
+    t.string "version", default: "1", null: false
+    t.index ["name"], name: "index_skills_on_name", unique: true
+  end
+
   create_table "sub2_user_api_keys", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "encrypted_api_key", null: false
@@ -2023,6 +2045,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_080520) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "agent_skills", "agents"
+  add_foreign_key "agent_skills", "skills"
   add_foreign_key "conversations", "agents"
   add_foreign_key "conversations", "users"
   add_foreign_key "ec_attachment_links", "ec_attachments"

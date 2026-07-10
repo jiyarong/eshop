@@ -102,6 +102,7 @@ ru:
     users: "Пользователи"
     sub2_usage: "Использование AI"
     agents: "AI Agent"
+    skills: "AI Skills"
     feedback_tasks: "Задачи изменений"
     mcp_debug: "MCP debug"
     operation_logs: "История операций"
@@ -120,11 +121,15 @@ ru:
       performance: "Производительность"
       other: "Другое"
   common:
+    empty_value: "-"
     actions:
       back: "Назад"
       cancel: "Отмена"
       close: "Закрыть"
+      edit: "Редактировать"
       save: "Сохранить"
+      view: "Просмотр"
+    list_separator: "; "
     "no": "Нет"
     platforms:
       amazon: "Amazon"
@@ -255,19 +260,88 @@ ru:
           store: "Магазин"
           supplier: "Поставщик"
     agents:
+      actions:
+        new: "Добавить Agent"
+      avatar_alt: "Аватар %{name}"
       edit:
         title: "Редактировать AI Agent"
+      empty_skills: "Skills пока нет. Сначала создайте Skill."
       fields:
+        actions: "Действия"
+        avatar: "Аватар"
+        code: "Code"
+        description: "Описание"
+        enabled: "Включен"
         model_id: "Модель"
         name: "Название"
+        recommended_prompts: "Предустановленные вопросы"
+        skills: "Skills"
         status: "Статус"
         system_prompt: "Промпт"
         temperature: "Temperature"
         thinking_enabled: "Включить Thinking"
         tools: "Инструменты"
+        updated_at: "Обновлено"
+      index:
+        title: "Управление AI Agent"
+      new:
+        title: "Новый AI Agent"
+      notices:
+        created: "AI Agent создан."
+        updated: "AI Agent обновлен."
+      placeholders:
+        recommended_prompts: "Один вопрос на строку"
       statuses:
         disabled: "Отключен"
         enabled: "Включен"
+    skills:
+      actions:
+        download: "Скачать ZIP"
+        new: "Добавить Skill"
+      edit:
+        title: "Редактировать %{name}"
+      errors:
+        body_required: "Текст Markdown обязателен"
+        description_mismatch: "должно совпадать с SKILL.md"
+        description_required: "description обязательно"
+        duplicate_paths: "ZIP содержит повторяющиеся пути"
+        expanded_too_large: "Размер распакованного ZIP превышает лимит"
+        folder_mismatch: "Папка ZIP должна совпадать с name в SKILL.md"
+        frontmatter_fields: "frontmatter может содержать только name и description"
+        frontmatter_mapping: "frontmatter должен быть отображением ключ-значение"
+        frontmatter_required: "Требуются YAML frontmatter и текст Markdown"
+        invalid_name: "name может содержать только строчные буквы, цифры и дефисы, максимум 64 символа"
+        invalid_encoding: "SKILL.md должен использовать кодировку UTF-8"
+        invalid_stored_zip: "Сохраненный ZIP недействителен: %{message}"
+        invalid_yaml: "Недействительный YAML: %{message}"
+        invalid_zip: "Недействительный ZIP: %{message}"
+        manifest_depth: "SKILL.md должен быть в корне ZIP или внутри одной папки Skill"
+        name_mismatch: "должно совпадать с SKILL.md"
+        single_folder: "ZIP может содержать только одну папку Skill"
+        single_manifest: "ZIP должен содержать ровно один SKILL.md"
+        too_many_files: "ZIP содержит слишком много файлов"
+        unsafe_path: "ZIP содержит небезопасный путь"
+        zip_required: "Выберите ZIP файл"
+        zip_too_large: "ZIP файл слишком большой"
+      fields:
+        actions: "Действия"
+        agents: "Agents"
+        archive: "Skill ZIP"
+        description: "Описание"
+        name: "Название"
+        skill_md: "SKILL.md"
+        version: "Версия"
+      index:
+        title: "Управление AI Skills"
+      modes:
+        markdown: "Создать SKILL.md"
+        upload: "Загрузить ZIP"
+      new:
+        mode: "Способ создания"
+        title: "Новый AI Skill"
+      notices:
+        created: "Skill создан."
+        updated: "Skill обновлен."
   orders:
     actions:
       back_to_orders: "Назад к заказам"

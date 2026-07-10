@@ -1,17 +1,23 @@
-<h1 class="page-title">AI Agent 管理</h1>
+<div class="page-heading-row">
+  <h1 class="page-title"><%= t("admin.agents.index.title") %></h1>
+  <div class="page-actions">
+    <%= link_to t("admin.skills.index.title"), admin_skills_path, class: "button button-secondary" %>
+    <%= link_to t("admin.agents.actions.new"), new_admin_agent_path, class: "button" %>
+  </div>
+</div>
 
 <section class="panel">
   <div class="table-scroll">
     <table>
       <thead>
         <tr>
-          <th>Code</th>
-          <th>名称</th>
-          <th>模型</th>
-          <th>Temperature</th>
-          <th>状态</th>
-          <th>更新时间</th>
-          <th>操作</th>
+          <th><%= t("admin.agents.fields.code") %></th>
+          <th><%= t("admin.agents.fields.name") %></th>
+          <th><%= t("admin.agents.fields.model_id") %></th>
+          <th><%= t("admin.agents.fields.skills") %></th>
+          <th><%= t("admin.agents.fields.status") %></th>
+          <th><%= t("admin.agents.fields.updated_at") %></th>
+          <th><%= t("admin.agents.fields.actions") %></th>
         </tr>
       </thead>
       <tbody>
@@ -20,10 +26,10 @@
             <td><%= agent.code %></td>
             <td><%= agent.name %></td>
             <td><%= agent.model_id %></td>
-            <td><%= agent.temperature %></td>
-            <td><%= agent.enabled? ? "启用" : "停用" %></td>
-            <td><%= agent.updated_at || "-" %></td>
-            <td><%= link_to "编辑", edit_admin_agent_path(agent.code) %></td>
+            <td><%= agent.skills.order(:name).pluck(:name).join(" / ").presence || t("common.empty_value") %></td>
+            <td><%= agent.enabled? ? t("admin.agents.statuses.enabled") : t("admin.agents.statuses.disabled") %></td>
+            <td><%= display_time(agent.updated_at) %></td>
+            <td><%= link_to t("common.actions.edit"), edit_admin_agent_path(agent.code) %></td>
           </tr>
         <% end %>
       </tbody>

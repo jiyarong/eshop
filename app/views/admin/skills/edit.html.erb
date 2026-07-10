@@ -1,0 +1,24 @@
+<h1 class="page-title"><%= t("admin.skills.edit.title", name: @skill.name) %></h1>
+
+<section class="panel">
+  <%= form_with model: [:admin, @skill] do |form| %>
+    <% if @skill.errors.any? %>
+      <div class="panel error-box"><%= @skill.errors.full_messages.join(t("common.list_separator")) %></div>
+    <% end %>
+
+    <div class="report-stack">
+      <div class="field">
+        <%= form.label :version, t("admin.skills.fields.version") %>
+        <%= form.text_field :version, required: true %>
+      </div>
+      <div class="field field--full">
+        <%= form.label :skill_md, t("admin.skills.fields.skill_md") %>
+        <%= form.text_area :skill_md, rows: 24, required: true, class: "code-editor" %>
+      </div>
+      <div class="page-actions">
+        <%= form.submit t("common.actions.save"), class: "button" %>
+        <%= link_to t("common.actions.back"), admin_skill_path(@skill), class: "button button-secondary" %>
+      </div>
+    </div>
+  <% end %>
+</section>

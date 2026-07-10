@@ -543,6 +543,7 @@ DEPENDENCIES
   ransack
   redis (~> 5.0)
   rubocop-rails-omakase
+  rubyzip (~> 3.0)
   simple_apm (>= 1.1)
   solid_cable
   solid_cache

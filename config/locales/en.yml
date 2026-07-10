@@ -131,6 +131,7 @@ en:
     users: "Users"
     sub2_usage: "AI Usage"
     agents: "AI Agents"
+    skills: "AI Skills"
     feedback_tasks: "Change Tasks"
     mcp_debug: "MCP Debug"
     operation_logs: "Operation History"
@@ -149,11 +150,15 @@ en:
       performance: "Performance"
       other: "Other"
   common:
+    empty_value: "-"
     actions:
       back: "Back"
       cancel: "Cancel"
       close: "Close"
+      edit: "Edit"
       save: "Save"
+      view: "View"
+    list_separator: "; "
     "no": "No"
     platforms:
       amazon: "Amazon"
@@ -284,19 +289,88 @@ en:
           store: "Store"
           supplier: "Supplier"
     agents:
+      actions:
+        new: "New Agent"
+      avatar_alt: "%{name} avatar"
       edit:
         title: "Edit AI Agent"
+      empty_skills: "No skills yet. Create a skill first."
       fields:
+        actions: "Actions"
+        avatar: "Avatar"
+        code: "Code"
+        description: "Description"
+        enabled: "Enabled"
         model_id: "Model"
         name: "Name"
+        recommended_prompts: "Recommended prompts"
+        skills: "Skills"
         status: "Status"
         system_prompt: "Prompt"
         temperature: "Temperature"
         thinking_enabled: "Enable Thinking"
         tools: "Tools"
+        updated_at: "Updated at"
+      index:
+        title: "AI Agent Management"
+      new:
+        title: "New AI Agent"
+      notices:
+        created: "AI Agent created."
+        updated: "AI Agent updated."
+      placeholders:
+        recommended_prompts: "One prompt per line"
       statuses:
         disabled: "Disabled"
         enabled: "Enabled"
+    skills:
+      actions:
+        download: "Download ZIP"
+        new: "New Skill"
+      edit:
+        title: "Edit %{name}"
+      errors:
+        body_required: "Markdown body is required"
+        description_mismatch: "must match SKILL.md"
+        description_required: "description is required"
+        duplicate_paths: "ZIP contains duplicate paths"
+        expanded_too_large: "ZIP expands beyond the allowed size"
+        folder_mismatch: "ZIP folder must match the SKILL.md name"
+        frontmatter_fields: "frontmatter may only contain name and description"
+        frontmatter_mapping: "frontmatter must be a mapping"
+        frontmatter_required: "YAML frontmatter and a Markdown body are required"
+        invalid_name: "name may only use lowercase letters, digits, and hyphens and must be at most 64 characters"
+        invalid_encoding: "SKILL.md must use UTF-8 encoding"
+        invalid_stored_zip: "stored ZIP is invalid: %{message}"
+        invalid_yaml: "YAML is invalid: %{message}"
+        invalid_zip: "ZIP file is invalid: %{message}"
+        manifest_depth: "SKILL.md must be at ZIP root or one skill folder deep"
+        name_mismatch: "must match SKILL.md"
+        single_folder: "ZIP may only contain one skill folder"
+        single_manifest: "ZIP must contain exactly one SKILL.md"
+        too_many_files: "ZIP contains too many files"
+        unsafe_path: "ZIP contains an unsafe path"
+        zip_required: "Select a ZIP file"
+        zip_too_large: "ZIP file is too large"
+      fields:
+        actions: "Actions"
+        agents: "Agents"
+        archive: "Skill ZIP"
+        description: "Description"
+        name: "Name"
+        skill_md: "SKILL.md"
+        version: "Version"
+      index:
+        title: "AI Skills Management"
+      modes:
+        markdown: "Create SKILL.md"
+        upload: "Upload ZIP"
+      new:
+        mode: "Creation mode"
+        title: "New AI Skill"
+      notices:
+        created: "Skill created."
+        updated: "Skill updated."
   orders:
     actions:
       back_to_orders: "Back to orders"

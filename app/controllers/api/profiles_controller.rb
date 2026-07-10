@@ -1,7 +1,10 @@
 module Api
   class ProfilesController < BaseController
     def show
-      render json: { success: true, data: profile_json(current_user) }
+      render json: {
+        success: true,
+        data: profile_json(current_user).merge(llm_configs: llm_configs_json(current_user))
+      }
     end
 
     def update
@@ -33,6 +36,17 @@ module Api
     end
 
     private
+
+    def llm_configs_json(user)
+      service = Sub2AIService.new
+      api_token = user.sub2_user_api_key&.api_key
+
+      {
+        entrypoint_url: service.entrypoint_url,
+        api_token: api_token,
+        models: api_token.present? ? service.models(api_key: api_token) : []
+      }
+    end
 
     def profile_params
       params.permit(:name, :email, :time_zone)

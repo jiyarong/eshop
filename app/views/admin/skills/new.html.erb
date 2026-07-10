@@ -1,0 +1,39 @@
+<h1 class="page-title"><%= t("admin.skills.new.title") %></h1>
+
+<div class="segmented-links" aria-label="<%= t("admin.skills.new.mode") %>">
+  <%= link_to t("admin.skills.modes.markdown"), new_admin_skill_path(mode: "markdown"), class: @mode == "markdown" ? "is-active" : nil %>
+  <%= link_to t("admin.skills.modes.upload"), new_admin_skill_path(mode: "upload"), class: @mode == "upload" ? "is-active" : nil %>
+</div>
+
+<section class="panel">
+  <%= form_with model: [:admin, @skill], multipart: true do |form| %>
+    <%= hidden_field_tag :creation_mode, @mode %>
+    <% if @skill.errors.any? %>
+      <div class="panel error-box"><%= @skill.errors.full_messages.join(t("common.list_separator")) %></div>
+    <% end %>
+
+    <div class="report-stack">
+      <div class="field">
+        <%= form.label :version, t("admin.skills.fields.version") %>
+        <%= form.text_field :version, required: true %>
+      </div>
+
+      <% if @mode == "upload" %>
+        <div class="field">
+          <%= form.label :archive, t("admin.skills.fields.archive") %>
+          <%= form.file_field :archive, accept: ".zip,application/zip", required: true %>
+        </div>
+      <% else %>
+        <div class="field field--full">
+          <%= form.label :skill_md, t("admin.skills.fields.skill_md") %>
+          <%= form.text_area :skill_md, rows: 24, required: true, class: "code-editor" %>
+        </div>
+      <% end %>
+
+      <div class="page-actions">
+        <%= form.submit t("common.actions.save"), class: "button" %>
+        <%= link_to t("common.actions.back"), admin_skills_path, class: "button button-secondary" %>
+      </div>
+    </div>
+  <% end %>
+</section>

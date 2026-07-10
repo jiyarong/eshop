@@ -1,0 +1,38 @@
+<div class="page-heading-row">
+  <h1 class="page-title"><%= t("admin.skills.index.title") %></h1>
+  <div class="page-actions">
+    <%= link_to t("admin.agents.index.title"), admin_agents_path, class: "button button-secondary" %>
+    <%= link_to t("admin.skills.actions.new"), new_admin_skill_path, class: "button" %>
+  </div>
+</div>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th><%= t("admin.skills.fields.name") %></th>
+          <th><%= t("admin.skills.fields.description") %></th>
+          <th><%= t("admin.skills.fields.version") %></th>
+          <th><%= t("admin.skills.fields.agents") %></th>
+          <th><%= t("admin.skills.fields.actions") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @skills.each do |skill| %>
+          <tr>
+            <td><%= skill.name %></td>
+            <td><%= skill.description %></td>
+            <td><%= skill.version %></td>
+            <td><%= skill.agents.order(:name).pluck(:name).join(" / ").presence || t("common.empty_value") %></td>
+            <td class="table-actions">
+              <%= link_to t("common.actions.view"), admin_skill_path(skill) %>
+              <%= link_to t("common.actions.edit"), edit_admin_skill_path(skill) %>
+              <%= link_to t("admin.skills.actions.download"), download_admin_skill_path(skill) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

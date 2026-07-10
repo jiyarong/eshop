@@ -1,0 +1,20 @@
+<div class="page-heading-row">
+  <h1 class="page-title"><%= @skill.name %></h1>
+  <div class="page-actions">
+    <%= link_to t("common.actions.edit"), edit_admin_skill_path(@skill), class: "button" %>
+    <%= link_to t("admin.skills.actions.download"), download_admin_skill_path(@skill), class: "button button-secondary" %>
+    <%= link_to t("common.actions.back"), admin_skills_path, class: "button button-secondary" %>
+  </div>
+</div>
+
+<section class="panel">
+  <dl class="summary-list">
+    <dt><%= t("admin.skills.fields.description") %></dt>
+    <dd><%= @skill.description %></dd>
+    <dt><%= t("admin.skills.fields.version") %></dt>
+    <dd><%= @skill.version %></dd>
+  </dl>
+
+  <h2 class="section-title"><%= t("admin.skills.fields.skill_md") %></h2>
+  <pre class="code-viewer"><code><%= @skill.skill_md %></code></pre>
+</section>

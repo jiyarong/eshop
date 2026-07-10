@@ -69,7 +69,7 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_equal 0.45, tuned_agent.temperature.to_f
   end
 
-  test "only fixed agent codes are allowed" do
+  test "custom agents are allowed" do
     agent = Agent.new(
       code: "custom_dynamic_agent",
       name: "临时 Agent",
@@ -80,21 +80,19 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
       enabled: true
     )
 
-    assert_not agent.valid?
-    assert_includes agent.errors[:code], "不是系统固化的 Agent"
+    assert agent.valid?
   end
 
-  test "fixed identity fields cannot drift from code definitions" do
+  test "fixed agent profile fields remain customized when definitions are seeded" do
     agent = Agent.ensure_fixed!("business_analysis")
 
     agent.name = "可修改名称"
-    agent.tools = ["query_sales_data"]
     agent.enabled = false
+    agent.save!
+    Agent.seed_fixed!
 
-    assert_not agent.valid?
-    assert_includes agent.errors[:name], "必须与系统固化定义一致"
-    assert_includes agent.errors[:tools], "必须与系统固化定义一致"
-    assert_includes agent.errors[:enabled], "必须与系统固化定义一致"
+    assert_equal "可修改名称", agent.reload.name
+    assert_not agent.enabled?
   end
 
   test "fixed agent allows prompt model and temperature tuning" do

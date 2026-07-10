@@ -109,6 +109,7 @@ zh:
     users: "用户管理"
     sub2_usage: "AI 用量看板"
     agents: "AI Agent"
+    skills: "AI Skills"
     feedback_tasks: "改动任务"
     mcp_debug: "MCP调试"
     operation_logs: "操作历史"
@@ -127,11 +128,15 @@ zh:
       performance: "性能"
       other: "其他"
   common:
+    empty_value: "-"
     actions:
       back: "返回"
       cancel: "取消"
       close: "关闭"
+      edit: "编辑"
       save: "保存"
+      view: "查看"
+    list_separator: "；"
     "no": "否"
     platforms:
       amazon: "Amazon"
@@ -262,19 +267,88 @@ zh:
           store: "店铺"
           supplier: "供应商"
     agents:
+      actions:
+        new: "新增 Agent"
+      avatar_alt: "%{name} 的头像"
       edit:
         title: "编辑 AI Agent"
+      empty_skills: "暂无 Skill，请先创建 Skill。"
       fields:
+        actions: "操作"
+        avatar: "头像"
+        code: "Code"
+        description: "描述"
+        enabled: "启用"
         model_id: "模型"
         name: "名称"
+        recommended_prompts: "预设问题"
+        skills: "Skills"
         status: "状态"
         system_prompt: "提示词"
         temperature: "Temperature"
         thinking_enabled: "启用 Thinking"
         tools: "工具"
+        updated_at: "更新时间"
+      index:
+        title: "AI Agent 管理"
+      new:
+        title: "新增 AI Agent"
+      notices:
+        created: "AI Agent 已创建。"
+        updated: "AI Agent 已更新。"
+      placeholders:
+        recommended_prompts: "每行一个预设问题"
       statuses:
         disabled: "停用"
         enabled: "启用"
+    skills:
+      actions:
+        download: "下载 ZIP"
+        new: "新增 Skill"
+      edit:
+        title: "编辑 %{name}"
+      errors:
+        body_required: "Markdown 正文不能为空"
+        description_mismatch: "必须与 SKILL.md 一致"
+        description_required: "description 不能为空"
+        duplicate_paths: "ZIP 中存在重复路径"
+        expanded_too_large: "ZIP 解压后超过允许大小"
+        folder_mismatch: "ZIP 文件夹名称必须与 SKILL.md 的 name 一致"
+        frontmatter_fields: "frontmatter 只能包含 name 和 description"
+        frontmatter_mapping: "frontmatter 必须是键值映射"
+        frontmatter_required: "必须包含 YAML frontmatter 和 Markdown 正文"
+        invalid_name: "name 只能包含小写字母、数字和连字符，且不超过 64 个字符"
+        invalid_encoding: "SKILL.md 必须使用 UTF-8 编码"
+        invalid_stored_zip: "已存储的 ZIP 无效：%{message}"
+        invalid_yaml: "YAML 无效：%{message}"
+        invalid_zip: "ZIP 文件无效：%{message}"
+        manifest_depth: "SKILL.md 必须位于 ZIP 根目录或一层 Skill 文件夹内"
+        name_mismatch: "必须与 SKILL.md 一致"
+        single_folder: "ZIP 只能包含一个 Skill 文件夹"
+        single_manifest: "ZIP 必须且只能包含一个 SKILL.md"
+        too_many_files: "ZIP 包含的文件过多"
+        unsafe_path: "ZIP 包含不安全路径"
+        zip_required: "请选择 ZIP 文件"
+        zip_too_large: "ZIP 文件过大"
+      fields:
+        actions: "操作"
+        agents: "Agents"
+        archive: "Skill ZIP"
+        description: "描述"
+        name: "名称"
+        skill_md: "SKILL.md"
+        version: "版本"
+      index:
+        title: "AI Skills 管理"
+      modes:
+        markdown: "直接创建 SKILL.md"
+        upload: "上传 ZIP"
+      new:
+        mode: "创建方式"
+        title: "新增 AI Skill"
+      notices:
+        created: "Skill 已创建。"
+        updated: "Skill 已更新。"
   orders:
     actions:
       back_to_orders: "返回订单中心"

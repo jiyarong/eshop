@@ -80,22 +80,32 @@ class Agent < ApplicationRecord
   }.freeze
 
   has_many :conversations, dependent: :destroy
+  has_many :agent_skills, dependent: :destroy
+  has_many :skills, through: :agent_skills
+  has_one_attached :avatar
 
   scope :enabled, -> { where(enabled: true) }
 
+  def recommended_prompts_text
+    Array(recommended_prompts).join("\n")
+  end
+
   validates :code, :name, :system_prompt, :model_id, presence: true
   validates :code, uniqueness: true
+  validates :code,
+    format: { with: /\A[a-z0-9]+(?:[_-][a-z0-9]+)*\z/ },
+    length: { maximum: 64 }
   validates :temperature, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
-  validate :code_is_fixed
-  validate :fixed_identity_matches_definition
   validate :tools_are_query_only
 
   def self.ensure_fixed!(code)
     definition = definition_for!(code)
     agent = find_or_initialize_by(code: code)
-    agent.name = definition.fetch(:name)
-    agent.tools = definition.fetch(:tools)
-    agent.enabled = definition.fetch(:enabled)
+    if agent.new_record?
+      agent.name = definition.fetch(:name)
+      agent.tools = definition.fetch(:tools)
+      agent.enabled = definition.fetch(:enabled)
+    end
     agent.system_prompt = definition.fetch(:default_system_prompt) if agent.system_prompt.blank?
     agent.model_id = definition.fetch(:default_model_id) if agent.model_id.blank?
     agent.temperature = definition.fetch(:default_temperature) if agent.temperature.blank?
@@ -114,21 +124,6 @@ class Agent < ApplicationRecord
   end
 
   private
-
-  def code_is_fixed
-    return if code.blank? || DEFINITIONS.key?(code)
-
-    errors.add(:code, "不是系统固化的 Agent")
-  end
-
-  def fixed_identity_matches_definition
-    return if code.blank? || !DEFINITIONS.key?(code)
-
-    definition = DEFINITIONS.fetch(code)
-    errors.add(:name, "必须与系统固化定义一致") if name != definition.fetch(:name)
-    errors.add(:tools, "必须与系统固化定义一致") if Array(tools) != definition.fetch(:tools)
-    errors.add(:enabled, "必须与系统固化定义一致") if enabled != definition.fetch(:enabled)
-  end
 
   def tools_are_query_only
     invalid_tools = Array(tools) - ErpAI::ToolRegistry.default_tool_names

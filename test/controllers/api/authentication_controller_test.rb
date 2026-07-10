@@ -66,6 +66,41 @@ module Api
       assert_response :unauthorized
     end
 
+    test "profile returns Sub2 LLM configuration for the current user" do
+      api_token = "sk-sub2-#{@token}"
+      Sub2UserApiKey.create!(
+        user: @user,
+        remote_key_id: "remote-#{@token}",
+        encrypted_api_key: Sub2UserApiKey.encrypt(api_token),
+        name: "eshop-#{@user.id}"
+      )
+      service = Object.new
+      requested_api_token = nil
+      service.define_singleton_method(:entrypoint_url) { "https://sub2.example.com/v1" }
+      service.define_singleton_method(:models) do |api_key:|
+        requested_api_token = api_key
+        [ "deepseek-v4-flash", "gpt-5" ]
+      end
+      original_new = Sub2AIService.method(:new)
+      Sub2AIService.define_singleton_method(:new) { service }
+      raw_token, = UserAccessToken.generate_for!(@user)
+
+      get "/api/profile", headers: bearer_headers(raw_token), as: :json
+
+      assert_response :success
+      assert_equal api_token, requested_api_token
+      assert_equal(
+        {
+          "entrypoint_url" => "https://sub2.example.com/v1",
+          "api_token" => api_token,
+          "models" => [ "deepseek-v4-flash", "gpt-5" ]
+        },
+        response.parsed_body.dig("data", "llm_configs")
+      )
+    ensure
+      Sub2AIService.define_singleton_method(:new, original_new) if original_new
+    end
+
     test "an existing token stops authenticating after the user is deactivated" do
       raw_token, = UserAccessToken.generate_for!(@user)
       @user.update!(active: false)
