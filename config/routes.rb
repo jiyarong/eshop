@@ -8,6 +8,12 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
   post "mcp" => "mcp#create"
 
+  namespace :api do
+    post "login" => "sessions#create"
+    delete "logout" => "sessions#destroy"
+    resource :profile, only: [:show, :update]
+  end
+
   # Google Sheets 连通性测试
   post "google_sheets/ping"    => "google_sheets#ping"
   post "google_sheets/webhook" => "google_sheets#webhook"

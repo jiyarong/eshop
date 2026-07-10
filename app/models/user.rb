@@ -17,6 +17,7 @@ class User < ApplicationRecord
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
   has_many :api_keys, class_name: "UserApiKey", dependent: :destroy
+  has_many :access_tokens, class_name: "UserAccessToken", dependent: :destroy
   has_many :feedback_tasks, dependent: :destroy
   has_many :sku_product_operator_assignments,
     class_name: "Ec::SkuProductOperator",
@@ -27,6 +28,7 @@ class User < ApplicationRecord
   has_many :operated_sku_products,
     through: :operated_sku_product_assignments,
     source: :sku_product
+  has_one_attached :avatar
 
   validates :active, inclusion: { in: [true, false] }
   validates :time_zone, inclusion: { in: TIME_ZONE_OPTIONS.keys, message: "不在可选范围内" }

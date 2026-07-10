@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_065326) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_075158) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1954,6 +1954,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_065326) do
     t.index ["code"], name: "index_roles_on_code", unique: true
   end
 
+  create_table "user_access_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_used_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["token_digest"], name: "index_user_access_tokens_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_user_access_tokens_on_user_id"
+  end
+
   create_table "user_api_keys", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "encrypted_token"
@@ -2125,6 +2135,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_065326) do
   add_foreign_key "raw_wb_supply_orders", "raw_wb_supplies", column: "supply_id"
   add_foreign_key "raw_wb_sync_tasks", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_warehouses", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "user_access_tokens", "users"
   add_foreign_key "user_api_keys", "users"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
