@@ -95,6 +95,7 @@ zh:
       administration: "系统管理"
     weekly_profit_reports: "周利润报表"
     inventory: "库存"
+    tools: "测算工具"
     orders: "订单中心"
     skus: "SKU"
     sku_sales: "SKU 销量"
@@ -134,6 +135,7 @@ zh:
       cancel: "取消"
       close: "关闭"
       edit: "编辑"
+      open: "打开"
       save: "保存"
       view: "查看"
     list_separator: "；"
@@ -607,6 +609,50 @@ zh:
         amount: "金额"
         name: "名称"
   reports:
+    tools:
+      actions:
+        add_configuration: "新增配置"
+        delete: "删除"
+        delete_confirm: "确认删除这个配置吗？"
+        open_tool: "打开工具"
+        overwrite: "覆盖保存"
+        save_configuration: "保存配置"
+        save_as: "另存为"
+      empty: "当前筛选条件下暂无配置记录"
+      drawer:
+        eyebrow: "测算工具"
+      filters:
+        all_tool_types: "全部工具类型"
+        creator: "创建人"
+        creator_placeholder: "输入创建人邮箱"
+        q: "关键词"
+        q_placeholder: "名称 / 工具类型 / 创建人"
+        reset: "重置"
+        submit: "查询"
+        tool_type: "工具类型"
+        version: "版本"
+      fields:
+        actions: "操作"
+        creator: "创建人"
+        name: "名称"
+        tool_type: "工具类型"
+        version: "版本"
+      history:
+        title: "测算历史"
+      index:
+        subtitle: "共享测算配置库"
+        title: "测算工具"
+      new:
+        subtitle: "选择一个工具并打开该类型的最新版本"
+        title: "打开工具"
+        tool_label: "工具"
+      save_name:
+        label: "配置名称"
+        title: "保存配置"
+      renderers:
+        wb_pallet_optimizer:
+          saved_configs: "已保存配置"
+          title: "WB 平台送仓计算器"
     inventory:
       actions:
         back_to_inventory: "返回库存列表"
