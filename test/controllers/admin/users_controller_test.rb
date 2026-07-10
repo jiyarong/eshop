@@ -38,6 +38,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_difference "User.count", 1 do
       post "/admin/users", params: {
         user: {
+          name: "新用户 #{@token}",
           email: "created-#{@token}@example.com",
           password: "password123",
           password_confirmation: "password123",
@@ -49,8 +50,25 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
 
     created = User.find_by!(email: "created-#{@token}@example.com")
     assert_redirected_to "/admin/users/#{created.id}"
+    assert_equal "新用户 #{@token}", created.name
     assert created.has_role?("purchaser")
     assert created.has_role?("finance")
+  end
+
+  test "super admin can update user name" do
+    sign_in_as(@admin)
+
+    patch "/admin/users/#{@viewer.id}", params: {
+      user: {
+        name: "审计用户 #{@token}",
+        email: @viewer.email,
+        active: "1",
+        role_ids: [Role.find_by!(code: "auditor").id]
+      }
+    }
+
+    assert_redirected_to "/admin/users/#{@viewer.id}"
+    assert_equal "审计用户 #{@token}", @viewer.reload.name
   end
 
   test "super admin can generate and revoke user api key" do

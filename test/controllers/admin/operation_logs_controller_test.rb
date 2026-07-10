@@ -6,6 +6,8 @@ class Admin::OperationLogsControllerTest < ActionDispatch::IntegrationTest
     @admin = create_user_with_roles("operation-log-admin-#{@token}@example.com", "super_admin")
     @viewer = create_user_with_roles("operation-log-viewer-#{@token}@example.com", "auditor")
     @other_user = create_user_with_roles("operation-log-other-#{@token}@example.com", "manager")
+    @admin.update!(name: "操作管理员 #{@token}")
+    @other_user.update!(name: "操作用户 #{@token}")
     @sku_log = Ec::OperationLog.create!(
       user: @admin,
       record_type: "Ec::Sku",
@@ -44,11 +46,11 @@ class Admin::OperationLogsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "操作历史"
     assert_select ".erp-nav__link[href='/admin/operation_logs'][aria-current='page']", text: "操作历史"
     assert_select "form[action='/admin/operation_logs'][method='get']"
-    assert_select "select[name='user_id'] option[value='#{@admin.id}']", text: @admin.email
+    assert_select "select[name='user_id'] option[value='#{@admin.id}']", text: @admin.name
     assert_select "select[name='record_type'] option[value='Ec::Sku']", text: "SKU"
     assert_select "input[name='from_date'][type='date']"
     assert_select "input[name='to_date'][type='date']"
-    assert_includes response.body, @admin.email
+    assert_includes response.body, @admin.name
     assert_includes response.body, "SKU"
     assert_includes response.body, "更新"
     assert_select ".operation-log-change", text: /product_name/

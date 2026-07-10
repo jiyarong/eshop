@@ -71,10 +71,13 @@ zh:
       not_found_in_database: "邮箱或密码错误。"
       unauthenticated: "请先登录。"
     sessions:
+      signed_in: "已登录。"
       signed_out: "已退出登录。"
   activerecord:
     attributes:
       user:
+        name: "姓名"
+        email: "邮箱"
         current_password: "当前密码"
         password: "新密码"
         password_confirmation: "确认新密码"
@@ -170,6 +173,9 @@ zh:
       tools: "系统 MCP 工具"
       user: "用户"
     users:
+      fields:
+        email: "邮箱"
+        name: "姓名"
       api_keys:
         actions: "操作"
         active_status: "启用"

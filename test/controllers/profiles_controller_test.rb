@@ -18,6 +18,7 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "个人设置"
+    assert_select "input[name=?]", "user[name]"
     assert_select "select[name=?]", "user[time_zone]" do
       assert_select "option[value=?][selected]", "Asia/Shanghai", "上海 (UTC+08:00)"
       assert_select "option[value=?]", "UTC", "UTC (UTC+00:00)"
@@ -30,6 +31,13 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to "/profile/edit"
     assert_equal "Europe/Moscow", @user.reload.time_zone
+  end
+
+  test "user can update own name" do
+    patch "/profile", params: { user: { name: "个人用户 #{@token}", time_zone: @user.time_zone } }, headers: { "Accept" => "text/html" }
+
+    assert_redirected_to "/profile/edit"
+    assert_equal "个人用户 #{@token}", @user.reload.name
   end
 
   test "user can update profile time zone with plain post fallback" do

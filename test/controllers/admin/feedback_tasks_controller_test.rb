@@ -5,6 +5,7 @@ class Admin::FeedbackTasksControllerTest < ActionDispatch::IntegrationTest
     @token = SecureRandom.hex(4)
     @manager = create_user_with_roles("feedback-manager-#{@token}@example.com", "manager")
     @viewer = create_user_with_roles("feedback-viewer-#{@token}@example.com", "auditor")
+    @viewer.update!(name: "反馈用户 #{@token}")
     @task = FeedbackTask.create!(
       user: @viewer,
       page_url: "/erp/skus",
@@ -29,6 +30,7 @@ class Admin::FeedbackTasksControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "改动任务"
     assert_select "td", "/erp/skus"
+    assert_select "td", @viewer.name
   end
 
   test "read only user cannot list feedback tasks" do

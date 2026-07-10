@@ -39,6 +39,10 @@ class User < ApplicationRecord
     ActiveSupport::TimeZone[name.presence_in(TIME_ZONE_OPTIONS.keys) || DEFAULT_TIME_ZONE]
   end
 
+  def display_name
+    name.to_s.strip.presence || email
+  end
+
   def active_for_authentication?
     super && active?
   end

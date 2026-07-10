@@ -100,7 +100,13 @@ en:
       not_found_in_database: "Invalid email or password."
       unauthenticated: "Please sign in first."
     sessions:
+      signed_in: "Signed in successfully."
       signed_out: "Signed out successfully."
+  activerecord:
+    attributes:
+      user:
+        name: "Name"
+        email: "Email"
   navigation:
     sections:
       dashboard: "Dashboard"
@@ -189,6 +195,9 @@ en:
       tools: "System MCP Tools"
       user: "User"
     users:
+      fields:
+        email: "Email"
+        name: "Name"
       api_keys:
         actions: "Actions"
         active_status: "Active"

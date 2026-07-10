@@ -54,8 +54,8 @@
           <% if @sku_products.any? %>
             <% @sku_products.each do |product| %>
               <% dialog_id = "operator-dialog-#{product.id}" %>
-              <% operator_names = product.operators.map(&:email).join(", ").presence || t("erp.stores.empty.no_operators") %>
-              <% developer_names = product.developers.map(&:email).join(", ").presence || t("erp.stores.empty.no_developers") %>
+              <% operator_names = product.operators.map(&:display_name).join(", ").presence || t("erp.stores.empty.no_operators") %>
+              <% developer_names = product.developers.map(&:display_name).join(", ").presence || t("erp.stores.empty.no_developers") %>
               <tr>
                 <td><%= link_to product.sku_code, report_sku_path(product.sku_code) %></td>
                 <td><%= product.product_id %></td>
@@ -107,7 +107,7 @@
                             <label for="<%= "#{dialog_id}-developer-ids" %>"><%= t("erp.stores.fields.developers") %></label>
                             <select id="<%= "#{dialog_id}-developer-ids" %>" name="developer_ids[]" multiple="multiple" class="select operator-assignment-select" aria-describedby="<%= "#{dialog_id}-hint" %>">
                               <% @operator_candidates.each do |user| %>
-                                <option value="<%= user.id %>"<%= " selected=\"selected\"".html_safe if product.developer_ids.include?(user.id) %>><%= user.email %></option>
+                                <option value="<%= user.id %>"<%= " selected=\"selected\"".html_safe if product.developer_ids.include?(user.id) %>><%= user.display_name %></option>
                               <% end %>
                             </select>
                           </div>
@@ -115,7 +115,7 @@
                             <label for="<%= "#{dialog_id}-operator-ids" %>"><%= t("erp.stores.fields.operators") %></label>
                             <select id="<%= "#{dialog_id}-operator-ids" %>" name="operator_ids[]" multiple="multiple" class="select operator-assignment-select" aria-describedby="<%= "#{dialog_id}-hint" %>">
                               <% @operator_candidates.each do |user| %>
-                                <option value="<%= user.id %>"<%= " selected=\"selected\"".html_safe if product.operator_ids.include?(user.id) %>><%= user.email %></option>
+                                <option value="<%= user.id %>"<%= " selected=\"selected\"".html_safe if product.operator_ids.include?(user.id) %>><%= user.display_name %></option>
                               <% end %>
                             </select>
                             <p id="<%= "#{dialog_id}-hint" %>" class="form-hint"><%= t("erp.stores.form.operator_select_hint") %></p>

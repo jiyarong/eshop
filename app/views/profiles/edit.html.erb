@@ -10,6 +10,10 @@
 
     <div class="report-form">
       <div class="field">
+        <%= form.label :name %>
+        <%= form.text_field :name %>
+      </div>
+      <div class="field">
         <%= form.label :time_zone, "时间展示时区" %>
         <%= form.select :time_zone, User.time_zone_options %>
       </div>

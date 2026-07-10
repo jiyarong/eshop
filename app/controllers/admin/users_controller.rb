@@ -65,7 +65,7 @@ module Admin
     end
 
     def user_params
-      params.require(:user).permit(:email, :password, :password_confirmation, :active)
+      params.require(:user).permit(:name, :email, :password, :password_confirmation, :active)
     end
 
     def api_key_name

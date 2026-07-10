@@ -1,8 +1,12 @@
-<h1 class="page-title"><%= @user.email %></h1>
+<h1 class="page-title"><%= @user.display_name %></h1>
 
 <section class="panel">
   <p><%= link_to "编辑", admin_edit_user_path(@user), class: "button" %></p>
   <dl class="definition-list">
+    <dt><%= t("admin.users.fields.name") %></dt>
+    <dd><%= @user.display_name %></dd>
+    <dt><%= t("admin.users.fields.email") %></dt>
+    <dd><%= @user.email %></dd>
     <dt>状态</dt>
     <dd><%= @user.active? ? "启用" : "停用" %></dd>
     <dt>角色</dt>

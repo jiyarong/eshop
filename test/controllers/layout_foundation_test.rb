@@ -6,6 +6,7 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     I18n.locale = I18n.default_locale
     cookies.delete(:locale)
     @current_user = create_user_with_roles("layout-#{@token}@example.com", "manager")
+    @current_user.update!(name: "布局用户 #{@token}")
     sign_in @current_user
   end
 
@@ -60,7 +61,7 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select "button[data-action='page-translation#showOriginal']", text: "查看原文"
     assert_select "button[data-action='page-translation#showTranslation']", text: "查看译文"
     assert_select ".erp-account-menu"
-    assert_select ".erp-account-menu__email", text: @current_user.email
+    assert_select ".erp-account-menu__email", text: @current_user.name
     assert_select ".erp-account-menu__panel a[href='/profile/password']", text: "修改密码"
     assert_select ".erp-account-menu__panel form[action='#{destroy_user_session_path}'][method='post'] button", text: "退出"
     assert_select ".erp-account-menu__panel form[action='#{destroy_user_session_path}'] input[name='_method'][value='delete']", 0

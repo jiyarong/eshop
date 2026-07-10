@@ -71,7 +71,13 @@ ru:
       not_found_in_database: "Неверный email или пароль."
       unauthenticated: "Сначала войдите в систему."
     sessions:
+      signed_in: "Вход выполнен."
       signed_out: "Вы вышли из системы."
+  activerecord:
+    attributes:
+      user:
+        name: "Имя"
+        email: "Email"
   navigation:
     sections:
       dashboard: "Панель"
@@ -160,6 +166,9 @@ ru:
       tools: "Системные MCP tools"
       user: "Пользователь"
     users:
+      fields:
+        email: "Email"
+        name: "Имя"
       api_keys:
         actions: "Действия"
         active_status: "Активен"

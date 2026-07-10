@@ -49,7 +49,7 @@ class ProfilesController < ApplicationController
   private
 
   def profile_params
-    params.require(:user).permit(:time_zone)
+    params.require(:user).permit(:name, :time_zone)
   end
 
   def password_params

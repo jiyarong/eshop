@@ -6,6 +6,7 @@ class Admin::McpDebugControllerTest < ActionDispatch::IntegrationTest
     @admin = create_user_with_roles("mcp-debug-admin-#{@token}@example.com", "super_admin")
     @operator = create_user_with_roles("mcp-debug-operator-#{@token}@example.com", "operator")
     @viewer = create_user_with_roles("mcp-debug-viewer-#{@token}@example.com", "auditor")
+    @operator.update!(name: "MCP 操作员 #{@token}")
   end
 
   teardown do
@@ -20,7 +21,7 @@ class Admin::McpDebugControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "MCP调试"
-    assert_select "select[name='user_id'] option[value='#{@operator.id}']", text: @operator.email
+    assert_select "select[name='user_id'] option[value='#{@operator.id}']", text: @operator.name
     assert_select "select[name='tool_name'] option[value='list_my_skus']", text: /list_my_skus/
     assert_select "textarea[name='arguments_json']", false
     assert_select "input[name='tool_arguments[query]']"

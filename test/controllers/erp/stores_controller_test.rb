@@ -270,6 +270,8 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     )
     operator = create_user_with_roles("store-show-operator-#{@token.downcase}@example.com", "operator")
     developer = create_user_with_roles("store-show-developer-#{@token.downcase}@example.com", "operator")
+    operator.update!(name: "运营 #{@token}")
+    developer.update!(name: "开发 #{@token}")
     product.operators = [operator]
     Ec::SkuProductOperator.create!(sku_product: product, user: developer, role: "developer")
 
@@ -294,17 +296,17 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "未绑定平台商品 #{token_suffix}"
     assert_includes response.body, "2026-06-16 19:30"
     assert_no_match "已绑定平台商品 #{token_suffix}", response.body
-    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: developer.email
-    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: operator.email
+    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: developer.name
+    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: operator.name
     assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{unassigned_product.id}", text: "未绑定"
     assert_select "form[action=?][method=?]", "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", "post"
     assert_select "dialog#operator-dialog-#{product.id}.operator-assignment-dialog" do
       assert_select "h3", "绑定职责人员"
       assert_select "select[multiple='multiple'][name='developer_ids[]']" do
-        assert_select "option[selected='selected'][value=?]", developer.id.to_s, text: developer.email
+        assert_select "option[selected='selected'][value=?]", developer.id.to_s, text: developer.name
       end
       assert_select "select[multiple='multiple'][name='operator_ids[]']" do
-        assert_select "option[selected='selected'][value=?]", operator.id.to_s, text: operator.email
+        assert_select "option[selected='selected'][value=?]", operator.id.to_s, text: operator.name
       end
       assert_select "button[type='submit']", "保存职责人员"
     end

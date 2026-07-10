@@ -5,7 +5,7 @@
     <div class="field">
       <%= form.label :user_id, t("admin.operation_logs.filters.user") %>
       <%= form.select :user_id,
-        options_from_collection_for_select(@users, :id, :email, @user_id),
+        options_from_collection_for_select(@users, :id, :display_name, @user_id),
         { include_blank: t("admin.operation_logs.filters.all_users") } %>
     </div>
     <div class="field">
@@ -44,7 +44,7 @@
         <% @operation_logs.each do |operation_log| %>
           <tr>
             <td><%= display_time(operation_log.created_at) %></td>
-            <td><%= operation_log.user&.email || t("admin.operation_logs.system_user") %></td>
+            <td><%= operation_log.user&.display_name || t("admin.operation_logs.system_user") %></td>
             <td><%= t("admin.operation_logs.record_types.#{operation_log.record_type.underscore.tr("/", ".")}", default: operation_log.record_type) %></td>
             <td><%= operation_log.record_id %></td>
             <td><%= t("admin.operation_logs.actions.#{operation_log.action}", default: operation_log.action) %></td>

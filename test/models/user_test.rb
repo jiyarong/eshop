@@ -19,6 +19,15 @@ class UserTest < ActiveSupport::TestCase
     assert_equal "Asia/Shanghai", user.time_zone
   end
 
+  test "display name prefers name and falls back to email" do
+    user = User.new(email: "user-time-zone-#{@token}@example.com", name: "  张三  ")
+
+    assert_equal "张三", user.display_name
+
+    user.name = ""
+    assert_equal "user-time-zone-#{@token}@example.com", user.display_name
+  end
+
   test "validates profile time zone against supported options" do
     user = User.new(
       email: "user-time-zone-#{@token}@example.com",

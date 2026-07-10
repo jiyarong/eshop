@@ -5,7 +5,7 @@
     <div class="report-form">
       <div class="field">
         <%= form.label :user_id, t("admin.mcp_debug.user") %>
-        <%= select_tag :user_id, options_from_collection_for_select(@users, :id, :email, @selected_user_id) %>
+        <%= select_tag :user_id, options_from_collection_for_select(@users, :id, :display_name, @selected_user_id) %>
       </div>
       <div class="field">
         <%= form.label :tool_name, t("admin.mcp_debug.tool") %>
