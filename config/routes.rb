@@ -17,6 +17,15 @@ Rails.application.routes.draw do
 
   get "reports/inventory" => "reports#inventory"
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
+  get "reports/tools" => "reports/tools#index"
+  get "reports/tools/new" => "reports/tools#new"
+  get "reports/tools/renderers/:renderer_key/source" => "reports/tools#renderer_source", as: :report_tool_renderer_source
+  get "reports/tools/:tool_type/versions/:version" => "reports/tools#show_definition", as: :report_tool_version
+  get "reports/tools/:tool_type" => "reports/tools#show_latest", as: :report_tool
+  get "reports/tool_configurations/:id" => "reports/tool_configurations#show", as: :report_tool_configuration
+  get "reports/tool_configurations/:id/edit" => "reports/tool_configurations#edit", as: :edit_report_tool_configuration
+  post "reports/tool_configurations" => "reports/tool_configurations#create", as: :report_tool_configurations
+  patch "reports/tool_configurations/:id" => "reports/tool_configurations#update"
   get "reports/skus"      => "reports#skus"
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   get "reports/skus/:sku_code/predicted_costs/new" => "reports#new_sku_predicted_cost", as: :new_report_sku_predicted_cost

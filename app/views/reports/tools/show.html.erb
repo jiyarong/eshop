@@ -1,0 +1,59 @@
+<% content_for :page_heading, @tool_definition.name %>
+
+<% header_actions = capture do %>
+  <% if @can_overwrite %>
+    <button class="btn btn-primary" type="button" data-tool-action="overwrite"><%= t("reports.tools.actions.overwrite") %></button>
+    <button class="btn btn-outline" type="button" data-tool-action="save_as"><%= t("reports.tools.actions.save_as") %></button>
+  <% elsif @tool_configuration.present? %>
+    <button class="btn btn-primary" type="button" data-tool-action="save_as"><%= t("reports.tools.actions.save_as") %></button>
+  <% else %>
+    <button class="btn btn-primary" type="button" data-tool-action="save"><%= t("reports.tools.actions.save_configuration") %></button>
+  <% end %>
+<% end %>
+
+<% drawer_body = capture do %>
+  <div
+    class="tool-renderer-page tool-renderer-page--full"
+    data-tool-type="<%= @tool_definition.tool_type %>"
+    data-tool-version="<%= @tool_definition.version %>"
+    data-tool-share-path="<%= @tool_configuration.present? ? reports_tools_path(current_locale_params.merge(tool_configuration_id: @tool_configuration.id)) : reports_tools_path(current_locale_params.merge(tool_type: @tool_definition.tool_type, version: @tool_definition.version)) %>"
+    data-tool-configuration-id="<%= @tool_configuration&.id %>"
+    data-tool-can-overwrite="<%= @can_overwrite %>"
+    data-tool-create-path="<%= report_tool_configurations_path %>"
+    data-tool-update-path="<%= @tool_configuration.present? ? "/reports/tool_configurations/#{@tool_configuration.id}" : "" %>">
+    <script type="application/json" data-tool-bootstrap>
+      <%= raw json_escape({
+        tool_definition: {
+          id: @tool_definition.id,
+          tool_type: @tool_definition.tool_type,
+          version: @tool_definition.version,
+          name: @tool_definition.name,
+          renderer_key: @tool_definition.renderer_key
+        },
+        tool_configuration: @tool_configuration&.slice(:id, :name, :config_json, :active, :created_by_id),
+        library: Array(@tool_library_configurations).map { |configuration|
+          {
+            id: configuration.id,
+            name: configuration.name,
+            created_by_email: configuration.created_by.email,
+            show_path: report_tool_configuration_path(configuration)
+          }
+        }
+      }.to_json) %>
+    </script>
+    <%= render partial: @renderer_partial, locals: { tool_definition: @tool_definition, tool_configuration: @tool_configuration } %>
+  </div>
+<% end %>
+
+<%= render "shared/overlay_drawer",
+           frame_id: "tool_drawer",
+           title_id: "tool-drawer-title",
+           title: @tool_configuration&.name.presence || @tool_definition.name,
+           eyebrow: t("reports.tools.drawer.eyebrow"),
+           subtitle: "#{@tool_definition.tool_type} · v#{@tool_definition.version}",
+           close_path: reports_tools_path,
+           header_size: "small",
+           drawer_class: "inventory-drawer--full",
+           drawer_width: "90vw",
+           header_actions: header_actions,
+           body: drawer_body %>

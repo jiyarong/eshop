@@ -1,0 +1,322 @@
+<%
+  source_template = Reports::ToolSourceTemplate.new(
+    path: Reports::ToolRendererResolver.source_path_for(tool_definition.renderer_key),
+    scope_class: "wb-tool-inline"
+  )
+  inline_script = source_template.inline_script_content(
+    initializer_name: "initializeEmbeddedWbPalletOptimizer",
+    selector_replacements: {
+      "document.querySelectorAll('input[type=\"number\"]')" => "document.querySelectorAll('.wb-tool-inline input[type=\"number\"]')",
+      "document.querySelectorAll('input, select')" => "document.querySelectorAll('.wb-tool-inline input, .wb-tool-inline select')"
+    },
+    wrap: true,
+    export_statements: [
+      "if (typeof setLang !== 'undefined') window.setLang = setLang;",
+      "if (typeof collectCurrentState !== 'undefined') window.collectCurrentState = collectCurrentState;",
+      "if (typeof restoreState !== 'undefined') window.restoreState = restoreState;",
+      "if (typeof saveRecord !== 'undefined') window.saveRecord = saveRecord;",
+      "if (typeof openExportModal !== 'undefined') window.openExportModal = openExportModal;",
+      "if (typeof openImportModal !== 'undefined') window.openImportModal = openImportModal;",
+      "if (typeof addSku !== 'undefined') window.addSku = addSku;",
+      "if (typeof removeSku !== 'undefined') window.removeSku = removeSku;",
+      "if (typeof closeModal !== 'undefined') window.closeModal = closeModal;",
+      "if (typeof closeDetailsModal !== 'undefined') window.closeDetailsModal = closeDetailsModal;",
+      "if (typeof applyModalPlan !== 'undefined') window.applyModalPlan = applyModalPlan;",
+      "if (typeof copyModalDetails !== 'undefined') window.copyModalDetails = copyModalDetails;",
+      "if (typeof setSkuCartons !== 'undefined') window.setSkuCartons = setSkuCartons;",
+      "function refreshWbCharts() { indivChartsObj.forEach((chart) => { chart.resize(); chart.update('none'); }); if (abChartObj) { abChartObj.resize(); abChartObj.update('none'); } }",
+      "if (typeof refreshWbCharts !== 'undefined') window.refreshWbCharts = refreshWbCharts;",
+      "if (typeof calculateAll !== 'undefined') window.calculateAll = calculateAll;"
+    ]
+  )
+%>
+<div class="wb-tool-surface">
+  <% source_template.external_script_urls.each do |script_url| %>
+    <script src="<%= script_url %>"></script>
+  <% end %>
+
+  <style>
+    <%= raw source_template.scoped_style_content %>
+
+    .wb-tool-inline .history-panel,
+    .wb-tool-inline .save-module {
+      display: none !important;
+    }
+
+    .wb-tool-inline .container {
+      max-width: none;
+      margin: 0;
+      padding: 15px;
+    }
+
+    .wb-tool-inline .sidebar {
+      top: 15px;
+      height: auto;
+      min-height: calc(100vh - 170px);
+    }
+
+    .wb-tool-inline .main-content {
+      min-width: 0;
+    }
+  </style>
+
+  <div class="wb-tool-inline wb-tool-shell wb-tool-shell--full" data-tool-inline-root>
+    <%= raw source_template.body_html %>
+  </div>
+
+  <div class="wb-tool-save-modal" data-tool-save-name-modal hidden>
+    <div class="wb-tool-save-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="tool-save-name-title">
+      <h3 id="tool-save-name-title"><%= t("reports.tools.save_name.title") %></h3>
+      <div class="field">
+        <label for="tool_configuration_name"><%= t("reports.tools.save_name.label") %></label>
+        <input id="tool_configuration_name" name="tool_configuration_name" class="input" type="text" data-tool-save-name-input>
+      </div>
+      <div class="wb-tool-save-modal__actions">
+        <button class="btn btn-outline" type="button" data-tool-save-name-cancel><%= t("common.actions.cancel") %></button>
+        <button class="btn btn-primary" type="button" data-tool-save-name-confirm><%= t("common.actions.save") %></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tool-renderer-page--full {
+    display: block;
+    min-height: 100%;
+    height: 100%;
+    margin: 0 -22px -22px;
+    overflow: auto;
+  }
+
+  .wb-tool-surface {
+    min-height: 100%;
+    background: #fff;
+  }
+
+  .wb-tool-save-modal[hidden] {
+    display: none;
+  }
+
+  .wb-tool-save-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1003;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(24, 34, 53, 0.42);
+  }
+
+  .wb-tool-save-modal__dialog {
+    width: min(420px, 100%);
+    padding: 18px;
+    border: 1px solid var(--erp-border, #d1d5db);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(24, 34, 53, 0.26);
+  }
+
+  .wb-tool-save-modal__dialog h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+  }
+
+  .wb-tool-save-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+  }
+</style>
+
+<script>
+  <%= raw inline_script %>
+</script>
+
+<script>
+  (() => {
+    const page = document.currentScript.closest(".tool-renderer-page");
+    if (!page || page.dataset.wbToolReady === "true") return;
+    page.dataset.wbToolReady = "true";
+
+    const drawer = page.closest(".inventory-drawer");
+    const toolRoot = page.querySelector("[data-tool-inline-root]");
+    const bootstrap = JSON.parse(page.querySelector("[data-tool-bootstrap]").textContent);
+    const csrfToken = document.querySelector("meta[name='csrf-token']")?.content;
+    const saveButton = drawer?.querySelector("[data-tool-action='save']");
+    const overwriteButton = drawer?.querySelector("[data-tool-action='overwrite']");
+    const saveAsButton = drawer?.querySelector("[data-tool-action='save_as']");
+    const parentFrame = page.closest("turbo-frame#tool_drawer");
+    const saveNameModal = page.querySelector("[data-tool-save-name-modal]");
+    const saveNameInput = page.querySelector("[data-tool-save-name-input]");
+    const saveNameCancelButton = page.querySelector("[data-tool-save-name-cancel]");
+    const saveNameConfirmButton = page.querySelector("[data-tool-save-name-confirm]");
+    let pendingPersistRequest = null;
+
+    const syncTopLevelUrl = () => {
+      if (!parentFrame) return;
+      const sharePath = page.dataset.toolSharePath;
+      if (!sharePath) return;
+      window.history.replaceState(window.history.state, "", sharePath);
+    };
+
+    const currentConfig = () => bootstrap.tool_configuration || {};
+    let stabilizedRefreshApplied = false;
+
+    const suggestedName = () => {
+      const derivedName = document.getElementById("sku_name")?.value?.trim();
+      return derivedName || currentConfig().name || bootstrap.tool_definition.name;
+    };
+
+    const closeSaveNameModal = () => {
+      pendingPersistRequest = null;
+      if (!saveNameModal) return;
+      saveNameModal.hidden = true;
+    };
+
+    const openSaveNameModal = ({ method, url, defaultName }) => {
+      if (!saveNameModal || !saveNameInput) return;
+
+      pendingPersistRequest = { method, url };
+      saveNameInput.value = defaultName || "";
+      saveNameModal.hidden = false;
+      requestAnimationFrame(() => {
+        saveNameInput.focus();
+        saveNameInput.select();
+      });
+    };
+
+    const collectPayload = (recordName) => {
+      const state = window.collectCurrentState();
+      const derivedName = document.getElementById("sku_name")?.value?.trim();
+      const derivedRemark = document.getElementById("sku_remark")?.value?.trim();
+      const name = recordName || derivedName || currentConfig().name || bootstrap.tool_definition.name;
+
+      return {
+        ec_tool_configuration: {
+          tool_definition_id: bootstrap.tool_definition.id,
+          name: name,
+          active: true,
+          config_json: {
+            ...state,
+            _record_name: name,
+            _record_remark: derivedRemark || ""
+          }
+        }
+      };
+    };
+
+    const persist = async ({ method, url, recordName }) => {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(collectPayload(recordName))
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
+      const body = await response.json();
+      bootstrap.tool_configuration = body.configuration || bootstrap.tool_configuration;
+      if (body.show_path && parentFrame) {
+        parentFrame.src = body.show_path;
+      } else if (body.show_path && window.Turbo) {
+        window.Turbo.visit(body.show_path);
+      }
+    };
+
+    const syncIntoTool = () => {
+      const configuration = bootstrap.tool_configuration;
+
+      toolRoot.querySelector(".history-panel")?.setAttribute("style", "display:none");
+      toolRoot.querySelector(".save-module")?.setAttribute("style", "display:none");
+
+      if (configuration?.config_json) {
+        window.restoreState(configuration.config_json);
+        const storedName = configuration.config_json._record_name || configuration.name;
+        const storedRemark = configuration.config_json._record_remark || "";
+        if (document.getElementById("sku_name")) document.getElementById("sku_name").value = storedName;
+        if (document.getElementById("sku_remark")) document.getElementById("sku_remark").value = storedRemark;
+        window.calculateAll();
+      }
+    };
+
+    const runStabilizedRefresh = () => {
+      if (stabilizedRefreshApplied) return;
+      stabilizedRefreshApplied = true;
+
+      const scheduleChartSettlingRefresh = () => {
+        [0, 120, 260, 420].forEach((delay) => {
+          setTimeout(() => {
+            window.dispatchEvent(new Event("resize"));
+            window.refreshWbCharts?.();
+          }, delay);
+        });
+      };
+
+      window.dispatchEvent(new Event("resize"));
+      requestAnimationFrame(() => {
+        window.calculateAll?.();
+        requestAnimationFrame(() => {
+          scheduleChartSettlingRefresh();
+        });
+      });
+    };
+
+    requestAnimationFrame(() => {
+      syncIntoTool();
+      syncTopLevelUrl();
+    });
+
+    drawer?.addEventListener("animationend", runStabilizedRefresh, { once: true });
+    setTimeout(runStabilizedRefresh, 280);
+
+    saveAsButton?.addEventListener("click", () => {
+      openSaveNameModal({ method: "POST", url: page.dataset.toolCreatePath, defaultName: suggestedName() });
+    });
+
+    saveButton?.addEventListener("click", () => {
+      openSaveNameModal({ method: "POST", url: page.dataset.toolCreatePath, defaultName: suggestedName() });
+    });
+
+    overwriteButton?.addEventListener("click", () => {
+      openSaveNameModal({ method: "PATCH", url: page.dataset.toolUpdatePath, defaultName: suggestedName() });
+    });
+
+    saveNameCancelButton?.addEventListener("click", () => {
+      closeSaveNameModal();
+    });
+
+    saveNameModal?.addEventListener("click", (event) => {
+      if (event.target === saveNameModal) {
+        closeSaveNameModal();
+      }
+    });
+
+    saveNameInput?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      saveNameConfirmButton?.click();
+    });
+
+    saveNameConfirmButton?.addEventListener("click", async () => {
+      if (!pendingPersistRequest) return;
+
+      const recordName = saveNameInput?.value?.trim();
+      if (!recordName) {
+        saveNameInput?.focus();
+        return;
+      }
+
+      const request = pendingPersistRequest;
+      closeSaveNameModal();
+      await persist({ ...request, recordName });
+    });
+  })();
+</script>

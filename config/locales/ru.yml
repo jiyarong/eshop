@@ -69,6 +69,7 @@ ru:
       administration: "Администрирование"
     weekly_profit_reports: "Недельная прибыль"
     inventory: "Склад"
+    tools: "Инструменты"
     orders: "Заказы"
     skus: "SKU"
     sku_sales: "Продажи SKU"
@@ -104,6 +105,7 @@ ru:
       back: "Назад"
       cancel: "Отмена"
       close: "Закрыть"
+      open: "Открыть"
       save: "Сохранить"
     "no": "Нет"
     platforms:
@@ -439,6 +441,47 @@ ru:
         amount: "Сумма"
         name: "Название"
   reports:
+    tools:
+      actions:
+        add_configuration: "Добавить конфигурацию"
+        open_tool: "Открыть инструмент"
+        overwrite: "Сохранить поверх"
+        save_configuration: "Сохранить конфигурацию"
+        save_as: "Сохранить как"
+      empty: "Нет конфигураций для текущих фильтров."
+      drawer:
+        eyebrow: "Инструмент"
+      filters:
+        all_tool_types: "Все типы инструментов"
+        creator: "Создал"
+        creator_placeholder: "Введите email автора"
+        q: "Ключевое слово"
+        q_placeholder: "Название / Тип инструмента / Автор"
+        reset: "Сбросить"
+        submit: "Найти"
+        tool_type: "Тип инструмента"
+        version: "Версия"
+      fields:
+        creator: "Создал"
+        name: "Название"
+        tool_type: "Тип инструмента"
+        version: "Версия"
+      history:
+        title: "История конфигураций"
+      index:
+        subtitle: "Общая библиотека конфигураций"
+        title: "Инструменты"
+      new:
+        subtitle: "Выберите инструмент и откройте последнюю версию этого типа"
+        title: "Открыть инструмент"
+        tool_label: "Инструмент"
+      save_name:
+        label: "Название конфигурации"
+        title: "Сохранить конфигурацию"
+      renderers:
+        wb_pallet_optimizer:
+          saved_configs: "Сохраненные конфигурации"
+          title: "Калькулятор паллет WB"
     inventory:
       actions:
         back_to_inventory: "Назад к складу"

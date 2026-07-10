@@ -1,0 +1,30 @@
+<% content_for :page_heading, t("reports.tools.new.title") %>
+
+<div class="store-management product-management">
+  <div class="page-h">
+    <div>
+      <h1><%= t("reports.tools.new.title") %></h1>
+      <p class="sub"><%= t("reports.tools.new.subtitle") %></p>
+    </div>
+  </div>
+
+  <% default_definition = @tool_definitions.first %>
+  <section class="card product-list-card" data-tool-picker-root>
+    <div class="field">
+      <label for="tool_path"><%= t("reports.tools.new.tool_label") %></label>
+      <select id="tool_path" name="tool_path" class="input">
+        <% @tool_definitions.each do |definition| %>
+          <option value="<%= report_tool_path(definition.tool_type) %>"><%= definition.name %></option>
+        <% end %>
+      </select>
+    </div>
+
+    <div class="hstack" style="justify-content: flex-end; margin-top: 18px;">
+      <%= link_to t("reports.tools.actions.open_tool"),
+                  default_definition.present? ? report_tool_path(default_definition.tool_type) : reports_tools_path,
+                  class: "btn btn-primary",
+                  onclick: "this.href = this.closest('[data-tool-picker-root]').querySelector(\"select[name='tool_path']\").value;",
+                  data: { tool_open_link: true } %>
+    </div>
+  </section>
+</div>

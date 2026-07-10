@@ -1,6 +1,33 @@
+<%
+  drawer_style_parts = []
+  header_size_class = case local_assigns[:header_size].to_s
+                      when "small"
+                        "inventory-drawer--header-sm"
+                      when "large"
+                        "inventory-drawer--header-lg"
+                      else
+                        "inventory-drawer--header-md"
+                      end
+  if local_assigns[:drawer_width].present?
+    drawer_style_parts << "--overlay-drawer-width: #{drawer_width}"
+    drawer_style_parts << "width: #{drawer_width}"
+    drawer_style_parts << "max-width: #{drawer_width}"
+    drawer_style_parts << "flex-basis: #{drawer_width}"
+  end
+%>
 <turbo-frame id="<%= frame_id %>">
-  <div class="erp-modal-backdrop inventory-drawer-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
-    <section class="erp-modal erp-modal--wide inventory-drawer" role="dialog" aria-modal="true" aria-labelledby="<%= title_id %>">
+  <div
+    class="erp-modal-backdrop inventory-drawer-backdrop"
+    data-controller="modal"
+    data-action="click->modal#closeOnBackdrop"
+    <% if local_assigns[:close_path].present? %>data-modal-close-path-value="<%= close_path %>"<% end %>>
+    <section
+      class="erp-modal erp-modal--wide inventory-drawer <%= header_size_class %> <%= local_assigns[:drawer_class] %>"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="<%= title_id %>"
+      data-close-path="<%= close_path if local_assigns[:close_path].present? %>"
+      style="<%= drawer_style_parts.join("; ") %><%= ";" if drawer_style_parts.any? %>">
       <div class="erp-modal__header inventory-drawer__header">
         <div>
           <% if local_assigns[:eyebrow].present? %>
@@ -13,9 +40,12 @@
             </div>
           <% end %>
         </div>
-        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
-          <i class="bi bi-x-lg" aria-hidden="true"></i>
-        </button>
+        <div class="inventory-drawer__header-actions">
+          <%= header_actions if local_assigns[:header_actions].present? %>
+          <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
       <%= body %>
     </section>

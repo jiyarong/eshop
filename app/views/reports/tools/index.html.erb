@@ -1,0 +1,78 @@
+<% content_for :page_heading, t("reports.tools.index.title") %>
+
+<h1 class="page-title"><%= t("reports.tools.index.title") %></h1>
+<p class="report-meta"><%= t("reports.tools.index.subtitle") %></p>
+
+<div class="report-stack report-tools-index">
+  <%= turbo_frame_tag "erp_modal" %>
+  <%= turbo_frame_tag "tool_drawer", src: @tool_drawer_src %>
+
+  <section class="panel report-tools-index__filters">
+    <%= form_with url: reports_tools_path, method: :get, local: true, class: "report-form report-tools-index__filters-form" do |form| %>
+      <div class="report-tools-index__filter-grid">
+        <div class="field">
+          <%= form.label :q, t("reports.tools.filters.q") %>
+          <%= form.text_field :q, value: tool_index_filters[:q], class: "input", placeholder: t("reports.tools.filters.q_placeholder") %>
+        </div>
+        <div class="field">
+          <%= form.label :tool_type, t("reports.tools.filters.tool_type") %>
+          <%= form.select :tool_type,
+                          options_for_select([[t("reports.tools.filters.all_tool_types"), ""]] + @tool_type_options.map { |definition| [definition.name, definition.tool_type] }, tool_index_filters[:tool_type]),
+                          {},
+                          class: "input" %>
+        </div>
+        <div class="field">
+          <%= form.label :version, t("reports.tools.filters.version") %>
+          <%= form.number_field :version, value: tool_index_filters[:version], class: "input", min: 1 %>
+        </div>
+        <div class="field">
+          <%= form.label :creator, t("reports.tools.filters.creator") %>
+          <%= form.text_field :creator, value: tool_index_filters[:creator], class: "input", placeholder: t("reports.tools.filters.creator_placeholder") %>
+        </div>
+      </div>
+
+      <div class="report-tools-index__filter-actions">
+        <%= link_to t("reports.tools.actions.open_tool"), "/reports/tools/new", class: "btn btn-primary", data: { turbo_frame: "erp_modal" } %>
+        <%= link_to t("reports.tools.filters.reset"), reports_tools_path, class: "btn btn-outline" %>
+        <%= form.submit t("reports.tools.filters.submit"), class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="panel report-tools-index__history">
+    <h2 class="section-title"><%= t("reports.tools.history.title") %></h2>
+    <div class="table-scroll">
+      <table class="inventory-list-table report-tools-table">
+        <thead>
+          <tr>
+            <th><%= t("reports.tools.fields.name") %></th>
+            <th><%= t("reports.tools.fields.tool_type") %></th>
+            <th><%= t("reports.tools.fields.version") %></th>
+            <th><%= t("reports.tools.fields.creator") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @tool_configurations.any? %>
+            <% @tool_configurations.each do |configuration| %>
+              <tr>
+                <td class="report-tools-table__name">
+                  <%= link_to configuration.name,
+                              report_tool_configuration_path(configuration),
+                              class: "report-tools-table__link",
+                              data: { turbo_frame: "tool_drawer" } %>
+                </td>
+                <td class="report-tools-table__type"><%= configuration.tool_definition.tool_type %></td>
+                <td class="numeric report-tools-table__version"><%= configuration.tool_definition.version %></td>
+                <td class="report-tools-table__creator"><%= configuration.created_by.email %></td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="4" class="empty-state"><%= t("reports.tools.empty") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
