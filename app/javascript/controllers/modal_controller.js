@@ -17,11 +17,15 @@ export default class extends Controller {
   }
 
   close() {
+    const frame = this.element.closest("turbo-frame");
+
     if (this.hasClosePathValue) {
       const currentUrl = new URL(window.location.href);
       const closeUrl = new URL(this.closePathValue, window.location.origin);
+      const samePath = currentUrl.pathname === closeUrl.pathname;
+      const sameLocation = samePath && currentUrl.search === closeUrl.search;
 
-      if (currentUrl.pathname !== closeUrl.pathname || currentUrl.search !== closeUrl.search) {
+      if (!sameLocation && !(frame && samePath)) {
         if (window.Turbo?.visit) {
           window.Turbo.visit(closeUrl.toString(), { action: "replace" });
         } else {
@@ -30,12 +34,11 @@ export default class extends Controller {
         return;
       }
 
-      if (window.history?.replaceState) {
+      if (sameLocation && window.history?.replaceState) {
         window.history.replaceState(window.history.state, "", closeUrl.toString());
       }
     }
 
-    const frame = this.element.closest("turbo-frame");
     if (frame) frame.innerHTML = "";
   }
 
