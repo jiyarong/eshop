@@ -594,6 +594,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_053012) do
     t.index ["name"], name: "index_ec_suppliers_on_name", unique: true
   end
 
+  create_table "ec_tool_configurations", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.jsonb "config_json", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.string "name", null: false
+    t.bigint "tool_definition_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_ec_tool_configurations_on_created_by_id"
+    t.index ["tool_definition_id", "active"], name: "idx_ec_tool_configs_definition_active"
+    t.index ["tool_definition_id"], name: "index_ec_tool_configurations_on_tool_definition_id"
+  end
+
+  create_table "ec_tool_definitions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.string "name", null: false
+    t.string "renderer_key", null: false
+    t.jsonb "schema_json", default: {}, null: false
+    t.string "slug", null: false
+    t.string "tool_type", null: false
+    t.datetime "updated_at", null: false
+    t.integer "version", null: false
+    t.index ["created_by_id"], name: "index_ec_tool_definitions_on_created_by_id"
+    t.index ["slug"], name: "index_ec_tool_definitions_on_slug", unique: true
+    t.index ["tool_type", "active", "version"], name: "idx_ec_tool_definitions_lookup"
+    t.index ["tool_type", "version"], name: "index_ec_tool_definitions_on_tool_type_and_version", unique: true
+  end
+
   create_table "ec_weekly_rates", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.decimal "rate_byn_rub", precision: 10, scale: 4, null: false
@@ -2085,6 +2115,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_053012) do
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
+  add_foreign_key "ec_tool_configurations", "ec_tool_definitions", column: "tool_definition_id"
+  add_foreign_key "ec_tool_configurations", "users", column: "created_by_id"
+  add_foreign_key "ec_tool_definitions", "users", column: "created_by_id"
   add_foreign_key "feedback_tasks", "users"
   add_foreign_key "messages", "conversations"
   add_foreign_key "raw_ozon_accrual_by_day", "raw_ozon_seller_accounts", column: "account_id"

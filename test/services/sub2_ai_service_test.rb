@@ -129,4 +129,19 @@ class Sub2AIServiceTest < ActiveSupport::TestCase
     assert_equal({ start_date: "2026-07-09", end_date: "2026-07-10" }, captured[:params])
     assert_equal "access-token", captured[:bearer_token]
   end
+
+  test "requests user usage with the API key and retains the direct response" do
+    service = Sub2AIService.new(host: "https://sub2.example.com")
+    captured = nil
+    usage = { "balance" => 10.5, "usage" => { "total" => { "requests" => 3 } } }
+    service.define_singleton_method(:get_json) do |path, bearer_token:, unwrap_data:|
+      captured = { path:, bearer_token:, unwrap_data: }
+      usage
+    end
+
+    assert_equal usage, service.usage(api_key: "user-api-key")
+    assert_equal "/v1/usage", captured[:path]
+    assert_equal "user-api-key", captured[:bearer_token]
+    assert_equal false, captured[:unwrap_data]
+  end
 end

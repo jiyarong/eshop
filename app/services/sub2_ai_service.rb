@@ -59,6 +59,10 @@ class Sub2AIService
     res.find_all{|x|x['type']=='model'}.map{|x|x['id']}
   end
 
+  def usage(api_key:)
+    get_json("/v1/usage", bearer_token: api_key, unwrap_data: false)
+  end
+
   def groups(access_token:)
     with_access_token_retry(access_token) do |current_access_token|
       get_json("/api/v1/groups/available", bearer_token: current_access_token)
@@ -162,10 +166,10 @@ class Sub2AIService
     [ 400, 401, 403 ].include?(error.http_status) || error.api_code.present?
   end
 
-  def get_json(path, params: {}, bearer_token: nil, headers: {})
+  def get_json(path, params: {}, bearer_token: nil, headers: {}, unwrap_data: true)
     request = Net::HTTP::Get.new(build_uri(path, params))
     apply_headers(request, bearer_token: bearer_token, headers: headers)
-    perform_request(request)
+    perform_request(request, unwrap_data: unwrap_data)
   end
 
   def post_json(path, payload, bearer_token: nil, headers: {})
@@ -190,7 +194,7 @@ class Sub2AIService
     uri
   end
 
-  def perform_request(request)
+  def perform_request(request, unwrap_data: true)
     uri = request.uri
     response = nil
     Net::HTTP.start(
@@ -211,7 +215,7 @@ class Sub2AIService
       raise Error.new("Sub2AI API request failed: #{message}", http_status: response.code.to_i, api_code: api_code)
     end
 
-    body["data"]
+    unwrap_data ? body["data"] : body
   rescue JSON::ParserError => error
     raise Error, "Sub2AI API returned invalid JSON: #{error.message}"
   rescue Timeout::Error, SocketError, SystemCallError => error

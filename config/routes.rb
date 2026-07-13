@@ -12,6 +12,7 @@ Rails.application.routes.draw do
     post "login" => "sessions#create"
     delete "logout" => "sessions#destroy"
     resource :profile, only: [:show, :update]
+    get "v1/profile/usage" => "profiles#usage"
     resources :agents, only: :index
   end
 

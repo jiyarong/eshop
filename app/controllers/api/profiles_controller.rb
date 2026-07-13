@@ -3,8 +3,21 @@ module Api
     def show
       render json: {
         success: true,
-        data: profile_json(current_user).merge(llm_configs: llm_configs_json(current_user))
+        data: profile_json(current_user).merge(llm_config: llm_configs_json(current_user))
       }
+    end
+
+    def usage
+      api_key = current_user.sub2_user_api_key&.api_key
+      unless api_key.present?
+        render json: { success: false, error: "sub2_api_key_not_configured" }, status: :unprocessable_entity
+        return
+      end
+
+      render json: { success: true, data: Sub2AIService.new.usage(api_key: api_key) }
+    rescue Sub2AIService::Error => error
+      Rails.logger.error("Sub2 usage request failed for user #{current_user.id}: #{error.message}")
+      render json: { success: false, error: "sub2_usage_unavailable" }, status: :bad_gateway
     end
 
     def update
