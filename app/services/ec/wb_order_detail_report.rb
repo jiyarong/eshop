@@ -118,17 +118,19 @@ module Ec
       @sku_results.each do |(nm_id, rtype), r|
         sales_qty        = [r[:sales_qty].to_i, 1].max
         net_qty          = r[:net_qty].to_i
+        cost_divisor     = net_qty.negative? ? net_qty.abs : sales_qty
 
         goods_cost_total = r[:goods_cost].to_f.abs
-        # import_vat: total = net_qty × unit_cny, then spread over sales_qty (align with Python)
+        # import_vat: total = net_qty × unit_cny, then spread using the same signed net logic as WR.
         total_import_vat_byn = r[:import_vat].to_f * net_qty * @rate_cny_rub * 1.03 / @rate_byn_rub
 
         @per_unit[[nm_id, rtype]] = {
           storage_byn:    r[:storage].to_f.abs / sales_qty,
           ad_byn:         r[:ad].to_f.abs      / sales_qty,
-          goods_cost_byn: goods_cost_total      / sales_qty,
-          import_vat_byn: total_import_vat_byn  / sales_qty,
+          goods_cost_byn: goods_cost_total      / cost_divisor,
+          import_vat_byn: total_import_vat_byn.abs / cost_divisor,
           has_cost:       goods_cost_total > 0,
+          negative_net:   net_qty.negative?,
         }
       end
     end
@@ -203,7 +205,17 @@ module Ec
             end
             after_tax  = (pre_tax - vat_net).round(2)
             margin_pct = for_pay.abs > 0 ? (after_tax / for_pay * 100).round(1) : nil
-          else  # Возврат — no goods cost, no tax (align with Python)
+          elsif pu[:negative_net]
+            goods_cost = pu[:has_cost] ? pu[:goods_cost_byn].round(2) : nil
+            pre_tax    = goods_cost ? (net + goods_cost).round(2) : net
+            vat_net = if tax_regime == 'osn'
+              import_vat.round(2)
+            else
+              0.0
+            end
+            after_tax  = (pre_tax - vat_net).round(2)
+            margin_pct = nil
+          else  # Возврат — no goods cost, no tax unless the SKU bucket is net negative
             goods_cost = nil; pre_tax = nil; vat_net = nil
             after_tax  = net
             margin_pct = nil

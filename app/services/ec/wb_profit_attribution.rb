@@ -319,8 +319,8 @@ module Ec
         # acquiring/penalty/reimb/pickup 是 WB 内部调整，不影响 Итого，仅展示用
         net = settlement - delivery - storage - ad
 
-        # 货物成本（CNY → BYN）— 基于净成交数，退货的货已退回不计成本
-        net_qty        = [b[:sales_qty] - b[:return_qty], 0].max
+        # 货物成本（CNY → BYN）— 基于 signed 净成交数；退货超过销售时冲回成本
+        net_qty        = b[:sales_qty] - b[:return_qty]
         goods_cost     = cny_to_byn(net_qty * (cost_data&.dig(:total_cost_cny) || 0.0))
         import_vat_cny = cost_data&.dig(:import_vat_cny) || 0.0  # 展示列保持 CNY（与 Python 对齐）
         import_vat_byn = cny_to_byn(import_vat_cny)              # 税务计算用 BYN

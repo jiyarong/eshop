@@ -88,6 +88,28 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
                     0.001
   end
 
+  test "compute_profit keeps negative net quantity and reverses goods cost" do
+    service = build_service(from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5), rate_cny_rub: 10.0, rate_byn_rub: 5.0)
+    bucket = service.send(:new_bucket).merge(
+      settlement_byn: -100.0,
+      sales_qty: 0,
+      return_qty: 1
+    )
+    service.instance_variable_set(:@buckets, { [123, Ec::WbProfitAttribution::REPORT_TYPE_EXPORT] => bucket })
+    service.instance_variable_set(:@goods_costs, { 123 => { total_cost_cny: 30.0, import_vat_cny: 5.0, sku_code: "SKU-NEG" } })
+    service.instance_variable_set(:@unalloc_rows, [])
+    service.define_singleton_method(:build_nm_to_sku_map) { |_nm_ids| { 123 => "SKU-NEG" } }
+
+    service.send(:compute_profit)
+    row = service.results.first
+
+    assert_equal(-1, row[:net_qty])
+    assert_in_delta(-61.8, row[:goods_cost], 0.001)
+    assert_in_delta(-38.2, row[:pre_tax], 0.001)
+    assert_in_delta(-38.2, row[:after_tax], 0.001)
+    assert_in_delta(-61.8, service.summary[:total_goods_cost], 0.001)
+  end
+
   private
 
   def build_service(from_date:, to_date:, rate_cny_rub: 10.0, rate_byn_rub: 3.0)

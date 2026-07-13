@@ -289,7 +289,7 @@ module Ec
         @counts[sku] = {
           order_count:     order_pns.size,
           return_count:    return_pns.size,
-          net_sales_count: [order_pns.size - return_pns.size, 0].max,
+          net_sales_count: order_pns.size - return_pns.size,
           sales_postings:  sales_pns,
         }
       end
