@@ -279,8 +279,9 @@
               <thead>
                 <tr>
                   <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
-                  <th>FBO</th>
-                  <th>FBS</th>
+                  <th><%= t("reports.inventory.fields.fbo_fbw") %></th>
+                  <th><%= t("reports.inventory.fields.platform_inbound") %></th>
+                  <th><%= t("reports.inventory.fields.fbs") %></th>
                 </tr>
               </thead>
               <tbody>
@@ -288,6 +289,7 @@
                   <tr>
                     <td><%= row[:store_label] %></td>
                     <td><%= row[:fbo].to_i %></td>
+                    <td><%= row[:inbound].to_i %></td>
                     <td><%= row[:fbs].to_i %></td>
                   </tr>
                 <% end %>
@@ -295,6 +297,7 @@
                   <tr class="inventory-distribution-table__summary">
                     <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
                     <td><%= summary_row[:fbo].to_i %></td>
+                    <td><%= summary_row[:inbound].to_i %></td>
                     <td><%= summary_row[:fbs].to_i %></td>
                   </tr>
                 <% end %>
@@ -311,6 +314,43 @@
               <% end %>
               <strong>= <%= inventory_detail.dig(:platform_formula, :result).to_i %></strong>
             </div>
+          </div>
+
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.fbo_fbw_breakdown") %></h4>
+          </div>
+          <div class="table-scroll">
+            <table class="inventory-distribution-table">
+              <thead>
+                <tr>
+                  <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
+                  <th><%= t("reports.inventory.fields.fulfillment_type") %></th>
+                  <th><%= t("reports.inventory.fields.warehouse") %></th>
+                  <th><%= t("reports.inventory.fields.quantity") %></th>
+                  <th><%= t("reports.inventory.fields.promised") %></th>
+                  <th><%= t("reports.inventory.fields.reserved") %></th>
+                  <th><%= t("reports.inventory.fields.synced_at") %></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% warehouse_rows = inventory_detail[:platform_warehouse_rows].to_a %>
+                <% if warehouse_rows.any? %>
+                  <% warehouse_rows.each do |row| %>
+                    <tr>
+                      <td><%= row[:store_label] %></td>
+                      <td><%= t("reports.inventory.fields.#{row[:fulfillment_type]}", default: row[:fulfillment_type].to_s.upcase) %></td>
+                      <td><%= report_value(row[:warehouse_name]) %></td>
+                      <td><%= row[:quantity].to_i %></td>
+                      <td><%= row[:promised].present? ? row[:promised].to_i : "-" %></td>
+                      <td><%= row[:reserved].present? ? row[:reserved].to_i : "-" %></td>
+                      <td><%= display_time(row[:latest_synced_at]) %></td>
+                    </tr>
+                  <% end %>
+                <% else %>
+                  <tr><td colspan="7" class="empty-state"><%= t("reports.inventory.empty") %></td></tr>
+                <% end %>
+              </tbody>
+            </table>
           </div>
         </section>
       <% end %>

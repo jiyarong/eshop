@@ -2,7 +2,7 @@ module Ec
   class SkuInventoryLevel < ApplicationRecord
     self.table_name = "ec_sku_inventory_levels"
 
-    FULFILLMENT_TYPES = %w[fbw fbs fbo].freeze
+    FULFILLMENT_TYPES = %w[fbw fbs fbo inbound].freeze
 
     belongs_to :sku, class_name: "Ec::Sku", foreign_key: :sku_code, primary_key: :sku_code
     belongs_to :store, class_name: "Ec::Store", optional: true

@@ -17,6 +17,7 @@ module Ec
         product_name_ru: @sku.product_name_ru,
         incoming_quantity: incoming_quantity,
         book_stock: summary[:book_stock],
+        platform_inbound_stock: summary[:platform_inbound_stock],
         platform_stock: summary[:fbo_fbw_stock],
         available_stock: summary[:available_stock],
         pkg_length_cm: cost&.pkg_length_cm,

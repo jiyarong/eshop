@@ -6,7 +6,8 @@ module GoogleSheets
       "SKU", "商品名(中文)", "商品名(俄文)",
       "采购中库存", "采购中库存体积(m³)",
       "账面可用库存", "账面可用库存体积(m³)",
-      "FBO/FBW在库", "FBO/FBW在库体积(m³)",
+      "平台在途", "平台在途体积(m³)",
+      "平台在库", "平台在库体积(m³)",
       "FBS库存", "FBS库存体积(m³)",
       "日均销量", "周转天数", "周转天数(含采购)",
       "长(cm)", "宽(cm)", "高(cm)", "单件体积(L)"
@@ -16,14 +17,15 @@ module GoogleSheets
       "SKU", "Название (кит.)", "Название (рус.)",
       "Закупаемый запас", "Объём закупаемого запаса (м³)",
       "Книжный доступный запас", "Объём книжного доступного запаса (м³)",
-      "FBO/FBW остаток", "Объём FBO/FBW остатка (м³)",
+      "В поставке", "Объём в поставке (м³)",
+      "Остаток платформ", "Объём остатка платформ (м³)",
       "FBS запас", "Объём FBS запаса (м³)",
       "Средние продажи в день", "Оборачиваемость", "Оборачиваемость с закупкой",
       "Длина (см)", "Ширина (см)", "Высота (см)", "Объём единицы (L)"
     ].freeze
 
-    COL_WIDTHS = [120, 180, 180, 90, 120, 90, 120, 90, 120, 90, 120, 100, 100, 130, 80, 80, 80, 90].freeze
-    NUMERIC_TYPES = [:text, :text, :text, :integer, :number, :integer, :number, :integer, :number, :integer, :number, :number, :number, :number, :number, :number, :number, :number].freeze
+    COL_WIDTHS = [120, 180, 180, 90, 120, 90, 120, 90, 120, 90, 120, 90, 120, 100, 100, 130, 80, 80, 80, 90].freeze
+    NUMERIC_TYPES = [:text, :text, :text, :integer, :number, :integer, :number, :integer, :number, :integer, :number, :integer, :number, :number, :number, :number, :number, :number, :number, :number].freeze
     EXPORT_TIME_ZONE = ActiveSupport::TimeZone["Asia/Shanghai"]
 
     def call
@@ -59,6 +61,8 @@ module GoogleSheets
           estimated_volume_m3(row[:incoming_quantity], row[:unit_volume_l]),
           row[:book_stock],
           estimated_volume_m3(row[:book_stock], row[:unit_volume_l]),
+          row[:platform_inbound_stock],
+          estimated_volume_m3(row[:platform_inbound_stock], row[:unit_volume_l]),
           row[:platform_stock],
           estimated_volume_m3(row[:platform_stock], row[:unit_volume_l]),
           row[:available_stock],

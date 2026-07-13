@@ -58,14 +58,18 @@ class GoogleSheets::InventoryWithVolSheetServiceTest < ActiveSupport::TestCase
       assert_equal "SKU", values[0][0]
       assert_equal "商品名(中文)", values[0][1]
       assert_equal "采购中库存体积(m³)", values[0][4]
-      assert_equal "周转天数(含采购)", values[0][13]
-      assert_equal "单件体积(L)", values[0][17]
+      assert_equal "平台在途", values[0][7]
+      assert_equal "平台在库", values[0][9]
+      assert_equal "周转天数(含采购)", values[0][15]
+      assert_equal "单件体积(L)", values[0][19]
 
       assert_equal "SKU", values[1][0]
       assert_equal "Название (кит.)", values[1][1]
       assert_equal "Объём закупаемого запаса (м³)", values[1][4]
-      assert_equal "Оборачиваемость с закупкой", values[1][13]
-      assert_equal "Объём единицы (L)", values[1][17]
+      assert_equal "В поставке", values[1][7]
+      assert_equal "Остаток платформ", values[1][9]
+      assert_equal "Оборачиваемость с закупкой", values[1][15]
+      assert_equal "Объём единицы (L)", values[1][19]
 
       row = values[2]
       assert_equal sku.sku_code, row[0]
@@ -75,17 +79,19 @@ class GoogleSheets::InventoryWithVolSheetServiceTest < ActiveSupport::TestCase
       assert_equal BigDecimal("0.09"), row[4]
       assert_equal 20, row[5]
       assert_equal BigDecimal("0.12"), row[6]
-      assert_equal 7, row[7]
-      assert_equal BigDecimal("0.042"), row[8]
-      assert_equal 13, row[9]
-      assert_equal BigDecimal("0.078"), row[10]
-      assert_equal BigDecimal("2.5"), row[11]
-      assert_equal BigDecimal("8"), row[12]
-      assert_equal BigDecimal("14"), row[13]
-      assert_equal BigDecimal("10"), row[14]
-      assert_equal BigDecimal("20"), row[15]
-      assert_equal BigDecimal("30"), row[16]
-      assert_equal BigDecimal("6.0"), row[17]
+      assert_equal 2, row[7]
+      assert_equal BigDecimal("0.012"), row[8]
+      assert_equal 7, row[9]
+      assert_equal BigDecimal("0.042"), row[10]
+      assert_equal 11, row[11]
+      assert_equal BigDecimal("0.066"), row[12]
+      assert_equal BigDecimal("2.5"), row[13]
+      assert_equal BigDecimal("8"), row[14]
+      assert_equal BigDecimal("14"), row[15]
+      assert_equal BigDecimal("10"), row[16]
+      assert_equal BigDecimal("20"), row[17]
+      assert_equal BigDecimal("30"), row[18]
+      assert_equal BigDecimal("6.0"), row[19]
 
       assert_equal 1, batch_updates.size
     end
@@ -139,10 +145,10 @@ class GoogleSheets::InventoryWithVolSheetServiceTest < ActiveSupport::TestCase
     assert_nil row[6]
     assert_nil row[8]
     assert_nil row[10]
-    assert_nil row[14]
-    assert_nil row[15]
     assert_nil row[16]
     assert_nil row[17]
+    assert_nil row[18]
+    assert_nil row[19]
   end
 
   private
@@ -198,6 +204,18 @@ class GoogleSheets::InventoryWithVolSheetServiceTest < ActiveSupport::TestCase
       quantity: 7,
       is_latest: true,
       synced_at: Time.zone.parse("2026-07-04 10:00:00"),
+      metadata: {}
+    )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: code,
+      platform: "ozon",
+      account_id: store.id,
+      store: store,
+      store_name: store.store_name,
+      fulfillment_type: "inbound",
+      quantity: 2,
+      is_latest: true,
+      synced_at: Time.zone.parse("2026-07-04 10:05:00"),
       metadata: {}
     )
 

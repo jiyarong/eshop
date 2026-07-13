@@ -33,6 +33,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
         product_name_ru: nil,
         incoming_quantity: 0,
         book_stock: 0,
+        platform_inbound_stock: 0,
         platform_stock: 0,
         available_stock: 0,
         unit_volume_l: nil,
@@ -45,7 +46,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
 
     row_payloads[skus[0]].merge!(incoming_quantity: 10, unit_volume_l: BigDecimal("1.0"))
     row_payloads[skus[1]].merge!(book_stock: 5, unit_volume_l: BigDecimal("2.0"))
-    row_payloads[skus[10]].merge!(platform_stock: 3, available_stock: 4, unit_volume_l: BigDecimal("1.5"))
+    row_payloads[skus[10]].merge!(platform_inbound_stock: 2, platform_stock: 3, available_stock: 4, unit_volume_l: BigDecimal("1.5"))
     row_payloads[skus[11]].merge!(incoming_quantity: -9, unit_volume_l: BigDecimal("5.0"))
 
     fake_query_factory = lambda do |sku|
@@ -81,11 +82,12 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     assert_operator report_sections.index(summary_section), :<, report_sections.index(table_section)
 
     summary_cards = summary_section.css(".weekly-profit-summary-card")
-    assert_equal 4, summary_cards.size
+    assert_equal 5, summary_cards.size
 
     expected_cards = [
       [I18n.t("reports.inventory.fields.pending_stock"), "0.0100 m³"],
       [I18n.t("reports.inventory.fields.book_available_stock"), "0.0100 m³"],
+      [I18n.t("reports.inventory.fields.platform_inbound"), "0.0030 m³"],
       [I18n.t("reports.inventory.fields.platform_stock"), "0.0045 m³"],
       [I18n.t("reports.inventory.fields.overseas_available_stock"), "0.0060 m³"]
     ]
@@ -114,6 +116,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
       product_name_ru: nil,
       incoming_quantity: 10,
       book_stock: 5,
+      platform_inbound_stock: 2,
       platform_stock: 3,
       available_stock: 4,
       unit_volume_l: BigDecimal("1.5"),
@@ -141,6 +144,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     summary_output = {
       pending_stock_volume_m3: BigDecimal("0.015"),
       book_available_stock_volume_m3: BigDecimal("0.0075"),
+      platform_inbound_stock_volume_m3: BigDecimal("0.003"),
       platform_stock_volume_m3: BigDecimal("0.0045"),
       overseas_available_stock_volume_m3: BigDecimal("0.006")
     }
@@ -159,6 +163,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
           summary_output = {
             pending_stock_volume_m3: BigDecimal("0.1111"),
             book_available_stock_volume_m3: BigDecimal("0.2222"),
+            platform_inbound_stock_volume_m3: BigDecimal("0.1110"),
             platform_stock_volume_m3: BigDecimal("0.3333"),
             overseas_available_stock_volume_m3: BigDecimal("0.4444")
           }

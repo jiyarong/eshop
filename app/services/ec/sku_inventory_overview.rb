@@ -22,9 +22,13 @@ module Ec
       returned = store_rows.sum { |row| row[:return_quantity] }
       supply = store_rows.sum { |row| row[:supply_quantity] }
       platform_stock = latest_levels.sum(&:quantity)
+      platform_inbound_stock = latest_levels
+        .select { |level| level.fulfillment_type.to_s == "inbound" }
+        .sum(&:quantity)
       fbo_fbw_stock = latest_levels
         .select { |level| level.fulfillment_type.to_s.in?(%w[fbo fbw]) }
         .sum(&:quantity)
+      platform_reserved_stock = fbo_fbw_stock + platform_inbound_stock
       batches = batch_summary
       received = batches[:received_quantity]
 
@@ -36,9 +40,10 @@ module Ec
         return_quantity: returned,
         supply_quantity: supply,
         platform_stock: platform_stock,
+        platform_inbound_stock: platform_inbound_stock,
         fbo_fbw_stock: fbo_fbw_stock,
         book_stock: received - sold + returned,
-        available_stock: received - sold + returned - fbo_fbw_stock
+        available_stock: received - sold + returned - platform_reserved_stock
       }
     end
 

@@ -69,6 +69,10 @@
         <div class="summary-value"><%= inventory_volume_m3_text(@inventory_volume_summary[:book_available_stock_volume_m3]) %></div>
       </div>
       <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.inventory.fields.platform_inbound") %></div>
+        <div class="summary-value"><%= inventory_volume_m3_text(@inventory_volume_summary[:platform_inbound_stock_volume_m3]) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
         <div class="summary-label"><%= t("reports.inventory.fields.platform_stock") %></div>
         <div class="summary-value"><%= inventory_volume_m3_text(@inventory_volume_summary[:platform_stock_volume_m3]) %></div>
       </div>
@@ -88,6 +92,7 @@
             <th><%= t("reports.sku_detail.fields.product_name") %></th>
             <th><%= t("reports.inventory.fields.pending_stock") %></th>
             <th><%= t("reports.inventory.fields.book_available_stock") %></th>
+            <th><%= t("reports.inventory.fields.platform_inbound") %></th>
             <th><%= t("reports.inventory.fields.platform_stock") %></th>
             <th><%= t("reports.inventory.fields.overseas_available_stock") %></th>
             <th><%= t("reports.inventory.fields.daily_sales_velocity") %></th>
@@ -101,11 +106,13 @@
             <% @inventory_rows.each do |row| %>
               <% available_stock = row[:available_stock].to_i %>
               <% book_stock = row[:book_stock].to_i %>
+              <% platform_inbound_stock = row[:platform_inbound_stock].to_i %>
               <% platform_stock = row[:platform_stock].to_i %>
               <% incoming_quantity = row[:incoming_quantity].to_i %>
               <% dimensions_text = inventory_dimensions_text(row[:pkg_length_cm], row[:pkg_width_cm], row[:pkg_height_cm]) %>
               <% incoming_volume_text = inventory_estimated_volume_text(incoming_quantity, row[:unit_volume_l]) %>
               <% book_volume_text = inventory_estimated_volume_text(book_stock, row[:unit_volume_l]) %>
+              <% platform_inbound_volume_text = inventory_estimated_volume_text(platform_inbound_stock, row[:unit_volume_l]) %>
               <% platform_volume_text = inventory_estimated_volume_text(platform_stock, row[:unit_volume_l]) %>
               <% available_volume_text = inventory_estimated_volume_text(available_stock, row[:unit_volume_l]) %>
               <% daily_sales_velocity = row[:daily_sales_velocity] %>
@@ -137,6 +144,12 @@
                     <div class="inventory-list-table__subline"><%= book_volume_text %></div>
                   <% end %>
                 </td>
+                <td class="numeric inventory-list-table__metric inventory-list-table__metric--warning">
+                  <div><%= platform_inbound_stock %></div>
+                  <% if platform_inbound_volume_text.present? %>
+                    <div class="inventory-list-table__subline"><%= platform_inbound_volume_text %></div>
+                  <% end %>
+                </td>
                 <td class="numeric inventory-list-table__metric">
                   <div><%= platform_stock %></div>
                   <% if platform_volume_text.present? %>
@@ -165,7 +178,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="10" class="empty-state"><%= t("reports.inventory.empty") %></td>
+              <td colspan="11" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>

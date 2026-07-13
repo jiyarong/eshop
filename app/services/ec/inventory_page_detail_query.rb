@@ -6,7 +6,9 @@ module Ec
     ORDER_STATUS_COLUMNS = %w[pending processing shipping signed].freeze
     PLATFORM_BUCKETS = [
       { key: "ozon_fbo", platform: "ozon", fulfillment_type: "fbo" },
-      { key: "wb_fbo", platform: "wb", fulfillment_type: "fbw" }
+      { key: "ozon_inbound", platform: "ozon", fulfillment_type: "inbound" },
+      { key: "wb_fbo", platform: "wb", fulfillment_type: "fbw" },
+      { key: "wb_inbound", platform: "wb", fulfillment_type: "inbound" }
     ].freeze
     def initialize(sku, detail_tab:, book_batch_page:, date_to: nil, time_zone: nil)
       @sku = sku
@@ -43,6 +45,7 @@ module Ec
         platform_shop_rows: platform_shop_rows(overview[:latest_levels]),
         platform_shop_summary_row: platform_shop_summary_row(overview[:latest_levels]),
         platform_formula: platform_formula(overview[:summary], overview[:latest_levels]),
+        platform_warehouse_rows: platform_warehouse_rows(overview[:latest_levels]),
         store_reconciliation_rows: overview[:store_rows],
         platform_breakdown: platform_breakdown(overview[:latest_levels])
       }
@@ -211,6 +214,7 @@ module Ec
         {
           store_label: "#{platform_label(platform)} * #{store_name}",
           fbo: group_levels.select { |level| level.fulfillment_type.to_s.in?(%w[fbo fbw]) }.sum(&:quantity),
+          inbound: group_levels.select { |level| level.fulfillment_type.to_s == "inbound" }.sum(&:quantity),
           fbs: group_levels.select { |level| level.fulfillment_type.to_s == "fbs" }.sum(&:quantity)
         }
       end.sort_by { |row| row[:store_label] }
@@ -222,6 +226,7 @@ module Ec
       {
         store_label_key: "summary",
         fbo: rows.sum { |row| row[:fbo].to_i },
+        inbound: rows.sum { |row| row[:inbound].to_i },
         fbs: rows.sum { |row| row[:fbs].to_i }
       }
     end
@@ -230,11 +235,32 @@ module Ec
       {
         items: [
           formula_item("book_inventory", summary[:book_stock], "+"),
-          formula_item("platform_inventory_total", summary[:fbo_fbw_stock], "-")
+          formula_item("platform_inventory_total", summary[:fbo_fbw_stock], "-"),
+          formula_item("platform_inbound", summary[:platform_inbound_stock], "-")
         ],
         result: summary[:available_stock].to_i,
         description_key: "overseas_available"
       }
+    end
+
+    def platform_warehouse_rows(levels)
+      levels
+        .select { |level| level.fulfillment_type.to_s.in?(%w[fbo fbw]) }
+        .flat_map do |level|
+          Array(level.warehouse_breakdown).map do |warehouse|
+            {
+              store_label: "#{platform_label(level.platform)} * #{level.store_name}",
+              fulfillment_type: level.fulfillment_type,
+              warehouse_name: warehouse_value(warehouse, :warehouse_name),
+              quantity: warehouse_value(warehouse, :quantity).to_i,
+              promised: warehouse_value(warehouse, :promised),
+              reserved: warehouse_value(warehouse, :reserved),
+              latest_synced_at: level.synced_at
+            }
+          end
+        end
+        .select { |row| row[:warehouse_name].present? && [row[:quantity], row[:promised], row[:reserved]].compact.sum(&:to_i).positive? }
+        .sort_by { |row| [row[:store_label].to_s, row[:fulfillment_type].to_s, row[:warehouse_name].to_s] }
     end
 
     def incoming_status_order_sql
@@ -258,6 +284,10 @@ module Ec
 
     def formula_item(key, value, operator)
       { key: key, value: value.to_i, operator: operator }
+    end
+
+    def warehouse_value(row, key)
+      row[key] || row[key.to_s]
     end
 
     def distribution_summary_row(rows)

@@ -3,6 +3,7 @@ module Ec
     SUMMARY_BUCKETS = {
       pending_stock_volume_m3: :incoming_quantity,
       book_available_stock_volume_m3: :book_stock,
+      platform_inbound_stock_volume_m3: :platform_inbound_stock,
       platform_stock_volume_m3: :platform_stock,
       overseas_available_stock_volume_m3: :available_stock
     }.freeze

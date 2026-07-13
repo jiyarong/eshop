@@ -48,6 +48,17 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
       received_quantity: 0,
       purchase_unit_price_cny: 1
     )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: sku.sku_code,
+      platform: "ozon",
+      account_id: 1,
+      store_name: "Ozon Row #{token}",
+      fulfillment_type: "inbound",
+      quantity: 4,
+      is_latest: true,
+      synced_at: Time.zone.parse("2026-06-22 10:00:00"),
+      metadata: {}
+    )
 
     row = Ec::InventoryPageRowQuery.new(sku).call
     summary = sku.inventory_overview[:summary]
@@ -56,6 +67,7 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     assert_equal sku.sku_code, row[:sku_code]
     assert_equal "行测试商品", row[:product_name]
     assert_equal summary[:book_stock], row[:book_stock]
+    assert_equal summary[:platform_inbound_stock], row[:platform_inbound_stock]
     assert_equal summary[:fbo_fbw_stock], row[:platform_stock]
     assert_equal summary[:available_stock], row[:available_stock]
     assert_equal BigDecimal("10"), row[:pkg_length_cm]
@@ -65,6 +77,7 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     assert_nil row[:daily_sales_velocity]
     assert_nil row[:turnover_days]
   ensure
+    Ec::SkuInventoryLevel.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuCost.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(sku_code: sku&.sku_code).delete_all

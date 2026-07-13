@@ -22,7 +22,11 @@ class Ec::SkuInventorySnapshotSyncTest < ActiveSupport::TestCase
         fulfillment_type: "fbw",
         quantity: 7,
         synced_at: now,
-        metadata: { "source" => "test" }
+        metadata: { "source" => "test" },
+        warehouse_breakdown: [
+          { "warehouse_name" => "WB Warehouse A", "quantity" => 4 },
+          { "warehouse_name" => "WB Warehouse B", "quantity" => 3 }
+        ]
       }
     ]
 
@@ -32,10 +36,23 @@ class Ec::SkuInventorySnapshotSyncTest < ActiveSupport::TestCase
     assert first.is_latest?
     assert_equal 7, first.quantity
     assert_equal now, first.synced_at
+    assert_equal [
+      { "warehouse_name" => "WB Warehouse A", "quantity" => 4 },
+      { "warehouse_name" => "WB Warehouse B", "quantity" => 3 }
+    ], first.warehouse_breakdown
 
     Ec::SkuInventorySnapshotSync.new(
       snapshot_fetcher: -> {
-        rows.map { |row| row.merge(quantity: 11, synced_at: now + 1.hour) }
+        rows.map do |row|
+          row.merge(
+            quantity: 11,
+            synced_at: now + 1.hour,
+            warehouse_breakdown: [
+              { "warehouse_name" => "WB Warehouse A", "quantity" => 8 },
+              { "warehouse_name" => "WB Warehouse B", "quantity" => 3 }
+            ]
+          )
+        end
       },
       now: now + 1.hour
     ).run
@@ -45,6 +62,10 @@ class Ec::SkuInventorySnapshotSyncTest < ActiveSupport::TestCase
     assert_not levels.first.is_latest?
     assert levels.last.is_latest?
     assert_equal 11, levels.last.quantity
+    assert_equal [
+      { "warehouse_name" => "WB Warehouse A", "quantity" => 8 },
+      { "warehouse_name" => "WB Warehouse B", "quantity" => 3 }
+    ], levels.last.warehouse_breakdown
   end
 
   test "skips invalid rows without blocking valid inventory refresh" do

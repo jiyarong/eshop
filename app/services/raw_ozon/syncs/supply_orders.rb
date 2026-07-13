@@ -1,6 +1,8 @@
 module RawOzon
   module Syncs
     module SupplyOrders
+      SUPPLY_STATES = %w[READY_TO_SUPPLY IN_TRANSIT COMPLETED CANCELLED].freeze
+
       # 三步链：
       # Step 1: POST /v3/supply-order/list  → order_ids（last_id 翻页）
       # Step 2: POST /v3/supply-order/get   → 完整 supply order 对象（每批 50）
@@ -34,7 +36,7 @@ module RawOzon
 
         loop do
           resp = @client.post('/v3/supply-order/list', {
-            filter:   { states: %w[COMPLETED CANCELLED], created_at_from: '2025-01-01T00:00:00Z' },
+            filter:   { states: SUPPLY_STATES, created_at_from: '2025-01-01T00:00:00Z' },
             limit:    limit,
             last_id:  last_id,
             sort_by:  'ORDER_CREATION',
@@ -77,8 +79,8 @@ module RawOzon
       def build_supply_order(o, synced_at)
         # status 在 supplies[].state，不在顶层
         supply_states = Array(o['supplies']).map { |s| s['state'] }.uniq
-        completed     = supply_states.include?('COMPLETED')
-        items         = completed ? fetch_bundle_items_for_order(o) : nil
+        cancelled     = supply_states.include?('CANCELLED')
+        items         = cancelled ? nil : fetch_bundle_items_for_order(o)
         {
           account_id:      @account.id,
           supply_order_id: o['order_id'].to_s,

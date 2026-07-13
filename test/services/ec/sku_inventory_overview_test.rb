@@ -235,6 +235,18 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       synced_at: Time.zone.parse("2026-06-16 10:10:00"),
       metadata: {}
     )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
+      platform: "ozon",
+      account_id: @ozon_account.id,
+      store: @ozon_store,
+      store_name: @ozon_store.store_name,
+      fulfillment_type: "inbound",
+      quantity: 2,
+      is_latest: true,
+      synced_at: Time.zone.parse("2026-06-16 10:15:00"),
+      metadata: {}
+    )
   end
 
   teardown do
@@ -264,10 +276,11 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 21, summary[:sales_quantity]
     assert_equal 3, summary[:return_quantity]
     assert_equal 200, summary[:supply_quantity]
-    assert_equal 13, summary[:platform_stock]
+    assert_equal 15, summary[:platform_stock]
+    assert_equal 2, summary[:platform_inbound_stock]
     assert_equal 10, summary[:fbo_fbw_stock]
     assert_equal 8, summary[:book_stock]
-    assert_equal(-2, summary[:available_stock])
+    assert_equal(-4, summary[:available_stock])
 
     wb_row = overview[:store_rows].find { |row| row[:platform] == "wb" }
     ozon_row = overview[:store_rows].find { |row| row[:platform] == "ozon" }

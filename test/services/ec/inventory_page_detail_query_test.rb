@@ -64,7 +64,10 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
       quantity: 5,
       is_latest: true,
       synced_at: Time.zone.parse("2026-06-25 10:00:00"),
-      metadata: {}
+      metadata: {},
+      warehouse_breakdown: [
+        { warehouse_name: "WB Warehouse #{token}", quantity: 5 }
+      ]
     )
     Ec::SkuInventoryLevel.create!(
       sku_code: sku.sku_code,
@@ -86,6 +89,21 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
       quantity: 3,
       is_latest: true,
       synced_at: Time.zone.parse("2026-06-26 10:00:00"),
+      metadata: {},
+      warehouse_breakdown: [
+        { warehouse_name: "Ozon Warehouse #{token}", quantity: 2, promised: 1, reserved: 0 },
+        { "warehouse_name" => "Ozon Reserve #{token}", "quantity" => 1, "promised" => 0, "reserved" => 1 }
+      ]
+    )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: sku.sku_code,
+      platform: "ozon",
+      account_id: 2,
+      store_name: "Ozon 店铺 #{token}",
+      fulfillment_type: "inbound",
+      quantity: 4,
+      is_latest: true,
+      synced_at: Time.zone.parse("2026-06-26 10:10:00"),
       metadata: {}
     )
 
@@ -99,9 +117,10 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
     assert_equal [book.batch_code, closed.batch_code], payload[:book_batches].map { |row| row[:batch_code] }
     assert_equal [
       ["ozon", "Ozon 店铺 #{token}", nil, 2, "fbo", 3, Time.zone.parse("2026-06-26 10:00:00")],
+      ["ozon", "Ozon 店铺 #{token}", nil, 2, "inbound", 4, Time.zone.parse("2026-06-26 10:10:00")],
       ["wb", "WB 店铺 #{token}", nil, 1, "fbw", 5, Time.zone.parse("2026-06-25 10:00:00")]
     ], payload[:platform_breakdown].map { |row| [row[:platform], row[:store_name], row[:store_id], row[:account_id], row[:fulfillment_type], row[:quantity], row[:latest_synced_at]] }
-    assert_equal 8, payload[:platform_breakdown].sum { |row| row[:quantity] }
+    assert_equal 12, payload[:platform_breakdown].sum { |row| row[:quantity] }
     assert_equal Time.zone.parse("2026-06-25 10:00:00"), payload[:platform_breakdown].last[:latest_synced_at]
     assert_equal summary, payload[:summary]
     assert_equal [
@@ -111,18 +130,26 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
     ], payload[:book_mini_stats].map { |row| [row[:key], row[:value]] }
     assert_equal [
       ["ozon_fbo", 3],
-      ["wb_fbo", 5]
+      ["ozon_inbound", 4],
+      ["wb_fbo", 5],
+      ["wb_inbound", 0]
     ], payload[:platform_mini_stats].map { |row| [row[:key], row[:value]] }
     assert_equal(
-      { store_label_key: "summary", fbo: 8, fbs: 0 },
+      { store_label_key: "summary", fbo: 8, inbound: 4, fbs: 0 },
       payload[:platform_shop_summary_row]
     )
     assert_equal "overseas_available", payload[:platform_formula][:description_key]
     assert_equal [
       { key: "book_inventory", value: summary[:book_stock], operator: "+" },
-      { key: "platform_inventory_total", value: summary[:fbo_fbw_stock], operator: "-" }
+      { key: "platform_inventory_total", value: summary[:fbo_fbw_stock], operator: "-" },
+      { key: "platform_inbound", value: summary[:platform_inbound_stock], operator: "-" }
     ], payload[:platform_formula][:items]
     assert_equal summary[:available_stock], payload[:platform_formula][:result]
+    assert_equal [
+      ["OZON * Ozon 店铺 #{token}", "fbo", "Ozon Reserve #{token}", 1, 0, 1, Time.zone.parse("2026-06-26 10:00:00")],
+      ["OZON * Ozon 店铺 #{token}", "fbo", "Ozon Warehouse #{token}", 2, 1, 0, Time.zone.parse("2026-06-26 10:00:00")],
+      ["WB * WB 店铺 #{token}", "fbw", "WB Warehouse #{token}", 5, nil, nil, Time.zone.parse("2026-06-25 10:00:00")]
+    ], payload[:platform_warehouse_rows].map { |row| [row[:store_label], row[:fulfillment_type], row[:warehouse_name], row[:quantity], row[:promised], row[:reserved], row[:latest_synced_at]] }
   ensure
     Ec::SkuInventoryLevel.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all

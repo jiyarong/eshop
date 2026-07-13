@@ -472,6 +472,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             product_name_ru: nil,
             incoming_quantity: 0,
             book_stock: 0,
+            platform_inbound_stock: 0,
             platform_stock: 0,
             available_stock: 0,
             daily_sales_velocity: nil,
@@ -544,6 +545,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             product_name_ru: nil,
             incoming_quantity: 0,
             book_stock: 0,
+            platform_inbound_stock: 0,
             platform_stock: 0,
             available_stock: 0,
             daily_sales_velocity: nil,
@@ -602,6 +604,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             product_name_ru: "Товар #{sku.sku_code}",
             incoming_quantity: 12,
             book_stock: 14,
+            platform_inbound_stock: 2,
             platform_stock: 6,
             available_stock: 7,
             pkg_length_cm: BigDecimal("10"),
@@ -647,18 +650,21 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2.section-title", text: I18n.t("reports.inventory.sections.inventory_list"), count: 0
     assert_select "th", I18n.t("reports.inventory.fields.pending_stock")
     assert_select "th", I18n.t("reports.inventory.fields.book_available_stock")
+    assert_select "th", I18n.t("reports.inventory.fields.platform_inbound")
     assert_select "th", I18n.t("reports.inventory.fields.platform_stock")
     assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock")
     assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__subline", "10 × 20 × 30 cm"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(3) .inventory-list-table__subline", "0.0720 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(4) .inventory-list-table__subline", "0.0840 m³"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) > div:first-child", "6"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) .inventory-list-table__subline", "0.0360 m³"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(6) .inventory-list-table__subline", "0.0420 m³"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(7)", "1.23"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "11.38"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) > div:first-child", "2"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(5) .inventory-list-table__subline", "0.0120 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(6) > div:first-child", "6"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(6) .inventory-list-table__subline", "0.0360 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(7) .inventory-list-table__subline", "0.0420 m³"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "1.23"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "11.38"
     assert_select "th", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "21.14"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(10)", "21.14"
     assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@sku_code}", "inventory_drawer"
     assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", "/reports/inventory/#{@sku_code}", "inventory_drawer"
     assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@second_sku_code}", "inventory_drawer", count: 0
@@ -720,6 +726,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
               book_stock: 12,
               platform_stock: 8,
               fbo_fbw_stock: 5,
+              platform_inbound_stock: 2,
               available_stock: 7,
               purchase_quantity: 20,
               adjustment_quantity: -2,
@@ -764,16 +771,18 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             },
             platform_mini_stats: [
               { key: "ozon_fbo", value: 5, unit_key: "quantity" },
+              { key: "ozon_inbound", value: 2, unit_key: "quantity" },
               { key: "wb_fbo", value: 0, unit_key: "quantity" }
             ],
             platform_shop_rows: [
-              { store_label: "OZON * 店铺1", fbo: 5, fbs: 0 }
+              { store_label: "OZON * 店铺1", fbo: 5, inbound: 2, fbs: 0 }
             ],
-            platform_shop_summary_row: { store_label_key: "summary", fbo: 5, fbs: 0 },
+            platform_shop_summary_row: { store_label_key: "summary", fbo: 5, inbound: 2, fbs: 0 },
             platform_formula: {
               items: [
                 { key: "book_inventory", value: 12, operator: "+" },
-                { key: "platform_inventory_total", value: 3, operator: "-" }
+                { key: "platform_inventory_total", value: 5, operator: "-" },
+                { key: "platform_inbound", value: 2, operator: "-" }
               ],
               result: 7,
               description_key: "overseas_available"
@@ -831,7 +840,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
               book_stock: 12,
               platform_stock: 8,
               fbo_fbw_stock: 3,
-              available_stock: 9
+              platform_inbound_stock: 2,
+              available_stock: 7
             },
             daily_sales_velocity: BigDecimal("1.23"),
             turnover_days: BigDecimal("5.67"),
@@ -846,21 +856,43 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             book_formula: { items: [], result: 12 },
             platform_mini_stats: [
               { key: "ozon_fbo", value: 3, unit_key: "quantity" },
+              { key: "ozon_inbound", value: 2, unit_key: "quantity" },
               { key: "wb_fbo", value: 0, unit_key: "quantity" }
             ],
             platform_shop_rows: [
-              { store_label: "OZON * 店铺1", fbo: 3, fbs: 5 }
+              { store_label: "OZON * 店铺1", fbo: 3, inbound: 2, fbs: 5 }
             ],
-            platform_shop_summary_row: { store_label_key: "summary", fbo: 3, fbs: 5 },
+            platform_shop_summary_row: { store_label_key: "summary", fbo: 3, inbound: 2, fbs: 5 },
             platform_formula: {
               items: [
                 { key: "book_inventory", value: 12, operator: "+" },
-                { key: "platform_inventory_total", value: 3, operator: "-" }
+                { key: "platform_inventory_total", value: 3, operator: "-" },
+                { key: "platform_inbound", value: 2, operator: "-" }
               ],
-              result: 9,
+              result: 7,
               description_key: "overseas_available"
             },
             store_reconciliation_rows: [],
+            platform_warehouse_rows: [
+              {
+                store_label: "OZON * 店铺1",
+                fulfillment_type: "fbo",
+                warehouse_name: "Минск",
+                quantity: 2,
+                promised: 1,
+                reserved: 0,
+                latest_synced_at: Time.zone.parse("2026-06-22 10:00:00")
+              },
+              {
+                store_label: "OZON * 店铺1",
+                fulfillment_type: "fbo",
+                warehouse_name: "Москва",
+                quantity: 1,
+                promised: nil,
+                reserved: nil,
+                latest_synced_at: Time.zone.parse("2026-06-22 10:00:00")
+              }
+            ],
             platform_breakdown: []
           }
         end
@@ -876,13 +908,19 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.platform")
     assert_select ".inventory-formula__description", I18n.t("reports.inventory.drawer.formulas.overseas_available")
-    assert_select ".inventory-formula__line", /账面可用库存 12 - FBO\/FBW在库 3/
-    assert_select ".inventory-formula__line strong", "= 9"
+    assert_select ".inventory-formula__line", /账面可用库存 12 - 平台在库 3 - 平台在途 2/
+    assert_select ".inventory-formula__line strong", "= 7"
     assert_select ".inventory-mini-card", text: /Ozon_FBS/, count: 0
     assert_select ".inventory-mini-card", text: /WB_FBS/, count: 0
     assert_select ".inventory-distribution-table__summary td", I18n.t("reports.inventory.drawer.labels.summary")
     assert_select ".inventory-distribution-table__summary td", "3"
+    assert_select ".inventory-distribution-table__summary td", "2"
     assert_select ".inventory-distribution-table__summary td", "5"
+    assert_select "h4", I18n.t("reports.inventory.drawer.sections.fbo_fbw_breakdown")
+    assert_select "th", I18n.t("reports.inventory.fields.warehouse")
+    assert_select "td", "Минск"
+    assert_select "td", "Москва"
+    assert_select "td", "FBO"
   end
 
   test "inventory report recalculates each sku row on every request" do

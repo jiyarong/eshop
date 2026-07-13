@@ -46,7 +46,8 @@ module Ec
         fulfillment_type: row.fetch(:fulfillment_type).to_s,
         quantity: row.fetch(:quantity).to_i,
         synced_at: row[:synced_at] || @now,
-        metadata: row[:metadata] || {}
+        metadata: row[:metadata] || {},
+        warehouse_breakdown: row[:warehouse_breakdown] || []
       }
     end
 
