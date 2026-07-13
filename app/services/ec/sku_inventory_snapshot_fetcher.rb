@@ -1,6 +1,13 @@
 module Ec
   class SkuInventorySnapshotFetcher
     TOTAL_WAREHOUSE_NAME = "Всего находится на складах".freeze
+    WB_INBOUND_STATUS_IDS = [2, 3, 4].freeze
+    OZON_INBOUND_STATES = %w[IN_TRANSIT].freeze
+
+    def initialize(wb_client_factory: nil, ozon_client_factory: nil)
+      @wb_client_factory = wb_client_factory || ->(account) { RawWb::WbClient.new(account.api_token) }
+      @ozon_client_factory = ozon_client_factory || ->(account) { RawOzon::OzonClient.new(account.client_id, account.api_key) }
+    end
 
     def call(now: Time.current)
       wb_fbw_rows(now) + wb_fbs_rows(now) + ozon_rows(now)
@@ -60,7 +67,7 @@ module Ec
 
     def prefetch_wb_fbw_reports
       RawWb::SellerAccount.where(is_active: true).each_with_object({}) do |account, cache|
-        client = RawWb::WbClient.new(account.api_token)
+        client = wb_client(account)
         task_id = client.get(:seller_analytics, "/api/v1/warehouse_remains", groupByNm: true).dig("data", "taskId")
         loop do
           break if client.get(:seller_analytics, "/api/v1/warehouse_remains/tasks/#{task_id}/status").dig("data", "status") == "done"
@@ -78,7 +85,7 @@ module Ec
       RawWb::SellerAccount.where(is_active: true).flat_map do |account|
         store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: account.id)
         fbs_warehouses = wb_fbs_warehouses(account)
-        inbound_by_sku_code = Ec::PlatformInboundInventoryQuery.new(platform: "wb", account: account).by_sku_code
+        inbound_by_sku_code = wb_inbound_quantities_by_sku_code(account)
 
         Ec::SkuProduct
           .joins(:store)
@@ -118,7 +125,7 @@ module Ec
                 fulfillment_type: "inbound",
                 quantity: inbound_quantity,
                 synced_at: now,
-                metadata: { source: "raw_wb_supply_items", chrt_ids: chrt_ids },
+                metadata: { source: "wb_supplies_api", status_ids: WB_INBOUND_STATUS_IDS, chrt_ids: chrt_ids },
                 warehouse_breakdown: []
               )
             ]
@@ -127,7 +134,7 @@ module Ec
     end
 
     def wb_fbs_warehouses(account)
-      client = RawWb::WbClient.new(account.api_token)
+      client = wb_client(account)
       Array(client.get(:marketplace, "/api/v3/warehouses")).select { |warehouse| warehouse["deliveryType"] == 1 }
     rescue => e
       Rails.logger.warn("[SkuInventorySnapshotFetcher] WB FBS warehouses account=#{account.id} failed: #{e.message}")
@@ -135,7 +142,7 @@ module Ec
     end
 
     def wb_fbs_stocks_by_warehouse(account, warehouses, chrt_ids)
-      client = RawWb::WbClient.new(account.api_token)
+      client = wb_client(account)
       warehouses.map do |warehouse|
         response = client.post(:marketplace, "/api/v3/stocks/#{warehouse["id"]}", { chrtIds: chrt_ids.map(&:to_i) })
         quantity = Array(response["stocks"]).sum { |stock| stock["amount"].to_i }
@@ -151,7 +158,7 @@ module Ec
         store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: account.id)
         stocks_by_product_id = ozon_stocks_by_product_id(account)
         warehouse_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
-        inbound_by_sku_code = Ec::PlatformInboundInventoryQuery.new(platform: "ozon", account: account).by_sku_code
+        inbound_by_sku_code = ozon_inbound_quantities_by_sku_code(account)
 
         Ec::SkuProduct
           .joins(:store)
@@ -195,7 +202,7 @@ module Ec
     end
 
     def ozon_stocks_by_product_id(account)
-      client = RawOzon::OzonClient.new(account.client_id, account.api_key)
+      client = ozon_client(account)
       cursor = nil
       result = {}
 
@@ -223,7 +230,7 @@ module Ec
     end
 
     def ozon_warehouse_breakdowns_by_sku(account)
-      client = RawOzon::OzonClient.new(account.client_id, account.api_key)
+      client = ozon_client(account)
       offset = 0
       limit = 1000
       result = Hash.new { |hash, key| hash[key] = [] }
@@ -283,6 +290,122 @@ module Ec
           item_codes: row[:item_codes].uniq
         }
       end.sort_by { |row| row[:warehouse_name].to_s }
+    end
+
+    def wb_inbound_quantities_by_sku_code(account)
+      nm_to_sku_code = Ec::SkuProduct
+        .joins(:store)
+        .where(platform: "wb", ec_stores: { wb_raw_account_id: account.id })
+        .pluck(:product_id, :sku_code)
+        .each_with_object({}) { |(product_id, sku_code), hash| hash[product_id.to_s] = sku_code }
+
+      return {} if nm_to_sku_code.empty?
+
+      client = wb_client(account)
+      wb_inbound_supplies(client).each_with_object(Hash.new(0)) do |supply, quantities|
+        supply_id = wb_supply_lookup_id(supply)
+        next if supply_id.blank?
+
+        wb_supply_goods(client, supply_id, is_preorder: wb_preorder_supply?(supply)).each do |item|
+          nm_id = (item["nmID"] || item["nmId"]).to_s
+          sku_code = nm_to_sku_code[nm_id]
+          next if sku_code.blank?
+
+          quantity = item["quantity"].to_i - item["acceptedQuantity"].to_i
+          quantities[sku_code] += quantity if quantity.positive?
+        end
+      end
+    rescue => e
+      Rails.logger.warn("[SkuInventorySnapshotFetcher] WB inbound supplies account=#{account.id} failed: #{e.message}")
+      {}
+    end
+
+    def wb_inbound_supplies(client)
+      response = client.post(:supplies, "/api/v1/supplies", {
+        dates: [{ from: "2023-01-01", till: Date.current.to_s, type: "createDate" }],
+        statusIDs: WB_INBOUND_STATUS_IDS,
+        limit: 1000
+      })
+      response.is_a?(Array) ? response : Array(response["supplies"] || [])
+    end
+
+    def wb_supply_goods(client, supply_id, is_preorder:)
+      response = client.get(:supplies, "/api/v1/supplies/#{supply_id}/goods", { limit: 1000, isPreorderID: is_preorder })
+      response.is_a?(Array) ? response : Array(response["goods"] || [])
+    rescue => e
+      Rails.logger.warn("[SkuInventorySnapshotFetcher] WB inbound goods supply_id=#{supply_id} failed: #{e.message}")
+      []
+    end
+
+    def wb_supply_lookup_id(supply)
+      (supply["supplyID"].presence || supply["id"].presence || supply["preorderID"].presence)&.to_s
+    end
+
+    def wb_preorder_supply?(supply)
+      supply["supplyID"].blank? && supply["id"].blank?
+    end
+
+    def ozon_inbound_quantities_by_sku_code(account)
+      platform_sku_to_sku_code = Ec::SkuProduct
+        .joins(:store)
+        .where(platform: "ozon", ec_stores: { ozon_raw_account_id: account.id })
+        .pluck(:platform_sku_id, :sku_code)
+        .each_with_object({}) { |(platform_sku_id, sku_code), hash| hash[platform_sku_id.to_s] = sku_code }
+
+      return {} if platform_sku_to_sku_code.empty?
+
+      client = ozon_client(account)
+      ozon_inbound_supply_orders(client).each_with_object(Hash.new(0)) do |order, quantities|
+        ozon_supply_order_items(client, order).each do |platform_sku_id, quantity|
+          sku_code = platform_sku_to_sku_code[platform_sku_id.to_s]
+          quantities[sku_code] += quantity.to_i if sku_code.present?
+        end
+      end
+    rescue => e
+      Rails.logger.warn("[SkuInventorySnapshotFetcher] Ozon inbound supplies account=#{account.id} failed: #{e.message}")
+      {}
+    end
+
+    def ozon_inbound_supply_orders(client)
+      order_ids = []
+      last_id = ""
+
+      loop do
+        response = client.post("/v3/supply-order/list", {
+          filter: { states: OZON_INBOUND_STATES, created_at_from: "2025-01-01T00:00:00Z" },
+          limit: 50,
+          last_id: last_id,
+          sort_by: "ORDER_CREATION",
+          sort_dir: "DESC"
+        })
+        ids = Array(response["order_ids"])
+        break if ids.empty?
+
+        order_ids.concat(ids)
+        last_id = response["last_id"].to_s
+        break if last_id.blank? || ids.size < 50
+      end
+
+      order_ids.each_slice(50).flat_map do |batch|
+        Array(client.post("/v3/supply-order/get", { order_ids: batch })["orders"])
+      end
+    end
+
+    def ozon_supply_order_items(client, order)
+      bundle_ids = Array(order["supplies"]).map { |supply| supply["bundle_id"] }.compact
+      bundle_ids.each_slice(10).each_with_object(Hash.new(0)) do |batch, result|
+        Array(client.post("/v1/supply-order/bundle", { bundle_ids: batch, limit: 100 })["items"]).each do |item|
+          result[item["sku"].to_s] += item["quantity"].to_i
+        end
+      end
+    end
+
+    def wb_client(account)
+      @wb_client_factory.call(account)
+    end
+
+    def ozon_client(account)
+      @ozon_client_factory.call(account)
     end
 
     def row_for(sku_code:, platform:, account_id:, store:, store_name:, fulfillment_type:, quantity:, synced_at:, metadata:, warehouse_breakdown: [])
