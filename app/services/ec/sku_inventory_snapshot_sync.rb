@@ -13,17 +13,27 @@ module Ec
       rows = Array(@snapshot_fetcher.call).map { |row| normalize_row(row) }
       return 0 if rows.empty?
 
-      Ec::SkuInventoryLevel.transaction do
-        rows.each do |row|
-          latest_scope(row).update_all(is_latest: false, updated_at: @now)
-          Ec::SkuInventoryLevel.create!(row.merge(is_latest: true, created_at: @now, updated_at: @now))
-        end
-      end
-
-      rows.size
+      rows.sum { |row| persist_row(row) ? 1 : 0 }
     end
 
     private
+
+    def persist_row(row)
+      level = Ec::SkuInventoryLevel.new(row.merge(is_latest: true, created_at: @now, updated_at: @now))
+      unless level.valid?
+        Rails.logger.warn("[SkuInventorySnapshotSync] skipped invalid row #{row.inspect}: #{level.errors.full_messages.join(', ')}")
+        return false
+      end
+
+      Ec::SkuInventoryLevel.transaction do
+        latest_scope(row).update_all(is_latest: false, updated_at: @now)
+        level.save!
+      end
+      true
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::InvalidForeignKey => e
+      Rails.logger.warn("[SkuInventorySnapshotSync] failed row #{row.inspect}: #{e.class} #{e.message}")
+      false
+    end
 
     def normalize_row(row)
       row = row.symbolize_keys

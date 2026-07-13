@@ -46,4 +46,39 @@ class Ec::SkuInventorySnapshotSyncTest < ActiveSupport::TestCase
     assert levels.last.is_latest?
     assert_equal 11, levels.last.quantity
   end
+
+  test "skips invalid rows without blocking valid inventory refresh" do
+    now = Time.zone.parse("2026-06-22 11:00:00")
+    invalid_sku_code = "INV-MISSING-#{@token}"
+    rows = [
+      {
+        sku_code: invalid_sku_code,
+        platform: "ozon",
+        account_id: 1,
+        store_name: "Ozon Test #{@token}",
+        fulfillment_type: "fbo",
+        quantity: 9,
+        synced_at: now,
+        metadata: { "source" => "missing_sku" }
+      },
+      {
+        sku_code: @sku.sku_code,
+        platform: "ozon",
+        account_id: 1,
+        store_name: "Ozon Test #{@token}",
+        fulfillment_type: "fbo",
+        quantity: 48,
+        synced_at: now,
+        metadata: { "source" => "valid_sku" }
+      }
+    ]
+
+    count = Ec::SkuInventorySnapshotSync.new(snapshot_fetcher: -> { rows }, now: now).run
+
+    assert_equal 1, count
+    assert_nil Ec::SkuInventoryLevel.find_by(sku_code: invalid_sku_code)
+    level = Ec::SkuInventoryLevel.find_by!(sku_code: @sku.sku_code, platform: "ozon", fulfillment_type: "fbo")
+    assert level.is_latest?
+    assert_equal 48, level.quantity
+  end
 end
