@@ -28,19 +28,51 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
   class FakeOzonClient
     attr_reader :posts
 
-    def initialize
+    def initialize(product_id:, ozon_sku:)
       @posts = []
+      @product_id = product_id
+      @ozon_sku = ozon_sku
     end
 
     def post(path, body = {})
       @posts << { path: path, body: body }
       case path
-      when "/v3/supply-order/list"
-        { "order_ids" => [101], "last_id" => "" }
-      when "/v3/supply-order/get"
-        { "orders" => [{ "order_id" => 101, "supplies" => [{ "state" => "IN_TRANSIT", "bundle_id" => "bundle-101" }] }] }
-      when "/v1/supply-order/bundle"
-        { "items" => [{ "sku" => "390001", "quantity" => 7 }, { "sku" => "390999", "quantity" => 3 }] }
+      when "/v4/product/info/stocks"
+        {
+          "items" => [
+            {
+              "product_id" => @product_id,
+              "stocks" => [
+                { "type" => "fbo", "present" => 45 },
+                { "type" => "fbs", "present" => 4 }
+              ]
+            }
+          ],
+          "cursor" => ""
+        }
+      when "/v2/analytics/stock_on_warehouses"
+        {
+          "result" => {
+            "rows" => [
+              {
+                "sku" => @ozon_sku,
+                "warehouse_name" => "Екатеринбург_РФЦ_НОВЫЙ",
+                "item_code" => "OFFER-TEST",
+                "free_to_sell_amount" => 0,
+                "promised_amount" => 10,
+                "reserved_amount" => 0
+              },
+              {
+                "sku" => @ozon_sku,
+                "warehouse_name" => "Казань_РФЦ_НОВЫЙ",
+                "item_code" => "OFFER-TEST",
+                "free_to_sell_amount" => 45,
+                "promised_amount" => 0,
+                "reserved_amount" => 0
+              }
+            ]
+          }
+        }
       else
         raise "unexpected Ozon POST #{path}"
       end
@@ -103,15 +135,18 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     assert_equal "/api/v1/supplies/40295360/goods", fake_client.gets.first[:path]
   end
 
-  test "ozon inbound uses live in transit supply order bundles" do
-    fake_client = FakeOzonClient.new
+  test "ozon inbound uses promised warehouse stock amount" do
+    fake_client = FakeOzonClient.new(product_id: @ozon_product.product_id.to_i, ozon_sku: @ozon_product.platform_sku_id.to_i)
     fetcher = Ec::SkuInventorySnapshotFetcher.new(ozon_client_factory: ->(_) { fake_client })
 
-    result = fetcher.send(:ozon_inbound_quantities_by_sku_code, @ozon_account)
+    rows = fetcher.send(:ozon_rows, Time.zone.parse("2026-07-13 10:00:00"))
 
-    assert_equal 7, result[@sku.sku_code]
-    list_call = fake_client.posts.find { |call| call[:path] == "/v3/supply-order/list" }
-    assert_equal ["IN_TRANSIT"], list_call[:body].dig(:filter, :states)
-    assert fake_client.posts.any? { |call| call[:path] == "/v1/supply-order/bundle" }
+    inbound = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:fulfillment_type] == "inbound" }
+    fbs = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:fulfillment_type] == "fbs" }
+    assert_equal 10, inbound[:quantity]
+    assert_equal 0, fbs[:quantity]
+    assert_equal "ozon_analytics_stock_on_warehouses.promised_amount", inbound[:metadata][:inbound_source]
+    assert fake_client.posts.any? { |call| call[:path] == "/v2/analytics/stock_on_warehouses" }
+    assert_not fake_client.posts.any? { |call| call[:path] == "/v3/supply-order/list" }
   end
 end

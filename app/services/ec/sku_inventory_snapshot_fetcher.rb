@@ -2,7 +2,6 @@ module Ec
   class SkuInventorySnapshotFetcher
     TOTAL_WAREHOUSE_NAME = "Всего находится на складах".freeze
     WB_INBOUND_STATUS_IDS = [2, 3, 4].freeze
-    OZON_INBOUND_STATES = %w[IN_TRANSIT].freeze
 
     def initialize(wb_client_factory: nil, ozon_client_factory: nil)
       @wb_client_factory = wb_client_factory || ->(account) { RawWb::WbClient.new(account.api_token) }
@@ -158,7 +157,6 @@ module Ec
         store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: account.id)
         stocks_by_product_id = ozon_stocks_by_product_id(account)
         warehouse_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
-        inbound_by_sku_code = ozon_inbound_quantities_by_sku_code(account)
 
         Ec::SkuProduct
           .joins(:store)
@@ -169,7 +167,7 @@ module Ec
             ozon_skus = products.map { |product| product.platform_sku_id.to_s }.reject(&:blank?)
             fbo = product_ids.sum { |product_id| stocks_by_product_id.dig(product_id, "fbo").to_i }
             fbs = product_ids.sum { |product_id| stocks_by_product_id.dig(product_id, "fbs").to_i }
-            inbound = inbound_by_sku_code[sku_code].to_i
+            inbound = ozon_promised_quantity(warehouse_breakdowns_by_sku, ozon_skus)
             available_fbs = [fbs - inbound, 0].max
 
             %w[fbo fbs inbound].map do |fulfillment_type|
@@ -192,6 +190,7 @@ module Ec
                   product_ids: product_ids,
                   ozon_skus: ozon_skus,
                   raw_fbs_quantity: fbs,
+                  inbound_source: "ozon_analytics_stock_on_warehouses.promised_amount",
                   inbound_deducted_quantity: fulfillment_type == "fbs" ? [inbound, fbs].min : 0
                 },
                 warehouse_breakdown: fulfillment_type == "fbo" ? ozon_warehouse_breakdown(warehouse_breakdowns_by_sku, ozon_skus) : []
@@ -292,6 +291,12 @@ module Ec
       end.sort_by { |row| row[:warehouse_name].to_s }
     end
 
+    def ozon_promised_quantity(breakdowns_by_sku, ozon_skus)
+      ozon_skus.sum do |ozon_sku|
+        Array(breakdowns_by_sku[ozon_sku]).sum { |row| row[:promised].to_i }
+      end
+    end
+
     def wb_inbound_quantities_by_sku_code(account)
       nm_to_sku_code = Ec::SkuProduct
         .joins(:store)
@@ -343,61 +348,6 @@ module Ec
 
     def wb_preorder_supply?(supply)
       supply["supplyID"].blank? && supply["id"].blank?
-    end
-
-    def ozon_inbound_quantities_by_sku_code(account)
-      platform_sku_to_sku_code = Ec::SkuProduct
-        .joins(:store)
-        .where(platform: "ozon", ec_stores: { ozon_raw_account_id: account.id })
-        .pluck(:platform_sku_id, :sku_code)
-        .each_with_object({}) { |(platform_sku_id, sku_code), hash| hash[platform_sku_id.to_s] = sku_code }
-
-      return {} if platform_sku_to_sku_code.empty?
-
-      client = ozon_client(account)
-      ozon_inbound_supply_orders(client).each_with_object(Hash.new(0)) do |order, quantities|
-        ozon_supply_order_items(client, order).each do |platform_sku_id, quantity|
-          sku_code = platform_sku_to_sku_code[platform_sku_id.to_s]
-          quantities[sku_code] += quantity.to_i if sku_code.present?
-        end
-      end
-    rescue => e
-      Rails.logger.warn("[SkuInventorySnapshotFetcher] Ozon inbound supplies account=#{account.id} failed: #{e.message}")
-      {}
-    end
-
-    def ozon_inbound_supply_orders(client)
-      order_ids = []
-      last_id = ""
-
-      loop do
-        response = client.post("/v3/supply-order/list", {
-          filter: { states: OZON_INBOUND_STATES, created_at_from: "2025-01-01T00:00:00Z" },
-          limit: 50,
-          last_id: last_id,
-          sort_by: "ORDER_CREATION",
-          sort_dir: "DESC"
-        })
-        ids = Array(response["order_ids"])
-        break if ids.empty?
-
-        order_ids.concat(ids)
-        last_id = response["last_id"].to_s
-        break if last_id.blank? || ids.size < 50
-      end
-
-      order_ids.each_slice(50).flat_map do |batch|
-        Array(client.post("/v3/supply-order/get", { order_ids: batch })["orders"])
-      end
-    end
-
-    def ozon_supply_order_items(client, order)
-      bundle_ids = Array(order["supplies"]).map { |supply| supply["bundle_id"] }.compact
-      bundle_ids.each_slice(10).each_with_object(Hash.new(0)) do |batch, result|
-        Array(client.post("/v1/supply-order/bundle", { bundle_ids: batch, limit: 100 })["items"]).each do |item|
-          result[item["sku"].to_s] += item["quantity"].to_i
-        end
-      end
     end
 
     def wb_client(account)
