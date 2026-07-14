@@ -20,6 +20,10 @@ module Mcp
         sku_profile(args)
       when "sku_inventory"
         sku_inventory(args)
+      when "ozon_cluster_sales_distribution"
+        ozon_cluster_sales_distribution(args)
+      when "ozon_sku_localization"
+        ozon_sku_localization(args)
       when "operation_context"
         operation_context
       else
@@ -126,6 +130,47 @@ module Mcp
       }
     end
 
+    def ozon_cluster_sales_distribution(args)
+      range = date_range_from(args)
+      sku_product_ids = visible_ozon_sku_product_ids(args)
+      return { error: "No visible Ozon SKU products match the filters" } if sku_product_ids.empty?
+
+      Ec::OzonClusterSalesDistributionQuery.new(
+        from_date: range.begin,
+        to_date: range.end,
+        time_zone: user_time_zone,
+        sku_product_ids: sku_product_ids,
+        store_id: args["store_id"],
+        sku_code: args["sku_code"],
+        query: args["query"],
+        fulfillment_type: args["fulfillment_type"].presence_in(%w[fbo fbs]),
+        order_status: comma_list(args["order_status"]),
+        limit: args["limit"],
+        offset: args["offset"]
+      ).call
+    end
+
+    def ozon_sku_localization(args)
+      range = date_range_from(args)
+      sku_product_ids = visible_ozon_sku_product_ids(args)
+      return { error: "No visible Ozon SKU products match the filters" } if sku_product_ids.empty?
+
+      Ec::OzonSkuLocalizationQuery.new(
+        from_date: range.begin,
+        to_date: range.end,
+        time_zone: user_time_zone,
+        sku_product_ids: sku_product_ids,
+        store_id: args["store_id"],
+        sku_code: args["sku_code"],
+        query: args["query"],
+        fulfillment_type: args["fulfillment_type"].presence_in(%w[fbo fbs]),
+        order_status: comma_list(args["order_status"]),
+        sort: args["sort"],
+        limit: args["limit"],
+        offset: args["offset"]
+      ).call
+    end
+
     def filter_sku_products(scope, query)
       return scope if query.blank?
 
@@ -173,6 +218,14 @@ module Mcp
       return unless visible_scope.sku_codes.include?(sku_code)
 
       Ec::Sku.find_by(sku_code: sku_code)
+    end
+
+    def visible_ozon_sku_product_ids(args)
+      scope = visible_scope.sku_products.where(ec_sku_products: { platform: "ozon" })
+      scope = scope.where(store_id: args["store_id"]) if args["store_id"].present?
+      scope = scope.where(sku_code: args["sku_code"].to_s.upcase) if args["sku_code"].present?
+      scope = filter_sku_products(scope, args["query"])
+      scope.distinct.pluck("ec_sku_products.id")
     end
 
     def sales_rows(sku_code, range)
@@ -249,6 +302,18 @@ module Mcp
       Date.iso8601(value.to_s)
     rescue Date::Error, ArgumentError
       nil
+    end
+
+    def date_range_from(args)
+      to_date = parse_date(args["to_date"]) || user_today
+      from_date = parse_date(args["from_date"]) || (to_date - 13.days)
+      from_date, to_date = to_date, from_date if from_date > to_date
+
+      from_date..to_date
+    end
+
+    def comma_list(value)
+      value.to_s.split(",").map(&:strip).reject(&:blank?)
     end
 
     def user_today
