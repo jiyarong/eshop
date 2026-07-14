@@ -89,6 +89,8 @@ module Ec
           warehouse_external_id: posting.analytics_data&.dig("warehouse_id")&.to_s,
           delivery_method_name: type == "fbs" ? posting.delivery_method_name : nil,
           delivery_type_source: posting.analytics_data&.dig("delivery_type"),
+          cluster_from: posting.financial_data&.dig("cluster_from").presence,
+          cluster_to: posting.financial_data&.dig("cluster_to").presence,
           tracking_number: type == "fbs" ? posting.tracking_number : nil,
           shipped_at: type == "fbs" ? posting.shipment_date : nil,
           delivered_at: completed_at_for(posting, type),

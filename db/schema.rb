@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_085140) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_14_053012) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -222,6 +222,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_085140) do
   create_table "ec_order_fulfillments", force: :cascade do |t|
     t.string "cancel_reason_source"
     t.datetime "cancelled_at"
+    t.string "cluster_from"
+    t.string "cluster_to"
     t.datetime "created_at", null: false
     t.datetime "delivered_at"
     t.string "delivery_method_name"

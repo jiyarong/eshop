@@ -89,6 +89,8 @@ module Ec
           "payment_type_group_name" => "SberPay"
         },
         financial_data: {
+          "cluster_from" => "Москва, МО и Дальние регионы",
+          "cluster_to" => "Казань",
           "products" => [
             {
               "product_id" => @ozon_sku_id,
@@ -133,7 +135,11 @@ module Ec
         delivery_method_name: "Ozon Rocket",
         tracking_number: "TRACK-#{@token}",
         analytics_data: { "city" => "Минск", "payment_type_group_name" => "Card" },
-        financial_data: { "products" => [] },
+        financial_data: {
+          "cluster_from" => "Беларусь",
+          "cluster_to" => "Санкт-Петербург и СЗО",
+          "products" => []
+        },
         raw_json: { "posting_number" => "OZON-FBS-#{@token}", "status" => "awaiting_packaging" },
         in_process_at: Time.zone.parse("2026-06-03 08:00:00"),
         shipment_date: Time.zone.parse("2026-06-03 18:00:00"),
@@ -239,6 +245,8 @@ module Ec
       assert_equal 1, ozon_order.fulfillments.count
       assert_equal "OZON-FBO-#{@token}", ozon_order.fulfillments.first.external_fulfillment_id
       assert_equal "fbo", ozon_order.fulfillments.first.fulfillment_type
+      assert_equal "Москва, МО и Дальние регионы", ozon_order.fulfillments.first.cluster_from
+      assert_equal "Казань", ozon_order.fulfillments.first.cluster_to
       assert_equal @ozon_fbo, ozon_order.source_links.first.source
       assert_equal "XCQ707", ozon_order.items.first.offer_id
       assert_equal @ozon_sku_id.to_s, ozon_order.items.first.platform_sku_id
@@ -248,6 +256,8 @@ module Ec
       assert_equal "shipped", ozon_fbs_order.order_status
       assert_nil ozon_fbs_order.completed_at
       assert_equal "fbs", ozon_fbs_order.fulfillments.first.fulfillment_type
+      assert_equal "Беларусь", ozon_fbs_order.fulfillments.first.cluster_from
+      assert_equal "Санкт-Петербург и СЗО", ozon_fbs_order.fulfillments.first.cluster_to
       assert_nil ozon_fbs_order.fulfillments.first.delivered_at
       assert_equal "TRACK-#{@token}", ozon_fbs_order.fulfillments.first.tracking_number
 
