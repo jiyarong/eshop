@@ -124,6 +124,7 @@
           <th style="min-width: 260px"><%= t("erp.common.russian_name") %></th>
           <th style="min-width: 180px"><%= t("erp.skus.fields.platform_category") %></th>
           <th style="width: 120px">SKU</th>
+          <th style="min-width: 210px"><%= t("erp.sku_marketing_states.fields.marketing_state") %></th>
           <th style="width: 120px"><%= t("erp.common.batches") %></th>
           <th style="width: 120px"><%= t("erp.common.status") %></th>
           <th style="width: 150px; text-align: right"><%= t("erp.common.actions.actions") %></th>
@@ -146,6 +147,7 @@
             <td><span class="ru-name"><%= erp_value(master_sku.product_name_ru) %></span></td>
             <td><span class="platform-category"><%= category_parts.any? ? category_parts.join(" / ") : "-" %></span></td>
             <td><span class="num"><%= skus.size %></span> <%= t("erp.skus.units.sku", count: skus.size) %></td>
+            <td>-</td>
             <td><span class="num"><%= batch_total %></span> <%= t("erp.skus.units.batch", count: batch_total) %></td>
             <td>
               <% if master_sku.is_active %>
@@ -168,7 +170,7 @@
             </td>
           </tr>
           <tr class="sub-row" hidden>
-            <td colspan="9">
+            <td colspan="10">
               <div class="sub-shell">
                 <div class="sub-h">
                   <span><%= t("erp.skus.index.sku_variants", count: skus.size) %></span>
@@ -179,6 +181,7 @@
                       <tr>
                         <th style="width: 180px">SKU</th>
                         <th><%= t("erp.skus.fields.attributes") %></th>
+                        <th style="min-width: 210px"><%= t("erp.sku_marketing_states.fields.marketing_state") %></th>
                         <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.purchased") %></th>
                         <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.received") %></th>
                         <th style="width: 110px"><%= t("erp.common.batches") %></th>
@@ -201,6 +204,7 @@
                             <div class="attr-zh"><%= erp_value(sku.sku_category&.name) %></div>
                             <div class="attr-ru text-xs"><%= [erp_value(sku.color), erp_value(sku.spec), erp_value(sku.model)].reject { |value| value == "-" }.join(" · ").presence || "#{erp_value(sku.product_name)} · #{erp_value(sku.product_name_ru)}" %></div>
                           </td>
+                          <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku, locale_params: current_locale_params, return_to: current_page_return_to %></td>
                           <td style="text-align: right"><span class="stock-num"><%= purchased_quantity %></span></td>
                           <td style="text-align: right"><span class="stock-num"><%= received_quantity %></span></td>
                           <td><span class="badge badge-sec"><%= sku.batches.size %> <%= t("erp.skus.units.batch_short", count: sku.batches.size) %></span></td>
@@ -223,7 +227,7 @@
                           </td>
                         </tr>
                         <tr class="batch-row" hidden>
-                          <td colspan="6">
+                          <td colspan="7">
                             <div class="batch-shell">
                               <div class="batch-h">
                                 <div>
@@ -318,6 +322,7 @@
             <td><span class="ru-name"><%= erp_value(sku.product_name_ru) %></span></td>
             <td><span class="platform-category">-</span></td>
             <td><span class="code-text sub"><%= sku.sku_code %></span></td>
+            <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku, locale_params: current_locale_params, return_to: current_page_return_to %></td>
             <td><span class="num"><%= sku.batches.size %></span> <%= t("erp.skus.units.batch", count: sku.batches.size) %></td>
             <td>
               <% if sku.is_active %>
@@ -346,7 +351,7 @@
           </tr>
           <% if batches.any? %>
             <tr class="batch-row" hidden>
-              <td colspan="9">
+              <td colspan="10">
                 <div class="batch-shell batch-shell--orphan">
                   <div class="batch-h">
                     <div>
@@ -415,7 +420,7 @@
 
         <% if @master_sku_entries.empty? && @orphan_skus.empty? %>
           <tr>
-            <td colspan="9" class="empty-state">
+            <td colspan="10" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.skus.empty.no_products") %>
             </td>

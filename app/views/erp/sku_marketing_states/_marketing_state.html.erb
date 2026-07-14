@@ -1,0 +1,24 @@
+<% marketing_state = sku.current_marketing_state %>
+<% locale_params = local_assigns.fetch(:locale_params, {}) %>
+<% return_to = local_assigns[:return_to] %>
+<% state_path = if can?(:manage_skus)
+  new_erp_sku_marketing_state_path(sku, locale_params.merge(return_to: return_to).compact)
+else
+  erp_sku_marketing_states_path(sku, locale_params)
+end %>
+
+<%= link_to state_path, class: "sku-marketing-state", data: (can?(:manage_skus) ? { turbo_frame: "erp_modal" } : {}) do %>
+  <span class="sku-marketing-state__tags">
+    <% if marketing_state %>
+      <span class="marketing-tag marketing-grade--<%= marketing_state.grade.downcase %>"><%= t("erp.sku_marketing_states.labels.grade_with_value", value: marketing_state.grade) %></span>
+      <span class="marketing-tag marketing-stage--<%= marketing_state.stage %>"><%= t("erp.sku_marketing_states.labels.stage_with_value", value: marketing_state.stage.upcase) %></span>
+    <% else %>
+      <span class="marketing-tag marketing-tag--unset"><%= t("erp.sku_marketing_states.labels.grade_unset") %></span>
+      <span class="marketing-tag marketing-tag--unset"><%= t("erp.sku_marketing_states.labels.stage_unset") %></span>
+    <% end %>
+  </span>
+  <span class="sku-marketing-state__strategy<%= " is-warning" if marketing_state&.exceptional_combination? %>">
+    <% if marketing_state&.exceptional_combination? %><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><% end %>
+    <%= sku_marketing_strategy_label(marketing_state) %>
+  </span>
+<% end %>

@@ -45,6 +45,15 @@ module Ec
         memo
         deleted_at
       ],
+      "Ec::SkuMarketingState" => %w[
+        sku_id
+        grade
+        stage
+        effective_at
+        ended_at
+        changed_by_id
+        note
+      ],
       "Ec::SkuBatch" => %w[
         sku_code
         batch_code

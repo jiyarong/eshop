@@ -155,6 +155,7 @@ class ReportsController < ApplicationController
       :platform_costs,
       :store_assignments,
       :inventory_levels,
+      :current_marketing_state,
       :sku_products,
       :predicted_costs,
       attachments: { file_attachment: :blob }

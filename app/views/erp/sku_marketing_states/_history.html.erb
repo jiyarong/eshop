@@ -1,0 +1,37 @@
+<section class="sku-marketing-history">
+  <h3><%= t("erp.sku_marketing_states.history.title") %></h3>
+  <% if marketing_states.any? %>
+    <div class="table-scroll">
+      <table class="sku-marketing-history__table">
+        <thead>
+          <tr>
+            <th><%= t("erp.sku_marketing_states.fields.grade") %></th>
+            <th><%= t("erp.sku_marketing_states.fields.stage") %></th>
+            <th><%= t("erp.sku_marketing_states.fields.strategy") %></th>
+            <th><%= t("erp.sku_marketing_states.fields.effective_at") %></th>
+            <th><%= t("erp.sku_marketing_states.fields.ended_at") %></th>
+            <th><%= t("erp.sku_marketing_states.fields.changed_by") %></th>
+            <th><%= t("erp.sku_marketing_states.fields.note") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% marketing_states.each do |marketing_state| %>
+            <tr>
+              <td><span class="marketing-tag marketing-grade--<%= marketing_state.grade.downcase %>"><%= marketing_state.grade %></span></td>
+              <td><span class="marketing-tag marketing-stage--<%= marketing_state.stage %>"><%= marketing_state.stage.upcase %></span></td>
+              <td class="<%= "sku-marketing-history__warning" if marketing_state.exceptional_combination? %>">
+                <%= sku_marketing_strategy_label(marketing_state) %>
+              </td>
+              <td><%= display_time(marketing_state.effective_at) %></td>
+              <td><%= display_time(marketing_state.ended_at) %></td>
+              <td><%= sku_marketing_changed_by(marketing_state) %></td>
+              <td><%= erp_value(marketing_state.note) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p class="text-muted"><%= t("erp.sku_marketing_states.history.empty") %></p>
+  <% end %>
+</section>

@@ -1650,6 +1650,10 @@ textarea {
   color: var(--erp-muted);
 }
 
+.sku-detail-marketing-state {
+  margin-top: 12px;
+}
+
 .sku-detail-tabs {
   margin: 16px 0;
   flex-wrap: wrap;
@@ -3500,6 +3504,79 @@ textarea:focus {
   color: var(--gray-600);
 }
 
+.sku-marketing-state {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sku-marketing-state:hover .sku-marketing-state__strategy {
+  color: var(--pri-text);
+}
+
+.sku-marketing-state__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.marketing-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.marketing-grade--s { background: #f3e8ff; color: #6d28d9; }
+.marketing-grade--a { background: #dbeafe; color: #1d4ed8; }
+.marketing-grade--b { background: #fef3c7; color: #b45309; }
+.marketing-grade--c { background: #fee2e2; color: #b91c1c; }
+.marketing-stage--new { background: #e0f2fe; color: #0369a1; }
+.marketing-stage--grw { background: #d1fae5; color: #047857; }
+.marketing-stage--mat { background: #e0e7ff; color: #4338ca; }
+.marketing-stage--clr { background: #ffedd5; color: #c2410c; }
+
+.marketing-tag--unset {
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
+.sku-marketing-state__strategy {
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.sku-marketing-state__strategy.is-warning,
+.sku-marketing-history__warning {
+  color: #c2410c;
+}
+
+.sku-marketing-history {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.sku-marketing-history h3 {
+  margin: 0 0 12px;
+}
+
+.sku-marketing-history__table {
+  min-width: 900px;
+}
+
+.sku-marketing-history__table th,
+.sku-marketing-history__table td {
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
 .dot {
   width: 7px;
   height: 7px;
@@ -3757,7 +3834,8 @@ textarea:focus {
 }
 
 .product-list-card {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding: 0;
 }
 

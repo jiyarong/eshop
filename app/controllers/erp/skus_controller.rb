@@ -9,7 +9,7 @@ module Erp
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
       @category_ids = selected_category_ids
 
-      scope = Ec::MasterSku.includes({ ec_category: :parent }, skus: [:sku_category, :batches]).order(:master_sku_code)
+      scope = Ec::MasterSku.includes({ ec_category: :parent }, skus: [:sku_category, :batches, :current_marketing_state]).order(:master_sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = scope.where(ec_category_id: @category_ids) if @category_ids.any?
@@ -98,7 +98,7 @@ module Erp
     def orphan_sku_scope
       return [] if @category_ids.any?
 
-      scope = Ec::Sku.includes(:sku_category, :batches).where(master_sku_id: nil).order(:sku_code)
+      scope = Ec::Sku.includes(:sku_category, :batches, :current_marketing_state).where(master_sku_id: nil).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       if @q.present?

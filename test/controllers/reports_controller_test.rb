@@ -257,6 +257,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    marketing_state_ids = Ec::SkuMarketingState.where(sku_id: [ @sku&.id, @second_sku&.id ].compact).pluck(:id)
+    Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
+    Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
     Ec::SkuInventoryLevel.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuInventoryLevel)
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
@@ -991,6 +994,27 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "2026-06-01"
   ensure
     assignment&.destroy
+  end
+
+  test "sku detail renders current marketing grade and stage" do
+    Ec::SkuMarketingStateChange.new(
+      sku: @sku,
+      grade: "A",
+      stage: "grw",
+      changed_by: @current_user,
+      note: "详情页展示"
+    ).call
+
+    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-marketing-state" do
+      assert_select ".marketing-grade--a", "Grade A"
+      assert_select ".marketing-stage--grw", "Stage GRW"
+      assert_select ".sku-marketing-state__strategy", "加速成长"
+      assert_select "a[href=?][data-turbo-frame='erp_modal']",
+                    new_erp_sku_marketing_state_path(@sku, return_to: "/reports/skus/#{@sku.sku_code}")
+    end
   end
 
   test "sku detail renders master sku category instead of sku category" do

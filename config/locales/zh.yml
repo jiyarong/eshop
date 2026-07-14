@@ -75,12 +75,24 @@ zh:
       signed_out: "已退出登录。"
   activerecord:
     attributes:
+      ec/sku_marketing_state:
+        effective_at: "生效时间"
+        ended_at: "结束时间"
+        grade: "Grade"
+        note: "调整原因"
+        stage: "Stage"
       user:
         name: "姓名"
         email: "邮箱"
         current_password: "当前密码"
         password: "新密码"
         password_confirmation: "确认新密码"
+    errors:
+      models:
+        ec/sku_marketing_state:
+          attributes:
+            ended_at:
+              before_effective_at: "不能早于生效时间"
   errors:
     messages:
       confirmation: "与%{attribute}不一致"
@@ -1080,6 +1092,47 @@ zh:
         subject: "Subject"
         subject_id: "Subject ID"
         wb_category: "WB 类别"
+    sku_marketing_states:
+      actions:
+        adjust: "调整 %{sku} 营销状态"
+      fields:
+        changed_by: "调整人"
+        effective_at: "生效时间"
+        ended_at: "结束时间"
+        grade: "Grade"
+        marketing_state: "营销状态"
+        note: "调整原因"
+        stage: "Stage"
+        strategy: "营销策略"
+      hints:
+        immediate_effect: "保存后立即生效；原状态会自动结束并保留在历史中。"
+      history:
+        empty: "暂无营销状态历史。"
+        title: "变更历史"
+        title_with_sku: "%{sku} 营销状态历史"
+      labels:
+        grade_unset: "Grade 未设置"
+        grade_with_value: "Grade %{value}"
+        stage_unset: "Stage 未设置"
+        stage_with_value: "Stage %{value}"
+      messages:
+        saved: "营销状态已保存"
+      placeholders:
+        select_grade: "选择 Grade"
+        select_stage: "选择 Stage"
+      strategies:
+        accelerate_growth: "加速成长"
+        assess_growth: "判断成长"
+        clearance: "清库"
+        controlled_exit: "控制退出"
+        full_growth: "全力增长"
+        full_validation: "全力验证"
+        low_cost_operation: "低成本经营"
+        maximize_profit: "利润最大化"
+        normally_not_applicable: "原则上不存在"
+        priority_validation: "重点验证"
+        stable_operation: "稳定经营"
+        validate_demand: "验证需求"
     skus:
       actions:
         add_product: "新增 SPU"

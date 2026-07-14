@@ -1,0 +1,28 @@
+<%= form_with model: marketing_state, url: erp_sku_marketing_states_path(sku), data: (modal ? { turbo_frame: "_top" } : {}) do |form| %>
+  <% if marketing_state.errors.any? %>
+    <div class="panel error-box">
+      <%= marketing_state.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <% if params[:return_to].present? %>
+    <%= hidden_field_tag :return_to, params[:return_to] %>
+  <% end %>
+
+  <div class="report-form">
+    <div class="field">
+      <%= form.label :grade, t("erp.sku_marketing_states.fields.grade") %>
+      <%= form.select :grade, Ec::SkuMarketingState::GRADES.map { |grade| [grade, grade] }, { include_blank: t("erp.sku_marketing_states.placeholders.select_grade") } %>
+    </div>
+    <div class="field">
+      <%= form.label :stage, t("erp.sku_marketing_states.fields.stage") %>
+      <%= form.select :stage, Ec::SkuMarketingState::STAGES.map { |stage| [stage.upcase, stage] }, { include_blank: t("erp.sku_marketing_states.placeholders.select_stage") } %>
+    </div>
+    <div class="field">
+      <%= form.label :note, t("erp.sku_marketing_states.fields.note") %>
+      <%= form.text_area :note, rows: 3 %>
+    </div>
+    <p class="text-sm text-muted"><%= t("erp.sku_marketing_states.hints.immediate_effect") %></p>
+    <%= form.submit t("common.actions.save"), class: "button" %>
+  </div>
+<% end %>

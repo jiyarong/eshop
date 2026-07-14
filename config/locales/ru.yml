@@ -75,9 +75,21 @@ ru:
       signed_out: "Вы вышли из системы."
   activerecord:
     attributes:
+      ec/sku_marketing_state:
+        effective_at: "Начало действия"
+        ended_at: "Окончание действия"
+        grade: "Grade"
+        note: "Причина изменения"
+        stage: "Stage"
       user:
         name: "Имя"
         email: "Email"
+    errors:
+      models:
+        ec/sku_marketing_state:
+          attributes:
+            ended_at:
+              before_effective_at: "не может быть раньше начала действия"
   navigation:
     sections:
       dashboard: "Панель"
@@ -1058,6 +1070,47 @@ ru:
         subject: "Subject"
         subject_id: "Subject ID"
         wb_category: "Категория WB"
+    sku_marketing_states:
+      actions:
+        adjust: "Изменить маркетинговый статус %{sku}"
+      fields:
+        changed_by: "Кто изменил"
+        effective_at: "Начало действия"
+        ended_at: "Окончание действия"
+        grade: "Grade"
+        marketing_state: "Маркетинговый статус"
+        note: "Причина изменения"
+        stage: "Stage"
+        strategy: "Маркетинговая стратегия"
+      hints:
+        immediate_effect: "Изменения вступают в силу сразу. Предыдущий статус сохраняется в истории."
+      history:
+        empty: "Истории маркетингового статуса пока нет."
+        title: "История изменений"
+        title_with_sku: "История маркетингового статуса %{sku}"
+      labels:
+        grade_unset: "Grade не задан"
+        grade_with_value: "Grade %{value}"
+        stage_unset: "Stage не задан"
+        stage_with_value: "Stage %{value}"
+      messages:
+        saved: "Маркетинговый статус сохранен"
+      placeholders:
+        select_grade: "Выберите Grade"
+        select_stage: "Выберите Stage"
+      strategies:
+        accelerate_growth: "Ускорить рост"
+        assess_growth: "Оценить рост"
+        clearance: "Распродажа остатков"
+        controlled_exit: "Контролируемый выход"
+        full_growth: "Максимальный рост"
+        full_validation: "Полная проверка"
+        low_cost_operation: "Низкозатратная работа"
+        maximize_profit: "Максимизация прибыли"
+        normally_not_applicable: "Как правило, не применяется"
+        priority_validation: "Приоритетная проверка"
+        stable_operation: "Стабильная работа"
+        validate_demand: "Проверить спрос"
     skus:
       actions:
         add_product: "Добавить SPU"

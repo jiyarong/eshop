@@ -104,9 +104,21 @@ en:
       signed_out: "Signed out successfully."
   activerecord:
     attributes:
+      ec/sku_marketing_state:
+        effective_at: "Effective at"
+        ended_at: "Ended at"
+        grade: "Grade"
+        note: "Reason"
+        stage: "Stage"
       user:
         name: "Name"
         email: "Email"
+    errors:
+      models:
+        ec/sku_marketing_state:
+          attributes:
+            ended_at:
+              before_effective_at: "cannot be before the effective time"
   navigation:
     sections:
       dashboard: "Dashboard"
@@ -1102,6 +1114,47 @@ en:
         subject: "Subject"
         subject_id: "Subject ID"
         wb_category: "WB category"
+    sku_marketing_states:
+      actions:
+        adjust: "Adjust marketing state for %{sku}"
+      fields:
+        changed_by: "Changed by"
+        effective_at: "Effective at"
+        ended_at: "Ended at"
+        grade: "Grade"
+        marketing_state: "Marketing state"
+        note: "Reason"
+        stage: "Stage"
+        strategy: "Marketing strategy"
+      hints:
+        immediate_effect: "Changes take effect immediately. The previous state remains in history."
+      history:
+        empty: "No marketing state history yet."
+        title: "Change history"
+        title_with_sku: "Marketing state history for %{sku}"
+      labels:
+        grade_unset: "Grade unset"
+        grade_with_value: "Grade %{value}"
+        stage_unset: "Stage unset"
+        stage_with_value: "Stage %{value}"
+      messages:
+        saved: "Marketing state saved"
+      placeholders:
+        select_grade: "Select Grade"
+        select_stage: "Select Stage"
+      strategies:
+        accelerate_growth: "Accelerate growth"
+        assess_growth: "Assess growth"
+        clearance: "Clear inventory"
+        controlled_exit: "Controlled exit"
+        full_growth: "Full growth"
+        full_validation: "Full validation"
+        low_cost_operation: "Low-cost operation"
+        maximize_profit: "Maximize profit"
+        normally_not_applicable: "Normally not applicable"
+        priority_validation: "Priority validation"
+        stable_operation: "Stable operation"
+        validate_demand: "Validate demand"
     skus:
       actions:
         add_product: "Add SPU"

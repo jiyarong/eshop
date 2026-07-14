@@ -64,6 +64,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    marketing_state_ids = Ec::SkuMarketingState.where(sku_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).pluck(:id)
+    Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
+    Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::Sku", record_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).delete_all if defined?(Ec::OperationLog)
     Ec::SkuBatch.where("batch_code LIKE ?", "%#{@token}%").delete_all
     Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
@@ -115,6 +118,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "button.product-tree-toggle[aria-expanded='false'] i.bi-chevron-down", count: 0
     assert_select ".sub-h", text: "SKU 变体 · 1 个"
     assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
+    assert_select ".sku-marketing-state .marketing-tag--unset", text: "Grade 未设置"
+    assert_select ".sku-marketing-state .marketing-tag--unset", text: "Stage 未设置"
+    assert_select "a[href='#{new_erp_sku_marketing_state_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']"
     assert_select ".batch-title", text: "批次清单"
     assert_select ".batch-tbl th", text: "采购日期"
     assert_select ".batch-tbl th", text: "出境日期"
@@ -181,6 +187,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl thead th", text: "Chinese name"
     assert_select ".prod-tbl thead th", text: "Platform category"
     assert_select ".prod-tbl thead th", text: "Actions"
+    assert_select ".prod-tbl thead th", text: "Marketing state"
+    assert_select ".marketing-tag--unset", text: "Grade unset"
     assert_select ".prod-tbl tr.master .platform-category", text: "Platform Parent #{@token} / Platform Child #{@token}"
     assert_select ".sub-h", text: "SKU variants · 1 item"
     assert_select ".batch-title", text: "Batch list"
@@ -195,6 +203,21 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{erp_new_sku_batch_path(locale: "en", sku_code: @sku.sku_code, return_to: "/erp/skus?locale=en")}'][data-turbo-frame='erp_modal']", text: "Add batch"
     assert_select "a[href='#{erp_sku_batch_path(@batch, locale: "en", return_to: "/erp/skus?locale=en")}'][data-turbo-method='delete']", minimum: 1 do |links|
       assert_equal "Delete this batch?", links.first["data-turbo-confirm"]
+    end
+  end
+
+  test "index renders current marketing state and strategy tags" do
+    Ec::SkuMarketingStateChange.new(
+      sku: @sku, grade: "A", stage: "grw", changed_by: @current_user, note: "增长阶段"
+    ).call
+
+    get "/erp/skus", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sub-tbl tr.sku-row" do
+      assert_select ".marketing-grade--a", "Grade A"
+      assert_select ".marketing-stage--grw", "Stage GRW"
+      assert_select ".sku-marketing-state__strategy", "加速成长"
     end
   end
 

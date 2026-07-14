@@ -20,6 +20,12 @@
     </span>
     <h2><%= report_value(@sku.product_name) %></h2>
     <p><%= report_value(@sku.product_name_ru) %></p>
+    <div class="sku-detail-marketing-state">
+      <%= render "erp/sku_marketing_states/marketing_state",
+                 sku: @sku,
+                 locale_params: request.query_parameters.slice(:locale),
+                 return_to: request.fullpath %>
+    </div>
   </div>
 
   <div class="summary-grid">
