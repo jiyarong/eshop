@@ -83,7 +83,7 @@ class Sub2AIService
   def api_key_usage(access_token:, api_key_ids:)
     with_access_token_retry(access_token) do |current_access_token|
       post_json("/api/v1/usage/dashboard/api-keys-usage", {
-        api_key_ids: api_key_ids
+        api_key_ids: api_key_ids.map { |id| Integer(id) }
       }, bearer_token: current_access_token)
     end
   end

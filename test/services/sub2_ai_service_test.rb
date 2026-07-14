@@ -130,6 +130,20 @@ class Sub2AIServiceTest < ActiveSupport::TestCase
     assert_equal "access-token", captured[:bearer_token]
   end
 
+  test "requests API key usage with numeric IDs" do
+    service = Sub2AIService.new(host: "https://sub2.example.com")
+    captured = nil
+    service.define_singleton_method(:post_json) do |path, payload, bearer_token:|
+      captured = { path:, payload:, bearer_token: }
+      []
+    end
+
+    assert_equal [], service.api_key_usage(access_token: "access-token", api_key_ids: ["123", "456"])
+    assert_equal "/api/v1/usage/dashboard/api-keys-usage", captured[:path]
+    assert_equal({ api_key_ids: [123, 456] }, captured[:payload])
+    assert_equal "access-token", captured[:bearer_token]
+  end
+
   test "requests user usage with the API key and retains the direct response" do
     service = Sub2AIService.new(host: "https://sub2.example.com")
     captured = nil
