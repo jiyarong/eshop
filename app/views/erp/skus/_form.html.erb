@@ -5,6 +5,10 @@
     </div>
   <% end %>
 
+  <% if params[:return_to].present? %>
+    <%= hidden_field_tag :return_to, params[:return_to] %>
+  <% end %>
+
   <div class="report-form">
     <div class="field">
       <%= form.label :master_sku_id, t("erp.skus.fields.master_sku") %>

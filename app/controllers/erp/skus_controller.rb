@@ -1,39 +1,42 @@
 module Erp
   class SkusController < BaseController
+    SKU_PAGE_SIZE = 10
+
     before_action :set_sku, only: [:show, :edit, :update, :destroy]
     before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update, :destroy]
 
     def index
-      @category_options = master_sku_category_options
       @q = params[:q].to_s.strip
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
-      @category_ids = selected_category_ids
+      @master_sku_id = Integer(params[:master_sku_id], exception: false)
+      @grade = params[:grade].to_s.upcase.presence_in(Ec::SkuMarketingState::GRADES)
+      @stage = params[:stage].to_s.downcase.presence_in(Ec::SkuMarketingState::STAGES)
 
-      scope = Ec::MasterSku.includes({ ec_category: :parent }, skus: [:sku_category, :batches, :current_marketing_state]).order(:master_sku_code)
+      scope = Ec::Sku.includes(:master_sku, :sku_category, :batches, :current_marketing_state).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
-      scope = scope.where(ec_category_id: @category_ids) if @category_ids.any?
+      scope = scope.where(master_sku_id: @master_sku_id) if @master_sku_id.present?
+      if @grade.present? || @stage.present?
+        marketing_state_filters = {}
+        marketing_state_filters[:grade] = @grade if @grade.present?
+        marketing_state_filters[:stage] = @stage if @stage.present?
+        scope = scope.joins(:current_marketing_state).where(ec_sku_marketing_states: marketing_state_filters)
+      end
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
-        scope = scope.left_joins(:skus).where(
-          "ec_master_skus.master_sku_code ILIKE :keyword OR ec_master_skus.product_name ILIKE :keyword OR ec_master_skus.product_name_ru ILIKE :keyword OR ec_skus.sku_code ILIKE :keyword OR ec_skus.product_name ILIKE :keyword OR ec_skus.product_name_ru ILIKE :keyword OR ec_skus.owner_name ILIKE :keyword",
+        scope = scope.left_joins(:master_sku).where(
+          "ec_skus.sku_code ILIKE :keyword OR ec_skus.product_name ILIKE :keyword OR ec_skus.product_name_ru ILIKE :keyword OR ec_skus.owner_name ILIKE :keyword OR ec_master_skus.master_sku_code ILIKE :keyword OR ec_master_skus.product_name ILIKE :keyword OR ec_master_skus.product_name_ru ILIKE :keyword",
           keyword: keyword
         ).distinct
       end
 
-      @master_skus = scope.to_a
-      @master_sku_entries = @master_skus.map do |master_sku|
-        {
-          master_sku: master_sku,
-          skus: skus_for_display(master_sku.skus)
-        }
-      end
-      @orphan_skus = orphan_sku_scope
-      @product_counts = {
+      @skus = paginated_skus(scope)
+      @master_sku_options = Ec::MasterSku.order(:master_sku_code)
+      @sku_counts = {
         master_total: Ec::MasterSku.count,
         sku_total: Ec::Sku.count,
         batch_total: Ec::SkuBatch.count,
-        active_master_total: Ec::MasterSku.active.count
+        active_sku_total: Ec::Sku.active.count
       }
     end
 
@@ -58,7 +61,7 @@ module Erp
     def create
       @sku = Ec::Sku.new(sku_params)
       if @sku.save
-        redirect_to erp_skus_path
+        redirect_to safe_return_to(erp_skus_path(current_locale_params))
       else
         load_category_options
         load_master_sku_options
@@ -68,7 +71,7 @@ module Erp
 
     def update
       if @sku.update(sku_params)
-        redirect_to erp_skus_path
+        redirect_to safe_return_to(erp_skus_path(current_locale_params))
       else
         load_category_options
         load_master_sku_options
@@ -78,7 +81,7 @@ module Erp
 
     def destroy
       @sku.destroy!
-      redirect_to erp_skus_path
+      redirect_to safe_return_to(erp_skus_path(current_locale_params))
     end
 
     private
@@ -95,43 +98,23 @@ module Erp
       @master_sku_options = Ec::MasterSku.order(:master_sku_code)
     end
 
-    def orphan_sku_scope
-      return [] if @category_ids.any?
-
-      scope = Ec::Sku.includes(:sku_category, :batches, :current_marketing_state).where(master_sku_id: nil).order(:sku_code)
-      scope = scope.where(is_active: true) if @status == "active"
-      scope = scope.where(is_active: false) if @status == "inactive"
-      if @q.present?
-        keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
-        scope = scope.where(
-          "ec_skus.sku_code ILIKE :keyword OR ec_skus.product_name ILIKE :keyword OR ec_skus.product_name_ru ILIKE :keyword OR ec_skus.owner_name ILIKE :keyword",
-          keyword: keyword
-        )
+    def paginated_skus(scope)
+      current_page = sku_page_param
+      skus = scope.page(current_page).per(SKU_PAGE_SIZE)
+      if skus.total_pages.positive? && current_page > skus.total_pages
+        skus = scope.page(skus.total_pages).per(SKU_PAGE_SIZE)
       end
-      scope.to_a
+      skus
     end
 
-    def skus_for_display(skus)
-      skus.sort_by(&:sku_code)
-    end
+    def sku_page_param
+      requested_page = params[:jump_page].presence || params[:page].presence
+      current_page = params[:current_page].presence || params[:page].presence
 
-    def selected_category_ids
-      Array(params[:category_ids].presence || params[:category_id])
-        .reject(&:blank?)
-        .filter_map { |value| Integer(value, exception: false) }
-        .uniq
-    end
-
-    def master_sku_category_options
-      category_ids = Ec::MasterSku.where.not(ec_category_id: nil).distinct.select(:ec_category_id)
-
-      Ec::Category.where(id: category_ids).includes(:parent).to_a
-        .map { |category| [master_sku_category_label(category), category.id] }
-        .sort_by { |label, id| [label.downcase, id] }
-    end
-
-    def master_sku_category_label(category)
-      [category.parent&.localized_name, category.localized_name].compact.join(" / ")
+      page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
+      page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
+      page = 1 if page.to_i <= 0
+      page
     end
 
     def sku_params

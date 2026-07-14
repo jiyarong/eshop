@@ -4,7 +4,7 @@ Rails.application.routes.draw do
     passwords: "users/passwords"
   }
 
-  root  'erp/skus#index'
+  root  'erp/spus#index'
   get "up" => "rails/health#show", as: :rails_health_check
   post "mcp" => "mcp#create"
 
@@ -100,6 +100,7 @@ Rails.application.routes.draw do
     resources :categories, only: [:index]
     resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]
+    resources :spus, only: [:index]
     resources :skus do
       resources :sku_products, path: :products, only: [:index, :create, :destroy]
       resources :marketing_states, only: [:index, :new, :create], controller: "sku_marketing_states"

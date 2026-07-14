@@ -134,7 +134,8 @@ en:
     skus: "SKU"
     sku_sales: "SKU Sales"
     costs: "Costs"
-    erp_skus: "SPU Management"
+    erp_spus: "SPU Management"
+    erp_skus: "SKU Management"
     erp_stores: "Store Settings"
     sku_categories: "SKU Categories"
     sku_batches: "ERP Batches"
@@ -1155,6 +1156,12 @@ en:
         priority_validation: "Priority validation"
         stable_operation: "Stable operation"
         validate_demand: "Validate demand"
+    spus:
+      index:
+        active_products: "Active SPUs"
+        hierarchy: "SPU · SKU · Batch Inventory"
+        product_overview: "Product overview"
+        title: "SPU Management"
     skus:
       actions:
         add_product: "Add SPU"
@@ -1184,23 +1191,37 @@ en:
         volume_l: "Volume L"
         weight_kg: "Weight kg"
       filters:
+        all_spus: "All SPUs"
+        all_grades: "All Grades"
+        all_stages: "All Stages"
         all_categories: "All categories"
         category_search_placeholder: "Search categories"
         no_categories: "No matching categories"
         selected_categories: "%{count} categories selected"
         search_placeholder: "Search SPU, SKU, Chinese name, or Russian name..."
+        sku_search_placeholder: "Search SKU, SPU, Chinese name, or Russian name..."
       index:
         active_products: "Active SPUs"
+        active_skus: "Active SKUs"
         batch_list: "Batch list"
-        hierarchy: "SPU · SKU · Batch Inventory"
+        hierarchy: "SKU · Batch Inventory"
         product_overview: "Product overview"
+        sku_overview: "SKU overview"
         showing_recent_batches: "Showing latest %{shown} / %{total} batches"
         sku_batches_label: "%{sku} batches"
         sku_variants:
           one: "SKU variants · %{count} item"
           other: "SKU variants · %{count} items"
-        title: "SPU Management"
+        title: "SKU Management"
         unfiled: "Unfiled"
+      pagination:
+        aria_label: "SKU pagination"
+        jump_action: "Go"
+        jump_label: "Jump to"
+        next_page: "Next page"
+        page_chip: "Page %{page}/%{pages}"
+        previous_page: "Previous page"
+        summary: "Showing %{from}-%{to} of %{total}"
       statuses:
         active: "Active"
         inactive: "Inactive"

@@ -3839,6 +3839,11 @@ textarea:focus {
   padding: 0;
 }
 
+.sku-management .product-list-card > .inventory-pagination-bar {
+  min-width: calc(1160px - 28px);
+  margin: 14px;
+}
+
 .prod-tbl {
   width: 100%;
   min-width: 1160px;
