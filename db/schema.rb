@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_14_053012) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_14_062109) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -443,9 +443,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_053012) do
     t.string "store_name"
     t.datetime "synced_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "warehouse_breakdown", default: [], null: false
     t.index ["sku_code", "platform", "account_id", "fulfillment_type", "synced_at"], name: "idx_ec_sku_inventory_levels_history"
     t.index ["sku_code", "platform", "account_id", "fulfillment_type"], name: "idx_ec_sku_inventory_levels_latest", unique: true, where: "is_latest"
     t.index ["sku_code"], name: "index_ec_sku_inventory_levels_on_sku_code"
+  end
+
+  create_table "ec_sku_marketing_states", force: :cascade do |t|
+    t.bigint "changed_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "effective_at", null: false
+    t.datetime "ended_at"
+    t.string "grade", null: false
+    t.text "note"
+    t.bigint "sku_id", null: false
+    t.string "stage", null: false
+    t.datetime "updated_at", null: false
+    t.index ["changed_by_id"], name: "index_ec_sku_marketing_states_on_changed_by_id"
+    t.index ["sku_id", "effective_at"], name: "idx_ec_sku_marketing_states_sku_effective"
+    t.index ["sku_id"], name: "idx_ec_sku_marketing_states_current", unique: true, where: "(ended_at IS NULL)"
+    t.check_constraint "ended_at IS NULL OR ended_at >= effective_at", name: "ec_sku_marketing_states_period_check"
+    t.check_constraint "grade::text = ANY (ARRAY['S'::character varying, 'A'::character varying, 'B'::character varying, 'C'::character varying]::text[])", name: "ec_sku_marketing_states_grade_check"
+    t.check_constraint "stage::text = ANY (ARRAY['new'::character varying, 'grw'::character varying, 'mat'::character varying, 'clr'::character varying]::text[])", name: "ec_sku_marketing_states_stage_check"
   end
 
   create_table "ec_sku_platform_costs", force: :cascade do |t|
@@ -2106,6 +2125,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_053012) do
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
+  add_foreign_key "ec_sku_marketing_states", "ec_skus", column: "sku_id", on_delete: :cascade
+  add_foreign_key "ec_sku_marketing_states", "users", column: "changed_by_id", on_delete: :nullify
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code", name: "fk_rails_ec_sku_predicted_costs_sku_code"
   add_foreign_key "ec_sku_product_operators", "ec_sku_products", column: "sku_product_id"
