@@ -10,6 +10,7 @@ module Api
         return
       end
 
+      Sub2UserApiKeyProvisioner.call(user: user) unless user.sub2_user_api_key
       raw_token, = UserAccessToken.generate_for!(user)
       render json: {
         success: true,
@@ -19,6 +20,9 @@ module Api
           profile: profile_json(user)
         }
       }
+    rescue Sub2UserApiKeyProvisioner::Error => error
+      Rails.logger.error("Sub2 API key provisioning failed during login for user #{user.id}: #{error.message}")
+      render json: { success: false, error: "sub2_api_key_provisioning_failed" }, status: :bad_gateway
     end
 
     def destroy

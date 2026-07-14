@@ -3,7 +3,7 @@ module Api
     def show
       render json: {
         success: true,
-        data: profile_json(current_user).merge(llm_config: llm_configs_json(current_user))
+        data: profile_json(current_user).merge(llm_configs: llm_configs_json(current_user))
       }
     end
 

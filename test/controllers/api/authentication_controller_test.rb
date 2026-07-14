@@ -19,6 +19,8 @@ module Api
     end
 
     test "login returns a bearer token that authenticates profile requests" do
+      create_sub2_api_key
+
       assert_difference "UserAccessToken.where(user: @user).count", 1 do
         post "/api/login", params: { email: @user.email, password: "password123" }, as: :json
       end
@@ -34,11 +36,72 @@ module Api
       assert_not_equal raw_token, access_token.token_digest
       assert_equal @user.email, body.dig("data", "profile", "email")
 
-      get "/api/profile", headers: bearer_headers(raw_token), as: :json
+      service = Object.new
+      service.define_singleton_method(:entrypoint_url) { "https://sub2.example.com/v1" }
+      service.define_singleton_method(:models) { |**| [] }
+      with_sub2_service(service) do
+        get "/api/profile", headers: bearer_headers(raw_token), as: :json
+      end
 
       assert_response :success
       assert_equal @user.id, response.parsed_body.dig("data", "id")
       assert UserAccessToken.find(access_token.id).last_used_at.present?
+    end
+
+    test "login provisions a missing Sub2 API key before LLM configuration is requested" do
+      provisioned_api_token = "sk-sub2-#{@token}"
+      provisioner_calls = []
+      provisioner = lambda do |user:, **|
+        provisioner_calls << user.id
+        Sub2UserApiKey.create!(
+          user: user,
+          remote_key_id: "remote-#{@token}",
+          encrypted_api_key: Sub2UserApiKey.encrypt(provisioned_api_token),
+          name: "eshop-user-#{user.id}"
+        )
+      end
+      service = Object.new
+      service.define_singleton_method(:entrypoint_url) { "https://sub2.example.com/v1" }
+      service.define_singleton_method(:models) { |api_key:| api_key == provisioned_api_token ? [ "gpt-5" ] : [] }
+
+      with_sub2_provisioner(provisioner) do
+        post "/api/login", params: { email: @user.email, password: "password123" }, as: :json
+      end
+
+      assert_response :success
+      assert_equal [ @user.id ], provisioner_calls
+      assert_equal provisioned_api_token, @user.reload.sub2_user_api_key.api_key
+
+      raw_token = response.parsed_body.dig("data", "token")
+      with_sub2_service(service) do
+        get "/api/profile", headers: bearer_headers(raw_token), as: :json
+      end
+
+      assert_response :success
+      assert_equal(
+        {
+          "entrypoint_url" => "https://sub2.example.com/v1",
+          "api_token" => provisioned_api_token,
+          "models" => [ "gpt-5" ]
+        },
+        response.parsed_body.dig("data", "llm_config")
+      )
+    end
+
+    test "login does not issue an access token when Sub2 API key provisioning fails" do
+      provisioner = lambda do |**|
+        raise Sub2UserApiKeyProvisioner::Error, "remote unavailable"
+      end
+
+      assert_no_difference "UserAccessToken.where(user: @user).count" do
+        with_sub2_provisioner(provisioner) do
+          post "/api/login", params: { email: @user.email, password: "password123" }, as: :json
+        end
+      end
+
+      assert_response :bad_gateway
+      assert_equal "sub2_api_key_provisioning_failed", response.parsed_body["error"]
+      assert_nil @user.reload.sub2_user_api_key
     end
 
     test "login rejects an invalid password and inactive user" do
@@ -68,12 +131,7 @@ module Api
 
     test "profile returns Sub2 LLM configuration for the current user" do
       api_token = "sk-sub2-#{@token}"
-      Sub2UserApiKey.create!(
-        user: @user,
-        remote_key_id: "remote-#{@token}",
-        encrypted_api_key: Sub2UserApiKey.encrypt(api_token),
-        name: "eshop-#{@user.id}"
-      )
+      create_sub2_api_key(api_token: api_token)
       service = Object.new
       requested_api_token = nil
       service.define_singleton_method(:entrypoint_url) { "https://sub2.example.com/v1" }
@@ -95,7 +153,7 @@ module Api
           "api_token" => api_token,
           "models" => [ "deepseek-v4-flash", "gpt-5" ]
         },
-        response.parsed_body.dig("data", "llm_configs")
+        response.parsed_body.dig("data", "llm_config")
       )
     ensure
       Sub2AIService.define_singleton_method(:new, original_new) if original_new
@@ -238,6 +296,31 @@ module Api
     end
 
     private
+
+    def create_sub2_api_key(api_token: "sk-sub2-existing-#{@token}")
+      Sub2UserApiKey.create!(
+        user: @user,
+        remote_key_id: "remote-existing-#{@token}",
+        encrypted_api_key: Sub2UserApiKey.encrypt(api_token),
+        name: "eshop-#{@user.id}"
+      )
+    end
+
+    def with_sub2_provisioner(replacement)
+      original_call = Sub2UserApiKeyProvisioner.method(:call)
+      Sub2UserApiKeyProvisioner.define_singleton_method(:call, replacement)
+      yield
+    ensure
+      Sub2UserApiKeyProvisioner.define_singleton_method(:call, original_call)
+    end
+
+    def with_sub2_service(service)
+      original_new = Sub2AIService.method(:new)
+      Sub2AIService.define_singleton_method(:new) { service }
+      yield
+    ensure
+      Sub2AIService.define_singleton_method(:new, original_new)
+    end
 
     def bearer_headers(raw_token)
       { "Authorization" => "Bearer #{raw_token}" }
