@@ -2,6 +2,7 @@
   url: agent.persisted? ? admin_agent_path(agent.code) : admin_agents_path,
   method: agent.persisted? ? :patch : :post,
   multipart: true,
+  data: { controller: "agent-form" },
   class: "ai-agent-form" do |form| %>
   <% if agent.errors.any? %>
     <div class="error-box ai-form-errors" role="alert">
@@ -33,6 +34,26 @@
           <div class="field field--full">
             <%= form.label :description, t("admin.agents.fields.description") %>
             <%= form.text_field :description %>
+          </div>
+          <div class="field field--full">
+            <%= form.label :agent_type, t("admin.agents.fields.agent_type") %>
+            <div class="ai-toggle-grid">
+              <% Agent.agent_types.each_key do |agent_type| %>
+                <label class="checkbox-option ai-toggle-option">
+                  <%= form.radio_button :agent_type,
+                    agent_type,
+                    required: true,
+                    data: {
+                      agent_form_target: "typeInput",
+                      action: "change->agent-form#syncSkills"
+                    } %>
+                  <span>
+                    <strong><%= t("admin.agents.agent_types.#{agent_type}") %></strong>
+                    <small><%= t("admin.agents.hints.agent_types.#{agent_type}") %></small>
+                  </span>
+                </label>
+              <% end %>
+            </div>
           </div>
         </div>
       </section>
@@ -89,7 +110,7 @@
     </div>
 
     <aside class="ai-editor-sidebar">
-      <section class="panel ai-side-panel">
+      <section class="panel ai-side-panel" data-agent-form-target="skillPanel">
         <div class="ai-form-section__heading">
           <i class="bi bi-puzzle" aria-hidden="true"></i>
           <h2><%= t("admin.agents.fields.skills") %></h2>
@@ -100,7 +121,7 @@
             <%= form.collection_check_boxes :skill_ids, skills, :id, :name do |checkbox| %>
               <% skill = checkbox.object %>
               <%= checkbox.label(class: "checkbox-option ai-skill-option") do %>
-                <%= checkbox.check_box %>
+                <%= checkbox.check_box data: { agent_form_target: "skillInput" } %>
                 <span>
                   <strong><%= checkbox.text %></strong>
                   <small><%= skill.description %></small>

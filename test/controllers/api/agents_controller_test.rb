@@ -33,6 +33,17 @@ module Api
         recommended_prompts: [ "Question one", "Question two" ],
         skills: [ @skill ],
         tools: [],
+        agent_type: :client,
+        enabled: true
+      )
+      @web_agent = Agent.create!(
+        code: "web_agent_#{@token}",
+        name: "Web Agent #{@token}",
+        system_prompt: "Web prompt",
+        model_id: "deepseek-v4-flash",
+        temperature: 0.3,
+        tools: [],
+        agent_type: :web,
         enabled: true
       )
       @agent.avatar.attach(
@@ -45,7 +56,7 @@ module Api
     teardown do
       @agent.avatar.purge if @agent&.avatar&.attached?
       AgentSkill.where(agent_id: @agent&.id).delete_all
-      Agent.where(id: @agent&.id).delete_all
+      Agent.where(id: [ @agent&.id, @web_agent&.id ]).delete_all
       @skill.archive.purge if @skill&.archive&.attached?
       Skill.where(id: @skill&.id).delete_all
       UserAccessToken.where(user: @user).delete_all
@@ -69,6 +80,7 @@ module Api
       assert_includes agent["avatar_url"], "disposition=inline"
       assert_equal [ @skill.name ], agent["skills"]
       assert_equal [ "Question one", "Question two" ], agent["recommended_prompts"]
+      assert_not body.fetch("agents").any? { |item| item["name"] == @web_agent.name }
 
       skill = body.fetch("skills").find { |item| item["name"] == @skill.name }
       assert_equal %w[description download_url name version], skill.keys.sort

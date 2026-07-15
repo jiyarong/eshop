@@ -13,6 +13,7 @@ module Admin
 
     def new
       @agent = Agent.new(
+        agent_type: :web,
         enabled: true,
         model_id: "deepseek-v4-flash",
         temperature: 0.3,
@@ -55,12 +56,14 @@ module Admin
         :system_prompt,
         :model_id,
         :temperature,
+        :agent_type,
         :thinking_enabled,
         :enabled,
         :avatar,
         skill_ids: []
       )
       permitted[:recommended_prompts] = recommended_prompts
+      permitted[:skill_ids] = [] if permitted[:agent_type] == "web"
       permitted
     end
 

@@ -23,6 +23,7 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_equal "business_analysis", agent.code
     assert_equal "经营分析助手", agent.name
     assert agent.enabled?
+    assert agent.web?
     assert_includes agent.tools, "query_inventory_data"
     assert_not_includes agent.tools, "router"
     assert_not_includes agent.tools, "export_pdf"

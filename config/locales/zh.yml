@@ -292,12 +292,18 @@ zh:
     agents:
       actions:
         new: "新增 Agent"
+      agent_types:
+        client: "Client Agent"
+        web: "Web Agent"
       avatar_alt: "%{name} 的头像"
       edit:
         title: "编辑 AI Agent"
       empty_skills: "暂无 Skill，请先创建 Skill。"
+      errors:
+        skills_unavailable_for_web: "仅 Client Agent 可以使用 Skill"
       fields:
         actions: "操作"
+        agent_type: "Agent 类型"
         avatar: "头像"
         code: "Code"
         description: "描述"
@@ -315,6 +321,9 @@ zh:
       index:
         title: "AI Agent 管理"
       hints:
+        agent_types:
+          client: "同步到客户端，并可使用 Skill"
+          web: "仅在 Web 端使用，不能使用 Skill"
         enabled: "停用后不再通过 API 提供"
         thinking: "允许模型使用推理模式"
       new:

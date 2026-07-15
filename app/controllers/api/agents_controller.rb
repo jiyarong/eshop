@@ -2,7 +2,7 @@ module Api
   class AgentsController < BaseController
     def index
       Agent.seed_fixed!
-      agents = Agent.enabled.includes(:skills, avatar_attachment: :blob).order(:id)
+      agents = Agent.enabled.client.includes(:skills, avatar_attachment: :blob).order(:id)
       skills = Skill.includes(archive_attachment: :blob).order(:name)
 
       render json: {

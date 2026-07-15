@@ -314,12 +314,18 @@ en:
     agents:
       actions:
         new: "New Agent"
+      agent_types:
+        client: "Client Agent"
+        web: "Web Agent"
       avatar_alt: "%{name} avatar"
       edit:
         title: "Edit AI Agent"
       empty_skills: "No skills yet. Create a skill first."
+      errors:
+        skills_unavailable_for_web: "are only available to client agents"
       fields:
         actions: "Actions"
+        agent_type: "Agent type"
         avatar: "Avatar"
         code: "Code"
         description: "Description"
@@ -337,6 +343,9 @@ en:
       index:
         title: "AI Agent Management"
       hints:
+        agent_types:
+          client: "Available to desktop clients and may use Skills"
+          web: "Available only in the web application and cannot use Skills"
         enabled: "Disabled agents are omitted from the API"
         thinking: "Allow the model to use reasoning mode"
       new:

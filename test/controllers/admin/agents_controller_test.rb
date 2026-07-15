@@ -6,6 +6,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     @admin = create_user_with_roles("agent-admin-#{@token}@example.com", "super_admin")
     @viewer = create_user_with_roles("agent-viewer-#{@token}@example.com", "auditor")
     @agent = Agent.ensure_fixed!("sku_replenishment_advisor")
+    @agent.agent_skills.delete_all
     definition = Agent.definition_for!("sku_replenishment_advisor")
     @agent.update!(
       name: definition.fetch(:name),
@@ -14,6 +15,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
       model_id: definition.fetch(:default_model_id),
       temperature: definition.fetch(:default_temperature),
       thinking_enabled: false,
+      agent_type: :web,
       enabled: true,
       recommended_prompts: []
     )
@@ -52,6 +54,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-admin-tabs a[aria-current='page']", "AI Agent 管理"
     assert_select ".ai-agent-identity code", "sku_replenishment_advisor"
     assert_select ".ai-agent-identity strong", "SKU 补货建议助手"
+    assert_select "th", text: "Agent 类型"
+    assert_select "td", text: "Web Agent"
     assert_select "a.ai-row-action[href=?]", "/admin/agents/sku_replenishment_advisor/edit"
   end
 
@@ -75,6 +79,11 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='agent[thinking_enabled]'][type='checkbox']"
     assert_select "textarea[name='agent[system_prompt]']"
     assert_select "input[name='agent[name]'][value=?]", @agent.name
+    assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
+    assert_select "input[name='agent[agent_type]'][type='radio'][value='client']"
+    assert_select "form[data-controller='agent-form']"
+    assert_select "section[data-agent-form-target='skillPanel']"
+    assert_select "input[data-agent-form-target='skillInput'][value=?]", @skill.id.to_s
     assert_select "textarea[name='agent[recommended_prompts_text]']"
     assert_select "input[name='agent[skill_ids][]'][value=?]", @skill.id.to_s
     assert_select "input[name='agent[avatar]'][type='file']"
@@ -92,6 +101,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "新增 AI Agent"
     assert_select "input[name='agent[code]']"
+    assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
     assert_select "input[name='agent[skill_ids][]'][value=?]", @skill.id.to_s
   end
 
@@ -107,6 +117,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
         system_prompt: "自定义补货分析提示词",
         model_id: "deepseek-chat",
         temperature: "0.45",
+        agent_type: "client",
         thinking_enabled: "1",
         recommended_prompts_text: "问题一\n\n问题二",
         skill_ids: [ @skill.id ]
@@ -122,6 +133,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "自定义补货分析提示词", @agent.system_prompt
     assert_equal "deepseek-chat", @agent.model_id
     assert_equal 0.45, @agent.temperature.to_f
+    assert @agent.client?
     assert @agent.thinking_enabled?
     assert_equal [ "问题一", "问题二" ], @agent.recommended_prompts
     assert_equal [ @skill ], @agent.skills.to_a
@@ -140,6 +152,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
           system_prompt: "自定义系统提示词",
           model_id: "deepseek-v4-flash",
           temperature: "0.3",
+          agent_type: "client",
           thinking_enabled: "0",
           recommended_prompts_text: "如何开始？",
           skill_ids: [ @skill.id ]
@@ -149,8 +162,29 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to "/admin/agents"
     agent = Agent.find_by!(code: "custom_agent_#{@token}")
+    assert agent.client?
     assert_equal [ "如何开始？" ], agent.recommended_prompts
     assert_equal [ @skill ], agent.skills.to_a
+  end
+
+  test "web agents cannot keep skills" do
+    sign_in @admin
+    @agent.update!(agent_type: :client)
+    @agent.skills << @skill
+
+    patch "/admin/agents/sku_replenishment_advisor", params: {
+      agent: {
+        agent_type: "web",
+        skill_ids: [ @skill.id ]
+      }
+    }
+
+    assert_redirected_to "/admin/agents"
+    assert @agent.reload.web?
+    assert_empty @agent.skills
+
+    agent_skill = AgentSkill.new(agent: @agent, skill: @skill)
+    assert_not agent_skill.valid?
   end
 
   test "super admin can update tunable fields with browser post fallback" do

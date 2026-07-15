@@ -84,6 +84,8 @@ class Agent < ApplicationRecord
   has_many :skills, through: :agent_skills
   has_one_attached :avatar
 
+  enum :agent_type, { web: "web", client: "client" }, default: :web, validate: true
+
   scope :enabled, -> { where(enabled: true) }
 
   def recommended_prompts_text
@@ -97,6 +99,7 @@ class Agent < ApplicationRecord
     length: { maximum: 64 }
   validates :temperature, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
   validate :tools_are_query_only
+  validate :web_agent_has_no_skills
 
   def self.ensure_fixed!(code)
     definition = definition_for!(code)
@@ -130,5 +133,11 @@ class Agent < ApplicationRecord
     return if invalid_tools.empty?
 
     errors.add(:tools, "只能包含 ERP 查询工具：#{invalid_tools.join(', ')}")
+  end
+
+  def web_agent_has_no_skills
+    return unless web? && skills.any?
+
+    errors.add(:skills, I18n.t("admin.agents.errors.skills_unavailable_for_web"))
   end
 end

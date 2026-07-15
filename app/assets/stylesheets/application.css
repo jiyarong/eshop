@@ -4899,12 +4899,13 @@ body.auth-shell .auth-submit:hover {
   border-bottom: 0;
 }
 
-.ai-agent-table th:nth-child(1) { width: 29%; }
-.ai-agent-table th:nth-child(2) { width: 17%; }
-.ai-agent-table th:nth-child(3) { width: 21%; }
-.ai-agent-table th:nth-child(4) { width: 10%; }
-.ai-agent-table th:nth-child(5) { width: 14%; }
-.ai-agent-table th:nth-child(6) { width: 9%; }
+.ai-agent-table th:nth-child(1) { width: 25%; }
+.ai-agent-table th:nth-child(2) { width: 9%; }
+.ai-agent-table th:nth-child(3) { width: 16%; }
+.ai-agent-table th:nth-child(4) { width: 18%; }
+.ai-agent-table th:nth-child(5) { width: 9%; }
+.ai-agent-table th:nth-child(6) { width: 14%; }
+.ai-agent-table th:nth-child(7) { width: 9%; }
 
 .ai-skill-table th:nth-child(1) { width: 23%; }
 .ai-skill-table th:nth-child(2) { width: 35%; }
@@ -5246,6 +5247,14 @@ body.auth-shell .auth-submit:hover {
 .ai-skill-option:has(input:checked) {
   border-color: #a8b9e8;
   background: #f0f4ff;
+}
+
+.ai-side-panel.is-disabled .ai-skill-options {
+  opacity: 0.55;
+}
+
+.ai-side-panel.is-disabled .ai-skill-option {
+  cursor: not-allowed;
 }
 
 .ai-side-empty {

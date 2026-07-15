@@ -17,6 +17,7 @@
       <thead>
         <tr>
           <th><%= t("admin.agents.fields.name") %></th>
+          <th><%= t("admin.agents.fields.agent_type") %></th>
           <th><%= t("admin.agents.fields.model_id") %></th>
           <th><%= t("admin.agents.fields.skills") %></th>
           <th><%= t("admin.agents.fields.status") %></th>
@@ -43,6 +44,7 @@
                 </div>
               </div>
             </td>
+            <td><%= t("admin.agents.agent_types.#{agent.agent_type}") %></td>
             <td><code class="ai-model-code"><%= agent.model_id %></code></td>
             <td>
               <div class="ai-tag-list">

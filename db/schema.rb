@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_14_062109) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_072430) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -53,6 +53,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_062109) do
   end
 
   create_table "agents", force: :cascade do |t|
+    t.string "agent_type", default: "web", null: false
     t.string "code", null: false
     t.datetime "created_at", null: false
     t.text "description", default: "", null: false
@@ -65,9 +66,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_062109) do
     t.boolean "thinking_enabled", default: false, null: false
     t.jsonb "tools", default: [], null: false
     t.datetime "updated_at", null: false
+    t.index ["agent_type"], name: "index_agents_on_agent_type"
     t.index ["code"], name: "index_agents_on_code", unique: true
     t.index ["enabled"], name: "index_agents_on_enabled"
     t.index ["name"], name: "index_agents_on_name"
+    t.check_constraint "agent_type::text = ANY (ARRAY['web'::character varying, 'client'::character varying]::text[])", name: "agents_agent_type_check"
   end
 
   create_table "conversations", force: :cascade do |t|
@@ -463,8 +466,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_14_062109) do
     t.index ["sku_id", "effective_at"], name: "idx_ec_sku_marketing_states_sku_effective"
     t.index ["sku_id"], name: "idx_ec_sku_marketing_states_current", unique: true, where: "(ended_at IS NULL)"
     t.check_constraint "ended_at IS NULL OR ended_at >= effective_at", name: "ec_sku_marketing_states_period_check"
-    t.check_constraint "grade::text = ANY (ARRAY['S'::character varying, 'A'::character varying, 'B'::character varying, 'C'::character varying]::text[])", name: "ec_sku_marketing_states_grade_check"
-    t.check_constraint "stage::text = ANY (ARRAY['new'::character varying, 'grw'::character varying, 'mat'::character varying, 'clr'::character varying]::text[])", name: "ec_sku_marketing_states_stage_check"
+    t.check_constraint "grade::text = ANY (ARRAY['S'::character varying::text, 'A'::character varying::text, 'B'::character varying::text, 'C'::character varying::text])", name: "ec_sku_marketing_states_grade_check"
+    t.check_constraint "stage::text = ANY (ARRAY['new'::character varying::text, 'grw'::character varying::text, 'mat'::character varying::text, 'clr'::character varying::text])", name: "ec_sku_marketing_states_stage_check"
   end
 
   create_table "ec_sku_platform_costs", force: :cascade do |t|

@@ -285,12 +285,18 @@ ru:
     agents:
       actions:
         new: "Добавить Agent"
+      agent_types:
+        client: "Client Agent"
+        web: "Web Agent"
       avatar_alt: "Аватар %{name}"
       edit:
         title: "Редактировать AI Agent"
       empty_skills: "Skills пока нет. Сначала создайте Skill."
+      errors:
+        skills_unavailable_for_web: "доступны только для Client Agent"
       fields:
         actions: "Действия"
+        agent_type: "Тип Agent"
         avatar: "Аватар"
         code: "Code"
         description: "Описание"
@@ -308,6 +314,9 @@ ru:
       index:
         title: "Управление AI Agent"
       hints:
+        agent_types:
+          client: "Синхронизируется с клиентом и может использовать Skills"
+          web: "Доступен только в веб-приложении и не может использовать Skills"
         enabled: "Отключенные агенты не доступны через API"
         thinking: "Разрешить модели использовать режим рассуждения"
       new:

@@ -1,6 +1,12 @@
 require "base64"
 require "active_storage/service/qiniu_service"
 
+unless URI.respond_to?(:escape)
+  def URI.escape(value)
+    URI::DEFAULT_PARSER.escape(value.to_s)
+  end
+end
+
 module ActiveStorage
   class Service::QiniuService
     private

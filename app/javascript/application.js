@@ -1,5 +1,6 @@
 import "@hotwired/turbo-rails";
 import { Application } from "@hotwired/stimulus";
+import AgentFormController from "./controllers/agent_form_controller";
 import CategoryMultiselectController from "./controllers/category_multiselect_controller";
 import CategorySelectorController from "./controllers/category_selector_controller";
 import ClipboardController from "./controllers/clipboard_controller";
@@ -17,6 +18,7 @@ import ToastController from "./controllers/toast_controller";
 import WeeklyProfitFilterController from "./controllers/weekly_profit_filter_controller";
 
 window.Stimulus = Application.start();
+Stimulus.register("agent-form", AgentFormController);
 Stimulus.register("category-multiselect", CategoryMultiselectController);
 Stimulus.register("category-selector", CategorySelectorController);
 Stimulus.register("clipboard", ClipboardController);
