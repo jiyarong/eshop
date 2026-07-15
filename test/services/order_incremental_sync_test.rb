@@ -456,7 +456,19 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
     result = sync.sync_stats_orders
 
     assert_equal({ ok: 1, fetched: 1, created: 0, updated: 1 }, result)
-    assert_equal "Склад продавца", RawWb::StatsOrder.find_by!(account: account, srid: srid).warehouse_type
+    stats_order = RawWb::StatsOrder.find_by!(account: account, srid: srid)
+    assert_equal "Склад продавца", stats_order.warehouse_type
+    assert_equal "Беларусь", stats_order.country_name
+    assert_equal "Центральный федеральный округ", stats_order.oblast_okrug_name
+    assert_equal "Москва", stats_order.region_name
+    assert_equal "Москва", stats_order.oblast
+    assert_equal BigDecimal("99.5"), stats_order.finished_price
+    assert_equal BigDecimal("108.75"), stats_order.price_with_disc
+    assert_equal BigDecimal("12.3"), stats_order.spp
+    assert_equal 987_654_321, stats_order.income_id
+    assert_equal "sticker-#{srid}", stats_order.sticker
+    assert_equal true, stats_order.is_realization
+    assert_equal false, stats_order.is_supply
     assert_equal "Склад продавца", RawWb::Order.find_by!(account: account, srid: srid).warehouse_type
   ensure
     RawWb::Order.where(account_id: account&.id).delete_all
@@ -656,8 +668,18 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       "barcode" => "BAR-#{srid}",
       "totalPrice" => 120,
       "discountPercent" => 10,
+      "finishedPrice" => 99.5,
+      "priceWithDisc" => 108.75,
+      "spp" => 12.3,
+      "incomeID" => 987_654_321,
+      "sticker" => "sticker-#{srid}",
+      "isRealization" => true,
+      "isSupply" => false,
       "warehouseName" => "Подольск",
-      "oblast" => "Москва",
+      "warehouseType" => "Склад WB",
+      "countryName" => "Беларусь",
+      "oblastOkrugName" => "Центральный федеральный округ",
+      "regionName" => "Москва",
       "nmId" => 123,
       "subject" => "subject",
       "category" => "category",
