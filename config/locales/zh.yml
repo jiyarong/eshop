@@ -75,6 +75,8 @@ zh:
       signed_out: "已退出登录。"
   activerecord:
     attributes:
+      ec/sku:
+        sku_code: "SKU编码"
       ec/sku_marketing_state:
         effective_at: "生效时间"
         ended_at: "结束时间"
@@ -89,6 +91,10 @@ zh:
         password_confirmation: "确认新密码"
     errors:
       models:
+        ec/sku:
+          attributes:
+            sku_code:
+              immutable: "创建后不可修改"
         ec/sku_marketing_state:
           attributes:
             ended_at:

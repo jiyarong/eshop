@@ -104,6 +104,8 @@ en:
       signed_out: "Signed out successfully."
   activerecord:
     attributes:
+      ec/sku:
+        sku_code: "SKU code"
       ec/sku_marketing_state:
         effective_at: "Effective at"
         ended_at: "Ended at"
@@ -115,6 +117,10 @@ en:
         email: "Email"
     errors:
       models:
+        ec/sku:
+          attributes:
+            sku_code:
+              immutable: "cannot be changed after creation"
         ec/sku_marketing_state:
           attributes:
             ended_at:

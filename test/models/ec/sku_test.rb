@@ -37,6 +37,16 @@ class Ec::SkuTest < ActiveSupport::TestCase
     assert_equal 3.5.to_d, sku.volume_l
   end
 
+  test "sku code cannot change after creation" do
+    sku = Ec::Sku.create!(sku_code: "sku-mgmt-#{@token}")
+
+    sku.sku_code = "RENAMED-#{@token}"
+
+    assert_not sku.save
+    assert_includes sku.errors.details[:sku_code], error: :immutable
+    assert_equal "SKU-MGMT-#{@token}", sku.reload.sku_code
+  end
+
   test "soft-deleted skus are hidden from default queries" do
     sku = Ec::Sku.create!(
       sku_code: "sku-mgmt-#{@token}",

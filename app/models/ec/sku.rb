@@ -19,6 +19,7 @@ module Ec
     has_many :attachments,       through: :attachment_links,            source: :ec_attachment
 
     validates :sku_code, presence: true, uniqueness: true
+    validate :sku_code_cannot_change, on: :update
     before_validation { self.sku_code = sku_code&.upcase }
 
     default_scope { where(deleted_at: nil) }
@@ -74,6 +75,10 @@ module Ec
     end
 
     private
+
+    def sku_code_cannot_change
+      errors.add(:sku_code, :immutable) if will_save_change_to_sku_code?
+    end
 
     def soft_delete
       return true if deleted?

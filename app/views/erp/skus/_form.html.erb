@@ -16,7 +16,7 @@
     </div>
     <div class="field">
       <%= form.label :sku_code, t("erp.skus.fields.sku_code") %>
-      <%= form.text_field :sku_code %>
+      <%= form.text_field :sku_code, readonly: sku.persisted? %>
     </div>
     <div class="field">
       <%= form.label :product_name, t("erp.common.chinese_name") %>

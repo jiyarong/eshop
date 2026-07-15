@@ -75,6 +75,8 @@ ru:
       signed_out: "Вы вышли из системы."
   activerecord:
     attributes:
+      ec/sku:
+        sku_code: "Код SKU"
       ec/sku_marketing_state:
         effective_at: "Начало действия"
         ended_at: "Окончание действия"
@@ -86,6 +88,10 @@ ru:
         email: "Email"
     errors:
       models:
+        ec/sku:
+          attributes:
+            sku_code:
+              immutable: "нельзя изменить после создания"
         ec/sku_marketing_state:
           attributes:
             ended_at:

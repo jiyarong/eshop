@@ -318,6 +318,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".erp-modal"
     assert_select "h2", "编辑 SKU"
     assert_select "form[action='#{erp_sku_path(@sku)}'][data-turbo-frame='_top']"
+    assert_select "input[name='ec_sku[sku_code]'][readonly='readonly'][value=?]", @sku.sku_code
     assert_select "input[name='ec_sku[product_name]'][value=?]", @sku.product_name
   end
 
@@ -399,6 +400,18 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal "更新商品", @sku.product_name
     assert_equal "蓝色", @sku.color
     assert_not @sku.is_active
+  end
+
+  test "update rejects sku code changes" do
+    patch "/erp/skus/#{@sku.id}", params: {
+      ec_sku: {
+        sku_code: "RENAMED-#{@token}"
+      }
+    }, headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :unprocessable_entity
+    assert_select ".error-box", text: /SKU编码 创建后不可修改/
+    assert_equal "SKU-PAGE-#{@token}", @sku.reload.sku_code
   end
 
   test "update sku records operation log with signed in user" do
