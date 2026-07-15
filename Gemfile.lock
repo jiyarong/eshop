@@ -433,6 +433,13 @@ GEM
     ruby-progressbar (1.13.0)
     rubyzip (3.4.1)
     securerandom (0.4.1)
+    sentry-rails (6.6.2)
+      railties (>= 5.2.0)
+      sentry-ruby (~> 6.6.2)
+    sentry-ruby (6.6.2)
+      bigdecimal
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      logger
     signet (0.21.0)
       addressable (~> 2.8)
       faraday (>= 0.17.5, < 3.a)
@@ -544,6 +551,8 @@ DEPENDENCIES
   redis (~> 5.0)
   rubocop-rails-omakase
   rubyzip (~> 3.0)
+  sentry-rails
+  sentry-ruby
   simple_apm (>= 1.1)
   solid_cable
   solid_cache
