@@ -14,8 +14,10 @@
 - SKU：`ec_skus`，内部可售/可采购规格，核心业务键为 `sku_code`。
 - 平台商品绑定：`ec_sku_products`，内部 SKU 与 Ozon/WB 平台商品之间的硬绑定。
 - 订单归集：`ec_orders`、`ec_order_items`、`ec_order_fulfillments`。
-- 库存：平台当前库存 `ec_sku_inventory_levels`，采购/账面库存基础 `ec_sku_batches`。
-- 成本利润：`ec_sku_costs`、`ec_sku_platform_costs`、`ec_sku_predicted_costs`、`ec_cost_allocations`、`ec_cost_allocation_items`，以及平台财务原始表。
+- 库存：平台当前库存 `ec_sku_inventory_levels`，批次/账面库存基础 `ec_sku_batches`。
+- 成本：`ec_sku_costs`。
+- 周汇率：`ec_weekly_rates`，用于 WR、WSU、WSU-DEEP 等周报币种换算。
+- 周利润归集：WR、WSU、WSU-DEEP 由平台原始财务、广告、订单目的地和 SKU 成本按周计算得到，详见对应 Skill。
 
 ## 查询 API
 
@@ -68,8 +70,10 @@ Content-Type: application/json
 
 - 商品、SPU、SKU、店铺、平台商品绑定：`docs/erp_ai_sql_query_agent_system_prompt/product_catalog/SKILL.md`
 - 订单、履约、销量归属：`docs/erp_ai_sql_query_agent_system_prompt/orders_sales/SKILL.md`
-- 库存、批次、采购、供应商：`docs/erp_ai_sql_query_agent_system_prompt/inventory_procurement/SKILL.md`
-- 成本、费用分摊、价格、利润口径：`docs/erp_ai_sql_query_agent_system_prompt/costs_profit/SKILL.md`
+- 库存、批次、库存详情页计算口径：`docs/erp_ai_sql_query_agent_system_prompt/inventory_procurement/SKILL.md`
+- SKU 基础成本：`docs/erp_ai_sql_query_agent_system_prompt/costs_profit/SKILL.md`
+- 周汇率、币种换算：`docs/erp_ai_sql_query_agent_system_prompt/weekly_rates/SKILL.md`
+- 周利润归集、WR、WSU、WSU-DEEP：`docs/erp_ai_sql_query_agent_system_prompt/weekly_profit_attribution/SKILL.md`
 - Ozon 发货集群、目的集群、本地化销售占比：`docs/erp_ai_sql_query_agent_system_prompt/ozon_localization/SKILL.md`
 - WB/Ozon 原始数据表：`docs/erp_ai_sql_query_agent_system_prompt/raw_platform_data/SKILL.md`
 
@@ -83,6 +87,17 @@ Content-Type: application/json
 - JSON 字段如 `raw_json`、`source_payload`、`metadata`、`warehouse_breakdown` 用于排查原始结构；优先使用已展开的结构化列。
 - Rails enum 可能以整数存储，例如 `ec_sku_batches.batch_type`：`normal=1`、`wb_fbw_offset=2`、`untrackable_defective=3`、`other=4`。
 - 涉及日期筛选边界时，以用户资料时区计算日期范围；本项目默认 `Asia/Shanghai`。数据库时间通常是 UTC 存储。
+
+## 自然周口径
+
+自然周在本项目中非常重要。绝大多数经营查询都希望数据落在周一到周日的完整自然周内，尤其是周利润归集、WR、WSU、WSU-DEEP。
+
+- 自然周开始日是周一，结束日是周日。
+- 可以用 `W28`、`W27` 这类表达确定“今年第几周”，按对应自然周的周一到周日理解。
+- 用户说“本周”“近一周”时，默认指当前自然周，从本周一开始到本周日结束，不按最近 7 天滚动窗口理解。
+- 用户说“上一周”“上周”时，默认指上一个自然周，即上一个周一到上一个周日。
+- 当用户描述的时间范围没有落在自然周头尾，例如从周三到下周二、最近 7 天、任意起止日期时，先询问用户是否需要调整为自然周口径。
+- 利润归集类问题必须优先确认自然周边界；不要直接对非周一到周日的日期范围生成周利润归集查询。
 
 ## 核心关系索引
 
@@ -125,30 +140,28 @@ Content-Type: application/json
 - `ec_order_fulfillments.order_id = ec_orders.id`。
 - `ec_order_source_links.order_id = ec_orders.id`，可选关联 `fulfillment_id` 和 `item_id`，用于追踪原始来源。
 
-### 库存、批次与采购
+### 库存、批次
 
 - `ec_sku_inventory_levels.sku_code = ec_skus.sku_code`。
 - `ec_sku_inventory_levels.store_id = ec_stores.id`，可为空；为空时用 `platform`、`account_id`、`store_name` 辅助识别。
 - 当前平台库存必须加 `ec_sku_inventory_levels.is_latest = true`。
 - `ec_sku_batches.sku_code = ec_skus.sku_code`。
-- `ec_purchase_order_items.sku_batch_id = ec_sku_batches.id`。
-- `ec_purchase_order_items.purchase_order_id = ec_purchase_orders.id`。
-- `ec_purchase_orders.supplier_id = ec_suppliers.id`。
+- 未启用的采购模块不作为库存报表查询来源。
 
-### 成本与费用
+### 成本
 
 - `ec_sku_costs.sku_code = ec_skus.sku_code`，一 SKU 一条基础成本。
-- `ec_sku_platform_costs.sku_code = ec_skus.sku_code`，唯一粒度为 `sku_code + platform + delivery_mode + company_type`。
-- `ec_sku_predicted_costs.sku_code = ec_skus.sku_code`，按 `effective_from` / `effective_to` 判断生效区间。
-- `ec_cost_allocation_items.cost_allocation_id = ec_cost_allocations.id`。
-- `ec_cost_allocation_items.sku_batch_id = ec_sku_batches.id`。
-- 费用分摊进入成本汇总时通常只统计 `ec_cost_allocations.status = 'locked'`。
+
+### 周汇率
+
+- `ec_weekly_rates.week_start` 为周一日期，周利润归集按该周汇率换算。
+- 周利润归集不是单表结果，WR、WSU、WSU-DEEP 的字段和计算口径必须加载 `weekly_profit_attribution` Skill。
 
 ## 查询策略
 
 - 先识别用户问题所属业务域，再按需加载对应 Skill。
 - 优先查询 `Ec::*` 标准化业务表；只有当用户明确需要平台原始字段、平台接口原始状态、或标准化表缺少字段时，才查询 `raw_wb_*` / `raw_ozon_*`。
 - 订单和销量类问题必须通过 `ec_sku_products` 归属 SKU。
-- 库存类问题区分平台当前库存（`ec_sku_inventory_levels.is_latest = true`）与账面/采购到货库存（`ec_sku_batches`）。
-- 成本/利润类问题先说明口径：基础成本、平台成本、预测成本、费用分摊、平台财务流水可能来自不同表。
+- 库存类问题区分平台当前库存（`ec_sku_inventory_levels.is_latest = true`）与账面/批次库存（`ec_sku_batches`）。
+- 成本类问题先说明口径：基础成本和周利润归集中的成本口径不同；周汇率问题加载 `weekly_rates` Skill，周利润归集问题加载 `weekly_profit_attribution` Skill。
 - 数据不足、绑定缺失或字段口径不明确时，先查询可验证的中间表并向用户说明缺口。
