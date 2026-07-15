@@ -56,9 +56,19 @@ module RawWb
           barcode:          r['barcode'],
           total_price:      r['totalPrice'],
           discount_percent: r['discountPercent'],
+          finished_price:   r['finishedPrice'],
+          price_with_disc:  r['priceWithDisc'],
+          spp:              r['spp'],
+          income_id:        r['incomeID'],
+          sticker:          r['sticker'],
+          is_realization:   r['isRealization'],
+          is_supply:        r['isSupply'],
           warehouse_name:   r['warehouseName'],
           warehouse_type:   r['warehouseType'],
-          oblast:           r['oblast'],
+          oblast:           r['oblast'].presence || r['regionName'],
+          country_name:     r['countryName'],
+          oblast_okrug_name: r['oblastOkrugName'],
+          region_name:      r['regionName'],
           nm_id:            r['nmId'],
           subject:          r['subject'],
           category:         r['category'],
@@ -72,7 +82,13 @@ module RawWb
       end
 
       def stats_order_update_cols
-        %i[last_change_date order_date warehouse_type is_cancel cancel_date synced_at]
+        %i[
+          last_change_date order_date total_price discount_percent
+          finished_price price_with_disc spp income_id sticker
+          is_realization is_supply warehouse_name warehouse_type
+          country_name oblast_okrug_name region_name oblast
+          is_cancel cancel_date synced_at
+        ]
       end
     end
   end

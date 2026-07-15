@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_15_072430) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_085339) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1853,15 +1853,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_072430) do
     t.string "brand"
     t.datetime "cancel_date"
     t.string "category"
+    t.string "country_name"
     t.integer "discount_percent"
+    t.decimal "finished_price", precision: 15, scale: 2
     t.string "g_number"
+    t.bigint "income_id"
     t.boolean "is_cancel", default: false
+    t.boolean "is_realization"
+    t.boolean "is_supply"
     t.datetime "last_change_date"
     t.bigint "nm_id"
     t.string "oblast"
+    t.string "oblast_okrug_name"
     t.datetime "order_date", null: false
     t.string "order_type"
+    t.decimal "price_with_disc", precision: 15, scale: 2
+    t.string "region_name"
+    t.decimal "spp", precision: 10, scale: 2
     t.string "srid"
+    t.string "sticker"
     t.string "subject"
     t.string "supplier_article"
     t.datetime "synced_at"

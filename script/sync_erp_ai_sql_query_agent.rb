@@ -18,10 +18,12 @@ class ErpAiSqlQueryAgentSync
   SKILL_DESCRIPTIONS = {
     "product_catalog" => "ERP SQL 查询：商品、SPU、SKU、店铺、类目和平台商品绑定表字段与关系。",
     "orders_sales" => "ERP SQL 查询：订单、履约、销量归属和销售统计口径。",
-    "inventory_procurement" => "ERP SQL 查询：库存、批次、采购、供应商和在途库存口径。",
-    "costs_profit" => "ERP SQL 查询：成本、价格、费用分摊、财务流水和利润口径。",
+    "inventory_procurement" => "ERP SQL 查询：库存、批次、库存详情页计算过程和平台库存口径。",
+    "costs_profit" => "ERP SQL 查询：SKU 基础成本、采购成本、体积重量和进口税参数字段与关系。",
     "ozon_localization" => "ERP SQL 查询：Ozon 发货集群、目的集群和本地化销售占比口径。",
-    "raw_platform_data" => "ERP SQL 查询：WB 与 Ozon 原始平台数据表字段和关系。"
+    "raw_platform_data" => "ERP SQL 查询：WB 与 Ozon 原始平台数据表字段和关系。",
+    "weekly_rates" => "ERP SQL 查询：周汇率、RUB/CNY/BYN 换算和周报汇率口径。",
+    "weekly_profit_attribution" => "ERP SQL 查询：WR、WSU、WSU-DEEP 周利润归集字段、表关系和计算口径。"
   }.freeze
 
   def initialize(env: ENV, stdout: $stdout)
@@ -76,6 +78,7 @@ class ErpAiSqlQueryAgentSync
       model_id: "deepseek-v4-flash",
       temperature: BigDecimal("0.3"),
       thinking_enabled: false,
+      agent_type: "client",
       tools: [],
       enabled: true,
       recommended_prompts: recommended_prompts
