@@ -3,7 +3,10 @@ module Api
     def show
       render json: {
         success: true,
-        data: profile_json(current_user).merge(llm_configs: llm_configs_json(current_user))
+        data: profile_json(current_user).merge(
+          api_key: usable_api_key(current_user),
+          llm_configs: llm_configs_json(current_user)
+        )
       }
     end
 
@@ -49,6 +52,28 @@ module Api
     end
 
     private
+
+    def usable_api_key(user)
+      user.api_keys.where(revoked_at: nil).order(:created_at).each do |api_key|
+        raw_token = api_key.raw_token
+        return raw_token if raw_token.present?
+      end
+
+      raw_token, = UserApiKey.generate_for!(user, name: next_api_key_name(user))
+      raw_token
+    end
+
+    def next_api_key_name(user)
+      name = "API"
+      suffix = 2
+
+      while user.api_keys.exists?(name: name)
+        name = "API #{suffix}"
+        suffix += 1
+      end
+
+      name
+    end
 
     def llm_configs_json(user)
       service = Sub2AIService.new

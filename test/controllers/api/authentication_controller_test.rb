@@ -15,6 +15,7 @@ module Api
     teardown do
       @user.avatar.purge if @user&.avatar&.attached?
       UserAccessToken.where(user_id: @user&.id).delete_all
+      UserApiKey.where(user_id: @user&.id).delete_all
       User.where(id: @user&.id).destroy_all
     end
 
@@ -127,6 +128,34 @@ module Api
 
       get "/api/profile", headers: bearer_headers("api_invalid"), as: :json
       assert_response :unauthorized
+    end
+
+    test "profile returns an existing usable API key" do
+      existing_api_key, = UserApiKey.generate_for!(@user, name: "Existing")
+      raw_token, = UserAccessToken.generate_for!(@user)
+
+      assert_no_difference "UserApiKey.where(user: @user).count" do
+        get "/api/profile", headers: bearer_headers(raw_token), as: :json
+      end
+
+      assert_response :success
+      assert_equal existing_api_key, response.parsed_body.dig("data", "api_key")
+    end
+
+    test "profile creates an API key when the user has no usable key" do
+      _, revoked_key = UserApiKey.generate_for!(@user, name: "API")
+      revoked_key.update!(revoked_at: Time.current)
+      raw_token, = UserAccessToken.generate_for!(@user)
+
+      assert_difference "UserApiKey.where(user: @user).count", 1 do
+        get "/api/profile", headers: bearer_headers(raw_token), as: :json
+      end
+
+      assert_response :success
+      api_key = response.parsed_body.dig("data", "api_key")
+      assert api_key.start_with?("mcp_")
+      assert_equal @user, UserApiKey.authenticate(api_key)
+      assert_equal "API 2", @user.api_keys.order(:created_at).last.name
     end
 
     test "profile returns Sub2 LLM configuration for the current user" do
