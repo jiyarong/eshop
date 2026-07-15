@@ -59,6 +59,11 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
       synced_at: Time.zone.parse("2026-06-22 10:00:00"),
       metadata: {}
     )
+    sku.marketing_states.create!(
+      grade: "A",
+      stage: "grw",
+      effective_at: Time.current
+    )
 
     row = Ec::InventoryPageRowQuery.new(sku).call
     summary = sku.inventory_overview[:summary]
@@ -66,6 +71,8 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     assert_equal 15, row[:incoming_quantity]
     assert_equal sku.sku_code, row[:sku_code]
     assert_equal "行测试商品", row[:product_name]
+    assert_equal "A", row[:marketing_grade]
+    assert_equal "grw", row[:marketing_stage]
     assert_equal summary[:book_stock], row[:book_stock]
     assert_equal summary[:platform_inbound_stock], row[:platform_inbound_stock]
     assert_equal summary[:fbo_fbw_stock], row[:platform_stock]
@@ -77,6 +84,7 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     assert_nil row[:daily_sales_velocity]
     assert_nil row[:turnover_days]
   ensure
+    Ec::SkuMarketingState.where(sku_id: sku&.id).delete_all
     Ec::SkuInventoryLevel.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuCost.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all

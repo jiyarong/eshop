@@ -293,6 +293,23 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", count: 1
   end
 
+  test "inventory report renders current marketing grade and stage beside sku" do
+    Ec::SkuMarketingStateChange.new(
+      sku: @sku, grade: "A", stage: "grw", changed_by: @current_user, note: "库存列表展示"
+    ).call
+
+    get "/reports/inventory", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "tr.inventory-list-table__row", count: 1
+    assert_select ".inventory-list-table__sku-line" do
+      assert_select ".inventory-list-table__sku-link", text: @sku_code
+      assert_select ".marketing-grade--a", "A"
+      assert_select ".marketing-stage--grw", "GRW"
+      assert_select "a.sku-marketing-state", count: 0
+    end
+  end
+
   test "inventory report renders localized turnover filter labels in chinese" do
     get "/reports/inventory", params: { locale: "zh" }, headers: { "Accept" => "text/html" }
 
@@ -1009,8 +1026,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".sku-detail-marketing-state" do
-      assert_select ".marketing-grade--a", "Grade A"
-      assert_select ".marketing-stage--grw", "Stage GRW"
+      assert_select ".marketing-grade--a", "A"
+      assert_select ".marketing-stage--grw", "GRW"
       assert_select ".sku-marketing-state__strategy", "加速成长"
       assert_select "a[href=?][data-turbo-frame='erp_modal']",
                     new_erp_sku_marketing_state_path(@sku, return_to: "/reports/skus/#{@sku.sku_code}")

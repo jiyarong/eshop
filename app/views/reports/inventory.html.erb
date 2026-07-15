@@ -118,12 +118,28 @@
               <% daily_sales_velocity = row[:daily_sales_velocity] %>
               <% turnover_days = row[:turnover_days] %>
               <% turnover_days_with_procurement = row[:turnover_days_with_procurement] %>
+              <% marketing_grade = row[:marketing_grade].presence %>
+              <% marketing_stage = row[:marketing_stage].presence %>
               <tr class="inventory-list-table__row">
                 <td>
-                  <%= link_to row[:sku_code],
-                              report_inventory_detail_path(row[:sku_code], locale: params[:locale].presence),
-                              class: "inventory-list-table__sku-link",
-                              data: { turbo_frame: "inventory_drawer" } %>
+                  <div class="inventory-list-table__sku-line">
+                    <%= link_to row[:sku_code],
+                                report_inventory_detail_path(row[:sku_code], locale: params[:locale].presence),
+                                class: "inventory-list-table__sku-link",
+                                data: { turbo_frame: "inventory_drawer" } %>
+                    <span class="inventory-list-table__marketing-tags">
+                      <% if marketing_grade.present? %>
+                        <span class="marketing-tag marketing-grade--<%= marketing_grade.downcase %>"><%= marketing_grade %></span>
+                      <% else %>
+                        <span class="marketing-tag marketing-tag--unset"><%= t("erp.sku_marketing_states.labels.grade_unset") %></span>
+                      <% end %>
+                      <% if marketing_stage.present? %>
+                        <span class="marketing-tag marketing-stage--<%= marketing_stage %>"><%= marketing_stage.upcase %></span>
+                      <% else %>
+                        <span class="marketing-tag marketing-tag--unset"><%= t("erp.sku_marketing_states.labels.stage_unset") %></span>
+                      <% end %>
+                    </span>
+                  </div>
                   <% if dimensions_text.present? %>
                     <div class="inventory-list-table__subline"><%= dimensions_text %></div>
                   <% end %>

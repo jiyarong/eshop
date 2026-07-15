@@ -876,6 +876,20 @@ textarea {
   color: var(--erp-brand);
 }
 
+.inventory-list-table__sku-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inventory-list-table__marketing-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
 .inventory-list-table__name-cell {
   min-width: 220px;
 }

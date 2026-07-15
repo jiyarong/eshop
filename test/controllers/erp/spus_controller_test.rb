@@ -215,8 +215,8 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".sub-tbl tr.sku-row" do
-      assert_select ".marketing-grade--a", "Grade A"
-      assert_select ".marketing-stage--grw", "Stage GRW"
+      assert_select ".marketing-grade--a", "A"
+      assert_select ".marketing-stage--grw", "GRW"
       assert_select ".sku-marketing-state__strategy", "加速成长"
     end
   end
