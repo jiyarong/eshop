@@ -21,6 +21,31 @@ class QiniuServiceEncodingTest < ActiveSupport::TestCase
     )
   end
 
+  test "qiniu private service uses the Active Storage URL expiration" do
+    service = ActiveStorage::Service::QiniuService.new(
+      access_key: "test-access-key",
+      secret_key: "test-secret-key",
+      bucket: "test-bucket",
+      domain: "assets.example.test",
+      bucket_private: true
+    )
+    captured_options = nil
+    original_method = Qiniu::Auth.method(:authorize_download_url_2)
+    Qiniu::Auth.define_singleton_method(:authorize_download_url_2) do |_domain, _key, options|
+      captured_options = options
+      "signed-url"
+    end
+
+    begin
+      url = service.url("skills/initial.zip", disposition: :attachment)
+    ensure
+      Qiniu::Auth.define_singleton_method(:authorize_download_url_2, original_method)
+    end
+
+    assert_equal "signed-url", url
+    assert_equal ActiveStorage.service_urls_expire_in, captured_options[:expires_in]
+  end
+
   test "qiniu service encodes long upload keys without newlines" do
     key = "ec/skus/2/attachments/1b9f42dd-91eb-490f-85a9-c0f865ffd5cf/robots.txt"
     encoded = ActiveStorage::Service::QiniuService.allocate.send(:encode, key)
