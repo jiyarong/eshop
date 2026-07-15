@@ -24,6 +24,13 @@ class UserRolePermissionsTest < ActiveSupport::TestCase
     assert_not user.can?(:manage_users)
   end
 
+  test "unknown role has no permissions" do
+    role = Role.new(code: "product_dev")
+
+    assert_empty role.permissions
+    assert_not role.allows?(:view_reports)
+  end
+
   test "inactive user cannot authenticate" do
     user = User.create!(
       email: "viewer-#{@token}@example.com",

@@ -60,7 +60,7 @@ class Role < ApplicationRecord
   end
 
   def permissions
-    DEFINITIONS.fetch(code).fetch(:permissions)
+    DEFINITIONS.dig(code, :permissions) || []
   end
 
   def allows?(permission)
