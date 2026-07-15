@@ -43,7 +43,38 @@ class QiniuServiceEncodingTest < ActiveSupport::TestCase
     end
 
     assert_equal "signed-url", url
-    assert_equal ActiveStorage.service_urls_expire_in, captured_options[:expires_in]
+    assert_equal ActiveStorage.service_urls_expire_in.to_i, captured_options[:expires_in]
+  end
+
+  test "qiniu service downloads through URI with timeouts" do
+    service = ActiveStorage::Service::QiniuService.new(
+      access_key: "test-access-key",
+      secret_key: "test-secret-key",
+      bucket: "test-bucket",
+      domain: "assets.example.test"
+    )
+    calls = []
+    original_method = URI.method(:open)
+    URI.define_singleton_method(:open) do |url, **options, &block|
+      calls << [ url, options ]
+      block.call(StringIO.new("skill archive"))
+    end
+
+    begin
+      assert_equal "skill archive", service.download("skills/initial.zip")
+      chunks = []
+      service.download("skills/initial.zip") { |chunk| chunks << chunk }
+      assert_equal [ "skill archive" ], chunks
+    ensure
+      URI.define_singleton_method(:open, original_method)
+    end
+
+    assert_equal 2, calls.length
+    calls.each do |url, options|
+      assert_equal "https://assets.example.test/skills%2Finitial.zip?attname=skills/initial.zip", url
+      assert_equal 5, options[:open_timeout]
+      assert_equal 15, options[:read_timeout]
+    end
   end
 
   test "qiniu service encodes long upload keys without newlines" do
