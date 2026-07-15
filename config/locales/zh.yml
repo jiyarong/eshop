@@ -112,7 +112,8 @@ zh:
     skus: "SKU"
     sku_sales: "SKU 销量"
     costs: "成本"
-    erp_skus: "SPU 管理"
+    erp_spus: "SPU 管理"
+    erp_skus: "SKU 管理"
     erp_stores: "店铺设置"
     sku_categories: "SKU 类别"
     sku_batches: "ERP 批次"
@@ -1133,6 +1134,12 @@ zh:
         priority_validation: "重点验证"
         stable_operation: "稳定经营"
         validate_demand: "验证需求"
+    spus:
+      index:
+        active_products: "启用 SPU"
+        hierarchy: "SPU · SKU · 批次库存"
+        product_overview: "产品概览"
+        title: "SPU 管理"
     skus:
       actions:
         add_product: "新增 SPU"
@@ -1162,23 +1169,37 @@ zh:
         volume_l: "体积 L"
         weight_kg: "重量 kg"
       filters:
+        all_spus: "全部 SPU"
+        all_grades: "全部 Grade"
+        all_stages: "全部 Stage"
         all_categories: "全部类别"
         category_search_placeholder: "按类目搜索"
         no_categories: "没有匹配的类目"
         selected_categories: "已选 %{count} 个类目"
         search_placeholder: "搜索 SPU、SKU、中文名或俄文名…"
+        sku_search_placeholder: "搜索 SKU、SPU、中文名或俄文名…"
       index:
         active_products: "启用 SPU"
+        active_skus: "启用 SKU"
         batch_list: "批次清单"
-        hierarchy: "SPU · SKU · 批次库存"
+        hierarchy: "SKU · 批次库存"
         product_overview: "产品概览"
+        sku_overview: "SKU 概览"
         showing_recent_batches: "已展示最近 %{shown} / %{total} 个批次"
         sku_batches_label: "%{sku} 批次"
         sku_variants:
           one: "SKU 变体 · %{count} 个"
           other: "SKU 变体 · %{count} 个"
-        title: "SPU 管理"
+        title: "SKU 管理"
         unfiled: "未归档"
+      pagination:
+        aria_label: "SKU 分页"
+        jump_action: "确定"
+        jump_label: "跳至"
+        next_page: "下一页"
+        page_chip: "第 %{page}/%{pages} 页"
+        previous_page: "上一页"
+        summary: "显示第 %{from}-%{to} 条，共 %{total} 条"
       statuses:
         active: "上架"
         inactive: "下架"

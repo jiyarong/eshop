@@ -105,7 +105,8 @@ ru:
     skus: "SKU"
     sku_sales: "Продажи SKU"
     costs: "Затраты"
-    erp_skus: "Управление SPU"
+    erp_spus: "Управление SPU"
+    erp_skus: "Управление SKU"
     erp_stores: "Настройки магазинов"
     sku_categories: "Категории SKU"
     sku_batches: "Партии ERP"
@@ -1111,6 +1112,12 @@ ru:
         priority_validation: "Приоритетная проверка"
         stable_operation: "Стабильная работа"
         validate_demand: "Проверить спрос"
+    spus:
+      index:
+        active_products: "Активные SPU"
+        hierarchy: "SPU · SKU · Склад партий"
+        product_overview: "Обзор продуктов"
+        title: "Управление SPU"
     skus:
       actions:
         add_product: "Добавить SPU"
@@ -1140,23 +1147,37 @@ ru:
         volume_l: "Объем L"
         weight_kg: "Вес kg"
       filters:
+        all_spus: "Все SPU"
+        all_grades: "Все Grade"
+        all_stages: "Все Stage"
         all_categories: "Все категории"
         category_search_placeholder: "Поиск категорий"
         no_categories: "Подходящих категорий нет"
         selected_categories: "Выбрано категорий: %{count}"
         search_placeholder: "Поиск SPU, SKU, китайского или русского названия..."
+        sku_search_placeholder: "Поиск SKU, SPU, китайского или русского названия..."
       index:
         active_products: "Активные SPU"
+        active_skus: "Активные SKU"
         batch_list: "Список партий"
-        hierarchy: "SPU · SKU · Склад партий"
+        hierarchy: "SKU · Склад партий"
         product_overview: "Обзор продуктов"
+        sku_overview: "Обзор SKU"
         showing_recent_batches: "Показаны последние %{shown} / %{total} партий"
         sku_batches_label: "Партии %{sku}"
         sku_variants:
           one: "Варианты SKU · %{count}"
           other: "Варианты SKU · %{count}"
-        title: "Управление SPU"
+        title: "Управление SKU"
         unfiled: "Без группы"
+      pagination:
+        aria_label: "Пагинация SKU"
+        jump_action: "OK"
+        jump_label: "Перейти"
+        next_page: "Следующая страница"
+        page_chip: "Стр. %{page}/%{pages}"
+        previous_page: "Предыдущая страница"
+        summary: "Показано %{from}-%{to} из %{total}"
       statuses:
         active: "Активен"
         inactive: "Неактивен"

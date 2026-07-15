@@ -77,129 +77,71 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     User.where("email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
   end
 
-  test "index renders skus" do
+  test "index renders sku list with batches" do
     get "/erp/skus", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "h1", "SPU 管理"
-    assert_select ".product-management"
-    assert_select ".page-h"
-    assert_select ".product-page-actions a", text: "新增 SPU"
-    assert_no_match "Import", response.body
-    assert_no_match "展开全部", response.body
-    assert_no_match "收起全部", response.body
+    assert_select "h1", "SKU 管理"
+    assert_select ".product-management.sku-management"
+    assert_select ".product-page-actions a[href='#{erp_new_sku_path(return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "新增 SKU"
     assert_select ".card.product-filter-card form[action='/erp/skus'][method='get']"
-    assert_select "input[name='q']"
-    assert_select ".category-multiselect[data-controller='category-multiselect']"
-    assert_select ".category-multiselect__trigger[aria-expanded='false']", text: "全部类别"
-    assert_select ".category-multiselect__panel[hidden]", count: 1
-    assert_select ".category-multiselect input[type='search'][placeholder=?]", "按类目搜索"
-    assert_select ".category-multiselect input[name='category_ids[]'][value=?]", @platform_category_child.id.to_s, count: 1
-    assert_select ".category-multiselect__option", text: "平台父类 #{@token} / 平台子类 #{@token}", count: 1
-    assert_select ".category-multiselect__option", text: @category.name, count: 0
-    assert_select ".product-summary-grid", 1
-    assert_select ".product-summary-card", 4
-    assert_select ".card.product-list-card"
-    assert_select ".prod-tbl"
+    assert_select "input[name='q'][placeholder=?]", "搜索 SKU、SPU、中文名或俄文名…"
+    assert_select "select[name='master_sku_id']"
+    assert_select "option", "全部 SPU"
+    assert_select "select[name='grade'] option", "全部 Grade"
+    assert_select "select[name='grade'] option[value='S']", "S"
+    assert_select "select[name='stage'] option", "全部 Stage"
+    assert_select "select[name='stage'] option[value='new']", "NEW"
+    assert_select ".category-multiselect", count: 0
+    assert_select ".product-summary-grid[aria-label=?]", "SKU 概览"
+    assert_select ".summary-label", "启用 SKU"
+    assert_select ".prod-tbl thead th", text: "SKU"
     assert_select ".prod-tbl thead th", text: "SPU"
     assert_select ".prod-tbl thead th", text: "中文名"
     assert_select ".prod-tbl thead th", text: "俄文名"
-    assert_select ".prod-tbl thead th", text: "平台类目"
-    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
-    assert_select ".prod-tbl tr.master .platform-category", text: "平台父类 #{@token} / 平台子类 #{@token}"
-    assert_select ".product-list-card[data-controller='product-tree']"
-    assert_select "tr.master.open", count: 0
-    assert_select "tr.sku-row.open", count: 0
-    assert_select "tr.sub-row[hidden]", minimum: 1
-    assert_select "tr.batch-row[hidden]", minimum: 1
-    assert_select "button.product-tree-toggle[data-action='product-tree#toggleMaster'][aria-expanded='false']", minimum: 1
-    assert_select "button.product-tree-toggle[data-action='product-tree#toggleSku'][aria-expanded='false']", minimum: 1
-    assert_select "button.product-tree-toggle[aria-expanded='false'] i.bi-chevron-right", minimum: 1
-    assert_select "button.product-tree-toggle[aria-expanded='false'] i.bi-chevron-down", count: 0
-    assert_select ".sub-h", text: "SKU 变体 · 1 个"
-    assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
+    assert_select ".prod-tbl thead th", text: "营销状态"
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
+    assert_select ".prod-tbl tr.sku-row.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".prod-tbl tr.sku-row.master .zh-name", text: @sku.product_name
     assert_select ".sku-marketing-state .marketing-tag--unset", text: "Grade 未设置"
     assert_select ".sku-marketing-state .marketing-tag--unset", text: "Stage 未设置"
-    assert_select "a[href='#{new_erp_sku_marketing_state_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']"
+    assert_select "button.product-tree-toggle[data-action='product-tree#toggleMaster'][aria-expanded='false']", minimum: 1
+    assert_select "button.product-tree-toggle[data-action='product-tree#toggleSku']", count: 0
+    assert_select "tr.batch-row[hidden]", minimum: 1
     assert_select ".batch-title", text: "批次清单"
-    assert_select ".batch-tbl th", text: "采购日期"
-    assert_select ".batch-tbl th", text: "出境日期"
-    assert_select ".batch-tbl th", text: "境外交付日期"
-    assert_no_match "入库日期", response.body
-    assert_no_match "境内交付日期", response.body
-    assert_no_match "采购单价", response.body
-    assert_no_match "成本价", response.body
-    assert_no_match "仓库", response.body
     assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select ".batch-tbl td", text: "180"
-    assert_select "td", "页面主产品"
-    assert_select ".attr-zh", text: @category.name
     assert_select ".badge.badge-suc", text: "Active"
     assert_select ".badge.badge-sec", text: "下架"
-    assert_select "turbo-frame#erp_modal"
-    assert_select "a[href='#{erp_new_master_sku_path}'][data-turbo-frame='erp_modal']", text: "新增 SPU"
-    assert_select "a[href='#{erp_edit_master_sku_path(@master_sku)}'][data-turbo-frame='erp_modal']", text: "编辑 SPU"
-    assert_select "a[href='#{erp_new_sku_path(master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "新增 SKU"
-    assert_select "a[href='#{erp_edit_sku_path(@sku)}'][data-turbo-frame='erp_modal']", text: "编辑"
+    assert_select "a[href='#{new_erp_sku_marketing_state_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']"
+    assert_select "a[href='#{erp_edit_sku_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "编辑"
     assert_select "a[href='#{erp_sku_path(@sku)}'][data-turbo-method='delete'][data-turbo-confirm=?]", "确认删除这个 SKU？", minimum: 1
     assert_select "a[href='#{erp_new_sku_batch_path(sku_code: @sku.sku_code, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "新增批次"
     assert_select "a[href='#{erp_edit_sku_batch_path(@batch, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "编辑"
     assert_select "a[data-turbo-method='delete'][data-turbo-confirm=?][href=?]", "确认删除这个批次？", erp_sku_batch_path(@batch, return_to: "/erp/skus"), minimum: 1
   end
 
-  test "inventory batch rows render inline editable cell frames" do
-    get "/erp/skus", headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell", count: 1
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell", count: 1
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell", count: 1
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_on_cell", count: 1
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell", count: 1
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell", count: 1
-    assert_select "turbo-frame#sku_batch_#{@batch.id}_status_cell", count: 1
-    assert_select "#global_toast", count: 1
-    assert_select "#batch-inline-feedback--sku-#{@sku.id}", count: 0
-    assert_select "tr.batch-row[hidden] table.batch-tbl tbody tr", count: 1 do
-      assert_select "td:nth-of-type(2) .inline-edit-cell--display", text: @batch.purchase_date.to_s
-    end
-    assert_match @batch.purchase_date.to_s, response.body
-  end
-
-  test "index localizes visible chrome in english" do
+  test "index localizes visible sku list chrome in english" do
     get "/erp/skus", params: { locale: "en" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "h1", "SPU Management"
-    assert_select ".product-page-actions a", text: "Add SPU"
-    assert_select ".product-summary-grid[aria-label=?]", "Product overview"
-    assert_select ".summary-label", "Batches"
-    assert_select ".summary-label", "Active SPUs"
-    assert_select "input[placeholder=?]", "Search SPU, SKU, Chinese name, or Russian name..."
-    assert_select ".category-multiselect__trigger", text: "All categories"
-    assert_select ".category-multiselect input[type='search'][placeholder=?]", "Search categories"
-    assert_select "label", "Status"
-    assert_select "option", "All"
-    assert_select "option", "Enabled"
-    assert_select "label", "Category"
-    assert_select "button", "Filter"
-    assert_select "a", "Reset"
+    assert_select "h1", "SKU Management"
+    assert_select ".product-page-actions a[href='#{erp_new_sku_path(locale: "en", return_to: "/erp/skus?locale=en")}'][data-turbo-frame='erp_modal']", text: "Add SKU"
+    assert_select ".product-summary-grid[aria-label=?]", "SKU overview"
+    assert_select ".summary-label", "Active SKUs"
+    assert_select "input[placeholder=?]", "Search SKU, SPU, Chinese name, or Russian name..."
+    assert_select "option", "All SPUs"
+    assert_select "option", "All Grades"
+    assert_select "option", "All Stages"
+    assert_select ".prod-tbl thead th", text: "SKU"
+    assert_select ".prod-tbl thead th", text: "SPU"
     assert_select ".prod-tbl thead th", text: "Chinese name"
-    assert_select ".prod-tbl thead th", text: "Platform category"
-    assert_select ".prod-tbl thead th", text: "Actions"
     assert_select ".prod-tbl thead th", text: "Marketing state"
     assert_select ".marketing-tag--unset", text: "Grade unset"
-    assert_select ".prod-tbl tr.master .platform-category", text: "Platform Parent #{@token} / Platform Child #{@token}"
-    assert_select ".sub-h", text: "SKU variants · 1 item"
     assert_select ".batch-title", text: "Batch list"
     assert_select ".batch-tbl th", text: "Purchase date"
     assert_select ".badge.badge-suc", text: "Active"
     assert_select ".badge.badge-sec", text: "Inactive"
-    assert_select "a[href='#{erp_new_master_sku_path(locale: "en")}'][data-turbo-frame='erp_modal']", text: "Add SPU"
-    assert_select "a[href='#{erp_new_sku_path(locale: "en", master_sku_id: @master_sku.id)}'][data-turbo-frame='erp_modal']", text: "Add SKU"
-    assert_select "a[href='#{erp_sku_path(@sku, locale: "en")}'][data-turbo-method='delete']", minimum: 1 do |links|
-      assert_equal "Delete this SKU?", links.first["data-turbo-confirm"]
-    end
     assert_select "a[href='#{erp_new_sku_batch_path(locale: "en", sku_code: @sku.sku_code, return_to: "/erp/skus?locale=en")}'][data-turbo-frame='erp_modal']", text: "Add batch"
     assert_select "a[href='#{erp_sku_batch_path(@batch, locale: "en", return_to: "/erp/skus?locale=en")}'][data-turbo-method='delete']", minimum: 1 do |links|
       assert_equal "Delete this batch?", links.first["data-turbo-confirm"]
@@ -214,107 +156,134 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     get "/erp/skus", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".sub-tbl tr.sku-row" do
-      assert_select ".marketing-grade--a", "Grade A"
-      assert_select ".marketing-stage--grw", "Stage GRW"
+    assert_select ".prod-tbl tr.sku-row" do
+      assert_select ".marketing-grade--a", "A"
+      assert_select ".marketing-stage--grw", "GRW"
       assert_select ".sku-marketing-state__strategy", "加速成长"
     end
   end
 
-  test "index filters products by keyword and status" do
-    get "/erp/skus", params: { q: @master_sku.master_sku_code.downcase, status: "active" }, headers: { "Accept" => "text/html" }
+  test "index filters skus by keyword status and master sku" do
+    get "/erp/skus", params: { q: @sku.sku_code.downcase, status: "active", master_sku_id: @master_sku.id }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "input[name='q'][value=?]", @master_sku.master_sku_code.downcase
-    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select "input[name='q'][value=?]", @sku.sku_code.downcase
+    assert_select "select[name='master_sku_id'] option[selected='selected'][value=?]", @master_sku.id.to_s
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
     assert_no_match @inactive_sku.sku_code, response.body
   end
 
-  test "index filters master sku by full child sku code" do
-    get "/erp/skus", params: { q: @sku.sku_code, status: "active" }, headers: { "Accept" => "text/html" }
+  test "index filters sku by master sku keyword" do
+    get "/erp/skus", params: { q: @master_sku.master_sku_code.downcase }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
-    assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
+    assert_select ".prod-tbl tr.sku-row.master .code-text", text: @master_sku.master_sku_code
+  end
+
+  test "index filters skus by current marketing grade and stage" do
+    Ec::SkuMarketingStateChange.new(
+      sku: @sku, grade: "A", stage: "grw", changed_by: @current_user, note: "增长阶段"
+    ).call
+    other_sku = Ec::Sku.create!(
+      sku_code: "SKU-MKT-#{@token}",
+      product_name: "其他营销商品",
+      is_active: true
+    )
+    Ec::SkuMarketingStateChange.new(
+      sku: other_sku, grade: "A", stage: "mat", changed_by: @current_user, note: "成熟阶段"
+    ).call
+
+    get "/erp/skus", params: { grade: "a", stage: "GRW" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "select[name='grade'] option[selected='selected'][value='A']", "A"
+    assert_select "select[name='stage'] option[selected='selected'][value='grw']", "GRW"
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
+    assert_no_match other_sku.sku_code, response.body
     assert_no_match @inactive_sku.sku_code, response.body
   end
 
-  test "index filters by multiple master sku platform categories" do
-    other_parent = Ec::Category.create!(
-      source: "test",
-      source_type: "category",
-      source_id: platform_category_source_id("other-parent"),
-      origin_name: "Other Parent #{@token}",
-      origin_language: "en",
-      name_cn: "其他父类 #{@token}",
-      name_en: "Other Parent #{@token}"
-    )
-    other_child = Ec::Category.create!(
-      source: "test",
-      source_type: "subject",
-      source_id: platform_category_source_id("other-child"),
-      parent: other_parent,
-      origin_name: "Other Child #{@token}",
-      origin_language: "en",
-      name_cn: "其他子类 #{@token}",
-      name_en: "Other Child #{@token}"
-    )
-    other_master_sku = Ec::MasterSku.create!(
-      master_sku_code: "MASTER-OTHER-#{@token}",
-      product_name: "其他主产品",
-      ec_category: other_child,
-      is_active: true
-    )
-    Ec::Sku.create!(
-      master_sku: other_master_sku,
-      sku_code: "SKU-OTHER-#{@token}",
-      product_name: "其他商品",
-      is_active: true
-    )
-
-    get "/erp/skus", params: { category_ids: [@platform_category_child.id, other_child.id] }, headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select ".category-multiselect__trigger", text: "已选 2 个类目"
-    assert_select ".category-multiselect__panel[hidden]", count: 1
-    assert_select ".category-multiselect input[name='category_ids[]'][checked='checked']", count: 2
-    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
-    assert_select ".prod-tbl tr.master .code-text", text: other_master_sku.master_sku_code
-
-    sign_in @current_user
-    get "/erp/skus", params: { category_ids: [other_child.id] }, headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select ".prod-tbl tr.master .code-text", text: other_master_sku.master_sku_code
-    assert_no_match @master_sku.master_sku_code, response.body
-  end
-
-  test "index lists each master sku platform category once" do
-    Ec::MasterSku.create!(
-      master_sku_code: "MASTER-DUP-#{@token}",
-      product_name: "重复类别主产品",
-      ec_category: @platform_category_child,
-      is_active: true
-    )
+  test "index paginates sku list with inventory pagination styling" do
+    22.times do |index|
+      Ec::Sku.create!(
+        sku_code: format("SKU-PAG-%02d-%s", index, @token),
+        product_name: "分页 SKU #{index}",
+        is_active: true
+      )
+    end
 
     get "/erp/skus", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".category-multiselect input[name='category_ids[]'][value=?]", @platform_category_child.id.to_s, count: 1
-  end
+    assert_select "tbody tr.sku-row.master", count: 10
+    assert_select ".inventory-pagination-bar"
+    assert_select ".inventory-pagination-bar .pagination-nav"
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 1/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 1-10 条，共 24 条/
+    assert_select ".inventory-pagination-bar .pagination-jump-input[value='1']"
+    assert_select ".inventory-pagination-bar .pg-btn", "2"
 
-  test "index does not render expand toggle for unfiled sku without batches" do
-    orphan = Ec::Sku.create!(
-      sku_code: "SKU-ORPHAN-#{@token}",
-      product_name: "无批次商品",
-      is_active: true
-    )
-
-    get "/erp/skus", params: { q: orphan.sku_code }, headers: { "Accept" => "text/html" }
+    sign_in @current_user
+    get "/erp/skus", params: { page: 2, q: "SKU-PAG-" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "td .code-text.sub", orphan.sku_code
-    assert_select "button.product-tree-toggle[data-action='product-tree#toggleMaster']", count: 0
+    assert_select "tbody tr.sku-row.master", count: 10
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 22 条/
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='q=SKU-PAG-']"
+    assert_select ".inventory-pagination-bar a[href*='page=3'][href*='q=SKU-PAG-']"
+    assert_select ".inventory-pagination-bar form[action='/erp/skus'] input[name='q'][value='SKU-PAG-']"
+    assert_select ".inventory-pagination-bar .pagination-jump-input[value='2']"
+  end
+
+  test "index pagination preserves marketing filters" do
+    12.times do |index|
+      sku = Ec::Sku.create!(
+        sku_code: format("SKU-GRD-%02d-%s", index, @token),
+        product_name: "Grade 分页 SKU #{index}",
+        is_active: true
+      )
+      Ec::SkuMarketingStateChange.new(
+        sku: sku, grade: "B", stage: "new", changed_by: @current_user, note: "分页筛选"
+      ).call
+    end
+
+    get "/erp/skus", params: { page: 2, grade: "B", stage: "new" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/2 页"
+    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='grade=B'][href*='stage=new']"
+    assert_select ".inventory-pagination-bar form[action='/erp/skus'] input[name='grade'][value='B']"
+    assert_select ".inventory-pagination-bar form[action='/erp/skus'] input[name='stage'][value='new']"
+  end
+
+  test "index jump pagination clamps and falls back to current page" do
+    22.times do |index|
+      Ec::Sku.create!(
+        sku_code: format("SKU-JMP-%02d-%s", index, @token),
+        product_name: "跳页 SKU #{index}",
+        is_active: true
+      )
+    end
+
+    get "/erp/skus",
+        params: { page: 2, current_page: 2, jump_page: 99, q: "SKU-JMP-" },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 3/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 21-22 条，共 22 条/
+
+    sign_in @current_user
+    get "/erp/skus",
+        params: { page: 2, current_page: 2, jump_page: "bad", q: "SKU-JMP-" },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 22 条/
   end
 
   test "show redirects to sku report detail" do

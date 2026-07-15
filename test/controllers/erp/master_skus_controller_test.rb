@@ -87,7 +87,7 @@ class Erp::MasterSkusControllerTest < ActionDispatch::IntegrationTest
     end
 
     created = Ec::MasterSku.find_by!(master_sku_code: "MASTER-CREATE-#{@token}")
-    assert_redirected_to "/erp/skus"
+    assert_redirected_to "/erp/spus"
     assert_equal "新增主产品", created.product_name
     assert_equal @category_parent, created.ec_category
   end
@@ -107,7 +107,7 @@ class Erp::MasterSkusControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    assert_redirected_to "/erp/skus"
+    assert_redirected_to "/erp/spus"
     master_sku.reload
     assert_equal "更新后主产品", master_sku.product_name
     assert_equal @category_child, master_sku.ec_category

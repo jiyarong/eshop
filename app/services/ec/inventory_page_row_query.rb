@@ -15,6 +15,8 @@ module Ec
         sku_code: @sku.sku_code,
         product_name: @sku.product_name,
         product_name_ru: @sku.product_name_ru,
+        marketing_grade: current_marketing_state&.grade,
+        marketing_stage: current_marketing_state&.stage,
         incoming_quantity: incoming_quantity,
         book_stock: summary[:book_stock],
         platform_inbound_stock: summary[:platform_inbound_stock],
@@ -34,6 +36,10 @@ module Ec
 
     def incoming_quantity
       procurement_batches.sum(:purchased_quantity).to_i
+    end
+
+    def current_marketing_state
+      @current_marketing_state ||= @sku.current_marketing_state
     end
 
     def procurement_batches

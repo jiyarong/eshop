@@ -15,7 +15,7 @@ module Erp
     def create
       @master_sku = Ec::MasterSku.new(master_sku_params)
       if @master_sku.save
-        redirect_to erp_skus_path
+        redirect_to erp_spus_path
       else
         render_modal_or_page(:new, :new_modal, status: :unprocessable_entity)
       end
@@ -23,7 +23,7 @@ module Erp
 
     def update
       if @master_sku.update(master_sku_params)
-        redirect_to erp_skus_path
+        redirect_to erp_spus_path
       else
         render_modal_or_page(:edit, :edit_modal, status: :unprocessable_entity)
       end

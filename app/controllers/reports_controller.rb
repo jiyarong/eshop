@@ -310,7 +310,7 @@ class ReportsController < ApplicationController
   end
 
   def inventory_skus_scope
-    scope = Ec::Sku.includes(:cost)
+    scope = Ec::Sku.includes(:cost, :current_marketing_state)
     return scope if @sku_query.blank?
 
     scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)
