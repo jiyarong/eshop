@@ -82,6 +82,27 @@ module Mcp
       assert_includes result.fetch(:tools), "list_my_skus"
       assert_includes result.fetch(:tools), "ozon_cluster_sales_distribution"
       assert_includes result.fetch(:tools), "ozon_sku_localization"
+      assert_includes result.fetch(:tools), "sql_query"
+    end
+
+    test "sql_query uses the read only SQL query behavior" do
+      executor = ToolExecutor.new(current_user: @user)
+
+      result = executor.call(
+        "sql_query",
+        {
+          "sql" => "SELECT sku_code FROM ec_skus WHERE sku_code = '#{@sku.sku_code}'",
+          "limit" => 1,
+          "offset" => 0
+        }
+      )
+      rejected = executor.call("sql_query", { "sql" => "DELETE FROM ec_skus" })
+
+      assert_equal true, result.fetch(:success)
+      assert_equal @sku.sku_code, result.fetch(:rows).first.fetch("sku_code")
+      assert_equal 1, result.fetch(:pagination).fetch(:limit)
+      assert_equal false, rejected.fetch(:success)
+      assert_match "SELECT or WITH", rejected.fetch(:error)
     end
 
     test "sku_sales returns current and previous period store sales" do

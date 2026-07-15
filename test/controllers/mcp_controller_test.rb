@@ -50,7 +50,21 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_includes tool_names, "sku_sales"
     assert_includes tool_names, "sku_profile"
     assert_includes tool_names, "sku_inventory"
+    assert_includes tool_names, "sql_query"
     assert_includes tool_names, "operation_context"
+  end
+
+  test "lists SQL query tool schema" do
+    post "/mcp",
+      params: rpc_request("tools/list"),
+      headers: bearer_headers(@raw_api_token),
+      as: :json
+
+    tool = response.parsed_body.fetch("result").fetch("tools").find { |item| item.fetch("name") == "sql_query" }
+    schema = tool.fetch("inputSchema")
+
+    assert_equal ["sql"], schema.fetch("required")
+    assert_equal %w[sql limit offset], schema.fetch("properties").keys
   end
 
   test "calls MCP tools for an authenticated user" do
@@ -88,6 +102,28 @@ class McpControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal @sku.sku_code, result.fetch("sku_code")
     assert_equal 2, result.fetch("current_period").fetch("summary").fetch("net_quantity")
+  end
+
+  test "calls sql_query over MCP tools call" do
+    post "/mcp",
+      params: rpc_request("tools/call", {
+        name: "sql_query",
+        arguments: {
+          sql: "SELECT sku_code FROM ec_skus WHERE sku_code = '#{@sku.sku_code}'",
+          limit: 10,
+          offset: 0
+        }
+      }),
+      headers: bearer_headers(@raw_api_token),
+      as: :json
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    result = JSON.parse(body.fetch("result").fetch("content").first.fetch("text"))
+
+    assert_equal true, result.fetch("success")
+    assert_equal @sku.sku_code, result.fetch("rows").first.fetch("sku_code")
+    assert_equal 10, result.fetch("pagination").fetch("limit")
   end
 
   private

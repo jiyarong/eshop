@@ -71,6 +71,16 @@ module Mcp
           }
         ),
         definition(
+          "sql_query",
+          "执行只读 SQL 查询。仅允许单条 SELECT 或 WITH 查询，必须明确指定返回列。",
+          {
+            sql: string_schema("要执行的只读 SQL"),
+            limit: integer_schema("返回数量，默认 100，最大 500"),
+            offset: integer_schema("偏移量，默认 0")
+          },
+          required: ["sql"]
+        ),
+        definition(
           "operation_context",
           "返回当前用户、时区、权限和可用数据范围。",
           {}

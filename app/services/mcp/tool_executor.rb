@@ -24,6 +24,8 @@ module Mcp
         ozon_cluster_sales_distribution(args)
       when "ozon_sku_localization"
         ozon_sku_localization(args)
+      when "sql_query"
+        sql_query(args)
       when "operation_context"
         operation_context
       else
@@ -65,6 +67,14 @@ module Mcp
         visible_sku_count: visible_scope.sku_count,
         tools: Mcp::ToolRegistry.new(current_user: current_user).definitions.map { |tool| tool.fetch(:name) }
       }
+    end
+
+    def sql_query(args)
+      ErpAI::SqlQuery.new(
+        sql: args["sql"],
+        limit: args["limit"],
+        offset: args["offset"]
+      ).call
     end
 
     def sku_sales(args)
