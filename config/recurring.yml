@@ -21,6 +21,14 @@ production:
     command: "RawWb::OrderIncrementalSync.run"
     schedule: every 5 minutes
 
+  wb_sales_funnel_current_week_sync:
+    command: "RawWb::SalesFunnelPeriodSync.run_current_week"
+    schedule: every hour at minute 20
+
+  wb_sales_funnel_n2_week_sync:
+    command: "RawWb::SalesFunnelPeriodSync.run_completed_week(weeks_ago: 2)"
+    schedule: every sunday at 23:00 in Asia/Shanghai
+
   # WB weekly sync. days:8 gives 1-day overlap to catch late settlement data.
   wb_weekly_sync:
     command: "RawWb::WeeklySync.run(days: 8)"
