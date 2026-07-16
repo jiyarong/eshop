@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_055426) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_065736) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1203,6 +1203,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_055426) do
     t.index ["account_id"], name: "index_raw_ozon_reviews_on_account_id"
   end
 
+  create_table "raw_ozon_sales_funnel_period", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "cancellations", default: 0
+    t.decimal "conv_tocart", precision: 10, scale: 4
+    t.datetime "created_at", null: false
+    t.bigint "hits_tocart", default: 0
+    t.bigint "hits_tocart_pdp", default: 0
+    t.bigint "hits_tocart_search", default: 0
+    t.bigint "hits_view", default: 0
+    t.bigint "hits_view_pdp", default: 0
+    t.bigint "hits_view_search", default: 0
+    t.bigint "ordered_units", default: 0
+    t.date "period_end", null: false
+    t.date "period_start", null: false
+    t.string "product_name"
+    t.jsonb "raw_json", default: {}, null: false
+    t.bigint "returns_count", default: 0
+    t.decimal "revenue", precision: 18, scale: 2
+    t.bigint "session_view", default: 0
+    t.bigint "session_view_pdp", default: 0
+    t.bigint "session_view_search", default: 0
+    t.bigint "sku", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "period_start", "period_end", "sku"], name: "idx_raw_ozon_sales_funnel_period_unique", unique: true
+    t.index ["account_id"], name: "index_raw_ozon_sales_funnel_period_on_account_id"
+    t.index ["period_start", "period_end"], name: "idx_raw_ozon_sales_funnel_period_dates"
+    t.index ["sku"], name: "idx_raw_ozon_sales_funnel_period_sku"
+  end
+
   create_table "raw_ozon_seller_accounts", force: :cascade do |t|
     t.text "api_key", null: false
     t.string "client_id", null: false
@@ -2280,6 +2310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_055426) do
   add_foreign_key "raw_ozon_reports", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_returns", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_reviews", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_sales_funnel_period", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_supply_orders", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_sync_tasks", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_warehouses", "raw_ozon_seller_accounts", column: "account_id"

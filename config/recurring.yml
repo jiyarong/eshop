@@ -77,6 +77,14 @@ production:
     command: "RawOzon::OrderIncrementalSync.run"
     schedule: every 5 minutes
 
+  ozon_sales_funnel_current_week_sync:
+    command: "RawOzon::SalesFunnelPeriodSync.run_current_week"
+    schedule: every hour at minute 45
+
+  ozon_sales_funnel_n2_week_sync:
+    command: "RawOzon::SalesFunnelPeriodSync.run_completed_week(weeks_ago: 2)"
+    schedule: every sunday at 23:30 in Asia/Shanghai
+
   ozon_weekly_sync:
     command: "RawOzon::WeeklySync.run(days: 8)"
     schedule: every tuesday at 3:00 in Asia/Shanghai
