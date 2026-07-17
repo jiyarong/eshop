@@ -1,0 +1,6 @@
+<% content_for :title, t("admin.gbrain.new.title") %>
+<% content_for :page_heading, t("admin.gbrain.new.title") %>
+
+<div class="ai-admin-heading"><h1 class="page-title"><%= t("admin.gbrain.new.title") %></h1></div>
+<%= render "navigation", current: :pages %>
+<%= render "form", page: @page %>

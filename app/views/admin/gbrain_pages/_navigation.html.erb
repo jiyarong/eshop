@@ -1,0 +1,10 @@
+<nav class="ai-admin-tabs" aria-label="<%= t("admin.gbrain.navigation.label") %>">
+  <%= link_to admin_gbrain_pages_path, class: "ai-admin-tabs__link", aria: (current == :pages ? { current: "page" } : nil) do %>
+    <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+    <span><%= t("admin.gbrain.navigation.pages") %></span>
+  <% end %>
+  <%= link_to validation_admin_gbrain_pages_path, class: "ai-admin-tabs__link", aria: (current == :validation ? { current: "page" } : nil) do %>
+    <i class="bi bi-search" aria-hidden="true"></i>
+    <span><%= t("admin.gbrain.navigation.validation") %></span>
+  <% end %>
+</nav>

@@ -1,0 +1,117 @@
+<% content_for :title, t("admin.gbrain.index.title") %>
+<% content_for :page_heading, t("admin.gbrain.index.title") %>
+
+<div class="ai-admin-heading">
+  <h1 class="page-title"><%= t("admin.gbrain.index.title") %></h1>
+  <%= link_to admin_new_gbrain_page_path, class: "button" do %>
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    <span><%= t("admin.gbrain.actions.new") %></span>
+  <% end %>
+</div>
+
+<%= render "navigation", current: :pages %>
+
+<nav class="segmented-links" aria-label="<%= t("admin.gbrain.index.source_label") %>">
+  <%= link_to t("admin.gbrain.index.local_pages"), admin_gbrain_pages_path, class: (@source == "local" ? "is-active" : nil) %>
+  <%= link_to t("admin.gbrain.index.remote_pages"), admin_gbrain_pages_path(source: "remote"), class: (@source == "remote" ? "is-active" : nil) %>
+</nav>
+
+<% if @error.present? %>
+  <div class="error-box gbrain-error" role="alert"><%= @error %></div>
+<% elsif @source == "remote" %>
+  <section class="panel gbrain-remote-list-panel">
+    <div class="gbrain-remote-list-heading">
+      <h2 class="gbrain-section-title"><%= t("admin.gbrain.index.remote_result") %></h2>
+      <span class="gbrain-remote-count"><%= t("admin.gbrain.index.remote_count", count: @remote_pages.size) %></span>
+    </div>
+
+    <% if @remote_pages.any? %>
+      <div class="gbrain-remote-list">
+        <% @remote_pages.each do |page| %>
+          <details class="gbrain-remote-item">
+            <summary class="gbrain-remote-item__summary">
+              <span class="gbrain-remote-item__identity">
+                <strong><%= gbrain_remote_page_title(page) %></strong>
+                <code><%= page["slug"] %></code>
+              </span>
+              <span class="gbrain-remote-item__meta">
+                <span><%= page["type"].presence || t("common.empty_value") %></span>
+                <time><%= gbrain_remote_page_time(page["updated_at"]) %></time>
+              </span>
+            </summary>
+            <div class="gbrain-remote-item__body">
+              <dl>
+                <div>
+                  <dt><%= t("admin.gbrain.fields.slug") %></dt>
+                  <dd><code><%= page["slug"] %></code></dd>
+                </div>
+                <div>
+                  <dt><%= t("admin.gbrain.fields.type") %></dt>
+                  <dd><%= page["type"].presence || t("common.empty_value") %></dd>
+                </div>
+                <div>
+                  <dt><%= t("admin.gbrain.fields.updated_at") %></dt>
+                  <dd><%= gbrain_remote_page_time(page["updated_at"]) %></dd>
+                </div>
+              </dl>
+              <%= link_to remote_page_admin_gbrain_pages_path(slug: page["slug"]), class: "button button-secondary" do %>
+                <i class="bi bi-cloud-download" aria-hidden="true"></i>
+                <span><%= t("admin.gbrain.actions.get_page") %></span>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="empty-state"><%= t("admin.gbrain.index.remote_empty") %></div>
+    <% end %>
+
+    <details class="gbrain-raw-result">
+      <summary><%= t("admin.gbrain.actions.show_raw_result") %></summary>
+      <pre class="code-viewer gbrain-result"><%= formatted_gbrain_result(@remote_result) %></pre>
+    </details>
+  </section>
+<% else %>
+  <section class="panel ai-table-panel">
+    <div class="table-scroll">
+      <table class="ai-admin-table gbrain-pages-table">
+        <thead>
+          <tr>
+            <th><%= t("admin.gbrain.fields.slug") %></th>
+            <th><%= t("admin.gbrain.fields.status") %></th>
+            <th><%= t("admin.gbrain.fields.content_updated_at") %></th>
+            <th><%= t("admin.gbrain.fields.knowledge_base_written_at") %></th>
+            <th><%= t("admin.gbrain.fields.actions") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @pages.each do |page| %>
+            <tr>
+              <td><%= link_to page.slug, admin_gbrain_page_path(page), class: "gbrain-page-link code-input" %></td>
+              <td>
+                <span class="status-pill <%= gbrain_status_class(page.sync_status) %>">
+                  <span class="status-pill__dot" aria-hidden="true"></span><%= gbrain_status_label(page.sync_status) %>
+                </span>
+              </td>
+              <td><%= display_time(page.content_updated_at) %></td>
+              <td><%= display_time(page.knowledge_base_written_at) %></td>
+              <td class="table-actions">
+                <%= link_to admin_gbrain_page_path(page), class: "ai-row-action" do %>
+                  <i class="bi bi-eye" aria-hidden="true"></i><span><%= t("common.actions.view") %></span>
+                <% end %>
+                <% unless page.pending_deletion? %>
+                  <%= link_to admin_edit_gbrain_page_path(page), class: "ai-row-action" do %>
+                    <i class="bi bi-pencil" aria-hidden="true"></i><span><%= t("common.actions.edit") %></span>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @pages.empty? %>
+            <tr><td colspan="5" class="empty-state"><%= t("admin.gbrain.index.empty") %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% end %>

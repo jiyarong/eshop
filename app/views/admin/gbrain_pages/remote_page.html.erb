@@ -1,0 +1,46 @@
+<% content_for :title, @slug %>
+<% content_for :page_heading, @slug %>
+
+<div class="ai-admin-heading">
+  <div>
+    <h1 class="page-title"><%= @slug %></h1>
+    <span class="ai-heading-code"><%= t("admin.gbrain.show.remote_page") %></span>
+  </div>
+  <%= link_to admin_gbrain_pages_path(source: "remote"), class: "button button-secondary" do %>
+    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    <span><%= t("admin.gbrain.actions.back_to_remote_list") %></span>
+  <% end %>
+</div>
+
+<%= render "navigation", current: :pages %>
+
+<% if @error.present? %>
+  <div class="error-box gbrain-error" role="alert"><%= @error %></div>
+<% elsif @remote_page.is_a?(Hash) %>
+  <div class="gbrain-remote-show-layout">
+    <section class="panel gbrain-content-panel">
+      <h2 class="gbrain-section-title"><%= t("admin.gbrain.fields.content") %></h2>
+      <div data-controller="markdown">
+        <pre class="code-viewer gbrain-page-content gbrain-markdown__source" data-markdown-target="source"><%= @remote_content %></pre>
+        <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+      </div>
+    </section>
+
+    <aside class="panel gbrain-metadata">
+      <h2 class="gbrain-section-title"><%= t("admin.gbrain.show.remote_metadata") %></h2>
+      <dl>
+        <% @remote_metadata.each do |key, value| %>
+          <dt><%= key %></dt>
+          <dd><%= gbrain_remote_metadata_value(value) %></dd>
+        <% end %>
+      </dl>
+    </aside>
+  </div>
+<% end %>
+
+<% if @remote_result.present? %>
+  <details class="panel gbrain-raw-result gbrain-remote-panel">
+    <summary><%= t("admin.gbrain.actions.show_raw_result") %></summary>
+    <pre class="code-viewer gbrain-result"><%= formatted_gbrain_result(@remote_result) %></pre>
+  </details>
+<% end %>

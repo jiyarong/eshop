@@ -1,0 +1,66 @@
+<% content_for :title, @page.slug %>
+<% content_for :page_heading, @page.slug %>
+
+<div class="ai-admin-heading">
+  <div>
+    <h1 class="page-title"><%= @page.slug %></h1>
+    <span class="status-pill <%= gbrain_status_class(@page.sync_status) %>">
+      <span class="status-pill__dot" aria-hidden="true"></span><%= gbrain_status_label(@page.sync_status) %>
+    </span>
+  </div>
+  <div class="page-actions">
+    <%= link_to remote_admin_gbrain_page_path(@page), class: "button button-secondary" do %>
+      <i class="bi bi-cloud-download" aria-hidden="true"></i><span><%= t("admin.gbrain.actions.read_remote") %></span>
+    <% end %>
+    <% unless @page.pending_deletion? %>
+      <%= link_to admin_edit_gbrain_page_path(@page), class: "button button-secondary" do %>
+        <i class="bi bi-pencil" aria-hidden="true"></i><span><%= t("common.actions.edit") %></span>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<%= render "navigation", current: :pages %>
+
+<% if @error.present? %>
+  <div class="error-box gbrain-error" role="alert"><%= @error %></div>
+<% end %>
+
+<div class="gbrain-show-layout">
+  <section class="panel gbrain-content-panel">
+    <h2 class="gbrain-section-title"><%= t("admin.gbrain.fields.content") %></h2>
+    <pre class="code-viewer gbrain-page-content"><%= @page.content %></pre>
+  </section>
+
+  <aside class="panel gbrain-metadata">
+    <h2 class="gbrain-section-title"><%= t("admin.gbrain.show.sync_details") %></h2>
+    <dl>
+      <dt><%= t("admin.gbrain.fields.content_updated_at") %></dt>
+      <dd><%= display_time(@page.content_updated_at) %></dd>
+      <dt><%= t("admin.gbrain.fields.knowledge_base_written_at") %></dt>
+      <dd><%= display_time(@page.knowledge_base_written_at) %></dd>
+      <% if @page.last_error.present? %>
+        <dt><%= t("admin.gbrain.fields.last_error") %></dt>
+        <dd class="gbrain-error-text"><%= @page.last_error %></dd>
+      <% end %>
+    </dl>
+
+    <% if @page.sync_status == "failed" %>
+      <%= button_to retry_sync_admin_gbrain_page_path(@page), class: "button button-secondary", form_class: "gbrain-full-action" do %>
+        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i><span><%= t("admin.gbrain.actions.retry") %></span>
+      <% end %>
+    <% end %>
+    <% unless @page.pending_deletion? %>
+      <%= button_to admin_gbrain_page_path(@page), method: :delete, class: "button gbrain-delete-button", form_class: "gbrain-full-action", data: { turbo_confirm: t("admin.gbrain.actions.confirm_delete") } do %>
+        <i class="bi bi-trash" aria-hidden="true"></i><span><%= t("admin.gbrain.actions.delete") %></span>
+      <% end %>
+    <% end %>
+  </aside>
+</div>
+
+<% if @remote_result.present? %>
+  <section class="panel gbrain-remote-panel">
+    <h2 class="gbrain-section-title"><%= t("admin.gbrain.show.remote_result") %></h2>
+    <pre class="code-viewer gbrain-result"><%= formatted_gbrain_result(@remote_result) %></pre>
+  </section>
+<% end %>

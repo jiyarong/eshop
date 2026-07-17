@@ -1,0 +1,32 @@
+<% content_for :title, t("admin.gbrain.validation.title") %>
+<% content_for :page_heading, t("admin.gbrain.validation.title") %>
+
+<div class="ai-admin-heading"><h1 class="page-title"><%= t("admin.gbrain.validation.title") %></h1></div>
+<%= render "navigation", current: :validation %>
+
+<section class="panel">
+  <%= form_with url: validation_admin_gbrain_pages_path, method: :get, local: true, class: "gbrain-validation-form" do |form| %>
+    <div class="field">
+      <%= form.label :mode, t("admin.gbrain.validation.mode") %>
+      <%= form.select :mode, options_for_select([[t("admin.gbrain.validation.query_mode"), "query"], [t("admin.gbrain.validation.search_mode"), "search"]], @mode) %>
+    </div>
+    <div class="field gbrain-validation-form__query">
+      <%= form.label :query, t("admin.gbrain.validation.query") %>
+      <%= form.text_field :query, value: @query_text, required: true, autocomplete: "off" %>
+    </div>
+    <div class="field gbrain-validation-form__limit">
+      <%= form.label :limit, t("admin.gbrain.validation.limit") %>
+      <%= form.number_field :limit, value: @limit, min: 1, max: 50 %>
+    </div>
+    <%= form.submit t("admin.gbrain.validation.run"), class: "button" %>
+  <% end %>
+</section>
+
+<% if @error.present? %>
+  <div class="error-box gbrain-error" role="alert"><%= @error %></div>
+<% elsif @result.present? %>
+  <section class="panel gbrain-remote-panel">
+    <h2 class="gbrain-section-title"><%= t("admin.gbrain.validation.result", mode: @mode) %></h2>
+    <pre class="code-viewer gbrain-result"><%= formatted_gbrain_result(@result) %></pre>
+  </section>
+<% end %>

@@ -1,0 +1,29 @@
+<%= form_with model: [:admin, page], class: "gbrain-editor" do |form| %>
+  <% if page.errors.any? %>
+    <div class="error-box ai-form-errors" role="alert">
+      <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+      <div><%= page.errors.full_messages.join(t("common.list_separator")) %></div>
+    </div>
+  <% end %>
+
+  <section class="panel gbrain-editor__panel">
+    <div class="field">
+      <%= form.label :slug, t("admin.gbrain.fields.slug") %>
+      <%= form.text_field :slug, required: true, readonly: page.persisted?, class: "code-input", autocomplete: "off" %>
+      <% if page.persisted? %>
+        <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.slug_readonly") %></small>
+      <% end %>
+    </div>
+
+    <div class="field">
+      <%= form.label :content, t("admin.gbrain.fields.content") %>
+      <%= form.text_area :content, required: true, class: "code-input gbrain-content-editor", spellcheck: false %>
+      <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.markdown") %></small>
+    </div>
+  </section>
+
+  <div class="gbrain-form-actions">
+    <%= form.submit t("admin.gbrain.actions.save_and_queue"), class: "button" %>
+    <%= link_to t("common.actions.cancel"), page.persisted? ? admin_gbrain_page_path(page) : admin_gbrain_pages_path, class: "button button-secondary" %>
+  </div>
+<% end %>

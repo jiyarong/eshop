@@ -78,6 +78,14 @@ Rails.application.routes.draw do
     end
     resources :feedback_tasks, only: [:index, :show, :update]
     resources :operation_logs, only: [:index]
+    get "gbrain_pages/new" => "gbrain_pages#new", as: :new_gbrain_page
+    get "gbrain_pages/:id/edit" => "gbrain_pages#edit", as: :edit_gbrain_page
+    resources :gbrain_pages do
+      get :remote, on: :member
+      get :remote_page, on: :collection
+      post :retry_sync, on: :member
+      get :validation, on: :collection
+    end
     get "mcp_debug" => "mcp_debug#show"
     post "mcp_debug" => "mcp_debug#create"
   end

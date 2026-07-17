@@ -125,6 +125,7 @@ ru:
     skills: "AI Skills"
     feedback_tasks: "Задачи изменений"
     mcp_debug: "MCP debug"
+    gbrain: "База знаний gbrain"
     operation_logs: "История операций"
   feedback:
     title: "Отправить предложение"
@@ -184,6 +185,76 @@ ru:
   admin:
     ai_navigation:
       label: "Навигация по настройкам AI"
+    gbrain:
+      actions:
+        confirm_delete: "Удалить документ из локального сервиса и gbrain?"
+        back_to_remote_list: "Назад к удаленному списку"
+        delete: "Удалить документ"
+        get_page: "Получить страницу"
+        new: "Новый документ"
+        read_remote: "Прочитать версию gbrain"
+        retry: "Повторить синхронизацию"
+        save_and_queue: "Сохранить и поставить в очередь"
+        show_raw_result: "Показать исходный ответ MCP"
+      edit:
+        title: "Редактировать %{slug}"
+      errors:
+        server_not_configured: "Сервер gbrain MCP не настроен"
+        slug_readonly: "нельзя изменить после создания"
+        tool_failed: "Ошибка инструмента gbrain MCP"
+      fields:
+        actions: "Действия"
+        content: "Содержимое Markdown"
+        content_updated_at: "Обновление содержимого"
+        knowledge_base_written_at: "Запись в базу знаний"
+        last_error: "Последняя ошибка"
+        slug: "Slug"
+        status: "Статус синхронизации"
+        type: "Тип"
+        updated_at: "Обновлено удаленно"
+      hints:
+        markdown: "Содержимое без изменений передается через put_page и может включать YAML frontmatter."
+        slug_readonly: "Slug идентифицирует страницу gbrain. Для изменения удалите и создайте документ заново."
+      index:
+        empty: "Локальных документов базы знаний пока нет."
+        local_pages: "Локальные документы"
+        remote_count: "Удаленных документов: %{count}"
+        remote_empty: "list_pages не вернул документов для отображения."
+        remote_pages: "Удаленный список gbrain"
+        remote_result: "Удаленные документы"
+        source_label: "Источник списка документов"
+        title: "База знаний gbrain"
+      navigation:
+        label: "Навигация базы знаний gbrain"
+        pages: "Документы"
+        validation: "Проверка поиска"
+      new:
+        title: "Новый документ базы знаний"
+      notices:
+        deletion_queued: "Удаление сохранено и будет выполнено по очереди."
+        queued: "Содержимое сохранено и поставлено в очередь записи."
+        retry_queued: "Страница снова поставлена в очередь."
+      show:
+        remote_metadata: "Удаленные метаданные"
+        remote_page: "gbrain get_page"
+        remote_result: "Результат get_page"
+        sync_details: "Данные синхронизации"
+      statuses:
+        deleting: "Удаляется"
+        failed: "Ошибка"
+        pending: "Ожидает записи"
+        pending_delete: "Ожидает удаления"
+        synced: "Синхронизирован"
+        syncing: "Записывается"
+      validation:
+        limit: "Количество результатов"
+        mode: "Режим проверки"
+        query: "Запрос"
+        query_mode: "Гибридный поиск Query"
+        result: "Результат %{mode}"
+        run: "Выполнить проверку"
+        search_mode: "Ключевой поиск Search"
+        title: "Проверка запросов gbrain"
     sub2_usage:
       title: "Использование AI"
       currency_value: "$%{value}"

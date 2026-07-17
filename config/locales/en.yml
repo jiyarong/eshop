@@ -154,6 +154,7 @@ en:
     skills: "AI Skills"
     feedback_tasks: "Change Tasks"
     mcp_debug: "MCP Debug"
+    gbrain: "gbrain Knowledge Base"
     operation_logs: "Operation History"
   feedback:
     title: "Submit Change Feedback"
@@ -213,6 +214,76 @@ en:
   admin:
     ai_navigation:
       label: "AI configuration navigation"
+    gbrain:
+      actions:
+        confirm_delete: "Delete this document from the local service and gbrain?"
+        back_to_remote_list: "Back to remote list"
+        delete: "Delete document"
+        get_page: "Get page"
+        new: "New document"
+        read_remote: "Read gbrain version"
+        retry: "Retry sync"
+        save_and_queue: "Save and queue"
+        show_raw_result: "Show raw MCP response"
+      edit:
+        title: "Edit %{slug}"
+      errors:
+        server_not_configured: "The gbrain MCP server is not configured"
+        slug_readonly: "cannot be changed after creation"
+        tool_failed: "The gbrain MCP tool failed"
+      fields:
+        actions: "Actions"
+        content: "Markdown content"
+        content_updated_at: "Content updated"
+        knowledge_base_written_at: "Written to knowledge base"
+        last_error: "Latest error"
+        slug: "Slug"
+        status: "Sync status"
+        type: "Type"
+        updated_at: "Remote updated"
+      hints:
+        markdown: "Content is sent unchanged through put_page and may include YAML frontmatter."
+        slug_readonly: "The slug identifies the gbrain page. Delete and recreate the page to change it."
+      index:
+        empty: "No local knowledge base documents."
+        local_pages: "Local documents"
+        remote_count: "%{count} remote documents"
+        remote_empty: "list_pages returned no displayable documents."
+        remote_pages: "gbrain remote list"
+        remote_result: "Remote documents"
+        source_label: "Document list source"
+        title: "gbrain Knowledge Base"
+      navigation:
+        label: "gbrain knowledge base navigation"
+        pages: "Documents"
+        validation: "Query validation"
+      new:
+        title: "New knowledge base document"
+      notices:
+        deletion_queued: "Deletion was saved and will run in order."
+        queued: "Content was saved and queued for the knowledge base."
+        retry_queued: "The page was queued again."
+      show:
+        remote_metadata: "Remote metadata"
+        remote_page: "gbrain get_page"
+        remote_result: "get_page result"
+        sync_details: "Sync details"
+      statuses:
+        deleting: "Deleting"
+        failed: "Failed"
+        pending: "Waiting to write"
+        pending_delete: "Waiting to delete"
+        synced: "Synced"
+        syncing: "Writing"
+      validation:
+        limit: "Result limit"
+        mode: "Validation mode"
+        query: "Query"
+        query_mode: "Query hybrid search"
+        result: "%{mode} result"
+        run: "Run validation"
+        search_mode: "Search keyword search"
+        title: "gbrain Query Validation"
     sub2_usage:
       title: "AI Usage"
       currency_value: "$%{value}"
