@@ -3,8 +3,12 @@
     path: Reports::ToolRendererResolver.source_path_for(tool_definition.renderer_key),
     scope_class: "smart-pack-tool-inline"
   )
+  body_html = source_template.body_html.gsub(/<script\b[^>]*>.*?<\/script>/mi, "")
   inline_script = source_template.inline_script_content(
     initializer_name: "initializeEmbeddedSmartPackCalculator",
+    selector_replacements: {
+      "window.onload = () => { renderMemory(); initRenderers(); };" => ""
+    },
     wrap: true,
     export_statements: [
       "if (typeof switchLang !== 'undefined') window.switchLang = switchLang;",
@@ -18,7 +22,7 @@
       "if (typeof selectPlan !== 'undefined') window.selectPlan = selectPlan;",
       "if (typeof initRenderers !== 'undefined') window.initRenderers = initRenderers;"
     ]
-  )
+  ).gsub("window.onload = () => { renderMemory(); initRenderers(); };", "")
 %>
 <div class="smart-pack-tool-surface">
   <% source_template.external_script_urls.each do |script_url| %>
@@ -66,7 +70,7 @@
   </style>
 
   <div class="smart-pack-tool-inline smart-pack-tool-shell smart-pack-tool-shell--full" data-tool-inline-root>
-    <%= raw source_template.body_html %>
+    <%= raw body_html %>
   </div>
 
   <div class="smart-pack-tool-save-modal" data-tool-save-name-modal hidden>

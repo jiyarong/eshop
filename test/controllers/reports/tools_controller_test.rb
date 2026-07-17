@@ -406,6 +406,7 @@ class ReportsToolsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "window.restoreState = (state = {}) => {"
     assert_includes response.body, "window.calculateAll = () => {"
     assert_includes response.body, "window.executeDecisionEngine = executeDecisionEngine;"
+    assert_not_includes response.body, "window.onload = () => { renderMemory(); initRenderers(); };"
   end
 
   test "renderer source serves the original smart pack calculator html" do
