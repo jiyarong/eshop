@@ -195,8 +195,10 @@ zh:
     gbrain:
       actions:
         confirm_delete: "确认从本地服务和 gbrain 知识库删除这个文档？"
+        confirm_delete_remote: "确认从 gbrain 删除远端文档 %{slug}？删除后 72 小时内可恢复。"
         back_to_remote_list: "返回远端列表"
         delete: "删除文档"
+        delete_remote: "删除远端文档"
         get_page: "Get 查看"
         new: "新建文档"
         read_remote: "读取知识库版本"
@@ -217,18 +219,24 @@ zh:
         last_error: "最近错误"
         slug: "Slug"
         status: "同步状态"
+        title: "标题"
         type: "类型"
         updated_at: "远端更新时间"
       hints:
         markdown: "内容会原样通过 put_page 写入，支持 YAML frontmatter。"
         slug_readonly: "Slug 是知识库文档标识；如需更换，请删除后重新创建。"
       index:
+        current_page: "当前第 %{page} 页"
         empty: "暂无本地知识库文档。"
         local_pages: "本地文档"
-        remote_count: "%{count} 个远端文档"
+        next_page: "下一页"
+        page: "第 %{page} 页"
+        pagination_label: "远端文档分页"
+        previous_page: "上一页"
         remote_empty: "list_pages 没有返回可展示的文档。"
         remote_pages: "gbrain 远端列表"
         remote_result: "远端文档"
+        remote_summary: "显示第 %{from}-%{to} 条，共 %{total} 条"
         source_label: "文档列表来源"
         title: "gbrain 知识库"
       navigation:
@@ -240,6 +248,7 @@ zh:
       notices:
         deletion_queued: "已保存删除请求，任务将按顺序删除文档。"
         queued: "内容已保存，任务将按顺序写入知识库。"
+        remote_deleted: "远端文档已从 gbrain 列表删除。"
         retry_queued: "已重新加入同步队列。"
       show:
         remote_metadata: "远端元数据"

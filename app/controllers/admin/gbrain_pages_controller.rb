@@ -1,12 +1,14 @@
 module Admin
   class GbrainPagesController < BaseController
+    REMOTE_LIST_LIMIT = 100
+    REMOTE_PAGE_SIZE = 20
+
     before_action :set_page, only: %i[show edit update destroy remote retry_sync]
 
     def index
       @source = params[:source] == "remote" ? "remote" : "local"
       if @source == "remote"
-        @remote_result = gbrain_client.list_pages(limit: 100)
-        @remote_pages = Gbrain::McpResult.pages(@remote_result)
+        load_remote_pages
       else
         @pages = GbrainPage.recent_first
       end
@@ -61,12 +63,20 @@ module Admin
 
     def remote_page
       @slug = params[:slug].to_s
+      @return_page = [ params[:page].to_i, 1 ].max
       @remote_result = gbrain_client.get_page(@slug)
       @remote_page = Gbrain::McpResult.payload(@remote_result)
       @remote_content = Gbrain::McpResult.page_content(@remote_page)
       @remote_metadata = Gbrain::McpResult.page_metadata(@remote_page)
     rescue StandardError => error
       @error = error.message
+    end
+
+    def destroy_remote
+      gbrain_client.delete_page(params.require(:slug))
+      redirect_to admin_gbrain_pages_path(source: "remote", page: params[:page]), notice: t("admin.gbrain.notices.remote_deleted")
+    rescue StandardError => error
+      redirect_to admin_gbrain_pages_path(source: "remote", page: params[:page]), alert: error.message
     end
 
     def validation
@@ -89,6 +99,17 @@ module Admin
 
     def set_page
       @page = GbrainPage.find(params[:id])
+    end
+
+    def load_remote_pages
+      @remote_result = gbrain_client.list_pages(limit: REMOTE_LIST_LIMIT)
+      remote_pages = Gbrain::McpResult.pages(@remote_result)
+      @remote_total = remote_pages.size
+      @remote_page_count = [ (@remote_total.to_f / REMOTE_PAGE_SIZE).ceil, 1 ].max
+      @remote_page = params[:page].to_i.clamp(1, @remote_page_count)
+      @remote_pages = remote_pages.slice((@remote_page - 1) * REMOTE_PAGE_SIZE, REMOTE_PAGE_SIZE) || []
+      @remote_from = @remote_total.zero? ? 0 : ((@remote_page - 1) * REMOTE_PAGE_SIZE) + 1
+      @remote_to = [ @remote_page * REMOTE_PAGE_SIZE, @remote_total ].min
     end
 
     def page_params

@@ -29,7 +29,10 @@
 <div class="gbrain-show-layout">
   <section class="panel gbrain-content-panel">
     <h2 class="gbrain-section-title"><%= t("admin.gbrain.fields.content") %></h2>
-    <pre class="code-viewer gbrain-page-content"><%= @page.content %></pre>
+    <div data-controller="markdown">
+      <pre class="code-viewer gbrain-page-content gbrain-markdown__source" data-markdown-target="source"><%= @page.content %></pre>
+      <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+    </div>
   </section>
 
   <aside class="panel gbrain-metadata">

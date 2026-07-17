@@ -188,8 +188,10 @@ ru:
     gbrain:
       actions:
         confirm_delete: "Удалить документ из локального сервиса и gbrain?"
+        confirm_delete_remote: "Удалить удаленный документ %{slug} из gbrain? Его можно восстановить в течение 72 часов."
         back_to_remote_list: "Назад к удаленному списку"
         delete: "Удалить документ"
+        delete_remote: "Удалить удаленный документ"
         get_page: "Получить страницу"
         new: "Новый документ"
         read_remote: "Прочитать версию gbrain"
@@ -210,18 +212,24 @@ ru:
         last_error: "Последняя ошибка"
         slug: "Slug"
         status: "Статус синхронизации"
+        title: "Название"
         type: "Тип"
         updated_at: "Обновлено удаленно"
       hints:
         markdown: "Содержимое без изменений передается через put_page и может включать YAML frontmatter."
         slug_readonly: "Slug идентифицирует страницу gbrain. Для изменения удалите и создайте документ заново."
       index:
+        current_page: "Текущая страница: %{page}"
         empty: "Локальных документов базы знаний пока нет."
         local_pages: "Локальные документы"
-        remote_count: "Удаленных документов: %{count}"
+        next_page: "Следующая"
+        page: "Страница %{page}"
+        pagination_label: "Страницы удаленных документов"
+        previous_page: "Предыдущая"
         remote_empty: "list_pages не вернул документов для отображения."
         remote_pages: "Удаленный список gbrain"
         remote_result: "Удаленные документы"
+        remote_summary: "Показаны %{from}-%{to} из %{total}"
         source_label: "Источник списка документов"
         title: "База знаний gbrain"
       navigation:
@@ -233,6 +241,7 @@ ru:
       notices:
         deletion_queued: "Удаление сохранено и будет выполнено по очереди."
         queued: "Содержимое сохранено и поставлено в очередь записи."
+        remote_deleted: "Удаленный документ удален из списка gbrain."
         retry_queued: "Страница снова поставлена в очередь."
       show:
         remote_metadata: "Удаленные метаданные"

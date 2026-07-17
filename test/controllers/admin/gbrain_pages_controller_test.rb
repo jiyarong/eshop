@@ -6,19 +6,20 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
   class FakeClient
     attr_reader :calls
 
-    def initialize
+    def initialize(pages: nil, delete_error: nil)
       @calls = []
-    end
-
-    def list_pages(limit:)
-      calls << [ "list_pages", limit ]
-      pages = [ {
+      @pages = pages || [ {
         "slug" => "remote/page",
         "title" => "Remote Page",
         "type" => "concept",
         "updated_at" => "2026-07-17T08:15:53.690Z"
       } ]
-      { "content" => [ { "type" => "text", "text" => JSON.generate(pages) } ] }
+      @delete_error = delete_error
+    end
+
+    def list_pages(limit:)
+      calls << [ "list_pages", limit ]
+      { "content" => [ { "type" => "text", "text" => JSON.generate(@pages) } ] }
     end
 
     def get_page(slug)
@@ -35,6 +36,13 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     def search(text, limit:)
       calls << [ "search", text, limit ]
       { "results" => [ { "slug" => "search/result" } ] }
+    end
+
+    def delete_page(slug)
+      calls << [ "delete_page", slug ]
+      raise Gbrain::Client::Error, @delete_error if @delete_error
+
+      { "status" => "soft_deleted", "slug" => slug }
     end
   end
 
@@ -150,13 +158,110 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     with_gbrain_client(client) do
       get admin_gbrain_pages_path(source: "remote"), headers: { "Accept" => "text/html" }
       assert_response :success
-      assert_select "details.gbrain-remote-item", count: 1
-      assert_select ".gbrain-remote-item__summary", /Remote Page/
-      assert_select ".gbrain-remote-item__summary", /remote\/page/
-      assert_select "a[href=?]", remote_page_admin_gbrain_pages_path(slug: "remote/page"), text: /Get 查看/
+      assert_select "table.gbrain-remote-pages-table"
+      assert_select "table.gbrain-remote-pages-table th", "标题"
+      assert_select "table.gbrain-remote-pages-table tbody tr", count: 1
+      assert_select ".gbrain-remote-title", "Remote Page"
+      assert_select ".gbrain-remote-slug", /remote\/page/
+      assert_select "a[href=?]", remote_page_admin_gbrain_pages_path(slug: "remote/page", page: 1), text: /Get 查看/
+      assert_select "form[action=?][method=post][data-turbo-confirm]", destroy_remote_page_admin_gbrain_pages_path do
+        assert_select "input[name=_method][value=delete]"
+        assert_select "input[name=slug][value='remote/page']"
+      end
     end
 
     assert_equal [ [ "list_pages", 100 ] ], client.calls
+  end
+
+  test "admin can paginate the remote result set" do
+    sign_in @admin
+    pages = 45.times.map do |index|
+      {
+        "slug" => format("remote/page-%02d", index + 1),
+        "title" => format("Remote Page %02d", index + 1),
+        "type" => "concept",
+        "updated_at" => "2026-07-17T08:15:53.690Z"
+      }
+    end
+    client = FakeClient.new(pages: pages)
+
+    with_gbrain_client(client) do
+      get admin_gbrain_pages_path(source: "remote", page: 2), headers: { "Accept" => "text/html" }
+      assert_response :success
+      assert_select "table.gbrain-remote-pages-table tbody tr", count: 20
+      assert_select ".gbrain-remote-title", /Remote Page 21/
+      assert_select ".gbrain-remote-title", /Remote Page 40/
+      assert_select ".gbrain-remote-title", text: /Remote Page 20/, count: 0
+      assert_select ".gbrain-remote-count", "显示第 21-40 条，共 45 条"
+      assert_select ".gbrain-remote-pagination__page[aria-current=page]", "2"
+      assert_select "a[href=?]", admin_gbrain_pages_path(source: "remote", page: 1), text: /上一页/
+      assert_select "a[href=?]", admin_gbrain_pages_path(source: "remote", page: 3), text: /下一页/
+    end
+
+    assert_equal [ [ "list_pages", 100 ] ], client.calls
+  end
+
+  test "remote list renders an empty table row when no pages are returned" do
+    sign_in @admin
+    client = FakeClient.new(pages: [])
+
+    with_gbrain_client(client) do
+      get admin_gbrain_pages_path(source: "remote"), headers: { "Accept" => "text/html" }
+      assert_response :success
+      assert_select "table.gbrain-remote-pages-table tbody tr", count: 1
+      assert_select "table.gbrain-remote-pages-table td.empty-state[colspan='5']", "list_pages 没有返回可展示的文档。"
+      assert_select ".gbrain-remote-pagination", count: 0
+    end
+  end
+
+  test "remote pagination clamps a page beyond the available result set" do
+    sign_in @admin
+    pages = 21.times.map { |index| { "slug" => "remote/page-#{index + 1}", "title" => "Remote Page #{index + 1}" } }
+    client = FakeClient.new(pages: pages)
+
+    with_gbrain_client(client) do
+      get admin_gbrain_pages_path(source: "remote", page: 99), headers: { "Accept" => "text/html" }
+      assert_response :success
+      assert_select "table.gbrain-remote-pages-table tbody tr", count: 1
+      assert_select ".gbrain-remote-count", "显示第 21-21 条，共 21 条"
+      assert_select ".gbrain-remote-pagination__page[aria-current=page]", "2"
+    end
+  end
+
+  test "admin can delete a remote page and return to the same list page" do
+    sign_in @admin
+    client = FakeClient.new
+
+    with_gbrain_client(client) do
+      delete destroy_remote_page_admin_gbrain_pages_path, params: { slug: "remote/page", page: 2 }
+      assert_redirected_to admin_gbrain_pages_path(source: "remote", page: 2)
+      assert_equal "远端文档已从 gbrain 列表删除。", flash[:notice]
+    end
+
+    assert_equal [ [ "delete_page", "remote/page" ] ], client.calls
+  end
+
+  test "remote delete failure returns the MCP error to the remote list" do
+    sign_in @admin
+    client = FakeClient.new(delete_error: "delete rejected")
+
+    with_gbrain_client(client) do
+      delete destroy_remote_page_admin_gbrain_pages_path, params: { slug: "remote/page", page: 2 }
+      assert_redirected_to admin_gbrain_pages_path(source: "remote", page: 2)
+      assert_equal "delete rejected", flash[:alert]
+    end
+  end
+
+  test "non admin cannot delete a remote page" do
+    sign_in @viewer
+    client = FakeClient.new
+
+    with_gbrain_client(client) do
+      delete destroy_remote_page_admin_gbrain_pages_path, params: { slug: "remote/page" }
+      assert_response :forbidden
+    end
+
+    assert_empty client.calls
   end
 
   test "admin can read a remote page" do
@@ -177,7 +282,7 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     client = FakeClient.new
 
     with_gbrain_client(client) do
-      get remote_page_admin_gbrain_pages_path(slug: "remote/only"), headers: { "Accept" => "text/html" }
+      get remote_page_admin_gbrain_pages_path(slug: "remote/only", page: 3), headers: { "Accept" => "text/html" }
       assert_response :success
       assert_select "h1", "remote/only"
       assert_select "[data-controller='markdown']"
@@ -185,6 +290,8 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
       assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]"
       assert_select ".gbrain-metadata", /Remote Page/
       assert_select ".gbrain-metadata", text: /compiled_truth/, count: 0
+      assert_select "a[href=?]", admin_gbrain_pages_path(source: "remote", page: 3), text: /返回远端列表/
+      assert_select "form[action=?] input[name=page][value='3']", destroy_remote_page_admin_gbrain_pages_path
     end
 
     assert_equal [ [ "get_page", "remote/only" ] ], client.calls
@@ -197,7 +304,9 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     with_gbrain_client(client) do
       get validation_admin_gbrain_pages_path, params: { mode: "query", query: "库存", limit: 5 }, headers: { "Accept" => "text/html" }
       assert_response :success
-      assert_select ".gbrain-result", /query\/result/
+      assert_select "[data-controller='markdown']"
+      assert_select "[data-markdown-target='source']", /```json\n.*query\/result.*\n```/m
+      assert_select "article.gbrain-validation-result[data-markdown-target='output'][hidden]"
     end
 
     assert_equal [ [ "query", "库存", 5 ] ], client.calls
@@ -210,7 +319,9 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     with_gbrain_client(client) do
       get validation_admin_gbrain_pages_path, params: { mode: "search", query: "利润", limit: 8 }, headers: { "Accept" => "text/html" }
       assert_response :success
-      assert_select ".gbrain-result", /search\/result/
+      assert_select "[data-controller='markdown']"
+      assert_select "[data-markdown-target='source']", /```json\n.*search\/result.*\n```/m
+      assert_select "article.gbrain-validation-result[data-markdown-target='output'][hidden]"
     end
 
     assert_equal [ [ "search", "利润", 8 ] ], client.calls

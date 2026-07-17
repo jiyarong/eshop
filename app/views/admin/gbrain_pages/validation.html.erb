@@ -27,6 +27,10 @@
 <% elsif @result.present? %>
   <section class="panel gbrain-remote-panel">
     <h2 class="gbrain-section-title"><%= t("admin.gbrain.validation.result", mode: @mode) %></h2>
-    <pre class="code-viewer gbrain-result"><%= formatted_gbrain_result(@result) %></pre>
+    <% result_markdown = "```json\n#{formatted_gbrain_result(@result)}\n```" %>
+    <div data-controller="markdown">
+      <pre class="code-viewer gbrain-result gbrain-markdown__source" data-markdown-target="source"><%= result_markdown %></pre>
+      <article class="gbrain-markdown gbrain-validation-result" data-markdown-target="output" hidden></article>
+    </div>
   </section>
 <% end %>

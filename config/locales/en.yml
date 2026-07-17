@@ -217,8 +217,10 @@ en:
     gbrain:
       actions:
         confirm_delete: "Delete this document from the local service and gbrain?"
+        confirm_delete_remote: "Delete remote document %{slug} from gbrain? It can be restored within 72 hours."
         back_to_remote_list: "Back to remote list"
         delete: "Delete document"
+        delete_remote: "Delete remote document"
         get_page: "Get page"
         new: "New document"
         read_remote: "Read gbrain version"
@@ -239,18 +241,24 @@ en:
         last_error: "Latest error"
         slug: "Slug"
         status: "Sync status"
+        title: "Title"
         type: "Type"
         updated_at: "Remote updated"
       hints:
         markdown: "Content is sent unchanged through put_page and may include YAML frontmatter."
         slug_readonly: "The slug identifies the gbrain page. Delete and recreate the page to change it."
       index:
+        current_page: "Current page, %{page}"
         empty: "No local knowledge base documents."
         local_pages: "Local documents"
-        remote_count: "%{count} remote documents"
+        next_page: "Next"
+        page: "Page %{page}"
+        pagination_label: "Remote document pagination"
+        previous_page: "Previous"
         remote_empty: "list_pages returned no displayable documents."
         remote_pages: "gbrain remote list"
         remote_result: "Remote documents"
+        remote_summary: "Showing %{from}-%{to} of %{total}"
         source_label: "Document list source"
         title: "gbrain Knowledge Base"
       navigation:
@@ -262,6 +270,7 @@ en:
       notices:
         deletion_queued: "Deletion was saved and will run in order."
         queued: "Content was saved and queued for the knowledge base."
+        remote_deleted: "The remote document was removed from the gbrain list."
         retry_queued: "The page was queued again."
       show:
         remote_metadata: "Remote metadata"

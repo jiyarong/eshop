@@ -22,11 +22,15 @@ class Gbrain::ClientTest < ActiveSupport::TestCase
     client = build_client(mcp_client)
 
     client.put_page(slug: "ops/sku", content: "# SKU")
+    client.list_pages(limit: 25)
+    client.delete_page("ops/obsolete")
     client.query("库存", limit: 5)
     client.search("利润", limit: 8)
 
     assert_equal [
       ["put_page", { "slug" => "ops/sku", "content" => "# SKU" }],
+      ["list_pages", { "limit" => 25, "sort" => "updated_desc" }],
+      ["delete_page", { "slug" => "ops/obsolete" }],
       ["query", { "query" => "库存", "limit" => 5 }],
       ["search", { "query" => "利润", "limit" => 8 }]
     ], mcp_client.calls

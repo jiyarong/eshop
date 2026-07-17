@@ -6,10 +6,20 @@
     <h1 class="page-title"><%= @slug %></h1>
     <span class="ai-heading-code"><%= t("admin.gbrain.show.remote_page") %></span>
   </div>
-  <%= link_to admin_gbrain_pages_path(source: "remote"), class: "button button-secondary" do %>
-    <i class="bi bi-arrow-left" aria-hidden="true"></i>
-    <span><%= t("admin.gbrain.actions.back_to_remote_list") %></span>
-  <% end %>
+  <div class="page-actions gbrain-remote-page-actions">
+    <%= link_to admin_gbrain_pages_path(source: "remote", page: @return_page), class: "button button-secondary" do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <span><%= t("admin.gbrain.actions.back_to_remote_list") %></span>
+    <% end %>
+    <%= button_to destroy_remote_page_admin_gbrain_pages_path,
+                  method: :delete,
+                  params: { slug: @slug, page: @return_page },
+                  class: "button gbrain-delete-button",
+                  form: { data: { turbo_confirm: t("admin.gbrain.actions.confirm_delete_remote", slug: @slug) } } do %>
+      <i class="bi bi-trash" aria-hidden="true"></i>
+      <span><%= t("admin.gbrain.actions.delete_remote") %></span>
+    <% end %>
+  </div>
 </div>
 
 <%= render "navigation", current: :pages %>

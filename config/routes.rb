@@ -83,6 +83,7 @@ Rails.application.routes.draw do
     resources :gbrain_pages do
       get :remote, on: :member
       get :remote_page, on: :collection
+      delete :remote_page, on: :collection, action: :destroy_remote, as: :destroy_remote_page
       post :retry_sync, on: :member
       get :validation, on: :collection
     end

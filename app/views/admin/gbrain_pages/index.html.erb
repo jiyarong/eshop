@@ -19,51 +19,77 @@
 <% if @error.present? %>
   <div class="error-box gbrain-error" role="alert"><%= @error %></div>
 <% elsif @source == "remote" %>
-  <section class="panel gbrain-remote-list-panel">
+  <section class="panel gbrain-remote-list-panel gbrain-list-panel">
     <div class="gbrain-remote-list-heading">
       <h2 class="gbrain-section-title"><%= t("admin.gbrain.index.remote_result") %></h2>
-      <span class="gbrain-remote-count"><%= t("admin.gbrain.index.remote_count", count: @remote_pages.size) %></span>
+      <span class="gbrain-remote-count"><%= t("admin.gbrain.index.remote_summary", from: @remote_from, to: @remote_to, total: @remote_total) %></span>
     </div>
 
-    <% if @remote_pages.any? %>
-      <div class="gbrain-remote-list">
-        <% @remote_pages.each do |page| %>
-          <details class="gbrain-remote-item">
-            <summary class="gbrain-remote-item__summary">
-              <span class="gbrain-remote-item__identity">
-                <strong><%= gbrain_remote_page_title(page) %></strong>
-                <code><%= page["slug"] %></code>
-              </span>
-              <span class="gbrain-remote-item__meta">
-                <span><%= page["type"].presence || t("common.empty_value") %></span>
-                <time><%= gbrain_remote_page_time(page["updated_at"]) %></time>
-              </span>
-            </summary>
-            <div class="gbrain-remote-item__body">
-              <dl>
-                <div>
-                  <dt><%= t("admin.gbrain.fields.slug") %></dt>
-                  <dd><code><%= page["slug"] %></code></dd>
-                </div>
-                <div>
-                  <dt><%= t("admin.gbrain.fields.type") %></dt>
-                  <dd><%= page["type"].presence || t("common.empty_value") %></dd>
-                </div>
-                <div>
-                  <dt><%= t("admin.gbrain.fields.updated_at") %></dt>
-                  <dd><%= gbrain_remote_page_time(page["updated_at"]) %></dd>
-                </div>
-              </dl>
-              <%= link_to remote_page_admin_gbrain_pages_path(slug: page["slug"]), class: "button button-secondary" do %>
-                <i class="bi bi-cloud-download" aria-hidden="true"></i>
-                <span><%= t("admin.gbrain.actions.get_page") %></span>
-              <% end %>
-            </div>
-          </details>
+    <div class="table-scroll">
+      <table class="ai-admin-table gbrain-remote-pages-table">
+        <thead>
+          <tr>
+            <th><%= t("admin.gbrain.fields.title") %></th>
+            <th><%= t("admin.gbrain.fields.slug") %></th>
+            <th><%= t("admin.gbrain.fields.type") %></th>
+            <th><%= t("admin.gbrain.fields.updated_at") %></th>
+            <th><%= t("admin.gbrain.fields.actions") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @remote_pages.each do |page| %>
+            <tr>
+              <td class="gbrain-remote-title"><%= gbrain_remote_page_title(page) %></td>
+              <td class="gbrain-remote-slug"><code><%= page["slug"] %></code></td>
+              <td><%= page["type"].presence || t("common.empty_value") %></td>
+              <td><time><%= gbrain_remote_page_time(page["updated_at"]) %></time></td>
+              <td class="table-actions gbrain-remote-table-actions">
+                <%= link_to remote_page_admin_gbrain_pages_path(slug: page["slug"], page: @remote_page), class: "ai-row-action" do %>
+                  <i class="bi bi-cloud-download" aria-hidden="true"></i>
+                  <span><%= t("admin.gbrain.actions.get_page") %></span>
+                <% end %>
+                <%= button_to destroy_remote_page_admin_gbrain_pages_path,
+                              method: :delete,
+                              params: { slug: page["slug"], page: @remote_page },
+                              class: "ai-row-action gbrain-remote-row-delete",
+                              form_class: "gbrain-remote-delete-form",
+                              form: { data: { turbo_confirm: t("admin.gbrain.actions.confirm_delete_remote", slug: page["slug"]) } } do %>
+                  <i class="bi bi-trash" aria-hidden="true"></i>
+                  <span><%= t("admin.gbrain.actions.delete_remote") %></span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @remote_pages.empty? %>
+            <tr><td colspan="5" class="empty-state"><%= t("admin.gbrain.index.remote_empty") %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @remote_page_count > 1 %>
+      <nav class="gbrain-remote-pagination" aria-label="<%= t("admin.gbrain.index.pagination_label") %>">
+        <% if @remote_page > 1 %>
+          <%= link_to admin_gbrain_pages_path(source: "remote", page: @remote_page - 1), class: "gbrain-remote-pagination__link" do %>
+            <i class="bi bi-chevron-left" aria-hidden="true"></i><span><%= t("admin.gbrain.index.previous_page") %></span>
+          <% end %>
         <% end %>
-      </div>
-    <% else %>
-      <div class="empty-state"><%= t("admin.gbrain.index.remote_empty") %></div>
+
+        <span class="gbrain-remote-pagination__pages">
+          <% 1.upto(@remote_page_count) do |page_number| %>
+            <%= link_to page_number,
+                        admin_gbrain_pages_path(source: "remote", page: page_number),
+                        class: "gbrain-remote-pagination__page",
+                        aria: (page_number == @remote_page ? { current: "page", label: t("admin.gbrain.index.current_page", page: page_number) } : { label: t("admin.gbrain.index.page", page: page_number) }) %>
+          <% end %>
+        </span>
+
+        <% if @remote_page < @remote_page_count %>
+          <%= link_to admin_gbrain_pages_path(source: "remote", page: @remote_page + 1), class: "gbrain-remote-pagination__link" do %>
+            <span><%= t("admin.gbrain.index.next_page") %></span><i class="bi bi-chevron-right" aria-hidden="true"></i>
+          <% end %>
+        <% end %>
+      </nav>
     <% end %>
 
     <details class="gbrain-raw-result">
@@ -72,7 +98,7 @@
     </details>
   </section>
 <% else %>
-  <section class="panel ai-table-panel">
+  <section class="panel ai-table-panel gbrain-list-panel">
     <div class="table-scroll">
       <table class="ai-admin-table gbrain-pages-table">
         <thead>
