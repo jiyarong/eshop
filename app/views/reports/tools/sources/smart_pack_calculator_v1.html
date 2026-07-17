@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB & Ozon 物流包装与装配规划系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root { --wb-purple: #cb11ab; --ozon-blue: #005bff; --bg-color: #f0f2f5; --card-bg: #ffffff; --text-main: #1d1d1f; --text-muted: #5f6368; --border-color: #dadce0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; overflow-x: hidden; }
+
+        #app-wrapper { display: flex; width: 100vw; height: 100vh; }
+
+        #sidebar { width: 280px; background: #fff; border-right: 1px solid #ddd; box-shadow: 2px 0 8px rgba(0,0,0,0.05); transition: margin-left 0.3s ease; position: relative; display: flex; flex-direction: column; z-index: 100; flex-shrink: 0;}
+        #sidebar.collapsed { margin-left: -280px; }
+        .sidebar-content { padding: 20px; overflow-y: auto; flex: 1; }
+        .toggle-btn { position: absolute; top: 20px; right: -36px; width: 36px; height: 40px; background: #fff; border: 1px solid #ddd; border-left: none; cursor: pointer; border-radius: 0 6px 6px 0; font-size: 18px; display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 6px rgba(0,0,0,0.05); color: var(--ozon-blue); z-index: 101;}
+
+        .mem-input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed #ddd;}
+        .mem-input-group input { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; }
+        .btn-mem { background: #f0f6ff; color: var(--ozon-blue); border: 1px solid #cce0ff; padding: 8px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .btn-mem:hover { background: var(--ozon-blue); color: #fff; }
+
+        .sku-group { margin-bottom: 12px; }
+        .sku-title { font-size: 13px; font-weight: bold; background: #f8f9fa; padding: 6px 8px; border-radius: 4px; color: #333; margin-bottom: 6px; display: flex; align-items: center;}
+        .sku-title span { background: var(--wb-purple); color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-right: 6px; }
+        .mem-item { font-size: 12px; padding: 8px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 4px; cursor: pointer; background: #fff; transition: all 0.2s; position: relative;}
+        .mem-item:hover { border-color: var(--ozon-blue); box-shadow: 0 2px 6px rgba(0,91,255,0.1); }
+        .mem-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; padding-right: 20px;}
+        .mem-remark { font-weight: bold; color: #111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+        .mem-time { color: #888; font-size: 11px;}
+        .mem-del { position: absolute; right: 8px; top: 8px; color: #d32f2f; cursor: pointer; opacity: 0.5; font-size: 14px; font-weight: bold;}
+        .mem-del:hover { opacity: 1; }
+
+        .main-content { flex: 1; overflow-y: auto; height: 100vh; position: relative; padding: 20px; box-sizing: border-box;}
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .lang-switch { position: absolute; top: 20px; right: 20px; z-index: 50; }
+        .lang-switch select { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); background: #fff; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.05);}
+        .lang-switch select:focus { outline: none; border-color: var(--ozon-blue); }
+
+        .header { text-align: center; margin-bottom: 24px; }
+        .header h1 { margin: 0; font-size: 28px; background: linear-gradient(90deg, var(--wb-purple), var(--ozon-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background-color: var(--card-bg); border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e1e3e5; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 15px; }
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+        .input-group input, .input-group select { padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 15px; background: #fff; }
+        .input-group input:focus, .input-group select:focus { outline: none; border-color: var(--ozon-blue); box-shadow: 0 0 0 3px rgba(0,91,255,0.1); }
+        .form-note { font-size: 12px; color: #888; margin-bottom: 20px; line-height: 1.5; }
+
+        .fixed-box-section { background: #fff8e1; border: 1px dashed #ffb74d; border-radius: 8px; padding: 16px; margin-top: 16px; grid-column: 1 / -1; display: none; }
+        .fixed-box-section.active { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+        .toggle-wrap { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; color: #e65100; cursor: pointer; padding: 8px 12px; background: #fff3e0; border-radius: 6px; width: fit-content; margin-top: 8px;}
+
+        .btn { background: linear-gradient(90deg, var(--wb-purple), var(--ozon-blue)); color: white; border: none; padding: 14px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: opacity 0.3s; }
+        .btn:hover { opacity: 0.9; }
+
+        #result-area { display: none; }
+
+        .plan-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        @media (max-width: 900px) { .plan-tabs { grid-template-columns: 1fr; } }
+        .plan-tab { padding: 20px; border: 1px solid #ddd; border-radius: 10px; background: #fafafa; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 10px; position: relative;}
+        .plan-tab:hover { border-color: var(--ozon-blue); background: #fff; box-shadow: 0 4px 16px rgba(0,91,255,0.08);}
+        .plan-tab.active { border-color: var(--ozon-blue); background: #f0f6ff; box-shadow: 0 4px 16px rgba(0,91,255,0.15); border-width: 2px; padding: 19px;}
+
+        .plan-type-badge { position: absolute; top: -10px; left: 16px; font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #fff; }
+        .type-fixed { background: #f57c00; }
+        .type-opt { background: #1976d2; }
+
+        .plan-header { display: flex; justify-content: space-between; align-items: center; margin-top: 4px;}
+        .plan-name { font-size: 18px; font-weight: bold; color: var(--text-main); }
+
+        /* ------------------ */
+        /* 新版 100 分详情面板样式 */
+        /* ------------------ */
+        .plan-score { font-size: 14px; font-weight: bold; color: var(--wb-purple); background: #fce4ec; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 6px;}
+        .score-wrap { position: relative; display: flex; align-items: center; gap: 4px; cursor: help;}
+        .info-icon { background: rgba(203, 17, 171, 0.15); color: var(--wb-purple); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-style: normal; font-weight: bold; transition: all 0.2s;}
+        .score-wrap:hover .info-icon { background: var(--wb-purple); color: #fff; }
+        .score-tooltip { display: none; position: absolute; top: 120%; right: 0; background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(8px); color: #fff; padding: 14px; border-radius: 8px; font-size: 12px; width: max-content; min-width: 220px; z-index: 999; box-shadow: 0 8px 24px rgba(0,0,0,0.25); white-space: normal; font-weight: normal; border: 1px solid rgba(255,255,255,0.1); cursor: default;}
+        .score-tooltip::before { content: ""; position: absolute; top: -5px; right: 20px; border-width: 0 6px 6px 6px; border-style: solid; border-color: transparent transparent rgba(20, 20, 20, 0.95) transparent; }
+        .score-wrap:hover .score-tooltip { display: block; }
+        .st-title { font-weight: bold; color: #4fc3f7; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 6px; font-size: 13px;}
+        .st-row { display: flex; justify-content: space-between; margin-bottom: 6px; gap: 16px; color: #ddd;}
+        .st-row .val { font-family: monospace; font-weight: bold; color: #fff;}
+        .st-row.pen { color: #ff5252; border-top: 1px dashed #555; padding-top: 6px; margin-top: 6px; font-weight: bold;}
+        .st-row.pen .val { color: #ff5252; }
+
+        .plan-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; color: #444; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #eee;}
+        .plan-meta-grid span.highlight { font-weight: bold; color: #111; }
+        .plan-matrix { background: #e3f2fd; color: #1565c0; font-family: monospace; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block;}
+
+        .plan-badges { display: flex; gap: 6px; font-size: 11px; font-weight: bold; }
+        .badge { padding: 4px 8px; border-radius: 4px; background: #eee; }
+        .badge.ozon-ok { background: #e8f5e9; color: #2e7d32; }
+        .badge.ozon-err { background: #ffebee; color: #c62828; }
+        .badge.wb-mono { background: #fff8e1; color: #f57f17; }
+        .badge.wb-ok { background: #e8f5e9; color: #2e7d32; }
+
+        .report-grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; }
+        .report-box { background-color: #fff; border: 1px solid #e8eaed; padding: 24px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);}
+        .report-box h3 { margin: 0 0 16px 0; font-size: 18px; border-bottom: 2px solid #f0f2f5; padding-bottom: 12px; color: var(--ozon-blue); display: flex; align-items: center; gap: 8px;}
+
+        .pallet-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .stat-card { background: #f8f9fa; border: 1px solid #eee; padding: 16px; border-radius: 8px; text-align: center; }
+        .stat-card .label { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+        .stat-card .val { font-size: 20px; font-weight: bold; color: var(--text-main); }
+        .stat-card .val.primary { color: var(--ozon-blue); font-size: 24px; }
+
+        .data-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #f0f2f5; }
+        .data-val { font-weight: bold; color: var(--text-main); text-align: right;}
+
+        .opt-hints { background: #fff4e5; padding: 16px; border-radius: 8px; font-size: 14px; line-height: 1.6; border-left: 4px solid #f57c00; color: #424242; margin-top: 10px;}
+        .opt-hints b { color: #e65100; }
+
+        .view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 1000px) { .view-grid { grid-template-columns: 1fr; } }
+        .canvas-container { position: relative; width: 100%; height: 500px; background-color: #161618; border-radius: 8px; overflow: hidden; border: 1px solid #000; box-shadow: inset 0 0 30px rgba(0,0,0,0.8); }
+
+        .view-legend { position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,0.95); padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #222; pointer-events: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-weight: bold; }
+        .view-toolbar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(4px); border: 1px solid #333; border-radius: 6px; padding: 4px; display: flex; gap: 4px; z-index: 20; }
+        .view-btn { background: transparent; color: #888; border: none; padding: 6px 14px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .view-btn.active { background: var(--ozon-blue); color: #fff; }
+
+        .hud-panel { display: none; position: absolute; top: 12px; right: 12px; background: rgba(20, 20, 20, 0.65); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 14px; color: #eee; font-size: 12px; width: max-content; min-width: 180px; pointer-events: none; z-index: 10; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: opacity 0.2s; }
+        .hud-title { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.25); padding-bottom: 8px; white-space: nowrap; }
+        .hud-row { display: flex; flex-direction: column; margin-bottom: 8px; align-items: flex-start; gap: 3px; white-space: nowrap; }
+        .hud-row .lbl { color: #ccc; font-size: 11px; }
+        .hud-row .val { font-family: 'Courier New', Courier, monospace; color: #4fc3f7; font-weight: bold; text-align: left; line-height: 1.3;}
+
+        .alert-error { color: #c5221f; font-weight: bold; padding: 16px; background: #fce8e6; border-radius: 8px; border-left: 4px solid #ea4335; margin-bottom: 20px; line-height: 1.5; }
+        .alert-warn { color: #b06000; font-weight: bold; padding: 16px; background: #fef7e0; border-radius: 8px; border-left: 4px solid #fbbc04; margin-bottom: 20px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div id="app-wrapper">
+    <aside id="sidebar">
+        <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+        <div class="sidebar-content">
+            <h3 style="margin-top:0; color:var(--ozon-blue); border-bottom: 2px solid #eee; padding-bottom: 10px;" id="t_mem_title">🗂️ SKU 记忆区</h3>
+            <div class="mem-input-group">
+                <input type="text" id="mem_sku" placeholder="SKU 编码 (必填)">
+                <input type="text" id="mem_remark" placeholder="备注 (如: 供应商A)">
+                <button class="btn-mem" onclick="saveMemory()" id="t_btn_save">保存当前参数配置</button>
+            </div>
+            <div id="memory-list"></div>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="lang-switch">
+            <select id="lang" onchange="switchLang()">
+                <option value="cn">🇨🇳 中文 (CN)</option>
+                <option value="ru">🇷🇺 Русский (RU)</option>
+            </select>
+        </div>
+
+        <div class="container">
+            <div class="header">
+                <h1 id="t_main_title">WB & Ozon 物流包装与装配规划系统</h1>
+            </div>
+
+            <div class="card">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label id="t_l_mat">内箱材质属性</label>
+                        <select id="material">
+                            <option value="colorbox" id="t_o_color">普通彩盒 / 软包装 (需强制搭配外箱)</option>
+                            <option value="corrugated" id="t_o_corr">加硬瓦楞纸箱 (允许免外箱直发)</option>
+                        </select>
+                    </div>
+                    <div class="input-group"><label id="t_l_l">单品长 L (cm)</label><input type="number" id="len" step="0.1" value="38"></div>
+                    <div class="input-group"><label id="t_l_w">单品宽 W (cm)</label><input type="number" id="wid" step="0.1" value="32"></div>
+                    <div class="input-group"><label id="t_l_h">单品高 H (cm)</label><input type="number" id="hei" step="0.1" value="15"></div>
+                    <div class="input-group"><label id="t_l_gw">单品毛重 (kg)</label><input type="number" id="weight" step="0.01" value="2.5"></div>
+
+                    <div class="input-group"><label id="t_l_ph">托盘限界高度 (cm)</label><input type="number" id="pallet_h" step="1" value="180"></div>
+                    <div class="input-group"><label id="t_l_pw">托盘限界承重 (kg)</label><input type="number" id="pallet_w" step="1" value="350"></div>
+
+                    <label class="toggle-wrap">
+                        <input type="checkbox" id="use-fixed-box" onchange="toggleFixedBox()"> <span id="t_l_fixed">指定现实已有外箱尺寸 (进入对照模式)</span>
+                    </label>
+
+                    <div class="fixed-box-section" id="fixed-box-params">
+                        <div class="input-group"><label id="t_f_l">现有外箱长 (cm)</label><input type="number" id="f_l" step="0.1" value="80"></div>
+                        <div class="input-group"><label id="t_f_w">现有外箱宽 (cm)</label><input type="number" id="f_w" step="0.1" value="40"></div>
+                        <div class="input-group"><label id="t_f_h">现有外箱高 (cm)</label><input type="number" id="f_h" step="0.1" value="35"></div>
+                        <div class="input-group"><label id="t_f_qty">该箱实装件数</label><input type="number" id="f_qty" step="1" value="4"></div>
+                        <div class="input-group"><label id="t_f_gw">该箱总毛重 (kg)</label><input type="number" id="f_gw" step="0.01" value="10.5"></div>
+                    </div>
+                </div>
+                <div class="form-note" id="t_note">
+                    * 规则提示：若算法判定触发 <b>WB 莫诺大件整托 (Mono-pallet)</b>，将强制为您锁定 180cm / 350kg 红色极值。
+                </div>
+                <button class="btn" onclick="executeDecisionEngine()" id="t_btn_calc">执行全量装配寻优运算</button>
+            </div>
+
+            <div id="result-area">
+                <div id="alert-zone"></div>
+                <div id="standard-result" style="display: none;">
+
+                    <div class="plan-tabs" id="plan-tabs"></div>
+
+                    <div class="report-grid">
+                        <div class="report-box">
+                            <h3 id="t_r_title">🛢️ 托盘装载综合资产评估</h3>
+                            <div class="pallet-stats-grid">
+                                <div class="stat-card">
+                                    <div class="label" id="t_s_box">满载外箱总数</div>
+                                    <div class="val" id="rep-pal-box">- 箱</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="label" id="t_s_hei">货垛实高 / 限界</div>
+                                    <div class="val" id="rep-pal-hei">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="label" id="t_s_wei">托盘总重 (含木托15kg)</div>
+                                    <div class="val" id="rep-pal-wei">-</div>
+                                </div>
+                                <div class="stat-card" style="background: #e3f2fd; border-color: #bbdefb;">
+                                    <div class="label" style="color: #1565c0;" id="t_s_item">干线摊销运力</div>
+                                    <div class="val primary" id="rep-pal-item">- 件</div>
+                                </div>
+                            </div>
+
+                            <div class="data-row" style="background: #f8f9fa; padding: 12px 12px 6px 12px; border-radius: 6px 6px 0 0; margin-bottom: 0; border-bottom: none;">
+                                <span id="t_r_vol">空间体积利用率 (按托盘限界容积核算):</span><span class="data-val" id="rep-pal-vol-eff" style="color: var(--ozon-blue);">-</span>
+                            </div>
+                            <div class="data-row" style="background: #f8f9fa; padding: 6px 12px 12px 12px; border-radius: 0 0 6px 6px; margin-bottom: 0;">
+                                <span id="t_r_area">底盘投影覆盖率 (按货物实占底面积核算):</span><span class="data-val" id="rep-pal-area-eff" style="color: var(--ozon-blue);">-</span>
+                            </div>
+                            <div id="opt-hints-container"></div>
+                        </div>
+                    </div>
+
+                    <div class="view-grid">
+                        <div class="card" style="padding: 10px; background: #111; margin-bottom: 0;">
+                            <div style="color: #aaa; font-size: 12px; font-weight: bold; margin-bottom: 8px;" id="t_v_box">📦 Master Carton 内部矩阵剖视</div>
+                            <div class="canvas-container" id="box-canvas">
+                                <div class="view-legend" id="legend-box">3D</div>
+                                <div class="hud-panel" id="box-hud"></div>
+                                <div class="view-toolbar" id="box-toolbar"></div>
+                            </div>
+                        </div>
+                        <div class="card" style="padding: 10px; background: #111; margin-bottom: 0;">
+                            <div style="color: #aaa; font-size: 12px; font-weight: bold; margin-bottom: 8px;" id="t_v_pal">🛢️ 托盘全维度资产与三维空隙测绘</div>
+                            <div class="canvas-container" id="pallet-canvas">
+                                <div class="view-legend" id="legend-pallet">3D</div>
+                                <div class="hud-panel" id="pallet-hud"></div>
+                                <div class="view-toolbar" id="pallet-toolbar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -----------------------
+    // 多语言包 (CN / RU)
+    // -----------------------
+    const i18n = {
+        cn: {
+            memory_title: "🗂️ SKU 记忆区", sku_ph: "SKU 编码 (必填)", rm_ph: "备注 (如: 供应商A)", btn_save: "保存当前参数配置",
+            main_title: "WB & Ozon 物流包装与装配规划系统",
+            l_mat: "内箱材质属性", o_color: "普通彩盒 / 软包装 (需强制搭配外箱)", o_corr: "加硬瓦楞纸箱 (允许免外箱直发)",
+            l_l: "单品长 L (cm)", l_w: "单品宽 W (cm)", l_h: "单品高 H (cm)", l_gw: "单品毛重 (kg)",
+            l_ph: "托盘限界高度 (cm)", l_pw: "托盘限界承重 (kg)",
+            l_fixed: "指定现实已有外箱尺寸 (进入对照模式)",
+            f_l: "现有外箱长 (cm)", f_w: "现有外箱宽 (cm)", f_h: "现有外箱高 (cm)", f_qty: "该箱实装件数", f_gw: "该箱总毛重 (kg)",
+            note: "* 规则提示：若算法判定触发 <b>WB 莫诺大件整托 (Mono-pallet)</b>，将强制为您锁定 180cm / 350kg 红色极值。",
+            btn_calc: "执行全量装配寻优运算",
+            r_title: "🛢️ 托盘装载综合资产评估", s_box: "满载外箱总数", s_hei: "货垛实高 / 限界", s_wei: "托盘总重 (含木托15kg)", s_item: "干线摊销运力",
+            r_vol: "空间体积利用率 (按托盘限界容积核算):", r_area: "底盘投影覆盖率 (按货物实占底面积核算):",
+            v_box: "📦 Master Carton 内部矩阵剖视", v_pal: "🛢️ 托盘全维度资产与三维空隙测绘",
+
+            t_plan: "方案", t_score: "得分", t_dim: "外径", t_gw: "箱重", t_qty: "实装", t_matrix: "阵列",
+            t_ozon_ok: "OZON合规", t_ozon_err: "OZON大件费", t_wb_mono: "WB⚠️整托大件", t_wb_ok: "WB标准件",
+            t_fixed_badge: "🎯 现有现实方案", t_opt_badge: "🚀 算法对比寻优", t_best_badge: "🏆 综合最优解",
+            t_chaos: "混沌排列", t_box: "箱", t_pcs: "件",
+            alert_vol: "❌ 空间物理悖论：指定外箱容积小于商品总体积，根本装不下！", alert_overw: "❌ 严重超重超规：外箱单重超 350kg，拒绝计算。",
+            alert_limit: "🛑 【建单拦截】：商品单品尺寸已违反基础物流红线！", alert_fail: "❌ 【运算阻断】：严重突破红线，无法安全统装。",
+            alert_sioc: "⚡ <b>智能降级保护：</b> 启动 <b>原箱直发 (SIOC)</b> 模式。", alert_reject: "🛑 【拒绝装载】：产品已完全击穿物流边界。",
+            hint_w_cap: "⚠️ <b>承重极值截断：</b> 托盘满载总重已逼近安全极值，停止向上装配。", hint_oh: "✅ <b>柔性悬空盖帽：</b> 激活 80% 支撑法则，允许顶部局部悬空以提升装载。", hint_z_exp: "👉 <b>垂直扩张潜力：</b> 限高放宽即可在顶部再平铺一层提升利用率。",
+            x_len: "X长", y_wid: "Y宽", z_hei: "Z高", inside: "内", gap: "隙",
+
+            // Score Tooltip keys
+            st_top: "五维漏斗评价体系", st_s1: "托盘空间利用率 (满分35)", st_s2: "外箱内部利用率 (满分25)", st_s3: "装托稳定性 (满分15)", st_s4: "外箱合理性 (满分15)", st_s5: "装配复杂度 (满分10)", st_pen: "违规扣分 (平台超规)",
+
+            hud_sioc: "📦 SIOC 原箱包裹", hud_sioc_m1: "包裹物理极值", hud_sioc_m2: "商品总毛重",
+            hud_out: "📦 运输外箱总成限界", hud_out_m1: "计费基准尺寸", hud_out_m2: "核算封箱总重",
+            hud_in: "🔹 内箱物理寻址", hud_in_m1: "X轴(长) 体积占据", hud_in_m2: "Y轴(宽) 体积占据", hud_in_m3: "Z轴(高) 标高占据",
+            hud_chaos: "⚠️ 现实外箱混沌限界", hud_chaos_m1: "实测容积", hud_chaos_m2: "实装商品件数", hud_chaos_m3: "核算封箱总重",
+            hud_p_base: "🛢️ 欧标木托盘承载大底", hud_p_m1: "木底占地限界", hud_p_m2: "货垛实高/限高",
+            hud_core: "主干阵列", hud_top: "顶部盖帽", hud_side: "侧边补缝", hud_zone: "分区",
+            hud_blk_m1: "X平面物理覆盖", hud_blk_m2: "Y平面物理覆盖", hud_blk_m3: "Z轴(垂直)高程",
+            hud_res_x: "🧩 X轴右侧通道闲置", hud_res_y: "🧩 Y轴前侧通道闲置", hud_res_z: "🧩 Z轴天花板未利用区"
+        },
+        ru: {
+            memory_title: "🗂️ Сохраненные SKU", sku_ph: "Код SKU (Обязательно)", rm_ph: "Примечание (напр. Поставщик А)", btn_save: "Сохранить параметры",
+            main_title: "Система планирования упаковки WB & Ozon",
+            l_mat: "Тип упаковки товара", o_color: "Обычная коробка (требует внешний короб)", o_corr: "Гофрокартон (допускается SIOC)",
+            l_l: "Длина товара L (см)", l_w: "Ширина товара W (см)", l_h: "Высота товара H (см)", l_gw: "Вес брутто товара (кг)",
+            l_ph: "Макс. высота паллеты (см)", l_pw: "Макс. вес паллеты (кг)",
+            l_fixed: "Указать текущий размер короба (Режим сравнения)",
+            f_l: "Длина кор. (см)", f_w: "Ширина кор. (см)", f_h: "Высота кор. (см)", f_qty: "Шт. в коробе", f_gw: "Общий вес кор. (кг)",
+            note: "* При срабатывании <b>Монопаллеты WB (КГТ)</b> система жестко фиксирует лимит 180см / 350кг.",
+            btn_calc: "Рассчитать оптимизацию загрузки",
+            r_title: "🛢️ Анализ загрузки паллеты", s_box: "Коробов на паллете", s_hei: "Факт. высота / Лимит", s_wei: "Вес паллеты (с поддоном 15кг)", s_item: "Вместимость (всего шт)",
+            r_vol: "Использование объема (от лимита высоты):", r_area: "Покрытие площади (по габаритам груза):",
+            v_box: "📦 3D: Мастер-короб (Внутренняя раскладка)", v_pal: "🛢️ 3D: Паллета и остаточное пространство",
+
+            t_plan: "Вариант", t_score: "Оценка", t_dim: "Размер", t_gw: "Вес", t_qty: "Вмест.", t_matrix: "Матрица",
+            t_ozon_ok: "OZON Норма", t_ozon_err: "OZON КГТ (Штраф)", t_wb_mono: "WB Монопаллета", t_wb_ok: "WB Стандарт",
+            t_fixed_badge: "🎯 Текущий вариант", t_opt_badge: "🚀 Оптимизация", t_best_badge: "🏆 Лучший вариант",
+            t_chaos: "Хаос. укладка", t_box: "кор.", t_pcs: "шт.",
+            alert_vol: "❌ Ошибка: Объем короба меньше объема товаров!", alert_overw: "❌ Ошибка: Вес короба > 350 кг.",
+            alert_limit: "🛑 Ошибка: Габариты товара превышают лимиты логистики!", alert_fail: "❌ Ошибка: Невозможно собрать короб.",
+            alert_sioc: "⚡ <b>Внимание:</b> Переход в режим <b>Заводская упаковка (SIOC)</b>.", alert_reject: "🛑 Отказ: Товар превышает лимит паллеты.",
+            hint_w_cap: "⚠️ <b>Лимит по весу:</b> Достигнут предел веса, укладка вверх остановлена.", hint_oh: "✅ <b>Допуск свеса:</b> Допускается безопасный свес на верхнем слое.", hint_z_exp: "👉 <b>Потенциал высоты:</b> Увеличьте лимит высоты паллеты для добавления слоя.",
+            x_len: "X", y_wid: "Y", z_hei: "Z", inside: "Внутр", gap: "Зазор",
+
+            // Score Tooltip keys
+            st_top: "5-Факторная оценка", st_s1: "Объем паллеты (макс 35)", st_s2: "Объем короба (макс 25)", st_s3: "Стабильность укладки (макс 15)", st_s4: "Рациональность короба (макс 15)", st_s5: "Сложность сборки (макс 10)", st_pen: "Штраф (Платформа)",
+
+            hud_sioc: "📦 Заводская упаковка (SIOC)", hud_sioc_m1: "Габариты", hud_sioc_m2: "Вес брутто",
+            hud_out: "📦 Внешний Мастер-короб", hud_out_m1: "Габариты для тарифа", hud_out_m2: "Общий вес короба",
+            hud_in: "🔹 Товар", hud_in_m1: "Ось X (Длина)", hud_in_m2: "Ось Y (Ширина)", hud_in_m3: "Ось Z (Высота)",
+            hud_chaos: "⚠️ Хаотичная укладка короба", hud_chaos_m1: "Фактический объем", hud_chaos_m2: "Шт. в коробе", hud_chaos_m3: "Общий вес короба",
+            hud_p_base: "🛢️ Европоддон (Основа)", hud_p_m1: "Площадь поддона", hud_p_m2: "Факт. высота / Лимит",
+            hud_core: "Основной блок", hud_top: "Верхний блок", hud_side: "Боковой блок", hud_zone: "Зона",
+            hud_blk_m1: "Ось X (Длина)", hud_blk_m2: "Ось Y (Ширина)", hud_blk_m3: "Ось Z (Высота)",
+            hud_res_x: "🧩 Свободно: Ось X (Справа)", hud_res_y: "🧩 Свободно: Ось Y (Спереди)", hud_res_z: "🧩 Свободно: Ось Z (Сверху)"
+        }
+    };
+
+    let currentLang = 'cn';
+    function T(key) { return i18n[currentLang][key] || key; }
+
+    function switchLang() {
+        currentLang = document.getElementById('lang').value;
+        document.querySelectorAll('[id^="t_"]').forEach(el => {
+            let key = el.id.replace('t_', '');
+            if(i18n[currentLang][key]) el.innerHTML = i18n[currentLang][key];
+        });
+        document.getElementById('mem_sku').placeholder = T('sku_ph');
+        document.getElementById('mem_remark').placeholder = T('rm_ph');
+        renderMemory();
+        if(document.getElementById('result-area').style.display === 'block') executeDecisionEngine();
+    }
+
+    // -----------------------
+    // 记忆区逻辑 (LocalStorage)
+    // -----------------------
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+    function saveMemory() {
+        let sku = document.getElementById('mem_sku').value.trim();
+        let remark = document.getElementById('mem_remark').value.trim();
+        if(!sku) return alert(currentLang==='cn' ? "请输入 SKU 编码" : "Введите SKU");
+
+        let params = {
+            material: document.getElementById('material').value, l: document.getElementById('len').value, w: document.getElementById('wid').value, h: document.getElementById('hei').value,
+            weight: document.getElementById('weight').value, pallet_h: document.getElementById('pallet_h').value, pallet_w: document.getElementById('pallet_w').value,
+            use_fixed: document.getElementById('use-fixed-box').checked, f_l: document.getElementById('f_l').value, f_w: document.getElementById('f_w').value, f_h: document.getElementById('f_h').value,
+            f_qty: document.getElementById('f_qty').value, f_gw: document.getElementById('f_gw').value
+        };
+
+        let mems = JSON.parse(localStorage.getItem('wb_ozon_mem_v7') || '{}');
+        if(!mems[sku]) mems[sku] = [];
+        let now = new Date(); let timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+        mems[sku].push({ remark: remark || (currentLang==='cn'?'默认':'По умолч.'), time: timeStr, params: params });
+        localStorage.setItem('wb_ozon_mem_v7', JSON.stringify(mems));
+        document.getElementById('mem_remark').value = ''; renderMemory();
+    }
+
+    function loadMemory(sku, index) {
+        let mems = JSON.parse(localStorage.getItem('wb_ozon_mem_v7') || '{}'); let data = mems[sku][index].params;
+        document.getElementById('material').value = data.material; document.getElementById('len').value = data.l; document.getElementById('wid').value = data.w; document.getElementById('hei').value = data.h; document.getElementById('weight').value = data.weight; document.getElementById('pallet_h').value = data.pallet_h; document.getElementById('pallet_w').value = data.pallet_w;
+        document.getElementById('use-fixed-box').checked = data.use_fixed; toggleFixedBox();
+        document.getElementById('f_l').value = data.f_l; document.getElementById('f_w').value = data.f_w; document.getElementById('f_h').value = data.f_h; document.getElementById('f_qty').value = data.f_qty; document.getElementById('f_gw').value = data.f_gw;
+        document.getElementById('mem_sku').value = sku;
+        executeDecisionEngine();
+    }
+
+    function deleteMemory(sku, index, event) {
+        event.stopPropagation();
+        let msg = currentLang === 'cn' ? "确认删除这条记忆记录吗？" : "Удалить эту запись?";
+        if(confirm(msg)) {
+            let mems = JSON.parse(localStorage.getItem('wb_ozon_mem_v7') || '{}'); mems[sku].splice(index, 1);
+            if(mems[sku].length === 0) delete mems[sku];
+            localStorage.setItem('wb_ozon_mem_v7', JSON.stringify(mems)); renderMemory();
+        }
+    }
+
+    function renderMemory() {
+        let mems = JSON.parse(localStorage.getItem('wb_ozon_mem_v7') || '{}'); let html = '';
+        for(let sku in mems) {
+            html += `<div class="sku-group"><div class="sku-title"><span>SKU</span> ${sku}</div>`;
+            mems[sku].forEach((item, idx) => {
+                html += `
+                <div class="mem-item" onclick="loadMemory('${sku}', ${idx})">
+                    <div class="mem-header"><div class="mem-remark">${item.remark}</div><div class="mem-del" onclick="deleteMemory('${sku}', ${idx}, event)">×</div></div>
+                    <div class="mem-time">${item.time}</div>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        document.getElementById('memory-list').innerHTML = html;
+    }
+
+    window.onload = () => { renderMemory(); initRenderers(); };
+
+    // -----------------------
+    // CAD 引擎防漏架构
+    // -----------------------
+    THREE.Object3D.DefaultUp.set(0, 0, 1);
+    let globalPlans = []; let currentActivePlan = null; let boxView = null; let palletView = null;
+
+    function toggleFixedBox() {
+        const wrap = document.getElementById('fixed-box-params');
+        if (document.getElementById('use-fixed-box').checked) wrap.classList.add('active'); else wrap.classList.remove('active');
+    }
+
+    class CADViewer {
+        constructor(containerId, hudId, toolbarId, legendId) {
+            this.container = document.getElementById(containerId); this.hud = document.getElementById(hudId); this.toolbar = document.getElementById(toolbarId); this.legend = document.getElementById(legendId);
+            this.width = this.container.clientWidth || 500; this.height = this.container.clientHeight || 500;
+            this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x161618);
+            this.perspCamera = new THREE.PerspectiveCamera(45, this.width / this.height, 1, 3000); this.orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 3000); this.camera = this.perspCamera;
+            this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false }); this.renderer.setPixelRatio(window.devicePixelRatio); this.renderer.setSize(this.width, this.height); this.container.appendChild(this.renderer.domElement);
+
+            if (typeof THREE.OrbitControls !== 'undefined') { this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement); this.controls.enableDamping = true; } else { this.controls = { update: () => {} }; }
+
+            this.scene.add(new THREE.AmbientLight(0xffffff, 0.85)); const dLight = new THREE.DirectionalLight(0xffffff, 0.5); dLight.position.set(200, 200, 300); this.scene.add(dLight);
+            this.raycaster = new THREE.Raycaster(); this.mouse = new THREE.Vector2(); this.hoveredMesh = null; this.boundingBox = new THREE.Box3();
+            this.axisGroup = new THREE.Group(); this.scene.add(this.axisGroup); this.mainGroup = new THREE.Group(); this.scene.add(this.mainGroup);
+            this.axesMap = { origin: null, X: null, Y: null, Z: null };
+
+            this.initToolbar(); this.onMouseMoveBound = this.onMouseMove.bind(this); this.container.addEventListener('mousemove', this.onMouseMoveBound); this.container.addEventListener('mouseleave', this.onMouseLeave.bind(this));
+            this.animateBound = this.animate.bind(this); requestAnimationFrame(this.animateBound);
+        }
+        clearScene() {
+            while(this.mainGroup.children.length > 0){
+                const child = this.mainGroup.children[0]; this.mainGroup.remove(child);
+                if(child.geometry) child.geometry.dispose();
+                if(child.material) { if(Array.isArray(child.material)) child.material.forEach(m => m.dispose()); else child.material.dispose(); }
+                if(child.children) { child.children.forEach(sub => { if(sub.geometry) sub.geometry.dispose(); if(sub.material) sub.material.dispose(); }); }
+            }
+        }
+        resize() {
+            this.width = this.container.clientWidth || 500; this.height = this.container.clientHeight || 500;
+            this.renderer.setSize(this.width, this.height); this.perspCamera.aspect = this.width / this.height; this.perspCamera.updateProjectionMatrix();
+        }
+        buildCoordinateAxes(xMax, yMax, zMax, isPallet = false, axisDesc = {x:"X", y:"Y", z:"Z"}) {
+            while(this.axisGroup.children.length > 0) this.axisGroup.remove(this.axisGroup.children[0]);
+            this.axesMap = { origin: null, X: null, Y: null, Z: null }; let sf = isPallet ? 2.5 : 1.0;
+            const createAxis = (endPt, colorHex, label, key) => {
+                const group = new THREE.Group(); const mat = new THREE.LineBasicMaterial({ color: colorHex, depthTest: false, linewidth: 2 });
+                const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), endPt]), mat); line.renderOrder = 950; group.add(line);
+                const textStr = `${endPt.length().toFixed(1)} ${label}`;
+                const tmpCanvas = document.createElement('canvas'); const tmpCtx = tmpCanvas.getContext('2d'); tmpCtx.font = 'bold 32px sans-serif'; const textWidth = tmpCtx.measureText(textStr).width + 40;
+                const canvas = document.createElement('canvas'); canvas.width = textWidth; canvas.height = 64;
+                const ctx = canvas.getContext('2d'); ctx.fillStyle = colorHex; ctx.font = 'bold 32px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(textStr, canvas.width/2, 32);
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+                sprite.position.copy(endPt).add(endPt.clone().normalize().multiplyScalar(8 * sf)); sprite.scale.set((canvas.width / 12) * sf, 5.3 * sf, 1); sprite.renderOrder = 999; group.add(sprite);
+                this.axesMap[key] = group; this.axisGroup.add(group);
+            };
+            const canvas0 = document.createElement('canvas'); canvas0.width = 64; canvas0.height = 64; const ctx0 = canvas0.getContext('2d'); ctx0.fillStyle = "#aaaaaa"; ctx0.font = 'bold 36px sans-serif'; ctx0.fillText("0", 16, 44);
+            const sprite0 = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas0), depthTest: false }));
+            sprite0.position.set(-3 * sf, -3 * sf, -3 * sf); sprite0.scale.set(6 * sf, 6 * sf, 1); sprite0.renderOrder = 999; this.axesMap.origin = sprite0; this.axisGroup.add(sprite0);
+            createAxis(new THREE.Vector3(xMax, 0, 0), "#e53935", axisDesc.x, "X"); createAxis(new THREE.Vector3(0, yMax, 0), "#43a047", axisDesc.y, "Y"); createAxis(new THREE.Vector3(0, 0, zMax), "#1976d2", axisDesc.z, "Z");
+        }
+        initToolbar() {
+            const views = [ { id: '3D', label: '3D' }, { id: 'Top', label: 'XY' }, { id: 'Front', label: 'XZ' }, { id: 'Right', label: 'YZ' } ];
+            let html = ''; views.forEach(v => { html += `<button class="view-btn ${v.id==='3D'?'active':''}" data-view="${v.id}">${v.label}</button>`; });
+            this.toolbar.innerHTML = html;
+            this.toolbar.querySelectorAll('.view-btn').forEach(btn => { btn.addEventListener('click', (e) => { this.toolbar.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active')); e.target.classList.add('active'); this.changeView(e.target.getAttribute('data-view')); }); });
+        }
+        setDefaultData(data) { this.defaultData = data; this.updateHUD(data); }
+        changeView(viewId) {
+            this.boundingBox.setFromObject(this.mainGroup); const center = new THREE.Vector3(); this.boundingBox.getCenter(center); const size = new THREE.Vector3(); this.boundingBox.getSize(size); const maxDim = Math.max(size.x, size.y, size.z) || 100;
+            if(this.axesMap.X) this.axesMap.X.visible = (viewId !== 'Right'); if(this.axesMap.Y) this.axesMap.Y.visible = (viewId !== 'Front'); if(this.axesMap.Z) this.axesMap.Z.visible = (viewId !== 'Top');
+            if (viewId === '3D') { this.legend.innerHTML = "3D"; this.camera = this.perspCamera; this.controls.object = this.camera; this.controls.enableRotate = true; this.camera.position.set(maxDim * 1.5, maxDim * 1.5, maxDim * 1.2); this.controls.target.copy(center); }
+            else {
+                this.camera = this.orthoCamera; this.controls.object = this.camera; this.controls.enableRotate = false;
+                let aspect = this.width / this.height; let frustumSize = maxDim * 1.5; this.orthoCamera.left = -frustumSize * aspect / 2; this.orthoCamera.right = frustumSize * aspect / 2; this.orthoCamera.top = frustumSize / 2; this.orthoCamera.bottom = -frustumSize / 2; this.orthoCamera.updateProjectionMatrix();
+                const dist = maxDim * 2;
+                if (viewId === 'Top') { this.legend.innerHTML = `Top (XY)`; this.orthoCamera.position.set(center.x, center.y, center.z + dist); this.orthoCamera.up.set(0, 1, 0); }
+                else if (viewId === 'Front') { this.legend.innerHTML = `Front (XZ)`; this.orthoCamera.position.set(center.x, center.y - dist, center.z); this.orthoCamera.up.set(0, 0, 1); }
+                else if (viewId === 'Right') { this.legend.innerHTML = `Right (YZ)`; this.orthoCamera.position.set(center.x + dist, center.y, center.z); this.orthoCamera.up.set(0, 0, 1); }
+            }
+            this.resetHoverState(); this.updateHUD(this.defaultData);
+        }
+        applyGhostingEffect(activeObj) {
+            const targetLayer = activeObj.userData.layerId;
+            this.mainGroup.children.forEach(mesh => {
+                if (mesh.userData && mesh.userData.isTarget) {
+                    if (mesh === activeObj) { mesh.material.opacity = 1.0; mesh.material.emissive.setHex(0x444400); }
+                    else if (mesh.userData.layerId === targetLayer) { mesh.material.opacity = 0.5; mesh.material.emissive.setHex(0x111111); }
+                    else { mesh.material.opacity = 0.1; mesh.material.emissive.setHex(0x000000); }
+                }
+            });
+        }
+        resetHoverState() { this.mainGroup.children.forEach(mesh => { if (mesh.userData && mesh.userData.isTarget) { mesh.material.opacity = mesh.userData.defaultOpacity || 1.0; mesh.material.emissive.setHex(0x000000); } }); this.hoveredMesh = null; }
+        onMouseMove(event) {
+            const rect = this.container.getBoundingClientRect(); this.mouse.x = ((event.clientX - rect.left) / this.width) * 2 - 1; this.mouse.y = -((event.clientY - rect.top) / this.height) * 2 + 1;
+            this.raycaster.setFromCamera(this.mouse, this.camera); const intersects = this.raycaster.intersectObjects(this.mainGroup.children, true).filter(o => o.object.userData && o.object.userData.isTarget);
+            if (intersects.length > 0) { const object = intersects[0].object; if (this.hoveredMesh !== object) { this.hoveredMesh = object; this.applyGhostingEffect(object); this.showHUD(object.userData); } }
+            else { if (this.hoveredMesh !== null) { this.resetHoverState(); this.updateHUD(this.defaultData); } }
+        }
+        onMouseLeave() { this.resetHoverState(); this.updateHUD(this.defaultData); }
+        showHUD(data) { this.hud.style.display = 'block'; this.updateHUD(data); }
+        updateHUD(data) {
+            if (!data) return; this.hud.style.display = 'block'; let html = `<div class="hud-title" style="color:${data.color};">${data.title}</div>`;
+            if(data.metrics) { data.metrics.forEach(m => { html += `<div class="hud-row"><span class="lbl">${m.label}</span><span class="val">${m.val}</span></div>`; }); }
+            this.hud.innerHTML = html;
+        }
+        animate() { requestAnimationFrame(this.animateBound); this.controls.update(); this.renderer.render(this.scene, this.camera); }
+    }
+
+    function initRenderers() {
+        if (!boxView) boxView = new CADViewer('box-canvas', 'box-hud', 'box-toolbar', 'legend-box');
+        if (!palletView) palletView = new CADViewer('pallet-canvas', 'pallet-hud', 'pallet-toolbar', 'legend-pallet');
+    }
+    function createPureWireframeBox(w, h, d, colorHex, opacity = 0.3) {
+        const geo = new THREE.BoxGeometry(w, h, d).translate(w/2, h/2, d/2); const edges = new THREE.EdgesGeometry(geo);
+        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: opacity, depthTest: false })); lines.renderOrder = 800; return lines;
+    }
+    function createSolidMeshBox(w, h, d, colorStr, opacity, userData, isTarget = false) {
+        const geo = new THREE.BoxGeometry(w, h, d).translate(w/2, h/2, d/2); const mat = new THREE.MeshLambertMaterial({ color: colorStr, transparent: opacity < 1.0, opacity: opacity, depthWrite: opacity === 1.0 });
+        const mesh = new THREE.Mesh(geo, mat); userData.isTarget = isTarget; userData.defaultOpacity = opacity; mesh.userData = userData;
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true })); edges.raycast = () => {}; mesh.add(edges); return mesh;
+    }
+    function getBestFitForSpace(w, d, h, outerPerms) {
+        let best = { count: 0, nx: 0, ny: 0, nz: 0, perm: null };
+        outerPerms.forEach(p => { let nx = Math.floor(w / p[0]); let ny = Math.floor(d / p[1]); let nz = Math.floor(h / p[2]); if (nx*ny*nz > best.count) { best = { count: nx*ny*nz, nx, ny, nz, perm: p }; } }); return best;
+    }
+    function reverseEngineerBox(f_l, f_w, f_h, qty, i_l, i_w, i_h) {
+        const perms = [ [i_l,i_w,i_h], [i_l,i_h,i_w], [i_w,i_l,i_h], [i_w,i_h,i_l], [i_h,i_l,i_w], [i_h,i_w,i_l] ];
+        for (let p of perms) {
+            let dx = p[0], dy = p[1], dz = p[2]; let maxNx = Math.floor(f_l / dx); let maxNy = Math.floor(f_w / dy); let maxNz = Math.floor(f_h / dz);
+            for (let x = 1; x <= maxNx; x++) { for (let y = 1; y <= maxNy; y++) { for (let z = 1; z <= maxNz; z++) { if (x * y * z === qty) return { dx, dy, dz, nx: x, ny: y, nz: z }; } } }
+        } return null;
+    }
+
+    function calculatePalletHeuristic(box_x, box_y, box_z, gross, totalItems, limitH, limitW) {
+        let netLimitH = limitH - 14.5;
+        const outerPerms = [ [box_x,box_y,box_z], [box_x,box_z,box_y], [box_y,box_x,box_z], [box_y,box_z,box_x], [box_z,box_x,box_y], [box_z,box_y,box_x] ];
+        let bestPalletLayout = null; let maxTotalBoxes = -1;
+        outerPerms.forEach(corePerm => {
+            let cx = Math.floor(120 / corePerm[0]); let cy = Math.floor(80 / corePerm[1]); let cz = Math.floor(netLimitH / corePerm[2]);
+            if (cx===0 || cy===0 || cz===0) return;
+            let coreCount = cx * cy * cz; let coreW = cx * corePerm[0]; let coreD = cy * corePerm[1]; let coreH = cz * corePerm[2];
+            let splits = [ { sxW: 120 - coreW, sxD: 80, syW: coreW, syD: 80 - coreD }, { sxW: 120 - coreW, sxD: coreD, syW: 120, syD: 80 - coreD } ];
+            splits.forEach(spl => {
+                let blocks = []; blocks.push({ type:'core', x:0, y:0, z:14.5, dx:corePerm[0], dy:corePerm[1], dz:corePerm[2], nx:cx, ny:cy, nz:cz, count: coreCount});
+                let sideX = getBestFitForSpace(spl.sxW, spl.sxD, netLimitH, outerPerms); if (sideX.count > 0) blocks.push({ type:'sideX', x: coreW, y:0, z:14.5, dx: sideX.perm[0], dy: sideX.perm[1], dz: sideX.perm[2], nx: sideX.nx, ny: sideX.ny, nz: sideX.nz, count: sideX.count});
+                let sideY = getBestFitForSpace(spl.syW, spl.syD, netLimitH, outerPerms); if (sideY.count > 0) blocks.push({ type:'sideY', x: 0, y: coreD, z:14.5, dx: sideY.perm[0], dy: sideY.perm[1], dz: sideY.perm[2], nx: sideY.nx, ny: sideY.ny, nz: sideY.nz, count: sideY.count});
+                let topMaxW = Math.min(120, coreW / 0.8); let topMaxD = Math.min(80, coreD / 0.8); let topMaxH = netLimitH - coreH;
+                if (sideX.count > 0 && sideX.nz * sideX.perm[2] > coreH) topMaxW = coreW; if (sideY.count > 0 && sideY.nz * sideY.perm[2] > coreH) topMaxD = coreD;
+                let top = getBestFitForSpace(topMaxW, topMaxD, topMaxH, outerPerms); let hasOverhang = false;
+                if (top.count > 0) { blocks.push({ type:'top', x:0, y:0, z: 14.5 + coreH, dx: top.perm[0], dy: top.perm[1], dz: top.perm[2], nx: top.nx, ny: top.ny, nz: top.nz, count: top.count}); if (top.nx * top.perm[0] > coreW || top.ny * top.perm[1] > coreD) hasOverhang = true; }
+                let maxBoxesByWeight = Math.floor((limitW - 15) / gross); let currentTotal = 0; let finalBlocks = [];
+                for(let b of blocks) { if (currentTotal + b.count <= maxBoxesByWeight) { finalBlocks.push(b); currentTotal += b.count; } else { let allowed = maxBoxesByWeight - currentTotal; if(allowed > 0) finalBlocks.push({...b, count: allowed}); break; } }
+                if (currentTotal > maxTotalBoxes) { maxTotalBoxes = currentTotal; let uniqueOrients = new Set(finalBlocks.map(b => `${b.dx}-${b.dy}-${b.dz}`)).size; bestPalletLayout = { blocks: finalBlocks, totalBoxes: currentTotal, hasOverhang, numBlocks: finalBlocks.length, uniqueOrients, maxBoxesByWeight, coreH }; }
+            });
+        });
+        return { bestPalletLayout, maxTotalBoxes };
+    }
+
+    // --- 核心：5 维漏斗评价体系算法 ---
+    function evaluateScore(palletRes, box_x, box_y, box_z, gross, totalItems, l, w, h, limitH, isOzonOk, isWbMono) {
+        // D1. 托盘宏观运力 (35分)
+        let s1 = Math.min(35, ((palletRes.maxTotalBoxes * box_x * box_y * box_z) / (120 * 80 * (limitH - 14.5))) * 35);
+
+        // D2. 外箱微观运力 (25分) 防运空气
+        let s2 = Math.min(25, ((totalItems * l * w * h) / (box_x * box_y * box_z)) * 25);
+
+        // D3. 托盘物理稳定性 (15分)
+        let baseArea = 0;
+        palletRes.bestPalletLayout.blocks.forEach(b => { if(b.type !== 'top') baseArea += (b.nx*b.dx * b.ny*b.dy); });
+        let s3_base = (baseArea / 9600) * 5;
+        let s3_support = palletRes.bestPalletLayout.hasOverhang ? 2 : 5;
+        let s3_cog = 5; // 系统算法屏蔽了严重头重脚轻
+        let s3 = s3_base + s3_support + s3_cog;
+
+        // D4. 纸箱合理性 - 人机工程 (15分)
+        let maxD = Math.max(box_x, box_y, box_z); let minD = Math.min(box_x, box_y, box_z); let r = maxD / minD;
+        let s4_ratio = r <= 3.0 ? 5 : Math.max(0, 5 - (r - 3) * 2.5);
+        let s4_weight = gross >= 12 && gross <= 18 ? 10 : (gross < 12 ? (gross / 12) * 10 : Math.max(0, (25 - gross) / 7 * 10));
+        let s4 = s4_weight + s4_ratio;
+
+        // D5. 现场复杂度 (10分)
+        let s5_block = palletRes.bestPalletLayout.numBlocks <= 1 ? 5 : (palletRes.bestPalletLayout.numBlocks <= 3 ? 3 : 0);
+        let s5_orient = palletRes.bestPalletLayout.uniqueOrients <= 1 ? 5 : (palletRes.bestPalletLayout.uniqueOrients === 2 ? 3 : 0);
+        let s5 = s5_block + s5_orient;
+
+        // 平台超规强扣分 (-20)
+        let pen = (!isOzonOk || isWbMono) ? 20 : 0;
+
+        let finalScore = Math.max(0, s1 + s2 + s3 + s4 + s5 - pen);
+        return { finalScore, s1, s2, s3, s4, s5, pen, baseArea };
+    }
+
+    function executeDecisionEngine() {
+        initRenderers();
+        const material = document.getElementById('material').value; const l = parseFloat(document.getElementById('len').value); const w = parseFloat(document.getElementById('wid').value);
+        const h = parseFloat(document.getElementById('hei').value); const weight = parseFloat(document.getElementById('weight').value);
+        const pMaxHInput = parseFloat(document.getElementById('pallet_h').value) || 180; const pMaxWInput = parseFloat(document.getElementById('pallet_w').value) || 350;
+        const useFixedBox = document.getElementById('use-fixed-box').checked;
+        if (!l || !w || !h || !weight) return;
+        document.getElementById('result-area').style.display = 'block'; document.getElementById('alert-zone').innerHTML = ''; document.getElementById('standard-result').style.display = 'none';
+
+        const maxEdge = Math.max(l, w, h); const sumEdge = l + w + h;
+        if (maxEdge > 120 || sumEdge > 200) { document.getElementById('alert-zone').innerHTML = `<div class="alert-error">${T('alert_limit')}</div>`; return; }
+        const isWbItemMono = (maxEdge > 80 || sumEdge > 160);
+        let fixedPlanData = null;
+
+        if (useFixedBox) {
+            let fl = parseFloat(document.getElementById('f_l').value); let fw = parseFloat(document.getElementById('f_w').value); let fh = parseFloat(document.getElementById('f_h').value);
+            let fqty = parseInt(document.getElementById('f_qty').value); let fgw = parseFloat(document.getElementById('f_gw').value);
+            if (!fl || !fw || !fh || !fqty || !fgw) return;
+
+            let itemVol = l * w * h * fqty; let boxVol = fl * fw * fh;
+            if (boxVol < itemVol) { document.getElementById('alert-zone').innerHTML = `<div class="alert-error">${T('alert_vol')}</div>`; return; }
+            if (fgw > 350) { document.getElementById('alert-zone').innerHTML = `<div class="alert-error">${T('alert_overw')}</div>`; return; }
+
+            let box_x = fl, box_y = fw, box_z = fh; if (box_x < box_y) { let tmp = box_x; box_x = box_y; box_y = tmp; }
+            let isOzonOk = (box_x<=120 && box_y<=60 && box_z<=50); let isWbMono = isWbItemMono || (box_x>80 || (box_x+box_y+box_z)>160);
+            let limitH = isWbMono ? Math.min(pMaxHInput, 180) : pMaxHInput; let limitW = isWbMono ? Math.min(pMaxWInput, 350) : pMaxWInput;
+
+            let innerLayout = reverseEngineerBox(box_x, box_y, box_z, fqty, l, w, h); let isIrregular = !innerLayout;
+            let act_dx = isIrregular ? 0 : innerLayout.dx; let act_dy = isIrregular ? 0 : innerLayout.dy; let act_dz = isIrregular ? 0 : innerLayout.dz;
+            let act_nx = isIrregular ? 0 : innerLayout.nx; let act_ny = isIrregular ? 0 : innerLayout.ny; let act_nz = isIrregular ? 0 : innerLayout.nz;
+
+            let palRes = calculatePalletHeuristic(box_x, box_y, box_z, fgw, fqty, limitH, limitW);
+            if (palRes.bestPalletLayout && palRes.maxTotalBoxes > 0) {
+                let actualItems = palRes.maxTotalBoxes * fqty; let palletGross = 15 + palRes.maxTotalBoxes * fgw;
+                let evalRes = evaluateScore(palRes, box_x, box_y, box_z, fgw, fqty, l, w, h, limitH, isOzonOk, isWbMono);
+                let hints = []; if (palRes.maxTotalBoxes === palRes.bestPalletLayout.maxBoxesByWeight) hints.push(T('hint_w_cap'));
+
+                fixedPlanData = {
+                    isFixedPlan: true, isIrregular, isDirect: false, isWbMono, isOzonOk, score: evalRes.finalScore, scores: evalRes, actualItems, actualBoxes: palRes.maxTotalBoxes,
+                    dimX: act_dx, dimY: act_dy, dimZ: act_dz, nx: act_nx, ny: act_ny, nz: act_nz, weight, box_x, box_y, box_z, totalItems: fqty, gross: fgw,
+                    palletBlocks: palRes.bestPalletLayout.blocks, palletGross, limitH, limitW, hints, eff: (palRes.maxTotalBoxes * box_x * box_y * box_z) / (120 * 80 * (limitH-14.5)),
+                    actPadX: isIrregular ? 0 : (box_x - (act_nx * act_dx)), actPadY: isIrregular ? 0 : (box_y - (act_ny * act_dy)), actPadZ: isIrregular ? 0 : (box_z - (act_nz * act_dz)), cargoBaseArea: evalRes.baseArea
+                };
+            }
+        }
+
+        let pool = []; const permsInner = [ [l,w,h], [l,h,w], [w,l,h], [w,h,l], [h,l,w], [h,w,l] ];
+        permsInner.forEach(pIn => {
+            let dX = pIn[0], dY = pIn[1], dZ = pIn[2]; let limX = Math.floor(120 / dX); let limY = Math.floor(80 / dY); let limZ = Math.floor(165.5 / dZ);
+            if(limX===0 || limY===0 || limZ===0) return;
+            for(let i=1; i<=limX; i++) { for(let j=1; j<=limY; j++) { for(let k=1; k<=limZ; k++) {
+                let totalItems = i * j * k; if(totalItems <= 4 && totalItems !== 1 && (totalItems * weight < 5)) continue; if(totalItems === 1) continue;
+                let gross = totalItems * weight; if(gross > 25.0) continue;
+                let box_x = Math.ceil(i * dX + 1.5 + 0.5 + i * 0.2); let box_y = Math.ceil(j * dY + 1.5 + 0.5 + j * 0.2); let box_z = Math.ceil(k * dZ + 1.5 + 0.5 + k * 0.2);
+                let act_nx = i, act_ny = j, act_dx = dX, act_dy = dY; if (box_x < box_y) { let tmp = box_x; box_x = box_y; box_y = tmp; tmp = act_nx; act_nx = act_ny; act_ny = tmp; tmp = act_dx; act_dx = act_dy; act_dy = tmp; }
+                if (box_x > 120 || box_y > 120 || box_z > 80) continue;
+                if(pool.some(r => r.box_x === box_x && r.box_y === box_y && r.box_z === box_z)) continue;
+
+                let isOzonOk = (box_x<=120 && box_y<=60 && box_z<=50); let isWbMono = isWbItemMono || (box_x>80 || (box_x+box_y+box_z)>160);
+                let limitH = isWbMono ? Math.min(pMaxHInput, 180) : pMaxHInput; let limitW = isWbMono ? Math.min(pMaxWInput, 350) : pMaxWInput;
+                let palRes = calculatePalletHeuristic(box_x, box_y, box_z, gross, totalItems, limitH, limitW);
+                if (palRes.bestPalletLayout && palRes.maxTotalBoxes > 0) {
+                    let actualItems = palRes.maxTotalBoxes * totalItems; let palletGross = 15 + palRes.maxTotalBoxes * gross;
+                    let evalRes = evaluateScore(palRes, box_x, box_y, box_z, gross, totalItems, l, w, h, limitH, isOzonOk, isWbMono);
+                    let hints = [];
+                    if (palRes.maxTotalBoxes === palRes.bestPalletLayout.maxBoxesByWeight) hints.push(T('hint_w_cap'));
+                    else {
+                        if (palRes.bestPalletLayout.hasOverhang) hints.push(T('hint_oh'));
+                        if (((palRes.maxTotalBoxes * box_x * box_y * box_z) / (120 * 80 * (limitH-14.5))) < 0.75) {
+                            let neededZ = palRes.bestPalletLayout.coreH + Math.min(box_x, box_y, box_z);
+                            if (neededZ > (limitH-14.5) && !isWbMono) hints.push(T('hint_z_exp'));
+                        }
+                    }
+                    pool.push({
+                        isFixedPlan: false, isIrregular: false, isDirect: false, isWbMono, isOzonOk, score: evalRes.finalScore, scores: evalRes, actualItems, actualBoxes: palRes.maxTotalBoxes,
+                        dimX: act_dx, dimY: act_dy, dimZ: dZ, nx: act_nx, ny: act_ny, nz: k, weight, box_x, box_y, box_z, totalItems, gross,
+                        palletBlocks: palRes.bestPalletLayout.blocks, palletGross, limitH, limitW, hints, eff: (palRes.maxTotalBoxes * box_x * box_y * box_z) / (120 * 80 * (limitH-14.5)),
+                        actPadX: box_x - (act_nx * act_dx), actPadY: box_y - (act_ny * act_dy), actPadZ: box_z - (k * dZ), cargoBaseArea: evalRes.baseArea
+                    });
+                }
+            } } }
+        });
+
+        let compliantPool = pool.filter(p => p.isOzonOk && !p.isWbMono); if (compliantPool.length > 0) pool = compliantPool;
+        if(pool.length === 0 && !fixedPlanData) { triggerSIOC(l, w, h, weight, isWbItemMono, pMaxHInput, pMaxWInput); return; }
+
+        pool.sort((a,b) => b.score - a.score); globalPlans = [];
+        if (fixedPlanData) {
+            globalPlans.push(fixedPlanData); pool = pool.filter(p => p.box_x !== fixedPlanData.box_x || p.box_y !== fixedPlanData.box_y || p.box_z !== fixedPlanData.box_z);
+            globalPlans.push(...pool.slice(0, 2));
+        } else { globalPlans = pool.slice(0, 3); }
+
+        document.getElementById('standard-result').style.display = 'block';
+        let tabsHtml = '';
+        globalPlans.forEach((plan, idx) => {
+            let ozonBadge = plan.isOzonOk ? `<span class="badge ozon-ok">${T('t_ozon_ok')}</span>` : `<span class="badge ozon-err">${T('t_ozon_err')}</span>`;
+            let wbBadge = plan.isWbMono ? `<span class="badge wb-mono">${T('t_wb_mono')}</span>` : `<span class="badge wb-ok">${T('t_wb_ok')}</span>`;
+            let badgeHtml = plan.isFixedPlan ? `<div class="plan-type-badge type-fixed">${T('t_fixed_badge')}</div>` : (useFixedBox ? `<div class="plan-type-badge type-opt">${T('t_opt_badge')}</div>` : (idx === 0 ? `<div class="plan-type-badge type-opt">${T('t_best_badge')}</div>` : ''));
+            let matrixHtml = plan.isIrregular ? `<span class="plan-matrix" style="background:#ffe0b2; color:#e65100;">${T('t_chaos')}</span>` : `<span class="plan-matrix">${plan.nx}×${plan.ny}×${plan.nz}</span>`;
+
+            // 构建 5 维打分详情 Tooltip
+            let tooltipHtml = ``;
+            if (plan.scores) {
+                tooltipHtml = `
+                <div class="score-tooltip">
+                    <div class="st-title">${T('st_top')}</div>
+                    <div class="st-row"><span>${T('st_s1')}</span><span class="val">${plan.scores.s1.toFixed(1)}</span></div>
+                    <div class="st-row"><span>${T('st_s2')}</span><span class="val">${plan.scores.s2.toFixed(1)}</span></div>
+                    <div class="st-row"><span>${T('st_s3')}</span><span class="val">${plan.scores.s3.toFixed(1)}</span></div>
+                    <div class="st-row"><span>${T('st_s4')}</span><span class="val">${plan.scores.s4.toFixed(1)}</span></div>
+                    <div class="st-row"><span>${T('st_s5')}</span><span class="val">${plan.scores.s5.toFixed(1)}</span></div>
+                    ${plan.scores.pen > 0 ? `<div class="st-row pen"><span>${T('st_pen')}</span><span class="val">-${plan.scores.pen.toFixed(1)}</span></div>` : ''}
+                </div>`;
+            }
+
+            tabsHtml += `
+            <div class="plan-tab ${idx===0?'active':''}" onclick="selectPlan(${idx})">
+                ${badgeHtml}
+                <div class="plan-header" style="margin-top: ${badgeHtml ? '10px' : '0'};">
+                    <div class="plan-name">${T('t_plan')} ${String.fromCharCode(65 + idx)}</div>
+                    <div class="plan-score">
+                        <div class="score-wrap">
+                            ${T('t_score')} <span>${plan.score.toFixed(1)}</span> <i class="info-icon">i</i>
+                            ${tooltipHtml}
+                        </div>
+                    </div>
+                </div>
+                <div class="plan-meta-grid">
+                    <div>📏 ${T('t_dim')}: <span class="highlight">${plan.box_x}×${plan.box_y}×${plan.box_z}</span></div>
+                    <div>⚖️ ${T('t_gw')}: <span class="highlight" style="${plan.gross > 22 ? 'color: #d32f2f;' : ''}">${plan.gross.toFixed(2)}kg</span></div>
+                    <div>📦 ${T('t_qty')}: <span class="highlight">${plan.totalItems} ${T('t_pcs')}</span></div>
+                    <div>🧱 ${T('t_matrix')}: ${matrixHtml}</div>
+                </div>
+                <div class="plan-badges">${ozonBadge} ${wbBadge}</div>
+            </div>`;
+        });
+        document.getElementById('plan-tabs').innerHTML = tabsHtml;
+        setTimeout(() => { selectPlan(0); }, 50);
+    }
+
+    function triggerSIOC(l, w, h, weight, isWbMono, pH, pW) {
+        document.getElementById('alert-zone').innerHTML = `<div class="alert-warn">${T('alert_sioc')}</div>`;
+        document.getElementById('standard-result').style.display = 'block'; document.getElementById('plan-tabs').style.display = 'none';
+        let o_x = l, o_y = w, o_z = h; if(o_x < o_y) { let tmp=o_x; o_x=o_y; o_y=tmp; }
+        let limitH = isWbMono ? Math.min(pH, 180) : pH; let limitW = isWbMono ? Math.min(pW, 350) : pW;
+        let nx_p = Math.floor(120/o_x); let ny_p = Math.floor(80/o_y); let baseLayers = Math.floor((limitH - 14.5)/o_z);
+        let maxBoxesByH = nx_p * ny_p * baseLayers; let maxBoxesByW = Math.floor((limitW - 15) / weight); let actualBoxes = Math.min(maxBoxesByH, maxBoxesByW);
+        if(actualBoxes <= 0) { document.getElementById('alert-zone').innerHTML = `<div class="alert-error">${T('alert_reject')}</div>`; document.getElementById('standard-result').style.display = 'none'; return; }
+        let hints = []; if (actualBoxes === maxBoxesByW && maxBoxesByW < maxBoxesByH) hints.push(T('hint_w_cap'));
+
+        let s1 = Math.min(35, ((actualBoxes * o_x * o_y * o_z) / (120 * 80 * (limitH - 14.5))) * 35);
+        let s2 = 25; let cargoBaseArea = nx_p * o_x * ny_p * o_y;
+        let s3 = ((cargoBaseArea / 9600) * 5) + 5 + 5;
+        let r = Math.max(o_x, o_y, o_z) / Math.min(o_x, o_y, o_z); let s4 = (weight >= 12 && weight <= 18 ? 10 : (weight < 12 ? (weight / 12) * 10 : Math.max(0, (25 - weight) / 7 * 10))) + (r <= 3.0 ? 5 : Math.max(0, 5 - (r - 3) * 2.5));
+        let s5 = 5 + 5; let pen = (!(o_x<=120 && o_y<=60 && o_z<=50) || isWbMono) ? 20 : 0;
+
+        currentActivePlan = {
+            isFixedPlan: false, isIrregular: false, isDirect: true, isWbMono, isOzonOk: (o_x<=120 && o_y<=60 && o_z<=50), dimX: o_x, dimY: o_y, dimZ: o_z, nx:1, ny:1, nz:1, weight,
+            box_x: o_x, box_y: o_y, box_z: o_z, totalItems: 1, gross: weight, score: Math.max(0, s1+s2+s3+s4+s5-pen), scores: {s1, s2, s3, s4, s5, pen},
+            palletBlocks: [{ type:'core', x:0, y:0, z:14.5, dx: o_x, dy: o_y, dz: o_z, nx: nx_p, ny: ny_p, nz: baseLayers, count: actualBoxes }], actualItems: actualBoxes, actualBoxes,
+            palletGross: 15 + actualBoxes * weight, limitH, limitW, eff: (actualBoxes*o_x*o_y*o_z)/(120*80*(limitH-14.5)), hints, cargoBaseArea
+        };
+        setTimeout(() => { renderScene(); }, 50);
+    }
+
+    function selectPlan(index) {
+        document.querySelectorAll('.plan-tab').forEach((tab, i) => { if(i === index) tab.classList.add('active'); else tab.classList.remove('active'); });
+        currentActivePlan = globalPlans[index]; renderScene();
+    }
+
+    function renderScene() {
+        if(!currentActivePlan) return; let cfg = currentActivePlan;
+        let currentMaxZ = 14.5; let cargoMaxX = 0, cargoMaxY = 0;
+        cfg.palletBlocks.forEach(b => {
+            let topZ = b.z + Math.ceil(b.count / (b.nx * b.ny)) * b.dz; if (topZ > currentMaxZ) currentMaxZ = topZ;
+            let ex = b.x + b.nx * b.dx; let ey = b.y + b.ny * b.dy; if (ex > cargoMaxX) cargoMaxX = ex; if (ey > cargoMaxY) cargoMaxY = ey;
+        });
+
+        let footprintArea = (cfg.cargoBaseArea || (cargoMaxX * cargoMaxY)); let footprintRatio = footprintArea / 9600;
+        let volRatio = (cfg.actualBoxes * cfg.box_x * cfg.box_y * cfg.box_z) / (120 * 80 * (cfg.limitH - 14.5));
+
+        document.getElementById('rep-pal-hei').innerText = `${currentMaxZ.toFixed(1)} cm / ${cfg.limitH} cm`;
+        document.getElementById('rep-pal-wei').innerText = `${cfg.palletGross.toFixed(2)} kg / ${cfg.limitW} kg`;
+        document.getElementById('rep-pal-vol-eff').innerText = `${(volRatio * 100).toFixed(1)}%`;
+        document.getElementById('rep-pal-area-eff').innerText = `${footprintArea.toFixed(0)} cm² (${(footprintRatio * 100).toFixed(1)}%)`;
+        document.getElementById('rep-pal-box').innerText = `${cfg.actualBoxes} ${T('t_box')}`;
+        document.getElementById('rep-pal-item').innerText = `${cfg.actualItems} ${T('t_pcs')}`;
+
+        document.getElementById('opt-hints-container').innerHTML = cfg.hints && cfg.hints.length > 0 ? `<div class="opt-hints">` + cfg.hints.map(h => `<div>${h}</div>`).join('') + `</div>` : '';
+        if(boxView) boxView.resize(); if(palletView) palletView.resize();
+        renderBox3D(cfg); renderPallet3D(cfg, currentMaxZ, cargoMaxX, cargoMaxY);
+    }
+
+    function renderBox3D(cfg) {
+        if(!boxView) return; boxView.clearScene();
+        let axisDesc = { x: T('x_len'), y: T('y_wid'), z: T('z_hei') };
+        if (!cfg.isDirect && !cfg.isIrregular) {
+            axisDesc = {
+                x: `${T('x_len')} (${T('inside')}${(cfg.nx*cfg.dimX).toFixed(1)}cm, ${T('gap')}+${cfg.actPadX.toFixed(1)}cm)`,
+                y: `${T('y_wid')} (${T('inside')}${(cfg.ny*cfg.dimY).toFixed(1)}cm, ${T('gap')}+${cfg.actPadY.toFixed(1)}cm)`,
+                z: `${T('z_hei')} (${T('inside')}${(cfg.nz*cfg.dimZ).toFixed(1)}cm, ${T('gap')}+${cfg.actPadZ.toFixed(1)}cm)`
+            };
+        }
+        boxView.buildCoordinateAxes(cfg.box_x, cfg.box_y, cfg.box_z, false, axisDesc);
+
+        if (cfg.isDirect) {
+            const hudData = { title: T('hud_sioc'), color: '#005bff', isTarget: true, layerId: 0, metrics: [{label:T('hud_sioc_m1'), val:`${cfg.box_x}×${cfg.box_y}×${cfg.box_z}`}, {label:T('hud_sioc_m2'), val:`${cfg.gross} kg`}] };
+            boxView.setDefaultData(hudData); boxView.mainGroup.add(createSolidMeshBox(cfg.box_x, cfg.box_y, cfg.box_z, '#005bff', 0.85, hudData, true));
+        } else if (cfg.isIrregular) {
+            const hudData = { title: T('hud_chaos'), color: '#ff9800', isTarget: true, layerId: 0, metrics: [{label:T('hud_chaos_m1'), val:`${cfg.box_x}×${cfg.box_y}×${cfg.box_z}`}, {label:T('hud_chaos_m2'), val:`${cfg.totalItems}`}, {label:T('hud_chaos_m3'), val:`${cfg.gross.toFixed(2)} kg`}] };
+            boxView.setDefaultData(hudData); boxView.mainGroup.add(createSolidMeshBox(cfg.box_x, cfg.box_y, cfg.box_z, '#ff9800', 0.25, hudData, true));
+        } else {
+            const defaultOuterData = { title: T('hud_out'), color: '#cb11ab', isTarget: false, metrics: [{label:T('hud_out_m1'), val:`${cfg.box_x}×${cfg.box_y}×${cfg.box_z}`}, {label:T('hud_out_m2'), val:`${cfg.gross.toFixed(2)} kg`}] };
+            boxView.setDefaultData(defaultOuterData); boxView.mainGroup.add(createSolidMeshBox(cfg.box_x, cfg.box_y, cfg.box_z, '#cb11ab', 0.15, defaultOuterData, false));
+
+            const sX = cfg.actPadX / 2; const sY = cfg.actPadY / 2; const sZ = cfg.actPadZ / 2;
+            for (let x = 0; x < cfg.nx; x++) { for (let y = 0; y < cfg.ny; y++) { for (let z = 0; z < cfg.nz; z++) {
+                const bx = sX + x*cfg.dimX; const endX = bx + cfg.dimX; const by = sY + y*cfg.dimY; const endY = by + cfg.dimY; const bz = sZ + z*cfg.dimZ; const endZ = bz + cfg.dimZ;
+                const hudData = { title: `${T('hud_in')} [X:${x+1}, Y:${y+1}, Z:${z+1}]`, color: '#4fc3f7', isTarget: true, layerId: z, metrics: [{label: T('hud_in_m1'), val: `${bx.toFixed(1)}~${endX.toFixed(1)}`}, {label: T('hud_in_m2'), val: `${by.toFixed(1)}~${endY.toFixed(1)}`}, {label: T('hud_in_m3'), val: `${bz.toFixed(1)}~${endZ.toFixed(1)}`}] };
+                let innerMesh = createSolidMeshBox(cfg.dimX, cfg.dimY, cfg.dimZ, '#005bff', 0.85, hudData, true); innerMesh.position.set(bx, by, bz); boxView.mainGroup.add(innerMesh);
+            } } }
+        }
+        boxView.changeView('3D');
+    }
+
+    function renderPallet3D(cfg, currentMaxZ, cargoMaxX, cargoMaxY) {
+        if(!palletView) return; palletView.clearScene(); const palletBaseH = 14.5;
+        palletView.buildCoordinateAxes(120, 80, cfg.limitH, true, {x: T('x_len'), y: T('y_wid'), z: T('z_hei')});
+
+        const defaultPalletData = { title: T('hud_p_base'), color: '#ff8c00', isTarget: false, metrics: [{label: T('hud_p_m1'), val: '120 × 80 cm'}, {label: T('hud_p_m2'), val: `${currentMaxZ.toFixed(1)} / ${cfg.limitH.toFixed(1)} cm`}] };
+        palletView.setDefaultData(defaultPalletData);
+        let baseMesh = createSolidMeshBox(120, 80, palletBaseH, '#8b5a2b', 0.9, defaultPalletData, false); baseMesh.position.set(0, 0, 0); palletView.mainGroup.add(baseMesh);
+        let limitLines = createPureWireframeBox(120, 80, cfg.limitH - palletBaseH, 0xe53935, 0.15); limitLines.position.set(0, 0, palletBaseH); palletView.mainGroup.add(limitLines);
+
+        cfg.palletBlocks.forEach((blk, bIdx) => {
+            let renderedCount = 0; let blkColor = blk.type === 'core' ? '#cb11ab' : (blk.type === 'top' ? '#00bcd4' : '#8e24aa');
+            let blkName = blk.type === 'core' ? T('hud_core') : (blk.type === 'top' ? T('hud_top') : T('hud_side'));
+            for(let z=0; z<blk.nz; z++) { for(let x=0; x<blk.nx; x++) { for(let y=0; y<blk.ny; y++) {
+                if (renderedCount >= blk.count) return;
+                const bx = blk.x + x * blk.dx; const endX = bx + blk.dx; const by = blk.y + y * blk.dy; const endY = by + blk.dy; const bz = blk.z + z * blk.dz; const endZ = bz + blk.dz;
+                const hudData = { title: `🧱 ${blkName} [${T('hud_zone')}${bIdx+1}]`, color: '#ff66ff', isTarget: true, layerId: z, metrics: [{label:T('hud_blk_m1'), val:`${bx.toFixed(1)}~${endX.toFixed(1)}`}, {label:T('hud_blk_m2'), val:`${by.toFixed(1)}~${endY.toFixed(1)}`}, {label:T('hud_blk_m3'), val:`${bz.toFixed(1)}~${endZ.toFixed(1)}`}] };
+                let boxMesh = createSolidMeshBox(blk.dx, blk.dy, blk.dz, cfg.isDirect ? '#005bff' : (cfg.isIrregular ? '#ff9800' : blkColor), 0.85, hudData, true);
+                boxMesh.position.set(bx, by, bz); palletView.mainGroup.add(boxMesh);
+                renderedCount++;
+            } } }
+        });
+
+        if (120 - cargoMaxX > 0.1) { let r = createPureWireframeBox(120 - cargoMaxX, 80, currentMaxZ - palletBaseH, 0x888888, 0.35); r.position.set(cargoMaxX, 0, palletBaseH); palletView.mainGroup.add(r); defaultPalletData.metrics.push({ label: T('hud_res_x'), val: `${(120 - cargoMaxX).toFixed(1)} × 80 × ${(currentMaxZ - palletBaseH).toFixed(1)}` }); }
+        if (80 - cargoMaxY > 0.1) { let r = createPureWireframeBox(cargoMaxX, 80 - cargoMaxY, currentMaxZ - palletBaseH, 0x888888, 0.35); r.position.set(0, cargoMaxY, palletBaseH); palletView.mainGroup.add(r); defaultPalletData.metrics.push({ label: T('hud_res_y'), val: `${cargoMaxX.toFixed(1)} × ${(80 - cargoMaxY).toFixed(1)} × ${(currentMaxZ - palletBaseH).toFixed(1)}` }); }
+        if (cfg.limitH - currentMaxZ > 0.1) { let r = createPureWireframeBox(120, 80, cfg.limitH - currentMaxZ, 0x888888, 0.35); r.position.set(0, 0, currentMaxZ); palletView.mainGroup.add(r); defaultPalletData.metrics.push({ label: T('hud_res_z'), val: `120 × 80 × ${(cfg.limitH - currentMaxZ).toFixed(1)}` }); }
+
+        palletView.setDefaultData(defaultPalletData); palletView.changeView('3D');
+    }
+</script>
+</body>
+</html>

@@ -34,7 +34,7 @@ export default class extends Controller {
         return;
       }
 
-      if (sameLocation && window.history?.replaceState) {
+      if ((sameLocation || samePath) && window.history?.replaceState) {
         window.history.replaceState(window.history.state, "", closeUrl.toString());
       }
     }

@@ -1,0 +1,359 @@
+<%
+  source_template = Reports::ToolSourceTemplate.new(
+    path: Reports::ToolRendererResolver.source_path_for(tool_definition.renderer_key),
+    scope_class: "smart-pack-tool-inline"
+  )
+  inline_script = source_template.inline_script_content(
+    initializer_name: "initializeEmbeddedSmartPackCalculator",
+    wrap: true,
+    export_statements: [
+      "if (typeof switchLang !== 'undefined') window.switchLang = switchLang;",
+      "if (typeof toggleSidebar !== 'undefined') window.toggleSidebar = toggleSidebar;",
+      "if (typeof saveMemory !== 'undefined') window.saveMemory = saveMemory;",
+      "if (typeof loadMemory !== 'undefined') window.loadMemory = loadMemory;",
+      "if (typeof deleteMemory !== 'undefined') window.deleteMemory = deleteMemory;",
+      "if (typeof renderMemory !== 'undefined') window.renderMemory = renderMemory;",
+      "if (typeof toggleFixedBox !== 'undefined') window.toggleFixedBox = toggleFixedBox;",
+      "if (typeof executeDecisionEngine !== 'undefined') window.executeDecisionEngine = executeDecisionEngine;",
+      "if (typeof selectPlan !== 'undefined') window.selectPlan = selectPlan;",
+      "if (typeof initRenderers !== 'undefined') window.initRenderers = initRenderers;"
+    ]
+  )
+%>
+<div class="smart-pack-tool-surface">
+  <% source_template.external_script_urls.each do |script_url| %>
+    <script src="<%= script_url %>"></script>
+  <% end %>
+
+  <style>
+    <%= raw source_template.scoped_style_content %>
+
+    .smart-pack-tool-inline {
+      --wb-purple: #cb11ab;
+      --ozon-blue: #005bff;
+      --bg-color: #f0f2f5;
+      --card-bg: #ffffff;
+      --text-main: #1d1d1f;
+      --text-muted: #5f6368;
+      --border-color: #dadce0;
+      display: block;
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+
+    .smart-pack-tool-inline #app-wrapper {
+      width: 100%;
+      min-height: calc(100vh - 150px);
+      height: auto;
+    }
+
+    .smart-pack-tool-inline #sidebar {
+      display: none;
+    }
+
+    .smart-pack-tool-inline .main-content {
+      height: auto;
+      min-height: calc(100vh - 150px);
+      width: 100%;
+    }
+
+    .smart-pack-tool-inline .container {
+      max-width: 1400px;
+    }
+  </style>
+
+  <div class="smart-pack-tool-inline smart-pack-tool-shell smart-pack-tool-shell--full" data-tool-inline-root>
+    <%= raw source_template.body_html %>
+  </div>
+
+  <div class="smart-pack-tool-save-modal" data-tool-save-name-modal hidden>
+    <div class="smart-pack-tool-save-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="tool-save-name-title">
+      <h3 id="tool-save-name-title"><%= t("reports.tools.save_name.title") %></h3>
+      <div class="field">
+        <label for="tool_configuration_name"><%= t("reports.tools.save_name.label") %></label>
+        <input id="tool_configuration_name" name="tool_configuration_name" class="input" type="text" data-tool-save-name-input>
+      </div>
+      <div class="smart-pack-tool-save-modal__actions">
+        <button class="btn btn-outline" type="button" data-tool-save-name-cancel><%= t("common.actions.cancel") %></button>
+        <button class="btn btn-primary" type="button" data-tool-save-name-confirm><%= t("common.actions.save") %></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tool-renderer-page--full {
+    display: block;
+    min-height: 100%;
+    height: 100%;
+    margin: 0 -22px -22px;
+    overflow: auto;
+  }
+
+  .smart-pack-tool-surface {
+    min-height: 100%;
+    background: #fff;
+  }
+
+  .smart-pack-tool-save-modal[hidden] {
+    display: none;
+  }
+
+  .smart-pack-tool-save-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1003;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(24, 34, 53, 0.42);
+  }
+
+  .smart-pack-tool-save-modal__dialog {
+    width: min(420px, 100%);
+    padding: 18px;
+    border: 1px solid var(--erp-border, #d1d5db);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(24, 34, 53, 0.26);
+  }
+
+  .smart-pack-tool-save-modal__dialog h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+  }
+
+  .smart-pack-tool-save-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+  }
+</style>
+
+<script>
+  <%= raw inline_script %>
+</script>
+
+<script>
+  (() => {
+    const page = document.currentScript.closest(".tool-renderer-page");
+    if (!page || page.dataset.smartPackToolReady === "true") return;
+    page.dataset.smartPackToolReady = "true";
+
+    const drawer = page.closest(".inventory-drawer");
+    const bootstrap = JSON.parse(page.querySelector("[data-tool-bootstrap]").textContent);
+    const csrfToken = document.querySelector("meta[name='csrf-token']")?.content;
+    const saveButton = drawer?.querySelector("[data-tool-action='save']");
+    const overwriteButton = drawer?.querySelector("[data-tool-action='overwrite']");
+    const saveAsButton = drawer?.querySelector("[data-tool-action='save_as']");
+    const parentFrame = page.closest("turbo-frame#tool_drawer");
+    const saveNameModal = page.querySelector("[data-tool-save-name-modal]");
+    const saveNameInput = page.querySelector("[data-tool-save-name-input]");
+    const saveNameCancelButton = page.querySelector("[data-tool-save-name-cancel]");
+    const saveNameConfirmButton = page.querySelector("[data-tool-save-name-confirm]");
+    const fieldIds = [
+      "material",
+      "len",
+      "wid",
+      "hei",
+      "weight",
+      "pallet_h",
+      "pallet_w",
+      "use-fixed-box",
+      "f_l",
+      "f_w",
+      "f_h",
+      "f_qty",
+      "f_gw"
+    ];
+    let pendingPersistRequest = null;
+
+    const currentConfig = () => bootstrap.tool_configuration || {};
+
+    const readFieldValue = (id) => {
+      const element = document.getElementById(id);
+      if (!element) return "";
+      return element.type === "checkbox" ? element.checked : element.value;
+    };
+
+    const writeFieldValue = (id, value) => {
+      const element = document.getElementById(id);
+      if (!element || value === undefined || value === null) return;
+      if (element.type === "checkbox") {
+        element.checked = Boolean(value);
+      } else {
+        element.value = value;
+      }
+    };
+
+    window.collectCurrentState = () => {
+      const params = {};
+      fieldIds.forEach((id) => {
+        params[id] = readFieldValue(id);
+      });
+
+      return {
+        sku: document.getElementById("mem_sku")?.value?.trim() || "",
+        remark: document.getElementById("mem_remark")?.value?.trim() || "",
+        lang: document.getElementById("lang")?.value || "cn",
+        params
+      };
+    };
+
+    window.restoreState = (state = {}) => {
+      if (state.sku !== undefined && document.getElementById("mem_sku")) {
+        document.getElementById("mem_sku").value = state.sku;
+      }
+      if (state.remark !== undefined && document.getElementById("mem_remark")) {
+        document.getElementById("mem_remark").value = state.remark;
+      }
+      if (state.lang !== undefined && document.getElementById("lang")) {
+        document.getElementById("lang").value = state.lang;
+        window.switchLang?.();
+      }
+
+      Object.entries(state.params || {}).forEach(([id, value]) => {
+        writeFieldValue(id, value);
+      });
+
+      window.toggleFixedBox?.();
+    };
+
+    window.calculateAll = () => {
+      window.executeDecisionEngine?.();
+    };
+
+    const syncTopLevelUrl = () => {
+      if (!parentFrame) return;
+      const sharePath = page.dataset.toolSharePath;
+      if (!sharePath) return;
+      window.history.replaceState(window.history.state, "", sharePath);
+    };
+
+    const suggestedName = () => {
+      const state = window.collectCurrentState();
+      if (state.sku) return state.sku;
+      const length = state.params.len;
+      const width = state.params.wid;
+      const height = state.params.hei;
+      if (length && width && height) return `SmartPack ${length}x${width}x${height}`;
+      return currentConfig().name || bootstrap.tool_definition.name;
+    };
+
+    const closeSaveNameModal = () => {
+      pendingPersistRequest = null;
+      if (!saveNameModal) return;
+      saveNameModal.hidden = true;
+    };
+
+    const openSaveNameModal = ({ method, url, defaultName }) => {
+      if (!saveNameModal || !saveNameInput) return;
+
+      pendingPersistRequest = { method, url };
+      saveNameInput.value = defaultName || "";
+      saveNameModal.hidden = false;
+      requestAnimationFrame(() => {
+        saveNameInput.focus();
+        saveNameInput.select();
+      });
+    };
+
+    const collectPayload = (recordName) => {
+      const state = window.collectCurrentState();
+      const name = recordName || suggestedName();
+
+      return {
+        ec_tool_configuration: {
+          tool_definition_id: bootstrap.tool_definition.id,
+          name: name,
+          active: true,
+          config_json: {
+            ...state,
+            _record_name: name
+          }
+        }
+      };
+    };
+
+    const persist = async ({ method, url, recordName }) => {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(collectPayload(recordName))
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
+      const body = await response.json();
+      bootstrap.tool_configuration = body.configuration || bootstrap.tool_configuration;
+      if (body.show_path && parentFrame) {
+        parentFrame.src = body.show_path;
+      } else if (body.show_path && window.Turbo) {
+        window.Turbo.visit(body.show_path);
+      }
+    };
+
+    const syncIntoTool = () => {
+      window.initRenderers?.();
+
+      const configuration = bootstrap.tool_configuration;
+      if (configuration?.config_json) {
+        window.restoreState(configuration.config_json);
+        window.calculateAll();
+      } else {
+        window.toggleFixedBox?.();
+      }
+    };
+
+    saveButton?.addEventListener("click", () => {
+      openSaveNameModal({
+        method: "POST",
+        url: page.dataset.toolCreatePath,
+        defaultName: suggestedName()
+      });
+    });
+
+    overwriteButton?.addEventListener("click", () => {
+      persist({
+        method: "PATCH",
+        url: page.dataset.toolUpdatePath,
+        recordName: currentConfig().name || suggestedName()
+      }).catch((error) => window.alert(error.message));
+    });
+
+    saveAsButton?.addEventListener("click", () => {
+      openSaveNameModal({
+        method: "POST",
+        url: page.dataset.toolCreatePath,
+        defaultName: suggestedName()
+      });
+    });
+
+    saveNameCancelButton?.addEventListener("click", closeSaveNameModal);
+    saveNameConfirmButton?.addEventListener("click", () => {
+      if (!pendingPersistRequest) return;
+      const recordName = saveNameInput?.value?.trim() || suggestedName();
+      persist({ ...pendingPersistRequest, recordName })
+        .then(closeSaveNameModal)
+        .catch((error) => window.alert(error.message));
+    });
+
+    syncTopLevelUrl();
+    requestAnimationFrame(syncIntoTool);
+    drawer?.addEventListener("animationend", () => {
+      window.initRenderers?.();
+      window.dispatchEvent(new Event("resize"));
+    }, { once: true });
+  })();
+</script>

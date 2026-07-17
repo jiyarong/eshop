@@ -14,9 +14,9 @@ class ReportsToolsControllerTest < ActionDispatch::IntegrationTest
 
   teardown do
     Ec::ToolConfiguration.where("name LIKE ?", "%#{@token}%").delete_all if defined?(Ec::ToolConfiguration)
-    Ec::ToolConfiguration.joins(:tool_definition).where(ec_tool_definitions: { tool_type: ["wb_pallet_optimizer", "roi_calculator"] }).delete_all if defined?(Ec::ToolConfiguration)
+    Ec::ToolConfiguration.joins(:tool_definition).where(ec_tool_definitions: { tool_type: ["wb_pallet_optimizer", "roi_calculator", "smart_pack_calculator"] }).delete_all if defined?(Ec::ToolConfiguration)
     Ec::ToolDefinition.where("tool_type LIKE ?", "%#{@token}%").delete_all if defined?(Ec::ToolDefinition)
-    Ec::ToolDefinition.where(tool_type: ["wb_pallet_optimizer", "roi_calculator"]).delete_all if defined?(Ec::ToolDefinition)
+    Ec::ToolDefinition.where(tool_type: ["wb_pallet_optimizer", "roi_calculator", "smart_pack_calculator"]).delete_all if defined?(Ec::ToolDefinition)
     UserRole.joins(:user).where("users.email LIKE ?", "reports-tools-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "reports-tools-%#{@token.downcase}@example.com").delete_all
     User.where(id: @definition_creator.id).delete_all if @definition_creator
@@ -379,19 +379,61 @@ class ReportsToolsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "const calculate = () => {"
   end
 
+  test "smart pack version route renders tool page" do
+    Ec::ToolDefinition.create!(
+      tool_type: "smart_pack_calculator_#{@token}",
+      version: 1,
+      name: "SmartPack #{@token}",
+      slug: "smart-pack-show-definition-#{@token.downcase}",
+      renderer_key: "smart_pack_calculator_v1",
+      active: true,
+      created_by: @definition_creator
+    )
+
+    get "/reports/tools/smart_pack_calculator_#{@token}/versions/1", headers: { "Accept" => "text/html", "Turbo-Frame" => "tool_drawer" }
+
+    assert_response :success
+    assert_select ".inventory-drawer.inventory-drawer--full.inventory-drawer--header-sm[data-close-path='/reports/tools'][style*='width: 90vw']"
+    assert_select "[data-tool-type='smart_pack_calculator_#{@token}'][data-tool-version='1'][data-tool-share-path='/reports/tools?tool_type=smart_pack_calculator_#{@token}&version=1'].tool-renderer-page--full"
+    assert_select ".smart-pack-tool-inline"
+    assert_select "#app-wrapper"
+    assert_select "#len"
+    assert_select "#box-canvas"
+    assert_select "#pallet-canvas"
+    assert_select ".inventory-drawer__header button", text: "保存配置"
+    assert_select "iframe", count: 0
+    assert_includes response.body, "window.collectCurrentState = () => {"
+    assert_includes response.body, "window.restoreState = (state = {}) => {"
+    assert_includes response.body, "window.calculateAll = () => {"
+    assert_includes response.body, "window.executeDecisionEngine = executeDecisionEngine;"
+  end
+
+  test "renderer source serves the original smart pack calculator html" do
+    get "/reports/tools/renderers/smart_pack_calculator_v1/source", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_includes response.body, "WB & Ozon 物流包装与装配规划系统"
+    assert_includes response.body, "function executeDecisionEngine()"
+  end
+
   test "index bootstraps the default wb pallet optimizer definition" do
     assert_difference -> { Ec::ToolDefinition.where(tool_type: "wb_pallet_optimizer").count }, 1 do
       assert_difference -> { Ec::ToolDefinition.where(tool_type: "roi_calculator").count }, 1 do
-        get "/reports/tools", headers: { "Accept" => "text/html" }
+        assert_difference -> { Ec::ToolDefinition.where(tool_type: "smart_pack_calculator").count }, 1 do
+          get "/reports/tools", headers: { "Accept" => "text/html" }
+        end
       end
     end
 
     wb_definition = Ec::ToolDefinition.find_by!(tool_type: "wb_pallet_optimizer", version: 1)
     roi_definition = Ec::ToolDefinition.find_by!(tool_type: "roi_calculator", version: 1)
+    smart_pack_definition = Ec::ToolDefinition.find_by!(tool_type: "smart_pack_calculator", version: 1)
     assert_equal "WB Pallet Optimizer", wb_definition.name
     assert_equal "ROI Calculator", roi_definition.name
+    assert_equal "WB & Ozon SmartPack Calculator", smart_pack_definition.name
     assert_equal @current_user.id, wb_definition.created_by_id
     assert_equal @current_user.id, roi_definition.created_by_id
+    assert_equal @current_user.id, smart_pack_definition.created_by_id
   end
 
   test "index does not duplicate bootstrapped definitions" do
@@ -399,7 +441,9 @@ class ReportsToolsControllerTest < ActionDispatch::IntegrationTest
 
     assert_no_difference -> { Ec::ToolDefinition.where(tool_type: "wb_pallet_optimizer").count } do
       assert_no_difference -> { Ec::ToolDefinition.where(tool_type: "roi_calculator").count } do
-        get "/reports/tools", headers: { "Accept" => "text/html" }
+        assert_no_difference -> { Ec::ToolDefinition.where(tool_type: "smart_pack_calculator").count } do
+          get "/reports/tools", headers: { "Accept" => "text/html" }
+        end
       end
     end
   end

@@ -14,6 +14,13 @@ module Ec
         name: "ROI Calculator",
         slug: "roi-calculator-v1",
         renderer_key: "roi_calculator_v1"
+      },
+      {
+        tool_type: "smart_pack_calculator",
+        version: 1,
+        name: "WB & Ozon SmartPack Calculator",
+        slug: "smart-pack-calculator-v1",
+        renderer_key: "smart_pack_calculator_v1"
       }
     ].freeze
 

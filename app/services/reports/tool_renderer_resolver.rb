@@ -2,12 +2,14 @@ module Reports
   class ToolRendererResolver
     RENDERERS = {
       "wb_pallet_optimizer_v1" => "reports/tools/renderers/wb_pallet_optimizer_v1",
-      "roi_calculator_v1" => "reports/tools/renderers/roi_calculator_v1"
+      "roi_calculator_v1" => "reports/tools/renderers/roi_calculator_v1",
+      "smart_pack_calculator_v1" => "reports/tools/renderers/smart_pack_calculator_v1"
     }.freeze
 
     SOURCE_PATHS = {
       "wb_pallet_optimizer_v1" => Rails.root.join("app/views/reports/tools/sources/wb_pallet_optimizer_v1.html"),
-      "roi_calculator_v1" => Rails.root.join("app/views/reports/tools/sources/roi_calculator_v1.html")
+      "roi_calculator_v1" => Rails.root.join("app/views/reports/tools/sources/roi_calculator_v1.html"),
+      "smart_pack_calculator_v1" => Rails.root.join("app/views/reports/tools/sources/smart_pack_calculator_v1.html")
     }.freeze
 
     def initialize(tool_definition)
