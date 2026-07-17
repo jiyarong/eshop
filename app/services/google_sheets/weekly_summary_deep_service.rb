@@ -204,7 +204,7 @@ module GoogleSheets
     end
 
     def sku_map
-      @sku_map ||= Ec::Sku.includes(:cost).where(sku_code: current_skus).index_by(&:sku_code)
+      @sku_map ||= Ec::Sku.includes(cost: :sku_dimension).where(sku_code: current_skus).index_by(&:sku_code)
     end
 
     def current_skus

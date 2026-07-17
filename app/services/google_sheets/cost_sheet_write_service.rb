@@ -16,13 +16,16 @@ module GoogleSheets
       ['customs_misc_cny',      '清关杂费 CNY',     'Таможенные расходы CNY'],
       ['customs_duty_rate',     '关税率',           'Ставка пошлины'],
       ['import_vat_rate',       '进口增值税率',     'Ставка НДС импорта'],
-      ['pkg_length_cm',         '包装长 cm',        'Длина упаковки см'],
-      ['pkg_width_cm',          '包装宽 cm',        'Ширина упаковки см'],
-      ['pkg_height_cm',         '包装高 cm',        'Высота упаковки см'],
+      ['pkg_length_cm',         '包装内长 cm',      'Внутр. длина см'],
+      ['pkg_width_cm',          '包装内宽 cm',      'Внутр. ширина см'],
+      ['pkg_height_cm',         '包装内高 cm',      'Внутр. высота см'],
+      ['outer_length_cm',       '包装外长 cm',      'Внеш. длина см'],
+      ['outer_width_cm',        '包装外宽 cm',      'Внеш. ширина см'],
+      ['outer_height_cm',       '包装外高 cm',      'Внеш. высота см'],
       ['pkg_volume_override_l', '直填升量 L(Ozon)', 'Объём L (Ozon)'],
       ['misc_cost_cny',         '杂费 CNY',         'Прочие расходы CNY'],
       ['damage_rate',           '货损率',           'Коэффициент потерь'],
-      # 公式列 O-R
+      # 公式列 R-U
       ['[calc]customs_duty_cny', '关税额 CNY',       '= Закупка × Пошлина'],
       ['[calc]import_vat_cny',   '进口增值税 CNY',   '= (Закупка+Пошлина) × НДС'],
       ['[calc]goods_cost_cny',   '货物总成本 CNY',   '= Закупка+Дост.+Там.+Пошл.+НДС'],
@@ -138,7 +141,7 @@ module GoogleSheets
 
     def write_sku_cost_tab
       clear_sheet(range: "#{SKU_COST_TAB}!A1:Z")
-      costs = Ec::SkuCost.includes(:sku).order(:sku_code).all
+      costs = Ec::SkuCost.includes(:sku, :sku_dimension).order(:sku_code).all
 
       data_rows = costs.each_with_index.map do |cost, i|
         r = DATA_ROW + i
@@ -148,16 +151,17 @@ module GoogleSheets
           cost.purchase_price_cny, cost.freight_to_by_cny, cost.customs_misc_cny,
           cost.customs_duty_rate, cost.import_vat_rate,
           cost.pkg_length_cm, cost.pkg_width_cm, cost.pkg_height_cm,
+          cost.outer_length_cm, cost.outer_width_cm, cost.outer_height_cm,
           cost.pkg_volume_override_l, cost.misc_cost_cny, cost.damage_rate,
-          # O: customs_duty_cny
+          # R: customs_duty_cny
           "=D#{r}*G#{r}",
-          # P: import_vat_cny = (purchase + duty) × vat_rate
-          "=(D#{r}+O#{r})*H#{r}",
-          # Q: goods_cost_cny
-          "=D#{r}+E#{r}+F#{r}+O#{r}+P#{r}",
-          # R: pkg_volume_l — 优先尺寸，退而用直填升量
+          # S: import_vat_cny = (purchase + duty) × vat_rate
+          "=(D#{r}+R#{r})*H#{r}",
+          # T: goods_cost_cny
+          "=D#{r}+E#{r}+F#{r}+R#{r}+S#{r}",
+          # U: pkg_volume_l — 优先内径，退而用直填升量
           "=IF(AND(I#{r}<>\"\",J#{r}<>\"\",K#{r}<>\"\"),I#{r}*J#{r}*K#{r}/1000," \
-          "IF(AND(L#{r}<>\"\",L#{r}>0),L#{r},\"\"))",
+          "IF(AND(O#{r}<>\"\",O#{r}>0),O#{r},\"\"))",
         ]
       end
 
@@ -181,7 +185,7 @@ module GoogleSheets
     end
 
     def wb_row(pc, r)
-      sc = "sku_cost!$A:$R"
+      sc = "sku_cost!$A:$U"
       [
         # A-O 可编辑
         pc.sku_code, pc.delivery_mode, pc.company_type,
@@ -189,12 +193,12 @@ module GoogleSheets
         pc.wb_logistics_base_rub, pc.logistics_coeff, pc.fbo_delivery_cny,
         pc.wb_return_rate, pc.wb_fixed_return_rate, pc.storage_30d_cny,
         pc.sales_tax_rate, pc.target_price_rub,
-        # P-T VLOOKUP (sku_cost: R=18 vol, Q=17 goods, P=16 vat, M=13 misc, N=14 dmg)
-        "=IFERROR(VLOOKUP(A#{r},#{sc},18,0),\"\")",
-        "=IFERROR(VLOOKUP(A#{r},#{sc},17,0),\"\")",
+        # P-T VLOOKUP (sku_cost: U=21 vol, T=20 goods, S=19 vat, P=16 misc, Q=17 dmg)
+        "=IFERROR(VLOOKUP(A#{r},#{sc},21,0),\"\")",
+        "=IFERROR(VLOOKUP(A#{r},#{sc},20,0),\"\")",
+        "=IFERROR(VLOOKUP(A#{r},#{sc},19,0),\"\")",
         "=IFERROR(VLOOKUP(A#{r},#{sc},16,0),\"\")",
-        "=IFERROR(VLOOKUP(A#{r},#{sc},13,0),\"\")",
-        "=IFERROR(VLOOKUP(A#{r},#{sc},14,0),\"\")",
+        "=IFERROR(VLOOKUP(A#{r},#{sc},17,0),\"\")",
         # U: wb_base_logistics_rub = (ceil(vol)-1)*14 + base
         "=IF(P#{r}<>\"\",(CEILING(P#{r})-1)*14+H#{r},\"\")",
         # V: wb_platform_freight_cny = base_rub × coeff ÷ rate
@@ -240,7 +244,7 @@ module GoogleSheets
     end
 
     def ozon_row(pc, r)
-      sc = "sku_cost!$A:$R"
+      sc = "sku_cost!$A:$U"
       [
         # A-O 可编辑
         pc.sku_code, pc.delivery_mode, pc.company_type,
@@ -249,10 +253,10 @@ module GoogleSheets
         pc.ozon_ret_base_rub, pc.ozon_ret_per_liter_rub,
         pc.ozon_warehouse_op_rub, pc.ozon_fbs_delivery_rub,
         pc.target_price_rf_rub, pc.target_price_by_rub,
-        # P-R VLOOKUP (vol=18, goods=17, vat=16)
-        "=IFERROR(VLOOKUP(A#{r},#{sc},18,0),\"\")",
-        "=IFERROR(VLOOKUP(A#{r},#{sc},17,0),\"\")",
-        "=IFERROR(VLOOKUP(A#{r},#{sc},16,0),\"\")",
+        # P-R VLOOKUP (sku_cost: U=21 vol, T=20 goods, S=19 vat)
+        "=IFERROR(VLOOKUP(A#{r},#{sc},21,0),\"\")",
+        "=IFERROR(VLOOKUP(A#{r},#{sc},20,0),\"\")",
+        "=IFERROR(VLOOKUP(A#{r},#{sc},19,0),\"\")",
         # S: ozon_vol_ceil
         "=IF(P#{r}<>\"\",CEILING(P#{r}),\"\")",
         # T: ozon_fwd_rub = (ceil-3)×per_liter + base

@@ -2,11 +2,11 @@ module GoogleSheets
   class SkuCostImportService < BaseService
     TAB_NAME    = 'SKU_COST'
     HEADER_ROWS = 2  # row1=中文, row2=俄文
-    # 列顺序与 CostSheetWriteService::SKU_COST_COLS 对应（A-N 为可编辑列）
+    # 列顺序与 CostSheetWriteService::SKU_COST_COLS 对应（A-Q 为可编辑列）
     # A=sku_code B=product_name C=product_name_ru D=purchase_price_cny
     # E=freight_to_by_cny F=customs_misc_cny G=customs_duty_rate H=import_vat_rate
-    # I=pkg_length_cm J=pkg_width_cm K=pkg_height_cm L=pkg_volume_override_l
-    # M=misc_cost_cny N=damage_rate
+    # I=pkg_length_cm J=pkg_width_cm K=pkg_height_cm L=outer_length_cm
+    # M=outer_width_cm N=outer_height_cm O=pkg_volume_override_l P=misc_cost_cny Q=damage_rate
 
     def call(dry_run: false)
       rows    = fetch_data_rows
@@ -38,8 +38,9 @@ module GoogleSheets
     private
 
     def fetch_data_rows
-      result = @service.get_spreadsheet_values(SPREADSHEET_ID, "#{TAB_NAME}!A:N")
+      result = @service.get_spreadsheet_values(SPREADSHEET_ID, "#{TAB_NAME}!A:Q")
       rows   = result.values || []
+      @new_dimension_layout = Array(rows.first).include?("包装外长 cm")
       rows[HEADER_ROWS..]
     end
 
@@ -59,6 +60,7 @@ module GoogleSheets
 
     def sync_sku_cost(sku_code, row)
       cost  = Ec::SkuCost.find_or_initialize_by(sku_code:)
+      dimension_offset = new_dimension_layout?(row) ? 3 : 0
       attrs = {
         purchase_price_cny:    d(row[3]),
         freight_to_by_cny:     d(row[4]),
@@ -68,12 +70,24 @@ module GoogleSheets
         pkg_length_cm:         d(row[8]),
         pkg_width_cm:          d(row[9]),
         pkg_height_cm:         d(row[10]),
-        pkg_volume_override_l: d(row[11]),
-        misc_cost_cny:         d(row[12]),
-        damage_rate:           d(row[13]),
-      }.compact
+        pkg_volume_override_l: d(row[11 + dimension_offset]),
+        misc_cost_cny:         d(row[12 + dimension_offset]),
+        damage_rate:           d(row[13 + dimension_offset]),
+      }
+      if dimension_offset.positive?
+        attrs.merge!(
+          outer_length_cm: d(row[11]),
+          outer_width_cm: d(row[12]),
+          outer_height_cm: d(row[13])
+        )
+      end
+      attrs.compact!
       cost.assign_attributes(attrs)
       cost.save!
+    end
+
+    def new_dimension_layout?(row)
+      @new_dimension_layout || row.length > 14
     end
 
     def d(val)

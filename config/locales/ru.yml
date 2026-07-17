@@ -111,6 +111,8 @@ ru:
     skus: "SKU"
     sku_sales: "Продажи SKU"
     costs: "Затраты"
+    sku_costs: "Затраты SKU"
+    sku_dimensions: "Размеры SKU"
     erp_spus: "Управление SPU"
     erp_skus: "Управление SKU"
     erp_stores: "Настройки магазинов"
@@ -853,7 +855,7 @@ ru:
         model: "Модель"
         note: "Примечание"
         owner: "Ответственный"
-        package_size: "Размер упаковки"
+        package_size: "Внутренний размер упаковки"
         period: "Период"
         platform: "Платформа"
         platform_freight_cny: "Доставка платформы CNY"
@@ -1024,6 +1026,61 @@ ru:
       messages:
         save_failed: "Не удалось сохранить. Проверьте значение и повторите."
         saved: "Сохранено"
+    sku_costs:
+      empty:
+        no_skus: "SKU отсутствуют"
+      fields:
+        customs_duty_cny: "Пошлина CNY"
+        customs_duty_rate: "Ставка пошлины"
+        customs_misc_cny: "Таможенные расходы CNY"
+        damage_rate: "Коэффициент потерь"
+        freight_to_by_cny: "Доставка до BY CNY"
+        goods_cost_cny: "Итого стоимость товара CNY"
+        import_vat_cny: "Импортный НДС CNY"
+        import_vat_rate: "Ставка импортного НДС"
+        memo: "Примечание"
+        misc_cost_cny: "Прочие расходы CNY"
+        pkg_volume_override_l: "Ручной объем L"
+        purchase_price_cny: "Закупочная цена CNY"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "Поиск SKU"
+      index:
+        subtitle: "Параметры затрат SKU"
+        title: "Затраты SKU"
+      pagination:
+        aria_label: "Пагинация затрат SKU"
+        jump_action: "OK"
+        jump_label: "Перейти"
+        next_page: "Следующая страница"
+        previous_page: "Предыдущая страница"
+    sku_dimensions:
+      empty:
+        no_skus: "SKU отсутствуют"
+      fields:
+        inner_height_cm: "Внутр. высота см"
+        inner_box_weight_kg: "Вес внутр. коробки кг"
+        inner_length_cm: "Внутр. длина см"
+        inner_volume_l: "Внутр. объем L"
+        inner_width_cm: "Внутр. ширина см"
+        outer_height_cm: "Внеш. высота см"
+        outer_box_weight_kg: "Вес внеш. коробки кг"
+        outer_box_pcs: "Шт. во внеш. коробке"
+        outer_length_cm: "Внеш. длина см"
+        outer_volume_l: "Внеш. объем L"
+        outer_width_cm: "Внеш. ширина см"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "Поиск SKU"
+      index:
+        subtitle: "Размеры упаковки SKU и параметры коробов"
+        title: "Размеры SKU"
+      pagination:
+        aria_label: "Пагинация размеров SKU"
+        jump_action: "OK"
+        jump_label: "Перейти"
+        next_page: "Следующая страница"
+        previous_page: "Предыдущая страница"
     sku_products:
       actions:
         add_binding: "Добавить связь"

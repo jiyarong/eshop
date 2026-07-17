@@ -69,7 +69,7 @@
 
 - `ec_skus.master_sku_id = ec_master_skus.id`。
 - `ec_skus.sku_category_id = ec_sku_categories.id`。
-- `sku_code` 连接 `ec_sku_products`、`ec_sku_batches`、`ec_sku_inventory_levels`、`ec_sku_costs`、`ec_sku_platform_costs`、`ec_sku_predicted_costs`。
+- `sku_code` 连接 `ec_sku_products`、`ec_sku_batches`、`ec_sku_inventory_levels`、`ec_sku_costs`、`ec_sku_dimensions`、`ec_sku_platform_costs`、`ec_sku_predicted_costs`。
 
 ### `ec_sku_products`
 

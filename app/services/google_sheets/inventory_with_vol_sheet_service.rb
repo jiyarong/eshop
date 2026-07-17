@@ -42,7 +42,7 @@ module GoogleSheets
     private
 
     def build_rows
-      skus = Ec::Sku.includes(:cost).order(:sku_code).to_a
+      skus = Ec::Sku.includes(cost: :sku_dimension).order(:sku_code).to_a
       metrics_by_sku = Ec::InventoryVelocityMetricsQuery.new(
         sku_codes: skus.map(&:sku_code),
         date_to: Date.current,

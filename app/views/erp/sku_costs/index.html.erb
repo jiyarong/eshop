@@ -1,0 +1,87 @@
+<% content_for :page_heading, t("erp.sku_costs.index.title") %>
+
+<div class="product-management sku-management">
+  <div class="page-h">
+    <div>
+      <h1><%= t("erp.sku_costs.index.title") %></h1>
+      <p class="sub"><%= t("erp.sku_costs.index.subtitle") %></p>
+    </div>
+  </div>
+
+  <section class="card product-filter-card">
+    <%= form_with url: erp_sku_costs_path, method: :get, local: true, class: "product-filter-form" do |form| %>
+      <% current_locale_params.each do |key, value| %>
+        <%= hidden_field_tag key, value %>
+      <% end %>
+      <div class="product-search-control">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= form.search_field :sku, value: @sku_query, placeholder: t("erp.sku_costs.filters.sku_placeholder"), class: "input" %>
+      </div>
+      <button class="btn btn-primary" type="submit">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= t("erp.common.actions.filter") %>
+      </button>
+      <%= link_to erp_sku_costs_path(current_locale_params), class: "btn btn-outline" do %>
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+        <%= t("erp.common.actions.reset") %>
+      <% end %>
+      <div class="spacer"></div>
+      <span class="text-sm text-muted"><%= @skus.respond_to?(:total_count) ? @skus.total_count : @skus.size %> SKU</span>
+    <% end %>
+  </section>
+
+  <section class="card product-list-card">
+    <table class="prod-tbl">
+      <thead>
+        <tr>
+          <th style="width: 180px">SKU</th>
+          <th style="min-width: 180px"><%= t("erp.common.chinese_name") %></th>
+          <th style="width: 130px; text-align: right"><%= t("erp.sku_costs.fields.purchase_price_cny") %></th>
+          <th style="width: 130px; text-align: right"><%= t("erp.sku_costs.fields.freight_to_by_cny") %></th>
+          <th style="width: 130px; text-align: right"><%= t("erp.sku_costs.fields.customs_misc_cny") %></th>
+          <th style="width: 110px; text-align: right"><%= t("erp.sku_costs.fields.customs_duty_rate") %></th>
+          <th style="width: 120px; text-align: right"><%= t("erp.sku_costs.fields.import_vat_rate") %></th>
+          <th style="width: 120px; text-align: right"><%= t("erp.sku_costs.fields.customs_duty_cny") %></th>
+          <th style="width: 130px; text-align: right"><%= t("erp.sku_costs.fields.import_vat_cny") %></th>
+          <th style="width: 130px; text-align: right"><%= t("erp.sku_costs.fields.goods_cost_cny") %></th>
+          <th style="width: 110px; text-align: right"><%= t("erp.sku_costs.fields.misc_cost_cny") %></th>
+          <th style="width: 100px; text-align: right"><%= t("erp.sku_costs.fields.damage_rate") %></th>
+          <th style="min-width: 180px"><%= t("erp.common.memo") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @skus.any? %>
+          <% @skus.each do |sku| %>
+            <% cost = sku.cost || Ec::SkuCost.new(sku_code: sku.sku_code) %>
+            <tr class="sku-row master">
+              <td><span class="code-text sub"><%= sku.sku_code %></span></td>
+              <td><span class="zh-name"><%= erp_value(sku.product_name) %></span></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :purchase_price_cny) %></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :freight_to_by_cny) %></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :customs_misc_cny) %></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :customs_duty_rate) %></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :import_vat_rate) %></td>
+              <td class="num"><%= erp_value(cost.customs_duty_cny) %></td>
+              <td class="num"><%= erp_value(cost.import_vat_cny) %></td>
+              <td class="num"><%= erp_value(cost.goods_cost_cny) %></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :misc_cost_cny) %></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :damage_rate) %></td>
+              <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :memo) %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="13" class="empty-state">
+              <i class="bi bi-inbox" aria-hidden="true"></i>
+              <%= t("erp.sku_costs.empty.no_skus") %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <% if @skus.respond_to?(:total_pages) && @skus.total_pages > 1 %>
+      <%= render "pagination", skus: @skus %>
+    <% end %>
+  </section>
+</div>

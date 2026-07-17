@@ -33,8 +33,40 @@ module Erp
       }
     }.freeze
 
+    SKU_COST_INLINE_FIELDS = {
+      purchase_price_cny: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      freight_to_by_cny: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      customs_misc_cny: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      customs_duty_rate: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      import_vat_rate: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      pkg_volume_override_l: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      misc_cost_cny: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      damage_rate: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      memo: { input_kind: :text }
+    }.freeze
+
+    SKU_DIMENSION_INLINE_FIELDS = {
+      inner_length_cm: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      inner_width_cm: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      inner_height_cm: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      inner_box_weight_kg: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      outer_length_cm: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      outer_width_cm: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      outer_height_cm: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      outer_box_weight_kg: { input_kind: :number, align: :right, input_html_options: { step: "any" } },
+      outer_box_pcs: { input_kind: :number, align: :right, input_html_options: { step: 1, min: 0 } }
+    }.freeze
+
     def sku_batch_inline_frame_id(batch, field)
       "sku_batch_#{batch.id}_#{field}_cell"
+    end
+
+    def sku_cost_inline_frame_id(sku_code, field)
+      "sku_cost_#{inline_record_key(sku_code)}_#{field}_cell"
+    end
+
+    def sku_dimension_inline_frame_id(sku_code, field)
+      "sku_dimension_#{inline_record_key(sku_code)}_#{field}_cell"
     end
 
     def sku_batch_inline_feedback_target(sku)
@@ -47,6 +79,14 @@ module Erp
 
     def sku_batch_inline_config(field)
       BATCH_INLINE_FIELDS.fetch(field.to_sym)
+    end
+
+    def sku_cost_inline_config(field)
+      SKU_COST_INLINE_FIELDS.fetch(field.to_sym)
+    end
+
+    def sku_dimension_inline_config(field)
+      SKU_DIMENSION_INLINE_FIELDS.fetch(field.to_sym)
     end
 
     def sku_batch_inline_display_value(batch, field)
@@ -94,6 +134,70 @@ module Erp
         error_messages: [],
         align: config[:align]
       }
+    end
+
+    def sku_cost_inline_cell_locals(cost, field, locale_params: current_locale_params)
+      field = field.to_sym
+      config = sku_cost_inline_config(field)
+
+      {
+        record: cost,
+        field: field.to_s,
+        frame_id: sku_cost_inline_frame_id(cost.sku_code, field),
+        feedback_target: inline_edit_toast_target,
+        update_path: erp_sku_cost_path(cost.sku_code, locale_params),
+        edit_url: edit_erp_sku_cost_path(
+          cost.sku_code,
+          locale_params.merge(
+            inline_field: field,
+            edit_inline: true,
+            inline_context: { feedback_target: inline_edit_toast_target }
+          )
+        ),
+        label: I18n.t("erp.sku_costs.fields.#{field}"),
+        input_kind: config[:input_kind],
+        value: cost.public_send(field),
+        display_value: erp_value(cost.public_send(field)),
+        options: [],
+        editing: false,
+        error_messages: [],
+        align: config[:align],
+        input_html_options: config[:input_html_options]
+      }
+    end
+
+    def sku_dimension_inline_cell_locals(dimension, field, locale_params: current_locale_params)
+      field = field.to_sym
+      config = sku_dimension_inline_config(field)
+
+      {
+        record: dimension,
+        field: field.to_s,
+        frame_id: sku_dimension_inline_frame_id(dimension.sku_code, field),
+        feedback_target: inline_edit_toast_target,
+        update_path: erp_sku_dimension_path(dimension.sku_code, locale_params),
+        edit_url: edit_erp_sku_dimension_path(
+          dimension.sku_code,
+          locale_params.merge(
+            inline_field: field,
+            edit_inline: true,
+            inline_context: { feedback_target: inline_edit_toast_target }
+          )
+        ),
+        label: I18n.t("erp.sku_dimensions.fields.#{field}"),
+        input_kind: config[:input_kind],
+        value: dimension.public_send(field),
+        display_value: erp_value(dimension.public_send(field)),
+        options: [],
+        editing: false,
+        error_messages: [],
+        align: config[:align],
+        input_html_options: config[:input_html_options]
+      }
+    end
+
+    def inline_record_key(value)
+      value.to_s.gsub(/[^A-Za-z0-9_-]/, "_")
     end
 
     private

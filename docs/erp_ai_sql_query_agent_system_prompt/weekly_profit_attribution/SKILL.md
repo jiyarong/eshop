@@ -43,14 +43,20 @@
 - `purchase_price_cny`、`freight_to_by_cny`、`customs_misc_cny`：采购、运费和清关杂费。
 - `customs_duty_rate`、`import_vat_rate`：关税和进口 VAT 参数。
 - `misc_cost_cny`、`damage_rate`：其他成本和损耗参数。
-- `pkg_length_cm`、`pkg_width_cm`、`pkg_height_cm`、`pkg_volume_override_l`：WSU-DEEP ROI 计算会使用体积。
+- `pkg_volume_override_l`：历史/手工体积覆盖值，仅作为旧 `pkg_volume_l` 兼容兜底。
+
+### SKU 尺寸：`ec_sku_dimensions`
+
+- `sku_code`：内部 SKU 编码，唯一。
+- `inner_length_cm`、`inner_width_cm`、`inner_height_cm`：WSU-DEEP ROI 默认使用内径计算单件体积。
+- `outer_length_cm`、`outer_width_cm`、`outer_height_cm`、`inner_box_weight_kg`、`outer_box_weight_kg`、`outer_box_pcs`：需要包装和装箱信息时加载 `sku_dimensions` Skill。
 
 模型计算口径：
 
 - `goods_cost_cny = purchase_price_cny + freight_to_by_cny + customs_misc_cny + customs_duty_cny + import_vat_cny`。
 - `customs_duty_cny = purchase_price_cny * customs_duty_rate`。
 - `import_vat_cny = (purchase_price_cny + customs_duty_cny) * import_vat_rate`。
-- `pkg_volume_l` 优先由长宽高计算，缺失时使用 `pkg_volume_override_l`。
+- `pkg_volume_l` 兼容口径：优先由 `ec_sku_dimensions` 内径长宽高计算，缺失时使用 `ec_sku_costs.pkg_volume_override_l`。
 
 ## WB WR 表结构与关系
 
@@ -255,12 +261,12 @@ WSU-DEEP 基于 WSU 的 CNY 明细继续聚合和扩展指标。
 1. 先执行 WSU 的跨账号、跨平台归集逻辑。
 2. 按大写后的 `sku` 聚合所有平台和店铺。
 3. 对每个 SKU 汇总 `net_sales`、`revenue`、`ads`、`goods_cost`、`pre_tax`、`tax`、`after_tax`。
-4. 从 `ec_skus` 读取 SKU，并包含 `ec_sku_costs` 成本。
+4. 从 `ec_skus` 读取 SKU，并包含 `ec_sku_costs` 成本；需要 ROI 体积时同时读取 `ec_sku_dimensions`。
 5. `margin_pct = after_tax / revenue * 100`。
 6. `average_profit_per_order = after_tax / net_sales`。
 7. `ad_ratio_pct = ads / revenue * 100`。
 8. `cost_return_pct = after_tax / goods_cost * 100`。
-9. ROI 使用 `Ec::ProjectedStockRoiCalculator`：输入 `net_sales_quantity`、`operating_profit_cny`、周期天数、单件 `goods_cost_cny` 和单件体积 `pkg_volume_l`。
+9. ROI 使用 `Ec::ProjectedStockRoiCalculator`：输入 `net_sales_quantity`、`operating_profit_cny`、周期天数、单件 `goods_cost_cny` 和单件体积 `pkg_volume_l`；体积按 `sku_dimensions` Skill 的兼容口径计算。
 10. ROI 以 180 天备货假设计算预估备货量、平均库存、周转周期、仓储费、资金利息、成本基数、调整后经营净利、投产比和年化收益。
 11. 成本或体积缺失时，基础利润指标仍可返回，但 `projected_roi_pct`、`annualized_return_pct` 等深度投产指标可能为空。
 

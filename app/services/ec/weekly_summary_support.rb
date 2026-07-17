@@ -172,7 +172,7 @@ module Ec
     end
 
     def build_wsu_deep_row_hashes(rows, from_date:, to_date:)
-      sku_map = Ec::Sku.includes(:cost).where(sku_code: rows.map { |row| row[:sku] }).index_by(&:sku_code)
+      sku_map = Ec::Sku.includes(cost: :sku_dimension).where(sku_code: rows.map { |row| row[:sku] }).index_by(&:sku_code)
       days_count = (to_date - from_date).to_i + 1
 
       rows.sort_by { |row| -row[:after_tax].to_d }.map do |row|

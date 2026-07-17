@@ -189,7 +189,9 @@ module GoogleSheets
       cost = Ec::SkuCost.find_or_initialize_by(sku_code:)
       attrs = config[:platform] == 'wb' ? parse_wb_cost(row) : parse_ozon_cost(row)
 
-      attrs.each { |k, v| cost[k] = v if cost[k].blank? && v.present? }
+      attrs.each do |k, v|
+        cost.public_send("#{k}=", v) if cost.public_send(k).blank? && v.present?
+      end
       cost.save!
     end
 

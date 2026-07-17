@@ -124,9 +124,9 @@ class ReportsController < ApplicationController
   end
 
   def costs
-    @sku_costs = Ec::SkuCost.includes(:sku).order(:sku_code)
-    @wb_costs = Ec::SkuPlatformCost.includes(:sku, :cost).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
-    @ozon_costs = Ec::SkuPlatformCost.includes(:sku, :cost).where(platform: "ozon").order(:sku_code, :delivery_mode, :company_type)
+    @sku_costs = Ec::SkuCost.includes(:sku, :sku_dimension).order(:sku_code)
+    @wb_costs = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
+    @ozon_costs = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "ozon").order(:sku_code, :delivery_mode, :company_type)
   end
 
   def sku_sales
@@ -151,7 +151,7 @@ class ReportsController < ApplicationController
     @sku = Ec::Sku.includes(
       { master_sku: { ec_category: :parent } },
       :sku_category,
-      :cost,
+      { cost: :sku_dimension },
       :platform_costs,
       :store_assignments,
       :inventory_levels,
@@ -310,7 +310,7 @@ class ReportsController < ApplicationController
   end
 
   def inventory_skus_scope
-    scope = Ec::Sku.includes(:cost, :current_marketing_state)
+    scope = Ec::Sku.includes({ cost: :sku_dimension }, :current_marketing_state)
     return scope if @sku_query.blank?
 
     scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)

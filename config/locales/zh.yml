@@ -118,6 +118,8 @@ zh:
     skus: "SKU"
     sku_sales: "SKU 销量"
     costs: "成本"
+    sku_costs: "SKU 成本维护"
+    sku_dimensions: "SKU 尺寸维护"
     erp_spus: "SPU 管理"
     erp_skus: "SKU 管理"
     erp_stores: "店铺设置"
@@ -862,7 +864,7 @@ zh:
         model: "型号"
         note: "备注"
         owner: "负责人"
-        package_size: "包装尺寸"
+        package_size: "包装内径"
         period: "周期"
         platform: "平台"
         platform_freight_cny: "平台运费 CNY"
@@ -1046,6 +1048,61 @@ zh:
       messages:
         save_failed: "保存失败，请检查后重试"
         saved: "已保存"
+    sku_costs:
+      empty:
+        no_skus: "暂无 SKU"
+      fields:
+        customs_duty_cny: "关税额 CNY"
+        customs_duty_rate: "关税率"
+        customs_misc_cny: "清关杂费 CNY"
+        damage_rate: "货损率"
+        freight_to_by_cny: "到白俄运费 CNY"
+        goods_cost_cny: "货物总成本 CNY"
+        import_vat_cny: "进口增值税 CNY"
+        import_vat_rate: "进口增值税率"
+        memo: "备注"
+        misc_cost_cny: "杂费 CNY"
+        pkg_volume_override_l: "直填升量 L"
+        purchase_price_cny: "采购价 CNY"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "搜索 SKU"
+      index:
+        subtitle: "SKU 成本参数"
+        title: "SKU 成本维护"
+      pagination:
+        aria_label: "SKU 成本分页"
+        jump_action: "确定"
+        jump_label: "跳至"
+        next_page: "下一页"
+        previous_page: "上一页"
+    sku_dimensions:
+      empty:
+        no_skus: "暂无 SKU"
+      fields:
+        inner_height_cm: "内高 cm"
+        inner_box_weight_kg: "内箱重量 kg"
+        inner_length_cm: "内长 cm"
+        inner_volume_l: "内径体积 L"
+        inner_width_cm: "内宽 cm"
+        outer_height_cm: "外高 cm"
+        outer_box_weight_kg: "外箱重量 kg"
+        outer_box_pcs: "外箱 pcs"
+        outer_length_cm: "外长 cm"
+        outer_volume_l: "外径体积 L"
+        outer_width_cm: "外宽 cm"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "搜索 SKU"
+      index:
+        subtitle: "SKU 包装尺寸与装箱参数"
+        title: "SKU 尺寸维护"
+      pagination:
+        aria_label: "SKU 尺寸分页"
+        jump_action: "确定"
+        jump_label: "跳至"
+        next_page: "下一页"
+        previous_page: "上一页"
     sku_products:
       actions:
         add_binding: "新增绑定"
