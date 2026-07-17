@@ -73,7 +73,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
           OpenStruct.new(
             id: "call_1",
             function: OpenStruct.new(
-              name: "mcp__search__web_search",
+              name: "search__web_search",
               arguments: { "query" => "sku" }.to_json
             )
           )
@@ -96,7 +96,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal [
       {
         id: "call_1",
-        name: "mcp__search__web_search",
+        name: "search__web_search",
         arguments: { "query" => "sku" }
       }
     ], result.fetch(:tool_calls)
@@ -109,7 +109,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
           tool_calls: [
             {
               id: "call_1",
-              name: "mcp__wiki__search",
+              name: "wiki__search",
               arguments: { query: "SKU" }
             }
           ]
@@ -124,7 +124,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
       system_prompt: "系统提示词",
       context: "ERP 上下文",
       messages: [{ role: "user", content: "查资料" }],
-      tools: [{ name: "mcp__wiki__search", description: "Search wiki" }],
+      tools: [{ name: "wiki__search", description: "Search wiki" }],
       thinking_enabled: false
     )
 
@@ -132,7 +132,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal [
       {
         id: "call_1",
-        name: "mcp__wiki__search",
+        name: "wiki__search",
         arguments: { "query" => "SKU" }
       }
     ], result.fetch(:tool_calls)
@@ -150,7 +150,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
       system_prompt: "系统提示词",
       context: "ERP 上下文",
       messages: [{ role: "user", content: "总结" }],
-      tools: [{ name: "mcp__wiki__search", description: "Search wiki" }],
+      tools: [{ name: "wiki__search", description: "Search wiki" }],
       thinking_enabled: false
     )
 

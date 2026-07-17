@@ -17,14 +17,14 @@ class ErpAI::ToolExecutorTest < ActiveSupport::TestCase
 
     result = executor.call(
       id: "call_1",
-      name: "mcp__search__web_search",
+      name: "search__web_search",
       arguments: { "query" => "sku" }
     )
 
     assert_equal "web_search", client.tool_name
     assert_equal({ "query" => "sku" }, client.arguments)
     assert_equal "call_1", result.fetch(:tool_call_id)
-    assert_equal "mcp__search__web_search", result.fetch(:name)
+    assert_equal "search__web_search", result.fetch(:name)
     assert_equal "found", result.fetch(:result).fetch("content").first.fetch("text")
   end
 
@@ -40,7 +40,7 @@ class ErpAI::ToolExecutorTest < ActiveSupport::TestCase
   test "returns structured error for unknown MCP server names" do
     executor = ErpAI::ToolExecutor.new(mcp_clients: {})
 
-    result = executor.call(id: "call_3", name: "mcp__missing__web_search", arguments: {})
+    result = executor.call(id: "call_3", name: "missing__web_search", arguments: {})
 
     assert_equal "unknown_mcp_server", result.fetch(:error).fetch(:code)
   end
@@ -52,7 +52,7 @@ class ErpAI::ToolExecutorTest < ActiveSupport::TestCase
       mcp_tool_filters: { "search" => ["web_search"] }
     )
 
-    result = executor.call(id: "call_4", name: "mcp__search__fetch_page", arguments: {})
+    result = executor.call(id: "call_4", name: "search__fetch_page", arguments: {})
 
     assert_nil client.tool_name
     assert_equal "mcp_tool_not_allowed", result.fetch(:error).fetch(:code)

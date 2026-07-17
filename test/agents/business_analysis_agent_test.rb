@@ -85,12 +85,12 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
       system_prompt: "系统提示词",
       context: "ERP 上下文",
       messages: [{ role: "user", content: "分析库存" }],
-      available_tools: [{ name: "mcp__search__web_search", description: "Search" }],
+      available_tools: [{ name: "search__web_search", description: "Search" }],
       thinking_enabled: false
     ).analyze
 
     assert_not generation.options.key?(:tools)
-    assert_includes generation.messages.first.fetch(:content), "mcp__search__web_search"
+    assert_includes generation.messages.first.fetch(:content), "search__web_search"
     assert_includes generation.messages.first.fetch(:content), "tool_calls"
   end
 end

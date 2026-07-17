@@ -28,7 +28,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
           tool_calls: [
             {
               id: "call_1",
-              name: "mcp__search__web_search",
+              name: "search__web_search",
               arguments: { "query" => "SKU-1" }
             }
           ],
@@ -58,7 +58,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
         tool_calls: [
           {
             id: "call_#{requests.size}",
-            name: "mcp__search__web_search",
+            name: "search__web_search",
             arguments: { "query" => "loop" }
           }
         ],
@@ -189,12 +189,12 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     messages = conversation.messages.order(:created_at, :id)
     assert_equal ["user", "assistant", "tool", "assistant"], messages.pluck(:role)
     assert_equal 2, client.requests.size
-    assert_includes client.requests.first.fetch(:tools).map { |tool| tool.fetch(:name) }, "mcp__search__web_search"
+    assert_includes client.requests.first.fetch(:tools).map { |tool| tool.fetch(:name) }, "search__web_search"
     second_request_messages = client.requests.second.fetch(:messages)
     assistant_tool_request = second_request_messages[-2]
     assert_equal "assistant", assistant_tool_request.fetch(:role)
     assert_not assistant_tool_request.key?(:tool_calls)
-    assert_includes assistant_tool_request.fetch(:content), "mcp__search__web_search"
+    assert_includes assistant_tool_request.fetch(:content), "search__web_search"
     assert_equal "user", second_request_messages.last.fetch(:role)
     assert_not second_request_messages.last.key?(:tool_call_id)
     assert_includes second_request_messages.last.fetch(:content), "库存数据"
@@ -212,8 +212,8 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     ).ask(question: "查一下 SKU-1")
 
     tool_names = client.request.fetch(:tools).map { |tool| tool.fetch(:name) }
-    assert_includes tool_names, "mcp__search__web_search"
-    assert_not_includes tool_names, "mcp__search__fetch_page"
+    assert_includes tool_names, "search__web_search"
+    assert_not_includes tool_names, "search__fetch_page"
   end
 
   test "stores final assistant message when max tool rounds is reached" do

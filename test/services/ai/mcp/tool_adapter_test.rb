@@ -24,7 +24,7 @@ class ErpAI::Mcp::ToolAdapterTest < ActiveSupport::TestCase
 
     assert_equal 1, adapted.size
     tool = adapted.first
-    assert_equal "mcp__search__web_search", tool.fetch(:name)
+    assert_equal "search__web_search", tool.fetch(:name)
     assert_equal "Search the web", tool.fetch(:description)
     assert_equal "web_search", tool.fetch(:mcp_tool_name)
     assert_equal "search", tool.fetch(:mcp_server_name)
@@ -32,7 +32,7 @@ class ErpAI::Mcp::ToolAdapterTest < ActiveSupport::TestCase
   end
 
   test "parses model tool names back into server and MCP tool names" do
-    parsed = ErpAI::Mcp::ToolAdapter.parse_model_tool_name("mcp__docs__lookup_article")
+    parsed = ErpAI::Mcp::ToolAdapter.parse_model_tool_name("docs__lookup_article")
 
     assert_equal({ server_name: "docs", tool_name: "lookup_article" }, parsed)
   end

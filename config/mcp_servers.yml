@@ -1,7 +1,7 @@
 # Each environment contains MCP HTTP servers. Omit tools, or set tools: [], to expose all server tools.
 # Set tools to a non-empty list to expose only those MCP tool names.
 
-- endpoint: https://gbrain.bgl.foresight-soft.com/mcp
+- endpoint: https://gbrain.eshop.evexport.cn/mcp
   name: gbrain
   bearer_token: <%= ENV.fetch("GBRAIN_BEARER_TOKEN", "") %>
   tools:
@@ -9,9 +9,3 @@
     - search
     - get_page
     - list_pages
-    - get_backlinks
-    - get_links
-    - traverse_graph
-    - get_tags
-    - get_timeline
-    - get_versions

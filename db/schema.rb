@@ -161,6 +161,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_065736) do
     t.index ["status"], name: "index_ec_cost_allocations_on_status"
   end
 
+  create_table "ec_daily_exchange_rates", force: :cascade do |t|
+    t.string "base_currency", default: "CNY", null: false
+    t.datetime "created_at", null: false
+    t.string "currency_code", null: false
+    t.date "rate_date", null: false
+    t.decimal "rate_from_base", precision: 18, scale: 8, null: false
+    t.decimal "rate_to_base", precision: 18, scale: 8, null: false
+    t.string "source", default: "cbr", null: false
+    t.date "source_date"
+    t.datetime "updated_at", null: false
+    t.index ["rate_date", "base_currency", "currency_code"], name: "index_ec_daily_exchange_rates_unique_daily_currency", unique: true
+  end
+
   create_table "ec_master_skus", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "ec_category_id"

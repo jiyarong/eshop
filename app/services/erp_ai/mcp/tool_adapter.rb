@@ -1,8 +1,6 @@
 module ErpAI
   module Mcp
     class ToolAdapter
-      PREFIX = "mcp".freeze
-
       def self.adapt(server_name:, tools:)
         Array(tools).filter_map do |tool|
           name = fetch_value(tool, "name")
@@ -19,8 +17,7 @@ module ErpAI
       end
 
       def self.parse_model_tool_name(name)
-        prefix, server_name, tool_name = name.to_s.split("__", 3)
-        return nil unless prefix == PREFIX
+        server_name, tool_name = name.to_s.split("__", 2)
         return nil if server_name.blank? || tool_name.blank?
 
         {
@@ -30,7 +27,7 @@ module ErpAI
       end
 
       def self.model_tool_name(server_name, tool_name)
-        "#{PREFIX}__#{server_name}__#{tool_name}"
+        "#{server_name}__#{tool_name}"
       end
 
       def self.fetch_value(hash, key)
