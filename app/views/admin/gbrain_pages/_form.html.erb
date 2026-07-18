@@ -7,19 +7,144 @@
   <% end %>
 
   <section class="panel gbrain-editor__panel">
-    <div class="field">
-      <%= form.label :slug, t("admin.gbrain.fields.slug") %>
-      <%= form.text_field :slug, required: true, readonly: page.persisted?, class: "code-input", autocomplete: "off" %>
-      <% if page.persisted? %>
-        <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.slug_readonly") %></small>
-      <% end %>
-    </div>
+    <fieldset class="gbrain-form-section">
+      <legend><%= t("admin.gbrain.form.identity") %></legend>
+      <p class="gbrain-form-section__hint"><%= t("admin.gbrain.hints.identity") %></p>
 
-    <div class="field">
-      <%= form.label :content, t("admin.gbrain.fields.content") %>
-      <%= form.text_area :content, required: true, class: "code-input gbrain-content-editor", spellcheck: false %>
-      <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.markdown") %></small>
-    </div>
+      <div class="gbrain-form-grid">
+        <div class="field">
+          <%= form.label :page_type, t("admin.gbrain.fields.page_type") %>
+          <%= form.select :page_type, gbrain_page_type_options %>
+          <%= gbrain_field_error(page, :page_type) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :subtype, t("admin.gbrain.fields.subtype") %>
+          <%= form.text_field :subtype, required: true, autocomplete: "off" %>
+          <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.subtype") %></small>
+          <%= gbrain_field_error(page, :subtype) %>
+        </div>
+
+        <div class="field gbrain-form-grid__wide">
+          <%= form.label :title, t("admin.gbrain.fields.title") %>
+          <%= form.text_field :title, required: true, autocomplete: "off" %>
+          <%= gbrain_field_error(page, :title) %>
+        </div>
+
+        <div class="field gbrain-form-grid__wide">
+          <%= form.label :slug, t("admin.gbrain.fields.slug") %>
+          <%= form.text_field :slug, required: true, readonly: page.persisted?, class: "code-input", autocomplete: "off" %>
+          <small class="gbrain-field-hint"><%= t(page.persisted? ? "admin.gbrain.hints.slug_readonly" : "admin.gbrain.hints.slug") %></small>
+          <%= gbrain_field_error(page, :slug) %>
+        </div>
+
+        <div class="field gbrain-form-grid__wide">
+          <%= form.label :summary, t("admin.gbrain.fields.summary") %>
+          <%= form.text_area :summary, required: true, rows: 3 %>
+          <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.summary") %></small>
+          <%= gbrain_field_error(page, :summary) %>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="gbrain-form-section">
+      <legend><%= t("admin.gbrain.form.retrieval") %></legend>
+      <p class="gbrain-form-section__hint"><%= t("admin.gbrain.hints.retrieval") %></p>
+
+      <div class="gbrain-form-grid">
+        <div class="field">
+          <%= form.label :aliases_text, t("admin.gbrain.fields.aliases") %>
+          <%= form.text_area :aliases_text, required: true, rows: 4, class: "code-input" %>
+          <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.list") %></small>
+          <%= gbrain_field_error(page, :aliases) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :tags_text, t("admin.gbrain.fields.tags") %>
+          <%= form.text_area :tags_text, required: true, rows: 4, class: "code-input" %>
+          <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.tags") %></small>
+          <%= gbrain_field_error(page, :tags) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :platform, t("admin.gbrain.fields.platform") %>
+          <%= form.text_field :platform, required: true, autocomplete: "off" %>
+          <%= gbrain_field_error(page, :platform) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :country, t("admin.gbrain.fields.country") %>
+          <%= form.text_field :country, required: true, autocomplete: "off" %>
+          <%= gbrain_field_error(page, :country) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :region_scope_text, t("admin.gbrain.fields.region_scope") %>
+          <%= form.text_area :region_scope_text, rows: 3, class: "code-input" %>
+          <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.region_scope") %></small>
+          <%= gbrain_field_error(page, :region_scope) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :category_scope_text, t("admin.gbrain.fields.category_scope") %>
+          <%= form.text_area :category_scope_text, rows: 3, class: "code-input" %>
+          <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.category_scope") %></small>
+          <%= gbrain_field_error(page, :category_scope) %>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="gbrain-form-section">
+      <legend><%= t("admin.gbrain.form.governance") %></legend>
+      <p class="gbrain-form-section__hint"><%= t("admin.gbrain.hints.governance") %></p>
+
+      <div class="gbrain-form-grid gbrain-form-grid--three">
+        <div class="field">
+          <%= form.label :effective_date, t("admin.gbrain.fields.effective_date") %>
+          <%= form.date_field :effective_date %>
+          <small class="gbrain-field-hint"><%= t("admin.gbrain.hints.effective_date") %></small>
+          <%= gbrain_field_error(page, :effective_date) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :reviewed_at, t("admin.gbrain.fields.reviewed_at") %>
+          <%= form.date_field :reviewed_at, required: true %>
+          <%= gbrain_field_error(page, :reviewed_at) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :review_after, t("admin.gbrain.fields.review_after") %>
+          <%= form.date_field :review_after, required: true %>
+          <%= gbrain_field_error(page, :review_after) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :source_tier, t("admin.gbrain.fields.source_tier") %>
+          <%= form.select :source_tier,
+            GbrainPage::SOURCE_TIERS.map { |tier| [t("admin.gbrain.source_tiers.#{tier}"), tier] },
+            { include_blank: t("admin.gbrain.form.select_source_tier") }, required: true %>
+          <%= gbrain_field_error(page, :source_tier) %>
+        </div>
+
+        <div class="field">
+          <%= form.label :confidence, t("admin.gbrain.fields.confidence") %>
+          <%= form.select :confidence,
+            GbrainPage::CONFIDENCE_LEVELS.map { |level| [t("admin.gbrain.confidence_levels.#{level}"), level] },
+            {}, required: true %>
+          <%= gbrain_field_error(page, :confidence) %>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="gbrain-form-section">
+      <legend><%= t("admin.gbrain.form.body") %></legend>
+      <p class="gbrain-form-section__hint"><%= t("admin.gbrain.hints.markdown") %></p>
+      <div class="field">
+        <%= form.label :content, t("admin.gbrain.fields.content") %>
+        <%= form.text_area :content, required: true, class: "code-input gbrain-content-editor", spellcheck: false %>
+        <%= gbrain_field_error(page, :content) %>
+      </div>
+    </fieldset>
   </section>
 
   <div class="gbrain-form-actions">

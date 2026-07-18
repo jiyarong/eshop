@@ -36,7 +36,7 @@ module Gbrain
 
     def write_page(page, version)
       page.update_columns(sync_status: "syncing", last_error: nil, updated_at: Time.current)
-      client.put_page(slug: page.slug, content: page.content)
+      client.put_page(slug: page.slug, content: page.compiled_content)
 
       page.reload
       attributes = { knowledge_base_written_at: Time.current, updated_at: Time.current }

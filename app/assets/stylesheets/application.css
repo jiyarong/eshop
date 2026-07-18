@@ -5595,11 +5595,12 @@ body.auth-shell .auth-submit:hover {
   margin-inline: -12px;
 }
 
-.gbrain-pages-table th:nth-child(1) { width: 30%; }
-.gbrain-pages-table th:nth-child(2) { width: 14%; }
-.gbrain-pages-table th:nth-child(3) { width: 18%; }
-.gbrain-pages-table th:nth-child(4) { width: 20%; }
-.gbrain-pages-table th:nth-child(5) { width: 18%; }
+.gbrain-pages-table th:nth-child(1) { width: 25%; }
+.gbrain-pages-table th:nth-child(2) { width: 15%; }
+.gbrain-pages-table th:nth-child(3) { width: 12%; }
+.gbrain-pages-table th:nth-child(4) { width: 16%; }
+.gbrain-pages-table th:nth-child(5) { width: 17%; }
+.gbrain-pages-table th:nth-child(6) { width: 15%; }
 
 .gbrain-page-link {
   color: var(--erp-text);
@@ -5625,6 +5626,73 @@ body.auth-shell .auth-submit:hover {
 .gbrain-validation-form {
   display: grid;
   gap: 16px;
+}
+
+.gbrain-editor__panel {
+  gap: 24px;
+}
+
+.gbrain-form-section {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  border: 0;
+  padding: 0 0 24px;
+}
+
+.gbrain-form-section:not(:last-child) {
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.gbrain-form-section:last-child {
+  padding-bottom: 0;
+}
+
+.gbrain-form-section legend {
+  padding: 0;
+  color: var(--erp-text);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.gbrain-form-section__hint {
+  max-width: 74ch;
+  margin: -8px 0 0;
+  color: var(--erp-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gbrain-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.gbrain-form-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gbrain-form-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.gbrain-field-error {
+  color: var(--erp-danger-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.gbrain-list-filter {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.gbrain-list-filter .field {
+  width: min(320px, 100%);
 }
 
 .gbrain-content-editor {
@@ -6046,6 +6114,16 @@ body.auth-shell .auth-submit:hover {
   .gbrain-remote-show-layout,
   .gbrain-validation-form {
     grid-template-columns: 1fr;
+  }
+
+  .gbrain-form-grid,
+  .gbrain-form-grid--three {
+    grid-template-columns: 1fr;
+  }
+
+  .gbrain-list-filter {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .gbrain-remote-pagination {

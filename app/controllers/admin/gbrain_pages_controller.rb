@@ -11,6 +11,7 @@ module Admin
         load_remote_pages
       else
         @pages = GbrainPage.recent_first
+        @pages = @pages.where(page_type: params[:page_type]) if GbrainPage::PAGE_TYPES.key?(params[:page_type])
       end
     rescue StandardError => error
       @error = error.message
@@ -20,7 +21,15 @@ module Admin
     end
 
     def new
-      @page = GbrainPage.new
+      @page = GbrainPage.new(
+        page_type: "operation-playbook",
+        platform: "ozon",
+        country: "RU",
+        tags: %w[platform/ozon country/ru status/current],
+        reviewed_at: Date.current,
+        review_after: 3.months.from_now.to_date,
+        confidence: "medium"
+      )
     end
 
     def edit
@@ -113,7 +122,12 @@ module Admin
     end
 
     def page_params
-      permitted = params.require(:gbrain_page).permit(:slug, :content)
+      permitted = params.require(:gbrain_page).permit(
+        :slug, :title, :page_type, :subtype, :aliases_text, :tags_text,
+        :platform, :country, :region_scope_text, :category_scope_text,
+        :effective_date, :reviewed_at, :review_after, :source_tier,
+        :confidence, :summary, :content
+      )
       permitted.delete(:slug) if @page.persisted?
       permitted
     end

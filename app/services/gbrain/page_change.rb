@@ -26,8 +26,8 @@ module Gbrain
     end
 
     def save(attributes)
-      content_changed = page.new_record? || page.content != attributes[:content]
       page.assign_attributes(attributes)
+      content_changed = page.new_record? || page.wiki_content_changed?
       if content_changed
         page.content_updated_at = Time.current
         page.sync_status = "pending"

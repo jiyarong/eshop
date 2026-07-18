@@ -9,7 +9,7 @@ class Gbrain::PageChangeTest < ActiveSupport::TestCase
 
   teardown do
     clear_enqueued_jobs
-    GbrainPage.where("slug LIKE ?", "change-#{@token}%").delete_all
+    GbrainPage.where("slug LIKE ?", "%change-#{@token}%").delete_all
   end
 
   test "does not queue another write when content did not change" do
@@ -33,13 +33,22 @@ class Gbrain::PageChangeTest < ActiveSupport::TestCase
     assert_nil page.last_error
   end
 
+  test "queues another write when wiki metadata changes" do
+    page = create_page(sync_status: "synced", knowledge_base_written_at: Time.current)
+
+    assert_enqueued_with(job: Gbrain::PageSyncJob, queue: "gbrain") do
+      assert Gbrain::PageChange.save(page, review_after: 6.months.from_now.to_date)
+    end
+
+    assert_equal "pending", page.reload.sync_status
+  end
+
   private
 
   def create_page(attributes = {})
-    GbrainPage.create!({
-      slug: "change-#{@token}-#{SecureRandom.hex(2)}",
-      content: "body",
-      content_updated_at: Time.current
-    }.merge(attributes))
+    GbrainPage.create!(gbrain_page_attributes(
+      slug: "notes/change-#{@token}-#{SecureRandom.hex(2)}",
+      **attributes
+    ))
   end
 end

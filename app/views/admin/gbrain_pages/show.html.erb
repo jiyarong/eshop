@@ -1,9 +1,10 @@
-<% content_for :title, @page.slug %>
-<% content_for :page_heading, @page.slug %>
+<% content_for :title, @page.title.presence || @page.slug %>
+<% content_for :page_heading, @page.title.presence || @page.slug %>
 
 <div class="ai-admin-heading">
   <div>
-    <h1 class="page-title"><%= @page.slug %></h1>
+    <h1 class="page-title"><%= @page.title.presence || @page.slug %></h1>
+    <span class="ai-heading-code"><%= @page.slug %></span>
     <span class="status-pill <%= gbrain_status_class(@page.sync_status) %>">
       <span class="status-pill__dot" aria-hidden="true"></span><%= gbrain_status_label(@page.sync_status) %>
     </span>
@@ -30,7 +31,7 @@
   <section class="panel gbrain-content-panel">
     <h2 class="gbrain-section-title"><%= t("admin.gbrain.fields.content") %></h2>
     <div data-controller="markdown">
-      <pre class="code-viewer gbrain-page-content gbrain-markdown__source" data-markdown-target="source"><%= @page.content %></pre>
+      <pre class="code-viewer gbrain-page-content gbrain-markdown__source" data-markdown-target="source"><%= @page.preview_content %></pre>
       <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
     </div>
   </section>
@@ -38,6 +39,26 @@
   <aside class="panel gbrain-metadata">
     <h2 class="gbrain-section-title"><%= t("admin.gbrain.show.sync_details") %></h2>
     <dl>
+      <dt><%= t("admin.gbrain.fields.page_type") %></dt>
+      <dd><%= gbrain_page_type_label(@page.page_type) %></dd>
+      <dt><%= t("admin.gbrain.fields.subtype") %></dt>
+      <dd><%= @page.subtype %></dd>
+      <dt><%= t("admin.gbrain.fields.aliases") %></dt>
+      <dd><%= gbrain_list_value(@page.aliases) %></dd>
+      <dt><%= t("admin.gbrain.fields.tags") %></dt>
+      <dd><%= gbrain_list_value(@page.tags) %></dd>
+      <dt><%= t("admin.gbrain.fields.platform") %> / <%= t("admin.gbrain.fields.country") %></dt>
+      <dd><%= @page.platform %> / <%= @page.country %></dd>
+      <dt><%= t("admin.gbrain.fields.region_scope") %></dt>
+      <dd><%= gbrain_list_value(@page.region_scope) %></dd>
+      <dt><%= t("admin.gbrain.fields.category_scope") %></dt>
+      <dd><%= gbrain_list_value(@page.category_scope) %></dd>
+      <dt><%= t("admin.gbrain.fields.reviewed_at") %> / <%= t("admin.gbrain.fields.review_after") %></dt>
+      <dd><%= @page.reviewed_at %> / <%= @page.review_after %></dd>
+      <dt><%= t("admin.gbrain.fields.effective_date") %></dt>
+      <dd><%= @page.effective_date.presence || t("common.empty_value") %></dd>
+      <dt><%= t("admin.gbrain.fields.source_tier") %> / <%= t("admin.gbrain.fields.confidence") %></dt>
+      <dd><%= gbrain_source_tier_label(@page.source_tier) %> / <%= gbrain_confidence_label(@page.confidence) %></dd>
       <dt><%= t("admin.gbrain.fields.content_updated_at") %></dt>
       <dd><%= display_time(@page.content_updated_at) %></dd>
       <dt><%= t("admin.gbrain.fields.knowledge_base_written_at") %></dt>

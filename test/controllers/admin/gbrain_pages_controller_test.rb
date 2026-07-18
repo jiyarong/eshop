@@ -55,7 +55,7 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
 
   teardown do
     clear_enqueued_jobs
-    GbrainPage.where("slug LIKE ?", "admin-#{@token}%").delete_all
+    GbrainPage.where("slug LIKE ?", "%admin-#{@token}%").delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "%gbrain-%#{@token}%").delete_all
     User.where("email LIKE ?", "%gbrain-%#{@token}%").delete_all
   end
@@ -87,6 +87,9 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "input[name='gbrain_page[slug]']:not([readonly])"
+    assert_select "select[name='gbrain_page[page_type]'] option", count: 9
+    assert_select "input[name='gbrain_page[title]']"
+    assert_select "textarea[name='gbrain_page[aliases_text]']"
     assert_select "textarea[name='gbrain_page[content]']"
 
     sign_in @admin
@@ -104,15 +107,30 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
       assert_enqueued_with(job: Gbrain::PageSyncJob, queue: "gbrain") do
         post admin_gbrain_pages_path, params: {
           gbrain_page: {
-            slug: "admin-#{@token}-new",
-            content: "---\ntype: note\n---\n# New"
+            slug: "playbooks/admin-#{@token}-new",
+            title: "Siberia FBO strategy",
+            page_type: "operation-playbook",
+            subtype: "warehouse-strategy",
+            aliases_text: "Siberia FBO\nСибирь FBO",
+            tags_text: "platform/ozon\ncountry/ru\ntopic/warehouse",
+            platform: "ozon",
+            country: "RU",
+            region_scope_text: "siberia",
+            reviewed_at: "2026-07-17",
+            review_after: "2026-10-17",
+            source_tier: "internal-validated",
+            confidence: "medium",
+            summary: "Use regional FBO when demand is stable.",
+            content: "## Core strategy\n\nKeep regional stock."
           }
         }
       end
     end
 
-    page = GbrainPage.find_by!(slug: "admin-#{@token}-new")
+    page = GbrainPage.find_by!(slug: "playbooks/admin-#{@token}-new")
     assert_equal "pending", page.sync_status
+    assert_equal "operation-playbook", page.page_type
+    assert_equal [ "Siberia FBO", "Сибирь FBO" ], page.aliases
     assert_not_nil page.content_updated_at
     assert_nil page.knowledge_base_written_at
     assert_redirected_to admin_gbrain_page_path(page)
@@ -134,7 +152,37 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "updated body", @page.content
     assert_equal "pending", @page.sync_status
     assert_operator @page.content_updated_at, :>, old_time
-    assert_equal "admin-#{@token}", @page.slug
+    assert_equal "notes/admin-#{@token}", @page.slug
+  end
+
+  test "invalid wiki document is not queued or saved" do
+    sign_in @admin
+
+    assert_no_difference("GbrainPage.count") do
+      assert_no_enqueued_jobs do
+        post admin_gbrain_pages_path, params: {
+          gbrain_page: {
+            slug: "regions/admin-#{@token}-invalid",
+            title: "Missing region",
+            page_type: "region-profile",
+            subtype: "market-profile",
+            aliases_text: "Region profile",
+            tags_text: "platform/ozon",
+            platform: "ozon",
+            country: "RU",
+            reviewed_at: "2026-07-17",
+            review_after: "2026-10-17",
+            source_tier: "official",
+            confidence: "high",
+            summary: "Missing required region scope.",
+            content: "Body"
+          }
+        }
+      end
+    end
+
+    assert_response :unprocessable_entity
+    assert_select ".gbrain-field-error", text: /地区范围/
   end
 
   test "deleting a page keeps it locally until the queued delete succeeds" do
@@ -338,10 +386,6 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
   end
 
   def create_page
-    GbrainPage.create!(
-      slug: "admin-#{@token}",
-      content: "body",
-      content_updated_at: Time.current
-    )
+    GbrainPage.create!(gbrain_page_attributes(slug: "notes/admin-#{@token}", content: "body"))
   end
 end

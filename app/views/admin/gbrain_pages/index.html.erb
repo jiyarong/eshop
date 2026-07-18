@@ -98,12 +98,21 @@
     </details>
   </section>
 <% else %>
+  <%= form_with url: admin_gbrain_pages_path, method: :get, class: "gbrain-list-filter" do |form| %>
+    <div class="field">
+      <%= form.label :page_type, t("admin.gbrain.index.type_filter") %>
+      <%= form.select :page_type, gbrain_page_type_options, { include_blank: t("admin.gbrain.index.all_types"), selected: params[:page_type] } %>
+    </div>
+    <%= form.submit t("admin.gbrain.actions.filter"), class: "button button-secondary" %>
+  <% end %>
+
   <section class="panel ai-table-panel gbrain-list-panel">
     <div class="table-scroll">
       <table class="ai-admin-table gbrain-pages-table">
         <thead>
           <tr>
             <th><%= t("admin.gbrain.fields.slug") %></th>
+            <th><%= t("admin.gbrain.fields.page_type") %></th>
             <th><%= t("admin.gbrain.fields.status") %></th>
             <th><%= t("admin.gbrain.fields.content_updated_at") %></th>
             <th><%= t("admin.gbrain.fields.knowledge_base_written_at") %></th>
@@ -114,6 +123,7 @@
           <% @pages.each do |page| %>
             <tr>
               <td><%= link_to page.slug, admin_gbrain_page_path(page), class: "gbrain-page-link code-input" %></td>
+              <td><%= gbrain_page_type_label(page.page_type) %></td>
               <td>
                 <span class="status-pill <%= gbrain_status_class(page.sync_status) %>">
                   <span class="status-pill__dot" aria-hidden="true"></span><%= gbrain_status_label(page.sync_status) %>
@@ -134,7 +144,7 @@
             </tr>
           <% end %>
           <% if @pages.empty? %>
-            <tr><td colspan="5" class="empty-state"><%= t("admin.gbrain.index.empty") %></td></tr>
+            <tr><td colspan="6" class="empty-state"><%= t("admin.gbrain.index.empty") %></td></tr>
           <% end %>
         </tbody>
       </table>

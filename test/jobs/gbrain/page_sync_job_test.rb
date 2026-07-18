@@ -11,13 +11,13 @@ class Gbrain::PageSyncJobTest < ActiveJob::TestCase
     end
 
     def put_page(slug:, content:)
-      calls << ["put_page", slug, content]
+      calls << [ "put_page", slug, content ]
       @on_put&.call
       raise @error if @error
     end
 
     def delete_page(slug)
-      calls << ["delete_page", slug]
+      calls << [ "delete_page", slug ]
       raise @error if @error
     end
   end
@@ -27,7 +27,7 @@ class Gbrain::PageSyncJobTest < ActiveJob::TestCase
   end
 
   teardown do
-    GbrainPage.where("slug LIKE ?", "job-#{@token}%").delete_all
+    GbrainPage.where("slug LIKE ?", "%job-#{@token}%").delete_all
   end
 
   test "writes the page and records the knowledge base write time" do
@@ -37,7 +37,7 @@ class Gbrain::PageSyncJobTest < ActiveJob::TestCase
     perform_job(page, client)
 
     page.reload
-    assert_equal [["put_page", page.slug, page.content]], client.calls
+    assert_equal [ [ "put_page", page.slug, page.compiled_content ] ], client.calls
     assert_equal "synced", page.sync_status
     assert_not_nil page.knowledge_base_written_at
   end
@@ -62,7 +62,7 @@ class Gbrain::PageSyncJobTest < ActiveJob::TestCase
 
     perform_job(page, client)
 
-    assert_equal [["delete_page", page.slug]], client.calls
+    assert_equal [ [ "delete_page", page.slug ] ], client.calls
     assert_not GbrainPage.exists?(page.id)
   end
 
@@ -95,10 +95,10 @@ class Gbrain::PageSyncJobTest < ActiveJob::TestCase
   end
 
   def create_page(attributes = {})
-    GbrainPage.create!({
-      slug: "job-#{@token}-#{SecureRandom.hex(2)}",
+    GbrainPage.create!(gbrain_page_attributes(
+      slug: "notes/job-#{@token}-#{SecureRandom.hex(2)}",
       content: "old body",
-      content_updated_at: Time.current
-    }.merge(attributes))
+      **attributes
+    ))
   end
 end
