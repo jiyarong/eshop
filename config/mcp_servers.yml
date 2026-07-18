@@ -9,3 +9,5 @@
     - search
     - get_page
     - list_pages
+    - traverse_graph
+    - think
