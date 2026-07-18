@@ -6,6 +6,7 @@ import CategorySelectorController from "./controllers/category_selector_controll
 import ClipboardController from "./controllers/clipboard_controller";
 import DatePickerController from "./controllers/date_picker_controller";
 import FeedbackController from "./controllers/feedback_controller";
+import GbrainPageEditorController from "./controllers/gbrain_page_editor_controller";
 import InlineCellController from "./controllers/inline_cell_controller";
 import LongTextController from "./controllers/long_text_controller";
 import MarkdownController from "./controllers/markdown_controller";
@@ -25,6 +26,7 @@ Stimulus.register("category-selector", CategorySelectorController);
 Stimulus.register("clipboard", ClipboardController);
 Stimulus.register("date-picker", DatePickerController);
 Stimulus.register("feedback", FeedbackController);
+Stimulus.register("gbrain-page-editor", GbrainPageEditorController);
 Stimulus.register("inline-cell", InlineCellController);
 Stimulus.register("long-text", LongTextController);
 Stimulus.register("markdown", MarkdownController);

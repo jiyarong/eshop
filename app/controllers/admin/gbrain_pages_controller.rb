@@ -44,6 +44,17 @@ module Admin
       end
     end
 
+    def classify
+      attributes = page_classifier.classify(params[:content])
+      render json: { page: attributes }
+    rescue Gbrain::PageClassifier::InvalidInput
+      render json: { error: t("admin.gbrain.classifier.errors.blank") }, status: :unprocessable_entity
+    rescue Gbrain::PageClassifier::InvalidResponse
+      render json: { error: t("admin.gbrain.classifier.errors.invalid_response") }, status: :unprocessable_entity
+    rescue Gbrain::PageClassifier::ProviderError
+      render json: { error: t("admin.gbrain.classifier.errors.unavailable") }, status: :bad_gateway
+    end
+
     def update
       if Gbrain::PageChange.save(@page, page_params)
         redirect_to admin_gbrain_page_path(@page), notice: t("admin.gbrain.notices.queued")
@@ -134,6 +145,10 @@ module Admin
 
     def gbrain_client
       @gbrain_client ||= Gbrain::Client.new
+    end
+
+    def page_classifier
+      @page_classifier ||= Gbrain::PageClassifier.new
     end
   end
 end

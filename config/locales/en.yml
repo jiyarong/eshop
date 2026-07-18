@@ -281,6 +281,7 @@ en:
         updated_at: "Remote updated"
       hints:
         category_scope: "Required for category-strategy; L1, L2, and L3 scopes may be listed together."
+        classifier_content: "Paste the source material. AI will identify the document type, conclusion, tags, and other required details while preserving the body unchanged."
         effective_date: "Required for policy documents and optional for other types."
         governance: "Review dates and source tier let agents decide whether knowledge is still usable."
         identity: "The type determines the GBrain schema and the slug directory."
@@ -299,6 +300,23 @@ en:
         identity: "Document identity"
         retrieval: "Retrieval and applicability"
         select_source_tier: "Select a source tier"
+      modes:
+        label: "Document creation mode"
+        simple: "Simple mode"
+        complex: "Advanced mode"
+      classifier:
+        action: "Identify with AI"
+        ai_generated: "AI-generated; review before saving"
+        placeholder: "Paste the source content for the knowledge base here…"
+        result: "Identification result"
+        states:
+          loading: "Identifying content…"
+          success: "Identification complete. Save now or switch to Advanced mode to review."
+          stale: "The content changed. Run identification again before saving."
+        errors:
+          blank: "Paste some content before running identification."
+          invalid_response: "The AI response is incomplete. Try again or use Advanced mode."
+          unavailable: "AI identification is temporarily unavailable. Try again later or use Advanced mode."
       index:
         all_types: "All types"
         current_page: "Current page, %{page}"

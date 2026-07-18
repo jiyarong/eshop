@@ -81,6 +81,7 @@ Rails.application.routes.draw do
     get "gbrain_pages/new" => "gbrain_pages#new", as: :new_gbrain_page
     get "gbrain_pages/:id/edit" => "gbrain_pages#edit", as: :edit_gbrain_page
     resources :gbrain_pages do
+      post :classify, on: :collection
       get :remote, on: :member
       get :remote_page, on: :collection
       delete :remote_page, on: :collection, action: :destroy_remote, as: :destroy_remote_page

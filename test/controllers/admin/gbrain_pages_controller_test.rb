@@ -46,6 +46,23 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  class FakeClassifier
+    attr_reader :contents
+
+    def initialize(result: nil, error: nil)
+      @result = result
+      @error = error
+      @contents = []
+    end
+
+    def classify(content)
+      contents << content
+      raise @error if @error
+
+      @result
+    end
+  end
+
   setup do
     @token = SecureRandom.hex(6)
     @admin = create_user_with_roles("gbrain-admin-#{@token}@example.com", "super_admin")
@@ -91,6 +108,11 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='gbrain_page[title]']"
     assert_select "textarea[name='gbrain_page[aliases_text]']"
     assert_select "textarea[name='gbrain_page[content]']"
+    assert_select "form[data-controller='gbrain-page-editor'][data-gbrain-page-editor-initial-mode-value='simple']"
+    assert_select "button[data-mode='simple'][aria-pressed]", count: 1
+    assert_select "button[data-mode='complex'][aria-pressed]", count: 1
+    assert_select "[data-gbrain-page-editor-target='advanced'][hidden]"
+    assert_select "button[data-gbrain-page-editor-target='classifyButton']", text: /AI 识别内容/
 
     sign_in @admin
     get admin_edit_gbrain_page_path(@page), headers: { "Accept" => "text/html" }
@@ -98,6 +120,38 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "input[name='gbrain_page[slug]'][readonly]"
     assert_select "textarea[name='gbrain_page[content]']", text: @page.content
+    assert_select "[data-controller='gbrain-page-editor']", count: 0
+  end
+
+  test "admin can classify pasted content" do
+    sign_in @admin
+    classifier = FakeClassifier.new(result: {
+      "title" => "识别标题",
+      "page_type" => "note",
+      "tags" => [ "platform/ozon" ],
+      "summary" => "识别结论"
+    })
+
+    with_page_classifier(classifier) do
+      post classify_admin_gbrain_pages_path, params: { content: "原始资料" }, as: :json
+    end
+
+    assert_response :success
+    assert_equal [ "原始资料" ], classifier.contents
+    assert_equal "识别标题", response.parsed_body.dig("page", "title")
+    assert_equal [ "platform/ozon" ], response.parsed_body.dig("page", "tags")
+  end
+
+  test "classification returns a localized validation error" do
+    sign_in @admin
+    classifier = FakeClassifier.new(error: Gbrain::PageClassifier::InvalidResponse.new)
+
+    with_page_classifier(classifier) do
+      post classify_admin_gbrain_pages_path, params: { content: "原始资料" }, as: :json
+    end
+
+    assert_response :unprocessable_entity
+    assert_match "AI 返回的信息不完整", response.parsed_body.fetch("error")
   end
 
   test "creating a page saves locally and queues a write" do
@@ -380,6 +434,14 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
   def with_gbrain_client(client)
     singleton_class = Gbrain::Client.singleton_class
     singleton_class.define_method(:new) { |**| client }
+    yield
+  ensure
+    singleton_class.remove_method(:new)
+  end
+
+  def with_page_classifier(classifier)
+    singleton_class = Gbrain::PageClassifier.singleton_class
+    singleton_class.define_method(:new) { |**| classifier }
     yield
   ensure
     singleton_class.remove_method(:new)

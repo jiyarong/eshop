@@ -36,13 +36,15 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
       "sku_replenishment_advisor",
       "sku_weekly_report_advisor",
       "page_translation",
-      "general_agent"
+      "general_agent",
+      "gbrain_page_classifier"
     ], Agent::DEFINITIONS.keys
 
     assert_equal "SKU 补货建议助手", Agent::DEFINITIONS.fetch("sku_replenishment_advisor").fetch(:name)
     assert_equal "SKU 周报提醒助手", Agent::DEFINITIONS.fetch("sku_weekly_report_advisor").fetch(:name)
     assert_equal "页面翻译助手", Agent::DEFINITIONS.fetch("page_translation").fetch(:name)
     assert_equal "通用助手", Agent::DEFINITIONS.fetch("general_agent").fetch(:name)
+    assert_equal "GBrain 文档识别助手", Agent::DEFINITIONS.fetch("gbrain_page_classifier").fetch(:name)
     assert_includes Agent::DEFINITIONS.fetch("sku_replenishment_advisor").fetch(:default_system_prompt), "补货建议"
     assert_includes Agent::DEFINITIONS.fetch("sku_weekly_report_advisor").fetch(:default_system_prompt), "SKU 周报"
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "翻译"
@@ -51,6 +53,9 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "省略"
     assert_includes Agent::DEFINITIONS.fetch("general_agent").fetch(:default_system_prompt), "通用 AI Agent"
     assert_equal [], Agent::DEFINITIONS.fetch("general_agent").fetch(:tools)
+    assert_equal "deepseek-v4-flash", Agent::DEFINITIONS.fetch("gbrain_page_classifier").fetch(:default_model_id)
+    assert_equal [], Agent::DEFINITIONS.fetch("gbrain_page_classifier").fetch(:tools)
+    assert_includes Agent::DEFINITIONS.fetch("gbrain_page_classifier").fetch(:default_system_prompt), "严格 JSON"
   end
 
   test "seeds all fixed agents without overwriting tunable fields" do

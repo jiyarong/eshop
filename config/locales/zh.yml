@@ -259,6 +259,7 @@ zh:
         updated_at: "远端更新时间"
       hints:
         category_scope: "category-strategy 类型必填；可同时列出 L1/L2/L3 范围。"
+        classifier_content: "粘贴原始资料，AI 会识别文档类型、结论、标签和其余必填信息；正文将保持原样。"
         effective_date: "policy 类型必填，其他类型按需填写。"
         governance: "复核日期和来源等级用于 Agent 判断知识是否仍可采用。"
         identity: "类型决定 GBrain schema 和 Slug 所属目录。"
@@ -277,6 +278,23 @@ zh:
         identity: "文档标识"
         retrieval: "检索与适用范围"
         select_source_tier: "请选择来源等级"
+      modes:
+        label: "文档创建模式"
+        simple: "简单模式"
+        complex: "复杂模式"
+      classifier:
+        action: "AI 识别内容"
+        ai_generated: "AI 生成，请在保存前确认"
+        placeholder: "在此粘贴需要写入知识库的原始内容…"
+        result: "识别结果"
+        states:
+          loading: "正在识别内容…"
+          success: "识别完成，可以保存；也可切换到复杂模式校对。"
+          stale: "正文已变化，请重新识别后保存。"
+        errors:
+          blank: "请先粘贴需要识别的内容。"
+          invalid_response: "AI 返回的信息不完整，请重试或切换到复杂模式填写。"
+          unavailable: "AI 识别暂时不可用，请稍后重试或切换到复杂模式填写。"
       index:
         all_types: "全部类型"
         current_page: "当前第 %{page} 页"

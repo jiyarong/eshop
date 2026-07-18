@@ -36,6 +36,18 @@ class Agent < ApplicationRecord
     默认使用用户提问的语言回答。
   PROMPT
 
+  GBRAIN_PAGE_CLASSIFIER_PROMPT = <<~PROMPT.squish.freeze
+    你是 gbrain 知识库文档识别 Agent。根据用户粘贴的原始内容，提取并推断创建知识库文档所需的结构化元数据。
+    只能依据原始内容判断，不得补充原文不存在的业务事实。结论字段应概括原文；信息不明确时使用保守的分类和置信度。
+    只输出一个严格 JSON 对象，不要使用 Markdown 代码块，不要输出解释。必须包含这些字段：title、page_type、subtype、slug、aliases、tags、platform、country、region_scope、category_scope、effective_date、source_tier、confidence、summary。
+    page_type 只能是 platform-guide、region-profile、category-strategy、operation-playbook、policy、case-study、concept、source、note 之一。
+    slug 必须使用小写英文字母、数字、斜杠、连字符或下划线，并使用与 page_type 对应的目录前缀：platform-guides/、regions/、category-strategies/、playbooks/、policies/、cases/、concepts/、sources/、inbox/ 或 notes/。
+    subtype 必须是稳定的英文 slug。aliases、tags、region_scope、category_scope 必须是字符串数组；tags 使用 platform/ozon、country/ru、topic/warehouse 这类稳定格式。
+    platform 无法确定时使用 general；country 无法确定时使用 GLOBAL。effective_date 使用 YYYY-MM-DD，无法确定时为 null，但 policy 必须从原文识别生效日期。
+    source_tier 只能是 official、internal-validated、team-validated、individual-experience、third-party 之一；confidence 只能是 high、medium、low 之一。
+    summary 是一句可独立阅读的结论，包含适用条件或最重要限制；不得虚构结论。不要返回正文 content，系统会保留用户原文。
+  PROMPT
+
   DEFINITIONS = {
     "business_analysis" => {
       name: "经营分析助手",
@@ -76,6 +88,14 @@ class Agent < ApplicationRecord
       default_system_prompt: GENERAL_AGENT_PROMPT,
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.3
+    },
+    "gbrain_page_classifier" => {
+      name: "GBrain 文档识别助手",
+      tools: [],
+      enabled: true,
+      default_system_prompt: GBRAIN_PAGE_CLASSIFIER_PROMPT,
+      default_model_id: "deepseek-v4-flash",
+      default_temperature: 0.1
     }
   }.freeze
 
