@@ -81,13 +81,22 @@ module Ec
         customs_misc_cny
         customs_duty_rate
         import_vat_rate
-        pkg_length_cm
-        pkg_width_cm
-        pkg_height_cm
         pkg_volume_override_l
         misc_cost_cny
         damage_rate
         memo
+      ],
+      "Ec::SkuDimension" => %w[
+        sku_code
+        inner_length_cm
+        inner_width_cm
+        inner_height_cm
+        inner_box_weight_kg
+        outer_length_cm
+        outer_width_cm
+        outer_height_cm
+        outer_box_weight_kg
+        outer_box_pcs
       ],
       "Ec::SkuPlatformCost" => %w[
         sku_code

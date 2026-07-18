@@ -1,4 +1,5 @@
 <%= turbo_frame_tag frame_id do %>
+  <% input_html_options = local_assigns.fetch(:input_html_options, {}) %>
   <% if editing %>
     <div class="inline-edit-cell inline-edit-cell--editing" data-controller="inline-cell">
       <%= form_with model: record, url: update_path, method: :patch do |form| %>
@@ -9,7 +10,7 @@
            when :text %>
           <%= form.text_field field, value: value, class: "inline-edit-cell__input", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown blur->inline-cell#submit" }, aria: { label: label } %>
         <% when :number %>
-          <%= form.number_field field, value: value, class: "inline-edit-cell__input inline-edit-cell__input--number", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown blur->inline-cell#submit" }, aria: { label: label } %>
+          <%= form.number_field field, { value: value, class: "inline-edit-cell__input inline-edit-cell__input--number", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown blur->inline-cell#submit" }, aria: { label: label } }.merge(input_html_options) %>
         <% when :date %>
           <%= form.date_field field, value: value, class: "inline-edit-cell__input", data: { inline_cell_target: "input", action: "keydown->inline-cell#handleKeydown blur->inline-cell#submit change->inline-cell#submit" }, aria: { label: label } %>
         <% when :select %>

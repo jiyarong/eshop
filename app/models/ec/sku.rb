@@ -7,6 +7,7 @@ module Ec
     belongs_to :master_sku, class_name: "Ec::MasterSku", optional: true
     belongs_to :sku_category, class_name: 'Ec::SkuCategory', optional: true
     has_one  :cost,              class_name: 'Ec::SkuCost',             foreign_key: :sku_code, primary_key: :sku_code
+    has_one  :dimension,         class_name: 'Ec::SkuDimension',        foreign_key: :sku_code, primary_key: :sku_code
     has_many :platform_costs,    class_name: 'Ec::SkuPlatformCost',     foreign_key: :sku_code, primary_key: :sku_code
     has_many :store_assignments, class_name: 'Ec::SkuStoreAssignment',  foreign_key: :sku_code, primary_key: :sku_code
     has_many :sku_products,      class_name: 'Ec::SkuProduct',          foreign_key: :sku_code, primary_key: :sku_code, dependent: :destroy

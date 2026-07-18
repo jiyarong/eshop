@@ -158,6 +158,8 @@ en:
     skus: "SKU"
     sku_sales: "SKU Sales"
     costs: "Costs"
+    sku_costs: "SKU Costs"
+    sku_dimensions: "SKU Dimensions"
     erp_spus: "SPU Management"
     erp_skus: "SKU Management"
     erp_stores: "Store Settings"
@@ -1056,7 +1058,7 @@ en:
         model: "Model"
         note: "Note"
         owner: "Owner"
-        package_size: "Package size"
+        package_size: "Inner package size"
         period: "Period"
         platform: "Platform"
         platform_freight_cny: "Platform freight CNY"
@@ -1240,6 +1242,61 @@ en:
       messages:
         save_failed: "Save failed. Check the value and try again."
         saved: "Saved"
+    sku_costs:
+      empty:
+        no_skus: "No SKUs"
+      fields:
+        customs_duty_cny: "Customs duty CNY"
+        customs_duty_rate: "Customs duty rate"
+        customs_misc_cny: "Customs misc CNY"
+        damage_rate: "Damage rate"
+        freight_to_by_cny: "Freight to Belarus CNY"
+        goods_cost_cny: "Goods total cost CNY"
+        import_vat_cny: "Import VAT CNY"
+        import_vat_rate: "Import VAT rate"
+        memo: "Notes"
+        misc_cost_cny: "Misc cost CNY"
+        pkg_volume_override_l: "Manual volume L"
+        purchase_price_cny: "Purchase price CNY"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "Search SKU"
+      index:
+        subtitle: "SKU cost parameters"
+        title: "SKU Costs"
+      pagination:
+        aria_label: "SKU costs pagination"
+        jump_action: "Go"
+        jump_label: "Jump to"
+        next_page: "Next page"
+        previous_page: "Previous page"
+    sku_dimensions:
+      empty:
+        no_skus: "No SKUs"
+      fields:
+        inner_height_cm: "Inner height cm"
+        inner_box_weight_kg: "Inner box weight kg"
+        inner_length_cm: "Inner length cm"
+        inner_volume_l: "Inner volume L"
+        inner_width_cm: "Inner width cm"
+        outer_height_cm: "Outer height cm"
+        outer_box_weight_kg: "Outer box weight kg"
+        outer_box_pcs: "Outer box pcs"
+        outer_length_cm: "Outer length cm"
+        outer_volume_l: "Outer volume L"
+        outer_width_cm: "Outer width cm"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "Search SKU"
+      index:
+        subtitle: "SKU package dimensions and carton parameters"
+        title: "SKU Dimensions"
+      pagination:
+        aria_label: "SKU dimensions pagination"
+        jump_action: "Go"
+        jump_label: "Jump to"
+        next_page: "Next page"
+        previous_page: "Previous page"
     sku_products:
       actions:
         add_binding: "Add binding"

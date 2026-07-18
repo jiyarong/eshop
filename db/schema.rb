@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_100918) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_070801) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -423,14 +423,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_100918) do
     t.decimal "import_vat_rate", precision: 6, scale: 4, default: "0.2"
     t.text "memo"
     t.decimal "misc_cost_cny", precision: 10, scale: 4, default: "0.0"
-    t.decimal "pkg_height_cm", precision: 8, scale: 2
-    t.decimal "pkg_length_cm", precision: 8, scale: 2
     t.decimal "pkg_volume_override_l", precision: 8, scale: 4
-    t.decimal "pkg_width_cm", precision: 8, scale: 2
     t.decimal "purchase_price_cny", precision: 10, scale: 4
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "idx_ec_sku_costs_sku_code", unique: true
+  end
+
+  create_table "ec_sku_dimensions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.decimal "inner_box_weight_kg", precision: 10, scale: 3
+    t.decimal "inner_height_cm", precision: 8, scale: 2
+    t.decimal "inner_length_cm", precision: 8, scale: 2
+    t.decimal "inner_width_cm", precision: 8, scale: 2
+    t.integer "outer_box_pcs"
+    t.decimal "outer_box_weight_kg", precision: 10, scale: 3
+    t.decimal "outer_height_cm", precision: 8, scale: 2
+    t.decimal "outer_length_cm", precision: 8, scale: 2
+    t.decimal "outer_width_cm", precision: 8, scale: 2
+    t.string "sku_code", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sku_code"], name: "idx_ec_sku_dimensions_sku_code", unique: true
   end
 
   create_table "ec_sku_inventory_levels", force: :cascade do |t|
@@ -677,36 +690,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_100918) do
     t.index ["created_at"], name: "index_feedback_tasks_on_created_at"
     t.index ["status"], name: "index_feedback_tasks_on_status"
     t.index ["user_id"], name: "index_feedback_tasks_on_user_id"
-  end
-
-  create_table "gbrain_pages", force: :cascade do |t|
-    t.jsonb "aliases", default: [], null: false
-    t.jsonb "category_scope", default: [], null: false
-    t.string "confidence"
-    t.text "content", null: false
-    t.datetime "content_updated_at", null: false
-    t.string "country"
-    t.datetime "created_at", null: false
-    t.datetime "delete_requested_at"
-    t.date "effective_date"
-    t.datetime "knowledge_base_written_at"
-    t.text "last_error"
-    t.string "page_type"
-    t.string "platform"
-    t.jsonb "region_scope", default: [], null: false
-    t.date "review_after"
-    t.date "reviewed_at"
-    t.string "slug", null: false
-    t.string "source_tier"
-    t.string "subtype"
-    t.text "summary"
-    t.string "sync_status", default: "pending", null: false
-    t.jsonb "tags", default: [], null: false
-    t.string "title"
-    t.datetime "updated_at", null: false
-    t.index ["page_type"], name: "index_gbrain_pages_on_page_type"
-    t.index ["slug"], name: "index_gbrain_pages_on_slug", unique: true
-    t.index ["sync_status"], name: "index_gbrain_pages_on_sync_status"
   end
 
   create_table "messages", force: :cascade do |t|
@@ -2308,6 +2291,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_100918) do
   add_foreign_key "ec_sku_batches", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_dimensions", "ec_skus", column: "sku_code", primary_key: "sku_code", on_delete: :cascade
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_marketing_states", "ec_skus", column: "sku_id", on_delete: :cascade
   add_foreign_key "ec_sku_marketing_states", "users", column: "changed_by_id", on_delete: :nullify
