@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_17_070801) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_100918) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -690,6 +690,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_17_070801) do
     t.index ["created_at"], name: "index_feedback_tasks_on_created_at"
     t.index ["status"], name: "index_feedback_tasks_on_status"
     t.index ["user_id"], name: "index_feedback_tasks_on_user_id"
+  end
+
+  create_table "gbrain_pages", force: :cascade do |t|
+    t.jsonb "aliases", default: [], null: false
+    t.jsonb "category_scope", default: [], null: false
+    t.string "confidence"
+    t.text "content", null: false
+    t.datetime "content_updated_at", null: false
+    t.string "country"
+    t.datetime "created_at", null: false
+    t.datetime "delete_requested_at"
+    t.date "effective_date"
+    t.datetime "knowledge_base_written_at"
+    t.text "last_error"
+    t.string "page_type"
+    t.string "platform"
+    t.jsonb "region_scope", default: [], null: false
+    t.date "review_after"
+    t.date "reviewed_at"
+    t.string "slug", null: false
+    t.string "source_tier"
+    t.string "subtype"
+    t.text "summary"
+    t.string "sync_status", default: "pending", null: false
+    t.jsonb "tags", default: [], null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["page_type"], name: "index_gbrain_pages_on_page_type"
+    t.index ["slug"], name: "index_gbrain_pages_on_slug", unique: true
+    t.index ["sync_status"], name: "index_gbrain_pages_on_sync_status"
   end
 
   create_table "messages", force: :cascade do |t|
