@@ -30,5 +30,6 @@ module RawOzon
     has_many :promotions,             class_name: 'RawOzon::Promotion',            foreign_key: :account_id, dependent: :destroy
     has_many :reports,                class_name: 'RawOzon::Report',               foreign_key: :account_id, dependent: :destroy
     has_many :sync_tasks,             class_name: 'RawOzon::SyncTask',             foreign_key: :account_id, dependent: :destroy
+    has_many :warehouse_clusters,      class_name: 'RawOzon::WarehouseCluster',     foreign_key: :account_id, dependent: :destroy
   end
 end

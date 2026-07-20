@@ -161,6 +161,7 @@ module Ec
         store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: account.id)
         stocks_by_product_id = ozon_stocks_by_product_id(account)
         warehouse_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
+        warehouse_clusters = ozon_warehouse_cluster_lookup(account)
 
         Ec::SkuProduct
           .joins(:store)
@@ -197,7 +198,7 @@ module Ec
                   inbound_source: "ozon_analytics_stock_on_warehouses.promised_amount",
                   inbound_deducted_quantity: fulfillment_type == "fbs" ? [inbound, fbs].min : 0
                 },
-                warehouse_breakdown: fulfillment_type == "fbo" ? ozon_warehouse_breakdown(warehouse_breakdowns_by_sku, ozon_skus) : []
+                warehouse_breakdown: fulfillment_type == "fbo" ? ozon_warehouse_breakdown(warehouse_breakdowns_by_sku, ozon_skus, warehouse_clusters) : []
               )
             end
           end
@@ -269,7 +270,7 @@ module Ec
       {}
     end
 
-    def ozon_warehouse_breakdown(breakdowns_by_sku, ozon_skus)
+    def ozon_warehouse_breakdown(breakdowns_by_sku, ozon_skus, warehouse_clusters = {})
       grouped = Hash.new { |hash, key| hash[key] = { quantity: 0, promised: 0, reserved: 0, item_codes: [] } }
       ozon_skus.each do |ozon_sku|
         Array(breakdowns_by_sku[ozon_sku]).each do |row|
@@ -285,14 +286,36 @@ module Ec
       end
 
       grouped.map do |warehouse_name, row|
+        cluster = ozon_warehouse_cluster_for(warehouse_clusters, warehouse_name)
         {
           warehouse_name: warehouse_name,
+          warehouse_id: cluster&.warehouse_id,
+          cluster_name: cluster&.cluster_name,
+          macrolocal_cluster_id: cluster&.macrolocal_cluster_id,
+          country_name: cluster&.country_name,
           quantity: row[:quantity],
           promised: row[:promised],
           reserved: row[:reserved],
           item_codes: row[:item_codes].uniq
         }
       end.sort_by { |row| row[:warehouse_name].to_s }
+    end
+
+    def ozon_warehouse_cluster_lookup(account)
+      RawOzon::WarehouseCluster
+        .where(account_id: account.id)
+        .index_by(&:normalized_warehouse_name)
+    end
+
+    def ozon_warehouse_cluster_for(warehouse_clusters, warehouse_name)
+      normalized_name = RawOzon::WarehouseCluster.normalize_warehouse_name(warehouse_name)
+      warehouse_clusters[normalized_name] || ozon_warehouse_cluster_fallback(warehouse_clusters, normalized_name)
+    end
+
+    def ozon_warehouse_cluster_fallback(warehouse_clusters, normalized_name)
+      return unless normalized_name.end_with?("_НЕГАБАРИТ")
+
+      warehouse_clusters[normalized_name.delete_suffix("_НЕГАБАРИТ")]
     end
 
     def ozon_promised_quantity(breakdowns_by_sku, ozon_skus)

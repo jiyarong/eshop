@@ -93,6 +93,10 @@ production:
     command: "RawOzon::SetupSync.run"
     schedule: every month on the 1st at 5:00 in Asia/Shanghai
 
+  ozon_warehouse_cluster_sync:
+    command: "RawOzon::WarehouseClusterSync.run"
+    schedule: every day at 6:00 in Asia/Shanghai
+
   sku_inventory_snapshot_sync:
     command: "Ec::SkuInventorySnapshotSync.run"
     schedule: every hour

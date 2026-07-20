@@ -91,8 +91,8 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
       synced_at: Time.zone.parse("2026-06-26 10:00:00"),
       metadata: {},
       warehouse_breakdown: [
-        { warehouse_name: "Ozon Warehouse #{token}", quantity: 2, promised: 1, reserved: 0 },
-        { "warehouse_name" => "Ozon Reserve #{token}", "quantity" => 1, "promised" => 0, "reserved" => 1 }
+        { warehouse_name: "Ozon Warehouse #{token}", cluster_name: "Moscow #{token}", quantity: 2, promised: 1, reserved: 0 },
+        { "warehouse_name" => "Ozon Reserve #{token}", "cluster_name" => "Kazan #{token}", "quantity" => 1, "promised" => 0, "reserved" => 1 }
       ]
     )
     Ec::SkuInventoryLevel.create!(
@@ -146,10 +146,10 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
     ], payload[:platform_formula][:items]
     assert_equal summary[:available_stock], payload[:platform_formula][:result]
     assert_equal [
-      ["OZON * Ozon 店铺 #{token}", "fbo", "Ozon Reserve #{token}", 1, 0, 1, Time.zone.parse("2026-06-26 10:00:00")],
-      ["OZON * Ozon 店铺 #{token}", "fbo", "Ozon Warehouse #{token}", 2, 1, 0, Time.zone.parse("2026-06-26 10:00:00")],
-      ["WB * WB 店铺 #{token}", "fbw", "WB Warehouse #{token}", 5, nil, nil, Time.zone.parse("2026-06-25 10:00:00")]
-    ], payload[:platform_warehouse_rows].map { |row| [row[:store_label], row[:fulfillment_type], row[:warehouse_name], row[:quantity], row[:promised], row[:reserved], row[:latest_synced_at]] }
+      ["OZON * Ozon 店铺 #{token}", "fbo", "Kazan #{token}", "Ozon Reserve #{token}", 1, 0, 1, Time.zone.parse("2026-06-26 10:00:00")],
+      ["OZON * Ozon 店铺 #{token}", "fbo", "Moscow #{token}", "Ozon Warehouse #{token}", 2, 1, 0, Time.zone.parse("2026-06-26 10:00:00")],
+      ["WB * WB 店铺 #{token}", "fbw", nil, "WB Warehouse #{token}", 5, nil, nil, Time.zone.parse("2026-06-25 10:00:00")]
+    ], payload[:platform_warehouse_rows].map { |row| [row[:store_label], row[:fulfillment_type], row[:cluster_name], row[:warehouse_name], row[:quantity], row[:promised], row[:reserved], row[:latest_synced_at]] }
   ensure
     Ec::SkuInventoryLevel.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all

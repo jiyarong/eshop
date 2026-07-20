@@ -252,6 +252,7 @@ module Ec
               store_label: "#{platform_label(level.platform)} * #{level.store_name}",
               fulfillment_type: level.fulfillment_type,
               warehouse_name: warehouse_value(warehouse, :warehouse_name),
+              cluster_name: warehouse_value(warehouse, :cluster_name),
               quantity: warehouse_value(warehouse, :quantity).to_i,
               promised: warehouse_value(warehouse, :promised),
               reserved: warehouse_value(warehouse, :reserved),

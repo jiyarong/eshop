@@ -945,6 +945,7 @@ en:
         belarus_available: "Belarus available"
         book_available_stock: "Book available stock"
         book_stock: "Book stock"
+        cluster: "Cluster"
         daily_sales_velocity: "Daily sales velocity"
         defect_offset_note: "Offset note"
         expected_arrival_on: "Expected arrival date"
