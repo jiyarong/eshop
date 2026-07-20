@@ -100,62 +100,69 @@ class Mcp::ServerTest < ActiveSupport::TestCase
   end
 
   test "routes precise search through query with cheap hybrid defaults" do
-    response = @server.call(rpc_request(
-      "tools/call",
-      {
-        "name" => "gbrain__search",
-        "arguments" => {
-          "query" => "Ozon RU 西伯利亚 FBO 仓储布局",
-          "source_id" => "ozon-ru",
-          "unknown" => "discarded"
+    travel_to Time.zone.local(2026, 7, 20, 12) do
+      response = @server.call(rpc_request(
+        "tools/call",
+        {
+          "name" => "gbrain__search",
+          "arguments" => {
+            "query" => "Ozon RU 西伯利亚 FBO 仓储布局",
+            "source_id" => "ozon-ru",
+            "recency" => "strong",
+            "since" => "90d",
+            "unknown" => "discarded"
+          }
         }
-      }
-    ))
+      ))
 
-    result = response.fetch(:result)
-    assert_equal "query", @external_server_registry.client.called_tool_name
-    assert_equal({
-      "limit" => 10,
-      "detail" => "medium",
-      "adaptive_return" => true,
-      "recency" => "off",
-      "query" => "Ozon RU 西伯利亚 FBO 仓储布局",
-      "source_id" => "ozon-ru",
-      "expand" => false
-    }, @external_server_registry.client.called_arguments)
-    assert_equal "external result", result.fetch("content").first.fetch("text")
-    assert_equal "gbrain", result.dig("structuredContent", "source")
+      result = response.fetch(:result)
+      assert_equal "query", @external_server_registry.client.called_tool_name
+      assert_equal({
+        "limit" => 10,
+        "detail" => "medium",
+        "adaptive_return" => true,
+        "recency" => "strong",
+        "query" => "Ozon RU 西伯利亚 FBO 仓储布局",
+        "source_id" => "ozon-ru",
+        "since" => "2026-04-21",
+        "expand" => false
+      }, @external_server_registry.client.called_arguments)
+      assert_equal "external result", result.fetch("content").first.fetch("text")
+      assert_equal "gbrain", result.dig("structuredContent", "source")
+    end
   end
 
   test "preserves explicit policy and broad research query controls" do
-    @server.call(rpc_request(
-      "tools/call",
-      {
-        "name" => "gbrain__query",
-        "arguments" => {
-          "query" => "Ozon RU 最新物流费用政策",
-          "source_id" => "ozon-ru",
-          "expand" => false,
-          "recency" => "strong",
-          "since" => "90d",
-          "autocut" => false,
-          "limit" => 30,
-          "image" => "discarded"
+    travel_to Time.zone.local(2026, 7, 20, 12) do
+      @server.call(rpc_request(
+        "tools/call",
+        {
+          "name" => "gbrain__query",
+          "arguments" => {
+            "query" => "Ozon RU 最新物流费用政策",
+            "source_id" => "ozon-ru",
+            "expand" => false,
+            "recency" => "strong",
+            "since" => "90d",
+            "autocut" => false,
+            "limit" => 30,
+            "image" => "discarded"
+          }
         }
-      }
-    ))
+      ))
 
-    assert_equal "query", @external_server_registry.client.called_tool_name
-    assert_equal({
-      "limit" => 30,
-      "detail" => "medium",
-      "expand" => false,
-      "query" => "Ozon RU 最新物流费用政策",
-      "source_id" => "ozon-ru",
-      "recency" => "strong",
-      "since" => "90d",
-      "autocut" => false
-    }, @external_server_registry.client.called_arguments)
+      assert_equal "query", @external_server_registry.client.called_tool_name
+      assert_equal({
+        "limit" => 30,
+        "detail" => "medium",
+        "expand" => false,
+        "query" => "Ozon RU 最新物流费用政策",
+        "source_id" => "ozon-ru",
+        "recency" => "strong",
+        "since" => "2026-04-21",
+        "autocut" => false
+      }, @external_server_registry.client.called_arguments)
+    end
   end
 
   test "keeps think calls non-persistent" do

@@ -357,6 +357,7 @@ module Mcp
     def gbrain_tool_call_result(parsed_tool, params)
       tool_name = parsed_tool.fetch(:tool_name)
       arguments = params["arguments"].to_h.slice(*GBRAIN_TOOL_SPECS.fetch(tool_name).fetch(:properties).keys)
+      normalize_gbrain_relative_since!(arguments)
 
       case tool_name
       when "search"
@@ -381,6 +382,19 @@ module Mcp
         "name" => ErpAI::Mcp::ToolAdapter.model_tool_name(GBRAIN_SERVER_NAME, tool_name),
         "arguments" => arguments
       ))
+    end
+
+    def normalize_gbrain_relative_since!(arguments)
+      match = arguments["since"]&.match(/\A([1-9][0-9]*)([dwy])\z/)
+      return unless match
+
+      amount = match[1].to_i
+      date = case match[2]
+      when "d" then Date.current.advance(days: -amount)
+      when "w" then Date.current.advance(weeks: -amount)
+      when "y" then Date.current.advance(years: -amount)
+      end
+      arguments["since"] = date.iso8601
     end
 
     def external_tools_call_result(params)
