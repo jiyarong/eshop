@@ -26,6 +26,25 @@ class SkillPackageTest < ActiveSupport::TestCase
     assert_equal updated_md, files.fetch("renamed-skill/SKILL.md")
   end
 
+  test "accepts uploaded frontmatter with additional metadata" do
+    skill_md = <<~MARKDOWN
+      ---
+      name: metadata-skill
+      description: Skill with additional metadata
+      license: MIT
+      metadata:
+        author: Example
+      ---
+
+      # Instructions
+    MARKDOWN
+
+    package = SkillPackage.from_upload(StringIO.new(build_zip("SKILL.md" => skill_md)))
+
+    assert_equal "metadata-skill", package.name
+    assert_equal skill_md, zip_files(package.archive_data).fetch("metadata-skill/SKILL.md")
+  end
+
   test "rejects unsafe paths and invalid manifests" do
     unsafe_zip = build_zip(
       "safe-skill/SKILL.md" => skill_md("safe-skill"),

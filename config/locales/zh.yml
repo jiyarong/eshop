@@ -527,7 +527,6 @@ zh:
         duplicate_paths: "ZIP 中存在重复路径"
         expanded_too_large: "ZIP 解压后超过允许大小"
         folder_mismatch: "ZIP 文件夹名称必须与 SKILL.md 的 name 一致"
-        frontmatter_fields: "frontmatter 只能包含 name 和 description"
         frontmatter_mapping: "frontmatter 必须是键值映射"
         frontmatter_required: "必须包含 YAML frontmatter 和 Markdown 正文"
         invalid_name: "name 只能包含小写字母、数字和连字符，且不超过 64 个字符"
@@ -575,6 +574,7 @@ zh:
 
           在此编写执行步骤。
       requirements:
+        frontmatter_fields: "name、description（必填）"
         encoding: "编码"
         filename: "文件名"
         frontmatter: "Frontmatter"

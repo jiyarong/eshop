@@ -549,7 +549,6 @@ en:
         duplicate_paths: "ZIP contains duplicate paths"
         expanded_too_large: "ZIP expands beyond the allowed size"
         folder_mismatch: "ZIP folder must match the SKILL.md name"
-        frontmatter_fields: "frontmatter may only contain name and description"
         frontmatter_mapping: "frontmatter must be a mapping"
         frontmatter_required: "YAML frontmatter and a Markdown body are required"
         invalid_name: "name may only use lowercase letters, digits, and hyphens and must be at most 64 characters"
@@ -597,6 +596,7 @@ en:
 
           Add the workflow here.
       requirements:
+        frontmatter_fields: "name and description (required)"
         encoding: "Encoding"
         filename: "Filename"
         frontmatter: "Frontmatter"

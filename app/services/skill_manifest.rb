@@ -22,7 +22,6 @@ class SkillManifest
 
     metadata = YAML.safe_load(match[1], permitted_classes: [], permitted_symbols: [], aliases: false)
     raise Error, message(:frontmatter_mapping) unless metadata.is_a?(Hash)
-    raise Error, message(:frontmatter_fields) unless metadata.keys.sort == %w[description name]
 
     @name = metadata["name"]
     @description = metadata["description"]

@@ -520,7 +520,6 @@ ru:
         duplicate_paths: "ZIP содержит повторяющиеся пути"
         expanded_too_large: "Размер распакованного ZIP превышает лимит"
         folder_mismatch: "Папка ZIP должна совпадать с name в SKILL.md"
-        frontmatter_fields: "frontmatter может содержать только name и description"
         frontmatter_mapping: "frontmatter должен быть отображением ключ-значение"
         frontmatter_required: "Требуются YAML frontmatter и текст Markdown"
         invalid_name: "name может содержать только строчные буквы, цифры и дефисы, максимум 64 символа"
@@ -568,6 +567,7 @@ ru:
 
           Добавьте шаги выполнения.
       requirements:
+        frontmatter_fields: "name и description (обязательные)"
         encoding: "Кодировка"
         filename: "Имя файла"
         frontmatter: "Frontmatter"
