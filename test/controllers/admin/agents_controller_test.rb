@@ -38,6 +38,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     Conversation.joins(:user).where(users: { email: [ @admin.email, @viewer.email ] }).delete_all if defined?(Conversation)
     AgentSkill.where(skill_id: @skill.id).delete_all
     Agent.where(code: "custom_agent_#{@token}").delete_all
+    @agent.avatar.purge if @agent.avatar.attached?
     @skill.archive.purge if @skill.archive.attached?
     @skill.destroy!
     UserRole.where(user: [ @admin, @viewer ]).delete_all
@@ -137,6 +138,32 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert @agent.thinking_enabled?
     assert_equal [ "问题一", "问题二" ], @agent.recommended_prompts
     assert_equal [ @skill ], @agent.skills.to_a
+  end
+
+  test "super admin can upload an agent avatar" do
+    sign_in @admin
+    avatar = Tempfile.new([ "agent-avatar", ".png" ])
+    avatar.binmode
+    avatar.write("\x89PNG\r\n\x1A\n")
+    avatar.rewind
+
+    patch "/admin/agents/sku_replenishment_advisor", params: {
+      agent: {
+        avatar: Rack::Test::UploadedFile.new(
+          avatar.path,
+          "image/png",
+          true,
+          original_filename: "agent-avatar.png"
+        )
+      }
+    }
+
+    assert_redirected_to "/admin/agents"
+    assert @agent.reload.avatar.attached?
+    assert_equal "agent-avatar.png", @agent.avatar.filename.to_s
+    assert_equal "image/png", @agent.avatar.content_type
+  ensure
+    avatar&.close!
   end
 
   test "super admin can create a custom agent" do
