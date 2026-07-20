@@ -4060,7 +4060,7 @@ textarea:focus {
   padding: 0;
 }
 
-.sku-management .product-list-card > .inventory-pagination-bar {
+.product-management .product-list-card > .inventory-pagination-bar {
   min-width: calc(1160px - 28px);
   margin: 14px;
 }
@@ -4070,6 +4070,18 @@ textarea:focus {
   min-width: 1160px;
   border-collapse: collapse;
   font-size: 14px;
+}
+
+.sku-management .prod-tbl {
+  min-width: 1640px;
+}
+
+.sku-management .product-list-card > .inventory-pagination-bar {
+  min-width: calc(1640px - 28px);
+}
+
+.spu-management .prod-tbl {
+  min-width: 1360px;
 }
 
 .prod-tbl thead {
@@ -4158,6 +4170,21 @@ tr.master.open .chev,
   white-space: nowrap;
 }
 
+.product-name-stack {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.responsible-user-list {
+  display: block;
+  max-width: 220px;
+  color: var(--fg);
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .zh-name,
 .attr-zh {
   color: var(--fg);
@@ -4212,6 +4239,10 @@ tr.master.open .chev,
   border-collapse: collapse;
   overflow: hidden;
   background: #fff;
+}
+
+.sub-tbl--sku-list {
+  min-width: 1480px;
 }
 
 .sub-tbl th {

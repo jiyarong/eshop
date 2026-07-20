@@ -15,7 +15,14 @@ module Erp
       @stage = params[:stage].to_s.downcase.presence_in(Ec::SkuMarketingState::STAGES)
       load_responsible_user_filters
 
-      scope = Ec::Sku.includes(:master_sku, :sku_category, :batches, :current_marketing_state).order(:sku_code)
+      scope = Ec::Sku.includes(
+        :master_sku,
+        :sku_category,
+        :batches,
+        :current_marketing_state,
+        :developers,
+        sku_products: :operators
+      ).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = scope.where(master_sku_id: @master_sku_id) if @master_sku_id.present?

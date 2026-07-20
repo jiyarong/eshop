@@ -80,9 +80,10 @@
           <th style="width: 36px"></th>
           <th style="width: 180px">SKU</th>
           <th style="min-width: 180px"><%= t("erp.skus.fields.master_sku") %></th>
-          <th style="min-width: 210px"><%= t("erp.common.chinese_name") %></th>
-          <th style="min-width: 220px"><%= t("erp.common.russian_name") %></th>
+          <th style="min-width: 260px"><%= t("erp.skus.fields.product_name") %></th>
           <th style="min-width: 210px"><%= t("erp.sku_marketing_states.fields.marketing_state") %></th>
+          <th style="min-width: 150px"><%= t("erp.skus.fields.developers") %></th>
+          <th style="min-width: 170px"><%= t("erp.skus.fields.operators") %></th>
           <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.purchased") %></th>
           <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.received") %></th>
           <th style="width: 110px"><%= t("erp.common.batches") %></th>
@@ -105,9 +106,19 @@
             </td>
             <td><%= link_to sku.sku_code, erp_sku_path(sku), class: "code-text sub" %></td>
             <td><span class="code-text"><%= erp_value(sku.master_sku&.master_sku_code) %></span></td>
-            <td><span class="zh-name"><%= erp_value(sku.product_name) %></span></td>
-            <td><span class="ru-name"><%= erp_value(sku.product_name_ru) %></span></td>
+            <td>
+              <div class="product-name-stack">
+                <span class="zh-name"><%= erp_value(sku.product_name) %></span>
+                <span class="ru-name"><%= erp_value(sku.product_name_ru) %></span>
+              </div>
+            </td>
             <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku, locale_params: current_locale_params, return_to: current_page_return_to %></td>
+            <td>
+              <span class="responsible-user-list sku-developers"><%= sku_developer_names(sku) || t("erp.skus.empty.no_developers") %></span>
+            </td>
+            <td>
+              <span class="responsible-user-list sku-operators"><%= sku_operator_names(sku) || t("erp.skus.empty.no_operators") %></span>
+            </td>
             <td style="text-align: right"><span class="stock-num"><%= purchased_quantity %></span></td>
             <td style="text-align: right"><span class="stock-num"><%= received_quantity %></span></td>
             <td><span class="badge badge-sec"><%= sku.batches.size %> <%= t("erp.skus.units.batch_short", count: sku.batches.size) %></span></td>
@@ -138,7 +149,7 @@
           </tr>
           <% if batches.any? %>
             <tr class="batch-row" hidden>
-              <td colspan="11">
+              <td colspan="12">
                 <div class="batch-shell">
                   <div class="batch-h">
                     <div>
@@ -194,7 +205,7 @@
 
         <% if @skus.empty? %>
           <tr>
-            <td colspan="11" class="empty-state">
+            <td colspan="12" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.skus.empty.no_skus") %>
             </td>

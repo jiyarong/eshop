@@ -2,7 +2,7 @@
 
 <% total_visible_skus = @master_sku_entries.sum { |entry| entry[:skus].size } + @orphan_skus.size %>
 
-<div class="product-management">
+<div class="product-management spu-management">
   <%= turbo_frame_tag "erp_modal" %>
 
   <div class="page-h">
@@ -123,8 +123,7 @@
         <tr>
           <th style="width: 36px"></th>
           <th style="width: 160px"><%= t("erp.skus.fields.master_sku") %></th>
-          <th style="min-width: 220px"><%= t("erp.common.chinese_name") %></th>
-          <th style="min-width: 260px"><%= t("erp.common.russian_name") %></th>
+          <th style="min-width: 260px"><%= t("erp.skus.fields.product_name") %></th>
           <th style="min-width: 180px"><%= t("erp.skus.fields.platform_category") %></th>
           <th style="width: 120px">SKU</th>
           <th style="min-width: 210px"><%= t("erp.sku_marketing_states.fields.marketing_state") %></th>
@@ -146,8 +145,12 @@
               </button>
             </td>
             <td><span class="code-text"><%= master_sku.master_sku_code %></span></td>
-            <td><span class="zh-name"><%= erp_value(master_sku.product_name) %></span></td>
-            <td><span class="ru-name"><%= erp_value(master_sku.product_name_ru) %></span></td>
+            <td>
+              <div class="product-name-stack">
+                <span class="zh-name"><%= erp_value(master_sku.product_name) %></span>
+                <span class="ru-name"><%= erp_value(master_sku.product_name_ru) %></span>
+              </div>
+            </td>
             <td><span class="platform-category"><%= category_parts.any? ? category_parts.join(" / ") : "-" %></span></td>
             <td><span class="num"><%= skus.size %></span> <%= t("erp.skus.units.sku", count: skus.size) %></td>
             <td>-</td>
@@ -173,21 +176,24 @@
             </td>
           </tr>
           <tr class="sub-row" hidden>
-            <td colspan="10">
+            <td colspan="9">
               <div class="sub-shell">
                 <div class="sub-h">
                   <span><%= t("erp.skus.index.sku_variants", count: skus.size) %></span>
                 </div>
                 <% if skus.any? %>
-                  <table class="sub-tbl">
+                  <table class="sub-tbl sub-tbl--sku-list">
                     <thead>
                       <tr>
                         <th style="width: 180px">SKU</th>
-                        <th><%= t("erp.skus.fields.attributes") %></th>
+                        <th style="min-width: 260px"><%= t("erp.skus.fields.product_name") %></th>
                         <th style="min-width: 210px"><%= t("erp.sku_marketing_states.fields.marketing_state") %></th>
+                        <th style="min-width: 150px"><%= t("erp.skus.fields.developers") %></th>
+                        <th style="min-width: 170px"><%= t("erp.skus.fields.operators") %></th>
                         <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.purchased") %></th>
                         <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.received") %></th>
                         <th style="width: 110px"><%= t("erp.common.batches") %></th>
+                        <th style="width: 110px"><%= t("erp.common.status") %></th>
                         <th style="width: 170px; text-align: right"><%= t("erp.common.actions.actions") %></th>
                       </tr>
                     </thead>
@@ -204,13 +210,28 @@
                             <%= link_to sku.sku_code, erp_sku_path(sku), class: "code-text sub" %>
                           </td>
                           <td>
-                            <div class="attr-zh"><%= erp_value(sku.sku_category&.name) %></div>
-                            <div class="attr-ru text-xs"><%= [erp_value(sku.color), erp_value(sku.spec), erp_value(sku.model)].reject { |value| value == "-" }.join(" · ").presence || "#{erp_value(sku.product_name)} · #{erp_value(sku.product_name_ru)}" %></div>
+                            <div class="product-name-stack">
+                              <span class="zh-name"><%= erp_value(sku.product_name) %></span>
+                              <span class="ru-name"><%= erp_value(sku.product_name_ru) %></span>
+                            </div>
                           </td>
                           <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku, locale_params: current_locale_params, return_to: current_page_return_to %></td>
+                          <td>
+                            <span class="responsible-user-list sku-developers"><%= sku_developer_names(sku) || t("erp.skus.empty.no_developers") %></span>
+                          </td>
+                          <td>
+                            <span class="responsible-user-list sku-operators"><%= sku_operator_names(sku) || t("erp.skus.empty.no_operators") %></span>
+                          </td>
                           <td style="text-align: right"><span class="stock-num"><%= purchased_quantity %></span></td>
                           <td style="text-align: right"><span class="stock-num"><%= received_quantity %></span></td>
                           <td><span class="badge badge-sec"><%= sku.batches.size %> <%= t("erp.skus.units.batch_short", count: sku.batches.size) %></span></td>
+                          <td>
+                            <% if sku.is_active %>
+                              <span class="badge badge-suc">Active</span>
+                            <% else %>
+                              <span class="badge badge-sec"><%= t("erp.skus.statuses.inactive") %></span>
+                            <% end %>
+                          </td>
                           <td>
                             <div class="row-actions">
                               <%= link_to t("erp.common.actions.view"), erp_sku_path(sku, current_locale_params), class: "btn btn-ghost btn-sm" %>
@@ -230,7 +251,7 @@
                           </td>
                         </tr>
                         <tr class="batch-row" hidden>
-                          <td colspan="7">
+                          <td colspan="10">
                             <div class="batch-shell">
                               <div class="batch-h">
                                 <div>
@@ -321,8 +342,12 @@
               <% end %>
             </td>
             <td><span class="code-text"><%= t("erp.skus.index.unfiled") %></span></td>
-            <td><span class="zh-name"><%= erp_value(sku.product_name) %></span></td>
-            <td><span class="ru-name"><%= erp_value(sku.product_name_ru) %></span></td>
+            <td>
+              <div class="product-name-stack">
+                <span class="zh-name"><%= erp_value(sku.product_name) %></span>
+                <span class="ru-name"><%= erp_value(sku.product_name_ru) %></span>
+              </div>
+            </td>
             <td><span class="platform-category">-</span></td>
             <td><span class="code-text sub"><%= sku.sku_code %></span></td>
             <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku, locale_params: current_locale_params, return_to: current_page_return_to %></td>
@@ -354,7 +379,7 @@
           </tr>
           <% if batches.any? %>
             <tr class="batch-row" hidden>
-              <td colspan="10">
+              <td colspan="9">
                 <div class="batch-shell batch-shell--orphan">
                   <div class="batch-h">
                     <div>
@@ -423,7 +448,7 @@
 
         <% if @master_sku_entries.empty? && @orphan_skus.empty? %>
           <tr>
-            <td colspan="10" class="empty-state">
+            <td colspan="9" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.skus.empty.no_products") %>
             </td>
@@ -431,5 +456,9 @@
         <% end %>
       </tbody>
     </table>
+
+    <% if @spu_rows.respond_to?(:total_pages) && @spu_rows.total_pages > 1 %>
+      <%= render "pagination", spu_rows: @spu_rows %>
+    <% end %>
   </section>
 </div>

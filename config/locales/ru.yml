@@ -1363,6 +1363,14 @@ ru:
         hierarchy: "SPU · SKU · Склад партий"
         product_overview: "Обзор продуктов"
         title: "Управление SPU"
+      pagination:
+        aria_label: "Пагинация SPU"
+        jump_action: "OK"
+        jump_label: "Перейти"
+        next_page: "Следующая страница"
+        page_chip: "Стр. %{page}/%{pages}"
+        previous_page: "Предыдущая страница"
+        summary: "Показано %{from}-%{to} из %{total}"
     skus:
       actions:
         add_product: "Добавить SPU"
@@ -1373,16 +1381,21 @@ ru:
         edit_sku: "Редактировать SKU"
       empty:
         no_batches: "Записей партий пока нет."
+        no_developers: "Не назначено"
+        no_operators: "Не назначено"
         no_products: "Подходящих продуктов не найдено."
         no_skus: "SKU по текущим фильтрам нет."
       fields:
         attributes: "Атрибуты"
         color: "Цвет"
+        developers: "Разработчики"
         features: "Особенности"
         listed: "Размещен"
         master_sku: "SPU"
         model: "Модель"
+        operators: "Операторы"
         platform_category: "Категория платформы"
+        product_name: "Название товара"
         purchased: "Закуплено"
         quality_grade: "Качество"
         received: "Получено"

@@ -1,0 +1,69 @@
+<% page = spu_rows.current_page %>
+<% page_count = spu_rows.total_pages %>
+<% query_params = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page) %>
+
+<div class="inventory-pagination-bar">
+  <div class="pagination-meta">
+    <div class="inventory-pagination-bar__summary"><%= spu_pagination_summary(spu_rows) %></div>
+    <span class="pagination-chip"><%= spu_pagination_page_chip(spu_rows) %></span>
+  </div>
+
+  <div class="pagination-shell">
+    <nav class="pagination-nav" aria-label="<%= t("erp.spus.pagination.aria_label") %>">
+      <% previous_page = page - 1 %>
+      <% if previous_page >= 1 %>
+        <%= link_to erp_spus_path(query_params.merge(page: previous_page)),
+                    class: "pg-btn pg-btn-nav",
+                    aria: { label: t("erp.spus.pagination.previous_page") } do %>
+          <span aria-hidden="true">‹</span>
+        <% end %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">‹</span>
+      <% end %>
+
+      <% inventory_pagination_items(page, page_count).each do |item| %>
+        <% if item.is_a?(Symbol) %>
+          <span class="pg-ell" aria-hidden="true">…</span>
+        <% elsif item == page %>
+          <span class="pg-btn on"><%= item %></span>
+        <% else %>
+          <%= link_to item, erp_spus_path(query_params.merge(page: item)), class: "pg-btn" %>
+        <% end %>
+      <% end %>
+
+      <% next_page = page + 1 %>
+      <% if next_page <= page_count %>
+        <%= link_to erp_spus_path(query_params.merge(page: next_page)),
+                    class: "pg-btn pg-btn-nav",
+                    aria: { label: t("erp.spus.pagination.next_page") } do %>
+          <span aria-hidden="true">›</span>
+        <% end %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">›</span>
+      <% end %>
+    </nav>
+
+    <span class="pagination-divider" aria-hidden="true"></span>
+
+    <%= form_with url: erp_spus_path, method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("erp.spus.pagination.jump_label") } do %>
+      <% query_params.each do |key, value| %>
+        <% if value.is_a?(Array) %>
+          <% value.each do |item| %>
+            <%= hidden_field_tag "#{key}[]", item %>
+          <% end %>
+        <% else %>
+          <%= hidden_field_tag key, value %>
+        <% end %>
+      <% end %>
+      <%= hidden_field_tag :current_page, page %>
+      <span class="pagination-jump-label"><%= t("erp.spus.pagination.jump_label") %></span>
+      <%= text_field_tag :jump_page,
+                         page,
+                         class: "pagination-jump-input",
+                         inputmode: "numeric",
+                         pattern: "[0-9]*",
+                         aria: { label: t("erp.spus.pagination.jump_label") } %>
+      <%= submit_tag t("erp.spus.pagination.jump_action"), class: "pg-btn pg-btn-jump" %>
+    <% end %>
+  </div>
+</div>

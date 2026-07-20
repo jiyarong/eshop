@@ -1407,6 +1407,14 @@ en:
         hierarchy: "SPU · SKU · Batch Inventory"
         product_overview: "Product overview"
         title: "SPU Management"
+      pagination:
+        aria_label: "SPU pagination"
+        jump_action: "Go"
+        jump_label: "Jump to"
+        next_page: "Next page"
+        page_chip: "Page %{page}/%{pages}"
+        previous_page: "Previous page"
+        summary: "Showing %{from}-%{to} of %{total}"
     skus:
       actions:
         add_product: "Add SPU"
@@ -1417,16 +1425,21 @@ en:
         edit_sku: "Edit SKU"
       empty:
         no_batches: "No batch records yet."
+        no_developers: "Unassigned"
+        no_operators: "Unassigned"
         no_products: "No matching products found."
         no_skus: "No SKU matches the current filters."
       fields:
         attributes: "Attributes"
         color: "Color"
+        developers: "Developers"
         features: "Features"
         listed: "Listed"
         master_sku: "SPU"
         model: "Model"
+        operators: "Operators"
         platform_category: "Platform category"
+        product_name: "Product name"
         purchased: "Purchased"
         quality_grade: "Quality"
         received: "Received"

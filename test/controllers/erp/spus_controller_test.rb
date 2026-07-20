@@ -89,7 +89,7 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "SPU 管理"
-    assert_select ".product-management"
+    assert_select ".product-management.spu-management"
     assert_select ".page-h"
     assert_select ".product-page-actions a", text: "新增 SPU"
     assert_no_match "Import", response.body
@@ -109,10 +109,13 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".card.product-list-card"
     assert_select ".prod-tbl"
     assert_select ".prod-tbl thead th", text: "SPU"
-    assert_select ".prod-tbl thead th", text: "中文名"
-    assert_select ".prod-tbl thead th", text: "俄文名"
+    assert_select ".prod-tbl thead th", text: "商品名"
     assert_select ".prod-tbl thead th", text: "平台类目"
     assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".prod-tbl tr.master .product-name-stack" do
+      assert_select ".zh-name", text: @master_sku.product_name
+      assert_select ".ru-name", text: @master_sku.product_name_ru
+    end
     assert_select ".prod-tbl tr.master .platform-category", text: "平台父类 #{@token} / 平台子类 #{@token}"
     assert_select ".product-list-card[data-controller='product-tree']"
     assert_select "tr.master.open", count: 0
@@ -124,7 +127,18 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_select "button.product-tree-toggle[aria-expanded='false'] i.bi-chevron-right", minimum: 1
     assert_select "button.product-tree-toggle[aria-expanded='false'] i.bi-chevron-down", count: 0
     assert_select ".sub-h", text: "SKU 变体 · 1 个"
+    assert_select ".sub-tbl.sub-tbl--sku-list"
+    assert_select ".sub-tbl thead th", text: "商品名"
+    assert_select ".sub-tbl thead th", text: "开发人员"
+    assert_select ".sub-tbl thead th", text: "运营人员"
+    assert_select ".sub-tbl thead th", text: "状态"
     assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
+    assert_select ".sub-tbl tr.sku-row .product-name-stack" do
+      assert_select ".zh-name", text: @sku.product_name
+      assert_select ".ru-name", text: @sku.product_name_ru
+    end
+    assert_select ".sub-tbl tr.sku-row .sku-developers", text: "未绑定"
+    assert_select ".sub-tbl tr.sku-row .sku-operators", text: "未绑定"
     assert_select ".sku-marketing-state .marketing-tag--unset", text: "Grade 未设置"
     assert_select ".sku-marketing-state .marketing-tag--unset", text: "Stage 未设置"
     assert_select "a[href='#{new_erp_sku_marketing_state_path(@sku, return_to: "/erp/spus")}'][data-turbo-frame='erp_modal']"
@@ -139,8 +153,6 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "仓库", response.body
     assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select ".batch-tbl td", text: "180"
-    assert_select "td", "页面主产品"
-    assert_select ".attr-zh", text: @category.name
     assert_select ".badge.badge-suc", text: "Active"
     assert_select ".badge.badge-sec", text: "下架"
     assert_select "turbo-frame#erp_modal"
@@ -173,6 +185,98 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_match @batch.purchase_date.to_s, response.body
   end
 
+  test "index paginates spu management rows" do
+    prefix = "MASTER-PAG-#{@token}"
+    24.times do |index|
+      Ec::MasterSku.create!(
+        master_sku_code: "#{prefix}-#{format("%02d", index)}",
+        product_name: "SPU 分页 #{index}",
+        product_name_ru: "SPU page #{index}",
+        ec_category: @platform_category_child,
+        is_active: true
+      )
+    end
+
+    sign_in @current_user
+    get "/erp/spus",
+      params: { q: prefix, category_ids: [@platform_category_child.id] },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".product-list-card table.prod-tbl"
+    assert_select "tbody tr.master", 10
+    assert_select ".inventory-pagination-bar"
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 1/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 1-10 条，共 24 条/
+    assert_select ".inventory-pagination-bar .pg-btn", "2"
+
+    sign_in @current_user
+    get "/erp/spus",
+      params: { q: prefix, category_ids: [@platform_category_child.id], page: 2 },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "tbody tr.master", 10
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 24 条/
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='q=MASTER-PAG-']"
+    assert_select ".inventory-pagination-bar a[href*='page=3'][href*='q=MASTER-PAG-']"
+    assert_select ".inventory-pagination-bar form[action='/erp/spus'] input[name='q'][value='#{prefix}']"
+    assert_select ".inventory-pagination-bar form[action='/erp/spus'] input[name='category_ids[]'][value='#{@platform_category_child.id}']"
+  end
+
+  test "index displays nested sku developers and multiple product operators" do
+    developer = User.create!(
+      email: "erp-spus-#{@token.downcase}-display-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "开发 #{@token}"
+    )
+    operator_a = User.create!(
+      email: "erp-spus-#{@token.downcase}-display-operator-a@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "运营 A #{@token}"
+    )
+    operator_b = User.create!(
+      email: "erp-spus-#{@token.downcase}-display-operator-b@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "运营 B #{@token}"
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "SPU 展示职责店 #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    sku_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store,
+      product_id: "SPU-DISPLAY-P-#{@token}",
+      platform_sku_id: "SPU-DISPLAY-PS-#{@token}",
+      product_name: "SPU 展示平台商品 #{@token}"
+    )
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_a)
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_b)
+
+    get "/erp/spus", params: { q: @master_sku.master_sku_code }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sub-tbl tr.sku-row", 1 do
+      assert_select ".code-text.sub", text: @sku.sku_code
+      assert_select ".sku-developers", text: developer.name
+      assert_select ".sku-operators", text: "#{operator_a.name}, #{operator_b.name}"
+    end
+  ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)
+    sku_product&.destroy
+    store&.destroy
+  end
+
   test "index localizes visible chrome in english" do
     get "/erp/spus", params: { locale: "en" }, headers: { "Accept" => "text/html" }
 
@@ -191,10 +295,12 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_select "label", "Category"
     assert_select "button", "Filter"
     assert_select "a", "Reset"
-    assert_select ".prod-tbl thead th", text: "Chinese name"
+    assert_select ".prod-tbl thead th", text: "Product name"
     assert_select ".prod-tbl thead th", text: "Platform category"
     assert_select ".prod-tbl thead th", text: "Actions"
     assert_select ".prod-tbl thead th", text: "Marketing state"
+    assert_select ".prod-tbl thead th", text: "Developers"
+    assert_select ".prod-tbl thead th", text: "Operators"
     assert_select ".marketing-tag--unset", text: "Grade unset"
     assert_select ".prod-tbl tr.master .platform-category", text: "Platform Parent #{@token} / Platform Child #{@token}"
     assert_select ".sub-h", text: "SKU variants · 1 item"

@@ -104,12 +104,18 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".summary-label", "启用 SKU"
     assert_select ".prod-tbl thead th", text: "SKU"
     assert_select ".prod-tbl thead th", text: "SPU"
-    assert_select ".prod-tbl thead th", text: "中文名"
-    assert_select ".prod-tbl thead th", text: "俄文名"
+    assert_select ".prod-tbl thead th", text: "商品名"
     assert_select ".prod-tbl thead th", text: "营销状态"
+    assert_select ".prod-tbl thead th", text: "开发人员"
+    assert_select ".prod-tbl thead th", text: "运营人员"
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
     assert_select ".prod-tbl tr.sku-row.master .code-text", text: @master_sku.master_sku_code
-    assert_select ".prod-tbl tr.sku-row.master .zh-name", text: @sku.product_name
+    assert_select ".prod-tbl tr.sku-row.master .product-name-stack" do
+      assert_select ".zh-name", text: @sku.product_name
+      assert_select ".ru-name", text: @sku.product_name_ru
+    end
+    assert_select ".prod-tbl tr.sku-row.master .sku-developers", text: "未绑定"
+    assert_select ".prod-tbl tr.sku-row.master .sku-operators", text: "未绑定"
     assert_select ".sku-marketing-state .marketing-tag--unset", text: "Grade 未设置"
     assert_select ".sku-marketing-state .marketing-tag--unset", text: "Stage 未设置"
     assert_select "button.product-tree-toggle[data-action='product-tree#toggleMaster'][aria-expanded='false']", minimum: 1
@@ -142,8 +148,10 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "option", "All Stages"
     assert_select ".prod-tbl thead th", text: "SKU"
     assert_select ".prod-tbl thead th", text: "SPU"
-    assert_select ".prod-tbl thead th", text: "Chinese name"
+    assert_select ".prod-tbl thead th", text: "Product name"
     assert_select ".prod-tbl thead th", text: "Marketing state"
+    assert_select ".prod-tbl thead th", text: "Developers"
+    assert_select ".prod-tbl thead th", text: "Operators"
     assert_select ".marketing-tag--unset", text: "Grade unset"
     assert_select ".batch-title", text: "Batch list"
     assert_select ".batch-tbl th", text: "Purchase date"
@@ -213,6 +221,57 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".responsible-user-filter__option--shortcut.is-selected[data-value='#{@current_user.id}']", text: "选中自己"
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
     assert_no_match @inactive_sku.sku_code, response.body
+  ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)
+    sku_product&.destroy
+    store&.destroy
+  end
+
+  test "index displays sku developers and multiple product operators" do
+    developer = User.create!(
+      email: "erp-skus-#{@token.downcase}-display-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "开发 #{@token}"
+    )
+    operator_a = User.create!(
+      email: "erp-skus-#{@token.downcase}-display-operator-a@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "运营 A #{@token}"
+    )
+    operator_b = User.create!(
+      email: "erp-skus-#{@token.downcase}-display-operator-b@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "运营 B #{@token}"
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "SKU 展示职责店 #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    sku_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store,
+      product_id: "SKU-DISPLAY-P-#{@token}",
+      platform_sku_id: "SKU-DISPLAY-PS-#{@token}",
+      product_name: "SKU 展示平台商品 #{@token}"
+    )
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_a)
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_b)
+
+    get "/erp/skus", params: { q: @sku.sku_code }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".prod-tbl tr.sku-row.master", 1 do
+      assert_select ".code-text.sub", text: @sku.sku_code
+      assert_select ".sku-developers", text: developer.name
+      assert_select ".sku-operators", text: "#{operator_a.name}, #{operator_b.name}"
+    end
   ensure
     Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
     Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)

@@ -1385,6 +1385,14 @@ zh:
         hierarchy: "SPU · SKU · 批次库存"
         product_overview: "产品概览"
         title: "SPU 管理"
+      pagination:
+        aria_label: "SPU 分页"
+        jump_action: "确定"
+        jump_label: "跳至"
+        next_page: "下一页"
+        page_chip: "第 %{page}/%{pages} 页"
+        previous_page: "上一页"
+        summary: "显示第 %{from}-%{to} 条，共 %{total} 条"
     skus:
       actions:
         add_product: "新增 SPU"
@@ -1395,16 +1403,21 @@ zh:
         edit_sku: "编辑 SKU"
       empty:
         no_batches: "还没有批次记录。"
+        no_developers: "未绑定"
+        no_operators: "未绑定"
         no_products: "没有找到匹配的产品。"
         no_skus: "当前筛选条件下没有 SKU。"
       fields:
         attributes: "属性"
         color: "颜色"
+        developers: "开发人员"
         features: "特点"
         listed: "上架"
         master_sku: "SPU"
         model: "型号"
+        operators: "运营人员"
         platform_category: "平台类目"
+        product_name: "商品名"
         purchased: "采购"
         quality_grade: "品质"
         received: "入库"

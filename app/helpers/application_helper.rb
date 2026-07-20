@@ -41,6 +41,28 @@ module ApplicationHelper
     t("erp.skus.pagination.page_chip", page: scope.current_page, pages: scope.total_pages)
   end
 
+  def spu_pagination_summary(scope)
+    total_count = scope.total_count.to_i
+    return t("erp.spus.pagination.summary", from: 0, to: 0, total: 0) if total_count.zero?
+
+    from = scope.offset_value.to_i + 1
+    to = [scope.offset_value.to_i + scope.limit_value.to_i, total_count].min
+
+    t("erp.spus.pagination.summary", from: from, to: to, total: total_count)
+  end
+
+  def spu_pagination_page_chip(scope)
+    t("erp.spus.pagination.page_chip", page: scope.current_page, pages: scope.total_pages)
+  end
+
+  def sku_developer_names(sku)
+    user_display_names(sku.developers)
+  end
+
+  def sku_operator_names(sku)
+    user_display_names(sku.sku_products.flat_map(&:operators))
+  end
+
   def display_time(value, format: "%Y-%m-%d %H:%M")
     return "-" if value.blank?
 
@@ -71,6 +93,16 @@ module ApplicationHelper
 
   def user_time_zone
     User.profile_time_zone(current_user&.time_zone)
+  end
+
+  def user_display_names(users)
+    users
+      .compact
+      .uniq(&:id)
+      .sort_by { |user| user.display_name.downcase }
+      .map(&:display_name)
+      .join(", ")
+      .presence
   end
 
   def product_edit_url(platform, platform_sku_id)
