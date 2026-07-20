@@ -923,6 +923,7 @@ zh:
         belarus_available: "白俄可用"
         book_available_stock: "账面可用库存"
         book_stock: "账面库存"
+        cluster: "集群"
         daily_sales_velocity: "日均销量"
         defect_offset_note: "补正备注"
         expected_arrival_on: "预计到货日期"

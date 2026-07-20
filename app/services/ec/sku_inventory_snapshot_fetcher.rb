@@ -20,6 +20,11 @@ module Ec
       RawWb::SellerAccount.where(is_active: true).flat_map do |account|
         store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: account.id)
         report = Array(reports[account.id])
+        warehouse_regions = wb_warehouse_region_lookup(account)
+        if report.empty?
+          Rails.logger.warn("[SkuInventorySnapshotFetcher] WB FBW account=#{account.id} returned empty warehouse_remains report; keeping previous snapshot")
+          next []
+        end
 
         Ec::SkuProduct
           .joins(:store)
@@ -42,13 +47,13 @@ module Ec
               quantity: quantity,
               synced_at: now,
               metadata: { nm_ids: nm_ids },
-              warehouse_breakdown: wb_fbw_warehouse_breakdown(matching_rows)
+              warehouse_breakdown: wb_fbw_warehouse_breakdown(matching_rows, warehouse_regions)
             )
           end
       end
     end
 
-    def wb_fbw_warehouse_breakdown(rows)
+    def wb_fbw_warehouse_breakdown(rows, warehouse_regions = {})
       grouped = Hash.new(0)
       rows.each do |row|
         Array(row["warehouses"]).each do |warehouse|
@@ -60,8 +65,37 @@ module Ec
       end
 
       grouped.map do |warehouse_name, quantity|
-        { warehouse_name: warehouse_name, quantity: quantity }
+        region = wb_warehouse_region_for(warehouse_regions, warehouse_name)
+        {
+          warehouse_name: warehouse_name,
+          warehouse_id: region&.warehouse_id,
+          cluster_name: region&.region_name,
+          region_name: region&.region_name,
+          quantity: quantity
+        }
       end.sort_by { |row| row[:warehouse_name].to_s }
+    end
+
+    def wb_warehouse_region_lookup(account)
+      RawWb::WarehouseRegion
+        .where(account_id: account.id)
+        .index_by(&:normalized_warehouse_name)
+    end
+
+    def wb_warehouse_region_for(warehouse_regions, warehouse_name)
+      normalized_name = RawWb::WarehouseRegion.normalize_warehouse_name(warehouse_name)
+      warehouse_regions[normalized_name] ||
+        warehouse_regions["#{normalized_name}_WB"] ||
+        wb_warehouse_region_unique_fallback(warehouse_regions, normalized_name)
+    end
+
+    def wb_warehouse_region_unique_fallback(warehouse_regions, normalized_name)
+      matches = warehouse_regions.select do |candidate, _region|
+        candidate.include?(normalized_name) || normalized_name.include?(candidate)
+      end
+      return unless matches.one?
+
+      matches.values.first
     end
 
     def prefetch_wb_fbw_reports
@@ -157,6 +191,7 @@ module Ec
         store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: account.id)
         stocks_by_product_id = ozon_stocks_by_product_id(account)
         warehouse_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
+        warehouse_clusters = ozon_warehouse_cluster_lookup(account)
 
         Ec::SkuProduct
           .joins(:store)
@@ -193,7 +228,7 @@ module Ec
                   inbound_source: "ozon_analytics_stock_on_warehouses.promised_amount",
                   inbound_deducted_quantity: fulfillment_type == "fbs" ? [inbound, fbs].min : 0
                 },
-                warehouse_breakdown: fulfillment_type == "fbo" ? ozon_warehouse_breakdown(warehouse_breakdowns_by_sku, ozon_skus) : []
+                warehouse_breakdown: fulfillment_type == "fbo" ? ozon_warehouse_breakdown(warehouse_breakdowns_by_sku, ozon_skus, warehouse_clusters) : []
               )
             end
           end
@@ -265,7 +300,7 @@ module Ec
       {}
     end
 
-    def ozon_warehouse_breakdown(breakdowns_by_sku, ozon_skus)
+    def ozon_warehouse_breakdown(breakdowns_by_sku, ozon_skus, warehouse_clusters = {})
       grouped = Hash.new { |hash, key| hash[key] = { quantity: 0, promised: 0, reserved: 0, item_codes: [] } }
       ozon_skus.each do |ozon_sku|
         Array(breakdowns_by_sku[ozon_sku]).each do |row|
@@ -281,14 +316,36 @@ module Ec
       end
 
       grouped.map do |warehouse_name, row|
+        cluster = ozon_warehouse_cluster_for(warehouse_clusters, warehouse_name)
         {
           warehouse_name: warehouse_name,
+          warehouse_id: cluster&.warehouse_id,
+          cluster_name: cluster&.cluster_name,
+          macrolocal_cluster_id: cluster&.macrolocal_cluster_id,
+          country_name: cluster&.country_name,
           quantity: row[:quantity],
           promised: row[:promised],
           reserved: row[:reserved],
           item_codes: row[:item_codes].uniq
         }
       end.sort_by { |row| row[:warehouse_name].to_s }
+    end
+
+    def ozon_warehouse_cluster_lookup(account)
+      RawOzon::WarehouseCluster
+        .where(account_id: account.id)
+        .index_by(&:normalized_warehouse_name)
+    end
+
+    def ozon_warehouse_cluster_for(warehouse_clusters, warehouse_name)
+      normalized_name = RawOzon::WarehouseCluster.normalize_warehouse_name(warehouse_name)
+      warehouse_clusters[normalized_name] || ozon_warehouse_cluster_fallback(warehouse_clusters, normalized_name)
+    end
+
+    def ozon_warehouse_cluster_fallback(warehouse_clusters, normalized_name)
+      return unless normalized_name.end_with?("_НЕГАБАРИТ")
+
+      warehouse_clusters[normalized_name.delete_suffix("_НЕГАБАРИТ")]
     end
 
     def ozon_promised_quantity(breakdowns_by_sku, ozon_skus)

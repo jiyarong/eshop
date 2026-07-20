@@ -25,6 +25,49 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     end
   end
 
+  class FakeEmptyWbWarehouseRemainsClient
+    def get(service, path, params = {})
+      case path
+      when "/api/v1/warehouse_remains"
+        { "data" => { "taskId" => "empty-task" } }
+      when "/api/v1/warehouse_remains/tasks/empty-task/status"
+        { "data" => { "status" => "done" } }
+      when "/api/v1/warehouse_remains/tasks/empty-task/download"
+        []
+      else
+        raise "unexpected WB GET #{service} #{path} #{params.inspect}"
+      end
+    end
+  end
+
+  class FakeWbWarehouseRemainsClient
+    def initialize(nm_id:)
+      @nm_id = nm_id
+    end
+
+    def get(service, path, params = {})
+      case path
+      when "/api/v1/warehouse_remains"
+        { "data" => { "taskId" => "stock-task" } }
+      when "/api/v1/warehouse_remains/tasks/stock-task/status"
+        { "data" => { "status" => "done" } }
+      when "/api/v1/warehouse_remains/tasks/stock-task/download"
+        [
+          {
+            "nmId" => @nm_id,
+            "warehouses" => [
+              { "warehouseName" => "Всего находится на складах", "quantity" => 7 },
+              { "warehouseName" => "Владимир", "quantity" => 5 },
+              { "warehouseName" => "В пути до получателей", "quantity" => 2 }
+            ]
+          }
+        ]
+      else
+        raise "unexpected WB GET #{service} #{path} #{params.inspect}"
+      end
+    end
+  end
+
   class FakeOzonClient
     attr_reader :posts
 
@@ -93,6 +136,8 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
   teardown do
     RawWb::SupplyItem.where(account_id: @wb_account&.id).delete_all
     RawWb::Supply.where(account_id: @wb_account&.id).delete_all
+    RawWb::WarehouseRegion.where(account_id: @wb_account&.id).delete_all
+    RawOzon::WarehouseCluster.where(account_id: @ozon_account&.id).delete_all
     Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all
     Ec::Store.where(id: [@wb_store&.id, @ozon_store&.id].compact).delete_all
     RawWb::SellerAccount.where(id: @wb_account&.id).delete_all
@@ -135,7 +180,68 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     assert_equal "/api/v1/supplies/40295360/goods", fake_client.gets.first[:path]
   end
 
+  test "wb fbw skips empty warehouse remains report instead of writing zero snapshot rows" do
+    fetcher = Ec::SkuInventorySnapshotFetcher.new(
+      wb_client_factory: ->(_) { FakeEmptyWbWarehouseRemainsClient.new }
+    )
+
+    rows = fetcher.send(:wb_fbw_rows, Time.zone.parse("2026-07-20 12:00:00"))
+
+    assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @wb_account.id }
+  end
+
+  test "wb fbw enriches real warehouses with region and leaves virtual in-transit buckets unmapped" do
+    RawWb::WarehouseRegion.create!(
+      account: @wb_account,
+      warehouse_id: 301981,
+      warehouse_name: "Владимир WB",
+      region_name: "Центральный",
+      source: "test",
+      synced_at: Time.zone.parse("2026-07-20 05:30:00")
+    )
+    fetcher = Ec::SkuInventorySnapshotFetcher.new(
+      wb_client_factory: ->(_) { FakeWbWarehouseRemainsClient.new(nm_id: @wb_product.product_id.to_i) }
+    )
+
+    rows = fetcher.send(:wb_fbw_rows, Time.zone.parse("2026-07-20 12:00:00"))
+
+    fbw = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @wb_account.id }
+    assert_equal 7, fbw[:quantity]
+    assert_includes fbw[:warehouse_breakdown], {
+      warehouse_name: "Владимир",
+      warehouse_id: 301981,
+      cluster_name: "Центральный",
+      region_name: "Центральный",
+      quantity: 5
+    }
+    assert_includes fbw[:warehouse_breakdown], {
+      warehouse_name: "В пути до получателей",
+      warehouse_id: nil,
+      cluster_name: nil,
+      region_name: nil,
+      quantity: 2
+    }
+  end
+
   test "ozon inbound uses promised warehouse stock amount" do
+    RawOzon::WarehouseCluster.create!(
+      account: @ozon_account,
+      warehouse_id: 18044570445000,
+      warehouse_name: "ЕКАТЕРИНБУРГ_РФЦ_НОВЫЙ",
+      macrolocal_cluster_id: 4058,
+      cluster_name: "Екатеринбург",
+      country_name: "Россия",
+      synced_at: Time.zone.parse("2026-07-13 09:00:00")
+    )
+    RawOzon::WarehouseCluster.create!(
+      account: @ozon_account,
+      warehouse_id: 1020000863210000,
+      warehouse_name: "КАЗАНЬ_РФЦ_НОВЫЙ",
+      macrolocal_cluster_id: 4041,
+      cluster_name: "Казань",
+      country_name: "Россия",
+      synced_at: Time.zone.parse("2026-07-13 09:00:00")
+    )
     fake_client = FakeOzonClient.new(product_id: @ozon_product.product_id.to_i, ozon_sku: @ozon_product.platform_sku_id.to_i)
     fetcher = Ec::SkuInventorySnapshotFetcher.new(ozon_client_factory: ->(_) { fake_client })
 
@@ -143,8 +249,31 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
 
     inbound = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:fulfillment_type] == "inbound" }
     fbs = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:fulfillment_type] == "fbs" }
+    fbo = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:fulfillment_type] == "fbo" }
     assert_equal 10, inbound[:quantity]
     assert_equal 0, fbs[:quantity]
+    assert_includes fbo[:warehouse_breakdown], {
+      warehouse_name: "Екатеринбург_РФЦ_НОВЫЙ",
+      warehouse_id: 18044570445000,
+      cluster_name: "Екатеринбург",
+      macrolocal_cluster_id: 4058,
+      country_name: "Россия",
+      quantity: 0,
+      promised: 10,
+      reserved: 0,
+      item_codes: ["OFFER-TEST"]
+    }
+    assert_includes fbo[:warehouse_breakdown], {
+      warehouse_name: "Казань_РФЦ_НОВЫЙ",
+      warehouse_id: 1020000863210000,
+      cluster_name: "Казань",
+      macrolocal_cluster_id: 4041,
+      country_name: "Россия",
+      quantity: 45,
+      promised: 0,
+      reserved: 0,
+      item_codes: ["OFFER-TEST"]
+    }
     assert_equal "ozon_analytics_stock_on_warehouses.promised_amount", inbound[:metadata][:inbound_source]
     assert fake_client.posts.any? { |call| call[:path] == "/v2/analytics/stock_on_warehouses" }
     assert_not fake_client.posts.any? { |call| call[:path] == "/v3/supply-order/list" }

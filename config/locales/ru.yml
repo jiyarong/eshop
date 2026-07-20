@@ -916,6 +916,7 @@ ru:
         belarus_available: "Доступно Беларусь"
         book_available_stock: "Доступно по учету"
         book_stock: "Учетный остаток"
+        cluster: "Кластер"
         daily_sales_velocity: "Среднедневные продажи"
         defect_offset_note: "Примечание к корректировке"
         expected_arrival_on: "Ожидаемая дата поступления"

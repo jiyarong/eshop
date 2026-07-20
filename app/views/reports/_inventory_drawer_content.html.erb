@@ -325,6 +325,7 @@
                 <tr>
                   <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
                   <th><%= t("reports.inventory.fields.fulfillment_type") %></th>
+                  <th><%= t("reports.inventory.fields.cluster") %></th>
                   <th><%= t("reports.inventory.fields.warehouse") %></th>
                   <th><%= t("reports.inventory.fields.quantity") %></th>
                   <th><%= t("reports.inventory.fields.promised") %></th>
@@ -339,6 +340,7 @@
                     <tr>
                       <td><%= row[:store_label] %></td>
                       <td><%= t("reports.inventory.fields.#{row[:fulfillment_type]}", default: row[:fulfillment_type].to_s.upcase) %></td>
+                      <td><%= report_value(row[:cluster_name]) %></td>
                       <td><%= report_value(row[:warehouse_name]) %></td>
                       <td><%= row[:quantity].to_i %></td>
                       <td><%= row[:promised].present? ? row[:promised].to_i : "-" %></td>
