@@ -20,6 +20,10 @@ module Ec
       RawWb::SellerAccount.where(is_active: true).flat_map do |account|
         store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: account.id)
         report = Array(reports[account.id])
+        if report.empty?
+          Rails.logger.warn("[SkuInventorySnapshotFetcher] WB FBW account=#{account.id} returned empty warehouse_remains report; keeping previous snapshot")
+          next []
+        end
 
         Ec::SkuProduct
           .joins(:store)

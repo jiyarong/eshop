@@ -25,6 +25,21 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     end
   end
 
+  class FakeEmptyWbWarehouseRemainsClient
+    def get(service, path, params = {})
+      case path
+      when "/api/v1/warehouse_remains"
+        { "data" => { "taskId" => "empty-task" } }
+      when "/api/v1/warehouse_remains/tasks/empty-task/status"
+        { "data" => { "status" => "done" } }
+      when "/api/v1/warehouse_remains/tasks/empty-task/download"
+        []
+      else
+        raise "unexpected WB GET #{service} #{path} #{params.inspect}"
+      end
+    end
+  end
+
   class FakeOzonClient
     attr_reader :posts
 
@@ -133,6 +148,16 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     assert_equal 7, result[@sku.sku_code]
     assert_equal [2, 3, 4], fake_client.posts.first[:body][:statusIDs]
     assert_equal "/api/v1/supplies/40295360/goods", fake_client.gets.first[:path]
+  end
+
+  test "wb fbw skips empty warehouse remains report instead of writing zero snapshot rows" do
+    fetcher = Ec::SkuInventorySnapshotFetcher.new(
+      wb_client_factory: ->(_) { FakeEmptyWbWarehouseRemainsClient.new }
+    )
+
+    rows = fetcher.send(:wb_fbw_rows, Time.zone.parse("2026-07-20 12:00:00"))
+
+    assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @wb_account.id }
   end
 
   test "ozon inbound uses promised warehouse stock amount" do
