@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_20_073126) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -2204,6 +2204,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_073126) do
     t.index ["account_id"], name: "index_raw_wb_sync_tasks_on_account_id"
   end
 
+  create_table "raw_wb_warehouse_regions", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "normalized_warehouse_name", null: false
+    t.jsonb "raw_json", default: {}, null: false
+    t.string "region_name", null: false
+    t.string "source", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "warehouse_id", null: false
+    t.string "warehouse_name", null: false
+    t.index ["account_id", "normalized_warehouse_name"], name: "idx_raw_wb_warehouse_regions_lookup"
+    t.index ["account_id", "warehouse_id"], name: "idx_raw_wb_warehouse_regions_unique", unique: true
+    t.index ["account_id"], name: "index_raw_wb_warehouse_regions_on_account_id"
+  end
+
   create_table "raw_wb_warehouses", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.text "address"
@@ -2443,6 +2459,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_073126) do
   add_foreign_key "raw_wb_supply_orders", "raw_wb_orders", column: "order_id"
   add_foreign_key "raw_wb_supply_orders", "raw_wb_supplies", column: "supply_id"
   add_foreign_key "raw_wb_sync_tasks", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_warehouse_regions", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_warehouses", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "sub2_user_api_keys", "users"
   add_foreign_key "user_access_tokens", "users"

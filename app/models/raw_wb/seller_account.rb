@@ -6,6 +6,7 @@ module RawWb
 
     has_many :products,                class_name: 'RawWb::Product',               foreign_key: :account_id, dependent: :destroy
     has_many :warehouses,              class_name: 'RawWb::Warehouse',             foreign_key: :account_id, dependent: :destroy
+    has_many :warehouse_regions,       class_name: 'RawWb::WarehouseRegion',       foreign_key: :account_id, dependent: :destroy
     has_many :orders,                  class_name: 'RawWb::Order',                 foreign_key: :account_id, dependent: :destroy
     has_many :supplies,                class_name: 'RawWb::Supply',                foreign_key: :account_id, dependent: :destroy
     has_many :ad_campaigns,            class_name: 'RawWb::AdCampaign',            foreign_key: :account_id, dependent: :destroy

@@ -20,6 +20,7 @@ module Ec
       RawWb::SellerAccount.where(is_active: true).flat_map do |account|
         store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: account.id)
         report = Array(reports[account.id])
+        warehouse_regions = wb_warehouse_region_lookup(account)
         if report.empty?
           Rails.logger.warn("[SkuInventorySnapshotFetcher] WB FBW account=#{account.id} returned empty warehouse_remains report; keeping previous snapshot")
           next []
@@ -46,13 +47,13 @@ module Ec
               quantity: quantity,
               synced_at: now,
               metadata: { nm_ids: nm_ids },
-              warehouse_breakdown: wb_fbw_warehouse_breakdown(matching_rows)
+              warehouse_breakdown: wb_fbw_warehouse_breakdown(matching_rows, warehouse_regions)
             )
           end
       end
     end
 
-    def wb_fbw_warehouse_breakdown(rows)
+    def wb_fbw_warehouse_breakdown(rows, warehouse_regions = {})
       grouped = Hash.new(0)
       rows.each do |row|
         Array(row["warehouses"]).each do |warehouse|
@@ -64,8 +65,37 @@ module Ec
       end
 
       grouped.map do |warehouse_name, quantity|
-        { warehouse_name: warehouse_name, quantity: quantity }
+        region = wb_warehouse_region_for(warehouse_regions, warehouse_name)
+        {
+          warehouse_name: warehouse_name,
+          warehouse_id: region&.warehouse_id,
+          cluster_name: region&.region_name,
+          region_name: region&.region_name,
+          quantity: quantity
+        }
       end.sort_by { |row| row[:warehouse_name].to_s }
+    end
+
+    def wb_warehouse_region_lookup(account)
+      RawWb::WarehouseRegion
+        .where(account_id: account.id)
+        .index_by(&:normalized_warehouse_name)
+    end
+
+    def wb_warehouse_region_for(warehouse_regions, warehouse_name)
+      normalized_name = RawWb::WarehouseRegion.normalize_warehouse_name(warehouse_name)
+      warehouse_regions[normalized_name] ||
+        warehouse_regions["#{normalized_name}_WB"] ||
+        wb_warehouse_region_unique_fallback(warehouse_regions, normalized_name)
+    end
+
+    def wb_warehouse_region_unique_fallback(warehouse_regions, normalized_name)
+      matches = warehouse_regions.select do |candidate, _region|
+        candidate.include?(normalized_name) || normalized_name.include?(candidate)
+      end
+      return unless matches.one?
+
+      matches.values.first
     end
 
     def prefetch_wb_fbw_reports

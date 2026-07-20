@@ -52,6 +52,10 @@ production:
     command: "RawWb::SetupSync.run"
     schedule: every month on the 1st at 4:00 in Asia/Shanghai
 
+  wb_warehouse_region_sync:
+    command: "RawWb::WarehouseRegionSync.run"
+    schedule: every day at 5:30 in Asia/Shanghai
+
   # WB stocks API only returns recently changed rows; this refreshes all active
   # product stock at least once a month.
   wb_monthly_full_stocks_resync:
