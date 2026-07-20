@@ -48,6 +48,7 @@ env:
     - QINIU_SECRET_KEY
     - ESHOP_SUB2AI_PASSWORD
     - ESHOP_SUB2AI_USER
+    - GBRAIN_BEARER_TOKEN
   clear:
     KAMAL_CONTAINER: true
     DB_HOST: eshop_manage-postgres
