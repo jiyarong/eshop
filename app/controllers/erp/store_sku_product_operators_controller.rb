@@ -36,21 +36,36 @@ module Erp
 
     def update_role_assignments
       selected_operator_ids = operator_candidates.where(id: operator_ids).pluck(:id)
-      selected_developer_ids = operator_candidates.where(id: developer_ids).pluck(:id) - selected_operator_ids
-      selected_user_ids = selected_operator_ids + selected_developer_ids
+      selected_developer_ids = operator_candidates.where(id: developer_ids).pluck(:id)
 
-      @sku_product.operator_assignments.transaction do
-        assignments = @sku_product.operator_assignments
-        selected_user_ids.empty? ? assignments.delete_all : assignments.where.not(user_id: selected_user_ids).delete_all
-
-        selected_developer_ids.each { |user_id| upsert_assignment(user_id, "developer") }
-        selected_operator_ids.each { |user_id| upsert_assignment(user_id, "operator") }
+      ActiveRecord::Base.transaction do
+        update_operator_assignments(selected_operator_ids)
+        update_developer_assignments(selected_developer_ids)
       end
     end
 
-    def upsert_assignment(user_id, role)
-      assignment = @sku_product.operator_assignments.find_or_initialize_by(user_id: user_id)
-      assignment.role = role
+    def update_operator_assignments(selected_operator_ids)
+      assignments = @sku_product.operator_role_assignments
+      selected_operator_ids.empty? ? assignments.delete_all : assignments.where.not(user_id: selected_operator_ids).delete_all
+
+      selected_operator_ids.each { |user_id| upsert_operator_assignment(user_id) }
+    end
+
+    def update_developer_assignments(selected_developer_ids)
+      assignments = @sku_product.sku.developer_assignments
+      selected_developer_ids.empty? ? assignments.delete_all : assignments.where.not(user_id: selected_developer_ids).delete_all
+
+      selected_developer_ids.each { |user_id| upsert_developer_assignment(user_id) }
+    end
+
+    def upsert_operator_assignment(user_id)
+      assignment = @sku_product.operator_role_assignments.find_or_initialize_by(user_id: user_id)
+      assignment.role = Ec::SkuProductOperator.roles.fetch("operator")
+      assignment.save!
+    end
+
+    def upsert_developer_assignment(user_id)
+      assignment = @sku_product.sku.developer_assignments.find_or_initialize_by(user_id: user_id)
       assignment.save!
     end
   end

@@ -1512,6 +1512,15 @@ zh:
         summary: "店铺信息"
         unbound_raw_products: "未绑定平台商品"
   shared:
+    responsible_user_filters:
+      all_developers: "全部开发人员"
+      all_operators: "全部运营人员"
+      developer: "开发人员"
+      me: "我"
+      no_employees: "没有匹配的员工"
+      operator: "运营人员"
+      search_placeholder: "搜索员工"
+      select_me: "选中自己"
     time_range:
       actions:
         apply: "应用筛选"

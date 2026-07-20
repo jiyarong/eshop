@@ -11,6 +11,8 @@ module Ec
     has_many :platform_costs,    class_name: 'Ec::SkuPlatformCost',     foreign_key: :sku_code, primary_key: :sku_code
     has_many :store_assignments, class_name: 'Ec::SkuStoreAssignment',  foreign_key: :sku_code, primary_key: :sku_code
     has_many :sku_products,      class_name: 'Ec::SkuProduct',          foreign_key: :sku_code, primary_key: :sku_code, dependent: :destroy
+    has_many :developer_assignments, class_name: "Ec::SkuDeveloperAssignment", foreign_key: :sku_code, primary_key: :sku_code, dependent: :destroy
+    has_many :developers, through: :developer_assignments, source: :user
     has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
     has_many :predicted_costs,   class_name: 'Ec::SkuPredictedCost',    foreign_key: :sku_code, primary_key: :sku_code
     has_many :inventory_levels,  class_name: 'Ec::SkuInventoryLevel',   foreign_key: :sku_code, primary_key: :sku_code

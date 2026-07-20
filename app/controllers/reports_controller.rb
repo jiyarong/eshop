@@ -2,6 +2,8 @@ require "cgi"
 require "digest"
 
 class ReportsController < ApplicationController
+  include ResponsibleUserFilterable
+
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
@@ -11,6 +13,7 @@ class ReportsController < ApplicationController
 
   def inventory
     @sku_query = params[:sku].to_s.strip
+    load_responsible_user_filters
     @turnover_days_min_query = params[:turnover_days_min].to_s.strip
     @turnover_days_max_query = params[:turnover_days_max].to_s.strip
     @procurement_turnover_days_min_query = params[:procurement_turnover_days_min].to_s.strip
@@ -311,6 +314,7 @@ class ReportsController < ApplicationController
 
   def inventory_skus_scope
     scope = Ec::Sku.includes({ cost: :sku_dimension }, :current_marketing_state)
+    scope = apply_responsible_user_filters_to_skus(scope)
     return scope if @sku_query.blank?
 
     scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)
@@ -348,7 +352,7 @@ class ReportsController < ApplicationController
   end
 
   def inventory_filters_active?
-    @sku_query.present? || inventory_turnover_filter_active?
+    @sku_query.present? || inventory_turnover_filter_active? || responsible_user_filters_active?
   end
 
   def inventory_turnover_matches_all?(turnover_days:, turnover_days_with_procurement:)

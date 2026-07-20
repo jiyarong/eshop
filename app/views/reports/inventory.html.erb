@@ -15,6 +15,10 @@
                placeholder="<%= t("reports.inventory.filters.sku_placeholder") %>">
       </div>
 
+      <%= render "shared/responsible_user_filters",
+        field_class: "",
+        dom_id_prefix: "inventory-responsible-user-filter" %>
+
       <div class="field">
         <label for="inventory_turnover_days_min"><%= t("reports.inventory.filters.turnover_days_min") %></label>
         <input id="inventory_turnover_days_min"

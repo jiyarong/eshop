@@ -219,6 +219,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_equal ["operator"], product.operator_assignments.pluck(:role).uniq
     assert_includes operator_a.reload.operated_sku_products, product
   ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku
@@ -273,7 +274,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     operator.update!(name: "运营 #{@token}")
     developer.update!(name: "开发 #{@token}")
     product.operators = [operator]
-    Ec::SkuProductOperator.create!(sku_product: product, user: developer, role: "developer")
+    sku.developers = [developer]
 
     get "/erp/stores/#{@store.id}", headers: { "Accept" => "text/html" }
 
@@ -314,6 +315,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type=?][name=?]", "checkbox", "developer_ids[]", count: 0
     assert_select "input[type=?][name=?]", "checkbox", "operator_ids[]", count: 0
   ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
     RawOzon::Product.where(account_id: raw_account&.id).delete_all if raw_account
@@ -370,7 +372,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     inactive_operator = create_user_with_roles("store-inactive-operator-#{@token.downcase}@example.com", "operator")
     inactive_operator.update!(active: false)
     product.operators = [old_operator]
-    Ec::SkuProductOperator.create!(sku_product: product, user: old_developer, role: "developer")
+    sku.developers = [old_developer]
 
     patch "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", params: {
       developer_ids: [new_developer.id.to_s],
@@ -381,10 +383,12 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_equal [new_operator.id], product.reload.operator_ids
     assert_equal [new_developer.id], product.developer_ids
     assert_equal(
-      { new_developer.id => "developer", new_operator.id => "operator" },
+      { new_operator.id => "operator" },
       product.operator_assignments.pluck(:user_id, :role).to_h
     )
+    assert_equal [new_developer.id], sku.reload.developer_ids
   ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku

@@ -1488,6 +1488,15 @@ ru:
         products: "Товары магазина"
         summary: "Информация о магазине"
   shared:
+    responsible_user_filters:
+      all_developers: "Все разработчики"
+      all_operators: "Все операторы"
+      developer: "Разработчик"
+      me: "Я"
+      no_employees: "Сотрудники не найдены"
+      operator: "Оператор"
+      search_placeholder: "Поиск сотрудников"
+      select_me: "Выбрать себя"
     time_range:
       actions:
         apply: "Применить"

@@ -64,12 +64,19 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    marketing_state_ids = Ec::SkuMarketingState.where(sku_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).pluck(:id)
+    sku_scope = Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%")
+    sku_codes = sku_scope.pluck(:sku_code)
+    marketing_state_ids = Ec::SkuMarketingState.where(sku_id: sku_scope.select(:id)).pluck(:id)
     Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
     Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
-    Ec::OperationLog.where(record_type: "Ec::Sku", record_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).delete_all if defined?(Ec::OperationLog)
+    Ec::OperationLog.where(record_type: "Ec::Sku", record_id: sku_scope.select(:id)).delete_all if defined?(Ec::OperationLog)
+    Ec::SkuDeveloperAssignment.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    if defined?(Ec::SkuProductOperator)
+      Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku_codes }).delete_all
+    end
+    Ec::SkuProduct.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuProduct)
     Ec::SkuBatch.where("batch_code LIKE ?", "%#{@token}%").delete_all
-    Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
+    sku_scope.delete_all
     Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all if defined?(Ec::MasterSku)
     Ec::SkuCategory.where(id: @category.id).delete_all
     Ec::Category.where(source: "test", source_id: platform_category_source_ids).delete_all
@@ -171,6 +178,46 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "select[name='master_sku_id'] option[selected='selected'][value=?]", @master_sku.id.to_s
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
     assert_no_match @inactive_sku.sku_code, response.body
+  end
+
+  test "index filters skus by responsible users" do
+    developer = User.create!(
+      email: "erp-skus-#{@token.downcase}-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "SKU 筛选店 #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    sku_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store,
+      product_id: "SKU-FILTER-P-#{@token}",
+      platform_sku_id: "SKU-FILTER-PS-#{@token}",
+      product_name: "SKU 筛选平台商品 #{@token}"
+    )
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: @current_user)
+
+    get "/erp/skus", params: { developer_id: developer.id, operator_id: @current_user.id }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[type='hidden'][name='developer_id'][value=?]", developer.id.to_s
+    assert_select "input[type='hidden'][name='operator_id'][value=?]", @current_user.id.to_s
+    assert_select "#sku-responsible-user-filter-developer-trigger", text: developer.display_name
+    assert_select "#sku-responsible-user-filter-operator-trigger", text: @current_user.display_name
+    assert_select ".responsible-user-filter__option.is-selected[data-value='#{developer.id}'] .responsible-user-filter__name", text: developer.display_name
+    assert_select ".responsible-user-filter__option--shortcut.is-selected[data-value='#{@current_user.id}']", text: "选中自己"
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
+    assert_no_match @inactive_sku.sku_code, response.body
+  ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)
+    sku_product&.destroy
+    store&.destroy
   end
 
   test "index filters sku by master sku keyword" do

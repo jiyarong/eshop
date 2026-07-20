@@ -1,15 +1,19 @@
 module Erp
   class SpusController < BaseController
+    include ResponsibleUserFilterable
+
     def index
       @category_options = master_sku_category_options
       @q = params[:q].to_s.strip
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
       @category_ids = selected_category_ids
+      load_responsible_user_filters
 
       scope = Ec::MasterSku.includes({ ec_category: :parent }, skus: [:sku_category, :batches, :current_marketing_state]).order(:master_sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = scope.where(ec_category_id: @category_ids) if @category_ids.any?
+      scope = apply_responsible_user_filters_to_master_skus(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.left_joins(:skus).where(
@@ -42,6 +46,7 @@ module Erp
       scope = Ec::Sku.includes(:sku_category, :batches, :current_marketing_state).where(master_sku_id: nil).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
+      scope = apply_responsible_user_filters_to_skus(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.where(
@@ -53,7 +58,12 @@ module Erp
     end
 
     def skus_for_display(skus)
-      skus.sort_by(&:sku_code)
+      visible_skus = skus
+      if responsible_user_filters_active?
+        visible_skus = visible_skus.select { |sku| responsible_user_filtered_sku_codes.include?(sku.sku_code) }
+      end
+
+      visible_skus.sort_by(&:sku_code)
     end
 
     def selected_category_ids

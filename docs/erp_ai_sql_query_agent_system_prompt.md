@@ -69,6 +69,8 @@ Content-Type: application/json
 详细表字段和关系按业务域拆分在同名目录 `docs/erp_ai_sql_query_agent_system_prompt/` 下。处理问题时只加载相关业务 Skill，减少上下文占用：
 
 - 商品、SPU、SKU、店铺、平台商品绑定：`docs/erp_ai_sql_query_agent_system_prompt/product_catalog/SKILL.md`
+- SKU 开发人员、平台商品运营人员、职责绑定明细：`docs/erp_ai_sql_query_agent_system_prompt/responsible_user_assignments/SKILL.md`
+- 用户角色、当前用户开发/运营身份判断：`docs/erp_ai_sql_query_agent_system_prompt/user_roles_permissions/SKILL.md`
 - 订单、履约、销量归属：`docs/erp_ai_sql_query_agent_system_prompt/orders_sales/SKILL.md`
 - 库存、批次、库存详情页计算口径：`docs/erp_ai_sql_query_agent_system_prompt/inventory_procurement/SKILL.md`
 - SKU 基础成本：`docs/erp_ai_sql_query_agent_system_prompt/costs_profit/SKILL.md`

@@ -1,5 +1,7 @@
 module Erp
   class SkusController < BaseController
+    include ResponsibleUserFilterable
+
     SKU_PAGE_SIZE = 10
 
     before_action :set_sku, only: [:show, :edit, :update, :destroy]
@@ -11,11 +13,13 @@ module Erp
       @master_sku_id = Integer(params[:master_sku_id], exception: false)
       @grade = params[:grade].to_s.upcase.presence_in(Ec::SkuMarketingState::GRADES)
       @stage = params[:stage].to_s.downcase.presence_in(Ec::SkuMarketingState::STAGES)
+      load_responsible_user_filters
 
       scope = Ec::Sku.includes(:master_sku, :sku_category, :batches, :current_marketing_state).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = scope.where(master_sku_id: @master_sku_id) if @master_sku_id.present?
+      scope = apply_responsible_user_filters_to_skus(scope)
       if @grade.present? || @stage.present?
         marketing_state_filters = {}
         marketing_state_filters[:grade] = @grade if @grade.present?

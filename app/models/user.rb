@@ -29,6 +29,12 @@ class User < ApplicationRecord
   has_many :operated_sku_products,
     through: :operated_sku_product_assignments,
     source: :sku_product
+  has_many :sku_developer_assignments,
+    class_name: "Ec::SkuDeveloperAssignment",
+    dependent: :destroy
+  has_many :developed_skus,
+    through: :sku_developer_assignments,
+    source: :sku
   has_one_attached :avatar
 
   validates :active, inclusion: { in: [true, false] }

@@ -57,6 +57,9 @@
         <%= form.label :stage, t("erp.sku_marketing_states.fields.stage"), class: "label" %>
         <%= form.select :stage, Ec::SkuMarketingState::STAGES.map { |stage| [stage.upcase, stage] }, { include_blank: t("erp.skus.filters.all_stages"), selected: @stage }, class: "select" %>
       </div>
+      <%= render "shared/responsible_user_filters",
+        field_class: "product-filter-field",
+        dom_id_prefix: "sku-responsible-user-filter" %>
       <button class="btn btn-primary" type="submit">
         <i class="bi bi-search" aria-hidden="true"></i>
         <%= t("erp.common.actions.filter") %>

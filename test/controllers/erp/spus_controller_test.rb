@@ -64,12 +64,19 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    marketing_state_ids = Ec::SkuMarketingState.where(sku_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).pluck(:id)
+    sku_scope = Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%")
+    sku_codes = sku_scope.pluck(:sku_code)
+    marketing_state_ids = Ec::SkuMarketingState.where(sku_id: sku_scope.select(:id)).pluck(:id)
     Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
     Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
-    Ec::OperationLog.where(record_type: "Ec::Sku", record_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).delete_all if defined?(Ec::OperationLog)
+    Ec::OperationLog.where(record_type: "Ec::Sku", record_id: sku_scope.select(:id)).delete_all if defined?(Ec::OperationLog)
+    Ec::SkuDeveloperAssignment.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    if defined?(Ec::SkuProductOperator)
+      Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku_codes }).delete_all
+    end
+    Ec::SkuProduct.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuProduct)
     Ec::SkuBatch.where("batch_code LIKE ?", "%#{@token}%").delete_all
-    Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
+    sku_scope.delete_all
     Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all if defined?(Ec::MasterSku)
     Ec::SkuCategory.where(id: @category.id).delete_all
     Ec::Category.where(source: "test", source_id: platform_category_source_ids).delete_all
@@ -287,6 +294,56 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".prod-tbl tr.master .code-text", text: other_master_sku.master_sku_code
     assert_no_match @master_sku.master_sku_code, response.body
+  end
+
+  test "index filters spus by responsible users" do
+    operator = User.create!(
+      email: "erp-spus-#{@token.downcase}-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    other_master_sku = Ec::MasterSku.create!(
+      master_sku_code: "MASTER-RESP-OTHER-#{@token}",
+      product_name: "其他职责主产品",
+      is_active: true
+    )
+    other_sku = Ec::Sku.create!(
+      master_sku: other_master_sku,
+      sku_code: "SKU-RESP-OTHER-#{@token}",
+      product_name: "其他职责商品",
+      is_active: true
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "SPU 筛选店 #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    sku_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store,
+      product_id: "SPU-FILTER-P-#{@token}",
+      platform_sku_id: "SPU-FILTER-PS-#{@token}",
+      product_name: "SPU 筛选平台商品 #{@token}"
+    )
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator)
+
+    get "/erp/spus", params: { operator_id: operator.id }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[type='hidden'][name='operator_id'][value=?]", operator.id.to_s
+    assert_select "#spu-responsible-user-filter-operator-trigger", text: operator.display_name
+    assert_select ".responsible-user-filter__option.is-selected[data-value='#{operator.id}'] .responsible-user-filter__name", text: operator.display_name
+    assert_select ".prod-tbl tr.master .code-text", text: @master_sku.master_sku_code
+    assert_select ".sub-tbl tr.sku-row .code-text", text: @sku.sku_code
+    assert_no_match other_master_sku.master_sku_code, response.body
+    assert_no_match other_sku.sku_code, response.body
+  ensure
+    Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)
+    sku_product&.destroy
+    store&.destroy
+    Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
+    other_master_sku&.destroy
   end
 
   test "index lists each master sku platform category once" do

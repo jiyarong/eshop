@@ -430,6 +430,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
     t.index ["sku_code"], name: "idx_ec_sku_costs_sku_code", unique: true
   end
 
+  create_table "ec_sku_developer_assignments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "sku_code", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["sku_code", "user_id"], name: "idx_ec_sku_developer_assignments_unique", unique: true
+    t.index ["sku_code"], name: "index_ec_sku_developer_assignments_on_sku_code"
+    t.index ["user_id"], name: "index_ec_sku_developer_assignments_on_user_id"
+  end
+
   create_table "ec_sku_dimensions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.decimal "inner_box_weight_kg", precision: 10, scale: 3
@@ -2354,6 +2364,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
   add_foreign_key "ec_sku_batches", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_developer_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_developer_assignments", "users"
   add_foreign_key "ec_sku_dimensions", "ec_skus", column: "sku_code", primary_key: "sku_code", on_delete: :cascade
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_marketing_states", "ec_skus", column: "sku_id", on_delete: :cascade

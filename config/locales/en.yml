@@ -1534,6 +1534,15 @@ en:
         summary: "Store information"
         unbound_raw_products: "Unbound platform products"
   shared:
+    responsible_user_filters:
+      all_developers: "All developers"
+      all_operators: "All operators"
+      developer: "Developer"
+      me: "Me"
+      no_employees: "No matching employees"
+      operator: "Operator"
+      search_placeholder: "Search employees"
+      select_me: "Select myself"
     time_range:
       actions:
         apply: "Apply filters"

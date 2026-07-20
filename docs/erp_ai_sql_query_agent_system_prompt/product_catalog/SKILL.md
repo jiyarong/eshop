@@ -1,6 +1,6 @@
 # Product Catalog SQL Skill
 
-用于回答商品、SPU、SKU、店铺、类目、平台商品绑定、运营负责人、当前经营状态相关问题。
+用于回答商品、SPU、SKU、店铺、类目、平台商品绑定、负责人概览、当前经营状态相关问题。职责人员绑定明细优先结合 `responsible_user_assignments` Skill；用户角色和当前用户权限判断结合 `user_roles_permissions` Skill。
 
 ## 适用问题
 
@@ -8,7 +8,9 @@
 - SKU 与平台商品绑定关系。
 - 店铺列表、平台账号映射、店铺状态。
 - SKU 类目、平台类目、主商品类目。
-- SKU 当前营销等级、阶段、质量等级、负责人。
+- SKU 当前营销等级、阶段、质量等级、负责人概览。
+- SKU 开发人员、平台商品运营人员的详细绑定关系；复杂职责查询应加载 `responsible_user_assignments` Skill。
+- 当前用户是否是开发人员或运营人员；应加载 `user_roles_permissions` Skill，通过 `user_roles -> roles` 和 `roles.code IN ('product_dev', 'operator')` 判断。
 
 ## 表字段
 
@@ -59,7 +61,7 @@
 - `color`、`size`、`model`、`spec`：规格属性。
 - `features`：特性说明。
 - `weight_kg`、`volume_l`：重量和体积。
-- `owner_name`：负责人。
+- `owner_name`：SKU 主表上的文本负责人字段；开发人员绑定以 `ec_sku_developer_assignments` 为准。
 - `quality_grade`：质量等级。
 - `is_active`：是否启用。
 - `deleted_at`：软删除时间；业务查询默认加 `deleted_at IS NULL`。
@@ -94,16 +96,30 @@
 
 ### `ec_sku_product_operators`
 
-平台商品运营/开发负责人绑定。
+平台商品运营负责人绑定；详细查询模板见 `responsible_user_assignments` Skill。
 
 - `sku_product_id`：平台商品绑定 ID。
 - `user_id`：用户 ID。
-- `role`：`operator` 或 `developer`。
+- `role`：当前仅使用 `operator`；不要用 `role = 'developer'` 查询开发人员。
 
 关系：
 
 - `ec_sku_product_operators.sku_product_id = ec_sku_products.id`。
 - `ec_sku_product_operators.user_id = users.id`。
+- 唯一约束：`sku_product_id + user_id`。
+
+### `ec_sku_developer_assignments`
+
+内部 SKU 开发负责人绑定；详细查询模板见 `responsible_user_assignments` Skill。
+
+- `sku_code`：内部 SKU code。
+- `user_id`：用户 ID。
+
+关系：
+
+- `ec_sku_developer_assignments.sku_code = ec_skus.sku_code`。
+- `ec_sku_developer_assignments.user_id = users.id`。
+- 唯一约束：`sku_code + user_id`。
 
 ### `ec_categories`
 
@@ -147,5 +163,8 @@ SKU 当前/历史经营状态。
 
 - SKU 相关业务优先以 `ec_skus.sku_code` 为内部口径。
 - 平台商品相关业务必须通过 `ec_sku_products` 识别平台商品与内部 SKU 的绑定。
+- 开发人员是 SKU 级职责，使用 `ec_sku_developer_assignments.sku_code = ec_skus.sku_code`。
+- 运营人员是平台商品级职责，使用 `ec_sku_product_operators.sku_product_id = ec_sku_products.id` 且 `role = 'operator'`。
+- 不要从 `ec_sku_product_operators.role = 'developer'` 推导开发人员；旧口径已废弃。
 - 订单销量类查询不能用 `ec_order_items.sku_code` 归属 SKU；应加载 `orders_sales` Skill。
 - 查询店铺时不要读取任何平台 token、api key、client secret 字段。

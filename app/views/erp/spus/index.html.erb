@@ -101,6 +101,9 @@
           </div>
         </div>
       </div>
+      <%= render "shared/responsible_user_filters",
+        field_class: "product-filter-field",
+        dom_id_prefix: "spu-responsible-user-filter" %>
       <button class="btn btn-primary" type="submit">
         <i class="bi bi-search" aria-hidden="true"></i>
         <%= t("erp.common.actions.filter") %>

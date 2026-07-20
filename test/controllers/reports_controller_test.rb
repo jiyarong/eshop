@@ -264,6 +264,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::Order.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all
+    Ec::SkuDeveloperAssignment.where(sku_code: [@sku&.sku_code, @second_sku&.sku_code]).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all if defined?(Ec::SkuProduct)
     RawOzon::Product.where(account_id: @sales_ozon_account&.id).delete_all
     RawOzon::Return.where(account_id: @sales_ozon_account&.id).delete_all
@@ -291,6 +293,24 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
     assert_select "td", { text: @second_sku_code, count: 0 }
     assert_select "tbody tr", count: 1
+  end
+
+  test "inventory report filters by responsible users" do
+    developer = User.create!(
+      email: "reports-#{@sku_code.downcase}-dev@example.com",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+
+    get "/reports/inventory", params: { developer_id: developer.id }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[type='hidden'][name='developer_id'][value=?]", developer.id.to_s
+    assert_select "#inventory-responsible-user-filter-developer-trigger", text: developer.display_name
+    assert_select ".responsible-user-filter__option.is-selected[data-value='#{developer.id}'] .responsible-user-filter__name", text: developer.display_name
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
+    assert_select "td", { text: @second_sku_code, count: 0 }
   end
 
   test "inventory report renders current marketing grade and stage beside sku" do

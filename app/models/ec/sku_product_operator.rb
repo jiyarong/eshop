@@ -3,7 +3,6 @@ module Ec
     self.table_name = "ec_sku_product_operators"
 
     ROLES = {
-      developer: "developer",
       operator: "operator"
     }.freeze
 

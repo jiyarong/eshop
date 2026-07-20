@@ -47,7 +47,7 @@ module Mcp
       )
       Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @user)
       Ec::SkuProductOperator.create!(sku_product: @ozon_sku_product, user: @user)
-      Ec::SkuProductOperator.create!(sku_product: @other_sku_product, user: @user, role: "developer")
+      Ec::SkuDeveloperAssignment.create!(sku: @other_sku, user: @user)
     end
 
     teardown do
@@ -56,6 +56,7 @@ module Mcp
       Ec::OrderItem.joins(:order).where(ec_orders: { store_id: store_ids }).delete_all
       Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: store_ids }).delete_all
       Ec::Order.where(store_id: store_ids).delete_all
+      Ec::SkuDeveloperAssignment.where(user_id: [@user&.id, @other_user&.id]).delete_all
       Ec::SkuProductOperator.where(user_id: [@user&.id, @other_user&.id]).delete_all
       Ec::SkuProduct.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
       Ec::Sku.with_deleted.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
