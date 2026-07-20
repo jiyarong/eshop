@@ -6104,16 +6104,19 @@ body.auth-shell .auth-submit:hover {
   gap: 4px;
 }
 
+.gbrain-pages-table .ai-row-action,
 .gbrain-remote-pages-table .ai-row-action,
 .gbrain-remote-page-actions .button {
   min-height: 44px;
 }
 
-.gbrain-remote-delete-form {
+.gbrain-remote-delete-form,
+.gbrain-page-delete-form {
   display: flex;
 }
 
-.gbrain-remote-row-delete {
+.gbrain-remote-row-delete,
+.gbrain-page-row-delete {
   border: 0;
   background: transparent;
   color: var(--erp-danger-text);
@@ -6122,11 +6125,13 @@ body.auth-shell .auth-submit:hover {
   font-size: 12px;
 }
 
-.gbrain-remote-row-delete:hover {
+.gbrain-remote-row-delete:hover,
+.gbrain-page-row-delete:hover {
   background: var(--erp-danger-bg);
   color: var(--erp-danger-text);
 }
 
+.gbrain-pages-table .ai-row-action:focus-visible,
 .gbrain-remote-pages-table .ai-row-action:focus-visible {
   outline: 2px solid var(--erp-brand);
   outline-offset: 2px;

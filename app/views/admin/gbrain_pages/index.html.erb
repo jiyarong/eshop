@@ -139,6 +139,13 @@
                   <%= link_to admin_edit_gbrain_page_path(page), class: "ai-row-action" do %>
                     <i class="bi bi-pencil" aria-hidden="true"></i><span><%= t("common.actions.edit") %></span>
                   <% end %>
+                  <%= button_to admin_gbrain_page_path(page),
+                                method: :delete,
+                                class: "ai-row-action gbrain-page-row-delete",
+                                form_class: "gbrain-page-delete-form",
+                                form: { data: { turbo_confirm: t("admin.gbrain.actions.confirm_delete", slug: page.slug) } } do %>
+                    <i class="bi bi-trash" aria-hidden="true"></i><span><%= t("admin.gbrain.actions.delete") %></span>
+                  <% end %>
                 <% end %>
               </td>
             </tr>

@@ -88,6 +88,12 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".status-pill", text: /等待写入/
     assert_select "th", text: "内容更新时间"
     assert_select "th", text: "知识库写入时间"
+    assert_select "form[action=?][method=post][data-turbo-confirm=?]",
+      admin_gbrain_page_path(@page),
+      "确认删除本地文档 #{@page.slug}，并同时从 gbrain 远端知识库删除？远端删除成功后，本地记录才会删除。" do
+      assert_select "input[name=_method][value=delete]"
+      assert_select "button.gbrain-page-row-delete", text: /删除文档/
+    end
   end
 
   test "non admin cannot access knowledge base management" do
@@ -251,6 +257,16 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     @page.reload
     assert_equal "pending_delete", @page.sync_status
     assert_not_nil @page.delete_requested_at
+  end
+
+  test "pending deletion is not offered as a second delete action" do
+    sign_in @admin
+    @page.update!(delete_requested_at: Time.current, sync_status: "pending_delete")
+
+    get admin_gbrain_pages_path, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "form[action=?]", admin_gbrain_page_path(@page), count: 0
   end
 
   test "admin can list remote pages" do

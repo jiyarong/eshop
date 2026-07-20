@@ -236,7 +236,7 @@ en:
       label: "AI configuration navigation"
     gbrain:
       actions:
-        confirm_delete: "Delete this document from the local service and gbrain?"
+        confirm_delete: "Delete the local document %{slug} and its remote gbrain copy? The local record will be deleted only after the remote deletion succeeds."
         confirm_delete_remote: "Delete remote document %{slug} from gbrain? It can be restored within 72 hours."
         back_to_remote_list: "Back to remote list"
         delete: "Delete document"
@@ -362,7 +362,7 @@ en:
       new:
         title: "New knowledge base document"
       notices:
-        deletion_queued: "Deletion was saved and will run in order."
+        deletion_queued: "Deletion queued. The local record will be removed after the remote document is deleted successfully."
         queued: "Content was saved and queued for the knowledge base."
         remote_deleted: "The remote document was removed from the gbrain list."
         retry_queued: "The page was queued again."

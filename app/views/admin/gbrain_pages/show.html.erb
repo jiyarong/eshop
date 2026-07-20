@@ -75,7 +75,7 @@
       <% end %>
     <% end %>
     <% unless @page.pending_deletion? %>
-      <%= button_to admin_gbrain_page_path(@page), method: :delete, class: "button gbrain-delete-button", form_class: "gbrain-full-action", data: { turbo_confirm: t("admin.gbrain.actions.confirm_delete") } do %>
+      <%= button_to admin_gbrain_page_path(@page), method: :delete, class: "button gbrain-delete-button", form_class: "gbrain-full-action", form: { data: { turbo_confirm: t("admin.gbrain.actions.confirm_delete", slug: @page.slug) } } do %>
         <i class="bi bi-trash" aria-hidden="true"></i><span><%= t("admin.gbrain.actions.delete") %></span>
       <% end %>
     <% end %>

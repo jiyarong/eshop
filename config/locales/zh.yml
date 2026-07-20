@@ -214,7 +214,7 @@ zh:
       label: "AI 配置导航"
     gbrain:
       actions:
-        confirm_delete: "确认从本地服务和 gbrain 知识库删除这个文档？"
+        confirm_delete: "确认删除本地文档 %{slug}，并同时从 gbrain 远端知识库删除？远端删除成功后，本地记录才会删除。"
         confirm_delete_remote: "确认从 gbrain 删除远端文档 %{slug}？删除后 72 小时内可恢复。"
         back_to_remote_list: "返回远端列表"
         delete: "删除文档"
@@ -340,7 +340,7 @@ zh:
       new:
         title: "新建知识库文档"
       notices:
-        deletion_queued: "已保存删除请求，任务将按顺序删除文档。"
+        deletion_queued: "删除任务已提交；远端文档删除成功后，本地记录将自动删除。"
         queued: "内容已保存，任务将按顺序写入知识库。"
         remote_deleted: "远端文档已从 gbrain 列表删除。"
         retry_queued: "已重新加入同步队列。"
