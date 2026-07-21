@@ -76,6 +76,7 @@ module Ec
       ],
       "Ec::SkuCost" => %w[
         sku_code
+        effective_on
         purchase_price_cny
         freight_to_by_cny
         customs_misc_cny

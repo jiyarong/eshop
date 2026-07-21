@@ -18,8 +18,9 @@ module Ec
         time_zone: @time_zone
       ).call
 
-      unit_goods_cost_cny = sku.cost&.goods_cost_cny
-      unit_volume_l = sku.cost&.pkg_volume_l
+      cost = sku.cost_on(@from_date)
+      unit_goods_cost_cny = cost&.goods_cost_cny
+      unit_volume_l = cost&.pkg_volume_l
       total_bucket = build_bucket(breakdown.fetch(:total), unit_goods_cost_cny, unit_volume_l)
       wb_bucket = build_bucket(breakdown.dig(:platforms, :wb), unit_goods_cost_cny, unit_volume_l)
       ozon_bucket = build_bucket(breakdown.dig(:platforms, :ozon), unit_goods_cost_cny, unit_volume_l)

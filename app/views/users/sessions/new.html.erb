@@ -11,7 +11,14 @@
     <%= form.label :email, t("auth.fields.email") %>
     <div class="auth-input">
       <i class="bi bi-envelope" aria-hidden="true"></i>
-      <%= form.email_field :email, autofocus: true, autocomplete: "email" %>
+      <%= form.text_field :email,
+        autofocus: true,
+        autocomplete: "email",
+        inputmode: "email",
+        data: {
+          controller: "email-input",
+          action: "input->email-input#normalize change->email-input#normalize blur->email-input#normalize"
+        } %>
     </div>
   </div>
 

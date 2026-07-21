@@ -1224,6 +1224,8 @@ zh:
         save_failed: "保存失败，请检查后重试"
         saved: "已保存"
     sku_costs:
+      actions:
+        add_cost: "新增成本"
       empty:
         no_skus: "暂无 SKU"
       fields:
@@ -1231,6 +1233,7 @@ zh:
         customs_duty_rate: "关税率"
         customs_misc_cny: "清关杂费 CNY"
         damage_rate: "货损率"
+        effective_on: "生效日期"
         freight_to_by_cny: "到白俄运费 CNY"
         goods_cost_cny: "货物总成本 CNY"
         import_vat_cny: "进口增值税 CNY"
@@ -1239,6 +1242,7 @@ zh:
         misc_cost_cny: "杂费 CNY"
         pkg_volume_override_l: "直填升量 L"
         purchase_price_cny: "采购价 CNY"
+        sku_code: "SKU"
       filters:
         sku: "SKU"
         sku_placeholder: "搜索 SKU"

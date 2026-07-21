@@ -1,0 +1,120 @@
+<h2>周利润环比展示</h2>
+<p class="subtitle">对比“当前查询范围”与“上一个等长自然周范围”，先定展示密度</p>
+
+<div class="cards">
+  <div class="card" data-choice="compact" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">方案 A: 克制展示</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;">
+            <div style="border:1px solid #d7dce5;border-radius:8px;padding:10px;background:#fff;">
+              <div class="label">总销售额</div>
+              <div style="font-size:20px;font-weight:700;">¥128,400</div>
+              <div style="color:#0f9d58;font-size:12px;">↗ 12.4%</div>
+            </div>
+            <div style="border:1px solid #d7dce5;border-radius:8px;padding:10px;background:#fff;">
+              <div class="label">税后净利</div>
+              <div style="font-size:20px;font-weight:700;">¥26,830</div>
+              <div style="color:#d93025;font-size:12px;">↘ 3.8%</div>
+            </div>
+            <div style="border:1px solid #d7dce5;border-radius:8px;padding:10px;background:#fff;">
+              <div class="label">利润率</div>
+              <div style="font-size:20px;font-weight:700;">20.9%</div>
+              <div style="color:#0f9d58;font-size:12px;">↗ 1.2%</div>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="text-align:left;border-bottom:1px solid #d7dce5;">
+                <th style="padding:6px;">SKU</th>
+                <th style="padding:6px;">销售额</th>
+                <th style="padding:6px;">税后净利</th>
+                <th style="padding:6px;">利润率</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:6px;">KJ-228</td>
+                <td style="padding:6px;">1,280 <span style="color:#0f9d58;">↗ 8%</span></td>
+                <td style="padding:6px;">310 <span style="color:#d93025;">↘ 2%</span></td>
+                <td style="padding:6px;">24.2%</td>
+              </tr>
+              <tr>
+                <td style="padding:6px;">KJ-331</td>
+                <td style="padding:6px;">960</td>
+                <td style="padding:6px;">205</td>
+                <td style="padding:6px;">21.3%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 A</h3>
+      <p>卡片一定显示环比，表格只给关键业务列显示，页面更稳，不会太花。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="full" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">方案 B: 完整展示</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;">
+            <div style="border:1px solid #d7dce5;border-radius:8px;padding:10px;background:#fff;">
+              <div class="label">总销售额</div>
+              <div style="font-size:20px;font-weight:700;">¥128,400</div>
+              <div style="color:#0f9d58;font-size:12px;">↗ 12.4%</div>
+            </div>
+            <div style="border:1px solid #d7dce5;border-radius:8px;padding:10px;background:#fff;">
+              <div class="label">税后净利</div>
+              <div style="font-size:20px;font-weight:700;">¥26,830</div>
+              <div style="color:#d93025;font-size:12px;">↘ 3.8%</div>
+            </div>
+            <div style="border:1px solid #d7dce5;border-radius:8px;padding:10px;background:#fff;">
+              <div class="label">利润率</div>
+              <div style="font-size:20px;font-weight:700;">20.9%</div>
+              <div style="color:#0f9d58;font-size:12px;">↗ 1.2%</div>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="text-align:left;border-bottom:1px solid #d7dce5;">
+                <th style="padding:6px;">SKU</th>
+                <th style="padding:6px;">净销量</th>
+                <th style="padding:6px;">销售额</th>
+                <th style="padding:6px;">广告费</th>
+                <th style="padding:6px;">税后净利</th>
+                <th style="padding:6px;">利润率</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:6px;">KJ-228</td>
+                <td style="padding:6px;">28 <span style="color:#0f9d58;">↗ 5%</span></td>
+                <td style="padding:6px;">1,280 <span style="color:#0f9d58;">↗ 8%</span></td>
+                <td style="padding:6px;">190 <span style="color:#d93025;">↗ 14%</span></td>
+                <td style="padding:6px;">310 <span style="color:#d93025;">↘ 2%</span></td>
+                <td style="padding:6px;">24.2% <span style="color:#0f9d58;">↗ 1%</span></td>
+              </tr>
+              <tr>
+                <td style="padding:6px;">KJ-331</td>
+                <td style="padding:6px;">16 <span style="color:#d93025;">↘ 4%</span></td>
+                <td style="padding:6px;">960 <span style="color:#d93025;">↘ 3%</span></td>
+                <td style="padding:6px;">110 <span style="color:#0f9d58;">↘ 9%</span></td>
+                <td style="padding:6px;">205 <span style="color:#0f9d58;">↗ 7%</span></td>
+                <td style="padding:6px;">21.3% <span style="color:#0f9d58;">↗ 2%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 B</h3>
+      <p>只要适合环比的数字都显示箭头和百分比，信息完整，但页面会更密。</p>
+    </div>
+  </div>
+</div>

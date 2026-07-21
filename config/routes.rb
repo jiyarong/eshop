@@ -99,6 +99,7 @@ Rails.application.routes.draw do
     get "sku_categories/:id/edit" => "sku_categories#edit", as: :edit_sku_category
     get "skus/new" => "skus#new", as: :new_sku
     get "skus/:id/edit" => "skus#edit", as: :edit_sku
+    get "sku_costs/new" => "sku_costs#new", as: :new_sku_cost
     get "sku_batches/new" => "sku_batches#new", as: :new_sku_batch
     get "sku_batches/:id/edit" => "sku_batches#edit", as: :edit_sku_batch
     get "stores/new" => "stores#new", as: :new_store
@@ -120,7 +121,7 @@ Rails.application.routes.draw do
     resources :stores, except: [:destroy] do
       patch "sku_products/:id/operators" => "store_sku_product_operators#update", as: :sku_product_operators
     end
-    resources :sku_costs, only: [:index, :edit, :update], param: :sku_code
+    resources :sku_costs, only: [:index, :new, :create, :edit, :update], param: :sku_code
     resources :sku_dimensions, only: [:index, :edit, :update], param: :sku_code
     resources :sku_batches
     resources :suppliers, only: [:index, :show]

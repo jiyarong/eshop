@@ -6,7 +6,7 @@ class UserTest < ActiveSupport::TestCase
   end
 
   teardown do
-    User.where("email LIKE ?", "user-time-zone-#{@token}%").delete_all
+    User.where("email LIKE ?", "%#{@token}%").delete_all
   end
 
   test "defaults profile time zone to shanghai" do
@@ -38,5 +38,15 @@ class UserTest < ActiveSupport::TestCase
 
     assert_not user.valid?
     assert_includes user.errors[:time_zone], "不在可选范围内"
+  end
+
+  test "normalizes copied email boundary junk and invisible characters" do
+    user = User.create!(
+      email: "\u2005，user-email-normalize-#{@token}@example.com\u200B",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+
+    assert_equal "user-email-normalize-#{@token}@example.com", user.email
   end
 end

@@ -10,9 +10,14 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
       company_type: :small
     )
     @campaign_ids = []
+    @sku_codes = []
+    @nm_ids = []
   end
 
   teardown do
+    RawWb::Product.where(nm_id: @nm_ids).delete_all if @nm_ids.any?
+    Ec::SkuCost.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
+    Ec::Sku.with_deleted.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
     RawWb::AdSettledFee.where(account_id: @account.id).delete_all
     RawWb::AdSkuSpend.where(campaign_id: @campaign_ids).delete_all if @campaign_ids.any?
     RawWb::AdCampaignProduct.where(campaign_id: @campaign_ids).delete_all if @campaign_ids.any?
@@ -108,6 +113,48 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     assert_in_delta(-38.2, row[:pre_tax], 0.001)
     assert_in_delta(-38.2, row[:after_tax], 0.001)
     assert_in_delta(-61.8, service.summary[:total_goods_cost], 0.001)
+  end
+
+  test "load_goods_costs uses latest cost effective on report week monday" do
+    sku_code = "WB-COST-#{SecureRandom.hex(4).upcase}"
+    nm_id = rand(10_000_000..99_999_999)
+    @sku_codes << sku_code
+    @nm_ids << nm_id
+
+    Ec::Sku.create!(sku_code: sku_code)
+    Ec::SkuCost.create!(
+      sku_code: sku_code,
+      effective_on: Date.new(2026, 1, 1),
+      purchase_price_cny: 10,
+      customs_duty_rate: 0,
+      import_vat_rate: 0
+    )
+    Ec::SkuCost.create!(
+      sku_code: sku_code,
+      effective_on: Date.new(2026, 6, 29),
+      purchase_price_cny: 15,
+      customs_duty_rate: 0,
+      import_vat_rate: 0
+    )
+    Ec::SkuCost.create!(
+      sku_code: sku_code,
+      effective_on: Date.new(2026, 7, 6),
+      purchase_price_cny: 20,
+      customs_duty_rate: 0,
+      import_vat_rate: 0
+    )
+    RawWb::Product.create!(
+      account: @account,
+      nm_id: nm_id,
+      vendor_code: sku_code.downcase
+    )
+
+    service = build_service(from_date: Date.new(2026, 7, 1), to_date: Date.new(2026, 7, 5))
+    service.instance_variable_set(:@buckets, { [nm_id, Ec::WbProfitAttribution::REPORT_TYPE_EXPORT] => service.send(:new_bucket) })
+
+    service.send(:load_goods_costs)
+
+    assert_equal 15.0, service.instance_variable_get(:@goods_costs).dig(nm_id, :total_cost_cny)
   end
 
   private

@@ -45,6 +45,8 @@
         <%= form.label :status, t("erp.common.status"), class: "label" %>
         <%= form.select :status, [[t("erp.common.filter_options.all"), "all"], [t("erp.common.statuses.enabled"), "active"], [t("erp.common.statuses.disabled"), "inactive"]], { selected: @status }, class: "select" %>
       </div>
+      <%= render "shared/master_sku_category_filter",
+        field_class: "product-filter-field" %>
       <%= render "shared/spu_sku_filter",
         field_class: "product-filter-field",
         dom_id_prefix: "sku-spu-sku-filter" %>

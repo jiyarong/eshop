@@ -118,6 +118,7 @@ class Ec::WeeklySummaryDeepQueryTest < ActiveSupport::TestCase
     )
     attributes = {
       sku_code: sku_code,
+      effective_on: Date.new(2026, 1, 1),
       customs_misc_cny: BigDecimal("0")
     }
     attributes[:purchase_price_cny] = BigDecimal(purchase_price_cny.to_s) unless purchase_price_cny.nil?

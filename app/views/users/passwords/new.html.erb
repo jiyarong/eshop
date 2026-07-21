@@ -4,7 +4,14 @@
   <%= form_with model: resource, as: resource_name, url: password_path(resource_name), class: "report-form" do |form| %>
     <div class="field">
       <%= form.label :email, "邮箱" %>
-      <%= form.email_field :email, autofocus: true, autocomplete: "email" %>
+      <%= form.text_field :email,
+        autofocus: true,
+        autocomplete: "email",
+        inputmode: "email",
+        data: {
+          controller: "email-input",
+          action: "input->email-input#normalize change->email-input#normalize blur->email-input#normalize"
+        } %>
     </div>
     <%= form.submit "发送重置邮件", class: "button" %>
   <% end %>

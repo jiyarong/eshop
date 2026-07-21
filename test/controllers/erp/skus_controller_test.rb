@@ -105,7 +105,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "#sku-stage-filter-trigger", text: "全部 Stage"
     assert_select "input[type='checkbox'][name='grades[]'][value='S']"
     assert_select "input[type='checkbox'][name='stages[]'][value='new']"
-    assert_select ".category-multiselect", count: 0
+    assert_select ".category-multiselect[data-controller='category-multiselect']"
+    assert_select ".category-multiselect__trigger", text: "全部类别"
+    assert_select ".category-multiselect input[name='category_ids[]'][value=?]", @platform_category_child.id.to_s
     assert_select ".product-summary-grid[aria-label=?]", "SKU 概览"
     assert_select ".summary-label", "启用 SKU"
     assert_select ".prod-tbl thead th", text: "SKU"
@@ -150,6 +152,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".summary-label", "Active SKUs"
     assert_select "input[placeholder=?]", "Search SKU, SPU, Chinese name, or Russian name..."
     assert_select "#sku-spu-sku-filter-trigger", text: "All SPUs/SKUs"
+    assert_select ".category-multiselect__trigger", text: "All categories"
     assert_select "#sku-grade-filter-trigger", text: "All Grades"
     assert_select "#sku-stage-filter-trigger", text: "All Stages"
     assert_select ".prod-tbl thead th", text: "SKU"
@@ -206,6 +209,48 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='checkbox'][name='sku_codes[]'][value=?][checked='checked']", @inactive_sku.sku_code
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @inactive_sku.sku_code
+  end
+
+  test "index filters skus by master sku category" do
+    other_parent = Ec::Category.create!(
+      source: "test",
+      source_type: "category",
+      source_id: platform_category_source_id("other-parent"),
+      origin_name: "Other Parent #{@token}",
+      origin_language: "en",
+      name_cn: "其他父类 #{@token}",
+      name_en: "Other Parent #{@token}"
+    )
+    other_child = Ec::Category.create!(
+      source: "test",
+      source_type: "subject",
+      source_id: platform_category_source_id("other-child"),
+      parent: other_parent,
+      origin_name: "Other Child #{@token}",
+      origin_language: "en",
+      name_cn: "其他子类 #{@token}",
+      name_en: "Other Child #{@token}"
+    )
+    other_master_sku = Ec::MasterSku.create!(
+      master_sku_code: "MASTER-OTHER-#{@token}",
+      product_name: "其他主产品",
+      ec_category: other_child
+    )
+    other_sku = Ec::Sku.create!(
+      master_sku: other_master_sku,
+      sku_code: "SKU-PAGE-OTHER-#{@token}",
+      product_name: "其他类别 SKU",
+      sku_category: @category
+    )
+
+    get "/erp/skus", params: { category_ids: [@platform_category_child.id] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".category-multiselect__trigger", text: "平台父类 #{@token} / 平台子类 #{@token}"
+    assert_select ".category-multiselect input[name='category_ids[]'][value=?][checked='checked']", @platform_category_child.id.to_s
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", { text: other_sku.sku_code, count: 0 }
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", { text: @inactive_sku.sku_code, count: 0 }
   end
 
   test "index filters skus by responsible users" do

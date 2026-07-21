@@ -1,0 +1,59 @@
+<%= form_with model: cost, url: erp_sku_costs_path(current_locale_params), data: (local_assigns[:modal] ? { turbo_frame: "_top" } : {}) do |form| %>
+  <% if cost.errors.any? %>
+    <div class="panel error-box">
+      <%= cost.errors.full_messages.join("；") %>
+    </div>
+  <% end %>
+
+  <% if params[:return_to].present? %>
+    <%= hidden_field_tag :return_to, params[:return_to] %>
+  <% end %>
+
+  <div class="report-form">
+    <div class="field">
+      <%= form.label :sku_code, t("erp.sku_costs.fields.sku_code") %>
+      <%= form.collection_select :sku_code, sku_options, :sku_code, :sku_code %>
+    </div>
+    <div class="field">
+      <%= form.label :effective_on, t("erp.sku_costs.fields.effective_on") %>
+      <%= form.date_field :effective_on %>
+    </div>
+    <div class="field">
+      <%= form.label :purchase_price_cny, t("erp.sku_costs.fields.purchase_price_cny") %>
+      <%= form.number_field :purchase_price_cny, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :freight_to_by_cny, t("erp.sku_costs.fields.freight_to_by_cny") %>
+      <%= form.number_field :freight_to_by_cny, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :customs_misc_cny, t("erp.sku_costs.fields.customs_misc_cny") %>
+      <%= form.number_field :customs_misc_cny, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :customs_duty_rate, t("erp.sku_costs.fields.customs_duty_rate") %>
+      <%= form.number_field :customs_duty_rate, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :import_vat_rate, t("erp.sku_costs.fields.import_vat_rate") %>
+      <%= form.number_field :import_vat_rate, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :pkg_volume_override_l, t("erp.sku_costs.fields.pkg_volume_override_l") %>
+      <%= form.number_field :pkg_volume_override_l, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :misc_cost_cny, t("erp.sku_costs.fields.misc_cost_cny") %>
+      <%= form.number_field :misc_cost_cny, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :damage_rate, t("erp.sku_costs.fields.damage_rate") %>
+      <%= form.number_field :damage_rate, min: 0, step: "0.0001" %>
+    </div>
+    <div class="field">
+      <%= form.label :memo, t("erp.sku_costs.fields.memo") %>
+      <%= form.text_field :memo %>
+    </div>
+    <%= form.submit t("common.actions.save"), class: "button" %>
+  </div>
+<% end %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_065819) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -406,6 +406,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_065819) do
     t.decimal "customs_duty_rate", precision: 6, scale: 4, default: "0.1"
     t.decimal "customs_misc_cny", precision: 10, scale: 4
     t.decimal "damage_rate", precision: 6, scale: 4, default: "0.0"
+    t.date "effective_on", null: false
     t.decimal "freight_to_by_cny", precision: 10, scale: 4
     t.decimal "import_vat_rate", precision: 6, scale: 4, default: "0.2"
     t.text "memo"
@@ -414,7 +415,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_065819) do
     t.decimal "purchase_price_cny", precision: 10, scale: 4
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
-    t.index ["sku_code"], name: "idx_ec_sku_costs_sku_code", unique: true
+    t.index ["sku_code", "effective_on", "id"], name: "idx_ec_sku_costs_effective_lookup"
+    t.index ["sku_code", "effective_on"], name: "idx_ec_sku_costs_sku_code_effective_on", unique: true
   end
 
   create_table "ec_sku_developer_assignments", force: :cascade do |t|

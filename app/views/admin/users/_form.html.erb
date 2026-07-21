@@ -12,7 +12,13 @@
     </div>
     <div class="field">
       <%= form.label :email %>
-      <%= form.email_field :email %>
+      <%= form.text_field :email,
+        autocomplete: "email",
+        inputmode: "email",
+        data: {
+          controller: "email-input",
+          action: "input->email-input#normalize change->email-input#normalize blur->email-input#normalize"
+        } %>
     </div>
     <div class="field">
       <%= form.label :password, "密码" %>

@@ -276,9 +276,12 @@ module Ec
       nm_ids   = @buckets.keys.map(&:first).uniq
       sku_map  = build_nm_to_sku_map(nm_ids)
 
+      cost_date = @from_date.beginning_of_week(:monday)
+      effective_costs = Ec::SkuCost.latest_as_of(cost_date).to_a
+
       # 构建 sku_code.downcase → sku_code 索引，供大小写不敏感匹配
-      sku_code_index = Ec::SkuCost.pluck(:sku_code).each_with_object({}) { |c, h| h[c.downcase] = c }
-      costs          = Ec::SkuCost.all.index_by(&:sku_code)
+      sku_code_index = effective_costs.each_with_object({}) { |c, h| h[c.sku_code.downcase] = c.sku_code }
+      costs          = effective_costs.index_by(&:sku_code)
 
       @goods_costs = {}
       sku_map.each do |nm_id, vendor_code|

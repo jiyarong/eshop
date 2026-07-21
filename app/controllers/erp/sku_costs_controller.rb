@@ -2,24 +2,51 @@ module Erp
   class SkuCostsController < BaseController
     include InlineEditableResponse
     include SpuSkuFilterable
+    include MasterSkuCategoryFilterable
+    include ResponsibleUserFilterable
 
     SKU_PAGE_SIZE = 10
     INLINE_EDITABLE_FIELDS = Erp::InlineEditHelper::SKU_COST_INLINE_FIELDS.keys.map(&:to_s).freeze
 
-    before_action -> { require_permission!(:manage_skus) }, only: [:edit, :update]
+    before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update]
     before_action :set_sku, only: [:edit, :update]
     before_action :set_cost, only: [:edit, :update]
 
     def index
       @sku_query = params[:sku].to_s.strip
+      load_master_sku_category_filter
       load_spu_sku_filter
-      scope = Ec::Sku.includes(cost: :sku_dimension).order(:sku_code)
+      load_responsible_user_filters
+      scope = Ec::Sku.order(:sku_code)
+      scope = apply_master_sku_category_filter_to_skus(scope)
       scope = apply_spu_sku_filter_to_skus(scope)
+      scope = apply_responsible_user_filters_to_skus(scope)
       if @sku_query.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query)}%"
         scope = scope.where("ec_skus.sku_code ILIKE ?", keyword)
       end
       @skus = paginated_skus(scope)
+      @costs_by_sku = Ec::SkuCost
+        .latest_by_sku_as_of(@skus.map(&:sku_code))
+        .includes(:sku_dimension)
+        .index_by(&:sku_code)
+    end
+
+    def new
+      @cost = Ec::SkuCost.new(effective_on: Date.current)
+      @cost.sku_code = params[:sku_code] if params[:sku_code].present?
+      load_sku_options
+      render_modal_or_page(:new, :new_modal)
+    end
+
+    def create
+      @cost = Ec::SkuCost.new(cost_params)
+      if @cost.save
+        redirect_to safe_return_to(erp_sku_costs_path(current_locale_params))
+      else
+        load_sku_options
+        render_modal_or_page(:new, :new_modal, status: :unprocessable_entity)
+      end
     end
 
     def edit
@@ -43,7 +70,27 @@ module Erp
     end
 
     def set_cost
-      @cost = Ec::SkuCost.find_or_initialize_by(sku_code: @sku.sku_code)
+      @cost = Ec::SkuCost.current_or_initialize(sku_code: @sku.sku_code)
+    end
+
+    def load_sku_options
+      @sku_options = Ec::Sku.order(:sku_code)
+    end
+
+    def cost_params
+      params.require(:ec_sku_cost).permit(
+        :sku_code,
+        :effective_on,
+        :purchase_price_cny,
+        :freight_to_by_cny,
+        :customs_misc_cny,
+        :customs_duty_rate,
+        :import_vat_rate,
+        :pkg_volume_override_l,
+        :misc_cost_cny,
+        :damage_rate,
+        :memo
+      )
     end
 
     def update_inline_field

@@ -25,6 +25,12 @@ module ResponsibleUserFilterable
     scope.where(id: matching_skus.select(:master_sku_id))
   end
 
+  def apply_responsible_user_filters_to_sku_records(scope)
+    scope = scope.where(sku_code: developer_filter_sku_codes) if @developer_id.present?
+    scope = scope.where(sku_code: operator_filter_sku_codes) if @operator_id.present?
+    scope
+  end
+
   def responsible_user_filters_active?
     @operator_id.present? || @developer_id.present?
   end

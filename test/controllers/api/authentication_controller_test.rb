@@ -49,6 +49,17 @@ module Api
       assert UserAccessToken.find(access_token.id).last_used_at.present?
     end
 
+    test "login normalizes copied email characters before lookup" do
+      create_sub2_api_key
+
+      assert_difference "UserAccessToken.where(user: @user).count", 1 do
+        post "/api/login", params: { email: "\u2005，#{@user.email}\u200B", password: "password123" }, as: :json
+      end
+
+      assert_response :success
+      assert_equal @user.email, response.parsed_body.dig("data", "profile", "email")
+    end
+
     test "login provisions a missing Sub2 API key before LLM configuration is requested" do
       provisioned_api_token = "sk-sub2-#{@token}"
       provisioner_calls = []

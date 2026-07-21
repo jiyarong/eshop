@@ -7,8 +7,38 @@ module Ec
     belongs_to :sku, class_name: 'Ec::Sku', foreign_key: :sku_code, primary_key: :sku_code
     has_one :sku_dimension, class_name: "Ec::SkuDimension", foreign_key: :sku_code, primary_key: :sku_code
 
-    validates :sku_code, presence: true, uniqueness: true
+    scope :effective_as_of, ->(date = Date.current) {
+      where("ec_sku_costs.effective_on <= ?", date.to_date)
+        .order(effective_on: :desc, id: :desc)
+    }
+
+    validates :sku_code, :effective_on, presence: true
+    validates :sku_code, uniqueness: { scope: :effective_on }
+    before_validation { self.sku_code = sku_code&.upcase }
+    before_validation :set_default_effective_on
     after_save :persist_pending_sku_dimension
+
+    def self.for_sku_as_of(sku_code, date = Date.current)
+      where(sku_code: sku_code).effective_as_of(date).first
+    end
+
+    def self.latest_as_of(date = Date.current)
+      where("ec_sku_costs.effective_on <= ?", date.to_date)
+        .select("DISTINCT ON (ec_sku_costs.sku_code) ec_sku_costs.*")
+        .order("ec_sku_costs.sku_code ASC, ec_sku_costs.effective_on DESC, ec_sku_costs.id DESC")
+    end
+
+    def self.latest_by_sku_as_of(sku_codes, date = Date.current)
+      normalized_codes = Array(sku_codes).compact.uniq
+      return none if normalized_codes.empty?
+
+      where(sku_code: normalized_codes)
+        .merge(latest_as_of(date))
+    end
+
+    def self.current_or_initialize(sku_code:, date: Date.current)
+      for_sku_as_of(sku_code, date) || new(sku_code: sku_code, effective_on: date.to_date)
+    end
 
     def customs_duty_cny
       return 0 unless purchase_price_cny && customs_duty_rate
@@ -89,6 +119,10 @@ module Ec
     end
 
     private
+
+    def set_default_effective_on
+      self.effective_on ||= Date.current
+    end
 
     def assign_pending_dimension(attribute, value)
       pending_sku_dimension_attributes[attribute] = Ec::SkuDimension.type_for_attribute(attribute.to_s).cast(value)

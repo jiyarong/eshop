@@ -1202,6 +1202,8 @@ ru:
         save_failed: "Не удалось сохранить. Проверьте значение и повторите."
         saved: "Сохранено"
     sku_costs:
+      actions:
+        add_cost: "Добавить затраты"
       empty:
         no_skus: "SKU отсутствуют"
       fields:
@@ -1209,6 +1211,7 @@ ru:
         customs_duty_rate: "Ставка пошлины"
         customs_misc_cny: "Таможенные расходы CNY"
         damage_rate: "Коэффициент потерь"
+        effective_on: "Дата начала"
         freight_to_by_cny: "Доставка до BY CNY"
         goods_cost_cny: "Итого стоимость товара CNY"
         import_vat_cny: "Импортный НДС CNY"
@@ -1217,6 +1220,7 @@ ru:
         misc_cost_cny: "Прочие расходы CNY"
         pkg_volume_override_l: "Ручной объем L"
         purchase_price_cny: "Закупочная цена CNY"
+        sku_code: "SKU"
       filters:
         sku: "SKU"
         sku_placeholder: "Поиск SKU"

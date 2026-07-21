@@ -6,7 +6,9 @@ module Ec
 
     belongs_to :master_sku, class_name: "Ec::MasterSku", optional: true
     belongs_to :sku_category, class_name: 'Ec::SkuCategory', optional: true
-    has_one  :cost,              class_name: 'Ec::SkuCost',             foreign_key: :sku_code, primary_key: :sku_code
+    has_many :costs,             class_name: 'Ec::SkuCost',             foreign_key: :sku_code, primary_key: :sku_code
+    has_one  :cost, -> { where("ec_sku_costs.effective_on <= ?", Date.current).order(effective_on: :desc, id: :desc) },
+             class_name: 'Ec::SkuCost', foreign_key: :sku_code, primary_key: :sku_code
     has_one  :dimension,         class_name: 'Ec::SkuDimension',        foreign_key: :sku_code, primary_key: :sku_code
     has_many :platform_costs,    class_name: 'Ec::SkuPlatformCost',     foreign_key: :sku_code, primary_key: :sku_code
     has_many :store_assignments, class_name: 'Ec::SkuStoreAssignment',  foreign_key: :sku_code, primary_key: :sku_code
@@ -59,6 +61,10 @@ module Ec
         .where("effective_to IS NULL OR effective_to >= ?", target_date)
         .order(effective_from: :desc, id: :desc)
         .first
+    end
+
+    def cost_on(date = Date.current)
+      costs.effective_as_of(date).first
     end
 
     def inventory_overview

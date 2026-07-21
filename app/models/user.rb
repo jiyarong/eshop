@@ -1,5 +1,7 @@
 class User < ApplicationRecord
   DEFAULT_TIME_ZONE = "Asia/Shanghai"
+  EMAIL_FORMAT_CHARACTERS = /[\p{Cf}]/
+  EMAIL_BOUNDARY_JUNK = /\A[\s\p{Cf},;]+|[\s\p{Cf},;]+\z/
   TIME_ZONE_OPTIONS = {
     DEFAULT_TIME_ZONE => "上海 (UTC+08:00)",
     "UTC" => "UTC (UTC+00:00)",
@@ -12,6 +14,7 @@ class User < ApplicationRecord
          :validatable,
          :trackable
 
+  before_validation :normalize_email
   before_validation :set_default_time_zone
 
   has_many :user_roles, dependent: :destroy
@@ -48,6 +51,13 @@ class User < ApplicationRecord
     ActiveSupport::TimeZone[name.presence_in(TIME_ZONE_OPTIONS.keys) || DEFAULT_TIME_ZONE]
   end
 
+  def self.normalize_email(value)
+    value.to_s
+      .unicode_normalize(:nfkc)
+      .gsub(EMAIL_FORMAT_CHARACTERS, "")
+      .gsub(EMAIL_BOUNDARY_JUNK, "")
+  end
+
   def display_name
     name.to_s.strip.presence || email
   end
@@ -69,6 +79,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def normalize_email
+    self.email = self.class.normalize_email(email) if email.present?
+  end
 
   def set_default_time_zone
     self.time_zone = DEFAULT_TIME_ZONE if time_zone.blank?

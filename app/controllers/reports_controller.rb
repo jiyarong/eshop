@@ -4,6 +4,8 @@ require "digest"
 class ReportsController < ApplicationController
   include ResponsibleUserFilterable
   include SpuSkuFilterable
+  include SkuMarketingStateFilterable
+  include MasterSkuCategoryFilterable
 
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?
   before_action -> { require_permission!(:view_reports) }
@@ -14,7 +16,9 @@ class ReportsController < ApplicationController
 
   def inventory
     @sku_query = params[:sku].to_s.strip
+    load_master_sku_category_filter
     load_spu_sku_filter
+    load_sku_marketing_state_filters
     load_responsible_user_filters
     @turnover_days_min_query = params[:turnover_days_min].to_s.strip
     @turnover_days_max_query = params[:turnover_days_max].to_s.strip
@@ -129,9 +133,16 @@ class ReportsController < ApplicationController
   end
 
   def costs
-    @sku_costs = Ec::SkuCost.includes(:sku, :sku_dimension).order(:sku_code)
-    @wb_costs = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
-    @ozon_costs = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "ozon").order(:sku_code, :delivery_mode, :company_type)
+    load_master_sku_category_filter
+    load_responsible_user_filters
+
+    sku_costs_scope = Ec::SkuCost.latest_as_of(user_today).includes(:sku, :sku_dimension)
+    wb_costs_scope = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
+    ozon_costs_scope = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "ozon").order(:sku_code, :delivery_mode, :company_type)
+
+    @sku_costs = apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(sku_costs_scope))
+    @wb_costs = apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(wb_costs_scope))
+    @ozon_costs = apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(ozon_costs_scope))
   end
 
   def sku_sales
@@ -316,7 +327,9 @@ class ReportsController < ApplicationController
 
   def inventory_skus_scope
     scope = Ec::Sku.includes({ cost: :sku_dimension }, :current_marketing_state)
+    scope = apply_master_sku_category_filter_to_skus(scope)
     scope = apply_spu_sku_filter_to_skus(scope)
+    scope = apply_marketing_state_filters(scope)
     scope = apply_responsible_user_filters_to_skus(scope)
     return scope if @sku_query.blank?
 
@@ -355,7 +368,7 @@ class ReportsController < ApplicationController
   end
 
   def inventory_filters_active?
-    @sku_query.present? || inventory_turnover_filter_active? || responsible_user_filters_active? || spu_sku_filter_active?
+    @sku_query.present? || inventory_turnover_filter_active? || responsible_user_filters_active? || spu_sku_filter_active? || sku_marketing_state_filters_active? || master_sku_category_filter_active?
   end
 
   def inventory_turnover_matches_all?(turnover_days:, turnover_days_with_procurement:)

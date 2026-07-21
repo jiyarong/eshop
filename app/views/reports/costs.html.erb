@@ -2,6 +2,24 @@
 
 <div class="report-stack">
   <section class="panel">
+    <form action="/reports/costs" method="get" class="report-form">
+      <% if params[:locale].present? %>
+        <input type="hidden" name="locale" value="<%= params[:locale] %>">
+      <% end %>
+      <%= render "shared/master_sku_category_filter",
+        field_class: "" %>
+      <%= render "shared/responsible_user_filters",
+        field_class: "",
+        dom_id_prefix: "costs-responsible-user-filter" %>
+      <button class="button" type="submit"><%= t("erp.common.actions.filter") %></button>
+      <% if @category_ids.present? || @developer_id.present? || @operator_id.present? %>
+        <% costs_reset_path = params[:locale].present? ? "/reports/costs?locale=#{ERB::Util.url_encode(params[:locale])}" : "/reports/costs" %>
+        <%= link_to t("erp.common.actions.reset"), costs_reset_path, class: "button button-secondary" %>
+      <% end %>
+    </form>
+  </section>
+
+  <section class="panel">
     <h2 class="section-title">SKU 成本</h2>
     <div class="table-scroll">
       <table>
@@ -9,6 +27,7 @@
           <tr>
             <th>SKU</th>
             <th>商品名</th>
+            <th><%= t("erp.sku_costs.fields.effective_on") %></th>
             <th>采购价 CNY</th>
             <th>到白俄运费 CNY</th>
             <th>清关杂费 CNY</th>
@@ -25,6 +44,7 @@
             <tr>
               <td><%= cost.sku_code %></td>
               <td><%= cost.sku&.product_name %></td>
+              <td><%= report_value(cost.effective_on) %></td>
               <td><%= report_value(cost.purchase_price_cny) %></td>
               <td><%= report_value(cost.freight_to_by_cny) %></td>
               <td><%= report_value(cost.customs_misc_cny) %></td>

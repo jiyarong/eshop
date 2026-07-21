@@ -88,7 +88,8 @@ module Ec
       end
 
       # sku_code → {cost_cny, import_vat_cny} (ec_sku_costs)
-      cost_map = Ec::SkuCost.all.each_with_object({}) do |c, h|
+      cost_date = @from_date.beginning_of_week(:monday)
+      cost_map = Ec::SkuCost.latest_as_of(cost_date).each_with_object({}) do |c, h|
         h[c.sku_code] = {
           cost_cny:       c.goods_cost_cny.to_f,
           import_vat_cny: c.import_vat_cny.to_f,

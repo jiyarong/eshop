@@ -45,4 +45,14 @@ class AuthenticationTest < ActionDispatch::IntegrationTest
     assert_select "body.auth-shell"
     assert_select ".auth-alert[role='alert']", text: "邮箱或密码错误。"
   end
+
+  test "html sign in normalizes copied email characters before authentication" do
+    user = create_user_with_roles("normalize-sign-in-#{@token}@example.com", "manager")
+
+    post user_session_path,
+      params: { user: { email: "\u2005，#{user.email}\u200B", password: "password123" } },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to root_path
+  end
 end

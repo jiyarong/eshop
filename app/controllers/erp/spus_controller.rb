@@ -1,14 +1,14 @@
 module Erp
   class SpusController < BaseController
     include ResponsibleUserFilterable
+    include MasterSkuCategoryFilterable
 
     SPU_PAGE_SIZE = 10
 
     def index
-      @category_options = master_sku_category_options
       @q = params[:q].to_s.strip
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
-      @category_ids = selected_category_ids
+      load_master_sku_category_filter
       load_responsible_user_filters
 
       scope = Ec::MasterSku.includes(
@@ -23,7 +23,7 @@ module Erp
       ).order(:master_sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
-      scope = scope.where(ec_category_id: @category_ids) if @category_ids.any?
+      scope = apply_master_sku_category_filter_to_master_skus(scope)
       scope = apply_responsible_user_filters_to_master_skus(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
@@ -121,23 +121,5 @@ module Erp
       visible_skus.sort_by(&:sku_code)
     end
 
-    def selected_category_ids
-      Array(params[:category_ids].presence || params[:category_id])
-        .reject(&:blank?)
-        .filter_map { |value| Integer(value, exception: false) }
-        .uniq
-    end
-
-    def master_sku_category_options
-      category_ids = Ec::MasterSku.where.not(ec_category_id: nil).distinct.select(:ec_category_id)
-
-      Ec::Category.where(id: category_ids).includes(:parent).to_a
-        .map { |category| [master_sku_category_label(category), category.id] }
-        .sort_by { |label, id| [label.downcase, id] }
-    end
-
-    def master_sku_category_label(category)
-      [category.parent&.localized_name, category.localized_name].compact.join(" / ")
-    end
   end
 end

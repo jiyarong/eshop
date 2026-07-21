@@ -5,7 +5,8 @@ module Ec
     self.table_name = 'ec_sku_platform_costs'
 
     belongs_to :sku,  class_name: 'Ec::Sku',     foreign_key: :sku_code, primary_key: :sku_code
-    belongs_to :cost, class_name: 'Ec::SkuCost',  foreign_key: :sku_code, primary_key: :sku_code
+    belongs_to :cost, -> { where("ec_sku_costs.effective_on <= ?", Date.current).order(effective_on: :desc, id: :desc) },
+               class_name: 'Ec::SkuCost', foreign_key: :sku_code, primary_key: :sku_code
 
     PLATFORMS      = %w[wb ozon].freeze
     DELIVERY_MODES = %w[fbo fbs].freeze

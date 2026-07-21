@@ -19,6 +19,27 @@
         field_class: "",
         dom_id_prefix: "inventory-spu-sku-filter" %>
 
+      <%= render "shared/master_sku_category_filter",
+        field_class: "" %>
+
+      <%= render "shared/popover_multiselect_filter",
+        field_class: "",
+        dom_id_prefix: "inventory-grade-filter",
+        param_name: "grades",
+        label: t("erp.sku_marketing_states.fields.grade"),
+        all_label: t("erp.skus.filters.all_grades"),
+        selected_values: @grades,
+        options: Ec::SkuMarketingState::GRADES.map { |grade| [grade, grade] } %>
+
+      <%= render "shared/popover_multiselect_filter",
+        field_class: "",
+        dom_id_prefix: "inventory-stage-filter",
+        param_name: "stages",
+        label: t("erp.sku_marketing_states.fields.stage"),
+        all_label: t("erp.skus.filters.all_stages"),
+        selected_values: @stages,
+        options: Ec::SkuMarketingState::STAGES.map { |stage| [stage.upcase, stage] } %>
+
       <%= render "shared/responsible_user_filters",
         field_class: "",
         dom_id_prefix: "inventory-responsible-user-filter" %>

@@ -1,0 +1,287 @@
+<style>
+  .compare {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  .panel-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+
+  .panel-head h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+  }
+
+  .panel-head p {
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
+  }
+
+  .panel-body {
+    padding: 16px;
+  }
+
+  .summary {
+    margin-bottom: 14px;
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  .shell-old {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .old-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .old-link,
+  .old-current {
+    min-width: 32px;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .old-current {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+  }
+
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pagination-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pagination-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .pagination-shell {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 4px 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  .pagination-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pg-btn {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #334155;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pg-btn.on {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(99, 102, 241, 0.16);
+  }
+
+  .pg-btn.muted {
+    color: #cbd5e1;
+  }
+
+  .pg-ell {
+    width: 20px;
+    height: 28px;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  .pagination-divider {
+    width: 1px;
+    height: 18px;
+    background: #e2e8f0;
+  }
+
+  .pagination-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pagination-jump-label {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+  }
+
+  .pagination-jump-input {
+    width: 44px;
+    height: 28px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0 8px;
+    background: #f8fafc;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0f172a;
+    text-align: center;
+  }
+
+  .pg-btn-jump {
+    min-width: 40px;
+    background: #f8fafc;
+    border-color: #f1f5f9;
+  }
+
+  .notes {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 900px) {
+    .compare {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<h2>库存报表分页器迁移预览</h2>
+<p class="subtitle">左侧是当前样式，右侧是从设计稿全局分页器摘出的目标样式，用在库存报表主列表。</p>
+
+<div class="compare">
+  <div class="panel">
+    <div class="panel-head">
+      <h3>当前库存报表</h3>
+      <p>只有页码按钮，右对齐，缺少结果范围、页码状态和跳页区。</p>
+    </div>
+    <div class="panel-body">
+      <div class="summary">当前主列表底部效果</div>
+      <div class="shell-old">
+        <nav class="old-nav" aria-label="Current pagination">
+          <span class="old-link">1</span>
+          <span class="old-current">2</span>
+          <span class="old-link">3</span>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel option" data-choice="apply-design-pagination" onclick="toggleSelect(this)">
+    <div class="panel-head">
+      <h3>目标：设计稿全局分页器</h3>
+      <p>单一外壳，左侧结果摘要 + 页码 chip，右侧页码、折叠、省略号、跳页输入和确定按钮。</p>
+    </div>
+    <div class="panel-body">
+      <div class="pagination-bar">
+        <div class="pagination-meta">
+          <div class="summary" style="margin:0">显示第 11-20 条，共 25 条</div>
+          <span class="pagination-chip">第 2/3 页</span>
+        </div>
+        <div class="pagination-shell">
+          <nav class="pagination-nav" aria-label="Target pagination">
+            <span class="pg-btn">‹</span>
+            <span class="pg-btn">1</span>
+            <span class="pg-btn on">2</span>
+            <span class="pg-btn">3</span>
+            <span class="pg-btn">›</span>
+          </nav>
+          <span class="pagination-divider" aria-hidden="true"></span>
+          <div class="pagination-jump">
+            <span class="pagination-jump-label">跳至</span>
+            <span class="pagination-jump-input">3</span>
+            <span class="pg-btn pg-btn-jump">确定</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary" style="margin-top:16px">长分页折叠规则预览</div>
+      <div class="pagination-shell">
+        <nav class="pagination-nav" aria-label="Folded pagination">
+          <span class="pg-btn muted">‹</span>
+          <span class="pg-btn">1</span>
+          <span class="pg-ell">…</span>
+          <span class="pg-btn">11</span>
+          <span class="pg-btn on">12</span>
+          <span class="pg-btn">13</span>
+          <span class="pg-ell">…</span>
+          <span class="pg-btn">20</span>
+          <span class="pg-btn">›</span>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  我准备按右侧这个结构接入到 <code>/reports/inventory</code> 主列表。
+  细节会保留现有 Rails 分页逻辑，只替换 DOM 和 CSS，并补一个跳页表单。
+</div>

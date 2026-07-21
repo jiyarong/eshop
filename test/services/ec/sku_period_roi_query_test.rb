@@ -15,6 +15,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
     sku = Ec::Sku.create!(sku_code: @sku_code)
     Ec::SkuCost.create!(
       sku_code: sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
       purchase_price_cny: BigDecimal("20"),
       freight_to_by_cny: BigDecimal("5"),
       customs_misc_cny: BigDecimal("3"),
@@ -197,6 +198,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
     sku = Ec::Sku.create!(sku_code: @sku_code)
     Ec::SkuCost.create!(
       sku_code: sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
       purchase_price_cny: BigDecimal("20"),
       freight_to_by_cny: BigDecimal("5"),
       customs_misc_cny: BigDecimal("3"),
@@ -268,6 +270,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
     sku = Ec::Sku.create!(sku_code: @sku_code)
     Ec::SkuCost.create!(
       sku_code: sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
       purchase_price_cny: BigDecimal("20"),
       freight_to_by_cny: BigDecimal("5"),
       customs_misc_cny: BigDecimal("3"),
@@ -387,6 +390,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
     sku = Ec::Sku.create!(sku_code: @sku_code)
     Ec::SkuCost.create!(
       sku_code: sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
       purchase_price_cny: BigDecimal("0"),
       freight_to_by_cny: BigDecimal("0"),
       customs_misc_cny: BigDecimal("0"),
@@ -485,6 +489,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
     sku = Ec::Sku.create!(sku_code: @sku_code)
     Ec::SkuCost.create!(
       sku_code: sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
       purchase_price_cny: BigDecimal("20"),
       freight_to_by_cny: BigDecimal("5"),
       customs_misc_cny: BigDecimal("3"),
@@ -546,6 +551,7 @@ class Ec::SkuPeriodRoiQueryTest < ActiveSupport::TestCase
     sku = Ec::Sku.create!(sku_code: @sku_code)
     Ec::SkuCost.create!(
       sku_code: sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
       purchase_price_cny: BigDecimal("20"),
       freight_to_by_cny: BigDecimal("5"),
       customs_misc_cny: BigDecimal("3"),

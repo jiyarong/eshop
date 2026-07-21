@@ -1,0 +1,14 @@
+<% content_for :page_heading, t("erp.sku_costs.actions.add_cost") %>
+
+<div class="product-management sku-management">
+  <div class="page-h">
+    <div>
+      <h1><%= t("erp.sku_costs.actions.add_cost") %></h1>
+      <p class="sub"><%= t("erp.sku_costs.index.subtitle") %></p>
+    </div>
+  </div>
+
+  <section class="card product-list-card">
+    <%= render "form", cost: @cost, sku_options: @sku_options %>
+  </section>
+</div>

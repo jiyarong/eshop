@@ -174,11 +174,15 @@ module Ec
     end
 
     def build_wsu_deep_row_hashes(rows, from_date:, to_date:)
-      sku_map = Ec::Sku.includes(cost: :sku_dimension).where(sku_code: rows.map { |row| row[:sku] }).index_by(&:sku_code)
+      sku_codes = rows.map { |row| row[:sku] }
+      cost_by_sku = Ec::SkuCost
+        .latest_by_sku_as_of(sku_codes, from_date.beginning_of_week(:monday))
+        .includes(:sku_dimension)
+        .index_by(&:sku_code)
       days_count = (to_date - from_date).to_i + 1
 
       rows.sort_by { |row| -row[:after_tax].to_d }.map do |row|
-        roi_result = projected_roi_for_row(row, sku_map, days_count)
+        roi_result = projected_roi_for_row(row, cost_by_sku, days_count)
 
         {
           sku: row[:sku],
@@ -359,9 +363,8 @@ module Ec
       end
     end
 
-    def projected_roi_for_row(row, sku_map, days_count)
-      sku = sku_map[row[:sku]]
-      cost = sku&.cost
+    def projected_roi_for_row(row, cost_by_sku, days_count)
+      cost = cost_by_sku[row[:sku]]
 
       Ec::ProjectedStockRoiCalculator.call(
         net_sales_quantity: row[:net_sales],

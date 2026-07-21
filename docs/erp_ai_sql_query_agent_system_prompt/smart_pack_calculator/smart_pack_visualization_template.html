@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartPack 3D Visualization</title>
+  <style>
+    :root {
+      --wb-purple: #cb11ab;
+      --ozon-blue: #005bff;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --line: #d8dde6;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --danger: #dc2626;
+      --warn: #d97706;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .page {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .plan {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      cursor: pointer;
+    }
+
+    .plan.is-active {
+      border-color: var(--ozon-blue);
+      box-shadow: 0 0 0 2px rgba(0, 91, 255, 0.14);
+    }
+
+    .plan-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .plan-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .score {
+      color: var(--wb-purple);
+      background: rgba(203, 17, 171, 0.11);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .plan-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .metric {
+      padding: 8px;
+      border: 1px solid #edf0f4;
+      border-radius: 6px;
+      background: #fbfcfd;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 3px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .badge {
+      border-radius: 5px;
+      padding: 4px 7px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge.ok { background: #e8f5e9; color: #15803d; }
+    .badge.bad { background: #fee2e2; color: var(--danger); }
+    .badge.warn { background: #fff7ed; color: var(--warn); }
+
+    .view-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .viewer-panel {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .viewer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 48px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .viewer-title {
+      font-weight: 700;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 4px;
+    }
+
+    .view-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 5px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .view-btn.is-active {
+      border-color: var(--ozon-blue);
+      background: #eff6ff;
+      color: var(--ozon-blue);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      height: 560px;
+      background: #161618;
+    }
+
+    .hud {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      z-index: 3;
+      min-width: 210px;
+      max-width: 300px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 8px;
+      background: rgba(20, 20, 20, 0.72);
+      color: #f9fafb;
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .hud-title {
+      padding-bottom: 7px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      font-weight: 700;
+    }
+
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 5px;
+    }
+
+    .hud-row .label { color: #cbd5e1; }
+    .hud-row .value { font-weight: 700; text-align: right; }
+
+    .legend {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      z-index: 3;
+      padding: 5px 9px;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    .message {
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 14px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 980px) {
+      .view-grid { grid-template-columns: 1fr; }
+      .canvas-wrap { height: 440px; }
+      .header { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <script id="smart-pack-result" type="application/json">
+__SMART_PACK_RESULT_JSON__
+  </script>
+
+  <div class="page">
+    <header class="header">
+      <div>
+        <h1>SmartPack 3D 可视化</h1>
+        <div class="subtitle">固定模板渲染。坐标系：X=长，Y=宽，Z=高，单位 cm。</div>
+      </div>
+    </header>
+
+    <div id="message" class="message" hidden></div>
+    <section id="plans" class="plans"></section>
+
+    <section class="view-grid">
+      <article class="viewer-panel">
+        <div class="viewer-head">
+          <div class="viewer-title">外箱剖视</div>
+          <div id="box-toolbar" class="toolbar"></div>
+        </div>
+        <div id="box-canvas" class="canvas-wrap">
+          <div id="legend-box" class="legend">3D</div>
+          <div id="box-hud" class="hud"></div>
+        </div>
+      </article>
+
+      <article class="viewer-panel">
+        <div class="viewer-head">
+          <div class="viewer-title">托盘视图</div>
+          <div id="pallet-toolbar" class="toolbar"></div>
+        </div>
+        <div id="pallet-canvas" class="canvas-wrap">
+          <div id="legend-pallet" class="legend">3D</div>
+          <div id="pallet-hud" class="hud"></div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    THREE.Object3D.DefaultUp.set(0, 0, 1);
+
+    const PALLET_LENGTH_CM = 120;
+    const PALLET_WIDTH_CM = 80;
+    const PALLET_BASE_HEIGHT_CM = 14.5;
+
+    let smartPackResult = null;
+    let currentPlanIndex = 0;
+    let boxView = null;
+    let palletView = null;
+
+    function parseResult() {
+      const raw = document.getElementById("smart-pack-result").textContent.trim();
+      if (!raw || raw === "__SMART_PACK_RESULT_JSON__") {
+        throw new Error("模板尚未注入 SmartPack Python 结果 JSON。");
+      }
+      return JSON.parse(raw);
+    }
+
+    function fmt(value, digits = 1) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return "-";
+      return Number.isInteger(number) ? String(number) : number.toFixed(digits);
+    }
+
+    function planLabel(index) {
+      return `方案 ${String.fromCharCode(65 + index)}`;
+    }
+
+    function planType(plan, index) {
+      if (plan.isDirect) return "SIOC 原箱直发";
+      if (plan.isFixedPlan) return "现有现实方案";
+      return index === 0 ? "综合最优解" : "算法对比寻优";
+    }
+
+    function showMessage(text) {
+      const message = document.getElementById("message");
+      message.hidden = false;
+      message.textContent = text;
+    }
+
+    class CADViewer {
+      constructor(containerId, hudId, toolbarId, legendId) {
+        this.container = document.getElementById(containerId);
+        this.hud = document.getElementById(hudId);
+        this.toolbar = document.getElementById(toolbarId);
+        this.legend = document.getElementById(legendId);
+        this.width = this.container.clientWidth || 500;
+        this.height = this.container.clientHeight || 500;
+
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x161618);
+        this.perspCamera = new THREE.PerspectiveCamera(45, this.width / this.height, 1, 3000);
+        this.orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 3000);
+        this.camera = this.perspCamera;
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setSize(this.width, this.height);
+        this.container.appendChild(this.renderer.domElement);
+
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+
+        this.scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+        const dLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dLight.position.set(200, 200, 300);
+        this.scene.add(dLight);
+
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        this.hoveredMesh = null;
+        this.boundingBox = new THREE.Box3();
+        this.axisGroup = new THREE.Group();
+        this.mainGroup = new THREE.Group();
+        this.scene.add(this.axisGroup);
+        this.scene.add(this.mainGroup);
+        this.axesMap = { origin: null, X: null, Y: null, Z: null };
+        this.defaultData = null;
+
+        this.initToolbar();
+        this.container.addEventListener("mousemove", this.onMouseMove.bind(this));
+        this.container.addEventListener("mouseleave", this.onMouseLeave.bind(this));
+        window.addEventListener("resize", () => this.resize());
+        this.animate();
+      }
+
+      clearScene() {
+        while (this.mainGroup.children.length > 0) {
+          const child = this.mainGroup.children[0];
+          this.mainGroup.remove(child);
+          this.disposeObject(child);
+        }
+      }
+
+      disposeObject(object) {
+        object.traverse((item) => {
+          if (item.geometry) item.geometry.dispose();
+          if (item.material) {
+            if (Array.isArray(item.material)) item.material.forEach((mat) => mat.dispose());
+            else item.material.dispose();
+          }
+        });
+      }
+
+      resize() {
+        this.width = this.container.clientWidth || 500;
+        this.height = this.container.clientHeight || 500;
+        this.renderer.setSize(this.width, this.height);
+        this.perspCamera.aspect = this.width / this.height;
+        this.perspCamera.updateProjectionMatrix();
+        this.changeView(this.currentView || "3D");
+      }
+
+      initToolbar() {
+        const views = [
+          { id: "3D", label: "3D" },
+          { id: "Top", label: "XY" },
+          { id: "Front", label: "XZ" },
+          { id: "Right", label: "YZ" }
+        ];
+        this.toolbar.innerHTML = views.map((view) => (
+          `<button class="view-btn${view.id === "3D" ? " is-active" : ""}" data-view="${view.id}">${view.label}</button>`
+        )).join("");
+
+        this.toolbar.querySelectorAll(".view-btn").forEach((button) => {
+          button.addEventListener("click", () => {
+            this.toolbar.querySelectorAll(".view-btn").forEach((item) => item.classList.remove("is-active"));
+            button.classList.add("is-active");
+            this.changeView(button.dataset.view);
+          });
+        });
+      }
+
+      buildCoordinateAxes(xMax, yMax, zMax, isPallet = false, axisDesc = { x: "X 长", y: "Y 宽", z: "Z 高" }) {
+        while (this.axisGroup.children.length > 0) this.axisGroup.remove(this.axisGroup.children[0]);
+        this.axesMap = { origin: null, X: null, Y: null, Z: null };
+        const scale = isPallet ? 2.5 : 1.0;
+
+        const originLabel = createTextSprite("0", "#aaaaaa", 36, scale);
+        originLabel.position.set(-3 * scale, -3 * scale, -3 * scale);
+        this.axesMap.origin = originLabel;
+        this.axisGroup.add(originLabel);
+
+        this.createAxis(new THREE.Vector3(xMax, 0, 0), "#e53935", axisDesc.x, "X", scale);
+        this.createAxis(new THREE.Vector3(0, yMax, 0), "#43a047", axisDesc.y, "Y", scale);
+        this.createAxis(new THREE.Vector3(0, 0, zMax), "#1976d2", axisDesc.z, "Z", scale);
+      }
+
+      createAxis(endPoint, color, label, key, scale) {
+        const group = new THREE.Group();
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), endPoint]),
+          new THREE.LineBasicMaterial({ color, depthTest: false })
+        );
+        line.renderOrder = 950;
+        group.add(line);
+
+        const text = `${endPoint.length().toFixed(1)} ${label}`;
+        const sprite = createTextSprite(text, color, 32, scale);
+        sprite.position.copy(endPoint).add(endPoint.clone().normalize().multiplyScalar(8 * scale));
+        group.add(sprite);
+
+        this.axesMap[key] = group;
+        this.axisGroup.add(group);
+      }
+
+      setDefaultData(data) {
+        this.defaultData = data;
+        this.updateHUD(data);
+      }
+
+      changeView(viewId) {
+        this.currentView = viewId;
+        this.boundingBox.setFromObject(this.mainGroup);
+        const center = new THREE.Vector3();
+        const size = new THREE.Vector3();
+        this.boundingBox.getCenter(center);
+        this.boundingBox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z) || 100;
+
+        if (this.axesMap.X) this.axesMap.X.visible = viewId !== "Right";
+        if (this.axesMap.Y) this.axesMap.Y.visible = viewId !== "Front";
+        if (this.axesMap.Z) this.axesMap.Z.visible = viewId !== "Top";
+
+        if (viewId === "3D") {
+          this.legend.textContent = "3D";
+          this.camera = this.perspCamera;
+          this.controls.object = this.camera;
+          this.controls.enableRotate = true;
+          this.camera.position.set(maxDim * 1.5, maxDim * 1.5, maxDim * 1.2);
+          this.camera.up.set(0, 0, 1);
+          this.controls.target.copy(center);
+        } else {
+          this.camera = this.orthoCamera;
+          this.controls.object = this.camera;
+          this.controls.enableRotate = false;
+          const aspect = this.width / this.height;
+          const frustumSize = maxDim * 1.5;
+          this.orthoCamera.left = -frustumSize * aspect / 2;
+          this.orthoCamera.right = frustumSize * aspect / 2;
+          this.orthoCamera.top = frustumSize / 2;
+          this.orthoCamera.bottom = -frustumSize / 2;
+          this.orthoCamera.near = 1;
+          this.orthoCamera.far = 3000;
+          const dist = maxDim * 2;
+          if (viewId === "Top") {
+            this.legend.textContent = "Top (XY)";
+            this.orthoCamera.position.set(center.x, center.y, center.z + dist);
+            this.orthoCamera.up.set(0, 1, 0);
+          } else if (viewId === "Front") {
+            this.legend.textContent = "Front (XZ)";
+            this.orthoCamera.position.set(center.x, center.y - dist, center.z);
+            this.orthoCamera.up.set(0, 0, 1);
+          } else if (viewId === "Right") {
+            this.legend.textContent = "Right (YZ)";
+            this.orthoCamera.position.set(center.x + dist, center.y, center.z);
+            this.orthoCamera.up.set(0, 0, 1);
+          }
+          this.orthoCamera.updateProjectionMatrix();
+          this.controls.target.copy(center);
+        }
+
+        this.camera.lookAt(center);
+        this.controls.update();
+        this.resetHoverState();
+        this.updateHUD(this.defaultData);
+      }
+
+      applyGhostingEffect(activeObject) {
+        const targetLayer = activeObject.userData.layerId;
+        this.mainGroup.children.forEach((mesh) => {
+          if (!mesh.userData || !mesh.userData.isTarget || !mesh.material) return;
+          if (mesh === activeObject) {
+            mesh.material.opacity = 1.0;
+            mesh.material.emissive.setHex(0x444400);
+          } else if (mesh.userData.layerId === targetLayer) {
+            mesh.material.opacity = 0.5;
+            mesh.material.emissive.setHex(0x111111);
+          } else {
+            mesh.material.opacity = 0.1;
+            mesh.material.emissive.setHex(0x000000);
+          }
+        });
+      }
+
+      resetHoverState() {
+        this.mainGroup.children.forEach((mesh) => {
+          if (!mesh.userData || !mesh.userData.isTarget || !mesh.material) return;
+          mesh.material.opacity = mesh.userData.defaultOpacity || 1.0;
+          mesh.material.emissive.setHex(0x000000);
+        });
+        this.hoveredMesh = null;
+      }
+
+      onMouseMove(event) {
+        const rect = this.container.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / this.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / this.height) * 2 + 1;
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster
+          .intersectObjects(this.mainGroup.children, true)
+          .filter((hit) => hit.object.userData && hit.object.userData.isTarget);
+
+        if (intersects.length > 0) {
+          const object = intersects[0].object;
+          if (this.hoveredMesh !== object) {
+            this.hoveredMesh = object;
+            this.applyGhostingEffect(object);
+            this.updateHUD(object.userData);
+          }
+        } else if (this.hoveredMesh !== null) {
+          this.resetHoverState();
+          this.updateHUD(this.defaultData);
+        }
+      }
+
+      onMouseLeave() {
+        this.resetHoverState();
+        this.updateHUD(this.defaultData);
+      }
+
+      updateHUD(data) {
+        if (!data) return;
+        const rows = (data.metrics || []).map((metric) => (
+          `<div class="hud-row"><span class="label">${metric.label}</span><span class="value">${metric.value}</span></div>`
+        )).join("");
+        this.hud.innerHTML = `<div class="hud-title" style="color:${data.color};">${data.title}</div>${rows}`;
+      }
+
+      animate() {
+        requestAnimationFrame(() => this.animate());
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+
+    function createTextSprite(text, color, fontSize, scale) {
+      const measureCanvas = document.createElement("canvas");
+      const measureCtx = measureCanvas.getContext("2d");
+      measureCtx.font = `bold ${fontSize}px sans-serif`;
+      const width = Math.ceil(measureCtx.measureText(text).width + 40);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = 64;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = color;
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, canvas.width / 2, 32);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(canvas),
+        depthTest: false
+      }));
+      sprite.scale.set((canvas.width / 12) * scale, 5.3 * scale, 1);
+      sprite.renderOrder = 999;
+      return sprite;
+    }
+
+    function createPureWireframeBox(w, h, d, colorHex, opacity = 0.3) {
+      const geometry = new THREE.BoxGeometry(w, h, d).translate(w / 2, h / 2, d / 2);
+      const edges = new THREE.EdgesGeometry(geometry);
+      const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
+        color: colorHex,
+        transparent: true,
+        opacity,
+        depthTest: false
+      }));
+      lines.renderOrder = 800;
+      return lines;
+    }
+
+    function createSolidMeshBox(w, h, d, color, opacity, userData, isTarget = false) {
+      const geometry = new THREE.BoxGeometry(w, h, d).translate(w / 2, h / 2, d / 2);
+      const material = new THREE.MeshLambertMaterial({
+        color,
+        transparent: opacity < 1.0,
+        opacity,
+        depthWrite: opacity === 1.0
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.userData = Object.assign({}, userData, { isTarget, defaultOpacity: opacity });
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geometry),
+        new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true })
+      );
+      edges.raycast = () => {};
+      mesh.add(edges);
+      return mesh;
+    }
+
+    function renderPlanCards(plans) {
+      const container = document.getElementById("plans");
+      container.innerHTML = plans.map((plan, index) => {
+        const active = index === currentPlanIndex ? " is-active" : "";
+        const ozonClass = plan.isOzonOk ? "ok" : "bad";
+        const wbClass = plan.isWbMono ? "warn" : "ok";
+        return `
+          <article class="plan${active}" data-index="${index}">
+            <div class="plan-head">
+              <div class="plan-title">${planLabel(index)}</div>
+              <div class="score">得分 ${fmt(plan.score)}</div>
+            </div>
+            <div class="plan-grid">
+              <div class="metric"><span>类型</span>${planType(plan, index)}</div>
+              <div class="metric"><span>外径</span>${fmt(plan.box_x)} x ${fmt(plan.box_y)} x ${fmt(plan.box_z)}</div>
+              <div class="metric"><span>箱重</span>${fmt(plan.gross, 2)} kg</div>
+              <div class="metric"><span>实装</span>${plan.totalItems} 件/箱</div>
+              <div class="metric"><span>阵列</span>${plan.isIrregular ? "混沌排列" : `${plan.nx} x ${plan.ny} x ${plan.nz}`}</div>
+              <div class="metric"><span>托盘</span>${plan.actualBoxes} 箱 / ${plan.actualItems} 件</div>
+            </div>
+            <div class="badges">
+              <span class="badge ${ozonClass}">Ozon ${plan.isOzonOk ? "合规" : "大件费风险"}</span>
+              <span class="badge ${wbClass}">WB ${plan.isWbMono ? "整托大件" : "标准件"}</span>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      container.querySelectorAll(".plan").forEach((card) => {
+        card.addEventListener("click", () => {
+          currentPlanIndex = Number(card.dataset.index);
+          renderAll();
+        });
+      });
+    }
+
+    function axisDescription(plan) {
+      if (plan.isDirect || plan.isIrregular) return { x: "X 长", y: "Y 宽", z: "Z 高" };
+      return {
+        x: `X 长 (内${fmt(plan.nx * plan.dimX)}cm, 余量+${fmt(plan.actPadX)}cm)`,
+        y: `Y 宽 (内${fmt(plan.ny * plan.dimY)}cm, 余量+${fmt(plan.actPadY)}cm)`,
+        z: `Z 高 (内${fmt(plan.nz * plan.dimZ)}cm, 余量+${fmt(plan.actPadZ)}cm)`
+      };
+    }
+
+    function renderBox3D(plan) {
+      boxView.clearScene();
+      boxView.buildCoordinateAxes(plan.box_x, plan.box_y, plan.box_z, false, axisDescription(plan));
+
+      if (plan.isDirect) {
+        const hud = {
+          title: "SIOC 原箱直发",
+          color: "#005bff",
+          layerId: 0,
+          metrics: [
+            { label: "尺寸", value: `${fmt(plan.box_x)} x ${fmt(plan.box_y)} x ${fmt(plan.box_z)} cm` },
+            { label: "重量", value: `${fmt(plan.gross, 2)} kg` }
+          ]
+        };
+        boxView.setDefaultData(hud);
+        boxView.mainGroup.add(createSolidMeshBox(plan.box_x, plan.box_y, plan.box_z, "#005bff", 0.85, hud, true));
+      } else if (plan.isIrregular) {
+        const hud = {
+          title: "混沌排列",
+          color: "#ff9800",
+          layerId: 0,
+          metrics: [
+            { label: "外箱", value: `${fmt(plan.box_x)} x ${fmt(plan.box_y)} x ${fmt(plan.box_z)} cm` },
+            { label: "实装", value: `${plan.totalItems} 件` },
+            { label: "重量", value: `${fmt(plan.gross, 2)} kg` }
+          ]
+        };
+        boxView.setDefaultData(hud);
+        boxView.mainGroup.add(createSolidMeshBox(plan.box_x, plan.box_y, plan.box_z, "#ff9800", 0.25, hud, true));
+      } else {
+        const outerHud = {
+          title: "外箱",
+          color: "#cb11ab",
+          layerId: 0,
+          metrics: [
+            { label: "外径", value: `${fmt(plan.box_x)} x ${fmt(plan.box_y)} x ${fmt(plan.box_z)} cm` },
+            { label: "箱重", value: `${fmt(plan.gross, 2)} kg` }
+          ]
+        };
+        boxView.setDefaultData(outerHud);
+        boxView.mainGroup.add(createSolidMeshBox(plan.box_x, plan.box_y, plan.box_z, "#cb11ab", 0.15, outerHud, false));
+
+        const sX = plan.actPadX / 2;
+        const sY = plan.actPadY / 2;
+        const sZ = plan.actPadZ / 2;
+        for (let x = 0; x < plan.nx; x += 1) {
+          for (let y = 0; y < plan.ny; y += 1) {
+            for (let z = 0; z < plan.nz; z += 1) {
+              const bx = sX + x * plan.dimX;
+              const by = sY + y * plan.dimY;
+              const bz = sZ + z * plan.dimZ;
+              const hud = {
+                title: `内件 [X:${x + 1}, Y:${y + 1}, Z:${z + 1}]`,
+                color: "#4fc3f7",
+                layerId: z,
+                metrics: [
+                  { label: "X 范围", value: `${fmt(bx)} 到 ${fmt(bx + plan.dimX)} cm` },
+                  { label: "Y 范围", value: `${fmt(by)} 到 ${fmt(by + plan.dimY)} cm` },
+                  { label: "Z 范围", value: `${fmt(bz)} 到 ${fmt(bz + plan.dimZ)} cm` }
+                ]
+              };
+              const mesh = createSolidMeshBox(plan.dimX, plan.dimY, plan.dimZ, "#005bff", 0.85, hud, true);
+              mesh.position.set(bx, by, bz);
+              boxView.mainGroup.add(mesh);
+            }
+          }
+        }
+      }
+
+      boxView.changeView("3D");
+    }
+
+    function palletExtents(plan) {
+      let maxX = 0;
+      let maxY = 0;
+      let maxZ = PALLET_BASE_HEIGHT_CM;
+      (plan.palletBlocks || []).forEach((block) => {
+        const levels = block.nx * block.ny > 0 ? Math.ceil(block.count / (block.nx * block.ny)) : 0;
+        maxX = Math.max(maxX, block.x + block.nx * block.dx);
+        maxY = Math.max(maxY, block.y + block.ny * block.dy);
+        maxZ = Math.max(maxZ, block.z + levels * block.dz);
+      });
+      return { maxX, maxY, maxZ };
+    }
+
+    function renderPallet3D(plan) {
+      palletView.clearScene();
+      palletView.buildCoordinateAxes(PALLET_LENGTH_CM, PALLET_WIDTH_CM, plan.limitH, true, {
+        x: "X 长",
+        y: "Y 宽",
+        z: "Z 高"
+      });
+
+      const extents = palletExtents(plan);
+      const palletHud = {
+        title: "托盘底座",
+        color: "#ff8c00",
+        layerId: 0,
+        metrics: [
+          { label: "底面", value: "120 x 80 cm" },
+          { label: "高度", value: `${fmt(extents.maxZ)} / ${fmt(plan.limitH)} cm` },
+          { label: "总重", value: `${fmt(plan.palletGross, 2)} / ${fmt(plan.limitW)} kg` }
+        ]
+      };
+      palletView.setDefaultData(palletHud);
+
+      const base = createSolidMeshBox(PALLET_LENGTH_CM, PALLET_WIDTH_CM, PALLET_BASE_HEIGHT_CM, "#8b5a2b", 0.9, palletHud, false);
+      base.position.set(0, 0, 0);
+      palletView.mainGroup.add(base);
+
+      const limit = createPureWireframeBox(PALLET_LENGTH_CM, PALLET_WIDTH_CM, plan.limitH - PALLET_BASE_HEIGHT_CM, 0xe53935, 0.15);
+      limit.position.set(0, 0, PALLET_BASE_HEIGHT_CM);
+      palletView.mainGroup.add(limit);
+
+      (plan.palletBlocks || []).forEach((block, blockIndex) => {
+        let rendered = 0;
+        const color = block.type === "core" ? "#cb11ab" : (block.type === "top" ? "#00bcd4" : "#8e24aa");
+        const name = block.type === "core" ? "主阵列" : (block.type === "top" ? "顶部补位" : "侧边补位");
+        for (let z = 0; z < block.nz; z += 1) {
+          for (let x = 0; x < block.nx; x += 1) {
+            for (let y = 0; y < block.ny; y += 1) {
+              if (rendered >= block.count) return;
+              const bx = block.x + x * block.dx;
+              const by = block.y + y * block.dy;
+              const bz = block.z + z * block.dz;
+              const hud = {
+                title: `${name} [区${blockIndex + 1}]`,
+                color: "#ff66ff",
+                layerId: z,
+                metrics: [
+                  { label: "X 范围", value: `${fmt(bx)} 到 ${fmt(bx + block.dx)} cm` },
+                  { label: "Y 范围", value: `${fmt(by)} 到 ${fmt(by + block.dy)} cm` },
+                  { label: "Z 范围", value: `${fmt(bz)} 到 ${fmt(bz + block.dz)} cm` },
+                  { label: "尺寸", value: `${fmt(block.dx)} x ${fmt(block.dy)} x ${fmt(block.dz)} cm` }
+                ]
+              };
+              const mesh = createSolidMeshBox(block.dx, block.dy, block.dz, color, 0.85, hud, true);
+              mesh.position.set(bx, by, bz);
+              palletView.mainGroup.add(mesh);
+              rendered += 1;
+            }
+          }
+        }
+      });
+
+      if (PALLET_LENGTH_CM - extents.maxX > 0.1) {
+        const residual = createPureWireframeBox(PALLET_LENGTH_CM - extents.maxX, PALLET_WIDTH_CM, extents.maxZ - PALLET_BASE_HEIGHT_CM, 0x888888, 0.35);
+        residual.position.set(extents.maxX, 0, PALLET_BASE_HEIGHT_CM);
+        palletView.mainGroup.add(residual);
+        palletHud.metrics.push({ label: "X 余量", value: `${fmt(PALLET_LENGTH_CM - extents.maxX)} x 80 x ${fmt(extents.maxZ - PALLET_BASE_HEIGHT_CM)} cm` });
+      }
+      if (PALLET_WIDTH_CM - extents.maxY > 0.1) {
+        const residual = createPureWireframeBox(extents.maxX, PALLET_WIDTH_CM - extents.maxY, extents.maxZ - PALLET_BASE_HEIGHT_CM, 0x888888, 0.35);
+        residual.position.set(0, extents.maxY, PALLET_BASE_HEIGHT_CM);
+        palletView.mainGroup.add(residual);
+        palletHud.metrics.push({ label: "Y 余量", value: `${fmt(extents.maxX)} x ${fmt(PALLET_WIDTH_CM - extents.maxY)} x ${fmt(extents.maxZ - PALLET_BASE_HEIGHT_CM)} cm` });
+      }
+      if (plan.limitH - extents.maxZ > 0.1) {
+        const residual = createPureWireframeBox(PALLET_LENGTH_CM, PALLET_WIDTH_CM, plan.limitH - extents.maxZ, 0x888888, 0.35);
+        residual.position.set(0, 0, extents.maxZ);
+        palletView.mainGroup.add(residual);
+        palletHud.metrics.push({ label: "Z 余量", value: `120 x 80 x ${fmt(plan.limitH - extents.maxZ)} cm` });
+      }
+
+      palletView.setDefaultData(palletHud);
+      palletView.changeView("3D");
+    }
+
+    function renderAll() {
+      const plans = smartPackResult.plans || [];
+      renderPlanCards(plans);
+      if (!plans[currentPlanIndex]) return;
+      renderBox3D(plans[currentPlanIndex]);
+      renderPallet3D(plans[currentPlanIndex]);
+    }
+
+    function init() {
+      try {
+        smartPackResult = parseResult();
+      } catch (error) {
+        showMessage(error.message);
+        return;
+      }
+
+      if (smartPackResult.status !== "ok") {
+        showMessage(`SmartPack 返回错误状态：${smartPackResult.status}`);
+        return;
+      }
+
+      if (!Array.isArray(smartPackResult.plans) || smartPackResult.plans.length === 0) {
+        showMessage("SmartPack 结果中没有可渲染方案。");
+        return;
+      }
+
+      if (!window.THREE || !THREE.OrbitControls) {
+        showMessage("Three.js 或 OrbitControls 加载失败。");
+        return;
+      }
+
+      boxView = new CADViewer("box-canvas", "box-hud", "box-toolbar", "legend-box");
+      palletView = new CADViewer("pallet-canvas", "pallet-hud", "pallet-toolbar", "legend-pallet");
+      renderAll();
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

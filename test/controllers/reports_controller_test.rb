@@ -257,6 +257,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    sku_codes = [@sku&.sku_code, @second_sku&.sku_code].compact
     marketing_state_ids = Ec::SkuMarketingState.where(sku_id: [ @sku&.id, @second_sku&.id ].compact).pluck(:id)
     Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
     Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
@@ -275,10 +276,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     @sales_store&.destroy
     @wb_sales_store&.destroy
     @sales_wb_account&.destroy
-    Ec::SkuPlatformCost.where(sku_code: @sku.sku_code).delete_all
-    Ec::SkuPredictedCost.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuPredictedCost)
-    Ec::SkuCost.where(sku_code: @sku.sku_code).delete_all
-    Ec::SkuBatch.where(sku_code: [@sku.sku_code, @second_sku.sku_code]).delete_all if defined?(Ec::SkuBatch)
+    Ec::SkuPlatformCost.where(sku_code: sku_codes).delete_all
+    Ec::SkuPredictedCost.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuPredictedCost)
+    Ec::SkuCost.where(sku_code: sku_codes).delete_all
+    Ec::SkuBatch.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuBatch)
     @second_sku&.destroy
     @sku&.destroy
     UserRole.joins(:user).where("users.email LIKE ?", "reports-#{@sku_code.downcase}%").delete_all
@@ -332,6 +333,49 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     master_sku&.destroy
   end
 
+  test "inventory report filters by master sku category" do
+    category_parent = report_category("inventory-parent", "库存父类")
+    category_child = report_category("inventory-child", "库存子类", parent: category_parent)
+    master_sku = Ec::MasterSku.create!(
+      master_sku_code: "INV-CAT-SPU-#{@sku_code}",
+      product_name: "库存类别 SPU",
+      ec_category: category_child
+    )
+    @sku.update!(master_sku: master_sku)
+
+    get "/reports/inventory", params: { category_ids: [category_child.id] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".category-multiselect__trigger", text: "库存父类 #{@sku_code} / 库存子类 #{@sku_code}"
+    assert_select ".category-multiselect input[name='category_ids[]'][value=?][checked='checked']", category_child.id.to_s
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
+    assert_select "td", { text: @second_sku_code, count: 0 }
+  ensure
+    @sku&.update!(master_sku: nil) if @sku&.persisted?
+    master_sku&.destroy
+    Ec::Category.where(source: "reports-test", source_id: report_category_source_ids("inventory")).delete_all
+  end
+
+  test "inventory report filters by marketing grades and stages" do
+    Ec::SkuMarketingStateChange.new(
+      sku: @sku, grade: "A", stage: "grw", changed_by: @current_user, note: "库存营销筛选"
+    ).call
+    Ec::SkuMarketingStateChange.new(
+      sku: @second_sku, grade: "B", stage: "mat", changed_by: @current_user, note: "库存营销筛选"
+    ).call
+
+    get "/reports/inventory", params: { grades: ["A", "B"], stages: ["grw"] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "#inventory-grade-filter-trigger", text: "已选 2 项"
+    assert_select "#inventory-stage-filter-trigger", text: "GRW"
+    assert_select "input[type='checkbox'][name='grades[]'][value='A'][checked='checked']"
+    assert_select "input[type='checkbox'][name='grades[]'][value='B'][checked='checked']"
+    assert_select "input[type='checkbox'][name='stages[]'][value='grw'][checked='checked']"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", { text: @second_sku_code, count: 0 }
+  end
+
   test "inventory report renders current marketing grade and stage beside sku" do
     Ec::SkuMarketingStateChange.new(
       sku: @sku, grade: "A", stage: "grw", changed_by: @current_user, note: "库存列表展示"
@@ -354,6 +398,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "label[for='inventory_sku']", text: "SKU编码"
+    assert_select "#inventory-grade-filter-trigger", text: "全部 Grade"
+    assert_select "#inventory-stage-filter-trigger", text: "全部 Stage"
+    assert_select "input[type='checkbox'][name='grades[]'][value='S']"
+    assert_select "input[type='checkbox'][name='stages[]'][value='new']"
     assert_select "label[for='inventory_turnover_days_min']", text: "周转天数 >="
     assert_select "label[for='inventory_turnover_days_max']", text: "周转天数 <="
     assert_select "label[for='inventory_procurement_turnover_days_min']", text: "周转天数(含采购) >="
@@ -1622,11 +1670,104 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", "SKU 成本"
     assert_select "h2", "WB 成本"
     assert_select "h2", "Ozon 成本"
+    assert_select "#costs-responsible-user-filter-developer-trigger", text: "全部开发人员"
+    assert_select "#costs-responsible-user-filter-operator-trigger", text: "全部运营人员"
     assert_select "td", @sku_code
     assert_select "td", "fbo"
     assert_select "td", "fbs"
     assert_select "td", "100.00"
     assert_select "td", "120.00"
+  end
+
+  test "costs report filters by master sku category" do
+    category_parent = report_category("cost-parent", "成本父类")
+    category_child = report_category("cost-child", "成本子类", parent: category_parent)
+    other_parent = report_category("cost-other-parent", "其他成本父类")
+    other_child = report_category("cost-other-child", "其他成本子类", parent: other_parent)
+    master_sku = Ec::MasterSku.create!(
+      master_sku_code: "COST-CAT-SPU-#{@sku_code}",
+      product_name: "成本类别 SPU",
+      ec_category: category_child
+    )
+    other_master_sku = Ec::MasterSku.create!(
+      master_sku_code: "COST-CAT-SPU-OTHER-#{@sku_code}",
+      product_name: "其他成本类别 SPU",
+      ec_category: other_child
+    )
+    @sku.update!(master_sku: master_sku)
+    @second_sku.update!(master_sku: other_master_sku)
+    Ec::SkuCost.create!(
+      sku_code: @second_sku.sku_code,
+      purchase_price_cny: 20,
+      freight_to_by_cny: 3,
+      customs_misc_cny: 1,
+      customs_duty_rate: 0.1,
+      import_vat_rate: 0.2
+    )
+    Ec::SkuPlatformCost.create!(
+      sku_code: @second_sku.sku_code,
+      platform: "wb",
+      delivery_mode: "fbo",
+      company_type: "small",
+      exchange_rate_rub_cny: 10,
+      target_price_rub: 900
+    )
+
+    get "/reports/costs", params: { category_ids: [category_child.id] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".category-multiselect__trigger", text: "成本父类 #{@sku_code} / 成本子类 #{@sku_code}"
+    assert_select ".category-multiselect input[name='category_ids[]'][value=?][checked='checked']", category_child.id.to_s
+    assert_select "td", @sku_code
+    assert_select "td", { text: @second_sku_code, count: 0 }
+  ensure
+    @sku&.update!(master_sku: nil) if @sku&.persisted?
+    @second_sku&.update!(master_sku: nil) if @second_sku&.persisted?
+    other_master_sku&.destroy
+    master_sku&.destroy
+    Ec::Category.where(source: "reports-test", source_id: report_category_source_ids("cost")).delete_all
+  end
+
+  test "costs report filters by responsible users" do
+    developer = User.create!(
+      email: "reports-#{@sku_code.downcase}-cost-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    operator = User.create!(
+      email: "reports-#{@sku_code.downcase}-cost-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator)
+    Ec::SkuCost.create!(
+      sku_code: @second_sku.sku_code,
+      purchase_price_cny: 20,
+      freight_to_by_cny: 3,
+      customs_misc_cny: 1,
+      customs_duty_rate: 0.1,
+      import_vat_rate: 0.2
+    )
+    Ec::SkuPlatformCost.create!(
+      sku_code: @second_sku.sku_code,
+      platform: "wb",
+      delivery_mode: "fbo",
+      company_type: "small",
+      exchange_rate_rub_cny: 10,
+      target_price_rub: 900
+    )
+
+    get "/reports/costs", params: { developer_id: developer.id, operator_id: operator.id }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[type='hidden'][name='developer_id'][value=?]", developer.id.to_s
+    assert_select "input[type='hidden'][name='operator_id'][value=?]", operator.id.to_s
+    assert_select "#costs-responsible-user-filter-developer-trigger", text: developer.display_name
+    assert_select "#costs-responsible-user-filter-operator-trigger", text: operator.display_name
+    assert_select "td", @sku_code
+    assert_select "td", { text: @second_sku_code, count: 0 }
   end
 
   test "sku sales report renders chart and grouped sales metrics" do
@@ -1928,6 +2069,23 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def report_category(suffix, name_prefix, parent: nil)
+    Ec::Category.create!(
+      source: "reports-test",
+      source_type: parent ? "subject" : "category",
+      source_id: "#{@sku_code}-#{suffix}",
+      parent: parent,
+      origin_name: "#{name_prefix} #{@sku_code}",
+      origin_language: "zh",
+      name_cn: "#{name_prefix} #{@sku_code}",
+      name_en: "#{name_prefix} #{@sku_code}"
+    )
+  end
+
+  def report_category_source_ids(prefix)
+    ["#{@sku_code}-#{prefix}-parent", "#{@sku_code}-#{prefix}-child", "#{@sku_code}-#{prefix}-other-parent", "#{@sku_code}-#{prefix}-other-child"]
+  end
 
   def with_stubbed_constructor(klass, replacement)
     singleton_class = klass.singleton_class

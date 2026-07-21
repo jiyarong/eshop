@@ -379,6 +379,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='from_date'][type='hidden']", count: 1
     assert_select "input[name='to_date'][type='hidden']", count: 1
     assert_select "button[aria-controls='orders-time-range-popover']", count: 1
+    assert_select ".time-range-trigger-shift[data-direction='-1'][disabled]", count: 1
+    assert_select ".time-range-trigger-shift[data-direction='1'][disabled]", count: 1
     assert_select "#orders-time-range-popover[role='dialog']", count: 1
     assert_select "input[name='q[ordered_at_gteq]']", count: 0
     assert_select "input[name='q[ordered_at_lteq_end_of_day]']", count: 0

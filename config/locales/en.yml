@@ -1246,6 +1246,8 @@ en:
         save_failed: "Save failed. Check the value and try again."
         saved: "Saved"
     sku_costs:
+      actions:
+        add_cost: "Add Cost"
       empty:
         no_skus: "No SKUs"
       fields:
@@ -1253,6 +1255,7 @@ en:
         customs_duty_rate: "Customs duty rate"
         customs_misc_cny: "Customs misc CNY"
         damage_rate: "Damage rate"
+        effective_on: "Effective date"
         freight_to_by_cny: "Freight to Belarus CNY"
         goods_cost_cny: "Goods total cost CNY"
         import_vat_cny: "Import VAT CNY"
@@ -1261,6 +1264,7 @@ en:
         misc_cost_cny: "Misc cost CNY"
         pkg_volume_override_l: "Manual volume L"
         purchase_price_cny: "Purchase price CNY"
+        sku_code: "SKU"
       filters:
         sku: "SKU"
         sku_placeholder: "Search SKU"
