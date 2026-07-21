@@ -93,12 +93,18 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".product-page-actions a[href='#{erp_new_sku_path(return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "新增 SKU"
     assert_select ".card.product-filter-card form[action='/erp/skus'][method='get']"
     assert_select "input[name='q'][placeholder=?]", "搜索 SKU、SPU、中文名或俄文名…"
-    assert_select "select[name='master_sku_id']"
-    assert_select "option", "全部 SPU"
-    assert_select "select[name='grade'] option", "全部 Grade"
-    assert_select "select[name='grade'] option[value='S']", "S"
-    assert_select "select[name='stage'] option", "全部 Stage"
-    assert_select "select[name='stage'] option[value='new']", "NEW"
+    assert_select ".spu-sku-filter"
+    assert_select "#sku-spu-sku-filter-trigger", text: "全部 SPU/SKU"
+    assert_select ".spu-sku-filter__columns"
+    assert_select ".spu-sku-filter__spu-column .spu-sku-filter__spu-button .spu-sku-filter__name", text: @master_sku.master_sku_code
+    assert_select ".spu-sku-filter__sku-column .spu-sku-filter__sku-pane .spu-sku-filter__sku-option .spu-sku-filter__name", text: @sku.sku_code
+    assert_select "input[type='checkbox'][name='master_sku_ids[]'][value=?]", @master_sku.id.to_s
+    assert_select "input[type='checkbox'][name='sku_codes[]'][value=?]", @sku.sku_code
+    assert_select ".popover-multiselect", minimum: 2
+    assert_select "#sku-grade-filter-trigger", text: "全部 Grade"
+    assert_select "#sku-stage-filter-trigger", text: "全部 Stage"
+    assert_select "input[type='checkbox'][name='grades[]'][value='S']"
+    assert_select "input[type='checkbox'][name='stages[]'][value='new']"
     assert_select ".category-multiselect", count: 0
     assert_select ".product-summary-grid[aria-label=?]", "SKU 概览"
     assert_select ".summary-label", "启用 SKU"
@@ -143,9 +149,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".product-summary-grid[aria-label=?]", "SKU overview"
     assert_select ".summary-label", "Active SKUs"
     assert_select "input[placeholder=?]", "Search SKU, SPU, Chinese name, or Russian name..."
-    assert_select "option", "All SPUs"
-    assert_select "option", "All Grades"
-    assert_select "option", "All Stages"
+    assert_select "#sku-spu-sku-filter-trigger", text: "All SPUs/SKUs"
+    assert_select "#sku-grade-filter-trigger", text: "All Grades"
+    assert_select "#sku-stage-filter-trigger", text: "All Stages"
     assert_select ".prod-tbl thead th", text: "SKU"
     assert_select ".prod-tbl thead th", text: "SPU"
     assert_select ".prod-tbl thead th", text: "Product name"
@@ -183,9 +189,23 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "input[name='q'][value=?]", @sku.sku_code.downcase
-    assert_select "select[name='master_sku_id'] option[selected='selected'][value=?]", @master_sku.id.to_s
+    assert_select "#sku-spu-sku-filter-trigger", text: @master_sku.master_sku_code
+    assert_select "input[type='checkbox'][name='master_sku_ids[]'][value=?][checked='checked']", @master_sku.id.to_s
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
-    assert_no_match @inactive_sku.sku_code, response.body
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", { text: @inactive_sku.sku_code, count: 0 }
+  end
+
+  test "index filters skus by selected spu and sku codes" do
+    get "/erp/skus",
+      params: { master_sku_ids: [@master_sku.id], sku_codes: [@inactive_sku.sku_code] },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "#sku-spu-sku-filter-trigger", text: "已选 2 项"
+    assert_select "input[type='checkbox'][name='master_sku_ids[]'][value=?][checked='checked']", @master_sku.id.to_s
+    assert_select "input[type='checkbox'][name='sku_codes[]'][value=?][checked='checked']", @inactive_sku.sku_code
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @inactive_sku.sku_code
   end
 
   test "index filters skus by responsible users" do
@@ -220,7 +240,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".responsible-user-filter__option.is-selected[data-value='#{developer.id}'] .responsible-user-filter__name", text: developer.display_name
     assert_select ".responsible-user-filter__option--shortcut.is-selected[data-value='#{@current_user.id}']", text: "选中自己"
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
-    assert_no_match @inactive_sku.sku_code, response.body
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", { text: @inactive_sku.sku_code, count: 0 }
   ensure
     Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
     Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)
@@ -287,7 +307,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl tr.sku-row.master .code-text", text: @master_sku.master_sku_code
   end
 
-  test "index filters skus by current marketing grade and stage" do
+  test "index filters skus by current marketing grades and stages" do
     Ec::SkuMarketingStateChange.new(
       sku: @sku, grade: "A", stage: "grw", changed_by: @current_user, note: "增长阶段"
     ).call
@@ -299,15 +319,27 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuMarketingStateChange.new(
       sku: other_sku, grade: "A", stage: "mat", changed_by: @current_user, note: "成熟阶段"
     ).call
+    excluded_sku = Ec::Sku.create!(
+      sku_code: "SKU-MKT-EXC-#{@token}",
+      product_name: "不匹配营销商品",
+      is_active: true
+    )
+    Ec::SkuMarketingStateChange.new(
+      sku: excluded_sku, grade: "B", stage: "new", changed_by: @current_user, note: "不匹配筛选"
+    ).call
 
-    get "/erp/skus", params: { grade: "a", stage: "GRW" }, headers: { "Accept" => "text/html" }
+    get "/erp/skus", params: { grades: ["a"], stages: ["GRW", "MAT"] }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "select[name='grade'] option[selected='selected'][value='A']", "A"
-    assert_select "select[name='stage'] option[selected='selected'][value='grw']", "GRW"
+    assert_select "#sku-grade-filter-trigger", text: "A"
+    assert_select "#sku-stage-filter-trigger", text: "已选 2 项"
+    assert_select "input[type='checkbox'][name='grades[]'][value='A'][checked='checked']"
+    assert_select "input[type='checkbox'][name='stages[]'][value='grw'][checked='checked']"
+    assert_select "input[type='checkbox'][name='stages[]'][value='mat'][checked='checked']"
     assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: @sku.sku_code
-    assert_no_match other_sku.sku_code, response.body
-    assert_no_match @inactive_sku.sku_code, response.body
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", text: other_sku.sku_code
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", { text: excluded_sku.sku_code, count: 0 }
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", { text: @inactive_sku.sku_code, count: 0 }
   end
 
   test "index paginates sku list with inventory pagination styling" do
@@ -356,13 +388,13 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
       ).call
     end
 
-    get "/erp/skus", params: { page: 2, grade: "B", stage: "new" }, headers: { "Accept" => "text/html" }
+    get "/erp/skus", params: { page: 2, grades: ["B"], stages: ["new"] }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select ".inventory-pagination-bar .pagination-chip", "第 2/2 页"
-    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='grade=B'][href*='stage=new']"
-    assert_select ".inventory-pagination-bar form[action='/erp/skus'] input[name='grade'][value='B']"
-    assert_select ".inventory-pagination-bar form[action='/erp/skus'] input[name='stage'][value='new']"
+    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='grades%5B%5D=B'][href*='stages%5B%5D=new']"
+    assert_select ".inventory-pagination-bar form[action='/erp/skus'] input[name='grades[]'][value='B']"
+    assert_select ".inventory-pagination-bar form[action='/erp/skus'] input[name='stages[]'][value='new']"
   end
 
   test "index jump pagination clamps and falls back to current page" do

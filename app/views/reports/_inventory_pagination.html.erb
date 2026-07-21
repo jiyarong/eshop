@@ -49,7 +49,13 @@
 
     <%= form_with url: "/reports/inventory", method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("reports.inventory.pagination.jump_label") } do %>
       <% query_params.each do |key, value| %>
-        <%= hidden_field_tag key, value %>
+        <% if value.is_a?(Array) %>
+          <% value.each do |item| %>
+            <%= hidden_field_tag "#{key}[]", item %>
+          <% end %>
+        <% else %>
+          <%= hidden_field_tag key, value %>
+        <% end %>
       <% end %>
       <%= hidden_field_tag :current_page, page %>
       <span class="pagination-jump-label"><%= t("reports.inventory.pagination.jump_label") %></span>

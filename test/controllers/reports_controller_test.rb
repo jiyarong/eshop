@@ -313,6 +313,25 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: @second_sku_code, count: 0 }
   end
 
+  test "inventory report filters by selected spu" do
+    master_sku = Ec::MasterSku.create!(
+      master_sku_code: "INV-SPU-#{@sku_code}",
+      product_name: "库存筛选 SPU"
+    )
+    @sku.update!(master_sku: master_sku)
+
+    get "/reports/inventory", params: { master_sku_ids: [master_sku.id] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "#inventory-spu-sku-filter-trigger", text: master_sku.master_sku_code
+    assert_select "input[type='checkbox'][name='master_sku_ids[]'][value=?][checked='checked']", master_sku.id.to_s
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
+    assert_select "td", { text: @second_sku_code, count: 0 }
+  ensure
+    @sku&.update!(master_sku: nil) if @sku&.persisted?
+    master_sku&.destroy
+  end
+
   test "inventory report renders current marketing grade and stage beside sku" do
     Ec::SkuMarketingStateChange.new(
       sku: @sku, grade: "A", stage: "grw", changed_by: @current_user, note: "库存列表展示"

@@ -1,6 +1,7 @@
 module Erp
   class SkusController < BaseController
     include ResponsibleUserFilterable
+    include SpuSkuFilterable
 
     SKU_PAGE_SIZE = 10
 
@@ -11,8 +12,9 @@ module Erp
       @q = params[:q].to_s.strip
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
       @master_sku_id = Integer(params[:master_sku_id], exception: false)
-      @grade = params[:grade].to_s.upcase.presence_in(Ec::SkuMarketingState::GRADES)
-      @stage = params[:stage].to_s.downcase.presence_in(Ec::SkuMarketingState::STAGES)
+      @grades = selected_marketing_grades
+      @stages = selected_marketing_stages
+      load_spu_sku_filter
       load_responsible_user_filters
 
       scope = Ec::Sku.includes(
@@ -25,14 +27,9 @@ module Erp
       ).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
-      scope = scope.where(master_sku_id: @master_sku_id) if @master_sku_id.present?
+      scope = apply_spu_sku_filter_to_skus(scope)
       scope = apply_responsible_user_filters_to_skus(scope)
-      if @grade.present? || @stage.present?
-        marketing_state_filters = {}
-        marketing_state_filters[:grade] = @grade if @grade.present?
-        marketing_state_filters[:stage] = @stage if @stage.present?
-        scope = scope.joins(:current_marketing_state).where(ec_sku_marketing_states: marketing_state_filters)
-      end
+      scope = apply_marketing_state_filters(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.left_joins(:master_sku).where(
@@ -42,7 +39,6 @@ module Erp
       end
 
       @skus = paginated_skus(scope)
-      @master_sku_options = Ec::MasterSku.order(:master_sku_code)
       @sku_counts = {
         master_total: Ec::MasterSku.count,
         sku_total: Ec::Sku.count,
@@ -126,6 +122,31 @@ module Erp
       page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
       page = 1 if page.to_i <= 0
       page
+    end
+
+    def selected_marketing_grades
+      Array(params[:grades].presence || params[:grade])
+        .reject(&:blank?)
+        .map { |value| value.to_s.upcase }
+        .select { |value| Ec::SkuMarketingState::GRADES.include?(value) }
+        .uniq
+    end
+
+    def selected_marketing_stages
+      Array(params[:stages].presence || params[:stage])
+        .reject(&:blank?)
+        .map { |value| value.to_s.downcase }
+        .select { |value| Ec::SkuMarketingState::STAGES.include?(value) }
+        .uniq
+    end
+
+    def apply_marketing_state_filters(scope)
+      return scope if @grades.blank? && @stages.blank?
+
+      scope = scope.joins(:current_marketing_state)
+      scope = scope.where(ec_sku_marketing_states: { grade: @grades }) if @grades.present?
+      scope = scope.where(ec_sku_marketing_states: { stage: @stages }) if @stages.present?
+      scope
     end
 
     def sku_params

@@ -17,6 +17,9 @@
         <i class="bi bi-search" aria-hidden="true"></i>
         <%= form.search_field :sku, value: @sku_query, placeholder: t("erp.sku_costs.filters.sku_placeholder"), class: "input" %>
       </div>
+      <%= render "shared/spu_sku_filter",
+        field_class: "product-filter-field",
+        dom_id_prefix: "sku-cost-spu-sku-filter" %>
       <button class="btn btn-primary" type="submit">
         <i class="bi bi-search" aria-hidden="true"></i>
         <%= t("erp.common.actions.filter") %>

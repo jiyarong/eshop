@@ -1547,6 +1547,26 @@ en:
         summary: "Store information"
         unbound_raw_products: "Unbound platform products"
   shared:
+    popover_multiselect:
+      clear: "Clear selection"
+      no_options: "No matching options"
+      search_placeholder: "Search options"
+      selected_count: "%{count} selected"
+    spu_sku_filter:
+      all: "All SPUs/SKUs"
+      aria_label: "SPU and SKU filter"
+      clear: "Clear selection"
+      label: "SPU/SKU"
+      no_matches: "No matching SPU or SKU"
+      no_name: "No name"
+      no_skus: "No SKUs"
+      no_spu: "No SPU"
+      search_placeholder: "Search SPU, SKU, or product name"
+      selected_count: "%{count} selected"
+      sku_column: "SKU"
+      sku_count: "%{count} SKUs"
+      spu_column: "SPU"
+      unfiled: "Unfiled SKUs"
     responsible_user_filters:
       all_developers: "All developers"
       all_operators: "All operators"

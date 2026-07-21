@@ -1,6 +1,7 @@
 module Erp
   class SkuCostsController < BaseController
     include InlineEditableResponse
+    include SpuSkuFilterable
 
     SKU_PAGE_SIZE = 10
     INLINE_EDITABLE_FIELDS = Erp::InlineEditHelper::SKU_COST_INLINE_FIELDS.keys.map(&:to_s).freeze
@@ -11,7 +12,9 @@ module Erp
 
     def index
       @sku_query = params[:sku].to_s.strip
+      load_spu_sku_filter
       scope = Ec::Sku.includes(cost: :sku_dimension).order(:sku_code)
+      scope = apply_spu_sku_filter_to_skus(scope)
       if @sku_query.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query)}%"
         scope = scope.where("ec_skus.sku_code ILIKE ?", keyword)

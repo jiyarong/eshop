@@ -47,7 +47,13 @@
 
     <%= form_with url: erp_sku_costs_path, method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("erp.sku_costs.pagination.jump_label") } do %>
       <% query_params.each do |key, value| %>
-        <%= hidden_field_tag key, value %>
+        <% if value.is_a?(Array) %>
+          <% value.each do |item| %>
+            <%= hidden_field_tag "#{key}[]", item %>
+          <% end %>
+        <% else %>
+          <%= hidden_field_tag key, value %>
+        <% end %>
       <% end %>
       <%= hidden_field_tag :current_page, page %>
       <span class="pagination-jump-label"><%= t("erp.sku_costs.pagination.jump_label") %></span>

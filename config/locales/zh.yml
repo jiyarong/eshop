@@ -1525,6 +1525,26 @@ zh:
         summary: "店铺信息"
         unbound_raw_products: "未绑定平台商品"
   shared:
+    popover_multiselect:
+      clear: "清空选择"
+      no_options: "没有匹配的选项"
+      search_placeholder: "搜索选项"
+      selected_count: "已选 %{count} 项"
+    spu_sku_filter:
+      all: "全部 SPU/SKU"
+      aria_label: "SPU 和 SKU 筛选器"
+      clear: "清空选择"
+      label: "SPU/SKU"
+      no_matches: "没有匹配的 SPU 或 SKU"
+      no_name: "未填写名称"
+      no_skus: "暂无 SKU"
+      no_spu: "没有归属 SPU"
+      search_placeholder: "搜索 SPU、SKU 或商品名"
+      selected_count: "已选 %{count} 项"
+      sku_column: "SKU"
+      sku_count: "%{count} 个 SKU"
+      spu_column: "SPU"
+      unfiled: "未归档 SKU"
     responsible_user_filters:
       all_developers: "全部开发人员"
       all_operators: "全部运营人员"

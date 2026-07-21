@@ -15,6 +15,10 @@
                placeholder="<%= t("reports.inventory.filters.sku_placeholder") %>">
       </div>
 
+      <%= render "shared/spu_sku_filter",
+        field_class: "",
+        dom_id_prefix: "inventory-spu-sku-filter" %>
+
       <%= render "shared/responsible_user_filters",
         field_class: "",
         dom_id_prefix: "inventory-responsible-user-filter" %>
@@ -57,7 +61,8 @@
 
       <button class="button" type="submit"><%= t("reports.inventory.filters.submit") %></button>
       <% if inventory_filters_active? %>
-        <%= link_to t("reports.inventory.filters.reset"), "/reports/inventory", class: "button button-secondary" %>
+        <% inventory_reset_path = params[:locale].present? ? "/reports/inventory?locale=#{ERB::Util.url_encode(params[:locale])}" : "/reports/inventory" %>
+        <%= link_to t("reports.inventory.filters.reset"), inventory_reset_path, class: "button button-secondary" %>
       <% end %>
     </form>
   </section>

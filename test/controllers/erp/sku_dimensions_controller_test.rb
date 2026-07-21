@@ -5,7 +5,8 @@ class Erp::SkuDimensionsControllerTest < ActionDispatch::IntegrationTest
     @token = SecureRandom.hex(4).upcase
     @current_user = create_user_with_roles("erp-sku-dimensions-#{@token.downcase}@example.com", "manager")
     sign_in @current_user
-    @sku = Ec::Sku.create!(sku_code: "ERP-DIM-#{@token}", product_name: "尺寸维护 SKU")
+    @master_sku = Ec::MasterSku.create!(master_sku_code: "ERP-DIM-SPU-#{@token}", product_name: "尺寸维护 SPU")
+    @sku = Ec::Sku.create!(master_sku: @master_sku, sku_code: "ERP-DIM-#{@token}", product_name: "尺寸维护 SKU")
     @dimension = Ec::SkuDimension.create!(
       sku_code: @sku.sku_code,
       inner_length_cm: 10,
@@ -22,6 +23,7 @@ class Erp::SkuDimensionsControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuCost.where(sku_code: sku_codes).delete_all
     Ec::SkuDimension.where(sku_code: sku_codes).delete_all
     Ec::Sku.with_deleted.where(sku_code: sku_codes).delete_all
+    Ec::MasterSku.where("master_sku_code LIKE ?", "%#{@token}%").delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-sku-dimensions-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-sku-dimensions-#{@token.downcase}%").delete_all
   end
@@ -31,6 +33,9 @@ class Erp::SkuDimensionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "SKU 尺寸维护"
+    assert_select "#sku-dimension-spu-sku-filter-trigger", text: "全部 SPU/SKU"
+    assert_select "input[type='checkbox'][name='master_sku_ids[]'][value=?]", @master_sku.id.to_s
+    assert_select "input[type='checkbox'][name='sku_codes[]'][value=?]", @sku.sku_code
     assert_select "td", @sku.sku_code
     assert_select "th", "内长 cm"
     assert_select "th", "外长 cm"
@@ -38,6 +43,18 @@ class Erp::SkuDimensionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "外箱重量 kg"
     assert_select "th", "外箱 pcs"
     assert_select "turbo-frame#sku_dimension_#{@sku.sku_code}_inner_length_cm_cell"
+  end
+
+  test "index filters sku dimensions by selected sku code" do
+    other_sku = Ec::Sku.create!(sku_code: "ERP-DIM-OTHER-#{@token}", product_name: "其他尺寸 SKU")
+
+    get "/erp/sku_dimensions", params: { sku_codes: [@sku.sku_code] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "#sku-dimension-spu-sku-filter-trigger", text: @sku.sku_code
+    assert_select "input[type='checkbox'][name='sku_codes[]'][value=?][checked='checked']", @sku.sku_code
+    assert_select "td", @sku.sku_code
+    assert_select ".prod-tbl tbody tr.sku-row td:first-child", { text: other_sku.sku_code, count: 0 }
   end
 
   test "index paginates sku dimension maintenance table" do

@@ -45,18 +45,23 @@
         <%= form.label :status, t("erp.common.status"), class: "label" %>
         <%= form.select :status, [[t("erp.common.filter_options.all"), "all"], [t("erp.common.statuses.enabled"), "active"], [t("erp.common.statuses.disabled"), "inactive"]], { selected: @status }, class: "select" %>
       </div>
-      <div class="field product-filter-field">
-        <%= form.label :master_sku_id, t("erp.skus.fields.master_sku"), class: "label" %>
-        <%= form.collection_select :master_sku_id, @master_sku_options, :id, :master_sku_code, { include_blank: t("erp.skus.filters.all_spus"), selected: @master_sku_id }, class: "select" %>
-      </div>
-      <div class="field product-filter-field">
-        <%= form.label :grade, t("erp.sku_marketing_states.fields.grade"), class: "label" %>
-        <%= form.select :grade, Ec::SkuMarketingState::GRADES.map { |grade| [grade, grade] }, { include_blank: t("erp.skus.filters.all_grades"), selected: @grade }, class: "select" %>
-      </div>
-      <div class="field product-filter-field">
-        <%= form.label :stage, t("erp.sku_marketing_states.fields.stage"), class: "label" %>
-        <%= form.select :stage, Ec::SkuMarketingState::STAGES.map { |stage| [stage.upcase, stage] }, { include_blank: t("erp.skus.filters.all_stages"), selected: @stage }, class: "select" %>
-      </div>
+      <%= render "shared/spu_sku_filter",
+        field_class: "product-filter-field",
+        dom_id_prefix: "sku-spu-sku-filter" %>
+      <%= render "shared/popover_multiselect_filter",
+        dom_id_prefix: "sku-grade-filter",
+        param_name: "grades",
+        label: t("erp.sku_marketing_states.fields.grade"),
+        all_label: t("erp.skus.filters.all_grades"),
+        selected_values: @grades,
+        options: Ec::SkuMarketingState::GRADES.map { |grade| [grade, grade] } %>
+      <%= render "shared/popover_multiselect_filter",
+        dom_id_prefix: "sku-stage-filter",
+        param_name: "stages",
+        label: t("erp.sku_marketing_states.fields.stage"),
+        all_label: t("erp.skus.filters.all_stages"),
+        selected_values: @stages,
+        options: Ec::SkuMarketingState::STAGES.map { |stage| [stage.upcase, stage] } %>
       <%= render "shared/responsible_user_filters",
         field_class: "product-filter-field",
         dom_id_prefix: "sku-responsible-user-filter" %>
@@ -64,7 +69,7 @@
         <i class="bi bi-search" aria-hidden="true"></i>
         <%= t("erp.common.actions.filter") %>
       </button>
-      <%= link_to erp_skus_path, class: "btn btn-outline" do %>
+      <%= link_to erp_skus_path(current_locale_params), class: "btn btn-outline" do %>
         <i class="bi bi-x-lg" aria-hidden="true"></i>
         <%= t("erp.common.actions.reset") %>
       <% end %>

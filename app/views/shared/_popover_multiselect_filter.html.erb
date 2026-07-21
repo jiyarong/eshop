@@ -1,0 +1,93 @@
+<% field_class = local_assigns.fetch(:field_class, "product-filter-field") %>
+<% dom_id_prefix = local_assigns.fetch(:dom_id_prefix) %>
+<% param_name = local_assigns.fetch(:param_name).to_s %>
+<% label = local_assigns.fetch(:label) %>
+<% all_label = local_assigns.fetch(:all_label) %>
+<% options = Array(local_assigns.fetch(:options)) %>
+<% selected_values = Array(local_assigns[:selected_values]).map(&:to_s) %>
+<% selected_options = options.select { |option| selected_values.include?(option.last.to_s) } %>
+<% selected_count = selected_options.size %>
+<% summary = if selected_count.zero?
+  all_label
+elsif selected_count == 1
+  selected_options.first.first
+else
+  t("shared.popover_multiselect.selected_count", count: selected_count)
+end %>
+
+<div
+  class="<%= ["field", field_class.presence, "popover-multiselect"].compact.join(" ") %>"
+  data-controller="popover-multiselect-filter"
+  data-popover-multiselect-filter-all-label-value="<%= all_label %>"
+  data-popover-multiselect-filter-selected-count-label-value="<%= t("shared.popover_multiselect.selected_count", count: "%{count}") %>">
+  <%= label_tag "#{dom_id_prefix}-trigger", label, class: "label" %>
+
+  <button
+    id="<%= "#{dom_id_prefix}-trigger" %>"
+    class="popover-multiselect__trigger <%= "is-placeholder" if selected_count.zero? %>"
+    type="button"
+    aria-haspopup="dialog"
+    aria-expanded="false"
+    aria-controls="<%= "#{dom_id_prefix}-popover" %>"
+    data-action="popover-multiselect-filter#toggle"
+    data-popover-multiselect-filter-target="trigger">
+    <span data-popover-multiselect-filter-target="summary"><%= summary %></span>
+    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+  </button>
+
+  <section
+    id="<%= "#{dom_id_prefix}-popover" %>"
+    class="popover-multiselect__popover"
+    role="dialog"
+    aria-modal="false"
+    aria-label="<%= label %>"
+    hidden
+    data-action="keydown->popover-multiselect-filter#closeOnEscape"
+    data-popover-multiselect-filter-target="popover">
+    <div class="popover-multiselect__panel">
+      <label class="popover-multiselect__search">
+        <span class="sr-only"><%= t("shared.popover_multiselect.search_placeholder") %></span>
+        <input
+          type="search"
+          placeholder="<%= t("shared.popover_multiselect.search_placeholder") %>"
+          data-action="input->popover-multiselect-filter#filter keydown.enter->popover-multiselect-filter#preventSubmit"
+          data-popover-multiselect-filter-target="search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+      </label>
+
+      <div class="popover-multiselect__shortcuts">
+        <button
+          class="popover-multiselect__clear"
+          type="button"
+          data-action="popover-multiselect-filter#clear">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+          <span><%= t("shared.popover_multiselect.clear") %></span>
+        </button>
+      </div>
+
+      <div class="popover-multiselect__list" role="listbox" aria-multiselectable="true">
+        <% options.each do |option_label, option_value| %>
+          <% value = option_value.to_s %>
+          <% selected = selected_values.include?(value) %>
+          <label
+            class="popover-multiselect__option <%= "is-selected" if selected %>"
+            role="option"
+            aria-selected="<%= selected ? "true" : "false" %>"
+            data-label="<%= option_label %>"
+            data-search-label="<%= [option_label, value].join(" ").downcase %>"
+            data-popover-multiselect-filter-target="option">
+            <%= check_box_tag "#{param_name}[]", value, selected, id: "#{dom_id_prefix}-#{value.parameterize}", data: { action: "popover-multiselect-filter#sync", popover_multiselect_filter_target: "checkbox" } %>
+            <span class="popover-multiselect__check" aria-hidden="true">
+              <i class="bi bi-check-lg"></i>
+            </span>
+            <span class="popover-multiselect__label"><%= option_label %></span>
+          </label>
+        <% end %>
+
+        <div class="popover-multiselect__empty" data-popover-multiselect-filter-target="empty" hidden>
+          <%= t("shared.popover_multiselect.no_options") %>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

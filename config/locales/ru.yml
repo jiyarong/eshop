@@ -1501,6 +1501,26 @@ ru:
         products: "Товары магазина"
         summary: "Информация о магазине"
   shared:
+    popover_multiselect:
+      clear: "Очистить"
+      no_options: "Опции не найдены"
+      search_placeholder: "Поиск"
+      selected_count: "Выбрано: %{count}"
+    spu_sku_filter:
+      all: "Все SPU/SKU"
+      aria_label: "Фильтр SPU и SKU"
+      clear: "Очистить"
+      label: "SPU/SKU"
+      no_matches: "SPU или SKU не найдены"
+      no_name: "Без названия"
+      no_skus: "SKU отсутствуют"
+      no_spu: "Без SPU"
+      search_placeholder: "Поиск SPU, SKU или товара"
+      selected_count: "Выбрано: %{count}"
+      sku_column: "SKU"
+      sku_count: "%{count} SKU"
+      spu_column: "SPU"
+      unfiled: "SKU без SPU"
     responsible_user_filters:
       all_developers: "Все разработчики"
       all_operators: "Все операторы"
