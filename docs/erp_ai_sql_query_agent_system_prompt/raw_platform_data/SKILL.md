@@ -33,6 +33,7 @@
 - `raw_ozon_product_prices`：商品价格。字段：`account_id`、`ozon_product_id`、`offer_id`、`price`、`old_price`、`marketing_price`、`min_price`、`buybox_price`、`discount_percent`、`is_in_discount`、`commissions`、`acquiring`、`volume_weight`、`synced_at`。
 - `raw_ozon_product_stocks`：商品库存。字段：`account_id`、`ozon_product_id`、`offer_id`、`present_fbo`、`reserved_fbo`、`present_fbs`、`reserved_fbs`、`stocks_by_warehouse`、`synced_at`。
 - `raw_ozon_analytics_stocks`：库存分析。字段：`account_id`、`ozon_sku`、`item_code`、`item_name`、`warehouse_name`、`present`、`reserved`、`synced_at`。
+- `raw_ozon_sales_funnel_daily`：Ozon 日维度 SKU 销售漏斗。字段：`account_id`、`stat_date`、`sku`、`product_name`、`hits_view`、`hits_view_search`、`hits_view_pdp`、`session_view`、`session_view_search`、`session_view_pdp`、`hits_tocart`、`hits_tocart_search`、`hits_tocart_pdp`、`ordered_units`、`revenue`、`returns_count`、`cancellations`、`synced_at`。注意 `session_view*` 是区间去重会话口径，日表跨天汇总不能替代周/月接口区间口径。
 
 关系：
 
@@ -86,7 +87,7 @@
 
 ## WB 广告、分析、评价与沟通
 
-- `raw_wb_analytics_sales_funnels`：销售漏斗。字段：`account_id`、`stat_date`、`nm_id`、`vendor_code`、`brand`、`subject`、`open_card`、`add_to_cart`、`orders`、`orders_sum`、`buyouts`、`buyouts_sum`、`buyout_percent`、`cart_to_order`、`conv_to_cart`、`share_order_percent`、`localization_percent`。
+- `raw_wb_sales_funnel_daily`：WB 日维度商品销售漏斗。字段：`account_id`、`stat_date`、`nm_id`、`vendor_code`、`product_name`、`brand`、`subject_id`、`subject`、`open_card`、`add_to_cart`、`orders`、`orders_sum`、`buyouts`、`buyouts_sum`、`cancel_count`、`cancel_sum`、`buyout_percent`、`cart_to_order`、`conv_to_cart`、`share_order_percent`、`add_to_wishlist`、`localization_percent`、`synced_at`。
 - `raw_wb_analytics_search_terms`：搜索词。字段：`account_id`、`stat_date`、`keyword`、`nm_id`、`product_name`、`brand_name`、`subject_name`、`frequency`、`week_frequency`、`open_card`、`add_to_cart`、`orders`、`avg_position`、`median_position`、`visibility`。
 - `raw_wb_ad_campaigns`：广告活动。字段：`account_id`、`wb_advert_id`、`name`、`campaign_type`、`status`、`start_time`、`end_time`、`daily_budget`、`total_budget`。
 - `raw_wb_ad_daily_stats`：广告日统计。字段：`campaign_id`、`stat_date`、`views`、`clicks`、`spend`、`orders`、`revenue`、`ctr`、`cpc`、`cr`。

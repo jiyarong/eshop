@@ -29,6 +29,10 @@ production:
     command: "RawWb::SalesFunnelPeriodSync.run_completed_week(weeks_ago: 2)"
     schedule: every sunday at 23:00 in Asia/Shanghai
 
+  wb_sales_funnel_daily_recent_sync:
+    command: "RawWb::SalesFunnelDailySync.run_recent_days(days: 8)"
+    schedule: every day at 1:20 in Asia/Shanghai
+
   # WB weekly sync. days:8 gives 1-day overlap to catch late settlement data.
   wb_weekly_sync:
     command: "RawWb::WeeklySync.run(days: 8)"
@@ -88,6 +92,10 @@ production:
   ozon_sales_funnel_n2_week_sync:
     command: "RawOzon::SalesFunnelPeriodSync.run_completed_week(weeks_ago: 2)"
     schedule: every sunday at 23:30 in Asia/Shanghai
+
+  ozon_sales_funnel_daily_recent_sync:
+    command: "RawOzon::SalesFunnelDailySync.run_recent_days(days: 8)"
+    schedule: every day at 1:45 in Asia/Shanghai
 
   ozon_weekly_sync:
     command: "RawOzon::WeeklySync.run(days: 8)"

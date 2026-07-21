@@ -10,8 +10,6 @@ module RawWb
       sync_ad_campaign_count
       sync_ad_campaigns
       sync_ad_stats
-      sync_sales_funnel
-      sync_sales_funnel_history
       sync_region_sale
       sync_goods_return
       sync_sales_reports

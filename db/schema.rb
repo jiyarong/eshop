@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_065819) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -159,19 +159,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
     t.index ["allocation_no"], name: "index_ec_cost_allocations_on_allocation_no", unique: true
     t.index ["cost_type"], name: "index_ec_cost_allocations_on_cost_type"
     t.index ["status"], name: "index_ec_cost_allocations_on_status"
-  end
-
-  create_table "ec_daily_exchange_rates", force: :cascade do |t|
-    t.string "base_currency", default: "CNY", null: false
-    t.datetime "created_at", null: false
-    t.string "currency_code", null: false
-    t.date "rate_date", null: false
-    t.decimal "rate_from_base", precision: 18, scale: 8, null: false
-    t.decimal "rate_to_base", precision: 18, scale: 8, null: false
-    t.string "source", default: "cbr", null: false
-    t.date "source_date"
-    t.datetime "updated_at", null: false
-    t.index ["rate_date", "base_currency", "currency_code"], name: "index_ec_daily_exchange_rates_unique_daily_currency", unique: true
   end
 
   create_table "ec_master_skus", force: :cascade do |t|
@@ -763,26 +750,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
     t.index ["account_id"], name: "index_raw_ozon_accrual_by_day_on_account_id"
   end
 
-  create_table "raw_ozon_analytics", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.integer "adv_view_all"
-    t.integer "cancellations"
-    t.date "date_from", null: false
-    t.date "date_to", null: false
-    t.text "dimension_keys", default: [], array: true
-    t.jsonb "dimension_values"
-    t.integer "hits_tocart"
-    t.integer "hits_view_pdp"
-    t.integer "ordered_units"
-    t.jsonb "raw_json", null: false
-    t.integer "returns_count"
-    t.decimal "revenue", precision: 18, scale: 2
-    t.integer "session_view"
-    t.datetime "synced_at"
-    t.index ["account_id", "date_from", "date_to"], name: "idx_on_account_id_date_from_date_to_0b8395a459"
-    t.index ["account_id"], name: "index_raw_ozon_analytics_on_account_id"
-  end
-
   create_table "raw_ozon_analytics_stocks", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "item_code"
@@ -1269,6 +1236,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
     t.index ["account_id"], name: "index_raw_ozon_reviews_on_account_id"
   end
 
+  create_table "raw_ozon_sales_funnel_daily", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "cancellations", default: 0
+    t.decimal "conv_tocart", precision: 10, scale: 4
+    t.datetime "created_at", null: false
+    t.bigint "hits_tocart", default: 0
+    t.bigint "hits_tocart_pdp", default: 0
+    t.bigint "hits_tocart_search", default: 0
+    t.bigint "hits_view", default: 0
+    t.bigint "hits_view_pdp", default: 0
+    t.bigint "hits_view_search", default: 0
+    t.bigint "ordered_units", default: 0
+    t.string "product_name"
+    t.jsonb "raw_json", default: {}, null: false
+    t.bigint "returns_count", default: 0
+    t.decimal "revenue", precision: 18, scale: 2
+    t.bigint "session_view", default: 0
+    t.bigint "session_view_pdp", default: 0
+    t.bigint "session_view_search", default: 0
+    t.bigint "sku", null: false
+    t.date "stat_date", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "stat_date", "sku"], name: "idx_raw_ozon_sales_funnel_daily_unique", unique: true
+    t.index ["account_id"], name: "index_raw_ozon_sales_funnel_daily_on_account_id"
+    t.index ["sku"], name: "idx_raw_ozon_sales_funnel_daily_sku"
+    t.index ["stat_date"], name: "idx_raw_ozon_sales_funnel_daily_date"
+  end
+
   create_table "raw_ozon_sales_funnel_period", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "cancellations", default: 0
@@ -1465,36 +1461,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
     t.datetime "updated_at", null: false
     t.index ["campaign_id", "nm_id", "stat_date"], name: "idx_raw_wb_ad_sku_spends_unique", unique: true
     t.index ["nm_id", "stat_date"], name: "index_raw_wb_ad_sku_spends_on_nm_id_and_stat_date"
-  end
-
-  create_table "raw_wb_analytics_sales_funnels", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "add_to_cart", default: 0
-    t.bigint "add_to_wishlist", default: 0
-    t.decimal "avg_orders_per_day", precision: 10, scale: 2
-    t.decimal "avg_price", precision: 10, scale: 2
-    t.string "brand"
-    t.decimal "buyout_percent", precision: 10, scale: 2
-    t.bigint "buyouts", default: 0
-    t.decimal "buyouts_sum", precision: 15, scale: 2
-    t.bigint "cancel_count", default: 0
-    t.decimal "cancel_sum", precision: 15, scale: 2
-    t.decimal "cart_to_order", precision: 10, scale: 4
-    t.decimal "conv_to_cart", precision: 10, scale: 4
-    t.decimal "localization_percent", precision: 10, scale: 2
-    t.bigint "nm_id"
-    t.bigint "open_card", default: 0
-    t.bigint "orders", default: 0
-    t.decimal "orders_sum", precision: 15, scale: 2
-    t.decimal "share_order_percent", precision: 10, scale: 2
-    t.date "stat_date", null: false
-    t.string "subject"
-    t.integer "time_to_ready_days"
-    t.integer "time_to_ready_hours"
-    t.integer "time_to_ready_mins"
-    t.string "vendor_code"
-    t.index ["account_id", "stat_date", "nm_id"], name: "idx_on_account_id_stat_date_nm_id_e64f4a1355", unique: true
-    t.index ["account_id"], name: "index_raw_wb_analytics_sales_funnels_on_account_id"
   end
 
   create_table "raw_wb_analytics_search_terms", force: :cascade do |t|
@@ -1890,6 +1856,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
     t.string "wb_review_id"
     t.index ["account_id"], name: "index_raw_wb_reviews_on_account_id"
     t.index ["wb_review_id"], name: "index_raw_wb_reviews_on_wb_review_id", unique: true
+  end
+
+  create_table "raw_wb_sales_funnel_daily", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "add_to_cart", default: 0
+    t.bigint "add_to_wishlist", default: 0
+    t.decimal "avg_orders_per_day", precision: 10, scale: 4
+    t.decimal "avg_price", precision: 10, scale: 2
+    t.string "brand"
+    t.decimal "buyout_percent", precision: 10, scale: 2
+    t.bigint "buyouts", default: 0
+    t.decimal "buyouts_sum", precision: 15, scale: 2
+    t.bigint "cancel_count", default: 0
+    t.decimal "cancel_sum", precision: 15, scale: 2
+    t.decimal "cart_to_order", precision: 10, scale: 4
+    t.decimal "conv_to_cart", precision: 10, scale: 4
+    t.datetime "created_at", null: false
+    t.string "currency", default: "RUB", null: false
+    t.decimal "feedback_rating", precision: 5, scale: 2
+    t.decimal "localization_percent", precision: 10, scale: 2
+    t.bigint "nm_id", null: false
+    t.bigint "open_card", default: 0
+    t.bigint "orders", default: 0
+    t.decimal "orders_sum", precision: 15, scale: 2
+    t.string "product_name"
+    t.decimal "product_rating", precision: 5, scale: 2
+    t.jsonb "raw_json", default: {}, null: false
+    t.decimal "share_order_percent", precision: 10, scale: 2
+    t.date "stat_date", null: false
+    t.decimal "stock_balance_sum", precision: 15, scale: 2
+    t.bigint "stock_mp", default: 0
+    t.bigint "stock_wb", default: 0
+    t.string "subject"
+    t.bigint "subject_id"
+    t.datetime "synced_at", null: false
+    t.jsonb "tags", default: [], null: false
+    t.integer "time_to_ready_days"
+    t.integer "time_to_ready_hours"
+    t.integer "time_to_ready_mins"
+    t.datetime "updated_at", null: false
+    t.string "vendor_code"
+    t.index ["account_id", "stat_date", "nm_id"], name: "idx_raw_wb_sales_funnel_daily_unique", unique: true
+    t.index ["account_id"], name: "index_raw_wb_sales_funnel_daily_on_account_id"
+    t.index ["nm_id"], name: "idx_raw_wb_sales_funnel_daily_nm_id"
+    t.index ["stat_date"], name: "idx_raw_wb_sales_funnel_daily_date"
   end
 
   create_table "raw_wb_sales_funnel_period", force: :cascade do |t|
@@ -2385,7 +2396,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
   add_foreign_key "feedback_tasks", "users"
   add_foreign_key "messages", "conversations"
   add_foreign_key "raw_ozon_accrual_by_day", "raw_ozon_seller_accounts", column: "account_id"
-  add_foreign_key "raw_ozon_analytics", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_analytics_stocks", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_categories", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_chat_messages", "raw_ozon_seller_accounts", column: "account_id"
@@ -2412,6 +2422,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
   add_foreign_key "raw_ozon_reports", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_returns", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_reviews", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_sales_funnel_daily", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_sales_funnel_period", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_supply_orders", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_sync_tasks", "raw_ozon_seller_accounts", column: "account_id"
@@ -2424,7 +2435,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
   add_foreign_key "raw_wb_ad_keyword_bids", "raw_wb_ad_campaigns", column: "campaign_id"
   add_foreign_key "raw_wb_ad_negative_keywords", "raw_wb_ad_campaigns", column: "campaign_id"
   add_foreign_key "raw_wb_ad_settled_fees", "raw_wb_seller_accounts", column: "account_id"
-  add_foreign_key "raw_wb_analytics_sales_funnels", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_analytics_search_terms", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_characteristics", "raw_wb_subjects", column: "subject_id"
   add_foreign_key "raw_wb_chat_messages", "raw_wb_chats", column: "chat_id"
@@ -2454,6 +2464,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_075657) do
   add_foreign_key "raw_wb_return_claims", "raw_wb_orders", column: "order_id"
   add_foreign_key "raw_wb_return_claims", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_reviews", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_sales_funnel_daily", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_sales_funnel_period", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_sales_report_items", "raw_wb_sales_reports", column: "sales_report_id"
   add_foreign_key "raw_wb_sales_report_items", "raw_wb_seller_accounts", column: "account_id"

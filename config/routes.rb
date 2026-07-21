@@ -163,7 +163,6 @@ Rails.application.routes.draw do
   #   resources :promotions
   #
   #   # 分析
-  #   resources :analytics_sales_funnels, only: [:index, :show, :create]
   #   resources :analytics_search_terms,  only: [:index, :show, :create]
   #
   #   # 用户沟通

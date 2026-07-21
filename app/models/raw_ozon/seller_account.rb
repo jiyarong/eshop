@@ -24,8 +24,8 @@ module RawOzon
     has_many :accrual_by_day,         class_name: 'RawOzon::AccrualByDay',         foreign_key: :account_id, dependent: :destroy
     has_many :performance_sku_spends, class_name: 'RawOzon::PerformanceSkuSpend',  foreign_key: :account_id, dependent: :destroy
     has_many :posting_destinations,   class_name: 'RawOzon::PostingDestination',   foreign_key: :account_id, dependent: :destroy
-    has_many :analytics,              class_name: 'RawOzon::Analytics',            foreign_key: :account_id, dependent: :destroy
     has_many :sales_funnel_periods,   class_name: 'RawOzon::SalesFunnelPeriod',    foreign_key: :account_id, dependent: :destroy
+    has_many :sales_funnel_daily,     class_name: 'RawOzon::SalesFunnelDaily',     foreign_key: :account_id, dependent: :destroy
     has_many :analytics_stocks,       class_name: 'RawOzon::AnalyticsStock',       foreign_key: :account_id, dependent: :destroy
     has_many :promotions,             class_name: 'RawOzon::Promotion',            foreign_key: :account_id, dependent: :destroy
     has_many :reports,                class_name: 'RawOzon::Report',               foreign_key: :account_id, dependent: :destroy

@@ -28,8 +28,6 @@ module RawWb
     include Syncs::QuestionCounts
     include Syncs::ReturnClaims
     include Syncs::Chats
-    include Syncs::SalesFunnel
-    include Syncs::SalesFunnelHistory
     include Syncs::WbWarehouseStocks
     include Syncs::SearchTerms
     include Syncs::RegionSale
