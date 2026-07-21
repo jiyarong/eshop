@@ -11,14 +11,15 @@ module Ec
       "ozon" => %i[sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
     }.freeze
 
-    def self.run(store_ref:, from_date:, to_date:)
-      new(store_ref:, from_date:, to_date:).run
+    def self.run(store_ref:, from_date:, to_date:, sku_codes: [])
+      new(store_ref:, from_date:, to_date:, sku_codes:).run
     end
 
-    def initialize(store_ref:, from_date:, to_date:)
+    def initialize(store_ref:, from_date:, to_date:, sku_codes: [])
       @store_ref = store_ref.to_s
       @from_date = from_date.to_date
       @to_date = to_date.to_date
+      @sku_codes = sku_codes
       @platform, @account_id = parse_store_ref!(@store_ref)
     end
 
@@ -99,7 +100,8 @@ module Ec
           from_date: from_date,
           to_date: to_date,
           rate_cny_rub: rate.rate_cny_rub,
-          rate_byn_rub: rate.rate_byn_rub
+          rate_byn_rub: rate.rate_byn_rub,
+          sku_codes: @sku_codes
         )
       when "ozon"
         Ec::OzonProfitAttribution.new(
@@ -107,7 +109,8 @@ module Ec
           from_date: from_date,
           to_date: to_date,
           rate_cny_rub: rate.rate_cny_rub,
-          sync_missing_ad_costs: false
+          sync_missing_ad_costs: false,
+          sku_codes: @sku_codes
         )
       end
     end

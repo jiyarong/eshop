@@ -10,14 +10,15 @@ module Ec
     ].freeze
     COMPARISON_ROW_KEYS = %i[net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct].freeze
 
-    def self.run(from_date:, to_date:)
-      new(from_date:, to_date:).run
+    def self.run(from_date:, to_date:, sku_codes: [])
+      new(from_date:, to_date:, sku_codes:).run
     end
 
-    def initialize(from_date:, to_date:, rate: nil)
+    def initialize(from_date:, to_date:, rate: nil, sku_codes: [])
       @from_date = from_date.to_date
       @to_date = to_date.to_date
       @rate = rate || Ec::WeeklyRate.resolve(@from_date)
+      @sku_codes = sku_codes
       raise "找不到 #{@from_date} 的汇率，请先录入 ec_weekly_rates" unless @rate
     end
 

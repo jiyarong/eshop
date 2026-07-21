@@ -29,7 +29,7 @@ module Ec
 
     TAX_REGIME_MAP = { 'general' => 'osn', 'small' => 'usn' }.freeze
 
-    def initialize(account_id:, from_date:, to_date:, rate_cny_rub:, rate_byn_rub:)
+    def initialize(account_id:, from_date:, to_date:, rate_cny_rub:, rate_byn_rub:, sku_codes: [])
       @account      = RawWb::SellerAccount.find(account_id)
       @account_id   = account_id
       @from_date    = from_date.to_date
@@ -37,6 +37,7 @@ module Ec
       @rate_cny_rub = rate_cny_rub.to_f   # 1 CNY = X RUB
       @rate_byn_rub = rate_byn_rub.to_f   # 1 BYN = X RUB
       @tax_regime   = TAX_REGIME_MAP.fetch(@account.company_type.to_s, 'usn')
+      @sku_codes    = sku_codes.map { |sku| sku.to_s.strip.upcase }.reject(&:blank?).uniq
     end
 
     def call
@@ -47,6 +48,7 @@ module Ec
       load_ad_costs
       load_goods_costs
       compute_profit
+      filter_results_by_sku
       self
     end
 
@@ -404,6 +406,13 @@ module Ec
         total_after_tax:  @results.sum { |r| r[:after_tax] }.round(2),
         unallocated_rows: @unalloc_rows.size,
       }
+    end
+
+    def filter_results_by_sku
+      return if @sku_codes.empty?
+
+      @results.select! { |row| @sku_codes.include?(row[:vendor_code].to_s.strip.upcase) }
+      @summary = build_summary
     end
 
     def new_bucket

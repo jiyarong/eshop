@@ -11,14 +11,15 @@ module Ec
       ad_ratio_pct cost_return_pct projected_roi_pct annualized_return_pct annualized_net_profit_cny
     ].freeze
 
-    def self.run(from_date:, to_date:)
-      new(from_date:, to_date:).run
+    def self.run(from_date:, to_date:, sku_codes: [])
+      new(from_date:, to_date:, sku_codes:).run
     end
 
-    def initialize(from_date:, to_date:, rate: nil)
+    def initialize(from_date:, to_date:, rate: nil, sku_codes: [])
       @from_date = from_date.to_date
       @to_date = to_date.to_date
       @rate = rate || Ec::WeeklyRate.resolve(@from_date)
+      @sku_codes = sku_codes
       raise "找不到 #{@from_date} 的汇率，请先录入 ec_weekly_rates" unless @rate
     end
 

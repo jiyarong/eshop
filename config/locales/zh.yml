@@ -763,6 +763,8 @@ zh:
         wr: "WR"
         wsu: "WSU"
         wsu_deep: "WSU-DEEP"
+      sku: "SKU"
+      sku_placeholder: "多个 SKU 用逗号分隔"
       store: "店铺"
       submit: "查询"
     sections:

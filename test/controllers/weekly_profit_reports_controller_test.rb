@@ -47,6 +47,17 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Ozon · Ozon Test Shop", ozon_account["label"]
   end
 
+  test "index redirects default filters to explicit parameters" do
+    get "/weekly_profit_reports", headers: { "Accept" => "text/html" }
+
+    assert_redirected_to weekly_profit_reports_path(
+      report_type: "wr",
+      from_date: (Date.current.beginning_of_week(:monday) - 7.days).iso8601,
+      to_date: (Date.current.beginning_of_week(:monday) - 1.day).iso8601,
+      store_ref: "wb:#{@wb_account.id}"
+    )
+  end
+
   test "index renders weekly profit report page with report type and store filters" do
     payload = {
       report_type: "wr",
@@ -68,12 +79,17 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     original_run = query_class.method(:run)
     query_class.define_singleton_method(:run) { |**_kwargs| payload }
 
-    get "/weekly_profit_reports", headers: { "Accept" => "text/html" }
+    get "/weekly_profit_reports", params: {
+      report_type: "wr",
+      from_date: (Date.current.beginning_of_week(:monday) - 7.days).iso8601,
+      to_date: (Date.current.beginning_of_week(:monday) - 1.day).iso8601,
+      store_ref: "wb:#{@wb_account.id}"
+    }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_includes response.media_type, "text/html"
     assert_select "h1", "周利润报表"
-    assert_select "form[action=?][method=?]", "/weekly_profit_reports", "get"
+    assert_select "form[action=?][method=?][data-turbo-action='advance']", "/weekly_profit_reports", "get"
     assert_select "[data-controller='time-range-selector']", count: 1
     assert_select ".field--time-range" do
       assert_select "label[for=?]", "weekly-profit-time-range-trigger", "时间范围"
@@ -84,6 +100,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "input[name='report_type'][type='hidden'][value='wr']", count: 1
     assert_select "input[name='store_ref'][type='hidden'][value=?]", "wb:#{@wb_account.id}"
+    assert_select "input[name='sku'][value='']", count: 1
     assert_select "[data-weekly-profit-tag-group='report-type']", count: 1
     assert_select "button[data-weekly-profit-tag][data-value='wr'].is-active[aria-pressed='true']", text: "WR"
     assert_select "button[data-weekly-profit-tag][data-value='wsu']", text: "WSU"
@@ -336,13 +353,15 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     query_class.define_singleton_method(:run) do |**kwargs|
       test_case.assert_equal Date.parse("2026-05-18"), kwargs[:from_date]
       test_case.assert_equal Date.parse("2026-05-24"), kwargs[:to_date]
+      test_case.assert_equal %w[SKU-1 SKU-2], kwargs[:sku_codes]
       payload
     end
 
     get "/weekly_profit_reports.json", params: {
       report_type: "wsu",
       from_date: "2026-05-18",
-      to_date: "2026-05-24"
+      to_date: "2026-05-24",
+      sku: "sku-1, SKU-2, sku-1"
     }
 
     assert_response :success

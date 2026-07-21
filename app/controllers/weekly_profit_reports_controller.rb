@@ -37,7 +37,7 @@ class WeeklyProfitReportsController < ApplicationController
   end
 
   def show
-    return render_index if html_index_request?
+    return render_index if html_page_request?
 
     @report = run_report_query(parse_request_params)
     if request.format.xlsx?
@@ -70,20 +70,39 @@ class WeeklyProfitReportsController < ApplicationController
 
   def render_index
     @store_options = store_options
-    @report_type = params[:report_type].presence_in(REPORT_TYPES) || "wr"
+    @report_type = params[:report_type].presence || "wr"
     @selected_store_ref = params[:store_ref].presence || @store_options.first&.dig(:ref)
     @from_date, @to_date = default_period
-    @report = run_report_query(
-      report_type: @report_type,
-      store_ref: @selected_store_ref,
-      from_date: Date.iso8601(@from_date),
-      to_date: Date.iso8601(@to_date)
-    ) if @report_type == "wr" && @selected_store_ref.present?
+    @from_date = params[:from_date].presence || @from_date
+    @to_date = params[:to_date].presence || @to_date
+    @sku = params[:sku].to_s
+
+    if @report_type == "wr" && @selected_store_ref.blank?
+      render :show and return
+    end
+
+    if missing_explicit_params?
+      redirect_params = {
+        report_type: @report_type,
+        from_date: @from_date,
+        to_date: @to_date,
+        sku: @sku.presence
+      }
+      redirect_params[:store_ref] = @selected_store_ref if @report_type == "wr" && @selected_store_ref.present?
+      redirect_to weekly_profit_reports_path(redirect_params.compact) and return
+    end
+
+    @report = run_report_query(parse_request_params)
     render :show
   end
 
-  def html_index_request?
-    request.format.html? && !params.key?(:report_type)
+  def html_page_request?
+    request.format.html? && request.headers["Turbo-Frame"].blank?
+  end
+
+  def missing_explicit_params?
+    params[:report_type].blank? || params[:from_date].blank? || params[:to_date].blank? ||
+      (@report_type == "wr" && params[:store_ref].blank? && @selected_store_ref.present?)
   end
 
   def parse_request_params
@@ -93,7 +112,8 @@ class WeeklyProfitReportsController < ApplicationController
     parsed = {
       report_type: report_type,
       from_date: parse_date(params.require(:from_date)),
-      to_date: parse_date(params.require(:to_date))
+      to_date: parse_date(params.require(:to_date)),
+      sku_codes: parse_sku_codes(params[:sku])
     }
     validate_period!(parsed[:from_date], parsed[:to_date])
 
@@ -108,6 +128,10 @@ class WeeklyProfitReportsController < ApplicationController
     Date.iso8601(value.to_s)
   rescue Date::Error
     raise ArgumentError, "invalid_date"
+  end
+
+  def parse_sku_codes(value)
+    value.to_s.split(",").filter_map { |sku| sku.strip.upcase.presence }.uniq
   end
 
   def validate_period!(from_date, to_date)
@@ -125,17 +149,20 @@ class WeeklyProfitReportsController < ApplicationController
       Ec::WeeklyProfitReportQuery.run(
         store_ref: parsed[:store_ref],
         from_date: parsed[:from_date],
-        to_date: parsed[:to_date]
+        to_date: parsed[:to_date],
+        sku_codes: parsed[:sku_codes]
       )
     when "wsu"
       Ec::WeeklySummaryQuery.run(
         from_date: parsed[:from_date],
-        to_date: parsed[:to_date]
+        to_date: parsed[:to_date],
+        sku_codes: parsed[:sku_codes]
       )
     when "wsu_deep"
       Ec::WeeklySummaryDeepQuery.run(
         from_date: parsed[:from_date],
-        to_date: parsed[:to_date]
+        to_date: parsed[:to_date],
+        sku_codes: parsed[:sku_codes]
       )
     else
       raise ArgumentError, "invalid_report_type"

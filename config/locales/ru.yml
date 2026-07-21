@@ -756,6 +756,8 @@ ru:
         wr: "WR"
         wsu: "WSU"
         wsu_deep: "WSU-DEEP"
+      sku: "SKU"
+      sku_placeholder: "Несколько SKU через запятую"
       store: "Магазин"
       submit: "Поиск"
     sections:

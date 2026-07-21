@@ -30,12 +30,13 @@ module Ec
 
     attr_reader :results, :unallocated, :summary
 
-    def initialize(account_id:, from_date:, to_date:, rate_cny_rub: nil, sync_missing_ad_costs: true)
+    def initialize(account_id:, from_date:, to_date:, rate_cny_rub: nil, sync_missing_ad_costs: true, sku_codes: [])
       @account_id    = account_id
       @from_date     = from_date.is_a?(Date) ? from_date : Date.parse(from_date.to_s)
       @to_date       = to_date.is_a?(Date) ? to_date : Date.parse(to_date.to_s)
       @rate_cny_rub  = (rate_cny_rub || default_rate).to_f
       @sync_missing_ad_costs = sync_missing_ad_costs
+      @sku_codes = sku_codes.map { |sku| sku.to_s.strip.upcase }.reject(&:blank?).uniq
       # Apply 3% buffer to align with Python口径：rate_effective = rate_cny_rub × 1.03
       @rate_effective = @rate_cny_rub * 1.03
     end
@@ -54,6 +55,7 @@ module Ec
       apply_profit_chain
 
       build_output
+      filter_results_by_sku
       self
     end
 
@@ -498,6 +500,13 @@ module Ec
         # unallocated
         unallocated_total: @unallocated[:total],
       }
+    end
+
+    def filter_results_by_sku
+      return if @sku_codes.empty?
+
+      @results.select! { |row| @sku_codes.include?(row[:sku_code].to_s.strip.upcase) }
+      @summary = build_summary
     end
 
     def posting_key(posting_number)
