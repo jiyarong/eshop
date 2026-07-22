@@ -270,6 +270,11 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "新增 SKU 批次"
     assert_select "form[action='/erp/sku_batches']"
+    assert_select "#sku-batch-form-spu-sku-selector-trigger", text: "选择 SKU"
+    assert_select ".spu-sku-filter--single"
+    assert_select "select[name='ec_sku_batch[sku_code]']", count: 0
+    assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?]", @sku.sku_code
+    assert_select "input[name='master_sku_ids[]']", count: 0
     assert_select "input[name='ec_sku_batch[purchase_date]']"
   end
 
@@ -280,7 +285,9 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#erp_modal"
     assert_select ".erp-modal"
     assert_select "form[action='/erp/sku_batches'][data-turbo-frame='_top']"
-    assert_select "select[name='ec_sku_batch[sku_code]'] option[selected='selected'][value=?]", @sku.sku_code
+    assert_select "#sku-batch-form-spu-sku-selector-trigger", text: @sku.sku_code
+    assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?][checked='checked']", @sku.sku_code
+    assert_select "input[name='master_sku_ids[]']", count: 0
     assert_select "input[name='ec_sku_batch[purchase_date]']"
     assert_select "input[name='return_to'][value='/erp/skus?status=active']"
   end
@@ -293,6 +300,8 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".erp-modal"
     assert_select "h2", "编辑批次"
     assert_select "form[action='#{erp_sku_batch_path(@batch)}'][data-turbo-frame='_top']"
+    assert_select "#sku-batch-form-spu-sku-selector-trigger", text: @sku.sku_code
+    assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?][checked='checked']", @sku.sku_code
     assert_select "input[name='ec_sku_batch[purchase_date]'][value=?]", @batch.purchase_date.to_s
     assert_select "input[name='return_to'][value='/erp/skus?q=ERP']"
   end
@@ -339,7 +348,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
   test "invalid modal create rerenders batch form" do
     post "/erp/sku_batches", params: {
       ec_sku_batch: {
-        sku_code: @sku.sku_code,
+        sku_code: "",
         batch_code: "",
         purchased_quantity: "120",
         purchase_unit_price_cny: "11.5"

@@ -10,10 +10,14 @@
   <% end %>
 
   <div class="report-form">
-    <div class="field">
-      <%= form.label :sku_code, "SKU" %>
-      <%= form.collection_select :sku_code, sku_options, :sku_code, :sku_code %>
-    </div>
+    <%= render "shared/spu_sku_filter",
+      field_class: nil,
+      dom_id_prefix: "sku-batch-form-spu-sku-selector",
+      selection_mode: :single,
+      sku_input_name: "ec_sku_batch[sku_code]",
+      label: t("erp.sku_batches.fields.sku"),
+      placeholder: t("shared.spu_sku_filter.select_sku"),
+      aria_label: t("shared.spu_sku_filter.selector_aria_label") %>
     <div class="field">
       <%= form.label :batch_code, t("erp.sku_batches.fields.batch_code") %>
       <%= form.text_field :batch_code %>

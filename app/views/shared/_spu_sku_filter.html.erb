@@ -1,10 +1,18 @@
 <% field_class = local_assigns.fetch(:field_class, "product-filter-field") %>
 <% dom_id_prefix = local_assigns.fetch(:dom_id_prefix, "spu-sku-filter") %>
-<% wrapper_class = ["field", field_class.presence, "spu-sku-filter"].compact.join(" ") %>
-<% master_skus = Array(@spu_sku_filter_master_skus) %>
-<% orphan_skus = Array(@spu_sku_filter_orphan_skus) %>
-<% selected_master_sku_ids = Array(@spu_sku_selected_master_sku_ids).map(&:to_i) %>
-<% selected_sku_codes = Array(@spu_sku_selected_sku_codes).map(&:to_s) %>
+<% selection_mode = local_assigns.fetch(:selection_mode, :multiple).to_s %>
+<% single_selection = selection_mode == "single" %>
+<% wrapper_class = ["field", field_class.presence, "spu-sku-filter", ("spu-sku-filter--single" if single_selection)].compact.join(" ") %>
+<% master_skus = Array(local_assigns.key?(:master_skus) ? local_assigns[:master_skus] : @spu_sku_filter_master_skus) %>
+<% orphan_skus = Array(local_assigns.key?(:orphan_skus) ? local_assigns[:orphan_skus] : @spu_sku_filter_orphan_skus) %>
+<% selected_master_sku_ids = single_selection ? [] : Array(local_assigns.key?(:selected_master_sku_ids) ? local_assigns[:selected_master_sku_ids] : @spu_sku_selected_master_sku_ids).map(&:to_i) %>
+<% selected_sku_codes = Array(local_assigns.key?(:selected_sku_codes) ? local_assigns[:selected_sku_codes] : @spu_sku_selected_sku_codes).map(&:to_s) %>
+<% selected_sku_codes = selected_sku_codes.first(1) if single_selection %>
+<% master_sku_input_name = local_assigns.fetch(:master_sku_input_name, "master_sku_ids[]") %>
+<% sku_input_name = local_assigns.fetch(:sku_input_name, single_selection ? "sku_code" : "sku_codes[]") %>
+<% field_label = local_assigns.fetch(:label, t("shared.spu_sku_filter.label")) %>
+<% placeholder_label = local_assigns.fetch(:placeholder, t("shared.spu_sku_filter.all")) %>
+<% aria_label = local_assigns.fetch(:aria_label, t("shared.spu_sku_filter.aria_label")) %>
 <% sku_options = master_skus.flat_map(&:skus) + orphan_skus %>
 <% selected_master_labels = master_skus.select { |master_sku| selected_master_sku_ids.include?(master_sku.id) }.map(&:master_sku_code) %>
 <% selected_sku_labels = sku_options.select { |sku| selected_sku_codes.include?(sku.sku_code) }.map(&:sku_code) %>
@@ -23,7 +31,7 @@ elsif orphan_skus.any?
   "orphan"
 end %>
 <% summary = if selected_count.zero?
-  t("shared.spu_sku_filter.all")
+  placeholder_label
 elsif selected_count == 1
   selected_labels.first || t("shared.spu_sku_filter.selected_count", count: selected_count)
 else
@@ -33,9 +41,10 @@ end %>
 <div
   class="<%= wrapper_class %>"
   data-controller="spu-sku-filter"
-  data-spu-sku-filter-all-label-value="<%= t("shared.spu_sku_filter.all") %>"
+  data-spu-sku-filter-all-label-value="<%= placeholder_label %>"
+  data-spu-sku-filter-selection-mode-value="<%= selection_mode %>"
   data-spu-sku-filter-selected-count-label-value="<%= t("shared.spu_sku_filter.selected_count", count: "%{count}") %>">
-  <%= label_tag "#{dom_id_prefix}-trigger", t("shared.spu_sku_filter.label"), class: "label" %>
+  <%= label_tag "#{dom_id_prefix}-trigger", field_label, class: "label" %>
 
   <button
     id="<%= "#{dom_id_prefix}-trigger" %>"
@@ -55,7 +64,7 @@ end %>
     class="spu-sku-filter__popover"
     role="dialog"
     aria-modal="false"
-    aria-label="<%= t("shared.spu_sku_filter.aria_label") %>"
+    aria-label="<%= aria_label %>"
     hidden
     data-action="keydown->spu-sku-filter#closeOnEscape"
     data-spu-sku-filter-target="popover">
@@ -94,10 +103,14 @@ end %>
               data-group-key="<%= group_key %>"
               data-search-label="<%= group_search_label %>"
               data-spu-sku-filter-target="groupRow">
-              <label class="spu-sku-filter__spu-check" aria-label="<%= master_sku.master_sku_code %>">
-                <%= check_box_tag "master_sku_ids[]", master_sku.id, master_selected, id: "#{dom_id_prefix}-master-#{master_sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
-                <span class="spu-sku-filter__check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
-              </label>
+              <% if single_selection %>
+                <span class="spu-sku-filter__spu-check spu-sku-filter__spu-check--empty" aria-hidden="true"></span>
+              <% else %>
+                <label class="spu-sku-filter__spu-check" aria-label="<%= master_sku.master_sku_code %>">
+                  <%= check_box_tag master_sku_input_name, master_sku.id, master_selected, id: "#{dom_id_prefix}-master-#{master_sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
+                  <span class="spu-sku-filter__check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+                </label>
+              <% end %>
               <button
                 class="spu-sku-filter__spu-button"
                 type="button"
@@ -152,7 +165,7 @@ end %>
                 <span><%= master_sku.master_sku_code %></span>
                 <span><%= t("shared.spu_sku_filter.sku_count", count: skus.size) %></span>
               </header>
-              <div class="spu-sku-filter__sku-list" role="listbox" aria-multiselectable="true">
+              <div class="spu-sku-filter__sku-list" role="listbox" aria-multiselectable="<%= single_selection ? "false" : "true" %>">
                 <% skus.each do |sku| %>
                   <% selected = selected_sku_codes.include?(sku.sku_code) %>
                   <% sku_label = [sku.sku_code, sku.product_name, sku.product_name_ru].compact_blank.join(" ") %>
@@ -163,7 +176,11 @@ end %>
                     data-label="<%= sku.sku_code %>"
                     data-search-label="<%= sku_label.downcase %>"
                     data-spu-sku-filter-target="option">
-                    <%= check_box_tag "sku_codes[]", sku.sku_code, selected, id: "#{dom_id_prefix}-sku-#{sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
+                    <% if single_selection %>
+                      <%= radio_button_tag sku_input_name, sku.sku_code, selected, id: "#{dom_id_prefix}-sku-#{sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
+                    <% else %>
+                      <%= check_box_tag sku_input_name, sku.sku_code, selected, id: "#{dom_id_prefix}-sku-#{sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
+                    <% end %>
                     <span class="spu-sku-filter__check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
                     <span class="spu-sku-filter__body">
                       <span class="spu-sku-filter__name"><%= sku.sku_code %></span>
@@ -188,7 +205,7 @@ end %>
                 <span><%= t("shared.spu_sku_filter.unfiled") %></span>
                 <span><%= t("shared.spu_sku_filter.sku_count", count: orphan_skus.size) %></span>
               </header>
-              <div class="spu-sku-filter__sku-list" role="listbox" aria-multiselectable="true">
+              <div class="spu-sku-filter__sku-list" role="listbox" aria-multiselectable="<%= single_selection ? "false" : "true" %>">
                 <% orphan_skus.each do |sku| %>
                   <% selected = selected_sku_codes.include?(sku.sku_code) %>
                   <% sku_label = [sku.sku_code, sku.product_name, sku.product_name_ru].compact_blank.join(" ") %>
@@ -199,7 +216,11 @@ end %>
                     data-label="<%= sku.sku_code %>"
                     data-search-label="<%= sku_label.downcase %>"
                     data-spu-sku-filter-target="option">
-                    <%= check_box_tag "sku_codes[]", sku.sku_code, selected, id: "#{dom_id_prefix}-sku-#{sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
+                    <% if single_selection %>
+                      <%= radio_button_tag sku_input_name, sku.sku_code, selected, id: "#{dom_id_prefix}-sku-#{sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
+                    <% else %>
+                      <%= check_box_tag sku_input_name, sku.sku_code, selected, id: "#{dom_id_prefix}-sku-#{sku.id}", data: { action: "spu-sku-filter#sync", spu_sku_filter_target: "checkbox" } %>
+                    <% end %>
                     <span class="spu-sku-filter__check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
                     <span class="spu-sku-filter__body">
                       <span class="spu-sku-filter__name"><%= sku.sku_code %></span>

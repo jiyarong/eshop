@@ -204,6 +204,32 @@ class Erp::SkuCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-pagination-bar form[action='/erp/sku_costs'] input[name='sku'][value='#{prefix}']"
   end
 
+  test "new renders single sku selector" do
+    get "/erp/sku_costs/new", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "form[action='/erp/sku_costs']"
+    assert_select "#sku-cost-form-spu-sku-selector-trigger", text: "选择 SKU"
+    assert_select ".spu-sku-filter--single"
+    assert_select "select[name='ec_sku_cost[sku_code]']", count: 0
+    assert_select "input[type='radio'][name='ec_sku_cost[sku_code]'][value=?]", @sku.sku_code
+    assert_select "input[name='master_sku_ids[]']", count: 0
+  end
+
+  test "modal new renders single sku selector with selected sku" do
+    get "/erp/sku_costs/new",
+      params: { sku_code: @sku.sku_code, return_to: "/erp/sku_costs" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select "form[action='/erp/sku_costs'][data-turbo-frame='_top']"
+    assert_select "#sku-cost-form-spu-sku-selector-trigger", text: @sku.sku_code
+    assert_select "input[type='radio'][name='ec_sku_cost[sku_code]'][value=?][checked='checked']", @sku.sku_code
+    assert_select "input[name='master_sku_ids[]']", count: 0
+    assert_select "input[name='return_to'][value='/erp/sku_costs']"
+  end
+
   test "inline update persists existing sku cost field" do
     patch "/erp/sku_costs/#{@sku.sku_code}",
       params: {

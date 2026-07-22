@@ -3,9 +3,9 @@ module SpuSkuFilterable
 
   private
 
-  def load_spu_sku_filter
-    @spu_sku_selected_master_sku_ids = spu_sku_filter_master_sku_ids
-    @spu_sku_selected_sku_codes = spu_sku_filter_sku_codes
+  def load_spu_sku_filter(selected_master_sku_ids: nil, selected_sku_codes: nil)
+    @spu_sku_selected_master_sku_ids = selected_master_sku_ids || spu_sku_filter_master_sku_ids
+    @spu_sku_selected_sku_codes = selected_sku_codes || spu_sku_filter_sku_codes
     @spu_sku_filter_master_skus = Ec::MasterSku.includes(:skus).order(:master_sku_code)
     @spu_sku_filter_orphan_skus = Ec::Sku.where(master_sku_id: nil).order(:sku_code)
   end

@@ -4276,6 +4276,10 @@ textarea:focus {
   border-bottom: 1px solid rgba(223, 226, 235, 0.72);
 }
 
+.spu-sku-filter--single .spu-sku-filter__spu-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .spu-sku-filter__spu-row.is-active {
   background: #fff;
   box-shadow: inset 3px 0 0 var(--erp-brand-dark, var(--brand));
@@ -4295,6 +4299,10 @@ textarea:focus {
   cursor: default;
 }
 
+.spu-sku-filter--single .spu-sku-filter__spu-check--empty {
+  display: none;
+}
+
 .spu-sku-filter__spu-button {
   min-width: 0;
   display: grid;
@@ -4309,6 +4317,10 @@ textarea:focus {
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.spu-sku-filter--single .spu-sku-filter__spu-button {
+  padding-left: 10px;
 }
 
 .spu-sku-filter__spu-button:hover {

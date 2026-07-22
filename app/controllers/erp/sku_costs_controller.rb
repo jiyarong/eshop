@@ -75,6 +75,7 @@ module Erp
 
     def load_sku_options
       @sku_options = Ec::Sku.order(:sku_code)
+      load_spu_sku_filter(selected_master_sku_ids: [], selected_sku_codes: [@cost.sku_code].compact)
     end
 
     def cost_params

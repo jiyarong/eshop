@@ -18,6 +18,7 @@ export default class extends Controller {
 
   static values = {
     allLabel: { type: String, default: "" },
+    selectionMode: { type: String, default: "multiple" },
     selectedCountLabel: { type: String, default: "" },
   };
 
@@ -77,8 +78,11 @@ export default class extends Controller {
   }
 
   sync(event) {
-    this.syncControl(event.currentTarget);
-    this.updateSummary();
+    this.syncSelectedState();
+
+    if (this.singleSelection && event.currentTarget.closest(".spu-sku-filter__sku-option") && event.currentTarget.checked) {
+      this.close();
+    }
   }
 
   clear(event) {
@@ -172,6 +176,10 @@ export default class extends Controller {
     row?.classList.toggle("is-selected", selected);
     option?.classList.toggle("is-selected", selected);
     option?.setAttribute("aria-selected", selected ? "true" : "false");
+  }
+
+  get singleSelection() {
+    return this.selectionModeValue === "single";
   }
 
   updateSummary() {
