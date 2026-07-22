@@ -1227,6 +1227,7 @@ ru:
     sku_costs:
       actions:
         add_cost: "Добавить затраты"
+        copy_cost: "Копировать"
       empty:
         no_skus: "SKU отсутствуют"
       fields:

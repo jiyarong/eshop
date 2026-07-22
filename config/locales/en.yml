@@ -1271,6 +1271,7 @@ en:
     sku_costs:
       actions:
         add_cost: "Add Cost"
+        copy_cost: "Copy"
       empty:
         no_skus: "No SKUs"
       fields:

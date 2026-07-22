@@ -37,7 +37,11 @@ class Erp::SkuCostsControllerTest < ActionDispatch::IntegrationTest
       freight_to_by_cny: 2,
       customs_misc_cny: 1,
       customs_duty_rate: 0.1,
-      import_vat_rate: 0.2
+      import_vat_rate: 0.2,
+      pkg_volume_override_l: 3.5,
+      misc_cost_cny: 0.5,
+      damage_rate: 0.03,
+      memo: "base cost"
     )
   end
 
@@ -75,7 +79,9 @@ class Erp::SkuCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", @sku.sku_code
     assert_select "th", "生效日期"
     assert_select "th", "采购价 CNY"
+    assert_select "th", "操作"
     assert_select "a[href*='/erp/sku_costs/new']", "新增成本"
+    assert_select "a[href='#{erp_new_sku_cost_path(copy_from_id: @cost.id, return_to: "/erp/sku_costs")}'][data-turbo-frame='erp_modal']", text: "复制"
     assert_select "turbo-frame#sku_cost_#{@sku.sku_code}_purchase_price_cny_cell"
   end
 
@@ -228,6 +234,29 @@ class Erp::SkuCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='radio'][name='ec_sku_cost[sku_code]'][value=?][checked='checked']", @sku.sku_code
     assert_select "input[name='master_sku_ids[]']", count: 0
     assert_select "input[name='return_to'][value='/erp/sku_costs']"
+  end
+
+  test "modal new copies existing cost values into new form" do
+    get "/erp/sku_costs/new",
+      params: { copy_from_id: @cost.id, return_to: "/erp/sku_costs?sku=#{@sku.sku_code}" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select "form[action='/erp/sku_costs'][data-turbo-frame='_top']"
+    assert_select "#sku-cost-form-spu-sku-selector-trigger", text: @sku.sku_code
+    assert_select "input[type='radio'][name='ec_sku_cost[sku_code]'][value=?][checked='checked']", @sku.sku_code
+    assert_select "input[name='ec_sku_cost[effective_on]'][value=?]", Date.current.to_s
+    assert_select "input[name='ec_sku_cost[purchase_price_cny]'][value='10.0']"
+    assert_select "input[name='ec_sku_cost[freight_to_by_cny]'][value='2.0']"
+    assert_select "input[name='ec_sku_cost[customs_misc_cny]'][value='1.0']"
+    assert_select "input[name='ec_sku_cost[customs_duty_rate]'][value='0.1']"
+    assert_select "input[name='ec_sku_cost[import_vat_rate]'][value='0.2']"
+    assert_select "input[name='ec_sku_cost[pkg_volume_override_l]'][value='3.5']"
+    assert_select "input[name='ec_sku_cost[misc_cost_cny]'][value='0.5']"
+    assert_select "input[name='ec_sku_cost[damage_rate]'][value='0.03']"
+    assert_select "input[name='ec_sku_cost[memo]'][value='base cost']"
+    assert_select "input[name='return_to'][value='/erp/sku_costs?sku=#{@sku.sku_code}']"
   end
 
   test "inline update persists existing sku cost field" do

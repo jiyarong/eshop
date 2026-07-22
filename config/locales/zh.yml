@@ -1249,6 +1249,7 @@ zh:
     sku_costs:
       actions:
         add_cost: "新增成本"
+        copy_cost: "复制"
       empty:
         no_skus: "暂无 SKU"
       fields:

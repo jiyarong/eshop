@@ -62,6 +62,7 @@
           <th style="width: 110px; text-align: right"><%= t("erp.sku_costs.fields.misc_cost_cny") %></th>
           <th style="width: 100px; text-align: right"><%= t("erp.sku_costs.fields.damage_rate") %></th>
           <th style="min-width: 180px"><%= t("erp.common.memo") %></th>
+          <th style="width: 96px; text-align: right"><%= t("erp.common.actions.actions") %></th>
         </tr>
       </thead>
       <tbody>
@@ -83,11 +84,21 @@
               <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :misc_cost_cny) %></td>
               <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :damage_rate) %></td>
               <td><%= render "shared/inline_edit_cell", **sku_cost_inline_cell_locals(cost, :memo) %></td>
+              <td>
+                <div class="row-actions">
+                  <% if cost.persisted? %>
+                    <%= link_to erp_new_sku_cost_path(current_locale_params.merge(copy_from_id: cost.id, return_to: current_page_return_to)), class: "btn btn-ghost btn-sm", data: { turbo_frame: "erp_modal" } do %>
+                      <i class="bi bi-copy" aria-hidden="true"></i>
+                      <%= t("erp.sku_costs.actions.copy_cost") %>
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
             </tr>
           <% end %>
         <% else %>
           <tr>
-            <td colspan="14" class="empty-state">
+            <td colspan="15" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.sku_costs.empty.no_skus") %>
             </td>

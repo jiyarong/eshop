@@ -33,7 +33,7 @@ module Erp
     end
 
     def new
-      @cost = Ec::SkuCost.new(effective_on: Date.current)
+      @cost = copied_cost || Ec::SkuCost.new(effective_on: Date.current)
       @cost.sku_code = params[:sku_code] if params[:sku_code].present?
       load_sku_options
       render_modal_or_page(:new, :new_modal)
@@ -76,6 +76,29 @@ module Erp
     def load_sku_options
       @sku_options = Ec::Sku.order(:sku_code)
       load_spu_sku_filter(selected_master_sku_ids: [], selected_sku_codes: [@cost.sku_code].compact)
+    end
+
+    def copied_cost
+      source_id = Integer(params[:copy_from_id], exception: false)
+      return unless source_id
+
+      source = Ec::SkuCost.find_by(id: source_id)
+      return unless source
+
+      Ec::SkuCost.new(
+        source.slice(
+          "sku_code",
+          "purchase_price_cny",
+          "freight_to_by_cny",
+          "customs_misc_cny",
+          "customs_duty_rate",
+          "import_vat_rate",
+          "pkg_volume_override_l",
+          "misc_cost_cny",
+          "damage_rate",
+          "memo"
+        ).merge("effective_on" => Date.current)
+      )
     end
 
     def cost_params
