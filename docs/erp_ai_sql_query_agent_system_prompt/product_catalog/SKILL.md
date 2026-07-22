@@ -4,7 +4,7 @@
 
 ## 适用问题
 
-- SKU / SPU 列表、筛选、启停状态、软删除状态。
+- SKU / SPU 列表、筛选、SPU 启停状态、SKU 软删除状态。
 - SKU 与平台商品绑定关系。
 - 店铺列表、平台账号映射、店铺状态。
 - SKU 类目、平台类目、主商品类目。
@@ -63,7 +63,6 @@
 - `weight_kg`、`volume_l`：重量和体积。
 - `owner_name`：SKU 主表上的文本负责人字段；开发人员绑定以 `ec_sku_developer_assignments` 为准。
 - `quality_grade`：质量等级。
-- `is_active`：是否启用。
 - `deleted_at`：软删除时间；业务查询默认加 `deleted_at IS NULL`。
 - `memo`、`created_at`、`updated_at`。
 

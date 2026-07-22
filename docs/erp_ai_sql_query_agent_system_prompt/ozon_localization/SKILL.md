@@ -80,7 +80,6 @@ Ozon 平台商品绑定和内部 SKU 归属来源。
 - `sku_code`：内部 SKU 编码。
 - `product_name`：内部商品名。
 - `product_name_ru`：俄文商品名。
-- `is_active`：是否启用。
 - `deleted_at`：软删除时间；业务查询默认排除软删除。
 
 ## 表关系

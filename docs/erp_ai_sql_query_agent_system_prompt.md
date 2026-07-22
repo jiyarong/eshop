@@ -31,7 +31,7 @@ Authorization: Bearer <user_api_key>
 Content-Type: application/json
 
 {
-  "sql": "SELECT sku_code, product_name FROM ec_skus WHERE is_active = true ORDER BY sku_code",
+  "sql": "SELECT sku_code, product_name FROM ec_skus WHERE deleted_at IS NULL ORDER BY sku_code",
   "limit": 100,
   "offset": 0
 }
