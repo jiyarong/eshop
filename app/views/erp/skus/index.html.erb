@@ -121,10 +121,26 @@
             </td>
             <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku, locale_params: current_locale_params, return_to: current_page_return_to %></td>
             <td>
-              <span class="responsible-user-list sku-developers"><%= sku_developer_names(sku) || t("erp.skus.empty.no_developers") %></span>
+              <% developer_names = sku_developer_names(sku) || t("erp.skus.empty.no_developers") %>
+              <% if can?(:manage_skus) %>
+                <%= link_to edit_erp_sku_developer_path(sku, current_locale_params.merge(return_to: current_page_return_to)), class: "responsible-user-list responsible-user-list--editable sku-developers", title: t("erp.skus.actions.edit_developer"), data: { turbo_frame: "erp_modal" } do %>
+                  <span><%= developer_names %></span>
+                  <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                <% end %>
+              <% else %>
+                <span class="responsible-user-list sku-developers"><%= developer_names %></span>
+              <% end %>
             </td>
             <td>
-              <span class="responsible-user-list sku-operators"><%= sku_operator_names(sku) || t("erp.skus.empty.no_operators") %></span>
+              <% operator_names = sku_operator_names(sku) || t("erp.skus.empty.no_operators") %>
+              <% if can?(:manage_skus) %>
+                <%= link_to edit_erp_sku_operator_path(sku, current_locale_params.merge(return_to: current_page_return_to)), class: "responsible-user-list responsible-user-list--editable sku-operators", title: t("erp.skus.actions.edit_operator"), data: { turbo_frame: "erp_modal" } do %>
+                  <span><%= operator_names %></span>
+                  <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                <% end %>
+              <% else %>
+                <span class="responsible-user-list sku-operators"><%= operator_names %></span>
+              <% end %>
             </td>
             <td style="text-align: right"><span class="stock-num"><%= purchased_quantity %></span></td>
             <td style="text-align: right"><span class="stock-num"><%= received_quantity %></span></td>

@@ -1425,10 +1425,16 @@ en:
       actions:
         add_product: "Add SPU"
         add_sku: "Add SKU"
+        clear_developer: "Unassign"
+        clear_operator: "Unassign"
         confirm_delete_sku: "Delete this SKU?"
         delete_sku: "Delete SKU"
+        edit_developer: "Edit developer"
+        edit_operator: "Edit operator"
         edit_product: "Edit SPU"
         edit_sku: "Edit SKU"
+        save_developer: "Save developer"
+        save_operator: "Save operator"
       empty:
         no_batches: "No batch records yet."
         no_developers: "Unassigned"
@@ -1489,6 +1495,9 @@ en:
       statuses:
         active: "Active"
         inactive: "Inactive"
+      messages:
+        developer_saved: "Developer saved"
+        operator_saved: "Operator saved"
       units:
         batch:
           one: "batch"

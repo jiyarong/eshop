@@ -114,6 +114,8 @@ Rails.application.routes.draw do
     resources :sku_categories, except: [:destroy]
     resources :spus, only: [:index]
     resources :skus do
+      resource :developer, only: [:edit, :update], controller: "sku_developers"
+      resource :operator, only: [:edit, :update], controller: "sku_operators"
       resources :sku_products, path: :products, only: [:index, :create, :destroy]
       resources :marketing_states, only: [:index, :new, :create], controller: "sku_marketing_states"
     end

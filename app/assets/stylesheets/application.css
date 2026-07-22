@@ -1798,16 +1798,19 @@ pre {
   inset: 0;
   z-index: 1002;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 24px;
   background: rgba(24, 34, 53, 0.42);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .erp-modal {
   width: min(620px, 100%);
-  max-height: calc(100vh - 48px);
-  overflow: auto;
+  max-height: none;
+  margin-block: auto;
+  overflow: visible;
   border: 1px solid var(--erp-border);
   border-radius: 8px;
   background: var(--erp-surface);
@@ -1920,6 +1923,14 @@ pre {
   margin: 0;
   font-size: 24px;
   letter-spacing: -0.02em;
+}
+
+.erp-modal__subtitle {
+  margin: 4px 0 0;
+  color: var(--erp-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  letter-spacing: 0.02em;
 }
 
 .inventory-drawer__frame {
@@ -3804,6 +3815,10 @@ textarea:focus {
   background: var(--erp-surface-soft, #f7f8fb);
 }
 
+.responsible-user-filter__shortcuts--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .responsible-user-filter__list {
   max-height: 288px;
   overflow-y: auto;
@@ -4732,6 +4747,48 @@ tr.master.open .chev,
   font-size: 12.5px;
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+.responsible-user-list--editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--erp-text);
+  text-decoration: none;
+}
+
+.responsible-user-list--editable span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.responsible-user-list--editable i {
+  flex: 0 0 auto;
+  color: var(--erp-muted);
+  font-size: 13px;
+}
+
+.responsible-user-list--editable:hover {
+  color: var(--erp-brand-dark);
+  text-decoration: underline;
+}
+
+.responsible-user-list--editable:hover i {
+  color: currentColor;
+}
+
+.responsible-user-assignment-form {
+  display: grid;
+  gap: 18px;
+}
+
+.responsible-user-assignment-field {
+  width: 100%;
+  max-width: none;
+}
+
+.responsible-user-assignment-field .responsible-user-filter__popover {
+  width: min(420px, calc(100vw - 80px));
 }
 
 .zh-name,

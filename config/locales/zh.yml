@@ -1403,10 +1403,16 @@ zh:
       actions:
         add_product: "新增 SPU"
         add_sku: "新增 SKU"
+        clear_developer: "解除绑定"
+        clear_operator: "解除绑定"
         confirm_delete_sku: "确认删除这个 SKU？"
         delete_sku: "删除 SKU"
+        edit_developer: "编辑开发人员"
+        edit_operator: "编辑运营人员"
         edit_product: "编辑 SPU"
         edit_sku: "编辑 SKU"
+        save_developer: "保存开发人员"
+        save_operator: "保存运营人员"
       empty:
         no_batches: "还没有批次记录。"
         no_developers: "未绑定"
@@ -1467,6 +1473,9 @@ zh:
       statuses:
         active: "上架"
         inactive: "下架"
+      messages:
+        developer_saved: "开发人员已保存"
+        operator_saved: "运营人员已保存"
       units:
         batch:
           one: "个批次"

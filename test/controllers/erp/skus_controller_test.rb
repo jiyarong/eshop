@@ -135,6 +135,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".badge.badge-suc", text: "Active"
     assert_select ".badge.badge-sec", text: "下架"
     assert_select "a[href='#{new_erp_sku_marketing_state_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']"
+    assert_select "a.sku-developers[href='#{edit_erp_sku_developer_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "未绑定"
+    assert_select "a.sku-operators[href='#{edit_erp_sku_operator_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "未绑定"
     assert_select "a[href='#{erp_edit_sku_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "编辑"
     assert_select "a[href='#{erp_sku_path(@sku)}'][data-turbo-method='delete'][data-turbo-confirm=?]", "确认删除这个 SKU？", minimum: 1
     assert_select "a[href='#{erp_new_sku_batch_path(sku_code: @sku.sku_code, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "新增批次"
@@ -516,6 +518,220 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "label", "Listed"
     assert_select "option", "None"
     assert_select "input[type='submit'][value=?]", "Save"
+  end
+
+  test "modal edit renders developer assignment selector" do
+    developer = User.create!(
+      email: "erp-skus-#{@token.downcase}-modal-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "弹框开发 #{@token}"
+    )
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+
+    get "/erp/skus/#{@sku.id}/developer/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "h2", "编辑开发人员"
+    assert_select ".erp-modal__subtitle", text: @sku.sku_code
+    assert_select "form[action='#{erp_sku_developer_path(@sku, return_to: nil)}'][data-turbo-frame='_top']"
+    assert_select "input[type='hidden'][name='developer_user_id'][value=?]", developer.id.to_s
+    assert_select "#sku-developer-assignment-#{@sku.id}-trigger", text: developer.display_name
+    assert_select ".responsible-user-filter__option.is-selected[data-value='#{developer.id}'] .responsible-user-filter__name", text: developer.display_name
+    assert_select ".responsible-user-filter__option--shortcut[data-value='']", text: "解除绑定"
+    assert_select "button[type='submit']", text: "保存开发人员"
+  ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+  end
+
+  test "update developer assignment keeps only selected user" do
+    old_developer = User.create!(
+      email: "erp-skus-#{@token.downcase}-old-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "旧开发 #{@token}"
+    )
+    extra_developer = User.create!(
+      email: "erp-skus-#{@token.downcase}-extra-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "额外开发 #{@token}"
+    )
+    new_developer = User.create!(
+      email: "erp-skus-#{@token.downcase}-new-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "新开发 #{@token}"
+    )
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: old_developer)
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: extra_developer)
+
+    patch "/erp/skus/#{@sku.id}/developer", params: {
+      developer_user_id: new_developer.id,
+      return_to: "/erp/skus?q=#{@sku.sku_code}"
+    }
+
+    assert_redirected_to "/erp/skus?q=#{@sku.sku_code}"
+    assert_equal [new_developer.id], @sku.reload.developer_ids
+  ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+  end
+
+  test "update developer assignment clears selected user when blank" do
+    developer = User.create!(
+      email: "erp-skus-#{@token.downcase}-clear-developer@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "清空开发 #{@token}"
+    )
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+
+    patch "/erp/skus/#{@sku.id}/developer", params: { developer_user_id: "" }
+
+    assert_redirected_to "/erp/skus"
+    assert_empty @sku.reload.developer_ids
+  ensure
+    Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+  end
+
+  test "modal edit renders operator assignment selector" do
+    operator = User.create!(
+      email: "erp-skus-#{@token.downcase}-modal-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "弹框运营 #{@token}"
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "SKU 运营弹框店 #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    sku_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store,
+      product_id: "SKU-OP-MODAL-P-#{@token}",
+      platform_sku_id: "SKU-OP-MODAL-PS-#{@token}",
+      product_name: "SKU 运营弹框商品 #{@token}"
+    )
+    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator)
+
+    get "/erp/skus/#{@sku.id}/operator/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "h2", "编辑运营人员"
+    assert_select ".erp-modal__subtitle", text: @sku.sku_code
+    assert_select "form[action='#{erp_sku_operator_path(@sku, return_to: nil)}'][data-turbo-frame='_top']"
+    assert_select "input[type='hidden'][name='operator_user_id'][value=?]", operator.id.to_s
+    assert_select "#sku-operator-assignment-#{@sku.id}-trigger", text: operator.display_name
+    assert_select ".responsible-user-filter__option.is-selected[data-value='#{operator.id}'] .responsible-user-filter__name", text: operator.display_name
+    assert_select ".responsible-user-filter__option--shortcut[data-value='']", text: "解除绑定"
+    assert_select "button[type='submit']", text: "保存运营人员"
+  ensure
+    Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)
+    sku_product&.destroy
+    store&.destroy
+  end
+
+  test "update operator assignment keeps selected user on every sku product" do
+    old_operator = User.create!(
+      email: "erp-skus-#{@token.downcase}-old-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "旧运营 #{@token}"
+    )
+    extra_operator = User.create!(
+      email: "erp-skus-#{@token.downcase}-extra-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "额外运营 #{@token}"
+    )
+    new_operator = User.create!(
+      email: "erp-skus-#{@token.downcase}-new-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "新运营 #{@token}"
+    )
+    store_a = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "SKU 运营店 A #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    store_b = Ec::Store.create!(
+      platform: "wb",
+      store_name: "SKU 运营店 B #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    product_a = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store_a,
+      product_id: "SKU-OP-A-#{@token}",
+      platform_sku_id: "SKU-OP-PS-A-#{@token}",
+      product_name: "SKU 运营商品 A #{@token}"
+    )
+    product_b = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store_b,
+      product_id: "SKU-OP-B-#{@token}",
+      platform_sku_id: "SKU-OP-PS-B-#{@token}",
+      product_name: "SKU 运营商品 B #{@token}"
+    )
+    Ec::SkuProductOperator.create!(sku_product: product_a, user: old_operator)
+    Ec::SkuProductOperator.create!(sku_product: product_a, user: extra_operator)
+    Ec::SkuProductOperator.create!(sku_product: product_b, user: old_operator)
+
+    patch "/erp/skus/#{@sku.id}/operator", params: {
+      operator_user_id: new_operator.id,
+      return_to: "/erp/skus?q=#{@sku.sku_code}"
+    }
+
+    assert_redirected_to "/erp/skus?q=#{@sku.sku_code}"
+    assert_equal [new_operator.id], product_a.reload.operator_ids
+    assert_equal [new_operator.id], product_b.reload.operator_ids
+  ensure
+    Ec::SkuProductOperator.where(sku_product_id: [product_a&.id, product_b&.id].compact).delete_all if defined?(Ec::SkuProductOperator)
+    product_a&.destroy
+    product_b&.destroy
+    store_a&.destroy
+    store_b&.destroy
+  end
+
+  test "update operator assignment clears every sku product when blank" do
+    operator = User.create!(
+      email: "erp-skus-#{@token.downcase}-clear-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "清空运营 #{@token}"
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "SKU 清空运营店 #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store,
+      product_id: "SKU-OP-CLEAR-#{@token}",
+      platform_sku_id: "SKU-OP-CLEAR-PS-#{@token}",
+      product_name: "SKU 清空运营商品 #{@token}"
+    )
+    Ec::SkuProductOperator.create!(sku_product: product, user: operator)
+
+    patch "/erp/skus/#{@sku.id}/operator", params: { operator_user_id: "" }
+
+    assert_redirected_to "/erp/skus"
+    assert_empty product.reload.operator_ids
+  ensure
+    Ec::SkuProductOperator.where(sku_product_id: product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(product)
+    product&.destroy
+    store&.destroy
   end
 
   test "create sku returns to sku list" do

@@ -1381,10 +1381,16 @@ ru:
       actions:
         add_product: "Добавить SPU"
         add_sku: "Добавить SKU"
+        clear_developer: "Снять назначение"
+        clear_operator: "Снять назначение"
         confirm_delete_sku: "Удалить этот SKU?"
         delete_sku: "Удалить SKU"
+        edit_developer: "Редактировать разработчика"
+        edit_operator: "Редактировать оператора"
         edit_product: "Редактировать SPU"
         edit_sku: "Редактировать SKU"
+        save_developer: "Сохранить разработчика"
+        save_operator: "Сохранить оператора"
       empty:
         no_batches: "Записей партий пока нет."
         no_developers: "Не назначено"
@@ -1445,6 +1451,9 @@ ru:
       statuses:
         active: "Активен"
         inactive: "Неактивен"
+      messages:
+        developer_saved: "Разработчик сохранен"
+        operator_saved: "Оператор сохранен"
       units:
         batch:
           one: "партия"

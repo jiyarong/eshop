@@ -1,0 +1,37 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal" role="dialog" aria-modal="true" aria-labelledby="sku-operator-modal-title">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="sku-operator-modal-title"><%= t("erp.skus.actions.edit_operator") %></h2>
+          <p class="erp-modal__subtitle"><%= @sku.sku_code %></p>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <%= form_with url: erp_sku_operator_path(@sku, current_locale_params.merge(return_to: params[:return_to])), method: :patch, data: { turbo_frame: "_top" }, class: "responsible-user-assignment-form" do %>
+        <%= render "shared/responsible_user_single_select",
+          component_id: "sku-operator-assignment-#{@sku.id}",
+          param_name: "operator_user_id",
+          label: t("erp.skus.fields.operators"),
+          placeholder: t("erp.skus.empty.no_operators"),
+          clear_label: t("erp.skus.actions.clear_operator"),
+          selected_id: @selected_operator_id,
+          options: @operator_options,
+          field_class: "responsible-user-assignment-field" %>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-check-lg" aria-hidden="true"></i>
+            <%= t("erp.skus.actions.save_operator") %>
+          </button>
+          <button class="btn btn-outline" type="button" data-action="modal#close">
+            <%= t("common.actions.cancel") %>
+          </button>
+        </div>
+      <% end %>
+    </section>
+  </div>
+<% end %>

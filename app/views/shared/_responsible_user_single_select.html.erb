@@ -1,0 +1,94 @@
+<% component_id = local_assigns.fetch(:component_id) %>
+<% param_name = local_assigns.fetch(:param_name) %>
+<% label = local_assigns.fetch(:label) %>
+<% placeholder = local_assigns.fetch(:placeholder) %>
+<% clear_label = local_assigns.fetch(:clear_label, placeholder) %>
+<% selected_id = local_assigns[:selected_id] %>
+<% options = local_assigns.fetch(:options) %>
+<% field_class = local_assigns.fetch(:field_class, nil) %>
+<% wrapper_class = ["field", field_class.presence, "responsible-user-filter"].compact.join(" ") %>
+<% selected_user = options.find { |user| user.id == selected_id } %>
+<% selected_label = selected_user&.display_name || placeholder %>
+
+<div
+  class="<%= wrapper_class %>"
+  data-controller="responsible-user-filter"
+  data-responsible-user-filter-placeholder-value="<%= placeholder %>">
+  <%= label_tag param_name, label, class: "label", for: "#{component_id}-trigger" %>
+  <%= hidden_field_tag param_name, selected_id, id: "#{component_id}-input", class: "responsible-user-filter__input", data: { responsible_user_filter_target: "input" } %>
+
+  <button
+    id="<%= "#{component_id}-trigger" %>"
+    class="responsible-user-filter__trigger <%= "is-placeholder" if selected_id.blank? %>"
+    type="button"
+    aria-haspopup="dialog"
+    aria-expanded="false"
+    aria-controls="<%= "#{component_id}-popover" %>"
+    data-action="responsible-user-filter#toggle"
+    data-responsible-user-filter-target="trigger">
+    <span data-responsible-user-filter-target="summary"><%= selected_label %></span>
+    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+  </button>
+
+  <section
+    id="<%= "#{component_id}-popover" %>"
+    class="responsible-user-filter__popover"
+    role="dialog"
+    aria-modal="false"
+    aria-label="<%= label %>"
+    hidden
+    data-action="keydown->responsible-user-filter#closeOnEscape"
+    data-responsible-user-filter-target="popover">
+    <div class="responsible-user-filter__panel">
+      <label class="responsible-user-filter__search">
+        <span class="sr-only"><%= t("shared.responsible_user_filters.search_placeholder") %></span>
+        <input
+          type="search"
+          placeholder="<%= t("shared.responsible_user_filters.search_placeholder") %>"
+          data-action="input->responsible-user-filter#filter keydown.enter->responsible-user-filter#preventSubmit"
+          data-responsible-user-filter-target="search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+      </label>
+
+      <div class="responsible-user-filter__shortcuts responsible-user-filter__shortcuts--single">
+        <button
+          class="responsible-user-filter__option responsible-user-filter__option--shortcut <%= "is-selected" if selected_id.blank? %>"
+          type="button"
+          data-value=""
+          data-label="<%= placeholder %>"
+          data-action="responsible-user-filter#select"
+          data-responsible-user-filter-target="option">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+          <span><%= clear_label %></span>
+        </button>
+      </div>
+
+      <div class="responsible-user-filter__list" role="listbox">
+        <% options.each do |user| %>
+          <% selected = selected_id == user.id %>
+          <button
+            class="responsible-user-filter__option <%= "is-selected" if selected %>"
+            type="button"
+            role="option"
+            aria-selected="<%= selected ? "true" : "false" %>"
+            data-value="<%= user.id %>"
+            data-label="<%= user.display_name %>"
+            data-search-label="<%= [user.display_name, user.email].join(" ").downcase %>"
+            data-action="responsible-user-filter#select"
+            data-responsible-user-filter-target="option">
+            <span class="responsible-user-filter__check" aria-hidden="true">
+              <i class="bi bi-check-lg"></i>
+            </span>
+            <span class="responsible-user-filter__user">
+              <span class="responsible-user-filter__name"><%= user.display_name %></span>
+              <span class="responsible-user-filter__email"><%= user.email %></span>
+            </span>
+          </button>
+        <% end %>
+        <div class="responsible-user-filter__empty" data-responsible-user-filter-target="empty" hidden>
+          <%= t("shared.responsible_user_filters.no_employees") %>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
