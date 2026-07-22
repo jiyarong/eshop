@@ -1477,6 +1477,7 @@ ru:
         inactive: "Неактивен"
       messages:
         developer_saved: "Разработчик сохранен"
+        operator_requires_product_binding: "Перед назначением операторов привяжите к этому SKU товары платформ."
         operator_saved: "Оператор сохранен"
       units:
         batch:

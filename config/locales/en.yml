@@ -1521,6 +1521,7 @@ en:
         inactive: "Inactive"
       messages:
         developer_saved: "Developer saved"
+        operator_requires_product_binding: "Bind platform products to this SKU before setting operators."
         operator_saved: "Operator saved"
       units:
         batch:

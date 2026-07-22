@@ -1499,6 +1499,7 @@ zh:
         inactive: "下架"
       messages:
         developer_saved: "开发人员已保存"
+        operator_requires_product_binding: "请先为这个 SKU 绑定平台商品，再设置运营人员。"
         operator_saved: "运营人员已保存"
       units:
         batch:

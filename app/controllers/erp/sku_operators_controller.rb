@@ -7,11 +7,17 @@ module Erp
     before_action :load_operator_options, only: [:edit, :update]
 
     def edit
+      @operator_assignment_available = @sku.sku_products.exists?
       @selected_operator_id = @sku.sku_products.flat_map(&:operator_ids).first
       render_modal_or_page(:edit, :edit)
     end
 
     def update
+      unless @sku.sku_products.exists?
+        redirect_to safe_return_to(erp_skus_path(current_locale_params)), alert: t("erp.skus.messages.operator_requires_product_binding")
+        return
+      end
+
       selected_user_id = operator_user_id_param
       product_ids = @sku.sku_products.select(:id)
       operator_role = Ec::SkuProductOperator.roles.fetch("operator")

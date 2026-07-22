@@ -637,6 +637,35 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     store&.destroy
   end
 
+  test "modal edit asks to bind products before assigning operator when sku has none" do
+    get "/erp/skus/#{@sku.id}/operator/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal"
+    assert_select "h2", "编辑运营人员"
+    assert_select ".form-hint", text: "请先为这个 SKU 绑定平台商品，再设置运营人员。"
+    assert_select "a.btn[href='#{erp_sku_sku_products_path(@sku)}'][data-turbo-frame='_top']", text: "平台商品绑定"
+    assert_select "form[action='#{erp_sku_operator_path(@sku, return_to: nil)}']", count: 0
+  end
+
+  test "update operator assignment alerts when sku has no products" do
+    operator = User.create!(
+      email: "erp-skus-#{@token.downcase}-missing-product-operator@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "缺少绑定运营 #{@token}"
+    )
+
+    patch "/erp/skus/#{@sku.id}/operator", params: {
+      operator_user_id: operator.id,
+      return_to: "/erp/skus?q=#{@sku.sku_code}"
+    }
+
+    assert_redirected_to "/erp/skus?q=#{@sku.sku_code}"
+    assert_equal "请先为这个 SKU 绑定平台商品，再设置运营人员。", flash[:alert]
+  end
+
   test "update operator assignment keeps selected user on every sku product" do
     old_operator = User.create!(
       email: "erp-skus-#{@token.downcase}-old-operator@example.com",
