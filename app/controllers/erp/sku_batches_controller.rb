@@ -1,6 +1,9 @@
 module Erp
   class SkuBatchesController < BaseController
     include InlineEditableResponse
+    include MasterSkuCategoryFilterable
+    include ResponsibleUserFilterable
+    include SpuSkuFilterable
 
     INLINE_EDITABLE_FIELDS = %w[
       batch_code
@@ -11,12 +14,44 @@ module Erp
       received_quantity
       status
     ].freeze
+    BATCH_PAGE_SIZE = 10
+    DEFAULT_INDEX_STATUSES = %w[draft ordered in_transit].freeze
 
     before_action :set_batch, only: [:show, :edit, :update, :destroy]
     before_action -> { require_any_permission!(:manage_purchases, :manage_inventory) }, only: [:new, :create, :edit, :update, :destroy]
 
     def index
-      @batches = Ec::SkuBatch.includes(:sku).order(created_at: :desc)
+      @q = params[:q].to_s.strip
+      @batch_code = params[:batch_code].to_s.strip
+      @statuses = index_statuses
+      load_master_sku_category_filter
+      load_spu_sku_filter
+      load_responsible_user_filters
+
+      scope = Ec::SkuBatch.includes(:sku).left_joins(:sku).order(created_at: :desc, id: :desc)
+      scope = apply_master_sku_category_filter_to_sku_records(scope)
+      scope = apply_spu_sku_filter_to_sku_records(scope)
+      scope = apply_responsible_user_filters_to_sku_records(scope)
+      if @q.present?
+        keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
+        scope = scope.where(
+          "ec_sku_batches.sku_code ILIKE :keyword OR ec_skus.product_name ILIKE :keyword OR ec_skus.product_name_ru ILIKE :keyword",
+          keyword: keyword
+        )
+      end
+      if @batch_code.present?
+        batch_keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@batch_code)}%"
+        scope = scope.where("ec_sku_batches.batch_code ILIKE ?", batch_keyword)
+      end
+      scope = scope.where(status: @statuses) if @statuses.any?
+
+      @batches = paginated_batches(scope)
+      @batch_counts = {
+        total: Ec::SkuBatch.count,
+        ordered: Ec::SkuBatch.where(status: "ordered").count,
+        in_transit: Ec::SkuBatch.where(status: "in_transit").count,
+        received: Ec::SkuBatch.where(status: "received").count
+      }
     end
 
     def show
@@ -100,6 +135,31 @@ module Erp
         :received_on,
         :memo
       )
+    end
+
+    def index_statuses
+      return DEFAULT_INDEX_STATUSES.dup unless params.key?(:statuses)
+
+      Array(params[:statuses]).filter_map { |status| status.presence_in(Ec::SkuBatch::STATUSES) }.uniq
+    end
+
+    def paginated_batches(scope)
+      current_page = batch_page_param
+      batches = scope.page(current_page).per(BATCH_PAGE_SIZE)
+      if batches.total_pages.positive? && current_page > batches.total_pages
+        batches = scope.page(batches.total_pages).per(BATCH_PAGE_SIZE)
+      end
+      batches
+    end
+
+    def batch_page_param
+      requested_page = params[:jump_page].presence || params[:page].presence
+      current_page = params[:current_page].presence || params[:page].presence
+
+      page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
+      page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
+      page = 1 if page.to_i <= 0
+      page
     end
 
     def update_inline_field

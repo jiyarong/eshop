@@ -1,33 +1,115 @@
-<h1 class="page-title"><%= t("erp.sku_batches.index.title") %></h1>
+<% content_for :page_heading, t("erp.sku_batches.index.title") %>
 
-<section class="panel">
-  <p><%= link_to t("erp.sku_batches.actions.add_sku_batch"), erp_new_sku_batch_path(current_locale_params.merge(return_to: current_page_return_to)), class: "button" %></p>
-  <div class="table-scroll">
-    <table>
+<div class="product-management sku-management">
+  <%= turbo_frame_tag "erp_modal" %>
+
+  <div class="page-h">
+    <div>
+      <h1><%= t("erp.sku_batches.index.title") %></h1>
+      <p class="sub"><%= t("erp.sku_batches.index.hierarchy") %></p>
+    </div>
+    <div class="hstack product-page-actions">
+      <%= link_to erp_new_sku_batch_path(current_locale_params.merge(return_to: current_page_return_to)), class: "btn btn-primary", data: { turbo_frame: "erp_modal" } do %>
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        <%= t("erp.sku_batches.actions.add_batch") %>
+      <% end if can?(:manage_purchases) || can?(:manage_inventory) %>
+    </div>
+  </div>
+
+  <section class="product-summary-grid" aria-label="<%= t("erp.sku_batches.index.batch_overview") %>">
+    <div class="product-summary-card">
+      <span class="summary-label"><%= t("erp.sku_batches.index.total_batches") %></span>
+      <strong class="summary-value"><%= @batch_counts[:total] %></strong>
+    </div>
+    <div class="product-summary-card">
+      <span class="summary-label"><%= t("erp.sku_batches.statuses.ordered") %></span>
+      <strong class="summary-value"><%= @batch_counts[:ordered] %></strong>
+    </div>
+    <div class="product-summary-card">
+      <span class="summary-label"><%= t("erp.sku_batches.statuses.in_transit") %></span>
+      <strong class="summary-value"><%= @batch_counts[:in_transit] %></strong>
+    </div>
+    <div class="product-summary-card">
+      <span class="summary-label"><%= t("erp.sku_batches.statuses.received") %></span>
+      <strong class="summary-value"><%= @batch_counts[:received] %></strong>
+    </div>
+  </section>
+
+  <section class="card product-filter-card">
+    <%= form_with url: erp_sku_batches_path, method: :get, local: true, class: "product-filter-form" do |form| %>
+      <div class="product-search-control">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= form.search_field :q, value: @q, placeholder: t("erp.sku_batches.filters.search_placeholder"), class: "input" %>
+      </div>
+      <div class="field product-filter-field">
+        <%= form.label :batch_code, t("erp.sku_batches.fields.batch_code"), class: "label" %>
+        <%= form.search_field :batch_code, value: @batch_code, placeholder: t("erp.sku_batches.filters.batch_code_placeholder"), class: "input" %>
+      </div>
+      <%= render "shared/master_sku_category_filter",
+        field_class: "product-filter-field" %>
+      <%= render "shared/spu_sku_filter",
+        field_class: "product-filter-field",
+        dom_id_prefix: "sku-batch-spu-sku-filter" %>
+      <%= render "shared/responsible_user_filters",
+        field_class: "product-filter-field",
+        dom_id_prefix: "sku-batch-responsible-user-filter" %>
+      <%= hidden_field_tag "statuses[]", "" %>
+      <%= render "shared/popover_multiselect_filter",
+        dom_id_prefix: "sku-batch-status-filter",
+        param_name: "statuses",
+        label: t("erp.common.status"),
+        all_label: t("erp.sku_batches.filters.all_statuses"),
+        selected_values: @statuses,
+        options: Ec::SkuBatch::STATUSES.map { |status| [t("erp.sku_batches.statuses.#{status}"), status] } %>
+      <button class="btn btn-primary" type="submit">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= t("erp.common.actions.filter") %>
+      </button>
+      <%= link_to erp_sku_batches_path(current_locale_params), class: "btn btn-outline" do %>
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+        <%= t("erp.common.actions.reset") %>
+      <% end %>
+      <div class="spacer"></div>
+      <span class="text-sm text-muted"><%= @batches.respond_to?(:total_count) ? @batches.total_count : @batches.size %> <%= t("erp.sku_batches.units.batch", count: @batches.respond_to?(:total_count) ? @batches.total_count : @batches.size) %></span>
+    <% end %>
+  </section>
+
+  <section class="card product-list-card">
+    <table class="prod-tbl">
       <thead>
         <tr>
-          <th><%= t("erp.sku_batches.fields.batch_code") %></th>
-          <th>SKU</th>
-          <th><%= t("erp.sku_batches.fields.product_name") %></th>
-          <th><%= t("erp.common.status") %></th>
-          <th><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
-          <th><%= t("erp.sku_batches.fields.received_quantity") %></th>
-          <th><%= t("erp.sku_batches.fields.purchase_unit_price") %></th>
-          <th><%= t("erp.common.actions.actions") %></th>
+          <th style="min-width: 160px"><%= t("erp.sku_batches.fields.batch_code") %></th>
+          <th style="width: 180px"><%= t("erp.sku_batches.fields.sku") %></th>
+          <th style="min-width: 240px"><%= t("erp.sku_batches.fields.product_name") %></th>
+          <th style="width: 112px"><%= t("erp.sku_batches.fields.purchase_date") %></th>
+          <th style="width: 112px"><%= t("erp.sku_batches.fields.departure_date") %></th>
+          <th style="width: 126px"><%= t("erp.sku_batches.fields.overseas_delivery_date") %></th>
+          <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
+          <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.received_quantity") %></th>
+          <th style="width: 110px"><%= t("erp.common.status") %></th>
+          <th style="width: 120px; text-align: right"><%= t("erp.common.actions.actions") %></th>
         </tr>
       </thead>
       <tbody>
         <% @batches.each do |batch| %>
-          <tr>
-            <td><%= link_to batch.batch_code, erp_sku_batch_path(batch) %></td>
-            <td><%= batch.sku_code %></td>
-            <td><%= batch.sku&.product_name %></td>
-            <td><%= batch.status %></td>
-            <td><%= batch.purchased_quantity %></td>
-            <td><%= batch.received_quantity %></td>
-            <td><%= erp_value(batch.purchase_unit_price_cny) %></td>
+          <tr class="sku-batch-row">
+            <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :batch_code) %></td>
+            <td><%= link_to batch.sku_code, erp_sku_path(batch.sku), class: "code-text sub" if batch.sku.present? %></td>
+            <td>
+              <div class="product-name-stack">
+                <span class="zh-name"><%= erp_value(batch.sku&.product_name) %></span>
+                <span class="ru-name"><%= erp_value(batch.sku&.product_name_ru) %></span>
+              </div>
+            </td>
+            <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchase_date) %></td>
+            <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :expected_arrival_on) %></td>
+            <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_on) %></td>
+            <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchased_quantity) %></td>
+            <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_quantity) %></td>
+            <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :status) %></td>
             <td>
               <div class="row-actions">
+                <%= link_to t("erp.common.actions.view"), erp_sku_batch_path(batch, current_locale_params), class: "btn btn-ghost btn-sm" %>
                 <%= link_to erp_edit_sku_batch_path(batch, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
                   <i class="bi bi-pencil" aria-hidden="true"></i>
                   <span class="sr-only"><%= t("erp.common.actions.edit") %></span>
@@ -40,7 +122,20 @@
             </td>
           </tr>
         <% end %>
+
+        <% if @batches.empty? %>
+          <tr>
+            <td colspan="10" class="empty-state">
+              <i class="bi bi-inbox" aria-hidden="true"></i>
+              <%= t("erp.sku_batches.empty.no_batches") %>
+            </td>
+          </tr>
+        <% end %>
       </tbody>
     </table>
-  </div>
-</section>
+
+    <% if @batches.respond_to?(:total_pages) && @batches.total_pages > 1 %>
+      <%= render "pagination", batches: @batches %>
+    <% end %>
+  </section>
+</div>

@@ -164,7 +164,7 @@ en:
     erp_skus: "SKU Management"
     erp_stores: "Store Settings"
     sku_categories: "SKU Categories"
-    sku_batches: "ERP Batches"
+    sku_batches: "Batch Management"
     purchase_orders: "Purchase Orders"
     cost_allocations: "Cost Allocations"
     operation_tasks: "Operation Tasks"
@@ -1230,17 +1230,40 @@ en:
         purchased_quantity: "Purchased quantity"
         received_on: "Overseas delivery date"
         received_quantity: "Received quantity"
+        sku: "SKU"
         unit_batch_cost: "Unit batch cost"
+      filters:
+        all_statuses: "All statuses"
+        batch_code_placeholder: "Search batch number..."
+        search_placeholder: "Search SKU, Chinese name, or Russian name..."
+      empty:
+        no_batches: "No batch matches the current filters."
       statuses:
         draft: "Draft"
         ordered: "Ordered"
         in_transit: "In transit"
         received: "Received"
+        closed: "Closed"
       index:
-        title: "SKU Batches"
+        batch_overview: "Batch overview"
+        hierarchy: "SKU · Batch inventory"
+        title: "Batch Management"
+        total_batches: "All batches"
+      pagination:
+        aria_label: "Batch pagination"
+        jump_action: "Go"
+        jump_label: "Jump to"
+        next_page: "Next page"
+        page_chip: "Page %{page}/%{pages}"
+        previous_page: "Previous page"
+        summary: "Showing %{from}-%{to} of %{total}"
       messages:
         delete_blocked: "This batch is referenced by other records and cannot be deleted."
         deleted: "Batch deleted."
+      units:
+        batch:
+          one: "batch"
+          other: "batches"
     inline_edit:
       messages:
         save_failed: "Save failed. Check the value and try again."

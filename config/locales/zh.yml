@@ -142,7 +142,7 @@ zh:
     erp_skus: "SKU 管理"
     erp_stores: "店铺设置"
     sku_categories: "SKU 类别"
-    sku_batches: "ERP 批次"
+    sku_batches: "批次管理"
     purchase_orders: "采购单"
     cost_allocations: "费用分摊"
     operation_tasks: "操作任务"
@@ -1208,17 +1208,40 @@ zh:
         purchased_quantity: "采购数量"
         received_on: "境外交付日期"
         received_quantity: "到货数量"
+        sku: "SKU"
         unit_batch_cost: "单件批次成本"
+      filters:
+        all_statuses: "全部状态"
+        batch_code_placeholder: "搜索批次号…"
+        search_placeholder: "搜索 SKU、中文名或俄文名…"
+      empty:
+        no_batches: "当前筛选条件下没有批次。"
       statuses:
         draft: "草稿"
         ordered: "已下单"
         in_transit: "运输中"
         received: "已到货"
+        closed: "已关闭"
       index:
-        title: "SKU 批次"
+        batch_overview: "批次概览"
+        hierarchy: "SKU · 批次库存"
+        title: "批次管理"
+        total_batches: "全部批次"
+      pagination:
+        aria_label: "批次分页"
+        jump_action: "确定"
+        jump_label: "跳至"
+        next_page: "下一页"
+        page_chip: "第 %{page}/%{pages} 页"
+        previous_page: "上一页"
+        summary: "显示第 %{from}-%{to} 条，共 %{total} 条"
       messages:
         delete_blocked: "该批次已被其他记录引用，无法删除"
         deleted: "批次已删除"
+      units:
+        batch:
+          one: "个批次"
+          other: "个批次"
     inline_edit:
       messages:
         save_failed: "保存失败，请检查后重试"

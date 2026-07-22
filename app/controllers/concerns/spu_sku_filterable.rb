@@ -26,6 +26,12 @@ module SpuSkuFilterable
     scope.where(condition)
   end
 
+  def apply_spu_sku_filter_to_sku_records(scope)
+    return scope unless spu_sku_filter_active?
+
+    scope.where(sku_code: apply_spu_sku_filter_to_skus(Ec::Sku.all).select(:sku_code))
+  end
+
   def spu_sku_filter_active?
     @spu_sku_selected_master_sku_ids.present? || @spu_sku_selected_sku_codes.present?
   end

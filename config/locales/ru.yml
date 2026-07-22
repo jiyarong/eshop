@@ -135,7 +135,7 @@ ru:
     erp_skus: "Управление SKU"
     erp_stores: "Настройки магазинов"
     sku_categories: "Категории SKU"
-    sku_batches: "Партии ERP"
+    sku_batches: "Управление партиями"
     purchase_orders: "Закупки"
     cost_allocations: "Распределение затрат"
     operation_tasks: "Операционные задачи"
@@ -1186,17 +1186,40 @@ ru:
         purchased_quantity: "Закуплено"
         received_on: "Дата зарубежной доставки"
         received_quantity: "Получено"
+        sku: "SKU"
         unit_batch_cost: "Себестоимость единицы партии"
+      filters:
+        all_statuses: "Все статусы"
+        batch_code_placeholder: "Поиск номера партии..."
+        search_placeholder: "Поиск SKU, китайского или русского названия..."
+      empty:
+        no_batches: "Партий по текущим фильтрам нет."
       statuses:
         draft: "Черновик"
         ordered: "Заказано"
         in_transit: "В пути"
         received: "Получено"
+        closed: "Закрыто"
       index:
-        title: "Партии SKU"
+        batch_overview: "Обзор партий"
+        hierarchy: "SKU · Склад партий"
+        title: "Управление партиями"
+        total_batches: "Все партии"
+      pagination:
+        aria_label: "Пагинация партий"
+        jump_action: "OK"
+        jump_label: "Перейти"
+        next_page: "Следующая страница"
+        page_chip: "Стр. %{page}/%{pages}"
+        previous_page: "Предыдущая страница"
+        summary: "Показано %{from}-%{to} из %{total}"
       messages:
         delete_blocked: "Эта партия используется в других записях и не может быть удалена."
         deleted: "Партия удалена."
+      units:
+        batch:
+          one: "партия"
+          other: "партий"
     inline_edit:
       messages:
         save_failed: "Не удалось сохранить. Проверьте значение и повторите."
