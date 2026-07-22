@@ -41,7 +41,14 @@ module GoogleSheets
     def call
       puts "→ WeeklySummaryService #{@week_label} (#{@from_date}~#{@to_date}) CNY/RUB=#{@rate.rate_cny_rub} BYN/RUB=#{@rate.rate_byn_rub}"
 
-      query = Ec::WeeklySummaryQuery.run(from_date: @from_date, to_date: @to_date)
+      query = WeeklyProfitReports::ReportQueryRunner.run(
+        params: {
+          report_type: "wsu",
+          from_date: @from_date,
+          to_date: @to_date
+        },
+        today: Date.current
+      )
       row_hashes = query[:rows]
       comparisons = query.dig(:comparison, :rows) || {}
       summary = query[:summary]
@@ -161,76 +168,6 @@ module GoogleSheets
         ["税后净利（含未分摊）", summary[:after_tax_with_unallocated]],
         ["综合利润率（含未分摊）", summary[:margin_with_unallocated_pct] ? "#{summary[:margin_with_unallocated_pct]}%" : "N/A"]
       ]
-    end
-
-    # ── 数据采集 ──────────────────────────────────────────────────────────────
-
-    def collect_rows(from_date, to_date, rate)
-      byn_cny    = rate.rate_byn_rub / rate.rate_cny_rub
-      rub_cny    = 1.0 / rate.rate_cny_rub
-      rows       = []
-      unalloc    = { wb: 0.0, ozon: 0.0 }
-
-      RawWb::SellerAccount.all.each do |acct|
-        svc = Ec::WbProfitAttribution.new(
-          account_id:   acct.id,
-          from_date:    from_date,
-          to_date:      to_date,
-          rate_cny_rub: rate.rate_cny_rub,
-          rate_byn_rub: rate.rate_byn_rub
-        ).call
-
-        shop = acct.name.to_s.strip
-        svc.results.group_by { |r| r[:vendor_code] }.each do |sku, rs|
-          next if sku.blank?
-          net_sales  = rs.sum { |r| r[:sales_qty] - r[:return_qty] }
-          revenue    = (rs.sum { |r| r[:settlement] }    * byn_cny).round(2)
-          ads        = (rs.sum { |r| r[:ad] }             * byn_cny).round(2)
-          goods_cost = (rs.sum { |r| r[:goods_cost] }     * byn_cny).round(2)
-          pre_tax    = (rs.sum { |r| r[:pre_tax] }        * byn_cny).round(2)
-          after_tax  = (rs.sum { |r| r[:after_tax] }      * byn_cny).round(2)
-          tax        = (pre_tax - after_tax).round(2)
-
-          rows << { sku: sku, platform: 'WB', shop: shop,
-                    net_sales: net_sales, revenue: revenue, ads: ads,
-                    goods_cost: goods_cost, pre_tax: pre_tax, tax: tax, after_tax: after_tax }
-        end
-
-        # WB unallocated: label=>byn_amount hash，值为正数代表成本，取负表示对利润的冲击
-        unalloc[:wb] += -(svc.unallocated.values.sum.to_f * byn_cny).round(2)
-      end
-
-      RawOzon::SellerAccount.all.each do |acct|
-        svc = Ec::OzonProfitAttribution.new(
-          account_id:            acct.id,
-          from_date:             from_date,
-          to_date:               to_date,
-          rate_cny_rub:          rate.rate_cny_rub,
-          sync_missing_ad_costs: false
-        ).call
-
-        shop = acct.company_name.to_s.strip
-        svc.results.each do |r|
-          next if r[:sku_code].blank?
-          revenue    = (r[:sales_revenue]         * rub_cny).round(2)
-          ads        = (-(r[:ppc_cost].to_f + r[:promotion_cost].to_f) * rub_cny).round(2)
-          goods_cost = (-r[:goods_cost].to_f       * rub_cny).round(2)
-          # Fallback to book_profit_after_ad when cost data is missing (nil).
-          # Equivalent to goods_cost=0, matching WB behaviour for unconfigured SKUs.
-          pre_tax    = ((r[:pre_tax_profit]    || r[:book_profit_after_ad]).to_f * rub_cny).round(2)
-          after_tax  = ((r[:after_tax_profit]  || r[:book_profit_after_ad]).to_f * rub_cny).round(2)
-          tax        = (pre_tax - after_tax).round(2)
-
-          rows << { sku: r[:sku_code], platform: 'Ozon', shop: shop,
-                    net_sales: r[:net_sales_count], revenue: revenue, ads: ads,
-                    goods_cost: goods_cost, pre_tax: pre_tax, tax: tax, after_tax: after_tax }
-        end
-
-        # Ozon unallocated: other 是非广告类未归属费用（RUB），total 含孤儿广告
-        unalloc[:ozon] += (svc.unallocated[:total].to_f * rub_cny).round(2)
-      end
-
-      [rows, unalloc]
     end
 
     # ── 行构建 ────────────────────────────────────────────────────────────────

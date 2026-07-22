@@ -2,7 +2,7 @@ class McpController < ActionController::API
   before_action :authenticate_api_key!
 
   def create
-    response = Mcp::Server.new(current_user: @current_user).call(request.request_parameters)
+    response = Mcp::Server.new(current_user: @current_user, bearer_token: bearer_token).call(request.request_parameters)
 
     render json: response
   rescue JSON::ParserError

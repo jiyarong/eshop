@@ -3,6 +3,7 @@ require "test_helper"
 class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     unique = SecureRandom.hex(4)
+    @token = unique.upcase
     @current_user = create_user_with_roles("weekly-profit-#{unique}@example.com", "manager")
     sign_in @current_user
 
@@ -20,10 +21,26 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       is_active: true,
       company_type: :general
     )
+
+    @master_sku = Ec::MasterSku.create!(
+      master_sku_code: "WPR-SPU-#{@token}",
+      product_name: "Weekly Profit SPU #{@token}"
+    )
+    @master_sku_child = Ec::Sku.create!(
+      sku_code: "WPR-SKU-A-#{@token}",
+      master_sku: @master_sku,
+      product_name: "Weekly Profit SKU A #{@token}"
+    )
+    @direct_sku = Ec::Sku.create!(
+      sku_code: "WPR-SKU-B-#{@token}",
+      product_name: "Weekly Profit SKU B #{@token}"
+    )
   end
 
   teardown do
     Ec::WeeklyRate.where(week_start: [Date.parse("2026-05-18"), Date.parse("2026-05-25")]).delete_all
+    Ec::Sku.with_deleted.where(sku_code: [@master_sku_child&.sku_code, @direct_sku&.sku_code].compact).delete_all
+    Ec::MasterSku.where(id: @master_sku&.id).delete_all
     @ozon_account&.destroy
     @wb_account&.destroy
     UserRole.joins(:user).where("users.email = ?", @current_user.email).delete_all
@@ -100,7 +117,12 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "input[name='report_type'][type='hidden'][value='wr']", count: 1
     assert_select "input[name='store_ref'][type='hidden'][value=?]", "wb:#{@wb_account.id}"
-    assert_select "input[name='sku'][value='']", count: 1
+    assert_select "[data-controller='spu-sku-filter']", count: 1
+    assert_select "#weekly-profit-spu-sku-filter-trigger", text: "全部 SPU/SKU"
+    assert_select "input[type='checkbox'][name='master_sku_ids[]'][value=?]", @master_sku.id.to_s
+    assert_select "input[type='checkbox'][name='sku_codes[]'][value=?]", @master_sku_child.sku_code
+    assert_select "input[type='checkbox'][name='sku_codes[]'][value=?]", @direct_sku.sku_code
+    assert_select "input[name='sku']", count: 0
     assert_select "[data-weekly-profit-tag-group='report-type']", count: 1
     assert_select "button[data-weekly-profit-tag][data-value='wr'].is-active[aria-pressed='true']", text: "WR"
     assert_select "button[data-weekly-profit-tag][data-value='wsu']", text: "WSU"
@@ -353,7 +375,10 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     query_class.define_singleton_method(:run) do |**kwargs|
       test_case.assert_equal Date.parse("2026-05-18"), kwargs[:from_date]
       test_case.assert_equal Date.parse("2026-05-24"), kwargs[:to_date]
-      test_case.assert_equal %w[SKU-1 SKU-2], kwargs[:sku_codes]
+      test_case.assert_equal [
+        test_case.instance_variable_get(:@direct_sku).sku_code,
+        test_case.instance_variable_get(:@master_sku_child).sku_code
+      ], kwargs[:sku_codes]
       payload
     end
 
@@ -361,7 +386,8 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       report_type: "wsu",
       from_date: "2026-05-18",
       to_date: "2026-05-24",
-      sku: "sku-1, SKU-2, sku-1"
+      master_sku_ids: [@master_sku.id],
+      sku_codes: [@direct_sku.sku_code.downcase]
     }
 
     assert_response :success

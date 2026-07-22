@@ -51,17 +51,19 @@ module GoogleSheets
       ensure_ad_fees_synced!
       ensure_storage_synced!
 
-      svc = Ec::WbProfitAttribution.new(
-        account_id:   @account_id,
-        from_date:    @from_date,
-        to_date:      @to_date,
-        rate_cny_rub: @rate_cny_rub,
-        rate_byn_rub: @rate_byn_rub
-      ).call
+      report = WeeklyProfitReports::ReportQueryRunner.run(
+        params: {
+          report_type: "wr",
+          store_ref: "wb:#{@account_id}",
+          from_date: @from_date,
+          to_date: @to_date
+        },
+        today: Date.current
+      )
 
-      @results     = svc.results
-      @unallocated = svc.unallocated
-      @summary     = svc.summary
+      @results     = report[:rows]
+      @unallocated = report.dig(:extras, :unallocated) || {}
+      @summary     = report[:summary]
       @name_map    = Ec::Sku.pluck(:sku_code, :product_name_ru)
                             .each_with_object({}) { |(c, n), h| h[c] = n }
 

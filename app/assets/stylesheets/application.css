@@ -564,18 +564,45 @@ a {
   flex: 1 1 100%;
 }
 
+.weekly-profit-top-filters {
+  flex: 1 1 100%;
+}
+
 .weekly-profit-time-range-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  align-items: end;
+  gap: 10px;
+  width: 100%;
 }
 
-.weekly-profit-time-range-row .time-range-field {
-  flex: 1 1 320px;
+.weekly-profit-date-range-field {
+  flex: 0 1 360px;
+  max-width: 100%;
+  display: grid;
+  gap: 6px;
+}
+
+.weekly-profit-date-range-field .time-range-field {
+  width: 100%;
+}
+
+.weekly-profit-spu-sku-field {
+  flex: 0 1 284px;
+  max-width: 100%;
+  min-width: min(284px, 100%);
+}
+
+.weekly-profit-filter-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .weekly-profit-submit-button {
+  flex: 0 0 auto;
   min-height: 38px;
   padding: 0 14px;
 }

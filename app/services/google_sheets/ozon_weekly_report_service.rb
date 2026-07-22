@@ -45,15 +45,18 @@ module GoogleSheets
     end
 
     def call
-      svc = Ec::OzonProfitAttribution.new(
-        account_id:   @account_id,
-        from_date:    @from_date,
-        to_date:      @to_date,
-        rate_cny_rub: @rate_cny_rub
-      ).call
+      report = WeeklyProfitReports::ReportQueryRunner.run(
+        params: {
+          report_type: "wr",
+          store_ref: "ozon:#{@account_id}",
+          from_date: @from_date,
+          to_date: @to_date
+        },
+        today: Date.current
+      )
 
-      @results     = svc.results
-      @unallocated = svc.unallocated
+      @results     = report[:rows]
+      @unallocated = report.dig(:extras, :unallocated) || {}
       @name_map    = Ec::Sku.pluck(:sku_code, :product_name_ru)
                             .each_with_object({}) { |(c, n), h| h[c] = n }
 

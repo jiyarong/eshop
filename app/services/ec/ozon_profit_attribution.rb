@@ -70,6 +70,8 @@ module Ec
     end
 
     def load_sku_mappings
+      return load_bound_sku_mappings if @sku_codes.present?
+
       # offer_id → sku_code（大写匹配，ec_skus 中 sku_code 均为大写）
       # 先建 code_by_upper，供 ozon_sku 映射时优先选能命中的 offer_id
       code_by_upper = Ec::Sku.pluck(:sku_code)
@@ -106,6 +108,39 @@ module Ec
       @sku_to_code.each do |ozon_sku, code|
         @cost_by_sku[ozon_sku] = cost_map[code] if cost_map[code]
       end
+    end
+
+    def load_bound_sku_mappings
+      store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: @account_id)
+      @sku_to_code = {}
+      @cost_by_sku = {}
+      return unless store
+
+      Ec::SkuProduct
+        .where(store_id: store.id, platform: "ozon", sku_code: @sku_codes)
+        .where.not(platform_sku_id: nil)
+        .pluck(:platform_sku_id, :sku_code)
+        .each do |platform_sku_id, sku_code|
+          @sku_to_code[ozon_sku_key(platform_sku_id)] = sku_code
+        end
+
+      cost_date = @from_date.beginning_of_week(:monday)
+      cost_map = Ec::SkuCost.latest_by_sku_as_of(@sku_codes, cost_date).index_by(&:sku_code)
+      @sku_to_code.each do |ozon_sku, sku_code|
+        cost = cost_map[sku_code]
+        next unless cost
+
+        @cost_by_sku[ozon_sku] = {
+          cost_cny: cost.goods_cost_cny.to_f,
+          import_vat_cny: cost.import_vat_cny.to_f,
+        }
+      end
+    end
+
+    def ozon_sku_key(value)
+      Integer(value)
+    rescue ArgumentError, TypeError
+      value.to_s
     end
 
     def load_ad_costs

@@ -12,9 +12,12 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     @campaign_ids = []
     @sku_codes = []
     @nm_ids = []
+    @store_ids = []
   end
 
   teardown do
+    Ec::SkuProduct.joins(:store).where(ec_stores: { id: @store_ids }).delete_all if @store_ids.any?
+    Ec::Store.where(id: @store_ids).delete_all if @store_ids.any?
     RawWb::Product.where(nm_id: @nm_ids).delete_all if @nm_ids.any?
     Ec::SkuCost.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
     Ec::Sku.with_deleted.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
@@ -157,15 +160,52 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     assert_equal 15.0, service.instance_variable_get(:@goods_costs).dig(nm_id, :total_cost_cny)
   end
 
+  test "sku filter resolves wb product through sku product binding" do
+    sku_code = "WB-BIND-#{SecureRandom.hex(4).upcase}"
+    nm_id = rand(10_000_000..99_999_999)
+    @sku_codes << sku_code
+    @nm_ids << nm_id
+
+    Ec::Sku.create!(sku_code: sku_code)
+    store = Ec::Store.create!(
+      platform: "wb",
+      store_name: "WB Binding #{sku_code}",
+      company_type: "small",
+      wb_raw_account_id: @account.id,
+      is_active: true
+    )
+    @store_ids << store.id
+    Ec::SkuProduct.create!(
+      sku_code: sku_code,
+      store: store,
+      product_id: nm_id.to_s,
+      platform_sku_id: "WB-CHRT-#{sku_code}"
+    )
+    RawWb::Product.create!(
+      account: @account,
+      nm_id: nm_id,
+      vendor_code: "RAW-#{sku_code}"
+    )
+
+    service = build_service(
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 5),
+      sku_codes: [sku_code.downcase]
+    )
+
+    assert_equal({ nm_id => sku_code }, service.send(:build_nm_to_sku_map, [nm_id]))
+  end
+
   private
 
-  def build_service(from_date:, to_date:, rate_cny_rub: 10.0, rate_byn_rub: 3.0)
+  def build_service(from_date:, to_date:, rate_cny_rub: 10.0, rate_byn_rub: 3.0, sku_codes: [])
     Ec::WbProfitAttribution.new(
       account_id: @account.id,
       from_date: from_date,
       to_date: to_date,
       rate_cny_rub: rate_cny_rub,
-      rate_byn_rub: rate_byn_rub
+      rate_byn_rub: rate_byn_rub,
+      sku_codes: sku_codes
     )
   end
 

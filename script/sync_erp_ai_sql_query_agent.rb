@@ -10,8 +10,8 @@ require "yaml"
 
 class ErpAiSqlQueryAgentSync
   AGENT_CODE = "erp_ai_sql_query_agent"
-  AGENT_NAME = "ERP SQL 查询 Agent"
-  AGENT_DESCRIPTION = "基于只读 SQL 查询接口回答 ERP 经营数据问题的 Agent。"
+  AGENT_NAME = "ERP 数据查询 Agent"
+  AGENT_DESCRIPTION = "基于只读 SQL 查询接口和已封装业务 API 回答 ERP 经营数据问题的 Agent。"
   PROMPT_PATH = Rails.root.join("docs/erp_ai_sql_query_agent_system_prompt.md")
   SKILLS_DIR = Rails.root.join("docs/erp_ai_sql_query_agent_system_prompt")
 
@@ -23,7 +23,7 @@ class ErpAiSqlQueryAgentSync
     "ozon_localization" => "ERP SQL 查询：Ozon 发货集群、目的集群和本地化销售占比口径。",
     "raw_platform_data" => "ERP SQL 查询：WB 与 Ozon 原始平台数据表字段和关系。",
     "weekly_rates" => "ERP SQL 查询：周汇率、RUB/CNY/BYN 换算和周报汇率口径。",
-    "weekly_profit_attribution" => "ERP SQL 查询：WR、WSU、WSU-DEEP 周利润归集字段、表关系和计算口径。"
+    "weekly_profit_attribution" => "ERP 数据查询：通过 /ai/weekly_profit_reports 调用 WR、WSU、WSU-DEEP 周利润归集 API。"
   }.freeze
 
   def initialize(env: ENV, stdout: $stdout)
@@ -101,7 +101,6 @@ class ErpAiSqlQueryAgentSync
   end
 
   def attach_archive!(skill, package)
-    skill.archive.purge if skill.archive.attached?
     skill.archive.attach(
       io: StringIO.new(package.archive_data),
       filename: "#{package.name}.zip",

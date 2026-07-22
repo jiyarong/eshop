@@ -6,6 +6,7 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
   setup do
     @token = SecureRandom.hex(4).upcase
     @sku_codes = []
+    @store_ids = []
     @ozon_account = RawOzon::SellerAccount.create!(
       client_id: "ozon-cost-#{@token}",
       api_key: "ozon-api-#{@token}",
@@ -17,6 +18,8 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
 
   teardown do
     RawOzon::PostingItem.where(account_id: @ozon_account.id).delete_all if @ozon_account
+    Ec::SkuProduct.joins(:store).where(ec_stores: { id: @store_ids }).delete_all if @store_ids.any?
+    Ec::Store.where(id: @store_ids).delete_all if @store_ids.any?
     Ec::SkuCost.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
     Ec::Sku.with_deleted.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
     @ozon_account&.destroy
@@ -113,5 +116,57 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
     service.send(:load_sku_mappings)
 
     assert_equal 15.0, service.instance_variable_get(:@cost_by_sku).dig(ozon_sku, :cost_cny)
+  end
+
+  test "sku filter resolves ozon sku through sku product binding" do
+    sku_code = "OZ-BIND-#{@token}"
+    ozon_sku = rand(10_000_000..99_999_999)
+    @sku_codes << sku_code
+
+    Ec::Sku.create!(sku_code: sku_code)
+    Ec::SkuCost.create!(
+      sku_code: sku_code,
+      effective_on: Date.new(2026, 6, 29),
+      purchase_price_cny: 12,
+      customs_duty_rate: 0,
+      import_vat_rate: 0
+    )
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "Ozon Binding #{sku_code}",
+      company_type: "small",
+      ozon_raw_account_id: @ozon_account.id,
+      is_active: true
+    )
+    @store_ids << store.id
+    Ec::SkuProduct.create!(
+      sku_code: sku_code,
+      store: store,
+      product_id: "OZON-P-#{@token}",
+      platform_sku_id: ozon_sku.to_s,
+      offer_id: "RAW-#{sku_code}"
+    )
+    RawOzon::PostingItem.create!(
+      account: @ozon_account,
+      posting_number: "posting-binding-#{@token}",
+      posting_type: "fbo",
+      ozon_sku: ozon_sku,
+      offer_id: "RAW-#{sku_code}",
+      raw_json: {}
+    )
+
+    service = Ec::OzonProfitAttribution.new(
+      account_id: @ozon_account.id,
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 5),
+      rate_cny_rub: 10.0,
+      sync_missing_ad_costs: false,
+      sku_codes: [sku_code.downcase]
+    )
+
+    service.send(:load_sku_mappings)
+
+    assert_equal sku_code, service.instance_variable_get(:@sku_to_code).fetch(ozon_sku)
+    assert_equal 12.0, service.instance_variable_get(:@cost_by_sku).dig(ozon_sku, :cost_cny)
   end
 end

@@ -785,8 +785,8 @@ en:
         wr: "WR"
         wsu: "WSU"
         wsu_deep: "WSU-DEEP"
-      sku: "SKU"
-      sku_placeholder: "Separate multiple SKUs with commas"
+      sku: "SPU/SKU"
+      sku_placeholder: "All SPUs/SKUs"
       store: "Store"
       submit: "Search"
     sections:

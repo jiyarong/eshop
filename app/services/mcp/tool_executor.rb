@@ -3,8 +3,9 @@ module Mcp
     DEFAULT_LIMIT = 50
     MAX_LIMIT = 100
 
-    def initialize(current_user:)
+    def initialize(current_user:, bearer_token: nil)
       @current_user = current_user
+      @bearer_token = bearer_token
       @visible_scope = Mcp::VisibleSkuScope.new(current_user)
     end
 
@@ -26,6 +27,8 @@ module Mcp
         ozon_sku_localization(args)
       when "sql_query"
         sql_query(args)
+      when "erp_ai_request"
+        erp_ai_request(args)
       when "operation_context"
         operation_context
       else
@@ -35,7 +38,7 @@ module Mcp
 
     private
 
-    attr_reader :current_user, :visible_scope
+    attr_reader :current_user, :bearer_token, :visible_scope
 
     def list_my_skus(args)
       sku_products = visible_scope.sku_products
@@ -75,6 +78,13 @@ module Mcp
         limit: args["limit"],
         offset: args["offset"]
       ).call
+    end
+
+    def erp_ai_request(args)
+      Mcp::ErpAIRequest.new(
+        current_user: current_user,
+        bearer_token: bearer_token
+      ).call(args)
     end
 
     def sku_sales(args)

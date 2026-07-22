@@ -239,8 +239,9 @@ module Mcp
       搜索或遍历只返回候选。最终回答前读取最相关的 3-5 个完整页面，并在答案中标注适用平台/国家/地区/品类、复核日期、引用来源和仍缺少的信息。不得把候选摘要当作完整证据，不得在证据不足时补造结论。
     PROMPT
 
-    def initialize(current_user:, external_server_registry: ErpAI::Mcp::ServerRegistry.new)
+    def initialize(current_user:, bearer_token: nil, external_server_registry: ErpAI::Mcp::ServerRegistry.new)
       @current_user = current_user
+      @bearer_token = bearer_token
       @external_server_registry = external_server_registry
     end
 
@@ -259,7 +260,7 @@ module Mcp
 
     private
 
-    attr_reader :current_user, :external_server_registry
+    attr_reader :current_user, :bearer_token, :external_server_registry
 
     def initialize_result
       {
@@ -290,7 +291,7 @@ module Mcp
         return external_tools_call_result(params)
       end
 
-      tool_result = Mcp::ToolExecutor.new(current_user: current_user).call(
+      tool_result = Mcp::ToolExecutor.new(current_user: current_user, bearer_token: bearer_token).call(
         params["name"].to_s,
         params["arguments"].to_h
       )

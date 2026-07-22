@@ -2,25 +2,30 @@
 
 <section class="panel">
   <form class="report-form" action="/weekly_profit_reports" method="get" data-turbo-frame="weekly_profit_report_results" data-turbo-action="advance" data-controller="weekly-profit-filter">
-    <div class="field field--time-range">
-      <label for="weekly-profit-time-range-trigger"><%= t("weekly_profit_reports.filters.date_range") %></label>
+    <div class="field field--time-range weekly-profit-top-filters">
       <div class="weekly-profit-time-range-row">
-        <%= render "shared/time_range_selector",
-                   id: "weekly-profit-time-range",
-                   from_date: @from_date,
-                   to_date: @to_date,
-                   submit_on_apply: true %>
-        <button class="button weekly-profit-submit-button" type="submit"><%= t("weekly_profit_reports.filters.submit") %></button>
-        <button class="button weekly-profit-submit-button" type="submit" formaction="/weekly_profit_reports" formmethod="get" formtarget="_top" data-turbo="false" name="format" value="xlsx"><%= t("weekly_profit_reports.filters.export_xlsx") %></button>
+        <div class="weekly-profit-date-range-field">
+          <label for="weekly-profit-time-range-trigger"><%= t("weekly_profit_reports.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "weekly-profit-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
+        </div>
+        <%= render "shared/spu_sku_filter",
+                   field_class: "weekly-profit-spu-sku-field",
+                   dom_id_prefix: "weekly-profit-spu-sku-filter",
+                   label: t("weekly_profit_reports.filters.sku"),
+                   placeholder: t("weekly_profit_reports.filters.sku_placeholder"),
+                   aria_label: t("shared.spu_sku_filter.aria_label") %>
+        <div class="weekly-profit-filter-actions">
+          <button class="button weekly-profit-submit-button" type="submit"><%= t("weekly_profit_reports.filters.submit") %></button>
+          <button class="button weekly-profit-submit-button" type="submit" formaction="/weekly_profit_reports" formmethod="get" formtarget="_top" data-turbo="false" name="format" value="xlsx"><%= t("weekly_profit_reports.filters.export_xlsx") %></button>
+        </div>
       </div>
     </div>
 
     <div class="weekly-profit-filter-block">
-      <div class="field field--full">
-        <label for="weekly-profit-sku"><%= t("weekly_profit_reports.filters.sku") %></label>
-        <input id="weekly-profit-sku" class="input" type="text" name="sku" value="<%= @sku %>" placeholder="<%= t("weekly_profit_reports.filters.sku_placeholder") %>">
-      </div>
-
       <div class="field field--full">
         <span class="field-label"><%= t("weekly_profit_reports.filters.report_type") %></span>
         <input type="hidden" name="report_type" value="<%= @report_type %>" data-weekly-profit-filter-target="reportTypeInput">

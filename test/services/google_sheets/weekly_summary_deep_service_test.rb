@@ -89,7 +89,7 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
   def capture_sheet_writes(current_rows:, previous_rows:)
     rate = Struct.new(:rate_cny_rub, :rate_byn_rub).new(BigDecimal("7.2"), BigDecimal("0.28"))
     original_resolve = Ec::WeeklyRate.method(:resolve)
-    original_query_run = Ec::WeeklySummaryDeepQuery.method(:run)
+    original_runner_run = WeeklyProfitReports::ReportQueryRunner.method(:run)
     service = GoogleSheets::WeeklySummaryDeepService.new(
       from_date: Date.new(2026, 5, 25),
       to_date: Date.new(2026, 5, 31),
@@ -110,7 +110,7 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
       [rows, { wb: -3.25, ozon: -1.75 }]
     end
     payload = query.run
-    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run) { |**_kwargs| payload }
+    WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run) { |**_kwargs| payload }
     service.define_singleton_method(:ensure_sheet_exists) { |tab| ensured_tab = tab }
     service.define_singleton_method(:clear_sheet) { |range:| cleared_range = range }
     service.define_singleton_method(:sheet_id) { |_tab| 123 }
@@ -123,7 +123,7 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
     { writes: writes, ensured_tab: ensured_tab, cleared_range: cleared_range }
   ensure
     Ec::WeeklyRate.define_singleton_method(:resolve, original_resolve)
-    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, original_query_run)
+    WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run, original_runner_run)
   end
 
   def create_sku_with_cost(sku_code, purchase_price_cny:, freight_to_by_cny:, pkg_volume_override_l:)
@@ -134,6 +134,7 @@ class GoogleSheets::WeeklySummaryDeepServiceTest < ActiveSupport::TestCase
     )
     attributes = {
       sku_code: sku_code,
+      effective_on: Date.new(2026, 5, 25),
       customs_misc_cny: BigDecimal("0")
     }
     attributes[:purchase_price_cny] = BigDecimal(purchase_price_cny.to_s) unless purchase_price_cny.nil?

@@ -20,7 +20,14 @@ module GoogleSheets
     end
 
     def call
-      query = Ec::WeeklySummaryDeepQuery.run(from_date: @from_date, to_date: @to_date)
+      query = WeeklyProfitReports::ReportQueryRunner.run(
+        params: {
+          report_type: "wsu_deep",
+          from_date: @from_date,
+          to_date: @to_date
+        },
+        today: Date.current
+      )
       row_hashes = query[:rows]
       summary = query[:summary]
 

@@ -1,7 +1,9 @@
 class WeeklyProfitReportsController < ApplicationController
+  include SpuSkuFilterable
+
   before_action -> { require_permission!(:view_reports) }, except: [:accounts]
 
-  REPORT_TYPES = %w[wr wsu wsu_deep].freeze
+  REPORT_TYPES = WeeklyProfitReports::ReportQueryRunner::REPORT_TYPES
   WR_COLUMNS = {
     "wb" => %i[nm_id vendor_code region sales_qty return_qty net_qty settlement delivery storage ad goods_cost pre_tax tax after_tax],
     "ozon" => %i[ozon_sku_id sku_code sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
@@ -75,7 +77,7 @@ class WeeklyProfitReportsController < ApplicationController
     @from_date, @to_date = default_period
     @from_date = params[:from_date].presence || @from_date
     @to_date = params[:to_date].presence || @to_date
-    @sku = params[:sku].to_s
+    load_spu_sku_filter(selected_sku_codes: selected_weekly_profit_direct_sku_codes)
 
     if @report_type == "wr" && @selected_store_ref.blank?
       render :show and return
@@ -86,7 +88,9 @@ class WeeklyProfitReportsController < ApplicationController
         report_type: @report_type,
         from_date: @from_date,
         to_date: @to_date,
-        sku: @sku.presence
+        sku: params[:sku].presence,
+        master_sku_ids: @spu_sku_selected_master_sku_ids.presence,
+        sku_codes: @spu_sku_selected_sku_codes.presence
       }
       redirect_params[:store_ref] = @selected_store_ref if @report_type == "wr" && @selected_store_ref.present?
       redirect_to weekly_profit_reports_path(redirect_params.compact) and return
@@ -106,93 +110,27 @@ class WeeklyProfitReportsController < ApplicationController
   end
 
   def parse_request_params
-    report_type = params.require(:report_type).to_s
-    raise ArgumentError, "invalid_report_type" unless REPORT_TYPES.include?(report_type)
-
-    parsed = {
-      report_type: report_type,
-      from_date: parse_date(params.require(:from_date)),
-      to_date: parse_date(params.require(:to_date)),
-      sku_codes: parse_sku_codes(params[:sku])
-    }
-    validate_period!(parsed[:from_date], parsed[:to_date])
-
-    if report_type == "wr"
-      parsed[:store_ref] = params.require(:store_ref).to_s
-    end
-
-    parsed
+    weekly_profit_report_runner.parsed_params
   end
 
-  def parse_date(value)
-    Date.iso8601(value.to_s)
-  rescue Date::Error
-    raise ArgumentError, "invalid_date"
+  def selected_weekly_profit_sku_codes
+    weekly_profit_report_runner.selected_sku_codes
   end
 
-  def parse_sku_codes(value)
-    value.to_s.split(",").filter_map { |sku| sku.strip.upcase.presence }.uniq
-  end
-
-  def validate_period!(from_date, to_date)
-    raise ArgumentError, "invalid_week_range" unless from_date.cwday == 1 && to_date.cwday == 7
-    raise ArgumentError, "invalid_week_range" unless (((to_date - from_date).to_i + 1) % 7).zero?
-    raise ArgumentError, "invalid_week_range" if to_date < from_date
-
-    current_monday = user_today.beginning_of_week(:monday)
-    raise ArgumentError, "current_week_unsupported" if to_date >= current_monday
+  def selected_weekly_profit_direct_sku_codes
+    weekly_profit_report_runner.direct_sku_codes
   end
 
   def run_report_query(parsed)
-    case parsed[:report_type]
-    when "wr"
-      Ec::WeeklyProfitReportQuery.run(
-        store_ref: parsed[:store_ref],
-        from_date: parsed[:from_date],
-        to_date: parsed[:to_date],
-        sku_codes: parsed[:sku_codes]
-      )
-    when "wsu"
-      Ec::WeeklySummaryQuery.run(
-        from_date: parsed[:from_date],
-        to_date: parsed[:to_date],
-        sku_codes: parsed[:sku_codes]
-      )
-    when "wsu_deep"
-      Ec::WeeklySummaryDeepQuery.run(
-        from_date: parsed[:from_date],
-        to_date: parsed[:to_date],
-        sku_codes: parsed[:sku_codes]
-      )
-    else
-      raise ArgumentError, "invalid_report_type"
-    end
+    weekly_profit_report_runner.run(parsed)
   end
 
   def store_options
-    wb_store_options + ozon_store_options
+    WeeklyProfitReports::ReportQueryRunner.store_options
   end
 
-  def wb_store_options
-    RawWb::SellerAccount.where(is_active: true).order(:id).map do |account|
-      {
-        ref: "wb:#{account.id}",
-        platform: "wb",
-        name: account.name,
-        label: "WB · #{account.name}"
-      }
-    end
-  end
-
-  def ozon_store_options
-    RawOzon::SellerAccount.where(is_active: true).order(:id).map do |account|
-      {
-        ref: "ozon:#{account.id}",
-        platform: "ozon",
-        name: account.company_name,
-        label: "Ozon · #{account.company_name}"
-      }
-    end
+  def weekly_profit_report_runner
+    @weekly_profit_report_runner ||= WeeklyProfitReports::ReportQueryRunner.new(params: params, today: user_today)
   end
 
   def render_bad_request(error)

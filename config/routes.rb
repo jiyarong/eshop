@@ -59,6 +59,7 @@ Rails.application.routes.draw do
   namespace :ai, module: :erp_ai do
     resources :conversations, only: [:create]
     resources :sql_queries, only: [:create]
+    resources :weekly_profit_reports, only: [:create]
   end
 
   namespace :admin do

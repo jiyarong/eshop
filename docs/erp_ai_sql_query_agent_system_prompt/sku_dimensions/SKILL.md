@@ -51,6 +51,7 @@ SKU 尺寸和装箱参数表，一 SKU 最多一条。
 - 只需要 SKU 名称或状态时，加载 `product_catalog` Skill。
 - 需要库存数量再估算体积时，加载 `inventory_procurement` Skill，并用 `ec_sku_dimensions` 的内径体积参与估算。
 - 需要利润、成本或 ROI 且涉及单件体积时，同时加载 `costs_profit` 和 `weekly_profit_attribution` Skill。
+- 需要按 SKU 尺寸做 WB/Ozon 外箱装配、托盘装载或 3D 包装测算时，先用本 Skill 取得尺寸/重量，再加载 `smart_pack_calculator` Skill；缺少尺寸或重量时必须让用户补充。
 
 ## 常用 SQL 片段
 

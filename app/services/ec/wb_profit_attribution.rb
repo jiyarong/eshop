@@ -436,11 +436,25 @@ module Ec
     }.freeze
 
     def build_nm_to_sku_map(nm_ids)
+      return build_bound_nm_to_sku_map(nm_ids) if @sku_codes.present?
+
       sku_map = {}
       RawWb::Product.where(nm_id: nm_ids).pluck(:nm_id, :vendor_code).each do |nm_id, vc|
         sku_map[nm_id] = vc if vc.present?
       end
       sku_map
+    end
+
+    def build_bound_nm_to_sku_map(nm_ids)
+      store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: @account_id)
+      return {} unless store
+
+      Ec::SkuProduct
+        .where(store_id: store.id, platform: "wb", sku_code: @sku_codes, product_id: nm_ids.map(&:to_s))
+        .pluck(:product_id, :sku_code)
+        .each_with_object({}) do |(product_id, sku_code), sku_map|
+          sku_map[product_id.to_i] = sku_code
+        end
     end
 
     # 将 WB vendorCode 解析为 ec_sku_costs 中的 sku_code

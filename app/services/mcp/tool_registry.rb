@@ -81,6 +81,17 @@ module Mcp
           required: ["sql"]
         ),
         definition(
+          "erp_ai_request",
+          "转发一次本应用内 ErpAI HTTP 请求。仅允许 app-relative /ai/... URL，不允许外部 host。",
+          {
+            method: enum_schema(%w[get post put patch delete], "HTTP method，默认 get"),
+            url: string_schema("App-relative URL，例如 /ai/weekly_profit_reports.json"),
+            params: object_schema("请求参数。GET/DELETE 会作为 query string，POST/PUT/PATCH 会作为 JSON body"),
+            headers: object_schema("可转发的 HTTP headers。目前仅接受 Accept、Accept-Language、X-Request-Id；Authorization 会自动使用当前 MCP token")
+          },
+          required: ["url"]
+        ),
+        definition(
           "operation_context",
           "返回当前用户、时区、权限和可用数据范围。",
           {}
@@ -114,6 +125,10 @@ module Mcp
 
     def enum_schema(values, description)
       { type: "string", enum: values, description: description }
+    end
+
+    def object_schema(description)
+      { type: "object", description: description, additionalProperties: true }
     end
   end
 end
