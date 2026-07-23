@@ -139,8 +139,8 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
     second = RawOzon::AdUnit.create!(account: @account, external_id: "102", unit_type: "cpc_campaign",
       state: "CAMPAIGN_STATE_RUNNING", billing_model: "cpc", raw_json: {}, synced_at: Time.current)
     body = Zip::OutputStream.write_buffer do |zip|
-      { "101.csv" => "3001", "102.csv" => "3002" }.each do |filename, sku|
-        zip.put_next_entry(filename)
+      { "101" => "3001", "102" => "3002" }.each do |external_id, sku|
+        zip.put_next_entry("#{external_id}_01.07.2026-22.07.2026.csv")
         zip.write(<<~CSV)
           День;sku;Название товара;Цена товара, ₽;Показы;Клики;CTR, %;Добавления в корзину;Средняя стоимость клика, ₽;Расход, ₽;Продано товаров;Продажи в продвижении, ₽;Продано товаров модели;Продажи в продвижении с заказов модели, ₽;ДРР, %;Заказано на сумму, ₽;ДРР общий, %;Дата добавления
           #{@stat_date.strftime("%d.%m.%Y")};#{sku};Lamp;3000,00;100;10;10,0;3;70,00;700,00;2;5000,00;4;9000,00;14,0;10000,00;7,0;01.07.2026

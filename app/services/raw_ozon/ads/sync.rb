@@ -130,6 +130,9 @@ module RawOzon
           end
           reports = cpc_history_reports(body, batch)
           unit_map = batch.index_by(&:external_id)
+          unless reports.keys.map(&:to_s).intersect?(unit_map.keys.map(&:to_s))
+            raise RawOzon::PerformanceClient::ApiError, "CPC history archive entries do not match requested campaigns"
+          end
           rows = reports.flat_map do |external_id, csv|
             unit = unit_map[external_id.to_s]
             next [] unless unit
@@ -277,7 +280,8 @@ module RawOzon
 
         Zip::File.open_buffer(StringIO.new(body)).each_with_object({}) do |entry, reports|
           next if entry.directory?
-          external_id = File.basename(entry.name, File.extname(entry.name))
+          external_id = File.basename(entry.name)[/\A\d+/]
+          next unless external_id
           reports[external_id] = entry.get_input_stream.read
         end
       end
