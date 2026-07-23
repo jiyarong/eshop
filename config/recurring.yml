@@ -141,6 +141,21 @@ production:
     command: "RawOzon::PerformanceSync.run"
     schedule: every thursday at 3:00 in Asia/Shanghai
 
+  # Isolated promotion analytics sync. It does not write legacy weekly-profit tables.
+  ozon_ads_daily_sync:
+    command: "RawOzon::Ads::Sync.run(from_date: Date.yesterday, to_date: Date.yesterday)"
+    schedule: every day at 2:15 in Asia/Shanghai
+
+  # Refresh the recent window to recover missed runs and late-settling CPC/CPO metrics.
+  ozon_ads_weekly_catchup:
+    command: "RawOzon::Ads::Sync.run(from_date: 8.days.ago.to_date, to_date: Date.yesterday)"
+    schedule: every sunday at 3:30 in Asia/Shanghai
+
+  # Backfill CPC product-level history in sequential 10-campaign report jobs.
+  ozon_ads_cpc_history_catchup:
+    command: "RawOzon::Ads::CpcHistoryBackfill.enqueue_recent(days: 8)"
+    schedule: every sunday at 5:30 in Asia/Shanghai
+
   # Pre-report sync for core WB profit attribution sources.
   wb_profit_sources_prereport_sync:
     command: "RawWb::WeeklySync.run(days: 8, sync_keys: [:sync_ad_campaigns, :sync_finance_details, :sync_paid_storage, :sync_ad_settled_fees])"

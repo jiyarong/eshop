@@ -1,0 +1,51 @@
+<section class="panel ozon-ads-filter-panel">
+  <%= form_with url: url, method: :get, local: true, class: "report-form ozon-ads-filters" do |form| %>
+    <%= form.hidden_field :store_id, value: @store.id %>
+    <div class="field field--time-range weekly-profit-top-filters">
+      <div class="weekly-profit-time-range-row">
+        <div class="weekly-profit-date-range-field">
+          <label for="ozon-ads-time-range-trigger"><%= t("reports.ozon_ads.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "ozon-ads-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
+        </div>
+        <% if local_assigns[:search] %>
+          <div class="field weekly-profit-spu-sku-field ozon-ads-filters__sku">
+            <%= form.label :q, t("reports.ozon_ads.filters.sku") %>
+            <%= form.search_field :q, value: @query, placeholder: t("reports.ozon_ads.filters.search_placeholder") %>
+          </div>
+        <% end %>
+        <% if local_assigns[:status_filter] %>
+          <%= hidden_field_tag "statuses[]", "" %>
+          <%= render "shared/popover_multiselect_filter",
+                     field_class: "ozon-ads-filters__status",
+                     dom_id_prefix: "ozon-ads-status-filter",
+                     param_name: "statuses",
+                     label: t("reports.ozon_ads.filters.status"),
+                     all_label: t("reports.ozon_ads.filters.all_statuses"),
+                     selected_values: @states,
+                     options: RawOzon::AdUnit::STATES.map { |state| [t("reports.ozon_ads.states.#{state}"), state] } %>
+        <% end %>
+        <div class="weekly-profit-filter-actions">
+          <%= form.submit t("reports.ozon_ads.filters.apply"), class: "button weekly-profit-submit-button" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <div class="ozon-ads-store-filter">
+    <span class="field-label"><%= t("reports.ozon_ads.filters.store") %></span>
+    <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("reports.ozon_ads.filters.store") %>">
+      <% @stores.each do |store| %>
+        <% tag_params = { store_id: store.id, from_date: @from_date, to_date: @to_date } %>
+        <% tag_params[:q] = @query if local_assigns[:search] && @query.present? %>
+        <% tag_params[:statuses] = @states.presence || [""] if local_assigns[:status_filter] %>
+        <%= link_to store.store_name,
+                    "#{url}?#{tag_params.to_query}",
+                    class: "weekly-profit-filter-tag #{'is-active' if store.id == @store.id}",
+                    aria: { pressed: store.id == @store.id } %>
+      <% end %>
+    </div>
+  </div>
+</section>

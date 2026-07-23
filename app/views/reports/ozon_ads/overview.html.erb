@@ -1,0 +1,39 @@
+<div class="resource-header">
+  <div>
+    <h1 class="page-title"><%= t("reports.ozon_ads.overview.title") %></h1>
+    <p class="report-meta"><%= t("reports.ozon_ads.subtitle", store: @store.store_name, from: @from_date, to: @to_date) %></p>
+  </div>
+</div>
+<%= render "nav", active: :overview %>
+<div class="report-stack">
+  <%= render "filters", url: reports_ozon_ads_path %>
+  <%= render "summary", summary: @summary %>
+  <section class="panel">
+    <h2 class="section-title"><%= t("reports.ozon_ads.overview.breakdown") %></h2>
+    <div class="table-scroll">
+      <table class="inventory-list-table ozon-ads-table">
+        <thead><tr>
+          <th><%= t("reports.ozon_ads.fields.promotion_type") %></th><th><%= t("reports.ozon_ads.fields.placement") %></th>
+          <th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th>
+          <th><%= t("reports.ozon_ads.metrics.orders") %></th><th><%= t("reports.ozon_ads.metrics.drr") %></th>
+          <th><%= t("reports.ozon_ads.metrics.impressions") %></th><th><%= t("reports.ozon_ads.metrics.clicks") %></th>
+          <th><%= t("reports.ozon_ads.metrics.ctr") %></th><th><%= t("reports.ozon_ads.metrics.cart_additions") %></th>
+        </tr></thead>
+        <tbody>
+          <% @rows.each do |row| %><tr>
+            <td><strong><%= t("reports.ozon_ads.unit_types.#{row[:unit_type]}") %></strong></td>
+            <td><%= row[:placement].presence || "-" %></td>
+            <td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td>
+            <td class="numeric"><%= number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u") %></td>
+            <td class="numeric"><%= number_with_delimiter(row[:orders_count].to_i) %></td>
+            <td class="numeric"><%= row[:drr] ? number_to_percentage(row[:drr], precision: 1) : "-" %></td>
+            <td class="numeric"><%= number_with_delimiter(row[:impressions].to_i) %></td>
+            <td class="numeric"><%= number_with_delimiter(row[:clicks].to_i) %></td>
+            <td class="numeric"><%= row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-" %></td>
+            <td class="numeric"><%= number_with_delimiter(row[:cart_additions].to_i) %></td>
+          </tr><% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

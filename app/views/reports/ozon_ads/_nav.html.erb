@@ -1,0 +1,5 @@
+<nav class="ozon-ads-tabs" aria-label="<%= t("reports.ozon_ads.title") %>">
+  <%= link_to t("reports.ozon_ads.tabs.overview"), reports_ozon_ads_path(store_id: @store.id, from_date: @from_date, to_date: @to_date), class: "ozon-ads-tabs__link #{'is-active' if active == :overview}" %>
+  <%= link_to t("reports.ozon_ads.tabs.cpc"), reports_ozon_ads_cpc_path(store_id: @store.id, from_date: @from_date, to_date: @to_date), class: "ozon-ads-tabs__link #{'is-active' if active == :cpc}" %>
+  <%= link_to t("reports.ozon_ads.tabs.cpo_selected"), reports_ozon_ads_cpo_selected_path(store_id: @store.id, from_date: @from_date, to_date: @to_date), class: "ozon-ads-tabs__link #{'is-active' if active == :cpo}" %>
+</nav>

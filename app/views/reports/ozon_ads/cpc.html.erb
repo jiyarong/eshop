@@ -1,0 +1,23 @@
+<h1 class="page-title"><%= t("reports.ozon_ads.cpc.title") %></h1>
+<p class="report-meta"><%= t("reports.ozon_ads.subtitle", store: @store.store_name, from: @from_date, to: @to_date) %></p>
+<%= render "nav", active: :cpc %>
+<div class="report-stack">
+  <%= render "filters", url: reports_ozon_ads_cpc_path, search: true, status_filter: true %>
+  <%= render "summary", summary: @summary %>
+  <section class="panel"><div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
+    <thead><tr><th>ID</th><th><%= t("reports.ozon_ads.fields.name") %></th><th><%= t("reports.ozon_ads.fields.state") %></th>
+      <th><%= t("reports.ozon_ads.fields.strategy") %></th><th><%= t("reports.ozon_ads.fields.budget") %></th><th><%= t("reports.ozon_ads.fields.products") %></th>
+      <th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th><th><%= t("reports.ozon_ads.metrics.orders") %></th>
+      <th><%= t("reports.ozon_ads.metrics.impressions") %></th><th><%= t("reports.ozon_ads.metrics.clicks") %></th><th><%= t("reports.ozon_ads.metrics.ctr") %></th></tr></thead>
+    <tbody><% @rows.each do |row| %><% unit = row[:unit] %><tr>
+      <td><%= unit.external_id %></td><td><%= link_to unit.title, reports_ozon_ads_cpc_detail_path(unit.external_id, store_id: @store.id, from_date: @from_date, to_date: @to_date), class: "inventory-list-table__sku-link", data: { turbo_frame: "ozon_ads_drawer" } %></td>
+      <td><span class="status-pill <%= unit.state == 'CAMPAIGN_STATE_RUNNING' ? 'is-active' : 'is-muted' %>"><%= t("reports.ozon_ads.states.#{unit.state}", default: unit.state) %></span></td>
+      <td><%= unit.strategy.presence || "-" %></td><td class="numeric"><%= number_to_currency(unit.weekly_budget || unit.daily_budget || 0, unit: "₽", format: "%n %u") %></td>
+      <td class="numeric"><%= row[:product_count] %></td><td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td>
+      <td class="numeric"><%= number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u") %></td><td class="numeric"><%= row[:orders_count].to_i %></td>
+      <td class="numeric"><%= number_with_delimiter(row[:impressions].to_i) %></td><td class="numeric"><%= number_with_delimiter(row[:clicks].to_i) %></td>
+      <td class="numeric"><%= row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-" %></td>
+    </tr><% end %></tbody>
+  </table></div></section>
+  <%= turbo_frame_tag "ozon_ads_drawer" %>
+</div>

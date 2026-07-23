@@ -1,0 +1,15 @@
+<section class="ozon-ads-summary" aria-label="<%= t("reports.ozon_ads.summary.title") %>">
+  <% [
+    ["spend", number_to_currency(summary[:spend], unit: "₽", format: "%n %u")],
+    ["revenue", number_to_currency(summary[:ad_revenue], unit: "₽", format: "%n %u")],
+    ["orders", number_with_delimiter(summary[:orders_count].to_i)],
+    ["drr", summary[:drr] ? number_to_percentage(summary[:drr], precision: 1) : "-"],
+    ["impressions", number_with_delimiter(summary[:impressions].to_i)],
+    ["clicks", number_with_delimiter(summary[:clicks].to_i)]
+  ].each do |key, value| %>
+    <div class="ozon-ads-summary__item">
+      <span><%= t("reports.ozon_ads.metrics.#{key}") %></span>
+      <strong><%= value %></strong>
+    </div>
+  <% end %>
+</section>

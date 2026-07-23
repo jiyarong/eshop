@@ -1,0 +1,20 @@
+<h1 class="page-title"><%= t("reports.ozon_ads.cpo.title") %></h1>
+<p class="report-meta"><%= t("reports.ozon_ads.subtitle", store: @store.store_name, from: @from_date, to: @to_date) %></p>
+<%= render "nav", active: :cpo %>
+<div class="report-stack">
+  <%= render "filters", url: reports_ozon_ads_cpo_selected_path, search: true %>
+  <%= render "summary", summary: @summary %>
+  <section class="panel"><div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
+    <thead><tr><th><%= t("reports.ozon_ads.fields.internal_sku") %></th><th><%= t("reports.ozon_ads.fields.product") %></th><th><%= t("reports.ozon_ads.fields.state") %></th><th><%= t("reports.ozon_ads.fields.bid") %></th>
+      <th><%= t("reports.ozon_ads.fields.price") %></th><th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th>
+      <th><%= t("reports.ozon_ads.metrics.orders") %></th><th><%= t("reports.ozon_ads.metrics.drr") %></th></tr></thead>
+    <tbody><% @rows.each do |row| %><tr><td><strong><%= row[:sku]&.sku_code || "-" %></strong><small class="ozon-ads-product-subline"><%= row[:product].ozon_sku_id %></small></td>
+      <td><strong><%= row[:raw_product]&.name || row[:product].title || "-" %></strong><small class="ozon-ads-product-subline"><%= row[:raw_product]&.offer_id %></small></td>
+      <td><span class="status-pill <%= row[:product].state.to_s.include?('ACTIVE') || row[:product].state.to_s.include?('ENABLED') ? 'is-active' : 'is-muted' %>"><%= row[:product].state.presence || "-" %></span></td>
+      <td class="numeric"><%= row[:product].bid ? number_to_percentage(row[:product].bid, precision: 1) : "-" %></td>
+      <td class="numeric"><%= row[:product].price ? number_to_currency(row[:product].price, unit: "₽", format: "%n %u") : "-" %></td>
+      <td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td><td class="numeric"><%= number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u") %></td>
+      <td class="numeric"><%= row[:orders_count].to_i %></td><td class="numeric"><%= row[:drr] ? number_to_percentage(row[:drr], precision: 1) : "-" %></td>
+    </tr><% end %></tbody>
+  </table></div></section>
+</div>

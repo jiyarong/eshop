@@ -890,6 +890,120 @@ textarea {
   font-weight: 700;
 }
 
+.ozon-ads-tabs {
+  display: flex;
+  gap: 18px;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.ozon-ads-tabs__link {
+  padding: 9px 2px;
+  border-bottom: 2px solid transparent;
+  color: var(--erp-muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ozon-ads-tabs__link.is-active {
+  border-color: var(--erp-brand);
+  color: var(--erp-brand);
+}
+
+.ozon-ads-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.ozon-ads-store-filter {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--erp-border);
+}
+
+.ozon-ads-filters__sku {
+  min-width: min(284px, 100%);
+}
+
+.ozon-ads-filters__status {
+  min-width: min(190px, 100%);
+}
+
+.ozon-ads-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 12px;
+}
+
+.ozon-ads-summary__item {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+}
+
+.ozon-ads-summary__item span,
+.ozon-ads-product-subline {
+  display: block;
+  color: var(--erp-muted);
+  font-size: 12px;
+}
+
+.ozon-ads-summary__item strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ozon-ads-table {
+  min-width: 1240px;
+}
+
+.ozon-ads-back {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: var(--erp-brand);
+  text-decoration: none;
+}
+
+.ozon-ads-drawer-content {
+  display: grid;
+  gap: 16px;
+}
+
+.ozon-ads-drawer-content .ozon-ads-summary {
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.ozon-ads-drawer-content .ozon-ads-summary__item {
+  padding: 12px 14px;
+}
+
+.ozon-ads-drawer-content .ozon-ads-summary__item strong {
+  font-size: 17px;
+}
+
+@media (max-width: 980px) {
+  .ozon-ads-drawer-content .ozon-ads-summary {
+    grid-template-columns: repeat(3, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .ozon-ads-summary,
+  .ozon-ads-drawer-content .ozon-ads-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .inventory-list-table__sku-link {
   color: var(--erp-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

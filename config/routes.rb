@@ -25,6 +25,10 @@ Rails.application.routes.draw do
 
   get "reports/inventory" => "reports#inventory"
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
+  get "reports/ozon_ads" => "reports/ozon_ads#overview", as: :reports_ozon_ads
+  get "reports/ozon_ads/cpc" => "reports/ozon_ads#cpc", as: :reports_ozon_ads_cpc
+  get "reports/ozon_ads/cpc/:id" => "reports/ozon_ads#cpc_detail", as: :reports_ozon_ads_cpc_detail
+  get "reports/ozon_ads/cpo/selected" => "reports/ozon_ads#cpo_selected", as: :reports_ozon_ads_cpo_selected
   get "reports/tools" => "reports/tools#index"
   get "reports/tools/new" => "reports/tools#new"
   get "reports/tools/renderers/:renderer_key/source" => "reports/tools#renderer_source", as: :report_tool_renderer_source

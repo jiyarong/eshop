@@ -124,6 +124,7 @@ ru:
       administration: "Администрирование"
     weekly_profit_reports: "Недельная прибыль"
     inventory: "Склад"
+    ozon_ads: "Продвижение Ozon"
     tools: "Инструменты"
     orders: "Заказы"
     skus: "SKU"
@@ -806,6 +807,20 @@ ru:
         amount: "Сумма"
         name: "Название"
   reports:
+    ozon_ads:
+      title: "Аналитика продвижения Ozon"
+      subtitle: "%{store} · %{from}–%{to}"
+      tabs: { overview: "Обзор", cpc: "Оплата за клик", cpo_selected: "Оплата за заказ" }
+      overview: { title: "Аналитика продвижения", breakdown: "По типам продвижения" }
+      cpc: { title: "Оплата за клик", detail_meta: "Кампания %{id} · %{from}–%{to}" }
+      cpo: { title: "Оплата за заказ · Выбранные товары" }
+      filters: { store: "Магазин", date_range: "Период", from_date: "С", to_date: "По", sku: "Фильтр SKU", status: "Статус", all_statuses: "Все статусы", search: "Поиск", search_placeholder: "Товар, SKU или артикул", apply: "Применить" }
+      summary: { title: "Итоги продвижения" }
+      metrics: { spend: "Расход", revenue: "Продажи в продвижении", orders: "Продано товаров", drr: "ДРР", impressions: "Показы", clicks: "Клики", ctr: "CTR", cart_additions: "Добавлено в корзину", avg_cpc: "Средняя цена клика" }
+      fields: { promotion_type: "Тип продвижения", placement: "Место размещения", name: "Название", state: "Статус", strategy: "Стратегия", budget: "Бюджет", products: "Товары", product: "Товар", internal_sku: "Внутренний SKU", bid: "Ставка", price: "Цена" }
+      unit_types: { cpc_campaign: "Оплата за клик", cpo_selected: "Оплата за заказ: выбранные товары", cpo_all: "Оплата за заказ: все товары" }
+      states: { CAMPAIGN_STATE_RUNNING: "Активна", CAMPAIGN_STATE_INACTIVE: "Неактивна", CAMPAIGN_STATE_ARCHIVED: "В архиве" }
+      actions: { back: "Назад к кампаниям" }
     tools:
       actions:
         add_configuration: "Добавить конфигурацию"

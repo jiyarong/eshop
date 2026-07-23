@@ -1,0 +1,8 @@
+<% if turbo_frame_request? %>
+  <%= render "cpc_drawer" %>
+<% else %>
+  <%= link_to t("reports.ozon_ads.actions.back"), reports_ozon_ads_cpc_path(store_id: @store.id, from_date: @from_date, to_date: @to_date), class: "ozon-ads-back" %>
+  <h1 class="page-title"><%= @unit.title %></h1>
+  <p class="report-meta"><%= t("reports.ozon_ads.cpc.detail_meta", id: @unit.external_id, from: @from_date, to: @to_date) %></p>
+  <div class="report-stack"><%= render "cpc_detail_content" %></div>
+<% end %>

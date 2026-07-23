@@ -131,6 +131,7 @@ zh:
       administration: "系统管理"
     weekly_profit_reports: "周利润报表"
     inventory: "库存"
+    ozon_ads: "Ozon 推广"
     tools: "测算工具"
     orders: "订单中心"
     skus: "SKU"
@@ -813,6 +814,66 @@ zh:
         amount: "金额"
         name: "名称"
   reports:
+    ozon_ads:
+      title: "Ozon 推广分析"
+      subtitle: "%{store} · %{from} 至 %{to}"
+      tabs:
+        overview: "推广总览"
+        cpc: "按点击付费"
+        cpo_selected: "按订单付费"
+      overview:
+        title: "推广分析"
+        breakdown: "推广类型明细"
+      cpc:
+        title: "按点击付费"
+        detail_meta: "活动 ID %{id} · %{from} 至 %{to}"
+      cpo:
+        title: "按订单付费 · 所选商品"
+      filters:
+        store: "店铺"
+        date_range: "时间范围"
+        from_date: "开始日期"
+        to_date: "结束日期"
+        sku: "SKU 筛选"
+        status: "状态"
+        all_statuses: "全部状态"
+        search: "搜索"
+        search_placeholder: "商品名称、SKU 或货号"
+        apply: "查询"
+      summary:
+        title: "推广汇总"
+      metrics:
+        spend: "费用"
+        revenue: "推广销售额"
+        orders: "已售商品数量"
+        drr: "广告费用份额"
+        impressions: "展示次数"
+        clicks: "点击次数"
+        ctr: "点击率"
+        cart_additions: "添加到购物车"
+        avg_cpc: "平均每次点击费用"
+      fields:
+        promotion_type: "推广类型"
+        placement: "投放位置"
+        name: "名称"
+        state: "状态"
+        strategy: "策略"
+        budget: "预算"
+        products: "商品数"
+        product: "商品"
+        internal_sku: "内部 SKU"
+        bid: "出价"
+        price: "价格"
+      unit_types:
+        cpc_campaign: "按点击付费"
+        cpo_selected: "按订单付费：所选商品"
+        cpo_all: "按订单付费：所有商品"
+      states:
+        CAMPAIGN_STATE_RUNNING: "已激活"
+        CAMPAIGN_STATE_INACTIVE: "未激活"
+        CAMPAIGN_STATE_ARCHIVED: "已归档"
+      actions:
+        back: "返回活动列表"
     tools:
       actions:
         add_configuration: "新增配置"

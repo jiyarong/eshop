@@ -153,6 +153,7 @@ en:
       administration: "Administration"
     weekly_profit_reports: "Weekly Profit"
     inventory: "Inventory"
+    ozon_ads: "Ozon Promotions"
     tools: "Tools"
     orders: "Orders"
     skus: "SKU"
@@ -835,6 +836,20 @@ en:
         amount: "Amount"
         name: "Name"
   reports:
+    ozon_ads:
+      title: "Ozon Promotion Analytics"
+      subtitle: "%{store} · %{from} to %{to}"
+      tabs: { overview: "Overview", cpc: "Pay per click", cpo_selected: "Pay per order" }
+      overview: { title: "Promotion Analytics", breakdown: "Promotion type breakdown" }
+      cpc: { title: "Pay per click", detail_meta: "Campaign ID %{id} · %{from} to %{to}" }
+      cpo: { title: "Pay per order · Selected products" }
+      filters: { store: "Store", date_range: "Date range", from_date: "From", to_date: "To", sku: "SKU filter", status: "Status", all_statuses: "All statuses", search: "Search", search_placeholder: "Product, SKU or offer ID", apply: "Apply" }
+      summary: { title: "Promotion summary" }
+      metrics: { spend: "Spend", revenue: "Promoted sales", orders: "Units sold", drr: "Ad cost share", impressions: "Impressions", clicks: "Clicks", ctr: "CTR", cart_additions: "Added to cart", avg_cpc: "Average CPC" }
+      fields: { promotion_type: "Promotion type", placement: "Placement", name: "Name", state: "State", strategy: "Strategy", budget: "Budget", products: "Products", product: "Product", internal_sku: "Internal SKU", bid: "Bid", price: "Price" }
+      unit_types: { cpc_campaign: "Pay per click", cpo_selected: "Pay per order: selected products", cpo_all: "Pay per order: all products" }
+      states: { CAMPAIGN_STATE_RUNNING: "Active", CAMPAIGN_STATE_INACTIVE: "Inactive", CAMPAIGN_STATE_ARCHIVED: "Archived" }
+      actions: { back: "Back to campaigns" }
     tools:
       actions:
         add_configuration: "Add configuration"

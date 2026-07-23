@@ -1,0 +1,12 @@
+<% drawer_body = capture do %>
+  <%= render "cpc_detail_content" %>
+<% end %>
+<%= render "shared/overlay_drawer",
+           frame_id: "ozon_ads_drawer",
+           title_id: "ozon-ads-drawer-title",
+           title: @unit.title,
+           eyebrow: t("reports.ozon_ads.cpc.title"),
+           subtitle: t("reports.ozon_ads.cpc.detail_meta", id: @unit.external_id, from: @from_date, to: @to_date),
+           close_path: reports_ozon_ads_cpc_path(store_id: @store.id, from_date: @from_date, to_date: @to_date),
+           drawer_width: "min(90vw, calc(100vw - 24px))",
+           body: drawer_body %>
