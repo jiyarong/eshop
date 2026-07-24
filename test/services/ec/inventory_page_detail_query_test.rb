@@ -21,7 +21,7 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
       status: "ordered",
       batch_type: :normal,
       purchased_quantity: 6,
-      received_quantity: 0,
+      received_quantity: 5,
       purchase_unit_price_cny: 1
     )
     incoming = Ec::SkuBatch.create!(
@@ -112,8 +112,9 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
 
     assert_equal sku.sku_code, payload[:sku_code]
     assert_equal "book", payload[:active_detail_tab]
-    assert_equal 19, payload[:incoming_quantity]
+    assert_equal 18, payload[:incoming_quantity]
     assert_equal [draft.batch_code, ordered.batch_code, incoming.batch_code], payload[:incoming_batches].map { |row| row[:batch_code] }
+    assert_equal [4, 5, 9], payload[:incoming_batches].map { |row| row[:purchased_quantity] }
     assert_equal [book.batch_code, closed.batch_code], payload[:book_batches].map { |row| row[:batch_code] }
     assert_equal [
       ["ozon", "Ozon 店铺 #{token}", nil, 2, "fbo", 3, Time.zone.parse("2026-06-26 10:00:00")],

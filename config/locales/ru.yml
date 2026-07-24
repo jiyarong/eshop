@@ -1193,7 +1193,7 @@ ru:
         batch_code: "Номер партии"
         departure_date: "Дата отправки"
         expected_arrival: "Ожидаемое прибытие"
-        expected_arrival_on: "Дата отправки"
+        expected_arrival_on: "Ожидаемая дата поступления"
         overseas_delivery_date: "Дата зарубежной доставки"
         product_name: "Название товара"
         purchase_cost: "Стоимость закупки"

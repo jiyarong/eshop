@@ -10,6 +10,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       sku_code: @sku.sku_code,
       batch_code: "ERP-BATCH-#{@token}",
       purchase_date: Date.new(2026, 6, 1),
+      expected_arrival_on: Date.new(2026, 6, 15),
       purchased_quantity: 100,
       received_quantity: 80,
       purchase_unit_price_cny: 12.5
@@ -62,13 +63,14 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl thead th", text: "SKU"
     assert_select ".prod-tbl thead th", text: "商品名"
     assert_select ".prod-tbl thead th", text: "采购日期"
-    assert_select ".prod-tbl thead th", text: "出境日期"
+    assert_select ".prod-tbl thead th", text: "预计到货日期"
     assert_select ".prod-tbl thead th", text: "境外交付日期"
     assert_select ".prod-tbl thead th", text: "采购数量"
     assert_select ".prod-tbl thead th", text: "到货数量"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select "a[href='#{erp_sku_path(@sku)}']", text: @sku.sku_code
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell .inline-edit-cell--display", text: "2026-06-01"
+    assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell .inline-edit-cell--display", text: "2026-06-15"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell .inline-edit-cell--display", text: "100"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell .inline-edit-cell--display", text: "80"
     assert_select "a[href='#{erp_sku_batch_path(@batch)}']", text: "查看"
@@ -95,7 +97,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "SKU"
     assert_select "th", "Product name"
     assert_select "th", "Purchase date"
-    assert_select "th", "Departure date"
+    assert_select "th", "Expected arrival date"
     assert_select "th", "Overseas delivery date"
     assert_select "th", "Purchased quantity"
     assert_select "th", "Received quantity"
@@ -303,6 +305,13 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#sku-batch-form-spu-sku-selector-trigger", text: @sku.sku_code
     assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?][checked='checked']", @sku.sku_code
     assert_select "input[name='ec_sku_batch[purchase_date]'][value=?]", @batch.purchase_date.to_s
+    assert_select "select[name='ec_sku_batch[status]']" do
+      assert_select "option[value='draft'][selected='selected']", "草稿"
+      assert_select "option[value='ordered']", "已下单"
+      assert_select "option[value='in_transit']", "运输中"
+      assert_select "option[value='received']", "已到货"
+      assert_select "option[value='closed']", "已关闭"
+    end
     assert_select "input[name='return_to'][value='/erp/skus?q=ERP']"
   end
 
@@ -317,7 +326,27 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "label", "Purchase date"
     assert_select "label", "Expected arrival"
     assert_select "label", "Actual arrival"
+    assert_select "select[name='ec_sku_batch[status]'] option[value='draft'][selected='selected']", "Draft"
+    assert_select "select[name='ec_sku_batch[status]'] option[value='in_transit']", "In transit"
     assert_select "input[type='submit'][value=?]", "Save"
+  end
+
+  test "inline status editor shows localized options with enum values" do
+    get "/erp/sku_batches/#{@batch.id}/edit",
+      params: {
+        edit_inline: "1",
+        inline_field: "status"
+      },
+      headers: {
+        "Accept" => "text/html"
+      }
+
+    assert_response :success
+    assert_select "select[name='ec_sku_batch[status]']" do
+      assert_select "option[value='draft'][selected='selected']", "草稿"
+      assert_select "option[value='in_transit']", "运输中"
+      assert_select "option[value='received']", "已到货"
+    end
   end
 
   test "create batch returns to supplied page context" do
@@ -406,6 +435,29 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_equal Date.new(2026, 6, 11), @batch.purchase_date
     assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_purchase_date_cell']" do
       assert_select "template", "2026-06-11"
+    end
+  end
+
+  test "inline update persists expected arrival date" do
+    patch "/erp/sku_batches/#{@batch.id}",
+      params: {
+        inline_field: "expected_arrival_on",
+        inline_context: {
+          frame_id: "sku_batch_#{@batch.id}_expected_arrival_on_cell"
+        },
+        ec_sku_batch: {
+          expected_arrival_on: "2026-06-18"
+        }
+      },
+      headers: {
+        "Accept" => "text/vnd.turbo-stream.html"
+      }
+
+    assert_response :success
+    @batch.reload
+    assert_equal Date.new(2026, 6, 18), @batch.expected_arrival_on
+    assert_select "turbo-stream[action='replace'][target='sku_batch_#{@batch.id}_expected_arrival_on_cell']" do
+      assert_select "template", "2026-06-18"
     end
   end
 

@@ -61,6 +61,16 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
   end
 
   test "computes batch book stock and turnover days for multiple skus" do
+    Ec::SkuBatch.create!(
+      sku_code: @sku_a.sku_code,
+      batch_code: "TURN-INCOMING-A-#{@token}",
+      status: "in_transit",
+      batch_type: :normal,
+      purchased_quantity: 12,
+      received_quantity: 9,
+      purchase_unit_price_cny: 1
+    )
+
     metrics = Ec::InventoryTurnoverMetricsQuery.new(
       sku_codes: [@sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code],
       date_to: Date.new(2026, 7, 1),
@@ -77,10 +87,11 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     assert_equal expected_velocity_a, metrics.dig(@sku_a.sku_code, :daily_sales_velocity)
     assert_equal expected_velocity_b, metrics.dig(@sku_b.sku_code, :daily_sales_velocity)
     assert_equal BigDecimal("0"), metrics.dig(@sku_c.sku_code, :daily_sales_velocity)
+    assert_equal 9, metrics.dig(@sku_a.sku_code, :procurement_stock)
 
     assert_equal BigDecimal("17") / expected_velocity_a, metrics.dig(@sku_a.sku_code, :turnover_days)
     assert_equal BigDecimal("15") / expected_velocity_b, metrics.dig(@sku_b.sku_code, :turnover_days)
-    assert_equal BigDecimal("17") / expected_velocity_a, metrics.dig(@sku_a.sku_code, :turnover_days_with_procurement)
+    assert_equal BigDecimal("26") / expected_velocity_a, metrics.dig(@sku_a.sku_code, :turnover_days_with_procurement)
     assert_equal BigDecimal("15") / expected_velocity_b, metrics.dig(@sku_b.sku_code, :turnover_days_with_procurement)
     assert_nil metrics.dig(@sku_c.sku_code, :turnover_days)
     assert_nil metrics.dig(@sku_c.sku_code, :turnover_days_with_procurement)

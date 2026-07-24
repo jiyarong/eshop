@@ -62,7 +62,7 @@ module Ec
             batch_code: batch.batch_code,
             status: batch.status,
             expected_arrival_on: batch.expected_arrival_on,
-            purchased_quantity: batch.purchased_quantity,
+            purchased_quantity: batch.effective_received_quantity,
             memo: batch.memo
           }
         end
@@ -73,7 +73,7 @@ module Ec
     end
 
     def procurement_quantity
-      procurement_batches_scope.sum(:purchased_quantity).to_i
+      procurement_batches_scope.sum(Arel.sql(Ec::SkuBatch::EFFECTIVE_RECEIVED_QUANTITY_SQL)).to_i
     end
 
     def book_batches_scope

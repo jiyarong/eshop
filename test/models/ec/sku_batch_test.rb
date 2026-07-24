@@ -145,6 +145,49 @@ class Ec::SkuBatchTest < ActiveSupport::TestCase
     assert_predicate batch, :normal?
   end
 
+  test "fills zero received quantity from purchased quantity when received date is set" do
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "ARRIVAL-DATE-#{@token}",
+      status: "in_transit",
+      purchased_quantity: 80,
+      received_quantity: 0,
+      received_on: Date.new(2026, 7, 24),
+      purchase_unit_price_cny: 12.5
+    )
+
+    assert_equal 80, batch.received_quantity
+  end
+
+  test "fills zero received quantity from purchased quantity when status becomes received" do
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "ARRIVAL-STATUS-#{@token}",
+      status: "in_transit",
+      purchased_quantity: 60,
+      received_quantity: 0,
+      purchase_unit_price_cny: 12.5
+    )
+
+    batch.update!(status: "received")
+
+    assert_equal 60, batch.received_quantity
+  end
+
+  test "preserves an explicitly entered received quantity when batch arrives" do
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "ARRIVAL-PARTIAL-#{@token}",
+      status: "received",
+      purchased_quantity: 60,
+      received_quantity: 54,
+      received_on: Date.new(2026, 7, 24),
+      purchase_unit_price_cny: 12.5
+    )
+
+    assert_equal 54, batch.received_quantity
+  end
+
   test "allows assigning a non-default batch type and note" do
     batch = Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,

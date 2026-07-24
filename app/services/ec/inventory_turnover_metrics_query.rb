@@ -50,7 +50,7 @@ module Ec
       Ec::SkuBatch
         .where(sku_code: @sku_codes, status: %w[draft ordered in_transit], batch_type: :normal)
         .group(:sku_code)
-        .sum(:purchased_quantity)
+        .sum(Arel.sql(Ec::SkuBatch::EFFECTIVE_RECEIVED_QUANTITY_SQL))
         .transform_keys(&:to_s)
         .transform_values(&:to_i)
     end

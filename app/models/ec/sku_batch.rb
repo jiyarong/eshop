@@ -5,6 +5,12 @@ module Ec
     self.table_name = "ec_sku_batches"
 
     STATUSES = %w[draft ordered in_transit received closed].freeze
+    EFFECTIVE_RECEIVED_QUANTITY_SQL = <<~SQL.squish.freeze
+      CASE
+        WHEN ec_sku_batches.received_quantity = 0 THEN ec_sku_batches.purchased_quantity
+        ELSE ec_sku_batches.received_quantity
+      END
+    SQL
 
     enum :batch_type, {
       normal: 1,
@@ -25,9 +31,14 @@ module Ec
 
     before_validation :normalize_codes
     before_validation :assign_generated_batch_code, on: :create
+    before_validation :fill_received_quantity_when_arrived
 
     def costing_quantity
       received_quantity.positive? ? received_quantity : purchased_quantity
+    end
+
+    def effective_received_quantity
+      received_quantity.zero? ? purchased_quantity : received_quantity
     end
 
     private
@@ -35,6 +46,13 @@ module Ec
     def normalize_codes
       self.sku_code = sku_code&.strip&.upcase
       self.batch_code = batch_code&.strip&.upcase
+    end
+
+    def fill_received_quantity_when_arrived
+      return unless received_quantity.to_i.zero?
+      return unless received_on.present? || status == "received"
+
+      self.received_quantity = purchased_quantity
     end
 
     def assign_generated_batch_code

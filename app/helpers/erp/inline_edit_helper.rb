@@ -101,7 +101,11 @@ module Erp
     end
 
     def sku_batch_inline_options(field)
-      return Ec::SkuBatch::STATUSES.map { |status| [status, status] } if field.to_sym == :status
+      if field.to_sym == :status
+        return Ec::SkuBatch::STATUSES.map do |status|
+          [I18n.t("erp.sku_batches.statuses.#{status}"), status]
+        end
+      end
 
       []
     end

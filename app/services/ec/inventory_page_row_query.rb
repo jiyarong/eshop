@@ -35,7 +35,7 @@ module Ec
     private
 
     def incoming_quantity
-      procurement_batches.sum(:purchased_quantity).to_i
+      procurement_batches.sum(Arel.sql(Ec::SkuBatch::EFFECTIVE_RECEIVED_QUANTITY_SQL)).to_i
     end
 
     def current_marketing_state

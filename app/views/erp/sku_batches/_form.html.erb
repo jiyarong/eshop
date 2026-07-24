@@ -24,7 +24,7 @@
     </div>
     <div class="field">
       <%= form.label :status, t("erp.common.status") %>
-      <%= form.select :status, Ec::SkuBatch::STATUSES %>
+      <%= form.select :status, Ec::SkuBatch::STATUSES.map { |status| [t("erp.sku_batches.statuses.#{status}"), status] } %>
     </div>
     <div class="field">
       <%= form.label :purchase_date, t("erp.sku_batches.fields.purchase_date") %>

@@ -1268,7 +1268,7 @@ zh:
         batch_code: "批次号"
         departure_date: "出境日期"
         expected_arrival: "预计到货"
-        expected_arrival_on: "出境日期"
+        expected_arrival_on: "预计到货日期"
         overseas_delivery_date: "境外交付日期"
         product_name: "商品名"
         purchase_cost: "采购成本"

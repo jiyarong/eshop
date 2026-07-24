@@ -1237,7 +1237,7 @@ en:
         batch_code: "Batch number"
         departure_date: "Departure date"
         expected_arrival: "Expected arrival"
-        expected_arrival_on: "Departure date"
+        expected_arrival_on: "Expected arrival date"
         overseas_delivery_date: "Overseas delivery date"
         product_name: "Product name"
         purchase_cost: "Purchase cost"

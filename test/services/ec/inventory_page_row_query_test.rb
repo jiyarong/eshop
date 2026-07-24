@@ -36,7 +36,7 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
       status: "ordered",
       batch_type: :normal,
       purchased_quantity: 5,
-      received_quantity: 0,
+      received_quantity: 4,
       purchase_unit_price_cny: 1
     )
     Ec::SkuBatch.create!(
@@ -68,7 +68,7 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     row = Ec::InventoryPageRowQuery.new(sku).call
     summary = sku.inventory_overview[:summary]
 
-    assert_equal 15, row[:incoming_quantity]
+    assert_equal 14, row[:incoming_quantity]
     assert_equal sku.sku_code, row[:sku_code]
     assert_equal "行测试商品", row[:product_name]
     assert_equal "A", row[:marketing_grade]
