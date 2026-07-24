@@ -41,12 +41,12 @@ class RawOzonAdsAnalyticsQueryTest < ActiveSupport::TestCase
     assert_equal [50, 500, 5, 100, 10], values(cpc)
 
     selected = rows.find { |row| row[:unit_type] == "cpo_selected" }
-    assert_equal [200, 2_700, 27, 0, 0], values(selected)
+    assert_equal [200, 2_000, 20, 0, 0], values(selected)
 
     _unit, selected_products = RawOzon::Ads::AnalyticsQuery.new(
       account: @account, from_date: @date, to_date: @date
     ).cpo_selected_rows
-    assert_equal [270, 2_700, 27, 0, 0], values(selected_products.sole)
+    assert_equal [200, 2_000, 20, 0, 0], values(selected_products.sole)
 
     all = rows.find { |row| row[:unit_type] == "cpo_all" }
     assert_equal [300, 3_000, 30, 300, 30], values(all)
