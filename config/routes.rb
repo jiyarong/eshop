@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   get "weekly_profit_reports"          => "weekly_profit_reports#show"
 
   get "reports/inventory" => "reports#inventory"
+  get "reports/sales_funnel" => "reports/sales_funnel#show", as: :reports_sales_funnel
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
   get "reports/ozon_ads" => "reports/ozon_ads#overview", as: :reports_ozon_ads
   get "reports/ozon_ads/cpc" => "reports/ozon_ads#cpc", as: :reports_ozon_ads_cpc

@@ -44,13 +44,18 @@ export default class extends Controller {
   static targets = ["reportTypeInput", "storeInput", "storeField", "reportButton", "storeButton"];
 
   connect() {
-    syncActiveState(this.reportButtonTargets, this.reportTypeInputTarget.value);
-    syncActiveState(this.storeButtonTargets, this.storeInputTarget.value);
-    syncStoreState({
-      reportTypeInput: this.reportTypeInputTarget,
-      storeField: this.storeFieldTarget,
-      storeButtons: this.storeButtonTargets,
-    });
+    if (this.hasStoreInputTarget) {
+      syncActiveState(this.storeButtonTargets, this.storeInputTarget.value);
+    }
+
+    if (this.hasReportTypeInputTarget) {
+      syncActiveState(this.reportButtonTargets, this.reportTypeInputTarget.value);
+      syncStoreState({
+        reportTypeInput: this.reportTypeInputTarget,
+        storeField: this.storeFieldTarget,
+        storeButtons: this.storeButtonTargets,
+      });
+    }
   }
 
   selectReportType(event) {

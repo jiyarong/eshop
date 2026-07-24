@@ -1,0 +1,57 @@
+<h1 class="page-title"><%= t("sales_funnel_reports.title") %></h1>
+
+<section class="panel">
+  <form class="report-form" action="<%= reports_sales_funnel_path %>" method="get" data-turbo-frame="sales_funnel_report_results" data-turbo-action="advance" data-controller="weekly-profit-filter">
+    <div class="field field--time-range weekly-profit-top-filters">
+      <div class="weekly-profit-time-range-row">
+        <div class="weekly-profit-date-range-field">
+          <label for="sales-funnel-time-range-trigger"><%= t("sales_funnel_reports.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "sales-funnel-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
+        </div>
+        <%= render "shared/spu_sku_filter",
+                   field_class: "weekly-profit-spu-sku-field",
+                   dom_id_prefix: "sales-funnel-spu-sku-filter",
+                   label: t("sales_funnel_reports.filters.sku"),
+                   placeholder: t("sales_funnel_reports.filters.sku_placeholder"),
+                   aria_label: t("shared.spu_sku_filter.aria_label") %>
+        <div class="weekly-profit-filter-actions">
+          <button class="button weekly-profit-submit-button" type="submit"><%= t("sales_funnel_reports.filters.submit") %></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="weekly-profit-filter-block">
+      <div class="field field--full weekly-profit-store-field">
+        <span class="field-label"><%= t("sales_funnel_reports.filters.store") %></span>
+        <% if @selected_store_ref.present? %>
+          <input type="hidden" name="store_ref" value="<%= @selected_store_ref %>" data-weekly-profit-filter-target="storeInput">
+        <% end %>
+        <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("sales_funnel_reports.filters.store") %>">
+          <% @store_options.each do |store| %>
+            <% active = @selected_store_ref == store[:ref] %>
+            <button type="button"
+                    class="weekly-profit-filter-tag<%= " is-active" if active %>"
+                    data-weekly-profit-filter-target="storeButton"
+                    data-value="<%= store[:ref] %>"
+                    data-action="weekly-profit-filter#selectStore"
+                    aria-pressed="<%= active ? "true" : "false" %>">
+              <%= store[:label] %>
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </form>
+</section>
+
+<turbo-frame id="sales_funnel_report_results">
+  <% if @report.present? %>
+    <%= render "reports/sales_funnel/results", wrap_frame: false %>
+  <% else %>
+    <section class="panel empty-state"><%= t("sales_funnel_reports.empty_state") %></section>
+  <% end %>
+</turbo-frame>

@@ -1,0 +1,58 @@
+<% wrap_frame = local_assigns.fetch(:wrap_frame, true) %>
+<% if wrap_frame %><turbo-frame id="sales_funnel_report_results"><% end %>
+  <div class="report-stack">
+    <section class="panel">
+      <p class="report-meta">
+        <%= @report.dig(:meta, :store_name) %> · <%= @report.dig(:period, :from_date) %> ~ <%= @report.dig(:period, :to_date) %>
+      </p>
+      <p class="weekly-profit-comparison-note"><%= sales_funnel_comparison_note(@report) %></p>
+      <div class="summary-grid">
+        <% sales_funnel_summary_cards(@report).each do |card| %>
+          <div class="weekly-profit-summary-card">
+            <div class="summary-label"><%= card[:label] %></div>
+            <div class="summary-value"><%= card[:value] %></div>
+            <div class="weekly-profit-comparison-trend <%= sales_funnel_comparison_class(card[:comparison]) %>">
+              <%= sales_funnel_comparison_label(card[:comparison], include_vs: true) %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("sales_funnel_reports.sections.details") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <% sales_funnel_columns(@report).each do |_key, label| %>
+                <th><%= label %></th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @report[:rows].empty? %>
+              <tr><td colspan="<%= sales_funnel_columns(@report).size %>"><%= t("sales_funnel_reports.empty_rows") %></td></tr>
+            <% else %>
+              <% @report[:rows].each do |row| %>
+                <tr>
+                  <% sales_funnel_columns(@report).each do |key, _label| %>
+                    <% comparison = sales_funnel_row_comparison(@report, row, key) %>
+                    <td>
+                      <div class="weekly-profit-table-value"><%= sales_funnel_value(row, key) %></div>
+                      <% if comparison.present? %>
+                        <div class="weekly-profit-table-comparison <%= sales_funnel_comparison_class(comparison) %>">
+                          <%= sales_funnel_comparison_label(comparison) %>
+                        </div>
+                      <% end %>
+                    </td>
+                  <% end %>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+<% if wrap_frame %></turbo-frame><% end %>

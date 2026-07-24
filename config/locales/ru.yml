@@ -123,6 +123,7 @@ ru:
       sku: "SKU"
       administration: "Администрирование"
     weekly_profit_reports: "Недельная прибыль"
+    sales_funnel: "Воронка продаж"
     inventory: "Склад"
     ozon_ads: "Продвижение Ozon"
     tools: "Инструменты"
@@ -806,6 +807,27 @@ ru:
       wb:
         amount: "Сумма"
         name: "Название"
+  sales_funnel_reports:
+    title: "Отчет по воронке продаж"
+    comparison:
+      note: "Период сравнения: %{from} ~ %{to}"
+      unavailable: "-"
+      versus_previous: "к предыдущему периоду"
+    empty_state: "Выберите завершенные календарные недели и магазин"
+    empty_rows: "Нет данных воронки для выбранных фильтров."
+    filters: { date_range: "Период", sku: "SPU/SKU", sku_placeholder: "Все SPU/SKU", store: "Магазин", submit: "Поиск" }
+    sections: { details: "Воронка по товарам" }
+    errors:
+      current_week_unsupported: "Текущая календарная неделя недоступна"
+      invalid_date: "Неверная дата"
+      invalid_store_ref: "Неверный магазин"
+      invalid_week_range: "Можно выбрать только завершенные полные календарные недели"
+      missing_parameter: "Отсутствует параметр запроса"
+      store_not_found: "Магазин не найден или неактивен"
+    summary: { product_count: "Товары", views: "Просмотры", sessions: "Посетители", carts: "Добавления в корзину", cart_conversion: "Конверсия в корзину", orders: "Заказы", ordered_units: "Заказано единиц", order_amount: "Сумма заказов", revenue: "Сумма заказов", buyouts: "Выкупы", buyout_rate: "Процент выкупа", returns: "Возвраты", cancellations: "Отмены" }
+    columns:
+      wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
+      ozon: { sku_code: "SKU", product_name: "Товар", hits_view: "Просмотры", hits_view_search: "Просмотры поиска", hits_view_pdp: "Просмотры карточки", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска", hits_tocart_pdp: "В корзину из карточки", conv_tocart: "Конверсия в корзину", ordered_units: "Заказано единиц", revenue: "Сумма заказов", returns_count: "Возвраты", cancellations: "Отмены" }
   reports:
     ozon_ads:
       title: "Аналитика продвижения Ozon"

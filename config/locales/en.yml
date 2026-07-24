@@ -152,6 +152,7 @@ en:
       sku: "SKU"
       administration: "Administration"
     weekly_profit_reports: "Weekly Profit"
+    sales_funnel: "Sales Funnel"
     inventory: "Inventory"
     ozon_ads: "Ozon Promotions"
     tools: "Tools"
@@ -835,6 +836,27 @@ en:
       wb:
         amount: "Amount"
         name: "Name"
+  sales_funnel_reports:
+    title: "Sales Funnel Report"
+    comparison:
+      note: "Comparison period: %{from} ~ %{to}"
+      unavailable: "-"
+      versus_previous: "vs previous period"
+    empty_state: "Select completed calendar weeks and a store"
+    empty_rows: "No funnel data matches the current filters."
+    filters: { date_range: "Date range", sku: "SPU/SKU", sku_placeholder: "All SPU/SKU", store: "Store", submit: "Search" }
+    sections: { details: "Product funnel details" }
+    errors:
+      current_week_unsupported: "The current calendar week is not available"
+      invalid_date: "Invalid date"
+      invalid_store_ref: "Invalid store"
+      invalid_week_range: "Only completed full calendar weeks can be queried"
+      missing_parameter: "A query parameter is missing"
+      store_not_found: "Store was not found or is inactive"
+    summary: { product_count: "Products", views: "Views", sessions: "Visitors", carts: "Added to cart", cart_conversion: "Cart conversion", orders: "Orders", ordered_units: "Ordered units", order_amount: "Order amount", revenue: "Order amount", buyouts: "Buyouts", buyout_rate: "Buyout rate", returns: "Returns", cancellations: "Cancellations" }
+    columns:
+      wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
+      ozon: { sku_code: "SKU", product_name: "Product", hits_view: "Views", hits_view_search: "Search views", hits_view_pdp: "PDP views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search cart adds", hits_tocart_pdp: "PDP cart adds", conv_tocart: "Cart conversion", ordered_units: "Ordered units", revenue: "Order amount", returns_count: "Returns", cancellations: "Cancellations" }
   reports:
     ozon_ads:
       title: "Ozon Promotion Analytics"
