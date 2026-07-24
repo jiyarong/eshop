@@ -867,6 +867,7 @@ en:
       cpo: { title: "Pay per order · Selected products" }
       filters: { store: "Store", date_range: "Date range", from_date: "From", to_date: "To", sku: "SKU filter", status: "Status", all_statuses: "All statuses", search: "Search", search_placeholder: "Product, SKU or offer ID", apply: "Apply" }
       summary: { title: "Promotion summary" }
+      comparison: { note: "Compared with previous period (%{from} to %{to})", versus_previous: "vs previous", unavailable: "No comparison" }
       metrics: { spend: "Spend", revenue: "Promoted sales", orders: "Units sold", drr: "Ad cost share", impressions: "Impressions", clicks: "Clicks", ctr: "CTR", cart_additions: "Added to cart", avg_cpc: "Average CPC" }
       fields: { promotion_type: "Promotion type", placement: "Placement", name: "Name", state: "State", strategy: "Strategy", budget: "Budget", products: "Products", product: "Product", internal_sku: "Internal SKU", bid: "Bid", price: "Price", change_date: "Change date" }
       placements: { PLACEMENT_PDP: "Product page", PLACEMENT_SEARCH_AND_CATEGORY: "Search and recommendations", PLACEMENT_TOP_PROMOTION: "Search", PLACEMENT_OVERTOP: "Search and home page", PLACEMENT_TAKEOVER: "Top four positions", PLACEMENT_INVALID: "Unspecified" }

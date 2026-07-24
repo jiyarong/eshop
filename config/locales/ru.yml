@@ -838,6 +838,7 @@ ru:
       cpo: { title: "Оплата за заказ · Выбранные товары" }
       filters: { store: "Магазин", date_range: "Период", from_date: "С", to_date: "По", sku: "Фильтр SKU", status: "Статус", all_statuses: "Все статусы", search: "Поиск", search_placeholder: "Товар, SKU или артикул", apply: "Применить" }
       summary: { title: "Итоги продвижения" }
+      comparison: { note: "Сравнение с предыдущим периодом (%{from}–%{to})", versus_previous: "к пред. периоду", unavailable: "Нет сравнения" }
       metrics: { spend: "Расход", revenue: "Продажи в продвижении", orders: "Продано товаров", drr: "ДРР", impressions: "Показы", clicks: "Клики", ctr: "CTR", cart_additions: "Добавлено в корзину", avg_cpc: "Средняя цена клика" }
       fields: { promotion_type: "Тип продвижения", placement: "Место размещения", name: "Название", state: "Статус", strategy: "Стратегия", budget: "Бюджет", products: "Товары", product: "Товар", internal_sku: "Внутренний SKU", bid: "Ставка", price: "Цена", change_date: "Дата изменения" }
       placements: { PLACEMENT_PDP: "Карточка товара", PLACEMENT_SEARCH_AND_CATEGORY: "Поиск и рекомендации", PLACEMENT_TOP_PROMOTION: "Поиск", PLACEMENT_OVERTOP: "Поиск и главная", PLACEMENT_TAKEOVER: "Первые четыре позиции", PLACEMENT_INVALID: "Не определено" }

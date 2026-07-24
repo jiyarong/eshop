@@ -3,7 +3,8 @@
 <%= render "nav", active: :cpc %>
 <div class="report-stack">
   <%= render "filters", url: reports_ozon_ads_cpc_path, search: true, status_filter: true %>
-  <%= render "summary", summary: @summary %>
+  <p class="weekly-profit-comparison-note"><%= ozon_ads_comparison_note %></p>
+  <%= render "summary", summary: @summary, comparison: @summary_comparison %>
   <section class="panel"><div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
     <thead><tr><th>ID</th><th><%= t("reports.ozon_ads.fields.name") %></th><th><%= t("reports.ozon_ads.fields.state") %></th>
       <th><%= t("reports.ozon_ads.fields.strategy") %></th><th><%= t("reports.ozon_ads.fields.budget") %></th><th><%= t("reports.ozon_ads.fields.products") %></th>
@@ -17,11 +18,12 @@
       <td><%= unit.strategy.presence || "-" %></td><td class="numeric"><%= number_to_currency(unit.weekly_budget || unit.daily_budget || 0, unit: "₽", format: "%n %u") %></td>
       <td class="numeric"><%= row[:product_count] %></td>
       <td><%= Array(unit.placement).presence&.map { |placement| t("reports.ozon_ads.placements.#{placement}", default: placement) }&.join(" / ") || "-" %></td>
-      <td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td>
-      <td class="numeric"><%= number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u") %></td><td class="numeric"><%= row[:orders_count].to_i %></td>
-      <td class="numeric"><%= number_with_delimiter(row[:impressions].to_i) %></td><td class="numeric"><%= number_with_delimiter(row[:clicks].to_i) %></td>
-      <td class="numeric"><%= number_with_delimiter(row[:cart_additions].to_i) %></td><td class="numeric"><%= row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-" %></td>
-      <td class="numeric"><%= row[:avg_cpc] ? number_to_currency(row[:avg_cpc], unit: "₽", format: "%n %u") : "-" %></td>
+      <% comparisons = @row_comparisons[unit.external_id] || {} %>
+      <td class="numeric"><%= ozon_ads_metric_content(number_to_currency(row[:spend], unit: "₽", format: "%n %u"), comparisons[:spend]) %></td>
+      <td class="numeric"><%= ozon_ads_metric_content(number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u"), comparisons[:ad_revenue]) %></td><td class="numeric"><%= ozon_ads_metric_content(row[:orders_count].to_i, comparisons[:orders_count]) %></td>
+      <td class="numeric"><%= ozon_ads_metric_content(number_with_delimiter(row[:impressions].to_i), comparisons[:impressions]) %></td><td class="numeric"><%= ozon_ads_metric_content(number_with_delimiter(row[:clicks].to_i), comparisons[:clicks]) %></td>
+      <td class="numeric"><%= ozon_ads_metric_content(number_with_delimiter(row[:cart_additions].to_i), comparisons[:cart_additions]) %></td><td class="numeric"><%= ozon_ads_metric_content(row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-", comparisons[:ctr]) %></td>
+      <td class="numeric"><%= ozon_ads_metric_content(row[:avg_cpc] ? number_to_currency(row[:avg_cpc], unit: "₽", format: "%n %u") : "-", comparisons[:avg_cpc]) %></td>
       <td><%= display_time(row[:remote_updated_at], format: "%Y-%m-%d") %></td>
     </tr><% end %></tbody>
   </table></div></section>

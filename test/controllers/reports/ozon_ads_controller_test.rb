@@ -55,7 +55,8 @@ class Reports::OzonAdsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".weekly-profit-filter-tag.is-active", text: @store.store_name
 
     sign_in @user
-    get reports_ozon_ads_cpc_path, params: { store_id: @store.id, q: "3001" }
+    get reports_ozon_ads_cpc_path,
+      params: { store_id: @store.id, q: "3001", from_date: Date.yesterday, to_date: Date.yesterday }
     assert_response :success
     assert_select ".ozon-ads-filters" do
       assert_select ".weekly-profit-time-range-row", count: 1
@@ -69,12 +70,13 @@ class Reports::OzonAdsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[name='statuses[]'][value='CAMPAIGN_STATE_ARCHIVED'][checked='checked']", count: 0
     end
     assert_select "a[data-turbo-frame='ozon_ads_drawer']", text: "CPC Test"
+    assert_select ".ozon-ads-store-filter.weekly-profit-filter-block .weekly-profit-filter-tag", minimum: 1
     assert_select "th", text: I18n.t("reports.ozon_ads.fields.placement")
     assert_select "th", text: I18n.t("reports.ozon_ads.metrics.cart_additions")
     assert_select "th", text: I18n.t("reports.ozon_ads.metrics.avg_cpc")
     assert_select "th", text: I18n.t("reports.ozon_ads.fields.change_date")
     assert_select "td", text: I18n.t("reports.ozon_ads.placements.PLACEMENT_SEARCH_AND_CATEGORY")
-    assert_select "td", text: "3"
+    assert_select "td > span", text: "3"
     assert_select "td", text: /50\.00 ₽/
     assert_select "td", text: "2026-07-14"
     assert_select "turbo-frame#ozon_ads_drawer", count: 1
@@ -99,6 +101,38 @@ class Reports::OzonAdsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", text: "CPC Test", count: 0
   ensure
     archived&.destroy!
+  end
+
+  test "defaults promotion reports to the last completed natural week" do
+    travel_to Time.zone.local(2026, 7, 24, 12) do
+      get reports_ozon_ads_cpc_path, params: { store_id: @store.id }
+
+      assert_response :success
+      assert_select "input[name='from_date'][value='2026-07-13']"
+      assert_select "input[name='to_date'][value='2026-07-19']"
+    end
+  end
+
+  test "renders comparisons against the immediately preceding equal period" do
+    current_date = Date.new(2026, 7, 14)
+    previous_date = current_date - 1.day
+    RawOzon::AdDailyStat.create!(account: @account, ad_unit: @cpc, stat_date: current_date, cost_model: "cpc",
+      impressions: 200, clicks: 20, orders_count: 4, ad_revenue: 1000, spend: 200,
+      raw_json: {}, synced_at: Time.current)
+    RawOzon::AdDailyStat.create!(account: @account, ad_unit: @cpc, stat_date: previous_date, cost_model: "cpc",
+      impressions: 100, clicks: 10, orders_count: 2, ad_revenue: 500, spend: 100,
+      raw_json: {}, synced_at: Time.current)
+
+    get reports_ozon_ads_cpc_path,
+      params: { store_id: @store.id, from_date: current_date, to_date: current_date }
+
+    assert_response :success
+    assert_select ".weekly-profit-comparison-note", text: /2026-07-13/
+    assert_select ".ozon-ads-summary__item .weekly-profit-comparison-trend.is-negative", text: /100\.00%/, minimum: 1
+    assert_select ".ozon-ads-summary__item .weekly-profit-comparison-trend.is-positive", text: /100\.00%/, minimum: 1
+    assert_select "tbody .weekly-profit-table-comparison.is-negative", text: /100\.00%/, minimum: 1
+  ensure
+    RawOzon::AdDailyStat.where(account_id: @account.id, stat_date: [current_date, previous_date]).delete_all
   end
 
   test "renders CPC SKU detail without calling Ozon" do
