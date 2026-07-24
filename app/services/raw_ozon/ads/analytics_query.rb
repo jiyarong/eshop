@@ -76,7 +76,7 @@ module RawOzon
       def cpo_selected_rows(query: nil)
         unit = units_scope.find_by(unit_type: "cpo_selected")
         return [nil, []] unless unit
-        rows = cpc_detail(unit, query: query, cost_models: ["cpo"])
+        rows = cpc_detail(unit, query: query, cost_models: %w[cpo combo])
         [unit, rows]
       end
 
@@ -155,7 +155,7 @@ module RawOzon
         return unless unit
 
         key = [unit.unit_type, Array(unit.placement).sort.join(",")]
-        sku_daily_scope.where(ad_unit_id: unit.id, cost_model: "cpo").find_each do |stat|
+        sku_daily_scope.where(ad_unit_id: unit.id, cost_model: %w[cpo combo]).find_each do |stat|
           add_metrics(grouped[key], stat, metrics: %i[orders_count model_orders_count ad_revenue model_revenue])
         end
       end

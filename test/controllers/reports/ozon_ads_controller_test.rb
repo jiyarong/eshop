@@ -32,6 +32,8 @@ class Reports::OzonAdsControllerTest < ActionDispatch::IntegrationTest
       spend: 500, raw_json: {}, synced_at: Time.current)
     RawOzon::AdSkuDailyStat.create!(account: @account, ad_unit: @cpo, ozon_sku_id: "3002", stat_date: Date.yesterday,
       cost_model: "cpo", orders_count: 1, ad_revenue: 2000, spend: 200, raw_json: {}, synced_at: Time.current)
+    RawOzon::AdSkuDailyStat.create!(account: @account, ad_unit: @cpo, ozon_sku_id: "3002", stat_date: Date.yesterday,
+      cost_model: "combo", orders_count: 2, ad_revenue: 3000, spend: 300, raw_json: {}, synced_at: Time.current)
   end
 
   teardown do
@@ -82,10 +84,13 @@ class Reports::OzonAdsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#ozon_ads_drawer", count: 1
 
     sign_in @user
-    get reports_ozon_ads_cpo_selected_path, params: { store_id: @store.id }
+    get reports_ozon_ads_cpo_selected_path,
+      params: { store_id: @store.id, from_date: Date.yesterday, to_date: Date.yesterday }
     assert_response :success
     assert_select "td strong", text: @cpo_ec_sku.sku_code
     assert_select "td small", text: "3002"
+    assert_select "td", text: /5,000\.00 ₽/
+    assert_select "td > span", text: "3"
   end
 
 
