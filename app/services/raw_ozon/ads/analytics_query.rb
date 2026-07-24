@@ -40,10 +40,13 @@ module RawOzon
           )
         end
         metrics_by_unit = aggregate_daily_by(:ad_unit_id)
+        cart_additions_by_unit = aggregate_cpc_sku_cart_additions
         scope.order(Arel.sql("raw_ozon_ad_units.state = 'CAMPAIGN_STATE_RUNNING' DESC"))
           .order(Arel.sql("raw_ozon_ad_units.updated_at DESC")).map do |unit|
           metrics = metrics_by_unit[unit.id] || empty_metrics
-          { unit: unit, product_count: unit.products.where(is_current: true).count }
+          metrics[:cart_additions] = cart_additions_by_unit[unit.id]
+          { unit: unit, product_count: unit.products.where(is_current: true).count,
+            remote_updated_at: remote_updated_at(unit) }
             .merge(metrics).merge(calculated_metrics(metrics))
         end
       end
@@ -112,6 +115,16 @@ module RawOzon
         result
       end
 
+      def aggregate_cpc_sku_cart_additions
+        result = Hash.new { |hash, key| hash[key] = BigDecimal("0") }
+        sku_daily_scope.where(cost_model: %w[cpc cpc_history]).to_a
+          .group_by { |record| [record.ad_unit_id, record.ozon_sku_id, record.stat_date] }.each_value do |records|
+            record = records.find { |candidate| candidate.cost_model == "cpc_history" } || records.first
+            result[record.ad_unit_id] += record.cart_additions.to_d
+          end
+        result
+      end
+
       def aggregate_scope(scope, column)
         result = Hash.new { |hash, key| hash[key] = empty_metrics }
         scope.find_each { |record| add_metrics(result[record.public_send(column)], record) }
@@ -170,6 +183,13 @@ module RawOzon
       def ratio(numerator, denominator, multiplier: 1)
         return nil if denominator.to_d.zero?
         numerator.to_d / denominator.to_d * multiplier
+      end
+
+      def remote_updated_at(unit)
+        value = unit.raw_json["updatedAt"]
+        Time.zone.parse(value) if value.present?
+      rescue ArgumentError
+        nil
       end
     end
   end

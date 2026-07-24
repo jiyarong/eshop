@@ -864,6 +864,14 @@ zh:
         internal_sku: "内部 SKU"
         bid: "出价"
         price: "价格"
+        change_date: "更改日期"
+      placements:
+        PLACEMENT_PDP: "商品卡片"
+        PLACEMENT_SEARCH_AND_CATEGORY: "搜索与推荐"
+        PLACEMENT_TOP_PROMOTION: "搜索"
+        PLACEMENT_OVERTOP: "搜索和首页（特殊展示）"
+        PLACEMENT_TAKEOVER: "前四位展示"
+        PLACEMENT_INVALID: "未确定"
       unit_types:
         cpc_campaign: "按点击付费"
         cpo_selected: "按订单付费：所选商品"

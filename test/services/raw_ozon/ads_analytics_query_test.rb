@@ -88,6 +88,19 @@ class RawOzonAdsAnalyticsQueryTest < ActiveSupport::TestCase
     assert_equal 60, rows.find { |row| row[:product].ozon_sku_id == "sku-a" }[:spend].to_i
   end
 
+  test "uses deduplicated SKU statistics for CPC campaign cart additions" do
+    %w[cpc cpc_history].each_with_index do |cost_model, index|
+      RawOzon::AdSkuDailyStat.create!(account: @account, ad_unit: @cpc, ozon_sku_id: "cpc-sku",
+        stat_date: @date, cost_model: cost_model, cart_additions: index.zero? ? 3 : 7,
+        raw_json: {}, synced_at: Time.current)
+    end
+
+    row = RawOzon::Ads::AnalyticsQuery.new(account: @account, from_date: @date, to_date: @date).cpc_rows.sole
+
+    assert_equal 7, row[:cart_additions].to_i
+    assert_equal 5, row[:avg_cpc].to_i
+  end
+
   private
 
   def create_unit(external_id, unit_type)

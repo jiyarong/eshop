@@ -817,7 +817,8 @@ ru:
       filters: { store: "Магазин", date_range: "Период", from_date: "С", to_date: "По", sku: "Фильтр SKU", status: "Статус", all_statuses: "Все статусы", search: "Поиск", search_placeholder: "Товар, SKU или артикул", apply: "Применить" }
       summary: { title: "Итоги продвижения" }
       metrics: { spend: "Расход", revenue: "Продажи в продвижении", orders: "Продано товаров", drr: "ДРР", impressions: "Показы", clicks: "Клики", ctr: "CTR", cart_additions: "Добавлено в корзину", avg_cpc: "Средняя цена клика" }
-      fields: { promotion_type: "Тип продвижения", placement: "Место размещения", name: "Название", state: "Статус", strategy: "Стратегия", budget: "Бюджет", products: "Товары", product: "Товар", internal_sku: "Внутренний SKU", bid: "Ставка", price: "Цена" }
+      fields: { promotion_type: "Тип продвижения", placement: "Место размещения", name: "Название", state: "Статус", strategy: "Стратегия", budget: "Бюджет", products: "Товары", product: "Товар", internal_sku: "Внутренний SKU", bid: "Ставка", price: "Цена", change_date: "Дата изменения" }
+      placements: { PLACEMENT_PDP: "Карточка товара", PLACEMENT_SEARCH_AND_CATEGORY: "Поиск и рекомендации", PLACEMENT_TOP_PROMOTION: "Поиск", PLACEMENT_OVERTOP: "Поиск и главная", PLACEMENT_TAKEOVER: "Первые четыре позиции", PLACEMENT_INVALID: "Не определено" }
       unit_types: { cpc_campaign: "Оплата за клик", cpo_selected: "Оплата за заказ: выбранные товары", cpo_all: "Оплата за заказ: все товары" }
       states: { CAMPAIGN_STATE_RUNNING: "Активна", CAMPAIGN_STATE_INACTIVE: "Неактивна", CAMPAIGN_STATE_ARCHIVED: "В архиве" }
       actions: { back: "Назад к кампаниям" }

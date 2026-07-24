@@ -7,16 +7,22 @@
   <section class="panel"><div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
     <thead><tr><th>ID</th><th><%= t("reports.ozon_ads.fields.name") %></th><th><%= t("reports.ozon_ads.fields.state") %></th>
       <th><%= t("reports.ozon_ads.fields.strategy") %></th><th><%= t("reports.ozon_ads.fields.budget") %></th><th><%= t("reports.ozon_ads.fields.products") %></th>
+      <th><%= t("reports.ozon_ads.fields.placement") %></th>
       <th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th><th><%= t("reports.ozon_ads.metrics.orders") %></th>
-      <th><%= t("reports.ozon_ads.metrics.impressions") %></th><th><%= t("reports.ozon_ads.metrics.clicks") %></th><th><%= t("reports.ozon_ads.metrics.ctr") %></th></tr></thead>
+      <th><%= t("reports.ozon_ads.metrics.impressions") %></th><th><%= t("reports.ozon_ads.metrics.clicks") %></th><th><%= t("reports.ozon_ads.metrics.cart_additions") %></th>
+      <th><%= t("reports.ozon_ads.metrics.ctr") %></th><th><%= t("reports.ozon_ads.metrics.avg_cpc") %></th><th><%= t("reports.ozon_ads.fields.change_date") %></th></tr></thead>
     <tbody><% @rows.each do |row| %><% unit = row[:unit] %><tr>
       <td><%= unit.external_id %></td><td><%= link_to unit.title, reports_ozon_ads_cpc_detail_path(unit.external_id, store_id: @store.id, from_date: @from_date, to_date: @to_date), class: "inventory-list-table__sku-link", data: { turbo_frame: "ozon_ads_drawer" } %></td>
       <td><span class="status-pill <%= unit.state == 'CAMPAIGN_STATE_RUNNING' ? 'is-active' : 'is-muted' %>"><%= t("reports.ozon_ads.states.#{unit.state}", default: unit.state) %></span></td>
       <td><%= unit.strategy.presence || "-" %></td><td class="numeric"><%= number_to_currency(unit.weekly_budget || unit.daily_budget || 0, unit: "₽", format: "%n %u") %></td>
-      <td class="numeric"><%= row[:product_count] %></td><td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td>
+      <td class="numeric"><%= row[:product_count] %></td>
+      <td><%= Array(unit.placement).presence&.map { |placement| t("reports.ozon_ads.placements.#{placement}", default: placement) }&.join(" / ") || "-" %></td>
+      <td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td>
       <td class="numeric"><%= number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u") %></td><td class="numeric"><%= row[:orders_count].to_i %></td>
       <td class="numeric"><%= number_with_delimiter(row[:impressions].to_i) %></td><td class="numeric"><%= number_with_delimiter(row[:clicks].to_i) %></td>
-      <td class="numeric"><%= row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-" %></td>
+      <td class="numeric"><%= number_with_delimiter(row[:cart_additions].to_i) %></td><td class="numeric"><%= row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-" %></td>
+      <td class="numeric"><%= row[:avg_cpc] ? number_to_currency(row[:avg_cpc], unit: "₽", format: "%n %u") : "-" %></td>
+      <td><%= display_time(row[:remote_updated_at], format: "%Y-%m-%d") %></td>
     </tr><% end %></tbody>
   </table></div></section>
   <%= turbo_frame_tag "ozon_ads_drawer" %>

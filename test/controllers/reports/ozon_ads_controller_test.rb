@@ -16,7 +16,9 @@ class Reports::OzonAdsControllerTest < ActionDispatch::IntegrationTest
     @cpo_sku_product = Ec::SkuProduct.create!(sku: @cpo_ec_sku, store: @store, platform: "ozon",
       product_id: "cpo-raw-#{@token}", platform_sku_id: "3002", product_name: "Bound towel")
     @cpc = RawOzon::AdUnit.create!(account: @account, external_id: "101", unit_type: "cpc_campaign",
-      title: "CPC Test", state: "CAMPAIGN_STATE_RUNNING", billing_model: "cpc", raw_json: {}, synced_at: Time.current)
+      title: "CPC Test", state: "CAMPAIGN_STATE_RUNNING", billing_model: "cpc",
+      placement: ["PLACEMENT_SEARCH_AND_CATEGORY"], raw_json: { "updatedAt" => "2026-07-14T10:30:00Z" },
+      synced_at: Time.current)
     @cpo = RawOzon::AdUnit.create!(account: @account, external_id: "201", unit_type: "cpo_selected",
       title: "CPO Test", state: "CAMPAIGN_STATE_RUNNING", billing_model: "cpo", raw_json: {}, synced_at: Time.current)
     @product = RawOzon::AdUnitProduct.create!(ad_unit: @cpc, ozon_sku_id: "3001", title: "Lamp",
@@ -67,6 +69,14 @@ class Reports::OzonAdsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[name='statuses[]'][value='CAMPAIGN_STATE_ARCHIVED'][checked='checked']", count: 0
     end
     assert_select "a[data-turbo-frame='ozon_ads_drawer']", text: "CPC Test"
+    assert_select "th", text: I18n.t("reports.ozon_ads.fields.placement")
+    assert_select "th", text: I18n.t("reports.ozon_ads.metrics.cart_additions")
+    assert_select "th", text: I18n.t("reports.ozon_ads.metrics.avg_cpc")
+    assert_select "th", text: I18n.t("reports.ozon_ads.fields.change_date")
+    assert_select "td", text: I18n.t("reports.ozon_ads.placements.PLACEMENT_SEARCH_AND_CATEGORY")
+    assert_select "td", text: "3"
+    assert_select "td", text: /50\.00 ₽/
+    assert_select "td", text: "2026-07-14"
     assert_select "turbo-frame#ozon_ads_drawer", count: 1
 
     sign_in @user
