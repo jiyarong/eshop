@@ -1,0 +1,77 @@
+<section class="panel">
+  <div class="table-scroll">
+    <table class="inventory-list-table wb-ads-table wb-ads-table--products" data-controller="table-row-expander">
+      <thead>
+        <tr>
+          <th class="wb-ads-expand-column"></th>
+          <th><%= t("reports.wb_ads.fields.product") %></th>
+          <th><%= t("reports.wb_ads.fields.type") %></th>
+          <th><%= t("reports.wb_ads.fields.budget") %></th>
+          <th><%= t("reports.wb_ads.metrics.spend") %></th>
+          <th><%= t("reports.wb_ads.metrics.views") %></th>
+          <th><%= t("reports.wb_ads.metrics.ctr") %></th>
+          <th><%= t("reports.wb_ads.metrics.orders") %></th>
+          <th><%= t("reports.wb_ads.metrics.drr") %></th>
+          <th><%= t("reports.wb_ads.metrics.avg_position") %></th>
+          <th><%= t("reports.wb_ads.metrics.clicks") %></th>
+          <th><%= t("reports.wb_ads.metrics.add_to_cart") %></th>
+          <th><%= t("reports.wb_ads.metrics.revenue") %></th>
+          <th><%= t("reports.wb_ads.metrics.cpc") %></th>
+          <th><%= t("reports.wb_ads.metrics.cpo") %></th>
+          <th><%= t("reports.wb_ads.metrics.cr") %></th>
+          <th><%= t("reports.wb_ads.metrics.cpm") %></th>
+          <th><%= t("reports.wb_ads.metrics.canceled") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @rows.empty? %>
+          <tr><td colspan="18" class="wb-ads-empty"><%= t("reports.wb_ads.empty") %></td></tr>
+        <% else %>
+          <% @rows.each do |row| %>
+            <% expand_label = t("reports.wb_ads.actions.expand_product", product: row[:product_name].presence || row[:nm_id]) %>
+            <% collapse_label = t("reports.wb_ads.actions.collapse_product", product: row[:product_name].presence || row[:nm_id]) %>
+            <tr class="wb-ads-product-row">
+              <td class="wb-ads-expand-column">
+                <% if row[:campaign_count].positive? %>
+                  <button class="icon-button wb-ads-expand-button" type="button"
+                          aria-expanded="false" aria-label="<%= expand_label %>"
+                          data-expand-label="<%= expand_label %>" data-collapse-label="<%= collapse_label %>"
+                          data-action="table-row-expander#toggle">
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                  </button>
+                <% end %>
+              </td>
+              <td><strong><%= row[:product_name].presence || t("reports.wb_ads.unknown_product") %></strong><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.nm_id", id: row[:nm_id]) %> · <%= t("reports.wb_ads.fields.campaign_count", count: row[:campaign_count]) %><% if row[:sku_product]&.sku %> · <%= row[:sku_product].sku.sku_code %><% end %></small></td>
+              <td></td>
+              <td></td>
+              <td class="numeric"><%= wb_ads_metric(row[:spend], type: :currency) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:views]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:ctr], type: :percentage) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:orders]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:drr], type: :percentage) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:avg_position], type: :decimal) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:clicks]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:add_to_cart]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:revenue], type: :currency) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:cpc], type: :currency) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:cpo], type: :currency) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:cr], type: :percentage) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:cpm], type: :currency) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:canceled]) %></td>
+            </tr>
+            <% if row[:campaign_count].positive? %>
+              <tr class="wb-ads-product-detail-row" hidden>
+                <td colspan="18">
+                  <%= turbo_frame_tag "wb_ads_product_#{row[:nm_id]}_campaigns",
+                                      data: { lazy_src: reports_wb_ads_product_campaigns_path(row[:nm_id], store_id: @store.id, from_date: @from_date, to_date: @to_date) } do %>
+                    <div class="wb-ads-product-detail-loading"><%= t("reports.wb_ads.actions.loading_campaigns") %></div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

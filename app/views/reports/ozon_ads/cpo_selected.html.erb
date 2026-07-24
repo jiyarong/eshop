@@ -3,7 +3,8 @@
 <%= render "nav", active: :cpo %>
 <div class="report-stack">
   <%= render "filters", url: reports_ozon_ads_cpo_selected_path, search: true %>
-  <%= render "summary", summary: @summary %>
+  <p class="weekly-profit-comparison-note"><%= ozon_ads_comparison_note %></p>
+  <%= render "summary", summary: @summary, comparison: @summary_comparison %>
   <section class="panel"><div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
     <thead><tr><th><%= t("reports.ozon_ads.fields.internal_sku") %></th><th><%= t("reports.ozon_ads.fields.product") %></th><th><%= t("reports.ozon_ads.fields.state") %></th><th><%= t("reports.ozon_ads.fields.bid") %></th>
       <th><%= t("reports.ozon_ads.fields.price") %></th><th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th>
@@ -13,8 +14,9 @@
       <td><span class="status-pill <%= row[:product].state.to_s.include?('ACTIVE') || row[:product].state.to_s.include?('ENABLED') ? 'is-active' : 'is-muted' %>"><%= row[:product].state.presence || "-" %></span></td>
       <td class="numeric"><%= row[:product].bid ? number_to_percentage(row[:product].bid, precision: 1) : "-" %></td>
       <td class="numeric"><%= row[:product].price ? number_to_currency(row[:product].price, unit: "₽", format: "%n %u") : "-" %></td>
-      <td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td><td class="numeric"><%= number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u") %></td>
-      <td class="numeric"><%= row[:orders_count].to_i %></td><td class="numeric"><%= row[:drr] ? number_to_percentage(row[:drr], precision: 1) : "-" %></td>
+      <% comparisons = @row_comparisons[row[:product].ozon_sku_id] || {} %>
+      <td class="numeric"><%= ozon_ads_metric_content(number_to_currency(row[:spend], unit: "₽", format: "%n %u"), comparisons[:spend]) %></td><td class="numeric"><%= ozon_ads_metric_content(number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u"), comparisons[:ad_revenue]) %></td>
+      <td class="numeric"><%= ozon_ads_metric_content(row[:orders_count].to_i, comparisons[:orders_count]) %></td><td class="numeric"><%= ozon_ads_metric_content(row[:drr] ? number_to_percentage(row[:drr], precision: 1) : "-", comparisons[:drr]) %></td>
     </tr><% end %></tbody>
   </table></div></section>
 </div>

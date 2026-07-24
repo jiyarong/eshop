@@ -7,7 +7,8 @@
 <%= render "nav", active: :overview %>
 <div class="report-stack">
   <%= render "filters", url: reports_ozon_ads_path %>
-  <%= render "summary", summary: @summary %>
+  <p class="weekly-profit-comparison-note"><%= ozon_ads_comparison_note %></p>
+  <%= render "summary", summary: @summary, comparison: @summary_comparison %>
   <section class="panel">
     <h2 class="section-title"><%= t("reports.ozon_ads.overview.breakdown") %></h2>
     <div class="table-scroll">
@@ -23,14 +24,15 @@
           <% @rows.each do |row| %><tr>
             <td><strong><%= t("reports.ozon_ads.unit_types.#{row[:unit_type]}") %></strong></td>
             <td><%= row[:placement].presence || "-" %></td>
-            <td class="numeric"><%= number_to_currency(row[:spend], unit: "₽", format: "%n %u") %></td>
-            <td class="numeric"><%= number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u") %></td>
-            <td class="numeric"><%= number_with_delimiter(row[:orders_count].to_i) %></td>
-            <td class="numeric"><%= row[:drr] ? number_to_percentage(row[:drr], precision: 1) : "-" %></td>
-            <td class="numeric"><%= number_with_delimiter(row[:impressions].to_i) %></td>
-            <td class="numeric"><%= number_with_delimiter(row[:clicks].to_i) %></td>
-            <td class="numeric"><%= row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-" %></td>
-            <td class="numeric"><%= number_with_delimiter(row[:cart_additions].to_i) %></td>
+            <% comparisons = @row_comparisons[[row[:unit_type], row[:placement]]] || {} %>
+            <td class="numeric"><%= ozon_ads_metric_content(number_to_currency(row[:spend], unit: "₽", format: "%n %u"), comparisons[:spend]) %></td>
+            <td class="numeric"><%= ozon_ads_metric_content(number_to_currency(row[:ad_revenue], unit: "₽", format: "%n %u"), comparisons[:ad_revenue]) %></td>
+            <td class="numeric"><%= ozon_ads_metric_content(number_with_delimiter(row[:orders_count].to_i), comparisons[:orders_count]) %></td>
+            <td class="numeric"><%= ozon_ads_metric_content(row[:drr] ? number_to_percentage(row[:drr], precision: 1) : "-", comparisons[:drr]) %></td>
+            <td class="numeric"><%= ozon_ads_metric_content(number_with_delimiter(row[:impressions].to_i), comparisons[:impressions]) %></td>
+            <td class="numeric"><%= ozon_ads_metric_content(number_with_delimiter(row[:clicks].to_i), comparisons[:clicks]) %></td>
+            <td class="numeric"><%= ozon_ads_metric_content(row[:ctr] ? number_to_percentage(row[:ctr], precision: 2) : "-", comparisons[:ctr]) %></td>
+            <td class="numeric"><%= ozon_ads_metric_content(number_with_delimiter(row[:cart_additions].to_i), comparisons[:cart_additions]) %></td>
           </tr><% end %>
         </tbody>
       </table>

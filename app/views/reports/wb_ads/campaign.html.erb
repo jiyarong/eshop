@@ -1,0 +1,4 @@
+<%= link_to t("reports.wb_ads.actions.back"), reports_wb_ads_path(store_id: @store.id, from_date: @from_date, to_date: @to_date), class: "ozon-ads-back" %>
+<h1 class="page-title"><%= @campaign.name.presence || t("reports.wb_ads.unnamed_campaign") %></h1>
+<p class="report-meta"><%= t("reports.wb_ads.detail.subtitle", id: @campaign.advert_id, from: @from_date, to: @to_date) %></p>
+<div class="report-stack"><%= render "campaign_detail_content" %></div>

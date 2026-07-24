@@ -109,7 +109,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".category-multiselect__trigger", text: "全部类别"
     assert_select ".category-multiselect input[name='category_ids[]'][value=?]", @platform_category_child.id.to_s
     assert_select ".product-summary-grid[aria-label=?]", "SKU 概览"
-    assert_select ".summary-label", "启用 SKU"
+    assert_select ".summary-label", { text: "启用 SKU", count: 0 }
+    assert_select "select[name='status']", count: 0
     assert_select ".prod-tbl thead th", text: "SKU"
     assert_select ".prod-tbl thead th", text: "SPU"
     assert_select ".prod-tbl thead th", text: "商品名"
@@ -132,8 +133,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".batch-title", text: "批次清单"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select ".batch-tbl td", text: "180"
-    assert_select ".badge.badge-suc", text: "Active"
-    assert_select ".badge.badge-sec", text: "下架"
+    assert_select ".prod-tbl tr.sku-row.master .badge", { text: "Active", count: 0 }
+    assert_select ".prod-tbl tr.sku-row.master .badge", { text: "下架", count: 0 }
     assert_select "a[href='#{new_erp_sku_marketing_state_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']"
     assert_select "a.sku-developers[href='#{edit_erp_sku_developer_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "未绑定"
     assert_select "a.sku-operators[href='#{edit_erp_sku_operator_path(@sku, return_to: "/erp/skus")}'][data-turbo-frame='erp_modal']", text: "未绑定"
@@ -151,7 +152,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "SKU Management"
     assert_select ".product-page-actions a[href='#{erp_new_sku_path(locale: "en", return_to: "/erp/skus?locale=en")}'][data-turbo-frame='erp_modal']", text: "Add SKU"
     assert_select ".product-summary-grid[aria-label=?]", "SKU overview"
-    assert_select ".summary-label", "Active SKUs"
+    assert_select ".summary-label", { text: "Active SKUs", count: 0 }
+    assert_select "select[name='status']", count: 0
     assert_select "input[placeholder=?]", "Search SKU, SPU, Chinese name, or Russian name..."
     assert_select "#sku-spu-sku-filter-trigger", text: "All SPUs/SKUs"
     assert_select ".category-multiselect__trigger", text: "All categories"
@@ -166,8 +168,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".marketing-tag--unset", text: "Grade unset"
     assert_select ".batch-title", text: "Batch list"
     assert_select ".batch-tbl th", text: "Purchase date"
-    assert_select ".badge.badge-suc", text: "Active"
-    assert_select ".badge.badge-sec", text: "Inactive"
+    assert_select ".prod-tbl tr.sku-row.master .badge", { text: "Active", count: 0 }
+    assert_select ".prod-tbl tr.sku-row.master .badge", { text: "Inactive", count: 0 }
     assert_select "a[href='#{erp_new_sku_batch_path(locale: "en", sku_code: @sku.sku_code, return_to: "/erp/skus?locale=en")}'][data-turbo-frame='erp_modal']", text: "Add batch"
     assert_select "a[href='#{erp_sku_batch_path(@batch, locale: "en", return_to: "/erp/skus?locale=en")}'][data-turbo-method='delete']", minimum: 1 do |links|
       assert_equal "Delete this batch?", links.first["data-turbo-confirm"]
@@ -515,7 +517,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label=?]", "Close"
     assert_select "label", "SKU code"
     assert_select "label", "Chinese name"
-    assert_select "label", "Listed"
+    assert_select "label", { text: "Listed", count: 0 }
+    assert_select "input[name='ec_sku[is_active]']", count: 0
     assert_select "option", "None"
     assert_select "input[type='submit'][value=?]", "Save"
   end
@@ -813,6 +816,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "编辑 SKU"
+    assert_select "input[name='ec_sku[is_active]']", count: 0
 
     sign_in @current_user
     patch "/erp/skus/#{@sku.id}", params: {

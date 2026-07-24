@@ -1,0 +1,51 @@
+<section class="panel">
+  <div class="table-scroll">
+    <table class="inventory-list-table wb-ads-table wb-ads-table--campaigns">
+      <thead>
+        <tr>
+          <th><%= t("reports.wb_ads.fields.campaign") %></th>
+          <th><%= t("reports.wb_ads.fields.type") %></th>
+          <th><%= t("reports.wb_ads.fields.budget") %></th>
+          <th><%= t("reports.wb_ads.fields.products") %></th>
+          <th><%= t("reports.wb_ads.metrics.spend") %></th>
+          <th><%= t("reports.wb_ads.metrics.views") %></th>
+          <th><%= t("reports.wb_ads.metrics.ctr") %></th>
+          <th><%= t("reports.wb_ads.metrics.orders") %></th>
+          <th><%= t("reports.wb_ads.metrics.drr") %></th>
+          <th><%= t("reports.wb_ads.metrics.clicks") %></th>
+          <th><%= t("reports.wb_ads.metrics.add_to_cart") %></th>
+          <th><%= t("reports.wb_ads.metrics.revenue") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @rows.empty? %>
+          <tr><td colspan="12" class="wb-ads-empty"><%= t("reports.wb_ads.empty") %></td></tr>
+        <% else %>
+          <% @rows.each do |row| %>
+            <% campaign = row[:campaign] %>
+            <tr>
+              <td>
+                <%= link_to campaign.name.presence || t("reports.wb_ads.unnamed_campaign"),
+                            reports_wb_ads_campaign_path(campaign.advert_id, store_id: @store.id, from_date: @from_date, to_date: @to_date),
+                            class: "wb-ads-campaign-link", data: { turbo_frame: "wb_ads_drawer" } %>
+                <span class="status-pill <%= wb_ads_status_class(campaign.status) %>"><%= wb_ads_status_label(campaign.status) %></span>
+                <small class="wb-ads-subline"><%= t("reports.wb_ads.fields.campaign_id", id: campaign.advert_id) %></small>
+              </td>
+              <td><strong><%= wb_ads_bid_label(campaign) %></strong><small class="wb-ads-subline"><%= wb_ads_placement_label(campaign) %></small></td>
+              <td class="numeric"><%= row[:budget] ? wb_ads_metric(row[:budget].total, type: :currency) : t("common.empty_value") %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:product_count]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:spend], type: :currency) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:views]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:ctr], type: :percentage) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:orders]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:drr], type: :percentage) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:clicks]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:add_to_cart]) %></td>
+              <td class="numeric"><%= wb_ads_metric(row[:revenue], type: :currency) %></td>
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

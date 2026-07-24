@@ -1,15 +1,19 @@
 <section class="ozon-ads-summary" aria-label="<%= t("reports.ozon_ads.summary.title") %>">
+  <% comparison = local_assigns[:comparison] || {} %>
   <% [
-    ["spend", number_to_currency(summary[:spend], unit: "₽", format: "%n %u")],
-    ["revenue", number_to_currency(summary[:ad_revenue], unit: "₽", format: "%n %u")],
-    ["orders", number_with_delimiter(summary[:orders_count].to_i)],
-    ["drr", summary[:drr] ? number_to_percentage(summary[:drr], precision: 1) : "-"],
-    ["impressions", number_with_delimiter(summary[:impressions].to_i)],
-    ["clicks", number_with_delimiter(summary[:clicks].to_i)]
-  ].each do |key, value| %>
+    ["spend", :spend, number_to_currency(summary[:spend], unit: "₽", format: "%n %u")],
+    ["revenue", :ad_revenue, number_to_currency(summary[:ad_revenue], unit: "₽", format: "%n %u")],
+    ["orders", :orders_count, number_with_delimiter(summary[:orders_count].to_i)],
+    ["drr", :drr, summary[:drr] ? number_to_percentage(summary[:drr], precision: 1) : "-"],
+    ["impressions", :impressions, number_with_delimiter(summary[:impressions].to_i)],
+    ["clicks", :clicks, number_with_delimiter(summary[:clicks].to_i)]
+  ].each do |key, metric, value| %>
     <div class="ozon-ads-summary__item">
       <span><%= t("reports.ozon_ads.metrics.#{key}") %></span>
       <strong><%= value %></strong>
+      <div class="weekly-profit-comparison-trend <%= ozon_ads_comparison_class(comparison[metric]) %>">
+        <%= ozon_ads_comparison_label(comparison[metric], include_vs: true) %>
+      </div>
     </div>
   <% end %>
 </section>

@@ -45,8 +45,7 @@ module Erp
       @sku_counts = {
         master_total: Ec::MasterSku.count,
         sku_total: Ec::Sku.count,
-        batch_total: Ec::SkuBatch.count,
-        active_sku_total: Ec::Sku.active.count
+        batch_total: Ec::SkuBatch.count
       }
     end
 
