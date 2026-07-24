@@ -30,6 +30,9 @@ Rails.application.routes.draw do
   get "reports/ozon_ads/cpc" => "reports/ozon_ads#cpc", as: :reports_ozon_ads_cpc
   get "reports/ozon_ads/cpc/:id" => "reports/ozon_ads#cpc_detail", as: :reports_ozon_ads_cpc_detail
   get "reports/ozon_ads/cpo/selected" => "reports/ozon_ads#cpo_selected", as: :reports_ozon_ads_cpo_selected
+  get "reports/wb_ads" => "reports/wb_ads#index", as: :reports_wb_ads
+  get "reports/wb_ads/campaigns/:id" => "reports/wb_ads#campaign", as: :reports_wb_ads_campaign
+  get "reports/wb_ads/products/:nm_id/campaigns" => "reports/wb_ads#product_campaigns", as: :reports_wb_ads_product_campaigns
   get "reports/tools" => "reports/tools#index"
   get "reports/tools/new" => "reports/tools#new"
   get "reports/tools/renderers/:renderer_key/source" => "reports/tools#renderer_source", as: :report_tool_renderer_source

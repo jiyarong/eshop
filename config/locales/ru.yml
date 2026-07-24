@@ -126,6 +126,7 @@ ru:
     sales_funnel: "Воронка продаж"
     inventory: "Склад"
     ozon_ads: "Продвижение Ozon"
+    wb_ads: "Продвижение WB"
     tools: "Инструменты"
     orders: "Заказы"
     skus: "SKU"
@@ -829,6 +830,45 @@ ru:
       wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
       ozon: { sku_code: "SKU", product_name: "Товар", hits_view: "Просмотры", hits_view_search: "Просмотры поиска", hits_view_pdp: "Просмотры карточки", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска", hits_tocart_pdp: "В корзину из карточки", conv_tocart: "Конверсия в корзину", ordered_units: "Заказано единиц", revenue: "Сумма заказов", returns_count: "Возвраты", cancellations: "Отмены" }
   reports:
+    wb_ads:
+      title: "Аналитика продвижения WB"
+      subtitle: "%{store} · %{from}–%{to}"
+      unnamed_campaign: "Кампания без названия"
+      unknown_product: "Неизвестный товар"
+      empty: "Нет данных по продвижению для выбранных фильтров."
+      views: { label: "Представление данных", campaigns: "Кампании", products: "Товары" }
+      filters:
+        store: "Магазин"
+        date_range: "Период"
+        search: "Поиск"
+        search_placeholder: { campaigns: "Название или ID кампании", products: "Название или артикул WB" }
+        status: "Статус"
+        all_statuses: "Все статусы"
+        apply: "Применить"
+      summary: { title: "Итоги продвижения" }
+      fields:
+        campaign: "Кампания"
+        campaign_id: "ID кампании %{id}"
+        campaigns: "Кампании"
+        campaign_count: "Кампаний: %{count}"
+        type: "Тип кампании"
+        budget: "Остаток бюджета"
+        budget_value: "Бюджет %{value}"
+        products: "Товары"
+        product: "Товар"
+        nm_id: "Артикул WB %{id}"
+        bid: "Ставка"
+        search_bid: "Поиск %{value}"
+        recommendation_bid: "Рекомендации %{value}"
+      metrics: { spend: "Расход", revenue: "Сумма заказов", orders: "Заказы", ordered_units: "Заказано", views: "Показы", clicks: "Клики", add_to_cart: "В корзину", ctr: "CTR", drr: "ДРР", roas: "ROAS", cpc: "CPC", cpo: "CPO", cr: "CR", cpm: "CPM", avg_position: "Средняя позиция", canceled: "Технические отмены" }
+      statuses: { "-1": "Удалена", "4": "Готова к запуску", "7": "Завершена", "8": "Отклонена", "9": "Активна", "11": "Приостановлена" }
+      payment_types: { cpm: "Оплата за показы", cpc: "Оплата за клики" }
+      bid_types: { manual: "Ручная ставка", unified: "Единая ставка" }
+      placements: { search: "Поиск", recommendations: "Рекомендации" }
+      detail: { eyebrow: "Кампания WB", subtitle: "ID кампании %{id} · %{from}–%{to}", products: "Товары кампании" }
+      actions: { back: "Назад к кампаниям", expand_product: "Развернуть кампании для %{product}", collapse_product: "Свернуть кампании для %{product}", loading_campaigns: "Загрузка кампаний..." }
+      other_attribution: "Конверсии из других кампаний"
+      errors: { no_store: "Не настроен магазин WB" }
     ozon_ads:
       title: "Аналитика продвижения Ozon"
       subtitle: "%{store} · %{from}–%{to}"

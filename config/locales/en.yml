@@ -155,6 +155,7 @@ en:
     sales_funnel: "Sales Funnel"
     inventory: "Inventory"
     ozon_ads: "Ozon Promotions"
+    wb_ads: "WB Promotions"
     tools: "Tools"
     orders: "Orders"
     skus: "SKU"
@@ -858,6 +859,45 @@ en:
       wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
       ozon: { sku_code: "SKU", product_name: "Product", hits_view: "Views", hits_view_search: "Search views", hits_view_pdp: "PDP views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search cart adds", hits_tocart_pdp: "PDP cart adds", conv_tocart: "Cart conversion", ordered_units: "Ordered units", revenue: "Order amount", returns_count: "Returns", cancellations: "Cancellations" }
   reports:
+    wb_ads:
+      title: "WB Promotion Analytics"
+      subtitle: "%{store} · %{from} to %{to}"
+      unnamed_campaign: "Unnamed campaign"
+      unknown_product: "Unknown product"
+      empty: "No promotion data matches the current filters."
+      views: { label: "Data view", campaigns: "Campaigns", products: "Products" }
+      filters:
+        store: "Store"
+        date_range: "Date range"
+        search: "Search"
+        search_placeholder: { campaigns: "Campaign name or ID", products: "Product name or WB item number" }
+        status: "Status"
+        all_statuses: "All statuses"
+        apply: "Apply"
+      summary: { title: "Promotion summary" }
+      fields:
+        campaign: "Campaign"
+        campaign_id: "Campaign ID %{id}"
+        campaigns: "Campaigns"
+        campaign_count: "%{count} campaigns"
+        type: "Campaign type"
+        budget: "Budget balance"
+        budget_value: "Budget %{value}"
+        products: "Products"
+        product: "Product"
+        nm_id: "WB item %{id}"
+        bid: "Bid"
+        search_bid: "Search %{value}"
+        recommendation_bid: "Recommendations %{value}"
+      metrics: { spend: "Spend", revenue: "Order amount", orders: "Orders", ordered_units: "Ordered units", views: "Impressions", clicks: "Clicks", add_to_cart: "Added to cart", ctr: "CTR", drr: "Ad cost share", roas: "ROAS", cpc: "CPC", cpo: "CPO", cr: "CR", cpm: "CPM", avg_position: "Average position", canceled: "Technical cancellations" }
+      statuses: { "-1": "Deleted", "4": "Ready to launch", "7": "Completed", "8": "Rejected", "9": "Active", "11": "Paused" }
+      payment_types: { cpm: "Cost per mille", cpc: "Cost per click" }
+      bid_types: { manual: "Manual bid", unified: "Unified bid" }
+      placements: { search: "Search", recommendations: "Recommendations" }
+      detail: { eyebrow: "WB campaign", subtitle: "Campaign ID %{id} · %{from} to %{to}", products: "Campaign products" }
+      actions: { back: "Back to campaigns", expand_product: "Expand campaigns for %{product}", collapse_product: "Collapse campaigns for %{product}", loading_campaigns: "Loading campaign data..." }
+      other_attribution: "Conversions from other campaigns"
+      errors: { no_store: "No WB store is configured" }
     ozon_ads:
       title: "Ozon Promotion Analytics"
       subtitle: "%{store} · %{from} to %{to}"

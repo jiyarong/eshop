@@ -1,0 +1,14 @@
+<section class="wb-ads-summary" aria-label="<%= t("reports.wb_ads.summary.title") %>">
+  <% [
+    [:revenue, wb_ads_metric(summary[:revenue], type: :currency)],
+    [:spend, wb_ads_metric(summary[:spend], type: :currency)],
+    [:drr, wb_ads_metric(summary[:drr], type: :percentage)],
+    [:roas, wb_ads_metric(summary[:roas], type: :decimal)],
+    [:ctr, wb_ads_metric(summary[:ctr], type: :percentage)]
+  ].each do |metric, value| %>
+    <div class="wb-ads-summary__item">
+      <span><%= t("reports.wb_ads.metrics.#{metric}") %></span>
+      <strong><%= value %></strong>
+    </div>
+  <% end %>
+</section>

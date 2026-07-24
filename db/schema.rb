@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_102926) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1465,6 +1465,138 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
     t.index ["nm_id", "stat_date"], name: "index_raw_wb_ad_sku_spends_on_nm_id_and_stat_date"
   end
 
+  create_table "raw_wb_adv_budget_snapshots", force: :cascade do |t|
+    t.bigint "campaign_id", null: false
+    t.decimal "cash", precision: 15, scale: 2, default: "0.0", null: false
+    t.datetime "created_at", null: false
+    t.string "currency"
+    t.decimal "netting", precision: 15, scale: 2, default: "0.0", null: false
+    t.datetime "observed_at", null: false
+    t.jsonb "raw_payload", default: {}, null: false
+    t.decimal "total", precision: 15, scale: 2, default: "0.0", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_id", "observed_at"], name: "idx_wb_adv_budgets_campaign_observed"
+    t.index ["campaign_id"], name: "index_raw_wb_adv_budget_snapshots_on_campaign_id"
+  end
+
+  create_table "raw_wb_adv_campaign_daily_stats", force: :cascade do |t|
+    t.bigint "add_to_cart", default: 0, null: false
+    t.bigint "campaign_id", null: false
+    t.bigint "canceled", default: 0, null: false
+    t.bigint "clicks", default: 0, null: false
+    t.decimal "cpc", precision: 15, scale: 4
+    t.decimal "cr", precision: 12, scale: 4
+    t.datetime "created_at", null: false
+    t.decimal "ctr", precision: 12, scale: 4
+    t.string "currency"
+    t.bigint "ordered_units", default: 0, null: false
+    t.bigint "orders", default: 0, null: false
+    t.jsonb "raw_payload", default: {}, null: false
+    t.decimal "revenue", precision: 15, scale: 2, default: "0.0", null: false
+    t.decimal "spend", precision: 15, scale: 4, default: "0.0", null: false
+    t.date "stat_date", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "views", default: 0, null: false
+    t.index ["campaign_id", "stat_date"], name: "idx_wb_adv_campaign_daily_unique", unique: true
+    t.index ["campaign_id"], name: "index_raw_wb_adv_campaign_daily_stats_on_campaign_id"
+    t.index ["stat_date"], name: "index_raw_wb_adv_campaign_daily_stats_on_stat_date"
+  end
+
+  create_table "raw_wb_adv_campaign_products", force: :cascade do |t|
+    t.bigint "campaign_id", null: false
+    t.datetime "created_at", null: false
+    t.boolean "is_current", default: true, null: false
+    t.bigint "nm_id", null: false
+    t.jsonb "raw_payload", default: {}, null: false
+    t.bigint "recommendation_bid_kopecks"
+    t.bigint "search_bid_kopecks"
+    t.bigint "subject_id"
+    t.string "subject_name"
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_id", "nm_id"], name: "idx_wb_adv_campaign_products_unique", unique: true
+    t.index ["campaign_id"], name: "index_raw_wb_adv_campaign_products_on_campaign_id"
+    t.index ["nm_id"], name: "index_raw_wb_adv_campaign_products_on_nm_id"
+  end
+
+  create_table "raw_wb_adv_campaigns", force: :cascade do |t|
+    t.bigint "advert_id", null: false
+    t.string "bid_type"
+    t.integer "campaign_type"
+    t.boolean "can_change_nms"
+    t.datetime "created_at", null: false
+    t.string "currency"
+    t.boolean "is_current", default: true, null: false
+    t.string "name"
+    t.string "payment_type"
+    t.jsonb "placements", default: {}, null: false
+    t.jsonb "raw_payload", default: {}, null: false
+    t.datetime "source_created_at"
+    t.datetime "source_deleted_at"
+    t.datetime "source_started_at"
+    t.datetime "source_updated_at"
+    t.integer "status"
+    t.bigint "store_id", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["store_id", "advert_id"], name: "idx_wb_adv_campaigns_store_advert", unique: true
+    t.index ["store_id", "status"], name: "idx_wb_adv_campaigns_store_status"
+    t.index ["store_id"], name: "index_raw_wb_adv_campaigns_on_store_id"
+  end
+
+  create_table "raw_wb_adv_expenses", force: :cascade do |t|
+    t.bigint "advert_id", null: false
+    t.integer "advert_status"
+    t.integer "advert_type"
+    t.decimal "amount", precision: 15, scale: 4, default: "0.0", null: false
+    t.bigint "campaign_id"
+    t.string "campaign_name"
+    t.datetime "created_at", null: false
+    t.string "currency"
+    t.datetime "expense_at", null: false
+    t.string "payment_type"
+    t.jsonb "raw_payload", default: {}, null: false
+    t.string "source_fingerprint", null: false
+    t.bigint "store_id", null: false
+    t.datetime "synced_at", null: false
+    t.integer "upd_num"
+    t.datetime "updated_at", null: false
+    t.index ["advert_id", "expense_at"], name: "idx_wb_adv_expenses_advert_date"
+    t.index ["campaign_id"], name: "index_raw_wb_adv_expenses_on_campaign_id"
+    t.index ["store_id", "expense_at"], name: "idx_wb_adv_expenses_store_date"
+    t.index ["store_id", "source_fingerprint"], name: "idx_wb_adv_expenses_fingerprint", unique: true
+    t.index ["store_id"], name: "index_raw_wb_adv_expenses_on_store_id"
+  end
+
+  create_table "raw_wb_adv_product_daily_stats", force: :cascade do |t|
+    t.bigint "add_to_cart", default: 0, null: false
+    t.integer "app_type", default: -1, null: false
+    t.decimal "avg_position", precision: 12, scale: 4
+    t.bigint "campaign_id", null: false
+    t.bigint "canceled", default: 0, null: false
+    t.bigint "clicks", default: 0, null: false
+    t.decimal "cpc", precision: 15, scale: 4
+    t.decimal "cr", precision: 12, scale: 4
+    t.datetime "created_at", null: false
+    t.decimal "ctr", precision: 12, scale: 4
+    t.string "currency"
+    t.bigint "nm_id", null: false
+    t.bigint "ordered_units", default: 0, null: false
+    t.bigint "orders", default: 0, null: false
+    t.string "product_name"
+    t.jsonb "raw_payload", default: {}, null: false
+    t.decimal "revenue", precision: 15, scale: 2, default: "0.0", null: false
+    t.decimal "spend", precision: 15, scale: 4, default: "0.0", null: false
+    t.date "stat_date", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "views", default: 0, null: false
+    t.index ["campaign_id", "stat_date", "app_type", "nm_id"], name: "idx_wb_adv_product_daily_unique", unique: true
+    t.index ["campaign_id"], name: "index_raw_wb_adv_product_daily_stats_on_campaign_id"
+    t.index ["nm_id", "stat_date"], name: "idx_wb_adv_product_daily_nm_date"
+  end
+
   create_table "raw_wb_analytics_search_terms", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "add_to_cart"
@@ -2437,6 +2569,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
   add_foreign_key "raw_wb_ad_keyword_bids", "raw_wb_ad_campaigns", column: "campaign_id"
   add_foreign_key "raw_wb_ad_negative_keywords", "raw_wb_ad_campaigns", column: "campaign_id"
   add_foreign_key "raw_wb_ad_settled_fees", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_adv_budget_snapshots", "raw_wb_adv_campaigns", column: "campaign_id"
+  add_foreign_key "raw_wb_adv_campaign_daily_stats", "raw_wb_adv_campaigns", column: "campaign_id"
+  add_foreign_key "raw_wb_adv_campaign_products", "raw_wb_adv_campaigns", column: "campaign_id"
+  add_foreign_key "raw_wb_adv_campaigns", "ec_stores", column: "store_id"
+  add_foreign_key "raw_wb_adv_expenses", "ec_stores", column: "store_id"
+  add_foreign_key "raw_wb_adv_expenses", "raw_wb_adv_campaigns", column: "campaign_id"
+  add_foreign_key "raw_wb_adv_product_daily_stats", "raw_wb_adv_campaigns", column: "campaign_id"
   add_foreign_key "raw_wb_analytics_search_terms", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_characteristics", "raw_wb_subjects", column: "subject_id"
   add_foreign_key "raw_wb_chat_messages", "raw_wb_chats", column: "chat_id"

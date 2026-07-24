@@ -1,0 +1,23 @@
+<h1 class="page-title"><%= t("reports.wb_ads.title") %></h1>
+<p class="report-meta"><%= t("reports.wb_ads.subtitle", store: @store.store_name, from: @from_date, to: @to_date) %></p>
+
+<div class="report-stack">
+  <%= render "filters" %>
+  <%= render "summary", summary: @summary %>
+
+  <nav class="wb-ads-view-switch" aria-label="<%= t("reports.wb_ads.views.label") %>">
+    <% %w[campaigns products].each do |view| %>
+      <%= link_to t("reports.wb_ads.views.#{view}"),
+                  reports_wb_ads_path(store_id: @store.id, from_date: @from_date, to_date: @to_date, view:, q: @query.presence, statuses: @statuses),
+                  class: "wb-ads-view-switch__link #{'is-active' if @view == view}",
+                  aria: { current: (@view == view ? "page" : nil) } %>
+    <% end %>
+  </nav>
+
+  <% if @view == "products" %>
+    <%= render "products_table" %>
+  <% else %>
+    <%= render "campaigns_table" %>
+  <% end %>
+  <%= turbo_frame_tag "wb_ads_drawer" %>
+</div>

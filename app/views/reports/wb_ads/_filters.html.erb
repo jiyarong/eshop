@@ -1,0 +1,48 @@
+<section class="panel wb-ads-filter-panel">
+  <%= form_with url: reports_wb_ads_path, method: :get, local: true, class: "report-form wb-ads-filters" do |form| %>
+    <%= form.hidden_field :store_id, value: @store.id %>
+    <%= form.hidden_field :view, value: @view %>
+    <div class="field field--time-range weekly-profit-top-filters">
+      <div class="weekly-profit-time-range-row">
+        <div class="weekly-profit-date-range-field">
+          <label for="wb-ads-time-range-trigger"><%= t("reports.wb_ads.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "wb-ads-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
+        </div>
+        <div class="field weekly-profit-spu-sku-field wb-ads-filters__query">
+          <%= form.label :q, t("reports.wb_ads.filters.search") %>
+          <%= form.search_field :q, value: @query, placeholder: t("reports.wb_ads.filters.search_placeholder.#{@view}") %>
+        </div>
+        <% if @view == "campaigns" %>
+          <%= hidden_field_tag "statuses[]", "" %>
+          <%= render "shared/popover_multiselect_filter",
+                     field_class: "wb-ads-filters__status",
+                     dom_id_prefix: "wb-ads-status-filter",
+                     param_name: "statuses",
+                     label: t("reports.wb_ads.filters.status"),
+                     all_label: t("reports.wb_ads.filters.all_statuses"),
+                     selected_values: @statuses.map(&:to_s),
+                     options: @status_options %>
+        <% end %>
+        <div class="weekly-profit-filter-actions">
+          <%= form.submit t("reports.wb_ads.filters.apply"), class: "button weekly-profit-submit-button" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="weekly-profit-filter-block wb-ads-store-filter">
+    <span class="field-label"><%= t("reports.wb_ads.filters.store") %></span>
+    <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("reports.wb_ads.filters.store") %>">
+      <% @stores.each do |store| %>
+        <%= link_to store.store_name,
+                    reports_wb_ads_path(store_id: store.id, from_date: @from_date, to_date: @to_date, view: @view, q: @query.presence, statuses: @statuses),
+                    class: "weekly-profit-filter-tag #{'is-active' if store.id == @store.id}",
+                    aria: { pressed: store.id == @store.id } %>
+      <% end %>
+    </div>
+  </div>
+</section>

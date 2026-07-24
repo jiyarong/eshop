@@ -1,0 +1,12 @@
+<% drawer_body = capture do %>
+  <%= render "reports/wb_ads/campaign_detail_content" %>
+<% end %>
+<%= render "shared/overlay_drawer",
+           frame_id: "wb_ads_drawer",
+           title_id: "wb-ads-drawer-title",
+           title: @campaign.name.presence || t("reports.wb_ads.unnamed_campaign"),
+           eyebrow: t("reports.wb_ads.detail.eyebrow"),
+           subtitle: t("reports.wb_ads.detail.subtitle", id: @campaign.advert_id, from: @from_date, to: @to_date),
+           close_path: reports_wb_ads_path(store_id: @store.id, from_date: @from_date, to_date: @to_date),
+           drawer_width: "min(92vw, calc(100vw - 24px))",
+           body: drawer_body %>
