@@ -110,43 +110,42 @@ RawOzon::ProductPrice.all.index_by(&:offer_id)
 #### 链路关系（3张表串联）
 
 ```
-raw_ozon_performance_campaigns    (75条 - 全部广告活动)
-    ↓ id → campaign_id
-raw_ozon_performance_campaign_skus  (每个活动关联的 SKU ID)
-    ↓ ozon_sku_id → 匹配 product.availabilities[].sku
-raw_ozon_products                   (通过 availabilities 字段找 offer_id)
-    ↓ offer_id
-raw_ozon_performance_daily_stats    (每日广告消耗，按 campaign_id 聚合)
+raw_ozon_ad_units                  (全部广告活动)
+    ↓ id → ad_unit_id
+raw_ozon_ad_unit_products          (活动关联的 Ozon SKU)
+    ↓ raw_ozon_product_id
+raw_ozon_products                  (商品主数据与 offer_id)
+raw_ozon_ad_daily_stats            (每日广告消耗，按 ad_unit_id 聚合)
 ```
 
 #### 广告活动分类与分摊策略
 
-| 活动类型 | `adv_object_type` | 归因方式 |
+| 活动类型 | `unit_type` | 归因方式 |
 |---------|------------------|---------|
-| SKU 广告 | `SKU` | 通过 `campaign_skus` 精确关联 offer_id，**按 SKU 数等分** |
-| 搜索推广 | `SEARCH_PROMO` | 无法关联单个 SKU，**按所有 offer_id 等分** |
+| SKU 广告 | `cpc_campaign` | 通过 `ad_unit_products` 精确关联 offer_id，**按 SKU 数等分** |
+| 搜索推广 | `cpo_selected` | 无法关联单个 SKU 时，**按所有 offer_id 等分** |
 
 **关联字段**：
 
 | 字段 | 表 | 说明 |
 |------|-----|------|
-| `ozon_sku_id` | `raw_ozon_performance_campaign_skus` | Ozon SKU 级别 ID（来自 `/api/client/campaign/{id}/objects`） |
-| `availabilities[].sku` | `raw_ozon_products.availabilities`（JSONB） | 与 ozon_sku_id 对应，用于反查 offer_id |
-| `spend` | `raw_ozon_performance_daily_stats` | 当日广告花费（RUB） |
-| `orders_count` | `raw_ozon_performance_daily_stats` | 当日广告带来的订单数 |
-| `stat_date` | `raw_ozon_performance_daily_stats` | 用于过滤周区间 |
+| `ozon_sku_id` | `raw_ozon_ad_unit_products` | Ozon SKU 级别 ID |
+| `raw_ozon_product_id` | `raw_ozon_ad_unit_products` | 关联 `raw_ozon_products.id`，用于取得 offer_id |
+| `spend` | `raw_ozon_ad_daily_stats` | 当日广告花费（RUB） |
+| `orders_count` | `raw_ozon_ad_daily_stats` | 当日广告带来的订单数 |
+| `stat_date` | `raw_ozon_ad_daily_stats` | 用于过滤周区间 |
 
 **查询逻辑**：
 
 ```
-构建 campaign_id → [offer_ids] 映射：
-  读取所有 campaign_skus，通过 ozon_sku_id → product.availabilities 反查 offer_id
+构建 ad_unit_id → [offer_ids] 映射：
+  读取当前 ad_unit_products，通过 raw_ozon_product_id 取得 offer_id
 
-对 PerformanceDailyStat WHERE stat_date IN 周区间：
-  若 campaign 有关联 offer_ids：
+对 AdDailyStat WHERE stat_date IN 周区间，并排除 cost_model=cpo_all_report：
+  若 ad_unit 有关联 offer_ids：
     spend_per_sku = stat.spend / offer_ids.count
     每个 offer_id 累加 spend_per_sku
-  若 campaign 是 SEARCH_PROMO：
+  若 ad_unit 是 cpo_selected：
     spend_per_sku = stat.spend / 所有产品数
     所有 offer_id 均分
 ```
@@ -204,7 +203,7 @@ Ozon API
   ├── /v2/posting/fbs/list        → raw_ozon_postings_fbs.raw_json           → 列M/P
   ├── /v2/posting/fbo/list        → raw_ozon_postings_fbo.raw_json           → 列M/P
   └── Performance API
-        ├── /api/client/campaign            → raw_ozon_performance_campaigns   ┐
-        ├── /api/client/campaign/{id}/objects → raw_ozon_performance_campaign_skus ├→ 列S/T/V
-        └── /api/client/statistics/daily    → raw_ozon_performance_daily_stats ┘
+        ├── /api/client/campaign               → raw_ozon_ad_units          ┐
+        ├── /api/client/campaign/{id}/v2/products → raw_ozon_ad_unit_products ├→ 列S/T/V
+        └── /api/client/statistics/daily       → raw_ozon_ad_daily_stats    ┘
 ```

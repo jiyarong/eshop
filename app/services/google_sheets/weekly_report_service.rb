@@ -148,29 +148,28 @@ module GoogleSheets
       @ozon_ad_spend[period]  = Hash.new(BigDecimal('0'))
       @ozon_ad_orders[period] = Hash.new(0)
 
-      # Build campaign_id → [offer_ids] map via campaign_skus + sku→offer map
+      # Build ad_unit_id → [offer_ids] map via current campaign products + sku→offer map
       campaign_offer_ids = Hash.new { |h, k| h[k] = [] }
-      RawOzon::PerformanceCampaignSku.includes(:campaign).find_each do |csku|
-        offer_id = @ozon_sku_offer_map[csku.ozon_sku_id]
+      RawOzon::AdUnitProduct.where(is_current: true).find_each do |product|
+        offer_id = @ozon_sku_offer_map[product.ozon_sku_id]
         next unless offer_id
-        campaign_offer_ids[csku.campaign_id] << offer_id
+        campaign_offer_ids[product.ad_unit_id] << offer_id
       end
 
-      # For SEARCH_PROMO campaigns (no SKU link), distribute evenly across known offer_ids
+      # For selected-product CPO units without a SKU link, distribute evenly across known offer_ids
       all_offer_ids = @ozon_products.keys
-      search_promo_campaign_ids = RawOzon::PerformanceCampaign
-        .where(adv_object_type: 'SEARCH_PROMO').pluck(:id)
+      search_promo_campaign_ids = RawOzon::AdUnit.where(unit_type: "cpo_selected").pluck(:id)
 
-      RawOzon::PerformanceDailyStat.where(stat_date: from..to).find_each do |stat|
-        if campaign_offer_ids[stat.campaign_id].any?
-          offer_ids = campaign_offer_ids[stat.campaign_id]
+      RawOzon::AdDailyStat.where(stat_date: from..to).where.not(cost_model: "cpo_all_report").find_each do |stat|
+        if campaign_offer_ids[stat.ad_unit_id].any?
+          offer_ids = campaign_offer_ids[stat.ad_unit_id]
           share = stat.spend / offer_ids.size
           orders_share = stat.orders_count.to_f / offer_ids.size
           offer_ids.each do |oid|
             @ozon_ad_spend[period][oid]  += share
             @ozon_ad_orders[period][oid] += orders_share
           end
-        elsif search_promo_campaign_ids.include?(stat.campaign_id) && all_offer_ids.any?
+        elsif search_promo_campaign_ids.include?(stat.ad_unit_id) && all_offer_ids.any?
           share = stat.spend / all_offer_ids.size
           orders_share = stat.orders_count.to_f / all_offer_ids.size
           all_offer_ids.each do |oid|

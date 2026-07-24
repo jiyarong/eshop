@@ -101,7 +101,7 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
     RawOzon::SellerAccount.where(id: @account.id).delete_all
   end
 
-  test "syncs units products and CPC daily facts without touching legacy performance tables" do
+  test "syncs units products and CPC daily facts without touching weekly profit SKU spends" do
     legacy_counts = legacy_table_counts
 
     assert_equal 3, @sync.sync_units
@@ -159,9 +159,6 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
 
   def legacy_table_counts
     {
-      campaigns: RawOzon::PerformanceCampaign.count,
-      campaign_skus: RawOzon::PerformanceCampaignSku.count,
-      daily_stats: RawOzon::PerformanceDailyStat.count,
       sku_spends: RawOzon::PerformanceSkuSpend.count
     }
   end

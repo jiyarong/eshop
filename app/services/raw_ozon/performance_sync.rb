@@ -1,15 +1,13 @@
 module RawOzon
   class PerformanceSync
-    include Syncs::PerformanceCampaigns
-    include Syncs::PerformanceDailyStats
     include Syncs::PerformanceAsyncReport
     include Syncs::PerformancePpcSkuSpends
     include Syncs::PerformancePromotionSkuSpends
 
     DEFAULT_DAYS = 14
     STEPS = %i[
-      sync_performance_campaigns
-      sync_performance_daily_stats
+      sync_ad_units
+      sync_ad_daily_stats
       sync_performance_ppc_sku_spends
       sync_performance_promotion_sku_spends
     ].freeze
@@ -31,7 +29,7 @@ module RawOzon
       end
     end
 
-    def initialize(account, days: nil, from_date: nil, to_date: nil)
+    def initialize(account, days: nil, from_date: nil, to_date: nil, client: nil)
       @account = account
       if from_date
         @from = from_date.is_a?(Date) ? from_date.to_time : Date.parse(from_date.to_s).to_time
@@ -41,7 +39,7 @@ module RawOzon
         @from = d.days.ago
         @to   = Date.current
       end
-      @perf_client = PerformanceClient.new(
+      @perf_client = client || PerformanceClient.new(
         account.performance_client_id,
         account.performance_client_secret
       )
@@ -83,7 +81,19 @@ module RawOzon
       @results
     end
 
+    def sync_ad_units
+      ads_sync.sync_units
+    end
+
+    def sync_ad_daily_stats
+      ads_sync.sync_daily_stats(from_date: @from.to_date, to_date: @to)
+    end
+
     private
+
+    def ads_sync
+      @ads_sync ||= RawOzon::Ads::Sync.new(@account, client: @perf_client)
+    end
 
     def date_chunks(chunk_days: 30)
       chunks = []

@@ -52,8 +52,10 @@
 
 ## Ozon 广告、搜索、评价与沟通
 
-- `raw_ozon_performance_campaigns`：广告活动。字段：`account_id`、`campaign_id`、`title`、`state`、`adv_object_type`、`payment_type`、`daily_budget`、`weekly_budget`、`from_date`、`to_date`。
-- `raw_ozon_performance_daily_stats`：广告日统计。字段：`account_id`、`campaign_id`、`stat_date`、`impressions`、`clicks`、`spend`、`orders_count`、`orders_revenue`。
+- `raw_ozon_ad_units`：广告活动。字段：`account_id`、`external_id`、`unit_type`、`title`、`state`、`billing_model`、`strategy`、`placement`、`daily_budget`、`weekly_budget`、`from_date`、`to_date`。
+- `raw_ozon_ad_unit_products`：活动商品关系。字段：`ad_unit_id`、`ozon_sku_id`、`raw_ozon_product_id`、`title`、`state`、`is_current`、`bid`、`price`、`added_at`、`removed_at`。
+- `raw_ozon_ad_daily_stats`：广告活动日统计。字段：`account_id`、`ad_unit_id`、`stat_date`、`cost_model`、`impressions`、`clicks`、`cart_additions`、`spend`、`orders_count`、`ad_revenue`。
+- `raw_ozon_ad_sku_daily_stats`：广告 SKU 日统计。字段：`account_id`、`ad_unit_id`、`ozon_sku_id`、`stat_date`、`cost_model`、`impressions`、`clicks`、`cart_additions`、`spend`、`orders_count`、`ad_revenue`、`avg_cpc`、`ctr`、`drr`。
 - `raw_ozon_performance_sku_spends`：SKU 广告花费。字段：`account_id`、`ozon_sku_id`、`period_from`、`period_to`、`ad_type`、`campaign_id`、`spend`、`allsku_spend`、`combo_spend`、`cpo_spend`。
 - `raw_ozon_product_queries`：商品搜索表现。字段：`account_id`、`period_from`、`period_to`、`sku`、`name`、`offer_id`、`category`、`position`、`gmv`、`unique_search_users`、`unique_view_users`、`view_conversion`。
 - `raw_ozon_product_query_details`：搜索词明细。字段：`account_id`、`period_from`、`period_to`、`sku`、`query`、`query_index`、`position`、`gmv`、`order_count`、`unique_search_users`、`unique_view_users`。

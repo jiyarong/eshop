@@ -6,9 +6,9 @@ module RawOzon
       # 限制：同时只允许 1 个异步报告在处理，必须完全串行（提交→等完成→再提交下一批）。
 
       def sync_performance_ppc_sku_spends
-        campaign_ids = RawOzon::PerformanceCampaign
-          .where(account_id: @account.id)
-          .pluck(:campaign_id)
+        campaign_ids = RawOzon::AdUnit
+          .where(account_id: @account.id, unit_type: "cpc_campaign")
+          .pluck(:external_id)
         return 0 if campaign_ids.empty?
 
         period_from = @from.to_date

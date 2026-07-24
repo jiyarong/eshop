@@ -1,6 +1,6 @@
 # Ozon 广告分析系统
 
-本文档描述项目当前 Ozon 广告数据的接口来源、数据结构、设计依据、同步机制、查询口径和运维边界。除非特别说明，本文所称“广告分析系统”均指 `RawOzon::Ads::*` 新链路，而不是周利润归集使用的旧 `RawOzon::PerformanceSync` 链路。
+本文档描述项目当前 Ozon 广告数据的接口来源、数据结构、设计依据、同步机制和查询口径。`RawOzon::Ads::*` 提供统一原始事实；`RawOzon::PerformanceSync` 继续生成周利润专用的 SKU 周期费用投影。
 
 ## 1. 系统目标与边界
 
@@ -31,23 +31,18 @@
 
 实现并非抓取 Seller 网页数据。Seller 页面仅作为产品设计和数据核对基准，生产数据全部来自 Performance API。
 
-## 3. 两套广告链路的隔离原则
+## 3. 原始事实与财务投影
 
-项目内存在两套 Ozon 广告链路，两者共享 Performance API 客户端和账号凭证，但表、同步服务和消费场景相互隔离。
+广告平台原始事实已统一写入 `raw_ozon_ad_*`。周利润仍保留一张周期投影表，用于固化特定自然周、广告类型和 SKU 的财务归集结果。
 
-| 链路 | 入口 | 数据表前缀 | 消费方 | 修改原则 |
-|---|---|---|---|---|
-| 周利润归集旧链路 | `RawOzon::PerformanceSync` | `raw_ozon_performance_*` | `Ec::OzonProfitAttribution`、周利润与 Google Sheets | 视为稳定财务链路，不因广告分析需求修改 |
-| 推广分析新链路 | `RawOzon::Ads::Sync` | `raw_ozon_ad_*` | `/reports/ozon_ads*` | 新功能只在此链路演进 |
+| 层次 | 入口 | 数据表 | 消费方 |
+|---|---|---|---|
+| 平台原始事实 | `RawOzon::Ads::Sync` | `raw_ozon_ad_*` | 推广分析、财务投影生成 |
+| 周利润周期投影 | `RawOzon::PerformanceSync` | `raw_ozon_performance_sku_spends` | `Ec::OzonProfitAttribution`、周利润 |
 
-新链路不得写入以下旧表：
+活动、活动商品关系和活动日统计均使用本系统第 7 节定义的 `raw_ozon_ad_*` 表，不再维护重复的 Performance 活动事实表。
 
-- `raw_ozon_performance_campaigns`
-- `raw_ozon_performance_campaign_skus`
-- `raw_ozon_performance_daily_stats`
-- `raw_ozon_performance_sku_spends`
-
-`RawOzonAdsSyncTest` 中的“syncs units products and CPC daily facts without touching legacy performance tables”测试用于守住这一边界。
+`raw_ozon_performance_sku_spends` 不是平台原始表，仍作为周利润周期投影保留。
 
 ## 4. 账号与认证
 
@@ -336,29 +331,25 @@ CPC 列表当前展示：
 
 核对 Ozon 推广总览时，不能用总计行直接与 CPC 页面比较；总计包含 CPC 和两类 CPO。应只合计“按点击付费：搜索与推荐”和“按点击付费：搜索”。
 
-## 14. 旧周利润链路摘要
+## 14. 周利润周期投影
 
-旧链路由 `RawOzon::PerformanceSync` 驱动，包含：
+`RawOzon::PerformanceSync` 先通过统一广告同步刷新 `raw_ozon_ad_units` 和 `raw_ozon_ad_daily_stats`，再生成 `raw_ozon_performance_sku_spends`。
 
-- 活动：`raw_ozon_performance_campaigns`
-- 活动日统计：`raw_ozon_performance_daily_stats`
-- SKU 周期费用：`raw_ozon_performance_sku_spends`
-
-它为 PPC SKU 费用使用异步 JSON 报告，并用报告 `totals.moneySpent` 对 SKU 行归一化；CPO/Combo/All SKU 推广费用按 SKU 合并写入周期表。`Ec::OzonProfitAttribution` 和周利润报表读取这些旧表。
+PPC SKU 费用使用异步 JSON 报告，并用报告 `totals.moneySpent` 对 SKU 行归一化；CPO/Combo/All SKU 推广费用按 SKU 合并写入周期投影。`Ec::OzonProfitAttribution` 和周利润报表只读取该投影，不读取已删除的旧活动表。
 
 定时任务：
 
 - 周一 13:00：同步 W-2、W-1 两个完整自然周。
 - 周四 03:00：当前周 T+1 结算补拉。
 
-即使新广告分析表的数据看起来可以替代旧表，也不得直接切换周利润归集来源。任何迁移都必须作为独立财务口径项目设计、双跑和验数。
+`raw_ozon_performance_sku_spends` 的财务口径未随原始表统一而改变。
 
 ## 15. 测试与契约验证
 
 主要测试：
 
 - `test/live/raw_ozon/ads_api_contract_test.rb`：使用真实账号验证接口结构。
-- `test/services/raw_ozon/ads_sync_test.rb`：同步、单位转换和新旧表隔离。
+- `test/services/raw_ozon/ads_sync_test.rb`：同步、单位转换和周期投影隔离。
 - `test/services/raw_ozon/ads_csv_parser_test.rb`：俄文 CSV 解析。
 - `test/services/raw_ozon/ads_report_runner_test.rb`：异步报告状态与失败处理。
 - `test/services/raw_ozon/ads_cpc_history_backfill_test.rb`：任务拆分。
