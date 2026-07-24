@@ -87,8 +87,132 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
       "category" => @category.name,
       "spu" => @master_sku.master_sku_code,
       "is_active" => true
-    }, body.fetch("data"))
+    }, body.fetch("data").except("marketing_state_history"))
     assert_match "SKU基础信息", body.fetch("description")
+  end
+
+  test "returns marketing grade and stage history in reverse chronological order" do
+    current_state = @sku.current_marketing_state
+    previous_state = @sku.marketing_states.create!(
+      grade: "B",
+      stage: "new",
+      effective_at: current_state.effective_at - 1.day,
+      ended_at: current_state.effective_at,
+      changed_by: @developer
+    )
+
+    get "/ai/skus/overview",
+      params: { sku: @sku.sku_code },
+      headers: bearer_headers(@raw_api_token)
+
+    assert_response :success
+    assert_equal [
+      {
+        "marketing_grade" => "A",
+        "marketing_stage" => "GRW",
+        "effective_at" => current_state.effective_at.as_json,
+        "ended_at" => nil
+      },
+      {
+        "marketing_grade" => "B",
+        "marketing_stage" => "NEW",
+        "effective_at" => previous_state.effective_at.as_json,
+        "ended_at" => previous_state.ended_at.as_json
+      }
+    ], response.parsed_body.dig("data", "marketing_state_history")
+    assert_match "marketing_state_history", response.parsed_body.fetch("description")
+  end
+
+  test "returns sku general inventory" do
+    received_batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "AI-RECEIVED-#{@token.upcase}",
+      status: "received",
+      batch_type: :normal,
+      purchased_quantity: 20,
+      received_quantity: 20,
+      purchase_unit_price_cny: 1
+    )
+    incoming_batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "AI-INCOMING-#{@token.upcase}",
+      status: "in_transit",
+      batch_type: :normal,
+      purchased_quantity: 12,
+      received_quantity: 0,
+      expected_arrival_on: Date.new(2026, 7, 30),
+      memo: "On the way",
+      purchase_unit_price_cny: 1
+    )
+    inventory_levels = [
+      Ec::SkuInventoryLevel.create!(
+        sku_code: @sku.sku_code,
+        platform: "ozon",
+        account_id: 10_001,
+        store_name: "AI Ozon #{@token}",
+        fulfillment_type: "fbo",
+        quantity: 7,
+        is_latest: true,
+        synced_at: Time.current,
+        metadata: {}
+      ),
+      Ec::SkuInventoryLevel.create!(
+        sku_code: @sku.sku_code,
+        platform: "ozon",
+        account_id: 10_001,
+        store_name: "AI Ozon #{@token}",
+        fulfillment_type: "inbound",
+        quantity: 2,
+        is_latest: true,
+        synced_at: Time.current,
+        metadata: {}
+      )
+    ]
+
+    get "/ai/skus/genernal_inventory",
+      params: { sku: @sku.sku_code.downcase },
+      headers: bearer_headers(@raw_api_token)
+
+    assert_response :success
+    assert_equal({
+      "sku" => @sku.sku_code,
+      "incoming_quantity" => 12,
+      "book_stock" => 20,
+      "platform_stock" => 7,
+      "available_stock" => 11,
+      "daily_sales_velocity" => "0.0",
+      "turnover_days" => nil,
+      "turnover_days_with_procurement" => nil,
+      "incoming_batches" => [
+        {
+          "batch_code" => incoming_batch.batch_code,
+          "status" => "in_transit",
+          "expected_arrival_on" => "2026-07-30",
+          "purchased_quantity" => 12,
+          "memo" => "On the way"
+        }
+      ]
+    }, response.parsed_body.fetch("data"))
+    assert_match "FBS库存", response.parsed_body.fetch("description")
+  ensure
+    Ec::SkuInventoryLevel.where(id: inventory_levels&.map(&:id)).delete_all
+    Ec::SkuBatch.where(id: [received_batch&.id, incoming_batch&.id].compact).delete_all
+  end
+
+  test "general inventory returns not found for unknown sku" do
+    get "/ai/skus/genernal_inventory",
+      params: { sku: "MISSING-#{@token}" },
+      headers: bearer_headers(@raw_api_token)
+
+    assert_response :not_found
+    assert_equal({ "error" => "SKU not found" }, response.parsed_body)
+  end
+
+  test "general inventory requires sku parameter" do
+    get "/ai/skus/genernal_inventory", headers: bearer_headers(@raw_api_token)
+
+    assert_response :bad_request
+    assert_equal({ "error" => "sku is required" }, response.parsed_body)
   end
 
   test "requires api key" do
