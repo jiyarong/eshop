@@ -18,10 +18,11 @@ module Mcp
       return uri if uri.is_a?(Hash)
 
       path = normalized_path(uri)
-      route_error = validate_route(path, method)
+      route, route_error = resolve_route(path, method)
       return route_error if route_error
 
-      response = request_app(
+      response = request_controller(
+        route: route,
         method: method,
         path: path_with_query(method, path, uri.query, args["params"]),
         params: args["params"],
@@ -52,24 +53,28 @@ module Mcp
       path.start_with?("/") ? path : "/#{path}"
     end
 
-    def validate_route(path, method)
-      return error("only /ai/... URLs are allowed") unless path.start_with?("/ai/")
+    def resolve_route(path, method)
+      return [nil, error("only /ai/... URLs are allowed")] unless path.start_with?("/ai/")
 
       route = Rails.application.routes.recognize_path(path, method: method)
       controller = route.fetch(:controller).to_s
-      return error("only ErpAI controllers are allowed") unless controller.start_with?("erp_ai/")
+      return [nil, error("only ErpAI controllers are allowed")] unless controller.start_with?("erp_ai/")
 
-      nil
+      [route, nil]
     rescue ActionController::RoutingError
-      error("route is not found")
+      [nil, error("route is not found")]
     end
 
-    def request_app(method:, path:, params:, headers:)
-      Rack::MockRequest.new(Rails.application).request(
-        method.upcase,
+    def request_controller(route:, method:, path:, params:, headers:)
+      env = Rack::MockRequest.env_for(
         path,
-        rack_env(method, params, headers)
+        rack_env(method, params, headers).merge(method: method.upcase)
       )
+      env["action_dispatch.request.path_parameters"] = route
+
+      controller = "#{route.fetch(:controller).camelize}Controller".constantize
+      status, response_headers, body = controller.action(route.fetch(:action)).call(env)
+      Rack::MockResponse.new(status, response_headers, body, env["rack.errors"])
     end
 
     def rack_env(method, params, headers)

@@ -82,7 +82,7 @@ module Mcp
         ),
         definition(
           "erp_ai_request",
-          "转发一次本应用内 ErpAI HTTP 请求。仅允许 app-relative /ai/... URL，不允许外部 host。",
+          "调用当前应用内指定路径对应的 ErpAI Controller。仅允许 app-relative /ai/... URL，不允许外部 host。",
           {
             method: enum_schema(%w[get post put patch delete], "HTTP method，默认 get"),
             url: string_schema("App-relative URL，例如 /ai/weekly_profit_reports.json"),

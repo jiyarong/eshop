@@ -19,28 +19,30 @@ module Mcp
       User.where(id: @user.id).delete_all
     end
 
-    test "forwards an authenticated request to erp ai controllers" do
-      result = ToolExecutor.new(current_user: @user, bearer_token: @raw_api_token).call(
-        "erp_ai_request",
-        {
-          "method" => "post",
-          "url" => "/ai/sql_queries.json",
-          "params" => {
-            "sql" => "SELECT 1 AS value",
-            "limit" => 1
-          },
-          "headers" => {
-            "Accept" => "application/json",
-            "Authorization" => "Bearer ignored"
+    test "dispatches an authenticated request directly to the erp ai controller" do
+      without_rails_application_dispatch do
+        result = ToolExecutor.new(current_user: @user, bearer_token: @raw_api_token).call(
+          "erp_ai_request",
+          {
+            "method" => "post",
+            "url" => "/ai/sql_queries.json",
+            "params" => {
+              "sql" => "SELECT 1 AS value",
+              "limit" => 1
+            },
+            "headers" => {
+              "Accept" => "application/json",
+              "Authorization" => "Bearer ignored"
+            }
           }
-        }
-      )
+        )
 
-      assert_equal true, result.fetch(:success)
-      assert_equal 200, result.fetch(:status)
-      assert_equal true, result.fetch(:body).fetch("success")
-      assert_equal ["value"], result.fetch(:body).fetch("columns")
-      assert_equal({ "value" => 1 }, result.fetch(:body).fetch("rows").first)
+        assert_equal true, result.fetch(:success)
+        assert_equal 200, result.fetch(:status)
+        assert_equal true, result.fetch(:body).fetch("success")
+        assert_equal ["value"], result.fetch(:body).fetch("columns")
+        assert_equal({ "value" => 1 }, result.fetch(:body).fetch("rows").first)
+      end
     end
 
     test "rejects external urls" do
@@ -62,6 +64,17 @@ module Mcp
 
       assert_equal false, result.fetch(:success)
       assert_match "/ai", result.fetch(:error)
+    end
+
+    private
+
+    def without_rails_application_dispatch
+      application = Rails.application
+      original_call = application.method(:call)
+      application.define_singleton_method(:call) { |*| raise "must not dispatch through Rails.application" }
+      yield
+    ensure
+      application.define_singleton_method(:call, original_call)
     end
   end
 end
