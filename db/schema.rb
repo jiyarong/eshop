@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_070003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -159,6 +159,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
     t.index ["allocation_no"], name: "index_ec_cost_allocations_on_allocation_no", unique: true
     t.index ["cost_type"], name: "index_ec_cost_allocations_on_cost_type"
     t.index ["status"], name: "index_ec_cost_allocations_on_status"
+  end
+
+  create_table "ec_daily_exchange_rates", force: :cascade do |t|
+    t.string "base_currency", default: "CNY", null: false
+    t.datetime "created_at", null: false
+    t.string "currency_code", null: false
+    t.date "rate_date", null: false
+    t.decimal "rate_from_base", precision: 18, scale: 8, null: false
+    t.decimal "rate_to_base", precision: 18, scale: 8, null: false
+    t.string "source", default: "cbr", null: false
+    t.date "source_date"
+    t.datetime "updated_at", null: false
+    t.index ["rate_date", "base_currency", "currency_code"], name: "index_ec_daily_exchange_rates_unique_daily_currency", unique: true
   end
 
   create_table "ec_master_skus", force: :cascade do |t|
@@ -752,6 +765,131 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
     t.index ["account_id"], name: "index_raw_ozon_accrual_by_day_on_account_id"
   end
 
+  create_table "raw_ozon_ad_daily_stats", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.decimal "ad_revenue", precision: 18, scale: 2
+    t.bigint "ad_unit_id", null: false
+    t.bigint "cart_additions"
+    t.bigint "clicks"
+    t.string "cost_model", null: false
+    t.datetime "created_at", null: false
+    t.bigint "impressions"
+    t.bigint "model_orders_count"
+    t.decimal "model_revenue", precision: 18, scale: 2
+    t.bigint "orders_count"
+    t.jsonb "raw_json", default: {}, null: false
+    t.decimal "spend", precision: 18, scale: 2
+    t.date "stat_date", null: false
+    t.datetime "synced_at", null: false
+    t.decimal "total_order_revenue", precision: 18, scale: 2
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "stat_date"], name: "index_raw_ozon_ad_daily_stats_on_account_id_and_stat_date"
+    t.index ["account_id"], name: "index_raw_ozon_ad_daily_stats_on_account_id"
+    t.index ["ad_unit_id", "stat_date", "cost_model"], name: "idx_raw_ozon_ad_daily_stats_identity", unique: true
+    t.index ["ad_unit_id"], name: "index_raw_ozon_ad_daily_stats_on_ad_unit_id"
+  end
+
+  create_table "raw_ozon_ad_report_runs", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "attempts", default: 0, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "endpoint", null: false
+    t.text "error_message"
+    t.string "external_uuid"
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.string "report_type", null: false
+    t.jsonb "request_body", default: {}, null: false
+    t.string "response_checksum"
+    t.string "state", default: "pending", null: false
+    t.datetime "submitted_at"
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "report_type", "period_from", "period_to"], name: "idx_raw_ozon_ad_report_runs_lookup"
+    t.index ["account_id", "state"], name: "index_raw_ozon_ad_report_runs_on_account_id_and_state"
+    t.index ["account_id"], name: "index_raw_ozon_ad_report_runs_on_account_id"
+  end
+
+  create_table "raw_ozon_ad_sku_daily_stats", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.decimal "ad_revenue", precision: 18, scale: 2
+    t.bigint "ad_unit_id", null: false
+    t.decimal "avg_cpc", precision: 18, scale: 4
+    t.bigint "cart_additions"
+    t.bigint "clicks"
+    t.string "cost_model", null: false
+    t.datetime "created_at", null: false
+    t.decimal "ctr", precision: 12, scale: 6
+    t.datetime "date_added"
+    t.decimal "drr", precision: 12, scale: 6
+    t.bigint "impressions"
+    t.bigint "model_orders_count"
+    t.decimal "model_revenue", precision: 18, scale: 2
+    t.bigint "orders_count"
+    t.string "ozon_sku_id", null: false
+    t.decimal "price", precision: 18, scale: 2
+    t.jsonb "raw_json", default: {}, null: false
+    t.bigint "raw_ozon_product_id"
+    t.decimal "spend", precision: 18, scale: 2
+    t.date "stat_date", null: false
+    t.datetime "synced_at", null: false
+    t.decimal "total_order_revenue", precision: 18, scale: 2
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "stat_date"], name: "index_raw_ozon_ad_sku_daily_stats_on_account_id_and_stat_date"
+    t.index ["account_id"], name: "index_raw_ozon_ad_sku_daily_stats_on_account_id"
+    t.index ["ad_unit_id", "ozon_sku_id", "stat_date", "cost_model"], name: "idx_raw_ozon_ad_sku_daily_stats_identity", unique: true
+    t.index ["ad_unit_id"], name: "index_raw_ozon_ad_sku_daily_stats_on_ad_unit_id"
+    t.index ["raw_ozon_product_id"], name: "index_raw_ozon_ad_sku_daily_stats_on_raw_ozon_product_id"
+  end
+
+  create_table "raw_ozon_ad_unit_products", force: :cascade do |t|
+    t.bigint "ad_unit_id", null: false
+    t.datetime "added_at"
+    t.decimal "bid", precision: 18, scale: 4
+    t.decimal "bid_price", precision: 18, scale: 2
+    t.datetime "created_at", null: false
+    t.string "image_url"
+    t.boolean "is_current", default: true, null: false
+    t.string "ozon_sku_id", null: false
+    t.decimal "price", precision: 18, scale: 2
+    t.jsonb "raw_json", default: {}, null: false
+    t.bigint "raw_ozon_product_id"
+    t.datetime "removed_at"
+    t.string "source_sku"
+    t.string "state"
+    t.datetime "synced_at", null: false
+    t.decimal "target_cir", precision: 12, scale: 6
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.bigint "views"
+    t.index ["ad_unit_id", "ozon_sku_id"], name: "idx_raw_ozon_ad_unit_products_identity", unique: true
+    t.index ["ad_unit_id"], name: "index_raw_ozon_ad_unit_products_on_ad_unit_id"
+    t.index ["ozon_sku_id", "is_current"], name: "index_raw_ozon_ad_unit_products_on_ozon_sku_id_and_is_current"
+    t.index ["raw_ozon_product_id"], name: "index_raw_ozon_ad_unit_products_on_raw_ozon_product_id"
+  end
+
+  create_table "raw_ozon_ad_units", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "billing_model"
+    t.datetime "created_at", null: false
+    t.decimal "daily_budget", precision: 18, scale: 2
+    t.string "external_id", null: false
+    t.date "from_date"
+    t.string "placement", default: [], array: true
+    t.jsonb "raw_json", default: {}, null: false
+    t.string "state"
+    t.string "strategy"
+    t.datetime "synced_at", null: false
+    t.string "title"
+    t.date "to_date"
+    t.string "unit_type", null: false
+    t.datetime "updated_at", null: false
+    t.decimal "weekly_budget", precision: 18, scale: 2
+    t.index ["account_id", "state"], name: "index_raw_ozon_ad_units_on_account_id_and_state"
+    t.index ["account_id", "unit_type", "external_id"], name: "idx_raw_ozon_ad_units_identity", unique: true
+    t.index ["account_id"], name: "index_raw_ozon_ad_units_on_account_id"
+  end
+
   create_table "raw_ozon_analytics_stocks", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "item_code"
@@ -850,53 +988,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
     t.index ["account_id", "operation_type"], name: "idx_on_account_id_operation_type_200fccc5ed"
     t.index ["account_id", "posting_number"], name: "idx_on_account_id_posting_number_e34374338f"
     t.index ["account_id"], name: "index_raw_ozon_finance_transactions_on_account_id"
-  end
-
-  create_table "raw_ozon_performance_campaign_skus", force: :cascade do |t|
-    t.bigint "campaign_id", null: false
-    t.datetime "created_at", null: false
-    t.string "ozon_sku_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["campaign_id", "ozon_sku_id"], name: "idx_ozon_perf_campaign_skus_unique", unique: true
-    t.index ["campaign_id"], name: "index_raw_ozon_performance_campaign_skus_on_campaign_id"
-  end
-
-  create_table "raw_ozon_performance_campaigns", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "adv_object_type"
-    t.string "campaign_id", null: false
-    t.datetime "created_at", null: false
-    t.decimal "daily_budget", precision: 15, scale: 2
-    t.date "from_date"
-    t.string "payment_type"
-    t.string "placement", default: [], array: true
-    t.jsonb "raw_json"
-    t.string "state"
-    t.datetime "synced_at"
-    t.string "title"
-    t.date "to_date"
-    t.datetime "updated_at", null: false
-    t.decimal "weekly_budget", precision: 15, scale: 2
-    t.index ["account_id", "campaign_id"], name: "idx_ozon_perf_campaigns_unique", unique: true
-    t.index ["account_id"], name: "index_raw_ozon_performance_campaigns_on_account_id"
-  end
-
-  create_table "raw_ozon_performance_daily_stats", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "campaign_id", null: false
-    t.integer "clicks", default: 0
-    t.datetime "created_at", null: false
-    t.integer "impressions", default: 0
-    t.integer "orders_count", default: 0
-    t.decimal "orders_revenue", precision: 15, scale: 2, default: "0.0"
-    t.decimal "spend", precision: 15, scale: 2, default: "0.0"
-    t.date "stat_date", null: false
-    t.datetime "synced_at"
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "stat_date"], name: "idx_ozon_perf_daily_stats_account_date"
-    t.index ["account_id"], name: "index_raw_ozon_performance_daily_stats_on_account_id"
-    t.index ["campaign_id", "stat_date"], name: "idx_ozon_perf_daily_stats_unique", unique: true
-    t.index ["campaign_id"], name: "index_raw_ozon_performance_daily_stats_on_campaign_id"
   end
 
   create_table "raw_ozon_performance_sku_spends", force: :cascade do |t|
@@ -2398,16 +2489,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_100928) do
   add_foreign_key "feedback_tasks", "users"
   add_foreign_key "messages", "conversations"
   add_foreign_key "raw_ozon_accrual_by_day", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_ad_daily_stats", "raw_ozon_ad_units", column: "ad_unit_id"
+  add_foreign_key "raw_ozon_ad_daily_stats", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_ad_report_runs", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_ad_sku_daily_stats", "raw_ozon_ad_units", column: "ad_unit_id"
+  add_foreign_key "raw_ozon_ad_sku_daily_stats", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_ad_unit_products", "raw_ozon_ad_units", column: "ad_unit_id"
+  add_foreign_key "raw_ozon_ad_units", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_analytics_stocks", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_categories", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_chat_messages", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_chats", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_finance_realizations", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_finance_transactions", "raw_ozon_seller_accounts", column: "account_id"
-  add_foreign_key "raw_ozon_performance_campaign_skus", "raw_ozon_performance_campaigns", column: "campaign_id"
-  add_foreign_key "raw_ozon_performance_campaigns", "raw_ozon_seller_accounts", column: "account_id"
-  add_foreign_key "raw_ozon_performance_daily_stats", "raw_ozon_performance_campaigns", column: "campaign_id"
-  add_foreign_key "raw_ozon_performance_daily_stats", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_performance_sku_spends", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_posting_destinations", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_posting_items", "raw_ozon_seller_accounts", column: "account_id"
