@@ -22,10 +22,6 @@
       <strong class="summary-value"><%= @sku_counts[:sku_total] %></strong>
     </div>
     <div class="product-summary-card">
-      <span class="summary-label"><%= t("erp.skus.index.active_skus") %></span>
-      <strong class="summary-value"><%= @sku_counts[:active_sku_total] %></strong>
-    </div>
-    <div class="product-summary-card">
       <span class="summary-label"><%= t("erp.skus.fields.master_sku") %></span>
       <strong class="summary-value"><%= @sku_counts[:master_total] %></strong>
     </div>
@@ -40,10 +36,6 @@
       <div class="product-search-control">
         <i class="bi bi-search" aria-hidden="true"></i>
         <%= form.search_field :q, value: @q, placeholder: t("erp.skus.filters.sku_search_placeholder"), class: "input" %>
-      </div>
-      <div class="field product-filter-field">
-        <%= form.label :status, t("erp.common.status"), class: "label" %>
-        <%= form.select :status, [[t("erp.common.filter_options.all"), "all"], [t("erp.common.statuses.enabled"), "active"], [t("erp.common.statuses.disabled"), "inactive"]], { selected: @status }, class: "select" %>
       </div>
       <%= render "shared/master_sku_category_filter",
         field_class: "product-filter-field" %>
@@ -94,7 +86,6 @@
           <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.purchased") %></th>
           <th style="width: 120px; text-align: right"><%= t("erp.skus.fields.received") %></th>
           <th style="width: 110px"><%= t("erp.common.batches") %></th>
-          <th style="width: 120px"><%= t("erp.common.status") %></th>
           <th style="width: 170px; text-align: right"><%= t("erp.common.actions.actions") %></th>
         </tr>
       </thead>
@@ -146,13 +137,6 @@
             <td style="text-align: right"><span class="stock-num"><%= received_quantity %></span></td>
             <td><span class="badge badge-sec"><%= sku.batches.size %> <%= t("erp.skus.units.batch_short", count: sku.batches.size) %></span></td>
             <td>
-              <% if sku.is_active %>
-                <span class="badge badge-suc">Active</span>
-              <% else %>
-                <span class="badge badge-sec"><%= t("erp.skus.statuses.inactive") %></span>
-              <% end %>
-            </td>
-            <td>
               <div class="row-actions">
                 <%= link_to t("erp.common.actions.view"), erp_sku_path(sku, current_locale_params), class: "btn btn-ghost btn-sm" %>
                 <%= link_to erp_edit_sku_path(sku, current_locale_params.merge(return_to: current_page_return_to)), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
@@ -172,7 +156,7 @@
           </tr>
           <% if batches.any? %>
             <tr class="batch-row" hidden>
-              <td colspan="12">
+              <td colspan="11">
                 <div class="batch-shell">
                   <div class="batch-h">
                     <div>
@@ -228,7 +212,7 @@
 
         <% if @skus.empty? %>
           <tr>
-            <td colspan="12" class="empty-state">
+            <td colspan="11" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.skus.empty.no_skus") %>
             </td>
