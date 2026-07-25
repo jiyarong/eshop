@@ -57,6 +57,25 @@
   - `Ec::OperationTaskGenerator`
   - 以上整套旧库存快照/汇总机制已从项目移除，不应再作为当前实现参考
 
+## 通用日快照机制
+
+- 通用快照表为 `ec_snapshots`，模型为 `Ec::Snapshot`。
+- 表的业务字段只有：
+  - `snapshot_date`：快照日期。
+  - `snapshot_type`：快照类型。不要改用 Rails STI 保留字段 `type`。
+  - `content`：`jsonb` 快照内容，默认 `{}`。
+- `snapshot_type + snapshot_date` 有唯一索引，同一类型每天最多一条；重复执行通过 `upsert_all` 覆盖当天内容，必须保持幂等。
+- 通用执行入口为 `Ec::SnapshotRunner.run`：
+  - 每个快照模块必须实现 `.snapshot_type`。
+  - 每个快照模块必须实现 `.capture(snapshot_date:)` 并返回可写入 JSONB 的内容。
+  - 新模块加入 `Ec::SnapshotRunner::SNAPSHOT_MODULES` 后，由统一任务执行。
+  - 未显式传入日期时，使用 `Asia/Shanghai` 的当天日期；补跑可显式传入 `snapshot_date:`。
+- 生产定时任务位于 `config/recurring.yml` 的 `daily_snapshot`，每天 `03:00 Asia/Shanghai` 执行。
+- Ruby 读取单日内容使用 `Ec::Snapshot.fetch(snapshot_type, on: date)`；返回内容支持字符串键和符号键混用，例如 `.dig(:summary, :quantity)`。
+- 历史查询优先组合 `Ec::Snapshot.of_type(...)` 与 `Ec::Snapshot.between(from_date, to_date)`。
+- 通用快照与每小时执行的 `Ec::SkuInventorySnapshotSync` 是两套不同机制，不要互相替代或混用。
+- 页面 GET 请求不得触发快照采集或写入；快照应由定时任务或明确的后台补跑执行。
+
 ## 生产部署
 
 - 生产部署使用 Kamal：`kamal deploy -c config/deploy.yml`。
