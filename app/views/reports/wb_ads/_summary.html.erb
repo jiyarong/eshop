@@ -1,4 +1,5 @@
 <section class="wb-ads-summary" aria-label="<%= t("reports.wb_ads.summary.title") %>">
+  <% comparison = local_assigns[:comparison] || {} %>
   <% [
     [:revenue, wb_ads_metric(summary[:revenue], type: :currency)],
     [:spend, wb_ads_metric(summary[:spend], type: :currency)],
@@ -9,6 +10,9 @@
     <div class="wb-ads-summary__item">
       <span><%= t("reports.wb_ads.metrics.#{metric}") %></span>
       <strong><%= value %></strong>
+      <div class="weekly-profit-comparison-trend <%= wb_ads_comparison_class(comparison[metric]) %>">
+        <%= wb_ads_comparison_label(comparison[metric], include_vs: true) %>
+      </div>
     </div>
   <% end %>
 </section>

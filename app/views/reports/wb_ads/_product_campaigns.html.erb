@@ -4,6 +4,7 @@
       <tbody>
         <% @rows.each do |row| %>
           <% campaign = row[:campaign] %>
+          <% comparisons = @row_comparisons[campaign.advert_id] || {} %>
           <tr>
             <td>
               <%= link_to campaign.name.presence || t("reports.wb_ads.unnamed_campaign"),
@@ -14,40 +15,37 @@
             </td>
             <td><strong><%= wb_ads_bid_label(campaign) %></strong><small class="wb-ads-subline"><%= wb_ads_placement_label(campaign) %></small></td>
             <td class="numeric"><%= row[:budget] ? wb_ads_metric(row[:budget].total, type: :currency) : t("common.empty_value") %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:spend], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:views]) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:ctr], type: :percentage) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:orders]) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:drr], type: :percentage) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:avg_position], type: :decimal) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:clicks]) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:add_to_cart]) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:revenue], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:cpc], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:cpo], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:cr], type: :percentage) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:cpm], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(row[:canceled]) %></td>
+            <% [
+              [:spend, wb_ads_metric(row[:spend], type: :currency)], [:views, wb_ads_metric(row[:views])],
+              [:ctr, wb_ads_metric(row[:ctr], type: :percentage)], [:orders, wb_ads_metric(row[:orders])],
+              [:drr, wb_ads_metric(row[:drr], type: :percentage)], [:avg_position, wb_ads_metric(row[:avg_position], type: :decimal)],
+              [:clicks, wb_ads_metric(row[:clicks])], [:add_to_cart, wb_ads_metric(row[:add_to_cart])],
+              [:revenue, wb_ads_metric(row[:revenue], type: :currency)], [:cpc, wb_ads_metric(row[:cpc], type: :currency)],
+              [:cpo, wb_ads_metric(row[:cpo], type: :currency)], [:cr, wb_ads_metric(row[:cr], type: :percentage)],
+              [:cpm, wb_ads_metric(row[:cpm], type: :currency)], [:canceled, wb_ads_metric(row[:canceled])]
+            ].each do |metric, value| %>
+              <td class="numeric"><%= wb_ads_metric_content(value, comparisons[metric]) %></td>
+            <% end %>
           </tr>
         <% end %>
         <% if @other_row %>
           <tr class="wb-ads-other-attribution-row">
             <td><strong><%= t("reports.wb_ads.other_attribution") %></strong></td>
             <td colspan="2"></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:spend], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:views]) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:ctr], type: :percentage) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:orders]) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:drr], type: :percentage) %></td>
+            <td class="numeric"><%= wb_ads_metric_content(wb_ads_metric(@other_row[:spend], type: :currency), @other_comparison[:spend]) %></td>
+            <td class="numeric"><%= wb_ads_metric_content(wb_ads_metric(@other_row[:views]), @other_comparison[:views]) %></td>
+            <td class="numeric"><%= wb_ads_metric_content(wb_ads_metric(@other_row[:ctr], type: :percentage), @other_comparison[:ctr]) %></td>
+            <td class="numeric"><%= wb_ads_metric_content(wb_ads_metric(@other_row[:orders]), @other_comparison[:orders]) %></td>
+            <td class="numeric"><%= wb_ads_metric_content(wb_ads_metric(@other_row[:drr], type: :percentage), @other_comparison[:drr]) %></td>
             <td></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:clicks]) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:add_to_cart]) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:revenue], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:cpc], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:cpo], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:cr], type: :percentage) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:cpm], type: :currency) %></td>
-            <td class="numeric"><%= wb_ads_metric(@other_row[:canceled]) %></td>
+            <% [
+              [:clicks, wb_ads_metric(@other_row[:clicks])], [:add_to_cart, wb_ads_metric(@other_row[:add_to_cart])],
+              [:revenue, wb_ads_metric(@other_row[:revenue], type: :currency)], [:cpc, wb_ads_metric(@other_row[:cpc], type: :currency)],
+              [:cpo, wb_ads_metric(@other_row[:cpo], type: :currency)], [:cr, wb_ads_metric(@other_row[:cr], type: :percentage)],
+              [:cpm, wb_ads_metric(@other_row[:cpm], type: :currency)], [:canceled, wb_ads_metric(@other_row[:canceled])]
+            ].each do |metric, value| %>
+              <td class="numeric"><%= wb_ads_metric_content(value, @other_comparison[metric]) %></td>
+            <% end %>
           </tr>
         <% end %>
       </tbody>

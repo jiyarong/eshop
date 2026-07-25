@@ -3,7 +3,7 @@ module Mcp
     ALLOWED_METHODS = %w[get post put patch delete].freeze
     FORWARDED_HEADER_NAMES = %w[accept accept-language x-request-id].freeze
     RESPONSE_HEADER_NAMES = %w[content-type location].freeze
-    MAX_BODY_BYTES = 100_000
+    MAX_BODY_BYTES = 1_000_000
 
     def initialize(current_user:, bearer_token:)
       @current_user = current_user

@@ -3,7 +3,8 @@
 
 <div class="report-stack">
   <%= render "filters" %>
-  <%= render "summary", summary: @summary %>
+  <p class="weekly-profit-comparison-note"><%= wb_ads_comparison_note %></p>
+  <%= render "summary", summary: @summary, comparison: @summary_comparison %>
 
   <nav class="wb-ads-view-switch" aria-label="<%= t("reports.wb_ads.views.label") %>">
     <% %w[campaigns products].each do |view| %>

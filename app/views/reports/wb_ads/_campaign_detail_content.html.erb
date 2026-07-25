@@ -5,7 +5,8 @@
     <span><%= wb_ads_placement_label(@campaign) %></span>
     <span><%= t("reports.wb_ads.fields.budget_value", value: @budget ? wb_ads_metric(@budget.total, type: :currency) : t("common.empty_value")) %></span>
   </div>
-  <%= render "summary", summary: @summary %>
+  <p class="weekly-profit-comparison-note"><%= wb_ads_comparison_note %></p>
+  <%= render "summary", summary: @summary, comparison: @summary_comparison %>
   <section>
     <h3 class="section-title"><%= t("reports.wb_ads.detail.products") %></h3>
     <div class="table-scroll">
@@ -26,18 +27,23 @@
         <tbody>
           <% @rows.each do |row| %>
             <% product = row[:campaign_product] %>
+            <% comparisons = @row_comparisons[product.nm_id] || {} %>
             <tr>
               <td><strong><%= row[:product_name].presence || t("reports.wb_ads.unknown_product") %></strong><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.nm_id", id: product.nm_id) %><% if row[:sku_product]&.sku %> · <%= row[:sku_product].sku.sku_code %><% end %></small></td>
               <td><span><%= t("reports.wb_ads.fields.search_bid", value: product.search_bid_kopecks ? wb_ads_metric(product.search_bid_kopecks.to_d / 100, type: :currency) : t("common.empty_value")) %></span><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.recommendation_bid", value: product.recommendation_bid_kopecks ? wb_ads_metric(product.recommendation_bid_kopecks.to_d / 100, type: :currency) : t("common.empty_value")) %></small></td>
-              <td class="numeric"><%= wb_ads_metric(row[:spend], type: :currency) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:views]) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:clicks]) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:add_to_cart]) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:orders]) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:revenue], type: :currency) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:ctr], type: :percentage) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:cpc], type: :currency) %></td>
-              <td class="numeric"><%= wb_ads_metric(row[:avg_position], type: :decimal) %></td>
+              <% [
+                [:spend, wb_ads_metric(row[:spend], type: :currency)],
+                [:views, wb_ads_metric(row[:views])],
+                [:clicks, wb_ads_metric(row[:clicks])],
+                [:add_to_cart, wb_ads_metric(row[:add_to_cart])],
+                [:orders, wb_ads_metric(row[:orders])],
+                [:revenue, wb_ads_metric(row[:revenue], type: :currency)],
+                [:ctr, wb_ads_metric(row[:ctr], type: :percentage)],
+                [:cpc, wb_ads_metric(row[:cpc], type: :currency)],
+                [:avg_position, wb_ads_metric(row[:avg_position], type: :decimal)]
+              ].each do |metric, value| %>
+                <td class="numeric"><%= wb_ads_metric_content(value, comparisons[metric]) %></td>
+              <% end %>
             </tr>
           <% end %>
         </tbody>

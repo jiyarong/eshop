@@ -846,6 +846,7 @@ ru:
         all_statuses: "Все статусы"
         apply: "Применить"
       summary: { title: "Итоги продвижения" }
+      comparison: { note: "Сравнение с предыдущим периодом (%{from}–%{to})", versus_previous: "к пред. периоду", unavailable: "Нет сравнения" }
       fields:
         campaign: "Кампания"
         campaign_id: "ID кампании %{id}"

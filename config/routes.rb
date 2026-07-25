@@ -71,6 +71,7 @@ Rails.application.routes.draw do
     get "skus/dynamic_daily_sales_forecast" => "skus#dynamic_daily_sales_forecast"
     resources :sql_queries, only: [:create]
     resources :weekly_profit_reports, only: [:create]
+    resources :inventory_reports, only: [:create]
   end
 
   namespace :admin do

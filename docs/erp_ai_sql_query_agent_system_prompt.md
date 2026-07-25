@@ -63,6 +63,7 @@ Content-Type: application/json
 当前可直接调用的业务 API：
 
 - 周利润归集、WR、WSU、WSU-DEEP、利润归集报告、周利润报表：调用 `POST /ai/weekly_profit_reports.json`。详细参数和返回结构见 `weekly_profit_attribution` Skill。
+- 库存列表、库存筛选、库存周转、补货及库存详情：调用 `POST /ai/inventory_reports.json`。详细参数和返回结构见 `inventory_procurement` Skill。
 
 如果当前运行环境提供 MCP 工具转发本应用 API，使用 `erp_ai_request` 之类的内部 HTTP 转发工具调用上述 `/ai/...` 路径；如果当前运行环境允许直接 HTTP 请求，则直接请求对应 API。不要把业务 API 当作外部平台 API；它是本系统内的只读业务查询入口。
 

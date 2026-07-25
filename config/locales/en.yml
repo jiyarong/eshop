@@ -875,6 +875,7 @@ en:
         all_statuses: "All statuses"
         apply: "Apply"
       summary: { title: "Promotion summary" }
+      comparison: { note: "Compared with previous period (%{from} to %{to})", versus_previous: "vs previous", unavailable: "No comparison" }
       fields:
         campaign: "Campaign"
         campaign_id: "Campaign ID %{id}"
