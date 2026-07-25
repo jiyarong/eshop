@@ -18,7 +18,7 @@ class ErpAiSqlQueryAgentSync
   SKILL_DESCRIPTIONS = {
     "product_catalog" => "ERP SQL 查询：商品、SPU、SKU、店铺、类目和平台商品绑定表字段与关系。",
     "orders_sales" => "ERP SQL 查询：订单、履约、销量归属和销售统计口径。",
-    "inventory_procurement" => "ERP SQL 查询：库存、批次、库存详情页计算过程和平台库存口径。",
+    "inventory_procurement" => "ERP 业务 API 查询：库存列表、筛选、分页、批次详情和平台库存口径。",
     "costs_profit" => "ERP SQL 查询：SKU 基础成本、采购成本、体积重量和进口税参数字段与关系。",
     "ozon_localization" => "ERP SQL 查询：Ozon 发货集群、目的集群和本地化销售占比口径。",
     "raw_platform_data" => "ERP SQL 查询：WB 与 Ozon 原始平台数据表字段和关系。",

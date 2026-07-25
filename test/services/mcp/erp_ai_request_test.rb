@@ -66,6 +66,15 @@ module Mcp
       assert_match "/ai", result.fetch(:error)
     end
 
+    test "keeps inventory-sized erp ai responses intact" do
+      payload = "x" * 150_000
+      truncated = ErpAIRequest.new(current_user: @user, bearer_token: @raw_api_token)
+        .send(:truncate_body, payload)
+
+      assert_equal false, truncated.fetch(:truncated)
+      assert_equal payload, truncated.fetch(:text)
+    end
+
     private
 
     def without_rails_application_dispatch

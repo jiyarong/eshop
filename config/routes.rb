@@ -70,6 +70,7 @@ Rails.application.routes.draw do
     get "skus/overview" => "skus#overview"
     resources :sql_queries, only: [:create]
     resources :weekly_profit_reports, only: [:create]
+    resources :inventory_reports, only: [:create]
   end
 
   namespace :admin do
