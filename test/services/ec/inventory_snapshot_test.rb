@@ -96,6 +96,7 @@ class Ec::InventorySnapshotTest < ActiveSupport::TestCase
     assert_nil overview[:turnover_days]
     assert_nil overview[:turnover_days_with_procurement]
     assert_equal false, overview[:out_of_stock]
+    assert_equal 0, overview[:daily_sales]
     assert_equal 4, overview.dig(:platform_totals, "wb", :platform_stock)
     assert_equal false, overview.dig(:platform_totals, "wb", :out_of_stock)
     assert_equal 0, overview.dig(:platform_totals, "ozon", :platform_stock)

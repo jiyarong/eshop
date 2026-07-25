@@ -68,6 +68,7 @@ Rails.application.routes.draw do
     resources :conversations, only: [:create]
     get "skus/genernal_inventory" => "skus#genernal_inventory"
     get "skus/overview" => "skus#overview"
+    get "skus/dynamic_daily_sales_forecast" => "skus#dynamic_daily_sales_forecast"
     resources :sql_queries, only: [:create]
     resources :weekly_profit_reports, only: [:create]
   end

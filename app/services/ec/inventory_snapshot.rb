@@ -15,6 +15,12 @@ module Ec
         date_to: snapshot_date,
         time_zone: snapshot_time_zone
       ).call
+      daily_sales_by_sku = Ec::SkuDailySalesQuery.new(
+        sku_codes: skus.map(&:sku_code),
+        from_date: snapshot_date,
+        to_date: snapshot_date,
+        time_zone: snapshot_time_zone
+      ).call
       levels_by_sku = historical_levels(snapshot_date).group_by(&:sku_code)
 
       skus.map do |sku|
@@ -28,7 +34,8 @@ module Ec
         content = {
           overview: inventory_row.merge(
             platform_totals: platform_totals(levels),
-            out_of_stock: inventory_row[:platform_stock].to_i <= 0
+            out_of_stock: inventory_row[:platform_stock].to_i <= 0,
+            daily_sales: daily_sales_by_sku.fetch([ snapshot_date, sku.sku_code ], 0)
           )
         }
         content[:distribution] = { levels: levels.map { |level| distribution_level(level) } } if levels.any?

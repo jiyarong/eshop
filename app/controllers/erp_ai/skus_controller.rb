@@ -2,6 +2,7 @@ module ErpAI
   class SkusController < ActionController::API
     GENERAL_INVENTORY_DESCRIPTION = "SKU总库存信息。incoming_quantity为采购中库存，book_stock为账面可用库存，platform_stock为平台在库，available_stock为报表FBS库存，daily_sales_velocity为日均销量，turnover_days为周转天数，turnover_days_with_procurement为周转天数(含采购)，incoming_batches为正在途中的批次数据。".freeze
     SKU_OVERVIEW_DESCRIPTION = "SKU基础信息，包括SKU编码、名称、营销等级、营销阶段、营销策略、开发人员、运营人员、类目、SPU和上架状态。developers和operators分别为开发人员和运营人员姓名，is_active为上架状态，marketing_state_history为按生效时间倒序排列的营销等级和营销阶段历史。".freeze
+    DYNAMIC_DAILY_SALES_FORECAST_DESCRIPTION = "SKU动态日销量预测。过滤最近30天库存快照中的断货日后，基于S7、S15、S30均线和7天前短线斜率预测；calculation.path为cold_start、rising、declining、stable或no_valid_days。".freeze
 
     before_action :authenticate_api_key!
 
@@ -61,6 +62,19 @@ module ErpAI
           is_active: sku.is_active
         },
         description: SKU_OVERVIEW_DESCRIPTION
+      }
+    rescue ActionController::ParameterMissing
+      render json: { error: "sku is required" }, status: :bad_request
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: "SKU not found" }, status: :not_found
+    end
+
+    def dynamic_daily_sales_forecast
+      sku = Ec::Sku.find_by!(sku_code: params.require(:sku).to_s.strip.upcase)
+
+      render json: {
+        data: ErpAI::DynamicDailySalesForecast.new(sku: sku).call,
+        description: DYNAMIC_DAILY_SALES_FORECAST_DESCRIPTION
       }
     rescue ActionController::ParameterMissing
       render json: { error: "sku is required" }, status: :bad_request
