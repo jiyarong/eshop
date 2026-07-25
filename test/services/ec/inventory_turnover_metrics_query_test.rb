@@ -45,6 +45,7 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
       product_name: "周转退货A",
       quantity: 1,
       raw_json: {},
+      return_date: Time.zone.parse("2026-06-30 09:00:00"),
       synced_at: Time.zone.parse("2026-06-30 10:00:00")
     )
   end
@@ -53,11 +54,11 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: @store.id }).delete_all
     Ec::Order.where(store_id: @store.id).delete_all
     RawOzon::Return.where(account_id: @account.id).delete_all
-    Ec::SkuBatch.where(sku_code: [@sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code]).delete_all
-    Ec::SkuProduct.where(sku_code: [@sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code]).delete_all
+    Ec::SkuBatch.where(sku_code: [ @sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code ]).delete_all
+    Ec::SkuProduct.where(sku_code: [ @sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code ]).delete_all
     Ec::Store.where(id: @store.id).delete_all
     RawOzon::SellerAccount.where(id: @account.id).delete_all
-    Ec::Sku.with_deleted.where(id: [@sku_a.id, @sku_b.id, @sku_c.id]).delete_all
+    Ec::Sku.with_deleted.where(id: [ @sku_a.id, @sku_b.id, @sku_c.id ]).delete_all
   end
 
   test "computes batch book stock and turnover days for multiple skus" do
@@ -68,11 +69,34 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
       batch_type: :normal,
       purchased_quantity: 12,
       received_quantity: 9,
+      purchase_date: Date.new(2026, 6, 30),
       purchase_unit_price_cny: 1
+    )
+    create_batch(@sku_c, "TURN-FUTURE-BATCH-C-#{@token}", 5, received_on: Date.new(2026, 7, 2))
+    create_order(
+      @sku_b,
+      "TURN-FUTURE-ORDER-B-#{@token}",
+      "TURN-SKU-B-#{@token}",
+      "TURN-OFFER-B-#{@token}",
+      3,
+      ordered_at: Time.zone.parse("2026-07-02 10:00:00")
+    )
+    RawOzon::Return.create!(
+      account: @account,
+      return_id: 50_000_000 + @token.to_i(16),
+      return_schema: "FBO",
+      return_type: "Return",
+      ozon_sku: 0,
+      offer_id: "TURN-OFFER-A-#{@token}",
+      product_name: "周转未来退货A",
+      quantity: 5,
+      raw_json: {},
+      return_date: Time.zone.parse("2026-07-02 09:00:00"),
+      synced_at: Time.zone.parse("2026-07-02 10:00:00")
     )
 
     metrics = Ec::InventoryTurnoverMetricsQuery.new(
-      sku_codes: [@sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code],
+      sku_codes: [ @sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code ],
       date_to: Date.new(2026, 7, 1),
       time_zone: ActiveSupport::TimeZone["Asia/Shanghai"]
     ).call
@@ -109,7 +133,7 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     )
   end
 
-  def create_batch(sku, batch_code, received_quantity)
+  def create_batch(sku, batch_code, received_quantity, received_on: Date.new(2026, 6, 28))
     Ec::SkuBatch.create!(
       sku_code: sku.sku_code,
       batch_code: batch_code,
@@ -117,11 +141,12 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
       batch_type: :normal,
       purchased_quantity: received_quantity,
       received_quantity: received_quantity,
+      received_on: received_on,
       purchase_unit_price_cny: 1
     )
   end
 
-  def create_order(sku, external_id, platform_sku_id, offer_id, quantity)
+  def create_order(sku, external_id, platform_sku_id, offer_id, quantity, ordered_at: Time.zone.parse("2026-06-29 10:00:00"))
     order = Ec::Order.create!(
       platform: "ozon",
       store: @store,
@@ -129,8 +154,8 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
       external_order_number: external_id,
       order_key: "ozon:#{@store.id}:#{external_id}",
       order_status: "delivered",
-      ordered_at: Time.zone.parse("2026-06-29 10:00:00"),
-      synced_at: Time.zone.parse("2026-06-29 10:05:00")
+      ordered_at: ordered_at,
+      synced_at: ordered_at + 5.minutes
     )
 
     order.items.create!(

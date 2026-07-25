@@ -12,6 +12,7 @@ class Ec::InventorySnapshotTest < ActiveSupport::TestCase
       batch_type: :normal,
       purchased_quantity: 12,
       received_quantity: 12,
+      received_on: Date.new(2026, 7, 23),
       purchase_unit_price_cny: 1
     )
 
@@ -22,8 +23,8 @@ class Ec::InventorySnapshotTest < ActiveSupport::TestCase
       store_name: "WB #{@token}",
       fulfillment_type: "fbw",
       quantity: 4,
-      is_latest: true,
-      synced_at: Time.zone.parse("2026-07-24 23:30:00"),
+      is_latest: false,
+      synced_at: Time.utc(2026, 7, 24, 15, 30),
       metadata: { "source" => "warehouse_remains" },
       warehouse_breakdown: [
         {
@@ -36,13 +37,25 @@ class Ec::InventorySnapshotTest < ActiveSupport::TestCase
     )
     Ec::SkuInventoryLevel.create!(
       sku_code: @sku.sku_code,
+      platform: "wb",
+      account_id: 10_000 + @account_id_seed,
+      store_name: "WB #{@token}",
+      fulfillment_type: "fbw",
+      quantity: 99,
+      is_latest: true,
+      synced_at: Time.utc(2026, 7, 24, 16, 30),
+      metadata: { "source" => "next_day" },
+      warehouse_breakdown: []
+    )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
       platform: "ozon",
       account_id: 1_020_000 + @account_id_seed,
       store_name: "Ozon #{@token}",
       fulfillment_type: "fbo",
       quantity: 0,
       is_latest: true,
-      synced_at: Time.zone.parse("2026-07-24 23:35:00"),
+      synced_at: Time.utc(2026, 7, 24, 15, 35),
       metadata: { "source" => "stock_on_warehouses" },
       warehouse_breakdown: [
         {
@@ -94,7 +107,7 @@ class Ec::InventorySnapshotTest < ActiveSupport::TestCase
     assert_equal "Москва", wb_fbw.dig(:warehouse_breakdown, 0, "region_name")
 
     ozon_fbo = distribution.find { |level| level[:platform] == "ozon" && level[:fulfillment_type] == "fbo" }
-    assert_equal Time.zone.parse("2026-07-24 23:35:00"), ozon_fbo[:synced_at].in_time_zone
+    assert_equal Time.utc(2026, 7, 24, 15, 35), ozon_fbo[:synced_at]
     assert_equal "Москва", ozon_fbo.dig(:warehouse_breakdown, 0, "cluster_name")
     assert_equal 2, ozon_fbo.dig(:warehouse_breakdown, 0, "promised")
     assert_equal 1, ozon_fbo.dig(:warehouse_breakdown, 0, "reserved")
@@ -102,6 +115,19 @@ class Ec::InventorySnapshotTest < ActiveSupport::TestCase
 
   test "is registered with the daily snapshot runner" do
     assert_includes Ec::SnapshotRunner::SNAPSHOT_MODULES, Ec::InventorySnapshot
+  end
+
+  test "keeps overview and omits distribution when no level existed by the snapshot date" do
+    snapshot_date = Date.new(2026, 6, 20)
+
+    with_stubbed_sku_find_each do
+      Ec::SnapshotRunner.new(snapshot_date: snapshot_date, modules: [ Ec::InventorySnapshot ]).run
+    end
+
+    content = Ec::Snapshot.fetch(Ec::InventorySnapshot.snapshot_type, on: snapshot_date, sku: @sku)
+
+    assert_equal 0, content.dig(:overview, :book_stock)
+    assert_not content.key?(:distribution)
   end
 
   private

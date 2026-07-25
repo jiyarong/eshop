@@ -40,6 +40,12 @@ module Ec
     def received_quantities_by_sku
       Ec::SkuBatch
         .where(sku_code: @sku_codes, status: %w[received closed])
+        .where(
+          "ec_sku_batches.received_on <= :date OR " \
+          "(ec_sku_batches.received_on IS NULL AND ec_sku_batches.created_at <= :cutoff)",
+          date: @date_to,
+          cutoff: cutoff_time
+        )
         .group(:sku_code)
         .sum(:received_quantity)
         .transform_keys(&:to_s)
@@ -49,6 +55,12 @@ module Ec
     def procurement_quantities_by_sku
       Ec::SkuBatch
         .where(sku_code: @sku_codes, status: %w[draft ordered in_transit], batch_type: :normal)
+        .where(
+          "ec_sku_batches.purchase_date <= :date OR " \
+          "(ec_sku_batches.purchase_date IS NULL AND ec_sku_batches.created_at <= :cutoff)",
+          date: @date_to,
+          cutoff: cutoff_time
+        )
         .group(:sku_code)
         .sum(Arel.sql(Ec::SkuBatch::EFFECTIVE_RECEIVED_QUANTITY_SQL))
         .transform_keys(&:to_s)
@@ -61,6 +73,7 @@ module Ec
         .joins(order_item_sku_product_join_sql)
         .where(ec_sku_products: { sku_code: @sku_codes })
         .where.not(ec_orders: { order_status: "cancelled" })
+        .where(ec_orders: { ordered_at: ..cutoff_time })
         .group("ec_sku_products.sku_code")
         .sum(Arel.sql("CASE WHEN ec_orders.order_status = 'returned' THEN 0 ELSE ec_order_items.quantity END"))
         .transform_keys(&:to_s)
@@ -76,6 +89,11 @@ module Ec
         .joins("INNER JOIN ec_stores ON ec_stores.ozon_raw_account_id = raw_ozon_returns.account_id AND ec_stores.platform = 'ozon'")
         .joins(ozon_return_sku_product_join_sql)
         .where(ec_sku_products: { sku_code: @sku_codes })
+        .where(
+          "COALESCE(raw_ozon_returns.return_date, raw_ozon_returns.final_moment, " \
+          "raw_ozon_returns.visual_change_moment, raw_ozon_returns.synced_at) <= ?",
+          cutoff_time
+        )
         .where(
           <<~SQL.squish
             NOT EXISTS (
@@ -103,6 +121,11 @@ module Ec
         .joins("INNER JOIN ec_stores ON ec_stores.wb_raw_account_id = raw_wb_goods_returns.account_id AND ec_stores.platform = 'wb'")
         .joins(wb_return_sku_product_join_sql)
         .where(ec_sku_products: { sku_code: @sku_codes })
+        .where(
+          "COALESCE(raw_wb_goods_returns.completed_dt, raw_wb_goods_returns.ready_to_return_dt, " \
+          "raw_wb_goods_returns.order_dt::timestamp, raw_wb_goods_returns.synced_at) <= ?",
+          cutoff_time
+        )
         .group("ec_sku_products.sku_code")
         .count
         .transform_keys(&:to_s)
@@ -149,6 +172,10 @@ module Ec
          AND ec_sku_products.platform = 'wb'
          AND raw_wb_goods_returns.nm_id::text = ec_sku_products.product_id
       SQL
+    end
+
+    def cutoff_time
+      @cutoff_time ||= @time_zone.local(@date_to.year, @date_to.month, @date_to.day).end_of_day
     end
   end
 end
