@@ -114,7 +114,7 @@ production:
     schedule: every hour
 
   daily_snapshot:
-    command: "Ec::SnapshotRunner.run"
+    command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"
     schedule: every day at 3:00 in Asia/Shanghai
 
   # Fetch current-week CBR rate for W-1/W-2 report fallback.

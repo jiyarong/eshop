@@ -1,7 +1,7 @@
 module Ec
   class SnapshotRunner
     # .capture must return rows shaped as { sku_id: nil, content: ... }.
-    SNAPSHOT_MODULES = [].freeze
+    SNAPSHOT_MODULES = [ Ec::InventorySnapshot ].freeze
 
     def self.run(snapshot_date: nil)
       new(snapshot_date: snapshot_date).run
