@@ -18,6 +18,7 @@ module Ec
     has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
     has_many :predicted_costs,   class_name: 'Ec::SkuPredictedCost',    foreign_key: :sku_code, primary_key: :sku_code
     has_many :inventory_levels,  class_name: 'Ec::SkuInventoryLevel',   foreign_key: :sku_code, primary_key: :sku_code
+    has_many :snapshots,         class_name: "Ec::Snapshot",           foreign_key: :sku_id
     has_many :marketing_states, class_name: "Ec::SkuMarketingState", foreign_key: :sku_id, dependent: :destroy
     has_one :current_marketing_state, -> { current }, class_name: "Ec::SkuMarketingState", foreign_key: :sku_id
     has_many :attachment_links,  class_name: "Ec::AttachmentLink",      as: :attachable, dependent: :destroy

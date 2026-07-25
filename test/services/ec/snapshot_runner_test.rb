@@ -5,19 +5,30 @@ class Ec::SnapshotRunnerTest < ActiveSupport::TestCase
     @snapshot_type = "snapshot-runner-test-#{SecureRandom.hex(6)}"
     @snapshot_date = Date.new(2026, 7, 24)
     @quantity = 3
+    @sku = Ec::Sku.create!(sku_code: "SNAPSHOT-RUNNER-#{SecureRandom.hex(6)}", product_name: "Snapshot runner test")
     quantity = -> { @quantity }
     snapshot_type = @snapshot_type
+    sku_id = @sku.id
 
     @snapshot_module = Class.new do
       define_singleton_method(:snapshot_type) { snapshot_type }
       define_singleton_method(:capture) do |snapshot_date:|
-        { date: snapshot_date.iso8601, quantity: quantity.call }
+        [
+          {
+            content: { date: snapshot_date.iso8601, scope: "global" }
+          },
+          {
+            sku_id: sku_id,
+            content: { date: snapshot_date.iso8601, quantity: quantity.call }
+          }
+        ]
       end
     end
   end
 
   teardown do
     Ec::Snapshot.where(snapshot_type: @snapshot_type).delete_all
+    Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
   end
 
   test "captures registered modules for the requested date" do
@@ -26,11 +37,12 @@ class Ec::SnapshotRunnerTest < ActiveSupport::TestCase
       modules: [ @snapshot_module ]
     ).run
 
-    assert_equal 1, count
+    assert_equal 2, count
     assert_equal(
       { "date" => @snapshot_date.iso8601, "quantity" => 3 },
-      Ec::Snapshot.find_by!(snapshot_type: @snapshot_type, snapshot_date: @snapshot_date).content
+      Ec::Snapshot.find_by!(snapshot_type: @snapshot_type, snapshot_date: @snapshot_date, sku: @sku).content
     )
+    assert_equal "global", Ec::Snapshot.global.find_by!(snapshot_type: @snapshot_type).data[:scope]
   end
 
   test "replaces the same type and date when rerun" do
@@ -40,9 +52,10 @@ class Ec::SnapshotRunnerTest < ActiveSupport::TestCase
 
     runner.run
 
-    snapshots = Ec::Snapshot.where(snapshot_type: @snapshot_type, snapshot_date: @snapshot_date)
+    snapshots = Ec::Snapshot.where(snapshot_type: @snapshot_type, snapshot_date: @snapshot_date, sku: @sku)
     assert_equal 1, snapshots.count
     assert_equal 8, snapshots.first.data[:quantity]
+    assert_equal 1, Ec::Snapshot.global.of_type(@snapshot_type).where(snapshot_date: @snapshot_date).count
   end
 
   test "uses the current Shanghai date by default" do
@@ -50,6 +63,6 @@ class Ec::SnapshotRunnerTest < ActiveSupport::TestCase
       Ec::SnapshotRunner.new(modules: [ @snapshot_module ]).run
     end
 
-    assert Ec::Snapshot.exists?(snapshot_type: @snapshot_type, snapshot_date: Date.new(2026, 7, 25))
+    assert Ec::Snapshot.exists?(snapshot_type: @snapshot_type, snapshot_date: Date.new(2026, 7, 25), sku: @sku)
   end
 end

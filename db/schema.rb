@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_014637) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_020558) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -609,9 +609,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_014637) do
 
   create_table "ec_snapshots", force: :cascade do |t|
     t.jsonb "content", default: {}, null: false
+    t.bigint "sku_id"
     t.date "snapshot_date", null: false
     t.string "snapshot_type", null: false
-    t.index ["snapshot_type", "snapshot_date"], name: "index_ec_snapshots_on_snapshot_type_and_snapshot_date", unique: true
+    t.index ["sku_id"], name: "index_ec_snapshots_on_sku_id"
+    t.index ["snapshot_type", "snapshot_date", "sku_id"], name: "idx_ec_snapshots_sku_daily_unique", unique: true, where: "(sku_id IS NOT NULL)"
+    t.index ["snapshot_type", "snapshot_date"], name: "idx_ec_snapshots_global_unique", unique: true, where: "(sku_id IS NULL)"
   end
 
   create_table "ec_stores", force: :cascade do |t|
@@ -2622,6 +2625,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_014637) do
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
+  add_foreign_key "ec_snapshots", "ec_skus", column: "sku_id"
   add_foreign_key "ec_tool_configurations", "ec_tool_definitions", column: "tool_definition_id"
   add_foreign_key "ec_tool_configurations", "users", column: "created_by_id"
   add_foreign_key "ec_tool_definitions", "users", column: "created_by_id"

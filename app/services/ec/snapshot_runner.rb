@@ -1,6 +1,6 @@
 module Ec
   class SnapshotRunner
-    # A module must expose .snapshot_type and .capture(snapshot_date:).
+    # .capture must return rows shaped as { sku_id: nil, content: ... }.
     SNAPSHOT_MODULES = [].freeze
 
     def self.run(snapshot_date: nil)
@@ -13,26 +13,34 @@ module Ec
     end
 
     def run
-      rows = @modules.map { |snapshot_module| build_row(snapshot_module) }
+      rows = @modules.flat_map { |snapshot_module| build_rows(snapshot_module) }
       return 0 if rows.empty?
 
-      Ec::Snapshot.upsert_all(
-        rows,
-        unique_by: [ :snapshot_type, :snapshot_date ],
-        record_timestamps: false
-      )
+      global_rows, sku_rows = rows.partition { |row| row[:sku_id].nil? }
+      upsert_rows(global_rows, unique_by: :idx_ec_snapshots_global_unique)
+      upsert_rows(sku_rows, unique_by: :idx_ec_snapshots_sku_daily_unique)
 
       rows.size
     end
 
     private
 
-    def build_row(snapshot_module)
-      {
-        snapshot_date: @snapshot_date,
-        snapshot_type: snapshot_module.snapshot_type.to_s,
-        content: snapshot_module.capture(snapshot_date: @snapshot_date)
-      }
+    def build_rows(snapshot_module)
+      Array.wrap(snapshot_module.capture(snapshot_date: @snapshot_date)).map do |captured_row|
+        captured_row = captured_row.to_h.symbolize_keys
+        {
+          snapshot_date: @snapshot_date,
+          snapshot_type: snapshot_module.snapshot_type.to_s,
+          sku_id: captured_row[:sku_id],
+          content: captured_row.fetch(:content)
+        }
+      end
+    end
+
+    def upsert_rows(rows, unique_by:)
+      return if rows.empty?
+
+      Ec::Snapshot.upsert_all(rows, unique_by: unique_by, record_timestamps: false)
     end
   end
 end
