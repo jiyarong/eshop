@@ -160,6 +160,31 @@ class Reports::WbAdsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", text: I18n.t("reports.wb_ads.metrics.canceled")
   end
 
+  test "renders comparisons against the immediately preceding equal period" do
+    previous_date = @date - 1.day
+    RawWb::AdvCampaignDailyStat.create!(
+      campaign: @campaign, stat_date: previous_date, views: 500, clicks: 25,
+      add_to_cart: 5, orders: 1, ordered_units: 1, spend: 250, revenue: 2500,
+      currency: "RUB", raw_payload: {}, synced_at: Time.current
+    )
+    RawWb::AdvProductDailyStat.create!(
+      campaign: @campaign, stat_date: previous_date, app_type: -1, nm_id: @product.nm_id,
+      product_name: "Test towel rail", views: 500, clicks: 25, add_to_cart: 5,
+      orders: 1, ordered_units: 1, spend: 250, revenue: 2500, avg_position: 10,
+      currency: "RUB", raw_payload: {}, synced_at: Time.current
+    )
+
+    get reports_wb_ads_path, params: {
+      store_id: @store.id, from_date: @date, to_date: @date
+    }
+
+    assert_response :success
+    assert_select ".weekly-profit-comparison-note", text: /#{previous_date}/
+    assert_select ".wb-ads-summary__item .weekly-profit-comparison-trend.is-negative", text: /100\.00%/, minimum: 1
+    assert_select ".wb-ads-summary__item .weekly-profit-comparison-trend.is-positive", text: /100\.00%/, minimum: 1
+    assert_select "tbody .weekly-profit-table-comparison.is-negative", text: /100\.00%/, minimum: 1
+  end
+
   test "renders configured campaigns and other attribution for an expanded product" do
     get reports_wb_ads_product_campaigns_path(@product.nm_id),
       params: { store_id: @store.id, from_date: @date, to_date: @date },

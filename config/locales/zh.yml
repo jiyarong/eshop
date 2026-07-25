@@ -908,6 +908,10 @@ zh:
         apply: "查询"
       summary:
         title: "推广汇总"
+      comparison:
+        note: "环比上一周期（%{from} 至 %{to}）"
+        versus_previous: "较上一周期"
+        unavailable: "暂无环比"
       fields:
         campaign: "活动"
         campaign_id: "活动 ID %{id}"
