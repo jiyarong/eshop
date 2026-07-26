@@ -20,6 +20,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     @latest_result = create_health_result(
       created_at: Time.iso8601("2026-07-26T09:30:00+08:00"),
       analyzed_at: Time.iso8601("2026-07-26T00:00:00+08:00"),
+      metrics: { daily_sales: 2.2167, sellable_inventory: 1117 },
       severity: "green",
       event_type: "inventory_sufficient",
       message: "最新诊断消息"
@@ -49,9 +50,45 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select "td", "inventory_sufficient"
       assert_select ".ai-health-message", "最新诊断消息"
       assert_select ".ai-health-star--success", count: 1
+      assert_select ".ai-health-metrics__title", "诊断指标"
+      assert_select ".ai-health-metrics__item dt", "daily_sales"
+      assert_select ".ai-health-metrics__item dd", "2.2167"
+      assert_select ".ai-health-metrics__item dt", "sellable_inventory"
+      assert_select ".ai-health-metrics__item dd", "1117"
+      assert_select "form.ai-health-result__delete-form[action='#{report_sku_inventory_health_result_path(@sku.sku_code, @latest_result)}'][data-turbo-confirm='确认删除这条 AI 库存诊断结果？']" do
+        assert_select "button.ai-health-result__delete-button[title='删除 AI 诊断结果']", count: 1
+      end
     end
     assert_select ".ai-health-message", "旧诊断消息"
     assert_select ".ai-health-star--danger", count: 1
+  end
+
+  test "deletes an inventory health result from its sku" do
+    assert_difference -> { @sku.inventory_health_results.count }, -1 do
+      delete report_sku_inventory_health_result_path(@sku.sku_code, @latest_result)
+    end
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal "AI 库存诊断结果已删除", flash[:notice]
+    assert_not Ec::SkuInventoryHealthResult.exists?(@latest_result.id)
+    assert Ec::SkuInventoryHealthResult.exists?(@older_result.id)
+  end
+
+  test "does not delete an inventory health result through another sku" do
+    other_sku = Ec::Sku.create!(
+      sku_code: "REPORT-HEALTH-OTHER-#{@token.upcase}",
+      product_name: "其他诊断商品 #{@token}",
+      is_active: true
+    )
+
+    assert_no_difference -> { Ec::SkuInventoryHealthResult.count } do
+      delete report_sku_inventory_health_result_path(other_sku.sku_code, @latest_result)
+    end
+
+    assert_response :not_found
+    assert Ec::SkuInventoryHealthResult.exists?(@latest_result.id)
+  ensure
+    Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
 
   test "inventory report links stars from only the latest diagnosis" do
@@ -70,11 +107,12 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
   private
 
-  def create_health_result(created_at:, severity:, event_type:, message:, analyzed_at: nil)
+  def create_health_result(created_at:, severity:, event_type:, message:, analyzed_at: nil, metrics: {})
     Ec::SkuInventoryHealthResult.create!(
       sku: @sku,
       submitted_by: @user,
       analyzed_at: analyzed_at,
+      metrics: metrics,
       events: [
         {
           "event_type" => event_type,

@@ -517,7 +517,31 @@
                   </div>
                 <% end %>
               </dl>
+              <% if can?(:manage_skus) %>
+                <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
+                              method: :delete,
+                              class: "ico-btn ai-health-result__delete-button",
+                              title: t("reports.sku_detail.actions.delete_inventory_health_result"),
+                              form_class: "ai-health-result__delete-form",
+                              form: { data: { turbo_confirm: t("reports.sku_detail.ai_inventory_health.delete_confirm") } } do %>
+                  <i class="bi bi-trash" aria-hidden="true"></i>
+                  <span class="sr-only"><%= t("reports.sku_detail.actions.delete_inventory_health_result") %></span>
+                <% end %>
+              <% end %>
             </div>
+            <% if result.metrics.present? %>
+              <div class="ai-health-metrics">
+                <h3 class="ai-health-metrics__title"><%= t("reports.sku_detail.ai_inventory_health.metrics_title") %></h3>
+                <dl class="ai-health-metrics__list">
+                  <% result.metrics.sort_by { |key, _value| key.to_s }.each do |key, value| %>
+                    <div class="ai-health-metrics__item">
+                      <dt><%= key %></dt>
+                      <dd><%= ai_inventory_health_metric_value(value) %></dd>
+                    </div>
+                  <% end %>
+                </dl>
+              </div>
+            <% end %>
             <div class="table-scroll">
               <table class="ai-health-table">
                 <thead>

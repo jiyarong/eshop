@@ -87,6 +87,12 @@ module ErpAI
     def invetory_health_result
       attributes = inventory_health_attributes
       sku = Ec::Sku.find_by!(sku_code: attributes.delete(:sku_code))
+      unless Ec::SkuInventoryHealthSubmissionLock.acquire(sku.id)
+        response.set_header("Retry-After", Ec::SkuInventoryHealthSubmissionLock::TTL.to_i.to_s)
+        render json: { error: "SKU submission is locked; retry after 5 seconds" }, status: :too_many_requests
+        return
+      end
+
       result = sku.inventory_health_results.create!(
         **attributes,
         submitted_by: @current_user
@@ -127,7 +133,7 @@ module ErpAI
 
       {
         sku_code: normalized_sku_code(payload["sku"]),
-        analyzed_at: parsed_analyzed_at(payload["analyzed_at"]),
+        analyzed_at: parsed_analyzed_at(payload["analyzed_at"]) || Time.current,
         classification: hash_value(payload["classification"], "classification"),
         metrics: hash_value(payload["metrics"], "metrics"),
         events: normalized_events(payload["events"])
@@ -143,7 +149,7 @@ module ErpAI
 
       {
         sku_code: sku_codes.first,
-        analyzed_at: nil,
+        analyzed_at: Time.current,
         classification: {},
         metrics: {},
         events: normalized_events(payload)

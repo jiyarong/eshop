@@ -122,6 +122,10 @@ module ApplicationHelper
     end
   end
 
+  def ai_inventory_health_metric_value(value)
+    value.is_a?(Hash) || value.is_a?(Array) ? JSON.generate(value) : value
+  end
+
   def user_time_zone
     User.profile_time_zone(current_user&.time_zone)
   end

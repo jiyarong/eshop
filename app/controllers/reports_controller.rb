@@ -10,7 +10,7 @@ class ReportsController < ApplicationController
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
-  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment]
+  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
 
   SKU_DETAIL_TABS = %w[basic inventory ai_inventory_health costs stores trend attachments].freeze
 
@@ -130,6 +130,17 @@ class ReportsController < ApplicationController
     end
 
     redirect_to sku_attachments_tab_path(@sku), notice: t("reports.sku_detail.attachments.deleted")
+  end
+
+  def destroy_sku_inventory_health_result
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @sku.inventory_health_results.find(params[:result_id]).destroy!
+
+    redirect_to report_sku_path(
+      @sku.sku_code,
+      tab: "ai_inventory_health",
+      locale: params[:locale].presence
+    ), notice: t("reports.sku_detail.ai_inventory_health.deleted"), status: :see_other
   end
 
   def costs
