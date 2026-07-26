@@ -12,7 +12,7 @@ class ReportsController < ApplicationController
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment]
 
-  SKU_DETAIL_TABS = %w[basic inventory costs stores trend attachments].freeze
+  SKU_DETAIL_TABS = %w[basic inventory ai_inventory_health costs stores trend attachments].freeze
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -185,6 +185,7 @@ class ReportsController < ApplicationController
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
+    @inventory_health_results = @sku.inventory_health_results.includes(:submitted_by).recent_first if @active_tab == "ai_inventory_health"
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
     @overview_from_date = user_today - 30.days
@@ -294,9 +295,12 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call
+    latest_health_results = Ec::SkuInventoryHealthResult.latest_for_sku_ids(skus.map(&:id))
 
     rows = skus.map do |sku|
-      fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {})
+      fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {}).merge(
+        ai_inventory_health_result: latest_health_results[sku.id]
+      )
     end
 
     Kaminari.paginate_array(

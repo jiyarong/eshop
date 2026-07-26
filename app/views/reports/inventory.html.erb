@@ -128,6 +128,7 @@
             <th><%= t("reports.inventory.fields.daily_sales_velocity") %></th>
             <th><%= t("reports.inventory.fields.turnover_days") %></th>
             <th><%= t("reports.inventory.fields.turnover_days_with_procurement") %></th>
+            <th><%= t("reports.inventory.fields.ai_inventory_health") %></th>
             <th><%= t("reports.inventory.fields.actions") %></th>
           </tr>
         </thead>
@@ -211,6 +212,23 @@
                 <td class="numeric inventory-list-table__metric"><%= daily_sales_velocity.present? ? format("%.2f", daily_sales_velocity.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days.present? ? format("%.2f", turnover_days.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days_with_procurement.present? ? format("%.2f", turnover_days_with_procurement.to_d) : "-" %></td>
+                <td class="inventory-list-table__ai-health-cell">
+                  <% health_result = row[:ai_inventory_health_result] %>
+                  <% if health_result.present? %>
+                    <div class="ai-health-stars">
+                      <% health_result.events.each do |event| %>
+                        <%= link_to report_sku_path(row[:sku_code], tab: "ai_inventory_health", locale: params[:locale].presence),
+                                    class: "ai-health-star ai-health-star--#{ai_inventory_health_severity_class(event["severity"])}",
+                                    title: event["message"],
+                                    aria: { label: event["message"] } do %>
+                          <span aria-hidden="true">★</span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <span class="inventory-list-table__subline">-</span>
+                  <% end %>
+                </td>
                 <td class="inventory-list-table__actions-cell">
                   <div class="resource-actions inventory-list-table__actions">
                     <%= link_to t("reports.inventory.actions.view_details"),
@@ -224,7 +242,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="11" class="empty-state"><%= t("reports.inventory.empty") %></td>
+              <td colspan="12" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>

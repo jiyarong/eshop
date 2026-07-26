@@ -49,7 +49,7 @@
 </section>
 
 <nav class="erp-tabs erp-tabs--underline sku-detail-tabs" aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>">
-  <% %w[basic inventory costs attachments stores trend].each do |tab| %>
+  <% %w[basic inventory ai_inventory_health costs attachments stores trend].each do |tab| %>
     <%= link_to t("reports.sku_detail.tabs.#{tab}"),
                 sku_detail_tab_path(tab),
                 class: "erp-tabs__link sku-detail-tabs__link",
@@ -494,6 +494,63 @@
         </table>
       </div>
     </section>
+  <% elsif @active_tab == "ai_inventory_health" %>
+    <% if @inventory_health_results.any? %>
+      <div class="ai-health-result-list">
+        <% @inventory_health_results.each do |result| %>
+          <section class="panel ai-health-result">
+            <div class="ai-health-result__header">
+              <h2 class="section-title"><%= t("reports.sku_detail.ai_inventory_health.submission_title", id: result.id) %></h2>
+              <dl class="ai-health-result__meta">
+                <div>
+                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_by") %></dt>
+                  <dd><%= result.submitted_by.display_name %></dd>
+                </div>
+                <div>
+                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_at") %></dt>
+                  <dd><%= display_time(result.created_at) %></dd>
+                </div>
+                <% if result.analyzed_at.present? %>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_inventory_health.analyzed_at") %></dt>
+                    <dd><%= display_time(result.analyzed_at) %></dd>
+                  </div>
+                <% end %>
+              </dl>
+            </div>
+            <div class="table-scroll">
+              <table class="ai-health-table">
+                <thead>
+                  <tr>
+                    <th><%= t("reports.sku_detail.ai_inventory_health.severity") %></th>
+                    <th><%= t("reports.sku_detail.ai_inventory_health.event_type") %></th>
+                    <th><%= t("reports.sku_detail.ai_inventory_health.message") %></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% result.events.each do |event| %>
+                    <tr>
+                      <td>
+                        <span class="ai-health-star ai-health-star--<%= ai_inventory_health_severity_class(event["severity"]) %>"
+                              title="<%= event["message"] %>"
+                              aria-label="<%= event["message"] %>">★</span>
+                        <span class="ai-health-severity"><%= event["severity"] %></span>
+                      </td>
+                      <td><%= event["event_type"] %></td>
+                      <td class="ai-health-message"><%= event["message"] %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        <% end %>
+      </div>
+    <% else %>
+      <section class="panel">
+        <div class="empty-state"><%= t("reports.sku_detail.empty.ai_inventory_health") %></div>
+      </section>
+    <% end %>
   <% elsif @active_tab == "stores" %>
     <section class="panel">
       <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, html: { class: "report-form" } do %>

@@ -1268,6 +1268,121 @@ textarea {
   min-width: 96px;
 }
 
+.inventory-list-table__ai-health-cell {
+  min-width: 112px;
+}
+
+.ai-health-stars {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.ai-health-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.ai-health-star--info {
+  color: #2563eb;
+}
+
+.ai-health-star--success {
+  color: #15803d;
+}
+
+.ai-health-star--warning {
+  color: #ca8a04;
+}
+
+.ai-health-star--orange {
+  color: #ea580c;
+}
+
+.ai-health-star--danger {
+  color: #dc2626;
+}
+
+.ai-health-star:hover {
+  filter: brightness(0.78);
+}
+
+.ai-health-result-list {
+  display: grid;
+  gap: 16px;
+}
+
+.ai-health-result__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.ai-health-result__meta {
+  display: flex;
+  gap: 20px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.ai-health-result__meta div {
+  display: grid;
+  gap: 3px;
+}
+
+.ai-health-result__meta dt {
+  color: var(--erp-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-health-result__meta dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-health-table {
+  min-width: 720px;
+}
+
+.ai-health-table td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ai-health-severity {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-health-table .ai-health-message {
+  min-width: 360px;
+  white-space: normal;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .ai-health-result__header {
+    display: block;
+  }
+
+  .ai-health-result__meta {
+    margin-top: 12px;
+  }
+}
+
 .inventory-list-table__actions {
   justify-content: flex-end;
   gap: 0;

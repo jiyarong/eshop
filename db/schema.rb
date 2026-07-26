@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_020558) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_26_050701) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -456,6 +456,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_020558) do
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "idx_ec_sku_dimensions_sku_code", unique: true
+  end
+
+  create_table "ec_sku_inventory_health_results", force: :cascade do |t|
+    t.datetime "analyzed_at"
+    t.jsonb "classification", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.jsonb "events", default: [], null: false
+    t.jsonb "metrics", default: {}, null: false
+    t.bigint "sku_id", null: false
+    t.bigint "submitted_by_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sku_id", "created_at"], name: "index_ec_sku_inventory_health_results_on_sku_id_and_created_at"
+    t.index ["sku_id"], name: "index_ec_sku_inventory_health_results_on_sku_id"
+    t.index ["submitted_by_id"], name: "index_ec_sku_inventory_health_results_on_submitted_by_id"
   end
 
   create_table "ec_sku_inventory_levels", force: :cascade do |t|
@@ -2613,6 +2627,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_020558) do
   add_foreign_key "ec_sku_developer_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_developer_assignments", "users"
   add_foreign_key "ec_sku_dimensions", "ec_skus", column: "sku_code", primary_key: "sku_code", on_delete: :cascade
+  add_foreign_key "ec_sku_inventory_health_results", "ec_skus", column: "sku_id"
+  add_foreign_key "ec_sku_inventory_health_results", "users", column: "submitted_by_id"
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_marketing_states", "ec_skus", column: "sku_id", on_delete: :cascade
   add_foreign_key "ec_sku_marketing_states", "users", column: "changed_by_id", on_delete: :nullify

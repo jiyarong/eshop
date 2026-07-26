@@ -1022,6 +1022,7 @@ en:
           platform: "Platform inventory"
       fields:
         actions: "Actions"
+        ai_inventory_health: "AI diagnosis"
         batch_code: "Batch code"
         batch_type: "Batch type"
         belarus_available: "Belarus available"
@@ -1101,6 +1102,7 @@ en:
         upload_failed: "Attachment upload failed"
         uploaded: "Attachment uploaded"
       empty:
+        ai_inventory_health: "No AI inventory diagnosis records"
         attachments: "No attachments"
         cost_data: "No cost data"
         inventory_levels: "No platform inventory snapshots"
@@ -1194,6 +1196,14 @@ en:
         return_quantity: "Returned units"
         sales_quantity: "Sold units"
         supply_quantity: "Supplied units"
+      ai_inventory_health:
+        analyzed_at: "Analyzed at"
+        event_type: "Event type"
+        message: "Message"
+        severity: "Severity"
+        submission_title: "AI inventory diagnosis #%{id}"
+        submitted_at: "Submitted at"
+        submitted_by: "Submitted by"
       metrics:
         average_price: "Average price"
         commission: "Commission"
@@ -1234,6 +1244,7 @@ en:
         last_30_days_revenue: "Last 30 days revenue"
         store_count: "Stores"
       tabs:
+        ai_inventory_health: "AI diagnosis"
         aria_label: "SKU detail sections"
         attachments: "Attachments"
         basic: "Basic"

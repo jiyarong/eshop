@@ -105,6 +105,23 @@ module ApplicationHelper
     t("reports.inventory.labels.estimated_volume_m3", volume: format("%.4f", volume_m3.to_d))
   end
 
+  def ai_inventory_health_severity_class(severity)
+    case severity.to_s.downcase
+    when "green", "success"
+      "success"
+    when "yellow", "warning", "warn"
+      "warning"
+    when "orange"
+      "orange"
+    when "red", "error", "critical", "danger"
+      "danger"
+    when "info", "blue"
+      "info"
+    else
+      "neutral"
+    end
+  end
+
   def user_time_zone
     User.profile_time_zone(current_user&.time_zone)
   end

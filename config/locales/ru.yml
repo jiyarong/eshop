@@ -993,6 +993,7 @@ ru:
           platform: "Остатки платформ"
       fields:
         actions: "Действия"
+        ai_inventory_health: "AI-диагностика"
         batch_code: "Код партии"
         batch_type: "Тип партии"
         belarus_available: "Доступно Беларусь"
@@ -1072,6 +1073,7 @@ ru:
         upload_failed: "Не удалось загрузить файл"
         uploaded: "Файл загружен"
       empty:
+        ai_inventory_health: "Нет записей AI-диагностики склада"
         attachments: "Нет файлов"
         cost_data: "Нет данных о себестоимости"
         order_data: "Нет заказов в выбранном диапазоне"
@@ -1166,6 +1168,14 @@ ru:
         day: "День"
         month: "Месяц"
         week: "Неделя"
+      ai_inventory_health:
+        analyzed_at: "Время анализа"
+        event_type: "Тип события"
+        message: "Сообщение"
+        severity: "Уровень"
+        submission_title: "AI-диагностика склада #%{id}"
+        submitted_at: "Время отправки"
+        submitted_by: "Отправил"
       sections:
         attachment_list: "Файлы"
         attachments: "Загрузить файл"
@@ -1191,6 +1201,7 @@ ru:
         last_30_days_revenue: "Выручка за 30 дней"
         store_count: "Магазины"
       tabs:
+        ai_inventory_health: "AI-диагностика"
         aria_label: "Разделы SKU"
         attachments: "Файлы"
         basic: "Основное"
