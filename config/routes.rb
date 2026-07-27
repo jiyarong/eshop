@@ -69,6 +69,7 @@ Rails.application.routes.draw do
     resources :conversations, only: [:create]
     get "skus/genernal_inventory" => "skus#genernal_inventory"
     get "skus/overview" => "skus#overview"
+    get "skus/weekly_profit_overview" => "skus#weekly_profit_overview"
     get "skus/dynamic_daily_sales_forecast" => "skus#dynamic_daily_sales_forecast"
     post "skus/inventory_health_result" => "skus#inventory_health_result"
     resources :sql_queries, only: [:create]

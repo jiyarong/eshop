@@ -134,6 +134,69 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_match "marketing_state_history", response.parsed_body.fetch("description")
   end
 
+  test "returns weekly profit overview for the previous four natural weeks in the user time zone" do
+    @user.update!(time_zone: "UTC")
+    calls = []
+    query_runner = WeeklyProfitReports::ReportQueryRunner
+    original_run = query_runner.method(:run)
+    query_runner.define_singleton_method(:run) do |params:, today:|
+      calls << { params: params, today: today }
+      {
+        rows: [ {
+          sku: params.fetch(:sku),
+          from_date: params.fetch(:from_date),
+          to_date: params.fetch(:to_date),
+          after_tax: calls.size * 10
+        } ]
+      }
+    end
+
+    travel_to Time.utc(2026, 7, 26, 23, 30) do
+      get "/ai/skus/weekly_profit_overview",
+        params: { sku: @sku.sku_code.downcase },
+        headers: bearer_headers(@raw_api_token)
+    end
+
+    assert_response :success
+    assert_equal [
+      { from_date: "2026-07-13", to_date: "2026-07-19" },
+      { from_date: "2026-07-06", to_date: "2026-07-12" },
+      { from_date: "2026-06-29", to_date: "2026-07-05" },
+      { from_date: "2026-06-22", to_date: "2026-06-28" }
+    ], calls.map { |call| call.fetch(:params).slice(:from_date, :to_date) }
+    assert_equal [ Date.new(2026, 7, 26) ] * 4, calls.map { |call| call.fetch(:today) }
+    assert calls.all? { |call| call.dig(:params, :report_type) == "wsu_deep" }
+    assert calls.all? { |call| call.dig(:params, :sku) == @sku.sku_code }
+
+    body = response.parsed_body
+    assert_equal "2026-07-13", body.dig("data", "last_week_data", "from_date")
+    assert_equal [
+      "2026-07-06",
+      "2026-06-29",
+      "2026-06-22"
+    ], body.dig("data", "pre_3_weeks_data").map { |row| row.fetch("from_date") }
+    assert_match "goods_cost: 成本", body.fetch("description")
+    assert_match "annualized_net_profit_cny", body.fetch("description")
+  ensure
+    query_runner&.define_singleton_method(:run, original_run) if original_run
+  end
+
+  test "weekly profit overview requires an existing sku" do
+    get "/ai/skus/weekly_profit_overview",
+      params: { sku: "MISSING-#{@token}" },
+      headers: bearer_headers(@raw_api_token)
+
+    assert_response :not_found
+    assert_equal({ "error" => "SKU not found" }, response.parsed_body)
+  end
+
+  test "weekly profit overview requires sku parameter" do
+    get "/ai/skus/weekly_profit_overview", headers: bearer_headers(@raw_api_token)
+
+    assert_response :bad_request
+    assert_equal({ "error" => "sku is required" }, response.parsed_body)
+  end
+
   test "returns sku general inventory" do
     received_batch = Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,

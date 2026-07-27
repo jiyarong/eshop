@@ -12,8 +12,8 @@ module AITasks
 
     def run
       agent = Agent.find_by!(code: AGENT_CODE)
-
-      ErpAI::AgentRunner.new(agent: agent, user: User.take).ask(question: question)
+      user = User.find_by(email: 'admin@qq.com')||User.first
+      ErpAI::AgentRunner.new(agent: agent, user: user).ask(question: question)
     end
 
     private
