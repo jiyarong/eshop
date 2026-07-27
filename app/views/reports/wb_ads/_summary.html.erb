@@ -1,13 +1,10 @@
-<section class="wb-ads-summary" aria-label="<%= t("reports.wb_ads.summary.title") %>">
+<section class="ozon-ads-summary wb-ads-summary" aria-label="<%= t("reports.wb_ads.summary.title") %>">
   <% comparison = local_assigns[:comparison] || {} %>
   <% [
-    [:revenue, wb_ads_metric(summary[:revenue], type: :currency)],
     [:spend, wb_ads_metric(summary[:spend], type: :currency)],
-    [:drr, wb_ads_metric(summary[:drr], type: :percentage)],
-    [:roas, wb_ads_metric(summary[:roas], type: :decimal)],
     [:ctr, wb_ads_metric(summary[:ctr], type: :percentage)]
   ].each do |metric, value| %>
-    <div class="wb-ads-summary__item">
+    <div class="ozon-ads-summary__item wb-ads-summary__item">
       <span><%= t("reports.wb_ads.metrics.#{metric}") %></span>
       <strong><%= value %></strong>
       <div class="weekly-profit-comparison-trend <%= wb_ads_comparison_class(comparison[metric]) %>">

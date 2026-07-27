@@ -90,6 +90,8 @@ Content-Type: application/json
 - 周汇率、币种换算：`docs/erp_ai_sql_query_agent_system_prompt/weekly_rates/SKILL.md`
 - 周利润归集、WR、WSU、WSU-DEEP：`docs/erp_ai_sql_query_agent_system_prompt/weekly_profit_attribution/SKILL.md`
 - Ozon 发货集群、目的集群、本地化销售占比：`docs/erp_ai_sql_query_agent_system_prompt/ozon_localization/SKILL.md`
+- Ozon 推广活动、广告商品和推广统计：`docs/erp_ai_sql_query_agent_system_prompt/ozon_ads/SKILL.md`
+- WB 推广活动、广告商品、预算和推广统计：`docs/erp_ai_sql_query_agent_system_prompt/wb_ads/SKILL.md`
 - WB/Ozon 原始数据表：`docs/erp_ai_sql_query_agent_system_prompt/raw_platform_data/SKILL.md`
 
 ## 全局字段约定

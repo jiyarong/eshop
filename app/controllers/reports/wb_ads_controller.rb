@@ -9,7 +9,7 @@ module Reports
       :wb_ads_placement_label, :wb_ads_metric, :wb_ads_comparison_note,
       :wb_ads_comparison_label, :wb_ads_comparison_class, :wb_ads_metric_content
 
-    SUMMARY_METRICS = %i[revenue spend drr roas ctr].freeze
+    SUMMARY_METRICS = %i[spend ctr].freeze
     ROW_METRICS = %i[spend views ctr orders drr clicks add_to_cart revenue cpc cpo cr cpm canceled avg_position].freeze
 
     def index

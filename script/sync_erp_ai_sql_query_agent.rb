@@ -21,7 +21,9 @@ class ErpAiSqlQueryAgentSync
     "inventory_procurement" => "ERP 业务 API 查询：库存列表、筛选、分页、批次详情和平台库存口径。",
     "costs_profit" => "ERP SQL 查询：SKU 基础成本、采购成本、体积重量和进口税参数字段与关系。",
     "ozon_localization" => "ERP SQL 查询：Ozon 发货集群、目的集群和本地化销售占比口径。",
+    "ozon_ads" => "ERP SQL 查询：Ozon 推广活动、商品、日统计、报表运行表字段、关系与防重复口径。",
     "raw_platform_data" => "ERP SQL 查询：WB 与 Ozon 原始平台数据表字段和关系。",
+    "wb_ads" => "ERP SQL 查询：WB 推广活动、商品、日统计、预算、费用流水字段、关系与关联转化口径。",
     "weekly_rates" => "ERP SQL 查询：周汇率、RUB/CNY/BYN 换算和周报汇率口径。",
     "weekly_profit_attribution" => "ERP 数据查询：通过 /ai/weekly_profit_reports 调用 WR、WSU、WSU-DEEP 周利润归集 API。"
   }.freeze

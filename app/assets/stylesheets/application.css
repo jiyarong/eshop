@@ -963,33 +963,6 @@ textarea {
   min-width: 1240px;
 }
 
-.wb-ads-view-switch {
-  width: fit-content;
-  display: inline-flex;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--erp-border);
-  border-radius: 7px;
-  background: var(--erp-surface-soft);
-}
-
-.wb-ads-view-switch__link {
-  min-width: 92px;
-  padding: 8px 14px;
-  border-radius: 5px;
-  color: var(--erp-muted);
-  font-size: 13px;
-  font-weight: 750;
-  text-align: center;
-  text-decoration: none;
-}
-
-.wb-ads-view-switch__link.is-active {
-  background: var(--erp-surface);
-  color: var(--erp-brand);
-  box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
-}
-
 .wb-ads-store-filter {
   margin-top: 14px;
 }
@@ -1002,35 +975,10 @@ textarea {
   min-width: min(190px, 100%);
 }
 
-.wb-ads-summary {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(145px, 1fr));
-  border-block: 1px solid var(--erp-border);
-  background: var(--erp-surface);
-}
-
-.wb-ads-summary__item {
-  min-width: 0;
-  padding: 14px 18px;
-  border-right: 1px solid var(--erp-border);
-}
-
-.wb-ads-summary__item:last-child {
-  border-right: 0;
-}
-
-.wb-ads-summary__item span,
 .wb-ads-subline {
   display: block;
   color: var(--erp-muted);
   font-size: 12px;
-}
-
-.wb-ads-summary__item strong {
-  display: block;
-  margin-top: 5px;
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
 }
 
 .wb-ads-table--campaigns {
@@ -1150,16 +1098,6 @@ textarea {
 
 .wb-ads-detail-table {
   min-width: 1460px;
-}
-
-@media (max-width: 780px) {
-  .wb-ads-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .wb-ads-summary__item {
-    border-bottom: 1px solid var(--erp-border);
-  }
 }
 
 .ozon-ads-back {

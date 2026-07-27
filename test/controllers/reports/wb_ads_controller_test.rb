@@ -131,7 +131,16 @@ class Reports::WbAdsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller='time-range-selector']", count: 1
     assert_select ".weekly-profit-filter-tag.is-active", text: @store.store_name
     assert_select ".wb-ads-view-switch__link.is-active", text: I18n.t("reports.wb_ads.views.campaigns")
-    assert_select ".wb-ads-summary__item", count: 5
+    assert_select ".ozon-ads-tabs.wb-ads-view-switch", count: 1
+    assert_select ".ozon-ads-tabs__link.wb-ads-view-switch__link", count: 2
+    assert_select ".ozon-ads-summary.wb-ads-summary", count: 1
+    assert_select ".ozon-ads-summary__item.wb-ads-summary__item", count: 2
+    assert_select ".wb-ads-summary__item", count: 2
+    assert_select ".wb-ads-summary__item span", text: I18n.t("reports.wb_ads.metrics.spend")
+    assert_select ".wb-ads-summary__item span", text: I18n.t("reports.wb_ads.metrics.ctr")
+    %i[revenue drr roas].each do |metric|
+      assert_select ".wb-ads-summary__item span", text: I18n.t("reports.wb_ads.metrics.#{metric}"), count: 0
+    end
     assert_select "a[data-turbo-frame='wb_ads_drawer']", text: @campaign.name
     assert_select ".status-pill.is-active", text: I18n.t("reports.wb_ads.statuses.9")
     assert_select "td", text: /506\.00 ₽/
@@ -181,7 +190,6 @@ class Reports::WbAdsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".weekly-profit-comparison-note", text: /#{previous_date}/
     assert_select ".wb-ads-summary__item .weekly-profit-comparison-trend.is-negative", text: /100\.00%/, minimum: 1
-    assert_select ".wb-ads-summary__item .weekly-profit-comparison-trend.is-positive", text: /100\.00%/, minimum: 1
     assert_select "tbody .weekly-profit-table-comparison.is-negative", text: /100\.00%/, minimum: 1
   end
 
@@ -205,7 +213,7 @@ class Reports::WbAdsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-frame#wb_ads_drawer"
     assert_select "#wb-ads-drawer-title", text: @campaign.name
-    assert_select ".wb-ads-drawer-content .wb-ads-summary__item", count: 5
+    assert_select ".wb-ads-drawer-content .wb-ads-summary__item", count: 2
     assert_select "td strong", text: "Test towel rail"
     assert_select "td", text: /829\.00 ₽/
   end
