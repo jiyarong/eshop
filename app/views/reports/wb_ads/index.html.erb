@@ -6,11 +6,11 @@
   <p class="weekly-profit-comparison-note"><%= wb_ads_comparison_note %></p>
   <%= render "summary", summary: @summary, comparison: @summary_comparison %>
 
-  <nav class="wb-ads-view-switch" aria-label="<%= t("reports.wb_ads.views.label") %>">
+  <nav class="ozon-ads-tabs wb-ads-view-switch" aria-label="<%= t("reports.wb_ads.views.label") %>">
     <% %w[campaigns products].each do |view| %>
       <%= link_to t("reports.wb_ads.views.#{view}"),
                   reports_wb_ads_path(store_id: @store.id, from_date: @from_date, to_date: @to_date, view:, q: @query.presence, statuses: @statuses),
-                  class: "wb-ads-view-switch__link #{'is-active' if @view == view}",
+                  class: "ozon-ads-tabs__link wb-ads-view-switch__link #{'is-active' if @view == view}",
                   aria: { current: (@view == view ? "page" : nil) } %>
     <% end %>
   </nav>
