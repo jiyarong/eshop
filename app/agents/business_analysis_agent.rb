@@ -18,6 +18,9 @@ class BusinessAnalysisAgent < ActiveAgent::Base
       model: params.fetch(:model),
       temperature: params.fetch(:temperature)
     }
+    if params.fetch(:available_tools, []).present?
+      options[:response_format] = { type: "json_object" }
+    end
     if deepseek_model?(options[:model])
       options[:request_options] = {
         extra_body: {

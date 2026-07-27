@@ -1,6 +1,8 @@
 module ErpAI
   class AgentRunner
-    DEFAULT_MAX_TOOL_ROUNDS = 8
+    class InvalidResponse < StandardError; end
+
+    DEFAULT_MAX_TOOL_ROUNDS = 20
     TOOL_LIMIT_MESSAGE = "工具调用次数已达到上限，请缩小问题范围后重试。".freeze
 
     def initialize(agent:, user:, client: DefaultClient.new, server_registry: ErpAI::Mcp::ServerRegistry.new, tool_executor: nil, max_tool_rounds: nil)
@@ -13,6 +15,7 @@ module ErpAI
     end
 
     def ask(question:, module_name: nil, business_object_type: nil, business_object_id: nil, time_range: {}, data_summary: nil)
+      Rails.logger.level = Logger::INFO
       conversation = agent.conversations.create!(
         user: user,
         module_name: module_name,
@@ -38,10 +41,13 @@ module ErpAI
         response = complete(conversation, data_summary)
         tool_calls = Array(response[:tool_calls] || response["tool_calls"])
 
-        if tool_calls.empty?
+        if tool_calls.blank?
+          content = response[:content] || response["content"]
+          raise InvalidResponse, "模型响应同时缺少 content 和 tool_calls" if content.blank?
+
           conversation.messages.create!(
             role: "assistant",
-            content: response.fetch(:content),
+            content: content,
             usage: response.fetch(:usage, {})
           )
           return
@@ -55,6 +61,7 @@ module ErpAI
 
         execute_tool_calls(conversation, tool_calls)
         tool_rounds += 1
+        Rails.logger.info "----> turn #{tool_rounds} completed, tool calls executed: \n\t#{tool_calls.map { |tc| "#{tc[:name] || tc['name']}-->#{tc[:arguments] || tc['arguments']}".truncate(100) }.join("\n\t")}"
 
         if tool_rounds >= max_tool_rounds
           conversation.messages.create!(role: "assistant", content: TOOL_LIMIT_MESSAGE)

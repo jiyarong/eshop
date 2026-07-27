@@ -90,6 +90,7 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
     ).analyze
 
     assert_not generation.options.key?(:tools)
+    assert_equal({ type: "json_object" }, generation.options.fetch(:response_format))
     assert_includes generation.messages.first.fetch(:content), "search__web_search"
     assert_includes generation.messages.first.fetch(:content), "tool_calls"
   end

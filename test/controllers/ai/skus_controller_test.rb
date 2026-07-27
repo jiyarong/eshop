@@ -38,6 +38,12 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
       effective_at: 1.day.ago,
       changed_by: @user
     )
+    @dimension = Ec::SkuDimension.create!(
+      sku_code: @sku.sku_code,
+      inner_length_cm: 10,
+      inner_width_cm: 20,
+      inner_height_cm: 30
+    )
     Ec::SkuDeveloperAssignment.create!(sku: @sku, user: @developer)
     @store = Ec::Store.create!(
       platform: "ozon",
@@ -59,6 +65,7 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuProduct.where(id: @sku_product&.id).delete_all
     Ec::Store.where(id: @store&.id).delete_all
     Ec::SkuMarketingState.where(sku_id: @sku&.id).delete_all
+    Ec::SkuDimension.where(id: @dimension&.id).delete_all
     Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     Ec::MasterSku.where(id: @master_sku&.id).delete_all
@@ -80,15 +87,19 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
       "sku" => @sku.sku_code,
       "name" => @sku.product_name,
       "marketing_grade" => "A",
-      "marketing_stage" => "grw",
+      "marketing_stage" => "GRW",
       "marketing_strategy" => "加速成长",
       "developers" => [@developer.display_name],
       "operators" => [@operator.display_name],
-      "category" => @category.name,
+      "category" => "",
       "spu" => @master_sku.master_sku_code,
-      "is_active" => true
+      "volume_per_unit" => 0.006,
+      "dimensions" => { "length" => 10.0, "width" => 20.0, "height" => 30.0 }
     }, body.fetch("data").except("marketing_state_history"))
     assert_match "SKU基础信息", body.fetch("description")
+    assert_not_includes body.fetch("description"), "is_active"
+    assert_match "volume_per_unit", body.fetch("description")
+    assert_match "dimensions", body.fetch("description")
   end
 
   test "returns marketing grade and stage history in reverse chronological order" do

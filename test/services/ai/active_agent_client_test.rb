@@ -4,7 +4,7 @@ require "ostruct"
 class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
   class FakeGeneration
     class << self
-      attr_accessor :response
+      attr_accessor :response, :responses, :generate_now_calls
     end
 
     attr_reader :params
@@ -18,6 +18,9 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     end
 
     def generate_now
+      self.class.generate_now_calls += 1
+      return self.class.responses.shift if self.class.responses.present?
+
       self.class.response || OpenStruct.new(
         message: OpenStruct.new(content: "分析完成"),
         usage: { "total_tokens" => 18 }
@@ -37,6 +40,8 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
 
   setup do
     FakeGeneration.response = nil
+    FakeGeneration.responses = nil
+    FakeGeneration.generate_now_calls = 0
   end
 
   test "delegates completion request to active agent class" do
@@ -136,6 +141,135 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
         arguments: { "query" => "SKU" }
       }
     ], result.fetch(:tool_calls)
+  end
+
+  test "normalizes tool calls emitted in a markdown JSON block" do
+    FakeGeneration.response = OpenStruct.new(
+      message: OpenStruct.new(
+        content: <<~CONTENT
+          I will call the tool now.
+
+          ```json
+          {"tool_calls":[{"id":"call_1","name":"wiki__search","arguments":{"query":"SKU"}}]}
+          ```
+        CONTENT
+      ),
+      usage: { "total_tokens" => 20 }
+    )
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "查资料" }],
+      tools: [{ name: "wiki__search", description: "Search wiki" }],
+      thinking_enabled: false
+    )
+
+    assert_nil result.fetch(:content)
+    assert_equal "wiki__search", result.fetch(:tool_calls).first.fetch(:name)
+  end
+
+  test "retries once when assistant tool call JSON is invalid" do
+    FakeGeneration.responses = [
+      OpenStruct.new(
+        message: OpenStruct.new(content: "```json\n{\"tool_calls\":[{\"name\":\"wiki__search\"}]}}"),
+        usage: { "total_tokens" => 10 }
+      ),
+      OpenStruct.new(
+        message: OpenStruct.new(content: { tool_calls: [{ name: "wiki__search", arguments: { query: "SKU" } }] }.to_json),
+        usage: { "total_tokens" => 20 }
+      )
+    ]
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "查资料" }],
+      tools: [{ name: "wiki__search", description: "Search wiki" }],
+      thinking_enabled: false
+    )
+
+    assert_equal 2, FakeGeneration.generate_now_calls
+    assert_equal "wiki__search", result.fetch(:tool_calls).first.fetch(:name)
+    assert_includes FakeAgent.last_generation.params.fetch(:messages).last.fetch(:content), "严格合法的 JSON"
+  end
+
+  test "retries once when assistant returns an empty tool call list" do
+    FakeGeneration.responses = [
+      OpenStruct.new(
+        message: OpenStruct.new(content: { tool_calls: [] }.to_json),
+        usage: { "total_tokens" => 10 }
+      ),
+      OpenStruct.new(
+        message: OpenStruct.new(content: { content: "分析完成" }.to_json),
+        usage: { "total_tokens" => 20 }
+      )
+    ]
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "查资料" }],
+      tools: [{ name: "wiki__search", description: "Search wiki" }],
+      thinking_enabled: false
+    )
+
+    assert_equal 2, FakeGeneration.generate_now_calls
+    assert_equal "分析完成", result.fetch(:content)
+  end
+
+  test "retries once when assistant response is empty" do
+    FakeGeneration.responses = [
+      OpenStruct.new(
+        message: OpenStruct.new(content: nil, tool_calls: []),
+        usage: { "total_tokens" => 10 }
+      ),
+      OpenStruct.new(
+        message: OpenStruct.new(content: { content: "分析完成" }.to_json),
+        usage: { "total_tokens" => 20 }
+      )
+    ]
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "查资料" }],
+      tools: [{ name: "wiki__search", description: "Search wiki" }],
+      thinking_enabled: false
+    )
+
+    assert_equal 2, FakeGeneration.generate_now_calls
+    assert_equal "分析完成", result.fetch(:content)
+  end
+
+  test "raises after retrying invalid assistant tool call JSON" do
+    invalid_response = OpenStruct.new(
+      message: OpenStruct.new(content: "{\"tool_calls\":[{\"name\":\"wiki__search\"}]}}"),
+      usage: { "total_tokens" => 10 }
+    )
+    FakeGeneration.responses = [invalid_response, invalid_response]
+
+    assert_raises ErpAI::ActiveAgentClient::InvalidResponse do
+      ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+        model: "custom-model",
+        temperature: 0.2,
+        system_prompt: "系统提示词",
+        context: "ERP 上下文",
+        messages: [{ role: "user", content: "查资料" }],
+        tools: [{ name: "wiki__search", description: "Search wiki" }],
+        thinking_enabled: false
+      )
+    end
+
+    assert_equal 2, FakeGeneration.generate_now_calls
   end
 
   test "extracts final content from assistant JSON content" do

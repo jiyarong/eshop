@@ -1,11 +1,33 @@
 module ErpAI
   class ActiveAgentClient
+    class InvalidResponse < StandardError; end
+
+    FORMAT_RETRY_MESSAGE = <<~MESSAGE.squish.freeze
+      上一条工具调用不是严格合法的 JSON。请只重新输出完整、严格合法的 JSON 对象，
+      不要添加说明文字、Markdown 或代码块。
+    MESSAGE
+
     def initialize(agent_class: BusinessAnalysisAgent)
       @agent_class = agent_class
     end
 
     def complete(request)
-      response = agent_class.with(
+      response = generate(request)
+      result = normalize_response(response)
+      return result unless invalid_structured_response?(response)
+
+      response = generate(retry_request(request, response))
+      raise InvalidResponse, "模型连续返回了无效的结构化响应" if invalid_structured_response?(response)
+
+      normalize_response(response)
+    end
+
+    private
+
+    attr_reader :agent_class
+
+    def generate(request)
+      agent_class.with(
         model: request.fetch(:model),
         temperature: request.fetch(:temperature),
         thinking_enabled: request.fetch(:thinking_enabled),
@@ -14,17 +36,42 @@ module ErpAI
         messages: request.fetch(:messages),
         available_tools: request.fetch(:tools)
       ).analyze.generate_now
+    end
 
+    def normalize_response(response)
       {
         content: extract_content(response),
         tool_calls: extract_tool_calls(response),
-        usage: extract_usage(response)
+        usage: extract_usage(response),
+        finish_reason: value_from(response, :finish_reason)
       }
     end
 
-    private
+    def retry_request(request, response)
+      request.merge(
+        messages: [
+          *request.fetch(:messages),
+          { role: "assistant", content: message_content(response) },
+          { role: "user", content: FORMAT_RETRY_MESSAGE }
+        ]
+      )
+    end
 
-    attr_reader :agent_class
+    def invalid_structured_response?(response)
+      content = message_content(response)
+      json_content = parsed_message_content(response)
+      if json_content
+        return false if json_content["content"].present?
+        return false if normalize_tool_calls(json_content["tool_calls"]).present?
+
+        return true
+      end
+
+      raw_tool_calls = value_from(message_from(response), :tool_calls) || value_from(response, :tool_calls)
+      return false if normalize_tool_calls(raw_tool_calls).present?
+
+      content.blank? || content.include?('"tool_calls"')
+    end
 
     def extract_content(response)
       json_content = parsed_message_content(response)
@@ -83,11 +130,17 @@ module ErpAI
       value_from(response, :message)
     end
 
+    def message_content(response)
+      value_from(message_from(response), :content)
+    end
+
     def parsed_message_content(response)
-      content = value_from(message_from(response), :content)
+      content = message_content(response)
+      return content.deep_stringify_keys if content.is_a?(Hash)
       return nil unless content.is_a?(String)
 
-      parsed = JSON.parse(content)
+      json = content[/```(?:json)?\s*(.*?)(?:```|\z)/m, 1] || content
+      parsed = JSON.parse(json.strip)
       parsed.is_a?(Hash) ? parsed : nil
     rescue JSON::ParserError
       nil

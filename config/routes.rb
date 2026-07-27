@@ -70,7 +70,7 @@ Rails.application.routes.draw do
     get "skus/genernal_inventory" => "skus#genernal_inventory"
     get "skus/overview" => "skus#overview"
     get "skus/dynamic_daily_sales_forecast" => "skus#dynamic_daily_sales_forecast"
-    post "skus/invetory_health_result" => "skus#invetory_health_result"
+    post "skus/inventory_health_result" => "skus#inventory_health_result"
     resources :sql_queries, only: [:create]
     resources :weekly_profit_reports, only: [:create]
     resources :inventory_reports, only: [:create]

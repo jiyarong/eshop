@@ -67,6 +67,12 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     end
   end
 
+  class EmptyResponseClient
+    def complete(_request)
+      { content: nil, tool_calls: [], usage: {} }
+    end
+  end
+
   class FakeMcpClient
     def list_tools
       [
@@ -232,5 +238,18 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_equal ["user", "assistant", "tool", "assistant"], messages.pluck(:role)
     assert_equal 1, client.requests.size
     assert_includes messages.last.content, "工具调用次数已达到上限"
+  end
+
+  test "raises a clear error when model response has no content or tool calls" do
+    error = assert_raises ErpAI::AgentRunner::InvalidResponse do
+      ErpAI::AgentRunner.new(
+        agent: @agent,
+        user: @user,
+        client: EmptyResponseClient.new
+      ).ask(question: "分析库存")
+    end
+
+    assert_includes error.message, "content"
+    assert_includes error.message, "tool_calls"
   end
 end

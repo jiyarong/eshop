@@ -49,7 +49,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     }
 
     assert_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count }, 1 do
-      post "/ai/skus/invetory_health_result",
+      post "/ai/skus/inventory_health_result",
         params: payload,
         headers: bearer_headers,
         as: :json
@@ -67,7 +67,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     assert_equal @user.display_name, response.parsed_body.dig("data", "submitted_by")
 
     assert_no_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count } do
-      post "/ai/skus/invetory_health_result",
+      post "/ai/skus/inventory_health_result",
         params: payload,
         headers: bearer_headers,
         as: :json
@@ -77,7 +77,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
     travel 6.seconds do
       assert_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count }, 1 do
-        post "/ai/skus/invetory_health_result",
+        post "/ai/skus/inventory_health_result",
           params: payload,
           headers: bearer_headers,
           as: :json
@@ -91,7 +91,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
     assert_difference -> { Ec::SkuInventoryHealthResult.count }, 2 do
       [@sku, other_sku].each do |sku|
-        post "/ai/skus/invetory_health_result",
+        post "/ai/skus/inventory_health_result",
           params: event_payload(sku.sku_code),
           headers: bearer_headers,
           as: :json
@@ -125,7 +125,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     analyzed_at = Time.zone.parse("2026-07-26 12:34:56")
     travel_to analyzed_at do
       assert_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count }, 1 do
-        post "/ai/skus/invetory_health_result",
+        post "/ai/skus/inventory_health_result",
           params: payload,
           headers: bearer_headers,
           as: :json
@@ -147,7 +147,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     ]
 
     assert_no_difference -> { Ec::SkuInventoryHealthResult.count } do
-      post "/ai/skus/invetory_health_result",
+      post "/ai/skus/inventory_health_result",
         params: payload,
         headers: bearer_headers,
         as: :json
@@ -158,7 +158,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
   end
 
   test "requires an authenticated api key" do
-    post "/ai/skus/invetory_health_result", params: {}, as: :json
+    post "/ai/skus/inventory_health_result", params: {}, as: :json
 
     assert_response :unauthorized
     assert_equal({ "error" => "Unauthorized" }, response.parsed_body)
