@@ -83,12 +83,15 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
     assert_select "input[name='agent[agent_type]'][type='radio'][value='client']"
     assert_select "form[data-controller='agent-form']"
+    assert_select "section[data-agent-form-target='toolPanel']"
+    assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
+      count: ErpAI::ToolRegistry.default_tools.size
+    assert_select "input[data-agent-form-target='toolInput'][value='erp_ai_request']"
     assert_select "section[data-agent-form-target='skillPanel']"
     assert_select "input[data-agent-form-target='skillInput'][value=?]", @skill.id.to_s
     assert_select "textarea[name='agent[recommended_prompts_text]']"
     assert_select "input[name='agent[skill_ids][]'][value=?]", @skill.id.to_s
     assert_select "input[name='agent[avatar]'][type='file']"
-    assert_select "input[name='agent[tools]']", false
     assert_select "input[name='agent[enabled]'][type='checkbox']"
     assert_select ".ai-editor-layout"
     assert_select ".ai-form-actions button[type='submit']"
@@ -103,6 +106,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "新增 AI Agent"
     assert_select "input[name='agent[code]']"
     assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
+    assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
+      count: ErpAI::ToolRegistry.default_tools.size
     assert_select "input[name='agent[skill_ids][]'][value=?]", @skill.id.to_s
   end
 
@@ -130,7 +135,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "自定义补货助手", @agent.name
     assert_equal "补货分析说明", @agent.description
     assert @agent.enabled?
-    assert_equal ErpAI::ToolRegistry.default_tool_names, @agent.tools
+    assert_empty @agent.tools
     assert_equal "自定义补货分析提示词", @agent.system_prompt
     assert_equal "deepseek-chat", @agent.model_id
     assert_equal 0.45, @agent.temperature.to_f
@@ -138,6 +143,24 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert @agent.thinking_enabled?
     assert_equal [ "问题一", "问题二" ], @agent.recommended_prompts
     assert_equal [ @skill ], @agent.skills.to_a
+  end
+
+  test "super admin can configure tools for a web agent" do
+    sign_in @admin
+
+    patch "/admin/agents/sku_replenishment_advisor", params: {
+      agent: {
+        agent_type: "web",
+        tools: [ "erp_ai_request", "query_inventory_data" ],
+        skill_ids: [ @skill.id ]
+      }
+    }
+
+    assert_redirected_to "/admin/agents"
+    @agent.reload
+    assert @agent.web?
+    assert_equal [ "erp_ai_request", "query_inventory_data" ], @agent.tools
+    assert_empty @agent.skills
   end
 
   test "super admin can upload an agent avatar" do
@@ -168,11 +191,12 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
 
   test "super admin can create a custom agent" do
     sign_in @admin
+    custom_code = "custom_agent_#{@token}"
 
-    assert_difference "Agent.count", 1 do
+    assert_difference -> { Agent.where(code: custom_code).count }, 1 do
       post "/admin/agents", params: {
         agent: {
-          code: "custom_agent_#{@token}",
+          code: custom_code,
           name: "自定义 Agent",
           description: "自定义说明",
           enabled: "1",
@@ -188,15 +212,16 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to "/admin/agents"
-    agent = Agent.find_by!(code: "custom_agent_#{@token}")
+    agent = Agent.find_by!(code: custom_code)
     assert agent.client?
+    assert_empty agent.tools
     assert_equal [ "如何开始？" ], agent.recommended_prompts
     assert_equal [ @skill ], agent.skills.to_a
   end
 
   test "web agents cannot keep skills" do
     sign_in @admin
-    @agent.update!(agent_type: :client)
+    @agent.update!(agent_type: :client, tools: [])
     @agent.skills << @skill
 
     patch "/admin/agents/sku_replenishment_advisor", params: {
@@ -212,6 +237,24 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
 
     agent_skill = AgentSkill.new(agent: @agent, skill: @skill)
     assert_not agent_skill.valid?
+  end
+
+  test "client agents cannot keep tools" do
+    sign_in @admin
+
+    patch "/admin/agents/sku_replenishment_advisor", params: {
+      agent: {
+        agent_type: "client",
+        tools: [ "query_inventory_data" ],
+        skill_ids: [ @skill.id ]
+      }
+    }
+
+    assert_redirected_to "/admin/agents"
+    @agent.reload
+    assert @agent.client?
+    assert_empty @agent.tools
+    assert_equal [ @skill ], @agent.skills.to_a
   end
 
   test "super admin can update tunable fields with browser post fallback" do

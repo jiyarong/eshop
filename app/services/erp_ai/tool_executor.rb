@@ -1,11 +1,14 @@
 module ErpAI
   class ToolExecutor
-    def initialize(mcp_clients:, mcp_tool_filters: {})
+    def initialize(mcp_clients:, mcp_tool_filters: {}, current_user: nil)
       @mcp_clients = mcp_clients
       @mcp_tool_filters = mcp_tool_filters
+      @current_user = current_user
     end
 
     def call(id:, name:, arguments:)
+      return erp_ai_request_result(id, name, arguments) if name == "erp_ai_request"
+
       parsed = ErpAI::Mcp::ToolAdapter.parse_model_tool_name(name)
       return error_result(id, name, "unknown_tool", "Unknown tool: #{name}") if parsed.nil?
 
@@ -26,7 +29,15 @@ module ErpAI
 
     private
 
-    attr_reader :mcp_clients, :mcp_tool_filters
+    attr_reader :mcp_clients, :mcp_tool_filters, :current_user
+
+    def erp_ai_request_result(id, name, arguments)
+      {
+        tool_call_id: id,
+        name: name,
+        result: ::Mcp::ErpAIRequest.new(current_user: current_user).call(arguments || {})
+      }
+    end
 
     def allowed_mcp_tool?(parsed)
       allowed_tools = mcp_tool_filters[parsed.fetch(:server_name)]

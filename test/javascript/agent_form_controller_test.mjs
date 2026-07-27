@@ -11,7 +11,7 @@ const bundle = await build({
   write: false,
 });
 
-const [{ syncSkillAvailability }] = await Promise.all(
+const [{ syncSkillAvailability, syncToolAvailability }] = await Promise.all(
   bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)),
 );
 
@@ -45,6 +45,7 @@ test("web agents disable and clear skill selections", () => {
 
   assert.equal(skillPanel.classList.contains("is-disabled"), true);
   assert.equal(skillPanel.getAttribute("aria-disabled"), "true");
+  assert.equal(skillPanel.hidden, true);
   assert.deepEqual(skillInputs, [
     { checked: false, disabled: true },
     { checked: false, disabled: true },
@@ -59,5 +60,33 @@ test("client agents enable skill selections", () => {
 
   assert.equal(skillPanel.classList.contains("is-disabled"), false);
   assert.equal(skillPanel.getAttribute("aria-disabled"), "false");
+  assert.equal(skillPanel.hidden, false);
   assert.equal(skillInputs[0].disabled, false);
+});
+
+test("client agents disable and clear tool selections", () => {
+  const toolPanel = buildPanel();
+  const toolInputs = [ { checked: true, disabled: false }, { checked: false, disabled: false } ];
+
+  syncToolAvailability({ agentType: "client", toolPanel, toolInputs });
+
+  assert.equal(toolPanel.classList.contains("is-disabled"), true);
+  assert.equal(toolPanel.getAttribute("aria-disabled"), "true");
+  assert.equal(toolPanel.hidden, true);
+  assert.deepEqual(toolInputs, [
+    { checked: false, disabled: true },
+    { checked: false, disabled: true },
+  ]);
+});
+
+test("web agents enable tool selections", () => {
+  const toolPanel = buildPanel();
+  const toolInputs = [ { checked: false, disabled: true } ];
+
+  syncToolAvailability({ agentType: "web", toolPanel, toolInputs });
+
+  assert.equal(toolPanel.classList.contains("is-disabled"), false);
+  assert.equal(toolPanel.getAttribute("aria-disabled"), "false");
+  assert.equal(toolPanel.hidden, false);
+  assert.equal(toolInputs[0].disabled, false);
 });

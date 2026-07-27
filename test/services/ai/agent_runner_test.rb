@@ -171,6 +171,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_includes request.fetch(:context), "当前用户角色和权限范围"
     assert_includes request.fetch(:context), "库存数据摘要"
     assert_includes request.fetch(:tools).map { |tool| tool.fetch(:name) }, "query_inventory_data"
+    assert_includes request.fetch(:tools).map { |tool| tool.fetch(:name) }, "erp_ai_request"
     assert_not_includes request.fetch(:tools).map { |tool| tool.fetch(:name) }, "router"
     assert_not_includes request.fetch(:tools).map { |tool| tool.fetch(:name) }, "export_pdf"
   end

@@ -1,6 +1,6 @@
 module ErpAI
   class WeeklyProfitReportsController < ActionController::API
-    before_action :authenticate_api_key!
+    include ErpAI::RequestAuthenticatable
 
     def create
       report = ::WeeklyProfitReports::ReportQueryRunner.run(params: params, today: user_today)
@@ -24,20 +24,6 @@ module ErpAI
     end
 
     private
-
-    def authenticate_api_key!
-      @current_user = UserApiKey.authenticate(bearer_token)
-      return if @current_user&.can?(:view_reports)
-
-      render json: { error: "Unauthorized" }, status: :unauthorized
-    end
-
-    def bearer_token
-      header = request.headers["Authorization"].to_s
-      return unless header.start_with?("Bearer ")
-
-      header.delete_prefix("Bearer ").strip
-    end
 
     def user_today
       Time.current.in_time_zone(User.profile_time_zone(@current_user&.time_zone)).to_date

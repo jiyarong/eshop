@@ -25,6 +25,7 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert agent.enabled?
     assert agent.web?
     assert_includes agent.tools, "query_inventory_data"
+    assert_includes agent.tools, "erp_ai_request"
     assert_not_includes agent.tools, "router"
     assert_not_includes agent.tools, "export_pdf"
     assert_not_includes agent.tools, "export_word"
@@ -89,6 +90,22 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert agent.valid?
   end
 
+  test "client agents reject server tools" do
+    agent = Agent.new(
+      code: "custom_dynamic_agent",
+      name: "临时 Agent",
+      system_prompt: Agent::DEFAULT_SYSTEM_PROMPT,
+      model_id: "fake-model",
+      temperature: 0.3,
+      agent_type: :client,
+      tools: [ "query_inventory_data" ],
+      enabled: true
+    )
+
+    assert_not agent.valid?
+    assert_includes agent.errors[:tools], I18n.t("admin.agents.errors.tools_unavailable_for_client")
+  end
+
   test "fixed agent profile fields remain customized when definitions are seeded" do
     agent = Agent.ensure_fixed!("business_analysis")
 
@@ -99,6 +116,16 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
 
     assert_equal "可修改名称", agent.reload.name
     assert_not agent.enabled?
+  end
+
+  test "seeding clears legacy tools from client agents" do
+    agent = Agent.ensure_fixed!("business_analysis")
+    agent.update_columns(agent_type: "client", tools: [ "query_inventory_data" ])
+
+    Agent.seed_fixed!
+
+    assert agent.reload.client?
+    assert_empty agent.tools
   end
 
   test "fixed agent allows prompt model and temperature tuning" do

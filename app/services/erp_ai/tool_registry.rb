@@ -20,6 +20,36 @@ module ErpAI
       {
         name: "query_business_object",
         description: "查询订单、客户、商品、供应商或仓库等业务对象详情。"
+      },
+      {
+        name: "erp_ai_request",
+        description: "调用当前应用内指定路径对应的 ErpAI Controller。仅允许 app-relative /ai/... URL，不允许外部 host。",
+        parameters: {
+          type: "object",
+          properties: {
+            method: {
+              type: "string",
+              enum: %w[get post put patch delete],
+              description: "HTTP method，默认 get"
+            },
+            url: {
+              type: "string",
+              description: "App-relative URL，例如 /ai/weekly_profit_reports.json"
+            },
+            params: {
+              type: "object",
+              description: "请求参数。GET/DELETE 作为 query string，POST/PUT/PATCH 作为 JSON body",
+              additionalProperties: true
+            },
+            headers: {
+              type: "object",
+              description: "可转发的 HTTP headers，仅接受 Accept、Accept-Language、X-Request-Id",
+              additionalProperties: true
+            }
+          },
+          required: [ "url" ],
+          additionalProperties: false
+        }
       }
     ].freeze
 

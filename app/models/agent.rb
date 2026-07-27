@@ -118,7 +118,8 @@ class Agent < ApplicationRecord
     format: { with: /\A[a-z0-9]+(?:[_-][a-z0-9]+)*\z/ },
     length: { maximum: 64 }
   validates :temperature, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
-  validate :tools_are_query_only
+  validate :tools_are_registered
+  validate :client_agent_has_no_tools
   validate :web_agent_has_no_skills
 
   def self.ensure_fixed!(code)
@@ -132,6 +133,7 @@ class Agent < ApplicationRecord
     agent.system_prompt = definition.fetch(:default_system_prompt) if agent.system_prompt.blank?
     agent.model_id = definition.fetch(:default_model_id) if agent.model_id.blank?
     agent.temperature = definition.fetch(:default_temperature) if agent.temperature.blank?
+    agent.tools = [] if agent.client?
     agent.save!
     agent
   end
@@ -148,11 +150,17 @@ class Agent < ApplicationRecord
 
   private
 
-  def tools_are_query_only
+  def tools_are_registered
     invalid_tools = Array(tools) - ErpAI::ToolRegistry.default_tool_names
     return if invalid_tools.empty?
 
-    errors.add(:tools, "只能包含 ERP 查询工具：#{invalid_tools.join(', ')}")
+    errors.add(:tools, I18n.t("admin.agents.errors.invalid_tools", tools: invalid_tools.join(", ")))
+  end
+
+  def client_agent_has_no_tools
+    return unless client? && tools.any?
+
+    errors.add(:tools, I18n.t("admin.agents.errors.tools_unavailable_for_client"))
   end
 
   def web_agent_has_no_skills

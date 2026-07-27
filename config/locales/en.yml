@@ -499,7 +499,9 @@ en:
         title: "Edit AI Agent"
       empty_skills: "No skills yet. Create a skill first."
       errors:
+        invalid_tools: "include unregistered tools: %{tools}"
         skills_unavailable_for_web: "are only available to client agents"
+        tools_unavailable_for_client: "are only available to web agents"
       fields:
         actions: "Actions"
         agent_type: "Agent type"
@@ -521,8 +523,8 @@ en:
         title: "AI Agent Management"
       hints:
         agent_types:
-          client: "Available to desktop clients and may use Skills"
-          web: "Available only in the web application and cannot use Skills"
+          client: "Available to desktop clients, with configurable Skills and no server tools"
+          web: "Runs in the web application, with configurable server tools and no Skills"
         enabled: "Disabled agents are omitted from the API"
         thinking: "Allow the model to use reasoning mode"
       new:
@@ -539,6 +541,25 @@ en:
       statuses:
         disabled: "Disabled"
         enabled: "Enabled"
+      tools:
+        erp_ai_request:
+          description: "Call an internal /ai endpoint as the current user without an API key."
+          name: "ERP AI endpoint request"
+        query_business_object:
+          description: "Query details for orders, customers, products, suppliers, or warehouses."
+          name: "Business object query"
+        query_finance_data:
+          description: "Query revenue, costs, gross profit, receivables, payables, and collections."
+          name: "Finance data query"
+        query_inventory_data:
+          description: "Query stock, inventory value, turnover, aging, shortages, and overstock."
+          name: "Inventory data query"
+        query_purchase_data:
+          description: "Query purchase orders, suppliers, purchase prices, and delivery timeliness."
+          name: "Purchase data query"
+        query_sales_data:
+          description: "Query ERP sales, orders, products, regions, and trends over time."
+          name: "Sales data query"
     skills:
       actions:
         download: "Download ZIP"

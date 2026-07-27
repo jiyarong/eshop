@@ -3,9 +3,8 @@ module Mcp
     DEFAULT_LIMIT = 50
     MAX_LIMIT = 100
 
-    def initialize(current_user:, bearer_token: nil)
+    def initialize(current_user:)
       @current_user = current_user
-      @bearer_token = bearer_token
       @visible_scope = Mcp::VisibleSkuScope.new(current_user)
     end
 
@@ -38,7 +37,7 @@ module Mcp
 
     private
 
-    attr_reader :current_user, :bearer_token, :visible_scope
+    attr_reader :current_user, :visible_scope
 
     def list_my_skus(args)
       sku_products = visible_scope.sku_products
@@ -82,8 +81,7 @@ module Mcp
 
     def erp_ai_request(args)
       Mcp::ErpAIRequest.new(
-        current_user: current_user,
-        bearer_token: bearer_token
+        current_user: current_user
       ).call(args)
     end
 

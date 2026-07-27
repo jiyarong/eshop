@@ -1,12 +1,12 @@
 module ErpAI
   class SkusController < ActionController::API
+    include ErpAI::RequestAuthenticatable
+
     class InvalidInventoryHealthPayload < StandardError; end
 
     GENERAL_INVENTORY_DESCRIPTION = "SKU总库存信息。incoming_quantity为采购中库存，book_stock为账面可用库存，platform_stock为平台在库，available_stock为报表FBS库存，daily_sales_velocity为日均销量，turnover_days为周转天数，turnover_days_with_procurement为周转天数(含采购)，incoming_batches为正在途中的批次数据。".freeze
     SKU_OVERVIEW_DESCRIPTION = "SKU基础信息，包括SKU编码、名称、营销等级、营销阶段、营销策略、开发人员、运营人员、类目、SPU和上架状态。developers和operators分别为开发人员和运营人员姓名，is_active为上架状态，marketing_state_history为按生效时间倒序排列的营销等级和营销阶段历史。".freeze
     DYNAMIC_DAILY_SALES_FORECAST_DESCRIPTION = "SKU动态日销量预测。过滤最近30天库存快照中的断货日后，基于S7、S15、S30均线和7天前短线斜率预测；calculation.path为cold_start、rising、declining、stable或no_valid_days。".freeze
-
-    before_action :authenticate_api_key!
 
     def genernal_inventory
       sku = Ec::Sku.find_by!(sku_code: params.require(:sku).to_s.strip.upcase)
@@ -200,20 +200,6 @@ module ErpAI
 
     def invalid_inventory_health_payload!(message)
       raise InvalidInventoryHealthPayload, message
-    end
-
-    def authenticate_api_key!
-      @current_user = UserApiKey.authenticate(bearer_token)
-      return if @current_user&.can?(:view_reports)
-
-      render json: { error: "Unauthorized" }, status: :unauthorized
-    end
-
-    def bearer_token
-      header = request.headers["Authorization"].to_s
-      return unless header.start_with?("Bearer ")
-
-      header.delete_prefix("Bearer ").strip
     end
 
     def display_names(users)

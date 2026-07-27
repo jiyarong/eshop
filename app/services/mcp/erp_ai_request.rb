@@ -5,9 +5,8 @@ module Mcp
     RESPONSE_HEADER_NAMES = %w[content-type location].freeze
     MAX_BODY_BYTES = 1_000_000
 
-    def initialize(current_user:, bearer_token:)
+    def initialize(current_user:)
       @current_user = current_user
-      @bearer_token = bearer_token.to_s
     end
 
     def call(args)
@@ -20,13 +19,16 @@ module Mcp
       path = normalized_path(uri)
       route, route_error = resolve_route(path, method)
       return route_error if route_error
+      request_user = current_user || admin_user
+      return error("admin user is not available") unless request_user
 
       response = request_controller(
         route: route,
         method: method,
         path: path_with_query(method, path, uri.query, args["params"]),
         params: args["params"],
-        headers: args["headers"].to_h
+        headers: args["headers"].to_h,
+        current_user: request_user
       )
 
       response_payload(response)
@@ -34,7 +36,7 @@ module Mcp
 
     private
 
-    attr_reader :current_user, :bearer_token
+    attr_reader :current_user
 
     def parse_url(value)
       url = value.to_s.strip
@@ -65,12 +67,13 @@ module Mcp
       [nil, error("route is not found")]
     end
 
-    def request_controller(route:, method:, path:, params:, headers:)
+    def request_controller(route:, method:, path:, params:, headers:, current_user:)
       env = Rack::MockRequest.env_for(
         path,
         rack_env(method, params, headers).merge(method: method.upcase)
       )
       env["action_dispatch.request.path_parameters"] = route
+      env[ErpAI::RequestAuthenticatable::CURRENT_USER_ENV] = current_user
 
       controller = "#{route.fetch(:controller).camelize}Controller".constantize
       status, response_headers, body = controller.action(route.fetch(:action)).call(env)
@@ -79,7 +82,6 @@ module Mcp
 
     def rack_env(method, params, headers)
       env = forwarded_headers(headers)
-      env["HTTP_AUTHORIZATION"] = "Bearer #{bearer_token}" if bearer_token.present?
       env["HTTP_ACCEPT"] ||= "application/json"
       return env if method == "get"
 
@@ -145,6 +147,10 @@ module Mcp
         normalized = name.to_s.downcase
         result[name] = value if RESPONSE_HEADER_NAMES.include?(normalized)
       end
+    end
+
+    def admin_user
+      User.where(active: true).joins(:roles).where(roles: { code: "super_admin" }).order(:id).first
     end
 
     def error(message)

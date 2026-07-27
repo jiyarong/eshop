@@ -45,7 +45,7 @@
                     required: true,
                     data: {
                       agent_form_target: "typeInput",
-                      action: "change->agent-form#syncSkills"
+                      action: "change->agent-form#syncCapabilities"
                     } %>
                   <span>
                     <strong><%= t("admin.agents.agent_types.#{agent_type}") %></strong>
@@ -110,6 +110,31 @@
     </div>
 
     <aside class="ai-editor-sidebar">
+      <section class="panel ai-side-panel" data-agent-form-target="toolPanel">
+        <div class="ai-form-section__heading">
+          <i class="bi bi-tools" aria-hidden="true"></i>
+          <h2><%= t("admin.agents.fields.tools") %></h2>
+          <span class="ai-section-count"><%= tools.size %></span>
+        </div>
+        <%= hidden_field_tag "agent[tools][]", "" %>
+        <div class="ai-skill-options">
+          <% tools.each do |tool| %>
+            <% tool_name = tool.fetch(:name) %>
+            <label class="checkbox-option ai-skill-option">
+              <%= check_box_tag "agent[tools][]",
+                tool_name,
+                agent.tools.include?(tool_name),
+                id: "agent_tools_#{tool_name}",
+                data: { agent_form_target: "toolInput" } %>
+              <span>
+                <strong><%= t("admin.agents.tools.#{tool_name}.name") %></strong>
+                <small><%= t("admin.agents.tools.#{tool_name}.description") %></small>
+              </span>
+            </label>
+          <% end %>
+        </div>
+      </section>
+
       <section class="panel ai-side-panel" data-agent-form-target="skillPanel">
         <div class="ai-form-section__heading">
           <i class="bi bi-puzzle" aria-hidden="true"></i>

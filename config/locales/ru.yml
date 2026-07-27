@@ -470,7 +470,9 @@ ru:
         title: "Редактировать AI Agent"
       empty_skills: "Skills пока нет. Сначала создайте Skill."
       errors:
+        invalid_tools: "содержат незарегистрированные инструменты: %{tools}"
         skills_unavailable_for_web: "доступны только для Client Agent"
+        tools_unavailable_for_client: "доступны только для Web Agent"
       fields:
         actions: "Действия"
         agent_type: "Тип Agent"
@@ -492,8 +494,8 @@ ru:
         title: "Управление AI Agent"
       hints:
         agent_types:
-          client: "Синхронизируется с клиентом и может использовать Skills"
-          web: "Доступен только в веб-приложении и не может использовать Skills"
+          client: "Синхронизируется с клиентом, использует настраиваемые Skills без серверных инструментов"
+          web: "Работает в веб-приложении, использует настраиваемые серверные инструменты без Skills"
         enabled: "Отключенные агенты не доступны через API"
         thinking: "Разрешить модели использовать режим рассуждения"
       new:
@@ -510,6 +512,25 @@ ru:
       statuses:
         disabled: "Отключен"
         enabled: "Включен"
+      tools:
+        erp_ai_request:
+          description: "Вызывает внутренний endpoint /ai от имени текущего пользователя без API-ключа."
+          name: "Запрос к ERP AI endpoint"
+        query_business_object:
+          description: "Запрашивает данные заказов, клиентов, товаров, поставщиков и складов."
+          name: "Запрос бизнес-объектов"
+        query_finance_data:
+          description: "Запрашивает выручку, затраты, валовую прибыль, задолженности и платежи."
+          name: "Запрос финансовых данных"
+        query_inventory_data:
+          description: "Запрашивает остатки, стоимость, оборачиваемость, возраст, дефицит и избыток запасов."
+          name: "Запрос данных о запасах"
+        query_purchase_data:
+          description: "Запрашивает закупочные заказы, поставщиков, цены и своевременность поставок."
+          name: "Запрос данных о закупках"
+        query_sales_data:
+          description: "Запрашивает продажи ERP, заказы, товары, регионы и динамику по времени."
+          name: "Запрос данных о продажах"
     skills:
       actions:
         download: "Скачать ZIP"

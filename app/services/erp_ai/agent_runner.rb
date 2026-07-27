@@ -92,7 +92,11 @@ module ErpAI
     end
 
     def current_tool_executor
-      @current_tool_executor ||= @tool_executor || ErpAI::ToolExecutor.new(mcp_clients: mcp_clients, mcp_tool_filters: mcp_tool_filters)
+      @current_tool_executor ||= @tool_executor || ErpAI::ToolExecutor.new(
+        mcp_clients: mcp_clients,
+        mcp_tool_filters: mcp_tool_filters,
+        current_user: user
+      )
     end
 
     def build_context(conversation, data_summary)

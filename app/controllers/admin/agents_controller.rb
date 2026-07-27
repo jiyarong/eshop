@@ -2,7 +2,7 @@ module Admin
   class AgentsController < BaseController
     before_action :seed_fixed_agents
     before_action :set_agent, only: [ :edit, :update ]
-    before_action :load_skills, only: [ :new, :create, :edit, :update ]
+    before_action :load_capabilities, only: [ :new, :create, :edit, :update ]
 
     def index
       @agents = Agent.includes(:skills).order(:code)
@@ -22,7 +22,7 @@ module Admin
     end
 
     def create
-      @agent = Agent.new(agent_params.merge(code: create_code, tools: []))
+      @agent = Agent.new(agent_params.merge(code: create_code))
 
       if @agent.save
         redirect_to admin_agents_path, notice: t("admin.agents.notices.created")
@@ -60,10 +60,13 @@ module Admin
         :thinking_enabled,
         :enabled,
         :avatar,
+        tools: [],
         skill_ids: []
       )
       permitted[:recommended_prompts] = recommended_prompts
+      permitted[:tools] = Array(permitted[:tools]).reject(&:blank?) if permitted.key?(:tools)
       permitted[:skill_ids] = [] if permitted[:agent_type] == "web"
+      permitted[:tools] = [] if permitted[:agent_type] == "client"
       permitted
     end
 
@@ -76,8 +79,9 @@ module Admin
         .to_s.lines.map(&:strip).reject(&:blank?)
     end
 
-    def load_skills
+    def load_capabilities
       @skills = Skill.order(:name)
+      @tools = ErpAI::ToolRegistry.default_tools
     end
   end
 end

@@ -477,7 +477,9 @@ zh:
         title: "编辑 AI Agent"
       empty_skills: "暂无 Skill，请先创建 Skill。"
       errors:
+        invalid_tools: "包含未注册工具：%{tools}"
         skills_unavailable_for_web: "仅 Client Agent 可以使用 Skill"
+        tools_unavailable_for_client: "仅 Web Agent 可以使用工具"
       fields:
         actions: "操作"
         agent_type: "Agent 类型"
@@ -499,8 +501,8 @@ zh:
         title: "AI Agent 管理"
       hints:
         agent_types:
-          client: "同步到客户端，并可使用 Skill"
-          web: "仅在 Web 端使用，不能使用 Skill"
+          client: "同步到客户端，可配置 Skill，不使用服务端工具"
+          web: "在 Web 端运行，可配置服务端工具，不使用 Skill"
         enabled: "停用后不再通过 API 提供"
         thinking: "允许模型使用推理模式"
       new:
@@ -517,6 +519,25 @@ zh:
       statuses:
         disabled: "停用"
         enabled: "启用"
+      tools:
+        erp_ai_request:
+          description: "使用当前用户身份调用应用内的 /ai 接口，无需 API Key。"
+          name: "ERP AI 接口请求"
+        query_business_object:
+          description: "查询订单、客户、商品、供应商或仓库等业务对象详情。"
+          name: "业务对象查询"
+        query_finance_data:
+          description: "查询收入、成本、毛利、应收应付和回款情况。"
+          name: "财务数据查询"
+        query_inventory_data:
+          description: "查询库存数量、库存金额、周转率、库龄、缺货和积压情况。"
+          name: "库存数据查询"
+        query_purchase_data:
+          description: "查询采购订单、供应商、采购价格和到货及时率。"
+          name: "采购数据查询"
+        query_sales_data:
+          description: "查询销售额、订单量、商品、区域和时间趋势等 ERP 销售数据。"
+          name: "销售数据查询"
     skills:
       actions:
         download: "下载 ZIP"

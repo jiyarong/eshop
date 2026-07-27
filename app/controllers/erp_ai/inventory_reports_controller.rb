@@ -1,13 +1,12 @@
 module ErpAI
   class InventoryReportsController < ActionController::API
+    include ErpAI::RequestAuthenticatable
     include ResponsibleUserFilterable
     include SpuSkuFilterable
     include SkuMarketingStateFilterable
     include MasterSkuCategoryFilterable
 
     PAGE_SIZE = 10
-
-    before_action :authenticate_api_key!
 
     def create
       load_filters
@@ -44,20 +43,6 @@ module ErpAI
     end
 
     private
-
-    def authenticate_api_key!
-      @current_user = UserApiKey.authenticate(bearer_token)
-      return if @current_user&.can?(:view_reports)
-
-      render json: { error: "Unauthorized" }, status: :unauthorized
-    end
-
-    def bearer_token
-      header = request.headers["Authorization"].to_s
-      return unless header.start_with?("Bearer ")
-
-      header.delete_prefix("Bearer ").strip
-    end
 
     def load_filters
       @sku_query = params[:sku].to_s.strip

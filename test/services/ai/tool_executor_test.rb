@@ -28,6 +28,23 @@ class ErpAI::ToolExecutorTest < ActiveSupport::TestCase
     assert_equal "found", result.fetch(:result).fetch("content").first.fetch("text")
   end
 
+  test "dispatches erp ai requests with the current user" do
+    result = ErpAI::ToolExecutor.new(mcp_clients: {}, current_user: User.new).call(
+      id: "call_local",
+      name: "erp_ai_request",
+      arguments: {
+        "method" => "post",
+        "url" => "/ai/sql_queries.json",
+        "params" => { "sql" => "SELECT 1 AS value", "limit" => 1 }
+      }
+    )
+
+    assert_equal "call_local", result.fetch(:tool_call_id)
+    assert_equal "erp_ai_request", result.fetch(:name)
+    assert_equal true, result.dig(:result, :success)
+    assert_equal({ "value" => 1 }, result.dig(:result, :body, "rows").first)
+  end
+
   test "returns structured error for unknown tool names" do
     executor = ErpAI::ToolExecutor.new(mcp_clients: {})
 

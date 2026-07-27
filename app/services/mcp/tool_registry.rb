@@ -87,7 +87,7 @@ module Mcp
             method: enum_schema(%w[get post put patch delete], "HTTP method，默认 get"),
             url: string_schema("App-relative URL，例如 /ai/weekly_profit_reports.json"),
             params: object_schema("请求参数。GET/DELETE 会作为 query string，POST/PUT/PATCH 会作为 JSON body"),
-            headers: object_schema("可转发的 HTTP headers。目前仅接受 Accept、Accept-Language、X-Request-Id；Authorization 会自动使用当前 MCP token")
+            headers: object_schema("可转发的 HTTP headers。目前仅接受 Accept、Accept-Language、X-Request-Id；内部请求直接使用当前用户，不转发 Authorization")
           },
           required: ["url"]
         ),

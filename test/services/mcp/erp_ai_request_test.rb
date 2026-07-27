@@ -10,18 +10,23 @@ module Mcp
         password_confirmation: "password123"
       )
       @user.roles << Role.find_by!(code: "manager")
-      @raw_api_token, = UserApiKey.generate_for!(@user, name: "MCP")
+      @admin = User.create!(
+        email: "mcp-erp-ai-admin-#{@token}@example.com",
+        password: "password123",
+        password_confirmation: "password123"
+      )
+      @admin.roles << Role.find_by!(code: "super_admin")
     end
 
     teardown do
-      UserApiKey.where(user: @user).delete_all
-      UserRole.where(user: @user).delete_all
-      User.where(id: @user.id).delete_all
+      UserApiKey.where(user: [ @user, @admin ]).delete_all
+      UserRole.where(user: [ @user, @admin ]).delete_all
+      User.where(id: [ @user.id, @admin.id ]).delete_all
     end
 
-    test "dispatches an authenticated request directly to the erp ai controller" do
+    test "dispatches as the current user without authenticating a bearer token" do
       without_rails_application_dispatch do
-        result = ToolExecutor.new(current_user: @user, bearer_token: @raw_api_token).call(
+        result = ToolExecutor.new(current_user: @user).call(
           "erp_ai_request",
           {
             "method" => "post",
@@ -40,13 +45,36 @@ module Mcp
         assert_equal true, result.fetch(:success)
         assert_equal 200, result.fetch(:status)
         assert_equal true, result.fetch(:body).fetch("success")
-        assert_equal ["value"], result.fetch(:body).fetch("columns")
+        assert_equal [ "value" ], result.fetch(:body).fetch("columns")
         assert_equal({ "value" => 1 }, result.fetch(:body).fetch("rows").first)
       end
     end
 
+    test "falls back to a super admin when no current user is provided" do
+      result = ErpAIRequest.new(current_user: nil).call(
+        "method" => "post",
+        "url" => "/ai/sql_queries.json",
+        "params" => { "sql" => "SELECT 1 AS value", "limit" => 1 }
+      )
+
+      assert_equal true, result.fetch(:success)
+      assert_equal 200, result.fetch(:status)
+      assert_equal({ "value" => 1 }, result.fetch(:body).fetch("rows").first)
+    end
+
+    test "does not add an authorization header to internal requests" do
+      env = ErpAIRequest.new(current_user: @user).send(
+        :rack_env,
+        "get",
+        {},
+        { "Authorization" => "Bearer ignored" }
+      )
+
+      assert_not env.key?("HTTP_AUTHORIZATION")
+    end
+
     test "rejects external urls" do
-      result = ErpAIRequest.new(current_user: @user, bearer_token: @raw_api_token).call(
+      result = ErpAIRequest.new(current_user: @user).call(
         "method" => "get",
         "url" => "https://example.com/ai/sql_queries.json"
       )
@@ -56,7 +84,7 @@ module Mcp
     end
 
     test "rejects routes outside erp ai controllers" do
-      result = ErpAIRequest.new(current_user: @user, bearer_token: @raw_api_token).call(
+      result = ErpAIRequest.new(current_user: @user).call(
         "method" => "post",
         "url" => "/mcp",
         "params" => {}
@@ -68,7 +96,7 @@ module Mcp
 
     test "keeps inventory-sized erp ai responses intact" do
       payload = "x" * 150_000
-      truncated = ErpAIRequest.new(current_user: @user, bearer_token: @raw_api_token)
+      truncated = ErpAIRequest.new(current_user: @user)
         .send(:truncate_body, payload)
 
       assert_equal false, truncated.fetch(:truncated)
