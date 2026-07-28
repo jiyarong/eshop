@@ -1,7 +1,7 @@
 module Ec
   class PlatformInboundInventoryQuery
     OZON_INBOUND_STATUSES = %w[IN_TRANSIT].freeze
-    WB_INBOUND_STATUS_IDS = [2, 3, 4].freeze
+    WB_INBOUND_STATUS_IDS = [4, 6].freeze
 
     def initialize(platform:, account:)
       @platform = platform.to_s

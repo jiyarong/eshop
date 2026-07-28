@@ -23,19 +23,21 @@ class Ec::PlatformInboundInventoryQueryTest < ActiveSupport::TestCase
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
   end
 
-  test "wb counts active supply quantities not yet accepted" do
+  test "wb counts only accepting and unloading supply quantities not yet accepted" do
     nm_id = @sku.sku_products.find_by!(platform: "wb").product_id.to_i
-    active_supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-INBOUND-#{@token}", preorder_id: 10_000 + @token.hex % 10_000, status_id: 2, synced_at: Time.current)
-    created_supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-CREATED-#{@token}", preorder_id: 20_000 + @token.hex % 10_000, status_id: 1, synced_at: Time.current)
-    completed_supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-DONE-#{@token}", preorder_id: 30_000 + @token.hex % 10_000, status_id: 5, synced_at: Time.current)
+    accepting_supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-ACCEPTING-#{@token}", preorder_id: 10_000 + @token.hex % 10_000, status_id: 4, synced_at: Time.current)
+    unloading_supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-UNLOADING-#{@token}", preorder_id: 20_000 + @token.hex % 10_000, status_id: 6, synced_at: Time.current)
+    dispatch_allowed_supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-DISPATCH-#{@token}", preorder_id: 30_000 + @token.hex % 10_000, status_id: 3, synced_at: Time.current)
+    completed_supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-DONE-#{@token}", preorder_id: 40_000 + @token.hex % 10_000, status_id: 5, synced_at: Time.current)
 
-    RawWb::SupplyItem.create!(account: @wb_account, wb_supply_id: active_supply.wb_supply_id, nm_id: nm_id, quantity: 12, accepted_qty: 3, synced_at: Time.current)
-    RawWb::SupplyItem.create!(account: @wb_account, wb_supply_id: created_supply.wb_supply_id, nm_id: nm_id, quantity: 50, accepted_qty: 0, synced_at: Time.current)
+    RawWb::SupplyItem.create!(account: @wb_account, wb_supply_id: accepting_supply.wb_supply_id, nm_id: nm_id, quantity: 12, accepted_qty: 3, synced_at: Time.current)
+    RawWb::SupplyItem.create!(account: @wb_account, wb_supply_id: unloading_supply.wb_supply_id, nm_id: nm_id, quantity: 8, accepted_qty: 2, synced_at: Time.current)
+    RawWb::SupplyItem.create!(account: @wb_account, wb_supply_id: dispatch_allowed_supply.wb_supply_id, nm_id: nm_id, quantity: 50, accepted_qty: 0, synced_at: Time.current)
     RawWb::SupplyItem.create!(account: @wb_account, wb_supply_id: completed_supply.wb_supply_id, nm_id: nm_id, quantity: 20, accepted_qty: 20, synced_at: Time.current)
 
     result = Ec::PlatformInboundInventoryQuery.new(platform: "wb", account: @wb_account).by_sku_code
 
-    assert_equal 9, result[@sku.sku_code]
+    assert_equal 15, result[@sku.sku_code]
   end
 
   test "ozon counts only in transit supply order items" do

@@ -1,7 +1,7 @@
 module Ec
   class SkuInventorySnapshotFetcher
     TOTAL_WAREHOUSE_NAME = "Всего находится на складах".freeze
-    WB_INBOUND_STATUS_IDS = [2, 3, 4].freeze
+    WB_INBOUND_STATUS_IDS = [4, 6].freeze
 
     def initialize(wb_client_factory: nil, ozon_client_factory: nil)
       @wb_client_factory = wb_client_factory || ->(account) { RawWb::WbClient.new(account.api_token) }

@@ -145,7 +145,7 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
   end
 
-  test "wb inbound uses live 2 3 4 supplies instead of stale raw supply rows" do
+  test "wb inbound uses live accepting and unloading supplies instead of stale raw supply rows" do
     RawWb::Supply.create!(
       account: @wb_account,
       wb_supply_id: "STALE-#{@token}",
@@ -163,7 +163,7 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     )
 
     fake_client = FakeWbClient.new(
-      supplies: [{ "supplyID" => 40295360, "preorderID" => 52251864, "statusID" => 2 }],
+      supplies: [{ "supplyID" => 40295360, "preorderID" => 52251864, "statusID" => 4 }],
       goods_by_supply_id: {
         "40295360" => [
           { "nmID" => @wb_product.product_id.to_i, "quantity" => 12, "acceptedQuantity" => 5 },
@@ -176,7 +176,7 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     result = fetcher.send(:wb_inbound_quantities_by_sku_code, @wb_account)
 
     assert_equal 7, result[@sku.sku_code]
-    assert_equal [2, 3, 4], fake_client.posts.first[:body][:statusIDs]
+    assert_equal [4, 6], fake_client.posts.first[:body][:statusIDs]
     assert_equal "/api/v1/supplies/40295360/goods", fake_client.gets.first[:path]
   end
 
