@@ -1073,7 +1073,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".status-pill", "上架"
   end
 
-  test "sku detail renders basic configuration by default" do
+  test "sku detail renders basic configuration when selected" do
     assignment = Ec::SkuStoreAssignment.create!(
       sku_code: @sku.sku_code,
       store_key: "ozon1_nevastal",
@@ -1084,7 +1084,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       is_active: true
     )
 
-    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "basic" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "h1", @sku.sku_code
@@ -1100,6 +1100,126 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assignment&.destroy
   end
 
+  test "sku detail renders operator performance cards with matching period logic" do
+    comparison = { delta_pct: 12.5, semantic: "positive" }
+    metrics = {
+      sales: {
+        days_7: { value: 7, comparison: comparison },
+        days_30: { value: 30, comparison: comparison }
+      },
+      profit: {
+        days_7: {
+          revenue: { value: 1_000, comparison: comparison },
+          after_tax: { value: 200, comparison: comparison },
+          margin_pct: { value: 20, comparison: comparison },
+          ads: { value: -50, comparison: comparison }
+        },
+        days_30: {
+          revenue: { value: 4_000, comparison: comparison },
+          after_tax: { value: 800, comparison: comparison },
+          margin_pct: { value: 20, comparison: comparison },
+          ads: { value: -200, comparison: comparison }
+        }
+      }
+    }
+    fake_query = Struct.new(:sku, :metrics) do
+      def performance_metrics
+        { sku => metrics }
+      end
+    end
+    original_new = Ec::OperatorSkuMetricsQuery.method(:new)
+    Ec::OperatorSkuMetricsQuery.define_singleton_method(:new) do |**args|
+      fake_query.new(args.fetch(:skus).first, metrics)
+    end
+
+    begin
+      get "/reports/skus/#{@sku.sku_code}", params: { tab: "basic" }, headers: { "Accept" => "text/html" }
+    ensure
+      Ec::OperatorSkuMetricsQuery.define_singleton_method(:new, original_new)
+    end
+
+    assert_response :success
+    assert_select ".sku-detail-performance-card", 5
+    %w[销量 周期销售额 周期利润 周期利润率 周期广告花费].each do |label|
+      assert_select ".sku-detail-performance-card .summary-label", text: label
+    end
+    assert_select ".sku-detail-performance-card .operator-sku-period", 10
+    assert_select ".operator-sku-period__value", text: /7天.*7/
+    assert_select ".operator-sku-period__value", text: /30天.*30/
+    assert_select ".sku-detail-performance-card .operator-sku-comparison.is-positive", { text: /12\.50% 环比/, count: 10 }
+  end
+
+  test "sku detail operation overview scopes funnel and profit reports to current sku" do
+    funnel_calls = []
+    profit_calls = []
+    funnel_report = {
+      period: { from_date: Date.new(2026, 6, 1), to_date: Date.new(2026, 6, 7) },
+      meta: { platform: "wb", store_name: "Test WB", columns: %i[sku_code orders] },
+      comparison: { rows: {} },
+      rows: [{ sku_code: @sku.sku_code, orders: 8 }]
+    }
+    profit_report = {
+      report_type: "wr",
+      period: { from_date: Date.new(2026, 6, 1), to_date: Date.new(2026, 6, 7) },
+      meta: { platform: "wb", store_name: "Test WB" },
+      comparison: { rows: {} },
+      rows: [{ vendor_code: @sku.sku_code, net_qty: 6, after_tax: 120 }]
+    }
+    original_funnel_run = SalesFunnelReports::ReportQueryRunner.method(:run)
+    original_profit_run = WeeklyProfitReports::ReportQueryRunner.method(:run)
+    SalesFunnelReports::ReportQueryRunner.define_singleton_method(:run) do |params:, today:|
+      funnel_calls << params
+      funnel_report
+    end
+    WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run) do |params:, today:|
+      profit_calls << params
+      profit_report
+    end
+
+    begin
+      funnel_store_ref = "wb:#{@sales_wb_account.id}"
+      profit_store_ref = "ozon:#{@sales_ozon_account.id}"
+      get "/reports/skus/#{@sku.sku_code}", params: {
+        funnel_from_date: "2026-06-01",
+        funnel_to_date: "2026-06-07",
+        funnel_store_ref: funnel_store_ref,
+        profit_from_date: "2026-06-08",
+        profit_to_date: "2026-06-14",
+        profit_store_ref: profit_store_ref,
+        sku_codes: [@second_sku.sku_code]
+      }, headers: { "Accept" => "text/html" }
+    ensure
+      SalesFunnelReports::ReportQueryRunner.define_singleton_method(:run, original_funnel_run)
+      WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run, original_profit_run)
+    end
+
+    assert_response :success
+    assert_equal 1, funnel_calls.size
+    assert_equal 1, profit_calls.size
+    assert_equal [@sku.sku_code], funnel_calls.first.fetch(:sku_codes)
+    assert_equal [@sku.sku_code], profit_calls.first.fetch(:sku_codes)
+    assert_equal "wr", profit_calls.first.fetch(:report_type)
+    assert_equal "2026-06-01", funnel_calls.first.fetch(:from_date)
+    assert_equal "2026-06-08", profit_calls.first.fetch(:from_date)
+    assert_equal funnel_store_ref, funnel_calls.first.fetch(:store_ref)
+    assert_equal profit_store_ref, profit_calls.first.fetch(:store_ref)
+    assert_select ".sku-detail-tabs a[aria-current='page']", "运营概览"
+    assert_select ".sku-operation-report", 2
+    assert_select ".sku-operation-report .section-title", "周销售漏斗"
+    assert_select ".sku-operation-report .section-title", "周利润归集"
+    assert_select ".sku-operation-report .summary-grid", 0
+    assert_select "form.sku-operation-filter", 2
+    assert_select "input[name='sku_codes[]'][value='#{@sku.sku_code}']", count: 2
+    assert_select "input[name='funnel_from_date'][value='2026-06-01']"
+    assert_select "input[name='profit_from_date'][value='2026-06-08']"
+    assert_select ".weekly-profit-store-field", 2
+    assert_select ".sku-operation-report--profit input[name='profit_report_type'][value='wr']"
+    assert_select ".sku-operation-report--profit [data-weekly-profit-filter-target='reportButton']", 3
+    %w[wr wsu wsu_deep].each do |report_type|
+      assert_select ".sku-operation-report--profit [data-value='#{report_type}']"
+    end
+  end
+
   test "sku detail renders current marketing grade and stage" do
     Ec::SkuMarketingStateChange.new(
       sku: @sku,
@@ -1109,7 +1229,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       note: "详情页展示"
     ).call
 
-    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "basic" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select ".sku-detail-marketing-state" do
@@ -1152,7 +1272,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     )
     @sku.update!(master_sku: master_sku, sku_category: sku_category)
 
-    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "basic" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "dt", "类目"
@@ -1167,7 +1287,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "sku detail renders platform product bindings through shared table" do
-    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "basic" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "h2", "平台商品绑定"
@@ -1192,14 +1312,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       is_active: true
     )
 
-    get "/reports/skus/#{@sku.sku_code}", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { locale: "en", tab: "basic" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select ".resource-eyebrow", "SKU Details"
     assert_select "a.button", "Back to list"
     assert_select "a.button", "Edit profile"
     assert_select ".status-pill", "Active"
-    assert_select ".summary-label", "Last 30 days net sales"
+    %w[Sales Period\ revenue Period\ profit Period\ margin Period\ ad\ spend].each do |label|
+      assert_select ".summary-label", label
+    end
     assert_select ".sku-detail-tabs a[aria-current='page']", "Basic"
     assert_select "h2", "Basic information"
     assert_select "dt", "Chinese name"
@@ -1420,14 +1542,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".sku-detail-tabs a[aria-current='page']", "库存概况"
-    assert_select ".summary-label", "入库数量"
-    assert_select ".summary-value", "10"
-    assert_select "h2", "库存校对汇总"
-    assert_select "td", "销量统计 Ozon 店 #{@sku_code}"
-    assert_select "td", "4"
-    assert_select "h2", "最新平台在库"
-    assert_select "td", "FBO"
-    assert_select "td", "2026-06-22 10:00"
+    assert_select "turbo-frame#inventory_drawer_content"
+    assert_select ".inventory-metric-card__label", "采购中库存"
+    assert_select ".inventory-metric-card__label", "账面可用库存"
+    assert_select ".inventory-metric-card__label", "平台在库"
+    assert_select ".inventory-metric-card__label", "FBS库存"
+    assert_select ".inventory-detail-tabs__link", text: "待入库库存"
+    assert_select ".inventory-detail-tabs__link", text: "账面可用库存"
+    assert_select ".inventory-detail-tabs__link", text: "平台在库"
+    assert_select ".inventory-detail-tabs__link[aria-current='page']", text: "待入库库存"
+    assert_select ".inventory-detail-tabs__link[data-turbo-frame='inventory_drawer_content']", count: 3
   ensure
     Ec::SkuBatch.where(batch_code: "INV-#{@sku_code}").delete_all
   end
@@ -1463,7 +1587,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       currency_code: "BYN"
     )
 
-    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory" }, headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory", detail_tab: "book" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>11<\/td>/m, response.body)
@@ -1500,7 +1624,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       currency_code: "BYN"
     )
 
-    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory" }, headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory", detail_tab: "book" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>2<\/td>/m, response.body)
@@ -1533,12 +1657,12 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       synced_at: Time.zone.parse("2026-06-22 09:00:00")
     )
 
-    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory" }, headers: { "Accept" => "text/html" }
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory", detail_tab: "book" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "td", "销量统计 Ozon 店 #{@sku_code}"
-    assert_select "td", "销量统计 WB 店 #{@sku_code}"
-    assert_select ".summary-value", "3"
+    assert_select "td", text: /销量统计 Ozon 店 #{@sku_code}/
+    assert_select "td", text: /销量统计 WB 店 #{@sku_code}/
+    assert_select "h4", "退货记录分布"
     assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>2<\/td>/m, response.body)
     assert_match(/销量统计 WB 店 #{@sku_code}.*?<td>1<\/td>/m, response.body)
   end

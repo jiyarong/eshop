@@ -16,22 +16,31 @@
     <% active_link = ->(prefixes) { Array(prefixes).any? { |prefix| current_path == prefix || current_path.start_with?("#{prefix}/") } } %>
     <% nav_sections = [
       {
-        label: t("navigation.sections.sku"),
+        id: "operations",
+        label: t("navigation.sections.operations"),
+        links: [
+          { label: t("navigation.operator_skus"), path: "/operator_skus", icon: "bi-list-ul", active: active_link.call("/operator_skus") },
+          { label: t("navigation.sales_funnel"), path: "/reports/sales_funnel", icon: "bi-funnel", active: active_link.call("/reports/sales_funnel") },
+          { label: t("navigation.ozon_ads"), path: "/reports/ozon_ads", icon: "bi-megaphone", active: active_link.call("/reports/ozon_ads") },
+          { label: t("navigation.wb_ads"), path: "/reports/wb_ads", icon: "bi-badge-ad", active: active_link.call("/reports/wb_ads") },
+          { label: t("navigation.weekly_profit_reports"), path: "/weekly_profit_reports", icon: "bi-graph-up-arrow", active: active_link.call("/weekly_profit_reports") },
+          { label: t("navigation.tools"), path: "/reports/tools", icon: "bi-sliders2", active: active_link.call("/reports/tools") }
+        ]
+      },
+      {
+        id: "development",
+        label: t("navigation.sections.development"),
         links: [
           { label: t("navigation.erp_spus"), path: "/erp/spus", icon: "bi-grid-3x3-gap", active: active_link.call("/erp/spus") },
           { label: t("navigation.erp_skus"), path: "/erp/skus", icon: "bi-tags", active: active_link.call("/erp/skus") },
           { label: t("navigation.sku_batches"), path: "/erp/sku_batches", icon: "bi-layers", active: active_link.call("/erp/sku_batches") },
           { label: t("navigation.sku_costs"), path: "/erp/sku_costs", icon: "bi-currency-yen", active: active_link.call("/erp/sku_costs") },
           { label: t("navigation.sku_dimensions"), path: "/erp/sku_dimensions", icon: "bi-rulers", active: active_link.call("/erp/sku_dimensions") },
-          { label: t("navigation.weekly_profit_reports"), path: "/weekly_profit_reports", icon: "bi-graph-up-arrow", active: active_link.call("/weekly_profit_reports") },
-          { label: t("navigation.inventory"), path: "/reports/inventory", icon: "bi-box-seam", active: current_path == "/reports/inventory" },
-          { label: t("navigation.sales_funnel"), path: "/reports/sales_funnel", icon: "bi-funnel", active: active_link.call("/reports/sales_funnel") },
-          { label: t("navigation.ozon_ads"), path: "/reports/ozon_ads", icon: "bi-megaphone", active: active_link.call("/reports/ozon_ads") },
-          { label: t("navigation.wb_ads"), path: "/reports/wb_ads", icon: "bi-badge-ad", active: active_link.call("/reports/wb_ads") },
-          { label: t("navigation.tools"), path: "/reports/tools", icon: "bi-sliders2", active: active_link.call("/reports/tools") }
+          { label: t("navigation.inventory"), path: "/reports/inventory", icon: "bi-box-seam", active: current_path == "/reports/inventory" }
         ]
       },
       {
+        id: "draft",
         label: t("navigation.sections.draft"),
         links: [
           { label: t("navigation.orders"), path: "/orders", icon: "bi-receipt", active: active_link.call("/orders") },
@@ -76,7 +85,7 @@
 
         <nav class="erp-nav" aria-label="Main navigation">
           <% nav_sections.each do |section| %>
-            <section class="erp-nav__section">
+            <section class="erp-nav__section" data-nav-section="<%= section[:id] %>">
               <p class="erp-nav__label"><%= section[:label] %></p>
               <% section[:links].each do |link| %>
                 <%= link_to link[:path], class: "erp-nav__link", aria: (link[:active] ? { current: "page" } : nil), data: { action: "shell#closeSidebar", turbo_prefetch: false } do %>

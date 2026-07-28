@@ -1,0 +1,131 @@
+<% content_for :page_heading, t("operator_skus.title") %>
+
+<div class="product-management operator-sku-page">
+  <div class="page-h">
+    <div>
+      <h1><%= t("operator_skus.title") %></h1>
+      <p class="sub"><%= t("operator_skus.subtitle") %></p>
+    </div>
+  </div>
+
+  <section class="card product-filter-card">
+    <%= form_with url: operator_skus_path, method: :get, local: true, class: "product-filter-form" do |form| %>
+      <div class="product-search-control">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= form.search_field :q, value: @q, placeholder: t("erp.skus.filters.sku_search_placeholder"), class: "input" %>
+      </div>
+      <%= render "shared/master_sku_category_filter",
+        field_class: "product-filter-field" %>
+      <%= render "shared/spu_sku_filter",
+        field_class: "product-filter-field",
+        dom_id_prefix: "operator-sku-spu-sku-filter" %>
+      <%= render "shared/popover_multiselect_filter",
+        dom_id_prefix: "operator-sku-grade-filter",
+        param_name: "grades",
+        label: t("erp.sku_marketing_states.fields.grade"),
+        all_label: t("erp.skus.filters.all_grades"),
+        selected_values: @grades,
+        options: Ec::SkuMarketingState::GRADES.map { |grade| [grade, grade] } %>
+      <%= render "shared/popover_multiselect_filter",
+        dom_id_prefix: "operator-sku-stage-filter",
+        param_name: "stages",
+        label: t("erp.sku_marketing_states.fields.stage"),
+        all_label: t("erp.skus.filters.all_stages"),
+        selected_values: @stages,
+        options: Ec::SkuMarketingState::STAGES.map { |stage| [stage.upcase, stage] } %>
+      <%= render "shared/responsible_user_filters",
+        field_class: "product-filter-field",
+        dom_id_prefix: "operator-sku-responsible-user-filter" %>
+      <button class="btn btn-primary" type="submit">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= t("erp.common.actions.filter") %>
+      </button>
+      <%= link_to operator_skus_path(locale: params[:locale]), class: "btn btn-outline" do %>
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+        <%= t("erp.common.actions.reset") %>
+      <% end %>
+      <div class="spacer"></div>
+      <span class="text-sm text-muted"><%= t("operator_skus.total", count: @skus.total_count) %></span>
+    <% end %>
+  </section>
+
+  <section class="card product-list-card operator-sku-table-card">
+    <div class="table-scroll">
+      <table class="prod-tbl operator-sku-table">
+        <thead>
+          <tr>
+            <th><%= t("operator_skus.columns.sku") %></th>
+            <th><%= t("operator_skus.columns.spu") %></th>
+            <th><%= t("operator_skus.columns.marketing_state") %></th>
+            <th><%= t("operator_skus.columns.responsible") %></th>
+            <th class="numeric"><%= t("operator_skus.columns.sales") %></th>
+            <th class="numeric"><%= t("operator_skus.columns.revenue") %></th>
+            <th class="numeric"><%= t("operator_skus.columns.profit") %></th>
+            <th class="numeric"><%= t("operator_skus.columns.margin") %></th>
+            <th class="numeric"><%= t("operator_skus.columns.ads") %></th>
+            <th class="numeric"><%= t("operator_skus.columns.inventory") %></th>
+            <th><%= t("operator_skus.columns.status") %></th>
+            <th class="numeric"><%= t("operator_skus.columns.events") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @skus.each do |sku| %>
+            <% metrics = @metrics_by_sku.fetch(sku) %>
+            <tr class="operator-sku-row">
+              <td>
+                <%= link_to sku.sku_code, report_sku_path(sku.sku_code), class: "code-text sub" %>
+                <span class="operator-sku-name"><%= sku.product_name.presence || t("operator_skus.values.unavailable") %></span>
+              </td>
+              <td><span class="code-text"><%= sku.master_sku&.master_sku_code || t("operator_skus.values.unavailable") %></span></td>
+              <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku %></td>
+              <td>
+                <div class="operator-sku-responsible">
+                  <span><strong><%= t("operator_skus.responsible.developer") %></strong> <%= sku_developer_names(sku) || t("operator_skus.values.unassigned") %></span>
+                  <span><strong><%= t("operator_skus.responsible.operator") %></strong> <%= sku_operator_names(sku) || t("operator_skus.values.unassigned") %></span>
+                </div>
+              </td>
+              <td class="numeric">
+                <div class="operator-sku-profit operator-sku-sales">
+                  <% %i[days_7 days_30].each do |period_key| %>
+                    <% sales_metric = metrics.dig(:sales, period_key) %>
+                    <div class="operator-sku-period">
+                      <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= operator_sku_metric_value(sales_metric[:value]) %></strong></span>
+                      <span class="operator-sku-comparison <%= operator_sku_comparison_class(sales_metric[:comparison]) %>"><%= operator_sku_comparison_text(sales_metric[:comparison]) %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </td>
+              <% { revenue: :currency, after_tax: :currency, margin_pct: :percentage, ads: :currency }.each do |key, type| %>
+                <td class="numeric">
+                  <div class="operator-sku-profit">
+                    <% %i[days_7 days_30].each do |period_key| %>
+                      <% profit_metric = metrics.dig(:profit, period_key, key) %>
+                      <div class="operator-sku-period">
+                        <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= operator_sku_metric_value(profit_metric[:value], type: type) %></strong></span>
+                        <span class="operator-sku-comparison <%= operator_sku_comparison_class(profit_metric[:comparison]) %>"><%= operator_sku_comparison_text(profit_metric[:comparison]) %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                </td>
+              <% end %>
+              <td class="numeric">
+                <div class="operator-sku-pair">
+                  <span><%= t("operator_skus.inventory.available") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :available_stock)) %></strong></span>
+                  <span><%= t("operator_skus.inventory.incoming") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :incoming_quantity)) %></strong></span>
+                  <span><%= t("operator_skus.inventory.coverage") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :turnover_days), type: :days) %></strong></span>
+                </div>
+              </td>
+              <td><span class="operator-status operator-status--<%= sku.operation_status %>"><%= t("operator_skus.statuses.#{sku.operation_status}") %></span></td>
+              <td class="numeric"><strong class="operator-event-count"><%= metrics[:event_count] %></strong></td>
+            </tr>
+          <% end %>
+          <% if @skus.empty? %>
+            <tr><td colspan="12" class="empty-state"><%= t("operator_skus.empty") %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <%= render "pagination", skus: @skus if @skus.total_pages > 1 %>
+  </section>
+</div>

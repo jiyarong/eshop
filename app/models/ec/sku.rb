@@ -4,6 +4,14 @@ module Ec
 
     self.table_name = 'ec_skus'
 
+    OPERATION_STATUSES = {
+      normal: "normal",
+      attention: "attention",
+      abnormal: "abnormal"
+    }.freeze
+
+    enum :operation_status, OPERATION_STATUSES, prefix: true, validate: true
+
     belongs_to :master_sku, class_name: "Ec::MasterSku", optional: true
     belongs_to :sku_category, class_name: 'Ec::SkuCategory', optional: true
     has_many :costs,             class_name: 'Ec::SkuCost',             foreign_key: :sku_code, primary_key: :sku_code

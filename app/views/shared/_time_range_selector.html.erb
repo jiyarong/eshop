@@ -6,6 +6,8 @@
   end_value = end_date.present? ? end_date.to_date.iso8601 : ""
   has_range = start_value.present? && end_value.present?
   submit_on_apply = local_assigns.fetch(:submit_on_apply, false)
+  from_name = local_assigns.fetch(:from_name, "from_date")
+  to_name = local_assigns.fetch(:to_name, "to_date")
 %>
 
 <div
@@ -23,8 +25,8 @@
   data-weekday-fri="<%= t("shared.time_range.weekdays.fri") %>"
   data-weekday-sat="<%= t("shared.time_range.weekdays.sat") %>"
   data-weekday-sun="<%= t("shared.time_range.weekdays.sun") %>">
-  <input type="hidden" name="from_date" value="<%= start_value %>" data-time-range-selector-target="fromInput">
-  <input type="hidden" name="to_date" value="<%= end_value %>" data-time-range-selector-target="toInput">
+  <input type="hidden" name="<%= from_name %>" value="<%= start_value %>" data-time-range-selector-target="fromInput">
+  <input type="hidden" name="<%= to_name %>" value="<%= end_value %>" data-time-range-selector-target="toInput">
 
   <div class="time-range-trigger-shell">
     <button

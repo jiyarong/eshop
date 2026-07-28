@@ -22,6 +22,7 @@ Rails.application.routes.draw do
 
   get "weekly_profit_reports/accounts" => "weekly_profit_reports#accounts"
   get "weekly_profit_reports"          => "weekly_profit_reports#show"
+  resources :operator_skus, only: :index
 
   get "reports/inventory" => "reports#inventory"
   get "reports/sales_funnel" => "reports/sales_funnel#show", as: :reports_sales_funnel

@@ -23,12 +23,13 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
     User.where("email LIKE ?", "sku-attachments-#{@token.downcase}%").delete_all
   end
 
-  test "sku detail renders attachments tab" do
+  test "sku detail renders attachments at the bottom of basic configuration" do
     sign_in @current_user
-    get report_sku_path(@sku.sku_code, tab: "attachments"), headers: { "Accept" => "text/html" }
+    get report_sku_path(@sku.sku_code, tab: "basic"), headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".sku-detail-tabs__link", text: "附件"
+    assert_select ".sku-detail-tabs__link", text: "附件", count: 0
+    assert_select ".sku-detail-tabs__link[aria-current='page']", text: "基础配置"
     assert_select "form[action=?]", report_sku_attachments_path(@sku.sku_code)
     assert_select "input[type='file'][name='ec_attachment[file]']"
     assert_select "td.empty-state", text: "暂无附件"
@@ -43,14 +44,14 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_redirected_to report_sku_path(@sku.sku_code, tab: "attachments")
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "basic")
     attachment = @sku.attachments.first
     assert_equal "invoice-#{@token}.txt", attachment.filename
     assert attachment.invoice?
     assert attachment.file.attached?
 
     sign_in @current_user
-    get report_sku_path(@sku.sku_code, tab: "attachments"), headers: { "Accept" => "text/html" }
+    get report_sku_path(@sku.sku_code, tab: "basic"), headers: { "Accept" => "text/html" }
     assert_response :success
     assert_select "td", text: "invoice-#{@token}.txt"
     assert_select "td", text: "发票"
@@ -106,7 +107,7 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    assert_redirected_to report_sku_path(@sku.sku_code, tab: "attachments")
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "basic")
     assert_not ActiveStorage::Blob.exists?(blob_id)
   end
 

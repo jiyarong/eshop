@@ -1,0 +1,135 @@
+<% operation_sections = [
+  {
+    key: :funnel,
+    title: t("reports.sku_detail.operation.sales_funnel"),
+    report: @operation_funnel_report,
+    error: @operation_funnel_error,
+    from_date: @funnel_from_date,
+    to_date: @funnel_to_date,
+    store_ref: @funnel_store_ref
+  },
+  {
+    key: :profit,
+    title: t("reports.sku_detail.operation.weekly_profit"),
+    report: @operation_profit_report,
+    error: @operation_profit_error,
+    from_date: @profit_from_date,
+    to_date: @profit_to_date,
+    store_ref: @profit_store_ref
+  }
+] %>
+
+<% operation_sections.each do |section| %>
+  <section class="panel sku-operation-report sku-operation-report--<%= section[:key] %>">
+    <h2 class="section-title"><%= section[:title] %></h2>
+    <form class="report-form sku-operation-filter"
+          action="<%= report_sku_path(@sku.sku_code) %>"
+          method="get"
+          data-controller="weekly-profit-filter">
+      <input type="hidden" name="tab" value="operation">
+      <% if params[:locale].present? %><input type="hidden" name="locale" value="<%= params[:locale] %>"><% end %>
+      <input type="hidden" name="sku_codes[]" value="<%= @sku.sku_code %>">
+      <% if section[:key] == :profit %>
+        <input type="hidden" name="profit_report_type" value="<%= @profit_report_type %>" data-weekly-profit-filter-target="reportTypeInput">
+      <% end %>
+
+      <% other = section[:key] == :funnel ? operation_sections.last : operation_sections.first %>
+      <input type="hidden" name="<%= other[:key] %>_from_date" value="<%= other[:from_date].iso8601 %>">
+      <input type="hidden" name="<%= other[:key] %>_to_date" value="<%= other[:to_date].iso8601 %>">
+      <input type="hidden" name="<%= other[:key] %>_store_ref" value="<%= other[:store_ref] %>">
+      <% if section[:key] == :funnel %><input type="hidden" name="profit_report_type" value="<%= @profit_report_type %>"><% end %>
+
+      <div class="field field--time-range weekly-profit-top-filters">
+        <div class="weekly-profit-time-range-row">
+          <div class="weekly-profit-date-range-field">
+            <label for="sku-operation-<%= section[:key] %>-time-range-trigger"><%= t("reports.sku_detail.operation.filters.week") %></label>
+            <%= render "shared/time_range_selector",
+                       id: "sku-operation-#{section[:key]}-time-range",
+                       from_date: section[:from_date],
+                       to_date: section[:to_date],
+                       from_name: "#{section[:key]}_from_date",
+                       to_name: "#{section[:key]}_to_date",
+                       submit_on_apply: true %>
+          </div>
+          <div class="weekly-profit-filter-actions">
+            <button class="button weekly-profit-submit-button" type="submit"><%= t("weekly_profit_reports.filters.submit") %></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="weekly-profit-filter-block">
+        <% if section[:key] == :profit %>
+          <div class="field field--full">
+            <span class="field-label"><%= t("weekly_profit_reports.filters.report_type") %></span>
+            <div class="weekly-profit-tag-row" data-weekly-profit-tag-group="report-type" role="group" aria-label="<%= t("weekly_profit_reports.filters.report_type") %>">
+              <% WeeklyProfitReports::ReportQueryRunner::REPORT_TYPES.each do |report_type| %>
+                <% active = @profit_report_type == report_type %>
+                <button type="button"
+                        class="weekly-profit-filter-tag<%= " is-active" if active %>"
+                        data-weekly-profit-tag
+                        data-weekly-profit-filter-target="reportButton"
+                        data-value="<%= report_type %>"
+                        data-action="weekly-profit-filter#selectReportType"
+                        aria-pressed="<%= active ? "true" : "false" %>"><%= t("weekly_profit_reports.filters.report_type_options.#{report_type}") %></button>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% store_enabled = section[:key] == :funnel || @profit_report_type == "wr" %>
+        <div class="field field--full weekly-profit-store-field<%= " is-disabled" unless store_enabled %>"
+             data-weekly-profit-store-field
+             data-weekly-profit-filter-target="storeField"
+             aria-disabled="<%= store_enabled ? "false" : "true" %>">
+          <span class="field-label"><%= t("weekly_profit_reports.filters.store") %></span>
+          <input type="hidden" name="<%= section[:key] %>_store_ref" value="<%= section[:store_ref] %>" data-weekly-profit-filter-target="storeInput">
+          <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("weekly_profit_reports.filters.store") %>">
+            <% @operation_store_options.each do |store| %>
+              <% active = section[:store_ref] == store[:ref] %>
+              <button type="button"
+                      class="weekly-profit-filter-tag<%= " is-active" if active %>"
+                      data-weekly-profit-filter-target="storeButton"
+                      data-value="<%= store[:ref] %>"
+                      data-action="weekly-profit-filter#selectStore"
+                      <%= "disabled" unless store_enabled %>
+                      aria-pressed="<%= active ? "true" : "false" %>"><%= store[:label] %></button>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <% if section[:error].present? %>
+      <div class="empty-state"><%= t("reports.sku_detail.operation.load_error") %></div>
+    <% elsif section[:store_ref].blank? && (section[:key] == :funnel || @profit_report_type == "wr") %>
+      <div class="empty-state"><%= t("reports.sku_detail.operation.no_store") %></div>
+    <% elsif section[:report].present? %>
+      <% report = section[:report] %>
+      <% columns = section[:key] == :funnel ? sku_operation_funnel_columns(report) : sku_operation_profit_columns(report) %>
+      <p class="report-meta"><%= report.dig(:meta, :store_name) %> · <%= report.dig(:period, :from_date) %> ~ <%= report.dig(:period, :to_date) %></p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><% columns.each do |_key, label| %><th><%= label %></th><% end %></tr></thead>
+          <tbody>
+            <% if report[:rows].blank? %>
+              <tr><td colspan="<%= columns.size %>" class="empty-state"><%= t("reports.sku_detail.operation.empty_rows") %></td></tr>
+            <% else %>
+              <% report[:rows].each do |row| %>
+                <tr>
+                  <% columns.each do |key, _label| %>
+                    <% comparison = sku_operation_row_comparison(report, row, key) %>
+                    <td>
+                      <div class="weekly-profit-table-value"><%= sku_operation_report_value(row, key) %></div>
+                      <% if comparison.present? %>
+                        <div class="weekly-profit-table-comparison <%= sku_operation_comparison_class(comparison) %>"><%= sku_operation_comparison_label(comparison) %></div>
+                      <% end %>
+                    </td>
+                  <% end %>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </section>
+<% end %>

@@ -7,12 +7,14 @@ class ReportsController < ApplicationController
   include SkuMarketingStateFilterable
   include MasterSkuCategoryFilterable
 
-  helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?
+  helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
+                :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
+                :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
 
-  SKU_DETAIL_TABS = %w[basic inventory ai_inventory_health costs stores trend attachments].freeze
+  SKU_DETAIL_TABS = %w[operation basic inventory ai_inventory_health costs stores trend].freeze
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -187,7 +189,7 @@ class ReportsController < ApplicationController
       :predicted_costs,
       attachments: { file_attachment: :blob }
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "basic"
+    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "operation"
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
     @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
@@ -199,18 +201,13 @@ class ReportsController < ApplicationController
     @inventory_health_results = @sku.inventory_health_results.includes(:submitted_by).recent_first if @active_tab == "ai_inventory_health"
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
-    @overview_from_date = user_today - 30.days
-    @overview_to_date = user_today
-    @overview_rows = sku_detail_sales_rows(
-      sku_products: @sku_products,
-      from_date: @overview_from_date,
-      to_date: @overview_to_date,
-      period: "day",
-      grain: "store"
-    )
-    @overview_summary = build_sku_sales_summary(@overview_rows)
-    @overview_store_count = @overview_rows.map { |row| [row[:platform], row[:store_name]] }.uniq.count
-    load_sku_inventory_overview if @active_tab == "inventory"
+    @operator_metrics = Ec::OperatorSkuMetricsQuery.new(
+      skus: [@sku],
+      date_to: user_today,
+      time_zone: user_time_zone
+    ).performance_metrics.fetch(@sku)
+    load_sku_operation_overview if @active_tab == "operation"
+    load_sku_inventory_detail if @active_tab == "inventory"
 
     @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
     @to_date = parse_report_date(params[:to_date]) || user_today
@@ -292,7 +289,7 @@ class ReportsController < ApplicationController
   end
 
   def sku_attachments_tab_path(sku)
-    report_sku_path(sku.sku_code, request.query_parameters.merge(tab: "attachments").except(:sku_code, :attachment_id))
+    report_sku_path(sku.sku_code, request.query_parameters.merge(tab: "basic").except(:sku_code, :attachment_id))
   end
 
   def build_inventory_rows(scope)
@@ -419,11 +416,120 @@ class ReportsController < ApplicationController
     )
   end
 
-  def load_sku_inventory_overview
-    @inventory_overview = @sku.inventory_overview
-    @inventory_summary = @inventory_overview[:summary]
-    @inventory_store_rows = @inventory_overview[:store_rows]
-    @latest_inventory_levels = @inventory_overview[:latest_levels]
+  def load_sku_inventory_detail
+    @inventory_detail = Ec::InventoryPageDetailQuery.new(
+      @sku,
+      detail_tab: params[:detail_tab],
+      book_batch_page: params[:book_batch_page],
+      date_to: user_today,
+      time_zone: user_time_zone
+    ).call
+  end
+
+  def load_sku_operation_overview
+    @operation_store_options = WeeklyProfitReports::ReportQueryRunner.store_options
+    last_monday = user_today.beginning_of_week(:monday) - 1.week
+    @funnel_from_date = parse_report_date(params[:funnel_from_date]) || last_monday
+    @funnel_to_date = parse_report_date(params[:funnel_to_date]) || last_monday.end_of_week(:monday)
+    @profit_from_date = parse_report_date(params[:profit_from_date]) || last_monday
+    @profit_to_date = parse_report_date(params[:profit_to_date]) || last_monday.end_of_week(:monday)
+    @profit_report_type = params[:profit_report_type].presence_in(WeeklyProfitReports::ReportQueryRunner::REPORT_TYPES) || "wr"
+    @funnel_store_ref = operation_store_ref(params[:funnel_store_ref])
+    @profit_store_ref = operation_store_ref(params[:profit_store_ref])
+
+    begin
+      if @funnel_store_ref.present?
+        @operation_funnel_report = SalesFunnelReports::ReportQueryRunner.run(
+          params: {
+            from_date: @funnel_from_date.iso8601,
+            to_date: @funnel_to_date.iso8601,
+            store_ref: @funnel_store_ref,
+            sku_codes: [@sku.sku_code]
+          },
+          today: user_today
+        )
+      end
+    rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
+      @operation_funnel_error = error.message
+    end
+
+    begin
+      if @profit_report_type != "wr" || @profit_store_ref.present?
+        profit_params = {
+          report_type: @profit_report_type,
+          from_date: @profit_from_date.iso8601,
+          to_date: @profit_to_date.iso8601,
+          sku_codes: [@sku.sku_code]
+        }
+        profit_params[:store_ref] = @profit_store_ref if @profit_report_type == "wr"
+        @operation_profit_report = WeeklyProfitReports::ReportQueryRunner.run(
+          params: profit_params,
+          today: user_today
+        )
+      end
+    rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
+      @operation_profit_error = error.message
+    end
+  end
+
+  def operation_store_ref(requested_store)
+    requested_store = requested_store.presence
+    return requested_store if @operation_store_options.any? { |store| store[:ref] == requested_store }
+
+    @operation_store_options.first&.dig(:ref)
+  end
+
+  def sku_operation_funnel_columns(report)
+    report.dig(:meta, :columns).map do |key|
+      [key, t("sales_funnel_reports.columns.#{report.dig(:meta, :platform)}.#{key}")]
+    end
+  end
+
+  def sku_operation_profit_columns(report)
+    keys = case report[:report_type]
+    when "wr" then WeeklyProfitReportsController::WR_COLUMNS.fetch(report.dig(:meta, :platform))
+    when "wsu" then WeeklyProfitReportsController::WSU_COLUMNS
+    when "wsu_deep" then WeeklyProfitReportsController::WSU_DEEP_COLUMNS
+    else []
+    end
+    keys.map { |key| [key, t("weekly_profit_reports.columns.#{report[:report_type]}.#{key}")] }
+  end
+
+  def sku_operation_report_value(row, key)
+    value = row[key] || row[key.to_s]
+    return "-" if value.nil? || value == ""
+    return helpers.number_to_percentage(value, precision: 2) if key.to_s.match?(/(percent|conversion|rate|conv_to_cart|cart_to_order|buyout_percent|_pct|margin)\z/)
+    return helpers.number_to_currency(value, unit: "", precision: 2) if key.to_s.match?(/(sum|amount|revenue)\z/)
+    return format("%.2f", value) if value.is_a?(Float) || value.is_a?(BigDecimal)
+
+    value
+  end
+
+  def sku_operation_row_comparison(report, row, key)
+    row_key = if report[:report_type] == "wr"
+      report.dig(:meta, :platform) == "wb" ? (row[:vendor_code].presence || row[:nm_id].to_s) : (row[:sku_code].presence || row[:ozon_sku_id].to_s)
+    elsif report[:report_type] == "wsu"
+      [row[:sku] || row["sku"], row[:platform] || row["platform"], row[:shop] || row["shop"]].join("|")
+    elsif report[:report_type] == "wsu_deep"
+      (row[:sku] || row["sku"]).to_s
+    else
+      row[:sku_code].to_s
+    end
+    report.dig(:comparison, :rows, row_key, key) || report.dig(:comparison, :rows, row_key.to_s, key.to_s)
+  end
+
+  def sku_operation_comparison_label(comparison)
+    delta_pct = comparison&.dig(:delta_pct) || comparison&.dig("delta_pct")
+    return t("weekly_profit_reports.comparison.unavailable") if delta_pct.nil?
+
+    trend = comparison&.dig(:trend) || comparison&.dig("trend")
+    arrow = trend == "up" ? "↗" : (trend == "down" ? "↘" : "→")
+    "#{arrow} #{format('%.2f', delta_pct)}%"
+  end
+
+  def sku_operation_comparison_class(comparison)
+    semantic = comparison&.dig(:semantic) || comparison&.dig("semantic")
+    semantic.in?(%w[positive negative neutral]) ? "is-#{semantic}" : "is-none"
   end
 
   def report_value(value)

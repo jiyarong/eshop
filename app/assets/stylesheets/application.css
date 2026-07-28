@@ -2093,10 +2093,24 @@ textarea {
 
 .sku-detail-hero {
   display: grid;
-  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1fr);
+  grid-template-columns: minmax(240px, 0.6fr) minmax(0, 1.4fr);
   gap: 18px;
   align-items: center;
   margin-bottom: 16px;
+}
+
+.sku-detail-performance-grid {
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+}
+
+.sku-detail-performance-card .operator-sku-profit {
+  margin-top: 8px;
+}
+
+@media (max-width: 1500px) {
+  .sku-detail-performance-grid {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+  }
 }
 
 .sku-detail-identity {
@@ -3268,6 +3282,10 @@ pre {
     grid-template-columns: 1fr;
   }
 
+  .sku-detail-performance-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
   .sku-variant-main {
     grid-template-columns: 1fr;
   }
@@ -3283,6 +3301,12 @@ pre {
 
   .auth-aside {
     display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .sku-detail-performance-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -5690,6 +5714,111 @@ body.erp-shell .erp-nav__link[aria-current="page"] {
 
 body.erp-shell .erp-nav__link[aria-current="page"] i {
   color: #4338ca;
+}
+
+.operator-sku-table-card {
+  overflow: hidden;
+}
+
+.operator-sku-table-card .table-scroll {
+  overflow-x: auto;
+}
+
+.operator-sku-table {
+  min-width: 1780px;
+}
+
+.operator-sku-table th,
+.operator-sku-table td {
+  vertical-align: top;
+}
+
+.operator-sku-row td {
+  transition: background-color .15s ease;
+}
+
+.operator-sku-row:hover td {
+  background: rgba(99, 102, 241, .04);
+}
+
+.operator-sku-table th.numeric,
+.operator-sku-table td.numeric {
+  text-align: right;
+}
+
+.operator-sku-name {
+  display: block;
+  max-width: 180px;
+  margin-top: 3px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.operator-sku-responsible,
+.operator-sku-pair,
+.operator-sku-profit {
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.operator-sku-comparison {
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.operator-sku-period {
+  display: grid;
+  gap: 1px;
+}
+
+.operator-sku-period + .operator-sku-period {
+  padding-top: 5px;
+  border-top: 1px solid var(--border);
+}
+
+.operator-sku-period__value {
+  white-space: nowrap;
+}
+
+.operator-sku-comparison.is-positive {
+  color: #15803d;
+}
+
+.operator-sku-comparison.is-negative {
+  color: #b91c1c;
+}
+
+.operator-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.operator-status--attention {
+  background: #fffbeb;
+  color: #a16207;
+}
+
+.operator-status--abnormal {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.operator-event-count {
+  display: inline-block;
+  min-width: 28px;
+  text-align: center;
 }
 
 body.erp-shell .header,

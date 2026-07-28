@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_26_050701) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_28_051209) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -603,6 +603,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_050701) do
     t.bigint "master_sku_id"
     t.text "memo"
     t.string "model"
+    t.string "operation_status", default: "normal", null: false
     t.string "owner_name"
     t.string "product_name"
     t.string "product_name_ru"
@@ -617,6 +618,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_050701) do
     t.index ["deleted_at"], name: "index_ec_skus_on_deleted_at"
     t.index ["is_active"], name: "idx_ec_skus_is_active"
     t.index ["master_sku_id"], name: "index_ec_skus_on_master_sku_id"
+    t.index ["operation_status"], name: "index_ec_skus_on_operation_status"
     t.index ["sku_category_id"], name: "index_ec_skus_on_sku_category_id"
     t.index ["sku_code"], name: "idx_ec_skus_sku_code", unique: true
   end

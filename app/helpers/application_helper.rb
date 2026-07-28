@@ -77,6 +77,37 @@ module ApplicationHelper
     user_display_names(sku.sku_products.flat_map(&:operators))
   end
 
+  def operator_sku_metric_value(value, type: :number)
+    return t("operator_skus.values.unavailable") if value.nil?
+
+    case type
+    when :currency
+      number_to_currency(value, unit: "¥", precision: 2)
+    when :percentage
+      number_to_percentage(value, precision: 2)
+    when :days
+      t("operator_skus.values.days", count: format("%.1f", value))
+    else
+      number_with_delimiter(value)
+    end
+  end
+
+  def operator_sku_comparison_text(comparison)
+    delta_pct = comparison&.dig(:delta_pct) || comparison&.dig("delta_pct")
+    return t("operator_skus.values.unavailable") if delta_pct.nil?
+
+    arrow = delta_pct.to_d.positive? ? "↑" : (delta_pct.to_d.negative? ? "↓" : "→")
+    t("operator_skus.values.comparison", arrow: arrow, value: format("%.2f", delta_pct.to_d.abs))
+  end
+
+  def operator_sku_comparison_class(comparison)
+    case comparison&.dig(:semantic) || comparison&.dig("semantic")
+    when "positive" then "is-positive"
+    when "negative" then "is-negative"
+    else "is-neutral"
+    end
+  end
+
   def display_time(value, format: "%Y-%m-%d %H:%M")
     return "-" if value.blank?
 
