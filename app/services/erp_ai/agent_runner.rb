@@ -15,7 +15,6 @@ module ErpAI
     end
 
     def ask(question:, module_name: nil, business_object_type: nil, business_object_id: nil, time_range: {}, data_summary: nil)
-      Rails.logger.level = Logger::INFO
       conversation = agent.conversations.create!(
         user: user,
         module_name: module_name,
