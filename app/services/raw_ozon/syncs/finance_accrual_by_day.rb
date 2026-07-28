@@ -228,7 +228,7 @@ module RawOzon
 
       # CrossDock 回填：扫描 type_id=12 且 ozon_sku_id IS NULL 的行，
       # 通过 CrossdockResolver 三步链路解析 supply_order_number → {sku => qty}，
-      # 按 qty/total_qty 比例拆分金额后写回 accrual_by_day 表。
+      # 按 SKU 总内径体积拆分金额后写回 accrual_by_day 表。
       def resolve_and_backfill_crossdock_skus
         pending = RawOzon::AccrualByDay
           .where(account_id: @account.id, type_id: 12, ozon_sku_id: nil)
@@ -243,8 +243,8 @@ module RawOzon
           sku_qty = resolve_crossdock_bundle(supply_number)
           next if sku_qty.empty?
 
-          total_qty = sku_qty.values.sum.to_f
-          next unless total_qty > 0
+          allocations = crossdock_allocation_weights(sku_qty)
+          next if allocations.empty?
 
           rows_to_split = RawOzon::AccrualByDay
             .where(account_id: @account.id, type_id: 12,
@@ -252,15 +252,14 @@ module RawOzon
 
           new_rows = []
           rows_to_split.each do |row|
-            sku_qty.each do |sku, qty|
-              ratio = qty.to_f / total_qty
+            allocate_crossdock_amount(row.amount, allocations).each do |sku, amount|
               new_rows << {
                 account_id:       row.account_id,
                 accrual_date:     row.accrual_date,
                 accrued_category: row.accrued_category,
                 type_id:          row.type_id,
                 type_name:        row.type_name,
-                amount:           (row.amount.to_f * ratio).round(4),
+                amount:           amount,
                 currency_code:    row.currency_code,
                 ozon_sku_id:      sku.to_i,
                 posting_number:   row.posting_number,
@@ -280,6 +279,53 @@ module RawOzon
         end
 
         log "  CrossDock backfill: #{resolved}/#{pending.size} supply orders resolved" if resolved > 0
+      end
+
+      def crossdock_allocation_weights(sku_qty)
+        quantities = sku_qty.each_with_object({}) do |(sku, quantity), result|
+          parsed_quantity = quantity.to_d
+          result[sku.to_s] = parsed_quantity if parsed_quantity.positive?
+        end
+        return {} if quantities.empty?
+
+        store_id = Ec::Store.where(platform: "ozon", ozon_raw_account_id: @account.id).pick(:id)
+        sku_codes = if store_id
+          Ec::SkuProduct
+            .where(store_id: store_id, platform: "ozon", platform_sku_id: quantities.keys)
+            .pluck(:platform_sku_id, :sku_code)
+            .to_h
+        else
+          {}
+        end
+        dimensions = Ec::SkuDimension.where(sku_code: sku_codes.values).index_by(&:sku_code)
+
+        volume_weights = quantities.each_with_object({}) do |(ozon_sku_id, quantity), result|
+          dimension = dimensions[sku_codes[ozon_sku_id]]
+          volume = dimension&.inner_volume_l.to_d
+          result[ozon_sku_id] = quantity * volume if volume.positive?
+        end
+        return volume_weights if volume_weights.size == quantities.size
+
+        missing_skus = quantities.keys - volume_weights.keys
+        log "  CrossDock volume fallback to quantity: missing inner dimensions for Ozon SKU #{missing_skus.join(', ')}", level: :warn
+        quantities
+      end
+
+      def allocate_crossdock_amount(amount, weights)
+        ordered_weights = weights.sort_by { |sku, _weight| sku.to_s }
+        total_weight = ordered_weights.sum { |_sku, weight| weight.to_d }
+        return {} unless total_weight.positive?
+
+        remaining = amount.to_d
+        ordered_weights.each_with_index.each_with_object({}) do |((sku, weight), index), result|
+          allocated = if index == ordered_weights.length - 1
+            remaining
+          else
+            (amount.to_d * weight.to_d / total_weight).round(2)
+          end
+          result[sku] = allocated
+          remaining -= allocated
+        end
       end
 
       # NON_ITEM 类：单行，无 SKU
