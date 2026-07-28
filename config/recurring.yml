@@ -154,6 +154,11 @@ production:
     command: "RawOzon::Ads::Sync.run(from_date: Date.yesterday, to_date: Date.yesterday)"
     schedule: every day at 2:15 in Asia/Shanghai
 
+  # Refresh recent WB promotion analytics to capture late-attributed conversions.
+  wb_ads_daily_sync:
+    command: "RawWb::Adv::Sync.run(from_date: 8.days.ago.to_date, to_date: Date.yesterday)"
+    schedule: every day at 2:45 in Asia/Shanghai
+
   # Refresh the recent window to recover missed runs and late-settling CPC/CPO metrics.
   ozon_ads_weekly_catchup:
     command: "RawOzon::Ads::Sync.run(from_date: 8.days.ago.to_date, to_date: Date.yesterday)"
