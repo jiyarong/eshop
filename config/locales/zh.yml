@@ -1233,7 +1233,7 @@ zh:
     sku_detail:
       actions:
         add_predicted_cost: "新增预测成本"
-        back_to_list: "返回列表"
+        back_to_list: "返回"
         delete_attachment: "删除"
         delete_inventory_health_result: "删除 AI 诊断结果"
         download_attachment: "下载"
@@ -1399,6 +1399,7 @@ zh:
         last_30_days_revenue: "最近30天销售额"
         store_count: "涉及店铺"
       tabs:
+        ads: "广告推广"
         ai_inventory_health: "AI诊断"
         aria_label: "SKU详情分组"
         attachments: "附件"
@@ -1408,6 +1409,13 @@ zh:
         operation: "运营概览"
         stores: "各店铺销量情况"
         trend: "销量历史趋势"
+      ads:
+        empty: "当前 SKU 在所选周期暂无推广数据"
+        no_store: "暂无可用的推广店铺"
+        platform: "推广平台"
+        platforms:
+          ozon: "Ozon"
+          wb: "WB"
       operation:
         empty_rows: "当前 SKU 在所选周期和店铺暂无数据"
         filters:

@@ -155,9 +155,8 @@
                 <td>
                   <div class="inventory-list-table__sku-line">
                     <%= link_to row[:sku_code],
-                                report_inventory_detail_path(row[:sku_code], locale: params[:locale].presence),
-                                class: "inventory-list-table__sku-link",
-                                data: { turbo_frame: "inventory_drawer" } %>
+                                report_sku_path(row[:sku_code], locale: params[:locale].presence),
+                                class: "inventory-list-table__sku-link" %>
                     <span class="inventory-list-table__marketing-tags">
                       <% if marketing_grade.present? %>
                         <span class="marketing-tag marketing-grade--<%= marketing_grade.downcase %>"><%= marketing_grade %></span>

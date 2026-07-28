@@ -1105,7 +1105,7 @@ en:
     sku_detail:
       actions:
         add_predicted_cost: "Add predicted cost"
-        back_to_list: "Back to list"
+        back_to_list: "Back"
         delete_attachment: "Delete"
         delete_inventory_health_result: "Delete AI diagnosis"
         download_attachment: "Download"
@@ -1271,6 +1271,7 @@ en:
         last_30_days_revenue: "Last 30 days revenue"
         store_count: "Stores"
       tabs:
+        ads: "Advertising"
         ai_inventory_health: "AI diagnosis"
         aria_label: "SKU detail sections"
         attachments: "Attachments"
@@ -1280,6 +1281,13 @@ en:
         operation: "Operations overview"
         stores: "Store sales"
         trend: "Sales trend"
+      ads:
+        empty: "No advertising data for this SKU in the selected period"
+        no_store: "No advertising stores available"
+        platform: "Advertising platform"
+        platforms:
+          ozon: "Ozon"
+          wb: "WB"
       operation:
         empty_rows: "No data for this SKU in the selected period and store"
         filters:

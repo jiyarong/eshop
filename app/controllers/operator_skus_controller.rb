@@ -15,7 +15,7 @@ class OperatorSkusController < ApplicationController
     load_spu_sku_filter
     load_responsible_user_filters
 
-    scope = Ec::Sku.active.includes(
+    scope = Ec::Sku.includes(
       :master_sku,
       :current_marketing_state,
       :developers,

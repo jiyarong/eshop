@@ -90,6 +90,17 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_predicate @sku, :operation_status_normal?
   end
 
+  test "index includes inactive skus" do
+    @sku.update!(is_active: false)
+
+    with_empty_metrics do
+      get operator_skus_path, params: { q: @sku.sku_code }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
+  end
+
   test "index paginates ten rows and supports the standard jump form" do
     @sku.update!(is_active: false)
     11.times do |index|

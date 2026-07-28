@@ -1,0 +1,94 @@
+<nav class="ozon-ads-tabs sku-ads-platform-switch" aria-label="<%= t("reports.sku_detail.ads.platform") %>">
+  <% %w[ozon wb].each do |platform| %>
+    <%= link_to t("reports.sku_detail.ads.platforms.#{platform}"),
+                report_sku_path(@sku.sku_code, tab: "ads", ads_platform: platform),
+                class: "ozon-ads-tabs__link #{'is-active' if @ads_platform == platform}",
+                aria: { current: (@ads_platform == platform ? "page" : nil) } %>
+  <% end %>
+</nav>
+
+<section class="panel">
+  <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, class: "report-form", data: { controller: "weekly-profit-filter" } do |form| %>
+    <%= form.hidden_field :tab, value: "ads" %>
+    <%= form.hidden_field :ads_platform, value: @ads_platform %>
+    <div class="field field--time-range weekly-profit-top-filters">
+      <div class="weekly-profit-time-range-row">
+        <div class="weekly-profit-date-range-field">
+          <label for="sku-ads-time-range-trigger"><%= t("reports.ozon_ads.filters.date_range") %></label>
+          <%= render "shared/time_range_selector", id: "sku-ads-time-range",
+                     from_date: @ads_from_date, to_date: @ads_to_date,
+                     from_name: "ads_from_date", to_name: "ads_to_date", submit_on_apply: true %>
+        </div>
+        <div class="weekly-profit-filter-actions"><%= form.submit t("reports.ozon_ads.filters.apply"), class: "button weekly-profit-submit-button" %></div>
+      </div>
+    </div>
+    <div class="weekly-profit-filter-block">
+      <span class="field-label"><%= t("reports.ozon_ads.filters.store") %></span>
+      <%= form.hidden_field :ads_store_id, value: @ads_store&.id, data: { weekly_profit_filter_target: "storeInput" } %>
+      <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("reports.ozon_ads.filters.store") %>">
+        <% @ads_stores.each do |store| %>
+          <button type="button" class="weekly-profit-filter-tag<%= " is-active" if store == @ads_store %>"
+                  data-weekly-profit-filter-target="storeButton" data-value="<%= store.id %>"
+                  data-action="weekly-profit-filter#selectStore" aria-pressed="<%= store == @ads_store %>"><%= store.store_name %></button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</section>
+
+<% if @ads_store.blank? %>
+  <section class="panel empty-state"><%= t("reports.sku_detail.ads.no_store") %></section>
+<% elsif @ads_platform == "ozon" %>
+  <section class="panel sku-ads-section">
+    <h2 class="section-title"><%= t("reports.ozon_ads.cpc.title") %></h2>
+    <p class="report-meta"><%= t("reports.ozon_ads.subtitle", store: @ads_store.store_name, from: @ads_from_date, to: @ads_to_date) %></p>
+    <div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
+      <thead><tr><th>ID</th><th><%= t("reports.ozon_ads.fields.name") %></th><th><%= t("reports.ozon_ads.fields.state") %></th><th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th><th><%= t("reports.ozon_ads.metrics.orders") %></th><th><%= t("reports.ozon_ads.metrics.impressions") %></th><th><%= t("reports.ozon_ads.metrics.clicks") %></th><th><%= t("reports.ozon_ads.metrics.ctr") %></th></tr></thead>
+      <tbody>
+        <% if @ads_ozon_cpc_rows.blank? %><tr><td colspan="9" class="empty-state"><%= t("reports.sku_detail.ads.empty") %></td></tr><% end %>
+        <% @ads_ozon_cpc_rows.each do |row| %><% unit = row[:unit] %><% comparisons = @ads_ozon_cpc_comparisons[unit.external_id] || {} %>
+          <tr><td><%= unit.external_id %></td><td><%= unit.title %></td><td><span class="status-pill <%= unit.state == 'CAMPAIGN_STATE_RUNNING' ? 'is-active' : 'is-muted' %>"><%= t("reports.ozon_ads.states.#{unit.state}", default: unit.state) %></span></td>
+            <% [[:spend, :currency], [:ad_revenue, :currency], [:orders_count, :number], [:impressions, :number], [:clicks, :number], [:ctr, :percentage]].each do |metric, type| %>
+              <td class="numeric"><span><%= sku_ads_metric(row[metric], type: type) %></span><div class="weekly-profit-table-comparison <%= sku_ads_comparison_class(comparisons[metric]) %>"><%= sku_ads_comparison_label(comparisons[metric]) %></div></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel sku-ads-section">
+    <h2 class="section-title"><%= t("reports.ozon_ads.cpo.title") %></h2>
+    <div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
+      <thead><tr><th><%= t("reports.ozon_ads.fields.internal_sku") %></th><th><%= t("reports.ozon_ads.fields.product") %></th><th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th><th><%= t("reports.ozon_ads.metrics.orders") %></th><th><%= t("reports.ozon_ads.metrics.drr") %></th></tr></thead>
+      <tbody>
+        <% if @ads_ozon_cpo_rows.blank? %><tr><td colspan="6" class="empty-state"><%= t("reports.sku_detail.ads.empty") %></td></tr><% end %>
+        <% @ads_ozon_cpo_rows.each do |row| %><% comparisons = @ads_ozon_cpo_comparisons[row[:product].ozon_sku_id] || {} %>
+          <tr><td><%= @sku.sku_code %></td><td><%= row[:raw_product]&.name || row[:product].title || "-" %></td>
+            <% [[:spend, :currency], [:ad_revenue, :currency], [:orders_count, :number], [:drr, :percentage]].each do |metric, type| %>
+              <td class="numeric"><span><%= sku_ads_metric(row[metric], type: type) %></span><div class="weekly-profit-table-comparison <%= sku_ads_comparison_class(comparisons[metric]) %>"><%= sku_ads_comparison_label(comparisons[metric]) %></div></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table></div>
+  </section>
+<% else %>
+  <section class="panel sku-ads-section">
+    <h2 class="section-title"><%= t("reports.wb_ads.title") %></h2>
+    <p class="report-meta"><%= t("reports.wb_ads.subtitle", store: @ads_store.store_name, from: @ads_from_date, to: @ads_to_date) %></p>
+    <div class="table-scroll"><table class="inventory-list-table wb-ads-table">
+      <thead><tr><th><%= t("reports.wb_ads.fields.product") %></th><th><%= t("reports.wb_ads.metrics.spend") %></th><th><%= t("reports.wb_ads.metrics.views") %></th><th><%= t("reports.wb_ads.metrics.clicks") %></th><th><%= t("reports.wb_ads.metrics.orders") %></th><th><%= t("reports.wb_ads.metrics.revenue") %></th><th><%= t("reports.wb_ads.metrics.ctr") %></th><th><%= t("reports.wb_ads.metrics.drr") %></th></tr></thead>
+      <tbody>
+        <% if @ads_wb_rows.blank? %><tr><td colspan="8" class="empty-state"><%= t("reports.sku_detail.ads.empty") %></td></tr><% end %>
+        <% @ads_wb_rows.each do |row| %><% comparisons = @ads_wb_comparisons[row[:nm_id]] || {} %>
+          <tr><td><strong><%= row[:product_name] %></strong><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.nm_id", id: row[:nm_id]) %> · <%= @sku.sku_code %></small></td>
+            <% [[:spend, :currency], [:views, :number], [:clicks, :number], [:orders, :number], [:revenue, :currency], [:ctr, :percentage], [:drr, :percentage]].each do |metric, type| %>
+              <td class="numeric"><span><%= sku_ads_metric(row[metric], type: type) %></span><div class="weekly-profit-table-comparison <%= sku_ads_comparison_class(comparisons[metric]) %>"><%= sku_ads_comparison_label(comparisons[metric]) %></div></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table></div>
+  </section>
+<% end %>

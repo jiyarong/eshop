@@ -9,12 +9,13 @@ class ReportsController < ApplicationController
 
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
-                :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class
+                :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
+                :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
 
-  SKU_DETAIL_TABS = %w[operation basic inventory ai_inventory_health costs stores trend].freeze
+  SKU_DETAIL_TABS = %w[operation basic inventory ads ai_inventory_health costs stores trend].freeze
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -208,6 +209,7 @@ class ReportsController < ApplicationController
     ).performance_metrics.fetch(@sku)
     load_sku_operation_overview if @active_tab == "operation"
     load_sku_inventory_detail if @active_tab == "inventory"
+    load_sku_ads if @active_tab == "ads"
 
     @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
     @to_date = parse_report_date(params[:to_date]) || user_today
@@ -424,6 +426,88 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call
+  end
+
+  def load_sku_ads
+    @ads_platform = params[:ads_platform].presence_in(%w[ozon wb]) || "ozon"
+    monday = user_today.beginning_of_week(:monday)
+    @ads_from_date = parse_report_date(params[:ads_from_date]) || monday - 1.week
+    @ads_to_date = parse_report_date(params[:ads_to_date]) || monday - 1.day
+    @ads_from_date, @ads_to_date = @ads_to_date, @ads_from_date if @ads_from_date > @ads_to_date
+    period_days = (@ads_to_date - @ads_from_date).to_i + 1
+    @ads_previous_to_date = @ads_from_date - 1.day
+    @ads_previous_from_date = @ads_previous_to_date - (period_days - 1).days
+
+    if @ads_platform == "ozon"
+      load_sku_ozon_ads
+    else
+      load_sku_wb_ads
+    end
+  end
+
+  def load_sku_ozon_ads
+    @ads_stores = Ec::Store.where(platform: "ozon", is_active: true).where.not(ozon_raw_account_id: nil).order(:store_name)
+    @ads_store = @ads_stores.find_by(id: params[:ads_store_id]) || @ads_stores.first
+    return unless @ads_store
+
+    product_ids = @sku.sku_products.select { |product| product.store_id == @ads_store.id && product.platform == "ozon" }
+      .filter_map { |product| product.platform_sku_id.to_s.presence }.to_set
+    analytics = RawOzon::Ads::AnalyticsQuery.new(account: @ads_store.raw_ozon_account, store: @ads_store, from_date: @ads_from_date, to_date: @ads_to_date)
+    previous = RawOzon::Ads::AnalyticsQuery.new(account: @ads_store.raw_ozon_account, store: @ads_store, from_date: @ads_previous_from_date, to_date: @ads_previous_to_date)
+
+    @ads_ozon_cpc_rows = analytics.cpc_rows(states: %w[CAMPAIGN_STATE_RUNNING CAMPAIGN_STATE_INACTIVE]).select do |row|
+      row[:unit].products.any? { |product| product.is_current? && product_ids.include?(product.ozon_sku_id.to_s) }
+    end
+    previous_cpc = previous.cpc_rows(states: %w[CAMPAIGN_STATE_RUNNING CAMPAIGN_STATE_INACTIVE]).select do |row|
+      row[:unit].products.any? { |product| product.is_current? && product_ids.include?(product.ozon_sku_id.to_s) }
+    end
+    _unit, @ads_ozon_cpo_rows = analytics.cpo_selected_rows
+    _previous_unit, previous_cpo = previous.cpo_selected_rows
+    @ads_ozon_cpo_rows.select! { |row| row[:sku]&.id == @sku.id }
+    previous_cpo.select! { |row| row[:sku]&.id == @sku.id }
+    builder = RawOzon::Ads::ComparisonBuilder.new
+    @ads_ozon_cpc_comparisons = builder.rows(@ads_ozon_cpc_rows, previous_cpc,
+      key_builder: ->(row) { row[:unit].external_id }, metrics: %i[spend ad_revenue orders_count impressions clicks cart_additions ctr avg_cpc])
+    @ads_ozon_cpo_comparisons = builder.rows(@ads_ozon_cpo_rows, previous_cpo,
+      key_builder: ->(row) { row[:product].ozon_sku_id }, metrics: %i[spend ad_revenue orders_count drr])
+  end
+
+  def load_sku_wb_ads
+    @ads_stores = Ec::Store.active.where(platform: "wb").where.not(wb_api_token: [nil, ""]).order(:store_name)
+    @ads_store = @ads_stores.find_by(id: params[:ads_store_id]) || @ads_stores.first
+    return unless @ads_store
+
+    analytics = RawWb::Adv::AnalyticsQuery.new(store: @ads_store, from_date: @ads_from_date, to_date: @ads_to_date)
+    previous = RawWb::Adv::AnalyticsQuery.new(store: @ads_store, from_date: @ads_previous_from_date, to_date: @ads_previous_to_date)
+    @ads_wb_rows = analytics.product_rows.select { |row| row[:sku_product]&.sku_code == @sku.sku_code }
+    previous_rows = previous.product_rows.select { |row| row[:sku_product]&.sku_code == @sku.sku_code }
+    @ads_wb_comparisons = RawWb::Adv::ComparisonBuilder.new.rows(
+      @ads_wb_rows, previous_rows, key_builder: ->(row) { row[:nm_id] }, metrics: Reports::WbAdsController::ROW_METRICS
+    )
+  end
+
+  def sku_ads_metric(value, type: :number, precision: 2)
+    return t("common.empty_value") if value.nil?
+
+    case type
+    when :currency then helpers.number_to_currency(value, unit: "₽", format: "%n %u", precision: precision)
+    when :percentage then helpers.number_to_percentage(value, precision: precision)
+    when :decimal then helpers.number_with_precision(value, precision: precision, strip_insignificant_zeros: true)
+    else helpers.number_with_delimiter(value.to_i)
+    end
+  end
+
+  def sku_ads_comparison_label(comparison)
+    delta = comparison&.dig(:delta_pct)
+    return t("reports.ozon_ads.comparison.unavailable") if delta.nil?
+
+    arrow = comparison[:trend] == "up" ? "↗" : (comparison[:trend] == "down" ? "↘" : "→")
+    "#{arrow} #{format('%.2f', delta)}%"
+  end
+
+  def sku_ads_comparison_class(comparison)
+    semantic = comparison&.dig(:semantic)
+    semantic.in?(%w[positive negative neutral]) ? "is-#{semantic}" : "is-none"
   end
 
   def load_sku_operation_overview

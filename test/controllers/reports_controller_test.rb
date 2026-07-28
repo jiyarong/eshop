@@ -292,6 +292,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "input[name='sku'][value=?]", @sku_code.downcase
     assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
+    assert_select ".inventory-list-table__sku-link[href=?]", report_sku_path(@sku_code)
+    assert_select ".inventory-list-table__sku-link[data-turbo-frame='inventory_drawer']", count: 0
+    assert_select "a.inventory-list-table__detail-link[href=?][data-turbo-frame='inventory_drawer']",
+                  report_inventory_detail_path(@sku_code)
     assert_select "td", { text: @second_sku_code, count: 0 }
     assert_select "tbody tr", count: 1
   end
@@ -1088,6 +1092,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", @sku.sku_code
+    assert_select "a.button[href='/operator_skus'][data-controller='history-navigation'][data-action='history-navigation#back']", "返回"
     assert_select ".sku-detail-tabs a[aria-current='page']", "基础配置"
     assert_select "dt", "中文名"
     assert_select "dd", "测试商品"
@@ -1098,6 +1103,13 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "2026-06-01"
   ensure
     assignment&.destroy
+  end
+
+  test "sku detail back link uses browser history with operator list fallback" do
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "basic" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a.button[href='/operator_skus'][data-controller='history-navigation'][data-action='history-navigation#back']", "返回"
   end
 
   test "sku detail renders operator performance cards with matching period logic" do
@@ -1220,6 +1232,27 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "sku detail embeds sku-scoped Ozon and WB advertising after inventory" do
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "ads", ads_platform: "ozon" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    tab_labels = css_select(".sku-detail-tabs__link").map { |link| link.text.strip }
+    assert_equal tab_labels.index("库存概况") + 1, tab_labels.index("广告推广")
+    assert_select ".sku-detail-tabs__link[aria-current='page']", "广告推广"
+    assert_select ".sku-ads-platform-switch .is-active", "Ozon"
+    assert_select ".sku-ads-section .section-title", text: I18n.t("reports.ozon_ads.cpc.title")
+    assert_select ".sku-ads-section .section-title", text: I18n.t("reports.ozon_ads.cpo.title")
+    assert_select ".sku-ads-section .section-title", text: I18n.t("reports.ozon_ads.overview.title"), count: 0
+
+    @wb_sales_store.update!(wb_api_token: "test-wb-ads-token")
+    sign_in @current_user
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "ads", ads_platform: "wb" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-ads-platform-switch .is-active", "WB"
+    assert_select ".sku-ads-section .section-title", text: I18n.t("reports.wb_ads.title")
+  end
+
   test "sku detail renders current marketing grade and stage" do
     Ec::SkuMarketingStateChange.new(
       sku: @sku,
@@ -1316,7 +1349,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".resource-eyebrow", "SKU Details"
-    assert_select "a.button", "Back to list"
+    assert_select "a.button", "Back"
+    assert_select "a.button[href='/operator_skus'][data-controller='history-navigation'][data-action='history-navigation#back']", "Back"
     assert_select "a.button", "Edit profile"
     assert_select ".status-pill", "Active"
     %w[Sales Period\ revenue Period\ profit Period\ margin Period\ ad\ spend].each do |label|

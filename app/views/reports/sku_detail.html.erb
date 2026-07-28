@@ -6,7 +6,9 @@
     <h1 class="page-title"><%= @sku.sku_code %></h1>
   </div>
   <div class="resource-actions">
-    <%= link_to t("reports.sku_detail.actions.back_to_list"), "/reports/skus", class: "button button-secondary" %>
+    <%= link_to t("reports.sku_detail.actions.back_to_list"), operator_skus_path,
+                class: "button button-secondary",
+                data: { controller: "history-navigation", action: "history-navigation#back" } %>
     <%= link_to t("reports.sku_detail.actions.edit_profile"), erp_edit_sku_path(@sku), class: "button" %>
   </div>
 </div>
@@ -54,7 +56,7 @@
 </section>
 
 <nav class="erp-tabs erp-tabs--underline sku-detail-tabs" aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>">
-  <% %w[operation inventory ai_inventory_health trend basic].each do |tab| %>
+  <% %w[operation inventory ads ai_inventory_health trend basic].each do |tab| %>
     <%= link_to t("reports.sku_detail.tabs.#{tab}"),
                 sku_detail_tab_path(tab),
                 class: "erp-tabs__link sku-detail-tabs__link",
@@ -165,6 +167,8 @@
     <%= render "reports/sku_attachments" %>
   <% elsif @active_tab == "inventory" %>
     <%= render "reports/inventory_drawer_content_frame", inventory_detail: @inventory_detail, sku: @sku %>
+  <% elsif @active_tab == "ads" %>
+    <%= render "reports/sku_ads" %>
   <% elsif @active_tab == "costs" %>
     <section class="panel">
       <div class="table-section-header">

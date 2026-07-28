@@ -1076,7 +1076,7 @@ ru:
     sku_detail:
       actions:
         add_predicted_cost: "Добавить прогнозную себестоимость"
-        back_to_list: "Назад к списку"
+        back_to_list: "Назад"
         delete_attachment: "Удалить"
         delete_inventory_health_result: "Удалить AI-диагностику"
         download_attachment: "Скачать"
@@ -1228,6 +1228,7 @@ ru:
         last_30_days_revenue: "Выручка за 30 дней"
         store_count: "Магазины"
       tabs:
+        ads: "Реклама"
         ai_inventory_health: "AI-диагностика"
         aria_label: "Разделы SKU"
         attachments: "Файлы"
@@ -1237,6 +1238,13 @@ ru:
         operation: "Обзор операций"
         stores: "Продажи по магазинам"
         trend: "Тренд продаж"
+      ads:
+        empty: "Нет рекламных данных по этому SKU за выбранный период"
+        no_store: "Нет доступных рекламных магазинов"
+        platform: "Рекламная платформа"
+        platforms:
+          ozon: "Ozon"
+          wb: "WB"
       operation:
         empty_rows: "Нет данных по этому SKU за выбранный период и магазин"
         filters:

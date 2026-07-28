@@ -27,7 +27,7 @@ module RawOzon
       end
 
       def cpc_rows(query: nil, states: nil)
-        scope = units_scope.where(unit_type: "cpc_campaign")
+        scope = units_scope.where(unit_type: "cpc_campaign").includes(:products)
         scope = scope.where(state: states) unless states.nil?
         if query.present?
           term = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
@@ -45,7 +45,7 @@ module RawOzon
           .order(Arel.sql("raw_ozon_ad_units.updated_at DESC")).map do |unit|
           metrics = metrics_by_unit[unit.id] || empty_metrics
           metrics[:cart_additions] = cart_additions_by_unit[unit.id]
-          { unit: unit, product_count: unit.products.where(is_current: true).count,
+          { unit: unit, product_count: unit.products.count(&:is_current?),
             remote_updated_at: remote_updated_at(unit) }
             .merge(metrics).merge(calculated_metrics(metrics))
         end
