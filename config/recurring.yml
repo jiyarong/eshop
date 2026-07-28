@@ -113,6 +113,10 @@ production:
     command: "Ec::SkuInventorySnapshotSync.run"
     schedule: every hour
 
+  sku_inventory_health_check:
+    command: "AITasks::SkuInventoryHealthCheckJob.perform_later"
+    schedule: every day at 03:10 in Asia/Shanghai
+
   daily_snapshot:
     command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"
     schedule: every day at 3:00 in Asia/Shanghai
