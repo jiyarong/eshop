@@ -82,7 +82,7 @@ module RawWb
           price:            price,
           discount:         discount,
           club_discount:    r['clubDiscount'].to_i,
-          final_price:      price * (100 - discount) / 100.0,
+          final_price:      (price * (100 - discount) / 100.0).round(2),
           is_in_quarantine: r['isInQuarantine'] || false,
         }
       end

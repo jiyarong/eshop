@@ -78,9 +78,7 @@ module Ec
           value.to_h.transform_keys(&:to_s).sort.to_h.transform_values { |item| normalize_value(item) }
         when Array
           value.map { |item| normalize_value(item) }
-        when BigDecimal
-          value.to_s("F")
-        when Float
+        when Numeric
           BigDecimal(value.to_s).to_s("F")
         else
           value

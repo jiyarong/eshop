@@ -69,8 +69,8 @@ module Ec
         result = Ec::ListingChangeRecorder.record(
           sku_product: @sku_product,
           operation_type: "listing_specification",
-          before: { price: BigDecimal("100.0"), attributes: { 1 => { value: "same" } } },
-          after: { "price" => 100.0, "attributes" => { "1" => { "value" => "same" } } }
+          before: { price: BigDecimal("100.0"), volume_weight: BigDecimal("1.0"), attributes: { 1 => { value: "same" } } },
+          after: { "price" => 100.0, "volume_weight" => 1, "attributes" => { "1" => { "value" => "same" } } }
         )
         assert_nil result
       end
