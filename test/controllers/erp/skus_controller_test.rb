@@ -66,6 +66,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
   teardown do
     sku_scope = Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%")
     sku_codes = sku_scope.pluck(:sku_code)
+    Ec::AIDiagnosis.where(sku_id: sku_scope.select(:id)).destroy_all
     marketing_state_ids = Ec::SkuMarketingState.where(sku_id: sku_scope.select(:id)).pluck(:id)
     Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
     Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
@@ -82,6 +83,27 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     Ec::Category.where(source: "test", source_id: platform_category_source_ids).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
+  end
+
+  test "index renders latest red diagnosis event tags and filters skus by event type" do
+    stale_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @current_user)
+    stale_diagnosis.events.create!(event_type: "clearance_overdue", severity: "red", message: "Stale")
+    current_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @current_user)
+    current_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "red", message: "Current")
+    other_diagnosis = Ec::RestockingDiagnosis.create!(sku: @inactive_sku, submitted_by: @current_user)
+    other_diagnosis.events.create!(event_type: "stockout_imminent", severity: "red", message: "Other")
+    other_diagnosis.events.create!(event_type: "inventory_sufficient", severity: "green", message: "Healthy")
+
+    get "/erp/skus", params: { ai_event_type: "missed_sales_alert" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-diagnosis-event-filter"
+    assert_select ".ai-diagnosis-event-tag.is-active", text: /错失销售预警/
+    assert_select ".ai-diagnosis-event-tag", text: /即将断货/
+    assert_select ".ai-diagnosis-event-tag", { text: /清仓逾期/, count: 0 }
+    assert_select ".ai-diagnosis-event-tag", { text: /Inventory sufficient/, count: 0 }
+    assert_select "tr.sku-row.master .code-text.sub", text: @sku.sku_code
+    assert_select "tr.sku-row.master .code-text.sub", { text: @inactive_sku.sku_code, count: 0 }
   end
 
   test "index renders sku list with batches" do

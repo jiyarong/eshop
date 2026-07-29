@@ -142,7 +142,7 @@ module Erp
       assert_select "a[href=?][target=?]", "https://seller.ozon.ru/app/products/3902460130/edit/general-info", "_blank"
       assert_select "form[action=?][method=?]", "/erp/skus/#{@sku.id}/products", "post"
       assert_select "select[name=?]", "raw_product_platform"
-      assert_select "input[type=?][name=?]", "checkbox", "available_only"
+      assert_select "select[name=?] option[value='available'][selected]", "binding_status"
       assert_select "table.raw-product-options"
       assert_select "table.raw-product-options th", "商品属性"
       assert_select "table.raw-product-options th", "店铺链接"
@@ -244,17 +244,67 @@ module Erp
       hidden_product&.destroy
     end
 
-    test "index filters raw product options by platform and available checkbox" do
+    test "index filters raw product options by platform and binding status" do
       get "/erp/skus/#{@sku.id}/products",
-          params: { raw_product_platform: "wb", available_only: "1" },
+          params: { raw_product_platform: "wb", binding_status: "available" },
           headers: { "Accept" => "text/html" }
 
       assert_response :success
       assert_select "select[name=?] option[value='wb'][selected]", "raw_product_platform"
-      assert_select "input[type=?][name=?][checked]", "checkbox", "available_only"
+      assert_select "select[name=?] option[value='available'][selected]", "binding_status"
       assert_select "input[type=?][name=?][value=?]", "checkbox", "raw_product_keys[]", "wb:#{@wb_store.id}:#{@raw_wb_product.nm_id}"
       assert_select "input[type=?][name=?][value=?]", "checkbox", "raw_product_keys[]", "ozon:#{@store.id}:#{@raw_ozon_product.ozon_product_id}", count: 0
       assert_select "table.raw-product-options td", { text: "OFFER-#{@token}", count: 0 }
+    end
+
+    test "index renders only the add binding panel in the erp modal" do
+      get "/erp/skus/#{@sku.id}/products", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+      assert_response :success
+      assert_select "turbo-frame#erp_modal"
+      assert_select ".sku-product-binding-modal[role='dialog']"
+      assert_select "h2", "新增绑定"
+      assert_select "h2", { text: "当前绑定", count: 0 }
+      assert_select "select[name='binding_status'] option[value='available'][selected]"
+    end
+
+    test "index can show products that are already bound" do
+      get "/erp/skus/#{@sku.id}/products",
+          params: { binding_status: "bound" },
+          headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "select[name='binding_status'] option[value='bound'][selected]"
+      assert_select "td", "BOUND-OZON-#{@token}"
+      assert_select "input[name='raw_product_keys[]']", count: 0
+      assert_select "button", { text: "新增绑定", count: 0 }
+    end
+
+    test "index paginates platform products and preserves filters" do
+      products = 21.times.map do |index|
+        RawOzon::Product.create!(
+          account: @ozon_account,
+          ozon_product_id: 9_100_000 + index,
+          offer_id: "PAGE-#{@token}-#{index.to_s.rjust(2, '0')}",
+          name: "分页商品 #{index}",
+          raw_json: {},
+          synced_at: Time.zone.parse("2026-06-15 12:00:00")
+        )
+      end
+
+      get "/erp/skus/#{@sku.id}/products",
+          params: { raw_product_platform: "ozon", binding_status: "available" },
+          headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "table.raw-product-options tbody tr", count: 10
+      assert_select ".inventory-pagination-bar"
+      assert_select ".inventory-pagination-bar__summary", text: /显示第 1-10 条/
+      assert_select ".pagination-chip", text: /第 1\/3 页/
+      assert_select ".pagination-nav a[href*='page=2'][href*='binding_status=available'][href*='raw_product_platform=ozon']"
+      assert_select "form.pagination-jump input[name='jump_page'][value='1']"
+    ensure
+      products&.each(&:destroy)
     end
 
     test "creates product bindings from selected raw products under erp sku" do

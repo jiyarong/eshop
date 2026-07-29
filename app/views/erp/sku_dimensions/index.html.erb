@@ -36,6 +36,7 @@
       <div class="spacer"></div>
       <span class="text-sm text-muted"><%= @skus.respond_to?(:total_count) ? @skus.total_count : @skus.size %> SKU</span>
     <% end %>
+    <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
   <section class="card product-list-card">

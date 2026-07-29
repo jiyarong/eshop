@@ -86,6 +86,7 @@
         <%= link_to t("reports.inventory.filters.reset"), inventory_reset_path, class: "button button-secondary" %>
       <% end %>
     </form>
+    <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
   <section class="panel inventory-volume-summary">
@@ -212,21 +213,8 @@
                 <td class="numeric inventory-list-table__metric"><%= turnover_days.present? ? format("%.2f", turnover_days.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days_with_procurement.present? ? format("%.2f", turnover_days_with_procurement.to_d) : "-" %></td>
                 <td class="inventory-list-table__ai-health-cell">
-                  <% health_result = row[:ai_inventory_health_result] %>
-                  <% if health_result.present? %>
-                    <div class="ai-health-stars">
-                      <% health_result.events.each do |event| %>
-                        <%= link_to report_sku_path(row[:sku_code], tab: "ai_inventory_health", locale: params[:locale].presence),
-                                    class: "ai-health-star ai-health-star--#{ai_inventory_health_severity_class(event.severity)}",
-                                    title: event.message,
-                                    aria: { label: event.message } do %>
-                          <span aria-hidden="true">★</span>
-                        <% end %>
-                      <% end %>
-                    </div>
-                  <% else %>
-                    <span class="inventory-list-table__subline">-</span>
-                  <% end %>
+                  <%= render "shared/sku_ai_diagnosis_event_tags",
+                    event_types: row[:ai_diagnosis_event_types] %>
                 </td>
                 <td class="inventory-list-table__actions-cell">
                   <div class="resource-actions inventory-list-table__actions">

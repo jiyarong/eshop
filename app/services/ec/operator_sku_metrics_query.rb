@@ -14,13 +14,11 @@ module Ec
 
       performance = performance_metrics
       inventory = inventory_metrics
-      health_results = Ec::RestockingDiagnosis.includes(:events).latest_for_sku_ids(@skus.map(&:id))
 
       @skus.index_with do |sku|
         code = sku.sku_code
         performance.fetch(sku).merge(
-          inventory: inventory.fetch(code, empty_inventory),
-          event_count: health_results[sku.id]&.events&.size.to_i
+          inventory: inventory.fetch(code, empty_inventory)
         )
       end
     end

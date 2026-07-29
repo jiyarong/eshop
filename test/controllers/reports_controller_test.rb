@@ -1331,7 +1331,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     binding = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
     assert_select "a[href=?]", "/erp/platform_products/ozon/#{@sales_store.id}/#{binding.product_id}", "查看属性"
     assert_select "a[href=?][target=?]", "https://seller.ozon.ru/app/products/#{binding.platform_sku_id}/edit/general-info", "_blank"
-    assert_select "a[href=?]", "/erp/skus/#{@sku.id}/products"
+    assert_select "a[href=?][data-turbo-frame=?]", "/erp/skus/#{@sku.id}/products", "erp_modal"
   end
 
   test "sku detail localizes basic tab in english" do

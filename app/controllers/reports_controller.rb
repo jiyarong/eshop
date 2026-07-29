@@ -6,6 +6,7 @@ class ReportsController < ApplicationController
   include SpuSkuFilterable
   include SkuMarketingStateFilterable
   include MasterSkuCategoryFilterable
+  include AIDiagnosisEventFilterable
 
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
@@ -23,6 +24,7 @@ class ReportsController < ApplicationController
     load_spu_sku_filter
     load_sku_marketing_state_filters
     load_responsible_user_filters
+    load_ai_diagnosis_event_filter
     @turnover_days_min_query = params[:turnover_days_min].to_s.strip
     @turnover_days_max_query = params[:turnover_days_max].to_s.strip
     @procurement_turnover_days_min_query = params[:procurement_turnover_days_min].to_s.strip
@@ -59,7 +61,8 @@ class ReportsController < ApplicationController
   end
 
   def skus
-    @skus = Ec::Sku.order(:sku_code)
+    load_ai_diagnosis_event_filter
+    @skus = apply_ai_diagnosis_event_filter_to_skus(Ec::Sku.order(:sku_code))
   end
 
   def sku_detail
@@ -149,14 +152,15 @@ class ReportsController < ApplicationController
   def costs
     load_master_sku_category_filter
     load_responsible_user_filters
+    load_ai_diagnosis_event_filter
 
     sku_costs_scope = Ec::SkuCost.latest_as_of(user_today).includes(:sku, :sku_dimension)
     wb_costs_scope = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "wb").order(:sku_code, :delivery_mode, :company_type)
     ozon_costs_scope = Ec::SkuPlatformCost.includes(:sku, cost: :sku_dimension).where(platform: "ozon").order(:sku_code, :delivery_mode, :company_type)
 
-    @sku_costs = apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(sku_costs_scope))
-    @wb_costs = apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(wb_costs_scope))
-    @ozon_costs = apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(ozon_costs_scope))
+    @sku_costs = apply_ai_diagnosis_event_filter_to_sku_records(apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(sku_costs_scope)))
+    @wb_costs = apply_ai_diagnosis_event_filter_to_sku_records(apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(wb_costs_scope)))
+    @ozon_costs = apply_ai_diagnosis_event_filter_to_sku_records(apply_responsible_user_filters_to_sku_records(apply_master_sku_category_filter_to_sku_records(ozon_costs_scope)))
   end
 
   def sku_sales
@@ -305,11 +309,11 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call
-    latest_health_results = Ec::RestockingDiagnosis.includes(:events).latest_for_sku_ids(skus.map(&:id))
+    event_types_by_sku_id = load_latest_red_ai_diagnosis_event_types_for(skus)
 
     rows = skus.map do |sku|
       fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {}).merge(
-        ai_inventory_health_result: latest_health_results[sku.id]
+        ai_diagnosis_event_types: event_types_by_sku_id.fetch(sku.id, [])
       )
     end
 
@@ -345,6 +349,7 @@ class ReportsController < ApplicationController
     scope = apply_spu_sku_filter_to_skus(scope)
     scope = apply_marketing_state_filters(scope)
     scope = apply_responsible_user_filters_to_skus(scope)
+    scope = apply_ai_diagnosis_event_filter_to_skus(scope)
     return scope if @sku_query.blank?
 
     scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)
@@ -382,7 +387,7 @@ class ReportsController < ApplicationController
   end
 
   def inventory_filters_active?
-    @sku_query.present? || inventory_turnover_filter_active? || responsible_user_filters_active? || spu_sku_filter_active? || sku_marketing_state_filters_active? || master_sku_category_filter_active?
+    @sku_query.present? || inventory_turnover_filter_active? || responsible_user_filters_active? || spu_sku_filter_active? || sku_marketing_state_filters_active? || master_sku_category_filter_active? || ai_diagnosis_event_filter_active?
   end
 
   def inventory_turnover_matches_all?(turnover_days:, turnover_days_with_procurement:)

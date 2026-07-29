@@ -1271,6 +1271,14 @@ ru:
         details: "Детали"
       title: "Продажи SKU"
   erp:
+    ai_diagnosis_event_filter:
+      aria_label: "Фильтры рисков AI-диагностики"
+      label: "Риски AI-диагностики"
+      event_types:
+        clearance_overdue: "Просроченная распродажа"
+        missed_sales_alert: "Риск упущенных продаж"
+        stockout_90day: "Риск дефицита за 90 дней"
+        stockout_imminent: "Скорый дефицит"
     common:
       actions:
         actions: "Действия"
@@ -1421,6 +1429,14 @@ ru:
         next_page: "Следующая страница"
         previous_page: "Предыдущая страница"
     sku_products:
+      pagination:
+        aria_label: "Пагинация товаров платформ"
+        jump_action: "OK"
+        jump_label: "Перейти"
+        next_page: "Следующая страница"
+        page_chip: "Страница %{page}/%{pages}"
+        previous_page: "Предыдущая страница"
+        summary: "Показано %{from}-%{to} из %{total}"
       actions:
         add_binding: "Добавить связь"
         back_to_sku: "Назад к деталям SKU"
@@ -1450,7 +1466,10 @@ ru:
         store: "Магазин"
       filters:
         all_platforms: "Все платформы"
+        available: "Доступные"
         available_only: "Только доступные"
+        binding_status: "Статус привязки"
+        bound: "Недоступные"
         platform: "Платформа"
         raw_product_query: "Поиск товаров платформ"
         raw_product_query_placeholder: "Магазин / ID товара / Offer ID / SKU платформы / название"
@@ -1760,7 +1779,7 @@ ru:
       ads: "Реклама за период"
       inventory: "Запасы"
       status: "Статус"
-      events: "События"
+      events: "Метки диагностики"
     responsible:
       developer: "Разработка:"
       operator: "Операции:"

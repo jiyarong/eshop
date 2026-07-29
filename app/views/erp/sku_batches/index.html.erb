@@ -72,6 +72,7 @@
       <div class="spacer"></div>
       <span class="text-sm text-muted"><%= @batches.respond_to?(:total_count) ? @batches.total_count : @batches.size %> <%= t("erp.sku_batches.units.batch", count: @batches.respond_to?(:total_count) ? @batches.total_count : @batches.size) %></span>
     <% end %>
+    <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
   <section class="card product-list-card">

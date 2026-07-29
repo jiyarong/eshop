@@ -15,10 +15,32 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::AIDiagnosis.where(sku_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).destroy_all
     Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::MasterSku.where(id: @master_sku.id).delete_all
     UserRole.where(user_id: @user.id).delete_all
     User.where(id: @user.id).delete_all
+  end
+
+  test "index filters skus by latest red diagnosis event tag" do
+    diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
+    diagnosis.events.create!(event_type: "stockout_imminent", severity: "red", message: "Risk")
+    diagnosis.events.create!(event_type: "missed_sales_alert", severity: "red", message: "Sales risk")
+    diagnosis.events.create!(event_type: "inventory_sufficient", severity: "green", message: "Healthy")
+    other_sku = Ec::Sku.create!(sku_code: "OPS-OTHER-#{@token}", product_name: "其他运营商品")
+
+    with_empty_metrics do
+      get operator_skus_path, params: { ai_event_type: "stockout_imminent" }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".ai-diagnosis-event-filter"
+    assert_select ".ai-diagnosis-event-tag.is-active", text: /即将断货/
+    assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
+    assert_select ".operator-sku-row .code-text.sub", { text: other_sku.sku_code, count: 0 }
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "即将断货"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "错失销售预警"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Inventory sufficient/, count: 0 }
   end
 
   test "index renders operator sku columns and puts link before sales funnel" do
@@ -40,8 +62,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
                 margin_pct: { value: 20, comparison: comparison },
                 ads: { value: -50 * multiplier, comparison: { delta_pct: -5, semantic: "positive" } }
               }
-            end,
-            event_count: 3
+            end
           }
         end
       end
@@ -70,12 +91,12 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       assert_equal "/operator_skus", links.first["href"]
       assert_equal "/reports/sales_funnel", links[1]["href"]
     end
-    %w[SKU SPU 营销状态 负责人 销量 周期销售额 周期利润 周期利润率 周期广告花费 库存 状态 Event\ 数量].each do |heading|
+    %w[SKU SPU 营销状态 负责人 销量 周期销售额 周期利润 周期利润率 周期广告花费 库存 状态 诊断标签].each do |heading|
       assert_select ".operator-sku-table thead th", text: heading
     end
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
     assert_select ".operator-status--normal", text: "正常"
-    assert_select ".operator-event-count", text: "3"
+    assert_select ".sku-ai-diagnosis-event-tags", text: "-"
     assert_select ".operator-sku-profit .operator-sku-period", 10
     assert_select ".operator-sku-sales .operator-sku-comparison", 2
     assert_select ".operator-sku-period__value", text: /7天/
@@ -147,8 +168,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
             inventory: { available_stock: 0, incoming_quantity: 0, turnover_days: nil },
             profit: %i[days_7 days_30].index_with do
               %i[revenue after_tax margin_pct ads].index_with { { value: nil, comparison: nil } }
-            end,
-            event_count: 0
+            end
           }
         end
       end

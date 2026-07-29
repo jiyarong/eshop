@@ -19,6 +19,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
 
   teardown do
     sku_scope = Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%")
+    Ec::AIDiagnosis.where(sku_id: sku_scope.select(:id)).destroy_all
     batch_ids = Ec::SkuBatch.where(sku_code: sku_scope.select(:sku_code)).pluck(:id)
     Ec::CostAllocationItem.where(sku_batch_id: batch_ids).delete_all
     Ec::PurchaseOrderItem.where(sku_batch_id: batch_ids).delete_all
@@ -34,6 +35,20 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     Ec::Category.where(source: "test", source_id: platform_category_source_ids).delete_all if defined?(Ec::Category)
     UserRole.joins(:user).where("users.email LIKE ?", "erp-batches-#{@token.downcase}%").delete_all
     User.where("email LIKE ?", "erp-batches-#{@token.downcase}%").delete_all
+  end
+
+  test "index filters batches by latest red diagnosis event type" do
+    diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @current_user)
+    diagnosis.events.create!(event_type: "stockout_imminent", severity: "red", message: "Risk")
+
+    get "/erp/sku_batches",
+      params: { ai_event_type: "stockout_imminent", statuses: [@batch.status] },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-diagnosis-event-tag.is-active", text: /即将断货/
+    assert_select "tr.sku-batch-row", count: 1
+    assert_select "tr.sku-batch-row", text: /#{Regexp.escape(@batch.batch_code)}/
   end
 
   test "index renders sku batches" do

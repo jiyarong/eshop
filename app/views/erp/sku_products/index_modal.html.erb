@@ -1,0 +1,11 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal erp-modal--wide sku-product-binding-modal" role="dialog" aria-modal="true" aria-labelledby="sku-product-binding-modal-title">
+      <div class="erp-modal__header">
+        <div><h2 id="sku-product-binding-modal-title"><%= t("erp.sku_products.sections.add_binding") %></h2><p class="erp-modal__subtitle"><%= @sku.sku_code %></p></div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </div>
+      <%= render "add_binding" %>
+    </section>
+  </div>
+<% end %>

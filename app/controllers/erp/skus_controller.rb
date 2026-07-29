@@ -4,6 +4,7 @@ module Erp
     include SpuSkuFilterable
     include SkuMarketingStateFilterable
     include MasterSkuCategoryFilterable
+    include AIDiagnosisEventFilterable
 
     SKU_PAGE_SIZE = 10
 
@@ -18,6 +19,7 @@ module Erp
       load_sku_marketing_state_filters
       load_spu_sku_filter
       load_responsible_user_filters
+      load_ai_diagnosis_event_filter
 
       scope = Ec::Sku.includes(
         :master_sku,
@@ -33,6 +35,7 @@ module Erp
       scope = apply_spu_sku_filter_to_skus(scope)
       scope = apply_responsible_user_filters_to_skus(scope)
       scope = apply_marketing_state_filters(scope)
+      scope = apply_ai_diagnosis_event_filter_to_skus(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.left_joins(:master_sku).where(

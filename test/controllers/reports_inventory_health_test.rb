@@ -25,6 +25,12 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       event_type: "inventory_sufficient",
       message: "最新诊断消息"
     )
+    @latest_result.events.create!(
+      event_type: "missed_sales_alert",
+      severity: "red",
+      message: "最新红色诊断消息",
+      details: {}
+    )
   end
 
   teardown do
@@ -60,7 +66,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       end
     end
     assert_select ".ai-health-message", "旧诊断消息"
-    assert_select ".ai-health-star--danger", count: 1
+    assert_select ".ai-health-star--danger", count: 2
   end
 
   test "deletes an inventory health result from its sku" do
@@ -91,18 +97,16 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
 
-  test "inventory report links stars from only the latest diagnosis" do
+  test "inventory report renders red event tags from only the latest diagnosis" do
     get "/reports/inventory",
       params: { sku: @sku.sku_code },
       headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "th", "AI诊断"
-    assert_select ".inventory-list-table__ai-health-cell a[title='最新诊断消息']", count: 1 do |links|
-      assert_includes links.first["href"], "tab=ai_inventory_health"
-    end
-    assert_select ".inventory-list-table__ai-health-cell a[title='旧诊断消息']", count: 0
-    assert_select ".inventory-list-table__ai-health-cell .ai-health-star--success", count: 1
+    assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", text: "错失销售预警"
+    assert_select ".inventory-list-table__ai-health-cell", { text: /Inventory sufficient/, count: 0 }
+    assert_select ".inventory-list-table__ai-health-cell", { text: /Stockout risk/, count: 0 }
   end
 
   private

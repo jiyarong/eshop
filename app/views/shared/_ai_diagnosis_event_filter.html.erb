@@ -1,0 +1,17 @@
+<% if @ai_diagnosis_event_tags.present? %>
+  <div class="ai-diagnosis-event-filter" aria-label="<%= t("erp.ai_diagnosis_event_filter.aria_label") %>">
+    <span class="ai-diagnosis-event-filter__label"><%= t("erp.ai_diagnosis_event_filter.label") %></span>
+    <div class="ai-diagnosis-event-filter__tags">
+      <% @ai_diagnosis_event_tags.each do |tag| %>
+        <% event_type = tag[:event_type] %>
+        <% active = event_type == @ai_diagnosis_event_type %>
+        <% query = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page, :ai_event_type) %>
+        <% query[:ai_event_type] = event_type unless active %>
+        <%= link_to url_for(only_path: true, **query), class: class_names("ai-diagnosis-event-tag", "is-active": active), aria: { pressed: active } do %>
+          <span><%= t("erp.ai_diagnosis_event_filter.event_types.#{event_type}", default: event_type.to_s.humanize) %></span>
+          <span class="ai-diagnosis-event-tag__count"><%= tag[:count] %></span>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

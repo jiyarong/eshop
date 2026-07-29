@@ -2286,6 +2286,17 @@ pre {
   width: min(1080px, 100%);
 }
 
+.sku-product-binding-modal {
+  width: min(1440px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.sku-product-binding-panel .product-filter-card {
+  margin-bottom: 16px;
+}
+
+
 .inventory-drawer-backdrop {
   align-items: stretch;
   justify-content: flex-end;
@@ -4176,6 +4187,87 @@ textarea:focus {
 
 .product-filter-field .select {
   width: 100%;
+}
+
+.ai-diagnosis-event-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-diagnosis-event-filter__label {
+  flex: 0 0 auto;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-diagnosis-event-filter__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-diagnosis-event-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 9px;
+  border: 1px solid #ef9a9a;
+  border-radius: 6px;
+  color: #9f2525;
+  background: #fff7f7;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ai-diagnosis-event-tag:hover {
+  border-color: #d85b5b;
+  background: #ffeded;
+}
+
+.ai-diagnosis-event-tag.is-active {
+  border-color: #b83232;
+  color: #fff;
+  background: #b83232;
+}
+
+.ai-diagnosis-event-tag__count {
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(159, 37, 37, 0.1);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.ai-diagnosis-event-tag.is-active .ai-diagnosis-event-tag__count {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sku-ai-diagnosis-event-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 150px;
+}
+
+.ai-diagnosis-event-tag--compact {
+  min-height: 22px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: default;
+}
+
+.ai-diagnosis-event-tag--compact:hover {
+  border-color: #ef9a9a;
+  background: #fff7f7;
 }
 
 .responsible-user-filter {

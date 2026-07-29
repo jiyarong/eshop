@@ -4,6 +4,7 @@ module Erp
     include SpuSkuFilterable
     include MasterSkuCategoryFilterable
     include ResponsibleUserFilterable
+    include AIDiagnosisEventFilterable
 
     SKU_PAGE_SIZE = 10
     INLINE_EDITABLE_FIELDS = Erp::InlineEditHelper::SKU_COST_INLINE_FIELDS.keys.map(&:to_s).freeze
@@ -17,10 +18,12 @@ module Erp
       load_master_sku_category_filter
       load_spu_sku_filter
       load_responsible_user_filters
+      load_ai_diagnosis_event_filter
       scope = Ec::Sku.order(:sku_code)
       scope = apply_master_sku_category_filter_to_skus(scope)
       scope = apply_spu_sku_filter_to_skus(scope)
       scope = apply_responsible_user_filters_to_skus(scope)
+      scope = apply_ai_diagnosis_event_filter_to_skus(scope)
       if @sku_query.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@sku_query)}%"
         scope = scope.where("ec_skus.sku_code ILIKE ?", keyword)

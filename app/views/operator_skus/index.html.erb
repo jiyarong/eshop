@@ -47,6 +47,7 @@
       <div class="spacer"></div>
       <span class="text-sm text-muted"><%= t("operator_skus.total", count: @skus.total_count) %></span>
     <% end %>
+    <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
   <section class="card product-list-card operator-sku-table-card">
@@ -65,7 +66,7 @@
             <th class="numeric"><%= t("operator_skus.columns.ads") %></th>
             <th class="numeric"><%= t("operator_skus.columns.inventory") %></th>
             <th><%= t("operator_skus.columns.status") %></th>
-            <th class="numeric"><%= t("operator_skus.columns.events") %></th>
+            <th><%= t("operator_skus.columns.events") %></th>
           </tr>
         </thead>
         <tbody>
@@ -116,7 +117,10 @@
                 </div>
               </td>
               <td><span class="operator-status operator-status--<%= sku.operation_status %>"><%= t("operator_skus.statuses.#{sku.operation_status}") %></span></td>
-              <td class="numeric"><strong class="operator-event-count"><%= metrics[:event_count] %></strong></td>
+              <td>
+                <%= render "shared/sku_ai_diagnosis_event_tags",
+                  event_types: @ai_diagnosis_event_types_by_sku_id.fetch(sku.id, []) %>
+              </td>
             </tr>
           <% end %>
           <% if @skus.empty? %>

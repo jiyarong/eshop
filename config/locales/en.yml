@@ -1314,6 +1314,14 @@ en:
         details: "Details"
       title: "SKU Sales"
   erp:
+    ai_diagnosis_event_filter:
+      aria_label: "AI diagnosis risk filters"
+      label: "AI diagnosis risks"
+      event_types:
+        clearance_overdue: "Clearance overdue"
+        missed_sales_alert: "Missed sales alert"
+        stockout_90day: "90-day stockout risk"
+        stockout_imminent: "Stockout imminent"
     common:
       actions:
         actions: "Actions"
@@ -1464,6 +1472,14 @@ en:
         next_page: "Next page"
         previous_page: "Previous page"
     sku_products:
+      pagination:
+        aria_label: "Platform product pagination"
+        jump_action: "Go"
+        jump_label: "Jump to"
+        next_page: "Next page"
+        page_chip: "Page %{page}/%{pages}"
+        previous_page: "Previous page"
+        summary: "Showing %{from}-%{to} of %{total}"
       actions:
         add_binding: "Add binding"
         back_to_sku: "Back to SKU details"
@@ -1493,7 +1509,10 @@ en:
         store: "Store"
       filters:
         all_platforms: "All platforms"
+        available: "Available"
         available_only: "Available only"
+        binding_status: "Binding status"
+        bound: "Unavailable"
         platform: "Platform"
         raw_product_query: "Search platform products"
         raw_product_query_placeholder: "Store / product ID / Offer ID / platform SKU / product name"
@@ -1806,7 +1825,7 @@ en:
       ads: "Period ad spend"
       inventory: "Inventory"
       status: "Status"
-      events: "Events"
+      events: "Diagnosis tags"
     responsible:
       developer: "Dev:"
       operator: "Ops:"

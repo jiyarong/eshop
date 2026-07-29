@@ -1,0 +1,11 @@
+<% event_types = Array(local_assigns[:event_types]) %>
+<div class="sku-ai-diagnosis-event-tags">
+  <% event_types.each do |event_type| %>
+    <span class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact">
+      <%= t("erp.ai_diagnosis_event_filter.event_types.#{event_type}", default: event_type.to_s.humanize) %>
+    </span>
+  <% end %>
+  <% if event_types.empty? %>
+    <span class="text-muted">-</span>
+  <% end %>
+</div>

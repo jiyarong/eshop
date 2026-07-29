@@ -3,6 +3,7 @@ class OperatorSkusController < ApplicationController
   include SpuSkuFilterable
   include SkuMarketingStateFilterable
   include MasterSkuCategoryFilterable
+  include AIDiagnosisEventFilterable
 
   PAGE_SIZE = 10
 
@@ -14,6 +15,7 @@ class OperatorSkusController < ApplicationController
     load_sku_marketing_state_filters
     load_spu_sku_filter
     load_responsible_user_filters
+    load_ai_diagnosis_event_filter
 
     scope = Ec::Sku.includes(
       :master_sku,
@@ -25,6 +27,7 @@ class OperatorSkusController < ApplicationController
     scope = apply_spu_sku_filter_to_skus(scope)
     scope = apply_responsible_user_filters_to_skus(scope)
     scope = apply_marketing_state_filters(scope)
+    scope = apply_ai_diagnosis_event_filter_to_skus(scope)
     if @q.present?
       keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
       scope = scope.left_joins(:master_sku).where(
@@ -35,6 +38,7 @@ class OperatorSkusController < ApplicationController
 
     @skus = scope.page(page_param).per(PAGE_SIZE)
     @skus = scope.page(@skus.total_pages).per(PAGE_SIZE) if @skus.total_pages.positive? && @skus.current_page > @skus.total_pages
+    load_latest_red_ai_diagnosis_event_types_for(@skus)
     @metrics_by_sku = Ec::OperatorSkuMetricsQuery.new(
       skus: @skus,
       date_to: user_today,

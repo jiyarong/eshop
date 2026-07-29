@@ -66,6 +66,7 @@
       <div class="spacer"></div>
       <span class="text-sm text-muted"><%= @master_sku_entries.size %> · <%= total_visible_skus %> SKU</span>
     <% end %>
+    <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
   <section class="card product-list-card" data-controller="product-tree">

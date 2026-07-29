@@ -4,6 +4,7 @@ module Erp
     include MasterSkuCategoryFilterable
     include ResponsibleUserFilterable
     include SpuSkuFilterable
+    include AIDiagnosisEventFilterable
 
     INLINE_EDITABLE_FIELDS = %w[
       batch_code
@@ -27,11 +28,13 @@ module Erp
       load_master_sku_category_filter
       load_spu_sku_filter
       load_responsible_user_filters
+      load_ai_diagnosis_event_filter
 
       scope = Ec::SkuBatch.includes(:sku).left_joins(:sku).order(created_at: :desc, id: :desc)
       scope = apply_master_sku_category_filter_to_sku_records(scope)
       scope = apply_spu_sku_filter_to_sku_records(scope)
       scope = apply_responsible_user_filters_to_sku_records(scope)
+      scope = apply_ai_diagnosis_event_filter_to_sku_records(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.where(

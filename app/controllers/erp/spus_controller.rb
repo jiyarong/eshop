@@ -2,6 +2,7 @@ module Erp
   class SpusController < BaseController
     include ResponsibleUserFilterable
     include MasterSkuCategoryFilterable
+    include AIDiagnosisEventFilterable
 
     SPU_PAGE_SIZE = 10
 
@@ -10,6 +11,7 @@ module Erp
       @status = params[:status].presence_in(%w[active inactive all]) || "all"
       load_master_sku_category_filter
       load_responsible_user_filters
+      load_ai_diagnosis_event_filter
 
       scope = Ec::MasterSku.includes(
         { ec_category: :parent },
@@ -25,6 +27,7 @@ module Erp
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = apply_master_sku_category_filter_to_master_skus(scope)
       scope = apply_responsible_user_filters_to_master_skus(scope)
+      scope = apply_ai_diagnosis_event_filter_to_master_skus(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.left_joins(:skus).where(
@@ -60,6 +63,7 @@ module Erp
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = apply_responsible_user_filters_to_skus(scope)
+      scope = apply_ai_diagnosis_event_filter_to_skus(scope)
       if @q.present?
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.where(
@@ -116,6 +120,9 @@ module Erp
       visible_skus = skus
       if responsible_user_filters_active?
         visible_skus = visible_skus.select { |sku| responsible_user_filtered_sku_codes.include?(sku.sku_code) }
+      end
+      if ai_diagnosis_event_filter_active?
+        visible_skus = visible_skus.select { |sku| ai_diagnosis_event_filtered_sku_codes.include?(sku.sku_code) }
       end
 
       visible_skus.sort_by(&:sku_code)

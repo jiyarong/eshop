@@ -1,11 +1,14 @@
 module Erp
   class SkuProductsController < BaseController
+    RAW_PRODUCT_PAGE_SIZE = 10
+
     before_action :set_sku
     before_action -> { require_permission!(:manage_skus) }, only: [:create, :destroy]
 
     def index
       load_page_data
       @sku_product = @sku.sku_products.new
+      render_modal_or_page
     end
 
     def create
@@ -17,7 +20,7 @@ module Erp
       else
         @sku_product = @sku_products.find { |product| product.errors.any? } || @sku.sku_products.new
         load_page_data
-        render :index, status: :unprocessable_entity
+        render_modal_or_page(:index, :index_modal, status: :unprocessable_entity)
       end
     end
 
@@ -35,14 +38,27 @@ module Erp
     def load_page_data
       @raw_product_query = params[:raw_product_query].to_s.strip
       @raw_product_platform = params[:raw_product_platform].presence_in(%w[ozon wb])
-      @available_only = params[:available_only].to_s == "1"
+      @binding_status = params[:binding_status].presence_in(%w[available bound]) || "available"
       @stores = Ec::Store.active.order(:platform, :store_name)
       @sku_products = @sku.sku_products.includes(:store).ordered
-      @raw_product_options = raw_product_options
+      options = raw_product_options
+      current_page = raw_product_page_param
+      @raw_product_options = Kaminari.paginate_array(options).page(current_page).per(RAW_PRODUCT_PAGE_SIZE)
+      if @raw_product_options.total_pages.positive? && current_page > @raw_product_options.total_pages
+        @raw_product_options = Kaminari.paginate_array(options).page(@raw_product_options.total_pages).per(RAW_PRODUCT_PAGE_SIZE)
+      end
     end
 
     def sku_product_attributes_from_raw_products
       Array(params[:raw_product_keys]).filter_map { |raw_product_key| sku_product_attributes_from_raw_product(raw_product_key) }
+    end
+
+    def raw_product_page_param
+      requested_page = params[:jump_page].presence || params[:page].presence
+      current_page = params[:current_page].presence || params[:page].presence
+      page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
+      page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
+      [page || 1, 1].max
     end
 
     def sku_product_attributes_from_raw_product(raw_product_key)
@@ -97,7 +113,7 @@ module Erp
         else
           []
         end
-      end.reject { |product| @available_only && product[:bound] }
+      end.select { |product| @binding_status == "bound" ? product[:bound] : !product[:bound] }
     end
 
     def ozon_product_options(store)
