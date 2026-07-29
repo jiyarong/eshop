@@ -1474,6 +1474,8 @@ ru:
         no_actions: "Операционные записи отсутствуют"
       pagination:
         aria_label: "Пагинация операционных записей"
+        jump_action: "OK"
+        jump_label: "Перейти"
         next_page: "Следующая страница"
         previous_page: "Предыдущая страница"
         page_chip: "Страница %{page}/%{pages}"

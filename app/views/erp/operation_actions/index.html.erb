@@ -82,7 +82,7 @@
                         <% changes.each do |change_type, value| %>
                           <div class="operation-action-diff-value">
                             <strong><%= t("erp.operation_actions.change_types.#{change_type}") %></strong>
-                            <pre><%= operation_action_diff_value(value) %></pre>
+                            <div class="operation-action-diff-data"><%= operation_action_diff_value(value) %></div>
                           </div>
                         <% end %>
                       </section>

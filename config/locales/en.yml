@@ -1517,6 +1517,8 @@ en:
         no_actions: "No operation records"
       pagination:
         aria_label: "Operation records pagination"
+        jump_action: "Go"
+        jump_label: "Jump to"
         next_page: "Next page"
         previous_page: "Previous page"
         page_chip: "Page %{page}/%{pages}"

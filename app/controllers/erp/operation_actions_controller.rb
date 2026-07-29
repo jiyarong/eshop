@@ -1,6 +1,6 @@
 module Erp
   class OperationActionsController < BaseController
-    PAGE_SIZE = 20
+    PAGE_SIZE = 10
     PLATFORMS = %w[wb ozon].freeze
 
     def index
@@ -24,7 +24,8 @@ module Erp
     private
 
     def page_param
-      page = params[:page].to_i
+      requested_page = params[:jump_page].presence || params[:page].presence
+      page = requested_page.to_i
       page.positive? ? page : 1
     end
   end

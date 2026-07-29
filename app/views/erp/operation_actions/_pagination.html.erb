@@ -1,6 +1,6 @@
 <% page = operation_actions.current_page %>
 <% page_count = operation_actions.total_pages %>
-<% query_params = request.query_parameters.symbolize_keys.except(:page) %>
+<% query_params = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page) %>
 
 <div class="inventory-pagination-bar">
   <div class="pagination-meta">
@@ -34,5 +34,20 @@
         <span class="pg-btn pg-btn-nav" aria-disabled="true">›</span>
       <% end %>
     </nav>
+    <span class="pagination-divider" aria-hidden="true"></span>
+    <%= form_with url: erp_operation_actions_path, method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("erp.operation_actions.pagination.jump_label") } do %>
+      <% query_params.each do |key, value| %>
+        <%= hidden_field_tag key, value %>
+      <% end %>
+      <%= hidden_field_tag :current_page, page %>
+      <span class="pagination-jump-label"><%= t("erp.operation_actions.pagination.jump_label") %></span>
+      <%= text_field_tag :jump_page,
+                         page,
+                         class: "pagination-jump-input",
+                         inputmode: "numeric",
+                         pattern: "[0-9]*",
+                         aria: { label: t("erp.operation_actions.pagination.jump_label") } %>
+      <%= submit_tag t("erp.operation_actions.pagination.jump_action"), class: "pg-btn pg-btn-jump" %>
+    <% end %>
   </div>
 </div>

@@ -75,7 +75,7 @@ class Erp::OperationActionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: @other_sku.sku_code, count: 0 }
   end
 
-  test "index paginates twenty actions per page and preserves filters" do
+  test "index paginates ten actions per page and preserves filters" do
     20.times do |index|
       create_action(
         @wb_product,
@@ -85,15 +85,30 @@ class Erp::OperationActionsControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
+    sign_in @current_user
     get "/erp/operation_actions",
       params: { operation_type: "listing_content", platform: "wb", sku: @sku.sku_code },
       headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".operation-actions-table tbody tr.sku-row", 20
-    assert_select ".pagination-chip", "第 1/2 页"
-    assert_select ".inventory-pagination-bar", /显示第 1-20 条，共 21 条/
+    assert_select ".operation-actions-table tbody tr.sku-row", 10
+    assert_select ".pagination-chip", "第 1/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 1-10 条，共 21 条/
     assert_select "a[href*='page=2'][href*='operation_type=listing_content'][href*='platform=wb']"
+    assert_select ".pagination-jump form[action='/erp/operation_actions']", 0
+    assert_select "form.pagination-jump[action='/erp/operation_actions'] input[name='operation_type'][value='listing_content']"
+    assert_select "form.pagination-jump[action='/erp/operation_actions'] input[name='platform'][value='wb']"
+    assert_select "form.pagination-jump[action='/erp/operation_actions'] input[name='sku'][value=?]", @sku.sku_code
+    assert_select "form.pagination-jump[action='/erp/operation_actions'] input[name='jump_page']"
+
+    sign_in @current_user
+    get "/erp/operation_actions",
+      params: { operation_type: "listing_content", platform: "wb", sku: @sku.sku_code, jump_page: 2 },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 21 条/
   end
 
   private
