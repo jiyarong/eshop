@@ -1,0 +1,108 @@
+<% content_for :page_heading, t("erp.operation_actions.index.title") %>
+
+<div class="product-management sku-management operation-actions-page">
+  <div class="page-h">
+    <div>
+      <h1><%= t("erp.operation_actions.index.title") %></h1>
+      <p class="sub"><%= t("erp.operation_actions.index.subtitle") %></p>
+    </div>
+  </div>
+
+  <section class="card product-filter-card">
+    <%= form_with url: erp_operation_actions_path, method: :get, local: true, class: "product-filter-form" do |form| %>
+      <% current_locale_params.each do |key, value| %>
+        <%= hidden_field_tag key, value %>
+      <% end %>
+      <div class="product-search-control">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= form.search_field :sku, value: @sku_query, placeholder: t("erp.operation_actions.filters.sku_placeholder"), class: "input" %>
+      </div>
+      <label class="product-filter-field">
+        <span><%= t("erp.operation_actions.filters.operation_type") %></span>
+        <%= form.select :operation_type,
+                        options_for_select(operation_action_type_options, @operation_type),
+                        { include_blank: t("erp.operation_actions.filters.all_operation_types") },
+                        class: "input" %>
+      </label>
+      <label class="product-filter-field">
+        <span><%= t("erp.operation_actions.filters.platform") %></span>
+        <%= form.select :platform,
+                        options_for_select(operation_action_platform_options, @platform),
+                        { include_blank: t("erp.operation_actions.filters.all_platforms") },
+                        class: "input" %>
+      </label>
+      <button class="btn btn-primary" type="submit">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= t("erp.common.actions.filter") %>
+      </button>
+      <%= link_to erp_operation_actions_path(current_locale_params), class: "btn btn-outline" do %>
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+        <%= t("erp.common.actions.reset") %>
+      <% end %>
+      <div class="spacer"></div>
+      <span class="text-sm text-muted"><%= t("erp.operation_actions.index.total", count: @operation_actions.total_count) %></span>
+    <% end %>
+  </section>
+
+  <section class="card product-list-card">
+    <table class="prod-tbl operation-actions-table">
+      <thead>
+        <tr>
+          <th><%= t("erp.operation_actions.fields.operated_at") %></th>
+          <th><%= t("erp.operation_actions.fields.operation_type") %></th>
+          <th><%= t("erp.operation_actions.fields.platform") %></th>
+          <th><%= t("erp.operation_actions.fields.store") %></th>
+          <th><%= t("erp.operation_actions.fields.sku") %></th>
+          <th><%= t("erp.operation_actions.fields.operator") %></th>
+          <th><%= t("erp.operation_actions.fields.diff") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @operation_actions.any? %>
+          <% @operation_actions.each do |action| %>
+            <% diff_fields = action.diff_result.fetch("fields", {}) %>
+            <tr class="sku-row master">
+              <td class="operation-action-time"><%= display_time(action.operated_at) %></td>
+              <td><span class="badge badge-pri"><%= t("erp.operation_actions.operation_types.#{action.operation_type}") %></span></td>
+              <td><span class="badge badge-sec"><%= t("erp.operation_actions.platforms.#{action.store.platform}") %></span></td>
+              <td><%= action.store.store_name %></td>
+              <td><span class="code-text sub"><%= action.sku.sku_code %></span></td>
+              <td><%= action.operated_by_user.display_name %></td>
+              <td class="operation-action-diff-cell">
+                <details class="operation-action-diff">
+                  <summary>
+                    <% diff_fields.keys.each do |field| %>
+                      <span class="operation-action-field-chip"><%= operation_action_field_label(field) %></span>
+                    <% end %>
+                  </summary>
+                  <div class="operation-action-diff-list">
+                    <% operation_action_diff_entries(diff_fields).each do |path, changes| %>
+                      <section class="operation-action-diff-item">
+                        <h3><%= operation_action_diff_path(path) %></h3>
+                        <% changes.each do |change_type, value| %>
+                          <div class="operation-action-diff-value">
+                            <strong><%= t("erp.operation_actions.change_types.#{change_type}") %></strong>
+                            <pre><%= operation_action_diff_value(value) %></pre>
+                          </div>
+                        <% end %>
+                      </section>
+                    <% end %>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="7" class="empty-state">
+              <i class="bi bi-inbox" aria-hidden="true"></i>
+              <%= t("erp.operation_actions.empty.no_actions") %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <%= render "pagination", operation_actions: @operation_actions if @operation_actions.total_pages > 1 %>
+  </section>
+</div>

@@ -147,6 +147,7 @@ Rails.application.routes.draw do
     resources :purchase_orders, except: [:destroy]
     resources :cost_allocations, except: [:destroy]
     resources :operation_tasks, only: [:index, :show]
+    resources :operation_actions, only: [:index]
   end
 
   namespace :raw_wb do

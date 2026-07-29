@@ -2744,6 +2744,112 @@ pre {
   }
 }
 
+.operation-actions-table th:nth-child(1),
+.operation-actions-table td:nth-child(1) {
+  width: 150px;
+  white-space: nowrap;
+}
+
+.operation-actions-table th:nth-child(2),
+.operation-actions-table td:nth-child(2),
+.operation-actions-table th:nth-child(3),
+.operation-actions-table td:nth-child(3) {
+  width: 110px;
+}
+
+.operation-actions-table th:nth-child(4),
+.operation-actions-table td:nth-child(4),
+.operation-actions-table th:nth-child(5),
+.operation-actions-table td:nth-child(5),
+.operation-actions-table th:nth-child(6),
+.operation-actions-table td:nth-child(6) {
+  width: 150px;
+}
+
+.operation-action-diff-cell {
+  min-width: 280px;
+}
+
+.operation-action-diff {
+  max-width: none;
+}
+
+.operation-action-diff > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+}
+
+.operation-action-diff > summary::-webkit-details-marker {
+  display: none;
+}
+
+.operation-action-field-chip {
+  background: var(--erp-surface-soft);
+  border: 1px solid var(--erp-border);
+  border-radius: 4px;
+  color: var(--erp-text);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 7px;
+}
+
+.operation-action-diff-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  max-width: 720px;
+}
+
+.operation-action-diff-item {
+  border-top: 1px solid var(--erp-border);
+  padding-top: 8px;
+}
+
+.operation-action-diff-item h3 {
+  font-size: 12px;
+  margin: 0 0 6px;
+}
+
+.operation-action-diff-value {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.operation-action-diff-value strong {
+  color: var(--erp-muted);
+  font-size: 11px;
+}
+
+.operation-action-diff-value pre {
+  background: var(--erp-surface-soft);
+  border: 1px solid var(--erp-border);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  margin: 0;
+  max-height: 220px;
+  max-width: 100%;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .operation-actions-page .product-list-card {
+    overflow-x: auto;
+  }
+
+  .operation-actions-table {
+    min-width: 980px;
+  }
+}
+
 .resource-header,
 .table-section-header {
   display: flex;

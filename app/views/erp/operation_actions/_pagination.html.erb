@@ -1,0 +1,38 @@
+<% page = operation_actions.current_page %>
+<% page_count = operation_actions.total_pages %>
+<% query_params = request.query_parameters.symbolize_keys.except(:page) %>
+
+<div class="inventory-pagination-bar">
+  <div class="pagination-meta">
+    <div class="inventory-pagination-bar__summary">
+      <%= t("erp.operation_actions.pagination.summary",
+            from: operation_actions.offset_value + 1,
+            to: operation_actions.offset_value + operation_actions.length,
+            total: operation_actions.total_count) %>
+    </div>
+    <span class="pagination-chip"><%= t("erp.operation_actions.pagination.page_chip", page: page, pages: page_count) %></span>
+  </div>
+  <div class="pagination-shell">
+    <nav class="pagination-nav" aria-label="<%= t("erp.operation_actions.pagination.aria_label") %>">
+      <% if page > 1 %>
+        <%= link_to "‹", erp_operation_actions_path(query_params.merge(page: page - 1)), class: "pg-btn pg-btn-nav", aria: { label: t("erp.operation_actions.pagination.previous_page") } %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">‹</span>
+      <% end %>
+      <% inventory_pagination_items(page, page_count).each do |item| %>
+        <% if item.is_a?(Symbol) %>
+          <span class="pg-ell" aria-hidden="true">…</span>
+        <% elsif item == page %>
+          <span class="pg-btn on"><%= item %></span>
+        <% else %>
+          <%= link_to item, erp_operation_actions_path(query_params.merge(page: item)), class: "pg-btn" %>
+        <% end %>
+      <% end %>
+      <% if page < page_count %>
+        <%= link_to "›", erp_operation_actions_path(query_params.merge(page: page + 1)), class: "pg-btn pg-btn-nav", aria: { label: t("erp.operation_actions.pagination.next_page") } %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">›</span>
+      <% end %>
+    </nav>
+  </div>
+</div>
