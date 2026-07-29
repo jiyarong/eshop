@@ -113,11 +113,15 @@ class Reports::SalesFunnelControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[data-weekly-profit-filter-target='storeButton'][data-value=?].is-active", "ozon:#{@ozon_account.id}", text: "Ozon · Funnel Ozon UI #{@token}"
     assert_select "input[name='store_ref'][data-weekly-profit-filter-target='storeInput'][value=?]", "ozon:#{@ozon_account.id}"
     assert_select "th", "SKU"
-    assert_select "th", "访问人数"
-    assert_select "th", "退货数"
+    assert_select "th", "唯一身份访问者，总计"
+    assert_select "th", "已退货商品（按退货日期）"
+    assert_select "th", "添加至购物车的转化率总计"
+    assert_select ".summary-label", "总展示次数"
+    assert_select ".summary-label", "添加至购物车总计"
     assert_select "th", { text: "成交率", count: 0 }
     assert_select ".weekly-profit-table-value", @sku.sku_code
     assert_select ".weekly-profit-table-value", "系统漏斗商品"
+    assert_select ".weekly-profit-table-value", "15.00%"
     assert_select ".weekly-profit-table-value", { text: "Ozon 界面漏斗商品", count: 0 }
   end
 end

@@ -83,8 +83,12 @@ module Reports
 
     def sales_funnel_summary_cards(report)
       report[:summary].map do |key, value|
+        platform = report.dig(:meta, :platform)
         {
-          label: t("sales_funnel_reports.summary.#{key}"),
+          label: t(
+            "sales_funnel_reports.summary.#{platform}.#{key}",
+            default: t("sales_funnel_reports.summary.#{key}")
+          ),
           value: sales_funnel_value({ key => value }, key),
           comparison: report.dig(:comparison, :summary, key)
         }
@@ -94,7 +98,7 @@ module Reports
     def sales_funnel_value(row, key)
       value = row[key]
       return "-" if value.nil?
-      return helpers.number_to_percentage(value, precision: 2) if key.to_s.match?(/(percent|conversion|rate|conv_to_cart|cart_to_order|buyout_percent)\z/)
+      return helpers.number_to_percentage(value, precision: 2) if key.to_s.match?(/(percent|conversion|rate|conv_to_cart|conv_tocart|cart_to_order|buyout_percent)\z/)
       return helpers.number_to_currency(value, unit: "", precision: 2) if key.to_s.match?(/(sum|amount|revenue)\z/)
       return helpers.number_with_delimiter(value.to_i) if value.is_a?(Numeric)
 

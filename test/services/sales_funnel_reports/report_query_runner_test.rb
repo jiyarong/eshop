@@ -57,6 +57,7 @@ class SalesFunnelReports::ReportQueryRunnerTest < ActiveSupport::TestCase
     assert_equal BigDecimal("200"), row[:hits_view]
     assert_equal BigDecimal("30"), row[:hits_tocart]
     assert_equal BigDecimal("15"), row[:conv_tocart]
+    assert_equal BigDecimal("15"), report.dig(:summary, :cart_conversion)
     assert_equal BigDecimal("10"), row[:ordered_units]
     assert_equal BigDecimal("1000"), row[:revenue]
     assert_equal Date.new(2026, 6, 22), report.dig(:comparison, :period, :from_date)
