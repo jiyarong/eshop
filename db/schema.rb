@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_060201) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_094307) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -216,6 +216,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060201) do
     t.index ["ec_category_id"], name: "index_ec_master_skus_on_ec_category_id"
     t.index ["is_active"], name: "index_ec_master_skus_on_is_active"
     t.index ["master_sku_code"], name: "index_ec_master_skus_on_master_sku_code", unique: true
+  end
+
+  create_table "ec_operation_actions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "diff_result", default: {}, null: false
+    t.bigint "ec_sku_id", null: false
+    t.bigint "ec_sku_product_id", null: false
+    t.bigint "ec_store_id", null: false
+    t.datetime "operated_at", null: false
+    t.bigint "operated_by_user_id", null: false
+    t.string "operation_type", null: false
+    t.boolean "record_by_system", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.index ["ec_sku_id"], name: "index_ec_operation_actions_on_ec_sku_id"
+    t.index ["ec_sku_product_id", "operated_at"], name: "idx_ec_operation_actions_listing_time"
+    t.index ["ec_sku_product_id"], name: "index_ec_operation_actions_on_ec_sku_product_id"
+    t.index ["ec_store_id"], name: "index_ec_operation_actions_on_ec_store_id"
+    t.index ["operated_by_user_id"], name: "index_ec_operation_actions_on_operated_by_user_id"
+    t.index ["operation_type", "operated_at"], name: "idx_ec_operation_actions_type_time"
   end
 
   create_table "ec_operation_logs", force: :cascade do |t|
@@ -1159,7 +1178,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060201) do
 
   create_table "raw_ozon_product_prices", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.integer "acquiring"
+    t.decimal "acquiring", precision: 18, scale: 2
     t.decimal "buybox_price", precision: 18, scale: 2
     t.jsonb "commissions"
     t.string "currency_code"
@@ -2626,6 +2645,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_060201) do
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_master_skus", "ec_categories"
+  add_foreign_key "ec_operation_actions", "ec_sku_products"
+  add_foreign_key "ec_operation_actions", "ec_skus"
+  add_foreign_key "ec_operation_actions", "ec_stores"
+  add_foreign_key "ec_operation_actions", "users", column: "operated_by_user_id"
   add_foreign_key "ec_operation_logs", "users", on_delete: :nullify
   add_foreign_key "ec_order_fulfillments", "ec_orders", column: "order_id"
   add_foreign_key "ec_order_fulfillments", "ec_stores", column: "store_id"

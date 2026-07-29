@@ -156,6 +156,49 @@ class RawWbProductCardsSyncTest < ActiveSupport::TestCase
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "sync_product_cards stores one canonical URL for each photo and the video" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-media-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    client = FakeWbClient.new([
+      {
+        "cards" => [
+          {
+            "nmID" => 77_301,
+            "vendorCode" => "WB-MEDIA-#{token}",
+            "photos" => [
+              { "big" => "https://example.test/one-big.jpg", "square" => "https://example.test/one-square.jpg" },
+              { "c516x688" => "https://example.test/two.jpg" }
+            ],
+            "video" => "https://example.test/video.mp4",
+            "characteristics" => [],
+            "sizes" => []
+          }
+        ]
+      }
+    ])
+    sync = RawWb::WeeklySync.new(account, days: 7)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_product_cards
+
+    product = RawWb::Product.find_by!(account_id: account.id, nm_id: 77_301)
+    media = product.product_media.order(:position).pluck(:media_type, :url)
+    assert_equal [
+      ["image", "https://example.test/one-big.jpg"],
+      ["image", "https://example.test/two.jpg"],
+      ["video", "https://example.test/video.mp4"]
+    ], media
+  ensure
+    product_ids = RawWb::Product.where(account_id: account&.id).select(:id)
+    RawWb::ProductMedium.where(product_id: product_ids).delete_all
+    RawWb::Product.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
   private
 
   def unique_wb_id(token, offset)

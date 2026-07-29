@@ -16,6 +16,7 @@ module RawWb
 
           rows = items.filter_map { |r| build_product_price(r) }
           if rows.any?
+            record_listing_price_changes(rows)
             RawWb::ProductPrice.where(account_id: @account.id,
                                       product_id: rows.map { |r| r[:product_id] })
                                .delete_all
@@ -31,6 +32,39 @@ module RawWb
       end
 
       private
+
+      def record_listing_price_changes(rows)
+        existing = RawWb::ProductPrice
+          .where(account_id: @account.id, product_id: rows.map { |row| row[:product_id] })
+          .index_by(&:product_id)
+
+        rows.each do |row|
+          price = existing[row[:product_id]]
+          next unless price
+
+          product = RawWb::Product.find_by(id: row[:product_id])
+          sku_product = product && wb_price_sku_product(product.nm_id)
+          next unless sku_product
+
+          Ec::ListingChangeRecorder.record(
+            sku_product: sku_product,
+            operation_type: "listing_pricing",
+            before: wb_price_snapshot(price.attributes.symbolize_keys),
+            after: wb_price_snapshot(row)
+          )
+        end
+      end
+
+      def wb_price_snapshot(values)
+        values.slice(:price, :discount, :club_discount, :final_price, :is_in_quarantine)
+      end
+
+      def wb_price_sku_product(nm_id)
+        store = @wb_price_store ||= Ec::Store.find_by(platform: 'wb', wb_raw_account_id: @account.id)
+        return unless store
+
+        Ec::SkuProduct.includes(:sku, :store).find_by(store: store, product_id: nm_id.to_s)
+      end
 
       def build_product_price(r)
         nm_id = r['nmID'] || r['nmId']

@@ -19,6 +19,7 @@ module RawWb
           cards = Array(data['cards'])
           break if cards.empty?
 
+          record_listing_card_changes(cards)
           subject_id_by_wb_id = RawWb::Subject.where(wb_id: cards.filter_map { |c| c['subjectID'] }).pluck(:wb_id, :id).to_h
           product_rows = cards.filter_map { |c| build_product_card(c, subject_id_by_wb_id) }
           if product_rows.any?
@@ -42,6 +43,8 @@ module RawWb
             RawWb::ProductCharacteristic.insert_all(characteristic_rows)
           end
 
+          replace_product_media(cards, id_map)
+
           total += product_rows.size
 
           next_cursor = data['cursor']
@@ -54,6 +57,121 @@ module RawWb
       end
 
       private
+
+      def record_listing_card_changes(cards)
+        products = RawWb::Product
+          .includes(:product_characteristics, :product_skus, :product_media)
+          .where(account_id: @account.id, nm_id: cards.filter_map { |card| card['nmID'] })
+          .index_by(&:nm_id)
+
+        cards.each do |card|
+          product = products[card['nmID']]
+          next unless product
+
+          sku_product = wb_sku_product(product.nm_id)
+          next unless sku_product
+
+          Ec::ListingChangeRecorder.record(
+            sku_product: sku_product,
+            operation_type: "listing_content",
+            before: wb_content_snapshot(product),
+            after: wb_card_content_snapshot(card)
+          )
+          Ec::ListingChangeRecorder.record(
+            sku_product: sku_product,
+            operation_type: "listing_specification",
+            before: wb_specification_snapshot(product),
+            after: wb_card_specification_snapshot(card)
+          )
+        end
+      end
+
+      def wb_content_snapshot(product)
+        {
+          brand: product.brand,
+          title: product.title,
+          description: product.description,
+          category: product.subject_name,
+          images: product.product_media.order(:position, :id).pluck(:url)
+        }
+      end
+
+      def wb_card_content_snapshot(card)
+        {
+          brand: card['brand'],
+          title: card['title'],
+          description: card['description'],
+          category: card['subjectName'],
+          images: media_items(card).map { |item| item.fetch(:url) }
+        }
+      end
+
+      def wb_specification_snapshot(product)
+        {
+          characteristics: product.product_characteristics.sort_by(&:charc_id).to_h do |item|
+            [item.charc_id.to_s, { name: item.charc_name, value: item.value }]
+          end,
+          variants: product.product_skus.sort_by(&:chrt_id).to_h do |item|
+            [item.chrt_id.to_s, {
+              tech_size: item.tech_size,
+              wb_size: item.wb_size,
+              barcodes: Array(item.skus)
+            }]
+          end
+        }
+      end
+
+      def wb_card_specification_snapshot(card)
+        {
+          characteristics: Array(card['characteristics']).sort_by { |item| item['id'].to_i }.to_h do |item|
+            [item['id'].to_s, { name: item['name'], value: item['value'] }]
+          end,
+          variants: Array(card['sizes']).sort_by { |item| item['chrtID'].to_i }.to_h do |item|
+            [item['chrtID'].to_s, {
+              tech_size: item['techSize'],
+              wb_size: item['wbSize'],
+              barcodes: Array(item['skus'])
+            }]
+          end
+        }
+      end
+
+      def replace_product_media(cards, id_map)
+        product_ids = id_map.values
+        RawWb::ProductMedium.where(product_id: product_ids).delete_all if product_ids.any?
+
+        now = Time.current
+        rows = cards.flat_map do |card|
+          product_id = id_map[card['nmID']]
+          next [] unless product_id
+
+          media_items(card).each_with_index.map do |item, position|
+            item.merge(product_id: product_id, position: position, created_at: now, updated_at: now)
+          end
+        end
+        RawWb::ProductMedium.insert_all(rows) if rows.any?
+      end
+
+      def media_items(card)
+        photos = Array(card['photos']).filter_map do |photo|
+          url = photo.is_a?(Hash) ? photo['big'] || photo['c516x688'] || photo['c246x328'] || photo['square'] : photo
+          { media_type: 'image', url: url } if url.present?
+        end
+        video = card['video']
+        photos << { media_type: 'video', url: video } if video.present?
+        photos
+      end
+
+      def wb_sku_product(nm_id)
+        store = wb_store
+        return unless store
+
+        Ec::SkuProduct.includes(:sku, :store).find_by(store: store, product_id: nm_id.to_s)
+      end
+
+      def wb_store
+        @wb_store ||= Ec::Store.find_by(platform: 'wb', wb_raw_account_id: @account.id)
+      end
 
       def build_product_card(c, subject_id_by_wb_id)
         nm_id = c['nmID']

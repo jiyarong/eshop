@@ -17,6 +17,10 @@ module Ec
     has_many :developer_assignments, through: :sku, source: :developer_assignments
     has_many :operators, through: :operator_role_assignments, source: :user
     has_many :developers, through: :developer_assignments, source: :user
+    has_many :operation_actions,
+      class_name: "Ec::OperationAction",
+      foreign_key: :ec_sku_product_id,
+      dependent: :restrict_with_error
 
     validates :sku_code, :store, :platform, :product_id, presence: true
     validates :product_id, uniqueness: { scope: :store_id }
