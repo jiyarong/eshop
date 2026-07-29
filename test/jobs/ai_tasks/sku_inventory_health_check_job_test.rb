@@ -15,7 +15,7 @@ class AITasks::SkuInventoryHealthCheckJobTest < ActiveJob::TestCase
 
   teardown do
     sku_ids = [ @checked_sku, @stale_sku, @no_turnover_sku ].compact.map(&:id)
-    Ec::SkuInventoryHealthResult.where(sku_id: sku_ids).delete_all
+    Ec::RestockingDiagnosis.where(sku_id: sku_ids).destroy_all
     Ec::Sku.where(id: sku_ids).delete_all
     User.where(id: @user&.id).delete_all
   end
@@ -82,11 +82,10 @@ class AITasks::SkuInventoryHealthCheckJobTest < ActiveJob::TestCase
   end
 
   def create_result(sku, created_at:)
-    Ec::SkuInventoryHealthResult.create!(
+    Ec::RestockingDiagnosis.create!(
       sku: sku,
       submitted_by: @user,
       analyzed_at: created_at,
-      events: [ { type: "inventory_health" } ],
       created_at: created_at,
       updated_at: created_at
     )

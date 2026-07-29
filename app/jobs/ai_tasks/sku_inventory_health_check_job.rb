@@ -13,7 +13,7 @@ module AITasks
         date_to: now.to_date,
         time_zone: time_zone
       ).call
-      checked_sku_ids = Ec::SkuInventoryHealthResult
+      checked_sku_ids = Ec::RestockingDiagnosis
         .where(sku_id: skus.map(&:id), created_at: now.all_day)
         .distinct
         .pluck(:sku_id)

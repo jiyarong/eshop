@@ -217,9 +217,9 @@
                     <div class="ai-health-stars">
                       <% health_result.events.each do |event| %>
                         <%= link_to report_sku_path(row[:sku_code], tab: "ai_inventory_health", locale: params[:locale].presence),
-                                    class: "ai-health-star ai-health-star--#{ai_inventory_health_severity_class(event["severity"])}",
-                                    title: event["message"],
-                                    aria: { label: event["message"] } do %>
+                                    class: "ai-health-star ai-health-star--#{ai_inventory_health_severity_class(event.severity)}",
+                                    title: event.message,
+                                    aria: { label: event.message } do %>
                           <span aria-hidden="true">★</span>
                         <% end %>
                       <% end %>

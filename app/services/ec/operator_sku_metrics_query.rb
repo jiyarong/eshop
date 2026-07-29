@@ -14,7 +14,7 @@ module Ec
 
       performance = performance_metrics
       inventory = inventory_metrics
-      health_results = Ec::SkuInventoryHealthResult.latest_for_sku_ids(@skus.map(&:id))
+      health_results = Ec::RestockingDiagnosis.includes(:events).latest_for_sku_ids(@skus.map(&:id))
 
       @skus.index_with do |sku|
         code = sku.sku_code

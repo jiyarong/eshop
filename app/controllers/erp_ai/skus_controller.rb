@@ -136,10 +136,12 @@ module ErpAI
         return
       end
 
-      result = sku.inventory_health_results.create!(
-        **attributes,
-        submitted_by: @current_user
-      )
+      events = attributes.delete(:events)
+      result = Ec::RestockingDiagnosis.transaction do
+        diagnosis = sku.inventory_health_results.create!(**attributes, submitted_by: @current_user)
+        diagnosis.events.create!(events)
+        diagnosis
+      end
 
       render json: {
         data: {
@@ -203,8 +205,7 @@ module ErpAI
       {
         sku_code: normalized_sku_code(payload["sku"]),
         analyzed_at: parsed_analyzed_at(payload["analyzed_at"]) || Time.current,
-        classification: hash_value(payload["classification"], "classification"),
-        metrics: hash_value(payload["metrics"], "metrics"),
+        data: diagnosis_data(payload),
         events: normalized_events(payload["events"])
       }
     end
@@ -219,8 +220,7 @@ module ErpAI
       {
         sku_code: sku_codes.first,
         analyzed_at: Time.current,
-        classification: {},
-        metrics: {},
+        data: {},
         events: normalized_events(payload)
       }
     end
@@ -228,7 +228,7 @@ module ErpAI
     def normalized_events(events)
       invalid_inventory_health_payload!("events must be a non-empty array") unless events.is_a?(Array) && events.any?
 
-      events.map do |event|
+      events.each_with_index.map do |event, position|
         invalid_inventory_health_payload!("each event must be an object") unless event.is_a?(Hash)
 
         event_type = event["event_type"].presence || event["type"].presence
@@ -237,13 +237,21 @@ module ErpAI
         invalid_inventory_health_payload!("event_type, severity and message are required") unless event_type && severity && message
 
         {
-          "event_type" => event_type.to_s,
-          "severity" => severity.to_s,
-          "scope" => event["scope"],
-          "message" => message.to_s,
-          "details" => hash_value(event["details"], "event details")
+          event_type: event_type.to_s,
+          severity: severity.to_s,
+          scope: event["scope"],
+          message: message.to_s,
+          details: hash_value(event["details"], "event details"),
+          position: position
         }.compact
       end
+    end
+
+    def diagnosis_data(payload)
+      return hash_value(payload["data"], "data") if payload.key?("data")
+
+      hash_value(payload["classification"], "classification")
+        .merge(hash_value(payload["metrics"], "metrics"))
     end
 
     def normalized_sku_code(value)

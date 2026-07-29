@@ -17,7 +17,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
   teardown do
     Rails.cache = @previous_cache
-    Ec::SkuInventoryHealthResult.where(sku_id: @sku&.id).delete_all
+    Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     UserApiKey.where(user_id: @user&.id).delete_all
     UserRole.where(user_id: @user&.id).delete_all
@@ -48,7 +48,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
       ]
     }
 
-    assert_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count }, 1 do
+    assert_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count }, 1 do
       post "/ai/skus/inventory_health_result",
         params: payload,
         headers: bearer_headers,
@@ -56,17 +56,19 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     end
     assert_response :created
 
-    result = Ec::SkuInventoryHealthResult.where(sku: @sku).recent_first.first
+    result = Ec::RestockingDiagnosis.where(sku: @sku).recent_first.first
     assert_equal @user, result.submitted_by
     assert_equal Time.iso8601("2026-07-26T00:00:00+08:00"), result.analyzed_at
-    assert_equal({ "sabc" => "B", "staging" => "MAT" }, result.classification)
-    assert_equal 2.2167, result.metrics.fetch("daily_sales")
-    assert_equal "insight", result.events.first.fetch("event_type")
-    assert_equal "next_in_transit_arrival_date", result.events.first.dig("details", "missing_field")
+    assert_equal "B", result.data.fetch("sabc")
+    assert_equal "MAT", result.data.fetch("staging")
+    assert_equal 2.2167, result.data.fetch("daily_sales")
+    assert_equal "insight", result.events.first.event_type
+    assert_equal "next_in_transit_arrival_date", result.events.first.details.fetch("missing_field")
+    assert result.is_latest?
     assert_equal 2, response.parsed_body.dig("data", "event_count")
     assert_equal @user.display_name, response.parsed_body.dig("data", "submitted_by")
 
-    assert_no_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count } do
+    assert_no_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count } do
       post "/ai/skus/inventory_health_result",
         params: payload,
         headers: bearer_headers,
@@ -76,7 +78,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     assert_equal "5", response.headers["Retry-After"]
 
     travel 6.seconds do
-      assert_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count }, 1 do
+      assert_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count }, 1 do
         post "/ai/skus/inventory_health_result",
           params: payload,
           headers: bearer_headers,
@@ -89,7 +91,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
   test "locks submissions independently for each sku" do
     other_sku = Ec::Sku.create!(sku_code: "AI-HEALTH-OTHER-#{@token.upcase}", product_name: "Other", is_active: true)
 
-    assert_difference -> { Ec::SkuInventoryHealthResult.count }, 2 do
+    assert_difference -> { Ec::RestockingDiagnosis.count }, 2 do
       [@sku, other_sku].each do |sku|
         post "/ai/skus/inventory_health_result",
           params: event_payload(sku.sku_code),
@@ -98,9 +100,9 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
         assert_response :created
       end
     end
-    assert_equal 2, Ec::SkuInventoryHealthResult.where(sku: [@sku, other_sku]).where.not(analyzed_at: nil).count
+    assert_equal 2, Ec::RestockingDiagnosis.where(sku: [@sku, other_sku]).where.not(analyzed_at: nil).count
   ensure
-    Ec::SkuInventoryHealthResult.where(sku_id: other_sku&.id).delete_all
+    Ec::RestockingDiagnosis.where(sku_id: other_sku&.id).destroy_all
     Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
 
@@ -124,7 +126,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
     analyzed_at = Time.zone.parse("2026-07-26 12:34:56")
     travel_to analyzed_at do
-      assert_difference -> { Ec::SkuInventoryHealthResult.where(sku: @sku).count }, 1 do
+      assert_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count }, 1 do
         post "/ai/skus/inventory_health_result",
           params: payload,
           headers: bearer_headers,
@@ -133,9 +135,9 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     end
 
     assert_response :created
-    result = Ec::SkuInventoryHealthResult.where(sku: @sku).recent_first.first
+    result = Ec::RestockingDiagnosis.where(sku: @sku).recent_first.first
     assert_equal analyzed_at, result.analyzed_at
-    assert_equal({}, result.classification)
+    assert_equal({}, result.data)
     assert_equal ["data_missing", "inventory_sufficient"], result.events.pluck("event_type")
     assert_equal 2, response.parsed_body.dig("data", "event_count")
   end
@@ -146,7 +148,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
       { event_type: "insight", severity: "info", sku: "OTHER-SKU", message: "second" }
     ]
 
-    assert_no_difference -> { Ec::SkuInventoryHealthResult.count } do
+    assert_no_difference -> { Ec::RestockingDiagnosis.count } do
       post "/ai/skus/inventory_health_result",
         params: payload,
         headers: bearer_headers,

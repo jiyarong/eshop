@@ -28,7 +28,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    Ec::SkuInventoryHealthResult.where(sku_id: @sku&.id).delete_all
+    Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     UserRole.where(user_id: @user&.id).delete_all
     User.where(id: @user&.id).delete_all
@@ -70,8 +70,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
     assert_equal "AI 库存诊断结果已删除", flash[:notice]
-    assert_not Ec::SkuInventoryHealthResult.exists?(@latest_result.id)
-    assert Ec::SkuInventoryHealthResult.exists?(@older_result.id)
+    assert_not Ec::RestockingDiagnosis.exists?(@latest_result.id)
+    assert Ec::RestockingDiagnosis.exists?(@older_result.id)
   end
 
   test "does not delete an inventory health result through another sku" do
@@ -81,12 +81,12 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       is_active: true
     )
 
-    assert_no_difference -> { Ec::SkuInventoryHealthResult.count } do
+    assert_no_difference -> { Ec::RestockingDiagnosis.count } do
       delete report_sku_inventory_health_result_path(other_sku.sku_code, @latest_result)
     end
 
     assert_response :not_found
-    assert Ec::SkuInventoryHealthResult.exists?(@latest_result.id)
+    assert Ec::RestockingDiagnosis.exists?(@latest_result.id)
   ensure
     Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
@@ -108,21 +108,15 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
   private
 
   def create_health_result(created_at:, severity:, event_type:, message:, analyzed_at: nil, metrics: {})
-    Ec::SkuInventoryHealthResult.create!(
+    diagnosis = Ec::RestockingDiagnosis.create!(
       sku: @sku,
       submitted_by: @user,
       analyzed_at: analyzed_at,
-      metrics: metrics,
-      events: [
-        {
-          "event_type" => event_type,
-          "severity" => severity,
-          "message" => message,
-          "details" => {}
-        }
-      ],
+      data: metrics,
       created_at: created_at,
       updated_at: created_at
     )
+    diagnosis.events.create!(event_type:, severity:, message:, details: {})
+    diagnosis
   end
 end

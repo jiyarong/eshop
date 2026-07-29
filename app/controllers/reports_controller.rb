@@ -199,7 +199,7 @@ class ReportsController < ApplicationController
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
-    @inventory_health_results = @sku.inventory_health_results.includes(:submitted_by).recent_first if @active_tab == "ai_inventory_health"
+    @inventory_health_results = @sku.inventory_health_results.includes(:submitted_by, :events).recent_first if @active_tab == "ai_inventory_health"
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
     @operator_metrics = Ec::OperatorSkuMetricsQuery.new(
@@ -305,7 +305,7 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call
-    latest_health_results = Ec::SkuInventoryHealthResult.latest_for_sku_ids(skus.map(&:id))
+    latest_health_results = Ec::RestockingDiagnosis.includes(:events).latest_for_sku_ids(skus.map(&:id))
 
     rows = skus.map do |sku|
       fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {}).merge(

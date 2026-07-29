@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_28_051209) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_060201) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -87,6 +87,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_051209) do
     t.index ["module_name", "business_object_type", "business_object_id"], name: "idx_conversations_on_erp_context"
     t.index ["user_id", "created_at"], name: "index_conversations_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_conversations_on_user_id"
+  end
+
+  create_table "ec_ai_diagnosis", force: :cascade do |t|
+    t.datetime "analyzed_at"
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.boolean "is_latest", default: false, null: false
+    t.bigint "sku_id", null: false
+    t.bigint "submitted_by_id", null: false
+    t.string "type", default: "RestockingDiagnosis", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sku_id", "created_at"], name: "index_ec_ai_diagnosis_on_sku_id_and_created_at"
+    t.index ["sku_id", "type"], name: "idx_ai_diagnosis_on_sku_type_latest", unique: true, where: "is_latest"
+    t.index ["sku_id"], name: "index_ec_ai_diagnosis_on_sku_id"
+    t.index ["submitted_by_id"], name: "index_ec_ai_diagnosis_on_submitted_by_id"
+    t.index ["type", "created_at"], name: "idx_ai_diagnosis_on_type_created_at"
+  end
+
+  create_table "ec_ai_diagnosis_events", force: :cascade do |t|
+    t.bigint "ai_diagnosis_id", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "details", default: {}, null: false
+    t.string "event_type", null: false
+    t.text "message", null: false
+    t.integer "position", default: 0, null: false
+    t.string "scope"
+    t.string "severity", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ai_diagnosis_id", "position"], name: "idx_ai_diagnosis_events_on_diagnosis_and_position"
+    t.index ["ai_diagnosis_id"], name: "index_ec_ai_diagnosis_events_on_ai_diagnosis_id"
   end
 
   create_table "ec_attachment_links", force: :cascade do |t|
@@ -456,20 +486,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_051209) do
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "idx_ec_sku_dimensions_sku_code", unique: true
-  end
-
-  create_table "ec_sku_inventory_health_results", force: :cascade do |t|
-    t.datetime "analyzed_at"
-    t.jsonb "classification", default: {}, null: false
-    t.datetime "created_at", null: false
-    t.jsonb "events", default: [], null: false
-    t.jsonb "metrics", default: {}, null: false
-    t.bigint "sku_id", null: false
-    t.bigint "submitted_by_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["sku_id", "created_at"], name: "index_ec_sku_inventory_health_results_on_sku_id_and_created_at"
-    t.index ["sku_id"], name: "index_ec_sku_inventory_health_results_on_sku_id"
-    t.index ["submitted_by_id"], name: "index_ec_sku_inventory_health_results_on_submitted_by_id"
   end
 
   create_table "ec_sku_inventory_levels", force: :cascade do |t|
@@ -2602,6 +2618,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_051209) do
   add_foreign_key "agent_skills", "skills"
   add_foreign_key "conversations", "agents"
   add_foreign_key "conversations", "users"
+  add_foreign_key "ec_ai_diagnosis", "ec_skus", column: "sku_id"
+  add_foreign_key "ec_ai_diagnosis", "users", column: "submitted_by_id"
+  add_foreign_key "ec_ai_diagnosis_events", "ec_ai_diagnosis", column: "ai_diagnosis_id"
   add_foreign_key "ec_attachment_links", "ec_attachments"
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
@@ -2629,8 +2648,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_051209) do
   add_foreign_key "ec_sku_developer_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_developer_assignments", "users"
   add_foreign_key "ec_sku_dimensions", "ec_skus", column: "sku_code", primary_key: "sku_code", on_delete: :cascade
-  add_foreign_key "ec_sku_inventory_health_results", "ec_skus", column: "sku_id"
-  add_foreign_key "ec_sku_inventory_health_results", "users", column: "submitted_by_id"
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_marketing_states", "ec_skus", column: "sku_id", on_delete: :cascade
   add_foreign_key "ec_sku_marketing_states", "users", column: "changed_by_id", on_delete: :nullify
