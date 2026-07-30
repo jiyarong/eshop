@@ -38,6 +38,7 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     row = report[:rows].sole
     assert_equal 28, row[:sales_quantity]
     assert_equal 7, row[:available]
+    assert_equal @sku.inventory_overview.dig(:summary, :available_stock), row[:fbs_available]
     assert_equal 21, row[:recommended]
     assert_equal "Москва", row[:clusters].sole[:cluster_name]
     assert_equal "ДОМОДЕДОВО_РФЦ", row[:clusters].sole[:warehouses].sole[:warehouse_name]
@@ -80,4 +81,5 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
       warehouse_breakdown: [{ warehouse_name: warehouse, cluster_name: cluster, quantity: quantity, reserved: 2, promised: 0 }]
     )
   end
+
 end

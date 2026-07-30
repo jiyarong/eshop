@@ -861,6 +861,7 @@ ru:
       date_format: "%Y-%m-%d"
       period: "%{from}–%{to} · целевой запас %{days} дн."
       updated_at: "Остатки обновлены %{time}"
+      fbs_available: "Доступно FBS: %{count}"
       warehouse_count: "Складов: %{count}"
       unknown_cluster: "Кластер не определен"
       empty: "Нет подходящих товаров Ozon для этого магазина"

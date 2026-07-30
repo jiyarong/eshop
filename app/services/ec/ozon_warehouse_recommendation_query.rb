@@ -17,7 +17,8 @@ module Ec
       sku_codes = products.map(&:sku_code).uniq
       sales = sales_by_sku_and_cluster(products.map(&:id))
       inventory = inventory_by_sku(sku_codes)
-      rows = build_rows(products, sales, inventory)
+      fbs_available = fbs_available_by_sku(products)
+      rows = build_rows(products, sales, inventory, fbs_available)
 
       {
         store: store,
@@ -72,7 +73,13 @@ module Ec
         .group_by(&:sku_code)
     end
 
-    def build_rows(products, sales, inventory)
+    def fbs_available_by_sku(products)
+      products.group_by(&:sku_code).transform_values do |sku_products|
+        sku_products.first.sku.inventory_overview.dig(:summary, :available_stock).to_i
+      end
+    end
+
+    def build_rows(products, sales, inventory, fbs_available)
       products.group_by(&:sku_code).map do |sku_code, sku_products|
         cluster_sales = sales.each_with_object({}) do |((row_sku_code, cluster), quantity), result|
           result[cluster] = quantity.to_i if row_sku_code == sku_code
@@ -89,6 +96,7 @@ module Ec
           product_name: product_name(sku_products),
           offer_ids: sku_products.filter_map { |product| product.offer_id.presence }.uniq,
           platform_sku_ids: sku_products.filter_map { |product| product.platform_sku_id.presence }.uniq,
+          fbs_available: fbs_available.fetch(sku_code, 0).to_i,
           status: stock_status(daily_sales, total_available),
           sales_quantity: total_sales,
           daily_sales: daily_sales,

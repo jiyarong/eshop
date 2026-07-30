@@ -26,5 +26,6 @@ class OzonWarehousesReportTest < ActionDispatch::IntegrationTest
     assert_select "select[name='store_id'] option[selected][value='#{@store.id}']", text: @store.store_name
     assert_select "table.ozon-warehouse-table[data-controller='hierarchy-table']"
     assert_select "th", text: "商品 / 集群 / 仓库"
+    assert_select ".ozon-warehouse-fbs-stock", text: "FBS 可用 0"
   end
 end

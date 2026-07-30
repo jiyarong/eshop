@@ -890,6 +890,7 @@ en:
       date_format: "%Y-%m-%d"
       period: "%{from} to %{to} · %{days}-day stock target"
       updated_at: "Inventory updated %{time}"
+      fbs_available: "FBS available %{count}"
       warehouse_count: "%{count} warehouses"
       unknown_cluster: "Unmatched cluster"
       empty: "No matching Ozon products for this store"

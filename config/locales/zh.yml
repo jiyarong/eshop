@@ -927,6 +927,7 @@ zh:
       date_format: "%Y-%m-%d"
       period: "%{from} 至 %{to} · 目标库存 %{days} 天"
       updated_at: "库存更新于 %{time}"
+      fbs_available: "FBS 可用 %{count}"
       warehouse_count: "%{count} 个仓库"
       unknown_cluster: "未匹配集群"
       empty: "当前店铺没有匹配的 Ozon 商品数据"

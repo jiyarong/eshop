@@ -85,6 +85,7 @@
                           <strong><%= row[:product_name] %></strong>
                           <small><%= [row[:sku_code], row[:offer_ids].join(" / ")].reject(&:blank?).join(" · ") %></small>
                         </span>
+                        <span class="ozon-warehouse-fbs-stock"><%= t("reports.ozon_warehouses.fbs_available", count: row[:fbs_available]) %></span>
                       </button>
                     </div>
                   </td>
