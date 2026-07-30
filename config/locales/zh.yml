@@ -134,6 +134,7 @@ zh:
     operator_skus: "SKU 列表"
     sales_funnel: "销售漏斗"
     inventory: "库存"
+    ozon_warehouses: "Ozon 分仓"
     ozon_ads: "Ozon 推广"
     wb_ads: "WB 推广"
     tools: "测算工具"
@@ -920,6 +921,44 @@ zh:
         returns_count: "已退货商品（按退货日期）"
         cancellations: "已取消商品（按取消日期）"
   reports:
+    ozon_warehouses:
+      title: "Ozon 分仓"
+      subtitle: "按单个店铺查看商品在各集群和仓库的库存分布与补货建议"
+      date_format: "%Y-%m-%d"
+      period: "%{from} 至 %{to} · 目标库存 %{days} 天"
+      updated_at: "库存更新于 %{time}"
+      warehouse_count: "%{count} 个仓库"
+      unknown_cluster: "未匹配集群"
+      empty: "当前店铺没有匹配的 Ozon 商品数据"
+      filters:
+        store: "店铺"
+        search: "商品"
+        search_placeholder: "商品名称、SKU 或货号"
+        target_days: "目标库存天数"
+        apply: "查询"
+      summary:
+        sku_count: "商品数"
+        shortage_count: "缺货风险"
+        available: "FBO 可售库存"
+        inbound: "入库处理中"
+        recommended: "建议补货"
+      fields:
+        product: "商品 / 集群 / 仓库"
+        status: "库存状态"
+        days_of_stock: "库存天数"
+        daily_sales: "日均销量"
+        sales_28d: "近 28 天销量"
+        available: "可售"
+        reserved: "预留"
+        inbound: "入库处理中"
+        recommended: "建议补货"
+      statuses:
+        shortage: "缺货风险"
+        healthy: "正常"
+        excess: "库存偏高"
+        no_sales: "暂无销售"
+      errors:
+        no_store: "未配置可用的 Ozon 店铺"
     wb_ads:
       title: "WB 推广分析"
       subtitle: "%{store} · %{from} 至 %{to}"

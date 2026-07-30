@@ -156,6 +156,7 @@ en:
     operator_skus: "SKU List"
     sales_funnel: "Sales Funnel"
     inventory: "Inventory"
+    ozon_warehouses: "Ozon Distribution"
     ozon_ads: "Ozon Promotions"
     wb_ads: "WB Promotions"
     tools: "Tools"
@@ -883,6 +884,20 @@ en:
       wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
       ozon: { sku_code: "SKU", product_name: "Product", hits_view: "Views", hits_view_search: "Search views", hits_view_pdp: "PDP views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search cart adds", hits_tocart_pdp: "PDP cart adds", conv_tocart: "Cart conversion", ordered_units: "Ordered units", revenue: "Order amount", returns_count: "Returns", cancellations: "Cancellations" }
   reports:
+    ozon_warehouses:
+      title: "Ozon Warehouse Distribution"
+      subtitle: "Inventory allocation and replenishment recommendations for one store at a time"
+      date_format: "%Y-%m-%d"
+      period: "%{from} to %{to} · %{days}-day stock target"
+      updated_at: "Inventory updated %{time}"
+      warehouse_count: "%{count} warehouses"
+      unknown_cluster: "Unmatched cluster"
+      empty: "No matching Ozon products for this store"
+      filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU or offer ID", target_days: "Target stock days", apply: "Apply" }
+      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Inbound", recommended: "Recommended" }
+      fields: { product: "Product / cluster / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended: "Recommended" }
+      statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
+      errors: { no_store: "No Ozon store is configured" }
     wb_ads:
       title: "WB Promotion Analytics"
       subtitle: "%{store} · %{from} to %{to}"

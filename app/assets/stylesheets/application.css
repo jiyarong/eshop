@@ -763,6 +763,171 @@ textarea {
   margin-top: 16px;
 }
 
+.ozon-warehouse-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ozon-warehouse-heading .page-title {
+  margin-bottom: 4px;
+}
+
+.ozon-warehouse-store-field {
+  min-width: 220px;
+}
+
+.ozon-warehouse-target-field {
+  width: 140px;
+}
+
+.ozon-warehouse-summary {
+  padding: 2px 0;
+}
+
+.ozon-warehouse-table-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ozon-warehouse-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.ozon-warehouse-table-header h2 {
+  margin: 0 0 3px;
+  font-size: 17px;
+}
+
+.ozon-warehouse-table-header p,
+.ozon-warehouse-updated {
+  margin: 0;
+  color: var(--erp-muted);
+  font-size: 12px;
+}
+
+.ozon-warehouse-table {
+  min-width: 1180px;
+}
+
+.ozon-warehouse-table th,
+.ozon-warehouse-table td {
+  height: 48px;
+  padding: 8px 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ozon-warehouse-table th:first-child,
+.ozon-warehouse-table td:first-child {
+  min-width: 330px;
+  white-space: normal;
+}
+
+.ozon-warehouse-table .numeric {
+  text-align: right;
+}
+
+.ozon-warehouse-product-row td {
+  background: #fff;
+  font-weight: 650;
+}
+
+.ozon-warehouse-cluster-row td {
+  background: #f7f9fc;
+}
+
+.ozon-warehouse-detail-row td {
+  height: 40px;
+  color: var(--erp-muted);
+  background: #fbfcfd;
+  font-size: 12px;
+}
+
+.ozon-warehouse-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ozon-warehouse-toggle i {
+  flex: 0 0 16px;
+  color: var(--erp-muted);
+}
+
+.ozon-warehouse-product small,
+.ozon-warehouse-cluster small {
+  display: block;
+  margin-top: 2px;
+  color: var(--erp-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ozon-warehouse-cluster {
+  padding-left: 22px;
+}
+
+.ozon-warehouse-level-marker {
+  display: inline-block;
+  width: 54px;
+}
+
+.ozon-warehouse-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ozon-warehouse-status--shortage {
+  background: #fff0f0;
+  color: #b42318;
+}
+
+.ozon-warehouse-status--healthy {
+  background: #eaf7ef;
+  color: #18794e;
+}
+
+.ozon-warehouse-status--excess {
+  background: #fff5df;
+  color: #8a4b08;
+}
+
+.ozon-warehouse-status--no_sales {
+  background: #eef1f5;
+  color: #596579;
+}
+
+.ozon-warehouse-recommended {
+  color: #b42318;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .ozon-warehouse-table-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .report-meta {
   margin: 0 0 12px;
   color: var(--erp-muted);

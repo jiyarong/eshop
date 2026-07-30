@@ -127,6 +127,7 @@ ru:
     operator_skus: "Список SKU"
     sales_funnel: "Воронка продаж"
     inventory: "Склад"
+    ozon_warehouses: "Распределение Ozon"
     ozon_ads: "Продвижение Ozon"
     wb_ads: "Продвижение WB"
     tools: "Инструменты"
@@ -854,6 +855,20 @@ ru:
       wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
       ozon: { sku_code: "SKU", product_name: "Товар", hits_view: "Просмотры", hits_view_search: "Просмотры поиска", hits_view_pdp: "Просмотры карточки", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска", hits_tocart_pdp: "В корзину из карточки", conv_tocart: "Конверсия в корзину", ordered_units: "Заказано единиц", revenue: "Сумма заказов", returns_count: "Возвраты", cancellations: "Отмены" }
   reports:
+    ozon_warehouses:
+      title: "Распределение по складам Ozon"
+      subtitle: "Остатки и рекомендации по пополнению отдельно для каждого магазина"
+      date_format: "%Y-%m-%d"
+      period: "%{from}–%{to} · целевой запас %{days} дн."
+      updated_at: "Остатки обновлены %{time}"
+      warehouse_count: "Складов: %{count}"
+      unknown_cluster: "Кластер не определен"
+      empty: "Нет подходящих товаров Ozon для этого магазина"
+      filters: { store: "Магазин", search: "Товар", search_placeholder: "Товар, SKU или артикул", target_days: "Целевой запас, дней", apply: "Применить" }
+      summary: { sku_count: "Товары", shortage_count: "Риск дефицита", available: "Доступно FBO", inbound: "В поставке", recommended: "Рекомендовано" }
+      fields: { product: "Товар / кластер / склад", status: "Статус", days_of_stock: "Запас, дней", daily_sales: "Продажи в день", sales_28d: "Продажи за 28 дней", available: "Доступно", reserved: "Резерв", inbound: "В поставке", recommended: "Рекомендовано" }
+      statuses: { shortage: "Риск дефицита", healthy: "Норма", excess: "Избыток", no_sales: "Нет продаж" }
+      errors: { no_store: "Не настроен магазин Ozon" }
     wb_ads:
       title: "Аналитика продвижения WB"
       subtitle: "%{store} · %{from}–%{to}"

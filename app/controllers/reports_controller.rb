@@ -60,6 +60,25 @@ class ReportsController < ApplicationController
     end
   end
 
+  def ozon_warehouses
+    @stores = Ec::Store.active.where(platform: "ozon").where.not(ozon_raw_account_id: nil).order(:store_name)
+    @store = @stores.find_by(id: params[:store_id]) || @stores.first
+    @query = params[:q].to_s.strip
+    @target_days = params[:target_days].to_i
+    @target_days = Ec::OzonWarehouseRecommendationQuery::DEFAULT_TARGET_DAYS unless @target_days.positive?
+    @target_days = [@target_days, Ec::OzonWarehouseRecommendationQuery::MAX_TARGET_DAYS].min
+    return unless @store
+
+    @ozon_warehouse_report = Ec::OzonWarehouseRecommendationQuery.new(
+      store: @store,
+      from_date: user_today - 27.days,
+      to_date: user_today,
+      time_zone: user_time_zone,
+      target_days: @target_days,
+      query: @query
+    ).call
+  end
+
   def skus
     load_ai_diagnosis_event_filter
     @skus = apply_ai_diagnosis_event_filter_to_skus(Ec::Sku.order(:sku_code))
