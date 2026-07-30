@@ -28,6 +28,7 @@ module Ec
         target_days: target_days,
         query: query,
         rows: rows,
+        cluster_rows: build_cluster_rows(rows),
         summary: summary(rows),
         inventory_synced_at: latest_inventory_synced_at(sku_codes)
       }
@@ -140,6 +141,40 @@ module Ec
           distribution_gap: recommended_quantity(daily_sales, available, inbound),
           receiving_warehouse_count: Array(receiving_warehouses[cluster_name]).size,
           warehouses: cluster_warehouses.sort_by { |row| [-row[:available], row[:warehouse_name]] }
+        }
+      end.sort_by { |row| [-row[:distribution_gap], -row[:sales_quantity], row[:cluster_name].to_s] }
+    end
+
+    def build_cluster_rows(rows)
+      products_by_cluster = rows.flat_map do |row|
+        row[:clusters].map do |cluster|
+          cluster.merge(
+            sku_code: row[:sku_code],
+            product_name: row[:product_name],
+            offer_ids: row[:offer_ids],
+            fbs_available: row[:fbs_available]
+          )
+        end
+      end.group_by { |row| row[:cluster_name] }
+
+      products_by_cluster.map do |cluster_name, products|
+        sales_quantity = products.sum { |product| product[:sales_quantity] }
+        daily_sales = daily_average(sales_quantity)
+        available = products.sum { |product| product[:available] }
+
+        {
+          cluster_name: cluster_name,
+          product_count: products.size,
+          receiving_warehouse_count: products.map { |product| product[:receiving_warehouse_count] }.max.to_i,
+          status: stock_status(daily_sales, available),
+          sales_quantity: sales_quantity,
+          daily_sales: daily_sales,
+          days_of_stock: days_of_stock(available, daily_sales),
+          available: available,
+          reserved: products.sum { |product| product[:reserved] },
+          inbound: products.sum { |product| product[:inbound] },
+          distribution_gap: products.sum { |product| product[:distribution_gap] },
+          products: products.sort_by { |product| [-product[:distribution_gap], -product[:sales_quantity], product[:sku_code]] }
         }
       end.sort_by { |row| [-row[:distribution_gap], -row[:sales_quantity], row[:cluster_name].to_s] }
     end

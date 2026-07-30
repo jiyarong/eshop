@@ -43,6 +43,12 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     assert_equal "Москва", row[:clusters].sole[:cluster_name]
     assert_equal "ДОМОДЕДОВО_РФЦ", row[:clusters].sole[:warehouses].sole[:warehouse_name]
     assert_equal 7, report.dig(:summary, :available)
+
+    cluster_row = report[:cluster_rows].sole
+    assert_equal "Москва", cluster_row[:cluster_name]
+    assert_equal 28, cluster_row[:sales_quantity]
+    assert_equal 7, cluster_row[:available]
+    assert_equal @sku.sku_code, cluster_row[:products].sole[:sku_code]
   end
 
   test "does not recommend new inbound when total stock covers demand despite a cluster gap" do

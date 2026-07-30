@@ -812,6 +812,11 @@ textarea {
   font-size: 12px;
 }
 
+.ozon-warehouse-tabs {
+  padding: 0 18px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
 .ozon-warehouse-table {
   min-width: 1180px;
 }
@@ -932,6 +937,78 @@ textarea {
 .ozon-warehouse-recommended {
   color: #b42318;
   font-weight: 800;
+}
+
+.ozon-warehouse-formula-heading,
+.ozon-warehouse-formula-help {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ozon-warehouse-formula-heading {
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.ozon-warehouse-formula-help {
+  position: relative;
+  justify-content: center;
+  color: var(--erp-muted);
+  cursor: help;
+}
+
+.ozon-warehouse-formula-help:focus-visible {
+  border-radius: 50%;
+  outline: 2px solid rgba(40, 86, 217, 0.35);
+  outline-offset: 2px;
+}
+
+.ozon-warehouse-formula-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #182235;
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(24, 34, 53, 0.24);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.ozon-warehouse-formula-help:hover .ozon-warehouse-formula-tooltip,
+.ozon-warehouse-formula-help:focus .ozon-warehouse-formula-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.ozon-warehouse-formula-heading .ozon-warehouse-formula-tooltip {
+  top: calc(100% + 8px);
+  bottom: auto;
+}
+
+.ozon-warehouse-status-heading {
+  justify-content: flex-start;
+}
+
+.ozon-warehouse-status-help .ozon-warehouse-formula-tooltip {
+  right: auto;
+  left: 0;
+}
+
+.ozon-warehouse-pagination {
+  margin: 0;
+  padding: 14px 18px;
+  border-top: 1px solid var(--erp-border);
 }
 
 @media (max-width: 720px) {

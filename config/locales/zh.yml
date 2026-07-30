@@ -929,9 +929,30 @@ zh:
       updated_at: "库存更新于 %{time}"
       fbs_available: "FBS 可用 %{count}"
       warehouse_count: "%{count} 个仓库"
+      product_count: "%{count} 个商品"
       receiving_warehouse_count: "集群仓库 %{count}"
       product_recommendation_hint: "按全店 FBO 现货和入库处理中库存计算的建议新增发货量"
       cluster_gap_hint: "集群目标库存缺口，仅用于判断分布，不代表可直接送仓"
+      formula:
+        aria_label: "查看建议新增发货量计算说明"
+        description: "商品建议新增发货量 = max（向上取整〔统计期有效销量 ÷ 统计天数 × 目标库存天数〕－全店当前 FBO 可售－入库处理中，0）。集群行使用相同公式计算当地分布缺口，仅供调拨参考；右侧 FBS 可用库存不参与计算。"
+      status_formula:
+        aria_label: "查看库存状态计算说明"
+        description: "库存天数 = 当前 FBO 可售 ÷ 日均销量。日均销量为 0 时显示“暂无销售”；低于 %{shortage_days} 天（目标 %{days} 天的 50%）为“缺货风险”；高于 %{excess_days} 天（目标的 150%）为“库存偏高”；其余为“正常”。状态不计入 FBS 和入库处理中库存。"
+      pagination:
+        product_aria_label: "Ozon 分仓商品分页"
+        cluster_aria_label: "Ozon 分仓集群分页"
+        previous_page: "上一页"
+        next_page: "下一页"
+        jump_label: "跳至"
+        jump_action: "前往"
+        page_chip: "第 %{page}/%{pages} 页"
+        product_summary: "显示第 %{from}-%{to} 条，共 %{total} 条商品"
+        cluster_summary: "显示第 %{from}-%{to} 条，共 %{total} 个集群"
+      views:
+        aria_label: "Ozon 分仓查看维度"
+        products: "根据商品"
+        clusters: "按集群"
       unknown_cluster: "未匹配集群"
       empty: "当前店铺没有匹配的 Ozon 商品数据"
       filters:
@@ -948,6 +969,7 @@ zh:
         recommended: "建议新增发货"
       fields:
         product: "商品 / 集群 / 仓库"
+        cluster: "集群 / 商品 / 仓库"
         status: "库存状态"
         days_of_stock: "库存天数"
         daily_sales: "日均销量"

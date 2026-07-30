@@ -17,6 +17,7 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
 
   SKU_DETAIL_TABS = %w[operation basic inventory ads ai_inventory_health costs stores trend].freeze
+  OZON_WAREHOUSE_PAGE_SIZE = 10
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -64,6 +65,7 @@ class ReportsController < ApplicationController
     @stores = Ec::Store.active.where(platform: "ozon").where.not(ozon_raw_account_id: nil).order(:store_name)
     @store = @stores.find_by(id: params[:store_id]) || @stores.first
     @query = params[:q].to_s.strip
+    @ozon_warehouse_view = params[:view].to_s.in?(%w[products clusters]) ? params[:view].to_s : "products"
     @target_days = params[:target_days].to_i
     @target_days = Ec::OzonWarehouseRecommendationQuery::DEFAULT_TARGET_DAYS unless @target_days.positive?
     @target_days = [@target_days, Ec::OzonWarehouseRecommendationQuery::MAX_TARGET_DAYS].min
@@ -77,6 +79,12 @@ class ReportsController < ApplicationController
       target_days: @target_days,
       query: @query
     ).call
+    current_page = ozon_warehouse_page_param
+    report_rows = @ozon_warehouse_view == "clusters" ? @ozon_warehouse_report[:cluster_rows] : @ozon_warehouse_report[:rows]
+    @ozon_warehouse_rows = Kaminari.paginate_array(report_rows).page(current_page).per(OZON_WAREHOUSE_PAGE_SIZE)
+    if @ozon_warehouse_rows.total_pages.positive? && current_page > @ozon_warehouse_rows.total_pages
+      @ozon_warehouse_rows = Kaminari.paginate_array(report_rows).page(@ozon_warehouse_rows.total_pages).per(OZON_WAREHOUSE_PAGE_SIZE)
+    end
   end
 
   def skus
@@ -353,6 +361,16 @@ class ReportsController < ApplicationController
   end
 
   def inventory_page_param
+    requested_page = params[:jump_page].presence || params[:page].presence
+    current_page = params[:current_page].presence || params[:page].presence
+
+    page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
+    page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
+    page = 1 if page.to_i <= 0
+    page
+  end
+
+  def ozon_warehouse_page_param
     requested_page = params[:jump_page].presence || params[:page].presence
     current_page = params[:current_page].presence || params[:page].presence
 
