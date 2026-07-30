@@ -70,7 +70,7 @@
                 <th class="numeric"><%= t("reports.ozon_warehouses.fields.available") %></th>
                 <th class="numeric"><%= t("reports.ozon_warehouses.fields.reserved") %></th>
                 <th class="numeric"><%= t("reports.ozon_warehouses.fields.inbound") %></th>
-                <th class="numeric"><%= t("reports.ozon_warehouses.fields.recommended") %></th>
+                <th class="numeric"><%= t("reports.ozon_warehouses.fields.recommended_or_gap") %></th>
               </tr>
             </thead>
             <tbody>
@@ -79,8 +79,9 @@
                 <tr class="ozon-warehouse-product-row">
                   <td>
                     <div class="ozon-warehouse-product">
-                      <button type="button" class="ozon-warehouse-toggle" aria-expanded="<%= row[:recommended].positive? %>" data-hierarchy-table-kind-param="product" data-hierarchy-table-key-param="<%= product_key %>" data-action="hierarchy-table#toggle">
-                        <i class="bi <%= row[:recommended].positive? ? "bi-chevron-down" : "bi-chevron-right" %>" aria-hidden="true"></i>
+                      <% expanded = row[:recommended].positive? || row[:distribution_gap].positive? %>
+                      <button type="button" class="ozon-warehouse-toggle" aria-expanded="<%= expanded %>" data-hierarchy-table-kind-param="product" data-hierarchy-table-key-param="<%= product_key %>" data-action="hierarchy-table#toggle">
+                        <i class="bi <%= expanded ? "bi-chevron-down" : "bi-chevron-right" %>" aria-hidden="true"></i>
                         <span>
                           <strong><%= row[:product_name] %></strong>
                           <small><%= [row[:sku_code], row[:offer_ids].join(" / ")].reject(&:blank?).join(" · ") %></small>
@@ -96,17 +97,18 @@
                   <td class="numeric"><%= row[:available] %></td>
                   <td class="numeric"><%= row[:reserved] %></td>
                   <td class="numeric"><%= row[:inbound] %></td>
-                  <td class="numeric ozon-warehouse-recommended"><%= row[:recommended] %></td>
+                  <td class="numeric ozon-warehouse-recommended" title="<%= t("reports.ozon_warehouses.product_recommendation_hint") %>"><%= row[:recommended] %></td>
                 </tr>
                 <% row[:clusters].each_with_index do |cluster, cluster_index| %>
                   <% cluster_key = "#{product_key}-cluster-#{cluster_index}" %>
-                  <tr class="ozon-warehouse-cluster-row" data-hierarchy-product="<%= product_key %>" <%= "hidden" unless row[:recommended].positive? %>>
+                  <tr class="ozon-warehouse-cluster-row" data-hierarchy-product="<%= product_key %>" <%= "hidden" unless expanded %>>
                     <td>
                       <div class="ozon-warehouse-cluster">
                         <button type="button" class="ozon-warehouse-toggle" aria-expanded="false" data-hierarchy-table-kind-param="cluster" data-hierarchy-table-key-param="<%= cluster_key %>" data-action="hierarchy-table#toggle">
                           <i class="bi bi-chevron-right" aria-hidden="true"></i>
                           <span><%= cluster[:cluster_name].presence || t("reports.ozon_warehouses.unknown_cluster") %></span>
                           <small><%= t("reports.ozon_warehouses.warehouse_count", count: cluster[:warehouses].size) %></small>
+                          <small><%= t("reports.ozon_warehouses.receiving_warehouse_count", count: cluster[:receiving_warehouse_count]) %></small>
                         </button>
                       </div>
                     </td>
@@ -117,7 +119,7 @@
                     <td class="numeric"><%= cluster[:available] %></td>
                     <td class="numeric"><%= cluster[:reserved] %></td>
                     <td class="numeric"><%= cluster[:inbound] %></td>
-                    <td class="numeric ozon-warehouse-recommended"><%= cluster[:recommended] %></td>
+                    <td class="numeric ozon-warehouse-recommended" title="<%= t("reports.ozon_warehouses.cluster_gap_hint") %>"><%= cluster[:distribution_gap] %></td>
                   </tr>
                   <% cluster[:warehouses].each do |warehouse| %>
                     <tr class="ozon-warehouse-detail-row" data-hierarchy-product="<%= product_key %>" data-hierarchy-cluster="<%= cluster_key %>" hidden>

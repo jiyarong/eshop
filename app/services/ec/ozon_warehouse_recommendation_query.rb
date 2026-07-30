@@ -17,8 +17,9 @@ module Ec
       sku_codes = products.map(&:sku_code).uniq
       sales = sales_by_sku_and_cluster(products.map(&:id))
       inventory = inventory_by_sku(sku_codes)
+      receiving_warehouses = receiving_warehouses_by_cluster
       fbs_available = fbs_available_by_sku(products)
-      rows = build_rows(products, sales, inventory, fbs_available)
+      rows = build_rows(products, sales, inventory, receiving_warehouses, fbs_available)
 
       {
         store: store,
@@ -73,19 +74,26 @@ module Ec
         .group_by(&:sku_code)
     end
 
+    def receiving_warehouses_by_cluster
+      RawOzon::WarehouseCluster
+        .where(account_id: store.ozon_raw_account_id)
+        .where.not(cluster_name: [nil, ""])
+        .group_by(&:cluster_name)
+    end
+
     def fbs_available_by_sku(products)
       products.group_by(&:sku_code).transform_values do |sku_products|
         sku_products.first.sku.inventory_overview.dig(:summary, :available_stock).to_i
       end
     end
 
-    def build_rows(products, sales, inventory, fbs_available)
+    def build_rows(products, sales, inventory, receiving_warehouses, fbs_available)
       products.group_by(&:sku_code).map do |sku_code, sku_products|
         cluster_sales = sales.each_with_object({}) do |((row_sku_code, cluster), quantity), result|
           result[cluster] = quantity.to_i if row_sku_code == sku_code
         end
         warehouse_rows = Array(inventory[sku_code]).flat_map { |level| warehouse_rows(level) }
-        clusters = build_clusters(cluster_sales, warehouse_rows)
+        clusters = build_clusters(cluster_sales, warehouse_rows, receiving_warehouses)
         total_sales = clusters.sum { |cluster| cluster[:sales_quantity] }
         total_available = clusters.sum { |cluster| cluster[:available] }
         total_inbound = clusters.sum { |cluster| cluster[:inbound] }
@@ -104,13 +112,14 @@ module Ec
           available: total_available,
           reserved: clusters.sum { |cluster| cluster[:reserved] },
           inbound: total_inbound,
-          recommended: clusters.sum { |cluster| cluster[:recommended] },
+          distribution_gap: clusters.sum { |cluster| cluster[:distribution_gap] },
+          recommended: recommended_quantity(daily_sales, total_available, total_inbound),
           clusters: clusters
         }
       end.sort_by { |row| [-row[:recommended], -row[:sales_quantity], row[:sku_code]] }
     end
 
-    def build_clusters(cluster_sales, warehouses)
+    def build_clusters(cluster_sales, warehouses, receiving_warehouses)
       warehouses_by_cluster = warehouses.group_by { |row| row[:cluster_name].presence }
       (cluster_sales.keys | warehouses_by_cluster.keys).map do |cluster_name|
         cluster_warehouses = Array(warehouses_by_cluster[cluster_name])
@@ -128,10 +137,11 @@ module Ec
           available: available,
           reserved: cluster_warehouses.sum { |row| row[:reserved] },
           inbound: inbound,
-          recommended: recommended_quantity(daily_sales, available, inbound),
+          distribution_gap: recommended_quantity(daily_sales, available, inbound),
+          receiving_warehouse_count: Array(receiving_warehouses[cluster_name]).size,
           warehouses: cluster_warehouses.sort_by { |row| [-row[:available], row[:warehouse_name]] }
         }
-      end.sort_by { |row| [-row[:recommended], -row[:sales_quantity], row[:cluster_name].to_s] }
+      end.sort_by { |row| [-row[:distribution_gap], -row[:sales_quantity], row[:cluster_name].to_s] }
     end
 
     def warehouse_rows(level)

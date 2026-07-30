@@ -863,11 +863,14 @@ ru:
       updated_at: "Остатки обновлены %{time}"
       fbs_available: "Доступно FBS: %{count}"
       warehouse_count: "Складов: %{count}"
+      receiving_warehouse_count: "Складов кластера: %{count}"
+      product_recommendation_hint: "Рекомендованная дополнительная поставка с учетом всех доступных запасов FBO и поставок"
+      cluster_gap_hint: "Дефицит целевого запаса в кластере только для анализа распределения"
       unknown_cluster: "Кластер не определен"
       empty: "Нет подходящих товаров Ozon для этого магазина"
       filters: { store: "Магазин", search: "Товар", search_placeholder: "Товар, SKU или артикул", target_days: "Целевой запас, дней", apply: "Применить" }
-      summary: { sku_count: "Товары", shortage_count: "Риск дефицита", available: "Доступно FBO", inbound: "В поставке", recommended: "Рекомендовано" }
-      fields: { product: "Товар / кластер / склад", status: "Статус", days_of_stock: "Запас, дней", daily_sales: "Продажи в день", sales_28d: "Продажи за 28 дней", available: "Доступно", reserved: "Резерв", inbound: "В поставке", recommended: "Рекомендовано" }
+      summary: { sku_count: "Товары", shortage_count: "Риск дефицита", available: "Доступно FBO", inbound: "В поставке", recommended: "Доп. поставка" }
+      fields: { product: "Товар / кластер / склад", status: "Статус", days_of_stock: "Запас, дней", daily_sales: "Продажи в день", sales_28d: "Продажи за 28 дней", available: "Доступно", reserved: "Резерв", inbound: "В поставке", recommended: "Доп. поставка", recommended_or_gap: "Доп. поставка / дефицит кластера" }
       statuses: { shortage: "Риск дефицита", healthy: "Норма", excess: "Избыток", no_sales: "Нет продаж" }
       errors: { no_store: "Не настроен магазин Ozon" }
     wb_ads:

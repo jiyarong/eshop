@@ -45,6 +45,27 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     assert_equal 7, report.dig(:summary, :available)
   end
 
+  test "does not recommend new inbound when total stock covers demand despite a cluster gap" do
+    Ec::SkuInventoryLevel.where(store_id: @store.id).update_all(
+      quantity: 40,
+      warehouse_breakdown: [{ warehouse_name: "КАЗАНЬ_РФЦ", cluster_name: "Казань", quantity: 40, reserved: 0, promised: 0 }]
+    )
+
+    report = Ec::OzonWarehouseRecommendationQuery.new(
+      store: @store,
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 28),
+      time_zone: ActiveSupport::TimeZone["Asia/Shanghai"],
+      target_days: 28
+    ).call
+
+    row = report[:rows].sole
+    moscow = row[:clusters].find { |cluster| cluster[:cluster_name] == "Москва" }
+    assert_equal 0, row[:recommended]
+    assert_equal 28, row[:distribution_gap]
+    assert_equal 28, moscow[:distribution_gap]
+  end
+
   private
 
   def create_sale(store, platform_sku_id, cluster, quantity)

@@ -929,6 +929,9 @@ zh:
       updated_at: "库存更新于 %{time}"
       fbs_available: "FBS 可用 %{count}"
       warehouse_count: "%{count} 个仓库"
+      receiving_warehouse_count: "集群仓库 %{count}"
+      product_recommendation_hint: "按全店 FBO 现货和入库处理中库存计算的建议新增发货量"
+      cluster_gap_hint: "集群目标库存缺口，仅用于判断分布，不代表可直接送仓"
       unknown_cluster: "未匹配集群"
       empty: "当前店铺没有匹配的 Ozon 商品数据"
       filters:
@@ -942,7 +945,7 @@ zh:
         shortage_count: "缺货风险"
         available: "FBO 可售库存"
         inbound: "入库处理中"
-        recommended: "建议补货"
+        recommended: "建议新增发货"
       fields:
         product: "商品 / 集群 / 仓库"
         status: "库存状态"
@@ -952,7 +955,8 @@ zh:
         available: "可售"
         reserved: "预留"
         inbound: "入库处理中"
-        recommended: "建议补货"
+        recommended: "建议新增发货"
+        recommended_or_gap: "新增发货 / 集群缺口"
       statuses:
         shortage: "缺货风险"
         healthy: "正常"

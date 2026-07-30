@@ -892,11 +892,14 @@ en:
       updated_at: "Inventory updated %{time}"
       fbs_available: "FBS available %{count}"
       warehouse_count: "%{count} warehouses"
+      receiving_warehouse_count: "%{count} cluster warehouses"
+      product_recommendation_hint: "Recommended additional inbound based on total FBO available and inbound stock"
+      cluster_gap_hint: "Target stock gap for distribution analysis; not a directly executable warehouse shipment"
       unknown_cluster: "Unmatched cluster"
       empty: "No matching Ozon products for this store"
       filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU or offer ID", target_days: "Target stock days", apply: "Apply" }
-      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Inbound", recommended: "Recommended" }
-      fields: { product: "Product / cluster / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended: "Recommended" }
+      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Inbound", recommended: "Additional inbound" }
+      fields: { product: "Product / cluster / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended: "Additional inbound", recommended_or_gap: "Additional inbound / cluster gap" }
       statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
       errors: { no_store: "No Ozon store is configured" }
     wb_ads:
