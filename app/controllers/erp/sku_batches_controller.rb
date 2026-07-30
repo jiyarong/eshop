@@ -62,7 +62,7 @@ module Erp
     end
 
     def new
-      @batch = Ec::SkuBatch.new(status: "draft")
+      @batch = Ec::SkuBatch.new(status: "draft", batch_type: :normal)
       @batch.sku_code = params[:sku_code] if params[:sku_code].present?
       load_sku_options
       render_modal_or_page(:new, :new_modal)
@@ -130,6 +130,8 @@ module Erp
       params.require(:ec_sku_batch).permit(
         :sku_code,
         :batch_code,
+        :batch_type,
+        :defect_offset_note,
         :status,
         :purchase_date,
         :purchased_quantity,

@@ -9,7 +9,7 @@
     <%= hidden_field_tag :return_to, params[:return_to] %>
   <% end %>
 
-  <div class="report-form">
+  <div class="report-form" data-controller="sku-batch-form">
     <%= render "shared/spu_sku_filter",
       field_class: nil,
       dom_id_prefix: "sku-batch-form-spu-sku-selector",
@@ -21,6 +21,17 @@
     <div class="field">
       <%= form.label :batch_code, t("erp.sku_batches.fields.batch_code") %>
       <%= form.text_field :batch_code %>
+    </div>
+    <div class="field">
+      <%= form.label :batch_type, t("erp.sku_batches.fields.batch_type") %>
+      <%= form.select :batch_type,
+        Ec::SkuBatch.batch_types.keys.map { |batch_type| [t("erp.sku_batches.batch_types.#{batch_type}"), batch_type] },
+        {},
+        data: { sku_batch_form_target: "batchType", action: "change->sku-batch-form#syncDefectOffsetNote" } %>
+    </div>
+    <div class="field" data-sku-batch-form-target="defectOffsetNote" <%= "hidden" if batch.normal? %>>
+      <%= form.label :defect_offset_note, t("erp.sku_batches.fields.defect_offset_note") %>
+      <%= form.text_field :defect_offset_note %>
     </div>
     <div class="field">
       <%= form.label :status, t("erp.common.status") %>

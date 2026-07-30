@@ -1333,6 +1333,11 @@ ru:
         enabled: "Включен"
         inactive: "Неактивен"
     sku_batches:
+      batch_types:
+        normal: "Обычная партия"
+        other: "Другое"
+        untrackable_defective: "Непрослеживаемый брак"
+        wb_fbw_offset: "Корректировка WB FBW"
       actions:
         add_batch: "Добавить партию"
         add_sku_batch: "Добавить партию SKU"
@@ -1344,6 +1349,8 @@ ru:
         actual_arrival: "Фактическое прибытие"
         allocated_cost: "Распределенные расходы"
         batch_code: "Номер партии"
+        batch_type: "Тип партии"
+        defect_offset_note: "Примечание к корректировке"
         departure_date: "Дата отправки"
         expected_arrival: "Ожидаемое прибытие"
         expected_arrival_on: "Ожидаемая дата поступления"

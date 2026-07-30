@@ -1376,6 +1376,11 @@ en:
         enabled: "Enabled"
         inactive: "Inactive"
     sku_batches:
+      batch_types:
+        normal: "Normal batch"
+        other: "Other"
+        untrackable_defective: "Untrackable defective"
+        wb_fbw_offset: "WB FBW offset"
       actions:
         add_batch: "Add batch"
         add_sku_batch: "Add SKU batch"
@@ -1387,6 +1392,8 @@ en:
         actual_arrival: "Actual arrival"
         allocated_cost: "Allocated cost"
         batch_code: "Batch number"
+        batch_type: "Batch type"
+        defect_offset_note: "Offset note"
         departure_date: "Departure date"
         expected_arrival: "Expected arrival"
         expected_arrival_on: "Expected arrival date"

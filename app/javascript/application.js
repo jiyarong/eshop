@@ -20,6 +20,7 @@ import PopoverMultiselectFilterController from "./controllers/popover_multiselec
 import ProductTreeController from "./controllers/product_tree_controller";
 import ResponsibleUserFilterController from "./controllers/responsible_user_filter_controller";
 import ShellController from "./controllers/shell_controller";
+import SkuBatchFormController from "./controllers/sku_batch_form_controller";
 import SpuSkuFilterController from "./controllers/spu_sku_filter_controller";
 import TimeRangeSelectorController from "./controllers/time_range_selector_controller";
 import TableRowExpanderController from "./controllers/table_row_expander_controller";
@@ -47,6 +48,7 @@ Stimulus.register("popover-multiselect-filter", PopoverMultiselectFilterControll
 Stimulus.register("product-tree", ProductTreeController);
 Stimulus.register("responsible-user-filter", ResponsibleUserFilterController);
 Stimulus.register("shell", ShellController);
+Stimulus.register("sku-batch-form", SkuBatchFormController);
 Stimulus.register("spu-sku-filter", SpuSkuFilterController);
 Stimulus.register("time-range-selector", TimeRangeSelectorController);
 Stimulus.register("table-row-expander", TableRowExpanderController);

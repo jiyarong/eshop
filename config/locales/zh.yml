@@ -1556,6 +1556,11 @@ zh:
         enabled: "启用"
         inactive: "未激活"
     sku_batches:
+      batch_types:
+        normal: "普通批次"
+        other: "其他"
+        untrackable_defective: "不可追踪残次"
+        wb_fbw_offset: "WB FBW 补正"
       actions:
         add_batch: "新增批次"
         add_sku_batch: "新增 SKU 批次"
@@ -1567,6 +1572,8 @@ zh:
         actual_arrival: "实际到货"
         allocated_cost: "分摊费用"
         batch_code: "批次号"
+        batch_type: "批次类型"
+        defect_offset_note: "补正备注"
         departure_date: "出境日期"
         expected_arrival: "预计到货"
         expected_arrival_on: "预计到货日期"

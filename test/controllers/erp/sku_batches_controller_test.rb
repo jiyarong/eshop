@@ -293,6 +293,13 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?]", @sku.sku_code
     assert_select "input[name='master_sku_ids[]']", count: 0
     assert_select "input[name='ec_sku_batch[purchase_date]']"
+    assert_select "select[name='ec_sku_batch[batch_type]']" do
+      assert_select "option[value='normal'][selected='selected']", "普通批次"
+      assert_select "option[value='wb_fbw_offset']", "WB FBW 补正"
+      assert_select "option[value='untrackable_defective']", "不可追踪残次"
+      assert_select "option[value='other']", "其他"
+    end
+    assert_select "[data-sku-batch-form-target='defectOffsetNote'][hidden] input[name='ec_sku_batch[defect_offset_note]']"
   end
 
   test "modal new renders batch form with selected sku" do
@@ -320,6 +327,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#sku-batch-form-spu-sku-selector-trigger", text: @sku.sku_code
     assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?][checked='checked']", @sku.sku_code
     assert_select "input[name='ec_sku_batch[purchase_date]'][value=?]", @batch.purchase_date.to_s
+    assert_select "select[name='ec_sku_batch[batch_type]'] option[value='normal'][selected='selected']", "普通批次"
     assert_select "select[name='ec_sku_batch[status]']" do
       assert_select "option[value='draft'][selected='selected']", "草稿"
       assert_select "option[value='ordered']", "已下单"
@@ -371,6 +379,8 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
         ec_sku_batch: {
           sku_code: @sku.sku_code,
           batch_code: "created-batch-#{@token}",
+          batch_type: "wb_fbw_offset",
+          defect_offset_note: "WB FBW 库存补正",
           status: "ordered",
           purchase_date: "2026-06-10",
           purchased_quantity: "120",
@@ -385,6 +395,8 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     created = Ec::SkuBatch.find_by!(batch_code: "CREATED-BATCH-#{@token}")
     assert_redirected_to "/erp/skus?status=active&q=batch"
     assert_equal "ordered", created.status
+    assert_equal "wb_fbw_offset", created.batch_type
+    assert_equal "WB FBW 库存补正", created.defect_offset_note
     assert_equal Date.new(2026, 6, 10), created.purchase_date
     assert_equal 120, created.purchased_quantity
   end

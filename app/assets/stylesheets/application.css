@@ -622,6 +622,10 @@ a {
   gap: 6px;
 }
 
+.report-form .field[hidden] {
+  display: none;
+}
+
 .field--full {
   width: 100%;
 }
