@@ -256,7 +256,55 @@ class Erp::SkuCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='ec_sku_cost[misc_cost_cny]'][value='0.5']"
     assert_select "input[name='ec_sku_cost[damage_rate]'][value='0.03']"
     assert_select "input[name='ec_sku_cost[memo]'][value='base cost']"
+    assert_select "input[type='hidden'][name='copy_from_id'][value=?]", @cost.id.to_s
     assert_select "input[name='return_to'][value='/erp/sku_costs?sku=#{@sku.sku_code}']"
+  end
+
+  test "viewer can copy and save an existing cost without manage sku permission" do
+    viewer = create_user_with_roles("erp-sku-costs-#{@token.downcase}-viewer@example.com", "auditor")
+    sign_in viewer
+
+    get "/erp/sku_costs/new",
+      params: { copy_from_id: @cost.id },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[type='hidden'][name='copy_from_id'][value=?]", @cost.id.to_s
+
+    effective_on = Date.current + 1.day
+    previous_count = Ec::SkuCost.where(sku_code: @sku.sku_code).count
+    sign_in viewer
+    post "/erp/sku_costs",
+      params: {
+        copy_from_id: @cost.id,
+        ec_sku_cost: {
+          sku_code: @sku.sku_code,
+          effective_on: effective_on.to_s,
+          purchase_price_cny: "10.0",
+          freight_to_by_cny: "2.0",
+          customs_misc_cny: "1.0",
+          customs_duty_rate: "0.1",
+          import_vat_rate: "0.2",
+          pkg_volume_override_l: "3.5",
+          misc_cost_cny: "0.5",
+          damage_rate: "0.03",
+          memo: "viewer copy"
+        }
+      },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to "/erp/sku_costs"
+    assert_equal previous_count + 1, Ec::SkuCost.where(sku_code: @sku.sku_code).count
+    assert_equal "viewer copy", Ec::SkuCost.find_by!(sku_code: @sku.sku_code, effective_on: effective_on).memo
+  end
+
+  test "viewer still cannot add a cost without copying" do
+    viewer = create_user_with_roles("erp-sku-costs-#{@token.downcase}-restricted@example.com", "auditor")
+    sign_in viewer
+
+    get "/erp/sku_costs/new", headers: { "Accept" => "text/html" }
+
+    assert_response :forbidden
   end
 
   test "inline update persists existing sku cost field" do

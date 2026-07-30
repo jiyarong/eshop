@@ -9,6 +9,10 @@
     <%= hidden_field_tag :return_to, params[:return_to] %>
   <% end %>
 
+  <% if params[:copy_from_id].present? %>
+    <%= hidden_field_tag :copy_from_id, params[:copy_from_id] %>
+  <% end %>
+
   <div class="report-form">
     <%= render "shared/spu_sku_filter",
       field_class: nil,

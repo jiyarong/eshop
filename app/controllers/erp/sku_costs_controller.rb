@@ -9,7 +9,7 @@ module Erp
     SKU_PAGE_SIZE = 10
     INLINE_EDITABLE_FIELDS = Erp::InlineEditHelper::SKU_COST_INLINE_FIELDS.keys.map(&:to_s).freeze
 
-    before_action -> { require_permission!(:manage_skus) }, only: [:new, :create, :edit, :update]
+    before_action :require_sku_cost_write_permission!, only: [:new, :create, :edit, :update]
     before_action :set_sku, only: [:edit, :update]
     before_action :set_cost, only: [:edit, :update]
 
@@ -82,10 +82,7 @@ module Erp
     end
 
     def copied_cost
-      source_id = Integer(params[:copy_from_id], exception: false)
-      return unless source_id
-
-      source = Ec::SkuCost.find_by(id: source_id)
+      source = copy_source_cost
       return unless source
 
       Ec::SkuCost.new(
@@ -102,6 +99,19 @@ module Erp
           "memo"
         ).merge("effective_on" => Date.current)
       )
+    end
+
+    def copy_source_cost
+      return @copy_source_cost if defined?(@copy_source_cost)
+
+      source_id = Integer(params[:copy_from_id], exception: false)
+      @copy_source_cost = Ec::SkuCost.find_by(id: source_id) if source_id
+    end
+
+    def require_sku_cost_write_permission!
+      return if copy_source_cost
+
+      require_permission!(:manage_skus)
     end
 
     def cost_params
