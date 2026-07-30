@@ -6,6 +6,8 @@ module Ec
       listing_content
       listing_pricing
       listing_specification
+      sku_adv_on_off
+      sku_inbound_change
     ].freeze
 
     belongs_to :operated_by_user, class_name: "User"

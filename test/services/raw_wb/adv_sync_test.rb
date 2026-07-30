@@ -37,6 +37,8 @@ class RawWbAdvSyncTest < ActiveSupport::TestCase
   end
 
   teardown do
+    Ec::OperationAction.where(ec_store_id: @store.id).delete_all
+    Ec::SkuProduct.where(store_id: @store.id).delete_all
     campaign_ids = RawWb::AdvCampaign.where(store_id: @store.id).select(:id)
     RawWb::AdvExpense.where(store_id: @store.id).delete_all
     RawWb::AdvProductDailyStat.where(campaign_id: campaign_ids).delete_all
@@ -45,6 +47,9 @@ class RawWbAdvSyncTest < ActiveSupport::TestCase
     RawWb::AdvCampaignProduct.where(campaign_id: campaign_ids).delete_all
     RawWb::AdvCampaign.where(store_id: @store.id).delete_all
     @store.delete
+    Ec::Sku.where(sku_code: @test_sku&.sku_code).delete_all if @test_sku
+    UserRole.where(user_id: @test_admin&.id).delete_all if @test_admin
+    @test_admin&.delete
   end
 
   test "syncs campaigns budgets three-level stats and expenses from ec store token" do
@@ -131,7 +136,44 @@ class RawWbAdvSyncTest < ActiveSupport::TestCase
     assert_equal 1, result[:expenses]
   end
 
+  test "records a campaign on off change for a bound listing" do
+    create_operation_action_dependencies(860_790_648)
+    @sync.sync_campaigns
+
+    client_responses = @client.instance_variable_get(:@responses)
+    client_responses["/adv/v1/promotion/count"]["adverts"].first["status"] = 11
+    client_responses["/api/advert/v2/adverts"]["adverts"].first["status"] = 11
+
+    assert_difference "Ec::OperationAction.count", 1 do
+      @sync.sync_campaigns
+    end
+
+    action = Ec::OperationAction.order(:id).last
+    assert_equal "sku_adv_on_off", action.operation_type
+    assert_equal "35904910", action.diff_result.dig("advertisement", "id")
+    assert_equal "KJ-217-WT", action.diff_result.dig("advertisement", "name")
+    assert_equal false, action.diff_result.dig("fields", "advertising_enabled", "to")
+  end
+
+  test "does not record a campaign status change without a bound listing" do
+    @sync.sync_campaigns
+    client_responses = @client.instance_variable_get(:@responses)
+    client_responses["/adv/v1/promotion/count"]["adverts"].first["status"] = 11
+    client_responses["/api/advert/v2/adverts"]["adverts"].first["status"] = 11
+
+    assert_no_difference "Ec::OperationAction.count" do
+      @sync.sync_campaigns
+    end
+  end
+
   private
+
+  def create_operation_action_dependencies(product_id)
+    @test_admin = User.create!(email: "wb-adv-action-#{SecureRandom.hex(6)}@example.com", password: "password123")
+    @test_admin.roles << Role.find_by!(code: "super_admin")
+    @test_sku = Ec::Sku.create!(sku_code: "WB-ADV-#{SecureRandom.hex(6)}", product_name: "WB ad action")
+    Ec::SkuProduct.create!(sku: @test_sku, store: @store, product_id: product_id.to_s)
+  end
 
   def responses
     {

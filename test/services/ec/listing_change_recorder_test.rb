@@ -89,6 +89,35 @@ module Ec
       assert_equal({ "added" => ["blue"], "removed" => ["red"] }, attributes_diff.dig("10", "values"))
     end
 
+    test "records advertisement identity with an advertising status change" do
+      action = Ec::AdStatusChangeRecorder.record(
+        sku_product: @sku_product,
+        advertisement_id: "ADV-123",
+        advertisement_name: "Summer campaign",
+        before_status: 9,
+        after_status: 11
+      )
+
+      assert_equal "sku_adv_on_off", action.operation_type
+      assert_equal false, action.diff_result.dig("fields", "advertising_enabled", "to")
+      assert_equal "ADV-123", action.diff_result.dig("advertisement", "id")
+      assert_equal "Summer campaign", action.diff_result.dig("advertisement", "name")
+      assert_equal "9.0", action.diff_result.dig("advertisement", "status_from")
+      assert_equal "11.0", action.diff_result.dig("advertisement", "status_to")
+    end
+
+    test "does not record changes between two disabled advertising statuses" do
+      assert_no_difference "Ec::OperationAction.count" do
+        assert_nil Ec::AdStatusChangeRecorder.record(
+          sku_product: @sku_product,
+          advertisement_id: "ADV-123",
+          advertisement_name: "Summer campaign",
+          before_status: 11,
+          after_status: 7
+        )
+      end
+    end
+
     private
 
     def create_user(prefix)

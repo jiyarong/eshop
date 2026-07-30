@@ -3,7 +3,7 @@ module Ec
     IMAGE_FIELD = "images"
 
     class << self
-      def record(sku_product:, operation_type:, before:, after:, operated_at: Time.current)
+      def record(sku_product:, operation_type:, before:, after:, operated_at: Time.current, metadata: {})
         fields = build_diff(normalize_hash(before), normalize_hash(after))
         return if fields.empty?
 
@@ -21,7 +21,7 @@ module Ec
             "platform" => sku_product.platform,
             "attribution" => attribution,
             "fields" => fields
-          },
+          }.merge(normalize_hash(metadata)),
           record_by_system: true
         )
       end

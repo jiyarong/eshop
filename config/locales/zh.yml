@@ -1606,6 +1606,8 @@ zh:
         listing_content: "内容"
         listing_pricing: "价格"
         listing_specification: "规格"
+        sku_adv_on_off: "广告开关"
+        sku_inbound_change: "平台在途"
       platforms:
         wb: "WB"
         ozon: "Ozon"
@@ -1621,6 +1623,8 @@ zh:
         attributes: "属性"
         barcodes: "条码"
         brand: "品牌"
+        advertising_enabled: "广告启用状态"
+        platform_inbound_quantity: "平台在途数量"
         category: "类目"
         category_id: "类目 ID"
         club_discount: "会员折扣"

@@ -92,6 +92,10 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
   end
 
   teardown do
+    store_ids = Ec::Store.where(ozon_raw_account_id: @account.id).pluck(:id)
+    Ec::OperationAction.where(ec_store_id: store_ids).delete_all
+    Ec::SkuProduct.where(store_id: store_ids).delete_all
+    Ec::Store.where(id: store_ids).delete_all
     RawOzon::AdReportRun.where(account_id: @account.id).delete_all
     RawOzon::AdSkuDailyStat.where(account_id: @account.id).delete_all
     RawOzon::AdDailyStat.where(account_id: @account.id).delete_all
@@ -99,6 +103,9 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
     RawOzon::AdUnit.where(account_id: @account.id).delete_all
     RawOzon::Product.where(account_id: @account.id).delete_all
     RawOzon::SellerAccount.where(id: @account.id).delete_all
+    Ec::Sku.where(sku_code: @test_sku&.sku_code).delete_all if @test_sku
+    UserRole.where(user_id: @test_admin&.id).delete_all if @test_admin
+    @test_admin&.delete
   end
 
   test "syncs units products and CPC daily facts without touching weekly profit SKU spends" do
@@ -155,7 +162,39 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
     assert_equal 1400, rows.sum(:spend).to_i
   end
 
+  test "records a campaign on off change for a bound listing" do
+    create_operation_action_dependencies
+    @sync.sync_units
+    @sync.sync_unit_products
+    @client.define_singleton_method(:campaigns) do
+      super().map { |campaign| campaign["id"] == "101" ? campaign.merge("state" => "CAMPAIGN_STATE_INACTIVE") : campaign }
+    end
+
+    assert_difference "Ec::OperationAction.count", 1 do
+      @sync.sync_units
+    end
+
+    action = Ec::OperationAction.order(:id).last
+    assert_equal "sku_adv_on_off", action.operation_type
+    assert_equal "101", action.diff_result.dig("advertisement", "id")
+    assert_equal "CPC", action.diff_result.dig("advertisement", "name")
+    assert_equal false, action.diff_result.dig("fields", "advertising_enabled", "to")
+  end
+
   private
+
+  def create_operation_action_dependencies
+    @test_admin = User.create!(email: "ozon-adv-action-#{SecureRandom.hex(6)}@example.com", password: "password123")
+    @test_admin.roles << Role.find_by!(code: "super_admin")
+    store = Ec::Store.create!(
+      platform: "ozon", store_name: "ozon-adv-action-#{@token}", company_type: "small",
+      ozon_raw_account_id: @account.id, is_active: true
+    )
+    @test_sku = Ec::Sku.create!(sku_code: "OZON-ADV-#{SecureRandom.hex(6)}", product_name: "Ozon ad action")
+    Ec::SkuProduct.create!(
+      sku: @test_sku, store:, product_id: @product.ozon_product_id.to_s, platform_sku_id: "3001"
+    )
+  end
 
   def legacy_table_counts
     {

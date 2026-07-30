@@ -1468,6 +1468,8 @@ en:
         listing_content: "Content"
         listing_pricing: "Pricing"
         listing_specification: "Specification"
+        sku_adv_on_off: "Advertising on/off"
+        sku_inbound_change: "Inbound inventory"
       platforms:
         wb: "WB"
         ozon: "Ozon"
@@ -1483,6 +1485,8 @@ en:
         attributes: "Attributes"
         barcodes: "Barcodes"
         brand: "Brand"
+        advertising_enabled: "Advertising enabled"
+        platform_inbound_quantity: "Platform inbound quantity"
         category: "Category"
         category_id: "Category ID"
         club_discount: "Member discount"

@@ -1425,6 +1425,8 @@ ru:
         listing_content: "Контент"
         listing_pricing: "Цена"
         listing_specification: "Характеристики"
+        sku_adv_on_off: "Включение рекламы"
+        sku_inbound_change: "Товар в поставке"
       platforms:
         wb: "WB"
         ozon: "Ozon"
@@ -1440,6 +1442,8 @@ ru:
         attributes: "Атрибуты"
         barcodes: "Штрихкоды"
         brand: "Бренд"
+        advertising_enabled: "Реклама включена"
+        platform_inbound_quantity: "Количество в поставке"
         category: "Категория"
         category_id: "ID категории"
         club_discount: "Клубная скидка"

@@ -119,6 +119,7 @@ module Ec
         store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: account.id)
         fbs_warehouses = wb_fbs_warehouses(account)
         inbound_by_sku_code = wb_inbound_quantities_by_sku_code(account)
+        next [] unless inbound_by_sku_code
 
         Ec::SkuProduct
           .joins(:store)
@@ -128,7 +129,7 @@ module Ec
             chrt_ids = products.map(&:platform_sku_id).compact
             stocks_by_warehouse = chrt_ids.empty? ? [] : wb_fbs_stocks_by_warehouse(account, fbs_warehouses, chrt_ids)
             fbs_quantity = stocks_by_warehouse.sum { |row| row[:quantity].to_i }
-            inbound_quantity = inbound_by_sku_code[sku_code].to_i
+            inbound_quantity = inbound_by_sku_code.fetch(sku_code, 0).to_i
             available_fbs_quantity = [fbs_quantity - inbound_quantity, 0].max
 
             [
@@ -191,6 +192,7 @@ module Ec
         store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: account.id)
         stocks_by_product_id = ozon_stocks_by_product_id(account)
         warehouse_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
+        next [] unless warehouse_breakdowns_by_sku
         warehouse_clusters = ozon_warehouse_cluster_lookup(account)
 
         Ec::SkuProduct
@@ -297,7 +299,7 @@ module Ec
       result
     rescue => e
       Rails.logger.warn("[SkuInventorySnapshotFetcher] Ozon warehouse stocks account=#{account.id} failed: #{e.message}")
-      {}
+      nil
     end
 
     def ozon_warehouse_breakdown(breakdowns_by_sku, ozon_skus, warehouse_clusters = {})
@@ -379,7 +381,7 @@ module Ec
       end
     rescue => e
       Rails.logger.warn("[SkuInventorySnapshotFetcher] WB inbound supplies account=#{account.id} failed: #{e.message}")
-      {}
+      nil
     end
 
     def wb_inbound_supplies(client)

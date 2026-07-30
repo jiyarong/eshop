@@ -44,7 +44,17 @@ module RawOzon
         items = Array(@client.get("/api/client/campaign")["list"])
         synced_at = Time.current
         rows = items.map { |item| unit_row(item, synced_at) }
+        previous_units = RawOzon::AdUnit
+          .where(account_id: @account.id, external_id: rows.map { |row| row[:external_id] })
+          .index_by(&:external_id)
+        @unit_state_changes = rows.filter_map do |row|
+          previous = previous_units[row[:external_id]]
+          next unless previous && previous.state != row[:state]
+
+          [row[:external_id], previous.state, row[:state]]
+        end
         RawOzon::AdUnit.upsert_all(rows, unique_by: :idx_raw_ozon_ad_units_identity) if rows.any?
+        record_unit_state_changes
         rows.size
       end
 
@@ -228,6 +238,43 @@ module RawOzon
         stale = stale.where.not(ozon_sku_id: skus) if skus.any?
         stale.update_all(is_current: false, removed_at: synced_at, updated_at: synced_at)
         rows.size
+      end
+
+      def record_unit_state_changes
+        changes = Array(@unit_state_changes)
+        @unit_state_changes = []
+        return if changes.empty?
+
+        units = RawOzon::AdUnit
+          .includes(:products)
+          .where(account_id: @account.id, external_id: changes.map(&:first))
+          .index_by(&:external_id)
+        store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: @account.id)
+        return unless store
+
+        platform_sku_ids = units.values.flat_map { |unit| unit.products.select(&:is_current?).map(&:ozon_sku_id) }.uniq
+        sku_products = Ec::SkuProduct
+          .includes(:sku, :store)
+          .where(store:, platform_sku_id: platform_sku_ids)
+          .index_by(&:platform_sku_id)
+
+        changes.each do |external_id, before_state, after_state|
+          unit = units[external_id]
+          next unless unit
+
+          unit.products.select(&:is_current?).each do |product|
+            sku_product = sku_products[product.ozon_sku_id]
+            next unless sku_product
+
+            Ec::AdStatusChangeRecorder.record(
+              sku_product:,
+              advertisement_id: external_id,
+              advertisement_name: unit.title,
+              before_status: before_state,
+              after_status: after_state
+            )
+          end
+        end
       end
 
       def build_cpc_sku_stat(item, unit, product_map)

@@ -25,14 +25,25 @@ module Ec
         return false
       end
 
+      previous_level = latest_scope(row).order(synced_at: :desc, id: :desc).first if row[:fulfillment_type] == "inbound"
       Ec::SkuInventoryLevel.transaction do
         latest_scope(row).update_all(is_latest: false, updated_at: @now)
         level.save!
       end
+      record_inbound_change(previous_level, level) if previous_level
       true
     rescue ActiveRecord::RecordInvalid, ActiveRecord::InvalidForeignKey => e
       Rails.logger.warn("[SkuInventorySnapshotSync] failed row #{row.inspect}: #{e.class} #{e.message}")
       false
+    end
+
+    def record_inbound_change(previous_level, current_level)
+      Ec::InboundInventoryChangeRecorder.record(previous_level:, current_level:)
+    rescue => e
+      Rails.logger.warn(
+        "[SkuInventorySnapshotSync] failed to record inbound change " \
+        "sku=#{current_level.sku_code} platform=#{current_level.platform}: #{e.class} #{e.message}"
+      )
     end
 
     def normalize_row(row)

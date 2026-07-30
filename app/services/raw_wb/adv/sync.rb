@@ -64,6 +64,10 @@ module RawWb
           end
         end
 
+        previous_statuses = RawWb::AdvCampaign
+          .where(store_id: @store.id, advert_id: summaries.map { |row| row[:advert_id] })
+          .pluck(:advert_id, :status)
+          .to_h
         now = Time.current
         RawWb::AdvCampaign.where(store_id: @store.id).update_all(is_current: false, updated_at: now)
         summary_rows = summaries.map do |summary|
@@ -76,6 +80,7 @@ module RawWb
             update_only: %i[campaign_type status source_updated_at is_current raw_payload synced_at]
           )
         end
+        record_campaign_status_changes(summaries, previous_statuses)
 
         details_count = 0
         summaries.map { |row| row[:advert_id] }.each_slice(CAMPAIGN_BATCH_SIZE).with_index do |ids, batch_index|
@@ -242,6 +247,45 @@ module RawWb
           unique_by: :idx_wb_adv_campaign_products_unique,
           update_only: %i[subject_id subject_name search_bid_kopecks recommendation_bid_kopecks is_current raw_payload synced_at]
         )
+      end
+
+      def record_campaign_status_changes(summaries, previous_statuses)
+        changes = summaries.filter_map do |summary|
+          previous_status = previous_statuses[summary[:advert_id]]
+          next if previous_status.nil? || previous_status == summary[:status]
+
+          [summary[:advert_id], previous_status, summary[:status], summary[:source_updated_at]]
+        end
+        return if changes.empty?
+
+        campaigns = RawWb::AdvCampaign
+          .includes(:products)
+          .where(store_id: @store.id, advert_id: changes.map(&:first))
+          .index_by(&:advert_id)
+        product_ids = campaigns.values.flat_map { |campaign| campaign.products.select(&:is_current?).map { |product| product.nm_id.to_s } }.uniq
+        sku_products = Ec::SkuProduct
+          .includes(:sku, :store)
+          .where(store: @store, product_id: product_ids)
+          .index_by(&:product_id)
+
+        changes.each do |advert_id, before_status, after_status, changed_at|
+          campaign = campaigns[advert_id]
+          next unless campaign
+
+          campaign.products.select(&:is_current?).each do |product|
+            sku_product = sku_products[product.nm_id.to_s]
+            next unless sku_product
+
+            Ec::AdStatusChangeRecorder.record(
+              sku_product:,
+              advertisement_id: advert_id,
+              advertisement_name: campaign.name,
+              before_status:,
+              after_status:,
+              operated_at: changed_at || Time.current
+            )
+          end
+        end
       end
 
       def sync_campaign_stats(campaign, payload)

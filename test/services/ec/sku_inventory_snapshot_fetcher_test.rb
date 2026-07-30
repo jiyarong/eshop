@@ -122,6 +122,29 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     end
   end
 
+  class FailingWbInboundClient
+    def get(_service, path, _params = {})
+      return [{ "id" => 1, "name" => "FBS", "deliveryType" => 1 }] if path == "/api/v3/warehouses"
+
+      raise "unexpected WB GET #{path}"
+    end
+
+    def post(service, path, _body = {})
+      raise "WB inbound unavailable" if service == :supplies && path == "/api/v1/supplies"
+      return { "stocks" => [] } if service == :marketplace && path == "/api/v3/stocks/1"
+
+      raise "unexpected WB POST #{service} #{path}"
+    end
+  end
+
+  class FailingOzonInboundClient < FakeOzonClient
+    def post(path, body = {})
+      raise "Ozon inbound unavailable" if path == "/v2/analytics/stock_on_warehouses"
+
+      super
+    end
+  end
+
   setup do
     @token = SecureRandom.hex(4).upcase
     @sku = Ec::Sku.create!(sku_code: "FETCH-IN-#{@token}", product_name: "实时在途测试")
@@ -277,5 +300,25 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     assert_equal "ozon_analytics_stock_on_warehouses.promised_amount", inbound[:metadata][:inbound_source]
     assert fake_client.posts.any? { |call| call[:path] == "/v2/analytics/stock_on_warehouses" }
     assert_not fake_client.posts.any? { |call| call[:path] == "/v3/supply-order/list" }
+  end
+
+  test "wb inbound API failure omits inbound snapshot rows" do
+    fetcher = Ec::SkuInventorySnapshotFetcher.new(wb_client_factory: ->(_) { FailingWbInboundClient.new })
+
+    rows = fetcher.send(:wb_fbs_rows, Time.zone.parse("2026-07-30 10:00:00"))
+
+    assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @wb_account.id }
+  end
+
+  test "ozon inbound API failure omits inbound snapshot rows" do
+    fake_client = FailingOzonInboundClient.new(
+      product_id: @ozon_product.product_id.to_i,
+      ozon_sku: @ozon_product.platform_sku_id.to_i
+    )
+    fetcher = Ec::SkuInventorySnapshotFetcher.new(ozon_client_factory: ->(_) { fake_client })
+
+    rows = fetcher.send(:ozon_rows, Time.zone.parse("2026-07-30 10:00:00"))
+
+    assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @ozon_account.id }
   end
 end
