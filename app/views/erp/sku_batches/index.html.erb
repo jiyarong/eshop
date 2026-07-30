@@ -85,6 +85,7 @@
           <th style="width: 112px"><%= t("erp.sku_batches.fields.purchase_date") %></th>
           <th style="width: 112px"><%= t("erp.sku_batches.fields.expected_arrival_on") %></th>
           <th style="width: 126px"><%= t("erp.sku_batches.fields.overseas_delivery_date") %></th>
+          <th style="width: 130px; text-align: right"><%= t("erp.sku_batches.fields.purchase_cost_cny") %></th>
           <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
           <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.received_quantity") %></th>
           <th style="width: 110px"><%= t("erp.common.status") %></th>
@@ -105,6 +106,7 @@
             <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchase_date) %></td>
             <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :expected_arrival_on) %></td>
             <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_on) %></td>
+            <td class="num"><%= erp_value(@purchase_costs_by_batch_id[batch.id]) %></td>
             <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :purchased_quantity) %></td>
             <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :received_quantity) %></td>
             <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :status) %></td>
@@ -126,7 +128,7 @@
 
         <% if @batches.empty? %>
           <tr>
-            <td colspan="10" class="empty-state">
+            <td colspan="11" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.sku_batches.empty.no_batches") %>
             </td>

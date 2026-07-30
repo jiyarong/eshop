@@ -49,6 +49,7 @@ module Erp
       scope = scope.where(status: @statuses) if @statuses.any?
 
       @batches = paginated_batches(scope)
+      @purchase_costs_by_batch_id = Ec::SkuBatchPurchaseCostQuery.call(@batches)
       @batch_counts = {
         total: Ec::SkuBatch.count,
         ordered: Ec::SkuBatch.where(status: "ordered").count,

@@ -1580,6 +1580,7 @@ zh:
         overseas_delivery_date: "境外交付日期"
         product_name: "商品名"
         purchase_cost: "采购成本"
+        purchase_cost_cny: "采购成本 CNY"
         purchase_date: "采购日期"
         purchase_unit_price: "采购单价"
         purchased_quantity: "采购数量"

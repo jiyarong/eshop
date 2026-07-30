@@ -1400,6 +1400,7 @@ en:
         overseas_delivery_date: "Overseas delivery date"
         product_name: "Product name"
         purchase_cost: "Purchase cost"
+        purchase_cost_cny: "Purchase cost CNY"
         purchase_date: "Purchase date"
         purchase_unit_price: "Purchase unit price"
         purchased_quantity: "Purchased quantity"

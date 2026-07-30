@@ -24,6 +24,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     Ec::CostAllocationItem.where(sku_batch_id: batch_ids).delete_all
     Ec::PurchaseOrderItem.where(sku_batch_id: batch_ids).delete_all
     Ec::SkuBatch.where(id: batch_ids).delete_all
+    Ec::SkuCost.where(sku_code: sku_scope.select(:sku_code)).delete_all
     Ec::SkuDeveloperAssignment.where(sku_code: sku_scope.select(:sku_code)).delete_all if defined?(Ec::SkuDeveloperAssignment)
     if defined?(Ec::SkuProductOperator)
       Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku_scope.select(:sku_code) }).delete_all
@@ -52,6 +53,9 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "index renders sku batches" do
+    Ec::SkuCost.create!(sku_code: @sku.sku_code, effective_on: Date.new(2026, 5, 1), purchase_price_cny: 8.25)
+    Ec::SkuCost.create!(sku_code: @sku.sku_code, effective_on: @batch.purchase_date, purchase_price_cny: 99)
+
     get "/erp/sku_batches", headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -80,12 +84,14 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl thead th", text: "采购日期"
     assert_select ".prod-tbl thead th", text: "预计到货日期"
     assert_select ".prod-tbl thead th", text: "境外交付日期"
+    assert_select ".prod-tbl thead th", text: "采购成本 CNY"
     assert_select ".prod-tbl thead th", text: "采购数量"
     assert_select ".prod-tbl thead th", text: "到货数量"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select "a[href='#{erp_sku_path(@sku)}']", text: @sku.sku_code
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell .inline-edit-cell--display", text: "2026-06-01"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell .inline-edit-cell--display", text: "2026-06-15"
+    assert_select "tr.sku-batch-row td.num", text: "8.25"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell .inline-edit-cell--display", text: "100"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell .inline-edit-cell--display", text: "80"
     assert_select "a[href='#{erp_sku_batch_path(@batch)}']", text: "查看"
