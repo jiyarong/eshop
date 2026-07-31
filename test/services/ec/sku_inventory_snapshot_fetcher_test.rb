@@ -93,6 +93,33 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
           ],
           "cursor" => ""
         }
+      when "/v1/analytics/stocks"
+        {
+          "items" => [
+            {
+              "sku" => @ozon_sku,
+              "offer_id" => "OFFER-TEST",
+              "warehouse_name" => "Екатеринбург_РФЦ_НОВЫЙ",
+              "available_stock_count" => 6,
+              "transit_stock_count" => 10
+            },
+            {
+              "sku" => @ozon_sku,
+              "offer_id" => "OFFER-TEST",
+              "warehouse_name" => "Казань_РФЦ_НОВЫЙ",
+              "available_stock_count" => 26,
+              "transit_stock_count" => 0
+            },
+            {
+              "sku" => @ozon_sku,
+              "offer_id" => "OFFER-TEST",
+              "warehouse_name" => "",
+              "cluster_name" => "Беларусь",
+              "available_stock_count" => 0,
+              "transit_stock_count" => 0
+            }
+          ]
+        }
       when "/v2/analytics/stock_on_warehouses"
         {
           "result" => {
@@ -275,13 +302,14 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     fbo = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:fulfillment_type] == "fbo" }
     assert_equal 10, inbound[:quantity]
     assert_equal 0, fbs[:quantity]
+    assert_equal 32, fbo[:quantity]
     assert_includes fbo[:warehouse_breakdown], {
       warehouse_name: "Екатеринбург_РФЦ_НОВЫЙ",
       warehouse_id: 18044570445000,
       cluster_name: "Екатеринбург",
       macrolocal_cluster_id: 4058,
       country_name: "Россия",
-      quantity: 0,
+      quantity: 6,
       promised: 10,
       reserved: 0,
       item_codes: ["OFFER-TEST"]
@@ -292,11 +320,14 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
       cluster_name: "Казань",
       macrolocal_cluster_id: 4041,
       country_name: "Россия",
-      quantity: 45,
+      quantity: 26,
       promised: 0,
       reserved: 0,
       item_codes: ["OFFER-TEST"]
     }
+    assert_equal "ozon_analytics_stocks.available_stock_count", fbo[:metadata][:fbo_source]
+    analytics_call = fake_client.posts.find { |call| call[:path] == "/v1/analytics/stocks" }
+    assert_equal({ skus: [@ozon_product.platform_sku_id.to_s] }, analytics_call[:body])
     assert_equal "ozon_analytics_stock_on_warehouses.promised_amount", inbound[:metadata][:inbound_source]
     assert fake_client.posts.any? { |call| call[:path] == "/v2/analytics/stock_on_warehouses" }
     assert_not fake_client.posts.any? { |call| call[:path] == "/v3/supply-order/list" }

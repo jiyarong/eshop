@@ -190,50 +190,53 @@ module Ec
     def ozon_rows(now)
       RawOzon::SellerAccount.where(is_active: true).flat_map do |account|
         store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: account.id)
-        stocks_by_product_id = ozon_stocks_by_product_id(account)
-        warehouse_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
-        next [] unless warehouse_breakdowns_by_sku
-        warehouse_clusters = ozon_warehouse_cluster_lookup(account)
-
-        Ec::SkuProduct
+        products_by_sku_code = Ec::SkuProduct
           .joins(:store)
           .where(platform: "ozon", ec_stores: { ozon_raw_account_id: account.id })
           .group_by(&:sku_code)
-          .flat_map do |sku_code, products|
-            product_ids = products.map(&:product_id)
-            ozon_skus = products.map { |product| product.platform_sku_id.to_s }.reject(&:blank?)
-            fbo = product_ids.sum { |product_id| stocks_by_product_id.dig(product_id, "fbo").to_i }
-            fbs = product_ids.sum { |product_id| stocks_by_product_id.dig(product_id, "fbs").to_i }
-            inbound = ozon_promised_quantity(warehouse_breakdowns_by_sku, ozon_skus)
-            available_fbs = [fbs - inbound, 0].max
+        ozon_skus = products_by_sku_code.values.flatten.filter_map { |product| product.platform_sku_id.to_s.presence }.uniq
+        stocks_by_product_id = ozon_stocks_by_product_id(account)
+        analytics_stocks_by_sku = ozon_analytics_stocks_by_sku(account, ozon_skus)
+        inbound_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
+        next [] unless analytics_stocks_by_sku && inbound_breakdowns_by_sku
+        warehouse_clusters = ozon_warehouse_cluster_lookup(account)
 
-            %w[fbo fbs inbound].map do |fulfillment_type|
-              quantity = case fulfillment_type
-              when "fbo" then fbo
-              when "fbs" then available_fbs
-              else inbound
-              end
+        products_by_sku_code.flat_map do |sku_code, products|
+          product_ids = products.map(&:product_id)
+          product_ozon_skus = products.map { |product| product.platform_sku_id.to_s }.reject(&:blank?)
+          fbo = ozon_available_quantity(analytics_stocks_by_sku, product_ozon_skus)
+          fbs = product_ids.sum { |product_id| stocks_by_product_id.dig(product_id, "fbs").to_i }
+          inbound = ozon_promised_quantity(inbound_breakdowns_by_sku, product_ozon_skus)
+          available_fbs = [fbs - inbound, 0].max
 
-              row_for(
-                sku_code: sku_code,
-                platform: "ozon",
-                account_id: account.id,
-                store: store || products.first.store,
-                store_name: account.company_name,
-                fulfillment_type: fulfillment_type,
-                quantity: quantity,
-                synced_at: now,
-                metadata: {
-                  product_ids: product_ids,
-                  ozon_skus: ozon_skus,
-                  raw_fbs_quantity: fbs,
-                  inbound_source: "ozon_analytics_stock_on_warehouses.promised_amount",
-                  inbound_deducted_quantity: fulfillment_type == "fbs" ? [inbound, fbs].min : 0
-                },
-                warehouse_breakdown: fulfillment_type == "fbo" ? ozon_warehouse_breakdown(warehouse_breakdowns_by_sku, ozon_skus, warehouse_clusters) : []
-              )
+          %w[fbo fbs inbound].map do |fulfillment_type|
+            quantity = case fulfillment_type
+            when "fbo" then fbo
+            when "fbs" then available_fbs
+            else inbound
             end
+
+            row_for(
+              sku_code: sku_code,
+              platform: "ozon",
+              account_id: account.id,
+              store: store || products.first.store,
+              store_name: account.company_name,
+              fulfillment_type: fulfillment_type,
+              quantity: quantity,
+              synced_at: now,
+              metadata: {
+                product_ids: product_ids,
+                ozon_skus: product_ozon_skus,
+                raw_fbs_quantity: fbs,
+                fbo_source: "ozon_analytics_stocks.available_stock_count",
+                inbound_source: "ozon_analytics_stock_on_warehouses.promised_amount",
+                inbound_deducted_quantity: fulfillment_type == "fbs" ? [inbound, fbs].min : 0
+              },
+              warehouse_breakdown: fulfillment_type == "fbo" ? ozon_analytics_warehouse_breakdown(analytics_stocks_by_sku, product_ozon_skus, warehouse_clusters) : []
+            )
           end
+        end
       end
     end
 
@@ -263,6 +266,23 @@ module Ec
     rescue => e
       Rails.logger.warn("[SkuInventorySnapshotFetcher] Ozon stocks account=#{account.id} failed: #{e.message}")
       {}
+    end
+
+    def ozon_analytics_stocks_by_sku(account, ozon_skus)
+      client = ozon_client(account)
+      result = Hash.new { |hash, key| hash[key] = [] }
+
+      ozon_skus.each_slice(100) do |sku_batch|
+        response = client.post("/v1/analytics/stocks", { skus: sku_batch })
+        Array(response["items"]).each do |item|
+          result[item["sku"].to_s] << item
+        end
+      end
+
+      result
+    rescue => e
+      Rails.logger.warn("[SkuInventorySnapshotFetcher] Ozon analytics stocks account=#{account.id} failed: #{e.message}")
+      nil
     end
 
     def ozon_warehouse_breakdowns_by_sku(account)
@@ -302,18 +322,23 @@ module Ec
       nil
     end
 
-    def ozon_warehouse_breakdown(breakdowns_by_sku, ozon_skus, warehouse_clusters = {})
+    def ozon_available_quantity(analytics_stocks_by_sku, ozon_skus)
+      ozon_skus.sum do |ozon_sku|
+        Array(analytics_stocks_by_sku[ozon_sku]).sum { |row| row["available_stock_count"].to_i }
+      end
+    end
+
+    def ozon_analytics_warehouse_breakdown(analytics_stocks_by_sku, ozon_skus, warehouse_clusters = {})
       grouped = Hash.new { |hash, key| hash[key] = { quantity: 0, promised: 0, reserved: 0, item_codes: [] } }
       ozon_skus.each do |ozon_sku|
-        Array(breakdowns_by_sku[ozon_sku]).each do |row|
-          warehouse_name = row[:warehouse_name].to_s
+        Array(analytics_stocks_by_sku[ozon_sku]).each do |row|
+          warehouse_name = row["warehouse_name"].to_s
           next if warehouse_name.blank?
 
           grouped_row = grouped[warehouse_name]
-          grouped_row[:quantity] += row[:quantity].to_i
-          grouped_row[:promised] += row[:promised].to_i
-          grouped_row[:reserved] += row[:reserved].to_i
-          grouped_row[:item_codes] << row[:item_code].to_s if row[:item_code].present?
+          grouped_row[:quantity] += row["available_stock_count"].to_i
+          grouped_row[:promised] += row["transit_stock_count"].to_i
+          grouped_row[:item_codes] << row["offer_id"].to_s if row["offer_id"].present?
         end
       end
 
