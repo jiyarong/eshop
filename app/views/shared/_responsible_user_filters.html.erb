@@ -1,5 +1,6 @@
 <% field_class = local_assigns.fetch(:field_class, "product-filter-field") %>
 <% dom_id_prefix = local_assigns.fetch(:dom_id_prefix, "responsible-user-filter") %>
+<% filter_keys = Array(local_assigns.fetch(:filter_keys, %w[developer operator])).map(&:to_s) %>
 <% wrapper_class = ["field", field_class.presence, "responsible-user-filter"].compact.join(" ") %>
 <%
   filters = [
@@ -20,6 +21,7 @@
       options: @operator_filter_options
     }
   ]
+  filters.select! { |filter| filter_keys.include?(filter[:key]) }
 %>
 
 <% filters.each do |filter| %>

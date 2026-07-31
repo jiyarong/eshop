@@ -56,9 +56,10 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
           {
             "nmId" => @nm_id,
             "warehouses" => [
-              { "warehouseName" => "Всего находится на складах", "quantity" => 7 },
+              { "warehouseName" => "Всего находится на складах", "quantity" => 10 },
               { "warehouseName" => "Владимир", "quantity" => 5 },
-              { "warehouseName" => "В пути до получателей", "quantity" => 2 }
+              { "warehouseName" => "В пути до получателей", "quantity" => 2 },
+              { "warehouseName" => "В пути возвраты на склад WB", "quantity" => 3 }
             ]
           }
         ]
@@ -240,7 +241,7 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @wb_account.id }
   end
 
-  test "wb fbw enriches real warehouses with region and leaves virtual in-transit buckets unmapped" do
+  test "wb fbw enriches real warehouses and excludes in-transit buckets" do
     RawWb::WarehouseRegion.create!(
       account: @wb_account,
       warehouse_id: 301981,
@@ -256,7 +257,7 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     rows = fetcher.send(:wb_fbw_rows, Time.zone.parse("2026-07-20 12:00:00"))
 
     fbw = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @wb_account.id }
-    assert_equal 7, fbw[:quantity]
+    assert_equal 5, fbw[:quantity]
     assert_includes fbw[:warehouse_breakdown], {
       warehouse_name: "Владимир",
       warehouse_id: 301981,
@@ -264,13 +265,8 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
       region_name: "Центральный",
       quantity: 5
     }
-    assert_includes fbw[:warehouse_breakdown], {
-      warehouse_name: "В пути до получателей",
-      warehouse_id: nil,
-      cluster_name: nil,
-      region_name: nil,
-      quantity: 2
-    }
+    assert_not fbw[:warehouse_breakdown].any? { |warehouse| warehouse[:warehouse_name] == "В пути до получателей" }
+    assert_not fbw[:warehouse_breakdown].any? { |warehouse| warehouse[:warehouse_name] == "В пути возвраты на склад WB" }
   end
 
   test "ozon inbound uses promised warehouse stock amount" do

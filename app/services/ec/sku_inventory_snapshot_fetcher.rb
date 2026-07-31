@@ -1,6 +1,10 @@
 module Ec
   class SkuInventorySnapshotFetcher
     TOTAL_WAREHOUSE_NAME = "Всего находится на складах".freeze
+    WB_EXCLUDED_TRANSIT_WAREHOUSE_NAMES = [
+      "В пути возвраты на склад WB",
+      "В пути до получателей"
+    ].freeze
     WB_INBOUND_STATUS_IDS = [4, 6].freeze
 
     def initialize(wb_client_factory: nil, ozon_client_factory: nil)
@@ -33,9 +37,8 @@ module Ec
           .map do |sku_code, products|
             nm_ids = products.map(&:product_id)
             matching_rows = report.select { |row| nm_ids.include?(row["nmId"].to_s) }
-            quantity = matching_rows.sum do |row|
-              Array(row["warehouses"]).find { |warehouse| warehouse["warehouseName"] == TOTAL_WAREHOUSE_NAME }&.dig("quantity").to_i
-            end
+            warehouse_breakdown = wb_fbw_warehouse_breakdown(matching_rows, warehouse_regions)
+            quantity = warehouse_breakdown.sum { |warehouse| warehouse[:quantity].to_i }
 
             row_for(
               sku_code: sku_code,
@@ -47,7 +50,7 @@ module Ec
               quantity: quantity,
               synced_at: now,
               metadata: { nm_ids: nm_ids },
-              warehouse_breakdown: wb_fbw_warehouse_breakdown(matching_rows, warehouse_regions)
+              warehouse_breakdown: warehouse_breakdown
             )
           end
       end
@@ -59,6 +62,7 @@ module Ec
         Array(row["warehouses"]).each do |warehouse|
           warehouse_name = warehouse["warehouseName"].to_s
           next if warehouse_name.blank? || warehouse_name == TOTAL_WAREHOUSE_NAME
+          next if WB_EXCLUDED_TRANSIT_WAREHOUSE_NAMES.include?(warehouse_name)
 
           grouped[warehouse_name] += warehouse["quantity"].to_i
         end

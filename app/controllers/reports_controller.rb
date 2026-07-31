@@ -18,6 +18,7 @@ class ReportsController < ApplicationController
 
   SKU_DETAIL_TABS = %w[operation basic inventory ads ai_inventory_health costs stores trend].freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
+  WB_WAREHOUSE_PAGE_SIZE = 10
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -62,6 +63,7 @@ class ReportsController < ApplicationController
   end
 
   def ozon_warehouses
+    load_responsible_user_filters
     @stores = Ec::Store.active.where(platform: "ozon").where.not(ozon_raw_account_id: nil).order(:store_name)
     @store = @stores.find_by(id: params[:store_id]) || @stores.first
     @query = params[:q].to_s.strip
@@ -77,13 +79,42 @@ class ReportsController < ApplicationController
       to_date: user_today,
       time_zone: user_time_zone,
       target_days: @target_days,
-      query: @query
+      query: @query,
+      operator_id: @operator_id
     ).call
     current_page = ozon_warehouse_page_param
     report_rows = @ozon_warehouse_view == "clusters" ? @ozon_warehouse_report[:cluster_rows] : @ozon_warehouse_report[:rows]
     @ozon_warehouse_rows = Kaminari.paginate_array(report_rows).page(current_page).per(OZON_WAREHOUSE_PAGE_SIZE)
     if @ozon_warehouse_rows.total_pages.positive? && current_page > @ozon_warehouse_rows.total_pages
       @ozon_warehouse_rows = Kaminari.paginate_array(report_rows).page(@ozon_warehouse_rows.total_pages).per(OZON_WAREHOUSE_PAGE_SIZE)
+    end
+  end
+
+  def wb_warehouses
+    load_responsible_user_filters
+    @stores = Ec::Store.active.where(platform: "wb").where.not(wb_raw_account_id: nil).order(:store_name)
+    @store = @stores.find_by(id: params[:store_id]) || @stores.first
+    @query = params[:q].to_s.strip
+    @wb_warehouse_view = params[:view].to_s.in?(%w[products clusters]) ? params[:view].to_s : "products"
+    @target_days = params[:target_days].to_i
+    @target_days = Ec::WbWarehouseRecommendationQuery::DEFAULT_TARGET_DAYS unless @target_days.positive?
+    @target_days = [@target_days, Ec::WbWarehouseRecommendationQuery::MAX_TARGET_DAYS].min
+    return unless @store
+
+    @wb_warehouse_report = Ec::WbWarehouseRecommendationQuery.new(
+      store: @store,
+      from_date: user_today - 27.days,
+      to_date: user_today,
+      time_zone: user_time_zone,
+      target_days: @target_days,
+      query: @query,
+      operator_id: @operator_id
+    ).call
+    current_page = warehouse_page_param
+    report_rows = @wb_warehouse_view == "clusters" ? @wb_warehouse_report[:cluster_rows] : @wb_warehouse_report[:rows]
+    @wb_warehouse_rows = Kaminari.paginate_array(report_rows).page(current_page).per(WB_WAREHOUSE_PAGE_SIZE)
+    if @wb_warehouse_rows.total_pages.positive? && current_page > @wb_warehouse_rows.total_pages
+      @wb_warehouse_rows = Kaminari.paginate_array(report_rows).page(@wb_warehouse_rows.total_pages).per(WB_WAREHOUSE_PAGE_SIZE)
     end
   end
 
@@ -371,6 +402,10 @@ class ReportsController < ApplicationController
   end
 
   def ozon_warehouse_page_param
+    warehouse_page_param
+  end
+
+  def warehouse_page_param
     requested_page = params[:jump_page].presence || params[:page].presence
     current_page = params[:current_page].presence || params[:page].presence
 

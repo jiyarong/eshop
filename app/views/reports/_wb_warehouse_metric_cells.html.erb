@@ -1,0 +1,8 @@
+<td><span class="ozon-warehouse-status ozon-warehouse-status--<%= row[:status] %>"><%= t("reports.wb_warehouses.statuses.#{row[:status]}") %></span></td>
+<td class="numeric"><%= row[:days_of_stock] || t("common.empty_value") %></td>
+<td class="numeric"><%= number_with_precision(row[:daily_sales], precision: 2) %></td>
+<td class="numeric"><%= row[:sales_quantity] %></td>
+<td class="numeric"><%= row[:available] %></td>
+<td class="numeric"><%= row[:reserved].nil? ? t("common.empty_value") : row[:reserved] %></td>
+<td class="numeric"><%= row[:inbound].nil? ? t("common.empty_value") : row[:inbound] %></td>
+<td class="numeric ozon-warehouse-recommended" title="<%= recommendation_title %>"><%= row[:recommended] || row[:distribution_gap] %></td>

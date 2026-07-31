@@ -82,6 +82,17 @@ class RawWbWarehouseRegionSyncTest < ActiveSupport::TestCase
   test "syncs warehouse to region mappings from WB analytics reports" do
     now = Time.zone.parse("2026-07-20 05:30:00")
     fake_client = FakeWbClient.new
+    historical = RawWb::WarehouseRegion.create!(
+      account: @account,
+      warehouse_id: 999_001,
+      warehouse_name: "Исторический склад",
+      normalized_warehouse_name: "unused",
+      region_name: "Центральный",
+      source: "test",
+      raw_json: {},
+      synced_at: 1.year.ago,
+      last_seen_at: 1.year.ago
+    )
 
     result = RawWb::WarehouseRegionSync.run(
       account_scope: RawWb::SellerAccount.where(id: @account.id),
@@ -104,5 +115,10 @@ class RawWbWarehouseRegionSyncTest < ActiveSupport::TestCase
     assert_equal "Новосемейкино", office.warehouse_name
     assert_equal "Приволжский", office.region_name
     assert_equal "stocks_report_offices", office.source
+    assert_equal now, office.last_seen_at
+    assert office.is_active?
+    offices_call = fake_client.posts.find { |call| call[:path] == "/api/v2/stocks-report/offices" }
+    assert_equal({ start: "2026-04-22", end: "2026-07-20" }, offices_call[:body][:currentPeriod])
+    assert RawWb::WarehouseRegion.exists?(historical.id), "historical warehouses must survive partial Analytics responses"
   end
 end

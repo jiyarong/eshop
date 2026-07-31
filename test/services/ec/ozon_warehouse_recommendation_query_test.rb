@@ -8,6 +8,8 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     @other_store = Ec::Store.create!(platform: "ozon", store_name: "Ozon B #{@token}", company_type: "general", ozon_raw_account_id: 910_000_000 + rand(10_000))
     @product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "PROD-A-#{@token}", platform_sku_id: "SKU-A-#{@token}", offer_id: "OFFER-A-#{@token}")
     @other_product = Ec::SkuProduct.create!(sku: @sku, store: @other_store, product_id: "PROD-B-#{@token}", platform_sku_id: "SKU-B-#{@token}", offer_id: "OFFER-B-#{@token}")
+    @operator = User.create!(email: "ozon-warehouse-operator-#{@token.downcase}@example.com", password: "password123", active: true)
+    Ec::SkuProductOperator.create!(sku_product: @product, user: @operator)
 
     create_sale(@store, @product.platform_sku_id, "Москва", 28)
     create_sale(@other_store, @other_product.platform_sku_id, "Казань", 280)
@@ -21,9 +23,11 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     Ec::OrderFulfillment.where(store_id: store_ids).delete_all
     Ec::Order.where(store_id: store_ids).delete_all
     Ec::SkuInventoryLevel.where(store_id: store_ids).delete_all
+    Ec::SkuProductOperator.where(user_id: @operator&.id).delete_all
     Ec::SkuProduct.where(store_id: store_ids).delete_all
     Ec::Store.where(id: store_ids).delete_all
     Ec::Sku.with_deleted.where(sku_code: @sku&.sku_code).delete_all
+    User.where(id: @operator&.id).delete_all
   end
 
   test "builds recommendations from only the selected store" do
@@ -70,6 +74,27 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     assert_equal 0, row[:recommended]
     assert_equal 28, row[:distribution_gap]
     assert_equal 28, moscow[:distribution_gap]
+  end
+
+  test "filters products by assigned operator" do
+    report = Ec::OzonWarehouseRecommendationQuery.new(
+      store: @store,
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 28),
+      time_zone: ActiveSupport::TimeZone["Asia/Shanghai"],
+      operator_id: @operator.id
+    ).call
+
+    assert_equal [@sku.sku_code], report[:rows].map { |row| row[:sku_code] }
+
+    unassigned_report = Ec::OzonWarehouseRecommendationQuery.new(
+      store: @store,
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 28),
+      time_zone: ActiveSupport::TimeZone["Asia/Shanghai"],
+      operator_id: -1
+    ).call
+    assert_empty unassigned_report[:rows]
   end
 
   private

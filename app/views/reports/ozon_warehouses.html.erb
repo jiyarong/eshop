@@ -23,6 +23,10 @@
           <%= form.label :q, t("reports.ozon_warehouses.filters.search") %>
           <%= form.search_field :q, value: @query, placeholder: t("reports.ozon_warehouses.filters.search_placeholder") %>
         </div>
+        <%= render "shared/responsible_user_filters",
+          field_class: "",
+          dom_id_prefix: "ozon-warehouse-responsible-user-filter",
+          filter_keys: %w[operator] %>
         <div class="field ozon-warehouse-target-field">
           <%= form.label :target_days, t("reports.ozon_warehouses.filters.target_days") %>
           <%= form.number_field :target_days, value: @target_days, min: 1, max: Ec::OzonWarehouseRecommendationQuery::MAX_TARGET_DAYS, step: 1 %>

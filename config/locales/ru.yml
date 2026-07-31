@@ -128,6 +128,7 @@ ru:
     sales_funnel: "Воронка продаж"
     inventory: "Склад"
     ozon_warehouses: "Распределение Ozon"
+    wb_warehouses: "Распределение WB"
     ozon_ads: "Продвижение Ozon"
     wb_ads: "Продвижение WB"
     tools: "Инструменты"
@@ -873,11 +874,32 @@ ru:
       views: { aria_label: "Вид распределения Ozon", products: "По товарам", clusters: "По кластерам" }
       unknown_cluster: "Кластер не определен"
       empty: "Нет подходящих товаров Ozon для этого магазина"
-      filters: { store: "Магазин", search: "Товар", search_placeholder: "Товар, SKU или артикул", target_days: "Целевой запас, дней", apply: "Применить" }
+      filters: { store: "Магазин", search: "Товар", search_placeholder: "Товар, SKU или артикул", operator: "Оператор", all_operators: "Все операторы", target_days: "Целевой запас, дней", apply: "Применить" }
       summary: { sku_count: "Товары", shortage_count: "Риск дефицита", available: "Доступно FBO", inbound: "В поставке", recommended: "Доп. поставка" }
       fields: { product: "Товар / кластер / склад", cluster: "Кластер / товар / склад", status: "Статус", days_of_stock: "Запас, дней", daily_sales: "Продажи в день", sales_28d: "Продажи за 28 дней", available: "Доступно", reserved: "Резерв", inbound: "В поставке", recommended: "Доп. поставка", recommended_or_gap: "Доп. поставка / дефицит кластера" }
       statuses: { shortage: "Риск дефицита", healthy: "Норма", excess: "Избыток", no_sales: "Нет продаж" }
       errors: { no_store: "Не настроен магазин Ozon" }
+    wb_warehouses:
+      fbs_available: "Доступно FBS: %{count}"
+      title: "Распределение по складам WB"
+      subtitle: "Продажи FBO, остатки и рекомендации по товарам и кластерам отгрузки WB"
+      date_format: "%Y-%m-%d"
+      period: "%{from}–%{to} · целевой запас %{days} дн. · только заказы со склада WB"
+      updated_at: "Остатки обновлены %{time}"
+      mapping_status: "Склад определен для %{mapped} из %{total} заказов FBO"
+      warehouse_count: "Складов: %{count}"
+      product_count: "Товаров: %{count}"
+      product_recommendation_hint: "По продажам за 28 дней и текущим остаткам FBW"
+      cluster_gap_hint: "Дефицит целевого запаса для анализа распределения"
+      views: { aria_label: "Вид распределения WB", products: "По товарам", clusters: "По кластерам" }
+      unknown_cluster: "Кластер не определен"
+      empty: "Нет подходящих товаров WB для этого магазина"
+      filters: { store: "Магазин", search: "Товар", search_placeholder: "Товар, SKU или артикул", operator: "Оператор", all_operators: "Все операторы", target_days: "Целевой запас, дней", apply: "Применить" }
+      summary: { sku_count: "Товары", shortage_count: "Риск дефицита", available: "Доступно FBW", recommended: "Доп. поставка", mapping_coverage: "Покрытие складов" }
+      fields: { product: "Товар / кластер / склад", cluster: "Кластер / товар / склад", status: "Статус", days_of_stock: "Запас, дней", daily_sales: "Продажи в день", sales_28d: "Продажи за 28 дней", available: "Доступно", reserved: "Резерв", inbound: "В поставке", recommended_or_gap: "Доп. поставка / дефицит кластера" }
+      statuses: { shortage: "Риск дефицита", healthy: "Норма", excess: "Избыток", no_sales: "Нет продаж" }
+      pagination: { product_aria_label: "Страницы товаров WB", cluster_aria_label: "Страницы кластеров WB", previous_page: "Предыдущая страница", next_page: "Следующая страница", jump_label: "К стр.", jump_action: "OK", page_chip: "Стр. %{page}/%{pages}", product_summary: "Товары %{from}-%{to} из %{total}", cluster_summary: "Кластеры %{from}-%{to} из %{total}" }
+      errors: { no_store: "Не настроен магазин WB" }
     wb_ads:
       title: "Аналитика продвижения WB"
       subtitle: "%{store} · %{from}–%{to}"

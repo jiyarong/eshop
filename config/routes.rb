@@ -26,6 +26,7 @@ Rails.application.routes.draw do
 
   get "reports/inventory" => "reports#inventory"
   get "reports/ozon_warehouses" => "reports#ozon_warehouses", as: :reports_ozon_warehouses
+  get "reports/wb_warehouses" => "reports#wb_warehouses", as: :reports_wb_warehouses
   get "reports/sales_funnel" => "reports/sales_funnel#show", as: :reports_sales_funnel
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
   get "reports/ozon_ads" => "reports/ozon_ads#overview", as: :reports_ozon_ads

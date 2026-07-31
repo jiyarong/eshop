@@ -7,10 +7,12 @@ class OzonWarehousesReportTest < ActionDispatch::IntegrationTest
     @store = Ec::Store.create!(platform: "ozon", store_name: "Ozon warehouse UI #{@token}", company_type: "general", ozon_raw_account_id: 920_000_000 + rand(10_000))
     @sku = Ec::Sku.create!(sku_code: "OWUI-#{@token.upcase}", product_name: "Ozon UI product")
     @product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "OWUI-P-#{@token}", platform_sku_id: "OWUI-S-#{@token}")
+    Ec::SkuProductOperator.create!(sku_product: @product, user: @user)
     sign_in @user
   end
 
   teardown do
+    Ec::SkuProductOperator.where(sku_product_id: @product&.id).delete_all
     Ec::SkuProduct.where(id: @product&.id).delete_all
     Ec::Store.where(id: @store&.id).delete_all
     Ec::Sku.with_deleted.where(sku_code: @sku&.sku_code).delete_all
@@ -32,11 +34,16 @@ class OzonWarehousesReportTest < ActionDispatch::IntegrationTest
     assert_select ".ozon-warehouse-product-row .ozon-warehouse-toggle[aria-expanded='false']"
     assert_select ".ozon-warehouse-tabs a", text: "根据商品"
     assert_select ".ozon-warehouse-tabs a[href*='view=clusters']", text: "按集群"
+    assert_select "#ozon-warehouse-responsible-user-filter-operator-trigger", text: "全部运营人员"
+    assert_select "input[name='operator_id'][type='hidden']"
+    assert_select "input[name='developer_id']", count: 0
 
     sign_in @user
-    get reports_ozon_warehouses_path, params: { store_id: @store.id, locale: "zh", view: "clusters" }, headers: { "Accept" => "text/html" }
+    get reports_ozon_warehouses_path, params: { store_id: @store.id, locale: "zh", view: "clusters", operator_id: @user.id }, headers: { "Accept" => "text/html" }
     assert_response :success
     assert_select ".ozon-warehouse-tabs a.is-active[aria-current='page']", text: "按集群"
+    assert_select "#ozon-warehouse-responsible-user-filter-operator-trigger", text: @user.display_name
+    assert_select "input[name='operator_id'][value='#{@user.id}']"
   end
 
   test "paginates products ten per page and preserves filters" do

@@ -3,13 +3,14 @@ module Ec
     DEFAULT_TARGET_DAYS = 28
     MAX_TARGET_DAYS = 180
 
-    def initialize(store:, from_date:, to_date:, time_zone:, target_days: nil, query: nil)
+    def initialize(store:, from_date:, to_date:, time_zone:, target_days: nil, query: nil, operator_id: nil)
       @store = store
       @from_date = from_date.to_date
       @to_date = to_date.to_date
       @time_zone = time_zone
       @target_days = bounded_target_days(target_days)
       @query = query.to_s.strip.presence
+      @operator_id = operator_id
     end
 
     def call
@@ -36,13 +37,14 @@ module Ec
 
     private
 
-    attr_reader :store, :from_date, :to_date, :time_zone, :target_days, :query
+    attr_reader :store, :from_date, :to_date, :time_zone, :target_days, :query, :operator_id
 
     def scoped_products
       scope = Ec::SkuProduct
         .includes(:sku)
         .where(store_id: store.id, platform: "ozon")
         .order(:sku_code, :id)
+      scope = scope.where(id: operator_sku_product_ids) if operator_id.present?
       return scope if query.blank?
 
       pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query.downcase)}%"
@@ -50,6 +52,12 @@ module Ec
         "LOWER(ec_sku_products.sku_code) LIKE :pattern OR LOWER(ec_sku_products.product_name) LIKE :pattern OR LOWER(ec_sku_products.offer_id) LIKE :pattern",
         pattern: pattern
       )
+    end
+
+    def operator_sku_product_ids
+      Ec::SkuProductOperator
+        .where(user_id: operator_id, role: Ec::SkuProductOperator.roles.fetch("operator"))
+        .select(:sku_product_id)
     end
 
     def sales_by_sku_and_cluster(sku_product_ids)

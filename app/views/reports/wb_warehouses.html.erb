@@ -1,0 +1,180 @@
+<% content_for :title, t("reports.wb_warehouses.title") %>
+
+<div class="ozon-warehouse-heading">
+  <div>
+    <h1 class="page-title"><%= t("reports.wb_warehouses.title") %></h1>
+    <p class="page-subtitle"><%= t("reports.wb_warehouses.subtitle") %></p>
+  </div>
+</div>
+
+<div class="report-stack">
+  <section class="panel">
+    <% if @stores.any? %>
+      <%= form_with url: reports_wb_warehouses_path, method: :get, class: "report-form", data: { turbo: false } do |form| %>
+        <%= hidden_field_tag :locale, params[:locale] if params[:locale].present? %>
+        <%= hidden_field_tag :view, @wb_warehouse_view %>
+        <div class="field ozon-warehouse-store-field">
+          <%= form.label :store_id, t("reports.wb_warehouses.filters.store") %>
+          <%= form.select :store_id, @stores.map { |store| [store.store_name, store.id] }, { selected: @store&.id }, required: true %>
+        </div>
+        <div class="field">
+          <%= form.label :q, t("reports.wb_warehouses.filters.search") %>
+          <%= form.search_field :q, value: @query, placeholder: t("reports.wb_warehouses.filters.search_placeholder") %>
+        </div>
+        <%= render "shared/responsible_user_filters",
+          field_class: "",
+          dom_id_prefix: "wb-warehouse-responsible-user-filter",
+          filter_keys: %w[operator] %>
+        <div class="field ozon-warehouse-target-field">
+          <%= form.label :target_days, t("reports.wb_warehouses.filters.target_days") %>
+          <%= form.number_field :target_days, value: @target_days, min: 1, max: Ec::WbWarehouseRecommendationQuery::MAX_TARGET_DAYS, step: 1 %>
+        </div>
+        <%= form.submit t("reports.wb_warehouses.filters.apply"), class: "button" %>
+      <% end %>
+    <% else %>
+      <div class="empty-state"><%= t("reports.wb_warehouses.errors.no_store") %></div>
+    <% end %>
+  </section>
+
+  <% if @wb_warehouse_report %>
+    <% summary = @wb_warehouse_report[:summary] %>
+    <section class="ozon-warehouse-summary">
+      <div class="summary-grid">
+        <% %i[sku_count shortage_count available recommended mapping_coverage].each do |key| %>
+          <div class="weekly-profit-summary-card">
+            <div class="summary-label"><%= t("reports.wb_warehouses.summary.#{key}") %></div>
+            <div class="summary-value"><%= key == :mapping_coverage ? number_to_percentage(summary[key], precision: 1) : number_with_delimiter(summary[key]) %></div>
+          </div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="panel ozon-warehouse-table-panel">
+      <div class="ozon-warehouse-table-header">
+        <div>
+          <h2><%= @store.store_name %></h2>
+          <p><%= t("reports.wb_warehouses.period", from: l(@wb_warehouse_report[:from_date], format: t("reports.wb_warehouses.date_format")), to: l(@wb_warehouse_report[:to_date], format: t("reports.wb_warehouses.date_format")), days: @wb_warehouse_report[:target_days]) %></p>
+          <p><%= t("reports.wb_warehouses.mapping_status", mapped: summary[:mapped_orders], total: summary[:total_orders]) %></p>
+        </div>
+        <% if @wb_warehouse_report[:inventory_synced_at] %>
+          <span class="ozon-warehouse-updated"><%= t("reports.wb_warehouses.updated_at", time: display_time(@wb_warehouse_report[:inventory_synced_at])) %></span>
+        <% end %>
+      </div>
+
+      <% tab_params = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page, :view) %>
+      <nav class="ozon-ads-tabs ozon-warehouse-tabs" aria-label="<%= t("reports.wb_warehouses.views.aria_label") %>">
+        <% %w[products clusters].each do |view| %>
+          <%= link_to t("reports.wb_warehouses.views.#{view}"),
+                      reports_wb_warehouses_path(tab_params.merge(view: view)),
+                      class: "ozon-ads-tabs__link #{'is-active' if @wb_warehouse_view == view}",
+                      aria: (@wb_warehouse_view == view ? { current: "page" } : {}) %>
+        <% end %>
+      </nav>
+
+      <% if @wb_warehouse_rows.any? %>
+        <div class="table-scroll">
+          <table class="inventory-list-table ozon-warehouse-table" data-controller="hierarchy-table">
+            <thead>
+              <tr>
+                <th><%= t("reports.wb_warehouses.fields.#{@wb_warehouse_view == 'clusters' ? 'cluster' : 'product'}") %></th>
+                <th><%= t("reports.wb_warehouses.fields.status") %></th>
+                <th class="numeric"><%= t("reports.wb_warehouses.fields.days_of_stock") %></th>
+                <th class="numeric"><%= t("reports.wb_warehouses.fields.daily_sales") %></th>
+                <th class="numeric"><%= t("reports.wb_warehouses.fields.sales_28d") %></th>
+                <th class="numeric"><%= t("reports.wb_warehouses.fields.available") %></th>
+                <th class="numeric"><%= t("reports.wb_warehouses.fields.reserved") %></th>
+                <th class="numeric"><%= t("reports.wb_warehouses.fields.inbound") %></th>
+                <th class="numeric"><%= t("reports.wb_warehouses.fields.recommended_or_gap") %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if @wb_warehouse_view == "products" %>
+                <% @wb_warehouse_rows.each_with_index do |row, product_index| %>
+                  <% product_key = "wb-product-#{product_index}" %>
+                  <tr class="ozon-warehouse-product-row">
+                    <td>
+                      <div class="ozon-warehouse-product">
+                        <button type="button" class="ozon-warehouse-toggle" aria-expanded="false" data-hierarchy-table-kind-param="product" data-hierarchy-table-key-param="<%= product_key %>" data-action="hierarchy-table#toggle">
+                          <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                          <span><strong><%= row[:product_name] %></strong><small><%= [row[:sku_code], row[:offer_ids].join(" / ")].reject(&:blank?).join(" · ") %></small></span>
+                          <span class="ozon-warehouse-fbs-stock"><%= t("reports.wb_warehouses.fbs_available", count: row[:fbs_available]) %></span>
+                        </button>
+                      </div>
+                    </td>
+                    <%= render "wb_warehouse_metric_cells", row: row, recommendation_title: t("reports.wb_warehouses.product_recommendation_hint") %>
+                  </tr>
+                  <% row[:clusters].each_with_index do |cluster, cluster_index| %>
+                    <% cluster_key = "#{product_key}-cluster-#{cluster_index}" %>
+                    <tr class="ozon-warehouse-cluster-row" data-hierarchy-product="<%= product_key %>" hidden>
+                      <td>
+                        <div class="ozon-warehouse-cluster">
+                          <button type="button" class="ozon-warehouse-toggle" aria-expanded="false" data-hierarchy-table-kind-param="cluster" data-hierarchy-table-key-param="<%= cluster_key %>" data-action="hierarchy-table#toggle">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                            <span><%= cluster[:cluster_name].presence || t("reports.wb_warehouses.unknown_cluster") %></span>
+                            <small><%= t("reports.wb_warehouses.warehouse_count", count: cluster[:warehouses].size) %></small>
+                          </button>
+                        </div>
+                      </td>
+                      <%= render "wb_warehouse_metric_cells", row: cluster, recommendation_title: t("reports.wb_warehouses.cluster_gap_hint") %>
+                    </tr>
+                    <% cluster[:warehouses].each do |warehouse| %>
+                      <tr class="ozon-warehouse-detail-row" data-hierarchy-product="<%= product_key %>" data-hierarchy-cluster="<%= cluster_key %>" hidden>
+                        <td><span class="ozon-warehouse-level-marker"></span><%= warehouse[:warehouse_name] %></td>
+                        <td></td><td></td><td></td>
+                        <td class="numeric"><%= warehouse[:sales_quantity] %></td>
+                        <td class="numeric"><%= warehouse[:available] %></td>
+                        <td class="numeric">-</td><td class="numeric">-</td><td></td>
+                      </tr>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              <% else %>
+                <% @wb_warehouse_rows.each_with_index do |row, cluster_index| %>
+                  <% cluster_key = "wb-cluster-#{cluster_index}" %>
+                  <tr class="ozon-warehouse-product-row">
+                    <td>
+                      <div class="ozon-warehouse-product">
+                        <button type="button" class="ozon-warehouse-toggle" aria-expanded="false" data-hierarchy-table-kind-param="product" data-hierarchy-table-key-param="<%= cluster_key %>" data-action="hierarchy-table#toggle">
+                          <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                          <span><strong><%= row[:cluster_name].presence || t("reports.wb_warehouses.unknown_cluster") %></strong><small><%= t("reports.wb_warehouses.product_count", count: row[:product_count]) %></small></span>
+                        </button>
+                      </div>
+                    </td>
+                    <%= render "wb_warehouse_metric_cells", row: row, recommendation_title: t("reports.wb_warehouses.cluster_gap_hint") %>
+                  </tr>
+                  <% row[:products].each_with_index do |product, product_index| %>
+                    <% product_key = "#{cluster_key}-product-#{product_index}" %>
+                    <tr class="ozon-warehouse-cluster-row" data-hierarchy-product="<%= cluster_key %>" hidden>
+                      <td>
+                        <div class="ozon-warehouse-cluster">
+                          <button type="button" class="ozon-warehouse-toggle" aria-expanded="false" data-hierarchy-table-kind-param="cluster" data-hierarchy-table-key-param="<%= product_key %>" data-action="hierarchy-table#toggle">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                            <span><strong><%= product[:product_name] %></strong><small><%= [product[:sku_code], product[:offer_ids].join(" / ")].reject(&:blank?).join(" · ") %></small></span>
+                            <span class="ozon-warehouse-fbs-stock"><%= t("reports.wb_warehouses.fbs_available", count: product[:fbs_available]) %></span>
+                          </button>
+                        </div>
+                      </td>
+                      <%= render "wb_warehouse_metric_cells", row: product, recommendation_title: t("reports.wb_warehouses.cluster_gap_hint") %>
+                    </tr>
+                    <% product[:warehouses].each do |warehouse| %>
+                      <tr class="ozon-warehouse-detail-row" data-hierarchy-product="<%= cluster_key %>" data-hierarchy-cluster="<%= product_key %>" hidden>
+                        <td><span class="ozon-warehouse-level-marker"></span><%= warehouse[:warehouse_name] %></td>
+                        <td></td><td></td><td></td>
+                        <td class="numeric"><%= warehouse[:sales_quantity] %></td>
+                        <td class="numeric"><%= warehouse[:available] %></td>
+                        <td class="numeric">-</td><td class="numeric">-</td><td></td>
+                      </tr>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <%= render "wb_warehouse_pagination", rows: @wb_warehouse_rows if @wb_warehouse_rows.total_pages > 1 %>
+      <% else %>
+        <div class="empty-state"><%= t("reports.wb_warehouses.empty") %></div>
+      <% end %>
+    </section>
+  <% end %>
+</div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_094307) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_31_055136) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -2511,9 +2511,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_094307) do
     t.index ["account_id"], name: "index_raw_wb_sync_tasks_on_account_id"
   end
 
+  create_table "raw_wb_warehouse_name_mappings", force: :cascade do |t|
+    t.bigint "account_id"
+    t.string "canonical_name", null: false
+    t.decimal "confidence", precision: 4, scale: 3, default: "1.0", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "evidence", default: {}, null: false
+    t.string "historical_name", null: false
+    t.string "mapping_source", null: false
+    t.string "normalized_historical_name", null: false
+    t.string "region_name", null: false
+    t.string "status", default: "candidate", null: false
+    t.datetime "updated_at", null: false
+    t.date "valid_from"
+    t.date "valid_to"
+    t.datetime "verified_at"
+    t.bigint "verified_by_id"
+    t.bigint "warehouse_id", null: false
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
+    t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
+    t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
+    t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
+    t.index ["warehouse_id", "status"], name: "idx_raw_wb_warehouse_name_mappings_target"
+    t.check_constraint "confidence >= 0::numeric AND confidence <= 1::numeric", name: "raw_wb_warehouse_name_mappings_confidence"
+    t.check_constraint "valid_to IS NULL OR valid_from IS NULL OR valid_to >= valid_from", name: "raw_wb_warehouse_name_mappings_valid_dates"
+  end
+
   create_table "raw_wb_warehouse_regions", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
+    t.boolean "is_active", default: true, null: false
+    t.datetime "last_seen_at"
     t.string "normalized_warehouse_name", null: false
     t.jsonb "raw_json", default: {}, null: false
     t.string "region_name", null: false
@@ -2786,6 +2814,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_094307) do
   add_foreign_key "raw_wb_supply_orders", "raw_wb_orders", column: "order_id"
   add_foreign_key "raw_wb_supply_orders", "raw_wb_supplies", column: "supply_id"
   add_foreign_key "raw_wb_sync_tasks", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_warehouse_name_mappings", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_warehouse_name_mappings", "users", column: "verified_by_id"
   add_foreign_key "raw_wb_warehouse_regions", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_warehouses", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "sub2_user_api_keys", "users"

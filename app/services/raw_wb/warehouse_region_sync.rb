@@ -31,11 +31,9 @@ module RawWb
       RawWb::WarehouseRegion.upsert_all(
         rows,
         unique_by: :idx_raw_wb_warehouse_regions_unique,
-        update_only: %i[warehouse_name normalized_warehouse_name region_name source raw_json synced_at updated_at],
+        update_only: %i[warehouse_name normalized_warehouse_name region_name source raw_json synced_at last_seen_at is_active updated_at],
         record_timestamps: false
       )
-      RawWb::WarehouseRegion.where(account_id: account.id).where.not(warehouse_id: warehouse_ids).delete_all
-
       {
         ok: rows.size,
         fetched: rows.size,
@@ -90,7 +88,7 @@ module RawWb
         subjectIDs: [],
         brandNames: [],
         tagIDs: [],
-        currentPeriod: { start: Date.current.to_s, end: Date.current.to_s },
+        currentPeriod: { start: (@now.to_date - 89.days).to_s, end: @now.to_date.to_s },
         stockType: OFFICES_STOCK_TYPE,
         skipDeletedNm: false
       })
@@ -142,6 +140,8 @@ module RawWb
         source: source,
         raw_json: raw_json,
         synced_at: @now,
+        last_seen_at: @now,
+        is_active: true,
         created_at: @now,
         updated_at: @now
       }

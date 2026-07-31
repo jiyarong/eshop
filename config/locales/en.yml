@@ -157,6 +157,7 @@ en:
     sales_funnel: "Sales Funnel"
     inventory: "Inventory"
     ozon_warehouses: "Ozon Distribution"
+    wb_warehouses: "WB Distribution"
     ozon_ads: "Ozon Promotions"
     wb_ads: "WB Promotions"
     tools: "Tools"
@@ -902,11 +903,32 @@ en:
       views: { aria_label: "Ozon warehouse view", products: "By product", clusters: "By cluster" }
       unknown_cluster: "Unmatched cluster"
       empty: "No matching Ozon products for this store"
-      filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU or offer ID", target_days: "Target stock days", apply: "Apply" }
+      filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU or offer ID", operator: "Operator", all_operators: "All operators", target_days: "Target stock days", apply: "Apply" }
       summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Inbound", recommended: "Additional inbound" }
       fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended: "Additional inbound", recommended_or_gap: "Additional inbound / cluster gap" }
       statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
       errors: { no_store: "No Ozon store is configured" }
+    wb_warehouses:
+      fbs_available: "FBS available %{count}"
+      title: "WB Warehouse Distribution"
+      subtitle: "FBO sales, inventory allocation, and replenishment by product or WB shipping cluster"
+      date_format: "%Y-%m-%d"
+      period: "%{from} to %{to} · %{days}-day stock target · WB warehouse orders only"
+      updated_at: "Inventory updated %{time}"
+      mapping_status: "%{mapped} of %{total} FBO orders have a matched shipping warehouse"
+      warehouse_count: "%{count} warehouses"
+      product_count: "%{count} products"
+      product_recommendation_hint: "Based on 28-day WB warehouse sales velocity and current FBW inventory"
+      cluster_gap_hint: "Target stock gap for cluster distribution analysis"
+      views: { aria_label: "WB warehouse view", products: "By product", clusters: "By cluster" }
+      unknown_cluster: "Unmatched cluster"
+      empty: "No matching WB products for this store"
+      filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU, or offer ID", operator: "Operator", all_operators: "All operators", target_days: "Target stock days", apply: "Apply" }
+      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBW available", recommended: "Additional inbound", mapping_coverage: "Warehouse coverage" }
+      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended_or_gap: "Additional inbound / cluster gap" }
+      statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
+      pagination: { product_aria_label: "WB product pagination", cluster_aria_label: "WB cluster pagination", previous_page: "Previous page", next_page: "Next page", jump_label: "Go to", jump_action: "Go", page_chip: "Page %{page}/%{pages}", product_summary: "Showing products %{from}-%{to} of %{total}", cluster_summary: "Showing clusters %{from}-%{to} of %{total}" }
+      errors: { no_store: "No WB store is configured" }
     wb_ads:
       title: "WB Promotion Analytics"
       subtitle: "%{store} · %{from} to %{to}"
