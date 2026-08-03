@@ -1268,7 +1268,6 @@ en:
         sales_quantity: "Sold units"
         supply_quantity: "Supplied units"
       ai_inventory_health:
-        analyzed_at: "Analyzed at"
         delete_confirm: "Delete this AI inventory diagnosis?"
         deleted: "AI inventory diagnosis deleted"
         event_type: "Event type"
@@ -1276,8 +1275,6 @@ en:
         metrics_title: "Diagnosis metrics"
         severity: "Severity"
         submission_title: "AI inventory diagnosis #%{id}"
-        submitted_at: "Submitted at"
-        submitted_by: "Submitted by"
       operation_record:
         created: "Operation record saved"
         deleted: "Operation record deleted"
@@ -1291,8 +1288,6 @@ en:
         note_placeholder: "Describe the operation, reason, or next step"
         note_required: "Enter operation record content"
         open_form: "Add operation record"
-        operator: "Recorded by"
-        recorded_at: "Recorded at"
         submit: "Save record"
         title: "Operation record"
         updated: "Operation record updated"

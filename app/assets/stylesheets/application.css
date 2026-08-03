@@ -1570,26 +1570,13 @@ textarea {
 
 .ai-health-result__meta {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   margin: 0;
   flex-wrap: wrap;
-}
-
-.ai-health-result__meta div {
-  display: grid;
-  gap: 3px;
-}
-
-.ai-health-result__meta dt {
   color: var(--erp-muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.ai-health-result__meta dd {
-  margin: 0;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.5;
 }
 
 .ai-health-result__delete-form {

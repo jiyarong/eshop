@@ -1240,7 +1240,6 @@ ru:
         month: "Месяц"
         week: "Неделя"
       ai_inventory_health:
-        analyzed_at: "Время анализа"
         delete_confirm: "Удалить эту AI-диагностику склада?"
         deleted: "AI-диагностика склада удалена"
         event_type: "Тип события"
@@ -1248,8 +1247,6 @@ ru:
         metrics_title: "Метрики диагностики"
         severity: "Уровень"
         submission_title: "AI-диагностика склада #%{id}"
-        submitted_at: "Время отправки"
-        submitted_by: "Отправил"
       operation_record:
         created: "Операционная запись сохранена"
         deleted: "Операционная запись удалена"
@@ -1263,8 +1260,6 @@ ru:
         note_placeholder: "Опишите действие, причину или следующий шаг"
         note_required: "Введите содержание операционной записи"
         open_form: "Добавить операционную запись"
-        operator: "Записал"
-        recorded_at: "Время записи"
         submit: "Сохранить запись"
         title: "Операционная запись"
         updated: "Операционная запись обновлена"

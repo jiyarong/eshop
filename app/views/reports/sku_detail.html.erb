@@ -358,16 +358,10 @@
             <section class="panel ai-health-result ai-health-operation">
               <div class="ai-health-result__header">
                 <h2 class="section-title"><%= t("reports.sku_detail.operation_record.title") %></h2>
-                <dl class="ai-health-result__meta">
-                  <div>
-                    <dt><%= t("reports.sku_detail.operation_record.operator") %></dt>
-                    <dd><%= action.operated_by_user.display_name %></dd>
-                  </div>
-                  <div>
-                    <dt><%= t("reports.sku_detail.operation_record.recorded_at") %></dt>
-                    <dd><%= display_time(action.operated_at) %></dd>
-                  </div>
-                </dl>
+                <div class="ai-health-result__meta">
+                  <span><%= action.operated_by_user.display_name %></span>
+                  <time datetime="<%= action.operated_at.iso8601 %>"><%= display_time(action.operated_at) %></time>
+                </div>
                 <% if can?(:manage_skus) %>
                   <div class="ai-health-operation__actions">
                     <%= link_to edit_report_sku_operation_action_path(@sku.sku_code, action, request.query_parameters.slice(:locale)),
@@ -394,22 +388,10 @@
             <section class="panel ai-health-result">
             <div class="ai-health-result__header">
               <h2 class="section-title"><%= t("reports.sku_detail.ai_inventory_health.submission_title", id: result.id) %></h2>
-              <dl class="ai-health-result__meta">
-                <div>
-                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_by") %></dt>
-                  <dd><%= result.submitted_by.display_name %></dd>
-                </div>
-                <div>
-                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_at") %></dt>
-                  <dd><%= display_time(result.created_at) %></dd>
-                </div>
-                <% if result.analyzed_at.present? %>
-                  <div>
-                    <dt><%= t("reports.sku_detail.ai_inventory_health.analyzed_at") %></dt>
-                    <dd><%= display_time(result.analyzed_at) %></dd>
-                  </div>
-                <% end %>
-              </dl>
+              <div class="ai-health-result__meta">
+                <span><%= result.submitted_by.display_name %></span>
+                <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
+              </div>
               <% if can?(:manage_skus) %>
                 <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
                               method: :delete,

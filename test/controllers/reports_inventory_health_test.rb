@@ -67,9 +67,12 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-health-result", count: 2
     assert_select ".ai-health-result:first-child" do
       assert_select "h2", "AI 库存诊断 ##{@latest_result.id}"
-      assert_select "dd", { text: @user.display_name, count: 1 }
-      assert_select "dd", { text: "2026-07-26 09:30", count: 1 }
-      assert_select "dd", { text: "2026-07-26 00:00", count: 1 }
+      assert_select ".ai-health-result__meta" do
+        assert_select "span", { text: @user.display_name, count: 1 }
+        assert_select "time", { text: "2026-07-26 09:30", count: 1 }
+        assert_select "dt", count: 0
+        assert_select "dd", count: 0
+      end
       assert_select "td", "inventory_sufficient"
       assert_select ".ai-health-message", "最新诊断消息"
       assert_select ".ai-health-star--success", count: 1
