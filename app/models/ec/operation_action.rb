@@ -8,6 +8,7 @@ module Ec
       listing_specification
       sku_adv_on_off
       sku_inbound_change
+      manual_note
     ].freeze
 
     belongs_to :operated_by_user, class_name: "User"
@@ -17,9 +18,17 @@ module Ec
 
     validates :operation_type, inclusion: { in: OPERATION_TYPES }
     validates :operated_at, :diff_result, presence: true
+    validate :manual_note_has_content
     validate :listing_associations_are_consistent
 
     private
+
+    def manual_note_has_content
+      return unless operation_type == "manual_note"
+
+      note = diff_result&.dig("note") || diff_result&.dig(:note)
+      errors.add(:diff_result, :blank) if note.to_s.strip.blank?
+    end
 
     def listing_associations_are_consistent
       return unless sku_product

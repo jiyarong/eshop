@@ -61,6 +61,7 @@
         <% if @operation_actions.any? %>
           <% @operation_actions.each do |action| %>
             <% diff_fields = action.diff_result.fetch("fields", {}) %>
+            <% diff_fields = { "note" => { "to" => action.diff_result["note"] } } if diff_fields.blank? && action.operation_type == "manual_note" %>
             <tr class="sku-row master">
               <td class="operation-action-time"><%= display_time(action.operated_at) %></td>
               <td><span class="badge badge-pri"><%= t("erp.operation_actions.operation_types.#{action.operation_type}") %></span></td>

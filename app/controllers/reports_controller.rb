@@ -14,7 +14,7 @@ class ReportsController < ApplicationController
                 :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
-  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
+  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
 
   SKU_DETAIL_TABS = %w[operation basic inventory ads ai_inventory_health costs stores trend].freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
@@ -167,6 +167,68 @@ class ReportsController < ApplicationController
     redirect_to sku_attachments_tab_path(@sku), alert: t("reports.sku_detail.attachments.upload_failed")
   end
 
+  def new_sku_operation_action
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @operation_action = Ec::OperationAction.new(diff_result: { "note" => "" })
+    render :new_sku_operation_action_modal
+  end
+
+  def create_sku_operation_action
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    sku_product = @sku.sku_products.includes(:store).order(:id).first
+    note = operation_action_note_param
+
+    if sku_product.blank?
+      redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence), alert: t("reports.sku_detail.operation_record.no_product")
+      return
+    end
+
+    if note.blank?
+      redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence), alert: t("reports.sku_detail.operation_record.note_required")
+      return
+    end
+
+    Ec::OperationAction.create!(
+      operation_type: "manual_note",
+      operated_by_user: current_user,
+      operated_at: Time.current,
+      sku_product: sku_product,
+      sku: @sku,
+      store: sku_product.store,
+      diff_result: { "note" => note },
+      record_by_system: false
+    )
+
+    redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence), notice: t("reports.sku_detail.operation_record.created")
+  end
+
+  def edit_sku_operation_action
+    load_manual_sku_operation_action
+    render :edit_sku_operation_action_modal
+  end
+
+  def update_sku_operation_action
+    load_manual_sku_operation_action
+    note = operation_action_note_param
+
+    if note.blank?
+      redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence), alert: t("reports.sku_detail.operation_record.note_required")
+      return
+    end
+
+    @operation_action.update!(diff_result: { "note" => note })
+    redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence), notice: t("reports.sku_detail.operation_record.updated")
+  end
+
+  def destroy_sku_operation_action
+    load_manual_sku_operation_action
+    @operation_action.destroy!
+
+    redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+                notice: t("reports.sku_detail.operation_record.deleted"),
+                status: :see_other
+  end
+
   def download_sku_attachment
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     attachment = sku_attachment_for(@sku)
@@ -261,7 +323,15 @@ class ReportsController < ApplicationController
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
-    @inventory_health_results = @sku.inventory_health_results.includes(:submitted_by, :events).recent_first.limit(3) if @active_tab == "ai_inventory_health"
+    if @active_tab == "ai_inventory_health"
+      @inventory_health_results = @sku.inventory_health_results.includes(:submitted_by, :events).recent_first.limit(3)
+      @operation_actions = @sku.operation_actions
+        .where(operation_type: "manual_note", record_by_system: false)
+        .includes(:operated_by_user, :sku_product, :store)
+        .order(operated_at: :desc, id: :desc)
+        .limit(7)
+      @inventory_health_timeline = build_inventory_health_timeline
+    end
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
     @operator_metrics = Ec::OperatorSkuMetricsQuery.new(
@@ -296,6 +366,30 @@ class ReportsController < ApplicationController
 
   def sku_predicted_cost_params
     params.require(:ec_sku_predicted_cost).permit(:cost_money, :cost_currency, :effective_from, :effective_to, :note)
+  end
+
+  def load_manual_sku_operation_action
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @operation_action = @sku.operation_actions
+      .where(operation_type: "manual_note", record_by_system: false)
+      .find(params[:action_id])
+  end
+
+  def operation_action_note_param
+    (params.dig(:ec_operation_action, :note).presence || params[:note]).to_s.strip
+  end
+
+  def build_inventory_health_timeline
+    diagnosis_entries = @inventory_health_results.map do |result|
+      { type: :diagnosis, record: result, occurred_at: result.created_at, id: result.id }
+    end
+    operation_entries = @operation_actions.map do |action|
+      { type: :operation, record: action, occurred_at: action.operated_at, id: action.id }
+    end
+
+    (diagnosis_entries + operation_entries).sort_by do |entry|
+      [-entry[:occurred_at].to_f, -entry[:id].to_i]
+    end
   end
 
   def sku_attachment_file_param

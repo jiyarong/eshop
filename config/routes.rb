@@ -49,6 +49,11 @@ Rails.application.routes.draw do
   get "reports/skus"      => "reports#skus"
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments
+  get "reports/skus/:sku_code/operation_actions/new" => "reports#new_sku_operation_action", as: :new_report_sku_operation_action
+  post "reports/skus/:sku_code/operation_actions" => "reports#create_sku_operation_action", as: :report_sku_operation_actions
+  get "reports/skus/:sku_code/operation_actions/:action_id/edit" => "reports#edit_sku_operation_action", as: :edit_report_sku_operation_action
+  patch "reports/skus/:sku_code/operation_actions/:action_id" => "reports#update_sku_operation_action", as: :report_sku_operation_action
+  delete "reports/skus/:sku_code/operation_actions/:action_id" => "reports#destroy_sku_operation_action"
   get "reports/skus/:sku_code/attachments/:attachment_id" => "reports#download_sku_attachment", as: :report_sku_attachment
   delete "reports/skus/:sku_code/attachments/:attachment_id" => "reports#destroy_sku_attachment"
   delete "reports/skus/:sku_code/inventory_health_results/:result_id" => "reports#destroy_sku_inventory_health_result", as: :report_sku_inventory_health_result

@@ -1517,6 +1517,49 @@ textarea {
   gap: 16px;
 }
 
+.ai-health-timeline {
+  display: grid;
+  gap: 16px;
+}
+
+.ai-health-operation-action {
+  margin-bottom: 16px;
+}
+
+.ai-health-operation {
+  border-left: 4px solid var(--erp-accent);
+  background: #f0fdf8;
+}
+
+.ai-health-operation .section-title {
+  color: #087158;
+}
+
+.ai-health-operation__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.ai-health-operation__delete {
+  color: var(--erp-danger-text);
+}
+
+.ai-health-operation__delete:hover {
+  background: var(--erp-danger-bg);
+  color: var(--erp-danger-text);
+}
+
+.ai-health-operation__note {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.ai-health-operation__note p {
+  margin: 0;
+}
+
 .ai-health-result__header {
   display: flex;
   justify-content: space-between;
@@ -1635,6 +1678,11 @@ textarea {
 
   .ai-health-result__delete-form {
     margin-top: 12px;
+  }
+
+  .ai-health-operation__actions {
+    margin-top: 12px;
+    margin-left: 0;
   }
 }
 

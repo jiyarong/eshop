@@ -1,0 +1,18 @@
+<%= form_with url: action_url, scope: :ec_operation_action, method: form_method, data: { turbo_frame: "_top" } do |form| %>
+  <div class="report-form modal-form-grid">
+    <div class="field modal-form-grid__wide">
+      <%= form.label :note, t("reports.sku_detail.operation_record.note_label") %>
+      <%= form.text_area :note,
+                         value: operation_action.diff_result["note"].to_s,
+                         rows: 5,
+                         maxlength: 1000,
+                         required: true,
+                         autofocus: true,
+                         placeholder: t("reports.sku_detail.operation_record.note_placeholder") %>
+    </div>
+    <div class="modal-form-actions modal-form-grid__wide">
+      <%= form.submit t("reports.sku_detail.operation_record.submit"), class: "button" %>
+      <button class="button button-secondary" type="button" data-action="modal#close"><%= t("common.actions.cancel") %></button>
+    </div>
+  </div>
+<% end %>

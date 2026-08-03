@@ -339,14 +339,76 @@
       </div>
     </section>
   <% elsif @active_tab == "ai_inventory_health" %>
-    <% if @inventory_health_results.any? %>
-      <div class="ai-health-result-list">
-        <% @inventory_health_results.each do |result| %>
-          <section class="panel ai-health-result">
+    <% if can?(:manage_skus) && @sku_products.any? %>
+      <div class="ai-health-operation-action">
+        <%= link_to new_report_sku_operation_action_path(@sku.sku_code, request.query_parameters.slice(:locale)),
+                    class: "button",
+                    data: { turbo_frame: "erp_modal" } do %>
+          <i class="bi bi-plus-lg" aria-hidden="true"></i>
+          <%= t("reports.sku_detail.operation_record.open_form") %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @inventory_health_timeline.any? %>
+      <div class="ai-health-timeline">
+        <% @inventory_health_timeline.each do |entry| %>
+          <% if entry[:type] == :operation %>
+            <% action = entry[:record] %>
+            <section class="panel ai-health-result ai-health-operation">
+              <div class="ai-health-result__header">
+                <h2 class="section-title"><%= t("reports.sku_detail.operation_record.title") %></h2>
+                <dl class="ai-health-result__meta">
+                  <div>
+                    <dt><%= t("reports.sku_detail.operation_record.operator") %></dt>
+                    <dd><%= action.operated_by_user.display_name %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.operation_record.recorded_at") %></dt>
+                    <dd><%= display_time(action.operated_at) %></dd>
+                  </div>
+                </dl>
+                <% if can?(:manage_skus) %>
+                  <div class="ai-health-operation__actions">
+                    <%= link_to edit_report_sku_operation_action_path(@sku.sku_code, action, request.query_parameters.slice(:locale)),
+                                class: "ico-btn",
+                                title: t("reports.sku_detail.operation_record.edit"),
+                                aria: { label: t("reports.sku_detail.operation_record.edit") },
+                                data: { turbo_frame: "erp_modal" } do %>
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    <% end %>
+                    <%= link_to report_sku_operation_action_path(@sku.sku_code, action, request.query_parameters.slice(:locale)),
+                                class: "ico-btn ai-health-operation__delete",
+                                title: t("reports.sku_detail.operation_record.delete"),
+                                aria: { label: t("reports.sku_detail.operation_record.delete") },
+                                data: { turbo_method: :delete, turbo_confirm: t("reports.sku_detail.operation_record.delete_confirm") } do %>
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+              <div class="ai-health-operation__note"><%= simple_format(action.diff_result["note"].to_s) %></div>
+            </section>
+          <% else %>
+            <% result = entry[:record] %>
+            <section class="panel ai-health-result">
             <div class="ai-health-result__header">
               <h2 class="section-title"><%= t("reports.sku_detail.ai_inventory_health.submission_title", id: result.id) %></h2>
               <dl class="ai-health-result__meta">
-                   <dd><%= result.submitted_by.display_name %>/<%= display_time(result.created_at) %>
+                <div>
+                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_by") %></dt>
+                  <dd><%= result.submitted_by.display_name %></dd>
+                </div>
+                <div>
+                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_at") %></dt>
+                  <dd><%= display_time(result.created_at) %></dd>
+                </div>
+                <% if result.analyzed_at.present? %>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_inventory_health.analyzed_at") %></dt>
+                    <dd><%= display_time(result.analyzed_at) %></dd>
+                  </div>
+                <% end %>
               </dl>
               <% if can?(:manage_skus) %>
                 <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
@@ -398,7 +460,8 @@
                 </tbody>
               </table>
             </div>
-          </section>
+            </section>
+          <% end %>
         <% end %>
       </div>
     <% else %>

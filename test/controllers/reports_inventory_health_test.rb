@@ -11,6 +11,18 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       product_name: "诊断展示商品 #{@token}",
       is_active: true
     )
+    @store = Ec::Store.create!(
+      platform: "wb",
+      store_name: "诊断记录店铺 #{@token}",
+      company_type: "small",
+      is_active: true
+    )
+    @sku_product = Ec::SkuProduct.create!(
+      sku: @sku,
+      store: @store,
+      product_id: "REPORT-HEALTH-PRODUCT-#{@token}",
+      offer_id: @sku.sku_code
+    )
     @older_result = create_health_result(
       created_at: Time.zone.parse("2026-07-25 08:00:00"),
       severity: "red",
@@ -34,6 +46,9 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::OperationAction.where(ec_sku_id: @sku&.id).delete_all
+    Ec::SkuProduct.where(id: @sku_product&.id).delete_all
+    Ec::Store.where(id: @store&.id).delete_all
     Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     UserRole.where(user_id: @user&.id).delete_all
@@ -47,6 +62,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".sku-detail-tabs a[aria-current='page']", "AI诊断"
+    assert_select "a[data-turbo-frame='erp_modal'][href='#{new_report_sku_operation_action_path(@sku.sku_code)}']", "新增运营记录"
+    assert_select "form.ai-health-operation-form__form", count: 0
     assert_select ".ai-health-result", count: 2
     assert_select ".ai-health-result:first-child" do
       assert_select "h2", "AI 库存诊断 ##{@latest_result.id}"
@@ -78,6 +95,141 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_equal "AI 库存诊断结果已删除", flash[:notice]
     assert_not Ec::RestockingDiagnosis.exists?(@latest_result.id)
     assert Ec::RestockingDiagnosis.exists?(@older_result.id)
+  end
+
+  test "creates a manual operation record for the sku" do
+    assert_difference -> { Ec::OperationAction.where(ec_sku_id: @sku.id).count }, 1 do
+      post report_sku_operation_actions_path(@sku.sku_code),
+        params: { ec_operation_action: { note: "已调整补货节奏，观察本周销量" } }
+    end
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    action = Ec::OperationAction.where(ec_sku_id: @sku.id).order(:id).last
+    assert_equal "manual_note", action.operation_type
+    assert_equal({ "note" => "已调整补货节奏，观察本周销量" }, action.diff_result)
+    assert_not action.record_by_system?
+    assert_equal @user, action.operated_by_user
+  end
+
+  test "renders the operation record form in a modal" do
+    get new_report_sku_operation_action_path(@sku.sku_code),
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select ".erp-modal[role='dialog'][aria-labelledby='sku-operation-record-modal-title']"
+    assert_select "h2#sku-operation-record-modal-title", "新增运营记录"
+    assert_select "form[action=?][method=?][data-turbo-frame=?]",
+      report_sku_operation_actions_path(@sku.sku_code), "post", "_top"
+    assert_select "textarea[name='ec_operation_action[note]'][required]"
+    assert_select "button[aria-label=?]", "关闭"
+    assert_select "button", "取消"
+  end
+
+  test "renders edit and delete actions for a manual operation record" do
+    action = create_manual_operation_action(note: "待编辑的运营记录")
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href='#{edit_report_sku_operation_action_path(@sku.sku_code, action)}'][data-turbo-frame='erp_modal'][title='编辑']"
+    assert_select "a[href='#{report_sku_operation_action_path(@sku.sku_code, action)}'][data-turbo-method='delete'][data-turbo-confirm='确认删除这条运营记录？'][title='删除']"
+  end
+
+  test "edits a manual operation record through a modal" do
+    action = create_manual_operation_action(note: "原始记录")
+
+    get edit_report_sku_operation_action_path(@sku.sku_code, action),
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select "h2#sku-operation-record-modal-title", "编辑运营记录"
+    assert_select "form[action=?][method=?][data-turbo-frame=?]",
+      report_sku_operation_action_path(@sku.sku_code, action), "post", "_top"
+    assert_select "input[name='_method'][value='patch']"
+    assert_select "textarea[name='ec_operation_action[note]']", "原始记录"
+
+    sign_in @user
+    patch report_sku_operation_action_path(@sku.sku_code, action),
+      params: { ec_operation_action: { note: "已更新的运营记录" } },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal({ "note" => "已更新的运营记录" }, action.reload.diff_result)
+  end
+
+  test "deletes a manual operation record" do
+    action = create_manual_operation_action(note: "待删除的运营记录")
+
+    assert_difference -> { Ec::OperationAction.where(ec_sku_id: @sku.id).count }, -1 do
+      delete report_sku_operation_action_path(@sku.sku_code, action)
+    end
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal "运营记录已删除", flash[:notice]
+  end
+
+  test "interleaves the latest seven manual operation records with ai diagnoses" do
+    timestamps = [
+      "2026-07-20 08:00:00",
+      "2026-07-26 10:00:00",
+      "2026-07-26 00:00:00",
+      "2026-07-25 12:00:00",
+      "2026-07-24 12:00:00",
+      "2026-07-23 12:00:00",
+      "2026-07-22 12:00:00",
+      "2026-07-21 12:00:00"
+    ]
+    timestamps.each_with_index do |timestamp, index|
+      Ec::OperationAction.create!(
+        operation_type: "manual_note",
+        operated_by_user: @user,
+        operated_at: Time.zone.parse(timestamp),
+        sku_product: @sku_product,
+        sku: @sku,
+        store: @store,
+        diff_result: { "note" => "运营记录 #{index + 1}" },
+        record_by_system: false
+      )
+    end
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-health-timeline > .ai-health-result", count: 9
+    assert_select ".ai-health-timeline > .ai-health-operation", count: 7
+    assert_select ".ai-health-operation__note", text: /运营记录 8/
+    assert_select ".ai-health-operation__note", text: /运营记录 1/, count: 0
+
+    timeline_text = css_select(".ai-health-timeline > .ai-health-result").map(&:text).join(" ")
+    assert_operator timeline_text.index("运营记录 2"), :<, timeline_text.index("最新诊断消息")
+    assert_operator timeline_text.index("最新诊断消息"), :<, timeline_text.index("运营记录 3")
+  end
+
+  test "does not include other manual operation types in the operation record timeline" do
+    Ec::OperationAction.create!(
+      operation_type: "listing_content",
+      operated_by_user: @user,
+      operated_at: Time.current,
+      sku_product: @sku_product,
+      sku: @sku,
+      store: @store,
+      diff_result: { "fields" => { "title" => { "to" => "不应显示" } } },
+      record_by_system: false
+    )
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-health-operation", count: 0
+    assert_select ".ai-health-timeline", text: /不应显示/, count: 0
   end
 
   test "does not delete an inventory health result through another sku" do
@@ -122,5 +274,18 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     )
     diagnosis.events.create!(event_type:, severity:, message:, details: {})
     diagnosis
+  end
+
+  def create_manual_operation_action(note:)
+    Ec::OperationAction.create!(
+      operation_type: "manual_note",
+      operated_by_user: @user,
+      operated_at: Time.current,
+      sku_product: @sku_product,
+      sku: @sku,
+      store: @store,
+      diff_result: { "note" => note },
+      record_by_system: false
+    )
   end
 end
