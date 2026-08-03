@@ -346,20 +346,7 @@
             <div class="ai-health-result__header">
               <h2 class="section-title"><%= t("reports.sku_detail.ai_inventory_health.submission_title", id: result.id) %></h2>
               <dl class="ai-health-result__meta">
-                <div>
-                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_by") %></dt>
-                  <dd><%= result.submitted_by.display_name %></dd>
-                </div>
-                <div>
-                  <dt><%= t("reports.sku_detail.ai_inventory_health.submitted_at") %></dt>
-                  <dd><%= display_time(result.created_at) %></dd>
-                </div>
-                <% if result.analyzed_at.present? %>
-                  <div>
-                    <dt><%= t("reports.sku_detail.ai_inventory_health.analyzed_at") %></dt>
-                    <dd><%= display_time(result.analyzed_at) %></dd>
-                  </div>
-                <% end %>
+                   <dd><%= result.submitted_by.display_name %>/<%= display_time(result.created_at) %>
               </dl>
               <% if can?(:manage_skus) %>
                 <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
