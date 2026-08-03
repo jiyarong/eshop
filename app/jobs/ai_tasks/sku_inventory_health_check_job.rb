@@ -1,10 +1,15 @@
 module AITasks
   class SkuInventoryHealthCheckJob < ApplicationJob
     queue_as :default
+    limits_concurrency to: 3,
+      key: ->(*) { "sku_inventory_health_checks" },
+      duration: 1.hour
 
     TIME_ZONE = "Asia/Shanghai".freeze
 
-    def perform
+    def perform(sku_code: nil)
+      return run_check(sku_code) if sku_code.present?
+
       time_zone = Time.find_zone!(TIME_ZONE)
       now = Time.current.in_time_zone(time_zone)
       skus = Ec::Sku.select(:id, :sku_code).order(:sku_code).to_a
@@ -23,12 +28,16 @@ module AITasks
         next if metrics_by_sku.dig(sku.sku_code, :turnover_days).nil?
         next if checked_sku_ids.key?(sku.id)
 
-        begin
-          AITasks::SkuInventoryHealthCheck.run(sku_code: sku.sku_code)
-        rescue StandardError => error
-          Rails.logger.error("[AITasks::SkuInventoryHealthCheck] #{error.class}: #{error.message}")
-        end
+        self.class.perform_later(sku_code: sku.sku_code)
       end
+    end
+
+    private
+
+    def run_check(sku_code)
+      AITasks::SkuInventoryHealthCheck.run(sku_code: sku_code)
+    rescue StandardError => error
+      Rails.logger.error("[AITasks::SkuInventoryHealthCheck] #{error.class}: #{error.message}")
     end
   end
 end

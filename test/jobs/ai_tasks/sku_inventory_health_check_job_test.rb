@@ -20,7 +20,7 @@ class AITasks::SkuInventoryHealthCheckJobTest < ActiveJob::TestCase
     User.where(id: @user&.id).delete_all
   end
 
-  test "runs only skus with turnover days and no result today" do
+  test "enqueues only skus with turnover days and no result today" do
     shanghai = Time.find_zone!("Asia/Shanghai")
 
     travel_to shanghai.local(2026, 7, 28, 21, 30) do
@@ -31,44 +31,48 @@ class AITasks::SkuInventoryHealthCheckJobTest < ActiveJob::TestCase
         @stale_sku.sku_code => { turnover_days: BigDecimal("20") },
         @no_turnover_sku.sku_code => { turnover_days: nil }
       }
-      calls = []
 
       with_stubbed_metrics(metrics) do
-        with_stubbed_singleton_method(AITasks::SkuInventoryHealthCheck, :run, ->(sku_code:) { calls << sku_code }) do
-          AITasks::SkuInventoryHealthCheckJob.perform_now
+        assert_enqueued_jobs 1, only: AITasks::SkuInventoryHealthCheckJob do
+          assert_enqueued_with(
+            job: AITasks::SkuInventoryHealthCheckJob,
+            args: [ { sku_code: @stale_sku.sku_code } ]
+          ) do
+            AITasks::SkuInventoryHealthCheckJob.perform_now
+          end
         end
       end
-
-      assert_equal [ @stale_sku.sku_code ], calls
     end
   end
 
-  test "logs a failed check and continues with the remaining skus" do
-    metrics = {
-      @checked_sku.sku_code => { turnover_days: BigDecimal("10") },
-      @stale_sku.sku_code => { turnover_days: BigDecimal("20") }
-    }
+  test "runs a check for the requested sku" do
     calls = []
-    log_messages = []
-    failed_sku_code = @checked_sku.sku_code
-    run_check = lambda do |sku_code:|
-      calls << sku_code
-      raise RuntimeError, "AI unavailable" if sku_code == failed_sku_code
+
+    with_stubbed_singleton_method(AITasks::SkuInventoryHealthCheck, :run, ->(sku_code:) { calls << sku_code }) do
+      AITasks::SkuInventoryHealthCheckJob.perform_now(sku_code: @checked_sku.sku_code)
     end
+
+    assert_equal [ @checked_sku.sku_code ], calls
+  end
+
+  test "logs a failed check" do
+    log_messages = []
+    run_check = ->(sku_code:) { raise RuntimeError, "AI unavailable" }
 
     logger = Object.new
     logger.define_singleton_method(:error) { |message| log_messages << message }
 
-    with_stubbed_metrics(metrics) do
-      with_stubbed_singleton_method(AITasks::SkuInventoryHealthCheck, :run, run_check) do
-        with_stubbed_singleton_method(Rails, :logger, -> { logger }) do
-          AITasks::SkuInventoryHealthCheckJob.perform_now
-        end
+    with_stubbed_singleton_method(AITasks::SkuInventoryHealthCheck, :run, run_check) do
+      with_stubbed_singleton_method(Rails, :logger, -> { logger }) do
+        AITasks::SkuInventoryHealthCheckJob.perform_now(sku_code: @checked_sku.sku_code)
       end
     end
 
-    assert_equal [ @checked_sku.sku_code, @stale_sku.sku_code ], calls
     assert_includes log_messages, "[AITasks::SkuInventoryHealthCheck] RuntimeError: AI unavailable"
+  end
+
+  test "limits concurrent checks to three" do
+    assert_equal 3, AITasks::SkuInventoryHealthCheckJob.concurrency_limit
   end
 
   private
