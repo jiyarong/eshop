@@ -385,14 +385,18 @@
             </section>
           <% else %>
             <% result = entry[:record] %>
-            <section class="panel ai-health-result">
+            <% operation_diagnosis = ai_operation_action_diagnosis?(result) %>
+            <section class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis) %>">
             <div class="ai-health-result__header">
-              <h2 class="section-title"><%= t("reports.sku_detail.ai_inventory_health.submission_title", id: result.id) %></h2>
+              <h2 class="section-title"><%= t(
+                operation_diagnosis ? "reports.sku_detail.ai_operation_diagnosis.submission_title" : "reports.sku_detail.ai_inventory_health.submission_title",
+                id: result.id
+              ) %></h2>
               <div class="ai-health-result__meta">
                 <span><%= result.submitted_by.display_name %></span>
                 <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
               </div>
-              <% if can?(:manage_skus) %>
+              <% if can?(:manage_skus) && !operation_diagnosis %>
                 <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
                               method: :delete,
                               class: "ico-btn ai-health-result__delete-button",
@@ -404,7 +408,37 @@
                 <% end %>
               <% end %>
             </div>
-            <% if result.data.present? %>
+            <% if operation_diagnosis %>
+              <section class="ai-operation-diagnosis">
+                <p class="ai-operation-diagnosis__summary"><%= result.data["summary"] %></p>
+                <div class="ai-operation-diagnosis__badges" aria-label="<%= t("reports.sku_detail.ai_operation_diagnosis.summary_label") %>">
+                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--<%= result.data["effectiveness"] %>">
+                    <%= t("reports.sku_detail.ai_operation_diagnosis.effectiveness") %>：<%= ai_operation_action_effect_label(result.data["effectiveness"]) %>
+                  </span>
+                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--neutral">
+                    <%= t("reports.sku_detail.ai_operation_diagnosis.confidence") %>：<%= ai_operation_action_confidence_label(result.data["confidence"]) %>
+                  </span>
+                </div>
+                <dl class="ai-operation-diagnosis__meta">
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.observation_date") %></dt>
+                    <dd><%= result.data["observation_date"] || report_value(nil) %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.analysis_cutoff_date") %></dt>
+                    <dd><%= result.data["analysis_cutoff_date"] || report_value(nil) %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.target_actions") %></dt>
+                    <dd><%= Array(result.data["action_evaluations"]).size %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.recent_actions") %></dt>
+                    <dd><%= Array(result.data["recent_actions"]).size %></dd>
+                  </div>
+                </dl>
+              </section>
+            <% elsif result.data.present? %>
               <div class="ai-health-metrics">
                 <h3 class="ai-health-metrics__title"><%= t("reports.sku_detail.ai_inventory_health.metrics_title") %></h3>
                 <dl class="ai-health-metrics__list">
@@ -435,7 +469,16 @@
                               aria-label="<%= event.message %>">★</span>
                         <span class="ai-health-severity"><%= event.severity %></span>
                       </td>
-                      <td><%= event.event_type %></td>
+                      <td>
+                        <% if operation_diagnosis && event.details.dig("action", "operation_type").present? %>
+                          <div class="ai-operation-diagnosis__event-action">
+                            <%= ai_operation_action_type_label(event.details.dig("action", "operation_type")) %>
+                            · <%= event.details.dig("action", "platform").to_s.upcase %>
+                          </div>
+                        <% else %>
+                          <%= event.event_type %>
+                        <% end %>
+                      </td>
                       <td class="ai-health-message"><%= event.message %></td>
                     </tr>
                   <% end %>

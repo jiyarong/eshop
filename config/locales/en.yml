@@ -1275,6 +1275,24 @@ en:
         metrics_title: "Diagnosis metrics"
         severity: "Severity"
         submission_title: "AI inventory diagnosis #%{id}"
+      ai_operation_diagnosis:
+        analysis_cutoff_date: "Analysis cutoff"
+        confidence: "Confidence"
+        confidence_levels:
+          high: "High"
+          low: "Low"
+          medium: "Medium"
+        effects:
+          inconclusive: "Inconclusive"
+          mixed: "Mixed impact"
+          negative: "Possibly negative"
+          positive: "Possibly effective"
+        effectiveness: "Effect"
+        observation_date: "Observation date"
+        recent_actions: "Concurrent actions"
+        submission_title: "AI operation diagnosis #%{id}"
+        summary_label: "Operation diagnosis summary"
+        target_actions: "Target actions"
       operation_record:
         created: "Operation record saved"
         deleted: "Operation record deleted"

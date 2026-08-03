@@ -1633,6 +1633,72 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.ai-operation-diagnosis {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.ai-operation-diagnosis__summary {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.ai-operation-diagnosis__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-operation-diagnosis__badge--positive {
+  background: #e5f7ef;
+  color: #0d7651;
+}
+
+.ai-operation-diagnosis__badge--negative {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.ai-operation-diagnosis__badge--mixed {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.ai-operation-diagnosis__badge--inconclusive,
+.ai-operation-diagnosis__badge--neutral {
+  background: #eef1f6;
+  color: var(--erp-muted);
+}
+
+.ai-operation-diagnosis__meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.ai-operation-diagnosis__meta dt {
+  color: var(--erp-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-operation-diagnosis__meta dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ai-operation-diagnosis__event-action {
+  color: var(--erp-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .ai-health-table {
   min-width: 720px;
 }
@@ -1670,6 +1736,10 @@ textarea {
   .ai-health-operation__actions {
     margin-top: 12px;
     margin-left: 0;
+  }
+
+  .ai-operation-diagnosis__meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

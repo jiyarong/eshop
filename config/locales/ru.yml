@@ -1247,6 +1247,24 @@ ru:
         metrics_title: "Метрики диагностики"
         severity: "Уровень"
         submission_title: "AI-диагностика склада #%{id}"
+      ai_operation_diagnosis:
+        analysis_cutoff_date: "Граница анализа"
+        confidence: "Уверенность"
+        confidence_levels:
+          high: "Высокая"
+          low: "Низкая"
+          medium: "Средняя"
+        effects:
+          inconclusive: "Недостаточно данных"
+          mixed: "Смешанный эффект"
+          negative: "Возможный негативный эффект"
+          positive: "Возможный положительный эффект"
+        effectiveness: "Эффект"
+        observation_date: "Дата наблюдения"
+        recent_actions: "Параллельные действия"
+        submission_title: "AI-диагностика операционных действий #%{id}"
+        summary_label: "Итог диагностики действий"
+        target_actions: "Целевые действия"
       operation_record:
         created: "Операционная запись сохранена"
         deleted: "Операционная запись удалена"

@@ -20,6 +20,16 @@ class Agent < ApplicationRecord
     输出 SKU 周报时，必须包含时间范围、核心结论、重点 SKU、异常与可能原因、建议跟进事项以及下周需要观察的指标。
   PROMPT
 
+  SKU_OPERATION_ACTION_TRACKER_PROMPT = <<~PROMPT.squish.freeze
+    #{DEFAULT_SYSTEM_PROMPT}
+    你的固定用途是评估电商运营 action 对 SKU 销量和销售漏斗的可能影响。
+    系统会提供 action 的发生时间、变更内容、操作前后固定窗口的日均指标，以及同一 SKU 的其他近期 action；分析截止日以前的当周数据不会出现。
+    只能基于提供的数据诊断，不要把相关性表述为确定因果；窗口天数不足、数据缺失或存在其他同期 action 时，必须降低置信度并明确说明。
+    你必须只输出严格 JSON，不要输出 Markdown 或额外说明，格式为：
+    {"summary":"总体结论","effectiveness":"positive|negative|mixed|inconclusive","confidence":"high|medium|low","events":[{"action_id":1,"severity":"info|warning|critical","message":"针对该 action 的结论","effect":"positive|negative|mixed|inconclusive","recommendations":["建议"]}]}
+    events 至少覆盖系统标记的目标 action；action_id 必须使用输入中的 id。指标变化要引用输入数据，不要编造数字。
+  PROMPT
+
   PAGE_TRANSLATION_PROMPT = <<~PROMPT.squish.freeze
     你是一个嵌入 ERP 系统的页面翻译 AI Agent。你的固定用途是把用户提供的系统页面文本、页面片段、HTML 或 Markdown 翻译为当前用户界面语言。
     只输出翻译结果，不输出解释、分析、寒暄或额外建议；如果输入内容已经是目标语言，普通翻译请求要保持原意并做必要的自然化表达。
@@ -72,6 +82,14 @@ class Agent < ApplicationRecord
       default_system_prompt: SKU_WEEKLY_REPORT_PROMPT,
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.3
+    },
+    "sku_operation_action_tracker" => {
+      name: "SKU 运营操作追踪助手",
+      tools: [],
+      enabled: true,
+      default_system_prompt: SKU_OPERATION_ACTION_TRACKER_PROMPT,
+      default_model_id: "deepseek-v4-flash",
+      default_temperature: 0.2
     },
     "page_translation" => {
       name: "页面翻译助手",

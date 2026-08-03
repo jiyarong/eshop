@@ -170,6 +170,22 @@ module ApplicationHelper
     value.is_a?(Hash) || value.is_a?(Array) ? JSON.generate(value) : value
   end
 
+  def ai_operation_action_diagnosis?(diagnosis)
+    diagnosis.data.to_h["diagnosis_kind"] == "operation_action_effect"
+  end
+
+  def ai_operation_action_effect_label(effect)
+    t("reports.sku_detail.ai_operation_diagnosis.effects.#{effect}")
+  end
+
+  def ai_operation_action_confidence_label(confidence)
+    t("reports.sku_detail.ai_operation_diagnosis.confidence_levels.#{confidence}")
+  end
+
+  def ai_operation_action_type_label(operation_type)
+    t("erp.operation_actions.operation_types.#{operation_type}")
+  end
+
   def user_time_zone
     User.profile_time_zone(current_user&.time_zone)
   end

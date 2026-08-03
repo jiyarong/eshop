@@ -50,6 +50,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::SkuProduct.where(id: @sku_product&.id).delete_all
     Ec::Store.where(id: @store&.id).delete_all
     Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
+    Ec::OperationActionDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     UserRole.where(user_id: @user&.id).delete_all
     User.where(id: @user&.id).delete_all
@@ -98,6 +99,51 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_equal "AI 库存诊断结果已删除", flash[:notice]
     assert_not Ec::RestockingDiagnosis.exists?(@latest_result.id)
     assert Ec::RestockingDiagnosis.exists?(@older_result.id)
+  end
+
+  test "clips operation diagnosis data to a concise summary and events" do
+    diagnosis = Ec::OperationActionDiagnosis.create!(
+      sku: @sku,
+      submitted_by: @user,
+      analyzed_at: Time.zone.parse("2026-08-03 14:45:00"),
+      data: {
+        "diagnosis_kind" => "operation_action_effect",
+        "summary" => "目标操作后的浏览和下单表现有所改善，但存在同期操作干扰。",
+        "effectiveness" => "positive",
+        "confidence" => "medium",
+        "observation_date" => "2026-08-03",
+        "analysis_cutoff_date" => "2026-08-02",
+        "target_offsets_days" => [ 7, 14, 30 ],
+        "action_evaluations" => [ { "action" => { "id" => 44 }, "changes" => { "views_daily" => { "delta_pct" => 120 } } } ],
+        "recent_actions" => [ { "id" => 44, "diff_result" => { "fields" => { "images" => [ "a", "b" ] } } } ]
+      }
+    )
+    diagnosis.events.create!(
+      event_type: "operation_action_effect",
+      severity: "info",
+      message: "广告开关后的浏览和下单日均值高于操作前。",
+      details: {
+        "action" => { "operation_type" => "sku_adv_on_off", "platform" => "wb" }
+      }
+    )
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h2", "AI 运营操作诊断 ##{diagnosis.id}"
+    assert_select ".ai-operation-diagnosis__summary", text: /浏览和下单表现有所改善/
+    assert_select ".ai-operation-diagnosis__meta dd", text: "1", count: 2
+    assert_select ".ai-operation-diagnosis__meta dd", text: "2026-08-02", count: 1
+    assert_select ".ai-operation-diagnosis__event-action", text: /广告开关.*WB/
+    assert_select ".ai-health-result--operation-diagnosis" do
+      assert_select ".ai-health-metrics", count: 0
+      assert_select "form.ai-health-result__delete-form", count: 0
+    end
+    assert_not_includes response.body, "action_evaluations"
+    assert_not_includes response.body, "target_offsets_days"
+    assert_not_includes response.body, "https://"
   end
 
   test "creates a manual operation record for the sku" do

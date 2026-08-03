@@ -324,7 +324,11 @@ class ReportsController < ApplicationController
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     if @active_tab == "ai_inventory_health"
-      @inventory_health_results = @sku.inventory_health_results.includes(:submitted_by, :events).recent_first.limit(3)
+      @inventory_health_results = @sku.ai_diagnoses
+        .where(type: [ Ec::RestockingDiagnosis.sti_name, Ec::OperationActionDiagnosis.sti_name ])
+        .includes(:submitted_by, :events)
+        .recent_first
+        .limit(3)
       @operation_actions = @sku.operation_actions
         .where(operation_type: "manual_note", record_by_system: false)
         .includes(:operated_by_user, :sku_product, :store)

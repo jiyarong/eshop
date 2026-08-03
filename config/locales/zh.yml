@@ -1457,6 +1457,24 @@ zh:
         metrics_title: "诊断指标"
         severity: "严重级别"
         submission_title: "AI 库存诊断 #%{id}"
+      ai_operation_diagnosis:
+        analysis_cutoff_date: "分析截止"
+        confidence: "置信度"
+        confidence_levels:
+          high: "高"
+          low: "低"
+          medium: "中"
+        effects:
+          inconclusive: "无法判断"
+          mixed: "影响混合"
+          negative: "可能不利"
+          positive: "可能有效"
+        effectiveness: "效果判断"
+        observation_date: "观察日期"
+        recent_actions: "同期操作"
+        submission_title: "AI 运营操作诊断 #%{id}"
+        summary_label: "运营操作诊断摘要"
+        target_actions: "目标操作"
       operation_record:
         created: "运营记录已保存"
         deleted: "运营记录已删除"

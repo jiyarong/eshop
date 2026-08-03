@@ -36,6 +36,7 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
       "business_analysis",
       "sku_replenishment_advisor",
       "sku_weekly_report_advisor",
+      "sku_operation_action_tracker",
       "page_translation",
       "general_agent",
       "gbrain_page_classifier"
@@ -43,11 +44,13 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
 
     assert_equal "SKU 补货建议助手", Agent::DEFINITIONS.fetch("sku_replenishment_advisor").fetch(:name)
     assert_equal "SKU 周报提醒助手", Agent::DEFINITIONS.fetch("sku_weekly_report_advisor").fetch(:name)
+    assert_equal "SKU 运营操作追踪助手", Agent::DEFINITIONS.fetch("sku_operation_action_tracker").fetch(:name)
     assert_equal "页面翻译助手", Agent::DEFINITIONS.fetch("page_translation").fetch(:name)
     assert_equal "通用助手", Agent::DEFINITIONS.fetch("general_agent").fetch(:name)
     assert_equal "GBrain 文档识别助手", Agent::DEFINITIONS.fetch("gbrain_page_classifier").fetch(:name)
     assert_includes Agent::DEFINITIONS.fetch("sku_replenishment_advisor").fetch(:default_system_prompt), "补货建议"
     assert_includes Agent::DEFINITIONS.fetch("sku_weekly_report_advisor").fetch(:default_system_prompt), "SKU 周报"
+    assert_includes Agent::DEFINITIONS.fetch("sku_operation_action_tracker").fetch(:default_system_prompt), "action"
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "翻译"
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "保持 HTML"
     assert_includes Agent::DEFINITIONS.fetch("page_translation").fetch(:default_system_prompt), "JSON"
