@@ -1,7 +1,19 @@
 module RawOzon
   module Syncs
     module SupplyOrders
-      SUPPLY_STATES = %w[READY_TO_SUPPLY IN_TRANSIT COMPLETED CANCELLED].freeze
+      SUPPLY_STATES = %w[
+        DATA_FILLING
+        READY_TO_SUPPLY
+        ACCEPTED_AT_SUPPLY_WAREHOUSE
+        IN_TRANSIT
+        ACCEPTANCE_AT_STORAGE_WAREHOUSE
+        REPORTS_CONFIRMATION_AWAITING
+        REPORT_REJECTED
+        COMPLETED
+        REJECTED_AT_SUPPLY_WAREHOUSE
+        CANCELLED
+        OVERDUE
+      ].freeze
 
       # 三步链：
       # Step 1: POST /v3/supply-order/list  → order_ids（last_id 翻页）
@@ -19,7 +31,7 @@ module RawOzon
 
           rows = orders.map { |o| build_supply_order(o, synced_at) }
           RawOzon::SupplyOrder.upsert_all(rows, unique_by: [:account_id, :supply_order_id],
-                                          update_only: %i[status timeslot items raw_json synced_at]) if rows.any?
+                                          update_only: %i[status timeslot items raw_json created_at synced_at]) if rows.any?
           total += rows.size
           sleep 0.5
         end
@@ -77,18 +89,18 @@ module RawOzon
       end
 
       def build_supply_order(o, synced_at)
-        # status 在 supplies[].state，不在顶层
         supply_states = Array(o['supplies']).map { |s| s['state'] }.uniq
-        cancelled     = supply_states.include?('CANCELLED')
+        status        = o['state'].presence || supply_states.first
+        cancelled     = status == 'CANCELLED' || supply_states.include?('CANCELLED')
         items         = cancelled ? nil : fetch_bundle_items_for_order(o)
         {
           account_id:      @account.id,
           supply_order_id: o['order_id'].to_s,
-          status:          supply_states.first,
+          status:          status,
           timeslot:        o['timeslot'],
           items:           items,
           raw_json:        o,
-          created_at:      o['created_at'],
+          created_at:      o['created_date'],
           synced_at:       synced_at,
         }
       end
