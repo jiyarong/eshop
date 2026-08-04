@@ -30,8 +30,24 @@ module RawOzon
           next if orders.empty?
 
           rows = orders.map { |o| build_supply_order(o, synced_at) }
-          RawOzon::SupplyOrder.upsert_all(rows, unique_by: [:account_id, :supply_order_id],
-                                          update_only: %i[status timeslot items raw_json created_at synced_at]) if rows.any?
+          existing = RawOzon::SupplyOrder
+            .where(account_id: @account.id, supply_order_id: rows.map { |row| row[:supply_order_id] })
+            .index_by(&:supply_order_id)
+          changes = rows.filter_map do |row|
+            previous = existing[row[:supply_order_id]]
+            next if previous&.status == row[:status]
+
+            { previous_status: previous&.status, previous_items: previous&.items, row: row }
+          end
+
+          RawOzon::SupplyOrder.transaction do
+            RawOzon::SupplyOrder.upsert_all(
+              rows,
+              unique_by: [:account_id, :supply_order_id],
+              update_only: %i[status timeslot items raw_json created_at synced_at]
+            ) if rows.any?
+            Ec::SupplyOrderChangeRecorder.record(account: @account, changes: changes, operated_at: synced_at)
+          end
           total += rows.size
           sleep 0.5
         end
