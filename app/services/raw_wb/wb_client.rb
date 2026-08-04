@@ -51,8 +51,9 @@ module RawWb
       end
     end
 
-    def post(service, path, body = {})
+    def post(service, path, body = {}, params = {})
       uri = URI("#{BASE_URLS.fetch(service)}#{path}")
+      uri.query = URI.encode_www_form(params.compact) unless params.empty?
 
       with_retry(context: "POST #{path}") do
         req = Net::HTTP::Post.new(uri)
