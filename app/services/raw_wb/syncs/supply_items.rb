@@ -71,6 +71,15 @@ module RawWb
       end
 
       def upsert_supplies_from_v1(items)
+        existing = RawWb::Supply
+          .where(account_id: @account.id, preorder_id: items.filter_map { |item| item['preorderID'] })
+          .index_by { |supply| supply.preorder_id.to_s }
+        changes = items.filter_map do |item|
+          previous = existing[item['preorderID'].to_s]
+          next unless previous && previous.status_id != item['statusID'].to_i
+
+          { previous_status_id: previous.status_id, supply: item }
+        end
         rows = items.map do |s|
           {
             account_id:       @account.id,
@@ -86,9 +95,12 @@ module RawWb
             synced_at:        Time.current,
           }
         end
-        RawWb::Supply.upsert_all(rows, unique_by: :idx_raw_wb_supplies_account_preorder,
-          update_only: %i[wb_supply_id status_id box_type_id is_box_on_pallet
-                          supply_date fact_date updated_at_wb synced_at]) if rows.any?
+        RawWb::Supply.transaction do
+          RawWb::Supply.upsert_all(rows, unique_by: :idx_raw_wb_supplies_account_preorder,
+            update_only: %i[wb_supply_id status_id box_type_id is_box_on_pallet
+                            supply_date fact_date updated_at_wb synced_at]) if rows.any?
+          Ec::WbSupplyOrderChangeRecorder.record(account: @account, changes: changes)
+        end
       end
 
       def fetch_supply_goods(supply_id, is_preorder:)

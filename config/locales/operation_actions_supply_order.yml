@@ -2,7 +2,7 @@ en:
   erp:
     operation_actions:
       operation_types:
-        supply_order: "Ozon supply order"
+        supply_order: "Supply order"
       diff_fields:
         supply_order_status: "Supply order status"
 
@@ -10,7 +10,7 @@ ru:
   erp:
     operation_actions:
       operation_types:
-        supply_order: "Поставка Ozon"
+        supply_order: "Поставка"
       diff_fields:
         supply_order_status: "Статус поставки"
 
@@ -18,6 +18,6 @@ zh:
   erp:
     operation_actions:
       operation_types:
-        supply_order: "Ozon 送仓单"
+        supply_order: "送仓单"
       diff_fields:
         supply_order_status: "送仓单状态"
