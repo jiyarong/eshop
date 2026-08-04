@@ -1,6 +1,8 @@
 module RawWb
   module Syncs
     module SupplyItems
+      FBW_SUPPLY_STATUS_IDS = (1..6).to_a.freeze
+
       # FBW 送货明细（supplies-api 域名，与 marketplace-api 不同）
       # Step 1: POST /api/v1/supplies — 分页拉全量 FBW 送货单列表（无状态过滤）
       # Step 2: GET  /api/v1/supplies/{id}/goods — 分页拉每单的全部货物明细
@@ -48,7 +50,10 @@ module RawWb
           resp = @client.post(
             :supplies,
             '/api/v1/supplies',
-            { dates: [{ from: '2023-01-01', till: Date.current.to_s, type: 'createDate' }] },
+            {
+              dates: [{ from: '2023-01-01', till: Date.current.to_s, type: 'createDate' }],
+              statusIDs: FBW_SUPPLY_STATUS_IDS,
+            },
             { limit: limit, offset: offset }
           )
           page = resp.is_a?(Array) ? resp : Array(resp['supplies'] || [])

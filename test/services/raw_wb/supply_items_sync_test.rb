@@ -59,6 +59,7 @@ class RawWbSupplyItemsSyncTest < ActiveSupport::TestCase
 
     assert_equal 1001, sync.sync_supply_items
     assert_equal [0, 1000], client.posts.map { |request| request[:params][:offset] }
+    assert client.posts.all? { |request| request[:body][:statusIDs] == [1, 2, 3, 4, 5, 6] }
     assert_equal [0, 1000], client.gets.last(2).map { |request| request[:params][:offset] }
     assert_equal 1001, RawWb::Supply.count
     assert_equal 1001, RawWb::SupplyItem.where(
