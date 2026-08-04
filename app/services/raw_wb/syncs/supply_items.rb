@@ -27,6 +27,9 @@ module RawWb
           sleep 0.3
         end
 
+        current_ids = supplies.flat_map { |supply| supply[:reconcile_ids] }.uniq
+        RawWb::SupplyItem.where(account_id: @account.id).where.not(wb_supply_id: current_ids).delete_all
+
         total
       end
 

@@ -118,6 +118,29 @@ class RawWbSupplyItemsSyncTest < ActiveSupport::TestCase
     )
   end
 
+  test "removes orphaned goods that are absent from a successful full supply list" do
+    RawWb::SupplyItem.create!(
+      account: @account,
+      wb_supply_id: "obsolete-#{@token}",
+      nm_id: 789,
+      quantity: 4,
+      accepted_qty: 0,
+      synced_at: 1.day.ago
+    )
+    item = supply(@base_id)
+    client = FakeWbClient.new(
+      supply_pages: { 0 => [item] },
+      goods_pages: { [goods_path(item), 0] => [good(456)] }
+    )
+    sync = RawWb::DailySync.new(@account, days: 2)
+    sync.instance_variable_set(:@client, client)
+    sync.define_singleton_method(:sleep) { |_| }
+
+    assert_equal 1, sync.sync_supply_items
+    assert_not RawWb::SupplyItem.exists?(account_id: @account.id, wb_supply_id: "obsolete-#{@token}")
+    assert RawWb::SupplyItem.exists?(account_id: @account.id, wb_supply_id: @base_id.to_s)
+  end
+
   private
 
   def supply(id)
