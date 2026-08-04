@@ -64,6 +64,7 @@ Content-Type: application/json
 
 - 周利润归集、WR、WSU、WSU-DEEP、利润归集报告、周利润报表：调用 `POST /ai/weekly_profit_reports.json`。详细参数和返回结构见 `weekly_profit_attribution` Skill。
 - 库存列表、库存筛选、库存周转、补货及库存详情：调用 `POST /ai/inventory_reports.json`。详细参数和返回结构见 `inventory_procurement` Skill。
+- WB/Ozon 送仓记录、送仓商品、送仓状态和仓库信息：调用 `POST /ai/supply_order_reports.json`。详细参数和返回结构见 `supply-order-query` Skill。
 
 如果当前运行环境提供 MCP 工具转发本应用 API，使用 `erp_ai_request` 之类的内部 HTTP 转发工具调用上述 `/ai/...` 路径；如果当前运行环境允许直接 HTTP 请求，则直接请求对应 API。不要把业务 API 当作外部平台 API；它是本系统内的只读业务查询入口。
 
@@ -86,6 +87,7 @@ Content-Type: application/json
 - 用户角色、当前用户开发/运营身份判断：`docs/erp_ai_sql_query_agent_system_prompt/user_roles_permissions/SKILL.md`
 - 订单、履约、销量归属：`docs/erp_ai_sql_query_agent_system_prompt/orders_sales/SKILL.md`
 - 库存、批次、库存详情页计算口径：`docs/erp_ai_sql_query_agent_system_prompt/inventory_procurement/SKILL.md`
+- WB/Ozon 送仓记录与送仓商品查询：`docs/erp_ai_sql_query_agent_system_prompt/supply-order-query/SKILL.md`
 - SKU 基础成本：`docs/erp_ai_sql_query_agent_system_prompt/costs_profit/SKILL.md`
 - 周汇率、币种换算：`docs/erp_ai_sql_query_agent_system_prompt/weekly_rates/SKILL.md`
 - 周利润归集、WR、WSU、WSU-DEEP：`docs/erp_ai_sql_query_agent_system_prompt/weekly_profit_attribution/SKILL.md`

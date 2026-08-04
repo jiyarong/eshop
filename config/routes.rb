@@ -79,6 +79,7 @@ Rails.application.routes.draw do
     resources :sql_queries, only: [:create]
     resources :weekly_profit_reports, only: [:create]
     resources :inventory_reports, only: [:create]
+    resources :supply_order_reports, only: [:create]
   end
 
   namespace :admin do

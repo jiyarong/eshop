@@ -45,6 +45,15 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     assert_equal({ warehouse_name: "Ryazan", actual_warehouse_name: "Obukhovo", transit_warehouse_name: "Obukhovo", acceptance_cost: 5000.to_d, supply_quantity: 12, supply_accepted_quantity: 5 }, report[:rows].first.slice(:warehouse_name, :actual_warehouse_name, :transit_warehouse_name, :acceptance_cost, :supply_quantity, :supply_accepted_quantity))
   end
 
+  test "allows the ERP AI endpoint to request one hundred rows per page" do
+    report = SupplyOrderReports::ReportQuery.new(
+      params: { store_ref: "wb:#{@wb_account.id}" },
+      per_page: 100
+    ).call
+
+    assert_equal 100, report.dig(:pagination, :per_page)
+  end
+
   test "orders newest supplies first and filters platform-specific statuses" do
     product_id = Ec::SkuProduct.find_by!(store: @wb_store).product_id.to_i
     older = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-OLD-#{@token}", preorder_id: 22345, status_id: 4, supply_created_at: 2.days.ago, synced_at: Time.current)

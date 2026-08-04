@@ -23,8 +23,9 @@ module SupplyOrderReports
       WeeklyProfitReports::ReportQueryRunner.store_options
     end
 
-    def initialize(params:)
+    def initialize(params:, per_page: PER_PAGE)
       @params = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : params.to_h
+      @per_page = positive_integer(per_page, PER_PAGE)
     end
 
     def call
@@ -32,13 +33,13 @@ module SupplyOrderReports
       account = account_class(platform).where(is_active: true).find(account_id)
       all_rows = platform == "wb" ? wb_rows(account) : ozon_rows(account)
       page = positive_integer(param(:jump_page).presence || param(:page), 1)
-      total_pages = [(all_rows.size.to_f / PER_PAGE).ceil, 1].max
+      total_pages = [(all_rows.size.to_f / @per_page).ceil, 1].max
       page = [page, total_pages].min
 
       {
         meta: { platform: platform, store_ref: "#{platform}:#{account.id}", store_name: account_name(account, platform), columns: platform == "wb" ? WB_COLUMNS : OZON_COLUMNS },
-        rows: all_rows.slice((page - 1) * PER_PAGE, PER_PAGE) || [],
-        pagination: { page: page, per_page: PER_PAGE, total_count: all_rows.size, total_pages: total_pages }
+        rows: all_rows.slice((page - 1) * @per_page, @per_page) || [],
+        pagination: { page: page, per_page: @per_page, total_count: all_rows.size, total_pages: total_pages }
       }
     end
 
