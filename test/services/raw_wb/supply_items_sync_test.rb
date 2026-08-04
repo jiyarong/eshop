@@ -89,6 +89,34 @@ class RawWbSupplyItemsSyncTest < ActiveSupport::TestCase
     assert_not RawWb::SupplyItem.exists?(account_id: @account.id, wb_supply_id: @base_id.to_s)
   end
 
+  test "removes goods stored under a preorder ID after WB assigns a supply ID" do
+    item = supply(@base_id)
+    preorder_id = item.fetch("preorderID").to_s
+    RawWb::SupplyItem.create!(
+      account: @account,
+      wb_supply_id: preorder_id,
+      nm_id: 123,
+      quantity: 8,
+      accepted_qty: 1,
+      synced_at: 1.day.ago
+    )
+    client = FakeWbClient.new(
+      supply_pages: { 0 => [item] },
+      goods_pages: { [goods_path(item), 0] => [good(456)] }
+    )
+    sync = RawWb::DailySync.new(@account, days: 2)
+    sync.instance_variable_set(:@client, client)
+    sync.define_singleton_method(:sleep) { |_| }
+
+    assert_equal 1, sync.sync_supply_items
+    assert_not RawWb::SupplyItem.exists?(account_id: @account.id, wb_supply_id: preorder_id)
+    assert RawWb::SupplyItem.exists?(
+      account_id: @account.id,
+      wb_supply_id: @base_id.to_s,
+      nm_id: 456
+    )
+  end
+
   private
 
   def supply(id)

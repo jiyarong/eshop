@@ -15,7 +15,10 @@ module RawWb
 
           rows = items.filter_map { |item| build_supply_item(supply[:id], item) }
           RawWb::SupplyItem.transaction do
-            RawWb::SupplyItem.where(account_id: @account.id, wb_supply_id: supply[:id]).delete_all
+            RawWb::SupplyItem.where(
+              account_id: @account.id,
+              wb_supply_id: supply[:reconcile_ids]
+            ).delete_all
             RawWb::SupplyItem.insert_all(rows) if rows.any?
           end
           total += rows.size
@@ -109,7 +112,11 @@ module RawWb
         id = supply_lookup_id(supply)
         return if id.blank?
 
-        { id: id, is_preorder: supply['supplyID'].blank? && supply['id'].blank? }
+        {
+          id: id,
+          is_preorder: supply['supplyID'].blank? && supply['id'].blank?,
+          reconcile_ids: [supply['supplyID'], supply['id'], supply['preorderID']].compact.map(&:to_s).uniq
+        }
       end
 
       def supply_lookup_id(supply)
