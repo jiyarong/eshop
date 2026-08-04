@@ -91,4 +91,26 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     assert_equal 1, report[:rows].size
     assert_equal({ order_number: "ORD-#{@token}", platform_item_id: platform_id, sku_code: @sku.sku_code, quantity: 8, origin_warehouse: "Minsk drop-off", destination_warehouses: "Minsk storage" }, report[:rows].first.slice(:order_number, :platform_item_id, :sku_code, :quantity, :origin_warehouse, :destination_warehouses))
   end
+
+  test "keeps Ozon supply items mapped to a soft-deleted SKU" do
+    product = Ec::SkuProduct.find_by!(store: @ozon_store)
+    product.update!(product_name: "Stored platform product")
+    platform_id = product.platform_sku_id
+    @sku.destroy!
+    RawOzon::SupplyOrder.create!(
+      account: @ozon_account,
+      supply_order_id: "SO-DELETED-#{@token}",
+      status: "READY_TO_SUPPLY",
+      items: { platform_id => 3 },
+      raw_json: {},
+      synced_at: Time.current
+    )
+
+    report = SupplyOrderReports::ReportQuery.new(params: { store_ref: "ozon:#{@ozon_account.id}" }).call
+
+    row = report[:rows].sole
+    assert_equal @sku.sku_code, row[:sku_code]
+    assert_equal "Stored platform product", row[:product_name]
+    assert_equal 3, row[:quantity]
+  end
 end

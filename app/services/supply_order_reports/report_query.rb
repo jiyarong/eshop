@@ -102,10 +102,18 @@ module SupplyOrderReports
       Ec::SkuProduct.includes(:sku, :operator_role_assignments).where(platform: platform, store_id: stores.select(:id)).where.not(platform_column => nil).each_with_object({}) do |product, result|
         result[product.public_send(platform_column).to_s] = {
           sku_code: product.sku_code,
-          product_name: I18n.locale == :ru ? (product.sku.product_name_ru.presence || product.sku.product_name) : product.sku.product_name,
+          product_name: product_name(product),
           operator_ids: product.operator_role_assignments.map(&:user_id)
         }
       end
+    end
+
+    def product_name(product)
+      sku = product.sku
+      return product.product_name if sku.nil?
+      return sku.product_name_ru.presence || sku.product_name if I18n.locale == :ru
+
+      sku.product_name
     end
 
     def filter_rows(rows)
