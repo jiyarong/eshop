@@ -1,0 +1,63 @@
+<h1 class="page-title"><%= t("supply_order_reports.title") %></h1>
+
+<section class="panel supply-order-filter-panel">
+  <form class="report-form" action="<%= reports_supply_orders_path %>" method="get" data-turbo-frame="supply_order_report_results" data-turbo-action="advance" data-controller="weekly-profit-filter">
+    <div class="weekly-profit-filter-block">
+      <div class="supply-order-primary-filters">
+        <%= render "shared/spu_sku_filter",
+                   field_class: "weekly-profit-spu-sku-field",
+                   dom_id_prefix: "supply-order-spu-sku-filter",
+                   label: t("supply_order_reports.filters.sku"),
+                   placeholder: t("supply_order_reports.filters.sku_placeholder"),
+                   aria_label: t("shared.spu_sku_filter.aria_label") %>
+        <%= render "shared/responsible_user_filters",
+                   field_class: "supply-order-operator-filter",
+                   dom_id_prefix: "supply-order-responsible-user-filter",
+                   filter_keys: %w[operator] %>
+        <div class="weekly-profit-filter-actions">
+          <button class="button weekly-profit-submit-button" type="submit"><%= t("supply_order_reports.filters.submit") %></button>
+        </div>
+      </div>
+    </div>
+    <div class="weekly-profit-filter-block">
+      <div class="field field--full weekly-profit-store-field">
+        <span class="field-label"><%= t("supply_order_reports.filters.store") %></span>
+        <% if @selected_store_ref.present? %>
+          <input type="hidden" name="store_ref" value="<%= @selected_store_ref %>" data-weekly-profit-filter-target="storeInput">
+        <% end %>
+        <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("supply_order_reports.filters.store") %>">
+          <% @store_options.each do |store| %>
+            <% active = @selected_store_ref == store[:ref] %>
+            <% store_params = { store_ref: store[:ref], master_sku_ids: @spu_sku_selected_master_sku_ids.presence, sku_codes: @spu_sku_selected_sku_codes.presence, operator_id: @operator_id } %>
+            <% store_params[:statuses] = @selected_statuses.presence if store[:platform] == @selected_platform %>
+            <%= link_to store[:label], reports_supply_orders_path(store_params.compact),
+                        class: "weekly-profit-filter-tag#{" is-active" if active}",
+                        aria: { pressed: active }, data: { turbo_frame: "_top" } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <% if @selected_store_ref.present? %>
+      <div class="weekly-profit-filter-block">
+        <div data-action="change->weekly-profit-filter#submit">
+          <%= render "shared/popover_multiselect_filter",
+                     field_class: "",
+                     dom_id_prefix: "supply-order-status-filter",
+                     param_name: "statuses",
+                     label: t("supply_order_reports.filters.status"),
+                     all_label: t("supply_order_reports.filters.all_statuses"),
+                     selected_values: @selected_statuses,
+                     options: supply_order_status_options.map { |value, label| [label, value] } %>
+        </div>
+      </div>
+    <% end %>
+  </form>
+</section>
+
+<turbo-frame id="supply_order_report_results">
+  <% if @report.present? %>
+    <%= render "reports/supply_orders/results", wrap_frame: false %>
+  <% else %>
+    <section class="panel empty-state"><%= t("supply_order_reports.empty_state") %></section>
+  <% end %>
+</turbo-frame>

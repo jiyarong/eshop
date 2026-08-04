@@ -1,0 +1,25 @@
+<% wrap_frame = local_assigns.fetch(:wrap_frame, true) %>
+<% if wrap_frame %><turbo-frame id="supply_order_report_results"><% end %>
+  <section class="panel">
+    <div class="report-meta">
+      <strong><%= @report.dig(:meta, :platform) == "wb" ? "WB" : "Ozon" %></strong>
+      · <%= @report.dig(:meta, :store_name) %>
+      · <%= t("supply_order_reports.row_count", count: @report.dig(:pagination, :total_count)) %>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><% supply_order_columns(@report).each do |_key, label| %><th><%= label %></th><% end %></tr></thead>
+        <tbody>
+          <% if @report[:rows].empty? %>
+            <tr><td colspan="<%= supply_order_columns(@report).size %>"><%= t("supply_order_reports.empty_rows") %></td></tr>
+          <% else %>
+            <% @report[:rows].each do |row| %>
+              <tr><% supply_order_columns(@report).each do |key, _label| %><td><%= supply_order_value(row, key) %></td><% end %></tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render "reports/supply_orders/pagination", report: @report if @report.dig(:pagination, :total_pages) > 1 %>
+  </section>
+<% if wrap_frame %></turbo-frame><% end %>

@@ -1,0 +1,135 @@
+zh:
+  navigation:
+    supply_orders: "送仓记录"
+  supply_order_reports:
+    title: "送仓记录"
+    row_count: "共 %{count} 条明细"
+    empty_state: "暂无可用店铺"
+    empty_rows: "当前筛选条件下没有送仓明细"
+    filters:
+      sku: "SPU / SKU"
+      sku_placeholder: "搜索并选择 SPU 或 SKU"
+      store: "店铺"
+      status: "状态"
+      all_statuses: "全部状态"
+      submit: "查询"
+    errors:
+      store_not_found: "店铺不存在或未启用"
+      invalid_store_ref: "店铺参数无效"
+    columns:
+      wb:
+        supply_id: "送仓单号"
+        preorder_id: "预订单号"
+        status: "状态"
+        platform_item_id: "WB 商品 ID"
+        sku_code: "SKU"
+        product_name: "商品名称"
+        quantity: "计划数量"
+        accepted_quantity: "实收数量"
+        remaining_quantity: "待收数量"
+        warehouse_name: "计划仓"
+        actual_warehouse_name: "实际仓"
+        transit_warehouse_name: "中转仓"
+        created_at: "创建时间"
+        scheduled_at: "计划送仓时间"
+        actual_at: "实际送仓时间"
+        packaging: "包装类型"
+        pallet: "托盘送仓"
+        acceptance_cost: "接收费"
+        paid_acceptance_coefficient: "付费接收系数"
+        storage_coefficient: "仓储系数"
+        delivery_coefficient: "配送系数"
+        supplier_assign_name: "指派方"
+        reject_reason: "拒绝原因"
+        supply_quantity: "送仓总量"
+        supply_accepted_quantity: "送仓实收量"
+        ready_for_sale_quantity: "可售数量"
+        unloading_quantity: "卸货数量"
+        depersonalized_quantity: "去个性化数量"
+        can_show_quantity: "数量可见"
+        synced_at: "同步时间"
+      ozon:
+        order_number: "订单编号"
+        supply_id: "送仓单号"
+        status: "状态"
+        platform_item_id: "Ozon SKU ID"
+        sku_code: "SKU"
+        product_name: "商品名称"
+        quantity: "数量"
+        created_at: "创建时间"
+        timeslot: "送仓时段"
+        origin_warehouse: "交货仓（起点）"
+        destination_warehouses: "目的仓 / 集群"
+        state_updated_at: "状态更新时间"
+        synced_at: "同步时间"
+    statuses:
+      wb:
+        1: "未计划"
+        2: "已计划"
+        3: "允许卸货"
+        4: "接收中"
+        5: "已接收"
+        6: "已在闸口卸货"
+      ozon:
+        DATA_FILLING: "填写资料中"
+        READY_TO_SUPPLY: "等待送仓"
+        ACCEPTED_AT_SUPPLY_WAREHOUSE: "发货仓已接收"
+        IN_TRANSIT: "运输中"
+        ACCEPTANCE_AT_STORAGE_WAREHOUSE: "目的仓接收中"
+        REPORTS_CONFIRMATION_AWAITING: "等待确认报告"
+        REPORT_REJECTED: "报告已驳回"
+        COMPLETED: "已完成"
+        REJECTED_AT_SUPPLY_WAREHOUSE: "发货仓已拒绝"
+        CANCELLED: "已取消"
+        OVERDUE: "已逾期"
+    packaging:
+      without_boxes: "无箱"
+      boxes: "箱装"
+      mono_pallet: "单品托盘"
+      super_safe: "Super Safe"
+      piece_pallet: "按件托盘"
+      unknown: "未知类型（ID %{id}）"
+    pagination:
+      summary: "显示第 %{from}-%{to} 条，共 %{total} 条"
+      page: "第 %{page}/%{pages} 页"
+      aria_label: "送仓记录分页"
+      previous: "上一页"
+      next: "下一页"
+      jump_label: "跳至"
+      jump_action: "前往"
+en:
+  navigation:
+    supply_orders: "Supply records"
+  supply_order_reports:
+    title: "Supply records"
+    row_count: "%{count} item rows"
+    empty_state: "No available stores"
+    empty_rows: "No supply items match these filters"
+    filters: { sku: "SPU / SKU", sku_placeholder: "Search and select an SPU or SKU", store: "Store", status: "Status", all_statuses: "All statuses", submit: "Search" }
+    errors: { store_not_found: "Store was not found or is inactive", invalid_store_ref: "Invalid store" }
+    columns:
+      wb: { supply_id: "Supply ID", preorder_id: "Preorder ID", status: "Status", platform_item_id: "WB item ID", sku_code: "SKU", product_name: "Product", quantity: "Item planned qty", accepted_quantity: "Item accepted qty", remaining_quantity: "Item remaining qty", warehouse_name: "Planned warehouse", actual_warehouse_name: "Actual warehouse", transit_warehouse_name: "Transit warehouse", created_at: "Created", scheduled_at: "Scheduled", actual_at: "Actual", packaging: "Packaging", pallet: "On pallet", acceptance_cost: "Acceptance cost", paid_acceptance_coefficient: "Paid acceptance coefficient", storage_coefficient: "Storage coefficient", delivery_coefficient: "Delivery coefficient", supplier_assign_name: "Assigned supplier", reject_reason: "Reject reason", supply_quantity: "Supply total qty", supply_accepted_quantity: "Supply accepted qty", ready_for_sale_quantity: "Ready for sale qty", unloading_quantity: "Unloading qty", depersonalized_quantity: "Depersonalized qty", can_show_quantity: "Quantity visible", synced_at: "Synced" }
+      ozon: { order_number: "Order number", supply_id: "Supply ID", status: "Status", platform_item_id: "Ozon SKU ID", sku_code: "SKU", product_name: "Product", quantity: "Quantity", created_at: "Created", timeslot: "Timeslot", origin_warehouse: "Drop-off warehouse (origin)", destination_warehouses: "Destination warehouse / cluster", state_updated_at: "Status updated", synced_at: "Synced" }
+    statuses:
+      wb: { 1: "Not planned", 2: "Planned", 3: "Unloading allowed", 4: "Accepting", 5: "Accepted", 6: "Unloaded at gate" }
+      ozon: { DATA_FILLING: "Data filling", READY_TO_SUPPLY: "Ready to supply", ACCEPTED_AT_SUPPLY_WAREHOUSE: "Accepted at supply warehouse", IN_TRANSIT: "In transit", ACCEPTANCE_AT_STORAGE_WAREHOUSE: "Acceptance at storage warehouse", REPORTS_CONFIRMATION_AWAITING: "Awaiting report confirmation", REPORT_REJECTED: "Report rejected", COMPLETED: "Completed", REJECTED_AT_SUPPLY_WAREHOUSE: "Rejected at supply warehouse", CANCELLED: "Cancelled", OVERDUE: "Overdue" }
+    packaging: { without_boxes: "Without boxes", boxes: "Boxes", mono_pallet: "Mono pallet", super_safe: "Super Safe", piece_pallet: "Piece pallet", unknown: "Unknown type (ID %{id})" }
+    pagination: { summary: "Showing %{from}-%{to} of %{total}", page: "Page %{page}/%{pages}", aria_label: "Supply record pages", previous: "Previous", next: "Next", jump_label: "Go to", jump_action: "Go" }
+ru:
+  navigation:
+    supply_orders: "Поставки"
+  supply_order_reports:
+    title: "Поставки"
+    row_count: "Строк товаров: %{count}"
+    empty_state: "Нет доступных магазинов"
+    empty_rows: "Нет поставок по выбранным фильтрам"
+    filters: { sku: "SPU / SKU", sku_placeholder: "Найдите и выберите SPU или SKU", store: "Магазин", status: "Статус", all_statuses: "Все статусы", submit: "Найти" }
+    errors: { store_not_found: "Магазин не найден или отключён", invalid_store_ref: "Некорректный магазин" }
+    columns:
+      wb: { supply_id: "ID поставки", preorder_id: "ID предзаказа", status: "Статус", platform_item_id: "ID товара WB", sku_code: "SKU", product_name: "Товар", quantity: "План товара", accepted_quantity: "Принято товара", remaining_quantity: "Осталось товара", warehouse_name: "Плановый склад", actual_warehouse_name: "Фактический склад", transit_warehouse_name: "Транзитный склад", created_at: "Создано", scheduled_at: "Плановая дата", actual_at: "Фактическая дата", packaging: "Упаковка", pallet: "На паллете", acceptance_cost: "Стоимость приёмки", paid_acceptance_coefficient: "Коэффициент приёмки", storage_coefficient: "Коэффициент хранения", delivery_coefficient: "Коэффициент доставки", supplier_assign_name: "Назначенная сторона", reject_reason: "Причина отказа", supply_quantity: "Всего в поставке", supply_accepted_quantity: "Принято в поставке", ready_for_sale_quantity: "Готово к продаже", unloading_quantity: "Разгружается", depersonalized_quantity: "Обезличено", can_show_quantity: "Количество доступно", synced_at: "Синхронизация" }
+      ozon: { order_number: "Номер заказа", supply_id: "ID поставки", status: "Статус", platform_item_id: "SKU Ozon", sku_code: "SKU", product_name: "Товар", quantity: "Количество", created_at: "Создано", timeslot: "Интервал", origin_warehouse: "Склад сдачи (откуда)", destination_warehouses: "Склад / кластер назначения", state_updated_at: "Статус обновлён", synced_at: "Синхронизация" }
+    statuses:
+      wb: { 1: "Не запланировано", 2: "Запланировано", 3: "Разгрузка разрешена", 4: "Приёмка", 5: "Принято", 6: "Разгружено у ворот" }
+      ozon: { DATA_FILLING: "Заполнение данных", READY_TO_SUPPLY: "Готово к поставке", ACCEPTED_AT_SUPPLY_WAREHOUSE: "Принято на складе отправления", IN_TRANSIT: "В пути", ACCEPTANCE_AT_STORAGE_WAREHOUSE: "Приёмка на складе хранения", REPORTS_CONFIRMATION_AWAITING: "Ожидает подтверждения отчёта", REPORT_REJECTED: "Отчёт отклонён", COMPLETED: "Завершено", REJECTED_AT_SUPPLY_WAREHOUSE: "Отклонено на складе отправления", CANCELLED: "Отменено", OVERDUE: "Просрочено" }
+    packaging: { without_boxes: "Без коробов", boxes: "Короба", mono_pallet: "Монопаллета", super_safe: "Суперсейф", piece_pallet: "Поштучная паллета", unknown: "Неизвестный тип (ID %{id})" }
+    pagination: { summary: "Показано %{from}-%{to} из %{total}", page: "Страница %{page}/%{pages}", aria_label: "Страницы поставок", previous: "Назад", next: "Вперёд", jump_label: "Перейти", jump_action: "Открыть" }

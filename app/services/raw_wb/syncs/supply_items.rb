@@ -5,13 +5,15 @@ module RawWb
 
       # FBW 送货明细（supplies-api 域名，与 marketplace-api 不同）
       # Step 1: POST /api/v1/supplies — 分页拉全量 FBW 送货单列表（无状态过滤）
-      # Step 2: GET  /api/v1/supplies/{id}/goods — 分页拉每单的全部货物明细
+      # Step 2: GET  /api/v1/supplies/{id} — 首次或送仓单更新后拉详情
+      # Step 3: GET  /api/v1/supplies/{id}/goods — 分页拉每单的全部货物明细
       def sync_supply_items
         supplies = fetch_fbw_supply_refs
         return 0 if supplies.empty?
 
         total = 0
         supplies.each do |supply|
+          sync_supply_detail(supply)
           items = fetch_supply_goods(supply[:id], is_preorder: supply[:is_preorder])
           next if items.nil?
 
@@ -135,7 +137,47 @@ module RawWb
         {
           id: id,
           is_preorder: supply['supplyID'].blank? && supply['id'].blank?,
-          reconcile_ids: [supply['supplyID'], supply['id'], supply['preorderID']].compact.map(&:to_s).uniq
+          reconcile_ids: [supply['supplyID'], supply['id'], supply['preorderID']].compact.map(&:to_s).uniq,
+          preorder_id: supply['preorderID']
+        }
+      end
+
+      def sync_supply_detail(supply_ref)
+        record = RawWb::Supply.find_by(account_id: @account.id, preorder_id: supply_ref[:preorder_id])
+        return unless record
+        return if detail_current?(record)
+
+        detail = @client.get(
+          :supplies,
+          "/api/v1/supplies/#{supply_ref[:id]}",
+          { isPreorderID: supply_ref[:is_preorder] }
+        )
+        record.update!(detail_attributes(detail))
+      rescue RawWb::WbClient::ApiError => e
+        log "  ⚠ fetch_supply_detail #{supply_ref[:id]} failed: #{e.message}", level: :warn
+      end
+
+      def detail_current?(record)
+        detail_updated_at = record.raw_detail_json.to_h["updatedDate"]
+        return false if detail_updated_at.blank?
+
+        Time.zone.parse(detail_updated_at) == record.updated_at_wb
+      rescue ArgumentError
+        false
+      end
+
+      def detail_attributes(detail)
+        {
+          warehouse_id: detail["warehouseID"], warehouse_name: detail["warehouseName"],
+          actual_warehouse_id: detail["actualWarehouseID"], actual_warehouse_name: detail["actualWarehouseName"],
+          transit_warehouse_id: detail["transitWarehouseID"], transit_warehouse_name: detail["transitWarehouseName"],
+          acceptance_cost: detail["acceptanceCost"], paid_acceptance_coefficient: detail["paidAcceptanceCoefficient"],
+          reject_reason: detail["rejectReason"], supplier_assign_name: detail["supplierAssignName"],
+          storage_coefficient: detail["storageCoef"], delivery_coefficient: detail["deliveryCoef"],
+          detail_quantity: detail["quantity"], ready_for_sale_quantity: detail["readyForSaleQuantity"],
+          accepted_quantity: detail["acceptedQuantity"], unloading_quantity: detail["unloadingQuantity"],
+          depersonalized_quantity: detail["depersonalizedQuantity"], can_show_quantity: detail["canShowQuantity"],
+          raw_detail_json: detail
         }
       end
 

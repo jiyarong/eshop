@@ -5,9 +5,10 @@ class RawWbSupplyItemsSyncTest < ActiveSupport::TestCase
   class FakeWbClient
     attr_reader :posts, :gets
 
-    def initialize(supply_pages:, goods_pages:)
+    def initialize(supply_pages:, goods_pages:, details: {})
       @supply_pages = supply_pages
       @goods_pages = goods_pages
+      @details = details
       @posts = []
       @gets = []
     end
@@ -19,7 +20,9 @@ class RawWbSupplyItemsSyncTest < ActiveSupport::TestCase
 
     def get(service, path, params = {})
       @gets << { service: service, path: path, params: params }
-      @goods_pages.fetch([path, params.fetch(:offset)])
+      return @goods_pages.fetch([path, params.fetch(:offset)]) if path.end_with?("/goods")
+
+      @details.fetch(path, {})
     end
   end
 
@@ -139,6 +142,41 @@ class RawWbSupplyItemsSyncTest < ActiveSupport::TestCase
     assert_equal 1, sync.sync_supply_items
     assert_not RawWb::SupplyItem.exists?(account_id: @account.id, wb_supply_id: "obsolete-#{@token}")
     assert RawWb::SupplyItem.exists?(account_id: @account.id, wb_supply_id: @base_id.to_s)
+  end
+
+  test "stores all returned supply details and skips unchanged detail requests" do
+    item = supply(@base_id).merge("updatedDate" => "2026-08-02T12:00:00+03:00")
+    detail = {
+      "updatedDate" => item["updatedDate"], "warehouseID" => 301760, "warehouseName" => "Ryazan",
+      "actualWarehouseID" => 218210, "actualWarehouseName" => "Obukhovo",
+      "transitWarehouseID" => 218210, "transitWarehouseName" => "Obukhovo",
+      "acceptanceCost" => 5000, "paidAcceptanceCoefficient" => 10,
+      "rejectReason" => nil, "supplierAssignName" => "Carrier",
+      "storageCoef" => "140", "deliveryCoef" => "125", "quantity" => 82,
+      "readyForSaleQuantity" => 80, "acceptedQuantity" => 81, "unloadingQuantity" => 1,
+      "depersonalizedQuantity" => 2, "canShowQuantity" => true
+    }
+    details = { "/api/v1/supplies/#{@base_id}" => detail }
+    goods_pages = { [goods_path(item), 0] => [good(456)] }
+    client = FakeWbClient.new(supply_pages: { 0 => [item] }, goods_pages: goods_pages, details: details)
+    sync = RawWb::DailySync.new(@account, days: 2)
+    sync.instance_variable_set(:@client, client)
+    sync.define_singleton_method(:sleep) { |_| }
+
+    sync.sync_supply_items
+    record = RawWb::Supply.find_by!(account: @account, preorder_id: item["preorderID"])
+    assert_equal "Ryazan", record.warehouse_name
+    assert_equal "Obukhovo", record.actual_warehouse_name
+    assert_equal 5000.to_d, record.acceptance_cost
+    assert_equal 140.to_d, record.storage_coefficient
+    assert_equal 82, record.detail_quantity
+    assert_equal 81, record.accepted_quantity
+    assert_equal true, record.can_show_quantity
+    assert_equal detail, record.raw_detail_json
+
+    client.gets.clear
+    sync.sync_supply_items
+    assert_not client.gets.any? { |request| !request[:path].end_with?("/goods") }
   end
 
   private
