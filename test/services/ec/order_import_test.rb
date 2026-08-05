@@ -320,6 +320,98 @@ module Ec
       assert_equal Time.zone.parse("2026-06-07 12:00:00"), wb_order.reload.cancelled_at
     end
 
+    test "wb stats import does not downgrade marketplace delivery status or fulfillment source" do
+      @wb_order.update!(
+        supplier_status: "complete",
+        wb_status: "sold",
+        synced_at: Time.zone.parse("2026-06-07 12:00:00")
+      )
+      stats_order = RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid)
+      stats_order.update!(
+        is_cancel: false,
+        cancel_date: nil,
+        synced_at: Time.zone.parse("2026-06-07 12:05:00")
+      )
+
+      Ec::OrderImport::Wb.new.call(synced_since: Time.zone.parse("2026-06-07 00:00:00"))
+
+      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid)
+      fulfillment = wb_order.fulfillments.first
+      assert_equal "delivered", wb_order.order_status
+      assert_equal "delivered", fulfillment.status
+      assert_equal "RawWb::Order", fulfillment.raw_source_type
+      assert_equal @wb_order.id, fulfillment.raw_source_id
+    end
+
+    test "wb status repair corrects existing normalized orders without rebuilding items" do
+      @wb_order.update!(supplier_status: "complete", wb_status: "sorted")
+      RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid).update!(
+        is_cancel: false,
+        cancel_date: nil
+      )
+      Ec::OrderImport::Wb.new.call
+      order = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid)
+      item_ids = order.items.ids
+      order.update!(order_status: "delivered")
+      order.fulfillments.update_all(status: "delivered")
+
+      repaired = Ec::OrderImport::Wb.new.repair_statuses
+
+      assert_operator repaired, :>=, 1
+      assert_equal "shipped", order.reload.order_status
+      assert_equal "shipped", order.fulfillments.first.status
+      assert_equal item_ids, order.items.ids
+    end
+
+    test "wb marketplace return status takes precedence over complete supplier status" do
+      @wb_order.update!(
+        supplier_status: "complete",
+        wb_status: "returned",
+        synced_at: Time.zone.parse("2026-06-07 12:00:00")
+      )
+      RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid).update!(
+        is_cancel: false,
+        cancel_date: nil,
+        synced_at: Time.zone.parse("2026-06-07 12:05:00")
+      )
+
+      Ec::OrderImport::Wb.new.call(synced_since: Time.zone.parse("2026-06-07 00:00:00"))
+
+      wb_order = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid)
+      assert_equal "returned", wb_order.order_status
+      assert_equal "returned", wb_order.fulfillments.first.status
+    end
+
+    test "wb statistics return marks an fbw order as returned" do
+      stats_order = RawWb::StatsOrder.create!(
+        account: @wb_account,
+        g_number: "WB-RETURN-G-#{@token}",
+        order_date: Time.zone.parse("2026-06-08 09:00:00"),
+        last_change_date: Time.zone.parse("2026-06-09 09:00:00"),
+        supplier_article: "WBRETURN-#{@token}",
+        barcode: "460000000097",
+        total_price: 456.78,
+        warehouse_type: "Склад WB",
+        nm_id: @wb_product.nm_id,
+        srid: "WB-RETURN-SRID-#{@token}",
+        synced_at: Time.zone.parse("2026-06-09 09:05:00")
+      )
+      RawWb::StatsSale.create!(
+        account: @wb_account,
+        sale_id: "R-#{@token}",
+        g_number: stats_order.g_number,
+        sale_date: Time.zone.parse("2026-06-09 10:00:00"),
+        srid: stats_order.srid,
+        synced_at: Time.zone.parse("2026-06-09 10:05:00")
+      )
+
+      Ec::OrderImport::Wb.new.call(synced_since: Time.zone.parse("2026-06-08 00:00:00"))
+
+      order = Ec::Order.find_by!(platform: "wb", external_order_number: stats_order.srid)
+      assert_equal "returned", order.order_status
+      assert_equal "returned", order.fulfillments.first.status
+    end
+
     test "wb import creates orders from stats orders without raw order rows" do
       RawWb::StatsOrder.create!(
         account: @wb_account,

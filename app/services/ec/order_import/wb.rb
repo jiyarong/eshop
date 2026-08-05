@@ -1,14 +1,6 @@
 module Ec
   module OrderImport
     class Wb
-      STATUS_MAP = {
-        "new" => "processing",
-        "confirm" => "processing",
-        "complete" => "delivered",
-        "cancel" => "cancelled",
-        "cancelled" => "cancelled"
-      }.freeze
-
       CURRENCY_MAP = {
         643 => "RUB",
         933 => "BYN",
@@ -27,7 +19,53 @@ module Ec
         total
       end
 
+      def repair_statuses
+        repaired = 0
+
+        RawWb::Order.find_each do |raw_order|
+          link = Ec::OrderSourceLink.find_by(
+            source_type: "RawWb::Order",
+            source_id: raw_order.id,
+            source_role: "primary"
+          )
+          next unless link
+
+          stats_order = stats_record_for(RawWb::StatsOrder, raw_order)
+          status = combined_status(raw_order: raw_order, stats_order: stats_order)
+          update_linked_status(link, status, raw_order.wb_status, raw_order.supplier_status)
+          repaired += 1
+        end
+
+        RawWb::StatsOrder.find_each do |stats_order|
+          link = Ec::OrderSourceLink.find_by(
+            source_type: "RawWb::StatsOrder",
+            source_id: stats_order.id,
+            source_role: "primary"
+          )
+          next unless link
+
+          raw_order = marketplace_order_for(stats_order)
+          status = combined_status(raw_order: raw_order, stats_order: stats_order)
+          source_status = raw_order&.wb_status || stats_order.order_type
+          source_substatus = stats_order.is_cancel? ? "cancelled" : raw_order&.supplier_status
+          update_linked_status(link, status, source_status, source_substatus)
+          repaired += 1
+        end
+
+        repaired
+      end
+
       private
+
+      def update_linked_status(link, status, source_status, source_substatus)
+        attributes = {
+          source_status: source_status,
+          source_substatus: source_substatus,
+          synced_at: Time.current
+        }
+        link.order.update!(attributes.merge(order_status: status))
+        link.fulfillment&.update!(attributes.merge(status: status))
+      end
 
       def raw_orders_for_import(synced_since)
         scope = RawWb::Order.includes(:account)
@@ -72,13 +110,13 @@ module Ec
       def upsert_order(raw_order, store)
         external_number = order_identifier(raw_order)
         order_key = wb_order_key(store, external_number)
-        stats_sale = stats_record_for(RawWb::StatsSale, raw_order)
+        stats_sale = completed_stats_sale_for(raw_order)
         stats_order = stats_record_for(RawWb::StatsOrder, raw_order)
         order = Ec::Order.find_or_initialize_by(platform: "wb", store: store, order_key: order_key)
         order.assign_attributes(
           external_order_id: raw_order.srid.presence || raw_order.wb_order_id.to_s,
           external_order_number: external_number,
-          order_status: normalized_status(raw_order),
+          order_status: combined_status(raw_order: raw_order, stats_order: stats_order),
           source_status: raw_order.wb_status,
           source_substatus: raw_order.supplier_status,
           ordered_at: raw_order.created_at,
@@ -99,15 +137,16 @@ module Ec
       def upsert_order_from_stats(stats_order, store)
         external_number = order_identifier(stats_order)
         order_key = wb_order_key(store, external_number)
-        stats_sale = stats_record_for(RawWb::StatsSale, stats_order)
+        stats_sale = completed_stats_sale_for(stats_order)
+        raw_order = marketplace_order_for(stats_order)
         order = order_from_stats(stats_order, store, order_key)
         order.assign_attributes(
           order_key: order_key,
           external_order_id: stats_order.srid,
           external_order_number: external_number,
-          order_status: stats_order.is_cancel? ? "cancelled" : "processing",
-          source_status: stats_order.order_type,
-          source_substatus: stats_order.is_cancel? ? "cancelled" : nil,
+          order_status: combined_status(raw_order: raw_order, stats_order: stats_order),
+          source_status: raw_order&.wb_status || stats_order.order_type,
+          source_substatus: stats_order.is_cancel? ? "cancelled" : raw_order&.supplier_status,
           ordered_at: stats_order.order_date,
           in_process_at: stats_order.last_change_date,
           completed_at: stats_sale&.sale_date,
@@ -144,7 +183,10 @@ module Ec
           order: order,
           external_fulfillment_id: fulfillment_id,
           fulfillment_type: raw_order.delivery_type.presence_in(%w[fbo fbs fba fbm]) || "unknown",
-          status: normalized_status(raw_order),
+          status: combined_status(
+            raw_order: raw_order,
+            stats_order: stats_record_for(RawWb::StatsOrder, raw_order)
+          ),
           source_status: raw_order.wb_status,
           source_substatus: raw_order.supplier_status,
           warehouse_name: raw_order.wb_office,
@@ -158,6 +200,7 @@ module Ec
       end
 
       def upsert_fulfillment_from_stats(stats_order, store, order)
+        raw_order = marketplace_order_for(stats_order)
         fulfillment_id = stats_order.srid
         fulfillment_key = "wb:#{store.id}:#{fulfillment_id}"
         fulfillment = order.fulfillments.first ||
@@ -167,13 +210,13 @@ module Ec
           external_fulfillment_id: fulfillment_id,
           fulfillment_key: fulfillment.fulfillment_key.presence || fulfillment_key,
           fulfillment_type: fulfillment_type_from_warehouse_type(stats_order.warehouse_type),
-          status: stats_order.is_cancel? ? "cancelled" : "processing",
-          source_status: stats_order.order_type,
-          source_substatus: stats_order.is_cancel? ? "cancelled" : nil,
+          status: combined_status(raw_order: raw_order, stats_order: stats_order),
+          source_status: raw_order&.wb_status || stats_order.order_type,
+          source_substatus: stats_order.is_cancel? ? "cancelled" : raw_order&.supplier_status,
           warehouse_name: stats_order.warehouse_name,
           delivery_type_source: stats_order.order_type,
-          raw_source_type: "RawWb::StatsOrder",
-          raw_source_id: stats_order.id,
+          raw_source_type: raw_order ? "RawWb::Order" : "RawWb::StatsOrder",
+          raw_source_id: raw_order&.id || stats_order.id,
           synced_at: stats_order.synced_at
         )
         fulfillment.save!
@@ -274,11 +317,47 @@ module Ec
       end
 
       def normalized_status(raw_order)
-        return "cancelled" if raw_order.wb_status.to_s == "cancelled" || raw_order.supplier_status.to_s.include?("cancel")
+        RawWb::OrderStatus.normalize(
+          wb_status: raw_order.wb_status,
+          supplier_status: raw_order.supplier_status
+        )
+      end
 
-        STATUS_MAP[raw_order.supplier_status.to_s] ||
-          STATUS_MAP[raw_order.wb_status.to_s] ||
-          "unknown"
+      def combined_status(raw_order:, stats_order:)
+        source = raw_order || stats_order
+        return "returned" if stats_return_for(source)
+        return "cancelled" if stats_order&.is_cancel?
+        return normalized_status(raw_order) if raw_order
+        return "delivered" if completed_stats_sale_for(stats_order)
+
+        "processing"
+      end
+
+      def completed_stats_sale_for(source)
+        stats_sales_for(source).find do |sale|
+          !sale.sale_id.to_s.start_with?("R") && !sale.is_storno?
+        end
+      end
+
+      def stats_return_for(source)
+        stats_sales_for(source).any? { |sale| sale.sale_id.to_s.start_with?("R") && !sale.is_storno? }
+      end
+
+      def stats_sales_for(source)
+        return [] unless source
+
+        scope = RawWb::StatsSale.where(account_id: source.account_id)
+        if source.srid.present?
+          rows = scope.where(srid: source.srid).order(:id).to_a
+          return rows if rows.any?
+        end
+        return [] unless source.g_number.present?
+
+        scope.where(g_number: source.g_number).order(:id).to_a
+      end
+
+      def marketplace_order_for(stats_order)
+        stats_record_for(RawWb::Order, stats_order)
       end
 
       def stats_record_for(model, raw_order)

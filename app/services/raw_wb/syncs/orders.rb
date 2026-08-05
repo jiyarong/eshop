@@ -3,13 +3,19 @@ module RawWb
     module Orders
       ORDER_STATUS_FETCH_BATCH_SIZE = 1000
       ORDER_STATUS_UPDATE_BATCH_SIZE = 500
-      FINAL_SUPPLIER_STATUSES = %w[complete returned].freeze
-      FINAL_WB_STATUSES = %w[cancel cancelled returned].freeze
+      DEFAULT_ORDER_STATUS_LOOKBACK_DAYS = 90
+      FINAL_SUPPLIER_STATUSES = RawWb::OrderStatus::FINAL_SUPPLIER_STATUSES
+      FINAL_WB_STATUSES = RawWb::OrderStatus::FINAL_WB_STATUSES
       NORMALIZED_ORDER_STATUS_SQL = <<~SQL.squish
         CASE
-          WHEN v.wb_status = 'cancelled' OR v.supplier_status LIKE '%cancel%' THEN 'cancelled'
-          WHEN v.supplier_status = 'complete' THEN 'delivered'
-          WHEN v.supplier_status = 'returned' OR v.wb_status = 'returned' THEN 'returned'
+          WHEN v.wb_status = 'returned' THEN 'returned'
+          WHEN v.wb_status IN ('canceled', 'cancelled', 'canceled_by_client', 'declined_by_client', 'defect') THEN 'cancelled'
+          WHEN v.wb_status = 'sold' THEN 'delivered'
+          WHEN v.wb_status IN ('sorted', 'ready_for_pickup') THEN 'shipped'
+          WHEN v.wb_status = 'waiting' THEN 'processing'
+          WHEN v.supplier_status = 'returned' THEN 'returned'
+          WHEN v.supplier_status IN ('cancel', 'cancelled') THEN 'cancelled'
+          WHEN v.supplier_status = 'complete' THEN 'shipped'
           WHEN v.supplier_status IN ('new', 'confirm') THEN 'processing'
           ELSE 'unknown'
         END
@@ -94,12 +100,12 @@ module RawWb
       end
 
       def refresh_order_statuses
+        lookback_days = [@days, DEFAULT_ORDER_STATUS_LOOKBACK_DAYS].max
         order_ids = RawWb::Order
           .where(account_id: @account.id)
-          .where("created_at >= ?", 90.days.ago)
+          .where("created_at >= ?", lookback_days.days.ago)
           .where.not(supplier_status: FINAL_SUPPLIER_STATUSES)
           .where.not(wb_status: FINAL_WB_STATUSES)
-          .where.not("supplier_status LIKE ?", "%cancel%")
           .pluck(:wb_order_id)
         return if order_ids.empty?
 
@@ -131,13 +137,13 @@ module RawWb
           UPDATE raw_wb_orders AS o
           SET supplier_status = v.supplier_status,
               wb_status = v.wb_status,
-              updated_at = NOW()
+              updated_at = NOW(),
+              synced_at = NOW()
           FROM (VALUES #{values_sql}) AS v(wb_order_id, supplier_status, wb_status)
           WHERE o.account_id = #{@account.id.to_i}
             AND o.wb_order_id = v.wb_order_id
             AND (o.supplier_status IS NULL OR o.supplier_status NOT IN (#{quoted_statuses(FINAL_SUPPLIER_STATUSES)}))
             AND (o.wb_status IS NULL OR o.wb_status NOT IN (#{quoted_statuses(FINAL_WB_STATUSES)}))
-            AND (o.supplier_status IS NULL OR o.supplier_status NOT LIKE '%cancel%')
         SQL
 
         ActiveRecord::Base.connection.execute(sql)
@@ -149,7 +155,8 @@ module RawWb
           SET order_status = #{NORMALIZED_ORDER_STATUS_SQL},
               source_status = v.wb_status,
               source_substatus = v.supplier_status,
-              updated_at = NOW()
+              updated_at = NOW(),
+              synced_at = NOW()
           FROM (VALUES #{values_sql}) AS v(wb_order_id, supplier_status, wb_status)
           INNER JOIN raw_wb_orders AS rwo
             ON rwo.account_id = #{@account.id.to_i}
@@ -162,7 +169,6 @@ module RawWb
             AND eo.platform = 'wb'
             AND (rwo.supplier_status IS NULL OR rwo.supplier_status NOT IN (#{quoted_statuses(FINAL_SUPPLIER_STATUSES)}))
             AND (rwo.wb_status IS NULL OR rwo.wb_status NOT IN (#{quoted_statuses(FINAL_WB_STATUSES)}))
-            AND (rwo.supplier_status IS NULL OR rwo.supplier_status NOT LIKE '%cancel%')
         SQL
 
         ActiveRecord::Base.connection.execute(sql)
@@ -174,7 +180,8 @@ module RawWb
           SET status = #{NORMALIZED_ORDER_STATUS_SQL},
               source_status = v.wb_status,
               source_substatus = v.supplier_status,
-              updated_at = NOW()
+              updated_at = NOW(),
+              synced_at = NOW()
           FROM (VALUES #{values_sql}) AS v(wb_order_id, supplier_status, wb_status)
           INNER JOIN raw_wb_orders AS rwo
             ON rwo.account_id = #{@account.id.to_i}
@@ -184,7 +191,6 @@ module RawWb
             AND fulfillment.platform = 'wb'
             AND (rwo.supplier_status IS NULL OR rwo.supplier_status NOT IN (#{quoted_statuses(FINAL_SUPPLIER_STATUSES)}))
             AND (rwo.wb_status IS NULL OR rwo.wb_status NOT IN (#{quoted_statuses(FINAL_WB_STATUSES)}))
-            AND (rwo.supplier_status IS NULL OR rwo.supplier_status NOT LIKE '%cancel%')
         SQL
 
         ActiveRecord::Base.connection.execute(sql)

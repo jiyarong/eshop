@@ -21,6 +21,15 @@ production:
     command: "RawWb::OrderIncrementalSync.run"
     schedule: every 5 minutes
 
+  # Refresh long-running and completed orders so late returns are captured.
+  wb_order_status_catchup:
+    command: "RawWb::OrderIncrementalSync.run(days: 90, sync_keys: [:sync_orders])"
+    schedule: every day at 2:00 in Asia/Shanghai
+
+  wb_order_status_monthly_catchup:
+    command: "RawWb::OrderIncrementalSync.run(days: 500, sync_keys: [:sync_orders])"
+    schedule: every month on the 3rd at 2:00 in Asia/Shanghai
+
   wb_sales_funnel_current_week_sync:
     command: "RawWb::SalesFunnelPeriodSync.run_current_week"
     schedule: every hour at minute 20

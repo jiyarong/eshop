@@ -361,7 +361,7 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end
 
-  test "wb orders sync skips final statuses when refreshing statuses" do
+  test "wb orders sync refreshes completed orders to capture late returns and skips returned orders" do
     token = SecureRandom.hex(6)
     account = RawWb::SellerAccount.create!(
       name: "wb-final-status-skip-#{token}",
@@ -388,6 +388,16 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       created_at: Time.zone.parse("2026-06-01 10:00:00"),
       updated_at: Time.zone.parse("2026-06-01 10:00:00")
     )
+    RawWb::Order.create!(
+      account: account,
+      wb_order_id: 2_203,
+      srid: "rid-2203",
+      delivery_type: "fbs",
+      supplier_status: "returned",
+      wb_status: "returned",
+      created_at: Time.zone.parse("2026-06-01 10:00:00"),
+      updated_at: Time.zone.parse("2026-06-01 10:00:00")
+    )
     client = FakeWbOrderStatusClient.new(
       get_response: {
         "orders" => [],
@@ -396,7 +406,7 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
       status_response: {
         "orders" => [
           { "id" => 2_201, "supplierStatus" => "complete", "wbStatus" => "sold" },
-          { "id" => 2_202, "supplierStatus" => "new", "wbStatus" => "waiting" }
+          { "id" => 2_202, "supplierStatus" => "complete", "wbStatus" => "returned" }
         ]
       }
     )
@@ -406,14 +416,52 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
     sync.sync_orders
 
     assert_equal [
-      [:marketplace, "/api/v3/orders/status", { orders: [2_201] }]
+      [:marketplace, "/api/v3/orders/status", { orders: [2_201, 2_202] }]
     ], client.post_calls
     processing_order = RawWb::Order.find_by!(account: account, wb_order_id: 2_201)
     final_order = RawWb::Order.find_by!(account: account, wb_order_id: 2_202)
     assert_equal "complete", processing_order.supplier_status
     assert_equal "sold", processing_order.wb_status
     assert_equal "complete", final_order.supplier_status
-    assert_equal "sold", final_order.wb_status
+    assert_equal "returned", final_order.wb_status
+  ensure
+    RawWb::Order.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  test "wb orders sync honors an explicit long status lookback" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(
+      name: "wb-long-status-#{token}",
+      api_token: "token-#{token}",
+      company_type: "small"
+    )
+    old_order = RawWb::Order.create!(
+      account: account,
+      wb_order_id: 2_301,
+      srid: "rid-2301-#{token}",
+      delivery_type: "fbs",
+      supplier_status: "confirm",
+      wb_status: "waiting",
+      created_at: 200.days.ago,
+      updated_at: 200.days.ago
+    )
+    client = FakeWbOrderStatusClient.new(
+      get_response: { "orders" => [], "next" => 0 },
+      status_response: {
+        "orders" => [{ "id" => old_order.wb_order_id, "supplierStatus" => "complete", "wbStatus" => "sold" }]
+      }
+    )
+    sync = RawWb::OrderIncrementalSync.new(account, days: 500)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_orders
+
+    assert_equal [
+      [:marketplace, "/api/v3/orders/status", { orders: [old_order.wb_order_id] }]
+    ], client.post_calls
+    assert_equal "complete", old_order.reload.supplier_status
+    assert old_order.synced_at.present?
   ensure
     RawWb::Order.where(account_id: account&.id).delete_all
     RawWb::SellerAccount.where(id: account&.id).delete_all
