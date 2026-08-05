@@ -77,4 +77,8 @@ export default class extends Controller {
       form: this.element,
     });
   }
+
+  submit() {
+    this.element.requestSubmit();
+  }
 }

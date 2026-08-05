@@ -2451,20 +2451,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_024709) do
   end
 
   create_table "raw_wb_supplies", force: :cascade do |t|
+    t.decimal "acceptance_cost", precision: 15, scale: 2
+    t.integer "accepted_quantity"
     t.bigint "account_id", null: false
+    t.bigint "actual_warehouse_id"
+    t.string "actual_warehouse_name"
     t.integer "box_type_id"
+    t.boolean "can_show_quantity"
     t.datetime "closed_at"
+    t.decimal "delivery_coefficient", precision: 10, scale: 4
+    t.integer "depersonalized_quantity"
+    t.integer "detail_quantity"
     t.datetime "fact_date"
     t.boolean "is_box_on_pallet"
     t.boolean "is_done", default: false
     t.string "name"
+    t.decimal "paid_acceptance_coefficient", precision: 10, scale: 4
     t.bigint "preorder_id"
+    t.jsonb "raw_detail_json", default: {}, null: false
+    t.integer "ready_for_sale_quantity"
+    t.text "reject_reason"
     t.datetime "scan_dt"
     t.integer "status_id"
+    t.decimal "storage_coefficient", precision: 10, scale: 4
+    t.string "supplier_assign_name"
     t.datetime "supply_created_at"
     t.datetime "supply_date"
     t.datetime "synced_at"
+    t.bigint "transit_warehouse_id"
+    t.string "transit_warehouse_name"
+    t.integer "unloading_quantity"
     t.datetime "updated_at_wb"
+    t.bigint "warehouse_id"
+    t.string "warehouse_name"
     t.string "wb_supply_id"
     t.index ["account_id", "preorder_id"], name: "idx_raw_wb_supplies_account_preorder", unique: true
     t.index ["account_id"], name: "index_raw_wb_supplies_on_account_id"
@@ -2530,6 +2549,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_024709) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"

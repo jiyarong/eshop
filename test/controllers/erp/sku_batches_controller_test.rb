@@ -299,6 +299,8 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?]", @sku.sku_code
     assert_select "input[name='master_sku_ids[]']", count: 0
     assert_select "input[name='ec_sku_batch[purchase_date]']"
+    assert_select "input[name='ec_sku_batch[purchased_quantity]'][min]", count: 0
+    assert_select "input[name='ec_sku_batch[received_quantity]'][min]", count: 0
     assert_select "select[name='ec_sku_batch[batch_type]']" do
       assert_select "option[value='normal'][selected='selected']", "普通批次"
       assert_select "option[value='wb_fbw_offset']", "WB FBW 补正"
