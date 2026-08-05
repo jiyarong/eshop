@@ -1,0 +1,37 @@
+<% content_for :title, t("ai.conversations.title", id: @conversation.id) %>
+<% content_for :page_heading, t("ai.conversations.page_heading") %>
+
+<div class="ai-conversation-heading">
+  <div>
+    <h1 class="page-title"><%= t("ai.conversations.title", id: @conversation.id) %></h1>
+    <p class="ai-conversation-heading__meta">
+      <span><%= @conversation.agent.name %></span>
+      <time datetime="<%= @conversation.created_at.iso8601 %>"><%= display_time(@conversation.created_at) %></time>
+    </p>
+  </div>
+  <% if @linked_event %>
+    <%= link_to report_sku_path(@linked_event.ai_diagnosis.sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+                class: "button button-secondary" do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <%= t("ai.conversations.back_to_diagnosis") %>
+    <% end %>
+  <% end %>
+</div>
+
+<section class="ai-conversation" aria-label="<%= t("ai.conversations.messages_aria_label") %>">
+  <% @messages.each do |message| %>
+    <article class="ai-conversation-message ai-conversation-message--<%= message.role %>">
+      <header class="ai-conversation-message__header">
+        <span class="ai-conversation-message__role">
+          <i class="bi <%= message.role == "assistant" ? "bi-stars" : (message.role == "tool" ? "bi-wrench-adjustable" : "bi-person") %>" aria-hidden="true"></i>
+          <%= ai_conversation_role_label(message.role) %>
+        </span>
+        <time datetime="<%= message.created_at.iso8601 %>"><%= display_time(message.created_at) %></time>
+      </header>
+      <div class="ai-conversation-message__body" data-controller="markdown">
+        <pre class="code-viewer ai-conversation-message__source" data-markdown-target="source"><%= ai_conversation_message_markdown(message) %></pre>
+        <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+      </div>
+    </article>
+  <% end %>
+</section>

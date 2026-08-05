@@ -74,7 +74,7 @@ Rails.application.routes.draw do
   resources :feedback_tasks, only: [:create]
 
   namespace :ai, module: :erp_ai do
-    resources :conversations, only: [:create]
+    resources :conversations, only: [:create, :show]
     get "skus/genernal_inventory" => "skus#genernal_inventory"
     get "skus/overview" => "skus#overview"
     get "skus/weekly_profit_overview" => "skus#weekly_profit_overview"

@@ -9,6 +9,18 @@ ru:
     select_feedback_element: "Выберите элемент"
     change_password: "Изменить пароль"
     sign_out: "Выйти"
+  ai:
+    conversations:
+      back_to_diagnosis: "Вернуться к AI-диагностике"
+      messages_aria_label: "Сообщения AI-диалога"
+      page_heading: "AI-диалог"
+      roles:
+        assistant: "Ответ AI"
+        tool: "Результат инструмента"
+        user: "Запрос на анализ"
+      title: "AI-диалог #%{id}"
+      tool_call: "Вызов инструмента"
+      tool_result: "Результат вызова инструмента"
   locale:
     switcher_label: "Язык"
     zh: "中"
@@ -1265,6 +1277,7 @@ ru:
         submission_title: "AI-диагностика операционных действий #%{id}"
         summary_label: "Итог диагностики действий"
         target_actions: "Целевые действия"
+        view_conversation: "Показать все сообщения AI"
       operation_record:
         created: "Операционная запись сохранена"
         deleted: "Операционная запись удалена"

@@ -186,6 +186,37 @@ module ApplicationHelper
     t("erp.operation_actions.operation_types.#{operation_type}")
   end
 
+  def ai_conversation_message_markdown(message)
+    payload = JSON.parse(message.content)
+
+    if message.role == "assistant" && payload["tool_calls"].is_a?(Array)
+      return payload["tool_calls"].map do |tool_call|
+        name = tool_call["name"] || tool_call.dig("function", "name")
+        arguments = tool_call["arguments"] || tool_call.dig("function", "arguments") || {}
+        [
+          "#### #{t('ai.conversations.tool_call')}: #{name}",
+          markdown_json_block(arguments)
+        ].join("\n\n")
+      end.join("\n\n")
+    end
+
+    heading = message.role == "tool" ? "#### #{t('ai.conversations.tool_result')}\n\n" : ""
+    "#{heading}#{markdown_json_block(payload)}"
+  rescue JSON::ParserError, TypeError
+    message.content
+  end
+
+  def ai_conversation_role_label(role)
+    t("ai.conversations.roles.#{role}")
+  end
+
+  def markdown_json_block(value)
+    parsed = value.is_a?(String) ? JSON.parse(value) : value
+    "```json\n#{JSON.pretty_generate(parsed)}\n```"
+  rescue JSON::ParserError, TypeError
+    "```text\n#{value}\n```"
+  end
+
   def user_time_zone
     User.profile_time_zone(current_user&.time_zone)
   end

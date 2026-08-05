@@ -51,6 +51,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::Store.where(id: @store&.id).delete_all
     Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::OperationActionDiagnosis.where(sku_id: @sku&.id).destroy_all
+    Message.where(conversation: Conversation.where(user: @user)).delete_all
+    Conversation.where(user: @user).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     UserRole.where(user_id: @user&.id).delete_all
     User.where(id: @user&.id).delete_all
@@ -144,6 +146,34 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "action_evaluations"
     assert_not_includes response.body, "target_offsets_days"
     assert_not_includes response.body, "https://"
+  end
+
+  test "links an operation diagnosis card to its complete AI conversation" do
+    agent = Agent.ensure_fixed!("sku_operation_action_tracker")
+    conversation = agent.conversations.create!(user: @user, module_name: "sku_operation_actions")
+    diagnosis = Ec::OperationActionDiagnosis.create!(
+      sku: @sku,
+      submitted_by: @user,
+      analyzed_at: Time.zone.parse("2026-08-03 14:45:00"),
+      data: {
+        "diagnosis_kind" => "operation_action_effect",
+        "summary" => "需要关注的操作变化",
+        "effectiveness" => "negative",
+        "confidence" => "medium"
+      }
+    )
+    diagnosis.events.create!(
+      conversation: conversation,
+      event_type: "operation_action_effect",
+      severity: "warning",
+      message: "需要关注",
+      details: { "action" => { "operation_type" => "listing_pricing", "platform" => "wb" } }
+    )
+
+    get report_sku_path(@sku.sku_code), params: { tab: "ai_inventory_health" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-health-result--operation-diagnosis a[href='#{ai_conversation_path(conversation)}']", "查看完整 AI 消息"
   end
 
   test "creates a manual operation record for the sku" do

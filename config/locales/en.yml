@@ -38,6 +38,18 @@ en:
     select_feedback_element: "Select element"
     change_password: "Change password"
     sign_out: "Sign out"
+  ai:
+    conversations:
+      back_to_diagnosis: "Back to AI diagnosis"
+      messages_aria_label: "AI conversation messages"
+      page_heading: "AI conversation"
+      roles:
+        assistant: "AI response"
+        tool: "Tool result"
+        user: "Analysis request"
+      title: "AI conversation #%{id}"
+      tool_call: "Tool call"
+      tool_result: "Tool call result"
   locale:
     switcher_label: "Language"
     zh: "中"
@@ -1293,6 +1305,7 @@ en:
         submission_title: "AI operation diagnosis #%{id}"
         summary_label: "Operation diagnosis summary"
         target_actions: "Target actions"
+        view_conversation: "View complete AI messages"
       operation_record:
         created: "Operation record saved"
         deleted: "Operation record deleted"

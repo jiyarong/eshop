@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_31_055136) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_05_024709) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -107,6 +107,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_055136) do
 
   create_table "ec_ai_diagnosis_events", force: :cascade do |t|
     t.bigint "ai_diagnosis_id", null: false
+    t.bigint "conversation_id"
     t.datetime "created_at", null: false
     t.jsonb "details", default: {}, null: false
     t.string "event_type", null: false
@@ -117,6 +118,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_055136) do
     t.datetime "updated_at", null: false
     t.index ["ai_diagnosis_id", "position"], name: "idx_ai_diagnosis_events_on_diagnosis_and_position"
     t.index ["ai_diagnosis_id"], name: "index_ec_ai_diagnosis_events_on_ai_diagnosis_id"
+    t.index ["conversation_id"], name: "index_ec_ai_diagnosis_events_on_conversation_id"
   end
 
   create_table "ec_attachment_links", force: :cascade do |t|
@@ -2528,7 +2530,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_055136) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
@@ -2667,6 +2668,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_055136) do
   add_foreign_key "conversations", "users"
   add_foreign_key "ec_ai_diagnosis", "ec_skus", column: "sku_id"
   add_foreign_key "ec_ai_diagnosis", "users", column: "submitted_by_id"
+  add_foreign_key "ec_ai_diagnosis_events", "conversations"
   add_foreign_key "ec_ai_diagnosis_events", "ec_ai_diagnosis", column: "ai_diagnosis_id"
   add_foreign_key "ec_attachment_links", "ec_attachments"
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"

@@ -326,7 +326,7 @@ class ReportsController < ApplicationController
     if @active_tab == "ai_inventory_health"
       @inventory_health_results = @sku.ai_diagnoses
         .where(type: [ Ec::RestockingDiagnosis.sti_name, Ec::OperationActionDiagnosis.sti_name ])
-        .includes(:submitted_by, :events)
+        .includes(:submitted_by, events: :conversation)
         .recent_first
         .limit(3)
       @operation_actions = @sku.operation_actions

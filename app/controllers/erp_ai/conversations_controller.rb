@@ -17,6 +17,16 @@ module ErpAI
       render json: serialize_conversation(conversation), status: :created
     end
 
+    def show
+      @conversation = Conversation.includes(:agent, :user).find(params[:id])
+      @linked_event = Ec::AIDiagnosisEvent
+        .includes(ai_diagnosis: :sku)
+        .find_by(conversation_id: @conversation.id)
+      raise ActiveRecord::RecordNotFound unless @conversation.user_id == current_user.id || @linked_event
+
+      @messages = @conversation.messages.order(:created_at, :id)
+    end
+
     private
 
     def conversation_params

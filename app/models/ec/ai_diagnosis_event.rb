@@ -3,6 +3,7 @@ module Ec
     self.table_name = "ec_ai_diagnosis_events"
 
     belongs_to :ai_diagnosis, class_name: "Ec::AIDiagnosis", inverse_of: :events
+    belongs_to :conversation, optional: true
 
     validates :event_type, :severity, :message, presence: true
     validates :position, numericality: { only_integer: true, greater_than_or_equal_to: 0 }

@@ -26,18 +26,17 @@ class Ec::SkuOperationActionMetricsQueryTest < ActiveSupport::TestCase
   end
 
   teardown do
+    Ec::Snapshot.where(snapshot_type: Ec::InventorySnapshot.snapshot_type, sku_id: @sku&.id).delete_all
     RawWb::SalesFunnelDaily.where(account_id: @account&.id).delete_all
-    Ec::OrderItem.where(store_id: @store&.id).delete_all
-    Ec::Order.where(store_id: @store&.id).delete_all
     Ec::SkuProduct.where(id: @product&.id).delete_all
     Ec::Sku.with_deleted.where(id: [ @sku&.id, @wrong_sku&.id ].compact).delete_all
     Ec::Store.where(id: @store&.id).delete_all
     RawWb::SellerAccount.where(id: @account&.id).delete_all
   end
 
-  test "returns daily hard-bound sales and normalized WB funnel metrics" do
-    date = Date.new(2026, 7, 20)
-    create_order(date, quantity: 3, stored_sku_code: @wrong_sku.sku_code)
+  test "returns store weekly profit metrics, inventory snapshots, and WB funnel metrics" do
+    week_start = Date.new(2026, 7, 20)
+    date = week_start + 2.days
     RawWb::SalesFunnelDaily.create!(
       account: @account,
       stat_date: date,
@@ -48,15 +47,83 @@ class Ec::SkuOperationActionMetricsQueryTest < ActiveSupport::TestCase
       orders_sum: 800,
       synced_at: Time.current
     )
+    Ec::Snapshot.create!(
+      snapshot_type: Ec::InventorySnapshot.snapshot_type,
+      snapshot_date: week_start + 5.days,
+      sku: @sku,
+      content: {
+        overview: {
+          book_stock: 80,
+          platform_stock: 35,
+          platform_inbound_stock: 6,
+          available_stock: 39,
+          out_of_stock: false
+        },
+        distribution: {
+          levels: [
+            {
+              store_id: @store.id,
+              platform: "wb",
+              account_id: @account.id,
+              fulfillment_type: "fbw",
+              quantity: 35
+            },
+            {
+              store_id: @store.id,
+              platform: "wb",
+              account_id: @account.id,
+              fulfillment_type: "inbound",
+              quantity: 6
+            }
+          ]
+        }
+      }
+    )
+    requests = []
+    profit_runner = lambda do |params:, today:|
+      requests << { params: params, today: today }
+      {
+        rows: [
+          {
+            sales_qty: 5,
+            return_qty: 1,
+            net_qty: 4,
+            retail_amount: 500,
+            settlement: 420,
+            delivery: 20,
+            storage: 8,
+            ad: 30,
+            goods_cost: 100,
+            pre_tax: 262,
+            tax: 15,
+            after_tax: 247
+          }
+        ]
+      }
+    end
 
     result = Ec::SkuOperationActionMetricsQuery.new(
       sku: @sku,
-      from_date: date,
-      to_date: date,
-      time_zone: @time_zone
+      from_date: week_start,
+      to_date: week_start + 6.days,
+      time_zone: @time_zone,
+      profit_report_runner: profit_runner
     ).call
 
-    assert_equal 3, result.dig(:sales_by_day_and_platform, [ date, "wb" ])
+    assert_not result.key?(:sales_by_day_and_platform)
+    assert_equal [ @sku.sku_code ], requests.sole.dig(:params, :sku_codes)
+    assert_equal "wb:#{@account.id}", requests.sole.dig(:params, :store_ref)
+    assert_equal "BYN", result.dig(:stores, @store.id, :currency)
+    profit = result.dig(:weekly_profit_by_week_and_store, [ week_start, @store.id ])
+    assert_equal 5, profit.fetch(:sales_quantity)
+    assert_equal 4, profit.fetch(:net_sales_quantity)
+    assert_equal 30, profit.fetch(:advertising_cost)
+    assert_equal 247, profit.fetch(:after_tax_profit)
+    inventory = result.dig(:inventory_snapshots_by_week, week_start)
+    assert_equal "2026-07-25", inventory.fetch(:snapshot_date)
+    assert_equal 80, inventory.dig(:sku, :book_stock)
+    assert_equal 35, inventory.dig(:stores, @store.id, :platform_stock)
+    assert_equal 6, inventory.dig(:stores, @store.id, :inbound_quantity)
     funnel = result.dig(:funnel_by_day_and_platform, [ date, "wb" ])
     assert_equal 40, funnel.fetch(:views).to_i
     assert_equal 10, funnel.fetch(:add_to_cart).to_i
@@ -64,8 +131,9 @@ class Ec::SkuOperationActionMetricsQueryTest < ActiveSupport::TestCase
     assert_equal 800, funnel.fetch(:revenue).to_i
   end
 
-  test "normalizes Ozon daily funnel metrics through platform sku id" do
-    date = Date.new(2026, 7, 20)
+  test "normalizes Ozon weekly profit costs and daily funnel metrics" do
+    week_start = Date.new(2026, 7, 20)
+    date = week_start + 2.days
     ozon_account = RawOzon::SellerAccount.create!(
       company_name: "Action metrics Ozon #{@token}",
       client_id: "ozon-#{@token}",
@@ -100,12 +168,36 @@ class Ec::SkuOperationActionMetricsQueryTest < ActiveSupport::TestCase
 
     result = Ec::SkuOperationActionMetricsQuery.new(
       sku: @sku,
-      from_date: date,
-      to_date: date,
-      time_zone: @time_zone
+      from_date: week_start,
+      to_date: week_start + 6.days,
+      time_zone: @time_zone,
+      profit_report_runner: lambda do |**|
+        {
+          rows: [
+            {
+              order_count: 6,
+              return_count: 1,
+              net_sales_count: 5,
+              sales_revenue: 1_200,
+              commission: -180,
+              delivery_charge: -90,
+              storage_fee: -20,
+              total_ad_cost: -120,
+              goods_cost: -300,
+              pre_tax_profit: 490,
+              after_tax_profit: 420
+            }
+          ]
+        }
+      end
     ).call
     funnel = result.dig(:funnel_by_day_and_platform, [ date, "ozon" ])
+    profit = result.dig(:weekly_profit_by_week_and_store, [ week_start, ozon_store.id ])
 
+    assert_equal 5, profit.fetch(:net_sales_quantity)
+    assert_equal 120, profit.fetch(:advertising_cost)
+    assert_equal 300, profit.fetch(:goods_cost)
+    assert_equal 35, profit.fetch(:after_tax_margin_pct)
     assert_equal 50, funnel.fetch(:views).to_i
     assert_equal 30, funnel.fetch(:sessions).to_i
     assert_equal 8, funnel.fetch(:add_to_cart).to_i
@@ -118,29 +210,17 @@ class Ec::SkuOperationActionMetricsQueryTest < ActiveSupport::TestCase
     RawOzon::SellerAccount.where(id: ozon_account&.id).delete_all
   end
 
-  private
+  test "marks a weekly profit report unavailable instead of using another sales source" do
+    week_start = Date.new(2026, 7, 20)
+    result = Ec::SkuOperationActionMetricsQuery.new(
+      sku: @sku,
+      from_date: week_start,
+      to_date: week_start + 6.days,
+      time_zone: @time_zone,
+      profit_report_runner: ->(**) { raise ArgumentError, "missing_weekly_rate" }
+    ).call
 
-  def create_order(date, quantity:, stored_sku_code:)
-    ordered_at = @time_zone.local(date.year, date.month, date.day, 12)
-    external_id = "ACTION-METRICS-#{@token}-#{date}"
-    order = Ec::Order.create!(
-      platform: "wb",
-      store: @store,
-      external_order_id: external_id,
-      external_order_number: external_id,
-      order_key: "wb:#{@store.id}:#{external_id}",
-      order_status: "delivered",
-      ordered_at: ordered_at,
-      synced_at: ordered_at
-    )
-    order.items.create!(
-      platform: "wb",
-      store: @store,
-      external_item_id: "#{external_id}-I",
-      platform_sku_id: @product.product_id,
-      sku_code: stored_sku_code,
-      quantity: quantity,
-      synced_at: ordered_at
-    )
+    assert_nil result.dig(:weekly_profit_by_week_and_store, [ week_start, @store.id ])
+    assert_not result.key?(:sales_by_day_and_platform)
   end
 end

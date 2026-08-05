@@ -29,6 +29,18 @@ zh:
     error: "翻译失败"
     json_error: "翻译结果格式异常"
     no_change: "翻译无变化"
+  ai:
+    conversations:
+      back_to_diagnosis: "返回 AI 诊断"
+      messages_aria_label: "AI 会话消息"
+      page_heading: "AI 会话"
+      roles:
+        assistant: "AI 回复"
+        tool: "工具结果"
+        user: "分析请求"
+      title: "AI 会话 #%{id}"
+      tool_call: "工具调用"
+      tool_result: "工具调用结果"
   category_selector:
     cancel: "取消"
     child_label: "二级类目"
@@ -1475,6 +1487,7 @@ zh:
         submission_title: "AI 运营操作诊断 #%{id}"
         summary_label: "运营操作诊断摘要"
         target_actions: "目标操作"
+        view_conversation: "查看完整 AI 消息"
       operation_record:
         created: "运营记录已保存"
         deleted: "运营记录已删除"

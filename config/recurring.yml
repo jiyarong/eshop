@@ -123,7 +123,7 @@ production:
 
   sku_operation_action_effect_diagnosis:
     command: "AITasks::SkuOperationActionEffectDiagnosisJob.perform_later"
-    schedule: every day at 04:10 in Asia/Shanghai
+    schedule: every tuesday at 04:10 in Asia/Shanghai
 
   daily_snapshot:
     command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"

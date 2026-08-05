@@ -386,6 +386,7 @@
           <% else %>
             <% result = entry[:record] %>
             <% operation_diagnosis = ai_operation_action_diagnosis?(result) %>
+            <% conversation_id = result.events.find(&:conversation_id)&.conversation_id if operation_diagnosis %>
             <section class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis) %>">
             <div class="ai-health-result__header">
               <h2 class="section-title"><%= t(
@@ -396,6 +397,13 @@
                 <span><%= result.submitted_by.display_name %></span>
                 <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
               </div>
+              <% if conversation_id %>
+                <%= link_to ai_conversation_path(conversation_id, locale: params[:locale].presence),
+                            class: "button button-secondary ai-health-result__conversation-link" do %>
+                  <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                  <%= t("reports.sku_detail.ai_operation_diagnosis.view_conversation") %>
+                <% end %>
+              <% end %>
               <% if can?(:manage_skus) && !operation_diagnosis %>
                 <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
                               method: :delete,

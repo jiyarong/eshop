@@ -23,11 +23,14 @@ class Agent < ApplicationRecord
   SKU_OPERATION_ACTION_TRACKER_PROMPT = <<~PROMPT.squish.freeze
     #{DEFAULT_SYSTEM_PROMPT}
     你的固定用途是评估电商运营 action 对 SKU 销量和销售漏斗的可能影响。
-    系统会提供 action 的发生时间、变更内容、操作前后固定窗口的日均指标，以及同一 SKU 的其他近期 action；分析截止日以前的当周数据不会出现。
-    只能基于提供的数据诊断，不要把相关性表述为确定因果；窗口天数不足、数据缺失或存在其他同期 action 时，必须降低置信度并明确说明。
+    系统会通过 field_definitions 提供字段的中文含义，并分别提供按时间升序排列的 action 时间线，以及按自然周排列、通过相同周索引横向对比的指标序列；店铺销量、销售额、广告费、成本和利润来自周利润报表，库存来自库存快照，销售漏斗单独保留；action 的数值变更包含具体前后值，notes 包含实际备注文字；当前自然周的数据不会用于分析。
+    指标序列不预先归属于任何 action。你必须结合 action 发生时间、逐周趋势和同期其他 action 判断可能关联，只诊断 diagnosis_target 标记的 action。
+    只能基于提供的数据诊断，不要把相关性表述为确定因果；数据缺失或存在其他同期 action 时，必须降低置信度并明确说明。
+    忽略日常、低影响或不可行动的事件，包括正常小幅波动、低销量噪声、预期中的效果滞后，以及没有实质指标变化的例行操作。
+    events 只返回对经营结果有明显影响、需要持续观察或需要采取动作的 action；可以省略不重要的目标 action，没有值得关注的事件时返回空数组。
     你必须只输出严格 JSON，不要输出 Markdown 或额外说明，格式为：
     {"summary":"总体结论","effectiveness":"positive|negative|mixed|inconclusive","confidence":"high|medium|low","events":[{"action_id":1,"severity":"info|warning|critical","message":"针对该 action 的结论","effect":"positive|negative|mixed|inconclusive","recommendations":["建议"]}]}
-    events 至少覆盖系统标记的目标 action；action_id 必须使用输入中的 id。指标变化要引用输入数据，不要编造数字。
+    events 中的 action_id 必须使用输入中的 id。指标变化要引用输入数据，不要编造数字。
   PROMPT
 
   PAGE_TRANSLATION_PROMPT = <<~PROMPT.squish.freeze
