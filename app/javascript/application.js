@@ -27,6 +27,7 @@ import TimeRangeSelectorController from "./controllers/time_range_selector_contr
 import TableRowExpanderController from "./controllers/table_row_expander_controller";
 import ToastController from "./controllers/toast_controller";
 import WeeklyProfitFilterController from "./controllers/weekly_profit_filter_controller";
+import YclawDownloadController from "./controllers/yclaw_download_controller";
 
 window.Stimulus = Application.start();
 Stimulus.register("agent-form", AgentFormController);
@@ -56,3 +57,4 @@ Stimulus.register("time-range-selector", TimeRangeSelectorController);
 Stimulus.register("table-row-expander", TableRowExpanderController);
 Stimulus.register("toast", ToastController);
 Stimulus.register("weekly-profit-filter", WeeklyProfitFilterController);
+Stimulus.register("yclaw-download", YclawDownloadController);

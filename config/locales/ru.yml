@@ -41,6 +41,12 @@ ru:
     error: "Ошибка перевода"
     json_error: "Неверный формат перевода"
     no_change: "Текст не изменился"
+  yclaw_download:
+    title: "Скачать YClaw"
+    windows: "Windows"
+    macos: "macOS"
+    loading: "Получение последней версии..."
+    load_failed: "Не удалось получить ссылки. Повторите попытку позже."
   category_selector:
     cancel: "Отмена"
     child_label: "Категория второго уровня"
@@ -1164,6 +1170,7 @@ ru:
     sku_detail:
       actions:
         add_predicted_cost: "Добавить прогнозную себестоимость"
+        ai_diagnosis: "AI-диагностика"
         back_to_list: "Назад"
         delete_attachment: "Удалить"
         delete_inventory_health_result: "Удалить AI-диагностику"

@@ -1140,6 +1140,15 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.button[href='/operator_skus'][data-controller='history-navigation'][data-action='history-navigation#back']", "返回"
   end
 
+  test "sku detail renders AI diagnosis launcher" do
+    get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a.sku-detail-ai-diagnosis[href=?][data-turbo='false']",
+                  "yclaw://sku_trace?agent=erp_ai_sql_query_agent&from=sku_detail&prompt=获取SKU近期数据，帮我诊断",
+                  "AI诊断"
+  end
+
   test "sku detail renders operator performance cards with matching period logic" do
     comparison = { delta_pct: 12.5, semantic: "positive" }
     metrics = {

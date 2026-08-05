@@ -70,6 +70,12 @@ en:
     error: "Translation failed"
     json_error: "Invalid translation format"
     no_change: "No text changed"
+  yclaw_download:
+    title: "Download YClaw"
+    windows: "Windows"
+    macos: "macOS"
+    loading: "Fetching the latest version..."
+    load_failed: "Could not get the download links. Try again later."
   category_selector:
     cancel: "Cancel"
     child_label: "Second-level category"
@@ -1193,6 +1199,7 @@ en:
     sku_detail:
       actions:
         add_predicted_cost: "Add predicted cost"
+        ai_diagnosis: "AI diagnosis"
         back_to_list: "Back"
         delete_attachment: "Delete"
         delete_inventory_health_result: "Delete AI diagnosis"

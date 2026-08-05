@@ -68,18 +68,13 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".locale-switcher__item[aria-current='page']", text: "中文"
     assert_select "a.locale-switcher__item[href*='locale=en']", text: "English"
     assert_select "a.locale-switcher__item[href*='locale=ru']", text: "Русский"
-    assert_select ".page-translation-controls[data-controller='page-translation']"
-    assert_select ".page-translation-controls[data-page-translation-target-locale-value='zh']"
-    assert_select ".page-translation-controls summary[data-page-translation-target='summary']"
-    assert_select ".page-translation-controls__title", text: "AI 翻译"
-    assert_select ".page-translation-controls__summary-status", text: "未翻译"
-    assert_select ".page-translation-controls__summary-status[data-json-error-label='翻译结果格式异常']"
-    assert_select ".page-translation-controls__summary-status[data-no-change-label='翻译无变化']"
-    assert_select "button[data-action='page-translation#translate']", text: "开始翻译"
-    assert_select "button[data-action='page-translation#translate'][data-json-error-label='翻译结果格式异常']"
-    assert_select "button[data-action='page-translation#translate'][data-no-change-label='翻译无变化']"
-    assert_select "button[data-action='page-translation#showOriginal']", text: "查看原文"
-    assert_select "button[data-action='page-translation#showTranslation']", text: "查看译文"
+    assert_select ".page-translation-controls", 0
+    assert_select ".yclaw-download[data-controller='yclaw-download'][data-action='toggle->yclaw-download#load']"
+    assert_select ".yclaw-download summary", text: "下载 YClaw"
+    assert_select ".yclaw-download[data-yclaw-download-windows-manifest-url-value='https://static.foresight-soft.com/eshop-ai/latest.yml']"
+    assert_select ".yclaw-download[data-yclaw-download-mac-manifest-url-value='https://static.foresight-soft.com/eshop-ai/latest-mac.yml']"
+    assert_select "a[data-yclaw-download-target='windowsLink'][target='_blank'][rel='noopener'][hidden]", text: "Windows"
+    assert_select "a[data-yclaw-download-target='macLink'][target='_blank'][rel='noopener'][hidden]", text: "macOS"
     assert_select ".erp-account-menu"
     assert_select ".erp-account-menu__email", text: @current_user.name
     assert_select ".erp-account-menu__panel a[href='/profile/password']", text: "修改密码"
@@ -113,6 +108,8 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_includes js, 'Stimulus.register("category-selector", CategorySelectorController);'
     assert_includes js, 'import PageTranslationController from "./controllers/page_translation_controller";'
     assert_includes js, 'Stimulus.register("page-translation", PageTranslationController);'
+    assert_includes js, 'import YclawDownloadController from "./controllers/yclaw_download_controller";'
+    assert_includes js, 'Stimulus.register("yclaw-download", YclawDownloadController);'
   end
 
   test "locale switcher supports russian and persists selected locale" do
@@ -159,6 +156,7 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".auth-layout"
     assert_select ".auth-locale .locale-switcher[aria-label='Language']"
     assert_select ".page-translation-controls", 0
+    assert_select ".yclaw-download", 0
     assert_select ".auth-locale .locale-switcher__link[aria-current='page']", text: "EN"
     assert_select "a.locale-switcher__link[href*='locale=zh']", text: "中"
     assert_select "a.locale-switcher__link[href*='locale=ru']", text: "RU"

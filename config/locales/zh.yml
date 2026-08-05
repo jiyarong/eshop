@@ -29,6 +29,12 @@ zh:
     error: "翻译失败"
     json_error: "翻译结果格式异常"
     no_change: "翻译无变化"
+  yclaw_download:
+    title: "下载 YClaw"
+    windows: "Windows"
+    macos: "macOS"
+    loading: "正在获取最新版本…"
+    load_failed: "获取下载地址失败，请稍后重试"
   ai:
     conversations:
       back_to_diagnosis: "返回 AI 诊断"
@@ -1375,6 +1381,7 @@ zh:
     sku_detail:
       actions:
         add_predicted_cost: "新增预测成本"
+        ai_diagnosis: "AI诊断"
         back_to_list: "返回"
         delete_attachment: "删除"
         delete_inventory_health_result: "删除 AI 诊断结果"

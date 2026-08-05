@@ -304,6 +304,44 @@ a {
   opacity: 0.48;
 }
 
+.yclaw-download__title {
+  color: var(--erp-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.yclaw-download__panel {
+  min-width: 220px;
+}
+
+.yclaw-download__status {
+  display: block;
+  padding: 8px 10px;
+  color: var(--erp-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.yclaw-download__status[hidden] {
+  display: none;
+}
+
+.yclaw-download__platform {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yclaw-download__platform i {
+  width: 14px;
+  color: var(--erp-muted);
+}
+
+.yclaw-download__version {
+  color: var(--erp-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .auth-locale .locale-switcher {
   display: inline-flex;
   align-items: center;
@@ -3497,6 +3535,17 @@ pre {
   font-size: 12px;
   font-weight: 760;
   text-transform: uppercase;
+}
+
+.sku-detail-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.sku-detail-heading-row .page-title {
+  margin-bottom: 0;
 }
 
 .resource-actions,
