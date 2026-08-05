@@ -89,6 +89,16 @@ production:
     command: "RawOzon::OrderIncrementalSync.run"
     schedule: every 5 minutes
 
+  # Refresh long-running postings until Ozon reports a terminal status.
+  ozon_order_status_catchup:
+    command: "RawOzon::OrderIncrementalSync.run(days: 90)"
+    schedule: every day at 2:30 in Asia/Shanghai
+
+  # Safety net for unusually late delivery or cancellation transitions.
+  ozon_order_status_monthly_catchup:
+    command: "RawOzon::OrderIncrementalSync.run(days: 500)"
+    schedule: every month on the 3rd at 2:30 in Asia/Shanghai
+
   ozon_sales_funnel_current_week_sync:
     command: "RawOzon::SalesFunnelPeriodSync.run_current_week"
     schedule: every hour at minute 45
