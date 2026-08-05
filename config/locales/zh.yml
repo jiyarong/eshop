@@ -1497,6 +1497,15 @@ zh:
         message: "诊断信息"
         metrics_title: "诊断指标"
         severity: "严重级别"
+        severity_labels:
+          danger: "红色"
+          info: "蓝色"
+          neutral: "灰色"
+          orange: "橙色"
+          success: "绿色"
+          warning: "黄色"
+        star_count: "%{severity}星 %{count}个"
+        star_summary: "诊断事件星级数量"
         submission_title: "AI 库存诊断 #%{id}"
       ai_operation_diagnosis:
         analysis_cutoff_date: "分析截止"

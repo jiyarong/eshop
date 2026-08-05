@@ -68,6 +68,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select "a[data-turbo-frame='erp_modal'][href='#{new_report_sku_operation_action_path(@sku.sku_code)}']", "新增运营记录"
     assert_select "form.ai-health-operation-form__form", count: 0
     assert_select ".ai-health-result", count: 2
+    assert_select ".ai-health-result:not([open])", count: 2
     assert_select ".ai-health-result:first-child" do
       assert_select "h2", "AI 库存诊断 ##{@latest_result.id}"
       assert_select ".ai-health-result__meta" do
@@ -79,6 +80,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select "td", "inventory_sufficient"
       assert_select ".ai-health-message", "最新诊断消息"
       assert_select ".ai-health-star--success", count: 1
+      assert_select ".ai-health-star-summary__item--success", text: /★\*1/
+      assert_select ".ai-health-star-summary__item--danger", text: /★\*1/
       assert_select ".ai-health-metrics__title", "诊断指标"
       assert_select ".ai-health-metrics__item dt", "daily_sales"
       assert_select ".ai-health-metrics__item dd", "2.2167"
@@ -90,6 +93,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     end
     assert_select ".ai-health-message", "旧诊断消息"
     assert_select ".ai-health-star--danger", count: 2
+    assert_select ".ai-health-result--inventory-diagnosis", count: 2
   end
 
   test "deletes an inventory health result from its sku" do
@@ -140,9 +144,12 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-operation-diagnosis__meta dd", text: "2026-08-02", count: 1
     assert_select ".ai-operation-diagnosis__event-action", text: /广告开关.*WB/
     assert_select ".ai-health-result--operation-diagnosis" do
+      assert_select ".ai-health-result__summary .ai-health-star-summary__item--info", text: /★\*1/
       assert_select ".ai-health-metrics", count: 0
       assert_select "form.ai-health-result__delete-form", count: 0
     end
+    assert_select ".ai-health-result--inventory-diagnosis", count: 2
+    assert_select ".ai-health-result--operation-diagnosis", count: 1
     assert_not_includes response.body, "action_evaluations"
     assert_not_includes response.body, "target_offsets_days"
     assert_not_includes response.body, "https://"

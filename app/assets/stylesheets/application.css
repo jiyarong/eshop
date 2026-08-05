@@ -1550,6 +1550,105 @@ textarea {
   gap: 16px;
 }
 
+.ai-health-result {
+  width: 100%;
+  max-width: none;
+}
+
+.ai-health-result--inventory-diagnosis {
+  border-left: 4px solid #2856d9;
+  background: #f5f8ff;
+}
+
+.ai-health-result--operation-diagnosis {
+  border-left: 4px solid #ea580c;
+  background: #fff8f2;
+}
+
+.ai-health-result__summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ai-health-result__summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-health-result__chevron {
+  margin-top: 2px;
+  color: var(--erp-muted);
+  transition: transform 0.15s ease;
+}
+
+.ai-health-result[open] > .ai-health-result__summary .ai-health-result__chevron {
+  transform: rotate(90deg);
+}
+
+.ai-health-result__summary .ai-health-result__header {
+  margin-bottom: 0;
+}
+
+.ai-health-result[open] > .ai-health-result__summary {
+  margin-bottom: 14px;
+}
+
+.ai-health-result__body {
+  padding-top: 2px;
+}
+
+.ai-health-result__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ai-health-star-summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ai-health-star-summary__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ai-health-star-summary__item--info {
+  color: #2563eb;
+}
+
+.ai-health-star-summary__item--success {
+  color: #15803d;
+}
+
+.ai-health-star-summary__item--warning {
+  color: #ca8a04;
+}
+
+.ai-health-star-summary__item--orange {
+  color: #ea580c;
+}
+
+.ai-health-star-summary__item--danger {
+  color: #dc2626;
+}
+
+.ai-health-star-summary__item--neutral {
+  color: #64748b;
+}
+
 .ai-health-operation-action {
   margin-bottom: 16px;
 }
@@ -1557,6 +1656,14 @@ textarea {
 .ai-health-operation {
   border-left: 4px solid var(--erp-accent);
   background: #f0fdf8;
+}
+
+.ai-health-result--operation-diagnosis .section-title {
+  color: #c2410c;
+}
+
+.ai-health-result--inventory-diagnosis .section-title {
+  color: #2856d9;
 }
 
 .ai-health-operation .section-title {

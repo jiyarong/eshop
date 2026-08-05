@@ -1287,6 +1287,15 @@ ru:
         message: "Сообщение"
         metrics_title: "Метрики диагностики"
         severity: "Уровень"
+        severity_labels:
+          danger: "Красный"
+          info: "Синий"
+          neutral: "Серый"
+          orange: "Оранжевый"
+          success: "Зелёный"
+          warning: "Жёлтый"
+        star_count: "%{severity} звёзд: %{count}"
+        star_summary: "Количество звёзд событий диагностики"
         submission_title: "AI-диагностика склада #%{id}"
       ai_operation_diagnosis:
         analysis_cutoff_date: "Граница анализа"

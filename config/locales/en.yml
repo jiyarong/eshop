@@ -1315,6 +1315,15 @@ en:
         message: "Message"
         metrics_title: "Diagnosis metrics"
         severity: "Severity"
+        severity_labels:
+          danger: "Red"
+          info: "Blue"
+          neutral: "Gray"
+          orange: "Orange"
+          success: "Green"
+          warning: "Yellow"
+        star_count: "%{severity} stars: %{count}"
+        star_summary: "Diagnosis event star counts"
         submission_title: "AI inventory diagnosis #%{id}"
       ai_operation_diagnosis:
         analysis_cutoff_date: "Analysis cutoff"
