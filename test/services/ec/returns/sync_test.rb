@@ -17,6 +17,7 @@ module Ec
         Ec::Return.where(store_id: [ @ozon_store&.id, @wb_store&.id ]).delete_all
         RawOzon::Return.where(id: @ozon_return&.id).delete_all
         RawWb::GoodsReturn.where(id: @wb_return&.id).delete_all
+        Ec::OrderSourceLink.where(order_id: [ @ozon_order&.id, @wb_order&.id ].compact).delete_all
         Ec::OrderItem.where(order_id: [ @ozon_order&.id, @wb_order&.id ]).delete_all
         Ec::Order.where(id: [ @ozon_order&.id, @wb_order&.id ].compact).delete_all
         Ec::SkuProduct.where(id: [ @ozon_sku_product&.id, @wb_sku_product&.id ].compact).delete_all
@@ -53,6 +54,26 @@ module Ec
         assert_equal "platform_return_warehouse", normalized.inventory_location
         assert_equal @wb_sku_product, item.sku_product
         assert_equal @wb_order_item, item.order_item
+      end
+
+      test "finds WB order through a primary source link scoped to the same store" do
+        other_account = RawWb::SellerAccount.create!(name: "Other WB #{@token}", api_token: "other-#{@token}", company_type: "small")
+        other_store = Ec::Store.create!(platform: "wb", store_name: "Other WB #{@token}",
+          company_type: "small", wb_raw_account_id: other_account.id)
+        other_order = Ec::Order.create!(platform: "wb", store: other_store, order_key: "OTHER-WB-#{@token}")
+        other_link = Ec::OrderSourceLink.create!(order: other_order, platform: "wb", source_role: "primary",
+          source_type: "RawWb::Order", source_id: @number + 24, source_key: @wb_return.order_id.to_s)
+
+        normalized = Ec::Returns::Sync.call(raw_records: [ @wb_return ])
+        ec_return = Ec::Return.find_by!(store: @wb_store, return_key: @wb_return.shk_id.to_s)
+
+        assert_equal 0, normalized[:missing_order]
+        assert_equal @wb_order, ec_return.order
+      ensure
+        other_link&.delete
+        other_order&.delete
+        other_store&.delete
+        other_account&.delete
       end
 
       test "repeated sync is idempotent and preserves restockable" do
@@ -109,14 +130,16 @@ module Ec
         @wb_sku_product = Ec::SkuProduct.create!(sku: @wb_sku, store: @wb_store,
           product_id: (@number + 20).to_s, offer_id: "WB-OFFER-#{@token}")
         @wb_order = Ec::Order.create!(platform: "wb", store: @wb_store, order_key: "WB-#{@token}",
-          order_status: "cancelled", external_order_id: (@number + 21).to_s,
+          order_status: "cancelled", external_order_id: "UNRELATED-#{@token}",
           external_order_number: "SRID-#{@token}")
         @wb_order_item = @wb_order.items.create!(platform: "wb", store: @wb_store,
           platform_sku_id: @wb_sku_product.product_id, quantity: 1)
         @wb_return = RawWb::GoodsReturn.create!(account: @wb_account, shk_id: @number + 22,
-          order_id: @wb_order.external_order_id, srid: @wb_order.external_order_number,
+          order_id: @number + 21, srid: "RETURN-SRID-#{@token}.r",
           nm_id: @wb_sku_product.product_id, status: "Готов к выдаче",
           ready_to_return_dt: Time.current, synced_at: Time.current)
+        Ec::OrderSourceLink.create!(order: @wb_order, platform: "wb", source_role: "primary",
+          source_type: "RawWb::Order", source_id: @number + 23, source_key: @wb_return.order_id.to_s)
       end
     end
   end

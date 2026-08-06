@@ -54,12 +54,31 @@ module Ec
       end
 
       def find_order
+        direct_order || order_from_primary_source
+      end
+
+      def direct_order
         Ec::Order.where(platform: platform, store_id: store.id)
           .where(
             "external_order_id = :external_id OR external_order_number = :external_number",
             external_id: raw_record.order_id&.to_s,
             external_number: raw_record.srid
           ).first
+      end
+
+      def order_from_primary_source
+        return if raw_record.order_id.blank?
+
+        Ec::OrderSourceLink
+          .joins(:order)
+          .where(
+            platform: platform,
+            source_role: "primary",
+            source_key: raw_record.order_id.to_s,
+            ec_orders: { platform: platform, store_id: store.id }
+          )
+          .first
+          &.order
       end
 
       def find_sku_product
