@@ -18,6 +18,8 @@ module RawWb
           merge_sync_count!(result, upsert_count_result(rows, model: RawWb::GoodsReturn, unique_key: %i[account_id shk_id]))
           RawWb::GoodsReturn.upsert_all(rows, unique_by: %i[account_id shk_id],
             update_only: %i[order_id status is_status_active completed_dt expired_dt ready_to_return_dt synced_at])
+          raw_records = RawWb::GoodsReturn.where(account_id: @account.id, shk_id: rows.pluck(:shk_id))
+          Ec::Returns::Sync.call(raw_records: raw_records)
           sleep 65  # 1 req/min rate limit on seller-analytics-api
         end
 

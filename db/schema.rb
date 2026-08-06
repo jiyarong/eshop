@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_05_024709) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_06_090403) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -429,6 +429,75 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_024709) do
     t.index ["order_no"], name: "index_ec_purchase_orders_on_order_no", unique: true
     t.index ["status"], name: "index_ec_purchase_orders_on_status"
     t.index ["supplier_id"], name: "index_ec_purchase_orders_on_supplier_id"
+  end
+
+  create_table "ec_return_items", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "item_key", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "offer_id"
+    t.bigint "order_item_id"
+    t.string "platform", null: false
+    t.string "platform_sku_id"
+    t.string "product_id"
+    t.integer "quantity", default: 1, null: false
+    t.boolean "restockable", default: false, null: false
+    t.bigint "return_id", null: false
+    t.bigint "sku_product_id"
+    t.bigint "store_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_item_id"], name: "index_ec_return_items_on_order_item_id"
+    t.index ["restockable"], name: "index_ec_return_items_on_restockable"
+    t.index ["return_id", "item_key"], name: "index_ec_return_items_on_return_id_and_item_key", unique: true
+    t.index ["return_id"], name: "index_ec_return_items_on_return_id"
+    t.index ["sku_product_id"], name: "index_ec_return_items_on_sku_product_id"
+    t.index ["store_id"], name: "index_ec_return_items_on_store_id"
+  end
+
+  create_table "ec_return_source_links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "item_id"
+    t.string "platform", null: false
+    t.bigint "return_id", null: false
+    t.bigint "source_id", null: false
+    t.string "source_key"
+    t.string "source_type", null: false
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["item_id"], name: "index_ec_return_source_links_on_item_id"
+    t.index ["return_id"], name: "index_ec_return_source_links_on_return_id"
+    t.index ["source_type", "source_id"], name: "index_ec_return_source_links_on_source_type_and_source_id", unique: true
+  end
+
+  create_table "ec_returns", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "external_order_id"
+    t.string "external_order_number"
+    t.string "external_posting_number"
+    t.string "external_return_id"
+    t.string "inventory_condition", default: "unknown", null: false
+    t.string "inventory_location", default: "unknown", null: false
+    t.bigint "order_id"
+    t.string "platform", null: false
+    t.string "process_status", default: "unknown", null: false
+    t.string "refund_status", default: "none", null: false
+    t.datetime "requested_at"
+    t.string "return_key", null: false
+    t.string "return_type", null: false
+    t.datetime "returned_to_platform_at"
+    t.datetime "returned_to_seller_at"
+    t.jsonb "source_payload", default: {}, null: false
+    t.string "source_status"
+    t.string "source_substatus"
+    t.bigint "store_id", null: false
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["inventory_location"], name: "index_ec_returns_on_inventory_location"
+    t.index ["order_id"], name: "index_ec_returns_on_order_id"
+    t.index ["platform", "store_id", "return_key"], name: "index_ec_returns_on_platform_and_store_id_and_return_key", unique: true
+    t.index ["process_status"], name: "index_ec_returns_on_process_status"
+    t.index ["store_id"], name: "index_ec_returns_on_store_id"
   end
 
   create_table "ec_sku_batches", force: :cascade do |t|
@@ -2715,6 +2784,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_024709) do
   add_foreign_key "ec_purchase_order_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_purchase_order_items", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_purchase_orders", "ec_suppliers", column: "supplier_id"
+  add_foreign_key "ec_return_items", "ec_order_items", column: "order_item_id"
+  add_foreign_key "ec_return_items", "ec_returns", column: "return_id"
+  add_foreign_key "ec_return_items", "ec_sku_products", column: "sku_product_id"
+  add_foreign_key "ec_return_items", "ec_stores", column: "store_id"
+  add_foreign_key "ec_return_source_links", "ec_return_items", column: "item_id"
+  add_foreign_key "ec_return_source_links", "ec_returns", column: "return_id"
+  add_foreign_key "ec_returns", "ec_orders", column: "order_id"
+  add_foreign_key "ec_returns", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_batches", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"

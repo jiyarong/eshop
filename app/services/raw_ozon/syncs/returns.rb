@@ -12,8 +12,10 @@ module RawOzon
           break if items.empty?
           rows = items.map { |r| build_return(r, synced_at) }
           RawOzon::Return.upsert_all(rows, unique_by: [:account_id, :return_id],
-                                     update_only: %i[visual_status storage compensation_status
-                                                     return_date final_moment visual_change_moment synced_at])
+                                     update_only: %i[visual_status storage compensation_status place target_place
+                                                     return_date final_moment visual_change_moment raw_json synced_at])
+          raw_records = RawOzon::Return.where(account_id: @account.id, return_id: rows.pluck(:return_id))
+          Ec::Returns::Sync.call(raw_records: raw_records)
           total  += items.size
           break unless resp['has_next']
           last_id = items.last['id']
