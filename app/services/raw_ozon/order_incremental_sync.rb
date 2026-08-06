@@ -9,8 +9,8 @@ module RawOzon
       sync_postings_fbo
     ].freeze
 
-    def self.run(days: nil, sync_keys: nil)
-      SyncRunLock.with_lock(LOCK_NAME, wait: false, logger: Rails.logger) do
+    def self.run(days: nil, sync_keys: nil, wait: false)
+      SyncRunLock.with_lock(LOCK_NAME, wait: wait, logger: Rails.logger) do
         super(days: days, sync_keys: sync_keys)
       end
     end

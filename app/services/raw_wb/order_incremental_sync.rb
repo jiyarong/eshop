@@ -10,9 +10,9 @@ module RawWb
       sync_stats_orders
     ].freeze
 
-    def self.run(days: nil, sync_keys: nil)
+    def self.run(days: nil, sync_keys: nil, wait: false)
       Time.use_zone("Europe/Moscow") do
-        SyncRunLock.with_lock(LOCK_NAME, wait: false, logger: Rails.logger) do
+        SyncRunLock.with_lock(LOCK_NAME, wait: wait, logger: Rails.logger) do
           super(days: days, sync_keys: sync_keys)
         end
       end

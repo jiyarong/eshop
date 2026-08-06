@@ -19,16 +19,16 @@ production:
 
   wb_order_incremental_sync:
     command: "RawWb::OrderIncrementalSync.run"
-    schedule: every 5 minutes
+    schedule: every hour at minute 0
 
   # Refresh long-running and completed orders so late returns are captured.
   wb_order_status_catchup:
-    command: "RawWb::OrderIncrementalSync.run(days: 90, sync_keys: [:sync_orders])"
-    schedule: every day at 2:00 in Asia/Shanghai
+    command: "RawWb::OrderIncrementalSync.run(days: 90, sync_keys: [:sync_orders], wait: true)"
+    schedule: every day at 2:12 in Asia/Shanghai
 
   wb_order_status_monthly_catchup:
-    command: "RawWb::OrderIncrementalSync.run(days: 500, sync_keys: [:sync_orders])"
-    schedule: every month on the 3rd at 2:00 in Asia/Shanghai
+    command: "RawWb::OrderIncrementalSync.run(days: 500, sync_keys: [:sync_orders], wait: true)"
+    schedule: every month on the 3rd at 3:12 in Asia/Shanghai
 
   wb_sales_funnel_current_week_sync:
     command: "RawWb::SalesFunnelPeriodSync.run_current_week"
@@ -96,17 +96,17 @@ production:
 
   ozon_order_incremental_sync:
     command: "RawOzon::OrderIncrementalSync.run"
-    schedule: every 5 minutes
+    schedule: every hour at minute 0
 
   # Refresh long-running postings until Ozon reports a terminal status.
   ozon_order_status_catchup:
-    command: "RawOzon::OrderIncrementalSync.run(days: 90)"
-    schedule: every day at 2:30 in Asia/Shanghai
+    command: "RawOzon::OrderIncrementalSync.run(days: 90, wait: true)"
+    schedule: every day at 2:32 in Asia/Shanghai
 
   # Safety net for unusually late delivery or cancellation transitions.
   ozon_order_status_monthly_catchup:
-    command: "RawOzon::OrderIncrementalSync.run(days: 500)"
-    schedule: every month on the 3rd at 2:30 in Asia/Shanghai
+    command: "RawOzon::OrderIncrementalSync.run(days: 500, wait: true)"
+    schedule: every month on the 3rd at 3:02 in Asia/Shanghai
 
   ozon_sales_funnel_current_week_sync:
     command: "RawOzon::SalesFunnelPeriodSync.run_current_week"

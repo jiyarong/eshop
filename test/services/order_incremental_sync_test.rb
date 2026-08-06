@@ -86,6 +86,32 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
     assert_equal [["raw_ozon:daily_sync", true, Rails.logger]], calls
   end
 
+  test "ozon incremental sync can wait for the platform sync lock" do
+    calls = []
+
+    with_singleton_method(SyncRunLock, :with_lock, ->(name, wait:, logger:) {
+      calls << [name, wait, logger]
+      :locked
+    }) do
+      assert_equal :locked, RawOzon::OrderIncrementalSync.run(days: 90, wait: true)
+    end
+
+    assert_equal [["raw_ozon:daily_sync", true, Rails.logger]], calls
+  end
+
+  test "wb incremental sync can wait for the platform sync lock" do
+    calls = []
+
+    with_singleton_method(SyncRunLock, :with_lock, ->(name, wait:, logger:) {
+      calls << [name, wait, logger]
+      :locked
+    }) do
+      assert_equal :locked, RawWb::OrderIncrementalSync.run(days: 90, sync_keys: [:sync_orders], wait: true)
+    end
+
+    assert_equal [["raw_wb:daily_sync", true, Rails.logger]], calls
+  end
+
   test "wb incremental sync skips automatically when the lock is busy" do
     called = false
     release_lock = Queue.new
