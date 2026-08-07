@@ -15,6 +15,7 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
+  before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
   SKU_DETAIL_TABS = %w[operation basic inventory ads ai_inventory_health costs stores trend].freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
@@ -47,6 +48,8 @@ class ReportsController < ApplicationController
       @sku,
       detail_tab: params[:detail_tab],
       book_batch_page: params[:book_batch_page],
+      return_page: params[:return_page],
+      return_restockable: params[:return_restockable],
       date_to: user_today,
       time_zone: user_time_zone
     ).call
@@ -60,6 +63,29 @@ class ReportsController < ApplicationController
     else
       render :inventory_detail
     end
+  end
+
+  def update_inventory_returns
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    restockable = params[:restockable].to_s
+    raise ActionController::BadRequest unless restockable.in?(%w[true false])
+
+    item_ids = Array(params[:return_item_ids]).filter_map { |id| Integer(id, exception: false) }.uniq
+    scope = Ec::SkuReturnItemsQuery.scope_for(@sku).where(id: item_ids)
+    updated_count = scope.update_all(restockable: restockable == "true", updated_at: Time.current)
+
+    @inventory_detail = Ec::InventoryPageDetailQuery.new(
+      @sku,
+      detail_tab: "returns",
+      book_batch_page: nil,
+      return_page: params[:return_page],
+      return_restockable: params[:return_restockable],
+      date_to: user_today,
+      time_zone: user_time_zone
+    ).call.merge(return_update_count: updated_count)
+
+    render partial: "reports/inventory_drawer_content_frame",
+      locals: { inventory_detail: @inventory_detail, sku: @sku }
   end
 
   def ozon_warehouses
@@ -598,6 +624,8 @@ class ReportsController < ApplicationController
       @sku,
       detail_tab: params[:detail_tab],
       book_batch_page: params[:book_batch_page],
+      return_page: params[:return_page],
+      return_restockable: params[:return_restockable],
       date_to: user_today,
       time_zone: user_time_zone
     ).call

@@ -11,6 +11,7 @@ module RawOzon
     include Syncs::PostingsFbs
     include Syncs::PostingsFbo
     include Syncs::Returns
+    include Syncs::RemovalItems
     include Syncs::Reviews
     include Syncs::Questions
     include Syncs::Chats

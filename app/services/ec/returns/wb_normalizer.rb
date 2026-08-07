@@ -109,6 +109,12 @@ module Ec
         1
       end
 
+      def item_attributes
+        super.tap do |attributes|
+          attributes[:restockable] = true if raw_record.status == "Выдано"
+        end
+      end
+
       def item_metadata
         {
           barcode: raw_record.barcode,

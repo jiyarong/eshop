@@ -30,6 +30,7 @@ Rails.application.routes.draw do
   get "reports/sales_funnel" => "reports/sales_funnel#show", as: :reports_sales_funnel
   get "reports/supply_orders" => "reports/supply_orders#show", as: :reports_supply_orders
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
+  patch "reports/inventory/:sku_code/returns" => "reports#update_inventory_returns", as: :report_inventory_returns
   get "reports/ozon_ads" => "reports/ozon_ads#overview", as: :reports_ozon_ads
   get "reports/ozon_ads/cpc" => "reports/ozon_ads#cpc", as: :reports_ozon_ads_cpc
   get "reports/ozon_ads/cpc/:id" => "reports/ozon_ads#cpc_detail", as: :reports_ozon_ads_cpc_detail

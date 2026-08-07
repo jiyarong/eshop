@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_06_090403) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1382,6 +1382,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_090403) do
     t.index ["account_id", "question_id"], name: "index_raw_ozon_questions_on_account_id_and_question_id", unique: true
     t.index ["account_id", "status"], name: "index_raw_ozon_questions_on_account_id_and_status"
     t.index ["account_id"], name: "index_raw_ozon_questions_on_account_id"
+  end
+
+  create_table "raw_ozon_removal_items", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "box_id"
+    t.string "box_state"
+    t.string "clearing_warehouse_name"
+    t.datetime "created_at", null: false
+    t.datetime "delivery_date"
+    t.string "destination_warehouse_name"
+    t.datetime "given_out_date"
+    t.string "name"
+    t.string "offer_id"
+    t.integer "quant_count", default: 0, null: false
+    t.integer "quantity", default: 0, null: false
+    t.jsonb "raw_json", default: {}, null: false
+    t.datetime "return_created_at"
+    t.string "return_id"
+    t.string "return_state"
+    t.string "row_key", null: false
+    t.string "sku"
+    t.string "source_type", null: false
+    t.string "stock_type"
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "utilization_date"
+    t.index ["account_id", "sku", "return_state"], name: "idx_on_account_id_sku_return_state_435a068aff"
+    t.index ["account_id", "source_type", "row_key"], name: "idx_on_account_id_source_type_row_key_14607067d8", unique: true
+    t.index ["account_id"], name: "index_raw_ozon_removal_items_on_account_id"
   end
 
   create_table "raw_ozon_reports", force: :cascade do |t|
@@ -2843,6 +2872,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_090403) do
   add_foreign_key "raw_ozon_products", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_promotions", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_questions", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_removal_items", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_reports", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_returns", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_reviews", "raw_ozon_seller_accounts", column: "account_id"

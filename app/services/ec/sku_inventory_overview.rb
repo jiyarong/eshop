@@ -109,7 +109,7 @@ module Ec
             "ec_stores.store_name",
             "ec_orders.order_status",
             "CASE WHEN ec_order_items.platform = 'wb' THEN ec_stores.wb_raw_account_id ELSE ec_stores.ozon_raw_account_id END AS account_id",
-            "SUM(CASE WHEN ec_orders.order_status = 'returned' THEN 0 ELSE ec_order_items.quantity END) AS sales_quantity",
+            "SUM(ec_order_items.quantity) AS sales_quantity",
             "SUM(ec_order_items.quantity) AS status_quantity"
           )
           .group("ec_order_items.platform", "ec_order_items.store_id", "ec_stores.store_name", "ec_orders.order_status", "ec_stores.wb_raw_account_id", "ec_stores.ozon_raw_account_id")
@@ -141,94 +141,48 @@ module Ec
     def return_rows
       @return_rows ||= begin
         rows = Hash.new(0)
-        merge_return_rows(rows, ozon_return_rows)
-        merge_return_rows(rows, wb_return_rows)
+
+        Ec::SkuReturnItemsQuery.scope_for(@sku)
+          .where(restockable: true)
+          .joins(:store)
+          .select(
+            "ec_return_items.platform",
+            "ec_return_items.store_id",
+            "ec_stores.store_name",
+            "CASE WHEN ec_return_items.platform = 'wb' THEN ec_stores.wb_raw_account_id ELSE ec_stores.ozon_raw_account_id END AS account_id",
+            "SUM(ec_return_items.quantity) AS return_quantity"
+          )
+          .group(
+            "ec_return_items.platform",
+            "ec_return_items.store_id",
+            "ec_stores.store_name",
+            "ec_stores.wb_raw_account_id",
+            "ec_stores.ozon_raw_account_id"
+          )
+          .each do |row|
+            key = key_for(row.platform, row.store_id, row.store_name, row.account_id)
+            rows[key] = row.return_quantity.to_i - ozon_removal_quantity_for(key)
+          end
+
         rows
       end
     end
 
-    def ozon_return_rows
-      rows = {}
+    def ozon_removal_quantity_for(key)
+      platform, _store_id, _store_name, account_id = key
+      return 0 unless platform == "ozon" && account_id.present?
 
-      RawOzon::Return
-        .joins("LEFT JOIN ec_stores ON ec_stores.ozon_raw_account_id = raw_ozon_returns.account_id AND ec_stores.platform = 'ozon'")
-        .where(
-          <<~SQL.squish,
-            EXISTS (
-              SELECT 1
-              FROM ec_sku_products
-              WHERE ec_sku_products.store_id = ec_stores.id
-                AND ec_sku_products.platform = 'ozon'
-                AND ec_sku_products.sku_code = ?
-                AND (
-                  raw_ozon_returns.offer_id = ec_sku_products.offer_id
-                  OR raw_ozon_returns.ozon_sku::text = ec_sku_products.platform_sku_id
-                )
-            )
-            AND NOT EXISTS (
-              SELECT 1
-              FROM ec_orders
-              WHERE ec_orders.platform = 'ozon'
-                AND ec_orders.store_id = ec_stores.id
-                AND ec_orders.order_status = 'cancelled'
-                AND (
-                  ec_orders.external_order_number = raw_ozon_returns.posting_number
-                  OR ec_orders.external_order_number = raw_ozon_returns.order_number
-                  OR ec_orders.external_order_id = raw_ozon_returns.order_id::text
-                )
-            )
-          SQL
-          @sku.sku_code
-        )
-        .select(
-          "raw_ozon_returns.account_id",
-          "ec_stores.id AS store_id",
-          "ec_stores.store_name",
-          "SUM(COALESCE(raw_ozon_returns.quantity, 1)) AS return_quantity"
-        )
-        .group("raw_ozon_returns.account_id", "ec_stores.id", "ec_stores.store_name")
-        .each do |row|
-          rows[key_for("ozon", row.store_id, row.store_name || "Account##{row.account_id}", row.account_id)] = row.return_quantity.to_i
-        end
-
-      rows
+      ozon_removal_rows[account_id.to_i].to_i
     end
 
-    def wb_return_rows
-      rows = {}
-
-      RawWb::GoodsReturn
-        .joins("LEFT JOIN ec_stores ON ec_stores.wb_raw_account_id = raw_wb_goods_returns.account_id AND ec_stores.platform = 'wb'")
-        .where(
-          <<~SQL.squish,
-            EXISTS (
-              SELECT 1
-              FROM ec_sku_products
-              WHERE ec_sku_products.store_id = ec_stores.id
-                AND ec_sku_products.platform = 'wb'
-                AND ec_sku_products.sku_code = ?
-                AND raw_wb_goods_returns.nm_id::text = ec_sku_products.product_id
-            )
-          SQL
-          @sku.sku_code
-        )
-        .select(
-          "raw_wb_goods_returns.account_id",
-          "ec_stores.id AS store_id",
-          "ec_stores.store_name",
-          "COUNT(*) AS return_quantity"
-        )
-        .group("raw_wb_goods_returns.account_id", "ec_stores.id", "ec_stores.store_name")
-        .each do |row|
-          rows[key_for("wb", row.store_id, row.store_name || "Account##{row.account_id}", row.account_id)] = row.return_quantity.to_i
+    def ozon_removal_rows
+      @ozon_removal_rows ||= begin
+        sku_products_by_account.each_with_object({}) do |(account_id, products), rows|
+          rows[account_id.to_i] = RawOzon::RemovalItem
+            .deducting_return_inventory
+            .where(account_id: account_id, sku: products.map(&:platform_sku_id).compact)
+            .sum(:quantity)
         end
-
-      rows
-    end
-
-    def merge_return_rows(target, source)
-      source.each do |key, quantity|
-        target[key] += quantity.to_i
       end
     end
 

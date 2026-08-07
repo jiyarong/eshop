@@ -10,10 +10,12 @@ module Ec
       { key: "wb_fbo", platform: "wb", fulfillment_type: "fbw" },
       { key: "wb_inbound", platform: "wb", fulfillment_type: "inbound" }
     ].freeze
-    def initialize(sku, detail_tab:, book_batch_page:, date_to: nil, time_zone: nil)
+    def initialize(sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to: nil, time_zone: nil)
       @sku = sku
-      @detail_tab = detail_tab.presence_in(%w[incoming book platform]) || "incoming"
+      @detail_tab = detail_tab.presence_in(%w[incoming book platform returns]) || "incoming"
       @requested_book_batch_page = [book_batch_page.to_i, 1].max
+      @return_page = return_page
+      @return_restockable = return_restockable
       @date_to = date_to || Time.current.to_date
       @time_zone = time_zone || Time.zone
     end
@@ -40,6 +42,7 @@ module Ec
         book_mini_stats: book_mini_stats(overview[:summary]),
         book_sales_distribution: book_sales_distribution(overview[:store_rows]),
         return_distribution: return_distribution(overview[:store_rows]),
+        return_summary: @detail_tab == "returns" ? return_summary : nil,
         book_formula: book_formula(overview[:summary]),
         platform_mini_stats: platform_mini_stats(overview[:latest_levels]),
         platform_shop_rows: platform_shop_rows(overview[:latest_levels]),
@@ -52,6 +55,33 @@ module Ec
     end
 
     private
+
+    def return_summary
+      scope = Ec::SkuReturnItemsQuery.scope_for(@sku)
+      ozon_restockable = scope.where(platform: "ozon", restockable: true).sum(:quantity).to_i
+      ozon_in_transit = ozon_removal_in_transit_quantity
+      wb_scope = Ec::SkuReturnItemsQuery.scope_for_linked_orders(@sku).where(platform: "wb")
+
+      {
+        ozon_returned_total: ozon_restockable,
+        ozon_fbs_in_transit: ozon_in_transit,
+        ozon_restocked_fbo: ozon_restockable - ozon_in_transit,
+        wb_returned_total: wb_scope.sum(:quantity).to_i,
+        wb_accepted_total: wb_scope.where(ec_returns: { process_status: "completed" }).sum(:quantity).to_i,
+        wb_fbs_in_transit: wb_scope.where.not(ec_returns: { process_status: "completed" }).sum(:quantity).to_i
+      }
+    end
+
+    def ozon_removal_in_transit_quantity
+      @sku.sku_products.includes(:store).where(platform: "ozon").group_by do |product|
+        product.store.ozon_raw_account_id
+      end.sum do |account_id, products|
+        RawOzon::RemovalItem
+          .deducting_return_inventory
+          .where(account_id: account_id, sku: products.map(&:platform_sku_id).compact)
+          .sum(:quantity)
+      end.to_i
+    end
 
     def incoming_batches
       @incoming_batches ||= @sku.batches

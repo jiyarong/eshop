@@ -110,6 +110,12 @@ module Ec
         raw_record.quantity.to_i.positive? ? raw_record.quantity.to_i : 1
       end
 
+      def item_attributes
+        super.tap do |attributes|
+          attributes[:restockable] = true if source_status == "ReturnedToOzon"
+        end
+      end
+
       def item_metadata
         { product_name: raw_record.product_name }
       end

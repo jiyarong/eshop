@@ -15,6 +15,7 @@ module RawOzon
     has_many :postings_fbo,           class_name: 'RawOzon::PostingFbo',           foreign_key: :account_id, dependent: :destroy
     has_many :posting_items,          class_name: 'RawOzon::PostingItem',          foreign_key: :account_id, dependent: :destroy
     has_many :returns,                class_name: 'RawOzon::Return',               foreign_key: :account_id, dependent: :destroy
+    has_many :removal_items,          class_name: 'RawOzon::RemovalItem',          foreign_key: :account_id, dependent: :destroy
     has_many :reviews,                class_name: 'RawOzon::Review',               foreign_key: :account_id, dependent: :destroy
     has_many :questions,              class_name: 'RawOzon::Question',             foreign_key: :account_id, dependent: :destroy
     has_many :chats,                  class_name: 'RawOzon::Chat',                 foreign_key: :account_id, dependent: :destroy

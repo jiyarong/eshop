@@ -262,6 +262,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
     Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
     Ec::SkuInventoryLevel.where(sku_code: @sku.sku_code).delete_all if defined?(Ec::SkuInventoryLevel)
+    return_ids = Ec::Return.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).pluck(:id)
+    Ec::ReturnSourceLink.where(return_id: return_ids).delete_all
+    Ec::ReturnItem.where(return_id: return_ids).delete_all
+    Ec::Return.where(id: return_ids).delete_all
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::Order.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all
@@ -783,7 +787,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
   test "inventory detail non turbo request renders standalone inventory detail page" do
     query_calls = []
-    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, date_to:, time_zone:|
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to:, time_zone:|
       query_calls << [sku.sku_code, detail_tab, book_batch_page, date_to, time_zone.name]
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
@@ -824,7 +828,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
   test "inventory detail turbo frame request renders drawer content" do
     query_calls = []
-    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, date_to:, time_zone:|
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to:, time_zone:|
       query_calls << [sku.sku_code, detail_tab, book_batch_page, date_to, time_zone.name]
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
@@ -939,7 +943,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "inventory detail platform tab uses fbo fbw stock in platform formula" do
-    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, date_to:, time_zone:|
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to:, time_zone:|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -1584,8 +1588,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-detail-tabs__link", text: "待入库库存"
     assert_select ".inventory-detail-tabs__link", text: "账面可用库存"
     assert_select ".inventory-detail-tabs__link", text: "平台在库"
+    assert_select ".inventory-detail-tabs__link", text: "退货记录"
     assert_select ".inventory-detail-tabs__link[aria-current='page']", text: "待入库库存"
-    assert_select ".inventory-detail-tabs__link[data-turbo-frame='inventory_drawer_content']", count: 3
+    assert_select ".inventory-detail-tabs__link[data-turbo-frame='inventory_drawer_content']", count: 4
   ensure
     Ec::SkuBatch.where(batch_code: "INV-#{@sku_code}").delete_all
   end
@@ -1668,7 +1673,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     unbound_order&.destroy
   end
 
-  test "sku detail inventory overview reads platform returns from raw return tables" do
+  test "sku detail inventory overview ignores unreviewed raw platform returns" do
     RawOzon::Return.create!(
       account: @sales_ozon_account,
       return_id: 10_000_000 + @sku_code.hash.abs % 1_000_000,
@@ -1696,9 +1701,44 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "td", text: /销量统计 Ozon 店 #{@sku_code}/
     assert_select "td", text: /销量统计 WB 店 #{@sku_code}/
-    assert_select "h4", "退货记录分布"
-    assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>2<\/td>/m, response.body)
-    assert_match(/销量统计 WB 店 #{@sku_code}.*?<td>1<\/td>/m, response.body)
+    assert_select "h4", "可售退货分布"
+    assert_select ".inventory-distribution-table--narrow tbody tr", count: 0
+  end
+
+  test "inventory return summary replaces records while bulk updates still recalculate inventory" do
+    sku_product = Ec::SkuProduct.find_by!(store: @sales_store, sku_code: @sku.sku_code)
+    order_item = @return_order.items.find_by!(platform_sku_id: sku_product.platform_sku_id)
+    ec_return = Ec::Return.create!(
+      platform: "ozon", store: @sales_store, order: @return_order,
+      return_key: "UI-RETURN-#{@sku_code}", return_type: "customer_return",
+      external_return_id: "UI-RETURN-#{@sku_code}", requested_at: Time.zone.parse("2026-08-01 10:00:00")
+    )
+    return_item = ec_return.items.create!(
+      platform: "ozon", store: @sales_store, sku_product: sku_product, order_item: order_item,
+      item_key: "UI-RETURN-ITEM-#{@sku_code}", platform_sku_id: sku_product.platform_sku_id,
+      quantity: 1, restockable: false
+    )
+    before_stock = @sku.inventory_overview.dig(:summary, :book_stock)
+
+    get report_inventory_detail_path(@sku.sku_code),
+      params: { detail_tab: "returns", return_restockable: "false" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-detail-tabs a[href*='detail_tab=returns']", count: 1
+    assert_select ".inventory-detail-panel__head h4", text: /退货汇总/
+    assert_select "input[name='return_item_ids[]']", count: 0
+
+    sign_in @current_user
+    patch report_inventory_returns_path(@sku.sku_code),
+      params: { return_item_ids: [return_item.id], restockable: "true", return_restockable: "false" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert return_item.reload.restockable
+    assert_equal before_stock + 1, @sku.inventory_overview.dig(:summary, :book_stock)
+    assert_select ".inventory-metric-card:nth-child(2) .inventory-metric-card__value", text: (before_stock + 1).to_s
+    assert_select ".inventory-return-update-notice", count: 0
   end
 
   test "sku detail store sales ignores unbound order item sku code" do

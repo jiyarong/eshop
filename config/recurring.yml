@@ -30,6 +30,12 @@ production:
     command: "RawWb::OrderIncrementalSync.run(days: 500, sync_keys: [:sync_orders], wait: true)"
     schedule: every month on the 3rd at 3:12 in Asia/Shanghai
 
+  # The goods-return API filters by the original order date, so a short daily
+  # window misses later transitions such as in-transit -> ready for pickup.
+  wb_goods_return_status_catchup:
+    command: "RawWb::DailySync.run(days: 90, sync_keys: [:sync_goods_return])"
+    schedule: every day at 1:00 in Asia/Shanghai
+
   wb_sales_funnel_current_week_sync:
     command: "RawWb::SalesFunnelPeriodSync.run_current_week"
     schedule: every hour at minute 20

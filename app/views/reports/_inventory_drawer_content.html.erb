@@ -47,7 +47,7 @@
   <% active_tab = inventory_detail[:active_detail_tab].presence || "incoming" %>
   <section class="inventory-section inventory-detail-shell">
     <nav class="erp-tabs erp-tabs--underline inventory-detail-tabs" aria-label="<%= t("reports.inventory.title") %>">
-      <% %w[incoming book platform].each do |tab| %>
+      <% %w[incoming book platform returns].each do |tab| %>
         <% label = t("reports.inventory.drawer.tabs.#{tab}") %>
         <% path = report_inventory_detail_path(sku.sku_code, detail_tab: tab, book_batch_page: (tab == "book" ? 1 : nil)) %>
         <%= link_to label,
@@ -356,6 +356,27 @@
           </div>
         </section>
       <% end %>
+
+      <% if active_tab == "returns" %>
+        <% return_summary = inventory_detail[:return_summary] || {} %>
+        <section class="inventory-detail-panel">
+          <div class="inventory-detail-panel__head">
+            <h4><%= t("reports.inventory.drawer.sections.return_summary") %></h4>
+          </div>
+          <div class="inventory-mini-grid inventory-mini-grid--platform">
+            <% %i[ozon_returned_total ozon_fbs_in_transit ozon_restocked_fbo wb_returned_total wb_accepted_total wb_fbs_in_transit].each do |metric| %>
+              <div class="inventory-mini-card">
+                <span><%= t("reports.inventory.drawer.returns.summary.#{metric}") %></span>
+                <strong>
+                  <%= return_summary[metric].to_i %>
+                  <em><%= t("reports.inventory.drawer.labels.quantity_unit") %></em>
+                </strong>
+              </div>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+
     </div>
   </section>
 </div>

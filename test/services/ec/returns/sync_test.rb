@@ -39,7 +39,7 @@ module Ec
         assert_equal "unknown", normalized.inventory_condition
         assert_equal @ozon_sku_product, item.sku_product
         assert_equal @ozon_order_item, item.order_item
-        assert_not item.restockable
+        assert item.restockable
         assert_equal @ozon_return, normalized.source_links.sole.source
       end
 
@@ -54,6 +54,21 @@ module Ec
         assert_equal "platform_return_warehouse", normalized.inventory_location
         assert_equal @wb_sku_product, item.sku_product
         assert_equal @wb_order_item, item.order_item
+      end
+
+      test "marks issued WB returns as restockable and preserves the flag on later syncs" do
+        @wb_return.update!(status: "Выдано", completed_dt: Time.current)
+
+        Ec::Returns::Sync.call(raw_records: [ @wb_return ])
+        normalized = Ec::Return.find_by!(store: @wb_store, return_key: @wb_return.shk_id.to_s)
+
+        assert_equal "completed", normalized.process_status
+        assert normalized.items.sole.restockable
+
+        @wb_return.update!(status: "Готов к выдаче", completed_dt: nil, ready_to_return_dt: Time.current)
+        Ec::Returns::Sync.call(raw_records: [ @wb_return ])
+
+        assert normalized.items.sole.reload.restockable
       end
 
       test "finds WB order through a primary source link scoped to the same store" do

@@ -2518,6 +2518,33 @@ textarea {
   gap: 8px;
 }
 
+.inventory-return-filter,
+.inventory-return-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inventory-return-filter {
+  margin-bottom: 16px;
+}
+
+.inventory-return-bulk-actions {
+  margin-top: 12px;
+}
+
+.inventory-return-table th:first-child,
+.inventory-return-table td:first-child {
+  width: 40px;
+  text-align: center;
+}
+
+.inventory-return-update-notice {
+  margin: 0 0 12px;
+  color: var(--color-success, #147d4f);
+}
+
 .inventory-formula {
   display: grid;
   gap: 8px;
