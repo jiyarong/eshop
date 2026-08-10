@@ -16,6 +16,7 @@ class WeeklyProfitReportsController < ApplicationController
   }.freeze
   WSU_SUMMARY_KEYS = %i[total_sales_revenue total_after_tax total_margin_pct unallocated_total after_tax_with_unallocated].freeze
   WSU_DEEP_SUMMARY_KEYS = %i[total_sku_count total_net_sales total_sales_revenue total_after_tax unallocated_total after_tax_with_unallocated].freeze
+  SKU_CODE_COLUMNS = %w[sku sku_code vendor_code].freeze
 
   rescue_from ActionController::ParameterMissing, with: :render_bad_request
 
@@ -28,7 +29,8 @@ class WeeklyProfitReportsController < ApplicationController
                 :weekly_profit_report_row_comparison,
                 :weekly_profit_report_unallocated_comparison,
                 :weekly_profit_report_comparison_label,
-                :weekly_profit_report_comparison_class
+                :weekly_profit_report_comparison_class,
+                :weekly_profit_sku_drawer_linkable?
 
   def accounts
     render json: {
@@ -42,6 +44,7 @@ class WeeklyProfitReportsController < ApplicationController
     return render_index if html_page_request?
 
     @report = run_report_query(parse_request_params)
+    load_weekly_profit_drawer_sku_codes if request.format.html?
     if request.format.xlsx?
       export = WeeklyProfitReports::XlsxExportService.call(report: @report)
       return send_data export[:data], filename: export[:filename], type: WeeklyProfitReports::XlsxExportService::MIME_TYPE, disposition: :attachment
@@ -97,7 +100,26 @@ class WeeklyProfitReportsController < ApplicationController
     end
 
     @report = run_report_query(parse_request_params)
+    load_weekly_profit_drawer_sku_codes
     render :show
+  end
+
+  def load_weekly_profit_drawer_sku_codes
+    candidate_codes = Array(@report[:rows]).flat_map do |row|
+      SKU_CODE_COLUMNS.filter_map { |key| row[key.to_sym].presence || row[key].presence }
+    end.map { |code| code.to_s.upcase }.uniq
+
+    @weekly_profit_drawer_sku_codes = if candidate_codes.empty?
+      Set.new
+    else
+      Ec::Sku.where("UPPER(sku_code) IN (?)", candidate_codes).pluck(:sku_code).map(&:upcase).to_set
+    end
+  end
+
+  def weekly_profit_sku_drawer_linkable?(key, sku_code)
+    key.to_s.in?(SKU_CODE_COLUMNS) &&
+      sku_code.present? &&
+      @weekly_profit_drawer_sku_codes&.include?(sku_code.to_s.upcase)
   end
 
   def html_page_request?

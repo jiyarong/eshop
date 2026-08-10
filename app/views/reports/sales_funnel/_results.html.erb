@@ -39,7 +39,13 @@
                   <% sales_funnel_columns(@report).each do |key, _label| %>
                     <% comparison = sales_funnel_row_comparison(@report, row, key) %>
                     <td>
-                      <div class="weekly-profit-table-value"><%= sales_funnel_value(row, key) %></div>
+                      <div class="weekly-profit-table-value">
+                        <% if key.to_s == "sku_code" && row[key].present? %>
+                          <%= sku_detail_drawer_link row[key] %>
+                        <% else %>
+                          <%= sales_funnel_value(row, key) %>
+                        <% end %>
+                      </div>
                       <% if comparison.present? %>
                         <div class="weekly-profit-table-comparison <%= sales_funnel_comparison_class(comparison) %>">
                           <%= sales_funnel_comparison_label(comparison) %>

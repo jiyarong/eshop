@@ -74,7 +74,7 @@
             <% metrics = @metrics_by_sku.fetch(sku) %>
             <tr class="operator-sku-row">
               <td>
-                <%= link_to sku.sku_code, report_sku_path(sku.sku_code), class: "code-text sub" %>
+                <%= sku_detail_drawer_link sku, class: "code-text sub" %>
                 <span class="operator-sku-name"><%= sku.product_name.presence || t("operator_skus.values.unavailable") %></span>
               </td>
               <td><span class="code-text"><%= sku.master_sku&.master_sku_code || t("operator_skus.values.unavailable") %></span></td>

@@ -268,6 +268,8 @@
           </section>
         </div>
       <% end %>
+      <%= turbo_frame_tag "sku_detail_drawer",
+                          data: { controller: "drawer-transition", action: "turbo:before-frame-render->drawer-transition#prepare" } if user_signed_in? %>
     </div>
   </body>
 </html>

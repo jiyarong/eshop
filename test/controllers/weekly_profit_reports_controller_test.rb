@@ -89,7 +89,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       },
       meta: { platform: "wb", account: { name: "WB Test Shop" } },
       summary: { total_after_tax: 88.5, total_goods_cost: 20.0, total_sales_qty: 3, total_return_qty: 1, total_net: 100.0, total_pre_tax: 90.0, total_tax: 1.5, unallocated_rows: 1 },
-      rows: [{ nm_id: 123, vendor_code: "KJ-228", region: "Moscow", sales_qty: 3, return_qty: 1, net_qty: 2, settlement: 100.0, delivery: 10.0, storage: 5.0, ad: 2.0, goods_cost: 20.0, pre_tax: 90.0, tax: 1.5, after_tax: 88.5 }],
+      rows: [{ nm_id: 123, vendor_code: @direct_sku.sku_code, region: "Moscow", sales_qty: 3, return_qty: 1, net_qty: 2, settlement: 100.0, delivery: 10.0, storage: 5.0, ad: 2.0, goods_cost: 20.0, pre_tax: 90.0, tax: 1.5, after_tax: 88.5 }],
       extras: { unallocated: { "未归属费用" => 12.3 } }
     }
     query_class = Ec::WeeklyProfitReportQuery
@@ -133,7 +133,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[data-weekly-profit-store-tag][data-value=?]", "ozon:#{@ozon_account.id}", text: "Ozon · Ozon Test Shop"
     assert_select "turbo-frame#weekly_profit_report_results"
     assert_select ".weekly-profit-summary-card", minimum: 1
-    assert_select ".weekly-profit-table-value", text: "KJ-228"
+    assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code), text: @direct_sku.sku_code
   ensure
     query_class.define_singleton_method(:run, original_run)
   end
@@ -408,7 +408,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
           total_after_tax: { current: 30.0, previous: 20.0, delta_value: 10.0, delta_pct: 50.0, trend: "up", semantic: "positive" }
         },
         rows: {
-          "KJ-228|WB|WB Test Shop" => {
+          "#{@direct_sku.sku_code}|WB|WB Test Shop" => {
             revenue: { current: 100.0, previous: 50.0, delta_value: 50.0, delta_pct: 100.0, trend: "up", semantic: "positive" },
             ads: { current: 10.0, previous: 5.0, delta_value: 5.0, delta_pct: 100.0, trend: "up", semantic: "negative" },
             margin_pct: { current: 30.0, previous: 20.0, delta_value: 10.0, delta_pct: 50.0, trend: "up", semantic: "positive" }
@@ -417,7 +417,10 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       },
       meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
       summary: { total_sales_revenue: 100.0, total_after_tax: 30.0, total_margin_pct: 30.0, unallocated_total: -5.0, after_tax_with_unallocated: 25.0 },
-      rows: [{ sku: "KJ-228", platform: "WB", shop: "WB Test Shop", net_sales: 2, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 35.0, tax: 5.0, after_tax: 30.0, margin_pct: 30.0 }],
+      rows: [
+        { sku: @direct_sku.sku_code, platform: "WB", shop: "WB Test Shop", net_sales: 2, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 35.0, tax: 5.0, after_tax: 30.0, margin_pct: 30.0 },
+        { sku: "MISSING-#{@token}", platform: "WB", shop: "WB Test Shop", net_sales: 0 }
+      ],
       extras: {}
     }
 
@@ -441,7 +444,9 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".weekly-profit-comparison-trend", minimum: 1
       assert_select ".weekly-profit-table-value", minimum: 1
       assert_select ".weekly-profit-table-comparison", minimum: 1
-      assert_select ".weekly-profit-table-value", text: "KJ-228"
+      assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code), text: @direct_sku.sku_code
+      assert_select ".weekly-profit-table-value", text: "MISSING-#{@token}"
+      assert_select "a", text: "MISSING-#{@token}", count: 0
       assert_select ".weekly-profit-table-value", text: "WB Test Shop"
       assert_select ".weekly-profit-table-value", text: "30.00%"
     end
@@ -492,7 +497,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
           total_after_tax: { current: 50.0, previous: 40.0, delta_value: 10.0, delta_pct: 25.0, trend: "up", semantic: "positive" }
         },
         rows: {
-          "KJ-228" => {
+          @direct_sku.sku_code => {
             after_tax: { current: 50.0, previous: 40.0, delta_value: 10.0, delta_pct: 25.0, trend: "up", semantic: "positive" },
             ad_ratio_pct: { current: 10.0, previous: 12.0, delta_value: -2.0, delta_pct: -16.67, trend: "down", semantic: "positive" }
           }
@@ -500,7 +505,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       },
       meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
       summary: { total_sku_count: 1, total_net_sales: 4, total_sales_revenue: 100.0, total_after_tax: 50.0, unallocated_total: -5.0, after_tax_with_unallocated: 45.0 },
-      rows: [{ sku: "KJ-228", net_sales: 4, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 60.0, tax: 10.0, after_tax: 50.0, margin_pct: 50.0, average_profit_per_order: 12.5, ad_ratio_pct: 10.0, cost_return_pct: 250.0, projected_roi_pct: 55.0, annualized_return_pct: 110.0, annualized_net_profit_cny: 800.0 }],
+      rows: [{ sku: @direct_sku.sku_code, net_sales: 4, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 60.0, tax: 10.0, after_tax: 50.0, margin_pct: 50.0, average_profit_per_order: 12.5, ad_ratio_pct: 10.0, cost_return_pct: 250.0, projected_roi_pct: 55.0, annualized_return_pct: 110.0, annualized_net_profit_cny: 800.0 }],
       extras: {}
     }
 
@@ -524,7 +529,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".weekly-profit-comparison-trend", minimum: 1
       assert_select ".weekly-profit-table-value", minimum: 1
       assert_select ".weekly-profit-table-comparison", minimum: 1
-      assert_select ".weekly-profit-table-value", text: "KJ-228"
+      assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code), text: @direct_sku.sku_code
       assert_select ".weekly-profit-table-value", text: "800.00"
     end
   ensure

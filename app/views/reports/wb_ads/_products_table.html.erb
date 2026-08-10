@@ -42,7 +42,7 @@
                   </button>
                 <% end %>
               </td>
-              <td><strong><%= row[:product_name].presence || t("reports.wb_ads.unknown_product") %></strong><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.nm_id", id: row[:nm_id]) %> · <%= t("reports.wb_ads.fields.campaign_count", count: row[:campaign_count]) %><% if row[:sku_product]&.sku %> · <%= row[:sku_product].sku.sku_code %><% end %></small></td>
+              <td><strong><%= row[:product_name].presence || t("reports.wb_ads.unknown_product") %></strong><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.nm_id", id: row[:nm_id]) %> · <%= t("reports.wb_ads.fields.campaign_count", count: row[:campaign_count]) %><% if row[:sku_product]&.sku %> · <%= sku_detail_drawer_link row[:sku_product].sku, tab: "ads" %><% end %></small></td>
               <td></td>
               <td></td>
               <% [

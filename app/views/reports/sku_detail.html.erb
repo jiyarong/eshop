@@ -1,6 +1,7 @@
-<% content_for :page_heading, t("reports.sku_detail.title") %>
+<% unless @sku_detail_drawer %>
+  <% content_for :page_heading, t("reports.sku_detail.title") %>
 
-<div class="resource-header">
+  <div class="resource-header">
   <div>
     <p class="resource-eyebrow"><%= t("reports.sku_detail.title") %></p>
     <h1 class="page-title"><%= @sku.sku_code %></h1>
@@ -11,7 +12,8 @@
                 data: { controller: "history-navigation", action: "history-navigation#back" } %>
     <%= link_to t("reports.sku_detail.actions.edit_profile"), erp_edit_sku_path(@sku), class: "button" %>
   </div>
-</div>
+  </div>
+<% end %>
 
 <%= turbo_frame_tag "erp_modal" %>
 
@@ -60,6 +62,7 @@
     <%= link_to t("reports.sku_detail.tabs.#{tab}"),
                 sku_detail_tab_path(tab),
                 class: "erp-tabs__link sku-detail-tabs__link",
+                data: (@sku_detail_drawer ? { turbo_frame: "sku_detail_drawer" } : {}),
                 aria: (@active_tab == tab ? { current: "page" } : nil) %>
   <% end %>
 </nav>
@@ -504,7 +507,9 @@
     <% end %>
   <% elsif @active_tab == "stores" %>
     <section class="panel">
-      <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, html: { class: "report-form" } do %>
+      <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true,
+                    data: (@sku_detail_drawer ? { turbo_frame: "sku_detail_drawer" } : {}),
+                    html: { class: "report-form" } do %>
         <input type="hidden" name="tab" value="stores">
         <div class="field field--time-range">
           <label for="sku-detail-stores-time-range-trigger"><%= t("reports.sku_detail.filters.date_range") %></label>
@@ -616,7 +621,9 @@
     </section>
   <% else %>
     <section class="panel">
-      <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, html: { class: "report-form" } do %>
+      <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true,
+                    data: (@sku_detail_drawer ? { turbo_frame: "sku_detail_drawer" } : {}),
+                    html: { class: "report-form" } do %>
         <input type="hidden" name="tab" value="trend">
         <div class="field field--time-range">
           <label for="sku-detail-trend-time-range-trigger"><%= t("reports.sku_detail.filters.date_range") %></label>

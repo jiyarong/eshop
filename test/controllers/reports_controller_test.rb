@@ -296,10 +296,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "input[name='sku'][value=?]", @sku_code.downcase
     assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__sku-link", @sku_code
-    assert_select ".inventory-list-table__sku-link[href=?]", report_sku_path(@sku_code)
-    assert_select ".inventory-list-table__sku-link[data-turbo-frame='inventory_drawer']", count: 0
-    assert_select "a.inventory-list-table__detail-link[href=?][data-turbo-frame='inventory_drawer']",
-                  report_inventory_detail_path(@sku_code)
+    drawer_path = report_sku_path(@sku_code, tab: "inventory")
+    assert_select ".inventory-list-table__sku-link[href=?][data-turbo-frame='sku_detail_drawer']", drawer_path
+    assert_select "a.inventory-list-table__detail-link[href=?][data-turbo-frame='sku_detail_drawer']", drawer_path
     assert_select "td", { text: @second_sku_code, count: 0 }
     assert_select "tbody tr", count: 1
   end
@@ -760,7 +759,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [@sku_code], velocity_calls.first[0]
     assert_kind_of Date, velocity_calls.first[1]
     assert_equal @current_user.time_zone, velocity_calls.first[2]
-    assert_select "turbo-frame#inventory_drawer"
+    assert_select "turbo-frame#inventory_drawer", count: 0
     assert_select "table.inventory-list-table"
     assert_select "h2.section-title", text: I18n.t("reports.inventory.sections.inventory_list"), count: 0
     assert_select "th", I18n.t("reports.inventory.fields.pending_stock")
@@ -780,9 +779,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "11.38"
     assert_select "th", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
     assert_select "tbody tr.inventory-list-table__row td:nth-child(10)", "21.14"
-    assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@sku_code}", "inventory_drawer"
-    assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", "/reports/inventory/#{@sku_code}", "inventory_drawer"
-    assert_select "a[href=?][data-turbo-frame=?]", "/reports/inventory/#{@second_sku_code}", "inventory_drawer", count: 0
+    drawer_path = report_sku_path(@sku_code, tab: "inventory")
+    assert_select "a[href=?][data-turbo-frame=?]", drawer_path, "sku_detail_drawer", count: 2
+    assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", drawer_path, "sku_detail_drawer"
+    assert_select "a[href=?][data-turbo-frame=?]", report_sku_path(@second_sku_code, tab: "inventory"), "sku_detail_drawer", count: 0
   end
 
   test "inventory detail non turbo request renders standalone inventory detail page" do
@@ -1074,11 +1074,35 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "SKU 主数据"
-    assert_select "a[href=?]", "/reports/skus/#{@sku_code}", @sku_code
+    assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", "/reports/skus/#{@sku_code}", @sku_code
     assert_select "td", @sku_code
     assert_select "td", "测试商品"
     assert_select "td", "Тестовый товар"
     assert_select ".status-pill", "上架"
+  end
+
+  test "sku detail renders in a drawer and keeps drawer mode for internal navigation" do
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "trend" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_detail_drawer"
+    assert_select ".inventory-drawer[role='dialog']"
+    assert_select ".inventory-drawer > .sku-detail-drawer__content", count: 1
+    assert_select ".resource-header", count: 0
+    assert_select ".sku-detail-tabs a[data-turbo-frame='sku_detail_drawer']", count: 6
+    assert_select ".sku-detail-tabs a[href*='tab=']", count: 6
+  end
+
+  test "sku detail drawer keeps operation report filters inside the drawer" do
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "operation" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
+
+    assert_response :success
+    assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_drawer']", count: 2
+    assert_select "form.sku-operation-filter input[name='tab'][value='operation']", count: 2
   end
 
   test "sku detail renders basic configuration when selected" do

@@ -6,7 +6,7 @@
       <th><%= t("reports.ozon_ads.fields.price") %></th><th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th>
       <th><%= t("reports.ozon_ads.metrics.orders") %></th><th><%= t("reports.ozon_ads.metrics.impressions") %></th><th><%= t("reports.ozon_ads.metrics.clicks") %></th>
       <th><%= t("reports.ozon_ads.metrics.cart_additions") %></th><th><%= t("reports.ozon_ads.metrics.ctr") %></th><th><%= t("reports.ozon_ads.metrics.avg_cpc") %></th></tr></thead>
-    <tbody><% @rows.each do |row| %><tr><td><strong><%= row[:sku]&.sku_code || "-" %></strong><small class="ozon-ads-product-subline"><%= row[:product].ozon_sku_id %></small></td>
+    <tbody><% @rows.each do |row| %><tr><td><strong><%= row[:sku] ? sku_detail_drawer_link(row[:sku], tab: "ads") : "-" %></strong><small class="ozon-ads-product-subline"><%= row[:product].ozon_sku_id %></small></td>
       <td><strong><%= row[:raw_product]&.name || row[:product].title || "-" %></strong><small class="ozon-ads-product-subline"><%= row[:raw_product]&.offer_id %></small></td>
       <td class="numeric"><%= row[:product].bid ? number_to_currency(row[:product].bid, unit: "₽", format: "%n %u") : "-" %></td>
       <td class="numeric"><%= row[:product].price ? number_to_currency(row[:product].price, unit: "₽", format: "%n %u") : "-" %></td>

@@ -1,0 +1,14 @@
+<% drawer_body = capture do %>
+  <div class="sku-detail-drawer__content">
+    <%= yield %>
+  </div>
+<% end %>
+
+<%= render "shared/overlay_drawer",
+           frame_id: "sku_detail_drawer",
+           title_id: "sku-detail-drawer-title",
+           title: @sku.product_name.presence || @sku.sku_code,
+           eyebrow: t("reports.sku_detail.title"),
+           subtitle: @sku.sku_code,
+           drawer_width: "min(80vw, calc(100vw - 24px))",
+           body: drawer_body %>

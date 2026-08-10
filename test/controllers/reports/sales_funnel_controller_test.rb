@@ -81,6 +81,8 @@ class Reports::SalesFunnelControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "成交率"
     assert_select "th", "SKU"
     assert_select ".weekly-profit-table-value", @sku.sku_code
+    assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']",
+      report_sku_path(@sku.sku_code), text: @sku.sku_code
     assert_select ".weekly-profit-table-value", "系统漏斗商品"
     assert_select ".weekly-profit-table-value", { text: "界面漏斗商品", count: 0 }
     assert_select ".weekly-profit-table-comparison.is-positive", /100\.00%/

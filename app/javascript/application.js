@@ -5,6 +5,7 @@ import CategoryMultiselectController from "./controllers/category_multiselect_co
 import CategorySelectorController from "./controllers/category_selector_controller";
 import ClipboardController from "./controllers/clipboard_controller";
 import DatePickerController from "./controllers/date_picker_controller";
+import DrawerTransitionController from "./controllers/drawer_transition_controller";
 import EmailInputController from "./controllers/email_input_controller";
 import FeedbackController from "./controllers/feedback_controller";
 import GbrainPageEditorController from "./controllers/gbrain_page_editor_controller";
@@ -33,6 +34,7 @@ Stimulus.register("category-multiselect", CategoryMultiselectController);
 Stimulus.register("category-selector", CategorySelectorController);
 Stimulus.register("clipboard", ClipboardController);
 Stimulus.register("date-picker", DatePickerController);
+Stimulus.register("drawer-transition", DrawerTransitionController);
 Stimulus.register("email-input", EmailInputController);
 Stimulus.register("feedback", FeedbackController);
 Stimulus.register("gbrain-page-editor", GbrainPageEditorController);

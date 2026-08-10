@@ -1,4 +1,12 @@
 module ApplicationHelper
+  def sku_detail_drawer_link(sku_or_code, tab: nil, label: nil, **options)
+    sku_code = sku_or_code.respond_to?(:sku_code) ? sku_or_code.sku_code : sku_or_code.to_s
+    path_options = { tab: tab, locale: params[:locale].presence }.compact
+    data = options.delete(:data).to_h.merge(turbo_frame: "sku_detail_drawer", turbo_prefetch: false)
+
+    link_to label || sku_code, report_sku_path(sku_code, path_options), **options, data: data
+  end
+
   def inventory_pagination_items(page, page_count, sibling_count: 1)
     visible_count = sibling_count * 2 + 5
     return (1..page_count).to_a if page_count <= visible_count

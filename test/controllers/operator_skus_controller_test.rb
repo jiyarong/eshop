@@ -37,6 +37,8 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-diagnosis-event-filter"
     assert_select ".ai-diagnosis-event-tag.is-active", text: /即将断货/
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
+    assert_select ".operator-sku-row a[href=?][data-turbo-frame='sku_detail_drawer']",
+      report_sku_path(@sku.sku_code), text: @sku.sku_code
     assert_select ".operator-sku-row .code-text.sub", { text: other_sku.sku_code, count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "即将断货"
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "错失销售预警"

@@ -150,7 +150,9 @@ class ReportsController < ApplicationController
   end
 
   def sku_detail
+    @sku_detail_drawer = request.headers["Turbo-Frame"] == "sku_detail_drawer"
     load_sku_detail
+    render layout: "sku_detail_drawer" if @sku_detail_drawer
   end
 
   def new_sku_predicted_cost

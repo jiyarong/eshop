@@ -155,9 +155,9 @@
               <tr class="inventory-list-table__row">
                 <td>
                   <div class="inventory-list-table__sku-line">
-                    <%= link_to row[:sku_code],
-                                report_sku_path(row[:sku_code], locale: params[:locale].presence),
-                                class: "inventory-list-table__sku-link" %>
+                    <%= sku_detail_drawer_link row[:sku_code],
+                                               tab: "inventory",
+                                               class: "inventory-list-table__sku-link" %>
                     <span class="inventory-list-table__marketing-tags">
                       <% if marketing_grade.present? %>
                         <span class="marketing-tag marketing-grade--<%= marketing_grade.downcase %>"><%= marketing_grade %></span>
@@ -218,11 +218,11 @@
                 </td>
                 <td class="inventory-list-table__actions-cell">
                   <div class="resource-actions inventory-list-table__actions">
-                    <%= link_to t("reports.inventory.actions.view_details"),
-                                report_inventory_detail_path(row[:sku_code], locale: params[:locale].presence),
-                                class: "inventory-list-table__detail-link",
-                                data: { turbo_frame: "inventory_drawer" },
-                                aria: { label: t("reports.inventory.actions.view_details") } %>
+                    <%= sku_detail_drawer_link row[:sku_code],
+                                               tab: "inventory",
+                                               label: t("reports.inventory.actions.view_details"),
+                                               class: "inventory-list-table__detail-link",
+                                               aria: { label: t("reports.inventory.actions.view_details") } %>
                   </div>
                 </td>
               </tr>
@@ -241,5 +241,4 @@
     <% end %>
   </section>
 
-  <%= turbo_frame_tag "inventory_drawer" %>
 </div>

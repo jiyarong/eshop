@@ -25,7 +25,14 @@
               <% weekly_profit_report_table_columns(report).each do |key, _label| %>
                 <% comparison = weekly_profit_report_row_comparison(report, row, key) %>
                 <td>
-                  <div class="weekly-profit-table-value"><%= weekly_profit_report_value(row, key) %></div>
+                  <div class="weekly-profit-table-value">
+                    <% sku_code = row[key] || row[key.to_s] %>
+                    <% if weekly_profit_sku_drawer_linkable?(key, sku_code) %>
+                      <%= sku_detail_drawer_link sku_code %>
+                    <% else %>
+                      <%= weekly_profit_report_value(row, key) %>
+                    <% end %>
+                  </div>
                   <% if comparison.present? %>
                     <div class="weekly-profit-table-comparison <%= weekly_profit_report_comparison_class(comparison) %>">
                       <%= weekly_profit_report_comparison_label(comparison) %>

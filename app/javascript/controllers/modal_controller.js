@@ -39,7 +39,10 @@ export default class extends Controller {
       }
     }
 
-    if (frame) frame.innerHTML = "";
+    if (frame) {
+      frame.innerHTML = "";
+      frame.classList.remove("drawer-transition--without-entry");
+    }
   }
 
   closeOnBackdrop(event) {

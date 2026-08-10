@@ -9,7 +9,7 @@
     <thead><tr><th><%= t("reports.ozon_ads.fields.internal_sku") %></th><th><%= t("reports.ozon_ads.fields.product") %></th><th><%= t("reports.ozon_ads.fields.state") %></th><th><%= t("reports.ozon_ads.fields.bid") %></th>
       <th><%= t("reports.ozon_ads.fields.price") %></th><th><%= t("reports.ozon_ads.metrics.spend") %></th><th><%= t("reports.ozon_ads.metrics.revenue") %></th>
       <th><%= t("reports.ozon_ads.metrics.orders") %></th><th><%= t("reports.ozon_ads.metrics.drr") %></th></tr></thead>
-    <tbody><% @rows.each do |row| %><tr><td><strong><%= row[:sku]&.sku_code || "-" %></strong><small class="ozon-ads-product-subline"><%= row[:product].ozon_sku_id %></small></td>
+    <tbody><% @rows.each do |row| %><tr><td><strong><%= row[:sku] ? sku_detail_drawer_link(row[:sku], tab: "ads") : "-" %></strong><small class="ozon-ads-product-subline"><%= row[:product].ozon_sku_id %></small></td>
       <td><strong><%= row[:raw_product]&.name || row[:product].title || "-" %></strong><small class="ozon-ads-product-subline"><%= row[:raw_product]&.offer_id %></small></td>
       <td><span class="status-pill <%= row[:product].state.to_s.include?('ACTIVE') || row[:product].state.to_s.include?('ENABLED') ? 'is-active' : 'is-muted' %>"><%= row[:product].state.presence || "-" %></span></td>
       <td class="numeric"><%= row[:product].bid ? number_to_percentage(row[:product].bid, precision: 1) : "-" %></td>

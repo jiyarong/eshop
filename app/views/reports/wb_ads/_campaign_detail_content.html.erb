@@ -29,7 +29,7 @@
             <% product = row[:campaign_product] %>
             <% comparisons = @row_comparisons[product.nm_id] || {} %>
             <tr>
-              <td><strong><%= row[:product_name].presence || t("reports.wb_ads.unknown_product") %></strong><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.nm_id", id: product.nm_id) %><% if row[:sku_product]&.sku %> · <%= row[:sku_product].sku.sku_code %><% end %></small></td>
+              <td><strong><%= row[:product_name].presence || t("reports.wb_ads.unknown_product") %></strong><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.nm_id", id: product.nm_id) %><% if row[:sku_product]&.sku %> · <%= sku_detail_drawer_link row[:sku_product].sku, tab: "ads" %><% end %></small></td>
               <td><span><%= t("reports.wb_ads.fields.search_bid", value: product.search_bid_kopecks ? wb_ads_metric(product.search_bid_kopecks.to_d / 100, type: :currency) : t("common.empty_value")) %></span><small class="wb-ads-subline"><%= t("reports.wb_ads.fields.recommendation_bid", value: product.recommendation_bid_kopecks ? wb_ads_metric(product.recommendation_bid_kopecks.to_d / 100, type: :currency) : t("common.empty_value")) %></small></td>
               <% [
                 [:spend, wb_ads_metric(row[:spend], type: :currency)],
