@@ -25,7 +25,7 @@
     <form class="report-form sku-operation-filter"
           action="<%= report_sku_path(@sku.sku_code) %>"
           method="get"
-          <% if @sku_detail_drawer %>data-turbo-frame="sku_detail_tab"<% end %>
+          <% if @sku_detail_drawer %>data-turbo-frame="<%= @sku_detail_tab_frame_id %>"<% end %>
           data-controller="weekly-profit-filter">
       <input type="hidden" name="tab" value="operation">
       <% if params[:locale].present? %><input type="hidden" name="locale" value="<%= params[:locale] %>"><% end %>

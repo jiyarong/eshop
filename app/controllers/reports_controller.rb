@@ -8,7 +8,7 @@ class ReportsController < ApplicationController
   include MasterSkuCategoryFilterable
   include AIDiagnosisEventFilterable
 
-  helper_method :report_value, :sku_sales_series_name, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
+  helper_method :report_value, :sku_sales_series_name, :sku_detail_tabs, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
                 :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
                 :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class
@@ -151,12 +151,16 @@ class ReportsController < ApplicationController
 
   def sku_detail
     @sku_detail_frame = request.headers["Turbo-Frame"]
-    @sku_detail_drawer = @sku_detail_frame.in?(%w[sku_detail_drawer sku_detail_tab])
+    requested_tab = @sku_detail_frame&.delete_prefix("sku_detail_tab_") if @sku_detail_frame&.start_with?("sku_detail_tab_")
+    @sku_detail_drawer = @sku_detail_frame == "sku_detail_drawer" || requested_tab.in?(SKU_DETAIL_TABS)
     load_sku_detail
+    @sku_detail_tab_frame_id = requested_tab.in?(SKU_DETAIL_TABS) ? @sku_detail_frame : "sku_detail_tab_#{@active_tab}"
+
     if @sku_detail_frame == "sku_detail_drawer"
       render layout: "sku_detail_drawer"
-    elsif @sku_detail_frame == "sku_detail_tab"
-      render partial: "reports/sku_detail_tab_frame"
+    elsif requested_tab.in?(SKU_DETAIL_TABS)
+      render partial: "reports/sku_detail_tab_frame",
+             locals: { frame_id: @sku_detail_tab_frame_id, loaded: true }
     end
   end
 
@@ -859,6 +863,10 @@ class ReportsController < ApplicationController
 
   def sku_detail_tab_path(tab)
     report_sku_path(@sku.sku_code, request.query_parameters.merge(tab: tab).except(:sku_code))
+  end
+
+  def sku_detail_tabs
+    SKU_DETAIL_TABS
   end
 
   def build_sku_sales_rows

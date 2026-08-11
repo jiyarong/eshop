@@ -61,17 +61,31 @@
      aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>"
      data-controller="sku-detail-tabs"
      data-action="turbo:frame-load@window->sku-detail-tabs#sync">
-  <% %w[operation inventory ads ai_inventory_health trend basic].each do |tab| %>
+  <% sku_detail_tabs.each do |tab| %>
     <%= link_to t("reports.sku_detail.tabs.#{tab}"),
                 sku_detail_tab_path(tab),
                 class: "erp-tabs__link sku-detail-tabs__link",
                 data: (@sku_detail_drawer ? {
-                  turbo_frame: "sku_detail_tab",
+                  turbo_frame: "sku_detail_tab_#{tab}",
                   sku_detail_tabs_target: "link",
+                  sku_detail_tab: tab,
                   action: "sku-detail-tabs#select"
                 } : {}),
                 aria: (@active_tab == tab ? { current: "page" } : nil) %>
   <% end %>
 </nav>
 
-<%= render "reports/sku_detail_tab_frame" %>
+<% if @sku_detail_drawer %>
+  <div class="sku-detail-tab-panels">
+    <% sku_detail_tabs.each do |tab| %>
+      <% active = tab == @active_tab %>
+      <%= turbo_frame_tag "sku_detail_tab_#{tab}",
+                          hidden: !active,
+                          data: { sku_detail_tab_loaded: active } do %>
+        <%= render "reports/sku_detail_tab_content" if active %>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <%= render "reports/sku_detail_tab_frame", frame_id: "sku_detail_tab", loaded: true %>
+<% end %>

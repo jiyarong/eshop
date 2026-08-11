@@ -4,20 +4,31 @@ export default class extends Controller {
   static targets = ["link"];
 
   select(event) {
-    this.markSelected(event.currentTarget);
+    const selectedLink = event.currentTarget;
+    const frame = document.getElementById(selectedLink.dataset.turboFrame);
+
+    this.show(selectedLink.dataset.skuDetailTab);
+    this.markSelected(selectedLink);
+
+    if (frame?.dataset.skuDetailTabLoaded === "true") event.preventDefault();
   }
 
   sync(event) {
-    if (event.target.id !== "sku_detail_tab" || !event.target.src) return;
+    if (!event.target.id.startsWith("sku_detail_tab_")) return;
 
-    const loadedUrl = new URL(event.target.src, window.location.origin);
-    const activeTab = loadedUrl.searchParams.get("tab") || "operation";
-    const selectedLink = this.linkTargets.find((link) => {
-      const linkUrl = new URL(link.href, window.location.origin);
-      return (linkUrl.searchParams.get("tab") || "operation") === activeTab;
-    });
+    const activeTab = event.target.id.replace("sku_detail_tab_", "");
+    const selectedLink = this.linkTargets.find((link) => link.dataset.skuDetailTab === activeTab);
 
+    event.target.dataset.skuDetailTabLoaded = "true";
+    this.show(activeTab);
     if (selectedLink) this.markSelected(selectedLink);
+  }
+
+  show(activeTab) {
+    this.linkTargets.forEach((link) => {
+      const frame = document.getElementById(link.dataset.turboFrame);
+      if (frame) frame.hidden = link.dataset.skuDetailTab !== activeTab;
+    });
   }
 
   markSelected(selectedLink) {
