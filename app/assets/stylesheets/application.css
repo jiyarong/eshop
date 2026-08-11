@@ -2975,16 +2975,6 @@ pre {
   animation: inventory-drawer-slide-in 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.drawer-transition--without-entry .inventory-drawer-backdrop,
-.drawer-transition--without-entry .inventory-drawer {
-  animation: none;
-}
-
-.drawer-transition--without-entry .inventory-drawer {
-  opacity: 1;
-  transform: none;
-}
-
 .inventory-drawer--full {
   width: 100vw;
   max-width: 100vw;

@@ -1091,8 +1091,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-drawer[role='dialog']"
     assert_select ".inventory-drawer > .sku-detail-drawer__content", count: 1
     assert_select ".resource-header", count: 0
-    assert_select ".sku-detail-tabs a[data-turbo-frame='sku_detail_drawer']", count: 6
+    assert_select ".sku-detail-tabs[data-controller='sku-detail-tabs']", count: 1
+    assert_select ".sku-detail-tabs a[data-turbo-frame='sku_detail_tab']", count: 6
     assert_select ".sku-detail-tabs a[href*='tab=']", count: 6
+    assert_select "turbo-frame#sku_detail_tab", count: 1
   end
 
   test "sku detail drawer keeps operation report filters inside the drawer" do
@@ -1101,8 +1103,22 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
 
     assert_response :success
-    assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_drawer']", count: 2
+    assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab']", count: 2
     assert_select "form.sku-operation-filter input[name='tab'][value='operation']", count: 2
+  end
+
+  test "sku detail tab frame renders only replaceable tab content" do
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "basic" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_tab" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_detail_tab", count: 1
+    assert_select "turbo-frame#sku_detail_drawer", count: 0
+    assert_select ".inventory-drawer", count: 0
+    assert_select ".sku-detail-hero", count: 0
+    assert_select ".sku-detail-tabs", count: 0
+    assert_select ".definition-list", minimum: 1
   end
 
   test "sku detail renders basic configuration when selected" do

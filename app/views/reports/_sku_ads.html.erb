@@ -3,14 +3,14 @@
     <%= link_to t("reports.sku_detail.ads.platforms.#{platform}"),
                 report_sku_path(@sku.sku_code, tab: "ads", ads_platform: platform),
                 class: "ozon-ads-tabs__link #{'is-active' if @ads_platform == platform}",
-                data: (@sku_detail_drawer ? { turbo_frame: "sku_detail_drawer" } : {}),
+                data: (@sku_detail_drawer ? { turbo_frame: "sku_detail_tab" } : {}),
                 aria: { current: (@ads_platform == platform ? "page" : nil) } %>
   <% end %>
 </nav>
 
 <section class="panel">
   <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true, class: "report-form",
-                data: { controller: "weekly-profit-filter", turbo_frame: (@sku_detail_drawer ? "sku_detail_drawer" : nil) }.compact do |form| %>
+                data: { controller: "weekly-profit-filter", turbo_frame: (@sku_detail_drawer ? "sku_detail_tab" : nil) }.compact do |form| %>
     <%= form.hidden_field :tab, value: "ads" %>
     <%= form.hidden_field :ads_platform, value: @ads_platform %>
     <div class="field field--time-range weekly-profit-top-filters">

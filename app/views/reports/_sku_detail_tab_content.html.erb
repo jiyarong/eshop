@@ -1,0 +1,675 @@
+<div class="report-stack">
+  <% if @active_tab == "operation" %>
+    <%= render "reports/sku_operation_overview" %>
+  <% elsif @active_tab == "basic" %>
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.basic_information") %></h2>
+      <dl class="definition-list">
+        <dt><%= t("reports.sku_detail.fields.sku_code") %></dt>
+        <dd><%= @sku.sku_code %></dd>
+        <dt><%= t("reports.sku_detail.fields.product_name") %></dt>
+        <dd><%= report_value(@sku.product_name) %></dd>
+        <dt><%= t("reports.sku_detail.fields.product_name_ru") %></dt>
+        <dd><%= report_value(@sku.product_name_ru) %></dd>
+        <dt><%= t("reports.sku_detail.fields.category") %></dt>
+        <% category_parts = [@sku.primary_ec_category&.localized_name, @sku.secondary_ec_category&.localized_name].compact %>
+        <dd><%= report_value(category_parts.any? ? category_parts.join(" / ") : nil) %></dd>
+        <dt><%= t("reports.sku_detail.fields.master_sku") %></dt>
+        <dd><%= report_value(@sku.master_sku&.master_sku_code) %></dd>
+        <dt><%= t("reports.sku_detail.fields.status") %></dt>
+        <dd><%= t(@sku.is_active ? "reports.sku_detail.status.active" : "reports.sku_detail.status.inactive") %></dd>
+        <dt><%= t("reports.sku_detail.fields.created_at") %></dt>
+        <dd><%= display_time(@sku.created_at) %></dd>
+        <dt><%= t("reports.sku_detail.fields.updated_at") %></dt>
+        <dd><%= display_time(@sku.updated_at) %></dd>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.product_attributes") %></h2>
+      <dl class="definition-list">
+        <dt><%= t("reports.sku_detail.fields.color") %></dt>
+        <dd><%= report_value(@sku.color) %></dd>
+        <dt><%= t("reports.sku_detail.fields.spec") %></dt>
+        <dd><%= report_value(@sku.spec) %></dd>
+        <dt><%= t("reports.sku_detail.fields.size") %></dt>
+        <dd><%= report_value(@sku.size) %></dd>
+        <dt><%= t("reports.sku_detail.fields.weight_kg") %></dt>
+        <dd><%= report_value(@sku.weight_kg) %></dd>
+        <dt><%= t("reports.sku_detail.fields.volume_l") %></dt>
+        <dd><%= report_value(@sku.volume_l) %></dd>
+        <dt><%= t("reports.sku_detail.fields.model") %></dt>
+        <dd><%= report_value(@sku.model) %></dd>
+        <dt><%= t("reports.sku_detail.fields.quality_grade") %></dt>
+        <dd><%= report_value(@sku.quality_grade) %></dd>
+        <dt><%= t("reports.sku_detail.fields.features") %></dt>
+        <dd><%= report_value(@sku.features) %></dd>
+        <dt><%= t("reports.sku_detail.fields.owner") %></dt>
+        <dd><%= report_value(@sku.owner_name) %></dd>
+        <dt><%= t("reports.sku_detail.fields.note") %></dt>
+        <dd><%= report_value(@sku.memo) %></dd>
+      </dl>
+    </section>
+
+<!--    <section class="panel">-->
+<!--      <div class="table-section-header">-->
+<!--        <h2 class="section-title"><%#= t("reports.sku_detail.sections.store_listing_configuration") %></h2>-->
+
+<!--      </div>-->
+<!--      <div class="table-scroll">-->
+<!--        <table>-->
+<!--          <thead>-->
+<!--            <tr>-->
+<!--              <th><%#= t("reports.sku_detail.fields.platform") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.store") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.status") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.external_id") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.listed_at") %></th>-->
+<!--              <th><%#= t("reports.sku_detail.fields.owner") %></th>-->
+<!--            </tr>-->
+<!--          </thead>-->
+<!--          <tbody>-->
+            <%# if @store_assignments.any? %>
+              <%# @store_assignments.each do |assignment| %>
+<!--                <tr>-->
+<!--                  <td><%#= platform_label_for_sales(assignment.platform) %></td>-->
+<!--                  <td><%#= assignment.store_display_name %></td>-->
+<!--                  <td><%#= t(assignment.is_active ? "reports.sku_detail.status.enabled" : "reports.sku_detail.status.disabled") %></td>-->
+<!--                  <td><%#= report_value(assignment.external_id) %></td>-->
+<!--                  <td><%#= report_value(assignment.listed_at) %></td>-->
+<!--                  <td><%#= report_value(assignment.owner_name) %></td>-->
+<!--                </tr>-->
+              <%# end %>
+            <%# else %>
+<!--              <tr>-->
+<!--                <td colspan="6" class="empty-state"><%#= t("reports.sku_detail.empty.store_assignments") %></td>-->
+<!--              </tr>-->
+            <%# end %>
+<!--          </tbody>-->
+<!--        </table>-->
+<!--      </div>-->
+<!--    </section>-->
+
+    <%= render "shared/sku_product_bindings",
+               sku: @sku,
+               sku_products: @sku_products,
+               title_i18n_key: "reports.sku_detail.sections.platform_product_bindings",
+               empty_i18n_key: "reports.sku_detail.empty.sku_products",
+               show_sku_code: false,
+               show_actions: false,
+               actions_path: erp_sku_sku_products_path(@sku) %>
+    <%= render "reports/sku_attachments" %>
+  <% elsif @active_tab == "inventory" %>
+    <%= render "reports/inventory_drawer_content_frame", inventory_detail: @inventory_detail, sku: @sku %>
+  <% elsif @active_tab == "ads" %>
+    <%= render "reports/sku_ads" %>
+  <% elsif @active_tab == "costs" %>
+    <section class="panel">
+      <div class="table-section-header">
+        <h2 class="section-title"><%= t("reports.sku_detail.sections.predicted_cost_configuration") %></h2>
+        <%= link_to new_report_sku_predicted_cost_path(@sku.sku_code, request.query_parameters.slice(:locale)), class: "button", data: { turbo_frame: "erp_modal" } do %>
+          <%= t("reports.sku_detail.actions.add_predicted_cost") %>
+        <% end %>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.fields.predicted_cost") %></th>
+              <th><%= t("reports.sku_detail.fields.currency") %></th>
+              <th><%= t("reports.sku_detail.fields.start_date") %></th>
+              <th><%= t("reports.sku_detail.fields.end_date") %></th>
+              <th><%= t("reports.sku_detail.fields.note") %></th>
+              <th><%= t("reports.sku_detail.fields.created_at") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @predicted_costs.any? %>
+              <% @predicted_costs.each do |cost| %>
+                <tr>
+                  <td><%= report_value(cost.cost_money) %></td>
+                  <td><%= cost.cost_currency %></td>
+                  <td><%= cost.effective_from %></td>
+                  <td><%= report_value(cost.effective_to) %></td>
+                  <td><%= report_value(cost.note) %></td>
+                  <td><%= display_time(cost.created_at) %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="6" class="empty-state"><%= t("reports.sku_detail.empty.predicted_costs") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.sku_base_cost") %></h2>
+      <% if @sku_cost %>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th><%= t("reports.sku_detail.fields.purchase_price_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.freight_to_by_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.customs_misc_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.customs_duty_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.import_vat_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.goods_cost_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.package_size") %></th>
+                <th><%= t("reports.sku_detail.fields.volume_l") %></th>
+                <th><%= t("reports.sku_detail.fields.misc_cost_cny") %></th>
+                <th><%= t("reports.sku_detail.fields.damage_rate") %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><%= report_value(@sku_cost.purchase_price_cny) %></td>
+                <td><%= report_value(@sku_cost.freight_to_by_cny) %></td>
+                <td><%= report_value(@sku_cost.customs_misc_cny) %></td>
+                <td><%= report_value(@sku_cost.customs_duty_cny) %></td>
+                <td><%= report_value(@sku_cost.import_vat_cny) %></td>
+                <td><%= report_value(@sku_cost.goods_cost_cny) %></td>
+                <td><%= [@sku_cost.pkg_length_cm, @sku_cost.pkg_width_cm, @sku_cost.pkg_height_cm].compact_blank.join(" x ").presence || "-" %></td>
+                <td><%= report_value(@sku_cost.pkg_volume_l) %></td>
+                <td><%= report_value(@sku_cost.misc_cost_cny) %></td>
+                <td><%= report_value(@sku_cost.damage_rate) %></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="empty-state"><%= t("reports.sku_detail.empty.cost_data") %></div>
+      <% end %>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.wb_cost") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.fields.delivery_mode") %></th>
+              <th><%= t("reports.sku_detail.fields.company_type") %></th>
+              <th><%= t("reports.sku_detail.fields.target_price_rub") %></th>
+              <th><%= t("reports.sku_detail.fields.revenue_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.platform_freight_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.ad_spend_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.total_cost_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.profit_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.margin") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @wb_costs.any? %>
+              <% @wb_costs.each do |cost| %>
+                <tr>
+                  <td><%= cost.delivery_mode %></td>
+                  <td><%= cost.company_type %></td>
+                  <td><%= report_value(cost.target_price_rub) %></td>
+                  <td><%= report_value(cost.revenue_cny) %></td>
+                  <td><%= report_value(cost.wb_platform_freight_cny) %></td>
+                  <td><%= report_value(cost.wb_ad_spend_cny) %></td>
+                  <td><%= report_value(cost.wb_total_cost_cny) %></td>
+                  <td class="<%= "metric-negative" if cost.profit_cny.negative? %>"><%= report_value(cost.profit_cny) %></td>
+                  <td class="<%= "metric-negative" if cost.margin.negative? %>"><%= cost.margin_pct %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="9" class="empty-state"><%= t("reports.sku_detail.empty.wb_costs") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.ozon_cost") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.fields.delivery_mode") %></th>
+              <th><%= t("reports.sku_detail.fields.company_type") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_price_rub") %></th>
+              <th><%= t("reports.sku_detail.fields.by_price_rub") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_revenue_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.by_revenue_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.platform_freight_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_total_cost_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.by_total_cost_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.rf_profit_cny") %></th>
+              <th><%= t("reports.sku_detail.fields.by_profit_cny") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @ozon_costs.any? %>
+              <% @ozon_costs.each do |cost| %>
+                <tr>
+                  <td><%= cost.delivery_mode %></td>
+                  <td><%= cost.company_type %></td>
+                  <td><%= report_value(cost.target_price_rf_rub) %></td>
+                  <td><%= report_value(cost.target_price_by_rub) %></td>
+                  <td><%= report_value(cost.ozon_revenue_rf_cny) %></td>
+                  <td><%= report_value(cost.ozon_revenue_by_cny) %></td>
+                  <td><%= report_value(cost.ozon_platform_freight_cny) %></td>
+                  <td><%= report_value(cost.ozon_total_cost_rf_cny) %></td>
+                  <td><%= report_value(cost.ozon_total_cost_by_cny) %></td>
+                  <td class="<%= "metric-negative" if cost.ozon_profit_rf_cny.negative? %>"><%= report_value(cost.ozon_profit_rf_cny) %></td>
+                  <td class="<%= "metric-negative" if cost.ozon_profit_by_cny.negative? %>"><%= report_value(cost.ozon_profit_by_cny) %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="11" class="empty-state"><%= t("reports.sku_detail.empty.ozon_costs") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% elsif @active_tab == "ai_inventory_health" %>
+    <% if can?(:manage_skus) && @sku_products.any? %>
+      <div class="ai-health-operation-action">
+        <%= link_to new_report_sku_operation_action_path(@sku.sku_code, request.query_parameters.slice(:locale)),
+                    class: "button",
+                    data: { turbo_frame: "erp_modal" } do %>
+          <i class="bi bi-plus-lg" aria-hidden="true"></i>
+          <%= t("reports.sku_detail.operation_record.open_form") %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @inventory_health_timeline.any? %>
+      <div class="ai-health-timeline">
+        <% @inventory_health_timeline.each do |entry| %>
+          <% if entry[:type] == :operation %>
+            <% action = entry[:record] %>
+            <section class="panel ai-health-result ai-health-operation">
+              <div class="ai-health-result__header">
+                <h2 class="section-title"><%= t("reports.sku_detail.operation_record.title") %></h2>
+                <div class="ai-health-result__meta">
+                  <span><%= action.operated_by_user.display_name %></span>
+                  <time datetime="<%= action.operated_at.iso8601 %>"><%= display_time(action.operated_at) %></time>
+                </div>
+                <% if can?(:manage_skus) %>
+                  <div class="ai-health-operation__actions">
+                    <%= link_to edit_report_sku_operation_action_path(@sku.sku_code, action, request.query_parameters.slice(:locale)),
+                                class: "ico-btn",
+                                title: t("reports.sku_detail.operation_record.edit"),
+                                aria: { label: t("reports.sku_detail.operation_record.edit") },
+                                data: { turbo_frame: "erp_modal" } do %>
+                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                    <% end %>
+                    <%= link_to report_sku_operation_action_path(@sku.sku_code, action, request.query_parameters.slice(:locale)),
+                                class: "ico-btn ai-health-operation__delete",
+                                title: t("reports.sku_detail.operation_record.delete"),
+                                aria: { label: t("reports.sku_detail.operation_record.delete") },
+                                data: { turbo_method: :delete, turbo_confirm: t("reports.sku_detail.operation_record.delete_confirm") } do %>
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+              <div class="ai-health-operation__note"><%= simple_format(action.diff_result["note"].to_s) %></div>
+            </section>
+          <% else %>
+            <% result = entry[:record] %>
+            <% operation_diagnosis = ai_operation_action_diagnosis?(result) %>
+            <% conversation_id = result.events.find(&:conversation_id)&.conversation_id if operation_diagnosis %>
+            <section class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis) %>">
+            <div class="ai-health-result__header">
+              <h2 class="section-title"><%= t(
+                operation_diagnosis ? "reports.sku_detail.ai_operation_diagnosis.submission_title" : "reports.sku_detail.ai_inventory_health.submission_title",
+                id: result.id
+              ) %></h2>
+              <div class="ai-health-result__meta">
+                <span><%= result.submitted_by.display_name %></span>
+                <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
+              </div>
+              <% if conversation_id %>
+                <%= link_to ai_conversation_path(conversation_id, locale: params[:locale].presence),
+                            class: "button button-secondary ai-health-result__conversation-link" do %>
+                  <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                  <%= t("reports.sku_detail.ai_operation_diagnosis.view_conversation") %>
+                <% end %>
+              <% end %>
+              <% if can?(:manage_skus) && !operation_diagnosis %>
+                <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
+                              method: :delete,
+                              class: "ico-btn ai-health-result__delete-button",
+                              title: t("reports.sku_detail.actions.delete_inventory_health_result"),
+                              form_class: "ai-health-result__delete-form",
+                              form: { data: { turbo_confirm: t("reports.sku_detail.ai_inventory_health.delete_confirm") } } do %>
+                  <i class="bi bi-trash" aria-hidden="true"></i>
+                  <span class="sr-only"><%= t("reports.sku_detail.actions.delete_inventory_health_result") %></span>
+                <% end %>
+              <% end %>
+            </div>
+            <% if operation_diagnosis %>
+              <section class="ai-operation-diagnosis">
+                <p class="ai-operation-diagnosis__summary"><%= result.data["summary"] %></p>
+                <div class="ai-operation-diagnosis__badges" aria-label="<%= t("reports.sku_detail.ai_operation_diagnosis.summary_label") %>">
+                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--<%= result.data["effectiveness"] %>">
+                    <%= t("reports.sku_detail.ai_operation_diagnosis.effectiveness") %>：<%= ai_operation_action_effect_label(result.data["effectiveness"]) %>
+                  </span>
+                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--neutral">
+                    <%= t("reports.sku_detail.ai_operation_diagnosis.confidence") %>：<%= ai_operation_action_confidence_label(result.data["confidence"]) %>
+                  </span>
+                </div>
+                <dl class="ai-operation-diagnosis__meta">
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.observation_date") %></dt>
+                    <dd><%= result.data["observation_date"] || report_value(nil) %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.analysis_cutoff_date") %></dt>
+                    <dd><%= result.data["analysis_cutoff_date"] || report_value(nil) %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.target_actions") %></dt>
+                    <dd><%= Array(result.data["action_evaluations"]).size %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_operation_diagnosis.recent_actions") %></dt>
+                    <dd><%= Array(result.data["recent_actions"]).size %></dd>
+                  </div>
+                </dl>
+              </section>
+            <% elsif result.data.present? %>
+              <div class="ai-health-metrics">
+                <h3 class="ai-health-metrics__title"><%= t("reports.sku_detail.ai_inventory_health.metrics_title") %></h3>
+                <dl class="ai-health-metrics__list">
+                  <% result.data.sort_by { |key, _value| key.to_s }.each do |key, value| %>
+                    <div class="ai-health-metrics__item">
+                      <dt><%= key %></dt>
+                      <dd><%= ai_inventory_health_metric_value(value) %></dd>
+                    </div>
+                  <% end %>
+                </dl>
+              </div>
+            <% end %>
+            <div class="table-scroll">
+              <table class="ai-health-table">
+                <thead>
+                  <tr>
+                    <th><%= t("reports.sku_detail.ai_inventory_health.severity") %></th>
+                    <th><%= t("reports.sku_detail.ai_inventory_health.event_type") %></th>
+                    <th><%= t("reports.sku_detail.ai_inventory_health.message") %></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% result.events.each do |event| %>
+                    <tr>
+                      <td>
+                        <span class="ai-health-star ai-health-star--<%= ai_inventory_health_severity_class(event.severity) %>"
+                              title="<%= event.message %>"
+                              aria-label="<%= event.message %>">★</span>
+                        <span class="ai-health-severity"><%= event.severity %></span>
+                      </td>
+                      <td>
+                        <% if operation_diagnosis && event.details.dig("action", "operation_type").present? %>
+                          <div class="ai-operation-diagnosis__event-action">
+                            <%= ai_operation_action_type_label(event.details.dig("action", "operation_type")) %>
+                            · <%= event.details.dig("action", "platform").to_s.upcase %>
+                          </div>
+                        <% else %>
+                          <%= event.event_type %>
+                        <% end %>
+                      </td>
+                      <td class="ai-health-message"><%= event.message %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            </section>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <section class="panel">
+        <div class="empty-state"><%= t("reports.sku_detail.empty.ai_inventory_health") %></div>
+      </section>
+    <% end %>
+  <% elsif @active_tab == "stores" %>
+    <section class="panel">
+      <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true,
+                    data: (@sku_detail_drawer ? { turbo_frame: "sku_detail_tab" } : {}),
+                    html: { class: "report-form" } do %>
+        <input type="hidden" name="tab" value="stores">
+        <div class="field field--time-range">
+          <label for="sku-detail-stores-time-range-trigger"><%= t("reports.sku_detail.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "sku-detail-stores-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
+        </div>
+        <div class="field">
+          <label for="platform"><%= t("reports.sku_detail.filters.platform") %></label>
+          <select id="platform" name="platform">
+            <option value=""><%= t("reports.sku_detail.filters.all_platforms") %></option>
+            <option value="ozon" <%= "selected" if @selected_platform == "ozon" %>>Ozon</option>
+            <option value="wb" <%= "selected" if @selected_platform == "wb" %>>WB</option>
+            <option value="amazon" <%= "selected" if @selected_platform == "amazon" %>>Amazon</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="store_id"><%= t("reports.sku_detail.filters.store") %></label>
+          <select id="store_id" name="store_id">
+            <option value=""><%= t("reports.sku_detail.filters.all_stores") %></option>
+            <% @stores.each do |store| %>
+              <option value="<%= store.id %>" <%= "selected" if @selected_store_id.to_s == store.id.to_s %>><%= store.platform.upcase %> / <%= store.store_name %></option>
+            <% end %>
+          </select>
+        </div>
+        <button class="button" type="submit"><%= t("reports.sku_detail.filters.submit") %></button>
+      <% end %>
+    </section>
+
+    <section class="panel">
+      <div class="summary-grid">
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.units_sold") %></div>
+          <div class="summary-value"><%= @sku_sales_summary[:sales_quantity] %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.returned_units") %></div>
+          <div class="summary-value"><%= @sku_sales_summary[:return_quantity] %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.net_sales") %></div>
+          <div class="summary-value"><%= @sku_sales_summary[:net_quantity] %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.order_count") %></div>
+          <div class="summary-value"><%= @sku_sales_summary[:order_count] %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.revenue") %></div>
+          <div class="summary-value"><%= report_value(@sku_sales_summary[:gross_revenue]) %></div>
+        </div>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.sku_detail.metrics.average_price") %></div>
+          <div class="summary-value"><%= @sku_sales_summary[:sales_quantity].positive? ? report_value(@sku_sales_summary[:gross_revenue] / @sku_sales_summary[:sales_quantity]) : "-" %></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.store_sales") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.fields.platform") %></th>
+              <th><%= t("reports.sku_detail.fields.store") %></th>
+              <th><%= t("reports.sku_detail.metrics.units_sold") %></th>
+              <th><%= t("reports.sku_detail.metrics.returned_units") %></th>
+              <th><%= t("reports.sku_detail.metrics.net_sales") %></th>
+              <th><%= t("reports.sku_detail.metrics.order_count") %></th>
+              <th><%= t("reports.sku_detail.metrics.revenue") %></th>
+              <th>Payout</th>
+              <th><%= t("reports.sku_detail.metrics.commission") %></th>
+              <th><%= t("reports.sku_detail.metrics.discount") %></th>
+              <th><%= t("reports.sku_detail.metrics.average_price") %></th>
+              <th><%= t("reports.sku_detail.fields.fulfillment_mode") %></th>
+              <th><%= t("reports.sku_detail.fields.last_ordered_at") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @sku_sales_rows.any? %>
+              <% @sku_sales_rows.each do |row| %>
+                <tr>
+                  <td><%= platform_label_for_sales(row[:platform]) %></td>
+                  <td><%= report_value(row[:store_name]) %></td>
+                  <td><%= row[:sales_quantity] %></td>
+                  <td><%= row[:return_quantity] %></td>
+                  <td><%= row[:net_quantity] %></td>
+                  <td><%= row[:order_count] %></td>
+                  <td><%= report_value(row[:gross_revenue]) %></td>
+                  <td><%= report_value(row[:payout]) %></td>
+                  <td><%= report_value(row[:commission]) %></td>
+                  <td><%= report_value(row[:discount]) %></td>
+                  <td><%= report_value(row[:average_unit_price]) %></td>
+                  <td><%= report_value(row[:fulfillment_types]) %></td>
+                  <td><%= display_time(row[:last_ordered_at]) %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="13" class="empty-state"><%= t("reports.sku_detail.empty.order_data") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% else %>
+    <section class="panel">
+      <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true,
+                    data: (@sku_detail_drawer ? { turbo_frame: "sku_detail_tab" } : {}),
+                    html: { class: "report-form" } do %>
+        <input type="hidden" name="tab" value="trend">
+        <div class="field field--time-range">
+          <label for="sku-detail-trend-time-range-trigger"><%= t("reports.sku_detail.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "sku-detail-trend-time-range",
+                     from_date: @from_date,
+                     to_date: @to_date,
+                     submit_on_apply: true %>
+        </div>
+        <div class="field">
+          <label for="period"><%= t("reports.sku_detail.filters.period") %></label>
+          <select id="period" name="period">
+            <option value="day" <%= "selected" if @period == "day" %>><%= t("reports.sku_detail.periods.day") %></option>
+            <option value="week" <%= "selected" if @period == "week" %>><%= t("reports.sku_detail.periods.week") %></option>
+            <option value="month" <%= "selected" if @period == "month" %>><%= t("reports.sku_detail.periods.month") %></option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="grain"><%= t("reports.sku_detail.filters.grain") %></label>
+          <select id="grain" name="grain">
+            <option value="store" <%= "selected" if @grain == "store" %>><%= t("reports.sku_detail.grains.store") %></option>
+            <option value="platform" <%= "selected" if @grain == "platform" %>><%= t("reports.sku_detail.grains.platform") %></option>
+            <option value="sku" <%= "selected" if @grain == "sku" %>><%= t("reports.sku_detail.grains.sku") %></option>
+          </select>
+        </div>
+        <button class="button" type="submit"><%= t("reports.sku_detail.filters.submit") %></button>
+      <% end %>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.sales_trend_chart") %></h2>
+      <% if @sku_sales_chart_series.any? %>
+        <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+        <div id="sku-detail-sales-chart" data-chart="sku-detail-sales" style="width: 100%; height: 360px;"></div>
+        <script id="sku-detail-sales-chart-data" type="application/json"><%= raw JSON.generate(@sku_sales_chart_option) %></script>
+        <script>
+          (() => {
+            const renderSkuDetailSalesChart = () => {
+              const element = document.getElementById("sku-detail-sales-chart");
+              const dataElement = document.getElementById("sku-detail-sales-chart-data");
+              if (!element || !dataElement || !window.echarts) return;
+
+              const chart = window.echarts.getInstanceByDom(element) || window.echarts.init(element);
+              chart.setOption(JSON.parse(dataElement.textContent));
+              window.addEventListener("resize", () => chart.resize(), { once: true });
+            };
+
+            document.addEventListener("turbo:load", renderSkuDetailSalesChart);
+            document.addEventListener("DOMContentLoaded", renderSkuDetailSalesChart);
+            renderSkuDetailSalesChart();
+          })();
+        </script>
+      <% else %>
+        <div class="empty-state"><%= t("reports.sku_detail.empty.order_data") %></div>
+      <% end %>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.trend_details") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.fields.period") %></th>
+              <th>SKU</th>
+              <% unless @grain == "sku" %>
+                <th><%= t("reports.sku_detail.fields.platform") %></th>
+              <% end %>
+              <% if @grain == "store" %>
+                <th><%= t("reports.sku_detail.fields.store") %></th>
+              <% end %>
+              <th><%= t("reports.sku_detail.metrics.units_sold") %></th>
+              <th><%= t("reports.sku_detail.metrics.returned_units") %></th>
+              <th><%= t("reports.sku_detail.metrics.net_sales") %></th>
+              <th><%= t("reports.sku_detail.metrics.order_count") %></th>
+              <th><%= t("reports.sku_detail.metrics.revenue") %></th>
+              <th>Payout</th>
+              <th><%= t("reports.sku_detail.metrics.commission") %></th>
+              <th><%= t("reports.sku_detail.metrics.discount") %></th>
+              <th><%= t("reports.sku_detail.metrics.average_price") %></th>
+              <th><%= t("reports.sku_detail.fields.fulfillment_mode") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @sku_sales_rows.any? %>
+              <% @sku_sales_rows.each do |row| %>
+                <tr>
+                  <td><%= row[:period_start] %></td>
+                  <td><%= row[:sku_code] %></td>
+                  <% unless @grain == "sku" %>
+                    <td><%= platform_label_for_sales(row[:platform]) %></td>
+                  <% end %>
+                  <% if @grain == "store" %>
+                    <td><%= report_value(row[:store_name]) %></td>
+                  <% end %>
+                  <td><%= row[:sales_quantity] %></td>
+                  <td><%= row[:return_quantity] %></td>
+                  <td><%= row[:net_quantity] %></td>
+                  <td><%= row[:order_count] %></td>
+                  <td><%= report_value(row[:gross_revenue]) %></td>
+                  <td><%= report_value(row[:payout]) %></td>
+                  <td><%= report_value(row[:commission]) %></td>
+                  <td><%= report_value(row[:discount]) %></td>
+                  <td><%= report_value(row[:average_unit_price]) %></td>
+                  <td><%= report_value(row[:fulfillment_types]) %></td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="<%= @grain == "store" ? 14 : (@grain == "platform" ? 13 : 12) %>" class="empty-state"><%= t("reports.sku_detail.empty.order_data") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% end %>
+</div>
