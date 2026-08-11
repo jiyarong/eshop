@@ -129,3 +129,14 @@
       </div>
     <% end %>
   </section>
+
+<% if section[:key] == :profit %>
+  <%= turbo_frame_tag "sku_profit_trend",
+                      src: report_sku_profit_trend_path(@sku.sku_code, locale: params[:locale]),
+                      loading: :lazy do %>
+    <section class="panel sku-profit-trend">
+      <h2 class="section-title"><%= t("reports.sku_detail.profit_trend.title") %></h2>
+      <div class="empty-state"><%= t("reports.sku_detail.profit_trend.loading") %></div>
+    </section>
+  <% end %>
+<% end %>

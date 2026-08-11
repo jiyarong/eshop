@@ -23,6 +23,10 @@ class ReportsController < ApplicationController
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
   WB_WAREHOUSE_PAGE_SIZE = 10
+  SKU_PROFIT_TREND_WEEKS = 8
+  SKU_PROFIT_TREND_METRICS = %i[
+    net_sales revenue ads goods_cost average_profit_per_order annualized_return_pct annualized_net_profit_cny
+  ].freeze
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -191,6 +195,33 @@ class ReportsController < ApplicationController
       render partial: "reports/sku_detail_tab_frame",
              locals: { frame_id: @sku_detail_tab_frame_id, loaded: true }
     end
+  end
+
+  def sku_profit_trend
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    begin
+      current_monday = user_today.beginning_of_week(:monday)
+      @profit_trend_weeks = SKU_PROFIT_TREND_WEEKS.times.map do |index|
+        from_date = current_monday - (SKU_PROFIT_TREND_WEEKS - index).weeks
+        to_date = from_date.end_of_week(:monday)
+        report = WeeklyProfitReports::ReportQueryRunner.run(
+          params: {
+            report_type: "wsu_deep",
+            from_date: from_date.iso8601,
+            to_date: to_date.iso8601,
+            sku_codes: [@sku.sku_code]
+          },
+          today: user_today
+        )
+        row = report[:rows].find { |item| (item[:sku] || item["sku"]).to_s == @sku.sku_code }
+        { from_date:, to_date:, row: row || {} }
+      end
+      @profit_trend_chart_option = build_sku_profit_trend_chart_option(@profit_trend_weeks)
+    rescue StandardError => error
+      Rails.logger.error("SKU profit trend failed for #{params[:sku_code]}: #{error.class}: #{error.message}")
+      @profit_trend_error = true
+    end
+    render partial: "reports/sku_profit_trend"
   end
 
   def new_sku_predicted_cost
@@ -366,6 +397,50 @@ class ReportsController < ApplicationController
   end
 
   private
+
+  def build_sku_profit_trend_chart_option(weeks)
+    labels = weeks.map { |week| "#{week[:from_date].strftime('%m-%d')} ~ #{week[:to_date].strftime('%m-%d')}" }
+    metric_options = {
+      net_sales: { axis: 0, color: "#176b87" },
+      revenue: { axis: 1, color: "#167044" },
+      ads: { axis: 1, color: "#b42318" },
+      goods_cost: { axis: 1, color: "#a15c07" },
+      average_profit_per_order: { axis: 1, color: "#0f766e" },
+      annualized_return_pct: { axis: 2, color: "#7c3aed" },
+      annualized_net_profit_cny: { axis: 1, color: "#475569" }
+    }
+    series = SKU_PROFIT_TREND_METRICS.map do |metric|
+      settings = metric_options.fetch(metric)
+      {
+        name: t("reports.sku_detail.profit_trend.metrics.#{metric}"),
+        type: "line",
+        smooth: true,
+        symbolSize: 7,
+        yAxisIndex: settings[:axis],
+        itemStyle: { color: settings[:color] },
+        lineStyle: { color: settings[:color], width: 2 },
+        data: weeks.map { |week| profit_trend_value(week[:row], metric) }
+      }
+    end
+
+    {
+      tooltip: { trigger: "axis" },
+      legend: { type: "scroll", top: 0, data: series.map { |item| item[:name] } },
+      grid: { left: 48, right: 82, top: 64, bottom: 42, containLabel: true },
+      xAxis: { type: "category", boundaryGap: false, data: labels },
+      yAxis: [
+        { type: "value", name: t("reports.sku_detail.profit_trend.axes.quantity"), minInterval: 1 },
+        { type: "value", name: t("reports.sku_detail.profit_trend.axes.amount") },
+        { type: "value", name: "%", position: "right", offset: 54 }
+      ],
+      series:
+    }
+  end
+
+  def profit_trend_value(row, metric)
+    value = row[metric] || row[metric.to_s]
+    value.nil? ? nil : value.to_f
+  end
 
   def load_sku_detail(active_tab: nil)
     @sku = Ec::Sku.includes(

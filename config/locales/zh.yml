@@ -1633,6 +1633,22 @@ zh:
         no_store: "暂无可用店铺"
         sales_funnel: "周销售漏斗"
         weekly_profit: "周利润归集"
+      profit_trend:
+        axes:
+          amount: "金额"
+          quantity: "净销量"
+        empty: "近 8 个完整周暂无 WSU-DEEP 数据"
+        load_error: "利润趋势暂时无法加载"
+        loading: "利润趋势加载中..."
+        metrics:
+          ads: "广告费"
+          annualized_net_profit_cny: "年化净利"
+          annualized_return_pct: "年化收益率"
+          average_profit_per_order: "平均每单利润"
+          goods_cost: "货物成本"
+          net_sales: "净销量"
+          revenue: "销售额"
+        title: "近 8 周 WSU-DEEP 趋势"
       pagination:
         aria_label: "SKU 详情分页"
         next: "下一页"

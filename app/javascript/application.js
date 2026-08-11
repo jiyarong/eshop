@@ -6,6 +6,7 @@ import CategorySelectorController from "./controllers/category_selector_controll
 import ClipboardController from "./controllers/clipboard_controller";
 import DatePickerController from "./controllers/date_picker_controller";
 import EmailInputController from "./controllers/email_input_controller";
+import EchartsController from "./controllers/echarts_controller";
 import FeedbackController from "./controllers/feedback_controller";
 import GbrainPageEditorController from "./controllers/gbrain_page_editor_controller";
 import HistoryNavigationController from "./controllers/history_navigation_controller";
@@ -36,6 +37,7 @@ Stimulus.register("category-selector", CategorySelectorController);
 Stimulus.register("clipboard", ClipboardController);
 Stimulus.register("date-picker", DatePickerController);
 Stimulus.register("email-input", EmailInputController);
+Stimulus.register("echarts", EchartsController);
 Stimulus.register("feedback", FeedbackController);
 Stimulus.register("gbrain-page-editor", GbrainPageEditorController);
 Stimulus.register("history-navigation", HistoryNavigationController);

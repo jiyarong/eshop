@@ -1313,6 +1313,70 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     %w[wr wsu wsu_deep].each do |report_type|
       assert_select ".sku-operation-report--profit [data-value='#{report_type}']"
     end
+    assert_select "turbo-frame#sku_profit_trend[src=?][loading='lazy']",
+                  report_sku_profit_trend_path(@sku.sku_code), count: 1
+  end
+
+  test "sku profit trend asynchronously loads eight completed WSU-DEEP weeks" do
+    calls = []
+    original_run = WeeklyProfitReports::ReportQueryRunner.method(:run)
+    WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run) do |params:, today:|
+      calls << { params:, today: }
+      index = calls.size
+      {
+        rows: [{
+          sku: params.fetch(:sku_codes).first,
+          net_sales: index,
+          revenue: index * 100,
+          ads: index * 10,
+          goods_cost: index * 20,
+          average_profit_per_order: index * 3,
+          annualized_return_pct: index * 4,
+          annualized_net_profit_cny: index * 1_000
+        }]
+      }
+    end
+
+    begin
+      get report_sku_profit_trend_path(@sku.sku_code),
+          headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_profit_trend" }
+    ensure
+      WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run, original_run)
+    end
+
+    assert_response :success
+    assert_equal 8, calls.size
+    current_monday = Date.current.beginning_of_week(:monday)
+    calls.each_with_index do |call, index|
+      expected_from = current_monday - (8 - index).weeks
+      assert_equal "wsu_deep", call[:params].fetch(:report_type)
+      assert_equal [@sku.sku_code], call[:params].fetch(:sku_codes)
+      assert_equal expected_from.iso8601, call[:params].fetch(:from_date)
+      assert_equal expected_from.end_of_week(:monday).iso8601, call[:params].fetch(:to_date)
+    end
+    assert_operator Date.iso8601(calls.last[:params].fetch(:to_date)), :<, current_monday
+    assert_select "turbo-frame#sku_profit_trend", count: 1
+    assert_select "[data-controller='echarts']", count: 1
+    assert_select "script[data-echarts-target='data']", text: /annualized_net_profit_cny|年化净利/
+    %w[净销量 销售额 广告费 货物成本 平均每单利润 年化收益率 年化净利].each do |metric|
+      assert_includes response.body, metric
+    end
+  end
+
+  test "sku profit trend renders a non-blocking error state" do
+    original_run = WeeklyProfitReports::ReportQueryRunner.method(:run)
+    WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run) do |**|
+      raise ArgumentError, "missing weekly rate"
+    end
+
+    begin
+      get report_sku_profit_trend_path(@sku.sku_code), headers: { "Accept" => "text/html" }
+    ensure
+      WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run, original_run)
+    end
+
+    assert_response :success
+    assert_select "turbo-frame#sku_profit_trend .empty-state", "利润趋势暂时无法加载"
   end
 
   test "sku detail supply orders and operation actions are scoped to current sku" do

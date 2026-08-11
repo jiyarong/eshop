@@ -1,0 +1,15 @@
+<%= turbo_frame_tag "sku_profit_trend" do %>
+  <section class="panel sku-profit-trend">
+    <h2 class="section-title"><%= t("reports.sku_detail.profit_trend.title") %></h2>
+    <% if @profit_trend_error %>
+      <div class="empty-state"><%= t("reports.sku_detail.profit_trend.load_error") %></div>
+    <% elsif @profit_trend_weeks.none? { |week| week[:row].present? } %>
+      <div class="empty-state"><%= t("reports.sku_detail.profit_trend.empty") %></div>
+    <% else %>
+      <div data-controller="echarts" class="sku-profit-trend__chart-wrap">
+        <div data-echarts-target="chart" class="sku-profit-trend__chart"></div>
+        <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(@profit_trend_chart_option) %></script>
+      </div>
+    <% end %>
+  </section>
+<% end %>

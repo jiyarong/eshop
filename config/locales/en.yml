@@ -1451,6 +1451,22 @@ en:
         no_store: "No stores available"
         sales_funnel: "Weekly sales funnel"
         weekly_profit: "Weekly profit allocation"
+      profit_trend:
+        axes:
+          amount: "Amount"
+          quantity: "Net sales"
+        empty: "No WSU-DEEP data for the latest 8 completed weeks"
+        load_error: "The profit trend is temporarily unavailable"
+        loading: "Loading profit trend..."
+        metrics:
+          ads: "Advertising"
+          annualized_net_profit_cny: "Annualized net profit"
+          annualized_return_pct: "Annualized return"
+          average_profit_per_order: "Average profit per order"
+          goods_cost: "Goods cost"
+          net_sales: "Net sales"
+          revenue: "Revenue"
+        title: "Latest 8-week WSU-DEEP trend"
       pagination:
         aria_label: "SKU detail pagination"
         next: "Next"

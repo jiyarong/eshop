@@ -1408,6 +1408,22 @@ ru:
         no_store: "Нет доступных магазинов"
         sales_funnel: "Недельная воронка продаж"
         weekly_profit: "Недельное распределение прибыли"
+      profit_trend:
+        axes:
+          amount: "Сумма"
+          quantity: "Чистые продажи"
+        empty: "Нет данных WSU-DEEP за последние 8 полных недель"
+        load_error: "Тренд прибыли временно недоступен"
+        loading: "Загрузка тренда прибыли..."
+        metrics:
+          ads: "Реклама"
+          annualized_net_profit_cny: "Годовая чистая прибыль"
+          annualized_return_pct: "Годовая доходность"
+          average_profit_per_order: "Средняя прибыль на заказ"
+          goods_cost: "Себестоимость товара"
+          net_sales: "Чистые продажи"
+          revenue: "Выручка"
+        title: "Тренд WSU-DEEP за последние 8 недель"
       pagination:
         aria_label: "Пагинация деталей SKU"
         next: "Следующая"
