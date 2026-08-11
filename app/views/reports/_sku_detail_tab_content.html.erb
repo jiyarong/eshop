@@ -321,35 +321,48 @@
             <% result = entry[:record] %>
             <% operation_diagnosis = ai_operation_action_diagnosis?(result) %>
             <% conversation_id = result.events.find(&:conversation_id)&.conversation_id if operation_diagnosis %>
-            <section class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis) %>">
-            <div class="ai-health-result__header">
-              <h2 class="section-title"><%= t(
-                operation_diagnosis ? "reports.sku_detail.ai_operation_diagnosis.submission_title" : "reports.sku_detail.ai_inventory_health.submission_title",
-                id: result.id
-              ) %></h2>
-              <div class="ai-health-result__meta">
-                <span><%= result.submitted_by.display_name %></span>
-                <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
-              </div>
-              <% if conversation_id %>
-                <%= link_to ai_conversation_path(conversation_id, locale: params[:locale].presence),
-                            class: "button button-secondary ai-health-result__conversation-link" do %>
-                  <i class="bi bi-chat-square-text" aria-hidden="true"></i>
-                  <%= t("reports.sku_detail.ai_operation_diagnosis.view_conversation") %>
-                <% end %>
-              <% end %>
-              <% if can?(:manage_skus) && !operation_diagnosis %>
-                <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
-                              method: :delete,
-                              class: "ico-btn ai-health-result__delete-button",
-                              title: t("reports.sku_detail.actions.delete_inventory_health_result"),
-                              form_class: "ai-health-result__delete-form",
-                              form: { data: { turbo_confirm: t("reports.sku_detail.ai_inventory_health.delete_confirm") } } do %>
-                  <i class="bi bi-trash" aria-hidden="true"></i>
-                  <span class="sr-only"><%= t("reports.sku_detail.actions.delete_inventory_health_result") %></span>
-                <% end %>
-              <% end %>
-            </div>
+            <details class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis, "ai-health-result--inventory-diagnosis": !operation_diagnosis) %>">
+              <summary class="ai-health-result__summary">
+                <i class="bi bi-chevron-right ai-health-result__chevron" aria-hidden="true"></i>
+                <div class="ai-health-result__header">
+                  <h2 class="section-title"><%= t(
+                    operation_diagnosis ? "reports.sku_detail.ai_operation_diagnosis.submission_title" : "reports.sku_detail.ai_inventory_health.submission_title",
+                    id: result.id
+                  ) %></h2>
+                  <div class="ai-health-result__meta">
+                    <span><%= result.submitted_by.display_name %></span>
+                    <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
+                  </div>
+                  <div class="ai-health-star-summary" aria-label="<%= t("reports.sku_detail.ai_inventory_health.star_summary") %>">
+                    <% ai_inventory_health_star_counts(result.events).each do |severity, count| %>
+                      <span class="ai-health-star-summary__item ai-health-star-summary__item--<%= severity %>" title="<%= ai_inventory_health_star_label(severity, count) %>">
+                        <span aria-hidden="true">★</span>*<%= count %>
+                      </span>
+                    <% end %>
+                  </div>
+                </div>
+              </summary>
+              <div class="ai-health-result__body">
+                <div class="ai-health-result__actions">
+                  <% if conversation_id %>
+                    <%= link_to ai_conversation_path(conversation_id, locale: params[:locale].presence),
+                                class: "button button-secondary ai-health-result__conversation-link" do %>
+                      <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                      <%= t("reports.sku_detail.ai_operation_diagnosis.view_conversation") %>
+                    <% end %>
+                  <% end %>
+                  <% if can?(:manage_skus) && !operation_diagnosis %>
+                    <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
+                                  method: :delete,
+                                  class: "ico-btn ai-health-result__delete-button",
+                                  title: t("reports.sku_detail.actions.delete_inventory_health_result"),
+                                  form_class: "ai-health-result__delete-form",
+                                  form: { data: { turbo_confirm: t("reports.sku_detail.ai_inventory_health.delete_confirm") } } do %>
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                      <span class="sr-only"><%= t("reports.sku_detail.actions.delete_inventory_health_result") %></span>
+                    <% end %>
+                  <% end %>
+                </div>
             <% if operation_diagnosis %>
               <section class="ai-operation-diagnosis">
                 <p class="ai-operation-diagnosis__summary"><%= result.data["summary"] %></p>
@@ -427,7 +440,8 @@
                 </tbody>
               </table>
             </div>
-            </section>
+              </div>
+            </details>
           <% end %>
         <% end %>
       </div>

@@ -4,7 +4,15 @@
   <div class="resource-header">
     <div>
       <p class="resource-eyebrow"><%= t("reports.sku_detail.title") %></p>
-      <h1 class="page-title"><%= @sku.sku_code %></h1>
+      <div class="sku-detail-heading-row">
+        <h1 class="page-title"><%= @sku.sku_code %></h1>
+        <%= link_to "yclaw://sku_trace?agent=erp_ai_sql_query_agent&from=sku_detail&prompt=获取SKU近期数据，帮我诊断",
+                    class: "button sku-detail-ai-diagnosis",
+                    data: { turbo: false } do %>
+          <i class="bi bi-stars" aria-hidden="true"></i>
+          <span><%= t("reports.sku_detail.actions.ai_diagnosis") %></span>
+        <% end %>
+      </div>
     </div>
     <div class="resource-actions">
       <%= link_to t("reports.sku_detail.actions.back_to_list"), operator_skus_path,
