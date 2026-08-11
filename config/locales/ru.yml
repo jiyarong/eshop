@@ -147,6 +147,7 @@ ru:
     inventory: "Склад"
     ozon_warehouses: "Распределение Ozon"
     wb_warehouses: "Распределение WB"
+    warehouses: "Распределение по складам"
     ozon_ads: "Продвижение Ozon"
     wb_ads: "Продвижение WB"
     tools: "Инструменты"
@@ -874,6 +875,19 @@ ru:
       wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
       ozon: { sku_code: "SKU", product_name: "Товар", hits_view: "Просмотры", hits_view_search: "Просмотры поиска", hits_view_pdp: "Просмотры карточки", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска", hits_tocart_pdp: "В корзину из карточки", conv_tocart: "Конверсия в корзину", ordered_units: "Заказано единиц", revenue: "Сумма заказов", returns_count: "Возвраты", cancellations: "Отмены" }
   reports:
+    warehouses:
+      title: "Распределение по складам"
+      subtitle: "Распределение запасов и рекомендации по пополнению Ozon или WB по магазину"
+      filters:
+        store: "Магазин"
+        search: "Товар"
+        search_placeholder: "Название товара, SKU или артикул"
+        sku: "SPU / SKU"
+        sku_placeholder: "Все SPU / SKU"
+        target_days: "Целевой запас в днях"
+        apply: "Применить"
+      errors:
+        no_store: "Нет доступных магазинов Ozon или WB"
     ozon_warehouses:
       title: "Распределение по складам Ozon"
       subtitle: "Остатки и рекомендации по пополнению отдельно для каждого магазина"
@@ -1372,6 +1386,11 @@ ru:
         costs: "Себестоимость"
         inventory: "Обзор запасов"
         operation: "Обзор операций"
+        profit: "Распределение прибыли"
+        sales_funnel: "Воронка продаж"
+        supply_orders: "Поставки на склад"
+        warehouses: "Распределение по складам"
+        operation_actions: "Операционные записи"
         stores: "Продажи по магазинам"
         trend: "Тренд продаж"
       ads:
@@ -1389,6 +1408,18 @@ ru:
         no_store: "Нет доступных магазинов"
         sales_funnel: "Недельная воронка продаж"
         weekly_profit: "Недельное распределение прибыли"
+      pagination:
+        aria_label: "Пагинация деталей SKU"
+        next: "Следующая"
+        page: "Страница %{page}/%{pages}"
+        previous: "Предыдущая"
+      supply_orders:
+        load_error: "Записи поставок временно недоступны"
+        no_store: "Для этого SKU нет привязанного магазина поставок"
+        store_aria_label: "Магазин поставок"
+      warehouses:
+        no_store: "Для этого SKU нет доступного магазина распределения"
+        store: "Магазин"
       title: "Детали SKU"
     sku_predicted_cost:
       fields:
@@ -1571,6 +1602,7 @@ ru:
         manual_note: "Ручная запись"
         sku_adv_on_off: "Включение рекламы"
         sku_inbound_change: "Товар в поставке"
+        supply_order: "Поставка на склад"
       platforms:
         wb: "WB"
         ozon: "Ozon"

@@ -1,0 +1,62 @@
+<% if @sku_supply_store_options.any? %>
+  <div class="weekly-profit-filter-block sku-supply-store-switch">
+    <div class="field field--full weekly-profit-store-field">
+      <span class="field-label"><%= t("reports.sku_detail.supply_orders.store_aria_label") %></span>
+      <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("reports.sku_detail.supply_orders.store_aria_label") %>">
+        <% @sku_supply_store_options.each do |store| %>
+          <% active = store[:ref] == @sku_supply_store_ref %>
+          <% store_params = request.query_parameters.symbolize_keys.except(:supply_store_ref, :supply_page, :jump_page, :current_page) %>
+          <% store_params[:statuses] = @sku_supply_selected_statuses.presence if store[:platform] == @sku_supply_platform %>
+          <%= link_to store[:label],
+                      sku_detail_tab_path("supply_orders", store_params.merge(supply_store_ref: store[:ref])),
+                      class: "weekly-profit-filter-tag#{" is-active" if active}",
+                      aria: { pressed: active },
+                      data: (@sku_detail_drawer ? { turbo_frame: @sku_detail_tab_frame_id } : {}) %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<% if @sku_supply_store_ref.present? %>
+  <%= form_with url: report_sku_path(@sku.sku_code), method: :get, class: "report-form sku-supply-status-filter", data: { turbo_frame: (@sku_detail_drawer ? @sku_detail_tab_frame_id : nil), controller: "weekly-profit-filter", action: "change->weekly-profit-filter#submit" }.compact do %>
+    <%= hidden_field_tag :tab, "supply_orders" %>
+    <%= hidden_field_tag :supply_store_ref, @sku_supply_store_ref %>
+    <%= hidden_field_tag :locale, params[:locale] if params[:locale].present? %>
+    <div class="weekly-profit-filter-block">
+      <%= render "shared/popover_multiselect_filter",
+                 field_class: "",
+                 dom_id_prefix: "sku-supply-order-status-filter",
+                 param_name: "statuses",
+                 label: t("supply_order_reports.filters.status"),
+                 all_label: t("supply_order_reports.filters.all_statuses"),
+                 selected_values: @sku_supply_selected_statuses,
+                 options: sku_supply_order_status_options %>
+    </div>
+  <% end %>
+<% end %>
+
+<% if @sku_supply_error.present? %>
+  <section class="panel empty-state"><%= t("reports.sku_detail.supply_orders.load_error") %></section>
+<% elsif @sku_supply_report.present? %>
+  <section class="panel sku-supply-orders">
+    <p class="report-meta"><%= @sku_supply_report.dig(:meta, :store_name) %> · <%= t("supply_order_reports.row_count", count: @sku_supply_report.dig(:pagination, :total_count)) %></p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><% sku_supply_order_columns(@sku_supply_report).each do |_key, label| %><th><%= label %></th><% end %></tr></thead>
+        <tbody>
+          <% if @sku_supply_report[:rows].empty? %>
+            <tr><td colspan="<%= sku_supply_order_columns(@sku_supply_report).size %>" class="empty-state"><%= t("supply_order_reports.empty_rows") %></td></tr>
+          <% else %>
+            <% @sku_supply_report[:rows].each do |row| %>
+              <tr><% sku_supply_order_columns(@sku_supply_report).each do |key, _label| %><td><%= sku_supply_order_value(row, key) %></td><% end %></tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= render "reports/supply_orders/pagination", report: @sku_supply_report, path_builder: ->(query) { sku_detail_tab_path("supply_orders", query) }, page_param: :supply_page, turbo_frame: (@sku_detail_drawer ? @sku_detail_tab_frame_id : nil) if @sku_supply_report.dig(:pagination, :total_pages) > 1 %>
+  </section>
+<% else %>
+  <section class="panel empty-state"><%= t("reports.sku_detail.supply_orders.no_store") %></section>
+<% end %>

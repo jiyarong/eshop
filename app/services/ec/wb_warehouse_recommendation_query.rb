@@ -8,7 +8,7 @@ module Ec
       "В пути до получателей"
     ].freeze
 
-    def initialize(store:, from_date:, to_date:, time_zone:, target_days: nil, query: nil, operator_id: nil)
+    def initialize(store:, from_date:, to_date:, time_zone:, target_days: nil, query: nil, operator_id: nil, sku_codes: nil)
       @store = store
       @from_date = from_date.to_date
       @to_date = to_date.to_date
@@ -16,6 +16,7 @@ module Ec
       @target_days = bounded_target_days(target_days)
       @query = query.to_s.strip.presence
       @operator_id = operator_id
+      @sku_codes = sku_codes&.map(&:to_s)&.uniq
     end
 
     def call
@@ -40,7 +41,7 @@ module Ec
 
     private
 
-    attr_reader :store, :from_date, :to_date, :time_zone, :target_days, :query, :operator_id
+    attr_reader :store, :from_date, :to_date, :time_zone, :target_days, :query, :operator_id, :sku_codes
 
     def scoped_products
       scope = Ec::SkuProduct
@@ -48,6 +49,7 @@ module Ec
         .where(store_id: store.id, platform: "wb")
         .order(:sku_code, :id)
       scope = scope.where(id: operator_sku_product_ids) if operator_id.present?
+      scope = scope.where(sku_code: sku_codes) unless sku_codes.nil?
       return scope if query.blank?
 
       pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query.downcase)}%"

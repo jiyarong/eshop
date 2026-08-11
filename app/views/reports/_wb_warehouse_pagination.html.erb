@@ -13,7 +13,7 @@
   <div class="pagination-shell">
     <nav class="pagination-nav" aria-label="<%= t("reports.wb_warehouses.pagination.#{@wb_warehouse_view == 'clusters' ? 'cluster_aria_label' : 'product_aria_label'}") %>">
       <% if page > 1 %>
-        <%= link_to reports_wb_warehouses_path(query_params.merge(page: page - 1)), class: "pg-btn pg-btn-nav", aria: { label: t("reports.wb_warehouses.pagination.previous_page") } do %>
+        <%= link_to warehouse_report_path(query_params.merge(page: page - 1)), class: "pg-btn pg-btn-nav", aria: { label: t("reports.wb_warehouses.pagination.previous_page") } do %>
           <span aria-hidden="true">‹</span>
         <% end %>
       <% else %>
@@ -26,12 +26,12 @@
         <% elsif item == page %>
           <span class="pg-btn on"><%= item %></span>
         <% else %>
-          <%= link_to item, reports_wb_warehouses_path(query_params.merge(page: item)), class: "pg-btn" %>
+          <%= link_to item, warehouse_report_path(query_params.merge(page: item)), class: "pg-btn" %>
         <% end %>
       <% end %>
 
       <% if page < page_count %>
-        <%= link_to reports_wb_warehouses_path(query_params.merge(page: page + 1)), class: "pg-btn pg-btn-nav", aria: { label: t("reports.wb_warehouses.pagination.next_page") } do %>
+        <%= link_to warehouse_report_path(query_params.merge(page: page + 1)), class: "pg-btn pg-btn-nav", aria: { label: t("reports.wb_warehouses.pagination.next_page") } do %>
           <span aria-hidden="true">›</span>
         <% end %>
       <% else %>
@@ -41,7 +41,7 @@
 
     <span class="pagination-divider" aria-hidden="true"></span>
 
-    <%= form_with url: reports_wb_warehouses_path, method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("reports.wb_warehouses.pagination.jump_label") } do %>
+    <%= form_with url: warehouse_report_path, method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("reports.wb_warehouses.pagination.jump_label") } do %>
       <% query_params.each do |key, value| %>
         <%= hidden_field_tag key, value %>
       <% end %>

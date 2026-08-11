@@ -1,0 +1,74 @@
+<%= form_with url: report_sku_path(@sku.sku_code), method: :get, class: "report-form sku-operation-actions-filter", data: { turbo_frame: (@sku_detail_drawer ? @sku_detail_tab_frame_id : nil) }.compact do |form| %>
+  <%= hidden_field_tag :tab, "operation_actions" %>
+  <%= hidden_field_tag :locale, params[:locale] if params[:locale].present? %>
+  <div class="weekly-profit-filter-block">
+    <div class="supply-order-primary-filters">
+      <label class="field">
+        <span class="label"><%= t("erp.operation_actions.filters.operation_type") %></span>
+        <%= form.select :operation_action_type,
+                        options_for_select(operation_action_type_options, @sku_operation_action_type),
+                        { include_blank: t("erp.operation_actions.filters.all_operation_types") } %>
+      </label>
+      <label class="field">
+        <span class="label"><%= t("erp.operation_actions.filters.platform") %></span>
+        <%= form.select :operation_action_platform,
+                        options_for_select(operation_action_platform_options, @sku_operation_action_platform),
+                        { include_blank: t("erp.operation_actions.filters.all_platforms") } %>
+      </label>
+      <div class="weekly-profit-filter-actions">
+        <%= form.submit t("erp.common.actions.filter"), class: "button weekly-profit-submit-button" %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<section class="panel sku-operation-actions">
+  <div class="table-scroll">
+    <table class="operation-actions-table">
+      <thead>
+        <tr>
+          <% %i[operated_at operation_type platform store operator diff].each do |field| %>
+            <th><%= t("erp.operation_actions.fields.#{field}") %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @sku_operation_actions.any? %>
+          <% @sku_operation_actions.each do |action| %>
+            <% diff_fields = action.diff_result.fetch("fields", {}) %>
+            <% diff_fields = { "note" => { "to" => action.diff_result["note"] } } if diff_fields.blank? && action.operation_type == "manual_note" %>
+            <tr class="sku-row master">
+              <td><%= display_time(action.operated_at) %></td>
+              <td><span class="badge badge-pri"><%= t("erp.operation_actions.operation_types.#{action.operation_type}") %></span></td>
+              <td><span class="badge badge-sec"><%= t("erp.operation_actions.platforms.#{action.store.platform}") %></span></td>
+              <td><%= action.store.store_name %></td>
+              <td><%= action.operated_by_user.display_name %></td>
+              <td class="operation-action-diff-cell">
+                <details class="operation-action-diff">
+                  <summary><% diff_fields.keys.each do |field| %><span class="operation-action-field-chip"><%= operation_action_field_label(field) %></span><% end %></summary>
+                  <div class="operation-action-diff-list">
+                    <% operation_action_diff_entries(diff_fields).each do |path, changes| %>
+                      <section class="operation-action-diff-item">
+                        <h3><%= operation_action_diff_path(path) %></h3>
+                        <% changes.each do |change_type, value| %>
+                          <div class="operation-action-diff-value"><strong><%= t("erp.operation_actions.change_types.#{change_type}") %></strong><div class="operation-action-diff-data"><%= operation_action_diff_value(value) %></div></div>
+                        <% end %>
+                      </section>
+                    <% end %>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr><td colspan="6" class="empty-state"><%= t("erp.operation_actions.empty.no_actions") %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <%= render "erp/operation_actions/pagination",
+             operation_actions: @sku_operation_actions,
+             path_builder: ->(query) { sku_detail_tab_path("operation_actions", query) },
+             page_param: :operation_actions_page,
+             turbo_frame: (@sku_detail_drawer ? @sku_detail_tab_frame_id : nil) if @sku_operation_actions.total_pages > 1 %>
+</section>

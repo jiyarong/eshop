@@ -1,4 +1,10 @@
-<% content_for :title, t("reports.wb_warehouses.title") %>
+<% if @sku_warehouse_embed %>
+  <div class="report-stack sku-warehouse-report">
+<% elsif @unified_warehouses %>
+  <%= render "reports/warehouses_filter" %>
+  <div class="report-stack">
+<% else %>
+  <% content_for :title, t("reports.wb_warehouses.title") %>
 
 <div class="ozon-warehouse-heading">
   <div>
@@ -35,12 +41,13 @@
       <div class="empty-state"><%= t("reports.wb_warehouses.errors.no_store") %></div>
     <% end %>
   </section>
+<% end %>
 
   <% if @wb_warehouse_report %>
     <% summary = @wb_warehouse_report[:summary] %>
     <section class="ozon-warehouse-summary">
       <div class="summary-grid">
-        <% %i[sku_count shortage_count available recommended mapping_coverage].each do |key| %>
+        <% %i[sku_count shortage_count available inbound recommended mapping_coverage].each do |key| %>
           <div class="weekly-profit-summary-card">
             <div class="summary-label"><%= t("reports.wb_warehouses.summary.#{key}") %></div>
             <div class="summary-value"><%= key == :mapping_coverage ? number_to_percentage(summary[key], precision: 1) : number_with_delimiter(summary[key]) %></div>
@@ -65,7 +72,7 @@
       <nav class="ozon-ads-tabs ozon-warehouse-tabs" aria-label="<%= t("reports.wb_warehouses.views.aria_label") %>">
         <% %w[products clusters].each do |view| %>
           <%= link_to t("reports.wb_warehouses.views.#{view}"),
-                      reports_wb_warehouses_path(tab_params.merge(view: view)),
+                      warehouse_report_path(tab_params.merge(view: view)),
                       class: "ozon-ads-tabs__link #{'is-active' if @wb_warehouse_view == view}",
                       aria: (@wb_warehouse_view == view ? { current: "page" } : {}) %>
         <% end %>

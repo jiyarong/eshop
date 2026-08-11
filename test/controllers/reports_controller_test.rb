@@ -1083,7 +1083,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
   test "sku detail renders in a drawer and keeps drawer mode for internal navigation" do
     get report_sku_path(@sku.sku_code),
-      params: { tab: "trend" },
+      params: { tab: "sales_funnel" },
       headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
 
     assert_response :success
@@ -1097,20 +1097,32 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".sku-detail-tab-panels > turbo-frame#sku_detail_tab_#{tab}", count: 1
     end
     assert_select ".sku-detail-tabs a[href*='tab=']", count: ReportsController::SKU_DETAIL_TABS.size
-    assert_select "turbo-frame#sku_detail_tab_trend[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
-    assert_select "turbo-frame#sku_detail_tab_operation[hidden][data-sku-detail-tab-loaded='false']", count: 1 do
-      assert_select ".report-stack", count: 0
+    assert_select ".sku-detail-tabs" do
+      assert_select "a", text: "成本情况", count: 0
+      assert_select "a", text: "各店铺销量情况", count: 0
+      assert_select "a", text: "销量历史趋势", count: 0
+      assert_select "a:last-child", text: "基础配置"
     end
+    assert_select ".sku-detail-tabs a:first-child", text: "销售漏斗"
+    assert_select ".sku-detail-tabs a:nth-child(2)", text: "利润归集"
+    assert_select ".sku-detail-tabs a:nth-child(3)", text: "库存概况"
+    assert_select ".sku-detail-tabs a:nth-child(4)", text: "送仓记录"
+    assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓"
+    assert_select ".sku-detail-tabs a:nth-child(6)", text: "运营记录"
+    assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
   end
 
-  test "sku detail drawer keeps operation report filters inside the drawer" do
-    get report_sku_path(@sku.sku_code),
-      params: { tab: "operation" },
-      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
+  test "sku detail drawer keeps each operation report filter inside its tab" do
+    %w[sales_funnel profit].each do |tab|
+      get report_sku_path(@sku.sku_code),
+        params: { tab: tab },
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
 
-    assert_response :success
-    assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab_operation']", count: 2
-    assert_select "form.sku-operation-filter input[name='tab'][value='operation']", count: 2
+      assert_response :success
+      assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab_#{tab}']", count: 1
+      assert_select "form.sku-operation-filter input[name='tab'][value='#{tab}']", count: 1
+      sign_in @current_user
+    end
   end
 
   test "sku detail tab frame renders only replaceable tab content" do
@@ -1220,7 +1232,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-performance-card .operator-sku-comparison.is-positive", { text: /12\.50% 环比/, count: 10 }
   end
 
-  test "sku detail operation overview scopes funnel and profit reports to current sku" do
+  test "sku detail sales funnel and profit tabs scope their reports to current sku" do
     funnel_calls = []
     profit_calls = []
     funnel_report = {
@@ -1254,6 +1266,23 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
         funnel_from_date: "2026-06-01",
         funnel_to_date: "2026-06-07",
         funnel_store_ref: funnel_store_ref,
+        sku_codes: [@second_sku.sku_code]
+      }, headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_equal 1, funnel_calls.size
+      assert_empty profit_calls
+      assert_equal [@sku.sku_code], funnel_calls.first.fetch(:sku_codes)
+      assert_equal "2026-06-01", funnel_calls.first.fetch(:from_date)
+      assert_equal funnel_store_ref, funnel_calls.first.fetch(:store_ref)
+      assert_select ".sku-detail-tabs a[aria-current='page']", "销售漏斗"
+      assert_select ".sku-operation-report--funnel", 1
+      assert_select ".sku-operation-report--profit", 0
+      assert_select "form.sku-operation-filter input[name='tab'][value='sales_funnel']"
+
+      sign_in @current_user
+      get "/reports/skus/#{@sku.sku_code}", params: {
+        tab: "profit",
         profit_from_date: "2026-06-08",
         profit_to_date: "2026-06-14",
         profit_store_ref: profit_store_ref,
@@ -1267,28 +1296,160 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal 1, funnel_calls.size
     assert_equal 1, profit_calls.size
-    assert_equal [@sku.sku_code], funnel_calls.first.fetch(:sku_codes)
     assert_equal [@sku.sku_code], profit_calls.first.fetch(:sku_codes)
     assert_equal "wr", profit_calls.first.fetch(:report_type)
-    assert_equal "2026-06-01", funnel_calls.first.fetch(:from_date)
     assert_equal "2026-06-08", profit_calls.first.fetch(:from_date)
-    assert_equal funnel_store_ref, funnel_calls.first.fetch(:store_ref)
     assert_equal profit_store_ref, profit_calls.first.fetch(:store_ref)
-    assert_select ".sku-detail-tabs a[aria-current='page']", "运营概览"
-    assert_select ".sku-operation-report", 2
-    assert_select ".sku-operation-report .section-title", "周销售漏斗"
+    assert_select ".sku-detail-tabs a[aria-current='page']", "利润归集"
+    assert_select ".sku-operation-report", 1
     assert_select ".sku-operation-report .section-title", "周利润归集"
     assert_select ".sku-operation-report .summary-grid", 0
-    assert_select "form.sku-operation-filter", 2
-    assert_select "input[name='sku_codes[]'][value='#{@sku.sku_code}']", count: 2
-    assert_select "input[name='funnel_from_date'][value='2026-06-01']"
+    assert_select "form.sku-operation-filter", 1
+    assert_select "input[name='sku_codes[]'][value='#{@sku.sku_code}']", count: 1
     assert_select "input[name='profit_from_date'][value='2026-06-08']"
-    assert_select ".weekly-profit-store-field", 2
+    assert_select ".weekly-profit-store-field", 1
     assert_select ".sku-operation-report--profit input[name='profit_report_type'][value='wr']"
     assert_select ".sku-operation-report--profit [data-weekly-profit-filter-target='reportButton']", 3
     %w[wr wsu wsu_deep].each do |report_type|
       assert_select ".sku-operation-report--profit [data-value='#{report_type}']"
     end
+  end
+
+  test "sku detail supply orders and operation actions are scoped to current sku" do
+    current_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store_id: @sales_store.id)
+    current_wb_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store_id: @wb_sales_store.id)
+    other_product = Ec::SkuProduct.find_by!(sku_code: @second_sku.sku_code, store_id: @sales_store.id)
+    current_supply = RawOzon::SupplyOrder.create!(
+      account: @sales_ozon_account,
+      supply_order_id: "CURRENT-#{@sku_code}",
+      status: "COMPLETED",
+      items: { current_product.platform_sku_id => 4 },
+      raw_json: {},
+      synced_at: Time.current
+    )
+    other_supply = RawOzon::SupplyOrder.create!(
+      account: @sales_ozon_account,
+      supply_order_id: "OTHER-#{@sku_code}",
+      status: "COMPLETED",
+      items: { other_product.platform_sku_id => 7 },
+      raw_json: {},
+      synced_at: Time.current
+    )
+    additional_supplies = 10.times.map do |index|
+      RawOzon::SupplyOrder.create!(
+        account: @sales_ozon_account,
+        supply_order_id: "CURRENT-#{index}-#{@sku_code}",
+        status: "COMPLETED",
+        items: { current_product.platform_sku_id => index + 1 },
+        raw_json: {},
+        synced_at: Time.current
+      )
+    end
+    current_action = Ec::OperationAction.create!(
+      operation_type: "manual_note",
+      operated_by_user: @current_user,
+      operated_at: Time.current,
+      sku_product: current_product,
+      sku: @sku,
+      store: @sales_store,
+      diff_result: { "note" => "CURRENT ACTION #{@sku_code}" },
+      record_by_system: false
+    )
+    other_action = Ec::OperationAction.create!(
+      operation_type: "manual_note",
+      operated_by_user: @current_user,
+      operated_at: Time.current,
+      sku_product: other_product,
+      sku: @second_sku,
+      store: @sales_store,
+      diff_result: { "note" => "OTHER ACTION #{@sku_code}" },
+      record_by_system: false
+    )
+    wb_action = Ec::OperationAction.create!(
+      operation_type: "listing_content",
+      operated_by_user: @current_user,
+      operated_at: Time.current + 1.minute,
+      sku_product: current_wb_product,
+      sku: @sku,
+      store: @wb_sales_store,
+      diff_result: { "fields" => { "title" => { "from" => "OLD WB", "to" => "NEW WB" } } },
+      record_by_system: true
+    )
+    additional_actions = 10.times.map do |index|
+      Ec::OperationAction.create!(
+        operation_type: "manual_note",
+        operated_by_user: @current_user,
+        operated_at: Time.current + index.seconds,
+        sku_product: current_product,
+        sku: @sku,
+        store: @sales_store,
+        diff_result: { "note" => "CURRENT ACTION #{index} #{@sku_code}" },
+        record_by_system: false
+      )
+    end
+
+    get report_sku_path(@sku.sku_code), params: {
+      tab: "supply_orders",
+      supply_store_ref: "ozon:#{@sales_ozon_account.id}",
+      statuses: ["COMPLETED"]
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "送仓记录"
+    assert_select ".sku-supply-store-switch .weekly-profit-filter-tag.is-active[aria-pressed='true']"
+    assert_select ".sku-supply-store-switch .ozon-ads-tab", count: 0
+    assert_select "#sku-supply-order-status-filter-trigger"
+    assert_select "input[name='statuses[]'][value='COMPLETED'][checked='checked']"
+    assert_select ".sku-supply-orders td", text: additional_supplies.last.supply_order_id
+    assert_select ".sku-supply-orders td", text: other_supply.supply_order_id, count: 0
+    assert_select ".sku-supply-orders .inventory-pagination-bar"
+    assert_select ".sku-supply-orders .pagination-nav a[href*='supply_page=2']"
+    assert_select ".sku-supply-orders form.pagination-jump"
+
+    sign_in @current_user
+    get report_sku_path(@sku.sku_code), params: { tab: "warehouses", store_id: @sales_store.id }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "分仓"
+    assert_select ".sku-warehouse-store-filter a.is-active[aria-pressed='true']", text: @sales_store.store_name
+    assert_select ".sku-warehouse-report", text: /#{@sku.sku_code}/
+    assert_select ".sku-warehouse-report", text: /#{@second_sku.sku_code}/, count: 0
+
+    sign_in @current_user
+    get report_sku_path(@sku.sku_code), params: { tab: "warehouses", store_id: @wb_sales_store.id }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-warehouse-store-filter a.is-active[aria-pressed='true']", text: @wb_sales_store.store_name
+    assert_select ".sku-warehouse-report .summary-label", text: "FBW 可用库存"
+    assert_select ".sku-warehouse-report .summary-label", text: "仓库匹配率"
+
+    sign_in @current_user
+    get report_sku_path(@sku.sku_code), params: { tab: "operation_actions" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "运营记录"
+    assert_select ".sku-operation-actions", text: /CURRENT ACTION 9 #{@sku_code}/
+    assert_select ".sku-operation-actions", text: /OTHER ACTION #{@sku_code}/, count: 0
+    assert_select ".sku-operation-actions .inventory-pagination-bar"
+    assert_select ".sku-operation-actions .pagination-nav a[href*='operation_actions_page=2']"
+    assert_select ".sku-operation-actions form.pagination-jump"
+
+    sign_in @current_user
+    get report_sku_path(@sku.sku_code), params: {
+      tab: "operation_actions",
+      operation_action_type: "manual_note",
+      operation_action_platform: "ozon"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "select[name='operation_action_type'] option[value='manual_note'][selected='selected']"
+    assert_select "select[name='operation_action_platform'] option[value='ozon'][selected='selected']"
+    assert_select ".sku-operation-actions", text: /CURRENT ACTION 9 #{@sku_code}/
+    assert_select ".sku-operation-actions", text: /NEW WB/, count: 0
+    assert_select ".sku-operation-actions .pagination-nav a[href*='operation_action_type=manual_note'][href*='operation_action_platform=ozon']"
+  ensure
+    Ec::OperationAction.where(id: [current_action&.id, other_action&.id, wb_action&.id, *Array(additional_actions).map(&:id)].compact).delete_all
+    RawOzon::SupplyOrder.where(id: [current_supply&.id, other_supply&.id, *Array(additional_supplies).map(&:id)].compact).delete_all
   end
 
   test "sku detail embeds sku-scoped Ozon and WB advertising after inventory" do

@@ -1,4 +1,10 @@
-<% content_for :title, t("reports.ozon_warehouses.title") %>
+<% if @sku_warehouse_embed %>
+  <div class="report-stack sku-warehouse-report">
+<% elsif @unified_warehouses %>
+  <%= render "reports/warehouses_filter" %>
+  <div class="report-stack">
+<% else %>
+  <% content_for :title, t("reports.ozon_warehouses.title") %>
 
 <div class="ozon-warehouse-heading">
   <div>
@@ -37,6 +43,7 @@
       <div class="empty-state"><%= t("reports.ozon_warehouses.errors.no_store") %></div>
     <% end %>
   </section>
+<% end %>
 
   <% if @ozon_warehouse_report %>
     <% summary = @ozon_warehouse_report[:summary] %>
@@ -74,7 +81,7 @@
       <nav class="ozon-ads-tabs ozon-warehouse-tabs" aria-label="<%= t("reports.ozon_warehouses.views.aria_label") %>">
         <% %w[products clusters].each do |view| %>
           <%= link_to t("reports.ozon_warehouses.views.#{view}"),
-                      reports_ozon_warehouses_path(tab_params.merge(view: view)),
+                      warehouse_report_path(tab_params.merge(view: view)),
                       class: "ozon-ads-tabs__link #{'is-active' if @ozon_warehouse_view == view}",
                       aria: (@ozon_warehouse_view == view ? { current: "page" } : {}) %>
         <% end %>

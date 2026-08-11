@@ -55,6 +55,19 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     assert_equal @sku.sku_code, cluster_row[:products].sole[:sku_code]
   end
 
+  test "filters products by the selected sku codes" do
+    report = Ec::OzonWarehouseRecommendationQuery.new(
+      store: @store,
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 28),
+      time_zone: ActiveSupport::TimeZone["Asia/Shanghai"],
+      sku_codes: []
+    ).call
+
+    assert_empty report[:rows]
+    assert_empty report[:cluster_rows]
+  end
+
   test "does not recommend new inbound when total stock covers demand despite a cluster gap" do
     Ec::SkuInventoryLevel.where(store_id: @store.id).update_all(
       quantity: 40,

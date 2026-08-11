@@ -25,6 +25,7 @@ Rails.application.routes.draw do
   resources :operator_skus, only: :index
 
   get "reports/inventory" => "reports#inventory"
+  get "reports/warehouses" => "reports#warehouses", as: :reports_warehouses
   get "reports/ozon_warehouses" => "reports#ozon_warehouses", as: :reports_ozon_warehouses
   get "reports/wb_warehouses" => "reports#wb_warehouses", as: :reports_wb_warehouses
   get "reports/sales_funnel" => "reports/sales_funnel#show", as: :reports_sales_funnel

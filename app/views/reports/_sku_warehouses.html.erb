@@ -1,0 +1,21 @@
+<% if @stores.any? %>
+  <div class="weekly-profit-filter-block sku-warehouse-store-filter">
+    <div class="field field--full weekly-profit-store-field">
+      <span class="field-label"><%= t("reports.sku_detail.warehouses.store") %></span>
+      <% store_params = request.query_parameters.symbolize_keys.except(:store_id, :page, :jump_page, :current_page) %>
+      <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("reports.sku_detail.warehouses.store") %>">
+        <% @stores.each do |store| %>
+          <% active = store.id == @store.id %>
+          <%= link_to store.store_name,
+                      sku_detail_tab_path("warehouses", store_params.merge(store_id: store.id)),
+                      class: "weekly-profit-filter-tag#{" is-active" if active}",
+                      aria: { pressed: active },
+                      data: (@sku_detail_drawer ? { turbo_frame: @sku_detail_tab_frame_id } : {}) %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <%= render template: "reports/#{@warehouse_platform}_warehouses" %>
+<% else %>
+  <section class="panel empty-state"><%= t("reports.sku_detail.warehouses.no_store") %></section>
+<% end %>

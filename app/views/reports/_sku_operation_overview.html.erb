@@ -1,4 +1,5 @@
-<% operation_sections = [
+<% operation_sections = {
+  "sales_funnel" =>
   {
     key: :funnel,
     title: t("reports.sku_detail.operation.sales_funnel"),
@@ -8,6 +9,7 @@
     to_date: @funnel_to_date,
     store_ref: @funnel_store_ref
   },
+  "profit" =>
   {
     key: :profit,
     title: t("reports.sku_detail.operation.weekly_profit"),
@@ -17,9 +19,9 @@
     to_date: @profit_to_date,
     store_ref: @profit_store_ref
   }
-] %>
+} %>
 
-<% operation_sections.each do |section| %>
+<% section = operation_sections.fetch(@active_tab) %>
   <section class="panel sku-operation-report sku-operation-report--<%= section[:key] %>">
     <h2 class="section-title"><%= section[:title] %></h2>
     <form class="report-form sku-operation-filter"
@@ -27,18 +29,12 @@
           method="get"
           <% if @sku_detail_drawer %>data-turbo-frame="<%= @sku_detail_tab_frame_id %>"<% end %>
           data-controller="weekly-profit-filter">
-      <input type="hidden" name="tab" value="operation">
+      <input type="hidden" name="tab" value="<%= @active_tab %>">
       <% if params[:locale].present? %><input type="hidden" name="locale" value="<%= params[:locale] %>"><% end %>
       <input type="hidden" name="sku_codes[]" value="<%= @sku.sku_code %>">
       <% if section[:key] == :profit %>
         <input type="hidden" name="profit_report_type" value="<%= @profit_report_type %>" data-weekly-profit-filter-target="reportTypeInput">
       <% end %>
-
-      <% other = section[:key] == :funnel ? operation_sections.last : operation_sections.first %>
-      <input type="hidden" name="<%= other[:key] %>_from_date" value="<%= other[:from_date].iso8601 %>">
-      <input type="hidden" name="<%= other[:key] %>_to_date" value="<%= other[:to_date].iso8601 %>">
-      <input type="hidden" name="<%= other[:key] %>_store_ref" value="<%= other[:store_ref] %>">
-      <% if section[:key] == :funnel %><input type="hidden" name="profit_report_type" value="<%= @profit_report_type %>"><% end %>
 
       <div class="field field--time-range weekly-profit-top-filters">
         <div class="weekly-profit-time-range-row">
@@ -133,4 +129,3 @@
       </div>
     <% end %>
   </section>
-<% end %>

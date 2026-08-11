@@ -176,6 +176,7 @@ en:
     inventory: "Inventory"
     ozon_warehouses: "Ozon Distribution"
     wb_warehouses: "WB Distribution"
+    warehouses: "Warehouse allocation"
     ozon_ads: "Ozon Promotions"
     wb_ads: "WB Promotions"
     tools: "Tools"
@@ -903,6 +904,19 @@ en:
       wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
       ozon: { sku_code: "SKU", product_name: "Product", hits_view: "Views", hits_view_search: "Search views", hits_view_pdp: "PDP views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search cart adds", hits_tocart_pdp: "PDP cart adds", conv_tocart: "Cart conversion", ordered_units: "Ordered units", revenue: "Order amount", returns_count: "Returns", cancellations: "Cancellations" }
   reports:
+    warehouses:
+      title: "Warehouse allocation"
+      subtitle: "View Ozon or WB inventory distribution and replenishment recommendations by store"
+      filters:
+        store: "Store"
+        search: "Product"
+        search_placeholder: "Product name, SKU, or offer ID"
+        sku: "SPU / SKU"
+        sku_placeholder: "All SPUs / SKUs"
+        target_days: "Target stock days"
+        apply: "Apply"
+      errors:
+        no_store: "No available Ozon or WB stores are configured"
     ozon_warehouses:
       title: "Ozon Warehouse Distribution"
       subtitle: "Inventory allocation and replenishment recommendations for one store at a time"
@@ -1415,6 +1429,11 @@ en:
         costs: "Costs"
         inventory: "Inventory"
         operation: "Operations overview"
+        profit: "Profit allocation"
+        sales_funnel: "Sales funnel"
+        supply_orders: "Warehouse shipments"
+        warehouses: "Warehouse allocation"
+        operation_actions: "Operation records"
         stores: "Store sales"
         trend: "Sales trend"
       ads:
@@ -1432,6 +1451,18 @@ en:
         no_store: "No stores available"
         sales_funnel: "Weekly sales funnel"
         weekly_profit: "Weekly profit allocation"
+      pagination:
+        aria_label: "SKU detail pagination"
+        next: "Next"
+        page: "Page %{page}/%{pages}"
+        previous: "Previous"
+      supply_orders:
+        load_error: "Warehouse shipment records are temporarily unavailable"
+        no_store: "This SKU has no bound warehouse shipment store"
+        store_aria_label: "Warehouse shipment store"
+      warehouses:
+        no_store: "This SKU has no available warehouse allocation store"
+        store: "Store"
       title: "SKU Details"
     sku_predicted_cost:
       fields:
@@ -1614,6 +1645,7 @@ en:
         manual_note: "Manual note"
         sku_adv_on_off: "Advertising on/off"
         sku_inbound_change: "Inbound inventory"
+        supply_order: "Warehouse shipment"
       platforms:
         wb: "WB"
         ozon: "Ozon"

@@ -1,6 +1,12 @@
 <div class="report-stack">
-  <% if @active_tab == "operation" %>
+  <% if @active_tab.in?(%w[sales_funnel profit]) %>
     <%= render "reports/sku_operation_overview" %>
+  <% elsif @active_tab == "supply_orders" %>
+    <%= render "reports/sku_supply_orders" %>
+  <% elsif @active_tab == "warehouses" %>
+    <%= render "reports/sku_warehouses" %>
+  <% elsif @active_tab == "operation_actions" %>
+    <%= render "reports/sku_operation_actions" %>
   <% elsif @active_tab == "basic" %>
     <section class="panel">
       <h2 class="section-title"><%= t("reports.sku_detail.sections.basic_information") %></h2>

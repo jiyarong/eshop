@@ -154,6 +154,7 @@ zh:
     inventory: "库存"
     ozon_warehouses: "Ozon 分仓"
     wb_warehouses: "WB 分仓"
+    warehouses: "分仓"
     ozon_ads: "Ozon 推广"
     wb_ads: "WB 推广"
     tools: "测算工具"
@@ -940,6 +941,19 @@ zh:
         returns_count: "已退货商品（按退货日期）"
         cancellations: "已取消商品（按取消日期）"
   reports:
+    warehouses:
+      title: "分仓"
+      subtitle: "按店铺查看 Ozon 或 WB 的库存分布与补货建议"
+      filters:
+        store: "店铺"
+        search: "商品"
+        search_placeholder: "商品名称、SKU 或货号"
+        sku: "SPU / SKU"
+        sku_placeholder: "全部 SPU / SKU"
+        target_days: "目标库存天数"
+        apply: "查询"
+      errors:
+        no_store: "未配置可用的 Ozon 或 WB 店铺"
     ozon_warehouses:
       title: "Ozon 分仓"
       subtitle: "按单个店铺查看商品在各集群和仓库的库存分布与补货建议"
@@ -1597,6 +1611,11 @@ zh:
         costs: "成本情况"
         inventory: "库存概况"
         operation: "运营概览"
+        profit: "利润归集"
+        sales_funnel: "销售漏斗"
+        supply_orders: "送仓记录"
+        warehouses: "分仓"
+        operation_actions: "运营记录"
         stores: "各店铺销量情况"
         trend: "销量历史趋势"
       ads:
@@ -1614,6 +1633,18 @@ zh:
         no_store: "暂无可用店铺"
         sales_funnel: "周销售漏斗"
         weekly_profit: "周利润归集"
+      pagination:
+        aria_label: "SKU 详情分页"
+        next: "下一页"
+        page: "第 %{page}/%{pages} 页"
+        previous: "上一页"
+      supply_orders:
+        load_error: "送仓记录暂时无法加载"
+        no_store: "当前 SKU 暂无已绑定的送仓店铺"
+        store_aria_label: "送仓店铺"
+      warehouses:
+        no_store: "当前 SKU 暂无可用的分仓店铺"
+        store: "店铺"
       title: "SKU 详情"
     sku_predicted_cost:
       fields:
@@ -1796,6 +1827,7 @@ zh:
         manual_note: "人工记录"
         sku_adv_on_off: "广告开关"
         sku_inbound_change: "平台在途"
+        supply_order: "送仓记录"
       platforms:
         wb: "WB"
         ozon: "Ozon"

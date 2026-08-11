@@ -11,13 +11,16 @@ class ReportsController < ApplicationController
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tabs, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
                 :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
-                :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class
+                :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class,
+                :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[operation basic inventory ads ai_inventory_health costs stores trend].freeze
+  SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads ai_inventory_health basic].freeze
+  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
+  SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
   WB_WAREHOUSE_PAGE_SIZE = 10
 
@@ -90,6 +93,7 @@ class ReportsController < ApplicationController
 
   def ozon_warehouses
     load_responsible_user_filters
+    load_spu_sku_filter
     @stores = Ec::Store.active.where(platform: "ozon").where.not(ozon_raw_account_id: nil).order(:store_name)
     @store = @stores.find_by(id: params[:store_id]) || @stores.first
     @query = params[:q].to_s.strip
@@ -106,7 +110,8 @@ class ReportsController < ApplicationController
       time_zone: user_time_zone,
       target_days: @target_days,
       query: @query,
-      operator_id: @operator_id
+      operator_id: @operator_id,
+      sku_codes: warehouse_selected_sku_codes
     ).call
     current_page = ozon_warehouse_page_param
     report_rows = @ozon_warehouse_view == "clusters" ? @ozon_warehouse_report[:cluster_rows] : @ozon_warehouse_report[:rows]
@@ -116,8 +121,31 @@ class ReportsController < ApplicationController
     end
   end
 
+  def warehouses
+    all_stores = Ec::Store.active
+      .where(platform: %w[ozon wb])
+      .where("(platform = 'ozon' AND ozon_raw_account_id IS NOT NULL) OR (platform = 'wb' AND wb_raw_account_id IS NOT NULL)")
+      .order(:platform, :store_name)
+    selected_store = all_stores.find_by(id: params[:store_id]) || all_stores.first
+
+    if selected_store&.platform == "wb"
+      wb_warehouses
+      template = "reports/wb_warehouses"
+    else
+      ozon_warehouses
+      template = "reports/ozon_warehouses"
+    end
+
+    @stores = all_stores
+    @store = selected_store
+    @warehouse_platform = selected_store&.platform
+    @unified_warehouses = true
+    render template: template
+  end
+
   def wb_warehouses
     load_responsible_user_filters
+    load_spu_sku_filter
     @stores = Ec::Store.active.where(platform: "wb").where.not(wb_raw_account_id: nil).order(:store_name)
     @store = @stores.find_by(id: params[:store_id]) || @stores.first
     @query = params[:q].to_s.strip
@@ -134,7 +162,8 @@ class ReportsController < ApplicationController
       time_zone: user_time_zone,
       target_days: @target_days,
       query: @query,
-      operator_id: @operator_id
+      operator_id: @operator_id,
+      sku_codes: warehouse_selected_sku_codes
     ).call
     current_page = warehouse_page_param
     report_rows = @wb_warehouse_view == "clusters" ? @wb_warehouse_report[:cluster_rows] : @wb_warehouse_report[:rows]
@@ -152,13 +181,13 @@ class ReportsController < ApplicationController
   def sku_detail
     @sku_detail_frame = request.headers["Turbo-Frame"]
     requested_tab = @sku_detail_frame&.delete_prefix("sku_detail_tab_") if @sku_detail_frame&.start_with?("sku_detail_tab_")
-    @sku_detail_drawer = @sku_detail_frame == "sku_detail_drawer" || requested_tab.in?(SKU_DETAIL_TABS)
+    @sku_detail_drawer = @sku_detail_frame == "sku_detail_drawer" || requested_tab.in?(SKU_DETAIL_AVAILABLE_TABS)
     load_sku_detail
-    @sku_detail_tab_frame_id = requested_tab.in?(SKU_DETAIL_TABS) ? @sku_detail_frame : "sku_detail_tab_#{@active_tab}"
+    @sku_detail_tab_frame_id = requested_tab.in?(SKU_DETAIL_AVAILABLE_TABS) ? @sku_detail_frame : "sku_detail_tab_#{@active_tab}"
 
     if @sku_detail_frame == "sku_detail_drawer"
       render layout: "sku_detail_drawer"
-    elsif requested_tab.in?(SKU_DETAIL_TABS)
+    elsif requested_tab.in?(SKU_DETAIL_AVAILABLE_TABS)
       render partial: "reports/sku_detail_tab_frame",
              locals: { frame_id: @sku_detail_tab_frame_id, loaded: true }
     end
@@ -351,7 +380,8 @@ class ReportsController < ApplicationController
       :predicted_costs,
       attachments: { file_attachment: :blob }
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_TABS) || "operation"
+    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "sales_funnel"
+    @active_tab = "sales_funnel" if @active_tab == "operation"
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
     @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
@@ -380,7 +410,10 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).performance_metrics.fetch(@sku)
-    load_sku_operation_overview if @active_tab == "operation"
+    load_sku_operation_overview if @active_tab.in?(%w[sales_funnel profit])
+    load_sku_supply_orders if @active_tab == "supply_orders"
+    load_sku_warehouses if @active_tab == "warehouses"
+    load_sku_operation_actions if @active_tab == "operation_actions"
     load_sku_inventory_detail if @active_tab == "inventory"
     load_sku_ads if @active_tab == "ads"
 
@@ -548,6 +581,20 @@ class ReportsController < ApplicationController
     page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
     page = 1 if page.to_i <= 0
     page
+  end
+
+  def warehouse_report_path(query_params = {})
+    return sku_detail_tab_path("warehouses", query_params) if @sku_warehouse_embed
+    return reports_warehouses_path(query_params) if @unified_warehouses
+    return reports_wb_warehouses_path(query_params) if @store&.platform == "wb"
+
+    reports_ozon_warehouses_path(query_params)
+  end
+
+  def warehouse_selected_sku_codes
+    return nil unless spu_sku_filter_active?
+
+    apply_spu_sku_filter_to_skus(Ec::Sku.all).pluck(:sku_code)
   end
 
   def inventory_skus_scope
@@ -727,16 +774,12 @@ class ReportsController < ApplicationController
   def load_sku_operation_overview
     @operation_store_options = WeeklyProfitReports::ReportQueryRunner.store_options
     last_monday = user_today.beginning_of_week(:monday) - 1.week
-    @funnel_from_date = parse_report_date(params[:funnel_from_date]) || last_monday
-    @funnel_to_date = parse_report_date(params[:funnel_to_date]) || last_monday.end_of_week(:monday)
-    @profit_from_date = parse_report_date(params[:profit_from_date]) || last_monday
-    @profit_to_date = parse_report_date(params[:profit_to_date]) || last_monday.end_of_week(:monday)
-    @profit_report_type = params[:profit_report_type].presence_in(WeeklyProfitReports::ReportQueryRunner::REPORT_TYPES) || "wr"
-    @funnel_store_ref = operation_store_ref(params[:funnel_store_ref])
-    @profit_store_ref = operation_store_ref(params[:profit_store_ref])
+    if @active_tab == "sales_funnel"
+      @funnel_from_date = parse_report_date(params[:funnel_from_date]) || last_monday
+      @funnel_to_date = parse_report_date(params[:funnel_to_date]) || last_monday.end_of_week(:monday)
+      @funnel_store_ref = operation_store_ref(params[:funnel_store_ref])
 
-    begin
-      if @funnel_store_ref.present?
+      begin
         @operation_funnel_report = SalesFunnelReports::ReportQueryRunner.run(
           params: {
             from_date: @funnel_from_date.iso8601,
@@ -746,13 +789,16 @@ class ReportsController < ApplicationController
           },
           today: user_today
         )
+      rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
+        @operation_funnel_error = error.message
       end
-    rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
-      @operation_funnel_error = error.message
-    end
+    else
+      @profit_from_date = parse_report_date(params[:profit_from_date]) || last_monday
+      @profit_to_date = parse_report_date(params[:profit_to_date]) || last_monday.end_of_week(:monday)
+      @profit_report_type = params[:profit_report_type].presence_in(WeeklyProfitReports::ReportQueryRunner::REPORT_TYPES) || "wr"
+      @profit_store_ref = operation_store_ref(params[:profit_store_ref])
 
-    begin
-      if @profit_report_type != "wr" || @profit_store_ref.present?
+      begin
         profit_params = {
           report_type: @profit_report_type,
           from_date: @profit_from_date.iso8601,
@@ -764,9 +810,9 @@ class ReportsController < ApplicationController
           params: profit_params,
           today: user_today
         )
+      rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
+        @operation_profit_error = error.message
       end
-    rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
-      @operation_profit_error = error.message
     end
   end
 
@@ -775,6 +821,102 @@ class ReportsController < ApplicationController
     return requested_store if @operation_store_options.any? { |store| store[:ref] == requested_store }
 
     @operation_store_options.first&.dig(:ref)
+  end
+
+  def load_sku_supply_orders
+    available_refs = @sku_products.filter_map do |product|
+      store = product.store
+      account_id = store.platform == "wb" ? store.wb_raw_account_id : store.ozon_raw_account_id
+      "#{store.platform}:#{account_id}" if account_id.present?
+    end.uniq
+    @sku_supply_store_options = SupplyOrderReports::ReportQuery.store_options.select { |store| store[:ref].in?(available_refs) }
+    @sku_supply_store_ref = params[:supply_store_ref].presence_in(@sku_supply_store_options.map { |store| store[:ref] }) || @sku_supply_store_options.first&.dig(:ref)
+    return if @sku_supply_store_ref.blank?
+
+    @sku_supply_platform = @sku_supply_store_ref.split(":", 2).first
+    @sku_supply_selected_statuses = SupplyOrderReports::ReportQuery.new(params: params).selected_statuses(@sku_supply_platform)
+    query_params = request.query_parameters.merge(
+      store_ref: @sku_supply_store_ref,
+      sku_codes: [@sku.sku_code],
+      page: params[:jump_page].presence || params[:supply_page]
+    )
+    @sku_supply_report = SupplyOrderReports::ReportQuery.new(params: query_params).call
+  rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
+    @sku_supply_error = error.message
+  end
+
+  def load_sku_operation_actions
+    @sku_operation_action_type = params[:operation_action_type].presence_in(Ec::OperationAction::OPERATION_TYPES)
+    @sku_operation_action_platform = params[:operation_action_platform].presence_in(Erp::OperationActionsController::PLATFORMS)
+    page = (params[:jump_page].presence || params[:operation_actions_page]).to_i
+    page = 1 unless page.positive?
+    scope = @sku.operation_actions
+      .preload(:operated_by_user, :store, :sku_product)
+      .order(operated_at: :desc, id: :desc)
+    scope = scope.where(operation_type: @sku_operation_action_type) if @sku_operation_action_type
+    scope = scope.joins(:store).where(ec_stores: { platform: @sku_operation_action_platform }) if @sku_operation_action_platform
+    @sku_operation_actions = scope
+      .page(page)
+      .per(10)
+  end
+
+  def load_sku_warehouses
+    store_ids = @sku_products.map(&:store_id).uniq
+    @stores = Ec::Store.active
+      .where(id: store_ids, platform: %w[ozon wb])
+      .where("(platform = 'ozon' AND ozon_raw_account_id IS NOT NULL) OR (platform = 'wb' AND wb_raw_account_id IS NOT NULL)")
+      .order(:platform, :store_name)
+    @store = @stores.find_by(id: params[:store_id]) || @stores.first
+    @warehouse_platform = @store&.platform
+    @warehouse_view = params[:view].to_s.in?(%w[products clusters]) ? params[:view].to_s : "products"
+    @sku_warehouse_embed = true
+    return unless @store
+
+    query_class = @warehouse_platform == "wb" ? Ec::WbWarehouseRecommendationQuery : Ec::OzonWarehouseRecommendationQuery
+    @target_days = params[:target_days].to_i
+    @target_days = query_class::DEFAULT_TARGET_DAYS unless @target_days.positive?
+    @target_days = [@target_days, query_class::MAX_TARGET_DAYS].min
+    report = query_class.new(
+      store: @store,
+      from_date: user_today - 27.days,
+      to_date: user_today,
+      time_zone: user_time_zone,
+      target_days: @target_days,
+      sku_codes: [@sku.sku_code]
+    ).call
+    rows = @warehouse_view == "clusters" ? report[:cluster_rows] : report[:rows]
+    paginated_rows = Kaminari.paginate_array(rows).page(warehouse_page_param).per(10)
+
+    if @warehouse_platform == "wb"
+      @wb_warehouse_view = @warehouse_view
+      @wb_warehouse_report = report
+      @wb_warehouse_rows = paginated_rows
+    else
+      @ozon_warehouse_view = @warehouse_view
+      @ozon_warehouse_report = report
+      @ozon_warehouse_rows = paginated_rows
+    end
+  end
+
+  def sku_supply_order_columns(report)
+    report.dig(:meta, :columns).map { |key| [key, t("supply_order_reports.columns.#{report.dig(:meta, :platform)}.#{key}")] }
+  end
+
+  def sku_supply_order_status_options
+    values = @sku_supply_platform == "wb" ? SupplyOrderReports::ReportQuery::WB_STATUSES : SupplyOrderReports::ReportQuery::OZON_STATUSES
+    values.map { |value| [t("supply_order_reports.statuses.#{@sku_supply_platform}.#{value}", default: value.to_s.humanize), value.to_s] }
+  end
+
+  def sku_supply_order_value(row, key)
+    value = row[key]
+    return "-" if value.nil? || value == ""
+    return t("supply_order_reports.statuses.wb.#{value}", default: value) if key == :status && value.is_a?(Integer)
+    return t("supply_order_reports.statuses.ozon.#{value}", default: value.to_s.humanize) if key == :status
+    return helpers.display_time(value) if %i[created_at scheduled_at actual_at state_updated_at synced_at].include?(key)
+    return [value["from"], value["to"]].compact.map { |time| helpers.display_time(time) }.join(" ~ ") if key == :timeslot && value.is_a?(Hash)
+    return t(value ? "shared.yes" : "shared.no", default: value ? "Yes" : "No") if %i[pallet can_show_quantity].include?(key)
+
+    value
   end
 
   def sku_operation_funnel_columns(report)
@@ -861,8 +1003,8 @@ class ReportsController < ApplicationController
     @active_tab == "stores" ? "range" : @period
   end
 
-  def sku_detail_tab_path(tab)
-    report_sku_path(@sku.sku_code, request.query_parameters.merge(tab: tab).except(:sku_code))
+  def sku_detail_tab_path(tab, overrides = {})
+    report_sku_path(@sku.sku_code, request.query_parameters.merge(overrides).merge(tab: tab).except(:sku_code))
   end
 
   def sku_detail_tabs

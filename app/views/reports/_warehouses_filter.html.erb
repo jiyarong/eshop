@@ -1,0 +1,61 @@
+<% content_for :title, t("reports.warehouses.title") %>
+
+<div class="ozon-warehouse-heading">
+  <div>
+    <h1 class="page-title"><%= t("reports.warehouses.title") %></h1>
+    <p class="page-subtitle"><%= t("reports.warehouses.subtitle") %></p>
+  </div>
+</div>
+
+<section class="panel">
+  <% if @stores.any? %>
+    <%= form_with url: reports_warehouses_path, method: :get, class: "report-form warehouses-filter", data: { turbo: false } do |form| %>
+      <%= hidden_field_tag :locale, params[:locale] if params[:locale].present? %>
+      <%= hidden_field_tag :view, (@warehouse_platform == "wb" ? @wb_warehouse_view : @ozon_warehouse_view) %>
+      <%= hidden_field_tag :store_id, @store&.id %>
+      <div class="weekly-profit-filter-block">
+        <div class="supply-order-primary-filters">
+          <div class="field">
+            <%= form.label :q, t("reports.warehouses.filters.search") %>
+            <%= form.search_field :q, value: @query, placeholder: t("reports.warehouses.filters.search_placeholder") %>
+          </div>
+          <%= render "shared/spu_sku_filter",
+                     field_class: "weekly-profit-spu-sku-field",
+                     dom_id_prefix: "warehouse-spu-sku-filter",
+                     label: t("reports.warehouses.filters.sku"),
+                     placeholder: t("reports.warehouses.filters.sku_placeholder"),
+                     aria_label: t("shared.spu_sku_filter.aria_label") %>
+          <%= render "shared/responsible_user_filters",
+            field_class: "supply-order-operator-filter",
+            dom_id_prefix: "warehouse-responsible-user-filter",
+            filter_keys: %w[operator] %>
+          <div class="field ozon-warehouse-target-field">
+            <%= form.label :target_days, t("reports.warehouses.filters.target_days") %>
+            <% max_target_days = @warehouse_platform == "wb" ? Ec::WbWarehouseRecommendationQuery::MAX_TARGET_DAYS : Ec::OzonWarehouseRecommendationQuery::MAX_TARGET_DAYS %>
+            <%= form.number_field :target_days, value: @target_days, min: 1, max: max_target_days, step: 1 %>
+          </div>
+          <div class="weekly-profit-filter-actions">
+            <%= form.submit t("reports.warehouses.filters.apply"), class: "button weekly-profit-submit-button" %>
+          </div>
+        </div>
+      </div>
+      <div class="weekly-profit-filter-block">
+        <div class="field field--full weekly-profit-store-field ozon-warehouse-store-field">
+          <span class="field-label"><%= t("reports.warehouses.filters.store") %></span>
+          <% store_params = request.query_parameters.symbolize_keys.except(:store_id, :page, :jump_page, :current_page) %>
+          <div class="weekly-profit-tag-row warehouse-store-tags" role="group" aria-label="<%= t("reports.warehouses.filters.store") %>">
+            <% @stores.each do |store| %>
+              <% active = store.id == @store&.id %>
+              <%= link_to store.store_name,
+                          reports_warehouses_path(store_params.merge(store_id: store.id)),
+                          class: "weekly-profit-filter-tag#{" is-active" if active}",
+                          aria: { pressed: active } %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="empty-state"><%= t("reports.warehouses.errors.no_store") %></div>
+  <% end %>
+</section>

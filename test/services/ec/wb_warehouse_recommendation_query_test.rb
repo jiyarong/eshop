@@ -92,6 +92,19 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     assert_equal row[:fbs_available], cluster[:products].sole[:fbs_available]
   end
 
+  test "filters products by the selected sku codes" do
+    report = Ec::WbWarehouseRecommendationQuery.new(
+      store: @store,
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 28),
+      time_zone: ActiveSupport::TimeZone["Asia/Shanghai"],
+      sku_codes: []
+    ).call
+
+    assert_empty report[:rows]
+    assert_empty report[:cluster_rows]
+  end
+
   test "filters products by assigned operator" do
     report = Ec::WbWarehouseRecommendationQuery.new(
       store: @store,
