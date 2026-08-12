@@ -29,27 +29,16 @@
     </dl>
   </section>
 
-  <% if can?(:manage_purchases) %>
-    <section class="panel">
-      <h2 class="section-title"><%= t("erp.suppliers.attachments.upload") %></h2>
-      <%= form_with scope: :ec_attachment, url: attachments_erp_supplier_path(@supplier, current_locale_params), method: :post, local: true, html: { class: "report-form", multipart: true } do |form| %>
-        <div class="field"><%= form.label :attach_type, t("erp.suppliers.attachments.type") %><%= form.select :attach_type, Ec::Attachment::COMPANY_ATTACH_TYPES.map { |value| [t("erp.suppliers.attachment_types.#{value}"), value] }, {}, required: true %></div>
-        <div class="field"><%= form.label :file, t("erp.suppliers.attachments.file") %><%= form.file_field :file, required: true %></div>
-        <button class="button" type="submit"><i class="bi bi-upload" aria-hidden="true"></i><%= t("erp.suppliers.attachments.upload_action") %></button>
-      <% end %>
-    </section>
-  <% end %>
-
-  <section class="panel">
-    <h2 class="section-title"><%= t("erp.suppliers.attachments.list") %></h2>
-    <div class="table-scroll"><table><thead><tr><th><%= t("erp.suppliers.attachments.filename") %></th><th><%= t("erp.suppliers.attachments.type") %></th><th><%= t("erp.suppliers.attachments.created_at") %></th><th><%= t("erp.common.actions.actions") %></th></tr></thead><tbody>
-      <% @attachments.each do |attachment| %><tr>
-        <td><%= attachment.filename %></td><td><%= t("erp.suppliers.attachment_types.#{attachment.attach_type}") %></td><td><%= display_time(attachment.created_at) %></td>
-        <td><div class="table-row-actions"><%= link_to t("erp.suppliers.attachments.download"), attachment_erp_supplier_path(@supplier, attachment, current_locale_params), class: "button button-secondary" %><%= button_to t("erp.suppliers.attachments.delete"), attachment_erp_supplier_path(@supplier, attachment, current_locale_params), method: :delete, class: "button button-secondary", form: { data: { turbo_confirm: t("erp.suppliers.attachments.delete_confirm") } } if can?(:manage_purchases) %></div></td>
-      </tr><% end %>
-      <% if @attachments.empty? %><tr><td colspan="4" class="empty-state"><%= t("erp.suppliers.attachments.none") %></td></tr><% end %>
-    </tbody></table></div>
-  </section>
+  <%= render "shared/attachments",
+             attachments: @attachments,
+             dom_id_prefix: "supplier-#{@supplier.id}-attachments",
+             can_manage: can?(:manage_purchases),
+             attach_type_options: Ec::Attachment::COMPANY_ATTACH_TYPES.map { |type| [t("erp.suppliers.attachment_types.#{type}"), type] },
+             upload_path: attachments_erp_supplier_path(@supplier, current_locale_params),
+             download_path_for: ->(attachment) { attachment_erp_supplier_path(@supplier, attachment, current_locale_params) },
+             preview_path_for: ->(attachment) { preview_attachment_erp_supplier_path(@supplier, attachment, current_locale_params) },
+             edit_path_for: ->(attachment) { edit_attachment_erp_supplier_path(@supplier, attachment, current_locale_params) },
+             delete_path_for: ->(attachment) { attachment_erp_supplier_path(@supplier, attachment, current_locale_params) } %>
 
   <section class="panel">
     <h2 class="section-title"><%= t("erp.suppliers.show.purchase_orders") %></h2>

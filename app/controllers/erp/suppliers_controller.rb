@@ -1,7 +1,12 @@
 module Erp
   class SuppliersController < BaseController
-    before_action :set_supplier, only: [ :show, :edit, :update, :attachments, :download_attachment, :destroy_attachment ]
-    before_action -> { require_permission!(:manage_purchases) }, except: [ :index, :show, :download_attachment ]
+    include InlineEditableResponse
+
+    before_action :set_supplier, only: [
+      :show, :edit, :update, :attachments, :edit_attachment, :update_attachment,
+      :preview_attachment, :download_attachment, :destroy_attachment
+    ]
+    before_action -> { require_permission!(:manage_purchases) }, except: [ :index, :show, :preview_attachment, :download_attachment ]
 
     def index
       @q = params[:q].to_s.strip
@@ -87,27 +92,98 @@ module Erp
     end
 
     def attachments
-      uploaded_file = params.dig(:ec_attachment, :file)
-      attach_type = params.dig(:ec_attachment, :attach_type).to_s
-      unless uploaded_file.present? && Ec::Attachment::COMPANY_ATTACH_TYPES.include?(attach_type)
+      uploaded_files = attachment_files_param
+      attach_type = attachment_type_param
+      unless uploaded_files.present? && Ec::Attachment::COMPANY_ATTACH_TYPES.include?(attach_type)
         redirect_to erp_supplier_path(@supplier), alert: t("erp.suppliers.attachments.upload_failed")
         return
       end
 
-      attachment = build_attachment(uploaded_file, attach_type)
-      attachment.save!
-      attachment.attach_file!(io: uploaded_file.tempfile, content_type: uploaded_file.content_type)
-      @supplier.attachment_links.create!(ec_attachment: attachment)
-      redirect_to erp_supplier_path(@supplier), notice: t("erp.suppliers.attachments.uploaded")
+      attachments = []
+      blobs = []
+      Ec::Attachment.transaction do
+        uploaded_files.each do |uploaded_file|
+          attachment = build_attachment(uploaded_file, attach_type)
+          attachment.save!
+          blobs << attachment.attach_file!(io: uploaded_file.tempfile, content_type: uploaded_file.content_type)
+          @supplier.attachment_links.create!(ec_attachment: attachment)
+          attachments << attachment
+        end
+      end
+
+      redirect_to erp_supplier_path(@supplier), notice: t("erp.suppliers.attachments.uploaded", count: attachments.size)
     rescue ActiveRecord::RecordInvalid, ActiveStorage::IntegrityError
-      attachment&.file&.purge if attachment&.file&.attached?
-      attachment&.destroy
+      blobs.to_a.each(&:purge)
+      attachments.to_a.each(&:destroy)
       redirect_to erp_supplier_path(@supplier), alert: t("erp.suppliers.attachments.upload_failed")
+    end
+
+    def edit_attachment
+      attachment = supplier_attachment
+      raise ActionController::BadRequest, "Unsupported inline field" unless params[:inline_field] == "attach_type"
+
+      render partial: "shared/inline_edit_cell",
+        locals: attachment_inline_cell_locals(attachment, editing: true)
+    end
+
+    def update_attachment
+      attachment = supplier_attachment
+      raise ActionController::BadRequest, "Unsupported update request" unless inline_edit_request?
+
+      field = inline_field_name(%w[attach_type])
+      attach_type = params.require(:ec_attachment).permit(:attach_type)[:attach_type]
+      raise ActionController::BadRequest, "Unsupported attachment type" unless attach_type.in?(Ec::Attachment::COMPANY_ATTACH_TYPES)
+
+      if attachment.update(field => attach_type)
+        render_inline_edit_success(
+          frame_id: view_context.attachment_type_inline_frame_id(attachment, dom_id_prefix: attachment_dom_id_prefix),
+          feedback_target: "global_toast",
+          cell_partial: "shared/inline_edit_cell",
+          cell_locals: attachment_inline_cell_locals(attachment),
+          message: t("erp.inline_edit.messages.saved")
+        )
+      else
+        render_inline_edit_failure(
+          frame_id: view_context.attachment_type_inline_frame_id(attachment, dom_id_prefix: attachment_dom_id_prefix),
+          feedback_target: "global_toast",
+          cell_partial: "shared/inline_edit_cell",
+          cell_locals: attachment_inline_cell_locals(attachment, editing: true),
+          message: t("erp.inline_edit.messages.save_failed")
+        )
+      end
+    end
+
+    def preview_attachment
+      attachment = supplier_attachment
+
+      if view_context.attachment_office_previewable?(attachment)
+        source_url = attachment.file.url(disposition: :inline, filename: attachment.filename)
+        redirect_to "https://view.officeapps.live.com/op/embed.aspx?src=#{CGI.escape(source_url)}", allow_other_host: true
+      elsif view_context.attachment_browser_previewable?(attachment)
+        if attachment.file.service.is_a?(ActiveStorage::Service::QiniuService)
+          redirect_to attachment.file.url(disposition: :inline, filename: attachment.filename), allow_other_host: true
+        else
+          send_data attachment.file.download,
+                    filename: attachment.filename,
+                    type: view_context.attachment_browser_preview_content_type(attachment),
+                    disposition: "inline"
+        end
+      else
+        head :unprocessable_entity
+      end
     end
 
     def download_attachment
       attachment = supplier_attachment
-      redirect_to rails_blob_path(attachment.file, disposition: "attachment")
+
+      if attachment.file.service.is_a?(ActiveStorage::Service::QiniuService)
+        redirect_to attachment.file.url(disposition: :attachment, filename: attachment.filename), allow_other_host: true
+      else
+        send_data attachment.file.download,
+                  filename: attachment.filename,
+                  type: attachment.file.content_type || "application/octet-stream",
+                  disposition: "attachment"
+      end
     end
 
     def destroy_attachment
@@ -143,18 +219,53 @@ module Erp
       params[:association_dom_id].present?
     end
 
+    def attachment_files_param
+      files = Array(params.dig(:ec_attachment, :files)).compact_blank
+      files.presence || Array(params.dig(:ec_attachment, :file)).compact_blank
+    end
+
+    def attachment_type_param
+      params.dig(:ec_attachment, :attach_type).to_s
+    end
+
+    def attachment_type_options
+      Ec::Attachment::COMPANY_ATTACH_TYPES.map do |type|
+        [I18n.t("erp.suppliers.attachment_types.#{type}"), type]
+      end
+    end
+
+    def attachment_dom_id_prefix
+      "supplier-#{@supplier.id}-attachments"
+    end
+
+    def attachment_inline_cell_locals(attachment, editing: false)
+      view_context.attachment_type_inline_cell_locals(
+        attachment,
+        options: attachment_type_options,
+        update_path: attachment_erp_supplier_path(@supplier, attachment, locale: params[:locale]),
+        edit_path: edit_attachment_erp_supplier_path(@supplier, attachment, locale: params[:locale]),
+        dom_id_prefix: attachment_dom_id_prefix,
+        editing: editing
+      )
+    end
+
     def build_attachment(uploaded_file, attach_type)
-      filename = File.basename(uploaded_file.original_filename.to_s).presence || "attachment"
-      uploaded_file.rewind
-      digest = Digest::SHA256.hexdigest(uploaded_file.read)
-      uploaded_file.rewind
+      filename = File.basename(uploaded_file.original_filename.to_s)
+      filename = "attachment" if filename.blank? || filename == "."
       safe_filename = filename.gsub(/[^\w.\-]+/, "_").presence || "attachment"
       Ec::Attachment.new(
         attach_type: attach_type,
         filename: filename,
-        qiniu_hash: digest,
+        qiniu_hash: uploaded_file_digest(uploaded_file),
         oss_path: "ec/companies/#{@supplier.id}/attachments/#{SecureRandom.uuid}/#{safe_filename}"
       )
+    end
+
+    def uploaded_file_digest(uploaded_file)
+      uploaded_file.rewind
+      Digest::SHA256.hexdigest(uploaded_file.read)
+    ensure
+      uploaded_file.rewind if uploaded_file.respond_to?(:rewind)
     end
 
     def supplier_attachment

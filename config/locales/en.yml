@@ -1539,7 +1539,9 @@ en:
         upload: "Upload attachment"
         upload_action: "Upload"
         upload_failed: "Attachment upload failed"
-        uploaded: "Attachment uploaded"
+        uploaded:
+          one: "Attachment uploaded"
+          other: "%{count} attachments uploaded"
       channels:
         offline: "Offline"
         online: "Online"

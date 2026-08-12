@@ -166,6 +166,9 @@ Rails.application.routes.draw do
     end
     resources :suppliers, except: [:destroy] do
       post :attachments, on: :member
+      get "attachments/:attachment_id/edit", action: :edit_attachment, as: :edit_attachment, on: :member
+      patch "attachments/:attachment_id", action: :update_attachment, on: :member
+      get "attachments/:attachment_id/preview", action: :preview_attachment, as: :preview_attachment, on: :member
       get "attachments/:attachment_id", action: :download_attachment, as: :attachment, on: :member
       delete "attachments/:attachment_id", action: :destroy_attachment, on: :member
     end

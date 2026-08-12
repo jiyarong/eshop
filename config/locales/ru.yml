@@ -1496,7 +1496,9 @@ ru:
         upload: "Загрузить вложение"
         upload_action: "Загрузить"
         upload_failed: "Не удалось загрузить вложение"
-        uploaded: "Вложение загружено"
+        uploaded:
+          one: "Вложение загружено"
+          other: "Загружено вложений: %{count}"
       channels:
         offline: "Офлайн"
         online: "Онлайн"

@@ -1721,7 +1721,9 @@ zh:
         upload: "上传附件"
         upload_action: "上传"
         upload_failed: "附件上传失败"
-        uploaded: "附件已上传"
+        uploaded:
+          one: "附件已上传"
+          other: "已上传 %{count} 个附件"
       channels:
         offline: "线下"
         online: "线上"

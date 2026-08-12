@@ -16,11 +16,13 @@ class Erp::SuppliersControllerTest < ActionDispatch::IntegrationTest
 
   teardown do
     company_ids = Ec::Company.where("name LIKE ?", "%#{@token}%").pluck(:id)
+    attachment_ids = attachments_for_token.pluck(:id)
     Ec::SkuBatch.where(supplier_id: company_ids).update_all(supplier_id: nil)
     attachments_for_token.find_each do |attachment|
       attachment.file.purge if attachment.file.attached?
       attachment.destroy!
     end
+    Ec::OperationLog.where(record_type: "Ec::Attachment", record_id: attachment_ids).delete_all
     Ec::AttachmentLink.where(attachable_type: "Ec::Company", attachable_id: company_ids).delete_all
     Ec::Company.where(id: company_ids).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "erp-suppliers-#{@token.downcase}%").delete_all
@@ -46,6 +48,10 @@ class Erp::SuppliersControllerTest < ActionDispatch::IntegrationTest
     assert_select "dd", text: "是"
     assert_select "form[action='#{attachments_erp_supplier_path(@supplier)}']"
     assert_select "select[name='ec_attachment[attach_type]'] option[value='business_license']", "营业执照"
+    assert_select "input[type='file'][name='ec_attachment[files][]'][multiple]"
+    assert_select "#supplier-#{@supplier.id}-attachments-upload-dialog"
+    assert_select "dialog.attachment-preview-dialog"
+    assert_select "td.empty-state", text: "暂无附件"
   end
 
   test "new modal renders full supplier form" do
@@ -108,40 +114,119 @@ class Erp::SuppliersControllerTest < ActionDispatch::IntegrationTest
     assert_equal @supplier.name, response.parsed_body.fetch("name")
   end
 
-  test "uploads and deletes a business license" do
-    assert_difference -> { Ec::Attachment.count }, 1 do
-      assert_difference -> { Ec::AttachmentLink.where(attachable: @supplier).count }, 1 do
+  test "uploads and lists multiple supplier attachments" do
+    assert_difference -> { Ec::Attachment.count }, 2 do
+      assert_difference -> { Ec::AttachmentLink.where(attachable: @supplier).count }, 2 do
         post attachments_erp_supplier_path(@supplier), params: {
-          ec_attachment: { attach_type: "business_license", file: uploaded_file("license #{@token}") }
+          ec_attachment: {
+            attach_type: "business_license",
+            files: [
+              uploaded_file("first #{@token}", filename: "license-#{@token}.txt"),
+              uploaded_file("second #{@token}", filename: "certificate-#{@token}.pdf", content_type: "application/pdf")
+            ]
+          }
         }
       end
     end
 
-    attachment = @supplier.attachments.first
     assert_redirected_to erp_supplier_path(@supplier)
-    assert_predicate attachment, :business_license?
-    assert_predicate attachment.file, :attached?
+    attachments = @supplier.attachments.order(:filename)
+    assert_equal ["certificate-#{@token}.pdf", "license-#{@token}.txt"], attachments.pluck(:filename)
+    assert attachments.all?(&:business_license?)
+    assert attachments.all? { |attachment| attachment.file.attached? }
+
+    get erp_supplier_path(@supplier), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select "td", text: /license-#{@token}\.txt/
+    assert_select "td", text: /certificate-#{@token}\.pdf/
+    assert_select ".attachment-file-icon--pdf"
+    assert_select "button[data-preview-kind='browser']"
+  end
+
+  test "updates supplier attachment type inline and records the change" do
+    attachment = create_attachment!("update #{@token}", attachable: @supplier, attach_type: :unknown)
+
+    assert_difference -> { Ec::OperationLog.where(record_type: "Ec::Attachment", record_id: attachment.id, action: "update").count }, 1 do
+      patch attachment_erp_supplier_path(@supplier, attachment),
+            params: {
+              inline_field: "attach_type",
+              ec_attachment: { attach_type: "framework_agreement" }
+            },
+            headers: { "Accept" => Mime[:turbo_stream].to_s }
+    end
+
+    assert_response :success
+    assert_predicate attachment.reload, :framework_agreement?
+    assert_includes response.body, "框架协议"
+  end
+
+  test "previews and downloads supplier attachment" do
+    attachment = create_attachment!("attachment body #{@token}", attachable: @supplier)
+
+    get preview_attachment_erp_supplier_path(@supplier, attachment)
+    assert_response :success
+    assert_equal "inline", response.headers["Content-Disposition"].split(";").first
+    assert_equal "text/plain", response.media_type
+    assert_equal "attachment body #{@token}", response.body
+
+    get attachment_erp_supplier_path(@supplier, attachment)
+    assert_response :success
+    assert_match "attachment", response.headers["Content-Disposition"]
+    assert_match attachment.filename, response.headers["Content-Disposition"]
+  end
+
+  test "attachment actions cannot access another supplier attachment" do
+    other_supplier = Ec::Company.create!(name: "其他供应商 #{@token}", tags: [ "supplier" ])
+    attachment = create_attachment!("private #{@token}", attachable: other_supplier)
+
+    get attachment_erp_supplier_path(@supplier, attachment)
+    assert_response :not_found
+
+    get preview_attachment_erp_supplier_path(@supplier, attachment)
+    assert_response :not_found
+
+    delete attachment_erp_supplier_path(@supplier, attachment)
+    assert_response :not_found
+    assert Ec::Attachment.exists?(attachment.id)
+  end
+
+  test "deletes a supplier attachment and orphaned file" do
+    attachment = create_attachment!("delete #{@token}", attachable: @supplier)
 
     blob_id = attachment.file.blob_id
-    sign_in @current_user
     assert_difference -> { Ec::Attachment.count }, -1 do
-      delete attachment_erp_supplier_path(@supplier, attachment)
+      assert_difference -> { Ec::AttachmentLink.where(attachable: @supplier).count }, -1 do
+        delete attachment_erp_supplier_path(@supplier, attachment)
+      end
     end
+    assert_redirected_to erp_supplier_path(@supplier)
     assert_not ActiveStorage::Blob.exists?(blob_id)
   end
 
   private
 
-  def uploaded_file(body)
+  def uploaded_file(body, filename: "license-#{@token}.txt", content_type: "text/plain")
     tempfile = Tempfile.new([ "supplier-attachment-#{@token}", ".txt" ])
     tempfile.write(body)
     tempfile.rewind
     Rack::Test::UploadedFile.new(
       tempfile.path,
-      "text/plain",
+      content_type,
       false,
-      original_filename: "license-#{@token}.txt"
+      original_filename: filename
     )
+  end
+
+  def create_attachment!(body, attachable:, attach_type: :business_license, filename: "license-#{@token}.txt")
+    attachment = Ec::Attachment.create!(
+      attach_type: attach_type,
+      oss_path: "ec/test/#{@token}/#{SecureRandom.uuid}/#{filename}",
+      qiniu_hash: Digest::SHA256.hexdigest(body),
+      filename: filename
+    )
+    attachment.attach_file!(io: StringIO.new(body), content_type: "text/plain")
+    Ec::AttachmentLink.create!(attachable: attachable, ec_attachment: attachment)
+    attachment
   end
 
   def attachments_for_token
