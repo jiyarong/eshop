@@ -1,10 +1,13 @@
 module Ec
   class Attachment < ApplicationRecord
+    include Ec::Auditable
+
     self.table_name = "ec_attachments"
 
-    SKU_ATTACH_TYPES = %w[sales_contract invoice].freeze
-    COMPANY_ATTACH_TYPES = %w[business_license framework_agreement].freeze
+    SKU_ATTACH_TYPES = %w[unknown sales_contract invoice].freeze
+    COMPANY_ATTACH_TYPES = %w[unknown business_license framework_agreement].freeze
     ATTACH_TYPES = {
+      unknown: 0,
       sales_contract: 1,
       invoice: 2,
       business_license: 3,

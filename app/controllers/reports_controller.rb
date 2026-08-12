@@ -2,6 +2,7 @@ require "cgi"
 require "digest"
 
 class ReportsController < ApplicationController
+  include InlineEditableResponse
   include ResponsibleUserFilterable
   include SpuSkuFilterable
   include SkuMarketingStateFilterable
@@ -15,7 +16,7 @@ class ReportsController < ApplicationController
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
-  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
+  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :edit_sku_attachment, :update_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
   SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads ai_inventory_health basic].freeze
@@ -271,24 +272,86 @@ class ReportsController < ApplicationController
 
   def create_sku_attachment
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    uploaded_file = sku_attachment_file_param
+    uploaded_files = sku_attachment_files_param
     attach_type = sku_attachment_type_param
 
-    if uploaded_file.blank? || !Ec::Attachment::SKU_ATTACH_TYPES.include?(attach_type)
+    if uploaded_files.empty? || !Ec::Attachment::SKU_ATTACH_TYPES.include?(attach_type)
       redirect_to sku_attachments_tab_path(@sku), alert: t("reports.sku_detail.attachments.upload_failed")
       return
     end
 
-    attachment = build_sku_attachment(uploaded_file, attach_type)
-    attachment.save!
-    attachment.attach_file!(io: uploaded_file.tempfile, content_type: uploaded_file.content_type)
-    @sku.attachment_links.create!(ec_attachment: attachment)
+    attachments = []
+    blobs = []
+    Ec::Attachment.transaction do
+      uploaded_files.each do |uploaded_file|
+        attachment = build_sku_attachment(uploaded_file, attach_type)
+        attachment.save!
+        blobs << attachment.attach_file!(io: uploaded_file.tempfile, content_type: uploaded_file.content_type)
+        @sku.attachment_links.create!(ec_attachment: attachment)
+        attachments << attachment
+      end
+    end
 
-    redirect_to sku_attachments_tab_path(@sku), notice: t("reports.sku_detail.attachments.uploaded")
+    redirect_to sku_attachments_tab_path(@sku), notice: t("reports.sku_detail.attachments.uploaded", count: attachments.size)
   rescue ActiveRecord::RecordInvalid, ActiveStorage::IntegrityError
-    attachment&.file&.purge if attachment&.file&.attached?
-    attachment&.destroy
+    blobs.to_a.each(&:purge)
+    attachments.to_a.each(&:destroy)
     redirect_to sku_attachments_tab_path(@sku), alert: t("reports.sku_detail.attachments.upload_failed")
+  end
+
+  def edit_sku_attachment
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    attachment = sku_attachment_for(@sku)
+    raise ActionController::BadRequest, "Unsupported inline field" unless params[:inline_field] == "attach_type"
+
+    render partial: "shared/inline_edit_cell",
+      locals: view_context.attachment_type_inline_cell_locals(
+        attachment,
+        options: sku_attachment_type_options,
+        update_path: report_sku_attachment_path(@sku.sku_code, attachment, locale: params[:locale]),
+        edit_path: edit_report_sku_attachment_path(@sku.sku_code, attachment, locale: params[:locale]),
+        dom_id_prefix: sku_attachment_dom_id_prefix,
+        editing: true
+      )
+  end
+
+  def update_sku_attachment
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    attachment = sku_attachment_for(@sku)
+    raise ActionController::BadRequest, "Unsupported update request" unless inline_edit_request?
+
+    field = inline_field_name(%w[attach_type])
+    attach_type = params.require(:ec_attachment).permit(:attach_type)[:attach_type]
+    raise ActionController::BadRequest, "Unsupported attachment type" unless attach_type.in?(Ec::Attachment::SKU_ATTACH_TYPES)
+
+    locals = ->(editing) do
+      view_context.attachment_type_inline_cell_locals(
+        attachment,
+        options: sku_attachment_type_options,
+        update_path: report_sku_attachment_path(@sku.sku_code, attachment, locale: params[:locale]),
+        edit_path: edit_report_sku_attachment_path(@sku.sku_code, attachment, locale: params[:locale]),
+        dom_id_prefix: sku_attachment_dom_id_prefix,
+        editing: editing
+      )
+    end
+
+    if attachment.update(field => attach_type)
+      render_inline_edit_success(
+        frame_id: view_context.attachment_type_inline_frame_id(attachment, dom_id_prefix: sku_attachment_dom_id_prefix),
+        feedback_target: "global_toast",
+        cell_partial: "shared/inline_edit_cell",
+        cell_locals: locals.call(false),
+        message: t("erp.inline_edit.messages.saved")
+      )
+    else
+      render_inline_edit_failure(
+        frame_id: view_context.attachment_type_inline_frame_id(attachment, dom_id_prefix: sku_attachment_dom_id_prefix),
+        feedback_target: "global_toast",
+        cell_partial: "shared/inline_edit_cell",
+        cell_locals: locals.call(true),
+        message: t("erp.inline_edit.messages.save_failed")
+      )
+    end
   end
 
   def new_sku_operation_action
@@ -366,6 +429,27 @@ class ReportsController < ApplicationController
               filename: attachment.filename,
               type: attachment.file.content_type || "application/octet-stream",
               disposition: "attachment"
+  end
+
+  def preview_sku_attachment
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    attachment = sku_attachment_for(@sku)
+
+    if view_context.attachment_office_previewable?(attachment)
+      source_url = attachment.file.url(disposition: :inline, filename: attachment.filename)
+      redirect_to "https://view.officeapps.live.com/op/embed.aspx?src=#{CGI.escape(source_url)}", allow_other_host: true
+    elsif view_context.attachment_browser_previewable?(attachment)
+      if attachment.file.service.is_a?(ActiveStorage::Service::QiniuService)
+        redirect_to attachment.file.url(disposition: :inline, filename: attachment.filename), allow_other_host: true
+      else
+        send_data attachment.file.download,
+                  filename: attachment.filename,
+                  type: view_context.attachment_browser_preview_content_type(attachment),
+                  disposition: "inline"
+      end
+    else
+      head :unprocessable_entity
+    end
   end
 
   def destroy_sku_attachment
@@ -602,12 +686,22 @@ class ReportsController < ApplicationController
     end
   end
 
-  def sku_attachment_file_param
-    params.dig(:ec_attachment, :file)
+  def sku_attachment_files_param
+    Array(params.dig(:ec_attachment, :files)).compact_blank
   end
 
   def sku_attachment_type_param
     params.dig(:ec_attachment, :attach_type).to_s
+  end
+
+  def sku_attachment_type_options
+    Ec::Attachment::SKU_ATTACH_TYPES.map do |type|
+      [I18n.t("reports.sku_detail.attachments.attach_types.#{type}"), type]
+    end
+  end
+
+  def sku_attachment_dom_id_prefix
+    "sku-#{@sku.id}-attachments"
   end
 
   def build_sku_attachment(uploaded_file, attach_type)

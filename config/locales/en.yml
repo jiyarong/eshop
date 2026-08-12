@@ -502,6 +502,7 @@ en:
         user: "User"
       record_types:
         ec:
+          attachment: "Attachment"
           cost_allocation: "Cost Allocation"
           master_sku: "SPU"
           purchase_order: "Purchase Order"
@@ -1226,6 +1227,7 @@ en:
         actions: "Actions"
         attach_type: "Attachment type"
         attach_types:
+          unknown: "Unknown"
           invoice: "Invoice"
           sales_contract: "Sales contract"
         delete_confirm: "Delete this attachment?"
@@ -1234,7 +1236,7 @@ en:
         file_size: "File size"
         filename: "Filename"
         upload_failed: "Attachment upload failed"
-        uploaded: "Attachment uploaded"
+        uploaded: "%{count} attachments uploaded"
       empty:
         ai_inventory_health: "No AI inventory diagnosis records"
         attachments: "No attachments"
@@ -1520,6 +1522,7 @@ en:
         add: "Add supplier"
         edit: "Edit supplier"
       attachment_types:
+        unknown: "Unknown"
         business_license: "Business license"
         framework_agreement: "Framework agreement"
       attachments:
@@ -2104,6 +2107,28 @@ en:
         summary: "Store information"
         unbound_raw_products: "Unbound platform products"
   shared:
+    attachments:
+      actions: "Actions"
+      created_at: "Uploaded at"
+      delete: "Delete"
+      delete_confirm: "Delete this attachment?"
+      download: "Download"
+      dropzone_hint: "Supports single or bulk upload"
+      dropzone_title: "Click or drag files to this area"
+      file_size: "File size"
+      filename: "Filename"
+      list_title: "Attachments"
+      no_pending_files: "No files selected"
+      none: "No attachments"
+      preview: "Preview"
+      preview_frame_title: "Attachment preview"
+      preview_unavailable: "This file cannot be previewed online"
+      preview_unavailable_hint: "Download the file and open it with a local application."
+      remove_file: "Remove file"
+      submit_upload: "Upload files"
+      type: "Attachment type"
+      upload: "Upload attachments"
+      upload_title: "Upload attachments"
     popover_multiselect:
       clear: "Clear selection"
       no_options: "No matching options"

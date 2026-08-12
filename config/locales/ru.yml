@@ -473,6 +473,7 @@ ru:
         user: "Пользователь"
       record_types:
         ec:
+          attachment: "Файл"
           cost_allocation: "Распределение затрат"
           master_sku: "SPU"
           purchase_order: "Закупка"
@@ -1197,6 +1198,7 @@ ru:
         actions: "Действия"
         attach_type: "Тип файла"
         attach_types:
+          unknown: "Неизвестно"
           invoice: "Счет"
           sales_contract: "Договор продажи"
         delete_confirm: "Удалить этот файл?"
@@ -1205,7 +1207,7 @@ ru:
         file_size: "Размер файла"
         filename: "Имя файла"
         upload_failed: "Не удалось загрузить файл"
-        uploaded: "Файл загружен"
+        uploaded: "Загружено файлов: %{count}"
       empty:
         ai_inventory_health: "Нет записей AI-диагностики склада"
         attachments: "Нет файлов"
@@ -1477,6 +1479,7 @@ ru:
         add: "Добавить поставщика"
         edit: "Изменить поставщика"
       attachment_types:
+        unknown: "Неизвестно"
         business_license: "Лицензия компании"
         framework_agreement: "Рамочное соглашение"
       attachments:
@@ -2059,6 +2062,28 @@ ru:
         products: "Товары магазина"
         summary: "Информация о магазине"
   shared:
+    attachments:
+      actions: "Действия"
+      created_at: "Загружено"
+      delete: "Удалить"
+      delete_confirm: "Удалить этот файл?"
+      download: "Скачать"
+      dropzone_hint: "Можно загрузить один или несколько файлов"
+      dropzone_title: "Нажмите или перетащите файлы сюда"
+      file_size: "Размер файла"
+      filename: "Имя файла"
+      list_title: "Файлы"
+      no_pending_files: "Файлы не выбраны"
+      none: "Нет файлов"
+      preview: "Просмотр"
+      preview_frame_title: "Предпросмотр файла"
+      preview_unavailable: "Этот файл нельзя просмотреть онлайн"
+      preview_unavailable_hint: "Скачайте файл и откройте его в локальном приложении."
+      remove_file: "Удалить файл из списка"
+      submit_upload: "Загрузить файлы"
+      type: "Тип файла"
+      upload: "Загрузить файлы"
+      upload_title: "Загрузить файлы"
     popover_multiselect:
       clear: "Очистить"
       no_options: "Опции не найдены"

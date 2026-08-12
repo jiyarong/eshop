@@ -1,0 +1,168 @@
+<%
+  upload_dialog_id = "#{dom_id_prefix}-upload-dialog"
+  preview_dialog_id = "#{dom_id_prefix}-preview-dialog"
+%>
+<section class="panel attachment-panel" data-controller="attachment-preview">
+  <div class="table-section-header attachment-panel__header">
+    <h2 class="section-title"><%= t("shared.attachments.list_title") %></h2>
+    <% if can_manage %>
+      <button class="button" type="button" data-controller="operator-dialog" data-action="click->operator-dialog#open" data-operator-dialog-id="<%= upload_dialog_id %>">
+        <i class="bi bi-upload" aria-hidden="true"></i>
+        <span><%= t("shared.attachments.upload") %></span>
+      </button>
+    <% end %>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th><%= t("shared.attachments.filename") %></th>
+          <th><%= t("shared.attachments.type") %></th>
+          <th><%= t("shared.attachments.file_size") %></th>
+          <th><%= t("shared.attachments.created_at") %></th>
+          <th><%= t("shared.attachments.actions") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% attachments.each do |attachment| %>
+          <% file_kind = attachment_file_kind(attachment) %>
+          <tr>
+            <td>
+              <div class="attachment-filename">
+                <span class="attachment-file-icon attachment-file-icon--<%= file_kind %>">
+                  <i class="bi <%= attachment_file_icon(attachment) %>" aria-hidden="true"></i>
+                </span>
+                <span><%= attachment.filename %></span>
+              </div>
+            </td>
+            <td>
+              <% if can_manage %>
+                <%= render "shared/inline_edit_cell",
+                           **attachment_type_inline_cell_locals(
+                             attachment,
+                             options: attach_type_options,
+                             update_path: download_path_for.call(attachment),
+                             edit_path: edit_path_for.call(attachment),
+                             dom_id_prefix: dom_id_prefix
+                           ) %>
+              <% else %>
+                <%= attach_type_options.to_h.invert.fetch(attachment.attach_type, attachment.attach_type) %>
+              <% end %>
+            </td>
+            <td><%= attachment.file.attached? ? number_to_human_size(attachment.file.byte_size) : "-" %></td>
+            <td><%= display_time(attachment.created_at) %></td>
+            <td>
+              <div class="table-row-actions">
+                <button type="button"
+                        class="button button-secondary"
+                        data-action="attachment-preview#open"
+                        data-preview-kind="<%= attachment_preview_kind(attachment) %>"
+                        data-preview-url="<%= preview_path_for.call(attachment) %>"
+                        data-preview-icon="<%= attachment_file_icon(attachment) %>"
+                        data-filename="<%= attachment.filename %>">
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                  <span><%= t("shared.attachments.preview") %></span>
+                </button>
+                <%= link_to download_path_for.call(attachment), class: "button button-secondary" do %>
+                  <i class="bi bi-download" aria-hidden="true"></i>
+                  <span><%= t("shared.attachments.download") %></span>
+                <% end %>
+                <% if can_manage %>
+                  <%= button_to delete_path_for.call(attachment),
+                                method: :delete,
+                                class: "button button-secondary",
+                                form: { data: { turbo_confirm: t("shared.attachments.delete_confirm") } } do %>
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                    <span><%= t("shared.attachments.delete") %></span>
+                  <% end %>
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+        <% if attachments.empty? %>
+          <tr><td colspan="5" class="empty-state"><%= t("shared.attachments.none") %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if can_manage %>
+    <dialog id="<%= upload_dialog_id %>" class="attachment-dialog" data-controller="operator-dialog" data-action="click->operator-dialog#closeOnBackdrop">
+      <section class="attachment-dialog__content" role="document" aria-labelledby="<%= upload_dialog_id %>-title">
+        <div class="erp-modal__header">
+          <h2 id="<%= upload_dialog_id %>-title"><%= t("shared.attachments.upload_title") %></h2>
+          <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="operator-dialog#close">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <%= form_with scope: :ec_attachment,
+                      url: upload_path,
+                      method: :post,
+                      local: true,
+                      html: {
+                        multipart: true,
+                        class: "attachment-upload-form",
+                        data: {
+                          controller: "attachment-upload",
+                          attachment_upload_remove_label_value: t("shared.attachments.remove_file"),
+                          attachment_upload_file_size_label_value: t("shared.attachments.file_size")
+                        }
+                      } do |form| %>
+          <div class="field">
+            <%= form.label :attach_type, t("shared.attachments.type") %>
+            <%= form.select :attach_type, attach_type_options, {}, required: true %>
+          </div>
+
+          <label class="attachment-dropzone"
+                 data-attachment-upload-target="dropzone"
+                 data-action="dragover->attachment-upload#dragover dragleave->attachment-upload#dragleave drop->attachment-upload#drop">
+            <%= form.file_field :files,
+                                multiple: true,
+                                required: true,
+                                class: "attachment-dropzone__input",
+                                data: { attachment_upload_target: "input", action: "change->attachment-upload#select" } %>
+            <i class="bi bi-cloud-arrow-up attachment-dropzone__icon" aria-hidden="true"></i>
+            <strong><%= t("shared.attachments.dropzone_title") %></strong>
+            <span><%= t("shared.attachments.dropzone_hint") %></span>
+          </label>
+
+          <div class="attachment-pending">
+            <p class="attachment-pending__empty" data-attachment-upload-target="empty"><%= t("shared.attachments.no_pending_files") %></p>
+            <ul class="attachment-pending-list" data-attachment-upload-target="list"></ul>
+          </div>
+
+          <div class="modal-form-actions">
+            <button class="button button-secondary" type="button" data-action="operator-dialog#close"><%= t("common.actions.cancel") %></button>
+            <button class="button" type="submit">
+              <i class="bi bi-upload" aria-hidden="true"></i>
+              <span><%= t("shared.attachments.submit_upload") %></span>
+            </button>
+          </div>
+        <% end %>
+      </section>
+    </dialog>
+  <% end %>
+
+  <dialog id="<%= preview_dialog_id %>"
+          class="attachment-dialog attachment-preview-dialog"
+          data-attachment-preview-target="dialog"
+          data-action="click->attachment-preview#closeOnBackdrop cancel->attachment-preview#closeOnCancel">
+    <section class="attachment-dialog__content attachment-preview-dialog__content" role="document" aria-labelledby="<%= preview_dialog_id %>-title">
+      <div class="erp-modal__header">
+        <h2 id="<%= preview_dialog_id %>-title" data-attachment-preview-target="title"><%= t("shared.attachments.preview") %></h2>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="attachment-preview#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <iframe class="attachment-preview-frame" data-attachment-preview-target="frame" title="<%= t("shared.attachments.preview_frame_title") %>"></iframe>
+      <div class="attachment-preview-fallback" data-attachment-preview-target="fallback" hidden>
+        <i class="bi bi-file-earmark" aria-hidden="true" data-attachment-preview-target="fallbackIcon"></i>
+        <strong><%= t("shared.attachments.preview_unavailable") %></strong>
+        <span><%= t("shared.attachments.preview_unavailable_hint") %></span>
+      </div>
+    </section>
+  </dialog>
+</section>

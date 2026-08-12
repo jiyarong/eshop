@@ -1,6 +1,8 @@
 import "@hotwired/turbo-rails";
 import { Application } from "@hotwired/stimulus";
 import AgentFormController from "./controllers/agent_form_controller";
+import AttachmentPreviewController from "./controllers/attachment_preview_controller";
+import AttachmentUploadController from "./controllers/attachment_upload_controller";
 import AssociationPickerController from "./controllers/association_picker_controller";
 import AssociationCreatedController from "./controllers/association_created_controller";
 import CategoryMultiselectController from "./controllers/category_multiselect_controller";
@@ -35,6 +37,8 @@ import YclawDownloadController from "./controllers/yclaw_download_controller";
 
 window.Stimulus = Application.start();
 Stimulus.register("agent-form", AgentFormController);
+Stimulus.register("attachment-preview", AttachmentPreviewController);
+Stimulus.register("attachment-upload", AttachmentUploadController);
 Stimulus.register("association-picker", AssociationPickerController);
 Stimulus.register("association-created", AssociationCreatedController);
 Stimulus.register("category-multiselect", CategoryMultiselectController);

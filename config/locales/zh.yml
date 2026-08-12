@@ -480,6 +480,7 @@ zh:
         user: "用户"
       record_types:
         ec:
+          attachment: "附件"
           cost_allocation: "费用分摊"
           master_sku: "SPU"
           purchase_order: "采购单"
@@ -1408,6 +1409,7 @@ zh:
         actions: "操作"
         attach_type: "附件类型"
         attach_types:
+          unknown: "未知"
           invoice: "发票"
           sales_contract: "销售合同"
         delete_confirm: "确认删除这个附件？"
@@ -1416,7 +1418,7 @@ zh:
         file_size: "文件大小"
         filename: "文件名"
         upload_failed: "附件上传失败"
-        uploaded: "附件已上传"
+        uploaded: "已上传 %{count} 个附件"
       empty:
         ai_inventory_health: "暂无 AI 库存诊断记录"
         attachments: "暂无附件"
@@ -1702,6 +1704,7 @@ zh:
         add: "新增供应商"
         edit: "编辑供应商"
       attachment_types:
+        unknown: "未知"
         business_license: "营业执照"
         framework_agreement: "框架协议"
       attachments:
@@ -2286,6 +2289,28 @@ zh:
         summary: "店铺信息"
         unbound_raw_products: "未绑定平台商品"
   shared:
+    attachments:
+      actions: "操作"
+      created_at: "上传时间"
+      delete: "删除"
+      delete_confirm: "确认删除这个附件？"
+      download: "下载"
+      dropzone_hint: "支持单个或批量上传"
+      dropzone_title: "点击或将文件拖到此区域"
+      file_size: "文件大小"
+      filename: "文件名"
+      list_title: "附件列表"
+      no_pending_files: "尚未选择文件"
+      none: "暂无附件"
+      preview: "预览"
+      preview_frame_title: "附件预览"
+      preview_unavailable: "此文件无法在线预览"
+      preview_unavailable_hint: "请下载文件后使用本地应用打开。"
+      remove_file: "移除文件"
+      submit_upload: "上传文件"
+      type: "附件类型"
+      upload: "上传附件"
+      upload_title: "上传附件"
     popover_multiselect:
       clear: "清空选择"
       no_options: "没有匹配的选项"

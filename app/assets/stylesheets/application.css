@@ -23,6 +23,150 @@
   --erp-topbar-height: 60px;
 }
 
+/* Shared attachments */
+.attachment-panel__header { align-items: center; margin-bottom: 14px; }
+.attachment-panel__header .section-title { margin-bottom: 0; }
+
+.attachment-filename {
+  display: flex;
+  min-width: 220px;
+  align-items: center;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.attachment-file-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #eef2f7;
+  color: #526175;
+  font-size: 17px;
+}
+
+.attachment-file-icon--pdf { background: #fef2f2; color: #dc2626; }
+.attachment-file-icon--image { background: #ecfdf5; color: #059669; }
+.attachment-file-icon--spreadsheet { background: #f0fdf4; color: #15803d; }
+.attachment-file-icon--document { background: #eff6ff; color: #2563eb; }
+.attachment-file-icon--presentation { background: #fff7ed; color: #c2410c; }
+.attachment-file-icon--archive { background: #fefce8; color: #a16207; }
+.attachment-file-icon--audio,
+.attachment-file-icon--video { background: #fdf2f8; color: #be185d; }
+.attachment-file-icon--text { background: #f8fafc; color: #475569; }
+
+.attachment-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface);
+  box-shadow: 0 24px 70px rgba(24, 34, 53, 0.26);
+}
+
+.attachment-dialog::backdrop { background: rgba(24, 34, 53, 0.42); }
+.attachment-dialog__content { padding: 18px; }
+.attachment-upload-form { display: grid; gap: 16px; }
+
+.attachment-dropzone {
+  display: flex;
+  min-height: 210px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 2px dashed #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--erp-text);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.attachment-dropzone:hover,
+.attachment-dropzone:focus-within,
+.attachment-dropzone.is-dragging { border-color: var(--erp-brand); background: #eef2ff; }
+
+.attachment-dropzone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.attachment-dropzone__icon { color: var(--erp-brand); font-size: 44px; }
+.attachment-dropzone span,
+.attachment-pending__empty,
+.attachment-pending-list__size,
+.attachment-preview-fallback span { color: var(--erp-muted); font-size: 13px; }
+.attachment-pending__empty { margin: 0; padding: 10px 0; }
+
+.attachment-pending-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachment-pending-list__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+}
+
+.attachment-pending-list__details { display: grid; min-width: 0; }
+.attachment-pending-list__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-preview-dialog { width: min(1040px, calc(100vw - 32px)); }
+
+.attachment-preview-dialog__content {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: min(780px, calc(100vh - 48px));
+}
+
+.attachment-preview-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.attachment-preview-fallback {
+  display: flex;
+  min-height: 360px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.attachment-preview-fallback[hidden] { display: none; }
+.attachment-preview-fallback .bi { color: #94a3b8; font-size: 64px; }
+
+@media (max-width: 720px) {
+  .attachment-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
+  .attachment-dropzone { min-height: 170px; }
+  .attachment-preview-dialog__content { height: calc(100vh - 20px); }
+}
+
 * {
   box-sizing: border-box;
 }

@@ -17,6 +17,45 @@
 - 页面上展示给用户看的文本都应通过 Rails I18n 管理，不要在 ERB、helper、controller 或前端脚本中新增硬编码展示文案。
 - 现有页面布局在 `app/views/layouts/application.html.erb`
 
+## 通用页面组件
+
+- 开发新 Rails 页面或筛选表单前，先检查 `app/views/shared/` 和对应 Stimulus controller；下列场景必须优先复用现有组件，不要在业务页面重复实现下拉框、弹层、搜索或日期选择逻辑。
+- 组件展示文案继续使用 `shared.*` 下已有 I18n；新增通用文案时补齐项目支持的 locale，不要把业务文案写进 shared partial 或 Stimulus controller。
+- 同一页面多次渲染同一种组件时，必须传入页面内唯一的 `dom_id_prefix` 或 `id`，避免 trigger、popover 和表单控件 ID 冲突。
+
+### 开发人员、运营人员选择器
+
+- 列表筛选统一使用 `app/views/shared/_responsible_user_filters.html.erb`，交互由 `app/javascript/controllers/responsible_user_filter_controller.js` 提供；参考 `/erp/skus`。
+- Controller 应 `include ResponsibleUserFilterable`，调用 `load_responsible_user_filters` 准备 `@developer_id`、`@operator_id` 和选项，再按数据类型调用：
+  - `apply_responsible_user_filters_to_skus(scope)`：过滤 `Ec::Sku`。
+  - `apply_responsible_user_filters_to_master_skus(scope)`：过滤 `Ec::MasterSku`。
+  - `apply_responsible_user_filters_to_sku_records(scope)`：过滤含 `sku_code` 的其他记录。
+- partial 默认同时输出 `developer_id`、`operator_id` 两个单选筛选项；只需要一种角色时传 `filter_keys: %w[developer]` 或 `filter_keys: %w[operator]`。同时传页面唯一的 `dom_id_prefix`；`field_class` 可用于适配所在表单布局。
+- 编辑表单里的单个负责人选择统一使用 `app/views/shared/_responsible_user_single_select.html.erb`，不要拿筛选 partial 代替。必须传 `component_id`、`param_name`、`label`、`placeholder`、`selected_id`、`options`，需要区分清空按钮文案时传 `clear_label`。`/erp/skus` 的开发人员、运营人员编辑弹窗是参考实现。
+- 负责人业务归属保持现有模型语义：开发人员来自 `Ec::SkuDeveloperAssignment`；运营人员来自平台商品的 `Ec::SkuProductOperator` operator 角色。不要仅凭页面参数自行发明另一套关联规则。
+
+### SKU、SPU 选择器
+
+- SKU/SPU 筛选或表单选择统一使用 `app/views/shared/_spu_sku_filter.html.erb`，交互由 `app/javascript/controllers/spu_sku_filter_controller.js` 提供；参考 `/erp/skus` 和 `/weekly_profit_reports`。
+- 筛选页面的 Controller 应 `include SpuSkuFilterable`，调用 `load_spu_sku_filter` 准备 SPU、SKU 和已选值，再使用 `apply_spu_sku_filter_to_skus(scope)` 或 `apply_spu_sku_filter_to_sku_records(scope)` 应用筛选。
+- 默认多选参数为 `master_sku_ids[]` 和 `sku_codes[]`，选择 SPU 与直接选择 SKU 按并集过滤；未归属 SPU 的 SKU 也由组件统一展示。不要另写只覆盖已归属 SKU 的选择器。
+- 常用 locals：`dom_id_prefix`、`field_class`、`label`、`placeholder`、`aria_label`。默认 `selection_mode: :multiple`；表单只允许选择单个 SKU 时传 `selection_mode: :single`，并可用 `sku_input_name` 自定义字段名。只有调用方已经自行准备数据时，才直接传 `master_skus`、`orphan_skus`、`selected_master_sku_ids`、`selected_sku_codes`。
+
+### 日期范围选择器
+
+- 日期范围统一使用 `app/views/shared/_time_range_selector.html.erb`，交互由 `app/javascript/controllers/time_range_selector_controller.js` 提供；`/weekly_profit_reports` 是报表筛选的参考实现。
+- 必须传页面内唯一的 `id`、`from_date`、`to_date`。组件默认提交 `from_date`、`to_date`；其他查询参数名通过 `from_name`、`to_name` 指定。
+- 需要用户点击“应用”后立即提交所在表单时传 `submit_on_apply: true`，否则保持默认 `false`。组件已经提供日期区间、自然周快捷项、前后周期切换和本月快捷项，不要在业务页面重复实现。
+- 组件用 `user_today` 计算当前日期，遵循用户时区。Controller 仍需负责默认日期、参数解析和业务有效性校验；不要依赖前端组件替代服务端校验。
+
+### 其他已复用组件
+
+- 任意枚举或简单选项的可搜索多选筛选：`app/views/shared/_popover_multiselect_filter.html.erb` + `popover_multiselect_filter_controller.js`。传 `dom_id_prefix`、`param_name`、`label`、`all_label`、`selected_values`、`options`；提交参数自动使用 `param_name[]`。
+- SPU 类目多选筛选：`app/views/shared/_master_sku_category_filter.html.erb` + `MasterSkuCategoryFilterable`。它按 Master SKU 的类目过滤，区别于编辑表单中选择单个类目的 `app/views/shared/_category_selector.html.erb`，两者不要混用。
+- 表格行内编辑：`app/views/shared/_inline_edit_cell.html.erb` + `inline_cell_controller.js` + `InlineEditableResponse`。新字段接入时沿用现有 helper 组装 locals、Turbo Frame 编辑和 Turbo Stream 回写模式；Controller 必须对允许编辑的字段使用白名单。
+- 可搜索关联记录选择：`app/views/shared/_association_picker.html.erb` + `association_picker_controller.js`。搜索接口返回 `[{ id:, label: }]` JSON；如支持弹窗新建，页面还需提供 `association_create_modal` Turbo Frame，并按现有 `association-picker:selected` 事件协议回填。
+- Turbo 侧边抽屉外壳：`app/views/shared/_overlay_drawer.html.erb`，配合 `modal_controller.js`。传 `frame_id`、`title_id`、`title`、`body`，按需传 `subtitle`、`eyebrow`、`header_actions`、`close_path`、`drawer_width`；业务内容保留在调用方 partial，不要复制抽屉遮罩、标题栏和关闭逻辑。
+
 ## 当前报表现状
 
 - 报表导航当前包含：

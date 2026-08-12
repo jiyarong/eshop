@@ -1,6 +1,9 @@
 module Ec
   module AuditConfig
     ATTRIBUTES = {
+      "Ec::Attachment" => %w[
+        attach_type
+      ],
       "Ec::Company" => %w[
         name
         tags

@@ -54,6 +54,9 @@ Rails.application.routes.draw do
   get "reports/skus/:sku_code/sales_funnel_trends" => "reports#sku_sales_funnel_trends", as: :report_sku_sales_funnel_trends
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments
+  get "reports/skus/:sku_code/attachments/:attachment_id/edit" => "reports#edit_sku_attachment", as: :edit_report_sku_attachment
+  patch "reports/skus/:sku_code/attachments/:attachment_id" => "reports#update_sku_attachment"
+  get "reports/skus/:sku_code/attachments/:attachment_id/preview" => "reports#preview_sku_attachment", as: :preview_report_sku_attachment
   get "reports/skus/:sku_code/operation_actions/new" => "reports#new_sku_operation_action", as: :new_report_sku_operation_action
   post "reports/skus/:sku_code/operation_actions" => "reports#create_sku_operation_action", as: :report_sku_operation_actions
   get "reports/skus/:sku_code/operation_actions/:action_id/edit" => "reports#edit_sku_operation_action", as: :edit_report_sku_operation_action

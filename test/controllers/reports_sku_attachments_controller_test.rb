@@ -13,10 +13,12 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    attachment_ids = attachments_for_token.pluck(:id)
     attachments_for_token.find_each do |attachment|
       attachment.file.purge if attachment.file.attached?
       attachment.destroy
     end
+    Ec::OperationLog.where(record_type: "Ec::Attachment", record_id: attachment_ids).delete_all
     Ec::AttachmentLink.where(attachable_type: "Ec::Sku", attachable_id: @sku&.id).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "sku-attachments-#{@token.downcase}%").delete_all
@@ -31,30 +33,86 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-tabs__link", text: "附件", count: 0
     assert_select ".sku-detail-tabs__link[aria-current='page']", text: "基础配置"
     assert_select "form[action=?]", report_sku_attachments_path(@sku.sku_code)
-    assert_select "input[type='file'][name='ec_attachment[file]']"
+    assert_select "button", text: /上传附件/
+    assert_select "dialog.attachment-dialog"
+    assert_select "input[type='file'][name='ec_attachment[files][]'][multiple]"
+    assert_select ".attachment-dropzone", text: /点击或将文件拖到此区域/
+    assert_select "#sku-#{@sku.id}-attachments-upload-dialog"
     assert_select "td.empty-state", text: "暂无附件"
   end
 
-  test "uploads and links an attachment to sku" do
-    assert_difference -> { Ec::Attachment.count }, 1 do
-      assert_difference -> { Ec::AttachmentLink.where(attachable: @sku).count }, 1 do
+  test "uploads and links multiple attachments to sku" do
+    assert_difference -> { Ec::Attachment.count }, 2 do
+      assert_difference -> { Ec::AttachmentLink.where(attachable: @sku).count }, 2 do
         post report_sku_attachments_path(@sku.sku_code),
-             params: { ec_attachment: { attach_type: "invoice", file: uploaded_file("invoice body #{@token}") } },
+             params: {
+               ec_attachment: {
+                 attach_type: "unknown",
+                 files: [
+                   uploaded_file("first body #{@token}", filename: "first-#{@token}.txt"),
+                   uploaded_file("second body #{@token}", filename: "second-#{@token}.pdf", content_type: "application/pdf")
+                 ]
+               }
+             },
              headers: { "Accept" => "text/html" }
       end
     end
 
     assert_redirected_to report_sku_path(@sku.sku_code, tab: "basic")
-    attachment = @sku.attachments.first
-    assert_equal "invoice-#{@token}.txt", attachment.filename
-    assert attachment.invoice?
-    assert attachment.file.attached?
+    attachments = @sku.attachments.order(:filename)
+    assert_equal ["first-#{@token}.txt", "second-#{@token}.pdf"], attachments.pluck(:filename)
+    assert attachments.all?(&:unknown?)
+    assert attachments.all? { |attachment| attachment.file.attached? }
 
     sign_in @current_user
     get report_sku_path(@sku.sku_code, tab: "basic"), headers: { "Accept" => "text/html" }
     assert_response :success
-    assert_select "td", text: "invoice-#{@token}.txt"
-    assert_select "td", text: "发票"
+    assert_select "td", text: /first-#{@token}\.txt/
+    assert_select "td", text: /second-#{@token}\.pdf/
+    assert_select ".attachment-file-icon--pdf"
+    assert_select "button[data-preview-kind='browser']"
+    assert_select "button[data-preview-icon='bi-file-earmark-pdf']"
+    assert_select "td", text: /未知/
+  end
+
+  test "updates attachment type inline and records the change" do
+    attachment = create_attachment!("update body #{@token}")
+
+    assert_difference -> { Ec::OperationLog.where(record_type: "Ec::Attachment", record_id: attachment.id, action: "update").count }, 1 do
+      patch report_sku_attachment_path(@sku.sku_code, attachment),
+            params: {
+              inline_field: "attach_type",
+              inline_context: { frame_id: "ignored", feedback_target: "ignored" },
+              ec_attachment: { attach_type: "sales_contract" }
+            },
+            headers: { "Accept" => Mime[:turbo_stream].to_s }
+    end
+
+    assert_response :success
+    assert_predicate attachment.reload, :sales_contract?
+    log = Ec::OperationLog.where(record_type: "Ec::Attachment", record_id: attachment.id, action: "update").last
+    assert_equal @current_user, log.user
+    assert_equal [{ "field" => "attach_type", "from" => 2, "to" => 1 }], log.changeset
+    assert_includes response.body, "销售合同"
+  end
+
+  test "previews browser supported attachments inline" do
+    attachment = create_attachment!("preview body #{@token}")
+
+    get preview_report_sku_attachment_path(@sku.sku_code, attachment)
+
+    assert_response :success
+    assert_match "inline", response.headers["Content-Disposition"]
+    assert_equal "text/plain", response.media_type
+    assert_equal "preview body #{@token}", response.body
+  end
+
+  test "rejects preview for unsupported archive attachments" do
+    attachment = create_attachment!("archive body #{@token}", filename: "archive-#{@token}.zip", content_type: "application/zip")
+
+    get preview_report_sku_attachment_path(@sku.sku_code, attachment)
+
+    assert_response :unprocessable_entity
   end
 
   test "downloads a sku attachment" do
@@ -113,26 +171,26 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def uploaded_file(body)
+  def uploaded_file(body, filename: "invoice-#{@token}.txt", content_type: "text/plain")
     tempfile = Tempfile.new(["sku-attachment-#{@token}", ".txt"])
     tempfile.write(body)
     tempfile.rewind
     Rack::Test::UploadedFile.new(
       tempfile.path,
-      "text/plain",
+      content_type,
       false,
-      original_filename: "invoice-#{@token}.txt"
+      original_filename: filename
     )
   end
 
-  def create_attachment!(body)
+  def create_attachment!(body, filename: "invoice-#{@token}.txt", content_type: "text/plain")
     attachment = Ec::Attachment.create!(
       attach_type: :invoice,
-      oss_path: "ec/test/#{@token}/#{SecureRandom.uuid}/invoice-#{@token}.txt",
+      oss_path: "ec/test/#{@token}/#{SecureRandom.uuid}/#{filename}",
       qiniu_hash: Digest::SHA256.hexdigest(body),
-      filename: "invoice-#{@token}.txt"
+      filename: filename
     )
-    attachment.attach_file!(io: StringIO.new(body), content_type: "text/plain")
+    attachment.attach_file!(io: StringIO.new(body), content_type: content_type)
     Ec::AttachmentLink.create!(attachable: @sku, ec_attachment: attachment)
     attachment
   end
