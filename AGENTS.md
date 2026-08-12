@@ -20,6 +20,8 @@
 ## 通用页面组件
 
 - 开发新 Rails 页面或筛选表单前，先检查 `app/views/shared/` 和对应 Stimulus controller；下列场景必须优先复用现有组件，不要在业务页面重复实现下拉框、弹层、搜索或日期选择逻辑。
+- 实现组件时，如存在明确的跨页面或跨业务复用场景，应在不增加无必要抽象的前提下设计通用接口，避免组件依赖单一业务页面的实例变量、路由或数据结构。
+- 新增或扩展出可复用组件后，必须在本节记录其适用场景、组件路径、调用方式和关键约束；后续实现相关功能时应自动优先检查并使用该通用组件，仅在现有组件无法满足明确需求时新增实现。
 - 组件展示文案继续使用 `shared.*` 下已有 I18n；新增通用文案时补齐项目支持的 locale，不要把业务文案写进 shared partial 或 Stimulus controller。
 - 同一页面多次渲染同一种组件时，必须传入页面内唯一的 `dom_id_prefix` 或 `id`，避免 trigger、popover 和表单控件 ID 冲突。
 
@@ -47,6 +49,16 @@
 - 必须传页面内唯一的 `id`、`from_date`、`to_date`。组件默认提交 `from_date`、`to_date`；其他查询参数名通过 `from_name`、`to_name` 指定。
 - 需要用户点击“应用”后立即提交所在表单时传 `submit_on_apply: true`，否则保持默认 `false`。组件已经提供日期区间、自然周快捷项、前后周期切换和本月快捷项，不要在业务页面重复实现。
 - 组件用 `user_today` 计算当前日期，遵循用户时区。Controller 仍需负责默认日期、参数解析和业务有效性校验；不要依赖前端组件替代服务端校验。
+
+### 附件列表与上传
+
+- 附件列表、上传弹窗、批量拖拽、待提交文件列表、文件类型图标和预览弹窗统一使用 `app/views/shared/_attachments.html.erb`；交互由 `attachment_upload_controller.js` 和 `attachment_preview_controller.js` 提供，文件类型与行内编辑 locals 由 `AttachmentsHelper` 组装。`/reports/skus/:sku_code` 基础配置中的附件区域是参考实现。
+- partial 必须传 `attachments`、页面内唯一的 `dom_id_prefix`、`can_manage`、`attach_type_options`、`upload_path`，以及 `download_path_for`、`preview_path_for`、`edit_path_for`、`delete_path_for` 四个接收 attachment 的 lambda。组件不应读取业务页面实例变量，也不要在 shared partial 中拼接某种模型的路由。
+- 上传表单统一提交 `ec_attachment[attach_type]` 和多文件参数 `ec_attachment[files][]`。Controller 必须逐个校验允许的附件类型，批量创建 `Ec::Attachment` 和 `Ec::AttachmentLink`，失败时清理本次已创建的 blob，避免遗留孤立文件。
+- 业务模型通过 `Ec::AttachmentLink` 的 polymorphic `attachable` 关联附件；接入模型应声明 `has_many :attachment_links, as: :attachable` 和通过关联得到的 `attachments`。页面组件支持任意已接入模型，但服务端路由和权限仍由各业务 Controller 提供；不要建立接收任意 `class_name + id` 并 `constantize` 的通用接口。
+- 查找、编辑、预览、下载和删除附件时，必须从当前业务对象的 `attachments` 关联中查询，不能直接用 `Ec::Attachment.find(params[:attachment_id])`，防止跨模型访问。每个动作继续使用该业务对象原有的查看或管理权限。
+- 附件类型编辑复用 `app/views/shared/_inline_edit_cell.html.erb`、`InlineEditableResponse` 和 Turbo Stream 回写模式，只允许白名单字段 `attach_type`。`Ec::Attachment` 已接入 `Ec::Auditable`，新增可编辑字段时同时评估并更新 `Ec::AuditConfig`，不得绕过操作日志。
+- 文件预览按能力降级：图片、PDF、文本及浏览器支持的音视频使用内联预览；Office 文件仅在对象存储能提供外部可访问 URL 时使用 `view.officeapps.live.com`；压缩包或其他不支持格式在弹窗中展示对应文件图标和不可预览提示。不要信任上传者声明的 MIME 作为内联响应类型，应按服务端允许的扩展名映射安全 MIME。
 
 ### 其他已复用组件
 
