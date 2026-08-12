@@ -1,0 +1,28 @@
+<%= turbo_frame_tag "sku_sales_funnel_trends" do %>
+  <% if @funnel_trend_error %>
+    <section class="panel"><div class="empty-state"><%= t("reports.sku_detail.funnel_trends.load_error") %></div></section>
+  <% elsif @funnel_store_trends.blank? %>
+    <section class="panel"><div class="empty-state"><%= t("reports.sku_detail.funnel_trends.no_listings") %></div></section>
+  <% else %>
+    <div class="sku-funnel-trends-container">
+      <div class="sku-funnel-trends-grid">
+        <% @funnel_store_trends.each do |trend| %>
+          <section class="panel sku-funnel-trend-card">
+            <div class="sku-funnel-trend-card__head">
+              <h3><%= trend[:store_name] %></h3>
+              <span class="status-pill"><%= t("common.platforms.#{trend[:platform]}", default: trend[:platform].upcase) %></span>
+            </div>
+            <% if trend[:rows].none? { |row| row[:values].values.any?(&:present?) } %>
+              <div class="empty-state"><%= t("reports.sku_detail.funnel_trends.empty") %></div>
+            <% else %>
+              <div data-controller="echarts">
+                <div data-echarts-target="chart" class="sku-funnel-trend-card__chart"></div>
+                <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(trend[:chart_option]) %></script>
+              </div>
+            <% end %>
+          </section>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

@@ -273,6 +273,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all if defined?(Ec::SkuProduct)
     RawOzon::Product.where(account_id: @sales_ozon_account&.id).delete_all
+    RawOzon::SalesFunnelDaily.where(account_id: @sales_ozon_account&.id).delete_all
+    RawWb::SalesFunnelDaily.where(account_id: @sales_wb_account&.id).delete_all
     RawOzon::Return.where(account_id: @sales_ozon_account&.id).delete_all
     RawOzon::SupplyOrder.where(account_id: @sales_ozon_account&.id).delete_all
     RawWb::GoodsReturn.where(account_id: @wb_sales_store&.wb_raw_account_id).delete_all
@@ -1279,6 +1281,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".sku-operation-report--funnel", 1
       assert_select ".sku-operation-report--profit", 0
       assert_select "form.sku-operation-filter input[name='tab'][value='sales_funnel']"
+      assert_select "form[action=?][data-turbo-frame='sku_sales_funnel_trends']", report_sku_sales_funnel_trends_path(@sku.sku_code)
+      assert_select "input[name='trend_from_date'][value]"
+      assert_select "input[name='trend_to_date'][value]"
+      assert_select "turbo-frame#sku_sales_funnel_trends[src][loading='lazy'][data-turbo-permanent]", count: 1
 
       sign_in @current_user
       get "/reports/skus/#{@sku.sku_code}", params: {
@@ -1313,7 +1319,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     %w[wr wsu wsu_deep].each do |report_type|
       assert_select ".sku-operation-report--profit [data-value='#{report_type}']"
     end
-    assert_select "turbo-frame#sku_profit_trend[src=?][loading='lazy']",
+    assert_select "turbo-frame#sku_profit_trend[src=?][loading='lazy'][data-turbo-permanent]",
                   report_sku_profit_trend_path(@sku.sku_code), count: 1
   end
 
@@ -1361,6 +1367,35 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     %w[净销量 销售额 广告费 货物成本 平均每单利润 年化收益率 年化净利].each do |metric|
       assert_includes response.body, metric
     end
+  end
+
+  test "sku sales funnel trends render daily charts for every listing store" do
+    RawWb::SalesFunnelDaily.create!(
+      account: @sales_wb_account, stat_date: Date.new(2026, 8, 10), nm_id: 123456,
+      open_card: 100, add_to_cart: 20, orders: 8, buyouts: 6, orders_sum: 1_000,
+      conv_to_cart: 20, synced_at: Time.current
+    )
+    RawOzon::SalesFunnelDaily.create!(
+      account: @sales_ozon_account, stat_date: Date.new(2026, 8, 11), sku: 3_902_460_130,
+      hits_view: 200, hits_tocart: 30, ordered_units: 12, revenue: 1_500,
+      conv_tocart: 15, synced_at: Time.current
+    )
+
+    get report_sku_sales_funnel_trends_path(@sku.sku_code), params: {
+      trend_from_date: "2026-08-09",
+      trend_to_date: "2026-08-12"
+    }, headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_sales_funnel_trends" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_sales_funnel_trends", count: 1
+    assert_select ".sku-funnel-trend-card", count: 2
+    assert_select ".sku-funnel-trend-card h3", text: @sales_store.store_name
+    assert_select ".sku-funnel-trend-card h3", text: @wb_sales_store.store_name
+    assert_select "[data-controller='echarts']", count: 2
+    assert_includes response.body, "2026-08-09"
+    assert_includes response.body, "2026-08-12"
+    assert_includes response.body, '"商品卡片访问":false'
+    assert_includes response.body, '"打开商品卡":true'
   end
 
   test "sku profit trend renders a non-blocking error state" do
