@@ -1,9 +1,12 @@
 import "@hotwired/turbo-rails";
 import { Application } from "@hotwired/stimulus";
 import AgentFormController from "./controllers/agent_form_controller";
+import AssociationPickerController from "./controllers/association_picker_controller";
+import AssociationCreatedController from "./controllers/association_created_controller";
 import CategoryMultiselectController from "./controllers/category_multiselect_controller";
 import CategorySelectorController from "./controllers/category_selector_controller";
 import ClipboardController from "./controllers/clipboard_controller";
+import ConditionalFieldController from "./controllers/conditional_field_controller";
 import DatePickerController from "./controllers/date_picker_controller";
 import EmailInputController from "./controllers/email_input_controller";
 import EchartsController from "./controllers/echarts_controller";
@@ -32,9 +35,12 @@ import YclawDownloadController from "./controllers/yclaw_download_controller";
 
 window.Stimulus = Application.start();
 Stimulus.register("agent-form", AgentFormController);
+Stimulus.register("association-picker", AssociationPickerController);
+Stimulus.register("association-created", AssociationCreatedController);
 Stimulus.register("category-multiselect", CategoryMultiselectController);
 Stimulus.register("category-selector", CategorySelectorController);
 Stimulus.register("clipboard", ClipboardController);
+Stimulus.register("conditional-field", ConditionalFieldController);
 Stimulus.register("date-picker", DatePickerController);
 Stimulus.register("email-input", EmailInputController);
 Stimulus.register("echarts", EchartsController);

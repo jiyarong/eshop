@@ -3249,6 +3249,71 @@ pre {
   flex-basis: 100%;
 }
 
+.company-form > .field:not(.modal-form-grid__wide) {
+  flex: 1 1 220px;
+}
+
+.association-picker {
+  position: relative;
+  flex: 1 1 280px;
+  min-width: min(280px, 100%);
+}
+
+.association-picker__control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.association-picker__query {
+  min-width: 0;
+  flex: 1;
+}
+
+.association-picker__results {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% - 18px);
+  right: 42px;
+  left: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--erp-border-strong);
+  border-radius: 6px;
+  padding: 4px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(24, 34, 53, 0.16);
+}
+
+.association-picker__option {
+  width: 100%;
+  min-height: 38px;
+  display: block;
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--erp-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.association-picker__option:hover,
+.association-picker__option[aria-selected="true"] {
+  background: var(--erp-surface-soft);
+}
+
+.association-picker__empty {
+  padding: 10px;
+  color: var(--erp-muted);
+  font-size: 13px;
+}
+
+.association-picker__modal {
+  z-index: 1004;
+}
+
 .category-selector {
   position: relative;
   width: min(100%, 860px);

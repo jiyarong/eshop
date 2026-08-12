@@ -1,42 +1,61 @@
-<h1 class="page-title"><%= @supplier.name %></h1>
+<% content_for :page_heading, @supplier.name %>
+<div class="resource-header">
+  <div><p class="resource-eyebrow"><%= t("erp.suppliers.show.eyebrow") %></p><h1 class="page-title"><%= @supplier.name %></h1></div>
+  <div class="resource-actions">
+    <%= link_to t("erp.common.actions.back"), erp_suppliers_path(current_locale_params), class: "button button-secondary" %>
+    <%= link_to t("erp.common.actions.edit"), erp_edit_supplier_path(@supplier, current_locale_params), class: "button" if can?(:manage_purchases) %>
+  </div>
+</div>
 
 <div class="report-stack">
   <section class="panel">
+    <h2 class="section-title"><%= t("erp.suppliers.show.summary") %></h2>
     <dl class="definition-list">
-      <dt>联系人</dt>
-      <dd><%= erp_value(@supplier.contact_name) %></dd>
-      <dt>电话</dt>
-      <dd><%= erp_value(@supplier.phone) %></dd>
-      <dt>微信</dt>
-      <dd><%= erp_value(@supplier.wechat) %></dd>
-      <dt>地址</dt>
-      <dd><%= erp_value(@supplier.address) %></dd>
+      <dt><%= t("erp.suppliers.fields.origin") %></dt><dd><%= erp_value(@supplier.origin) %></dd>
+      <dt><%= t("erp.suppliers.fields.invoice_type") %></dt><dd><%= @supplier.invoice_type ? t("erp.suppliers.invoice_types.#{@supplier.invoice_type}") : erp_value(nil) %></dd>
+      <dt><%= t("erp.suppliers.fields.channel") %></dt><dd><%= @supplier.channel ? t("erp.suppliers.channels.#{@supplier.channel}") : erp_value(nil) %></dd>
+      <dt><%= t("erp.suppliers.fields.online_url") %></dt><dd><%= @supplier.online_url.present? ? link_to(@supplier.online_url, @supplier.online_url, target: "_blank", rel: "noreferrer noopener") : erp_value(nil) %></dd>
+      <dt><%= t("erp.suppliers.fields.developer") %></dt><dd><%= erp_value(@supplier.developer&.display_name) %></dd>
+      <dt><%= t("erp.suppliers.fields.purchaser") %></dt><dd><%= erp_value(@supplier.purchaser&.display_name) %></dd>
+      <dt><%= t("erp.suppliers.fields.factory_audited") %></dt><dd><%= t(@supplier.factory_audited? ? "common.yes" : "common.no") %></dd>
+      <dt><%= t("erp.suppliers.fields.credit_terms") %></dt><dd><%= t(@supplier.credit_terms? ? "common.yes" : "common.no") %></dd>
+      <dt><%= t("erp.suppliers.fields.supplier_grade") %></dt><dd><%= erp_value(@supplier.supplier_grade) %></dd>
+      <dt><%= t("erp.suppliers.fields.supplier_evaluation") %></dt><dd><%= erp_value(@supplier.supplier_evaluation) %></dd>
+      <dt><%= t("erp.suppliers.fields.contact_name") %></dt><dd><%= erp_value(@supplier.contact_name) %></dd>
+      <dt><%= t("erp.suppliers.fields.phone") %></dt><dd><%= erp_value(@supplier.phone) %></dd>
+      <dt><%= t("erp.suppliers.fields.wechat") %></dt><dd><%= erp_value(@supplier.wechat) %></dd>
+      <dt><%= t("erp.suppliers.fields.address") %></dt><dd><%= erp_value(@supplier.address) %></dd>
+      <dt><%= t("erp.common.memo") %></dt><dd><%= erp_value(@supplier.memo) %></dd>
     </dl>
   </section>
 
+  <% if can?(:manage_purchases) %>
+    <section class="panel">
+      <h2 class="section-title"><%= t("erp.suppliers.attachments.upload") %></h2>
+      <%= form_with scope: :ec_attachment, url: attachments_erp_supplier_path(@supplier, current_locale_params), method: :post, local: true, html: { class: "report-form", multipart: true } do |form| %>
+        <div class="field"><%= form.label :attach_type, t("erp.suppliers.attachments.type") %><%= form.select :attach_type, Ec::Attachment::COMPANY_ATTACH_TYPES.map { |value| [t("erp.suppliers.attachment_types.#{value}"), value] }, {}, required: true %></div>
+        <div class="field"><%= form.label :file, t("erp.suppliers.attachments.file") %><%= form.file_field :file, required: true %></div>
+        <button class="button" type="submit"><i class="bi bi-upload" aria-hidden="true"></i><%= t("erp.suppliers.attachments.upload_action") %></button>
+      <% end %>
+    </section>
+  <% end %>
+
   <section class="panel">
-    <h2 class="section-title">采购单</h2>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>采购单号</th>
-            <th>状态</th>
-            <th>采购日期</th>
-            <th>采购金额</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @purchase_orders.each do |order| %>
-            <tr>
-              <td><%= link_to order.order_no, erp_purchase_order_path(order) %></td>
-              <td><%= order.status %></td>
-              <td><%= order.ordered_on %></td>
-              <td><%= erp_value(order.goods_amount_cny) %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+    <h2 class="section-title"><%= t("erp.suppliers.attachments.list") %></h2>
+    <div class="table-scroll"><table><thead><tr><th><%= t("erp.suppliers.attachments.filename") %></th><th><%= t("erp.suppliers.attachments.type") %></th><th><%= t("erp.suppliers.attachments.created_at") %></th><th><%= t("erp.common.actions.actions") %></th></tr></thead><tbody>
+      <% @attachments.each do |attachment| %><tr>
+        <td><%= attachment.filename %></td><td><%= t("erp.suppliers.attachment_types.#{attachment.attach_type}") %></td><td><%= display_time(attachment.created_at) %></td>
+        <td><div class="table-row-actions"><%= link_to t("erp.suppliers.attachments.download"), attachment_erp_supplier_path(@supplier, attachment, current_locale_params), class: "button button-secondary" %><%= button_to t("erp.suppliers.attachments.delete"), attachment_erp_supplier_path(@supplier, attachment, current_locale_params), method: :delete, class: "button button-secondary", form: { data: { turbo_confirm: t("erp.suppliers.attachments.delete_confirm") } } if can?(:manage_purchases) %></div></td>
+      </tr><% end %>
+      <% if @attachments.empty? %><tr><td colspan="4" class="empty-state"><%= t("erp.suppliers.attachments.none") %></td></tr><% end %>
+    </tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.suppliers.show.purchase_orders") %></h2>
+    <div class="table-scroll"><table><thead><tr><th><%= t("erp.suppliers.purchase_orders.order_no") %></th><th><%= t("erp.common.status") %></th><th><%= t("erp.suppliers.purchase_orders.ordered_on") %></th><th><%= t("erp.suppliers.purchase_orders.amount") %></th></tr></thead><tbody>
+      <% @purchase_orders.each do |order| %><tr><td><%= link_to order.order_no, erp_purchase_order_path(order) %></td><td><%= order.status %></td><td><%= order.ordered_on %></td><td><%= erp_value(order.goods_amount_cny) %></td></tr><% end %>
+      <% if @purchase_orders.empty? %><tr><td colspan="4" class="empty-state"><%= t("erp.suppliers.purchase_orders.none") %></td></tr><% end %>
+    </tbody></table></div>
   </section>
 </div>

@@ -20,6 +20,7 @@ module Ec
     }, validate: true
 
     belongs_to :sku, class_name: "Ec::Sku", foreign_key: :sku_code, primary_key: :sku_code
+    belongs_to :supplier, class_name: "Ec::Company", optional: true
     has_many :cost_allocation_items, class_name: "Ec::CostAllocationItem", foreign_key: :sku_batch_id
     has_many :purchase_order_items, class_name: "Ec::PurchaseOrderItem", foreign_key: :sku_batch_id
 
@@ -28,6 +29,7 @@ module Ec
     validates :status, inclusion: { in: STATUSES }
     validates :purchased_quantity, :received_quantity, numericality: true
     validates :purchase_unit_price_cny, numericality: { greater_than_or_equal_to: 0 }
+    validate :supplier_must_have_supplier_tag
 
     before_validation :normalize_codes
     before_validation :assign_generated_batch_code, on: :create
@@ -42,6 +44,12 @@ module Ec
     end
 
     private
+
+    def supplier_must_have_supplier_tag
+      return if supplier.blank? || supplier.supplier?
+
+      errors.add(:supplier, :invalid)
+    end
 
     def normalize_codes
       self.sku_code = sku_code&.strip&.upcase

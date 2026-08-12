@@ -2,9 +2,13 @@ module Ec
   class Attachment < ApplicationRecord
     self.table_name = "ec_attachments"
 
+    SKU_ATTACH_TYPES = %w[sales_contract invoice].freeze
+    COMPANY_ATTACH_TYPES = %w[business_license framework_agreement].freeze
     ATTACH_TYPES = {
       sales_contract: 1,
-      invoice: 2
+      invoice: 2,
+      business_license: 3,
+      framework_agreement: 4
     }.freeze
 
     enum :attach_type, ATTACH_TYPES, validate: true

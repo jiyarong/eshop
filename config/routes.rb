@@ -135,6 +135,8 @@ Rails.application.routes.draw do
     get "stores/:id/edit" => "stores#edit", as: :edit_store
     get "purchase_orders/new" => "purchase_orders#new", as: :new_purchase_order
     get "purchase_orders/:id/edit" => "purchase_orders#edit", as: :edit_purchase_order
+    get "suppliers/new" => "suppliers#new", as: :new_supplier
+    get "suppliers/:id/edit" => "suppliers#edit", as: :edit_supplier
     get "cost_allocations/new" => "cost_allocations#new", as: :new_cost_allocation
     get "cost_allocations/:id/edit" => "cost_allocations#edit", as: :edit_cost_allocation
     get "platform_products/:platform/:store_id/:product_id" => "platform_products#show", as: :platform_product
@@ -155,7 +157,14 @@ Rails.application.routes.draw do
     resources :sku_costs, only: [:index, :new, :create, :edit, :update], param: :sku_code
     resources :sku_dimensions, only: [:index, :edit, :update], param: :sku_code
     resources :sku_batches
-    resources :suppliers, only: [:index, :show]
+    resources :companies, only: [] do
+      get :search, on: :collection
+    end
+    resources :suppliers, except: [:destroy] do
+      post :attachments, on: :member
+      get "attachments/:attachment_id", action: :download_attachment, as: :attachment, on: :member
+      delete "attachments/:attachment_id", action: :destroy_attachment, on: :member
+    end
     resources :purchase_orders, except: [:destroy]
     resources :cost_allocations, except: [:destroy]
     resources :operation_tasks, only: [:index, :show]

@@ -81,6 +81,7 @@
         <tr>
           <th style="min-width: 160px"><%= t("erp.sku_batches.fields.batch_code") %></th>
           <th style="width: 180px"><%= t("erp.sku_batches.fields.sku") %></th>
+          <th style="min-width: 180px"><%= t("erp.sku_batches.fields.supplier") %></th>
           <th style="min-width: 240px"><%= t("erp.sku_batches.fields.product_name") %></th>
           <th style="width: 112px"><%= t("erp.sku_batches.fields.purchase_date") %></th>
           <th style="width: 112px"><%= t("erp.sku_batches.fields.expected_arrival_on") %></th>
@@ -97,6 +98,7 @@
           <tr class="sku-batch-row">
             <td><%= render "shared/inline_edit_cell", **sku_batch_inline_cell_locals(batch, :batch_code) %></td>
             <td><%= link_to batch.sku_code, erp_sku_path(batch.sku), class: "code-text sub" if batch.sku.present? %></td>
+            <td><%= batch.supplier ? link_to(batch.supplier.name, erp_supplier_path(batch.supplier)) : erp_value(nil) %></td>
             <td>
               <div class="product-name-stack">
                 <span class="zh-name"><%= erp_value(batch.sku&.product_name) %></span>
@@ -128,7 +130,7 @@
 
         <% if @batches.empty? %>
           <tr>
-            <td colspan="11" class="empty-state">
+            <td colspan="12" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.sku_batches.empty.no_batches") %>
             </td>

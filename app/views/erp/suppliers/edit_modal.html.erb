@@ -1,0 +1,8 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal erp-modal--wide" role="dialog" aria-modal="true" aria-labelledby="supplier-modal-title">
+      <div class="erp-modal__header"><h2 id="supplier-modal-title"><%= t("erp.suppliers.actions.edit") %></h2><button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+      <%= render "form", supplier: @supplier, modal: true %>
+    </section>
+  </div>
+<% end %>

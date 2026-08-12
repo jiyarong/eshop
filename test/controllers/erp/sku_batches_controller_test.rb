@@ -6,6 +6,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     @current_user = create_user_with_roles("erp-batches-#{@token.downcase}@example.com", "manager")
     sign_in @current_user
     @sku = Ec::Sku.create!(sku_code: "ERP-BATCH-#{@token}", product_name: "ERP 批次 SKU")
+    @supplier = Ec::Supplier.create!(name: "ERP 批次供应商 #{@token}")
     @batch = Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,
       batch_code: "ERP-BATCH-#{@token}",
@@ -13,7 +14,8 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       expected_arrival_on: Date.new(2026, 6, 15),
       purchased_quantity: 100,
       received_quantity: 80,
-      purchase_unit_price_cny: 12.5
+      purchase_unit_price_cny: 12.5,
+      supplier: @supplier
     )
   end
 
@@ -24,6 +26,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     Ec::CostAllocationItem.where(sku_batch_id: batch_ids).delete_all
     Ec::PurchaseOrderItem.where(sku_batch_id: batch_ids).delete_all
     Ec::SkuBatch.where(id: batch_ids).delete_all
+    Ec::Company.where("name LIKE ?", "%#{@token}%").delete_all
     Ec::SkuCost.where(sku_code: sku_scope.select(:sku_code)).delete_all
     Ec::SkuDeveloperAssignment.where(sku_code: sku_scope.select(:sku_code)).delete_all if defined?(Ec::SkuDeveloperAssignment)
     if defined?(Ec::SkuProductOperator)
@@ -80,6 +83,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='checkbox'][name='statuses[]'][value='closed'][checked='checked']", count: 0
     assert_select ".prod-tbl thead th", text: "批次号"
     assert_select ".prod-tbl thead th", text: "SKU"
+    assert_select ".prod-tbl thead th", text: "供应商"
     assert_select ".prod-tbl thead th", text: "商品名"
     assert_select ".prod-tbl thead th", text: "采购日期"
     assert_select ".prod-tbl thead th", text: "预计到货日期"
@@ -89,6 +93,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl thead th", text: "到货数量"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_batch_code_cell .inline-edit-cell--display", text: @batch.batch_code
     assert_select "a[href='#{erp_sku_path(@sku)}']", text: @sku.sku_code
+    assert_select "a[href='#{erp_supplier_path(@supplier)}']", text: @supplier.name
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell .inline-edit-cell--display", text: "2026-06-01"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell .inline-edit-cell--display", text: "2026-06-15"
     assert_select "tr.sku-batch-row td.num", text: "8.25"
@@ -273,6 +278,29 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", @batch.batch_code
     assert_select "dt", "单件批次成本"
+    assert_select "a[href='#{erp_supplier_path(@supplier)}']", text: @supplier.name
+  end
+
+  test "edit form provides reusable supplier search and create picker" do
+    get erp_edit_sku_batch_path(@batch), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "[data-controller='association-picker'][data-association-picker-search-url-value*='/erp/companies/search']"
+    assert_select "input[type='hidden'][name='ec_sku_batch[supplier_id]'][value='#{@supplier.id}']"
+    assert_select "input[role='combobox'][value='#{@supplier.name}']"
+    assert_select "button[aria-label='新建公司']"
+    assert_select "turbo-frame#association_create_modal"
+  end
+
+  test "update assigns supplier company" do
+    replacement = Ec::Supplier.create!(name: "ERP 替换供应商 #{@token}")
+
+    patch erp_sku_batch_path(@batch), params: {
+      ec_sku_batch: { supplier_id: replacement.id }
+    }
+
+    assert_redirected_to erp_skus_path
+    assert_equal replacement.id, @batch.reload.supplier_id
   end
 
   test "show localizes visible chrome in english" do

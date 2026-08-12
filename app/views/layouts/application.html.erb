@@ -36,6 +36,7 @@
         links: [
           { label: t("navigation.erp_spus"), path: "/erp/spus", icon: "bi-grid-3x3-gap", active: active_link.call("/erp/spus") },
           { label: t("navigation.erp_skus"), path: "/erp/skus", icon: "bi-tags", active: active_link.call("/erp/skus") },
+          { label: t("navigation.suppliers"), path: "/erp/suppliers", icon: "bi-buildings", active: active_link.call("/erp/suppliers") },
           { label: t("navigation.sku_batches"), path: "/erp/sku_batches", icon: "bi-layers", active: active_link.call("/erp/sku_batches") },
           { label: t("navigation.sku_costs"), path: "/erp/sku_costs", icon: "bi-currency-yen", active: active_link.call("/erp/sku_costs") },
           { label: t("navigation.sku_dimensions"), path: "/erp/sku_dimensions", icon: "bi-rulers", active: active_link.call("/erp/sku_dimensions") },
@@ -211,6 +212,7 @@
           <div class="page">
             <%= yield %>
           </div>
+          <%= turbo_frame_tag "association_create_modal" %>
         </main>
       </div>
 

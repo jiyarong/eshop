@@ -162,6 +162,7 @@ ru:
     erp_stores: "Настройки магазинов"
     sku_categories: "Категории SKU"
     sku_batches: "Управление партиями"
+    suppliers: "Поставщики"
     purchase_orders: "Закупки"
     cost_allocations: "Распределение затрат"
     operation_tasks: "Операционные задачи"
@@ -1454,6 +1455,79 @@ ru:
         details: "Детали"
       title: "Продажи SKU"
   erp:
+    association_picker:
+      create_company: "Создать компанию"
+      hint: "Найдите компанию по названию или создайте новую"
+      no_results: "Компании не найдены"
+      search_company: "Поиск компании…"
+    suppliers:
+      actions:
+        add: "Добавить поставщика"
+        edit: "Изменить поставщика"
+      attachment_types:
+        business_license: "Лицензия компании"
+        framework_agreement: "Рамочное соглашение"
+      attachments:
+        created_at: "Дата загрузки"
+        delete: "Удалить"
+        delete_confirm: "Удалить это вложение?"
+        deleted: "Вложение удалено"
+        download: "Скачать"
+        file: "Файл"
+        filename: "Имя файла"
+        list: "Вложения"
+        none: "Нет вложений"
+        type: "Тип вложения"
+        upload: "Загрузить вложение"
+        upload_action: "Загрузить"
+        upload_failed: "Не удалось загрузить вложение"
+        uploaded: "Вложение загружено"
+      channels:
+        offline: "Офлайн"
+        online: "Онлайн"
+      empty:
+        none: "Нет поставщиков"
+      fields:
+        address: "Адрес"
+        channel: "Канал"
+        contact_name: "Контакт"
+        credit_terms: "Отсрочка платежа"
+        developer: "Разработчик"
+        factory_audited: "Аудит фабрики"
+        invoice_type: "Тип счета"
+        is_active: "Активен"
+        name: "Название поставщика"
+        online_url: "Онлайн-ссылка"
+        origin: "Место производства"
+        phone: "Телефон"
+        purchaser: "Закупщик"
+        supplier_evaluation: "Факторы оценки"
+        supplier_grade: "Класс поставщика"
+        wechat: "WeChat"
+      filters:
+        search_placeholder: "Поиск по названию или месту производства…"
+      form:
+        active_hint: "Активного поставщика можно выбирать в партиях и закупках"
+        evaluation_placeholder: "Сотрудничество, срок поставки, расширение ассортимента и другие факторы"
+        yes_no_hint: "Отметьте, если да"
+      index:
+        subtitle: "Компании · Тег поставщика"
+        title: "Управление поставщиками"
+      invoice_types:
+        general: "Обычный счет"
+        special: "Специальный НДС-счет"
+      messages:
+        created: "Поставщик создан"
+        updated: "Поставщик обновлен"
+      purchase_orders:
+        amount: "Сумма закупки"
+        none: "Нет закупок"
+        order_no: "Номер закупки"
+        ordered_on: "Дата закупки"
+      show:
+        eyebrow: "Карточка компании-поставщика"
+        purchase_orders: "Закупки"
+        summary: "Основная информация"
     ai_diagnosis_event_filter:
       aria_label: "Фильтры рисков AI-диагностики"
       label: "Риски AI-диагностики"
@@ -1522,6 +1596,7 @@ ru:
         received_on: "Дата зарубежной доставки"
         received_quantity: "Получено"
         sku: "SKU"
+        supplier: "Поставщик"
         unit_batch_cost: "Себестоимость единицы партии"
       filters:
         all_statuses: "Все статусы"

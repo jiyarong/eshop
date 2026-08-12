@@ -1,6 +1,6 @@
 <%= form_with model: batch, url: batch.persisted? ? erp_sku_batch_path(batch) : erp_sku_batches_path, data: (local_assigns[:modal] ? { turbo_frame: "_top" } : {}) do |form| %>
   <% if batch.errors.any? %>
-    <div class="panel error-box">
+    <div class="panel error-box" role="alert">
       <%= batch.errors.full_messages.join("；") %>
     </div>
   <% end %>
@@ -18,6 +18,17 @@
       label: t("erp.sku_batches.fields.sku"),
       placeholder: t("shared.spu_sku_filter.select_sku"),
       aria_label: t("shared.spu_sku_filter.selector_aria_label") %>
+    <%= render "shared/association_picker",
+      dom_id: "sku-batch-supplier-picker",
+      field_name: "ec_sku_batch[supplier_id]",
+      label: t("erp.sku_batches.fields.supplier"),
+      selected_record: batch.supplier,
+      search_url: search_erp_companies_path(tag: "supplier", locale: params[:locale].presence),
+      create_url: erp_new_supplier_path(locale: params[:locale].presence),
+      placeholder: t("erp.association_picker.search_company"),
+      create_label: t("erp.association_picker.create_company"),
+      empty_label: t("erp.association_picker.no_results"),
+      hint: t("erp.association_picker.hint") %>
     <div class="field">
       <%= form.label :batch_code, t("erp.sku_batches.fields.batch_code") %>
       <%= form.text_field :batch_code %>

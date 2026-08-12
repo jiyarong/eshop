@@ -1,0 +1,29 @@
+<% association_dom_id = params[:association_dom_id].presence %>
+<%= form_with model: supplier,
+              scope: :ec_company,
+              url: supplier.persisted? ? erp_supplier_path(supplier) : erp_suppliers_path,
+              data: (local_assigns[:modal] && params[:association_dom_id].blank? ? { turbo_frame: "_top" } : {}) do |form| %>
+  <% if supplier.errors.any? %><div class="panel error-box" role="alert"><%= supplier.errors.full_messages.join("；") %></div><% end %>
+  <%= hidden_field_tag :association_dom_id, association_dom_id if association_dom_id %>
+  <%= hidden_field_tag "ec_company[tags][]", "supplier" %>
+  <div class="report-form modal-form-grid company-form" data-controller="conditional-field" data-conditional-field-visible-when-value="online">
+    <div class="field modal-form-grid__wide"><%= form.label :name, t("erp.suppliers.fields.name") %><%= form.text_field :name, required: true %></div>
+    <div class="field"><%= form.label :origin, t("erp.suppliers.fields.origin") %><%= form.text_field :origin %></div>
+    <div class="field"><%= form.label :invoice_type, t("erp.suppliers.fields.invoice_type") %><%= form.select :invoice_type, Ec::Company::INVOICE_TYPES.map { |value| [t("erp.suppliers.invoice_types.#{value}"), value] }, { include_blank: t("erp.common.please_select") } %></div>
+    <div class="field"><%= form.label :channel, t("erp.suppliers.fields.channel") %><%= form.select :channel, Ec::Company::CHANNELS.map { |value| [t("erp.suppliers.channels.#{value}"), value] }, { include_blank: t("erp.common.please_select") }, data: { conditional_field_target: "source", action: "change->conditional-field#sync" } %></div>
+    <div class="field modal-form-grid__wide" data-conditional-field-target="field" <%= "hidden" unless supplier.online? %>><%= form.label :online_url, t("erp.suppliers.fields.online_url") %><%= form.url_field :online_url %></div>
+    <div class="field"><%= form.label :developer_id, t("erp.suppliers.fields.developer") %><%= form.collection_select :developer_id, @user_options, :id, :display_name, { include_blank: t("erp.common.none") } %></div>
+    <div class="field"><%= form.label :purchaser_id, t("erp.suppliers.fields.purchaser") %><%= form.collection_select :purchaser_id, @user_options, :id, :display_name, { include_blank: t("erp.common.none") } %></div>
+    <div class="field"><%= form.label :supplier_grade, t("erp.suppliers.fields.supplier_grade") %><%= form.select :supplier_grade, Ec::Company::SUPPLIER_GRADES.map { |grade| [grade, grade] }, { include_blank: t("erp.common.please_select") } %></div>
+    <div class="field"><span class="field-label"><%= t("erp.suppliers.fields.factory_audited") %></span><label class="switch-checkbox"><%= form.check_box :factory_audited %><span><%= t("erp.suppliers.form.yes_no_hint") %></span></label></div>
+    <div class="field"><span class="field-label"><%= t("erp.suppliers.fields.credit_terms") %></span><label class="switch-checkbox"><%= form.check_box :credit_terms %><span><%= t("erp.suppliers.form.yes_no_hint") %></span></label></div>
+    <div class="field"><span class="field-label"><%= t("erp.suppliers.fields.is_active") %></span><label class="switch-checkbox"><%= form.check_box :is_active %><span><%= t("erp.suppliers.form.active_hint") %></span></label></div>
+    <div class="field"><%= form.label :contact_name, t("erp.suppliers.fields.contact_name") %><%= form.text_field :contact_name %></div>
+    <div class="field"><%= form.label :phone, t("erp.suppliers.fields.phone") %><%= form.telephone_field :phone %></div>
+    <div class="field"><%= form.label :wechat, t("erp.suppliers.fields.wechat") %><%= form.text_field :wechat %></div>
+    <div class="field modal-form-grid__wide"><%= form.label :address, t("erp.suppliers.fields.address") %><%= form.text_field :address %></div>
+    <div class="field modal-form-grid__wide"><%= form.label :supplier_evaluation, t("erp.suppliers.fields.supplier_evaluation") %><%= form.text_area :supplier_evaluation, rows: 3, placeholder: t("erp.suppliers.form.evaluation_placeholder") %></div>
+    <div class="field modal-form-grid__wide"><%= form.label :memo, t("erp.common.memo") %><%= form.text_area :memo, rows: 2 %></div>
+    <div class="modal-form-actions"><%= form.submit t("common.actions.save"), class: "button" %></div>
+  </div>
+<% end %>

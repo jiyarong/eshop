@@ -169,6 +169,7 @@ zh:
     erp_stores: "店铺设置"
     sku_categories: "SKU 类别"
     sku_batches: "批次管理"
+    suppliers: "供应商"
     purchase_orders: "采购单"
     cost_allocations: "费用分摊"
     operation_tasks: "操作任务"
@@ -1679,6 +1680,79 @@ zh:
         details: "明细表"
       title: "SKU 销量统计"
   erp:
+    association_picker:
+      create_company: "新建公司"
+      hint: "输入公司名称搜索，找不到时可直接新建"
+      no_results: "没有匹配的公司"
+      search_company: "搜索公司名称…"
+    suppliers:
+      actions:
+        add: "新增供应商"
+        edit: "编辑供应商"
+      attachment_types:
+        business_license: "营业执照"
+        framework_agreement: "框架协议"
+      attachments:
+        created_at: "上传时间"
+        delete: "删除"
+        delete_confirm: "确认删除这个附件？"
+        deleted: "附件已删除"
+        download: "下载"
+        file: "文件"
+        filename: "文件名"
+        list: "附件列表"
+        none: "暂无附件"
+        type: "附件类型"
+        upload: "上传附件"
+        upload_action: "上传"
+        upload_failed: "附件上传失败"
+        uploaded: "附件已上传"
+      channels:
+        offline: "线下"
+        online: "线上"
+      empty:
+        none: "暂无供应商"
+      fields:
+        address: "地址"
+        channel: "渠道"
+        contact_name: "联系人"
+        credit_terms: "是否账期"
+        developer: "开发员"
+        factory_audited: "是否验厂"
+        invoice_type: "开票类型"
+        is_active: "是否启用"
+        name: "供应商名称"
+        online_url: "线上链接"
+        origin: "产地"
+        phone: "电话"
+        purchaser: "采购员"
+        supplier_evaluation: "等级考量"
+        supplier_grade: "供应商等级"
+        wechat: "微信"
+      filters:
+        search_placeholder: "搜索供应商名称或产地…"
+      form:
+        active_hint: "启用后可在批次和采购单中选择"
+        evaluation_placeholder: "记录配合度、交货期、拓品能力等考量"
+        yes_no_hint: "勾选表示是"
+      index:
+        subtitle: "公司档案 · 供应商标签"
+        title: "供应商维护"
+      invoice_types:
+        general: "普票"
+        special: "专票"
+      messages:
+        created: "供应商已创建"
+        updated: "供应商已更新"
+      purchase_orders:
+        amount: "采购金额"
+        none: "暂无采购单"
+        order_no: "采购单号"
+        ordered_on: "采购日期"
+      show:
+        eyebrow: "供应商公司档案"
+        purchase_orders: "采购单"
+        summary: "基本信息"
     ai_diagnosis_event_filter:
       aria_label: "AI 诊断风险筛选"
       label: "AI 诊断风险"
@@ -1747,6 +1821,7 @@ zh:
         received_on: "境外交付日期"
         received_quantity: "到货数量"
         sku: "SKU"
+        supplier: "供应商"
         unit_batch_cost: "单件批次成本"
       filters:
         all_statuses: "全部状态"

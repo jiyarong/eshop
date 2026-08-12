@@ -30,7 +30,7 @@ module Erp
       load_responsible_user_filters
       load_ai_diagnosis_event_filter
 
-      scope = Ec::SkuBatch.includes(:sku).left_joins(:sku).order(created_at: :desc, id: :desc)
+      scope = Ec::SkuBatch.includes(:sku, :supplier).left_joins(:sku).order(created_at: :desc, id: :desc)
       scope = apply_master_sku_category_filter_to_sku_records(scope)
       scope = apply_spu_sku_filter_to_sku_records(scope)
       scope = apply_responsible_user_filters_to_sku_records(scope)
@@ -119,7 +119,7 @@ module Erp
     private
 
     def set_batch
-      @batch = Ec::SkuBatch.includes(:sku, :cost_allocation_items, :purchase_order_items).find(params[:id])
+      @batch = Ec::SkuBatch.includes(:sku, :supplier, :cost_allocation_items, :purchase_order_items).find(params[:id])
     end
 
     def load_sku_options
@@ -130,6 +130,7 @@ module Erp
     def batch_params
       params.require(:ec_sku_batch).permit(
         :sku_code,
+        :supplier_id,
         :batch_code,
         :batch_type,
         :defect_offset_note,

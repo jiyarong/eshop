@@ -1,6 +1,46 @@
 module Ec
   module AuditConfig
     ATTRIBUTES = {
+      "Ec::Company" => %w[
+        name
+        tags
+        origin
+        invoice_type
+        channel
+        online_url
+        developer_id
+        purchaser_id
+        factory_audited
+        credit_terms
+        supplier_grade
+        supplier_evaluation
+        contact_name
+        phone
+        wechat
+        address
+        is_active
+        memo
+      ],
+      "Ec::Supplier" => %w[
+        name
+        tags
+        origin
+        invoice_type
+        channel
+        online_url
+        developer_id
+        purchaser_id
+        factory_audited
+        credit_terms
+        supplier_grade
+        supplier_evaluation
+        contact_name
+        phone
+        wechat
+        address
+        is_active
+        memo
+      ],
       "Ec::CostAllocation" => %w[
         allocation_no
         cost_type
@@ -56,6 +96,7 @@ module Ec
       ],
       "Ec::SkuBatch" => %w[
         sku_code
+        supplier_id
         batch_code
         status
         purchase_date
@@ -146,15 +187,6 @@ module Ec
         ozon_raw_account_id
         ozon_client_id
         ozon_performance_client_id
-        memo
-      ],
-      "Ec::Supplier" => %w[
-        name
-        contact_name
-        phone
-        wechat
-        address
-        is_active
         memo
       ]
     }.freeze

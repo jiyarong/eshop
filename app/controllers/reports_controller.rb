@@ -247,7 +247,7 @@ class ReportsController < ApplicationController
     uploaded_file = sku_attachment_file_param
     attach_type = sku_attachment_type_param
 
-    if uploaded_file.blank? || !Ec::Attachment.attach_types.key?(attach_type)
+    if uploaded_file.blank? || !Ec::Attachment::SKU_ATTACH_TYPES.include?(attach_type)
       redirect_to sku_attachments_tab_path(@sku), alert: t("reports.sku_detail.attachments.upload_failed")
       return
     end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_034226) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -164,6 +164,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
     t.index ["source", "source_type", "source_id"], name: "index_ec_categories_on_source_and_source_type_and_source_id", unique: true
     t.index ["source"], name: "index_ec_categories_on_source"
     t.index ["source_type"], name: "index_ec_categories_on_source_type"
+  end
+
+  create_table "ec_companies", force: :cascade do |t|
+    t.text "address"
+    t.string "channel"
+    t.string "contact_name"
+    t.datetime "created_at", null: false
+    t.boolean "credit_terms", default: false, null: false
+    t.bigint "developer_id"
+    t.boolean "factory_audited", default: false, null: false
+    t.string "invoice_type"
+    t.boolean "is_active", default: true, null: false
+    t.text "memo"
+    t.string "name", null: false
+    t.string "online_url"
+    t.string "origin"
+    t.string "phone"
+    t.bigint "purchaser_id"
+    t.text "supplier_evaluation"
+    t.string "supplier_grade"
+    t.string "tags", default: [], null: false, array: true
+    t.datetime "updated_at", null: false
+    t.string "wechat"
+    t.index ["developer_id"], name: "index_ec_companies_on_developer_id"
+    t.index ["is_active"], name: "index_ec_companies_on_is_active"
+    t.index ["name"], name: "index_ec_companies_on_name", unique: true
+    t.index ["purchaser_id"], name: "index_ec_companies_on_purchaser_id"
+    t.index ["tags"], name: "index_ec_companies_on_tags", using: :gin
+    t.check_constraint "channel IS NULL OR (channel::text = ANY (ARRAY['online'::character varying, 'offline'::character varying]::text[]))", name: "ec_companies_channel_check"
+    t.check_constraint "invoice_type IS NULL OR (invoice_type::text = ANY (ARRAY['general'::character varying, 'special'::character varying]::text[]))", name: "ec_companies_invoice_type_check"
+    t.check_constraint "supplier_grade IS NULL OR (supplier_grade::text = ANY (ARRAY['S'::character varying, 'A'::character varying, 'B'::character varying, 'C'::character varying]::text[]))", name: "ec_companies_supplier_grade_check"
   end
 
   create_table "ec_cost_allocation_items", force: :cascade do |t|
@@ -514,9 +545,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
     t.integer "received_quantity", default: 0, null: false
     t.string "sku_code", null: false
     t.string "status", default: "draft", null: false
+    t.bigint "supplier_id"
     t.datetime "updated_at", null: false
     t.index ["batch_code"], name: "index_ec_sku_batches_on_batch_code", unique: true
     t.index ["sku_code"], name: "index_ec_sku_batches_on_sku_code"
+    t.index ["supplier_id"], name: "index_ec_sku_batches_on_supplier_id"
   end
 
   create_table "ec_sku_categories", force: :cascade do |t|
@@ -757,20 +790,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
     t.integer "wb_raw_account_id"
     t.index ["ozon_client_id"], name: "index_ec_stores_on_ozon_client_id", unique: true, where: "(ozon_client_id IS NOT NULL)"
     t.index ["platform"], name: "index_ec_stores_on_platform"
-  end
-
-  create_table "ec_suppliers", force: :cascade do |t|
-    t.text "address"
-    t.string "contact_name"
-    t.datetime "created_at", null: false
-    t.boolean "is_active", default: true, null: false
-    t.text "memo"
-    t.string "name", null: false
-    t.string "phone"
-    t.datetime "updated_at", null: false
-    t.string "wechat"
-    t.index ["is_active"], name: "index_ec_suppliers_on_is_active"
-    t.index ["name"], name: "index_ec_suppliers_on_name", unique: true
   end
 
   create_table "ec_tool_configurations", force: :cascade do |t|
@@ -2647,7 +2666,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
@@ -2790,6 +2809,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
   add_foreign_key "ec_ai_diagnosis_events", "ec_ai_diagnosis", column: "ai_diagnosis_id"
   add_foreign_key "ec_attachment_links", "ec_attachments"
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
+  add_foreign_key "ec_companies", "users", column: "developer_id", on_delete: :nullify
+  add_foreign_key "ec_companies", "users", column: "purchaser_id", on_delete: :nullify
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_master_skus", "ec_categories"
@@ -2812,7 +2833,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
   add_foreign_key "ec_purchase_order_items", "ec_purchase_orders", column: "purchase_order_id"
   add_foreign_key "ec_purchase_order_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_purchase_order_items", "ec_skus", column: "sku_code", primary_key: "sku_code"
-  add_foreign_key "ec_purchase_orders", "ec_suppliers", column: "supplier_id"
+  add_foreign_key "ec_purchase_orders", "ec_companies", column: "supplier_id"
   add_foreign_key "ec_return_items", "ec_order_items", column: "order_item_id"
   add_foreign_key "ec_return_items", "ec_returns", column: "return_id"
   add_foreign_key "ec_return_items", "ec_sku_products", column: "sku_product_id"
@@ -2821,6 +2842,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_072814) do
   add_foreign_key "ec_return_source_links", "ec_returns", column: "return_id"
   add_foreign_key "ec_returns", "ec_orders", column: "order_id"
   add_foreign_key "ec_returns", "ec_stores", column: "store_id"
+  add_foreign_key "ec_sku_batches", "ec_companies", column: "supplier_id", on_delete: :nullify
   add_foreign_key "ec_sku_batches", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_categories", "ec_sku_categories", column: "parent_id"
   add_foreign_key "ec_sku_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"

@@ -9,7 +9,7 @@
       <div class="field">
         <%= form.label :attach_type, t("reports.sku_detail.attachments.attach_type") %>
         <%= form.select :attach_type,
-                        Ec::Attachment.attach_types.keys.map { |type| [t("reports.sku_detail.attachments.attach_types.#{type}"), type] },
+                        Ec::Attachment::SKU_ATTACH_TYPES.map { |type| [t("reports.sku_detail.attachments.attach_types.#{type}"), type] },
                         {}, required: true %>
       </div>
       <div class="field">

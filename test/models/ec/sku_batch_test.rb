@@ -26,6 +26,38 @@ class Ec::SkuBatchTest < ActiveSupport::TestCase
     assert_equal @sku, batch.sku
   end
 
+  test "optionally belongs to a supplier company" do
+    supplier = Ec::Supplier.create!(name: "Batch supplier #{@token}")
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "SUPPLIER-#{@token}",
+      supplier: supplier,
+      purchased_quantity: 100,
+      purchase_unit_price_cny: 12.5
+    )
+
+    assert_equal supplier.id, batch.supplier_id
+    assert_equal supplier.name, batch.supplier.name
+  ensure
+    Ec::Company.where(id: supplier&.id).delete_all
+  end
+
+  test "rejects a company without the supplier tag" do
+    broker = Ec::Company.create!(name: "Batch broker #{@token}", tags: [ "customs_broker" ])
+    batch = Ec::SkuBatch.new(
+      sku_code: @sku.sku_code,
+      batch_code: "BROKER-#{@token}",
+      supplier: broker,
+      purchased_quantity: 100,
+      purchase_unit_price_cny: 12.5
+    )
+
+    assert_not batch.valid?
+    assert_predicate batch.errors[:supplier], :present?
+  ensure
+    Ec::Company.where(id: broker&.id).delete_all
+  end
+
   test "requires unique batch code" do
     Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,

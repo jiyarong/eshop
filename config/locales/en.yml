@@ -191,6 +191,7 @@ en:
     erp_stores: "Store Settings"
     sku_categories: "SKU Categories"
     sku_batches: "Batch Management"
+    suppliers: "Suppliers"
     purchase_orders: "Purchase Orders"
     cost_allocations: "Cost Allocations"
     operation_tasks: "Operation Tasks"
@@ -1497,6 +1498,79 @@ en:
         details: "Details"
       title: "SKU Sales"
   erp:
+    association_picker:
+      create_company: "Create company"
+      hint: "Search by company name or create one if it is missing"
+      no_results: "No matching companies"
+      search_company: "Search companies…"
+    suppliers:
+      actions:
+        add: "Add supplier"
+        edit: "Edit supplier"
+      attachment_types:
+        business_license: "Business license"
+        framework_agreement: "Framework agreement"
+      attachments:
+        created_at: "Uploaded at"
+        delete: "Delete"
+        delete_confirm: "Delete this attachment?"
+        deleted: "Attachment deleted"
+        download: "Download"
+        file: "File"
+        filename: "Filename"
+        list: "Attachments"
+        none: "No attachments"
+        type: "Attachment type"
+        upload: "Upload attachment"
+        upload_action: "Upload"
+        upload_failed: "Attachment upload failed"
+        uploaded: "Attachment uploaded"
+      channels:
+        offline: "Offline"
+        online: "Online"
+      empty:
+        none: "No suppliers"
+      fields:
+        address: "Address"
+        channel: "Channel"
+        contact_name: "Contact"
+        credit_terms: "Credit terms"
+        developer: "Developer"
+        factory_audited: "Factory audited"
+        invoice_type: "Invoice type"
+        is_active: "Active"
+        name: "Supplier name"
+        online_url: "Online URL"
+        origin: "Origin"
+        phone: "Phone"
+        purchaser: "Purchaser"
+        supplier_evaluation: "Grade considerations"
+        supplier_grade: "Supplier grade"
+        wechat: "WeChat"
+      filters:
+        search_placeholder: "Search supplier name or origin…"
+      form:
+        active_hint: "Available for batches and purchase orders when active"
+        evaluation_placeholder: "Record cooperation, lead time, product sourcing, and other factors"
+        yes_no_hint: "Checked means yes"
+      index:
+        subtitle: "Company records · Supplier tag"
+        title: "Supplier Management"
+      invoice_types:
+        general: "General invoice"
+        special: "VAT special invoice"
+      messages:
+        created: "Supplier created"
+        updated: "Supplier updated"
+      purchase_orders:
+        amount: "Purchase amount"
+        none: "No purchase orders"
+        order_no: "Order number"
+        ordered_on: "Order date"
+      show:
+        eyebrow: "Supplier company record"
+        purchase_orders: "Purchase orders"
+        summary: "Basic information"
     ai_diagnosis_event_filter:
       aria_label: "AI diagnosis risk filters"
       label: "AI diagnosis risks"
@@ -1565,6 +1639,7 @@ en:
         received_on: "Overseas delivery date"
         received_quantity: "Received quantity"
         sku: "SKU"
+        supplier: "Supplier"
         unit_batch_cost: "Unit batch cost"
       filters:
         all_statuses: "All statuses"

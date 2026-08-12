@@ -1,28 +1,73 @@
-<h1 class="page-title">供应商</h1>
+<% content_for :page_heading, t("erp.suppliers.index.title") %>
 
-<section class="panel">
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th>供应商</th>
-          <th>联系人</th>
-          <th>电话</th>
-          <th>微信</th>
-          <th>状态</th>
-        </tr>
-      </thead>
+<div class="product-management">
+  <%= turbo_frame_tag "erp_modal" %>
+  <div class="page-h">
+    <div>
+      <h1><%= t("erp.suppliers.index.title") %></h1>
+      <p class="sub"><%= t("erp.suppliers.index.subtitle") %></p>
+    </div>
+    <% if can?(:manage_purchases) %>
+      <%= link_to erp_new_supplier_path(current_locale_params), class: "btn btn-primary", data: { turbo_frame: "erp_modal" } do %>
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        <%= t("erp.suppliers.actions.add") %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <section class="card product-filter-card">
+    <%= form_with url: erp_suppliers_path, method: :get, local: true, class: "product-filter-form" do |form| %>
+      <div class="product-search-control">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <%= form.search_field :q, value: @q, placeholder: t("erp.suppliers.filters.search_placeholder"), class: "input" %>
+      </div>
+      <div class="field product-filter-field">
+        <%= form.label :status, t("erp.common.status"), class: "label" %>
+        <%= form.select :status, [[t("erp.common.filter_options.all"), "all"], [t("erp.common.statuses.active"), "active"], [t("erp.common.statuses.inactive"), "inactive"]], { selected: @status }, class: "select" %>
+      </div>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i><%= t("erp.common.actions.filter") %></button>
+      <%= link_to erp_suppliers_path(current_locale_params), class: "btn btn-outline" do %>
+        <i class="bi bi-x-lg" aria-hidden="true"></i><%= t("erp.common.actions.reset") %>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section class="card product-list-card">
+    <table class="prod-tbl">
+      <thead><tr>
+        <th><%= t("erp.suppliers.fields.name") %></th>
+        <th><%= t("erp.suppliers.fields.origin") %></th>
+        <th><%= t("erp.suppliers.fields.invoice_type") %></th>
+        <th><%= t("erp.suppliers.fields.channel") %></th>
+        <th><%= t("erp.suppliers.fields.developer") %></th>
+        <th><%= t("erp.suppliers.fields.purchaser") %></th>
+        <th><%= t("erp.suppliers.fields.supplier_grade") %></th>
+        <th><%= t("erp.common.status") %></th>
+        <th><%= t("erp.common.actions.actions") %></th>
+      </tr></thead>
       <tbody>
         <% @suppliers.each do |supplier| %>
           <tr>
-            <td><%= link_to supplier.name, erp_supplier_path(supplier) %></td>
-            <td><%= supplier.contact_name %></td>
-            <td><%= supplier.phone %></td>
-            <td><%= supplier.wechat %></td>
-            <td><%= supplier.is_active ? "启用" : "停用" %></td>
+            <td><%= link_to supplier.name, erp_supplier_path(supplier, current_locale_params) %></td>
+            <td><%= erp_value(supplier.origin) %></td>
+            <td><%= supplier.invoice_type ? t("erp.suppliers.invoice_types.#{supplier.invoice_type}") : erp_value(nil) %></td>
+            <td><%= supplier.channel ? t("erp.suppliers.channels.#{supplier.channel}") : erp_value(nil) %></td>
+            <td><%= erp_value(supplier.developer&.display_name) %></td>
+            <td><%= erp_value(supplier.purchaser&.display_name) %></td>
+            <td><%= erp_value(supplier.supplier_grade) %></td>
+            <td><%= supplier.is_active ? t("erp.common.statuses.active") : t("erp.common.statuses.inactive") %></td>
+            <td><div class="row-actions">
+              <%= link_to t("erp.common.actions.view"), erp_supplier_path(supplier, current_locale_params), class: "btn btn-ghost btn-sm" %>
+              <% if can?(:manage_purchases) %>
+                <%= link_to erp_edit_supplier_path(supplier, current_locale_params), class: "ico-btn", title: t("erp.common.actions.edit"), data: { turbo_frame: "erp_modal" } do %>
+                  <i class="bi bi-pencil" aria-hidden="true"></i><span class="sr-only"><%= t("erp.common.actions.edit") %></span>
+                <% end %>
+              <% end %>
+            </div></td>
           </tr>
         <% end %>
+        <% if @suppliers.empty? %><tr><td colspan="9" class="empty-state"><%= t("erp.suppliers.empty.none") %></td></tr><% end %>
       </tbody>
     </table>
-  </div>
-</section>
+  </section>
+</div>

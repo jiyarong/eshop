@@ -1,0 +1,6 @@
+<%= turbo_frame_tag "association_create_modal" do %>
+  <div data-controller="association-created"
+       data-association-created-picker-id-value="<%= params[:association_dom_id] %>"
+       data-association-created-record-id-value="<%= @supplier.id %>"
+       data-association-created-label-value="<%= @supplier.name %>"></div>
+<% end %>
