@@ -1452,7 +1452,7 @@ en:
           week: "Reporting period"
         load_error: "Data for the selected period is currently unavailable"
         no_store: "No stores available"
-        sales_funnel: "Weekly sales funnel"
+        sales_funnel: "Sales funnel"
         weekly_profit: "Weekly profit allocation"
       profit_trend:
         axes:
