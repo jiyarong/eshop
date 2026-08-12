@@ -909,16 +909,12 @@ class ReportsController < ApplicationController
 
   def load_sku_operation_overview
     @operation_store_options = WeeklyProfitReports::ReportQueryRunner.store_options
-    last_monday = user_today.beginning_of_week(:monday) - 1.week
     if @active_tab == "sales_funnel"
-      @funnel_from_date = parse_report_date(params[:funnel_from_date]) || last_monday
-      @funnel_to_date = parse_report_date(params[:funnel_to_date]) || last_monday.end_of_week(:monday)
+      @funnel_to_date = parse_report_date(params[:funnel_to_date]) || user_today
+      @funnel_from_date = parse_report_date(params[:funnel_from_date]) || (@funnel_to_date - 13.days)
       @funnel_store_ref = operation_store_ref(params[:funnel_store_ref])
-      @funnel_trend_to_date = parse_report_date(params[:trend_to_date]) || user_today
-      @funnel_trend_from_date = parse_report_date(params[:trend_from_date]) || (@funnel_trend_to_date - 27.days)
-
       begin
-        @operation_funnel_report = SalesFunnelReports::ReportQueryRunner.run(
+        @operation_funnel_report = SalesFunnelReports::SkuDailyReportQueryRunner.run(
           params: {
             from_date: @funnel_from_date.iso8601,
             to_date: @funnel_to_date.iso8601,
@@ -931,6 +927,7 @@ class ReportsController < ApplicationController
         @operation_funnel_error = error.message
       end
     else
+      last_monday = user_today.beginning_of_week(:monday) - 1.week
       @profit_from_date = parse_report_date(params[:profit_from_date]) || last_monday
       @profit_to_date = parse_report_date(params[:profit_to_date]) || last_monday.end_of_week(:monday)
       @profit_report_type = params[:profit_report_type].presence_in(WeeklyProfitReports::ReportQueryRunner::REPORT_TYPES) || "wr"

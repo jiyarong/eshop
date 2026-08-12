@@ -1632,7 +1632,7 @@ zh:
           week: "统计周期"
         load_error: "所选周期的数据暂不可用"
         no_store: "暂无可用店铺"
-        sales_funnel: "周销售漏斗"
+        sales_funnel: "销售漏斗"
         weekly_profit: "周利润归集"
       profit_trend:
         axes:

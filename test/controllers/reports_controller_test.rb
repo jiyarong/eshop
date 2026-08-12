@@ -1127,6 +1127,18 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "sku detail sales funnel defaults to the latest fourteen days" do
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "sales_funnel" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
+
+    assert_response :success
+    assert_select "input[name='funnel_from_date'][value=?]", (Date.current - 13.days).iso8601
+    assert_select "input[name='funnel_to_date'][value=?]", Date.current.iso8601
+    assert_select "turbo-frame#sku_sales_funnel_trends[src*=?]", "trend_from_date=#{(Date.current - 13.days).iso8601}"
+    assert_select "turbo-frame#sku_sales_funnel_trends[src*=?]", "trend_to_date=#{Date.current.iso8601}"
+  end
+
   test "sku detail tab frame renders only replaceable tab content" do
     get report_sku_path(@sku.sku_code),
       params: { tab: "basic" },
@@ -1250,9 +1262,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       comparison: { rows: {} },
       rows: [{ vendor_code: @sku.sku_code, net_qty: 6, after_tax: 120 }]
     }
-    original_funnel_run = SalesFunnelReports::ReportQueryRunner.method(:run)
+    original_funnel_run = SalesFunnelReports::SkuDailyReportQueryRunner.method(:run)
     original_profit_run = WeeklyProfitReports::ReportQueryRunner.method(:run)
-    SalesFunnelReports::ReportQueryRunner.define_singleton_method(:run) do |params:, today:|
+    SalesFunnelReports::SkuDailyReportQueryRunner.define_singleton_method(:run) do |params:, today:|
       funnel_calls << params
       funnel_report
     end
@@ -1281,10 +1293,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".sku-operation-report--funnel", 1
       assert_select ".sku-operation-report--profit", 0
       assert_select "form.sku-operation-filter input[name='tab'][value='sales_funnel']"
-      assert_select "form[action=?][data-turbo-frame='sku_sales_funnel_trends']", report_sku_sales_funnel_trends_path(@sku.sku_code)
-      assert_select "input[name='trend_from_date'][value]"
-      assert_select "input[name='trend_to_date'][value]"
-      assert_select "turbo-frame#sku_sales_funnel_trends[src][loading='lazy'][data-turbo-permanent]", count: 1
+      assert_select ".sku-operation-report--funnel .section-title", "销售漏斗"
+      assert_select ".sku-funnel-trends-heading .section-title", "各店铺日漏斗趋势"
+      assert_select "form[action=?][data-turbo-frame='sku_sales_funnel_trends']", report_sku_sales_funnel_trends_path(@sku.sku_code), count: 0
+      assert_select "turbo-frame#sku_sales_funnel_trends[src*='trend_from_date=2026-06-01'][src*='trend_to_date=2026-06-07'][loading='lazy']:not([data-turbo-permanent])", count: 1
 
       sign_in @current_user
       get "/reports/skus/#{@sku.sku_code}", params: {
@@ -1295,7 +1307,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
         sku_codes: [@second_sku.sku_code]
       }, headers: { "Accept" => "text/html" }
     ensure
-      SalesFunnelReports::ReportQueryRunner.define_singleton_method(:run, original_funnel_run)
+      SalesFunnelReports::SkuDailyReportQueryRunner.define_singleton_method(:run, original_funnel_run)
       WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run, original_profit_run)
     end
 
