@@ -133,10 +133,43 @@
 <% if section[:key] == :profit %>
   <%= turbo_frame_tag "sku_profit_trend",
                       src: report_sku_profit_trend_path(@sku.sku_code, locale: params[:locale]),
-                      loading: :lazy do %>
+                      loading: :lazy,
+                      data: { turbo_permanent: true } do %>
     <section class="panel sku-profit-trend">
       <h2 class="section-title"><%= t("reports.sku_detail.profit_trend.title") %></h2>
       <div class="empty-state"><%= t("reports.sku_detail.profit_trend.loading") %></div>
     </section>
+  <% end %>
+<% end %>
+
+<% if section[:key] == :funnel %>
+  <section class="panel sku-funnel-trends-filter">
+    <h2 class="section-title"><%= t("reports.sku_detail.funnel_trends.title") %></h2>
+    <%= form_with url: report_sku_sales_funnel_trends_path(@sku.sku_code), method: :get,
+                  data: { turbo_frame: "sku_sales_funnel_trends" }, class: "report-form" do |form| %>
+      <% if params[:locale].present? %><%= form.hidden_field :locale, value: params[:locale] %><% end %>
+      <div class="weekly-profit-time-range-row">
+        <div class="weekly-profit-date-range-field">
+          <label for="sku-funnel-trends-time-range-trigger"><%= t("reports.sku_detail.funnel_trends.filters.date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "sku-funnel-trends-time-range",
+                     from_date: @funnel_trend_from_date,
+                     to_date: @funnel_trend_to_date,
+                     from_name: "trend_from_date",
+                     to_name: "trend_to_date",
+                     submit_on_apply: true %>
+        </div>
+        <div class="weekly-profit-filter-actions">
+          <%= form.submit t("reports.sku_detail.funnel_trends.filters.submit"), class: "button weekly-profit-submit-button" %>
+        </div>
+      </div>
+    <% end %>
+  </section>
+  <%= turbo_frame_tag "sku_sales_funnel_trends",
+                      src: report_sku_sales_funnel_trends_path(@sku.sku_code,
+                        trend_from_date: @funnel_trend_from_date, trend_to_date: @funnel_trend_to_date, locale: params[:locale]),
+                      loading: :lazy,
+                      data: { turbo_permanent: true } do %>
+    <div class="empty-state"><%= t("reports.sku_detail.funnel_trends.loading") %></div>
   <% end %>
 <% end %>

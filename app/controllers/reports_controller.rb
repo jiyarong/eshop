@@ -27,6 +27,7 @@ class ReportsController < ApplicationController
   SKU_PROFIT_TREND_METRICS = %i[
     net_sales revenue ads goods_cost average_profit_per_order annualized_return_pct annualized_net_profit_cny
   ].freeze
+  SKU_SALES_FUNNEL_TREND_MAX_DAYS = 366
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -222,6 +223,32 @@ class ReportsController < ApplicationController
       @profit_trend_error = true
     end
     render partial: "reports/sku_profit_trend"
+  end
+
+  def sku_sales_funnel_trends
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @funnel_trend_to_date = parse_report_date(params[:trend_to_date]) || user_today
+    @funnel_trend_from_date = parse_report_date(params[:trend_from_date]) || (@funnel_trend_to_date - 27.days)
+    if @funnel_trend_to_date < @funnel_trend_from_date || (@funnel_trend_to_date - @funnel_trend_from_date).to_i >= SKU_SALES_FUNNEL_TREND_MAX_DAYS
+      raise ArgumentError, "invalid_date_range"
+    end
+
+    @funnel_store_trends = SalesFunnelReports::SkuDailyTrendQuery.new(
+      sku: @sku,
+      from_date: @funnel_trend_from_date,
+      to_date: @funnel_trend_to_date
+    ).call
+    @funnel_store_trends.each do |trend|
+      trend[:chart_option] = build_sku_sales_funnel_trend_chart_option(trend)
+    end
+  rescue ArgumentError => error
+    Rails.logger.info("SKU sales funnel trend rejected for #{params[:sku_code]}: #{error.message}")
+    @funnel_trend_error = true
+  rescue StandardError => error
+    Rails.logger.error("SKU sales funnel trend failed for #{params[:sku_code]}: #{error.class}: #{error.message}")
+    @funnel_trend_error = true
+  ensure
+    render partial: "reports/sku_sales_funnel_trends" unless performed?
   end
 
   def new_sku_predicted_cost
@@ -432,6 +459,40 @@ class ReportsController < ApplicationController
         { type: "value", name: t("reports.sku_detail.profit_trend.axes.quantity"), minInterval: 1 },
         { type: "value", name: t("reports.sku_detail.profit_trend.axes.amount") },
         { type: "value", name: "%", position: "right", offset: 54 }
+      ],
+      series:
+    }
+  end
+
+  def build_sku_sales_funnel_trend_chart_option(trend)
+    amount_metrics = %i[orders_sum buyouts_sum revenue]
+    percent_metrics = %i[conv_to_cart cart_to_order buyout_percent conv_tocart]
+    labels = trend[:rows].map { |row| row[:date] }
+    series = trend[:metrics].map do |metric|
+      selected = metric.in?(trend[:default_metrics])
+      {
+        name: t("sales_funnel_reports.columns.#{trend[:platform]}.#{metric}"),
+        type: "line",
+        smooth: true,
+        showSymbol: false,
+        yAxisIndex: amount_metrics.include?(metric) ? 1 : (percent_metrics.include?(metric) ? 2 : 0),
+        data: trend[:rows].map { |row| row.dig(:values, metric) },
+        selected:
+      }
+    end
+    {
+      tooltip: { trigger: "axis" },
+      legend: {
+        type: "scroll",
+        top: 0,
+        selected: series.to_h { |item| [item[:name], item.delete(:selected)] }
+      },
+      grid: { left: 38, right: 62, top: 62, bottom: 42, containLabel: true },
+      xAxis: { type: "category", boundaryGap: false, data: labels },
+      yAxis: [
+        { type: "value", name: t("reports.sku_detail.funnel_trends.axes.count"), minInterval: 1 },
+        { type: "value", name: t("reports.sku_detail.funnel_trends.axes.amount") },
+        { type: "value", name: "%", position: "right", offset: 42 }
       ],
       series:
     }
@@ -853,6 +914,8 @@ class ReportsController < ApplicationController
       @funnel_from_date = parse_report_date(params[:funnel_from_date]) || last_monday
       @funnel_to_date = parse_report_date(params[:funnel_to_date]) || last_monday.end_of_week(:monday)
       @funnel_store_ref = operation_store_ref(params[:funnel_store_ref])
+      @funnel_trend_to_date = parse_report_date(params[:trend_to_date]) || user_today
+      @funnel_trend_from_date = parse_report_date(params[:trend_from_date]) || (@funnel_trend_to_date - 27.days)
 
       begin
         @operation_funnel_report = SalesFunnelReports::ReportQueryRunner.run(

@@ -1467,6 +1467,18 @@ en:
           net_sales: "Net sales"
           revenue: "Revenue"
         title: "Latest 8-week WSU-DEEP trend"
+      funnel_trends:
+        axes:
+          amount: "Amount"
+          count: "Count"
+        empty: "No daily funnel data in the selected period"
+        filters:
+          date_range: "Trend period"
+          submit: "Search"
+        load_error: "Daily funnel trends are temporarily unavailable"
+        loading: "Loading daily funnel trends..."
+        no_listings: "This SKU has no active WB or Ozon store listings"
+        title: "Daily funnel trends by store"
       pagination:
         aria_label: "SKU detail pagination"
         next: "Next"

@@ -51,6 +51,7 @@ Rails.application.routes.draw do
   delete "reports/tool_configurations/:id" => "reports/tool_configurations#destroy"
   get "reports/skus"      => "reports#skus"
   get "reports/skus/:sku_code/profit_trend" => "reports#sku_profit_trend", as: :report_sku_profit_trend
+  get "reports/skus/:sku_code/sales_funnel_trends" => "reports#sku_sales_funnel_trends", as: :report_sku_sales_funnel_trends
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments
   get "reports/skus/:sku_code/operation_actions/new" => "reports#new_sku_operation_action", as: :new_report_sku_operation_action
