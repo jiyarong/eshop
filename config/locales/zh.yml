@@ -1002,7 +1002,7 @@ zh:
         sku_count: "商品数"
         shortage_count: "缺货风险"
         available: "FBO 可售库存"
-        inbound: "入库处理中"
+        inbound: "平台在途"
         recommended: "建议新增发货"
       fields:
         product: "商品 / 集群 / 仓库"
@@ -1013,7 +1013,7 @@ zh:
         sales_28d: "近 28 天销量"
         available: "可售"
         reserved: "预留"
-        inbound: "入库处理中"
+        inbound: "平台在途"
         recommended: "建议新增发货"
         recommended_or_gap: "新增发货 / 集群缺口"
       statuses:
@@ -1033,14 +1033,14 @@ zh:
       mapping_status: "已匹配 %{mapped}/%{total} 条 FBO 订单的发货仓"
       warehouse_count: "%{count} 个仓库"
       product_count: "%{count} 个商品"
-      product_recommendation_hint: "按近 28 天 WB 仓订单日销和当前 FBW 库存计算"
+      product_recommendation_hint: "按近 28 天 WB 仓订单日销、当前 FBW 库存和平台在途计算"
       cluster_gap_hint: "集群目标库存缺口，仅用于分布分析"
       views: { aria_label: "WB 分仓查看维度", products: "根据商品", clusters: "按集群" }
       unknown_cluster: "未匹配集群"
       empty: "当前店铺没有匹配的 WB 商品数据"
       filters: { store: "店铺", search: "商品", search_placeholder: "商品名称、SKU 或货号", operator: "运营人员", all_operators: "全部运营人员", target_days: "目标库存天数", apply: "查询" }
-      summary: { sku_count: "商品数", shortage_count: "缺货风险", available: "FBW 可用库存", recommended: "建议新增发货", mapping_coverage: "仓库匹配率" }
-      fields: { product: "商品 / 集群 / 仓库", cluster: "集群 / 商品 / 仓库", status: "库存状态", days_of_stock: "库存天数", daily_sales: "日均销量", sales_28d: "近 28 天销量", available: "可用", reserved: "预留", inbound: "入库处理中", recommended_or_gap: "新增发货 / 集群缺口" }
+      summary: { sku_count: "商品数", shortage_count: "缺货风险", available: "FBW 可用库存", inbound: "平台在途", recommended: "建议新增发货", mapping_coverage: "仓库匹配率" }
+      fields: { product: "商品 / 集群 / 仓库", cluster: "集群 / 商品 / 仓库", status: "库存状态", days_of_stock: "库存天数", daily_sales: "日均销量", sales_28d: "近 28 天销量", available: "可用", reserved: "预留", inbound: "平台在途", recommended_or_gap: "新增发货 / 集群缺口" }
       statuses: { shortage: "缺货风险", healthy: "正常", excess: "库存偏高", no_sales: "暂无销售" }
       pagination: { product_aria_label: "WB 分仓商品分页", cluster_aria_label: "WB 分仓集群分页", previous_page: "上一页", next_page: "下一页", jump_label: "跳至", jump_action: "跳转", page_chip: "第 %{page}/%{pages} 页", product_summary: "显示第 %{from}-%{to} 条，共 %{total} 条商品", cluster_summary: "显示第 %{from}-%{to} 条，共 %{total} 个集群" }
       errors: { no_store: "未配置可用的 WB 店铺" }
@@ -1262,6 +1262,12 @@ zh:
         other: "其他"
         untrackable_defective: "不可追踪残次"
         wb_fbw_offset: "WB FBW 补正"
+      batch_statuses:
+        draft: "草稿"
+        ordered: "已下单"
+        in_transit: "运输中"
+        received: "已到货"
+        closed: "已关闭"
       empty: "暂无库存数据"
       drawer:
         distribution_columns:
@@ -1617,7 +1623,7 @@ zh:
         profit: "利润归集"
         sales_funnel: "销售漏斗"
         supply_orders: "送仓记录"
-        warehouses: "分仓"
+        warehouses: "分仓建议"
         operation_actions: "运营记录"
         stores: "各店铺销量情况"
         trend: "销量历史趋势"

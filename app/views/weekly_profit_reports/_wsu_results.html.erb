@@ -27,7 +27,7 @@
                   <div class="weekly-profit-table-value">
                     <% sku_code = row[key] || row[key.to_s] %>
                     <% if weekly_profit_sku_drawer_linkable?(key, sku_code) %>
-                      <%= sku_detail_drawer_link sku_code %>
+                      <%= sku_detail_drawer_link sku_code, tab: "profit" %>
                     <% else %>
                       <%= weekly_profit_report_value(row, key) %>
                     <% end %>

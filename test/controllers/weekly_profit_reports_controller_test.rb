@@ -133,7 +133,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[data-weekly-profit-store-tag][data-value=?]", "ozon:#{@ozon_account.id}", text: "Ozon · Ozon Test Shop"
     assert_select "turbo-frame#weekly_profit_report_results"
     assert_select ".weekly-profit-summary-card", minimum: 1
-    assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code), text: @direct_sku.sku_code
+    assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code, tab: "profit"), text: @direct_sku.sku_code
   ensure
     query_class.define_singleton_method(:run, original_run)
   end
@@ -444,7 +444,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".weekly-profit-comparison-trend", minimum: 1
       assert_select ".weekly-profit-table-value", minimum: 1
       assert_select ".weekly-profit-table-comparison", minimum: 1
-      assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code), text: @direct_sku.sku_code
+      assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code, tab: "profit"), text: @direct_sku.sku_code
       assert_select ".weekly-profit-table-value", text: "MISSING-#{@token}"
       assert_select "a", text: "MISSING-#{@token}", count: 0
       assert_select ".weekly-profit-table-value", text: "WB Test Shop"
@@ -529,7 +529,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".weekly-profit-comparison-trend", minimum: 1
       assert_select ".weekly-profit-table-value", minimum: 1
       assert_select ".weekly-profit-table-comparison", minimum: 1
-      assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code), text: @direct_sku.sku_code
+      assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']", report_sku_path(@direct_sku.sku_code, tab: "profit"), text: @direct_sku.sku_code
       assert_select ".weekly-profit-table-value", text: "800.00"
     end
   ensure

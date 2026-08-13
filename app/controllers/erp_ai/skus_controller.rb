@@ -27,6 +27,8 @@ module ErpAI
         sku,
         detail_tab: "book",
         book_batch_page: 1,
+        return_page: 1,
+        return_restockable: nil,
         date_to: Time.current.in_time_zone(time_zone).to_date,
         time_zone: time_zone
       ).call

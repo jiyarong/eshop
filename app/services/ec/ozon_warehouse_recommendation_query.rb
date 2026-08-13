@@ -81,7 +81,7 @@ module Ec
       return {} if sku_codes.empty?
 
       Ec::SkuInventoryLevel
-        .where(store_id: store.id, platform: "ozon", fulfillment_type: "fbo", is_latest: true, sku_code: sku_codes)
+        .where(store_id: store.id, platform: "ozon", fulfillment_type: %w[fbo inbound], is_latest: true, sku_code: sku_codes)
         .group_by(&:sku_code)
     end
 
@@ -100,14 +100,17 @@ module Ec
 
     def build_rows(products, sales, inventory, receiving_warehouses, fbs_available)
       products.group_by(&:sku_code).map do |sku_code, sku_products|
+        sku_inventory = Array(inventory[sku_code])
         cluster_sales = sales.each_with_object({}) do |((row_sku_code, cluster), quantity), result|
           result[cluster] = quantity.to_i if row_sku_code == sku_code
         end
-        warehouse_rows = Array(inventory[sku_code]).flat_map { |level| warehouse_rows(level) }
+        warehouse_rows = sku_inventory
+          .select { |level| level.fulfillment_type == "fbo" }
+          .flat_map { |level| warehouse_rows(level) }
         clusters = build_clusters(cluster_sales, warehouse_rows, receiving_warehouses)
         total_sales = clusters.sum { |cluster| cluster[:sales_quantity] }
         total_available = clusters.sum { |cluster| cluster[:available] }
-        total_inbound = clusters.sum { |cluster| cluster[:inbound] }
+        total_inbound = sku_inventory.select { |level| level.fulfillment_type == "inbound" }.sum(&:quantity)
         daily_sales = daily_average(total_sales)
 
         {
@@ -248,7 +251,7 @@ module Ec
       return nil if sku_codes.empty?
 
       Ec::SkuInventoryLevel
-        .where(store_id: store.id, platform: "ozon", fulfillment_type: "fbo", is_latest: true, sku_code: sku_codes)
+        .where(store_id: store.id, platform: "ozon", fulfillment_type: %w[fbo inbound], is_latest: true, sku_code: sku_codes)
         .maximum(:synced_at)
     end
 

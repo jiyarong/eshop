@@ -923,13 +923,13 @@ ru:
       mapping_status: "Склад определен для %{mapped} из %{total} заказов FBO"
       warehouse_count: "Складов: %{count}"
       product_count: "Товаров: %{count}"
-      product_recommendation_hint: "По продажам за 28 дней и текущим остаткам FBW"
+      product_recommendation_hint: "По продажам за 28 дней, текущим остаткам FBW и товарам в поставке"
       cluster_gap_hint: "Дефицит целевого запаса для анализа распределения"
       views: { aria_label: "Вид распределения WB", products: "По товарам", clusters: "По кластерам" }
       unknown_cluster: "Кластер не определен"
       empty: "Нет подходящих товаров WB для этого магазина"
       filters: { store: "Магазин", search: "Товар", search_placeholder: "Товар, SKU или артикул", operator: "Оператор", all_operators: "Все операторы", target_days: "Целевой запас, дней", apply: "Применить" }
-      summary: { sku_count: "Товары", shortage_count: "Риск дефицита", available: "Доступно FBW", recommended: "Доп. поставка", mapping_coverage: "Покрытие складов" }
+      summary: { sku_count: "Товары", shortage_count: "Риск дефицита", available: "Доступно FBW", inbound: "В поставке", recommended: "Доп. поставка", mapping_coverage: "Покрытие складов" }
       fields: { product: "Товар / кластер / склад", cluster: "Кластер / товар / склад", status: "Статус", days_of_stock: "Запас, дней", daily_sales: "Продажи в день", sales_28d: "Продажи за 28 дней", available: "Доступно", reserved: "Резерв", inbound: "В поставке", recommended_or_gap: "Доп. поставка / дефицит кластера" }
       statuses: { shortage: "Риск дефицита", healthy: "Норма", excess: "Избыток", no_sales: "Нет продаж" }
       pagination: { product_aria_label: "Страницы товаров WB", cluster_aria_label: "Страницы кластеров WB", previous_page: "Предыдущая страница", next_page: "Следующая страница", jump_label: "К стр.", jump_action: "OK", page_chip: "Стр. %{page}/%{pages}", product_summary: "Товары %{from}-%{to} из %{total}", cluster_summary: "Кластеры %{from}-%{to} из %{total}" }
@@ -1392,7 +1392,7 @@ ru:
         profit: "Распределение прибыли"
         sales_funnel: "Воронка продаж"
         supply_orders: "Поставки на склад"
-        warehouses: "Распределение по складам"
+        warehouses: "Рекомендации по распределению"
         operation_actions: "Операционные записи"
         stores: "Продажи по магазинам"
         trend: "Тренд продаж"

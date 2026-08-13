@@ -942,6 +942,17 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.sales_distribution")
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.return_distribution")
     assert_select ".inventory-formula__title", I18n.t("reports.inventory.drawer.sections.formula")
+
+    sign_in @current_user
+    with_stubbed_constructor(Ec::InventoryPageDetailQuery, fake_query_factory) do
+      get "/reports/inventory/#{@sku_code}",
+        params: { detail_tab: "incoming", book_batch_page: "1" },
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+    end
+
+    assert_response :success
+    assert_select "td", text: I18n.t("reports.inventory.batch_statuses.in_transit")
+    assert_select "td", text: "in_transit", count: 0
   end
 
   test "inventory detail platform tab uses fbo fbw stock in platform formula" do
@@ -1109,7 +1120,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-tabs a:nth-child(2)", text: "利润归集"
     assert_select ".sku-detail-tabs a:nth-child(3)", text: "库存概况"
     assert_select ".sku-detail-tabs a:nth-child(4)", text: "送仓记录"
-    assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓"
+    assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓建议"
     assert_select ".sku-detail-tabs a:nth-child(6)", text: "运营记录"
     assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
   end
@@ -1521,7 +1532,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     get report_sku_path(@sku.sku_code), params: { tab: "warehouses", store_id: @sales_store.id }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".sku-detail-tabs a[aria-current='page']", "分仓"
+    assert_select ".sku-detail-tabs a[aria-current='page']", "分仓建议"
     assert_select ".sku-warehouse-store-filter a.is-active[aria-pressed='true']", text: @sales_store.store_name
     assert_select ".sku-warehouse-report", text: /#{@sku.sku_code}/
     assert_select ".sku-warehouse-report", text: /#{@second_sku.sku_code}/, count: 0

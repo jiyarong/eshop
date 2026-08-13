@@ -938,8 +938,8 @@ en:
       unknown_cluster: "Unmatched cluster"
       empty: "No matching Ozon products for this store"
       filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU or offer ID", operator: "Operator", all_operators: "All operators", target_days: "Target stock days", apply: "Apply" }
-      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Inbound", recommended: "Additional inbound" }
-      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended: "Additional inbound", recommended_or_gap: "Additional inbound / cluster gap" }
+      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Platform inbound", recommended: "Additional inbound" }
+      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Platform inbound", recommended: "Additional inbound", recommended_or_gap: "Additional inbound / cluster gap" }
       statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
       errors: { no_store: "No Ozon store is configured" }
     wb_warehouses:
@@ -952,14 +952,14 @@ en:
       mapping_status: "%{mapped} of %{total} FBO orders have a matched shipping warehouse"
       warehouse_count: "%{count} warehouses"
       product_count: "%{count} products"
-      product_recommendation_hint: "Based on 28-day WB warehouse sales velocity and current FBW inventory"
+      product_recommendation_hint: "Based on 28-day WB warehouse sales velocity, current FBW inventory, and platform inbound stock"
       cluster_gap_hint: "Target stock gap for cluster distribution analysis"
       views: { aria_label: "WB warehouse view", products: "By product", clusters: "By cluster" }
       unknown_cluster: "Unmatched cluster"
       empty: "No matching WB products for this store"
       filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU, or offer ID", operator: "Operator", all_operators: "All operators", target_days: "Target stock days", apply: "Apply" }
-      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBW available", recommended: "Additional inbound", mapping_coverage: "Warehouse coverage" }
-      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended_or_gap: "Additional inbound / cluster gap" }
+      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBW available", inbound: "Platform inbound", recommended: "Additional inbound", mapping_coverage: "Warehouse coverage" }
+      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Platform inbound", recommended_or_gap: "Additional inbound / cluster gap" }
       statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
       pagination: { product_aria_label: "WB product pagination", cluster_aria_label: "WB cluster pagination", previous_page: "Previous page", next_page: "Next page", jump_label: "Go to", jump_action: "Go", page_chip: "Page %{page}/%{pages}", product_summary: "Showing products %{from}-%{to} of %{total}", cluster_summary: "Showing clusters %{from}-%{to} of %{total}" }
       errors: { no_store: "No WB store is configured" }
@@ -1080,6 +1080,12 @@ en:
         other: "Other"
         untrackable_defective: "Untrackable defective"
         wb_fbw_offset: "WB FBW offset"
+      batch_statuses:
+        draft: "Draft"
+        ordered: "Ordered"
+        in_transit: "In transit"
+        received: "Received"
+        closed: "Closed"
       empty: "No inventory data"
       drawer:
         distribution_columns:
@@ -1435,7 +1441,7 @@ en:
         profit: "Profit allocation"
         sales_funnel: "Sales funnel"
         supply_orders: "Warehouse shipments"
-        warehouses: "Warehouse allocation"
+        warehouses: "Allocation recommendations"
         operation_actions: "Operation records"
         stores: "Store sales"
         trend: "Sales trend"

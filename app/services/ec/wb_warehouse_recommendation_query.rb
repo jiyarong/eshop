@@ -100,7 +100,7 @@ module Ec
         .where(
           store_id: store.id,
           platform: "wb",
-          fulfillment_type: "fbw",
+          fulfillment_type: %w[fbw inbound],
           is_latest: true,
           sku_code: sku_codes
         )
@@ -117,13 +117,15 @@ module Ec
       sales_by_sku = sales.group_by { |row| row[:sku_code] }
 
       products.group_by(&:sku_code).map do |sku_code, sku_products|
+        sku_inventory = Array(inventory[sku_code])
         warehouse_rows = merge_warehouse_rows(
           Array(sales_by_sku[sku_code]),
-          inventory_rows(Array(inventory[sku_code]))
+          inventory_rows(sku_inventory.select { |level| level.fulfillment_type == "fbw" })
         )
         clusters = build_clusters(warehouse_rows)
         total_sales = clusters.sum { |cluster| cluster[:sales_quantity] }
         total_available = clusters.sum { |cluster| cluster[:available] }
+        total_inbound = sku_inventory.select { |level| level.fulfillment_type == "inbound" }.sum(&:quantity)
         daily_sales = daily_average(total_sales)
 
         {
@@ -138,9 +140,9 @@ module Ec
           days_of_stock: days_of_stock(total_available, daily_sales),
           available: total_available,
           reserved: nil,
-          inbound: nil,
+          inbound: total_inbound,
           distribution_gap: clusters.sum { |cluster| cluster[:distribution_gap] },
-          recommended: recommended_quantity(daily_sales, total_available),
+          recommended: recommended_quantity(daily_sales, total_available, total_inbound),
           clusters: clusters
         }
       end.sort_by { |row| [-row[:recommended], -row[:sales_quantity], row[:sku_code]] }
@@ -246,6 +248,7 @@ module Ec
         sku_count: rows.size,
         shortage_count: rows.count { |row| row[:status] == :shortage },
         available: rows.sum { |row| row[:available] },
+        inbound: rows.sum { |row| row[:inbound] },
         recommended: rows.sum { |row| row[:recommended] },
         mapped_orders: mapped_sales,
         total_orders: total_sales,
@@ -292,10 +295,10 @@ module Ec
       (available.to_d / daily_sales).round(0).to_i
     end
 
-    def recommended_quantity(daily_sales, available)
+    def recommended_quantity(daily_sales, available, inbound = 0)
       return 0 unless daily_sales.positive?
 
-      [(daily_sales * target_days).ceil - available, 0].max
+      [(daily_sales * target_days).ceil - available - inbound, 0].max
     end
 
     def stock_status(daily_sales, available)
@@ -312,7 +315,7 @@ module Ec
       Ec::SkuInventoryLevel.where(
         store_id: store.id,
         platform: "wb",
-        fulfillment_type: "fbw",
+        fulfillment_type: %w[fbw inbound],
         is_latest: true,
         sku_code: sku_codes
       ).maximum(:synced_at)

@@ -3287,6 +3287,11 @@ pre {
   overflow: auto;
 }
 
+.sku-detail-tab-panels .table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .inventory-drawer__kicker {
   margin: 0 0 6px;
   font-size: 12px;

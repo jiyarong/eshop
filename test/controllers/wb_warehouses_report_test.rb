@@ -31,6 +31,8 @@ class WbWarehousesReportTest < ActionDispatch::IntegrationTest
     assert_select "table.ozon-warehouse-table[data-controller='hierarchy-table']"
     assert_select "th", text: "商品 / 集群 / 仓库"
     assert_select ".summary-label", text: "仓库匹配率"
+    assert_select ".summary-label", text: "平台在途"
+    assert_select "th", text: "平台在途"
     assert_select ".ozon-warehouse-fbs-stock", text: "FBS 可用 0"
     assert_select ".ozon-warehouse-tabs a", text: "根据商品"
     assert_select ".ozon-warehouse-tabs a[href*='view=clusters']", text: "按集群"

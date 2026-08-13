@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_034226) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_030530) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1513,7 +1513,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_034226) do
     t.bigint "account_id", null: false
     t.bigint "cancellations", default: 0
     t.decimal "conv_tocart", precision: 10, scale: 4
+    t.decimal "conv_tocart_pdp", precision: 10, scale: 4
+    t.decimal "conv_tocart_search", precision: 10, scale: 4
     t.datetime "created_at", null: false
+    t.bigint "delivered_units", default: 0
     t.bigint "hits_tocart", default: 0
     t.bigint "hits_tocart_pdp", default: 0
     t.bigint "hits_tocart_search", default: 0
@@ -1521,6 +1524,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_034226) do
     t.bigint "hits_view_pdp", default: 0
     t.bigint "hits_view_search", default: 0
     t.bigint "ordered_units", default: 0
+    t.decimal "position_category", precision: 12, scale: 4
     t.string "product_name"
     t.jsonb "raw_json", default: {}, null: false
     t.bigint "returns_count", default: 0
@@ -1542,7 +1546,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_034226) do
     t.bigint "account_id", null: false
     t.bigint "cancellations", default: 0
     t.decimal "conv_tocart", precision: 10, scale: 4
+    t.decimal "conv_tocart_pdp", precision: 10, scale: 4
+    t.decimal "conv_tocart_search", precision: 10, scale: 4
     t.datetime "created_at", null: false
+    t.bigint "delivered_units", default: 0
     t.bigint "hits_tocart", default: 0
     t.bigint "hits_tocart_pdp", default: 0
     t.bigint "hits_tocart_search", default: 0
@@ -1552,6 +1559,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_034226) do
     t.bigint "ordered_units", default: 0
     t.date "period_end", null: false
     t.date "period_start", null: false
+    t.decimal "position_category", precision: 12, scale: 4
     t.string "product_name"
     t.jsonb "raw_json", default: {}, null: false
     t.bigint "returns_count", default: 0
@@ -2666,7 +2674,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_034226) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"

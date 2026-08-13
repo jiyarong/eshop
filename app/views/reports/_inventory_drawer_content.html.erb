@@ -80,7 +80,7 @@
                   <% inventory_detail[:incoming_batches].each do |row| %>
                     <tr>
                       <td><%= row[:batch_code] %></td>
-                      <td><%= report_value(row[:status]) %></td>
+                      <td><%= t("reports.inventory.batch_statuses.#{row[:status]}", default: report_value(row[:status])) %></td>
                       <td><%= row[:expected_arrival_on].present? ? I18n.l(row[:expected_arrival_on], format: "%Y-%m-%d") : "-" %></td>
                       <td><%= row[:purchased_quantity] %></td>
                       <td><%= report_value(row[:memo]) %></td>

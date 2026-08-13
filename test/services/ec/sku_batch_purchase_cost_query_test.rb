@@ -39,4 +39,13 @@ class Ec::SkuBatchPurchaseCostQueryTest < ActiveSupport::TestCase
     assert_equal BigDecimal("12.5"), prices[@dated_batch.id]
     assert_nil prices[@undated_batch.id]
   end
+
+  test "prefers the batch purchase unit price over the sku cost" do
+    @dated_batch.update!(purchase_unit_price_cny: 15.75)
+    Ec::SkuCost.create!(sku_code: @sku.sku_code, effective_on: Date.new(2026, 6, 1), purchase_price_cny: 12.5)
+
+    prices = Ec::SkuBatchPurchaseCostQuery.call([@dated_batch])
+
+    assert_equal BigDecimal("15.75"), prices[@dated_batch.id]
+  end
 end

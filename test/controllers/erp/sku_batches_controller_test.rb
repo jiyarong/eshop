@@ -96,7 +96,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{erp_supplier_path(@supplier)}']", text: @supplier.name
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchase_date_cell .inline-edit-cell--display", text: "2026-06-01"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_expected_arrival_on_cell .inline-edit-cell--display", text: "2026-06-15"
-    assert_select "tr.sku-batch-row td.num", text: "8.25"
+    assert_select "tr.sku-batch-row td.num", text: "12.50"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_purchased_quantity_cell .inline-edit-cell--display", text: "100"
     assert_select "turbo-frame#sku_batch_#{@batch.id}_received_quantity_cell .inline-edit-cell--display", text: "80"
     assert_select "a[href='#{erp_sku_batch_path(@batch)}']", text: "查看"
