@@ -38,7 +38,7 @@ class OperatorSkusController < ApplicationController
 
     @skus = scope.page(page_param).per(PAGE_SIZE)
     @skus = scope.page(@skus.total_pages).per(PAGE_SIZE) if @skus.total_pages.positive? && @skus.current_page > @skus.total_pages
-    load_latest_red_ai_diagnosis_event_types_for(@skus)
+    load_latest_red_ai_diagnosis_events_for(@skus)
     @metrics_by_sku = Ec::OperatorSkuMetricsQuery.new(
       skus: @skus,
       date_to: user_today,

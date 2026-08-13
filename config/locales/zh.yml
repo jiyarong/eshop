@@ -1779,6 +1779,12 @@ zh:
     ai_diagnosis_event_filter:
       aria_label: "AI 诊断风险筛选"
       label: "AI 诊断风险"
+      details:
+        close: "关闭诊断详情"
+        data: "结构化详情"
+        diagnosed_at: "诊断时间：%{value}"
+        scope: "诊断范围：%{value}"
+        title: "%{event_type}详情"
       event_types:
         clearance_overdue: "清仓逾期"
         missed_sales_alert: "错失销售预警"

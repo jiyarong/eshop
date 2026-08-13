@@ -24,7 +24,13 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
 
   test "index filters skus by latest red diagnosis event tag" do
     diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
-    diagnosis.events.create!(event_type: "stockout_imminent", severity: "red", message: "Risk")
+    diagnosis.events.create!(
+      event_type: "stockout_imminent",
+      severity: "red",
+      message: "Risk details #{@token}",
+      scope: "inventory",
+      details: { "available" => 3 }
+    )
     diagnosis.events.create!(event_type: "missed_sales_alert", severity: "red", message: "Sales risk")
     diagnosis.events.create!(event_type: "inventory_sufficient", severity: "green", message: "Healthy")
     other_sku = Ec::Sku.create!(sku_code: "OPS-OTHER-#{@token}", product_name: "其他运营商品")
@@ -43,6 +49,14 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "即将断货"
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "错失销售预警"
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Inventory sufficient/, count: 0 }
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-popover']" do
+      assert_select "button.ai-diagnosis-event-tag[aria-expanded='false'][aria-controls]", text: "即将断货"
+      assert_select ".sku-ai-diagnosis-event-popover__panel[hidden][role='dialog']" do
+        assert_select ".sku-ai-diagnosis-event-popover__message", text: "Risk details #{@token}"
+        assert_select ".sku-ai-diagnosis-event-popover__meta", text: /诊断范围：inventory/
+        assert_select "code", text: /\"available\": 3/
+      end
+    end
   end
 
   test "index renders operator sku columns and puts link before sales funnel" do

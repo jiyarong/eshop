@@ -40,16 +40,23 @@ module AIDiagnosisEventFilterable
   end
 
   def load_latest_red_ai_diagnosis_event_types_for(skus)
-    sku_ids = Array(skus).map(&:id)
-    pairs = latest_red_ai_diagnosis_events
-      .where(ec_ai_diagnosis: { sku_id: sku_ids })
-      .distinct
-      .order(:event_type)
-      .pluck("ec_ai_diagnosis.sku_id", :event_type)
+    load_latest_red_ai_diagnosis_events_for(skus)
+  end
 
-    @ai_diagnosis_event_types_by_sku_id = pairs.group_by(&:first).transform_values do |rows|
-      rows.map(&:second)
+  def load_latest_red_ai_diagnosis_events_for(skus)
+    sku_ids = Array(skus).map(&:id)
+    events = latest_red_ai_diagnosis_events
+      .where(ec_ai_diagnosis: { sku_id: sku_ids })
+      .select("ec_ai_diagnosis_events.*", "ec_ai_diagnosis.sku_id AS diagnosis_sku_id")
+      .order(:event_type, :position, :id)
+      .to_a
+
+    @ai_diagnosis_events_by_sku_id = events.group_by { |event| event.diagnosis_sku_id.to_i }
+    @ai_diagnosis_event_types_by_sku_id = @ai_diagnosis_events_by_sku_id.transform_values do |sku_events|
+      sku_events.map(&:event_type).uniq
     end
+
+    @ai_diagnosis_events_by_sku_id
   end
 
   def ai_diagnosis_event_sku_ids

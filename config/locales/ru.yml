@@ -1548,6 +1548,12 @@ ru:
     ai_diagnosis_event_filter:
       aria_label: "Фильтры рисков AI-диагностики"
       label: "Риски AI-диагностики"
+      details:
+        close: "Закрыть сведения о диагностике"
+        data: "Структурированные данные"
+        diagnosed_at: "Время диагностики: %{value}"
+        scope: "Область: %{value}"
+        title: "%{event_type}: сведения"
       event_types:
         clearance_overdue: "Просроченная распродажа"
         missed_sales_alert: "Риск упущенных продаж"

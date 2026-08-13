@@ -5314,12 +5314,94 @@ textarea:focus {
   min-height: 22px;
   padding: 2px 6px;
   font-size: 11px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .ai-diagnosis-event-tag--compact:hover {
   border-color: #ef9a9a;
   background: #fff7f7;
+}
+
+.sku-ai-diagnosis-event-popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.sku-ai-diagnosis-event-popover__panel[hidden] {
+  display: none;
+}
+
+.sku-ai-diagnosis-event-popover__panel {
+  position: fixed;
+  z-index: 80;
+  display: block;
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+
+.sku-ai-diagnosis-event-popover__header,
+.sku-ai-diagnosis-event-popover__event,
+.sku-ai-diagnosis-event-popover__details {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sku-ai-diagnosis-event-popover__header {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sku-ai-diagnosis-event-popover__close {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  place-items: center;
+  color: var(--fg-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sku-ai-diagnosis-event-popover__event.is-separated {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.sku-ai-diagnosis-event-popover__message {
+  line-height: 1.5;
+}
+
+.sku-ai-diagnosis-event-popover__meta,
+.sku-ai-diagnosis-event-popover__details > span {
+  color: var(--fg-muted);
+}
+
+.sku-ai-diagnosis-event-popover__details code {
+  display: block;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--surface-muted, #f6f7f9);
+  color: var(--fg);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .responsible-user-filter {
