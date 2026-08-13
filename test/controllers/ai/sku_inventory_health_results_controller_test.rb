@@ -26,6 +26,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
   test "locks repeated structured inventory health submissions for five seconds" do
     payload = {
+      type: "RestockingDiagnosis",
       sku: @sku.sku_code.downcase,
       analyzed_at: "2026-07-26T00:00:00+08:00",
       classification: { sabc: "B", staging: "MAT" },
@@ -49,7 +50,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     }
 
     assert_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count }, 1 do
-      post "/ai/skus/inventory_health_result",
+      post "/ai/diagnosis_results",
         params: payload,
         headers: bearer_headers,
         as: :json
@@ -69,7 +70,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     assert_equal @user.display_name, response.parsed_body.dig("data", "submitted_by")
 
     assert_no_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count } do
-      post "/ai/skus/inventory_health_result",
+      post "/ai/diagnosis_results",
         params: payload,
         headers: bearer_headers,
         as: :json
@@ -79,7 +80,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
     travel 6.seconds do
       assert_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count }, 1 do
-        post "/ai/skus/inventory_health_result",
+        post "/ai/diagnosis_results",
           params: payload,
           headers: bearer_headers,
           as: :json
@@ -93,7 +94,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
     assert_difference -> { Ec::RestockingDiagnosis.count }, 2 do
       [@sku, other_sku].each do |sku|
-        post "/ai/skus/inventory_health_result",
+        post "/ai/diagnosis_results",
           params: event_payload(sku.sku_code),
           headers: bearer_headers,
           as: :json
@@ -106,7 +107,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
 
-  test "stores a top level event array as one submission" do
+  test "rejects a top level event array because diagnosis type is required" do
     payload = [
       {
         event_type: "data_missing",
@@ -124,22 +125,12 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
       }
     ]
 
-    analyzed_at = Time.zone.parse("2026-07-26 12:34:56")
-    travel_to analyzed_at do
-      assert_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count }, 1 do
-        post "/ai/skus/inventory_health_result",
-          params: payload,
-          headers: bearer_headers,
-          as: :json
-      end
+    assert_no_difference -> { Ec::RestockingDiagnosis.where(sku: @sku).count } do
+      post "/ai/diagnosis_results", params: payload, headers: bearer_headers, as: :json
     end
 
-    assert_response :created
-    result = Ec::RestockingDiagnosis.where(sku: @sku).recent_first.first
-    assert_equal analyzed_at, result.analyzed_at
-    assert_equal({}, result.data)
-    assert_equal ["data_missing", "inventory_sufficient"], result.events.pluck("event_type")
-    assert_equal 2, response.parsed_body.dig("data", "event_count")
+    assert_response :bad_request
+    assert_equal "payload must be an object", response.parsed_body.fetch("error")
   end
 
   test "rejects event arrays containing multiple skus" do
@@ -149,18 +140,18 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
     ]
 
     assert_no_difference -> { Ec::RestockingDiagnosis.count } do
-      post "/ai/skus/inventory_health_result",
+      post "/ai/diagnosis_results",
         params: payload,
         headers: bearer_headers,
         as: :json
     end
 
     assert_response :bad_request
-    assert_equal "all events must use the same sku", response.parsed_body.fetch("error")
+    assert_equal "payload must be an object", response.parsed_body.fetch("error")
   end
 
   test "requires an authenticated api key" do
-    post "/ai/skus/inventory_health_result", params: {}, as: :json
+    post "/ai/diagnosis_results", params: {}, as: :json
 
     assert_response :unauthorized
     assert_equal({ "error" => "Unauthorized" }, response.parsed_body)
@@ -174,6 +165,7 @@ class ErpAI::SkuInventoryHealthResultsControllerTest < ActionDispatch::Integrati
 
   def event_payload(sku_code)
     {
+      type: "RestockingDiagnosis",
       sku: sku_code,
       events: [{ event_type: "insight", severity: "info", message: "message" }]
     }

@@ -26,6 +26,10 @@ module Ec
       latest.where(sku_id: sku_ids).index_by(&:sku_id)
     end
 
+    def process_persisted_events!
+      self
+    end
+
     private
 
     def data_must_be_an_object
