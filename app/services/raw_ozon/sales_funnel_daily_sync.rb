@@ -19,6 +19,12 @@ module RawOzon
       returns
       cancellations
     ].freeze
+    SUPPLEMENTAL_METRICS = %w[
+      conv_tocart_search
+      conv_tocart_pdp
+      delivered_units
+      position_category
+    ].freeze
 
     def self.run_recent_days(days: 8)
       to_date = Date.current
@@ -65,35 +71,38 @@ module RawOzon
     def sync_date(date)
       date = date.to_date
       synced_at = Time.current
-      offset = 0
-      total = 0
-
-      loop do
-        response = @client.post(API_PATH, request_body(date, offset))
-        data = Array(response.dig("result", "data"))
-        rows = data.filter_map do |item|
-          build_row(item, stat_date: date, synced_at: synced_at)
-        end
-        upsert_rows(rows) if rows.any?
-
-        total += rows.size
-        break if data.size < LIMIT
-
-        offset += LIMIT
-        sleep @rate_limit_sleep
+      metric_rows = fetch_metric_rows(date)
+      rows = metric_rows.values.filter_map do |entry|
+        build_row(entry, stat_date: date, synced_at: synced_at)
       end
-
-      total
+      upsert_rows(rows) if rows.any?
+      rows.size
     end
 
     private
 
-    def request_body(date, offset)
+    def fetch_metric_rows(date)
+      [METRICS, SUPPLEMENTAL_METRICS].each_with_index.with_object({}) do |(metrics, metric_index), rows_by_sku|
+        sleep @rate_limit_sleep if metric_index.positive?
+        offset = 0
+        loop do
+          response = @client.post(API_PATH, request_body(date, offset, metrics))
+          data = Array(response.dig("result", "data"))
+          merge_metric_rows(rows_by_sku, data, metrics)
+          break if data.size < LIMIT
+
+          offset += LIMIT
+          sleep @rate_limit_sleep
+        end
+      end
+    end
+
+    def request_body(date, offset, metrics)
       {
         date_from: date.iso8601,
         date_to: date.iso8601,
         dimension: ["sku"],
-        metrics: METRICS,
+        metrics: metrics,
         filters: [],
         sort: [{ key: "revenue", order: "DESC" }],
         limit: LIMIT,
@@ -101,14 +110,23 @@ module RawOzon
       }
     end
 
-    def build_row(item, stat_date:, synced_at:)
-      dimensions = Array(item["dimensions"])
-      sku_dimension = dimensions.first || {}
+    def merge_metric_rows(rows_by_sku, data, metrics)
+      data.each do |item|
+        dimension = Array(item["dimensions"]).first || {}
+        sku = dimension["id"].presence
+        next if sku.blank?
+
+        entry = (rows_by_sku[sku.to_s] ||= { "dimension" => dimension, "metrics" => {}, "raw_rows" => {} })
+        entry["metrics"].merge!(metrics.zip(Array(item["metrics"])).to_h)
+        entry["raw_rows"][metrics.join(",")] = item
+      end
+    end
+
+    def build_row(entry, stat_date:, synced_at:)
+      sku_dimension = entry["dimension"]
       sku = sku_dimension["id"].presence
       return nil if sku.blank?
-
-      metric_values = Array(item["metrics"])
-      metrics = METRICS.each_with_index.to_h { |metric, index| [metric, metric_values[index]] }
+      metrics = entry["metrics"]
 
       {
         account_id: @account.id,
@@ -125,11 +143,15 @@ module RawOzon
         hits_tocart_search: integer(metrics["hits_tocart_search"]),
         hits_tocart_pdp: integer(metrics["hits_tocart_pdp"]),
         conv_tocart: decimal(metrics["conv_tocart"]),
+        conv_tocart_search: optional_decimal(metrics["conv_tocart_search"]),
+        conv_tocart_pdp: optional_decimal(metrics["conv_tocart_pdp"]),
         ordered_units: integer(metrics["ordered_units"]),
+        delivered_units: integer(metrics["delivered_units"]),
         revenue: decimal(metrics["revenue"]),
         returns_count: integer(metrics["returns"]),
         cancellations: integer(metrics["cancellations"]),
-        raw_json: item,
+        position_category: optional_decimal(metrics["position_category"]),
+        raw_json: { "dimensions" => [sku_dimension], "metric_values" => metrics, "source_rows" => entry["raw_rows"] },
         synced_at: synced_at,
         created_at: synced_at,
         updated_at: synced_at,
@@ -175,6 +197,10 @@ module RawOzon
 
     def decimal(value)
       value.to_f
+    end
+
+    def optional_decimal(value)
+      value.to_f unless value.nil?
     end
   end
 end

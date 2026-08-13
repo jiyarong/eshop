@@ -32,7 +32,7 @@ class RawOzonSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
       api_key: "token-#{token}",
       company_type: "small"
     )
-    client = FakeOzonClient.new([response(revenue: 336_000, ordered_units: 32), empty_response])
+    client = FakeOzonClient.new([response(revenue: 336_000, ordered_units: 32), supplemental_response])
 
     result = RawOzon::SalesFunnelPeriodSync.new(account, client: client, rate_limit_sleep: 0).sync_period(
       period_start: Date.new(2026, 7, 6),
@@ -68,6 +68,12 @@ class RawOzonSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
     assert_equal 336_000, row.revenue.to_i
     assert_equal 0, row.returns_count
     assert_equal 11, row.cancellations
+    assert_equal 0.42, row.conv_tocart_search.to_f
+    assert_equal 0.61, row.conv_tocart_pdp.to_f
+    assert_equal 28, row.delivered_units
+    assert_equal 7.25, row.position_category.to_f
+    assert_equal RawOzon::SalesFunnelPeriodSync::SUPPLEMENTAL_METRICS, client.requests.second[1][:metrics]
+    assert_equal 7.25, row.raw_json.dig("metric_values", "position_category")
   ensure
     RawOzon::SalesFunnelPeriod.where(account_id: account&.id).delete_all
     RawOzon::SellerAccount.where(id: account&.id).delete_all
@@ -83,9 +89,9 @@ class RawOzonSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
     period_start = Date.new(2026, 7, 6)
     period_end = Date.new(2026, 7, 12)
 
-    RawOzon::SalesFunnelPeriodSync.new(account, client: FakeOzonClient.new([response(revenue: 100, ordered_units: 1), empty_response]), rate_limit_sleep: 0)
+    RawOzon::SalesFunnelPeriodSync.new(account, client: FakeOzonClient.new([response(revenue: 100, ordered_units: 1), supplemental_response]), rate_limit_sleep: 0)
       .sync_period(period_start: period_start, period_end: period_end)
-    RawOzon::SalesFunnelPeriodSync.new(account, client: FakeOzonClient.new([response(revenue: 200, ordered_units: 2), empty_response]), rate_limit_sleep: 0)
+    RawOzon::SalesFunnelPeriodSync.new(account, client: FakeOzonClient.new([response(revenue: 200, ordered_units: 2), supplemental_response]), rate_limit_sleep: 0)
       .sync_period(period_start: period_start, period_end: period_end)
 
     rows = RawOzon::SalesFunnelPeriod.where(account_id: account.id, period_start: period_start, period_end: period_end, sku: 3_583_393_926)
@@ -104,7 +110,7 @@ class RawOzonSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
       api_key: "token-#{token}",
       company_type: "small"
     )
-    client = FakeOzonClient.new([response(revenue: 100, ordered_units: 1), empty_response])
+    client = FakeOzonClient.new([response(revenue: 100, ordered_units: 1), supplemental_response])
 
     RawOzon::SalesFunnelPeriodSync.new(account, client: client, rate_limit_sleep: 0).sync_period(
       period_start: Date.new(2026, 7, 13),
@@ -183,6 +189,19 @@ class RawOzonSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
             ],
           },
         ],
+        "totals" => [],
+      },
+      "timestamp" => "2026-07-16 06:56:02",
+    }
+  end
+
+  def supplemental_response
+    {
+      "result" => {
+        "data" => [{
+          "dimensions" => [{ "id" => "3583393926", "name" => "Электрический полотенцесушитель" }],
+          "metrics" => [0.42, 0.61, 28, 7.25],
+        }],
         "totals" => [],
       },
       "timestamp" => "2026-07-16 06:56:02",

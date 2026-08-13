@@ -116,7 +116,7 @@ production:
 
   ozon_sales_funnel_current_week_sync:
     command: "RawOzon::SalesFunnelPeriodSync.run_current_week"
-    schedule: every hour at minute 45
+    schedule: every day at 4:30 in Asia/Shanghai
 
   ozon_sales_funnel_n2_week_sync:
     command: "RawOzon::SalesFunnelPeriodSync.run_completed_week(weeks_ago: 2)"
@@ -124,7 +124,7 @@ production:
 
   ozon_sales_funnel_daily_recent_sync:
     command: "RawOzon::SalesFunnelDailySync.run_recent_days(days: 8)"
-    schedule: every day at 1:45 in Asia/Shanghai
+    schedule: every day at 1:10 in Asia/Shanghai
 
   ozon_weekly_sync:
     command: "RawOzon::WeeklySync.run(days: 8)"
