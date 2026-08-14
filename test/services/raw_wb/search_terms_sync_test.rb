@@ -58,8 +58,8 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
     assert_equal 100, row.orders_percentile
     assert_equal "RUB", row.currency
     assert_equal true, row.is_card_rated
-    assert_equal ["openCard"], row.raw_json["topDimensions"]
-    assert_equal search_item, row.raw_json.except("topDimensions")
+    assert_equal "openCard", row.top_order_by
+    assert_equal search_item, row.raw_json
     assert row.synced_at.present?
   end
 
@@ -100,7 +100,7 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
     assert_equal 31, RawWb::AnalyticsSearchTerm.where(account_id: @account.id).count
   end
 
-  test "merges the same keyword returned by multiple top dimensions" do
+  test "stores the same keyword separately for every top dimension" do
     client = FakeWbClient.new([
       response([search_item]),
       response([search_item.merge("addToCart" => { "current" => 6, "percentile" => 70 })])
@@ -108,10 +108,24 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
 
     result = sync(client).sync_period(period_start: Date.new(2026, 8, 3), period_end: Date.new(2026, 8, 9))
 
-    assert_equal 1, result[:ok]
-    row = RawWb::AnalyticsSearchTerm.find_by!(account_id: @account.id, keyword: "полотенцесушитель")
-    assert_equal 6, row.add_to_cart
-    assert_equal %w[openCard addToCart], row.raw_json["topDimensions"]
+    assert_equal 2, result[:ok]
+    rows = RawWb::AnalyticsSearchTerm.where(account_id: @account.id, keyword: "полотенцесушитель").order(:top_order_by)
+    assert_equal %w[addToCart openCard], rows.pluck(:top_order_by)
+    assert_equal 6, rows.find_by!(top_order_by: "addToCart").add_to_cart
+  end
+
+  test "requests up to fifty SKUs together for each top dimension" do
+    50.times do |index|
+      RawWb::Product.create!(account: @account, nm_id: 900_000_000 + index, vendor_code: "BATCH-#{@token}-#{index}")
+    end
+    client = FakeWbClient.new([])
+
+    sync(client).sync_period(period_start: Date.new(2026, 8, 3), period_end: Date.new(2026, 8, 9))
+
+    assert_equal 10, client.requests.size
+    assert_equal [50, 1], client.requests.map { |request| request.last[:nmIds].size }.uniq.sort.reverse
+    assert_equal RawWb::SearchTermsSync::TOP_ORDER_FIELDS,
+      client.requests.first(5).map { |request| request.last[:topOrderBy] }
   end
 
   private

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_092229) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_14_100902) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1906,10 +1906,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_092229) do
     t.jsonb "raw_json", default: {}, null: false
     t.string "subject_name"
     t.datetime "synced_at", null: false
+    t.string "top_order_by", null: false
     t.string "vendor_code"
     t.integer "visibility"
     t.bigint "week_frequency"
-    t.index ["account_id", "period_from", "period_to", "keyword", "nm_id"], name: "idx_raw_wb_search_terms_unique", unique: true
+    t.index ["account_id", "period_from", "period_to", "keyword", "nm_id", "top_order_by"], name: "idx_raw_wb_search_terms_unique", unique: true
     t.index ["account_id", "period_from", "period_to"], name: "idx_raw_wb_search_terms_period"
     t.index ["account_id"], name: "index_raw_wb_analytics_search_terms_on_account_id"
   end

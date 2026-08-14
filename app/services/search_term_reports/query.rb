@@ -163,14 +163,15 @@ module SearchTermReports
     def aggregate_terms(records)
       records.group_by { |record| record.public_send(term_keyword_column) }.map do |keyword, grouped|
         if platform == "wb"
-          views = grouped.sum { |record| record.open_card.to_i }
+          record = grouped.max_by { |item| [item.frequency.to_i, item.orders.to_i, item.id.to_i] }
+          views = record.open_card.to_i
           {
-            keyword:, search_volume: grouped.sum { |record| record.frequency.to_i },
-            avg_position: weighted_average(grouped, :avg_position, :frequency),
-            median_position: weighted_average(grouped, :median_position, :frequency),
-            views:, add_to_cart: grouped.sum { |record| record.add_to_cart.to_i },
-            orders: grouped.sum { |record| record.orders.to_i },
-            conversion: ratio(grouped.sum { |record| record.orders.to_i }, views), revenue: nil
+            keyword:, search_volume: record.frequency.to_i,
+            avg_position: record.avg_position,
+            median_position: record.median_position,
+            views:, add_to_cart: record.add_to_cart.to_i,
+            orders: record.orders.to_i,
+            conversion: ratio(record.orders.to_i, views), revenue: nil
           }
         else
           searches = grouped.sum { |record| record.unique_search_users.to_i }

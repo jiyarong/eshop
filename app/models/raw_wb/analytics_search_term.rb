@@ -2,9 +2,12 @@ module RawWb
   class AnalyticsSearchTerm < ApplicationRecord
     self.table_name = 'raw_wb_analytics_search_terms'
 
+    TOP_ORDER_BY_VALUES = %w[openCard addToCart openToCart orders cartToOrder].freeze
+
     belongs_to :account, class_name: 'RawWb::SellerAccount'
 
-    validates :period_from, :period_to, :keyword, :nm_id, :synced_at, presence: true
+    validates :period_from, :period_to, :keyword, :nm_id, :top_order_by, :synced_at, presence: true
+    validates :top_order_by, inclusion: { in: TOP_ORDER_BY_VALUES }
     validate :period_is_natural_week
 
     scope :for_period, ->(period_from, period_to) { where(period_from: period_from, period_to: period_to) }

@@ -3,8 +3,8 @@ module RawWb
     API_PATH = "/api/v2/search-report/product/search-texts".freeze
     BUSINESS_TIME_ZONE = "Asia/Shanghai".freeze
     LIMIT = 30
-    NM_IDS_PER_REQUEST = 1
-    TOP_ORDER_FIELDS = %w[openCard addToCart openToCart orders cartToOrder].freeze
+    NM_IDS_PER_REQUEST = 50
+    TOP_ORDER_FIELDS = RawWb::AnalyticsSearchTerm::TOP_ORDER_BY_VALUES
     RATE_LIMIT_SLEEP = 20
 
     def self.run_completed_week(weeks_ago: 1)
@@ -79,7 +79,7 @@ module RawWb
     def fetch_rows(nm_ids, period_start:, period_end:)
       synced_at = Time.current
       request_count = 0
-      rows_by_key = {}
+      rows = []
 
       nm_ids.each_slice(NM_IDS_PER_REQUEST) do |slice|
         TOP_ORDER_FIELDS.each do |top_order_field|
@@ -92,18 +92,13 @@ module RawWb
           request_count += 1
           currency = response.dig("data", "currency")
           Array(response.dig("data", "items")).each do |item|
-            row = build_row(item, period_start:, period_end:, currency:, synced_at:)
-            next unless row
-
-            key = [row[:nm_id], row[:keyword]]
-            existing = rows_by_key[key]
-            dimensions = Array(existing&.dig(:raw_json, "topDimensions")) | [top_order_field]
-            rows_by_key[key] = row.merge(raw_json: row[:raw_json].merge("topDimensions" => dimensions))
+            row = build_row(item, period_start:, period_end:, currency:, synced_at:, top_order_by: top_order_field)
+            rows << row if row
           end
         end
       end
 
-      rows_by_key.values
+      rows
     end
 
     def request_body(nm_ids, period_start, period_end, top_order_field)
@@ -116,7 +111,7 @@ module RawWb
       }
     end
 
-    def build_row(item, period_start:, period_end:, currency:, synced_at:)
+    def build_row(item, period_start:, period_end:, currency:, synced_at:, top_order_by:)
       return if item["text"].blank? || item["nmId"].blank?
 
       {
@@ -125,6 +120,7 @@ module RawWb
         period_to: period_end,
         keyword: item["text"],
         nm_id: item["nmId"],
+        top_order_by: top_order_by,
         orders: integer(item.dig("orders", "current")),
         orders_percentile: optional_integer(item.dig("orders", "percentile")),
         avg_position: decimal(item.dig("avgPosition", "current")),

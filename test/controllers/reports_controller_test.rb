@@ -1607,6 +1607,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       period_to: period_to,
       keyword: "详情页搜索词 #{@sku_code}",
       nm_id: 123_456,
+      top_order_by: "openCard",
       frequency: 100,
       avg_position: 12,
       median_position: 11,

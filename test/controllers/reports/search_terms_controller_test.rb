@@ -112,6 +112,21 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr.search-terms-detail-table__lost td strong", text: "старый запрос"
   end
 
+  test "does not double count a WB term returned in multiple top dimensions" do
+    create_wb_term(top_order_by: "openCard")
+    create_wb_term(top_order_by: "orders")
+
+    terms = SearchTermReports::Query.new(
+      platform: "wb", store: @wb_store, period_from: @period_from, period_to: @period_to
+    ).terms_for(@sku.sku_code)
+
+    assert_equal 1, terms.size
+    assert_equal 100, terms.sole[:search_volume]
+    assert_equal 20, terms.sole[:views]
+    assert_equal 8, terms.sole[:add_to_cart]
+    assert_equal 2, terms.sole[:orders]
+  end
+
   test "renders Ozon SKU summary and Top 15 term columns" do
     RawOzon::ProductQuery.create!(
       account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
@@ -154,10 +169,11 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
   end
 
   def create_wb_term(keyword: "полотенцесушитель", period_from: @period_from, period_to: @period_to,
-    frequency: 100, avg_position: 34, open_card: 20, add_to_cart: 8, orders: 2)
+    frequency: 100, avg_position: 34, open_card: 20, add_to_cart: 8, orders: 2, top_order_by: "openCard")
     RawWb::AnalyticsSearchTerm.create!(
       account: @wb_account, period_from:, period_to:,
       keyword:, nm_id: 71_001, frequency:, avg_position:,
+      top_order_by:,
       median_position: 30, open_card:, add_to_cart:, orders:, raw_json: {}, synced_at: Time.current
     )
   end
