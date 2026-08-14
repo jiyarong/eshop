@@ -47,6 +47,7 @@
         id: "draft",
         label: t("navigation.sections.draft"),
         links: [
+          { label: t("navigation.search_terms"), path: "/reports/search_terms", icon: "bi-search", active: active_link.call("/reports/search_terms") },
           { label: t("navigation.orders"), path: "/orders", icon: "bi-receipt", active: active_link.call("/orders") },
           { label: t("navigation.sku_sales"), path: "/reports/sku_sales", icon: "bi-bar-chart-line", active: current_path == "/reports/sku_sales" },
           { label: t("navigation.costs"), path: "/reports/costs", icon: "bi-cash-coin", active: current_path == "/reports/costs" },

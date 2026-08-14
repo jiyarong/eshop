@@ -151,6 +151,7 @@ zh:
     weekly_profit_reports: "周利润报表"
     operator_skus: "SKU 列表"
     sales_funnel: "销售漏斗"
+    search_terms: "搜索词"
     inventory: "库存"
     ozon_warehouses: "Ozon 分仓"
     wb_warehouses: "WB 分仓"
@@ -944,6 +945,52 @@ zh:
         cancellations: "已取消商品（按取消日期）"
         position_category: "搜索平均排名"
   reports:
+    search_terms:
+      title: "搜索词分析"
+      subtitle: "%{from} 至 %{to} · 完整自然周"
+      platforms: { wb: "WB", ozon: "Ozon" }
+      store_label: "%{platform} · %{store}"
+      comparison:
+        note: "环比周期：%{from} 至 %{to}"
+        unavailable: "-"
+        new: "新增"
+        unchanged: "持平"
+        percentage: { up: "↑ %{value}%", down: "↓ %{value}%" }
+        rank: { up: "提升 %{value} 位", down: "下降 %{value} 位" }
+        points: { up: "上升 %{value} 个百分点", down: "下降 %{value} 个百分点" }
+        lost: { wb: "本周未出现", ozon: "跌出 Top 15" }
+        lifecycle:
+          new: { wb: "新增词", ozon: "新增 Top 15 词" }
+          lost: { wb: "本周未出现", ozon: "跌出 Top 15" }
+      filters:
+        platform: "平台"
+        period: "自然周"
+        store: "店铺"
+        sku: "SPU / SKU"
+        all_skus: "全部 SKU"
+        query: "搜索词"
+        query_placeholder: "输入搜索词"
+        apply: "查询"
+      columns:
+        sku: "SKU / 商品"
+        term_count: "搜索词数"
+        avg_position: "平均搜索排名"
+        orders: "订单"
+        wb: { search_volume: "搜索频次", views: "商品点击", add_to_cart: "加入购物车", cart_conversion: "加购转化率", conversion: "下单转化率", visibility: "可见度" }
+        ozon: { search_volume: "搜索用户", views: "浏览用户", revenue: "搜索 GMV", conversion: "浏览转化率" }
+      detail:
+        title: "%{sku} 搜索词明细"
+        keyword: "搜索词"
+        median_position: "中位排名"
+        ozon_limit: "Ozon 每个商品最多返回 Top 15 搜索词"
+      actions:
+        expand: "展开 %{sku} 的搜索词"
+        collapse: "收起 %{sku} 的搜索词"
+        loading: "正在加载搜索词..."
+      invalid_period: "仅支持完整自然周（周一至周日），当前周期不展示数据。"
+      empty: "当前筛选条件下暂无搜索词数据"
+      unknown_product: "未命名商品"
+      errors: { no_store: "未配置可用的店铺" }
     warehouses:
       title: "分仓"
       subtitle: "按店铺查看 Ozon 或 WB 的库存分布与补货建议"
@@ -1623,6 +1670,7 @@ zh:
         operation: "运营概览"
         profit: "利润归集"
         sales_funnel: "销售漏斗"
+        search_terms: "搜索词"
         supply_orders: "送仓记录"
         warehouses: "分仓建议"
         operation_actions: "运营记录"

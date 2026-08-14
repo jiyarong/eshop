@@ -1597,6 +1597,61 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-ads-section .section-title", text: I18n.t("reports.wb_ads.title")
   end
 
+  test "sku detail keeps the hidden sku-scoped search terms view directly accessible" do
+    user_today = Time.current.in_time_zone(@current_user.time_zone).to_date
+    period_from = user_today.beginning_of_week(:monday) - 1.week
+    period_to = period_from.end_of_week(:monday)
+    term = RawWb::AnalyticsSearchTerm.create!(
+      account: @sales_wb_account,
+      period_from: period_from,
+      period_to: period_to,
+      keyword: "详情页搜索词 #{@sku_code}",
+      nm_id: 123_456,
+      frequency: 100,
+      avg_position: 12,
+      median_position: 11,
+      open_card: 20,
+      add_to_cart: 5,
+      orders: 2,
+      raw_json: {},
+      synced_at: Time.current
+    )
+    summary = RawWb::SearchReportProduct.create!(
+      account: @sales_wb_account,
+      period_from: period_from,
+      period_to: period_to,
+      nm_id: 123_456,
+      avg_position: 33,
+      open_card: 62,
+      add_to_cart: 8,
+      open_to_cart: 13,
+      orders: 1,
+      cart_to_order: 13,
+      visibility: 50,
+      raw_json: {},
+      synced_at: Time.current
+    )
+
+    get report_sku_path(@sku.sku_code), params: {
+      tab: "search_terms", platform: "wb", store_id: @wb_sales_store.id
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    tab_labels = css_select(".sku-detail-tabs__link").map { |link| link.text.strip }
+    assert_not_includes tab_labels, "搜索词"
+    assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab_search_terms']"
+    assert_equal period_from.iso8601, css_select("input[name='from_date']").sole["value"]
+    assert_equal period_to.iso8601, css_select("input[name='to_date']").sole["value"]
+    assert_select ".search-terms-store-filter .weekly-profit-filter-tag.is-active", text: /#{Regexp.escape(@wb_sales_store.store_name)}/
+    assert_select "tr.search-terms-sku-row", count: 1
+    assert_select "tr.search-terms-sku-row", text: /#{Regexp.escape(@sku.sku_code)}/
+    assert_select "tr.search-terms-sku-row a[data-turbo-frame='sku_detail_drawer']", count: 0
+    assert_select "turbo-frame[data-lazy-src*='/reports/search_terms/#{@sku.sku_code}/terms']", count: 1
+  ensure
+    term&.destroy!
+    summary&.destroy!
+  end
+
   test "sku detail renders current marketing grade and stage" do
     Ec::SkuMarketingStateChange.new(
       sku: @sku,

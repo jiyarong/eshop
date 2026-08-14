@@ -3676,6 +3676,124 @@ pre {
   }
 }
 
+/* Search terms report */
+.search-terms-header {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.search-terms-filter-panel,
+.search-terms-table-panel {
+  margin-bottom: 16px;
+}
+
+.search-terms-filter-grid {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 360px minmax(220px, 1fr) 180px auto;
+}
+
+.search-terms-filter-grid .weekly-profit-date-range-field {
+  width: 360px;
+}
+
+.search-terms-filter-grid .time-range-trigger-value {
+  flex-wrap: nowrap;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.search-terms-filter-action {
+  padding-bottom: 1px;
+}
+
+.search-terms-store-filter {
+  margin-top: 14px;
+}
+
+.search-terms-expand-column {
+  width: 42px;
+}
+
+.search-terms-subline,
+.search-terms-detail__header span {
+  color: var(--erp-muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.search-terms-detail-row > td {
+  background: var(--erp-surface-soft);
+  padding: 0;
+}
+
+.search-terms-detail {
+  padding: 16px 18px 18px;
+}
+
+.search-terms-detail__header {
+  margin-bottom: 12px;
+}
+
+.search-terms-detail-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.search-terms-detail-table th,
+.search-terms-detail-table td {
+  border-bottom: 1px solid var(--erp-border);
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.search-terms-detail-table .numeric {
+  text-align: right;
+}
+
+.search-terms-detail-table__lost {
+  opacity: 0.68;
+}
+
+.search-terms-detail-table td:first-child .status-pill {
+  margin-left: 8px;
+}
+
+.search-terms-loading,
+.search-terms-empty {
+  color: var(--erp-muted);
+  padding: 24px;
+  text-align: center;
+}
+
+.search-terms-period-warning {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .search-terms-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .search-terms-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-terms-filter-grid .weekly-profit-date-range-field {
+    flex-basis: auto;
+    width: 100%;
+  }
+}
+
 .operation-actions-table th:nth-child(1),
 .operation-actions-table td:nth-child(1) {
   width: 150px;

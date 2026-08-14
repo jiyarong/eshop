@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_052918) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_14_092229) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -2477,6 +2477,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_052918) do
     t.index ["wb_report_id"], name: "index_raw_wb_sales_reports_on_wb_report_id", unique: true
   end
 
+  create_table "raw_wb_search_report_products", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "add_to_cart"
+    t.decimal "add_to_cart_dynamics", precision: 18, scale: 4
+    t.decimal "avg_position", precision: 18, scale: 4
+    t.decimal "avg_position_dynamics", precision: 18, scale: 4
+    t.string "brand_name"
+    t.decimal "cart_to_order", precision: 18, scale: 4
+    t.decimal "cart_to_order_dynamics", precision: 18, scale: 4
+    t.datetime "created_at", null: false
+    t.string "currency"
+    t.decimal "feedback_rating", precision: 12, scale: 4
+    t.boolean "is_advertised"
+    t.boolean "is_card_rated"
+    t.boolean "is_substituted_sku"
+    t.string "main_photo"
+    t.bigint "nm_id", null: false
+    t.integer "open_card"
+    t.decimal "open_card_dynamics", precision: 18, scale: 4
+    t.decimal "open_to_cart", precision: 18, scale: 4
+    t.decimal "open_to_cart_dynamics", precision: 18, scale: 4
+    t.integer "orders"
+    t.decimal "orders_dynamics", precision: 18, scale: 4
+    t.date "period_from", null: false
+    t.date "period_to", null: false
+    t.decimal "price_max", precision: 18, scale: 4
+    t.decimal "price_min", precision: 18, scale: 4
+    t.string "product_name"
+    t.decimal "rating", precision: 12, scale: 4
+    t.jsonb "raw_json", default: {}, null: false
+    t.string "subject_name"
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "vendor_code"
+    t.decimal "visibility", precision: 18, scale: 4
+    t.decimal "visibility_dynamics", precision: 18, scale: 4
+    t.index ["account_id", "period_from", "period_to", "nm_id"], name: "idx_raw_wb_search_report_products_unique", unique: true
+    t.index ["account_id", "period_from", "period_to"], name: "idx_raw_wb_search_report_products_period"
+    t.index ["account_id"], name: "index_raw_wb_search_report_products_on_account_id"
+  end
+
   create_table "raw_wb_seller_accounts", force: :cascade do |t|
     t.text "api_token"
     t.string "company_type"
@@ -2966,6 +3007,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_052918) do
   add_foreign_key "raw_wb_sales_report_items", "raw_wb_sales_reports", column: "sales_report_id"
   add_foreign_key "raw_wb_sales_report_items", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_sales_reports", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_search_report_products", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_stats_orders", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_stats_sales", "raw_wb_seller_accounts", column: "account_id"
   add_foreign_key "raw_wb_stock_histories", "raw_wb_warehouses", column: "warehouse_id"

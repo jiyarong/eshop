@@ -109,6 +109,8 @@
     <%= render "reports/inventory_drawer_content_frame", inventory_detail: @inventory_detail, sku: @sku %>
   <% elsif @active_tab == "ads" %>
     <%= render "reports/sku_ads" %>
+  <% elsif @active_tab == "search_terms" %>
+    <%= render "reports/sku_search_terms" %>
   <% elsif @active_tab == "costs" %>
     <section class="panel">
       <div class="table-section-header">

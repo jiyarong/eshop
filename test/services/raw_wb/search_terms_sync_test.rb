@@ -37,13 +37,14 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
     result = sync(client).sync_period(period_start: Date.new(2026, 8, 3), period_end: Date.new(2026, 8, 9))
 
     assert_equal 1, result[:ok]
-    assert_equal 1, client.requests.size
-    service, path, body = client.requests.sole
+    assert_equal 5, client.requests.size
+    service, path, body = client.requests.first
     assert_equal :seller_analytics, service
     assert_equal "/api/v2/search-report/product/search-texts", path
     assert_equal({ start: "2026-08-03", end: "2026-08-09" }, body[:currentPeriod])
     assert_equal 30, body[:limit]
-    assert_equal 0, body[:offset]
+    assert_equal "openCard", body[:topOrderBy]
+    assert_not body.key?(:offset)
 
     row = RawWb::AnalyticsSearchTerm.find_by!(account_id: @account.id, keyword: "полотенцесушитель")
     assert_equal Date.new(2026, 8, 3), row.period_from
@@ -57,7 +58,8 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
     assert_equal 100, row.orders_percentile
     assert_equal "RUB", row.currency
     assert_equal true, row.is_card_rated
-    assert_equal search_item, row.raw_json
+    assert_equal ["openCard"], row.raw_json["topDimensions"]
+    assert_equal search_item, row.raw_json.except("topDimensions")
     assert row.synced_at.present?
   end
 
@@ -83,6 +85,33 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
     end
 
     assert_equal "period must be a complete Monday-Sunday week", error.message
+  end
+
+  test "does not paginate when WB returns more items than the requested limit" do
+    oversized_items = 31.times.map do |index|
+      search_item.merge("text" => "полотенцесушитель #{index}")
+    end
+    client = FakeWbClient.new([response(oversized_items)])
+
+    result = sync(client).sync_period(period_start: Date.new(2026, 8, 3), period_end: Date.new(2026, 8, 9))
+
+    assert_equal 31, result[:ok]
+    assert_equal 5, client.requests.size
+    assert_equal 31, RawWb::AnalyticsSearchTerm.where(account_id: @account.id).count
+  end
+
+  test "merges the same keyword returned by multiple top dimensions" do
+    client = FakeWbClient.new([
+      response([search_item]),
+      response([search_item.merge("addToCart" => { "current" => 6, "percentile" => 70 })])
+    ])
+
+    result = sync(client).sync_period(period_start: Date.new(2026, 8, 3), period_end: Date.new(2026, 8, 9))
+
+    assert_equal 1, result[:ok]
+    row = RawWb::AnalyticsSearchTerm.find_by!(account_id: @account.id, keyword: "полотенцесушитель")
+    assert_equal 6, row.add_to_cart
+    assert_equal %w[openCard addToCart], row.raw_json["topDimensions"]
   end
 
   private

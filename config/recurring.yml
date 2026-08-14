@@ -55,7 +55,19 @@ production:
 
   wb_search_terms_weekly_sync:
     command: "RawWb::SearchTermsSync.run_completed_week"
-    schedule: every monday at 6:30 in Asia/Shanghai
+    schedule: every tuesday at 4:00 in Asia/Shanghai
+
+  wb_search_report_weekly_sync:
+    command: "RawWb::SearchReportSync.run_completed_week"
+    schedule: every tuesday at 2:30 in Asia/Shanghai
+
+  wb_search_terms_weekly_refresh:
+    command: "RawWb::SearchTermsSync.run_completed_week"
+    schedule: every friday at 4:00 in Asia/Shanghai
+
+  wb_search_report_weekly_refresh:
+    command: "RawWb::SearchReportSync.run_completed_week"
+    schedule: every friday at 2:30 in Asia/Shanghai
 
   # WB ad data settles T+1; refresh Mon-Wed numbers before the next weekly run.
   wb_midweek_ad_stats_sync:
@@ -133,6 +145,10 @@ production:
   ozon_weekly_sync:
     command: "RawOzon::WeeklySync.run(days: 8)"
     schedule: every tuesday at 3:00 in Asia/Shanghai
+
+  ozon_search_terms_weekly_refresh:
+    command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_product_queries])"
+    schedule: every friday at 6:30 in Asia/Shanghai
 
   ozon_setup_sync:
     command: "RawOzon::SetupSync.run"

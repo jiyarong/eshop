@@ -144,6 +144,7 @@ ru:
     weekly_profit_reports: "Недельная прибыль"
     operator_skus: "Список SKU"
     sales_funnel: "Воронка продаж"
+    search_terms: "Поисковые запросы"
     inventory: "Склад"
     ozon_warehouses: "Распределение Ozon"
     wb_warehouses: "Распределение WB"
@@ -877,6 +878,37 @@ ru:
       wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
       ozon: { sku_code: "SKU", product_name: "Товар", hits_view: "Просмотры", hits_view_search: "Просмотры поиска", hits_view_pdp: "Просмотры карточки", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска", hits_tocart_pdp: "В корзину из карточки", conv_tocart: "Конверсия в корзину", ordered_units: "Заказано единиц", revenue: "Сумма заказов", returns_count: "Возвраты", cancellations: "Отмены", position_category: "Средняя позиция в поиске" }
   reports:
+    search_terms:
+      title: "Аналитика поисковых запросов"
+      subtitle: "%{from}–%{to} · полная календарная неделя"
+      platforms: { wb: "WB", ozon: "Ozon" }
+      store_label: "%{platform} · %{store}"
+      comparison:
+        note: "Сравнение с %{from}–%{to}"
+        unavailable: "-"
+        new: "Новый"
+        unchanged: "Без изменений"
+        percentage: { up: "↑ %{value}%", down: "↓ %{value}%" }
+        rank: { up: "Рост на %{value} поз.", down: "Снижение на %{value} поз." }
+        points: { up: "Рост на %{value} п.п.", down: "Снижение на %{value} п.п." }
+        lost: { wb: "Нет на этой неделе", ozon: "Вышел из Top 15" }
+        lifecycle:
+          new: { wb: "Новый запрос", ozon: "Новый запрос Top 15" }
+          lost: { wb: "Нет на этой неделе", ozon: "Вышел из Top 15" }
+      filters: { platform: "Платформа", period: "Календарная неделя", store: "Магазин", sku: "SPU / SKU", all_skus: "Все SKU", query: "Поисковый запрос", query_placeholder: "Введите запрос", apply: "Применить" }
+      columns:
+        sku: "SKU / Товар"
+        term_count: "Запросы"
+        avg_position: "Средняя позиция в поиске"
+        orders: "Заказы"
+        wb: { search_volume: "Частота поиска", views: "Переходы в карточку", add_to_cart: "В корзину", cart_conversion: "Конверсия в корзину", conversion: "Конверсия в заказ", visibility: "Видимость" }
+        ozon: { search_volume: "Пользователи поиска", views: "Просмотры", revenue: "GMV из поиска", conversion: "Конверсия в просмотр" }
+      detail: { title: "Поисковые запросы %{sku}", keyword: "Поисковый запрос", median_position: "Медианная позиция", ozon_limit: "Ozon возвращает не более Top 15 запросов на товар" }
+      actions: { expand: "Показать запросы %{sku}", collapse: "Скрыть запросы %{sku}", loading: "Загрузка запросов..." }
+      invalid_period: "Поддерживается только полная неделя с понедельника по воскресенье. Данные за этот период не показаны."
+      empty: "Нет данных по поисковым запросам для выбранных фильтров"
+      unknown_product: "Товар без названия"
+      errors: { no_store: "Не настроен доступный магазин" }
     warehouses:
       title: "Распределение по складам"
       subtitle: "Распределение запасов и рекомендации по пополнению Ozon или WB по магазину"
@@ -1391,6 +1423,7 @@ ru:
         operation: "Обзор операций"
         profit: "Распределение прибыли"
         sales_funnel: "Воронка продаж"
+        search_terms: "Поисковые запросы"
         supply_orders: "Поставки на склад"
         warehouses: "Рекомендации по распределению"
         operation_actions: "Операционные записи"

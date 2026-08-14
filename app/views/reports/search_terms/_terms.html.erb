@@ -1,0 +1,46 @@
+<%= turbo_frame_tag "search_terms_#{@platform}_#{dom_id(Ec::Sku.find_by!(sku_code: @sku_code))}" do %>
+  <div class="search-terms-detail">
+    <div class="search-terms-detail__header">
+      <strong><%= t("reports.search_terms.detail.title", sku: @sku_code) %></strong>
+      <% if @platform == "ozon" %><span><%= t("reports.search_terms.detail.ozon_limit") %></span><% end %>
+    </div>
+    <div class="table-scroll">
+      <table class="search-terms-detail-table">
+        <thead>
+          <tr>
+            <th><%= t("reports.search_terms.detail.keyword") %></th>
+            <th class="numeric"><%= t("reports.search_terms.columns.#{@platform}.search_volume") %></th>
+            <th class="numeric"><%= t("reports.search_terms.columns.avg_position") %></th>
+            <% if @platform == "wb" %><th class="numeric"><%= t("reports.search_terms.detail.median_position") %></th><% end %>
+            <th class="numeric"><%= t("reports.search_terms.columns.#{@platform}.views") %></th>
+            <% if @platform == "wb" %><th class="numeric"><%= t("reports.search_terms.columns.wb.add_to_cart") %></th><% end %>
+            <th class="numeric"><%= t("reports.search_terms.columns.orders") %></th>
+            <% if @platform == "ozon" %><th class="numeric"><%= t("reports.search_terms.columns.ozon.revenue") %></th><% end %>
+            <th class="numeric"><%= t("reports.search_terms.columns.#{@platform}.conversion") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @terms.each do |term| %>
+            <% comparisons = term[:comparison] || {} %>
+            <tr class="<%= 'search-terms-detail-table__lost' if term[:lifecycle] == :lost %>">
+              <td>
+                <strong><%= term[:keyword] %></strong>
+                <% if term[:lifecycle] != :continuing %>
+                  <span class="status-pill <%= term[:lifecycle] == :new ? 'is-active' : 'is-muted' %>"><%= t("reports.search_terms.comparison.lifecycle.#{term[:lifecycle]}.#{@platform}") %></span>
+                <% end %>
+              </td>
+              <td class="numeric"><%= search_terms_metric_content(term[:search_volume], comparisons[:search_volume]) %></td>
+              <td class="numeric"><%= search_terms_metric_content(term[:avg_position], comparisons[:avg_position], type: :decimal, comparison_type: :rank) %></td>
+              <% if @platform == "wb" %><td class="numeric"><%= search_terms_metric_content(term[:median_position], comparisons[:median_position], type: :decimal, comparison_type: :rank) %></td><% end %>
+              <td class="numeric"><%= search_terms_metric_content(term[:views], comparisons[:views]) %></td>
+              <% if @platform == "wb" %><td class="numeric"><%= search_terms_metric_content(term[:add_to_cart], comparisons[:add_to_cart]) %></td><% end %>
+              <td class="numeric"><%= search_terms_metric_content(term[:orders], comparisons[:orders]) %></td>
+              <% if @platform == "ozon" %><td class="numeric"><%= search_terms_metric_content(term[:revenue], comparisons[:revenue], type: :currency) %></td><% end %>
+              <td class="numeric"><%= search_terms_metric_content(term[:conversion], comparisons[:conversion], type: :percentage, comparison_type: :points) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>

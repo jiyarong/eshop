@@ -1,11 +1,10 @@
 module RawWb
-  class SearchTermsSync
-    API_PATH = "/api/v2/search-report/product/search-texts".freeze
+  class SearchReportSync
+    API_PATH = "/api/v2/search-report/report".freeze
     BUSINESS_TIME_ZONE = "Asia/Shanghai".freeze
-    LIMIT = 30
     NM_IDS_PER_REQUEST = 1
-    TOP_ORDER_FIELDS = %w[openCard addToCart openToCart orders cartToOrder].freeze
     RATE_LIMIT_SLEEP = 20
+    RESPONSE_LIMIT = 1000
 
     def self.run_completed_week(weeks_ago: 1)
       weeks_ago = Integer(weeks_ago)
@@ -32,8 +31,7 @@ module RawWb
       raise ArgumentError, "to_date includes an incomplete week" if last_week > last_completed_week
 
       (first_week..last_week).step(7).each_with_object({}) do |period_start, results|
-        period_end = period_start + 6.days
-        results[period_start] = run_period(period_start:, period_end:)
+        results[period_start] = run_period(period_start:, period_end: period_start + 6.days)
       end
     end
 
@@ -53,7 +51,7 @@ module RawWb
 
     def initialize(account, client: nil, rate_limit_sleep: RATE_LIMIT_SLEEP)
       @account = account
-      @client = client || WbClient.new(account.api_token)
+      @client = client || RawWb::WbClient.new(account.api_token)
       @rate_limit_sleep = rate_limit_sleep
     end
 
@@ -65,10 +63,10 @@ module RawWb
       nm_ids = RawWb::Product.where(account_id: @account.id).where.not(nm_id: nil).distinct.pluck(:nm_id)
       rows = fetch_rows(nm_ids, period_start:, period_end:)
 
-      RawWb::AnalyticsSearchTerm.transaction do
-        scope = RawWb::AnalyticsSearchTerm.where(account_id: @account.id).for_period(period_start, period_end)
+      RawWb::SearchReportProduct.transaction do
+        scope = RawWb::SearchReportProduct.where(account_id: @account.id).for_period(period_start, period_end)
         scope.delete_all
-        RawWb::AnalyticsSearchTerm.upsert_all(rows, unique_by: :idx_raw_wb_search_terms_unique) if rows.any?
+        RawWb::SearchReportProduct.upsert_all(rows, unique_by: :idx_raw_wb_search_report_products_unique) if rows.any?
       end
 
       { ok: rows.size, period_from: period_start, period_to: period_end }
@@ -79,87 +77,91 @@ module RawWb
     def fetch_rows(nm_ids, period_start:, period_end:)
       synced_at = Time.current
       request_count = 0
-      rows_by_key = {}
 
-      nm_ids.each_slice(NM_IDS_PER_REQUEST) do |slice|
-        TOP_ORDER_FIELDS.each do |top_order_field|
-          sleep @rate_limit_sleep if request_count.positive? && @rate_limit_sleep.positive?
-          response = @client.post(
-            :seller_analytics,
-            API_PATH,
-            request_body(slice, period_start, period_end, top_order_field)
-          )
-          request_count += 1
-          currency = response.dig("data", "currency")
-          Array(response.dig("data", "items")).each do |item|
-            row = build_row(item, period_start:, period_end:, currency:, synced_at:)
-            next unless row
+      nm_ids.each_slice(NM_IDS_PER_REQUEST).flat_map do |slice|
+        sleep @rate_limit_sleep if request_count.positive? && @rate_limit_sleep.positive?
+        response = @client.post(:seller_analytics, API_PATH, request_body(slice, period_start, period_end))
+        request_count += 1
+        currency = response.dig("data", "currency")
 
-            key = [row[:nm_id], row[:keyword]]
-            existing = rows_by_key[key]
-            dimensions = Array(existing&.dig(:raw_json, "topDimensions")) | [top_order_field]
-            rows_by_key[key] = row.merge(raw_json: row[:raw_json].merge("topDimensions" => dimensions))
+        data = response.fetch("data", {})
+        report_context = data.except("groups")
+        Array(data["groups"]).flat_map do |group|
+          Array(group["items"]).filter_map do |item|
+            build_row(
+              item,
+              period_start:,
+              period_end:,
+              currency:,
+              synced_at:,
+              report_context:,
+              group_metrics: group["metrics"]
+            )
           end
-        end
+        end.uniq { |row| row[:nm_id] }
       end
-
-      rows_by_key.values
     end
 
-    def request_body(nm_ids, period_start, period_end, top_order_field)
+    def request_body(nm_ids, period_start, period_end)
       {
-        nmIds: nm_ids,
         currentPeriod: { start: period_start.iso8601, end: period_end.iso8601 },
-        topOrderBy: top_order_field,
-        orderBy: { field: top_order_field, mode: "desc" },
-        limit: LIMIT
+        pastPeriod: { start: (period_start - 1.week).iso8601, end: (period_end - 1.week).iso8601 },
+        nmIds: nm_ids,
+        subjectIds: [],
+        brandNames: [],
+        tagIds: [],
+        positionCluster: "all",
+        orderBy: { field: "openCard", mode: "desc" },
+        includeSubstitutedSKUs: true,
+        includeSearchTexts: true,
+        limit: RESPONSE_LIMIT,
+        offset: 0
       }
     end
 
-    def build_row(item, period_start:, period_end:, currency:, synced_at:)
-      return if item["text"].blank? || item["nmId"].blank?
+    def build_row(item, period_start:, period_end:, currency:, synced_at:, report_context:, group_metrics:)
+      return if item["nmId"].blank?
 
       {
         account_id: @account.id,
         period_from: period_start,
         period_to: period_end,
-        keyword: item["text"],
         nm_id: item["nmId"],
-        orders: integer(item.dig("orders", "current")),
-        orders_percentile: optional_integer(item.dig("orders", "percentile")),
-        avg_position: decimal(item.dig("avgPosition", "current")),
-        median_position: decimal(item.dig("medianPosition", "current")),
-        frequency: integer(item.dig("frequency", "current")),
-        week_frequency: integer(item["weekFrequency"]),
-        open_card: integer(item.dig("openCard", "current")),
-        open_card_percentile: optional_integer(item.dig("openCard", "percentile")),
-        add_to_cart: integer(item.dig("addToCart", "current")),
-        add_to_cart_percentile: optional_integer(item.dig("addToCart", "percentile")),
-        open_to_cart: decimal(item.dig("openToCart", "current")),
-        open_to_cart_percentile: optional_integer(item.dig("openToCart", "percentile")),
-        cart_to_order: decimal(item.dig("cartToOrder", "current")),
-        cart_to_order_percentile: optional_integer(item.dig("cartToOrder", "percentile")),
-        visibility: optional_integer(item.dig("visibility", "current")),
         vendor_code: item["vendorCode"],
+        product_name: item["name"],
         subject_name: item["subjectName"],
         brand_name: item["brandName"],
-        product_name: item["name"],
+        main_photo: item["mainPhoto"],
+        is_advertised: item["isAdvertised"],
+        is_substituted_sku: item["isSubstitutedSKU"],
         is_card_rated: item["isCardRated"],
         rating: decimal(item["rating"]),
         feedback_rating: decimal(item["feedbackRating"]),
         price_min: decimal(item.dig("price", "minPrice")),
         price_max: decimal(item.dig("price", "maxPrice")),
+        avg_position: decimal(item.dig("avgPosition", "current")),
+        avg_position_dynamics: decimal(item.dig("avgPosition", "dynamics")),
+        open_card: integer(item.dig("openCard", "current")),
+        open_card_dynamics: decimal(item.dig("openCard", "dynamics")),
+        add_to_cart: integer(item.dig("addToCart", "current")),
+        add_to_cart_dynamics: decimal(item.dig("addToCart", "dynamics")),
+        open_to_cart: decimal(item.dig("openToCart", "current")),
+        open_to_cart_dynamics: decimal(item.dig("openToCart", "dynamics")),
+        orders: integer(item.dig("orders", "current")),
+        orders_dynamics: decimal(item.dig("orders", "dynamics")),
+        cart_to_order: decimal(item.dig("cartToOrder", "current")),
+        cart_to_order_dynamics: decimal(item.dig("cartToOrder", "dynamics")),
+        visibility: decimal(item.dig("visibility", "current")),
+        visibility_dynamics: decimal(item.dig("visibility", "dynamics")),
         currency: currency,
-        raw_json: item,
-        synced_at: synced_at
+        raw_json: item.merge("_report" => report_context, "_groupMetrics" => group_metrics),
+        synced_at: synced_at,
+        created_at: synced_at,
+        updated_at: synced_at
       }
     end
 
     def integer(value)
-      value.to_i
-    end
-
-    def optional_integer(value)
       value.to_i unless value.nil?
     end
 
