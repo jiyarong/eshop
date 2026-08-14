@@ -104,7 +104,7 @@ class Reports::SalesFunnelControllerTest < ActionDispatch::IntegrationTest
       account: @ozon_account, period_start: Date.new(2026, 7, 6), period_end: Date.new(2026, 7, 12),
       sku: 81001, product_name: "Ozon 界面漏斗商品", hits_view: 200, session_view: 120,
       hits_tocart: 30, ordered_units: 12, revenue: 1_200, returns_count: 2,
-      cancellations: 1, synced_at: Time.current
+      cancellations: 1, position_category: 7.25, synced_at: Time.current
     )
 
     get reports_sales_funnel_path, params: {
@@ -118,12 +118,14 @@ class Reports::SalesFunnelControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "唯一身份访问者，总计"
     assert_select "th", "已退货商品（按退货日期）"
     assert_select "th", "添加至购物车的转化率总计"
+    assert_select "th", "搜索平均排名"
     assert_select ".summary-label", "总展示次数"
     assert_select ".summary-label", "添加至购物车总计"
     assert_select "th", { text: "成交率", count: 0 }
     assert_select ".weekly-profit-table-value", @sku.sku_code
     assert_select ".weekly-profit-table-value", "系统漏斗商品"
     assert_select ".weekly-profit-table-value", "15.00%"
+    assert_select ".weekly-profit-table-value", "7.25"
     assert_select ".weekly-profit-table-value", { text: "Ozon 界面漏斗商品", count: 0 }
   end
 end

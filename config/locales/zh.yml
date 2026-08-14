@@ -942,6 +942,7 @@ zh:
         revenue: "订购金额"
         returns_count: "已退货商品（按退货日期）"
         cancellations: "已取消商品（按取消日期）"
+        position_category: "搜索平均排名"
   reports:
     warehouses:
       title: "分仓"

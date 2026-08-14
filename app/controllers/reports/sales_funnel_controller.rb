@@ -100,6 +100,7 @@ module Reports
       return "-" if value.nil?
       return helpers.number_to_percentage(value, precision: 2) if key.to_s.match?(/(percent|conversion|rate|conv_to_cart|conv_tocart|cart_to_order|buyout_percent)\z/)
       return helpers.number_to_currency(value, unit: "", precision: 2) if key.to_s.match?(/(sum|amount|revenue)\z/)
+      return helpers.number_with_precision(value, precision: 2) if key.to_sym == :position_category
       return helpers.number_with_delimiter(value.to_i) if value.is_a?(Numeric)
 
       value

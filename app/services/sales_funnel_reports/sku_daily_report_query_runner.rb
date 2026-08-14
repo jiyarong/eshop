@@ -61,7 +61,8 @@ module SalesFunnelReports
           ordered_units: sum(records, :ordered_units),
           revenue: sum(records, :revenue),
           returns_count: sum(records, :returns_count),
-          cancellations: sum(records, :cancellations)
+          cancellations: sum(records, :cancellations),
+          position_category: average(records, :position_category)
         }
       end.sort_by { |row| [-row[:revenue].to_d, row[:sku_code].to_s] }
     end
