@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_030530) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_14_052918) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1884,27 +1884,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_030530) do
     t.string "brand_name"
     t.decimal "cart_to_order", precision: 10, scale: 4
     t.integer "cart_to_order_percentile"
+    t.string "currency"
     t.decimal "feedback_rating", precision: 5, scale: 2
     t.bigint "frequency"
-    t.string "keyword"
+    t.boolean "is_card_rated"
+    t.string "keyword", null: false
     t.decimal "median_position", precision: 10, scale: 2
-    t.bigint "nm_id"
+    t.bigint "nm_id", null: false
     t.bigint "open_card"
     t.integer "open_card_percentile"
     t.decimal "open_to_cart", precision: 10, scale: 4
     t.integer "open_to_cart_percentile"
     t.bigint "orders", default: 0
     t.integer "orders_percentile"
+    t.date "period_from", null: false
+    t.date "period_to", null: false
     t.decimal "price_max", precision: 15, scale: 2
     t.decimal "price_min", precision: 15, scale: 2
     t.string "product_name"
     t.decimal "rating", precision: 5, scale: 2
-    t.date "stat_date", null: false
+    t.jsonb "raw_json", default: {}, null: false
     t.string "subject_name"
+    t.datetime "synced_at", null: false
     t.string "vendor_code"
     t.integer "visibility"
     t.bigint "week_frequency"
-    t.index ["account_id", "stat_date", "keyword", "nm_id"], name: "idx_raw_wb_search_terms_unique", unique: true
+    t.index ["account_id", "period_from", "period_to", "keyword", "nm_id"], name: "idx_raw_wb_search_terms_unique", unique: true
+    t.index ["account_id", "period_from", "period_to"], name: "idx_raw_wb_search_terms_period"
     t.index ["account_id"], name: "index_raw_wb_analytics_search_terms_on_account_id"
   end
 
