@@ -119,6 +119,8 @@ class Reports::SalesFunnelControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "已退货商品（按退货日期）"
     assert_select "th", "添加至购物车的转化率总计"
     assert_select "th", "搜索平均排名"
+    headers = css_select("table thead th").map { |header| header.text.squish }
+    assert_equal ["总展示次数", "搜索平均排名"], headers.slice(headers.index("总展示次数"), 2)
     assert_select ".summary-label", "总展示次数"
     assert_select ".summary-label", "添加至购物车总计"
     assert_select "th", { text: "成交率", count: 0 }

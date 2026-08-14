@@ -5,12 +5,12 @@ module SalesFunnelReports
       buyout_percent cancel_count add_to_wishlist
     ].freeze
     OZON_METRICS = %i[
-      hits_view session_view hits_tocart ordered_units revenue conv_tocart returns_count cancellations
+      hits_view position_category session_view hits_tocart ordered_units revenue conv_tocart returns_count cancellations
       hits_view_search hits_view_pdp hits_tocart_search hits_tocart_pdp
     ].freeze
     DEFAULT_METRICS = {
       "wb" => %i[open_card add_to_cart orders buyouts],
-      "ozon" => %i[hits_view hits_tocart ordered_units revenue]
+      "ozon" => %i[hits_view position_category hits_tocart ordered_units revenue]
     }.freeze
 
     def initialize(sku:, from_date:, to_date:)
@@ -90,6 +90,9 @@ module SalesFunnelReports
       when :cart_to_order then percent(records.sum(&:orders), records.sum(&:add_to_cart))
       when :buyout_percent then percent(records.sum(&:buyouts), records.sum(&:orders))
       when :conv_tocart then percent(records.sum(&:hits_tocart), records.sum(&:hits_view))
+      when :position_category
+        values = records.filter_map(&:position_category)
+        values.present? ? (values.sum / values.size).to_f : nil
       else records.sum { |record| record.public_send(metric).to_d }.to_f
       end
     end

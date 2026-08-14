@@ -29,17 +29,19 @@ class SalesFunnelReports::SkuDailyTrendQueryTest < ActiveSupport::TestCase
     )
     RawOzon::SalesFunnelDaily.create!(
       account: @ozon_account, stat_date: Date.new(2026, 8, 11), sku: 81001,
-      hits_view: 200, hits_tocart: 30, ordered_units: 12, revenue: 1_500, synced_at: Time.current
+      hits_view: 200, position_category: 7.25, hits_tocart: 30, ordered_units: 12,
+      revenue: 1_500, synced_at: Time.current
     )
 
     trends = query.call
 
     assert_equal ["ozon", "wb"], trends.map { |trend| trend[:platform] }
     assert_equal ["Ozon 店 #{@token}", "WB 店 #{@token}"], trends.map { |trend| trend[:store_name] }
-    assert_equal %i[hits_view hits_tocart ordered_units revenue], trends.first[:default_metrics]
+    assert_equal %i[hits_view position_category hits_tocart ordered_units revenue], trends.first[:default_metrics]
     assert_equal %i[open_card add_to_cart orders buyouts], trends.second[:default_metrics]
     assert_equal 4, trends.first[:rows].size
     assert_equal 1_500.0, trends.first[:rows].find { |row| row[:date] == "2026-08-11" }.dig(:values, :revenue)
+    assert_equal 7.25, trends.first[:rows].find { |row| row[:date] == "2026-08-11" }.dig(:values, :position_category)
     assert_equal 100.0, trends.second[:rows].find { |row| row[:date] == "2026-08-10" }.dig(:values, :open_card)
   end
 

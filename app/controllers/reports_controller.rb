@@ -551,6 +551,8 @@ class ReportsController < ApplicationController
   def build_sku_sales_funnel_trend_chart_option(trend)
     amount_metrics = %i[orders_sum buyouts_sum revenue]
     percent_metrics = %i[conv_to_cart cart_to_order buyout_percent conv_tocart]
+    rank_metric = :position_category
+    has_rank = rank_metric.in?(trend[:metrics])
     labels = trend[:rows].map { |row| row[:date] }
     series = trend[:metrics].map do |metric|
       selected = metric.in?(trend[:default_metrics])
@@ -559,7 +561,15 @@ class ReportsController < ApplicationController
         type: "line",
         smooth: true,
         showSymbol: false,
-        yAxisIndex: amount_metrics.include?(metric) ? 1 : (percent_metrics.include?(metric) ? 2 : 0),
+        yAxisIndex: if metric == rank_metric
+          3
+        elsif amount_metrics.include?(metric)
+          1
+        elsif percent_metrics.include?(metric)
+          2
+        else
+          0
+        end,
         data: trend[:rows].map { |row| row.dig(:values, metric) },
         selected:
       }
@@ -571,13 +581,20 @@ class ReportsController < ApplicationController
         top: 0,
         selected: series.to_h { |item| [item[:name], item.delete(:selected)] }
       },
-      grid: { left: 38, right: 62, top: 62, bottom: 42, containLabel: true },
+      grid: { left: 38, right: has_rank ? 108 : 62, top: 62, bottom: 42, containLabel: true },
       xAxis: { type: "category", boundaryGap: false, data: labels },
       yAxis: [
         { type: "value", name: t("reports.sku_detail.funnel_trends.axes.count"), minInterval: 1 },
         { type: "value", name: t("reports.sku_detail.funnel_trends.axes.amount") },
         { type: "value", name: "%", position: "right", offset: 42 }
-      ],
+      ] + (has_rank ? [{
+        type: "value",
+        name: t("sales_funnel_reports.columns.ozon.position_category"),
+        position: "right",
+        offset: 84,
+        inverse: true,
+        min: 1
+      }] : []),
       series:
     }
   end

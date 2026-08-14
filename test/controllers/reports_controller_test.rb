@@ -1401,7 +1401,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     RawOzon::SalesFunnelDaily.create!(
       account: @sales_ozon_account, stat_date: Date.new(2026, 8, 11), sku: 3_902_460_130,
       hits_view: 200, hits_tocart: 30, ordered_units: 12, revenue: 1_500,
-      conv_tocart: 15, synced_at: Time.current
+      conv_tocart: 15, position_category: 7.25, synced_at: Time.current
     )
 
     get report_sku_sales_funnel_trends_path(@sku.sku_code), params: {
@@ -1418,6 +1418,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "2026-08-09"
     assert_includes response.body, "2026-08-12"
     assert_includes response.body, '"商品卡片访问":false'
+    assert_includes response.body, '"搜索平均排名":true'
+    assert_includes response.body, '"inverse":true'
     assert_includes response.body, '"打开商品卡":true'
   end
 

@@ -9,9 +9,9 @@ module SalesFunnelReports
       add_to_wishlist stock_wb stock_mp
     ].freeze
     OZON_COLUMNS = %i[
-      sku_code product_name hits_view hits_view_search hits_view_pdp session_view
+      sku_code product_name hits_view position_category hits_view_search hits_view_pdp session_view
       hits_tocart hits_tocart_search hits_tocart_pdp conv_tocart ordered_units
-      revenue returns_count cancellations position_category
+      revenue returns_count cancellations
     ].freeze
 
     def self.run(params:, today:)
