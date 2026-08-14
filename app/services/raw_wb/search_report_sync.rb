@@ -1,8 +1,8 @@
 module RawWb
   class SearchReportSync
-    API_PATH = "/api/v2/search-report/report".freeze
+    API_PATH = "/api/v2/search-report/table/details".freeze
     BUSINESS_TIME_ZONE = "Asia/Shanghai".freeze
-    NM_IDS_PER_REQUEST = 1
+    NM_IDS_PER_REQUEST = 50
     RATE_LIMIT_SLEEP = 20
     RESPONSE_LIMIT = 1000
 
@@ -85,20 +85,10 @@ module RawWb
         currency = response.dig("data", "currency")
 
         data = response.fetch("data", {})
-        report_context = data.except("groups")
-        Array(data["groups"]).flat_map do |group|
-          Array(group["items"]).filter_map do |item|
-            build_row(
-              item,
-              period_start:,
-              period_end:,
-              currency:,
-              synced_at:,
-              report_context:,
-              group_metrics: group["metrics"]
-            )
-          end
-        end.uniq { |row| row[:nm_id] }
+        response_context = data.except("products")
+        Array(data["products"]).filter_map do |item|
+          build_row(item, period_start:, period_end:, currency:, synced_at:, response_context:)
+        end
       end
     end
 
@@ -107,9 +97,6 @@ module RawWb
         currentPeriod: { start: period_start.iso8601, end: period_end.iso8601 },
         pastPeriod: { start: (period_start - 1.week).iso8601, end: (period_end - 1.week).iso8601 },
         nmIds: nm_ids,
-        subjectIds: [],
-        brandNames: [],
-        tagIds: [],
         positionCluster: "all",
         orderBy: { field: "openCard", mode: "desc" },
         includeSubstitutedSKUs: true,
@@ -119,7 +106,7 @@ module RawWb
       }
     end
 
-    def build_row(item, period_start:, period_end:, currency:, synced_at:, report_context:, group_metrics:)
+    def build_row(item, period_start:, period_end:, currency:, synced_at:, response_context:)
       return if item["nmId"].blank?
 
       {
@@ -154,7 +141,7 @@ module RawWb
         visibility: decimal(item.dig("visibility", "current")),
         visibility_dynamics: decimal(item.dig("visibility", "dynamics")),
         currency: currency,
-        raw_json: item.merge("_report" => report_context, "_groupMetrics" => group_metrics),
+        raw_json: item.merge("_response" => response_context),
         synced_at: synced_at,
         created_at: synced_at,
         updated_at: synced_at

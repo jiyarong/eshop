@@ -11,7 +11,7 @@ class RawWbSearchReportSyncTest < ActiveSupport::TestCase
 
     def post(service, path, body)
       @requests << [service, path, body]
-      @responses.shift || { "data" => { "groups" => [], "currency" => "RUB" } }
+      @responses.shift || { "data" => { "products" => [], "currency" => "RUB" } }
     end
   end
 
@@ -38,7 +38,7 @@ class RawWbSearchReportSyncTest < ActiveSupport::TestCase
     assert_equal 1, result[:ok]
     service, path, body = client.requests.sole
     assert_equal :seller_analytics, service
-    assert_equal "/api/v2/search-report/report", path
+    assert_equal "/api/v2/search-report/table/details", path
     assert_equal({ start: "2026-08-03", end: "2026-08-09" }, body[:currentPeriod])
     assert_equal({ start: "2026-07-27", end: "2026-08-02" }, body[:pastPeriod])
     assert_equal [860_790_648], body[:nmIds]
@@ -54,8 +54,8 @@ class RawWbSearchReportSyncTest < ActiveSupport::TestCase
     assert_equal 13, row.cart_to_order.to_i
     assert_equal 50, row.visibility.to_i
     assert_equal "BYN", row.currency
-    assert_equal item, row.raw_json.except("_report", "_groupMetrics")
-    assert_equal "BYN", row.raw_json.dig("_report", "currency")
+    assert_equal item, row.raw_json.except("_response")
+    assert_equal "BYN", row.raw_json.dig("_response", "currency")
   end
 
   test "replaces a completed week atomically on refresh" do
@@ -83,6 +83,20 @@ class RawWbSearchReportSyncTest < ActiveSupport::TestCase
     assert_equal "period must be a complete Monday-Sunday week", error.message
   end
 
+  test "requests up to fifty products together" do
+    50.times do |index|
+      RawWb::Product.create!(account: @account, nm_id: 900_000_000 + index, vendor_code: "BATCH-#{@token}-#{index}")
+    end
+    client = FakeWbClient.new([])
+
+    sync(client).sync_period(period_start: Date.new(2026, 8, 3), period_end: Date.new(2026, 8, 9))
+
+    assert_equal 2, client.requests.size
+    assert_equal [50, 1], client.requests.map { |request| request.last[:nmIds].size }
+    assert client.requests.all? { |request| request[1] == "/api/v2/search-report/table/details" }
+    assert client.requests.all? { |request| request.last[:limit] == 1000 }
+  end
+
   private
 
   def sync(client)
@@ -90,7 +104,7 @@ class RawWbSearchReportSyncTest < ActiveSupport::TestCase
   end
 
   def response(items)
-    { "data" => { "groups" => [{ "items" => items }], "currency" => "BYN" } }
+    { "data" => { "products" => items, "currency" => "BYN" } }
   end
 
   def search_report_item
