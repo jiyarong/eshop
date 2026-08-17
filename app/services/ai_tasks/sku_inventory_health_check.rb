@@ -13,7 +13,21 @@ module AITasks
     def run
       agent = Agent.find_by!(code: AGENT_CODE)
       user = User.find_by(email: 'admin@qq.com')||User.first
-      ErpAI::AgentRunner.new(agent: agent, user: user).ask(question: question, data_summary: data_summary)
+      sku = Ec::Sku.find_by!(sku_code: sku_code)
+      latest_diagnosis_id = sku.inventory_health_results.maximum(:id) || 0
+      conversation = ErpAI::AgentRunner.new(agent: agent, user: user).ask(question: question, data_summary: data_summary)
+
+      sku.inventory_health_results
+        .where(submitted_by: user)
+        .where("id > ?", latest_diagnosis_id)
+        .find_each do |diagnosis|
+          diagnosis.events.where(conversation_id: nil).update_all(
+            conversation_id: conversation.id,
+            updated_at: Time.current
+          )
+        end
+
+      conversation
     end
 
     private
