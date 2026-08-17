@@ -105,14 +105,36 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#search_terms_wb_ec_sku_#{@sku.id}"
+    assert_select "select[name='top_order_by']" do
+      assert_select "option[value='openCard'][selected]", text: "商品点击"
+      assert_select "option", count: 5
+    end
     assert_select "td strong", text: "полотенцесушитель"
     assert_select ".weekly-profit-table-comparison.is-positive", text: "提升 6 位"
     assert_select ".status-pill.is-active", text: I18n.t("reports.search_terms.comparison.lifecycle.new.wb")
-    assert_select ".status-pill.is-muted", text: I18n.t("reports.search_terms.comparison.lifecycle.lost.wb")
-    assert_select "tr.search-terms-detail-table__lost td strong", text: "старый запрос"
+    assert_select ".status-pill.is-muted", count: 0
+    assert_select "tr.search-terms-detail-table__lost", count: 0
   end
 
-  test "does not double count a WB term returned in multiple top dimensions" do
+  test "switches the WB term ranking dimension" do
+    create_wb_term(keyword: "商品点击词", top_order_by: "openCard")
+    create_wb_term(keyword: "下单词第二名", top_order_by: "orders", top_order_rank: 2,
+      frequency: 1_000, cart_to_order: 75)
+    create_wb_term(keyword: "下单词第一名", top_order_by: "orders", top_order_rank: 1,
+      frequency: 1, cart_to_order: 25)
+
+    get reports_search_term_details_path(@sku.sku_code), params: period_params.merge(
+      platform: "wb", store_id: @wb_store.id, top_order_by: "orders"
+    ), headers: { "Turbo-Frame" => "search_terms_wb_ec_sku_#{@sku.id}" }
+
+    assert_response :success
+    assert_select "option[value='orders'][selected]", text: "已下单"
+    assert_equal %w[下单词第一名 下单词第二名], css_select("tbody td:first-child strong").map(&:text)
+    assert_select "tbody tr:first-child td:last-child > span", text: "25.00%"
+    assert_select "td strong", { text: "商品点击词", count: 0 }
+  end
+
+  test "defaults WB terms to the product-click ranking dimension" do
     create_wb_term(top_order_by: "openCard")
     create_wb_term(top_order_by: "orders")
 
@@ -169,12 +191,13 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
   end
 
   def create_wb_term(keyword: "полотенцесушитель", period_from: @period_from, period_to: @period_to,
-    frequency: 100, avg_position: 34, open_card: 20, add_to_cart: 8, orders: 2, top_order_by: "openCard")
+    frequency: 100, avg_position: 34, open_card: 20, add_to_cart: 8, orders: 2,
+    top_order_by: "openCard", top_order_rank: nil, cart_to_order: nil)
     RawWb::AnalyticsSearchTerm.create!(
       account: @wb_account, period_from:, period_to:,
       keyword:, nm_id: 71_001, frequency:, avg_position:,
-      top_order_by:,
-      median_position: 30, open_card:, add_to_cart:, orders:, raw_json: {}, synced_at: Time.current
+      top_order_by:, top_order_rank:,
+      median_position: 30, open_card:, add_to_cart:, orders:, cart_to_order:, raw_json: {}, synced_at: Time.current
     )
   end
 

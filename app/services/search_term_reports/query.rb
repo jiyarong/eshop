@@ -4,13 +4,15 @@ module SearchTermReports
 
     attr_reader :platform, :store, :period_from, :period_to
 
-    def initialize(platform:, store:, period_from:, period_to:, sku_codes: nil, query: nil)
+    def initialize(platform:, store:, period_from:, period_to:, sku_codes: nil, query: nil, top_order_by: nil)
       @platform = platform.to_s
       @store = store
       @period_from = period_from.to_date
       @period_to = period_to.to_date
       @sku_codes = Array(sku_codes).compact_blank.map(&:upcase).to_set
       @query = query.to_s.strip.downcase
+      @top_order_by = top_order_by.to_s.presence_in(RawWb::AnalyticsSearchTerm::TOP_ORDER_BY_VALUES) ||
+        RawWb::AnalyticsSearchTerm::TOP_ORDER_BY_VALUES.first
 
       raise ArgumentError, "invalid platform" unless PLATFORMS.include?(@platform)
       raise ArgumentError, "store platform mismatch" unless store.platform == @platform
@@ -26,8 +28,9 @@ module SearchTermReports
       return [] if product_ids.empty?
 
       records = term_scope.where(term_product_column => product_ids)
+      records = records.where(top_order_by: @top_order_by) if platform == "wb"
       records = records.where("LOWER(#{term_keyword_column}) LIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(@query)}%") if @query.present?
-      aggregate_terms(records.order(term_order_sql))
+      aggregate_terms(records)
     end
 
     private
@@ -156,14 +159,12 @@ module SearchTermReports
       platform == "wb" ? "keyword" : "query"
     end
 
-    def term_order_sql
-      platform == "wb" ? Arel.sql("frequency DESC, orders DESC") : Arel.sql("unique_search_users DESC, order_count DESC")
-    end
-
     def aggregate_terms(records)
-      records.group_by { |record| record.public_send(term_keyword_column) }.map do |keyword, grouped|
+      terms = records.group_by { |record| record.public_send(term_keyword_column) }.map do |keyword, grouped|
         if platform == "wb"
-          record = grouped.max_by { |item| [item.frequency.to_i, item.orders.to_i, item.id.to_i] }
+          record = grouped.min_by do |item|
+            [item.top_order_rank || Float::INFINITY, -item.frequency.to_i, -item.orders.to_i, item.id.to_i]
+          end
           views = record.open_card.to_i
           {
             keyword:, search_volume: record.frequency.to_i,
@@ -171,7 +172,9 @@ module SearchTermReports
             median_position: record.median_position,
             views:, add_to_cart: record.add_to_cart.to_i,
             orders: record.orders.to_i,
-            conversion: ratio(record.orders.to_i, views), revenue: nil
+            conversion: record.cart_to_order,
+            revenue: nil,
+            top_order_rank: record.top_order_rank
           }
         else
           searches = grouped.sum { |record| record.unique_search_users.to_i }
@@ -183,7 +186,13 @@ module SearchTermReports
             conversion: ratio(views, searches), revenue: grouped.sum { |record| record.gmv.to_d }
           }
         end
-      end.sort_by { |term| [-term[:search_volume].to_i, -term[:orders].to_i, term[:keyword]] }
+      end
+
+      if platform == "wb"
+        terms.sort_by { |term| [term[:top_order_rank] || Float::INFINITY, -term[:search_volume].to_i, term[:keyword]] }
+      else
+        terms.sort_by { |term| [-term[:search_volume].to_i, -term[:orders].to_i, term[:keyword]] }
+      end
     end
 
     def weighted_average(records, value_key, weight_key)

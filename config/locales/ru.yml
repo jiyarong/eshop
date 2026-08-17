@@ -903,7 +903,14 @@ ru:
         orders: "Заказы"
         wb: { search_volume: "Частота поиска", views: "Переходы в карточку", add_to_cart: "В корзину", cart_conversion: "Конверсия в корзину", conversion: "Конверсия в заказ", visibility: "Видимость" }
         ozon: { search_volume: "Пользователи поиска", views: "Просмотры", revenue: "GMV из поиска", conversion: "Конверсия в просмотр" }
-      detail: { title: "Поисковые запросы %{sku}", keyword: "Поисковый запрос", median_position: "Медианная позиция", ozon_limit: "Ozon возвращает не более Top 15 запросов на товар" }
+      detail:
+        title: "Поисковые запросы %{sku}"
+        keyword: "Поисковый запрос"
+        median_position: "Медианная позиция"
+        ozon_limit: "Ozon возвращает не более Top 15 запросов на товар"
+        top_order_by:
+          label: "Метрика рейтинга"
+          options: { openCard: "Переходы в карточку", addToCart: "В корзину", openToCart: "Конверсия в корзину", orders: "Заказы", cartToOrder: "Конверсия в заказ" }
       actions: { expand: "Показать запросы %{sku}", collapse: "Скрыть запросы %{sku}", loading: "Загрузка запросов..." }
       invalid_period: "Поддерживается только полная неделя с понедельника по воскресенье. Данные за этот период не показаны."
       empty: "Нет данных по поисковым запросам для выбранных фильтров"

@@ -70,7 +70,8 @@
                 <td colspan="<%= @platform == 'wb' ? 10 : 9 %>">
                   <%= turbo_frame_tag "search_terms_#{@platform}_#{dom_id(row[:sku])}",
                                       data: { lazy_src: reports_search_term_details_path(row[:sku_code], platform: @platform,
-                                        store_id: @store.id, from_date: @from_date, to_date: @to_date, q: @query.presence) } do %>
+                                        store_id: @store.id, from_date: @from_date, to_date: @to_date, q: @query.presence,
+                                        top_order_by: (@top_order_by if @platform == "wb")) } do %>
                     <div class="search-terms-loading"><%= t("reports.search_terms.actions.loading") %></div>
                   <% end %>
                 </td>

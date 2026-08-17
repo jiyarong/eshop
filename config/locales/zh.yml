@@ -983,6 +983,9 @@ zh:
         keyword: "搜索词"
         median_position: "中位排名"
         ozon_limit: "Ozon 每个商品最多返回 Top 15 搜索词"
+        top_order_by:
+          label: "榜单维度"
+          options: { openCard: "商品点击", addToCart: "加入购物车", openToCart: "加购转化率", orders: "已下单", cartToOrder: "下单转化率" }
       actions:
         expand: "展开 %{sku} 的搜索词"
         collapse: "收起 %{sku} 的搜索词"

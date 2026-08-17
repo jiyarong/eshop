@@ -932,7 +932,14 @@ en:
         orders: "Orders"
         wb: { search_volume: "Search frequency", views: "Product clicks", add_to_cart: "Add to cart", cart_conversion: "Cart conversion", conversion: "Order conversion", visibility: "Visibility" }
         ozon: { search_volume: "Search users", views: "View users", revenue: "Search GMV", conversion: "View conversion" }
-      detail: { title: "%{sku} search terms", keyword: "Search term", median_position: "Median rank", ozon_limit: "Ozon returns at most the Top 15 search terms per product" }
+      detail:
+        title: "%{sku} search terms"
+        keyword: "Search term"
+        median_position: "Median rank"
+        ozon_limit: "Ozon returns at most the Top 15 search terms per product"
+        top_order_by:
+          label: "Ranking metric"
+          options: { openCard: "Product clicks", addToCart: "Add to cart", openToCart: "Cart conversion", orders: "Orders", cartToOrder: "Order conversion" }
       actions: { expand: "Expand search terms for %{sku}", collapse: "Collapse search terms for %{sku}", loading: "Loading search terms..." }
       invalid_period: "Only a complete Monday-to-Sunday calendar week is supported. No data is shown for this period."
       empty: "No search term data matches the current filters"

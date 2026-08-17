@@ -11,10 +11,11 @@ module SearchTermReports
       end
     end
 
-    def terms(current_terms, previous_terms)
+    def terms(current_terms, previous_terms, include_lost: true)
       current_by_keyword = current_terms.index_by { |term| term.fetch(:keyword) }
       previous_by_keyword = previous_terms.index_by { |term| term.fetch(:keyword) }
-      keywords = current_by_keyword.keys + (previous_by_keyword.keys - current_by_keyword.keys)
+      keywords = current_by_keyword.keys
+      keywords += previous_by_keyword.keys - current_by_keyword.keys if include_lost
 
       keywords.map do |keyword|
         current = current_by_keyword[keyword]

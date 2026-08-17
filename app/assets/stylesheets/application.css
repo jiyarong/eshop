@@ -3741,7 +3741,26 @@ pre {
 }
 
 .search-terms-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.search-terms-detail__metric-form {
+  margin-left: auto;
+}
+
+.search-terms-detail__metric-select {
+  min-width: 160px;
+  height: 40px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  background-color: var(--erp-surface);
+  color: var(--erp-text);
+  font: inherit;
+  font-weight: 600;
 }
 
 .search-terms-detail-table {
