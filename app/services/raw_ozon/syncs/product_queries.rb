@@ -54,6 +54,11 @@ module RawOzon
           sleep 1
         end
 
+        summary_rows = summary_rows.index_by { |row| row[:sku] }.values
+        detail_rows = detail_rows.group_by { |row| [row[:sku], row[:query]] }.map do |_key, rows|
+          rows.min_by { |row| row[:query_index] }
+        end
+
         RawOzon::ProductQuery.transaction do
           RawOzon::ProductQuery.where(account_id: @account.id, period_from: week_start, period_to: week_end).delete_all
           RawOzon::ProductQueryDetail.where(account_id: @account.id, period_from: week_start, period_to: week_end).delete_all

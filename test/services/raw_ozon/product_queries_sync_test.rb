@@ -19,23 +19,25 @@ class RawOzonProductQueriesSyncTest < ActiveSupport::TestCase
       period = body.fetch(:date_from).start_with?("2026-07-27") ? 1 : 2
 
       if path.end_with?("/details")
+        query = {
+          "sku" => sku, "query" => "query-#{period}", "query_index" => 1,
+          "currency" => "RUB", "unique_search_users" => 80 * period,
+          "unique_view_users" => 20 * period, "position" => 7.5,
+          "view_conversion" => 25, "order_count" => period, "gmv" => 900 * period
+        }
         {
-          "queries" => [{
-            "sku" => sku, "query" => "query-#{period}", "query_index" => 1,
-            "currency" => "RUB", "unique_search_users" => 80 * period,
-            "unique_view_users" => 20 * period, "position" => 7.5,
-            "view_conversion" => 25, "order_count" => period, "gmv" => 900 * period
-          }],
+          "queries" => [query.merge("query_index" => 2), query],
           "page_count" => 1
         }
       else
+        item = {
+          "sku" => sku, "offer_id" => "OFFER-1", "name" => "Product",
+          "category" => "Category", "currency" => "RUB",
+          "unique_search_users" => 100 * period, "unique_view_users" => 25 * period,
+          "position" => 8.5, "view_conversion" => 25, "gmv" => 1_200 * period
+        }
         {
-          "items" => [{
-            "sku" => sku, "offer_id" => "OFFER-1", "name" => "Product",
-            "category" => "Category", "currency" => "RUB",
-            "unique_search_users" => 100 * period, "unique_view_users" => 25 * period,
-            "position" => 8.5, "view_conversion" => 25, "gmv" => 1_200 * period
-          }],
+          "items" => [item, item.dup],
           "page_count" => 1
         }
       end
