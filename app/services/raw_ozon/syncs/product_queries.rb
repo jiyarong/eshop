@@ -33,9 +33,9 @@ module RawOzon
 
       def completed_product_query_weeks
         first_week = @from.to_date.beginning_of_week(:monday)
-        # Ozon calculates search analytics for 1-2 days. Only request weeks whose
-        # Sunday is followed by at least two complete calendar days.
-        last_week_end = (Date.current - 2.days).beginning_of_week(:monday) - 1.day
+        # Fetch the newly completed week immediately, then let the recurring
+        # midweek refresh replace Ozon's still-settling 1-2 day figures.
+        last_week_end = Date.current.beginning_of_week(:monday) - 1.day
         return [] if first_week > last_week_end
 
         first_week.step(last_week_end, 7).map { |week_start| [week_start, week_start + 6.days] }

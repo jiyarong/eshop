@@ -61,11 +61,12 @@ class RawOzonProductQueriesSyncTest < ActiveSupport::TestCase
 
       result = sync.sync_product_queries
 
-      assert_equal 1, result[:weeks]
-      assert_equal 1, result[:summaries]
-      assert_equal 1, result[:details]
+      assert_equal 2, result[:weeks]
+      assert_equal 2, result[:summaries]
+      assert_equal 2, result[:details]
       assert_equal Date.new(2026, 7, 27), result[:failed_weeks].sole[:period_from]
-      assert_equal [Date.new(2026, 8, 3)], RawOzon::ProductQuery.where(account:).pluck(:period_from)
+      assert_equal [Date.new(2026, 8, 3), Date.new(2026, 8, 10)],
+        RawOzon::ProductQuery.where(account:).order(:period_from).pluck(:period_from)
     ensure
       RawOzon::ProductQueryDetail.where(account_id: account&.id).delete_all
       RawOzon::ProductQuery.where(account_id: account&.id).delete_all
@@ -100,11 +101,11 @@ class RawOzonProductQueriesSyncTest < ActiveSupport::TestCase
 
       result = sync.sync_product_queries
 
-      assert_equal({ ok: 4, summaries: 2, details: 2, weeks: 2, failed_weeks: [] }, result)
-      assert_equal [Date.new(2026, 7, 27), Date.new(2026, 8, 3)],
+      assert_equal({ ok: 6, summaries: 3, details: 3, weeks: 3, failed_weeks: [] }, result)
+      assert_equal [Date.new(2026, 7, 27), Date.new(2026, 8, 3), Date.new(2026, 8, 10)],
         RawOzon::ProductQuery.where(account:).order(:period_from).pluck(:period_from)
       assert_not RawOzon::ProductQueryDetail.exists?(account:, query: "stale-query")
-      assert_equal %w[query-1 query-2],
+      assert_equal %w[query-1 query-2 query-2],
         RawOzon::ProductQueryDetail.where(account:).order(:period_from).pluck(:query)
 
       client.requests.each do |_path, body|
@@ -114,9 +115,9 @@ class RawOzonProductQueriesSyncTest < ActiveSupport::TestCase
       end
       detail_requests = client.requests.select { |path, _body| path.end_with?("/details") }
       summary_requests = client.requests.reject { |path, _body| path.end_with?("/details") }
-      assert_equal [1000, 1000], summary_requests.map { |_path, body| body.fetch(:page_size) }
-      assert_equal [100, 100], detail_requests.map { |_path, body| body.fetch(:page_size) }
-      assert_equal [15, 15], detail_requests.map { |_path, body| body.fetch(:limit_by_sku) }
+      assert_equal [1000, 1000, 1000], summary_requests.map { |_path, body| body.fetch(:page_size) }
+      assert_equal [100, 100, 100], detail_requests.map { |_path, body| body.fetch(:page_size) }
+      assert_equal [15, 15, 15], detail_requests.map { |_path, body| body.fetch(:limit_by_sku) }
     ensure
       RawOzon::ProductQueryDetail.where(account_id: account&.id).delete_all
       RawOzon::ProductQuery.where(account_id: account&.id).delete_all
