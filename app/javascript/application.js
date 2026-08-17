@@ -10,6 +10,7 @@ import CategorySelectorController from "./controllers/category_selector_controll
 import ClipboardController from "./controllers/clipboard_controller";
 import ConditionalFieldController from "./controllers/conditional_field_controller";
 import DatePickerController from "./controllers/date_picker_controller";
+import DiagnosisEventPopoverController from "./controllers/diagnosis_event_popover_controller";
 import EmailInputController from "./controllers/email_input_controller";
 import EchartsController from "./controllers/echarts_controller";
 import FeedbackController from "./controllers/feedback_controller";
@@ -46,6 +47,7 @@ Stimulus.register("category-selector", CategorySelectorController);
 Stimulus.register("clipboard", ClipboardController);
 Stimulus.register("conditional-field", ConditionalFieldController);
 Stimulus.register("date-picker", DatePickerController);
+Stimulus.register("diagnosis-event-popover", DiagnosisEventPopoverController);
 Stimulus.register("email-input", EmailInputController);
 Stimulus.register("echarts", EchartsController);
 Stimulus.register("feedback", FeedbackController);

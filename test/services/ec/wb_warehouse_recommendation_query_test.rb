@@ -51,6 +51,17 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
         { warehouse_name: "В пути до получателей", quantity: 142 }
       ]
     )
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
+      platform: "wb",
+      account_id: @account.id,
+      store: @store,
+      store_name: @store.store_name,
+      fulfillment_type: "inbound",
+      quantity: 5,
+      is_latest: true,
+      synced_at: Time.zone.parse("2026-07-28 09:00:00")
+    )
   end
 
   teardown do
@@ -78,13 +89,15 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     row = report[:rows].sole
     assert_equal 28, row[:sales_quantity]
     assert_equal 7, row[:available]
+    assert_equal 5, row[:inbound]
     assert_equal @sku.inventory_overview.dig(:summary, :available_stock), row[:fbs_available]
-    assert_equal 21, row[:recommended]
+    assert_equal 16, row[:recommended]
     assert_equal "Центральный", row[:clusters].sole[:cluster_name]
     assert_equal @region.warehouse_name, row[:clusters].sole[:warehouses].sole[:warehouse_name]
     assert_equal 28, report.dig(:summary, :mapped_orders)
     assert_equal 28, report.dig(:summary, :total_orders)
     assert_equal 100.to_d, report.dig(:summary, :mapping_coverage)
+    assert_equal 5, report.dig(:summary, :inbound)
 
     cluster = report[:cluster_rows].sole
     assert_equal "Центральный", cluster[:cluster_name]

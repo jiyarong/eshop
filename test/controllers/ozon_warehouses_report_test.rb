@@ -63,6 +63,8 @@ class OzonWarehousesReportTest < ActionDispatch::IntegrationTest
     assert_select "select[name='store_id'] option[selected][value='#{@store.id}']", text: @store.store_name
     assert_select "table.ozon-warehouse-table[data-controller='hierarchy-table']"
     assert_select "th", text: "商品 / 集群 / 仓库"
+    assert_select ".summary-label", text: "平台在途"
+    assert_select "th", text: "平台在途"
     assert_select ".ozon-warehouse-fbs-stock", text: "FBS 可用 0"
     assert_select ".ozon-warehouse-formula-help[aria-label='查看建议新增发货量计算说明']", count: 2
     assert_select ".ozon-warehouse-status-help[aria-label='查看库存状态计算说明']", count: 1

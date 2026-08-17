@@ -2,14 +2,14 @@ module SalesFunnelReports
   class ReportQueryRunner
     include Ec::WeeklySummarySupport
 
-    NEGATIVE_FUNNEL_COMPARISON_KEYS = %i[returns returns_count cancellations cancel_count cancel_sum].freeze
+    NEGATIVE_FUNNEL_COMPARISON_KEYS = %i[returns returns_count cancellations cancel_count cancel_sum position_category].freeze
     WB_COLUMNS = %i[
       sku_code product_name open_card add_to_cart conv_to_cart cart_to_order
       orders orders_sum buyouts buyouts_sum buyout_percent cancel_count cancel_sum
       add_to_wishlist stock_wb stock_mp
     ].freeze
     OZON_COLUMNS = %i[
-      sku_code product_name hits_view hits_view_search hits_view_pdp session_view
+      sku_code product_name hits_view position_category hits_view_search hits_view_pdp session_view
       hits_tocart hits_tocart_search hits_tocart_pdp conv_tocart ordered_units
       revenue returns_count cancellations
     ].freeze
@@ -218,7 +218,8 @@ module SalesFunnelReports
           ordered_units: sum(records, :ordered_units),
           revenue: sum(records, :revenue),
           returns_count: sum(records, :returns_count),
-          cancellations: sum(records, :cancellations)
+          cancellations: sum(records, :cancellations),
+          position_category: average(records, :position_category)
         }
       end.sort_by { |row| [-row[:revenue].to_d, row[:sku_code].to_s] }
     end
@@ -270,6 +271,13 @@ module SalesFunnelReports
 
     def sum(records, field)
       records.sum { |record| record.public_send(field).to_d }
+    end
+
+    def average(records, field)
+      values = records.filter_map { |record| record.public_send(field)&.to_d }
+      return nil if values.empty?
+
+      (values.sum / values.size).round(2)
     end
 
     def percent(numerator, denominator)

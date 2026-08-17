@@ -2,8 +2,6 @@ module ErpAI
   class SkusController < ActionController::API
     include ErpAI::RequestAuthenticatable
 
-    class InvalidInventoryHealthPayload < StandardError; end
-
     GENERAL_INVENTORY_DESCRIPTION = "SKU总库存信息。incoming_quantity为采购中库存，book_stock为账面可用库存，platform_stock为平台在库，available_stock为报表FBS库存，daily_sales_velocity为日均销量，turnover_days为周转天数，turnover_days_with_procurement为周转天数(含采购)，incoming_batches为正在途中的批次数据。".freeze
     SKU_OVERVIEW_DESCRIPTION = "SKU基础信息，包括SKU编码、名称、营销等级、营销阶段、营销策略、开发人员、运营人员、类目、SPU、单件体积和长宽高。developers和operators分别为开发人员和运营人员姓名，volume_per_unit为按内径长宽高计算的单件体积（m³），dimensions为内径长宽高（cm），marketing_state_history为按生效时间倒序排列的营销等级和营销阶段历史。".freeze
     WEEKLY_PROFIT_REPORT_DESCRIPTION = "每周利润报表。包含每周的销售额、成本、毛利、毛利率等数据。
@@ -29,6 +27,8 @@ module ErpAI
         sku,
         detail_tab: "book",
         book_batch_page: 1,
+        return_page: 1,
+        return_restockable: nil,
         date_to: Time.current.in_time_zone(time_zone).to_date,
         time_zone: time_zone
       ).call
@@ -156,38 +156,6 @@ module ErpAI
       render json: { error: "SKU not found" }, status: :not_found
     end
 
-    def inventory_health_result
-      attributes = inventory_health_attributes
-      sku = Ec::Sku.find_by!(sku_code: attributes.delete(:sku_code))
-      unless Ec::SkuInventoryHealthSubmissionLock.acquire(sku.id)
-        response.set_header("Retry-After", Ec::SkuInventoryHealthSubmissionLock::TTL.to_i.to_s)
-        render json: { error: "SKU submission is locked; retry after 5 seconds" }, status: :too_many_requests
-        return
-      end
-
-      events = attributes.delete(:events)
-      result = Ec::RestockingDiagnosis.transaction do
-        diagnosis = sku.inventory_health_results.create!(**attributes, submitted_by: @current_user)
-        diagnosis.events.create!(events)
-        diagnosis
-      end
-
-      render json: {
-        data: {
-          id: result.id,
-          sku: sku.sku_code,
-          analyzed_at: result.analyzed_at,
-          submitted_by: @current_user.display_name,
-          submitted_at: result.created_at,
-          event_count: result.events.size
-        }
-      }, status: :created
-    rescue InvalidInventoryHealthPayload => e
-      render json: { error: e.message }, status: :bad_request
-    rescue ActiveRecord::RecordNotFound
-      render json: { error: "SKU not found" }, status: :not_found
-    end
-
     private
 
     def parsed_inventory_date(value)
@@ -232,98 +200,6 @@ module ErpAI
       end
 
       { volume_per_unit:, dimensions: }
-    end
-
-    def inventory_health_attributes
-      payload = request.request_parameters
-      payload = if payload.respond_to?(:deep_stringify_keys)
-        payload.deep_stringify_keys
-      else
-        payload.map(&:deep_stringify_keys)
-      end
-      payload = payload.fetch("_json") if payload.is_a?(Hash) && payload.key?("_json")
-
-      payload.is_a?(Array) ? attributes_from_event_array(payload) : attributes_from_result(payload)
-    end
-
-    def attributes_from_result(payload)
-      invalid_inventory_health_payload!("payload must be an object or array") unless payload.is_a?(Hash)
-
-      {
-        sku_code: normalized_sku_code(payload["sku"]),
-        analyzed_at: parsed_analyzed_at(payload["analyzed_at"]) || Time.current,
-        data: diagnosis_data(payload),
-        events: normalized_events(payload["events"])
-      }
-    end
-
-    def attributes_from_event_array(payload)
-      invalid_inventory_health_payload!("events must not be empty") if payload.empty?
-      invalid_inventory_health_payload!("each event must be an object") unless payload.all? { |event| event.is_a?(Hash) }
-
-      sku_codes = payload.map { |event| normalized_sku_code(event["sku"]) }.uniq
-      invalid_inventory_health_payload!("all events must use the same sku") unless sku_codes.one?
-
-      {
-        sku_code: sku_codes.first,
-        analyzed_at: Time.current,
-        data: {},
-        events: normalized_events(payload)
-      }
-    end
-
-    def normalized_events(events)
-      invalid_inventory_health_payload!("events must be a non-empty array") unless events.is_a?(Array) && events.any?
-
-      events.each_with_index.map do |event, position|
-        invalid_inventory_health_payload!("each event must be an object") unless event.is_a?(Hash)
-
-        event_type = event["event_type"].presence || event["type"].presence
-        severity = event["severity"].presence
-        message = event["message"].presence
-        invalid_inventory_health_payload!("event_type, severity and message are required") unless event_type && severity && message
-
-        {
-          event_type: event_type.to_s,
-          severity: severity.to_s,
-          scope: event["scope"],
-          message: message.to_s,
-          details: hash_value(event["details"], "event details"),
-          position: position
-        }.compact
-      end
-    end
-
-    def diagnosis_data(payload)
-      return hash_value(payload["data"], "data") if payload.key?("data")
-
-      hash_value(payload["classification"], "classification")
-        .merge(hash_value(payload["metrics"], "metrics"))
-    end
-
-    def normalized_sku_code(value)
-      invalid_inventory_health_payload!("sku is required") if value.blank?
-
-      value.to_s.strip.upcase
-    end
-
-    def parsed_analyzed_at(value)
-      return if value.blank?
-
-      Time.iso8601(value.to_s)
-    rescue ArgumentError
-      invalid_inventory_health_payload!("analyzed_at must be an ISO 8601 timestamp")
-    end
-
-    def hash_value(value, field_name)
-      return {} if value.nil?
-      return value if value.is_a?(Hash)
-
-      invalid_inventory_health_payload!("#{field_name} must be an object")
-    end
-
-    def invalid_inventory_health_payload!(message)
-      raise InvalidInventoryHealthPayload, message
     end
 
     def display_names(users)

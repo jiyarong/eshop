@@ -21,6 +21,7 @@ module RawWb
     has_many :sales_funnel_periods,    class_name: 'RawWb::SalesFunnelPeriod',    foreign_key: :account_id, dependent: :destroy
     has_many :sales_funnel_daily,       class_name: 'RawWb::SalesFunnelDaily',     foreign_key: :account_id, dependent: :destroy
     has_many :analytics_search_terms,  class_name: 'RawWb::AnalyticsSearchTerm',  foreign_key: :account_id, dependent: :destroy
+    has_many :search_report_products,  class_name: 'RawWb::SearchReportProduct',  foreign_key: :account_id, dependent: :destroy
     has_many :stats_orders,            class_name: 'RawWb::StatsOrder',            foreign_key: :account_id, dependent: :destroy
     has_many :stats_sales,             class_name: 'RawWb::StatsSale',             foreign_key: :account_id, dependent: :destroy
     has_many :sync_tasks,              class_name: 'RawWb::SyncTask',              foreign_key: :account_id, dependent: :destroy

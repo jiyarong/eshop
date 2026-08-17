@@ -942,6 +942,17 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.sales_distribution")
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.return_distribution")
     assert_select ".inventory-formula__title", I18n.t("reports.inventory.drawer.sections.formula")
+
+    sign_in @current_user
+    with_stubbed_constructor(Ec::InventoryPageDetailQuery, fake_query_factory) do
+      get "/reports/inventory/#{@sku_code}",
+        params: { detail_tab: "incoming", book_batch_page: "1" },
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+    end
+
+    assert_response :success
+    assert_select "td", text: I18n.t("reports.inventory.batch_statuses.in_transit")
+    assert_select "td", text: "in_transit", count: 0
   end
 
   test "inventory detail platform tab uses fbo fbw stock in platform formula" do
@@ -1109,7 +1120,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-tabs a:nth-child(2)", text: "利润归集"
     assert_select ".sku-detail-tabs a:nth-child(3)", text: "库存概况"
     assert_select ".sku-detail-tabs a:nth-child(4)", text: "送仓记录"
-    assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓"
+    assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓建议"
     assert_select ".sku-detail-tabs a:nth-child(6)", text: "运营记录"
     assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
   end
@@ -1390,7 +1401,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     RawOzon::SalesFunnelDaily.create!(
       account: @sales_ozon_account, stat_date: Date.new(2026, 8, 11), sku: 3_902_460_130,
       hits_view: 200, hits_tocart: 30, ordered_units: 12, revenue: 1_500,
-      conv_tocart: 15, synced_at: Time.current
+      conv_tocart: 15, position_category: 7.25, synced_at: Time.current
     )
 
     get report_sku_sales_funnel_trends_path(@sku.sku_code), params: {
@@ -1407,6 +1418,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "2026-08-09"
     assert_includes response.body, "2026-08-12"
     assert_includes response.body, '"商品卡片访问":false'
+    assert_includes response.body, '"搜索平均排名":true'
+    assert_includes response.body, '"inverse":true'
     assert_includes response.body, '"打开商品卡":true'
   end
 
@@ -1521,7 +1534,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     get report_sku_path(@sku.sku_code), params: { tab: "warehouses", store_id: @sales_store.id }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".sku-detail-tabs a[aria-current='page']", "分仓"
+    assert_select ".sku-detail-tabs a[aria-current='page']", "分仓建议"
     assert_select ".sku-warehouse-store-filter a.is-active[aria-pressed='true']", text: @sales_store.store_name
     assert_select ".sku-warehouse-report", text: /#{@sku.sku_code}/
     assert_select ".sku-warehouse-report", text: /#{@second_sku.sku_code}/, count: 0
@@ -1582,6 +1595,62 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".sku-ads-platform-switch .is-active", "WB"
     assert_select ".sku-ads-section .section-title", text: I18n.t("reports.wb_ads.title")
+  end
+
+  test "sku detail keeps the hidden sku-scoped search terms view directly accessible" do
+    user_today = Time.current.in_time_zone(@current_user.time_zone).to_date
+    period_from = user_today.beginning_of_week(:monday) - 1.week
+    period_to = period_from.end_of_week(:monday)
+    term = RawWb::AnalyticsSearchTerm.create!(
+      account: @sales_wb_account,
+      period_from: period_from,
+      period_to: period_to,
+      keyword: "详情页搜索词 #{@sku_code}",
+      nm_id: 123_456,
+      top_order_by: "openCard",
+      frequency: 100,
+      avg_position: 12,
+      median_position: 11,
+      open_card: 20,
+      add_to_cart: 5,
+      orders: 2,
+      raw_json: {},
+      synced_at: Time.current
+    )
+    summary = RawWb::SearchReportProduct.create!(
+      account: @sales_wb_account,
+      period_from: period_from,
+      period_to: period_to,
+      nm_id: 123_456,
+      avg_position: 33,
+      open_card: 62,
+      add_to_cart: 8,
+      open_to_cart: 13,
+      orders: 1,
+      cart_to_order: 13,
+      visibility: 50,
+      raw_json: {},
+      synced_at: Time.current
+    )
+
+    get report_sku_path(@sku.sku_code), params: {
+      tab: "search_terms", platform: "wb", store_id: @wb_sales_store.id
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    tab_labels = css_select(".sku-detail-tabs__link").map { |link| link.text.strip }
+    assert_not_includes tab_labels, "搜索词"
+    assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab_search_terms']"
+    assert_equal period_from.iso8601, css_select("input[name='from_date']").sole["value"]
+    assert_equal period_to.iso8601, css_select("input[name='to_date']").sole["value"]
+    assert_select ".search-terms-store-filter .weekly-profit-filter-tag.is-active", text: /#{Regexp.escape(@wb_sales_store.store_name)}/
+    assert_select "tr.search-terms-sku-row", count: 1
+    assert_select "tr.search-terms-sku-row", text: /#{Regexp.escape(@sku.sku_code)}/
+    assert_select "tr.search-terms-sku-row a[data-turbo-frame='sku_detail_drawer']", count: 0
+    assert_select "turbo-frame[data-lazy-src*='/reports/search_terms/#{@sku.sku_code}/terms']", count: 1
+  ensure
+    term&.destroy!
+    summary&.destroy!
   end
 
   test "sku detail renders current marketing grade and stage" do

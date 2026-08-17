@@ -3292,6 +3292,11 @@ pre {
   overflow: auto;
 }
 
+.sku-detail-tab-panels .table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .inventory-drawer__kicker {
   margin: 0 0 6px;
   font-size: 12px;
@@ -3673,6 +3678,124 @@ pre {
   .inventory-mini-grid,
   .inventory-mini-grid--platform {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Search terms report */
+.search-terms-header {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.search-terms-filter-panel,
+.search-terms-table-panel {
+  margin-bottom: 16px;
+}
+
+.search-terms-filter-grid {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 360px minmax(220px, 1fr) 180px auto;
+}
+
+.search-terms-filter-grid .weekly-profit-date-range-field {
+  width: 360px;
+}
+
+.search-terms-filter-grid .time-range-trigger-value {
+  flex-wrap: nowrap;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.search-terms-filter-action {
+  padding-bottom: 1px;
+}
+
+.search-terms-store-filter {
+  margin-top: 14px;
+}
+
+.search-terms-expand-column {
+  width: 42px;
+}
+
+.search-terms-subline,
+.search-terms-detail__header span {
+  color: var(--erp-muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.search-terms-detail-row > td {
+  background: var(--erp-surface-soft);
+  padding: 0;
+}
+
+.search-terms-detail {
+  padding: 16px 18px 18px;
+}
+
+.search-terms-detail__header {
+  margin-bottom: 12px;
+}
+
+.search-terms-detail-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.search-terms-detail-table th,
+.search-terms-detail-table td {
+  border-bottom: 1px solid var(--erp-border);
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.search-terms-detail-table .numeric {
+  text-align: right;
+}
+
+.search-terms-detail-table__lost {
+  opacity: 0.68;
+}
+
+.search-terms-detail-table td:first-child .status-pill {
+  margin-left: 8px;
+}
+
+.search-terms-loading,
+.search-terms-empty {
+  color: var(--erp-muted);
+  padding: 24px;
+  text-align: center;
+}
+
+.search-terms-period-warning {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .search-terms-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .search-terms-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-terms-filter-grid .weekly-profit-date-range-field {
+    flex-basis: auto;
+    width: 100%;
   }
 }
 
@@ -5314,12 +5437,94 @@ textarea:focus {
   min-height: 22px;
   padding: 2px 6px;
   font-size: 11px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .ai-diagnosis-event-tag--compact:hover {
   border-color: #ef9a9a;
   background: #fff7f7;
+}
+
+.sku-ai-diagnosis-event-popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.sku-ai-diagnosis-event-popover__panel[hidden] {
+  display: none;
+}
+
+.sku-ai-diagnosis-event-popover__panel {
+  position: fixed;
+  z-index: 80;
+  display: block;
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+
+.sku-ai-diagnosis-event-popover__header,
+.sku-ai-diagnosis-event-popover__event,
+.sku-ai-diagnosis-event-popover__details {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sku-ai-diagnosis-event-popover__header {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sku-ai-diagnosis-event-popover__close {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  place-items: center;
+  color: var(--fg-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sku-ai-diagnosis-event-popover__event.is-separated {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.sku-ai-diagnosis-event-popover__message {
+  line-height: 1.5;
+}
+
+.sku-ai-diagnosis-event-popover__meta,
+.sku-ai-diagnosis-event-popover__details > span {
+  color: var(--fg-muted);
+}
+
+.sku-ai-diagnosis-event-popover__details code {
+  display: block;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--surface-muted, #f6f7f9);
+  color: var(--fg);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .responsible-user-filter {

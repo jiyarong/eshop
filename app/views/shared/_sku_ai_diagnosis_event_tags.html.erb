@@ -1,9 +1,56 @@
-<% event_types = Array(local_assigns[:event_types]) %>
+<% events = Array(local_assigns[:events]) %>
+<% event_groups = events.group_by(&:event_type) %>
+<% event_types = event_groups.any? ? event_groups.keys : Array(local_assigns[:event_types]) %>
+<% component_prefix = local_assigns[:dom_id_prefix].presence || "sku-diagnosis-#{SecureRandom.hex(4)}" %>
 <div class="sku-ai-diagnosis-event-tags">
   <% event_types.each do |event_type| %>
-    <span class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact">
-      <%= t("erp.ai_diagnosis_event_filter.event_types.#{event_type}", default: event_type.to_s.humanize) %>
-    </span>
+    <% event_label = t("erp.ai_diagnosis_event_filter.event_types.#{event_type}", default: event_type.to_s.humanize) %>
+    <% event_details = event_groups.fetch(event_type, []) %>
+    <% if event_details.any? %>
+      <% popover_id = "#{component_prefix}-#{event_type.parameterize}-popover" %>
+      <span class="sku-ai-diagnosis-event-popover"
+            data-controller="diagnosis-event-popover"
+            data-action="keydown.esc@window->diagnosis-event-popover#closeOnEscape">
+        <button type="button"
+                class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact"
+                aria-expanded="false"
+                aria-controls="<%= popover_id %>"
+                data-action="diagnosis-event-popover#toggle"
+                data-diagnosis-event-popover-target="trigger">
+          <%= event_label %>
+        </button>
+        <span id="<%= popover_id %>"
+              class="sku-ai-diagnosis-event-popover__panel"
+              role="dialog"
+              aria-label="<%= t("erp.ai_diagnosis_event_filter.details.title", event_type: event_label) %>"
+              data-diagnosis-event-popover-target="popover"
+              hidden>
+          <span class="sku-ai-diagnosis-event-popover__header">
+            <strong><%= event_label %></strong>
+            <button type="button" class="sku-ai-diagnosis-event-popover__close" aria-label="<%= t("erp.ai_diagnosis_event_filter.details.close") %>" data-action="diagnosis-event-popover#close">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+          </span>
+          <% event_details.each_with_index do |event, index| %>
+            <span class="sku-ai-diagnosis-event-popover__event<%= " is-separated" if index.positive? %>">
+              <span class="sku-ai-diagnosis-event-popover__message"><%= event.message %></span>
+              <% if event.scope.present? %>
+                <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.scope", value: event.scope) %></span>
+              <% end %>
+              <% if event.details.present? %>
+                <span class="sku-ai-diagnosis-event-popover__details">
+                  <span><%= t("erp.ai_diagnosis_event_filter.details.data") %></span>
+                  <code><%= JSON.pretty_generate(event.details) %></code>
+                </span>
+              <% end %>
+              <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.diagnosed_at", value: display_time(event.created_at)) %></span>
+            </span>
+          <% end %>
+        </span>
+      </span>
+    <% else %>
+      <span class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact"><%= event_label %></span>
+    <% end %>
   <% end %>
   <% if event_types.empty? %>
     <span class="text-muted">-</span>

@@ -21,6 +21,8 @@ module ErpAI
           sku,
           detail_tab: params[:detail_tab],
           book_batch_page: params[:book_batch_page],
+          return_page: params[:return_page],
+          return_restockable: params[:return_restockable],
           date_to: user_today,
           time_zone: user_time_zone
         ).call

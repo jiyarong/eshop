@@ -12,13 +12,15 @@
 
 account_id 默认 3（МИРОВОЙ ВЫБОР）；日期默认 2025-01-01 ~ 2026-05-31，莫斯科时区。
 文件格式：第1行标题，第2行表头，第3行起数据；
-  F列 = 卖家货号(offer_id)，L列 = 已下单件，N列 = 已签收件。
+  F列 = 卖家货号(offer_id)，G列 = WB商品ID，L列 = 已下单件，N列 = 已签收件。
 """
 
 import openpyxl
+import base64
 import json
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from collections import defaultdict
 
@@ -39,18 +41,20 @@ def load_xlsx(path):
 
     for row in ws.iter_rows(min_row=3, values_only=True):
         offer_id  = row[5]   # F列（0-indexed=5）
+        product_id = row[6]  # G列 WB 商品ID
         ordered   = row[11]  # L列
         delivered = row[13]  # N列
 
-        if not offer_id:
+        if not product_id:
             skipped += 1
             continue
 
-        offer_id = str(offer_id).strip()
-        totals[offer_id]["ordered"]   += int(ordered   or 0)
-        totals[offer_id]["delivered"] += int(delivered or 0)
+        product_id = str(product_id).strip()
+        totals[product_id]["offer_id"] = str(offer_id or "").strip()
+        totals[product_id]["ordered"]   += int(ordered   or 0)
+        totals[product_id]["delivered"] += int(delivered or 0)
 
-    print(f"  读取完成：{len(totals)} 个 offer_id，跳过空行 {skipped} 条")
+    print(f"  读取完成：{len(totals)} 个 WB 商品ID，跳过空行 {skipped} 条")
     return dict(totals)
 
 
@@ -75,14 +79,14 @@ puts "Store: #{store.store_name} (id=#{store.id})  #{FROM_DATE} ~ #{TO_DATE} (MS
 # ── Section 1: xlsx 汇总 ─────────────────────────────────────────────────────
 
 mapping   = Ec::SkuProduct
-  .where(store_id: store.id, offer_id: data.keys)
-  .pluck(:offer_id, :sku_code)
+  .where(store_id: store.id, platform: 'wb', product_id: data.keys)
+  .pluck(:product_id, :sku_code)
   .to_h
 unmatched = data.keys - mapping.keys
 
 xlsx_by_sku = Hash.new { |h, k| h[k] = { ordered: 0, delivered: 0 } }
-data.each do |offer_id, nums|
-  sku = mapping[offer_id] || "(未匹配) #{offer_id}"
+data.each do |product_id, nums|
+  sku = mapping[product_id] || "(未匹配) #{product_id}"
   xlsx_by_sku[sku][:ordered]   += nums["ordered"].to_i
   xlsx_by_sku[sku][:delivered] += nums["delivered"].to_i
 end
@@ -117,7 +121,7 @@ base = Ec::OrderItem
 # 拉原始行，在 Ruby 侧按 sku_code 重新归组
 rows_ordered   = base.pluck("ec_order_items.sku_code", "ec_order_items.offer_id",
                              "ec_order_items.platform_sku_id", "ec_order_items.quantity")
-rows_delivered = base.where.not(ec_orders: { order_status: %w[cancelled returned] })
+rows_delivered = base.where(ec_orders: { order_status: 'delivered' })
                      .pluck("ec_order_items.sku_code", "ec_order_items.offer_id",
                             "ec_order_items.platform_sku_id", "ec_order_items.quantity")
 
@@ -198,13 +202,12 @@ supply_by_sku = RawWb::SupplyItem
   .sum("raw_wb_supply_items.accepted_qty")
   .transform_keys { |nm| nm_id_to_sku[nm.to_s] }
 
-# JSON 数据块供 Python 生成 xlsx（差值为负的行）
+# JSON 数据块供 Python 生成全量 xlsx
 rows_json = all_skus.map do |sku|
   xo = xlsx_by_sku[sku]&.dig(:ordered)   || 0
   xd = xlsx_by_sku[sku]&.dig(:delivered) || 0
   eo = ec_ordered[sku]   || 0
   ed = ec_delivered[sku] || 0
-  next nil unless xo > eo  # 只保留差值为负（xlsx > ec）的行
   { sku: sku, xlsx_ordered: xo, ec_ordered: eo, fbw_ordered: xo - eo,
     xlsx_delivered: xd, ec_delivered: ed, fbw_delivered: xd - ed,
     supply_accepted: supply_by_sku[sku] || 0 }
@@ -271,25 +274,17 @@ def get_container():
     return result.stdout.strip()
 
 def run_on_server(rails_script, out_path):
-    container = get_container()
-    if not container:
-        print("❌ 无法获取容器名", file=sys.stderr)
-        sys.exit(1)
-    print(f"容器：{container}\n")
-
-    local_path  = "/tmp/wb_sales_by_sku.rb"
-    remote_path = "/tmp/wb_sales_by_sku.rb"
-
-    with open(local_path, "w") as f:
-        f.write(rails_script)
-
-    subprocess.run(["scp", local_path, f"root@eshop.evexport.cn:{remote_path}"], check=True)
-    subprocess.run(["ssh", "root@eshop.evexport.cn",
-                    f"docker cp {remote_path} {container}:{remote_path}"], check=True)
-
+    encoded = base64.b64encode(rails_script.encode("utf-8")).decode("ascii")
+    remote_path = f"/tmp/wb_sales_by_sku_{uuid.uuid4().hex}.rb"
+    remote_command = (
+        f"container=$({CONTAINER_CMD}); "
+        'test -n "$container" && '
+        f"printf %s {encoded} | base64 -d | docker exec -i \"$container\" "
+        f"sh -c 'cat > {remote_path}' && "
+        f'docker exec "$container" bin/rails runner {remote_path}'
+    )
     result = subprocess.run(
-        ["ssh", "root@eshop.evexport.cn",
-         f"docker exec {container} bin/rails runner {remote_path}"],
+        ["ssh", "root@eshop.evexport.cn", remote_command],
         capture_output=True, text=True
     )
 

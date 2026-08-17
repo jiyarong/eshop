@@ -1,179 +1,217 @@
 #!/usr/bin/env python3
+"""Validate WB FBS archived reports against production order data.
+
+Usage:
+    python3 script/verify_wb_fbs_worldchoice.py REPORT_FOLDER ACCOUNT_ID
+
+Examples:
+    python3 script/verify_wb_fbs_worldchoice.py \
+      ~/Downloads/WB归档报表/МИРОВОЙ\ ВЫБОР 3
+    python3 script/verify_wb_fbs_worldchoice.py \
+      ~/Downloads/WB归档报表/Такси\ Линк 2
+
+The report is authoritative only for orders that WB has moved into its archive.
+Orders in the database for the same month but absent from the report are shown
+as informational counts because they may not have reached WB's archive yet.
+The command exits non-zero when a report order is missing or misclassified in
+raw_wb_orders or the normalized ec_orders tables.
 """
-校验 WB FBS 归档报告与 DB raw_wb_orders 的订单数是否一致。
 
-用法：
-    python3 script/verify_wb_fbs_worldchoice.py <报告文件夹路径> [account_id]
-
-示例：
-    python3 script/verify_wb_fbs_worldchoice.py ~/Downloads/WB-FBS-МИРОВОЙ-2025 3
-    python3 script/verify_wb_fbs_worldchoice.py ~/Downloads/WB-FBS-Такси-2025 2
-"""
-
-import zipfile
-import openpyxl
-import re
-import sys
 import json
+import base64
+import re
 import subprocess
-import tempfile
-import os
+import sys
+import uuid
+import zipfile
+from collections import Counter
 from pathlib import Path
-from collections import defaultdict
 
-ACCOUNT_ID = 3  # OOO «МИРОВОЙ ВЫБОР»
-CONTAINER_CMD = (
-    "docker ps --format '{{.Names}}' | grep eshop_manage-web | head -1"
-)
+import openpyxl
 
-# ─── 1. 读取所有 zip，提取 wb_order_id 按月分组 ────────────────────────────
 
-def parse_month(zip_name):
-    """从文件名提取 'YYYY-MM'，如 '报告 01.03.2025-...' → '2025-03'"""
-    m = re.search(r'(\d{2})\.(\d{2})\.(\d{4})', zip_name)
-    if not m:
+CONTAINER_CMD = "docker ps --format '{{.Names}}' | grep eshop_manage-web | head -1"
+REPORT_XLSX = "report_part_0.xlsx"
+
+
+def parse_period(filename):
+    match = re.search(
+        r"(\d{2})\.(\d{2})\.(\d{4})-(\d{2})\.(\d{2})\.(\d{4})",
+        filename,
+    )
+    if not match:
         return None
-    day, month, year = m.group(1), m.group(2), m.group(3)
-    return f"{year}-{month}"
+    day_from, month_from, year_from, day_to, month_to, year_to = map(
+        int, match.groups()
+    )
+    return {
+        "month": f"{year_from:04d}-{month_from:02d}",
+        "from": f"{year_from:04d}-{month_from:02d}-{day_from:02d}",
+        "to": f"{year_to:04d}-{month_to:02d}-{day_to:02d}",
+    }
+
 
 def read_order_ids(zip_path):
-    """从 zip 内的 report_part_0.xlsx 读取所有 工作編號（wb_order_id）"""
-    with zipfile.ZipFile(zip_path) as z:
-        with z.open("report_part_0.xlsx") as f:
-            wb = openpyxl.load_workbook(f)
-            ws = wb.active
-            rows = list(ws.iter_rows(values_only=True))
-    if len(rows) <= 1:
-        return []
-    # 工作編號 = 第1列（index 0）
-    return [int(r[0]) for r in rows[1:] if r[0] is not None]
+    with zipfile.ZipFile(zip_path) as archive:
+        if REPORT_XLSX not in archive.namelist():
+            raise ValueError(f"{zip_path.name}: missing {REPORT_XLSX}")
+        with archive.open(REPORT_XLSX) as report:
+            # WB writes an incorrect A1:A1 worksheet dimension. openpyxl's
+            # read-only mode trusts it and silently hides all order rows.
+            sheet = openpyxl.load_workbook(report, data_only=True).active
+            rows = sheet.iter_rows(values_only=True)
+            header = next(rows, ())
+            if not header or header[0] != "工作編號":
+                raise ValueError(f"{zip_path.name}: unexpected header {header!r}")
+            return [int(row[0]) for row in rows if row and row[0] is not None]
 
-def load_xlsx_data(folder):
-    folder = Path(folder).expanduser()
-    monthly = {}  # { 'YYYY-MM': [order_id, ...] }
-    for zf in sorted(folder.glob("*.zip")):
-        month = parse_month(zf.name)
-        if not month:
-            print(f"  ⚠️  无法解析月份：{zf.name}", file=sys.stderr)
-            continue
-        ids = read_order_ids(zf)
-        monthly[month] = ids
-        print(f"  {month}：xlsx 读取 {len(ids)} 条订单（来自 {zf.name}）")
-    return monthly
 
-# ─── 2. 生成 Rails runner 脚本，在服务器上按月查 DB ────────────────────────
+def load_reports(folder):
+    folder = Path(folder).expanduser().resolve()
+    if not folder.is_dir():
+        raise ValueError(f"report folder does not exist: {folder}")
 
-RAILS_TEMPLATE = r"""
+    reports = []
+    seen_months = set()
+    for zip_path in sorted(folder.glob("*.zip")):
+        period = parse_period(zip_path.name)
+        if not period:
+            raise ValueError(f"cannot parse report period: {zip_path.name}")
+        if period["month"] in seen_months:
+            raise ValueError(f"duplicate report month: {period['month']}")
+        seen_months.add(period["month"])
+        ids = read_order_ids(zip_path)
+        duplicates = sorted(order_id for order_id, count in Counter(ids).items() if count > 1)
+        reports.append({**period, "file": zip_path.name, "ids": ids, "duplicates": duplicates})
+        duplicate_note = f", duplicates={len(duplicates)}" if duplicates else ""
+        print(f"  {period['month']}: {len(ids)} archived orders{duplicate_note}", flush=True)
+
+    if not reports:
+        raise ValueError(f"no ZIP reports found in {folder}")
+    return reports
+
+
+RAILS_TEMPLATE = r'''
 $stdout.sync = true
 Rails.logger = Logger.new(IO::NULL)
 
-ACCOUNT_ID = ACCOUNT_ID_PLACEHOLDER
-monthly = JSON.parse('MONTHLY_JSON_PLACEHOLDER')
+account_id = ACCOUNT_ID_PLACEHOLDER
+reports = REPORTS_JSON_PLACEHOLDER
+store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: account_id)
+abort("No WB store linked to raw account #{account_id}") unless store
 
-sep = "=" * 60
-puts "\n" + sep
-puts "  DB 查询：raw_wb_orders  account_id=#{ACCOUNT_ID} (МИРОВОЙ ВЫБОР)"
-puts sep
+puts "\nStore: #{store.store_name} (store_id=#{store.id}, account_id=#{account_id})"
+puts "=" * 94
+puts format("%-7s %7s %7s %7s %7s %9s %9s %9s", "month", "report", "raw", "ec", "dup", "raw miss", "ec miss", "DB extra")
+puts "-" * 94
 
-monthly.each do |month, xlsx_ids|
-  next if xlsx_ids.empty?
+failure_count = 0
+totals = Hash.new(0)
 
-  db_ids = RawWb::Order
-    .where(account_id: ACCOUNT_ID, wb_order_id: xlsx_ids)
-    .pluck(:wb_order_id)
+reports.each do |report|
+  report_ids = report.fetch(:ids).map(&:to_i)
+  from = Time.find_zone!("Europe/Moscow").parse(report.fetch(:from)).beginning_of_day
+  to = Time.find_zone!("Europe/Moscow").parse(report.fetch(:to)).end_of_day
+
+  raw_rows = RawWb::Order
+    .where(wb_order_id: report_ids)
+    .pluck(:wb_order_id, :account_id, :delivery_type, :created_at)
+  valid_raw_ids = raw_rows.filter_map do |wb_order_id, row_account_id, delivery_type, created_at|
+    next unless row_account_id == account_id
+    next unless delivery_type == "fbs"
+    next unless created_at&.between?(from, to)
+    wb_order_id.to_i
+  end.uniq
+
+  ec_ids = Ec::OrderItem
+    .joins(:order, :fulfillment)
+    .where(ec_orders: { platform: "wb", store_id: store.id })
+    .where(ec_order_fulfillments: { fulfillment_type: "fbs", store_id: store.id })
+    .where(external_item_id: report_ids.map(&:to_s))
+    .distinct
+    .pluck(:external_item_id)
     .map(&:to_i)
 
-  only_xlsx = xlsx_ids - db_ids
-  only_db   = db_ids   - xlsx_ids
-
-  status = (only_xlsx.empty? && only_db.empty?) ? "OK" : "NG"
-  puts "\n  [#{status}] #{month}"
-  puts "    xlsx 订单数: #{xlsx_ids.size}  |  DB 命中: #{db_ids.size}"
-  puts "    仅在 xlsx（DB 缺失）: #{only_xlsx.size}  #{only_xlsx.first(5).inspect}"
-  puts "    仅在 DB（xlsx 无）:   #{only_db.size}"
-end
-
-puts "\n" + sep
-puts "  DB 查询：ec_orders  platform=wb  store=WorldChoice  fbs"
-puts sep
-
-store = Ec::Store.find_by(platform: 'wb', wb_raw_account_id: ACCOUNT_ID)
-if store.nil?
-  puts "  ❌ 找不到 Ec::Store（platform=wb, wb_raw_account_id=#{ACCOUNT_ID}）"
-else
-  puts "  Store: #{store.store_name} (id=#{store.id})"
-
-  ec_monthly = Ec::Order
-    .joins(:fulfillments)
-    .where(platform: 'wb', store_id: store.id)
-    .where(ec_order_fulfillments: { fulfillment_type: 'fbs' })
-    .where.not(ordered_at: nil)
-    .group("TO_CHAR(ec_orders.ordered_at, 'YYYY-MM')")
+  raw_missing = report_ids.uniq - valid_raw_ids
+  ec_missing = report_ids.uniq - ec_ids
+  db_extra = RawWb::Order
+    .where(account_id: account_id, delivery_type: "fbs", created_at: from..to)
+    .where.not(wb_order_id: report_ids)
     .count
+  duplicates = report.fetch(:duplicates)
 
-  all_months = (monthly.keys + ec_monthly.keys).uniq.sort
-  puts ""
-  puts "  #{"月份".ljust(10)} #{"xlsx".rjust(6)}  #{"ec_orders".rjust(10)}"
-  puts "  " + "-" * 30
-  all_months.each do |m|
-    xlsx_ct = monthly[m]&.size || 0
-    ec_ct   = ec_monthly[m] || 0
-    flag    = xlsx_ct > 0 && (ec_ct - xlsx_ct).abs > xlsx_ct * 0.05 ? " ⚠️" : ""
-    puts "  #{m.ljust(10)} #{xlsx_ct.to_s.rjust(6)}  #{ec_ct.to_s.rjust(10)}#{flag}"
-  end
-  puts "  " + "-" * 30
-  total_xlsx = monthly.values.sum(&:size)
-  total_ec   = ec_monthly.values.sum
-  puts "  #{"合计".ljust(10)} #{total_xlsx.to_s.rjust(6)}  #{total_ec.to_s.rjust(10)}"
+  row_failures = raw_missing.size + ec_missing.size + duplicates.size
+  failure_count += row_failures
+  totals[:report] += report_ids.uniq.size
+  totals[:raw] += valid_raw_ids.size
+  totals[:ec] += ec_ids.size
+  totals[:duplicates] += duplicates.size
+  totals[:raw_missing] += raw_missing.size
+  totals[:ec_missing] += ec_missing.size
+  totals[:db_extra] += db_extra
+
+  puts format(
+    "%-7s %7d %7d %7d %7d %9d %9d %9d%s",
+    report.fetch(:month), report_ids.uniq.size, valid_raw_ids.size, ec_ids.size,
+    duplicates.size, raw_missing.size, ec_missing.size, db_extra,
+    row_failures.zero? ? "" : "  NG"
+  )
+  puts "  raw missing/misclassified IDs: #{raw_missing.first(20).inspect}" if raw_missing.any?
+  puts "  ec missing IDs: #{ec_missing.first(20).inspect}" if ec_missing.any?
+  puts "  duplicate report IDs: #{duplicates.first(20).inspect}" if duplicates.any?
 end
-"""
 
-def build_rails_script(monthly, account_id):
-    monthly_json = json.dumps(monthly)
-    script = RAILS_TEMPLATE
-    script = script.replace("ACCOUNT_ID_PLACEHOLDER", str(account_id))
-    script = script.replace("MONTHLY_JSON_PLACEHOLDER", monthly_json)
-    return script
+puts "-" * 94
+puts format(
+  "%-7s %7d %7d %7d %7d %9d %9d %9d",
+  "TOTAL", totals[:report], totals[:raw], totals[:ec], totals[:duplicates],
+  totals[:raw_missing], totals[:ec_missing], totals[:db_extra]
+)
+puts "\nDB extra is informational: same-month FBS orders not yet present in WB's archive report."
+puts failure_count.zero? ? "RESULT: OK" : "RESULT: NG (#{failure_count} validation failures)"
+exit(failure_count.zero? ? 0 : 2)
+'''
 
-# ─── 3. 上传并在服务器执行 ─────────────────────────────────────────────────
 
-def get_container():
-    result = subprocess.run(
-        ["ssh", "root@eshop.evexport.cn", CONTAINER_CMD],
-        capture_output=True, text=True
+def build_rails_script(reports, account_id):
+    payload = json.dumps(reports, ensure_ascii=False)
+    return (
+        RAILS_TEMPLATE.replace("ACCOUNT_ID_PLACEHOLDER", str(account_id))
+        .replace("REPORTS_JSON_PLACEHOLDER", payload)
     )
-    return result.stdout.strip()
+
 
 def run_on_server(rails_script):
-    container = get_container()
-    if not container:
-        print("❌ 无法获取容器名", file=sys.stderr)
-        sys.exit(1)
-    print(f"\n容器：{container}")
+    encoded = base64.b64encode(rails_script.encode("utf-8")).decode("ascii")
+    container_path = f"/tmp/verify_wb_fbs_archived_{uuid.uuid4().hex}.rb"
+    remote_command = (
+        f"container=$({CONTAINER_CMD}); "
+        'test -n "$container" && '
+        f"printf %s {encoded} | base64 -d | docker exec -i \"$container\" "
+        f"sh -c 'cat > {container_path}' && "
+        f'docker exec "$container" bin/rails runner {container_path}'
+    )
+    result = subprocess.run(
+        ["ssh", "root@eshop.evexport.cn", remote_command],
+        check=False,
+    )
+    return result.returncode
 
-    local_path  = "/tmp/verify_wb_fbs.rb"
-    remote_path = "/tmp/verify_wb_fbs.rb"
 
-    with open(local_path, "w") as f:
-        f.write(rails_script)
+def main():
+    if len(sys.argv) != 3:
+        print(__doc__)
+        return 1
 
-    subprocess.run(["scp", local_path, f"root@eshop.evexport.cn:{remote_path}"], check=True)
-    subprocess.run(["ssh", "root@eshop.evexport.cn",
-                    f"docker cp {remote_path} {container}:{remote_path}"], check=True)
-    subprocess.run(["ssh", "root@eshop.evexport.cn",
-                    f"docker exec {container} bin/rails runner {remote_path}"], check=True)
+    try:
+        account_id = int(sys.argv[2])
+        print(f"Reading reports from {Path(sys.argv[1]).expanduser()}")
+        reports = load_reports(sys.argv[1])
+        return run_on_server(build_rails_script(reports, account_id))
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
 
-# ─── main ─────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(1)
-
-    folder = sys.argv[1]
-    account_id = int(sys.argv[2]) if len(sys.argv) >= 3 else ACCOUNT_ID
-    print(f"\n读取 xlsx 文件：{folder}  account_id={account_id}")
-    monthly = load_xlsx_data(folder)
-
-    rails_script = build_rails_script(monthly, account_id)
-    run_on_server(rails_script)
+    sys.exit(main())

@@ -14,7 +14,9 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     create_sale(@store, @product.platform_sku_id, "Москва", 28)
     create_sale(@other_store, @other_product.platform_sku_id, "Казань", 280)
     create_inventory(@store, 7, "Москва", "ДОМОДЕДОВО_РФЦ")
+    create_inbound(@store, 5)
     create_inventory(@other_store, 700, "Казань", "КАЗАНЬ_РФЦ")
+    create_inbound(@other_store, 500)
   end
 
   teardown do
@@ -42,11 +44,13 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     row = report[:rows].sole
     assert_equal 28, row[:sales_quantity]
     assert_equal 7, row[:available]
+    assert_equal 5, row[:inbound]
     assert_equal @sku.inventory_overview.dig(:summary, :available_stock), row[:fbs_available]
-    assert_equal 21, row[:recommended]
+    assert_equal 16, row[:recommended]
     assert_equal "Москва", row[:clusters].sole[:cluster_name]
     assert_equal "ДОМОДЕДОВО_РФЦ", row[:clusters].sole[:warehouses].sole[:warehouse_name]
     assert_equal 7, report.dig(:summary, :available)
+    assert_equal 5, report.dig(:summary, :inbound)
 
     cluster_row = report[:cluster_rows].sole
     assert_equal "Москва", cluster_row[:cluster_name]
@@ -144,6 +148,20 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
       quantity: quantity,
       synced_at: Time.zone.parse("2026-07-28 08:00:00"),
       warehouse_breakdown: [{ warehouse_name: warehouse, cluster_name: cluster, quantity: quantity, reserved: 2, promised: 0 }]
+    )
+  end
+
+  def create_inbound(store, quantity)
+    Ec::SkuInventoryLevel.create!(
+      sku_code: @sku.sku_code,
+      platform: "ozon",
+      account_id: store.ozon_raw_account_id,
+      store: store,
+      store_name: store.store_name,
+      fulfillment_type: "inbound",
+      quantity: quantity,
+      is_latest: true,
+      synced_at: Time.zone.parse("2026-07-28 09:00:00")
     )
   end
 

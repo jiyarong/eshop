@@ -173,6 +173,7 @@ en:
     weekly_profit_reports: "Weekly Profit"
     operator_skus: "SKU List"
     sales_funnel: "Sales Funnel"
+    search_terms: "Search Terms"
     inventory: "Inventory"
     ozon_warehouses: "Ozon Distribution"
     wb_warehouses: "WB Distribution"
@@ -904,8 +905,39 @@ en:
     summary: { product_count: "Products", views: "Views", sessions: "Visitors", carts: "Added to cart", cart_conversion: "Cart conversion", orders: "Orders", ordered_units: "Ordered units", order_amount: "Order amount", revenue: "Order amount", buyouts: "Buyouts", buyout_rate: "Buyout rate", returns: "Returns", cancellations: "Cancellations" }
     columns:
       wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
-      ozon: { sku_code: "SKU", product_name: "Product", hits_view: "Views", hits_view_search: "Search views", hits_view_pdp: "PDP views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search cart adds", hits_tocart_pdp: "PDP cart adds", conv_tocart: "Cart conversion", ordered_units: "Ordered units", revenue: "Order amount", returns_count: "Returns", cancellations: "Cancellations" }
+      ozon: { sku_code: "SKU", product_name: "Product", hits_view: "Views", hits_view_search: "Search views", hits_view_pdp: "PDP views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search cart adds", hits_tocart_pdp: "PDP cart adds", conv_tocart: "Cart conversion", ordered_units: "Ordered units", revenue: "Order amount", returns_count: "Returns", cancellations: "Cancellations", position_category: "Average search rank" }
   reports:
+    search_terms:
+      title: "Search Term Analytics"
+      subtitle: "%{from} to %{to} · complete calendar week"
+      platforms: { wb: "WB", ozon: "Ozon" }
+      store_label: "%{platform} · %{store}"
+      comparison:
+        note: "Compared with %{from} to %{to}"
+        unavailable: "-"
+        new: "New"
+        unchanged: "No change"
+        percentage: { up: "↑ %{value}%", down: "↓ %{value}%" }
+        rank: { up: "Improved %{value} places", down: "Declined %{value} places" }
+        points: { up: "Up %{value} pp", down: "Down %{value} pp" }
+        lost: { wb: "Not present this week", ozon: "Dropped out of Top 15" }
+        lifecycle:
+          new: { wb: "New term", ozon: "New Top 15 term" }
+          lost: { wb: "Not present this week", ozon: "Dropped out of Top 15" }
+      filters: { platform: "Platform", period: "Calendar week", store: "Store", sku: "SPU / SKU", all_skus: "All SKUs", query: "Search term", query_placeholder: "Enter a search term", apply: "Apply" }
+      columns:
+        sku: "SKU / Product"
+        term_count: "Search terms"
+        avg_position: "Average search rank"
+        orders: "Orders"
+        wb: { search_volume: "Search frequency", views: "Product clicks", add_to_cart: "Add to cart", cart_conversion: "Cart conversion", conversion: "Order conversion", visibility: "Visibility" }
+        ozon: { search_volume: "Search users", views: "View users", revenue: "Search GMV", conversion: "View conversion" }
+      detail: { title: "%{sku} search terms", keyword: "Search term", median_position: "Median rank", ozon_limit: "Ozon returns at most the Top 15 search terms per product" }
+      actions: { expand: "Expand search terms for %{sku}", collapse: "Collapse search terms for %{sku}", loading: "Loading search terms..." }
+      invalid_period: "Only a complete Monday-to-Sunday calendar week is supported. No data is shown for this period."
+      empty: "No search term data matches the current filters"
+      unknown_product: "Unnamed product"
+      errors: { no_store: "No available store is configured" }
     warehouses:
       title: "Warehouse allocation"
       subtitle: "View Ozon or WB inventory distribution and replenishment recommendations by store"
@@ -938,8 +970,8 @@ en:
       unknown_cluster: "Unmatched cluster"
       empty: "No matching Ozon products for this store"
       filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU or offer ID", operator: "Operator", all_operators: "All operators", target_days: "Target stock days", apply: "Apply" }
-      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Inbound", recommended: "Additional inbound" }
-      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended: "Additional inbound", recommended_or_gap: "Additional inbound / cluster gap" }
+      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBO available", inbound: "Platform inbound", recommended: "Additional inbound" }
+      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Platform inbound", recommended: "Additional inbound", recommended_or_gap: "Additional inbound / cluster gap" }
       statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
       errors: { no_store: "No Ozon store is configured" }
     wb_warehouses:
@@ -952,14 +984,14 @@ en:
       mapping_status: "%{mapped} of %{total} FBO orders have a matched shipping warehouse"
       warehouse_count: "%{count} warehouses"
       product_count: "%{count} products"
-      product_recommendation_hint: "Based on 28-day WB warehouse sales velocity and current FBW inventory"
+      product_recommendation_hint: "Based on 28-day WB warehouse sales velocity, current FBW inventory, and platform inbound stock"
       cluster_gap_hint: "Target stock gap for cluster distribution analysis"
       views: { aria_label: "WB warehouse view", products: "By product", clusters: "By cluster" }
       unknown_cluster: "Unmatched cluster"
       empty: "No matching WB products for this store"
       filters: { store: "Store", search: "Product", search_placeholder: "Product, SKU, or offer ID", operator: "Operator", all_operators: "All operators", target_days: "Target stock days", apply: "Apply" }
-      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBW available", recommended: "Additional inbound", mapping_coverage: "Warehouse coverage" }
-      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Inbound", recommended_or_gap: "Additional inbound / cluster gap" }
+      summary: { sku_count: "Products", shortage_count: "Shortage risk", available: "FBW available", inbound: "Platform inbound", recommended: "Additional inbound", mapping_coverage: "Warehouse coverage" }
+      fields: { product: "Product / cluster / warehouse", cluster: "Cluster / product / warehouse", status: "Stock status", days_of_stock: "Stock days", daily_sales: "Daily sales", sales_28d: "28-day sales", available: "Available", reserved: "Reserved", inbound: "Platform inbound", recommended_or_gap: "Additional inbound / cluster gap" }
       statuses: { shortage: "Shortage risk", healthy: "Healthy", excess: "High stock", no_sales: "No sales" }
       pagination: { product_aria_label: "WB product pagination", cluster_aria_label: "WB cluster pagination", previous_page: "Previous page", next_page: "Next page", jump_label: "Go to", jump_action: "Go", page_chip: "Page %{page}/%{pages}", product_summary: "Showing products %{from}-%{to} of %{total}", cluster_summary: "Showing clusters %{from}-%{to} of %{total}" }
       errors: { no_store: "No WB store is configured" }
@@ -1080,6 +1112,12 @@ en:
         other: "Other"
         untrackable_defective: "Untrackable defective"
         wb_fbw_offset: "WB FBW offset"
+      batch_statuses:
+        draft: "Draft"
+        ordered: "Ordered"
+        in_transit: "In transit"
+        received: "Received"
+        closed: "Closed"
       empty: "No inventory data"
       drawer:
         distribution_columns:
@@ -1452,8 +1490,9 @@ en:
         operation: "Operations overview"
         profit: "Profit allocation"
         sales_funnel: "Sales funnel"
+        search_terms: "Search terms"
         supply_orders: "Warehouse shipments"
-        warehouses: "Warehouse allocation"
+        warehouses: "Allocation recommendations"
         operation_actions: "Operation records"
         stores: "Store sales"
         trend: "Sales trend"
@@ -1609,6 +1648,12 @@ en:
     ai_diagnosis_event_filter:
       aria_label: "AI diagnosis risk filters"
       label: "AI diagnosis risks"
+      details:
+        close: "Close diagnosis details"
+        data: "Structured details"
+        diagnosed_at: "Diagnosed at: %{value}"
+        scope: "Scope: %{value}"
+        title: "%{event_type} details"
       event_types:
         clearance_overdue: "Clearance overdue"
         missed_sales_alert: "Missed sales alert"

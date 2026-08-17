@@ -13,6 +13,7 @@ class ReportsController < ApplicationController
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
                 :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
                 :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class,
+                :search_terms_metric, :search_terms_metric_content, :search_terms_comparison_label, :search_terms_comparison_class,
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
@@ -20,7 +21,7 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
   SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads ai_inventory_health basic].freeze
-  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
+  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend search_terms].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
   WB_WAREHOUSE_PAGE_SIZE = 10
@@ -575,6 +576,8 @@ class ReportsController < ApplicationController
   def build_sku_sales_funnel_trend_chart_option(trend)
     amount_metrics = %i[orders_sum buyouts_sum revenue]
     percent_metrics = %i[conv_to_cart cart_to_order buyout_percent conv_tocart]
+    rank_metric = :position_category
+    has_rank = rank_metric.in?(trend[:metrics])
     labels = trend[:rows].map { |row| row[:date] }
     series = trend[:metrics].map do |metric|
       selected = metric.in?(trend[:default_metrics])
@@ -583,7 +586,15 @@ class ReportsController < ApplicationController
         type: "line",
         smooth: true,
         showSymbol: false,
-        yAxisIndex: amount_metrics.include?(metric) ? 1 : (percent_metrics.include?(metric) ? 2 : 0),
+        yAxisIndex: if metric == rank_metric
+          3
+        elsif amount_metrics.include?(metric)
+          1
+        elsif percent_metrics.include?(metric)
+          2
+        else
+          0
+        end,
         data: trend[:rows].map { |row| row.dig(:values, metric) },
         selected:
       }
@@ -595,13 +606,20 @@ class ReportsController < ApplicationController
         top: 0,
         selected: series.to_h { |item| [item[:name], item.delete(:selected)] }
       },
-      grid: { left: 38, right: 62, top: 62, bottom: 42, containLabel: true },
+      grid: { left: 38, right: has_rank ? 108 : 62, top: 62, bottom: 42, containLabel: true },
       xAxis: { type: "category", boundaryGap: false, data: labels },
       yAxis: [
         { type: "value", name: t("reports.sku_detail.funnel_trends.axes.count"), minInterval: 1 },
         { type: "value", name: t("reports.sku_detail.funnel_trends.axes.amount") },
         { type: "value", name: "%", position: "right", offset: 42 }
-      ],
+      ] + (has_rank ? [{
+        type: "value",
+        name: t("sales_funnel_reports.columns.ozon.position_category"),
+        position: "right",
+        offset: 84,
+        inverse: true,
+        min: 1
+      }] : []),
       series:
     }
   end
@@ -667,6 +685,7 @@ class ReportsController < ApplicationController
     @grain = params[:grain].presence_in(%w[store platform sku]) || "store"
     @selected_platform = params[:platform].presence_in(Ec::Order::PLATFORMS.values)
     @selected_store_id = params[:store_id].presence
+    load_sku_search_terms if @active_tab == "search_terms"
 
     @sku_sales_rows = sku_detail_sales_rows(
       sku_products: @sku_products,
@@ -1285,6 +1304,75 @@ class ReportsController < ApplicationController
 
   def sku_detail_tabs
     SKU_DETAIL_TABS
+  end
+
+  def load_sku_search_terms
+    @stores = Ec::Store.active.where(platform: SearchTermReports::Query::PLATFORMS).order(:platform, :store_name)
+    requested_store = @stores.find_by(id: params[:store_id])
+    @platform = requested_store&.platform || params[:platform].presence_in(SearchTermReports::Query::PLATFORMS) || "wb"
+    @store = requested_store || @stores.find { |store| store.platform == @platform }
+    @query = params[:q].to_s.strip
+
+    default_monday = user_today.beginning_of_week(:monday) - 1.week
+    @from_date = parse_report_date(params[:from_date]) || default_monday
+    @to_date = parse_report_date(params[:to_date]) || default_monday.end_of_week(:monday)
+    @valid_period = @from_date.monday? && @to_date.sunday? && @to_date == @from_date + 6.days
+    return @rows = [] unless @store && @valid_period
+
+    @previous_from_date = @from_date - 1.week
+    @previous_to_date = @to_date - 1.week
+    current_query = SearchTermReports::Query.new(
+      platform: @platform, store: @store, period_from: @from_date, period_to: @to_date,
+      sku_codes: [@sku.sku_code], query: @query
+    )
+    previous_query = SearchTermReports::Query.new(
+      platform: @platform, store: @store, period_from: @previous_from_date, period_to: @previous_to_date,
+      sku_codes: [@sku.sku_code], query: @query
+    )
+    @rows = current_query.rows
+    @row_comparisons = SearchTermReports::ComparisonBuilder.new.rows(@rows, previous_query.rows)
+  end
+
+  def search_terms_metric(value, type: :number)
+    return t("common.empty_value") if value.nil?
+
+    case type
+    when :currency then helpers.number_to_currency(value, unit: "₽", format: "%n %u", precision: 2)
+    when :percentage then helpers.number_to_percentage(value, precision: 2)
+    when :decimal then helpers.number_with_precision(value, precision: 2, strip_insignificant_zeros: true)
+    else helpers.number_with_delimiter(value.to_i)
+    end
+  end
+
+  def search_terms_metric_content(value, comparison, type: :number, comparison_type: :percentage)
+    helpers.safe_join([
+      helpers.content_tag(:span, search_terms_metric(value, type:)),
+      helpers.content_tag(:div, search_terms_comparison_label(comparison, type: comparison_type),
+        class: "weekly-profit-table-comparison #{search_terms_comparison_class(comparison)}")
+    ])
+  end
+
+  def search_terms_comparison_label(comparison, type: :percentage)
+    return t("reports.search_terms.comparison.unavailable") if comparison.blank? || comparison[:state] == :unavailable
+    return t("reports.search_terms.comparison.new") if comparison[:state] == :new
+    return t("reports.search_terms.comparison.lost.#{@platform}") if comparison[:state] == :lost
+
+    value = type == :percentage ? comparison[:delta_pct] : comparison[:delta]
+    return t("reports.search_terms.comparison.unavailable") if value.nil?
+    return t("reports.search_terms.comparison.unchanged") if value.zero?
+
+    key = value.positive? ? "up" : "down"
+    formatted = helpers.number_with_precision(value.abs, precision: 2, strip_insignificant_zeros: true)
+    t("reports.search_terms.comparison.#{type}.#{key}", value: formatted)
+  end
+
+  def search_terms_comparison_class(comparison)
+    case comparison&.dig(:semantic)
+    when :positive then "is-positive"
+    when :negative then "is-negative"
+    when :neutral then "is-neutral"
+    else "is-none"
+    end
   end
 
   def build_sku_sales_rows

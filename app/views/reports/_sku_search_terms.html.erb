@@ -1,0 +1,54 @@
+<section class="panel search-terms-filter-panel sku-search-terms-section">
+  <%= form_with url: report_sku_path(@sku.sku_code), method: :get, local: true,
+                class: "report-form search-terms-filters sku-operation-filter",
+                data: { turbo_frame: "sku_detail_tab_search_terms" } do |form| %>
+    <%= form.hidden_field :tab, value: "search_terms" %>
+    <%= form.hidden_field :platform, value: @platform %>
+    <%= form.hidden_field :store_id, value: @store&.id %>
+    <div class="search-terms-filter-grid">
+      <div class="weekly-profit-date-range-field">
+        <label for="sku-search-terms-time-range-trigger"><%= t("reports.search_terms.filters.period") %></label>
+        <%= render "shared/time_range_selector",
+                   id: "sku-search-terms-time-range",
+                   from_date: @from_date,
+                   to_date: @to_date,
+                   submit_on_apply: true %>
+      </div>
+      <div class="field search-terms-query-filter">
+        <%= form.label :q, t("reports.search_terms.filters.query") %>
+        <%= form.search_field :q, value: @query, placeholder: t("reports.search_terms.filters.query_placeholder") %>
+      </div>
+      <div class="search-terms-filter-action">
+        <%= form.submit t("reports.search_terms.filters.apply"), class: "button weekly-profit-submit-button" %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @stores.any? %>
+    <div class="weekly-profit-filter-block search-terms-store-filter">
+      <span class="field-label"><%= t("reports.search_terms.filters.store") %></span>
+      <div class="weekly-profit-tag-row" role="group" aria-label="<%= t("reports.search_terms.filters.store") %>">
+        <% @stores.each do |store| %>
+          <%= link_to t("reports.search_terms.store_label", platform: t("reports.search_terms.platforms.#{store.platform}"), store: store.store_name),
+                      sku_detail_tab_path("search_terms", platform: store.platform, store_id: store.id,
+                        from_date: @from_date, to_date: @to_date, q: @query.presence),
+                      class: "weekly-profit-filter-tag #{'is-active' if store == @store}",
+                      data: { turbo_frame: "sku_detail_tab_search_terms" },
+                      aria: { pressed: store == @store } %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</section>
+
+<% if @store.nil? %>
+  <div class="notice notice--warning" role="alert"><%= t("reports.search_terms.errors.no_store") %></div>
+<% elsif !@valid_period %>
+  <div class="notice notice--warning search-terms-period-warning" role="alert">
+    <i class="bi bi-calendar-x" aria-hidden="true"></i>
+    <span><%= t("reports.search_terms.invalid_period") %></span>
+  </div>
+<% else %>
+  <p class="weekly-profit-comparison-note"><%= t("reports.search_terms.comparison.note", from: @previous_from_date, to: @previous_to_date) %></p>
+  <%= render "reports/search_terms/table", show_sku_link: false %>
+<% end %>

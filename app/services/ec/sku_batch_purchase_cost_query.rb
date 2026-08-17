@@ -7,7 +7,7 @@ module Ec
       sql = ApplicationRecord.sanitize_sql_array([<<~SQL.squish, { batch_ids: batch_ids }])
         SELECT DISTINCT ON (b.id)
           b.id AS batch_id,
-          c.purchase_price_cny
+          COALESCE(NULLIF(b.purchase_unit_price_cny, 0), c.purchase_price_cny) AS purchase_price_cny
         FROM ec_sku_batches b
         LEFT JOIN ec_sku_costs c
           ON c.sku_code = b.sku_code

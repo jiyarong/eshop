@@ -29,7 +29,6 @@ module RawWb
     include Syncs::ReturnClaims
     include Syncs::Chats
     include Syncs::WbWarehouseStocks
-    include Syncs::SearchTerms
     include Syncs::RegionSale
     include Syncs::MeasurementPenalties
     include Syncs::Deductions
