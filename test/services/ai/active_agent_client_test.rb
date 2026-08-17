@@ -220,6 +220,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     retry_message = FakeAgent.last_generation.params.fetch(:messages).last.fetch(:content)
     assert_includes retry_message, '{"content":"非空的最终回答"}'
     assert_includes retry_message, "tool_calls 不得为空"
+    assert_equal 2, FakeAgent.last_generation.params.fetch(:messages).size
   end
 
   test "retries once when assistant returns an empty tool call list" do
@@ -277,11 +278,11 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
   test "raises after retrying invalid assistant tool call JSON" do
     invalid_response = OpenStruct.new(
       message: OpenStruct.new(content: "{\"tool_calls\":[{\"name\":\"wiki__search\"}]}}"),
-      usage: { "total_tokens" => 10 }
+      usage: { "total_tokens" => 10, "output_tokens" => 1_384 }
     )
     FakeGeneration.responses = [invalid_response, invalid_response]
 
-    assert_raises ErpAI::ActiveAgentClient::InvalidResponse do
+    error = assert_raises ErpAI::ActiveAgentClient::InvalidResponse do
       ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
         model: "custom-model",
         temperature: 0.2,
@@ -294,6 +295,11 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     end
 
     assert_equal 2, FakeGeneration.generate_now_calls
+    assert_includes error.message, "output_tokens=1384"
+    assert_includes error.message, "content_bytes=41"
+    assert_includes error.message, "json_error="
+    assert_includes error.message, "content_head="
+    assert_includes error.message, "content_tail="
   end
 
   test "extracts final content from assistant JSON content" do

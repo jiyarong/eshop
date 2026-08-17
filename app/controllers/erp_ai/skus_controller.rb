@@ -114,6 +114,35 @@ module ErpAI
       render json: { error: "SKU not found" }, status: :not_found
     end
 
+    def inventory_availability
+      sku = Ec::Sku.includes(:sku_products).find_by!(sku_code: params.require(:sku).to_s.strip.upcase)
+      from_date = parsed_inventory_date(params.require(:from_date))
+      to_date = parsed_inventory_date(params.require(:to_date))
+      raise ArgumentError, "invalid_date_range" if to_date < from_date || (to_date - from_date).to_i >= 56
+
+      snapshots = Ec::Snapshot
+        .of_type(Ec::InventorySnapshot.snapshot_type)
+        .for_sku(sku)
+        .between(from_date, to_date)
+        .order(:snapshot_date, :id)
+        .index_by(&:snapshot_date)
+
+      render json: {
+        data: {
+          sku: sku.sku_code,
+          period: { from_date: from_date.iso8601, to_date: to_date.iso8601 },
+          bound_platforms: sku.sku_products.map(&:platform).compact.uniq.sort,
+          days: (from_date..to_date).map { |date| inventory_availability_day(date, snapshots[date]) }
+        }
+      }
+    rescue ActionController::ParameterMissing => error
+      render json: { error: "#{error.param} is required" }, status: :bad_request
+    rescue Date::Error, ArgumentError => error
+      render json: { error: error.message }, status: :bad_request
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: "SKU not found" }, status: :not_found
+    end
+
     def dynamic_daily_sales_forecast
       sku = Ec::Sku.find_by!(sku_code: params.require(:sku).to_s.strip.upcase)
 
@@ -160,6 +189,24 @@ module ErpAI
     end
 
     private
+
+    def parsed_inventory_date(value)
+      Date.iso8601(value.to_s)
+    end
+
+    def inventory_availability_day(date, snapshot)
+      return { date: date.iso8601, available: false } unless snapshot
+
+      overview = snapshot.data.fetch(:overview, {})
+      {
+        date: date.iso8601,
+        available: true,
+        platform_stock: overview[:platform_stock],
+        available_stock: overview[:available_stock],
+        out_of_stock: overview[:out_of_stock],
+        platform_totals: overview[:platform_totals] || {}
+      }
+    end
 
     def previous_week_ranges(today)
       current_week_start = today.beginning_of_week(:monday)

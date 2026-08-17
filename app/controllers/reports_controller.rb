@@ -74,6 +74,30 @@ class ReportsController < ApplicationController
     end
   end
 
+  def sku_ai_diagnosis
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @diagnosis = @sku.ai_diagnoses
+      .includes(:submitted_by, events: :conversation)
+      .find(params[:diagnosis_id])
+    @conversation = diagnosis_conversation(@diagnosis)
+    @messages = @conversation&.messages&.order(:created_at, :id)
+    @diagnosis_payload = {
+      type: @diagnosis[:type],
+      sku: @sku.sku_code,
+      analyzed_at: @diagnosis.analyzed_at,
+      data: @diagnosis.data,
+      events: @diagnosis.events.map do |event|
+        {
+          event_type: event.event_type,
+          severity: event.severity,
+          scope: event.scope,
+          message: event.message,
+          details: event.details
+        }
+      end
+    }
+  end
+
   def update_inventory_returns
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     restockable = params[:restockable].to_s
@@ -612,7 +636,7 @@ class ReportsController < ApplicationController
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     if @active_tab == "ai_inventory_health"
       @inventory_health_results = @sku.ai_diagnoses
-        .where(type: [ Ec::RestockingDiagnosis.sti_name, Ec::OperationActionDiagnosis.sti_name ])
+        .where(type: [ Ec::RestockingDiagnosis.sti_name, Ec::OperationActionDiagnosis.sti_name, Ec::GradeInspect.sti_name ])
         .includes(:submitted_by, events: :conversation)
         .recent_first
         .limit(3)
@@ -684,6 +708,29 @@ class ReportsController < ApplicationController
     (diagnosis_entries + operation_entries).sort_by do |entry|
       [-entry[:occurred_at].to_f, -entry[:id].to_i]
     end
+  end
+
+  def diagnosis_conversation(diagnosis)
+    linked_conversation = diagnosis.events.filter_map(&:conversation).first
+    return linked_conversation if linked_conversation
+    return unless diagnosis.is_a?(Ec::GradeInspect)
+
+    Conversation
+      .joins(:agent, :messages)
+      .where(
+        agents: { code: AITasks::SkuGradeInspector::AGENT_CODE },
+        module_name: "sku_grade_inspections",
+        business_object_type: "Ec::Sku",
+        business_object_id: diagnosis.sku_id.to_s,
+        created_at: (diagnosis.created_at - 1.hour)..(diagnosis.created_at + 5.minutes)
+      )
+      .where(
+        "messages.content LIKE :json_id OR messages.content LIKE :text_id",
+        json_id: "%\"id\":#{diagnosis.id}%",
+        text_id: "%id=#{diagnosis.id}%"
+      )
+      .order(created_at: :desc, id: :desc)
+      .first
   end
 
   def sku_attachment_files_param

@@ -19,7 +19,7 @@ module ErpAI
       result = normalize_response(response)
       return result unless invalid_structured_response?(response)
 
-      response = generate(retry_request(request, response))
+      response = generate(retry_request(request))
       raise invalid_response_error(response) if invalid_structured_response?(response)
 
       normalize_response(response)
@@ -50,11 +50,10 @@ module ErpAI
       }
     end
 
-    def retry_request(request, response)
+    def retry_request(request)
       request.merge(
         messages: [
           *request.fetch(:messages),
-          { role: "assistant", content: message_content(response) },
           { role: "user", content: FORMAT_RETRY_MESSAGE }
         ]
       )
@@ -80,10 +79,16 @@ module ErpAI
     end
 
     def invalid_response_error(response)
+      content = message_content(response).to_s.scrub
       finish_reason = value_from(response, :finish_reason)
-      preview = message_content(response).to_s.squish.first(300)
+      usage = extract_usage(response)
+      output_tokens = value_from(usage, :output_tokens) || value_from(usage, :completion_tokens)
+      json_error = json_parse_error(content)
       InvalidResponse.new(
-        "模型连续返回了无效的结构化响应；finish_reason=#{finish_reason.inspect}；content=#{preview.inspect}"
+        "模型连续返回了无效的结构化响应；finish_reason=#{finish_reason.inspect}；" \
+        "output_tokens=#{output_tokens.inspect}；content_bytes=#{content.bytesize}；" \
+        "json_error=#{json_error.inspect}；" \
+        "content_head=#{content.first(240).inspect}；content_tail=#{content.last(240).inspect}"
       )
     end
 
@@ -155,11 +160,22 @@ module ErpAI
       return content.deep_stringify_keys if content.is_a?(Hash)
       return nil unless content.is_a?(String)
 
-      json = content[/```(?:json)?\s*(.*?)(?:```|\z)/m, 1] || content
-      parsed = JSON.parse(json.strip)
+      parsed = JSON.parse(json_payload(content))
       parsed.is_a?(Hash) ? parsed : nil
     rescue JSON::ParserError
       nil
+    end
+
+    def json_parse_error(content)
+      JSON.parse(json_payload(content))
+      nil
+    rescue JSON::ParserError => error
+      error.message.first(200)
+    end
+
+    def json_payload(content)
+      json = content[/```(?:json)?\s*(.*?)(?:```|\z)/m, 1] || content
+      json.strip
     end
 
     def malformed_content_payload(content)

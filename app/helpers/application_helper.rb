@@ -197,6 +197,26 @@ module ApplicationHelper
     diagnosis.data.to_h["diagnosis_kind"] == "operation_action_effect"
   end
 
+  def ai_grade_inspector_diagnosis?(diagnosis)
+    diagnosis.is_a?(Ec::GradeInspect)
+  end
+
+  def ai_inventory_health_diagnosis?(diagnosis)
+    diagnosis.is_a?(Ec::RestockingDiagnosis)
+  end
+
+  def ai_diagnosis_submission_title(diagnosis)
+    key = if ai_grade_inspector_diagnosis?(diagnosis)
+      "reports.sku_detail.ai_grade_inspector.submission_title"
+    elsif ai_operation_action_diagnosis?(diagnosis)
+      "reports.sku_detail.ai_operation_diagnosis.submission_title"
+    else
+      "reports.sku_detail.ai_inventory_health.submission_title"
+    end
+
+    t(key, id: diagnosis.id)
+  end
+
   def ai_operation_action_effect_label(effect)
     t("reports.sku_detail.ai_operation_diagnosis.effects.#{effect}")
   end

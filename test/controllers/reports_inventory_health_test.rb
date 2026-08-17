@@ -51,6 +51,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::Store.where(id: @store&.id).delete_all
     Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::OperationActionDiagnosis.where(sku_id: @sku&.id).destroy_all
+    Ec::GradeInspect.where(sku_id: @sku&.id).destroy_all
     Message.where(conversation: Conversation.where(user: @user)).delete_all
     Conversation.where(user: @user).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
@@ -94,6 +95,109 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-health-message", "旧诊断消息"
     assert_select ".ai-health-star--danger", count: 2
     assert_select ".ai-health-result--inventory-diagnosis", count: 2
+    assert_select ".ai-health-result__raw-link", text: "查看原始消息详情", count: 2
+    assert_select ".ai-health-result__raw-link[href='#{report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result)}']"
+    assert_select ".ai-health-message__link", count: 3
+    assert_select ".ai-health-message__link[href='#{report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result)}']", text: "最新诊断消息"
+  end
+
+  test "shows Grade Inspector records and links to their original conversation" do
+    agent = Agent.ensure_fixed!("sku_grade_inspector")
+    conversation = agent.conversations.create!(
+      user: @user,
+      module_name: "sku_grade_inspections",
+      business_object_type: "Ec::Sku",
+      business_object_id: @sku.id.to_s
+    )
+    conversation.messages.create!(role: "user", content: "检查 #{@sku.sku_code} 的 Grade")
+    conversation.messages.create!(role: "assistant", content: "Grade 检查完成")
+    diagnosis = Ec::GradeInspect.create!(
+      sku: @sku,
+      submitted_by: @user,
+      analyzed_at: Time.zone.parse("2026-08-11 10:00:00"),
+      data: {
+        "diagnosis_kind" => "grade_inspect",
+        "current_grade" => "A",
+        "confirmed_candidate_grade" => nil,
+        "analysis_cutoff_date" => "2026-08-09",
+        "valid_weeks" => 6,
+        "censored_weeks" => 1,
+        "grade_change_recommended" => false
+      }
+    )
+    diagnosis.events.create!(
+      conversation: conversation,
+      event_type: "grade_under_observation",
+      severity: "info",
+      scope: "grade",
+      message: "证据不足，维持当前 Grade。",
+      details: {},
+      position: 0
+    )
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-health-result--grade-diagnosis" do
+      assert_select "h2", "Grade 检查 ##{diagnosis.id}"
+      assert_select ".ai-operation-diagnosis__badge", text: /当前 Grade：A/
+      assert_select ".ai-operation-diagnosis__badge", text: /建议 Grade：维持当前/
+      assert_select ".ai-operation-diagnosis__meta dd", text: "2026-08-09"
+      assert_select ".ai-health-message", "证据不足，维持当前 Grade。"
+      assert_select ".ai-health-message__link[href='#{ai_conversation_path(conversation)}']", "证据不足，维持当前 Grade。"
+      assert_select ".ai-health-result__raw-link[href='#{ai_conversation_path(conversation)}']", "查看原始消息详情"
+      assert_select "form.ai-health-result__delete-form", count: 0
+    end
+  end
+
+  test "shows stored diagnosis payload when no original conversation exists" do
+    get report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result),
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", "AI 库存诊断 ##{@latest_result.id}"
+    assert_select ".ai-diagnosis-raw-detail", text: /未关联本地 AI 会话/
+    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /sellable_inventory.*1117/m
+    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /最新诊断消息/m
+    assert_select "a[href=?]", report_sku_path(@sku.sku_code, tab: "ai_inventory_health"), text: "返回 AI 诊断"
+  end
+
+  test "finds original messages for a legacy Grade diagnosis without an event link" do
+    agent = Agent.ensure_fixed!("sku_grade_inspector")
+    conversation = agent.conversations.create!(
+      user: @user,
+      module_name: "sku_grade_inspections",
+      business_object_type: "Ec::Sku",
+      business_object_id: @sku.id.to_s
+    )
+    conversation.messages.create!(role: "user", content: "检查 #{@sku.sku_code} 的 Grade")
+    diagnosis = Ec::GradeInspect.create!(
+      sku: @sku,
+      submitted_by: @user,
+      analyzed_at: Time.current,
+      data: { "analysis_cutoff_date" => "2026-08-09" }
+    )
+    diagnosis.events.create!(
+      event_type: "grade_stable",
+      severity: "info",
+      scope: "grade",
+      message: "维持当前 Grade。",
+      details: {},
+      position: 0
+    )
+    conversation.messages.create!(role: "assistant", content: "Grade 检查已保存，id=#{diagnosis.id}")
+
+    get report_sku_ai_diagnosis_path(@sku.sku_code, diagnosis),
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "#ai-diagnosis-original-messages-title", "原始 AI 消息"
+    assert_select ".ai-conversation-message", count: 2
+    assert_select ".ai-conversation-message--user", text: /检查 #{@sku.sku_code} 的 Grade/
+    assert_select ".ai-conversation-message--assistant", text: /id=#{diagnosis.id}/
+    assert_select ".ai-diagnosis-raw-detail", { text: /未关联本地 AI 会话/, count: 0 }
   end
 
   test "deletes an inventory health result from its sku" do
@@ -150,9 +254,10 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     end
     assert_select ".ai-health-result--inventory-diagnosis", count: 2
     assert_select ".ai-health-result--operation-diagnosis", count: 1
-    assert_not_includes response.body, "action_evaluations"
-    assert_not_includes response.body, "target_offsets_days"
-    assert_not_includes response.body, "https://"
+    diagnosis_card = css_select(".ai-health-result--operation-diagnosis").sole.text
+    assert_not_includes diagnosis_card, "action_evaluations"
+    assert_not_includes diagnosis_card, "target_offsets_days"
+    assert_not_includes diagnosis_card, "https://"
   end
 
   test "links an operation diagnosis card to its complete AI conversation" do
@@ -180,7 +285,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     get report_sku_path(@sku.sku_code), params: { tab: "ai_inventory_health" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".ai-health-result--operation-diagnosis a[href='#{ai_conversation_path(conversation)}']", "查看完整 AI 消息"
+    assert_select ".ai-health-result--operation-diagnosis a[href='#{ai_conversation_path(conversation)}']", "查看原始消息详情"
   end
 
   test "creates a manual operation record for the sku" do

@@ -326,15 +326,19 @@
           <% else %>
             <% result = entry[:record] %>
             <% operation_diagnosis = ai_operation_action_diagnosis?(result) %>
-            <% conversation_id = result.events.find(&:conversation_id)&.conversation_id if operation_diagnosis %>
-            <details class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis, "ai-health-result--inventory-diagnosis": !operation_diagnosis) %>">
+            <% grade_diagnosis = ai_grade_inspector_diagnosis?(result) %>
+            <% inventory_diagnosis = ai_inventory_health_diagnosis?(result) %>
+            <% conversation_id = result.events.find(&:conversation_id)&.conversation_id %>
+            <% raw_details_path = if conversation_id
+              ai_conversation_path(conversation_id, locale: params[:locale].presence)
+            else
+              report_sku_ai_diagnosis_path(@sku.sku_code, result, locale: params[:locale].presence)
+            end %>
+            <details class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis, "ai-health-result--grade-diagnosis": grade_diagnosis, "ai-health-result--inventory-diagnosis": inventory_diagnosis) %>">
               <summary class="ai-health-result__summary">
                 <i class="bi bi-chevron-right ai-health-result__chevron" aria-hidden="true"></i>
                 <div class="ai-health-result__header">
-                  <h2 class="section-title"><%= t(
-                    operation_diagnosis ? "reports.sku_detail.ai_operation_diagnosis.submission_title" : "reports.sku_detail.ai_inventory_health.submission_title",
-                    id: result.id
-                  ) %></h2>
+                  <h2 class="section-title"><%= ai_diagnosis_submission_title(result) %></h2>
                   <div class="ai-health-result__meta">
                     <span><%= result.submitted_by.display_name %></span>
                     <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
@@ -350,14 +354,12 @@
               </summary>
               <div class="ai-health-result__body">
                 <div class="ai-health-result__actions">
-                  <% if conversation_id %>
-                    <%= link_to ai_conversation_path(conversation_id, locale: params[:locale].presence),
-                                class: "button button-secondary ai-health-result__conversation-link" do %>
-                      <i class="bi bi-chat-square-text" aria-hidden="true"></i>
-                      <%= t("reports.sku_detail.ai_operation_diagnosis.view_conversation") %>
-                    <% end %>
+                  <%= link_to raw_details_path, target: '_blank', rel: 'noopener noreferrer',
+                              class: "button button-secondary ai-health-result__conversation-link ai-health-result__raw-link" do %>
+                    <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                    <%= t("reports.sku_detail.ai_inventory_health.view_raw_details") %>
                   <% end %>
-                  <% if can?(:manage_skus) && !operation_diagnosis %>
+                  <% if can?(:manage_skus) && inventory_diagnosis %>
                     <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
                                   method: :delete,
                                   class: "ico-btn ai-health-result__delete-button",
@@ -369,7 +371,36 @@
                     <% end %>
                   <% end %>
                 </div>
-            <% if operation_diagnosis %>
+            <% if grade_diagnosis %>
+              <section class="ai-operation-diagnosis ai-grade-diagnosis">
+                <div class="ai-operation-diagnosis__badges" aria-label="<%= t("reports.sku_detail.ai_grade_inspector.summary_label") %>">
+                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--neutral">
+                    <%= t("reports.sku_detail.ai_grade_inspector.current_grade") %>：<%= report_value(result.data["current_grade"]) %>
+                  </span>
+                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--neutral">
+                    <%= t("reports.sku_detail.ai_grade_inspector.candidate_grade") %>：<%= result.data["confirmed_candidate_grade"].presence || t("reports.sku_detail.ai_grade_inspector.keep_current") %>
+                  </span>
+                </div>
+                <dl class="ai-operation-diagnosis__meta">
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_grade_inspector.analysis_cutoff_date") %></dt>
+                    <dd><%= report_value(result.data["analysis_cutoff_date"]) %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_grade_inspector.valid_weeks") %></dt>
+                    <dd><%= report_value(result.data["valid_weeks"]) %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_grade_inspector.censored_weeks") %></dt>
+                    <dd><%= report_value(result.data["censored_weeks"]) %></dd>
+                  </div>
+                  <div>
+                    <dt><%= t("reports.sku_detail.ai_grade_inspector.change_recommended") %></dt>
+                    <dd><%= t(result.data["grade_change_recommended"] ? "common.yes" : "common.no") %></dd>
+                  </div>
+                </dl>
+              </section>
+            <% elsif operation_diagnosis %>
               <section class="ai-operation-diagnosis">
                 <p class="ai-operation-diagnosis__summary"><%= result.data["summary"] %></p>
                 <div class="ai-operation-diagnosis__badges" aria-label="<%= t("reports.sku_detail.ai_operation_diagnosis.summary_label") %>">

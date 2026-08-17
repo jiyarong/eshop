@@ -33,6 +33,8 @@ class Agent < ApplicationRecord
     events 中的 action_id 必须使用输入中的 id。指标变化要引用输入数据，不要编造数字。
   PROMPT
 
+  SKU_GRADE_INSPECTOR_PROMPT = Rails.root.join("config/agent_prompts/sku_grade_inspector.md").read.freeze
+
   PAGE_TRANSLATION_PROMPT = <<~PROMPT.squish.freeze
     你是一个嵌入 ERP 系统的页面翻译 AI Agent。你的固定用途是把用户提供的系统页面文本、页面片段、HTML 或 Markdown 翻译为当前用户界面语言。
     只输出翻译结果，不输出解释、分析、寒暄或额外建议；如果输入内容已经是目标语言，普通翻译请求要保持原意并做必要的自然化表达。
@@ -93,6 +95,14 @@ class Agent < ApplicationRecord
       default_system_prompt: SKU_OPERATION_ACTION_TRACKER_PROMPT,
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.2
+    },
+    "sku_grade_inspector" => {
+      name: "SKU Grade Inspector",
+      tools: [ "erp_ai_request" ],
+      enabled: true,
+      default_system_prompt: SKU_GRADE_INSPECTOR_PROMPT,
+      default_model_id: "deepseek-v4-flash",
+      default_temperature: 0.1
     },
     "page_translation" => {
       name: "页面翻译助手",

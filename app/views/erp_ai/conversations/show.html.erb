@@ -19,19 +19,5 @@
 </div>
 
 <section class="ai-conversation" aria-label="<%= t("ai.conversations.messages_aria_label") %>">
-  <% @messages.each do |message| %>
-    <article class="ai-conversation-message ai-conversation-message--<%= message.role %>">
-      <header class="ai-conversation-message__header">
-        <span class="ai-conversation-message__role">
-          <i class="bi <%= message.role == "assistant" ? "bi-stars" : (message.role == "tool" ? "bi-wrench-adjustable" : "bi-person") %>" aria-hidden="true"></i>
-          <%= ai_conversation_role_label(message.role) %>
-        </span>
-        <time datetime="<%= message.created_at.iso8601 %>"><%= display_time(message.created_at) %></time>
-      </header>
-      <div class="ai-conversation-message__body" data-controller="markdown">
-        <pre class="code-viewer ai-conversation-message__source" data-markdown-target="source"><%= ai_conversation_message_markdown(message) %></pre>
-        <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
-      </div>
-    </article>
-  <% end %>
+  <%= render "erp_ai/conversations/messages", messages: @messages %>
 </section>

@@ -1,4 +1,6 @@
 class BusinessAnalysisAgent < ActiveAgent::Base
+  TOOL_RESPONSE_MAX_TOKENS = 8_192
+
   generate_with :openai, api_version: :chat
 
   def analyze
@@ -20,6 +22,7 @@ class BusinessAnalysisAgent < ActiveAgent::Base
     }
     if params.fetch(:available_tools, []).present?
       options[:response_format] = { type: "json_object" }
+      options[:max_tokens] = TOOL_RESPONSE_MAX_TOKENS
     end
     if deepseek_model?(options[:model])
       options[:request_options] = {

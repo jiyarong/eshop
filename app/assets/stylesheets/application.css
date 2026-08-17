@@ -2102,6 +2102,11 @@ textarea {
   line-height: 1.5;
 }
 
+.ai-health-message__link {
+  font-weight: 600;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 720px) {
   .ai-health-result__header {
     display: block;

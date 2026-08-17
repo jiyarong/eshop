@@ -1,0 +1,34 @@
+<% content_for :title, t("reports.sku_detail.ai_diagnosis_details.page_title", id: @diagnosis.id) %>
+<% content_for :page_heading, t("reports.sku_detail.ai_diagnosis_details.page_heading") %>
+
+<div class="ai-conversation-heading">
+  <div>
+    <h1 class="page-title"><%= ai_diagnosis_submission_title(@diagnosis) %></h1>
+    <p class="ai-conversation-heading__meta">
+      <span><%= @diagnosis.submitted_by.display_name %></span>
+      <time datetime="<%= @diagnosis.created_at.iso8601 %>"><%= display_time(@diagnosis.created_at) %></time>
+    </p>
+  </div>
+  <%= link_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+              class: "button button-secondary" do %>
+    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    <%= t("reports.sku_detail.ai_diagnosis_details.back") %>
+  <% end %>
+</div>
+
+<% if @messages.present? %>
+  <section aria-labelledby="ai-diagnosis-original-messages-title">
+    <h2 id="ai-diagnosis-original-messages-title" class="section-title"><%= t("reports.sku_detail.ai_diagnosis_details.original_messages") %></h2>
+    <div class="ai-conversation" aria-label="<%= t("ai.conversations.messages_aria_label") %>">
+      <%= render "erp_ai/conversations/messages", messages: @messages %>
+    </div>
+  </section>
+<% end %>
+
+<section class="panel ai-diagnosis-raw-detail" aria-labelledby="ai-diagnosis-raw-payload-title">
+  <h2 id="ai-diagnosis-raw-payload-title" class="section-title"><%= t("reports.sku_detail.ai_diagnosis_details.raw_payload") %></h2>
+  <% unless @messages.present? %>
+    <p class="muted"><%= t("reports.sku_detail.ai_diagnosis_details.no_conversation") %></p>
+  <% end %>
+  <pre class="code-viewer" style="color: black;"><%= JSON.pretty_generate(@diagnosis_payload) %></pre>
+</section>

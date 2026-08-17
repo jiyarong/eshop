@@ -52,6 +52,7 @@ Rails.application.routes.draw do
   get "reports/skus"      => "reports#skus"
   get "reports/skus/:sku_code/profit_trend" => "reports#sku_profit_trend", as: :report_sku_profit_trend
   get "reports/skus/:sku_code/sales_funnel_trends" => "reports#sku_sales_funnel_trends", as: :report_sku_sales_funnel_trends
+  get "reports/skus/:sku_code/ai_diagnoses/:diagnosis_id" => "reports#sku_ai_diagnosis", as: :report_sku_ai_diagnosis
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments
   get "reports/skus/:sku_code/attachments/:attachment_id/edit" => "reports#edit_sku_attachment", as: :edit_report_sku_attachment
@@ -86,8 +87,10 @@ Rails.application.routes.draw do
     get "skus/genernal_inventory" => "skus#genernal_inventory"
     get "skus/overview" => "skus#overview"
     get "skus/weekly_profit_overview" => "skus#weekly_profit_overview"
+    get "skus/inventory_availability" => "skus#inventory_availability"
     get "skus/dynamic_daily_sales_forecast" => "skus#dynamic_daily_sales_forecast"
     post "skus/inventory_health_result" => "skus#inventory_health_result"
+    resources :diagnosis_results, only: [ :index, :create ]
     resources :sql_queries, only: [:create]
     resources :weekly_profit_reports, only: [:create]
     resources :inventory_reports, only: [:create]
