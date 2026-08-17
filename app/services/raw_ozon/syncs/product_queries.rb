@@ -83,7 +83,7 @@ module RawOzon
 
       def fetch_product_query_details(skus, q_from:, q_to:, week_start:, week_end:, synced_at:)
         fetch_product_query_pages('/v1/analytics/product-queries/details', 'queries', {
-          date_from: q_from, date_to: q_to, skus:, limit_by_sku: 15, page_size: 1000,
+          date_from: q_from, date_to: q_to, skus:, limit_by_sku: 15, page_size: 100,
           sort_by: 'BY_SEARCHES', sort_dir: 'DESCENDING'
         }).map do |query|
           {

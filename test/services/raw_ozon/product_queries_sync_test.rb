@@ -109,9 +109,11 @@ class RawOzonProductQueriesSyncTest < ActiveSupport::TestCase
         assert_equal ["987654"], body.fetch(:skus)
         assert_match(/T00:00:00Z\z/, body.fetch(:date_from))
         assert_match(/T23:59:59Z\z/, body.fetch(:date_to))
-        assert_equal 1000, body.fetch(:page_size)
       end
       detail_requests = client.requests.select { |path, _body| path.end_with?("/details") }
+      summary_requests = client.requests.reject { |path, _body| path.end_with?("/details") }
+      assert_equal [1000, 1000], summary_requests.map { |_path, body| body.fetch(:page_size) }
+      assert_equal [100, 100], detail_requests.map { |_path, body| body.fetch(:page_size) }
       assert_equal [15, 15], detail_requests.map { |_path, body| body.fetch(:limit_by_sku) }
     ensure
       RawOzon::ProductQueryDetail.where(account_id: account&.id).delete_all
