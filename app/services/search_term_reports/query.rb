@@ -96,21 +96,12 @@ module SearchTermReports
     end
 
     def ozon_rows
-      details = term_scope.where(sku: product_lookup.keys)
-      if @query.present?
-        details = details.where("LOWER(query) LIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(@query)}%")
-      end
-      detail_skus = details.distinct.pluck(:sku)
-
       summaries = RawOzon::ProductQuery.where(
         account_id: store.ozon_raw_account_id,
         period_from: period_from,
         period_to: period_to,
-        sku: @query.present? ? detail_skus : product_lookup.keys
+        sku: product_lookup.keys
       )
-      details = details.where(sku: summaries.map(&:sku))
-      term_counts = details.group_by { |record| product_lookup[record.sku.to_s]&.sku_code }
-        .transform_values { |terms| terms.map(&:query).uniq.size }
 
       summaries.group_by { |record| product_lookup[record.sku.to_s]&.sku_code }.filter_map do |sku_code, records|
         next if sku_code.blank?
@@ -121,18 +112,18 @@ module SearchTermReports
           sku_code: sku_code,
           sku: products_by_sku.fetch(sku_code).first.sku,
           product_name: products_by_sku.fetch(sku_code).first.sku.product_name,
-          term_count: term_counts.fetch(sku_code, 0),
+          term_count: nil,
           search_volume: searches,
           avg_position: weighted_average(records, :position, :unique_search_users),
           views: views,
           add_to_cart: nil,
-          orders: details.select { |detail| product_lookup[detail.sku.to_s]&.sku_code == sku_code }.sum { |detail| detail.order_count.to_i },
+          orders: nil,
           revenue: records.sum { |record| record.gmv.to_d },
-          conversion: ratio(views, searches),
+          conversion: weighted_average(records, :view_conversion, :unique_search_users),
           cart_conversion: nil,
           visibility: nil
         }
-      end.sort_by { |row| [-row[:orders], -row[:search_volume], row[:sku_code]] }
+      end.sort_by { |row| [-row[:search_volume], row[:sku_code]] }
     end
 
     def term_scope

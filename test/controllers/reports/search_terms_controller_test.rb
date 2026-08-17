@@ -149,7 +149,7 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, terms.sole[:orders]
   end
 
-  test "renders Ozon SKU summary and Top 15 term columns" do
+  test "renders Ozon SKU rows only from product summaries" do
     RawOzon::ProductQuery.create!(
       account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
       offer_id: "OZON-#{@token}", name: "搜索词测试商品", unique_search_users: 100,
@@ -158,10 +158,22 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     )
     RawOzon::ProductQueryDetail.create!(
       account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
-      query: "полотенцесушитель", unique_search_users: 80, unique_view_users: 20,
-      position: 7.5, view_conversion: 25, order_count: 3, gmv: 900, currency: "RUB",
+      query: "полотенцесушитель", unique_search_users: 8_000, unique_view_users: 7_000,
+      position: 99, view_conversion: 87.5, order_count: 300, gmv: 90_000, currency: "RUB",
       synced_at: Time.current
     )
+
+    row = SearchTermReports::Query.new(
+      platform: "ozon", store: @ozon_store, period_from: @period_from, period_to: @period_to,
+      query: "明细中不存在的词"
+    ).rows.sole
+    assert_equal 100, row[:search_volume]
+    assert_equal 25, row[:views]
+    assert_equal 8.5, row[:avg_position].to_f
+    assert_equal 25, row[:conversion].to_i
+    assert_equal 1_200, row[:revenue].to_i
+    assert_nil row[:term_count]
+    assert_nil row[:orders]
 
     get reports_search_terms_path, params: period_params.merge(platform: "ozon", store_id: @ozon_store.id)
 
@@ -169,7 +181,10 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr.search-terms-sku-row", 1
     assert_select "th", I18n.t("reports.search_terms.columns.ozon.search_volume")
     assert_select "th", I18n.t("reports.search_terms.columns.ozon.revenue")
+    assert_select "th", { text: I18n.t("reports.search_terms.columns.term_count"), count: 0 }
+    assert_select "th", { text: I18n.t("reports.search_terms.columns.orders"), count: 0 }
     assert_select "th", { text: I18n.t("reports.search_terms.columns.wb.add_to_cart"), count: 0 }
+    assert_select "button[aria-label=?]", I18n.t("reports.search_terms.actions.expand", sku: @sku.sku_code), 1
   end
 
   test "does not show data for a period that is not a complete natural week" do
