@@ -9,15 +9,31 @@ module RawOzon
       CPC_HISTORY_MAX_DAYS = 62
 
       def self.run(from_date: Date.yesterday, to_date: Date.yesterday)
-        stores = Ec::Store.where(platform: "ozon", is_active: true).where.not(ozon_performance_client_id: nil)
-        raise ArgumentError, "No active Ozon stores with Performance credentials found" if stores.none?
-
-        stores.each_with_object({}) do |store, results|
+        performance_stores.each_with_object({}) do |store, results|
           account = store.raw_ozon_account
           raise "Ec::Store##{store.id} has no linked Ozon account" unless account
           results[store.id] = new(account).run(from_date: from_date, to_date: to_date)
         end
       end
+
+      def self.run_cpo_all(from_date:, to_date:)
+        performance_stores.each_with_object({}) do |store, results|
+          account = store.raw_ozon_account
+          raise "Ec::Store##{store.id} has no linked Ozon account" unless account
+
+          sync = new(account)
+          sync.sync_units
+          results[store.id] = sync.sync_cpo_all_stats(from_date: from_date.to_date, to_date: to_date.to_date)
+        end
+      end
+
+      def self.performance_stores
+        stores = Ec::Store.where(platform: "ozon", is_active: true).where.not(ozon_performance_client_id: nil)
+        raise ArgumentError, "No active Ozon stores with Performance credentials found" if stores.none?
+
+        stores
+      end
+      private_class_method :performance_stores
 
       def initialize(account, client: nil, report_runner: nil)
         @account = account
@@ -183,17 +199,40 @@ module RawOzon
       def sync_cpo_all_stats(from_date:, to_date:)
         unit = cpo_all_unit
         return 0 unless unit
-        request = { "timeBounds.from" => "#{from_date}T00:00:00+03:00", "timeBounds.to" => "#{to_date}T23:59:59+03:00" }
-        body = @report_runner.run(report_type: "cpo_all_products", endpoint: "/api/client/statistics/all_sku_promo/products/generate",
+        request = cpo_all_request(from_date, to_date)
+        daily_body = @report_runner.run(report_type: "cpo_all_products", endpoint: "/api/client/statistics/all_sku_promo/products/generate",
           period_from: from_date, period_to: to_date, request_body: request) do
           @client.get("/api/client/statistics/all_sku_promo/products/generate", request)
         end
-        rows = CsvParser.cpo_all_daily(body).map do |item|
+        daily_rows = CsvParser.cpo_all_daily(daily_body).map do |item|
           item.merge(account_id: @account.id, ad_unit_id: unit.id, cost_model: "cpo_all_report", synced_at: Time.current,
             created_at: Time.current, updated_at: Time.current)
         end
-        upsert_daily_rows(rows)
-        rows.size
+        upsert_daily_rows(daily_rows)
+
+        order_body = @report_runner.run(report_type: "cpo_all_orders", endpoint: "/api/client/statistics/all_sku_promo/orders/generate",
+          period_from: from_date, period_to: to_date, request_body: request) do
+          @client.get("/api/client/statistics/all_sku_promo/orders/generate", request)
+        end
+        product_map = raw_product_map
+        sku_rows = CsvParser.cpo_all_orders(order_body).map do |item|
+          item.merge(
+            account_id: @account.id,
+            ad_unit_id: unit.id,
+            raw_ozon_product_id: product_map[item[:ozon_sku_id]],
+            cost_model: "cpo_all",
+            synced_at: Time.current,
+            created_at: Time.current,
+            updated_at: Time.current
+          )
+        end
+        RawOzon::AdSkuDailyStat.transaction do
+          RawOzon::AdSkuDailyStat
+            .where(ad_unit_id: unit.id, stat_date: from_date..to_date, cost_model: "cpo_all")
+            .delete_all
+          upsert_sku_rows(sku_rows)
+        end
+        daily_rows.size + sku_rows.size
       end
 
       private
@@ -320,6 +359,13 @@ module RawOzon
           sku = product.raw_json&.dig("sku").to_s.presence
           map[sku] = product.id if sku
         end
+      end
+
+      def cpo_all_request(from_date, to_date)
+        {
+          "timeBounds.from" => "#{from_date}T00:00:00+03:00",
+          "timeBounds.to" => "#{to_date}T23:59:59+03:00"
+        }
       end
 
       def cpc_history_reports(body, batch)

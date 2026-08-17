@@ -12,6 +12,16 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
     end
   end
 
+  class ReportRunnerByType
+    def initialize(bodies)
+      @bodies = bodies
+    end
+
+    def run(report_type:, **)
+      @bodies.fetch(report_type)
+    end
+  end
+
   class FakeClient
     attr_reader :requests
 
@@ -160,6 +170,54 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
     rows = RawOzon::AdSkuDailyStat.where(account_id: @account.id, cost_model: "cpc_history")
     assert_equal %w[3001 3002], rows.order(:ozon_sku_id).pluck(:ozon_sku_id)
     assert_equal 1400, rows.sum(:spend).to_i
+  end
+
+  test "syncs all SKU promo order costs into SKU daily stats" do
+    @sync.sync_units
+    daily_body = <<~CSV
+      Дата;Расход;Продажи из поиска;Продажи из рекомендаций;Заказы из поиска;Заказы из рекомендаций
+      #{@stat_date.strftime("%d.%m.%Y")};35,50;100,00;50,00;2;1
+    CSV
+    orders_body = <<~CSV
+      Период;Дата;ID заказа;SKU;Артикул;Расход
+      week;#{@stat_date.strftime("%d.%m.%Y")};order-1;3001;LAMP-1;10,25
+      week;#{@stat_date.strftime("%d.%m.%Y")};order-2;3001;LAMP-1;20,00
+      week;#{@stat_date.strftime("%d.%m.%Y")};order-3;3002;TOWEL-1;5,25
+    CSV
+    sync = RawOzon::Ads::Sync.new(
+      @account,
+      client: @client,
+      report_runner: ReportRunnerByType.new(
+        "cpo_all_products" => daily_body,
+        "cpo_all_orders" => orders_body
+      )
+    )
+
+    assert_equal 3, sync.sync_cpo_all_stats(from_date: @stat_date, to_date: @stat_date)
+
+    unit = RawOzon::AdUnit.find_by!(account_id: @account.id, unit_type: "cpo_all")
+    assert_equal 35.5, RawOzon::AdDailyStat.find_by!(ad_unit: unit, cost_model: "cpo_all_report").spend.to_f
+    stats = RawOzon::AdSkuDailyStat.where(ad_unit: unit, cost_model: "cpo_all").order(:ozon_sku_id)
+    assert_equal ["3001", "3002"], stats.pluck(:ozon_sku_id)
+    assert_equal [30.25, 5.25], stats.pluck(:spend).map(&:to_f)
+
+    replacement_body = <<~CSV
+      Период;Дата;ID заказа;SKU;Артикул;Расход
+      week;#{@stat_date.strftime("%d.%m.%Y")};order-1;3001;LAMP-1;8,00
+    CSV
+    replacement_sync = RawOzon::Ads::Sync.new(
+      @account,
+      client: @client,
+      report_runner: ReportRunnerByType.new(
+        "cpo_all_products" => daily_body,
+        "cpo_all_orders" => replacement_body
+      )
+    )
+    replacement_sync.sync_cpo_all_stats(from_date: @stat_date, to_date: @stat_date)
+
+    stats.reload
+    assert_equal ["3001"], stats.pluck(:ozon_sku_id)
+    assert_equal [8.0], stats.pluck(:spend).map(&:to_f)
   end
 
   test "records a campaign on off change for a bound listing" do
