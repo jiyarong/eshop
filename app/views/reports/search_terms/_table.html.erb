@@ -43,7 +43,7 @@
               <td>
                 <strong>
                   <% if local_assigns.fetch(:show_sku_link, true) %>
-                    <%= sku_detail_drawer_link row[:sku], tab: "operation" %>
+                    <%= sku_detail_drawer_link row[:sku], tab: "search_terms" %>
                   <% else %>
                     <%= row[:sku_code] %>
                   <% end %>

@@ -1597,7 +1597,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-ads-section .section-title", text: I18n.t("reports.wb_ads.title")
   end
 
-  test "sku detail keeps the hidden sku-scoped search terms view directly accessible" do
+  test "sku detail exposes the sku-scoped search terms tab" do
     user_today = Time.current.in_time_zone(@current_user.time_zone).to_date
     period_from = user_today.beginning_of_week(:monday) - 1.week
     period_to = period_from.end_of_week(:monday)
@@ -1639,7 +1639,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     tab_labels = css_select(".sku-detail-tabs__link").map { |link| link.text.strip }
-    assert_not_includes tab_labels, "搜索词"
+    assert_includes tab_labels, "搜索词"
     assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab_search_terms']"
     assert_equal period_from.iso8601, css_select("input[name='from_date']").sole["value"]
     assert_equal period_to.iso8601, css_select("input[name='to_date']").sole["value"]

@@ -77,7 +77,8 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", I18n.t("reports.search_terms.columns.wb.cart_conversion")
     assert_select "th", I18n.t("reports.search_terms.columns.wb.visibility")
     assert_select "tr.search-terms-sku-row", 1
-    assert_select "a[data-turbo-frame='sku_detail_drawer']", text: @sku.sku_code
+    assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']",
+      report_sku_path(@sku.sku_code, tab: "search_terms"), text: @sku.sku_code
     assert_select "turbo-frame[data-lazy-src*=?]", "/reports/search_terms/#{@sku.sku_code}/terms", 1
     assert_select ".weekly-profit-table-comparison.is-positive", text: "↑ 100%", minimum: 1
     assert_select ".weekly-profit-table-comparison.is-positive", text: "提升 6 位"
