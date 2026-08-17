@@ -5,16 +5,24 @@ module RawOzon
       # POST /v1/analytics/product-queries/details — 词级搜索明细（每 SKU 最多 15 词）
       def sync_product_queries
         skus = RawOzon::Product.where(account_id: @account.id)
-                               .filter_map { |p| p.raw_json&.dig('sku')&.to_s }
+                               .filter_map do |product|
+                                 sku = product.raw_json&.dig('sku').to_i
+                                 sku.to_s if sku.positive?
+                               end
                                .uniq
         return 0 if skus.empty?
 
-        totals = { ok: 0, summaries: 0, details: 0, weeks: 0 }
+        totals = { ok: 0, summaries: 0, details: 0, weeks: 0, failed_weeks: [] }
         completed_product_query_weeks.each do |week_start, week_end|
-          counts = sync_product_query_week(skus, week_start:, week_end:)
-          totals[:summaries] += counts[:summaries]
-          totals[:details] += counts[:details]
-          totals[:weeks] += 1
+          begin
+            counts = sync_product_query_week(skus, week_start:, week_end:)
+            totals[:summaries] += counts[:summaries]
+            totals[:details] += counts[:details]
+            totals[:weeks] += 1
+          rescue OzonClient::ApiError => e
+            totals[:failed_weeks] << { period_from: week_start, period_to: week_end, error: e.message }
+            log "  ! product queries #{week_start}..#{week_end} skipped: #{e.message}", level: :warn
+          end
         end
 
         totals[:ok] = totals[:summaries] + totals[:details]
