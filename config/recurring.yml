@@ -143,12 +143,16 @@ production:
     schedule: every day at 1:10 in Asia/Shanghai
 
   ozon_weekly_sync:
-    command: "RawOzon::WeeklySync.run(days: 8)"
+    command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_products, :sync_product_attributes, :sync_analytics_stocks, :sync_promotions, :sync_finance_realization])"
     schedule: every tuesday at 3:00 in Asia/Shanghai
 
-  ozon_search_terms_weekly_refresh:
-    command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_product_queries])"
-    schedule: every friday at 6:30 in Asia/Shanghai
+  ozon_search_terms_weekly_sync:
+    command: "RawOzon::WeeklySync.run(days: 7, sync_keys: [:sync_product_queries_through_friday])"
+    schedule: every monday at 6:30 in Asia/Shanghai
+
+  ozon_search_terms_midweek_refresh:
+    command: "RawOzon::WeeklySync.run(days: 7, sync_keys: [:sync_product_queries])"
+    schedule: every wednesday at 6:30 in Asia/Shanghai
 
   ozon_setup_sync:
     command: "RawOzon::SetupSync.run"
@@ -177,6 +181,10 @@ production:
   daily_snapshot:
     command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"
     schedule: every day at 3:00 in Asia/Shanghai
+
+  sku_inventory_level_retention:
+    command: "Ec::SkuInventoryLevelRetention.run"
+    schedule: every day at 3:40 in Asia/Shanghai
 
   # Fetch current-week CBR rate for W-1/W-2 report fallback.
   cbr_rate_fetch:

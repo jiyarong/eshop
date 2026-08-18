@@ -5,6 +5,7 @@ module Erp
     include ResponsibleUserFilterable
     include SpuSkuFilterable
     include AIDiagnosisEventFilterable
+    include TableSortable
 
     INLINE_EDITABLE_FIELDS = %w[
       batch_code
@@ -17,6 +18,11 @@ module Erp
     ].freeze
     BATCH_PAGE_SIZE = 10
     DEFAULT_INDEX_STATUSES = %w[draft ordered in_transit].freeze
+    SORT_COLUMNS = {
+      "purchase_date" => "ec_sku_batches.purchase_date",
+      "expected_arrival_on" => "ec_sku_batches.expected_arrival_on",
+      "received_on" => "ec_sku_batches.received_on"
+    }.freeze
 
     before_action :set_batch, only: [:show, :edit, :update, :destroy]
     before_action -> { require_any_permission!(:manage_purchases, :manage_inventory) }, only: [:new, :create, :edit, :update, :destroy]
@@ -29,6 +35,7 @@ module Erp
       load_spu_sku_filter
       load_responsible_user_filters
       load_ai_diagnosis_event_filter
+      load_table_sort(allowed_keys: SORT_COLUMNS.keys)
 
       scope = Ec::SkuBatch.includes(:sku, :supplier).left_joins(:sku).order(created_at: :desc, id: :desc)
       scope = apply_master_sku_category_filter_to_sku_records(scope)
@@ -47,6 +54,7 @@ module Erp
         scope = scope.where("ec_sku_batches.batch_code ILIKE ?", batch_keyword)
       end
       scope = scope.where(status: @statuses) if @statuses.any?
+      scope = apply_table_sort(scope)
 
       @batches = paginated_batches(scope)
       @purchase_costs_by_batch_id = Ec::SkuBatchPurchaseCostQuery.call(@batches)
@@ -117,6 +125,14 @@ module Erp
     end
 
     private
+
+    def apply_table_sort(scope)
+      return scope if table_sort_key.blank?
+
+      column = SORT_COLUMNS.fetch(table_sort_key)
+      direction = table_sort_direction == "asc" ? "ASC" : "DESC"
+      scope.reorder(Arel.sql("#{column} #{direction} NULLS LAST, ec_sku_batches.id DESC"))
+    end
 
     def set_batch
       @batch = Ec::SkuBatch.includes(:sku, :supplier, :cost_allocation_items, :purchase_order_items).find(params[:id])

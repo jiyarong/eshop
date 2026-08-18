@@ -1125,6 +1125,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
   end
 
+  test "sku detail hides the unmaintained sku listing status" do
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "basic" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-identity > .status-pill", count: 0
+    assert_select ".definition-list dt", text: I18n.t("reports.sku_detail.fields.status"), count: 0
+  end
+
   test "sku detail drawer keeps each operation report filter inside its tab" do
     %w[sales_funnel profit].each do |tab|
       get report_sku_path(@sku.sku_code),
@@ -1597,7 +1607,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-ads-section .section-title", text: I18n.t("reports.wb_ads.title")
   end
 
-  test "sku detail keeps the hidden sku-scoped search terms view directly accessible" do
+  test "sku detail exposes the sku-scoped search terms tab" do
     user_today = Time.current.in_time_zone(@current_user.time_zone).to_date
     period_from = user_today.beginning_of_week(:monday) - 1.week
     period_to = period_from.end_of_week(:monday)
@@ -1639,7 +1649,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     tab_labels = css_select(".sku-detail-tabs__link").map { |link| link.text.strip }
-    assert_not_includes tab_labels, "搜索词"
+    assert_includes tab_labels, "搜索词"
     assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab_search_terms']"
     assert_equal period_from.iso8601, css_select("input[name='from_date']").sole["value"]
     assert_equal period_to.iso8601, css_select("input[name='to_date']").sole["value"]
@@ -1752,15 +1762,14 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.button", "Back"
     assert_select "a.button[href='/operator_skus'][data-controller='history-navigation'][data-action='history-navigation#back']", "Back"
     assert_select "a.button", "Edit profile"
-    assert_select ".status-pill", "Active"
+    assert_select ".sku-detail-identity > .status-pill", count: 0
     %w[Sales Period\ revenue Period\ profit Period\ margin Period\ ad\ spend].each do |label|
       assert_select ".summary-label", label
     end
     assert_select ".sku-detail-tabs a[aria-current='page']", "Basic"
     assert_select "h2", "Basic information"
     assert_select "dt", "Chinese name"
-    assert_select "dt", "Status"
-    assert_select "dd", "Active"
+    assert_select "dt", text: "Status", count: 0
     assert_select "h2", "Product attributes"
     assert_select "dt", "Owner"
     assert_select "h2", "Store listing configuration"

@@ -1,11 +1,20 @@
 <section class="panel search-terms-table-panel">
+  <% if @platform == "ozon" %>
+    <div class="search-terms-table-panel__header">
+      <span class="search-terms-data-help" tabindex="0"
+            aria-label="<%= t("reports.search_terms.data_freshness.aria_label") %>">
+        <i class="bi bi-question-circle" aria-hidden="true"></i>
+        <span class="search-terms-data-tooltip" role="tooltip"><%= t("reports.search_terms.data_freshness.description") %></span>
+      </span>
+    </div>
+  <% end %>
   <div class="table-scroll">
     <table class="inventory-list-table search-terms-table" data-controller="table-row-expander">
       <thead>
         <tr>
           <th class="search-terms-expand-column"></th>
           <th><%= t("reports.search_terms.columns.sku") %></th>
-          <th class="numeric"><%= t("reports.search_terms.columns.term_count") %></th>
+          <% if @platform == "wb" %><th class="numeric"><%= t("reports.search_terms.columns.term_count") %></th><% end %>
           <% if @platform == "ozon" %><th class="numeric"><%= t("reports.search_terms.columns.ozon.search_volume") %></th><% end %>
           <th class="numeric"><%= t("reports.search_terms.columns.avg_position") %></th>
           <th class="numeric"><%= t("reports.search_terms.columns.#{@platform}.views") %></th>
@@ -13,7 +22,7 @@
             <th class="numeric"><%= t("reports.search_terms.columns.wb.add_to_cart") %></th>
             <th class="numeric"><%= t("reports.search_terms.columns.wb.cart_conversion") %></th>
           <% end %>
-          <th class="numeric"><%= t("reports.search_terms.columns.orders") %></th>
+          <% if @platform == "wb" %><th class="numeric"><%= t("reports.search_terms.columns.orders") %></th><% end %>
           <% if @platform == "ozon" %>
             <th class="numeric"><%= t("reports.search_terms.columns.ozon.revenue") %></th>
           <% end %>
@@ -23,7 +32,7 @@
       </thead>
       <tbody>
         <% if @rows.empty? %>
-          <tr><td colspan="<%= @platform == 'wb' ? 10 : 9 %>" class="search-terms-empty"><%= t("reports.search_terms.empty") %></td></tr>
+          <tr><td colspan="<%= @platform == 'wb' ? 10 : 7 %>" class="search-terms-empty"><%= t("reports.search_terms.empty") %></td></tr>
         <% else %>
           <% @rows.each do |row| %>
             <% comparisons = @row_comparisons.fetch(row[:sku_code], {}) %>
@@ -31,7 +40,7 @@
             <% collapse_label = t("reports.search_terms.actions.collapse", sku: row[:sku_code]) %>
             <tr class="search-terms-sku-row">
               <td class="search-terms-expand-column">
-                <% if row[:term_count].positive? %>
+                <% if @platform == "ozon" || row[:term_count].positive? %>
                   <button class="icon-button search-terms-expand-button" type="button"
                           aria-expanded="false" aria-label="<%= expand_label %>"
                           data-expand-label="<%= expand_label %>" data-collapse-label="<%= collapse_label %>"
@@ -43,14 +52,14 @@
               <td>
                 <strong>
                   <% if local_assigns.fetch(:show_sku_link, true) %>
-                    <%= sku_detail_drawer_link row[:sku], tab: "operation" %>
+                    <%= sku_detail_drawer_link row[:sku], tab: "search_terms" %>
                   <% else %>
                     <%= row[:sku_code] %>
                   <% end %>
                 </strong>
                 <small class="search-terms-subline"><%= row[:product_name].presence || t("reports.search_terms.unknown_product") %></small>
               </td>
-              <td class="numeric"><%= search_terms_metric_content(row[:term_count], comparisons[:term_count]) %></td>
+              <% if @platform == "wb" %><td class="numeric"><%= search_terms_metric_content(row[:term_count], comparisons[:term_count]) %></td><% end %>
               <% if @platform == "ozon" %><td class="numeric"><%= search_terms_metric_content(row[:search_volume], comparisons[:search_volume]) %></td><% end %>
               <td class="numeric"><%= search_terms_metric_content(row[:avg_position], comparisons[:avg_position], type: :decimal, comparison_type: :rank) %></td>
               <td class="numeric"><%= search_terms_metric_content(row[:views], comparisons[:views]) %></td>
@@ -58,19 +67,20 @@
                 <td class="numeric"><%= search_terms_metric_content(row[:add_to_cart], comparisons[:add_to_cart]) %></td>
                 <td class="numeric"><%= search_terms_metric_content(row[:cart_conversion], comparisons[:cart_conversion], type: :percentage, comparison_type: :points) %></td>
               <% end %>
-              <td class="numeric"><%= search_terms_metric_content(row[:orders], comparisons[:orders]) %></td>
+              <% if @platform == "wb" %><td class="numeric"><%= search_terms_metric_content(row[:orders], comparisons[:orders]) %></td><% end %>
               <% if @platform == "ozon" %>
                 <td class="numeric"><%= search_terms_metric_content(row[:revenue], comparisons[:revenue], type: :currency) %></td>
               <% end %>
               <td class="numeric"><%= search_terms_metric_content(row[:conversion], comparisons[:conversion], type: :percentage, comparison_type: :points) %></td>
               <% if @platform == "wb" %><td class="numeric"><%= search_terms_metric_content(row[:visibility], comparisons[:visibility], type: :percentage, comparison_type: :points) %></td><% end %>
             </tr>
-            <% if row[:term_count].positive? %>
+            <% if @platform == "ozon" || row[:term_count].positive? %>
               <tr class="wb-ads-product-detail-row search-terms-detail-row" hidden>
-                <td colspan="<%= @platform == 'wb' ? 10 : 9 %>">
+                <td colspan="<%= @platform == 'wb' ? 10 : 7 %>">
                   <%= turbo_frame_tag "search_terms_#{@platform}_#{dom_id(row[:sku])}",
                                       data: { lazy_src: reports_search_term_details_path(row[:sku_code], platform: @platform,
-                                        store_id: @store.id, from_date: @from_date, to_date: @to_date, q: @query.presence) } do %>
+                                        store_id: @store.id, from_date: @from_date, to_date: @to_date, q: @query.presence,
+                                        top_order_by: @top_order_by) } do %>
                     <div class="search-terms-loading"><%= t("reports.search_terms.actions.loading") %></div>
                   <% end %>
                 </td>

@@ -10,6 +10,7 @@ module RawOzon
       sync_promotions
       sync_finance_realization
       sync_product_queries
+      sync_product_queries_through_friday
     ].freeze
   end
 end

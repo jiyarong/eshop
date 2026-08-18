@@ -20,8 +20,8 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :edit_sku_attachment, :update_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads ai_inventory_health basic].freeze
-  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend search_terms].freeze
+  SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ai_inventory_health basic].freeze
+  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
   WB_WAREHOUSE_PAGE_SIZE = 10

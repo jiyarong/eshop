@@ -6,13 +6,13 @@ module GoogleSheets
   #
   # ── 全量跑（计划任务，默认行为）──────────────────────────────────────────
   #   GoogleSheets::WeeklyProfitReportRunner.run
-  #   # → 写上周的 WB + Ozon 周报
+  #   # → 写上周的 WB + Ozon 周报、WSU 和 WSU-DEEP 汇总
   #
   # ── 灵活跑 ───────────────────────────────────────────────────────────────
   #   GoogleSheets::WeeklyProfitReportRunner.run(
   #     from_date: '2026-05-18', to_date: '2026-05-24',  # 直接指定日期
-  #     types:     [:wr_wb],      # 周报类型：:wr_wb / :wod_wb / :wr_ozon / :wsu_deep
-  #                               # 默认 :all（等同 [:wr_wb, :wod_wb, :wr_ozon, :wsu_deep]）
+  #     types:     [:wr_wb],      # 周报类型：:wr_wb / :wod_wb / :wr_ozon / :wsu / :wsu_deep
+  #                               # 默认 :all（等同 [:wr_wb, :wr_ozon, :wsu, :wsu_deep]）
   #     shops:     ['МИРОВОЙ'],   # 按门店名模糊匹配，nil = 所有
   #     clear:     false          # 跑前是否清除对应前缀 tab，默认 false
   #   )
@@ -35,21 +35,22 @@ module GoogleSheets
   #     weeks_ago: [2, 1], clear: true
   #   )
   class WeeklyProfitReportRunner < BaseService
-    ALL_TYPES = %i[wr_wb wod_wb wr_ozon wsu_deep].freeze
+    ALL_TYPES = %i[wr_wb wr_ozon wsu wsu_deep].freeze
 
-    # 清空 Sheet 中所有 WR: / WOD: / WSU-DEEP: tab
+    # 清空 Sheet 中所有 WR: / WOD: / WSU: / WSU-DEEP: tab
     def self.clear_all
       svc = new
       svc.send(:delete_sheets_with_prefix, 'WR:')
       svc.send(:delete_sheets_with_prefix, 'WOD:')
+      svc.send(:delete_sheets_with_prefix, 'WSU:')
       svc.send(:delete_sheets_with_prefix, 'WSU-DEEP:')
-      puts "✓ 已清除所有 WR: / WOD: / WSU-DEEP: tab"
+      puts "✓ 已清除所有 WR: / WOD: / WSU: / WSU-DEEP: tab"
     end
 
     # @param weeks_ago   [Array<Integer>] 相对当周的偏移，默认 [1]；与 from_date/to_date 二选一
     # @param from_date   [String/Date]   直接指定开始日期
     # @param to_date     [String/Date]   直接指定结束日期
-    # @param types       [Symbol/Array]  :all / [:wr_wb, :wod_wb, :wr_ozon, :wsu_deep]，默认 :all
+    # @param types       [Symbol/Array]  :all / [:wr_wb, :wod_wb, :wr_ozon, :wsu, :wsu_deep]，默认 :all
     # @param shops       [Array<String>] 门店名关键词（模糊匹配），nil = 全部
     # @param clear       [Boolean]       跑前清除命中的 tab 前缀，默认 false
     def self.run(weeks_ago: nil, from_date: nil, to_date: nil,
@@ -67,6 +68,7 @@ module GoogleSheets
       if clear
         new.send(:delete_sheets_with_prefix, 'WR:') if (active_types & %i[wr_wb wr_ozon]).any?
         new.send(:delete_sheets_with_prefix, 'WOD:') if active_types.include?(:wod_wb)
+        new.send(:delete_sheets_with_prefix, 'WSU:') if active_types.include?(:wsu)
         new.send(:delete_sheets_with_prefix, 'WSU-DEEP:') if active_types.include?(:wsu_deep)
         puts "✓ 已清除对应 tab 前缀"
       end
@@ -100,6 +102,14 @@ module GoogleSheets
             from_date: from, to_date: to,
             rate_cny_rub: rate.rate_cny_rub,
             account_ids: ozon_ids
+          )
+        end
+
+        if active_types.include?(:wsu)
+          WeeklySummaryService.run(
+            from_date: from,
+            to_date: to,
+            week_label: week_label
           )
         end
 

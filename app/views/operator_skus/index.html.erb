@@ -59,11 +59,13 @@
             <th><%= t("operator_skus.columns.spu") %></th>
             <th><%= t("operator_skus.columns.marketing_state") %></th>
             <th><%= t("operator_skus.columns.responsible") %></th>
-            <th class="numeric"><%= t("operator_skus.columns.sales") %></th>
-            <th class="numeric"><%= t("operator_skus.columns.revenue") %></th>
-            <th class="numeric"><%= t("operator_skus.columns.profit") %></th>
-            <th class="numeric"><%= t("operator_skus.columns.margin") %></th>
-            <th class="numeric"><%= t("operator_skus.columns.ads") %></th>
+            <% %w[sales revenue profit margin ads].each do |column| %>
+              <%= render "shared/sortable_table_header",
+                label: t("operator_skus.columns.#{column}"),
+                sort_key: column,
+                class_name: "numeric",
+                title: t("operator_skus.sort_period_hint") %>
+            <% end %>
             <th class="numeric"><%= t("operator_skus.columns.inventory") %></th>
             <th><%= t("operator_skus.columns.status") %></th>
             <th><%= t("operator_skus.columns.events") %></th>

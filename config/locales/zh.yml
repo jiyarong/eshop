@@ -951,6 +951,9 @@ zh:
       subtitle: "%{from} 至 %{to} · 完整自然周"
       platforms: { wb: "WB", ozon: "Ozon" }
       store_label: "%{platform} · %{store}"
+      data_freshness:
+        aria_label: "查看 Ozon 搜索词数据更新说明"
+        description: "Ozon 上周搜索词数据分两次更新：周一先展示上周一至周五的数据，并归入上周完整自然周；周三补拉上周一至周日的数据并覆盖更新。因此周一、周二查看上周数据时，周末数据尚未计入。"
       comparison:
         note: "环比周期：%{from} 至 %{to}"
         unavailable: "-"
@@ -984,6 +987,9 @@ zh:
         keyword: "搜索词"
         median_position: "中位排名"
         ozon_limit: "Ozon 每个商品最多返回 Top 15 搜索词"
+        top_order_by:
+          label: "榜单维度"
+          options: { openCard: "商品点击", addToCart: "加入购物车", openToCart: "加购转化率", orders: "已下单", cartToOrder: "下单转化率", BY_SEARCHES: "搜索用户", BY_VIEWS: "浏览用户", BY_GMV: "搜索 GMV", BY_CONVERSION: "浏览转化率", BY_POSITION: "搜索排名" }
       actions:
         expand: "展开 %{sku} 的搜索词"
         collapse: "收起 %{sku} 的搜索词"
@@ -1855,6 +1861,8 @@ zh:
         title: "%{event_type}详情"
       event_types:
         clearance_overdue: "清仓逾期"
+        grade_downgrade_alert: "降级确认"
+        grade_weekly_profit_drop: "单周利润严重下滑"
         missed_sales_alert: "错失销售预警"
         stockout_90day: "90 天断货风险"
         stockout_imminent: "即将断货"
@@ -2371,6 +2379,10 @@ zh:
         summary: "店铺信息"
         unbound_raw_products: "未绑定平台商品"
   shared:
+    table_sort:
+      asc: "%{column}，切换为升序"
+      clear: "%{column}，清除排序"
+      desc: "%{column}，切换为降序"
     attachments:
       actions: "操作"
       created_at: "上传时间"
@@ -2460,6 +2472,7 @@ zh:
     title: "SKU 列表"
     subtitle: "集中查看 SKU 的销售、利润、库存与当前问题"
     total: "共 %{count} 个 SKU"
+    sort_period_hint: "按 30 天数据排序"
     filters:
       search_placeholder: "搜索 SKU、SPU 或产品名称"
       submit: "筛选"

@@ -913,6 +913,9 @@ en:
       subtitle: "%{from} to %{to} · complete calendar week"
       platforms: { wb: "WB", ozon: "Ozon" }
       store_label: "%{platform} · %{store}"
+      data_freshness:
+        aria_label: "Show Ozon search term data freshness details"
+        description: "Ozon search term data for the previous week is updated twice. On Monday, data from Monday through Friday is shown under the full previous calendar week. On Wednesday, data from Monday through Sunday is fetched and replaces the preliminary data. Weekend data is therefore not included when viewing the previous week on Monday or Tuesday."
       comparison:
         note: "Compared with %{from} to %{to}"
         unavailable: "-"
@@ -933,7 +936,14 @@ en:
         orders: "Orders"
         wb: { search_volume: "Search frequency", views: "Product clicks", add_to_cart: "Add to cart", cart_conversion: "Cart conversion", conversion: "Order conversion", visibility: "Visibility" }
         ozon: { search_volume: "Search users", views: "View users", revenue: "Search GMV", conversion: "View conversion" }
-      detail: { title: "%{sku} search terms", keyword: "Search term", median_position: "Median rank", ozon_limit: "Ozon returns at most the Top 15 search terms per product" }
+      detail:
+        title: "%{sku} search terms"
+        keyword: "Search term"
+        median_position: "Median rank"
+        ozon_limit: "Ozon returns at most the Top 15 search terms per product"
+        top_order_by:
+          label: "Ranking metric"
+          options: { openCard: "Product clicks", addToCart: "Add to cart", openToCart: "Cart conversion", orders: "Orders", cartToOrder: "Order conversion", BY_SEARCHES: "Search users", BY_VIEWS: "View users", BY_GMV: "Search GMV", BY_CONVERSION: "View conversion", BY_POSITION: "Search position" }
       actions: { expand: "Expand search terms for %{sku}", collapse: "Collapse search terms for %{sku}", loading: "Loading search terms..." }
       invalid_period: "Only a complete Monday-to-Sunday calendar week is supported. No data is shown for this period."
       empty: "No search term data matches the current filters"
@@ -1657,6 +1667,8 @@ en:
         title: "%{event_type} details"
       event_types:
         clearance_overdue: "Clearance overdue"
+        grade_downgrade_alert: "Downgrade confirmation"
+        grade_weekly_profit_drop: "Severe weekly profit drop"
         missed_sales_alert: "Missed sales alert"
         stockout_90day: "90-day stockout risk"
         stockout_imminent: "Stockout imminent"
@@ -2173,6 +2185,10 @@ en:
         summary: "Store information"
         unbound_raw_products: "Unbound platform products"
   shared:
+    table_sort:
+      asc: "%{column}, sort ascending"
+      clear: "%{column}, clear sorting"
+      desc: "%{column}, sort descending"
     attachments:
       actions: "Actions"
       created_at: "Uploaded at"
@@ -2263,6 +2279,7 @@ en:
     title: "SKU List"
     subtitle: "Sales, profit, inventory, and current issues by SKU"
     total: "%{count} SKUs"
+    sort_period_hint: "Sort by 30-day value"
     filters:
       search_placeholder: "Search SKU, SPU, or product name"
       submit: "Filter"

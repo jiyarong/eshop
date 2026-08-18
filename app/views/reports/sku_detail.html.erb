@@ -27,9 +27,6 @@
 
 <section class="panel sku-detail-hero">
   <div class="sku-detail-identity">
-    <span class="status-pill <%= @sku.is_active ? "is-active" : "is-muted" %>">
-      <%= t(@sku.is_active ? "reports.sku_detail.status.active" : "reports.sku_detail.status.inactive") %>
-    </span>
     <h2><%= report_value(@sku.product_name) %></h2>
     <p><%= report_value(@sku.product_name_ru) %></p>
     <div class="sku-detail-marketing-state">

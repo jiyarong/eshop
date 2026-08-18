@@ -59,6 +59,7 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
     assert_equal "RUB", row.currency
     assert_equal true, row.is_card_rated
     assert_equal "openCard", row.top_order_by
+    assert_equal 1, row.top_order_rank
     assert_equal search_item, row.raw_json
     assert row.synced_at.present?
   end
@@ -112,6 +113,26 @@ class RawWbSearchTermsSyncTest < ActiveSupport::TestCase
     rows = RawWb::AnalyticsSearchTerm.where(account_id: @account.id, keyword: "полотенцесушитель").order(:top_order_by)
     assert_equal %w[addToCart openCard], rows.pluck(:top_order_by)
     assert_equal 6, rows.find_by!(top_order_by: "addToCart").add_to_cart
+  end
+
+  test "stores response ranks independently for each product" do
+    second_nm_id = 860_790_649
+    RawWb::Product.create!(account: @account, nm_id: second_nm_id, vendor_code: "SEARCH-2-#{@token}")
+    client = FakeWbClient.new([response([
+      search_item.merge("text" => "first product first"),
+      search_item.merge("nmId" => second_nm_id, "text" => "second product first"),
+      search_item.merge("text" => "first product second")
+    ])])
+
+    sync(client).sync_period(period_start: Date.new(2026, 8, 3), period_end: Date.new(2026, 8, 9))
+
+    ranks = RawWb::AnalyticsSearchTerm.where(account_id: @account.id, top_order_by: "openCard")
+      .order(:id).pluck(:nm_id, :keyword, :top_order_rank)
+    assert_equal [
+      [860_790_648, "first product first", 1],
+      [second_nm_id, "second product first", 1],
+      [860_790_648, "first product second", 2]
+    ], ranks
   end
 
   test "requests up to fifty SKUs together for each top dimension" do

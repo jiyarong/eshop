@@ -22,8 +22,6 @@
         <dd><%= report_value(category_parts.any? ? category_parts.join(" / ") : nil) %></dd>
         <dt><%= t("reports.sku_detail.fields.master_sku") %></dt>
         <dd><%= report_value(@sku.master_sku&.master_sku_code) %></dd>
-        <dt><%= t("reports.sku_detail.fields.status") %></dt>
-        <dd><%= t(@sku.is_active ? "reports.sku_detail.status.active" : "reports.sku_detail.status.inactive") %></dd>
         <dt><%= t("reports.sku_detail.fields.created_at") %></dt>
         <dd><%= display_time(@sku.created_at) %></dd>
         <dt><%= t("reports.sku_detail.fields.updated_at") %></dt>

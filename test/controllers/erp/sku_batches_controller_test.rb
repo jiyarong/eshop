@@ -104,6 +104,53 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[data-turbo-method='delete'][data-turbo-confirm=?][href=?]", "确认删除这个批次？", erp_sku_batch_path(@batch, return_to: "/erp/sku_batches"), minimum: 1
   end
 
+  test "index sorts purchase and delivery date columns" do
+    later_batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "ERP-BATCH-LATER-#{@token}",
+      purchase_date: Date.new(2026, 6, 10),
+      expected_arrival_on: Date.new(2026, 6, 20),
+      received_on: Date.new(2026, 6, 25),
+      purchased_quantity: 50,
+      received_quantity: 50,
+      purchase_unit_price_cny: 10
+    )
+    @batch.update!(received_on: Date.new(2026, 6, 18))
+
+    {
+      "purchase_date" => "采购日期",
+      "expected_arrival_on" => "预计到货日期",
+      "received_on" => "境外交付日期"
+    }.each do |sort_key, label|
+      sign_in @current_user
+      get erp_sku_batches_path,
+        params: { q: @token, sort: sort_key, direction: "desc" },
+        headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      rows = css_select("tr.sku-batch-row turbo-frame[id$='_batch_code_cell']").map(&:text).map(&:strip)
+      assert_equal [ later_batch.batch_code, @batch.batch_code ], rows
+      assert_select "th.sortable-table-header[aria-sort='descending']", text: label
+    end
+  end
+
+  test "index renders three-state sortable date headers and preserves filters" do
+    get erp_sku_batches_path,
+      params: { batch_code: @token, sort: "purchase_date", direction: "asc" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "th.sortable-table-header", count: 3
+    assert_select "th.sortable-table-header[aria-sort='ascending'] a[aria-label='采购日期，清除排序']" do |links|
+      href = links.first["href"]
+      assert_includes href, "batch_code=#{@token}"
+      refute_includes href, "sort="
+      refute_includes href, "direction="
+    end
+    assert_select "th.sortable-table-header[aria-sort='none'] a[href*='sort=expected_arrival_on'][href*='direction=desc']"
+    assert_select "th.sortable-table-header[aria-sort='none'] a[href*='sort=received_on'][href*='direction=desc']"
+  end
+
   test "index localizes visible chrome in english" do
     get "/erp/sku_batches", params: { locale: "en" }, headers: { "Accept" => "text/html" }
 

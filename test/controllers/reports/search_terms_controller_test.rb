@@ -71,13 +71,15 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".search-terms-store-filter .weekly-profit-filter-tag", text: "WB · #{@wb_store.store_name}"
     assert_select ".search-terms-store-filter .weekly-profit-filter-tag", text: "Ozon · #{@ozon_store.store_name}"
     assert_select ".search-terms-store-filter .weekly-profit-filter-tag.is-active", text: "WB · #{@wb_store.store_name}"
+    assert_select ".search-terms-data-help", count: 0
     assert_select "[data-controller='time-range-selector']"
     assert_select "[data-controller='spu-sku-filter']"
     assert_select "th", I18n.t("reports.search_terms.columns.wb.add_to_cart")
     assert_select "th", I18n.t("reports.search_terms.columns.wb.cart_conversion")
     assert_select "th", I18n.t("reports.search_terms.columns.wb.visibility")
     assert_select "tr.search-terms-sku-row", 1
-    assert_select "a[data-turbo-frame='sku_detail_drawer']", text: @sku.sku_code
+    assert_select "a[href=?][data-turbo-frame='sku_detail_drawer']",
+      report_sku_path(@sku.sku_code, tab: "search_terms"), text: @sku.sku_code
     assert_select "turbo-frame[data-lazy-src*=?]", "/reports/search_terms/#{@sku.sku_code}/terms", 1
     assert_select ".weekly-profit-table-comparison.is-positive", text: "↑ 100%", minimum: 1
     assert_select ".weekly-profit-table-comparison.is-positive", text: "提升 6 位"
@@ -105,14 +107,36 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#search_terms_wb_ec_sku_#{@sku.id}"
+    assert_select "select[name='top_order_by']" do
+      assert_select "option[value='openCard'][selected]", text: "商品点击"
+      assert_select "option", count: 5
+    end
     assert_select "td strong", text: "полотенцесушитель"
     assert_select ".weekly-profit-table-comparison.is-positive", text: "提升 6 位"
     assert_select ".status-pill.is-active", text: I18n.t("reports.search_terms.comparison.lifecycle.new.wb")
-    assert_select ".status-pill.is-muted", text: I18n.t("reports.search_terms.comparison.lifecycle.lost.wb")
-    assert_select "tr.search-terms-detail-table__lost td strong", text: "старый запрос"
+    assert_select ".status-pill.is-muted", count: 0
+    assert_select "tr.search-terms-detail-table__lost", count: 0
   end
 
-  test "does not double count a WB term returned in multiple top dimensions" do
+  test "switches the WB term ranking dimension" do
+    create_wb_term(keyword: "商品点击词", top_order_by: "openCard")
+    create_wb_term(keyword: "下单词第二名", top_order_by: "orders", top_order_rank: 2,
+      frequency: 1_000, cart_to_order: 75)
+    create_wb_term(keyword: "下单词第一名", top_order_by: "orders", top_order_rank: 1,
+      frequency: 1, cart_to_order: 25)
+
+    get reports_search_term_details_path(@sku.sku_code), params: period_params.merge(
+      platform: "wb", store_id: @wb_store.id, top_order_by: "orders"
+    ), headers: { "Turbo-Frame" => "search_terms_wb_ec_sku_#{@sku.id}" }
+
+    assert_response :success
+    assert_select "option[value='orders'][selected]", text: "已下单"
+    assert_equal %w[下单词第一名 下单词第二名], css_select("tbody td:first-child strong").map(&:text)
+    assert_select "tbody tr:first-child td:last-child > span", text: "25.00%"
+    assert_select "td strong", { text: "商品点击词", count: 0 }
+  end
+
+  test "defaults WB terms to the product-click ranking dimension" do
     create_wb_term(top_order_by: "openCard")
     create_wb_term(top_order_by: "orders")
 
@@ -127,7 +151,40 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, terms.sole[:orders]
   end
 
-  test "renders Ozon SKU summary and Top 15 term columns" do
+  test "switches the Ozon term ranking dimension" do
+    RawOzon::ProductQueryDetail.create!(
+      account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
+      query: "搜索量词", top_order_by: "BY_SEARCHES", top_order_rank: 1,
+      unique_search_users: 1_000, unique_view_users: 100, position: 10,
+      view_conversion: 10, order_count: 1, gmv: 100, synced_at: Time.current
+    )
+    RawOzon::ProductQueryDetail.create!(
+      account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
+      query: "GMV 第二名", top_order_by: "BY_GMV", top_order_rank: 2,
+      unique_search_users: 2_000, unique_view_users: 200, position: 20,
+      view_conversion: 10, order_count: 2, gmv: 2_000, synced_at: Time.current
+    )
+    RawOzon::ProductQueryDetail.create!(
+      account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
+      query: "GMV 第一名", top_order_by: "BY_GMV", top_order_rank: 1,
+      unique_search_users: 10, unique_view_users: 5, position: 5,
+      view_conversion: 50, order_count: 3, gmv: 3_000, synced_at: Time.current
+    )
+
+    get reports_search_term_details_path(@sku.sku_code), params: period_params.merge(
+      platform: "ozon", store_id: @ozon_store.id, top_order_by: "BY_GMV"
+    ), headers: { "Turbo-Frame" => "search_terms_ozon_ec_sku_#{@sku.id}" }
+
+    assert_response :success
+    assert_select "select[name='top_order_by']" do
+      assert_select "option[value='BY_GMV'][selected]", text: "搜索 GMV"
+      assert_select "option", count: 5
+    end
+    assert_equal %w[GMV\ 第一名 GMV\ 第二名], css_select("tbody td:first-child strong").map(&:text)
+    assert_select "td strong", { text: "搜索量词", count: 0 }
+  end
+
+  test "renders Ozon SKU rows only from product summaries" do
     RawOzon::ProductQuery.create!(
       account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
       offer_id: "OZON-#{@token}", name: "搜索词测试商品", unique_search_users: 100,
@@ -136,10 +193,22 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     )
     RawOzon::ProductQueryDetail.create!(
       account: @ozon_account, period_from: @period_from, period_to: @period_to, sku: 81_001,
-      query: "полотенцесушитель", unique_search_users: 80, unique_view_users: 20,
-      position: 7.5, view_conversion: 25, order_count: 3, gmv: 900, currency: "RUB",
+      query: "полотенцесушитель", unique_search_users: 8_000, unique_view_users: 7_000,
+      position: 99, view_conversion: 87.5, order_count: 300, gmv: 90_000, currency: "RUB",
       synced_at: Time.current
     )
+
+    row = SearchTermReports::Query.new(
+      platform: "ozon", store: @ozon_store, period_from: @period_from, period_to: @period_to,
+      query: "明细中不存在的词"
+    ).rows.sole
+    assert_equal 100, row[:search_volume]
+    assert_equal 25, row[:views]
+    assert_equal 8.5, row[:avg_position].to_f
+    assert_equal 25, row[:conversion].to_i
+    assert_equal 1_200, row[:revenue].to_i
+    assert_nil row[:term_count]
+    assert_nil row[:orders]
 
     get reports_search_terms_path, params: period_params.merge(platform: "ozon", store_id: @ozon_store.id)
 
@@ -147,7 +216,14 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr.search-terms-sku-row", 1
     assert_select "th", I18n.t("reports.search_terms.columns.ozon.search_volume")
     assert_select "th", I18n.t("reports.search_terms.columns.ozon.revenue")
+    assert_select ".search-terms-data-help[aria-label=?]",
+      I18n.t("reports.search_terms.data_freshness.aria_label"), 1
+    assert_select ".search-terms-data-tooltip[role='tooltip']",
+      text: I18n.t("reports.search_terms.data_freshness.description"), count: 1
+    assert_select "th", { text: I18n.t("reports.search_terms.columns.term_count"), count: 0 }
+    assert_select "th", { text: I18n.t("reports.search_terms.columns.orders"), count: 0 }
     assert_select "th", { text: I18n.t("reports.search_terms.columns.wb.add_to_cart"), count: 0 }
+    assert_select "button[aria-label=?]", I18n.t("reports.search_terms.actions.expand", sku: @sku.sku_code), 1
   end
 
   test "does not show data for a period that is not a complete natural week" do
@@ -169,12 +245,13 @@ class Reports::SearchTermsControllerTest < ActionDispatch::IntegrationTest
   end
 
   def create_wb_term(keyword: "полотенцесушитель", period_from: @period_from, period_to: @period_to,
-    frequency: 100, avg_position: 34, open_card: 20, add_to_cart: 8, orders: 2, top_order_by: "openCard")
+    frequency: 100, avg_position: 34, open_card: 20, add_to_cart: 8, orders: 2,
+    top_order_by: "openCard", top_order_rank: nil, cart_to_order: nil)
     RawWb::AnalyticsSearchTerm.create!(
       account: @wb_account, period_from:, period_to:,
       keyword:, nm_id: 71_001, frequency:, avg_position:,
-      top_order_by:,
-      median_position: 30, open_card:, add_to_cart:, orders:, raw_json: {}, synced_at: Time.current
+      top_order_by:, top_order_rank:,
+      median_position: 30, open_card:, add_to_cart:, orders:, cart_to_order:, raw_json: {}, synced_at: Time.current
     )
   end
 

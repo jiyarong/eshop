@@ -91,6 +91,33 @@ module RawOzon
         end
       end
 
+      def self.cpo_all_orders(body)
+        parsed = rows(body, header_match: ->(headers) {
+          headers.any? { |header| header.casecmp("SKU").zero? } &&
+            headers.any? { |header| header.match?(/Расход/i) }
+        }).filter_map do |row|
+          sku = value(row, /^SKU$/i)
+          stat_date = date(value(row, /^Дата/i))
+          next if sku.blank? || stat_date.nil?
+
+          {
+            ozon_sku_id: sku,
+            stat_date: stat_date,
+            spend: decimal(value(row, /Расход/i)).to_d,
+            raw_json: row
+          }
+        end
+
+        parsed.group_by { |row| [row[:ozon_sku_id], row[:stat_date]] }.map do |(sku, stat_date), items|
+          {
+            ozon_sku_id: sku,
+            stat_date: stat_date,
+            spend: items.sum { |item| item[:spend] },
+            raw_json: { "orders" => items.map { |item| item[:raw_json] } }
+          }
+        end
+      end
+
       def self.rows(body, header_match:)
         lines = normalize(body).lines.map(&:strip).reject(&:blank?)
         parsed = lines.map do |line|

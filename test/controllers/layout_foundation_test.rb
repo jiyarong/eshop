@@ -40,13 +40,13 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".erp-nav__section[data-nav-section='operations']", 1 do
       assert_select ".erp-nav__label", text: "运营"
       assert_select ".erp-nav__link[href='/reports/sales_funnel']", text: "销售漏斗"
+      assert_select ".erp-nav__link[href='/reports/search_terms']", text: "搜索词"
       assert_select ".erp-nav__link[href='/reports/ozon_ads']", text: "Ozon 推广"
       assert_select ".erp-nav__link[href='/reports/wb_ads']", text: "WB 推广"
       assert_select ".erp-nav__link[href='/weekly_profit_reports']", text: "周利润报表"
       assert_select ".erp-nav__link[href='/reports/tools']", text: "测算工具"
       assert_select ".erp-nav__link[href='/erp/operation_actions']", text: "运营记录"
       assert_select ".erp-nav__link[href='/reports/inventory']", 0
-      assert_select ".erp-nav__link[href='/reports/search_terms']", 0
     end
     assert_select ".erp-nav__section[data-nav-section='development']", 1 do
       assert_select ".erp-nav__label", text: "开发"
@@ -60,7 +60,7 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     end
     assert_select ".erp-nav__section[data-nav-section='draft']", 1 do
       assert_select ".erp-nav__label", text: "Draft & Testing"
-      assert_select ".erp-nav__link[href='/reports/search_terms']", text: "搜索词"
+      assert_select ".erp-nav__link[href='/reports/search_terms']", 0
     end
     assert_select ".erp-nav__label", text: "ERP 管理", count: 0
     assert_select ".erp-nav__link[href='/erp/spus']", text: "SPU 管理"

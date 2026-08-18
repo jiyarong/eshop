@@ -91,8 +91,11 @@ module RawWb
           )
           request_count += 1
           currency = response.dig("data", "currency")
+          ranks_by_nm_id = Hash.new(0)
           Array(response.dig("data", "items")).each do |item|
-            row = build_row(item, period_start:, period_end:, currency:, synced_at:, top_order_by: top_order_field)
+            ranks_by_nm_id[item["nmId"]] += 1 if item["nmId"].present?
+            row = build_row(item, period_start:, period_end:, currency:, synced_at:,
+              top_order_by: top_order_field, top_order_rank: ranks_by_nm_id[item["nmId"]])
             rows << row if row
           end
         end
@@ -111,7 +114,7 @@ module RawWb
       }
     end
 
-    def build_row(item, period_start:, period_end:, currency:, synced_at:, top_order_by:)
+    def build_row(item, period_start:, period_end:, currency:, synced_at:, top_order_by:, top_order_rank:)
       return if item["text"].blank? || item["nmId"].blank?
 
       {
@@ -121,6 +124,7 @@ module RawWb
         keyword: item["text"],
         nm_id: item["nmId"],
         top_order_by: top_order_by,
+        top_order_rank: top_order_rank,
         orders: integer(item.dig("orders", "current")),
         orders_percentile: optional_integer(item.dig("orders", "percentile")),
         avg_position: decimal(item.dig("avgPosition", "current")),

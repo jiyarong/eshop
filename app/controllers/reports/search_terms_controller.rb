@@ -6,7 +6,7 @@ module Reports
     before_action :load_context
 
     helper_method :search_terms_metric, :search_terms_metric_content, :search_terms_comparison_label,
-      :search_terms_comparison_class
+      :search_terms_comparison_class, :search_terms_top_order_options
 
     def index
       @rows = @valid_period ? report_query.rows : []
@@ -21,7 +21,11 @@ module Reports
     def terms
       @sku_code = params[:sku_code].to_s.upcase
       @terms = if @valid_period
-        comparison_builder.terms(report_query.terms_for(@sku_code), previous_report_query.terms_for(@sku_code))
+        comparison_builder.terms(
+          report_query.terms_for(@sku_code),
+          previous_report_query.terms_for(@sku_code),
+          include_lost: @platform != "wb"
+        )
       else
         []
       end
@@ -47,6 +51,8 @@ module Reports
         @previous_to_date = @to_date - 1.week
       end
       @query = params[:q].to_s.strip
+      top_order_values = SearchTermReports::Query.top_order_values_for(@platform)
+      @top_order_by = params[:top_order_by].to_s.presence_in(top_order_values) || top_order_values.first
       if action_name == "index"
         load_spu_sku_filter
         @selected_sku_codes = apply_spu_sku_filter_to_skus(Ec::Sku.all).pluck(:sku_code) if spu_sku_filter_active?
@@ -77,7 +83,8 @@ module Reports
         period_from: @from_date,
         period_to: @to_date,
         sku_codes: @selected_sku_codes,
-        query: @query
+        query: @query,
+        top_order_by: @top_order_by
       )
     end
 
@@ -88,7 +95,8 @@ module Reports
         period_from: @previous_from_date,
         period_to: @previous_to_date,
         sku_codes: @selected_sku_codes,
-        query: @query
+        query: @query,
+        top_order_by: @top_order_by
       )
     end
 
@@ -98,6 +106,12 @@ module Reports
 
     def period_json
       { from_date: @from_date, to_date: @to_date }
+    end
+
+    def search_terms_top_order_options
+      SearchTermReports::Query.top_order_values_for(@platform).map do |value|
+        [t("reports.search_terms.detail.top_order_by.options.#{value}"), value]
+      end
     end
 
     def search_terms_metric(value, type: :number)
