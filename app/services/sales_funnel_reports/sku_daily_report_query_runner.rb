@@ -47,17 +47,19 @@ module SalesFunnelReports
       grouped_platform_records(scope.order(:sku, :stat_date), mapping, :sku).map do |product, records|
         hits_view = sum(records, :hits_view)
         hits_tocart = sum(records, :hits_tocart)
+        hits_view_pdp = sum(records, :hits_view_pdp)
+        hits_tocart_pdp = sum(records, :hits_tocart_pdp)
         {
           sku_code: product&.fetch(:sku_code) || records.first.sku.to_s,
           product_name: product&.fetch(:product_name),
           hits_view: hits_view,
           hits_view_search: sum(records, :hits_view_search),
-          hits_view_pdp: sum(records, :hits_view_pdp),
+          hits_view_pdp: hits_view_pdp,
           session_view: sum(records, :session_view),
           hits_tocart: hits_tocart,
           hits_tocart_search: sum(records, :hits_tocart_search),
-          hits_tocart_pdp: sum(records, :hits_tocart_pdp),
-          conv_tocart: percent(hits_tocart, hits_view),
+          hits_tocart_pdp: hits_tocart_pdp,
+          conv_tocart: percent(hits_tocart_pdp, hits_view_pdp),
           ordered_units: sum(records, :ordered_units),
           revenue: sum(records, :revenue),
           returns_count: sum(records, :returns_count),

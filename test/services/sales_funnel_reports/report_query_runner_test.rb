@@ -44,9 +44,9 @@ class SalesFunnelReports::ReportQueryRunnerTest < ActiveSupport::TestCase
   end
 
   test "aggregates complete Ozon weeks and filters through platform_sku_id" do
-    create_ozon_period(Date.new(2026, 6, 29), Date.new(2026, 7, 5), views: 50, carts: 5, orders: 2, revenue: 250)
-    create_ozon_period(Date.new(2026, 7, 6), Date.new(2026, 7, 12), views: 80, carts: 8, orders: 4, revenue: 400)
-    create_ozon_period(Date.new(2026, 7, 13), Date.new(2026, 7, 19), views: 120, carts: 22, orders: 6, revenue: 600)
+    create_ozon_period(Date.new(2026, 6, 29), Date.new(2026, 7, 5), views: 50, carts: 5, pdp_views: 20, pdp_carts: 2, orders: 2, revenue: 250)
+    create_ozon_period(Date.new(2026, 7, 6), Date.new(2026, 7, 12), views: 4_000, carts: 25, pdp_views: 300, pdp_carts: 21, orders: 4, revenue: 400)
+    create_ozon_period(Date.new(2026, 7, 13), Date.new(2026, 7, 19), views: 6_176, carts: 35, pdp_views: 371, pdp_carts: 30, orders: 6, revenue: 600)
 
     report = run_report("ozon:#{@ozon_account.id}", sku_codes: [@sku.sku_code])
     row = report[:rows].sole
@@ -54,10 +54,12 @@ class SalesFunnelReports::ReportQueryRunnerTest < ActiveSupport::TestCase
     assert_equal "ozon", report.dig(:meta, :platform)
     assert_equal @sku.sku_code, row[:sku_code]
     assert_equal "漏斗商品", row[:product_name]
-    assert_equal BigDecimal("200"), row[:hits_view]
-    assert_equal BigDecimal("30"), row[:hits_tocart]
-    assert_equal BigDecimal("15"), row[:conv_tocart]
-    assert_equal BigDecimal("15"), report.dig(:summary, :cart_conversion)
+    assert_equal BigDecimal("10176"), row[:hits_view]
+    assert_equal BigDecimal("60"), row[:hits_tocart]
+    assert_equal BigDecimal("671"), row[:hits_view_pdp]
+    assert_equal BigDecimal("51"), row[:hits_tocart_pdp]
+    assert_equal BigDecimal("7.6"), row[:conv_tocart]
+    assert_equal BigDecimal("7.6"), report.dig(:summary, :cart_conversion)
     assert_equal BigDecimal("10"), row[:ordered_units]
     assert_equal BigDecimal("1000"), row[:revenue]
     assert_equal Date.new(2026, 6, 22), report.dig(:comparison, :period, :from_date)
@@ -133,10 +135,11 @@ class SalesFunnelReports::ReportQueryRunnerTest < ActiveSupport::TestCase
     )
   end
 
-  def create_ozon_period(from, to, views:, carts:, orders:, revenue:)
+  def create_ozon_period(from, to, views:, carts:, pdp_views: 0, pdp_carts: 0, orders:, revenue:)
     RawOzon::SalesFunnelPeriod.create!(
       account: @ozon_account, period_start: from, period_end: to, sku: 80001,
       product_name: "Ozon 漏斗商品", hits_view: views, hits_tocart: carts,
+      hits_view_pdp: pdp_views, hits_tocart_pdp: pdp_carts,
       session_view: views / 2, ordered_units: orders, revenue: revenue,
       returns_count: 1, cancellations: 1, synced_at: Time.current
     )

@@ -65,6 +65,51 @@ class SalesFunnelReports::SkuDailyReportQueryRunnerTest < ActiveSupport::TestCas
     assert_equal Date.new(2026, 8, 2), report.dig(:comparison, :period, :to_date)
   end
 
+  test "uses Ozon product-card views and carts for cart conversion" do
+    account = RawOzon::SellerAccount.create!(
+      company_name: "Daily Ozon #{@token}", client_id: "daily-ozon-#{@token}",
+      api_key: "key-#{@token}", company_type: :small
+    )
+    store = Ec::Store.create!(
+      platform: "ozon", store_name: "Daily Ozon #{@token}", company_type: "small",
+      ozon_raw_account_id: account.id
+    )
+    Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code, store: store, product_id: "DAILY-OZON-#{@token}", platform_sku_id: "82001"
+    )
+    RawOzon::SalesFunnelDaily.create!(
+      account: account, stat_date: Date.new(2026, 8, 3), sku: 82001,
+      hits_view: 4_000, hits_tocart: 25, hits_view_pdp: 300, hits_tocart_pdp: 21,
+      synced_at: Time.current
+    )
+    RawOzon::SalesFunnelDaily.create!(
+      account: account, stat_date: Date.new(2026, 8, 4), sku: 82001,
+      hits_view: 6_176, hits_tocart: 35, hits_view_pdp: 371, hits_tocart_pdp: 30,
+      synced_at: Time.current
+    )
+
+    report = SalesFunnelReports::SkuDailyReportQueryRunner.run(
+      params: {
+        store_ref: "ozon:#{account.id}", from_date: "2026-08-03", to_date: "2026-08-09",
+        sku_codes: [@sku.sku_code]
+      },
+      today: Date.new(2026, 8, 12)
+    )
+    row = report[:rows].sole
+
+    assert_equal BigDecimal("10176"), row[:hits_view]
+    assert_equal BigDecimal("60"), row[:hits_tocart]
+    assert_equal BigDecimal("671"), row[:hits_view_pdp]
+    assert_equal BigDecimal("51"), row[:hits_tocart_pdp]
+    assert_equal BigDecimal("7.6"), row[:conv_tocart]
+    assert_equal BigDecimal("7.6"), report.dig(:summary, :cart_conversion)
+  ensure
+    RawOzon::SalesFunnelDaily.where(account_id: account&.id).delete_all
+    Ec::SkuProduct.where(store_id: store&.id).delete_all
+    store&.destroy!
+    account&.destroy!
+  end
+
   test "rejects an inverted date range" do
     error = assert_raises(ArgumentError) do
       SalesFunnelReports::SkuDailyReportQueryRunner.run(

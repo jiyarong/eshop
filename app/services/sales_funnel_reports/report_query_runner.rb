@@ -204,17 +204,19 @@ module SalesFunnelReports
       grouped_platform_records(scope.order(:sku, :period_start), mapping, :sku).map do |product, records|
         hits_view = sum(records, :hits_view)
         hits_tocart = sum(records, :hits_tocart)
+        hits_view_pdp = sum(records, :hits_view_pdp)
+        hits_tocart_pdp = sum(records, :hits_tocart_pdp)
         {
           sku_code: product&.fetch(:sku_code) || records.first.sku.to_s,
           product_name: product&.fetch(:product_name),
           hits_view: hits_view,
           hits_view_search: sum(records, :hits_view_search),
-          hits_view_pdp: sum(records, :hits_view_pdp),
+          hits_view_pdp: hits_view_pdp,
           session_view: sum(records, :session_view),
           hits_tocart: hits_tocart,
           hits_tocart_search: sum(records, :hits_tocart_search),
-          hits_tocart_pdp: sum(records, :hits_tocart_pdp),
-          conv_tocart: percent(hits_tocart, hits_view),
+          hits_tocart_pdp: hits_tocart_pdp,
+          conv_tocart: percent(hits_tocart_pdp, hits_view_pdp),
           ordered_units: sum(records, :ordered_units),
           revenue: sum(records, :revenue),
           returns_count: sum(records, :returns_count),
@@ -305,12 +307,14 @@ module SalesFunnelReports
       else
         views = rows.sum { |row| row[:hits_view].to_d }
         carts = rows.sum { |row| row[:hits_tocart].to_d }
+        pdp_views = rows.sum { |row| row[:hits_view_pdp].to_d }
+        pdp_carts = rows.sum { |row| row[:hits_tocart_pdp].to_d }
         {
           product_count: rows.size,
           views: views,
           sessions: rows.sum { |row| row[:session_view].to_d },
           carts: carts,
-          cart_conversion: percent(carts, views),
+          cart_conversion: percent(pdp_carts, pdp_views),
           ordered_units: rows.sum { |row| row[:ordered_units].to_d },
           revenue: rows.sum { |row| row[:revenue].to_d },
           returns: rows.sum { |row| row[:returns_count].to_d },
