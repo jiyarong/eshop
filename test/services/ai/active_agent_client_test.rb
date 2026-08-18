@@ -143,6 +143,32 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     ], result.fetch(:tool_calls)
   end
 
+  test "uses the first JSON object when a provider appends assistant content" do
+    FakeGeneration.response = OpenStruct.new(
+      message: OpenStruct.new(
+        content: <<~CONTENT.squish
+          {"tool_calls":[{"id":"call_1","name":"wiki__search","arguments":{"query":"SKU"}}]}
+          {"content":"正在等待查询结果。"}
+        CONTENT
+      ),
+      usage: { "total_tokens" => 20 }
+    )
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "查资料" }],
+      tools: [{ name: "wiki__search", description: "Search wiki" }],
+      thinking_enabled: false
+    )
+
+    assert_equal 1, FakeGeneration.generate_now_calls
+    assert_nil result.fetch(:content)
+    assert_equal "wiki__search", result.fetch(:tool_calls).first.fetch(:name)
+  end
+
   test "normalizes tool calls emitted in a markdown JSON block" do
     FakeGeneration.response = OpenStruct.new(
       message: OpenStruct.new(

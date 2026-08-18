@@ -160,10 +160,57 @@ module ErpAI
       return content.deep_stringify_keys if content.is_a?(Hash)
       return nil unless content.is_a?(String)
 
-      parsed = JSON.parse(json_payload(content))
+      payload = json_payload(content).lstrip
+      parsed = JSON.parse(payload)
       parsed.is_a?(Hash) ? parsed : nil
     rescue JSON::ParserError
-      nil
+      first_object = first_json_object(payload)
+      trailing_object = payload.delete_prefix(first_object).strip
+      return nil unless valid_json_object?(first_object)
+      return nil unless trailing_object.start_with?("{") && valid_json_object?(trailing_object)
+
+      parsed = JSON.parse(first_object)
+      parsed.is_a?(Hash) ? parsed : nil
+    end
+
+    def valid_json_object?(content)
+      JSON.parse(content).is_a?(Hash)
+    rescue JSON::ParserError
+      false
+    end
+
+    def first_json_object(content)
+      source = content.lstrip
+      return source unless source.start_with?("{")
+
+      depth = 0
+      in_string = false
+      escaped = false
+
+      source.each_char.with_index do |character, index|
+        if in_string
+          if escaped
+            escaped = false
+          elsif character == "\\"
+            escaped = true
+          elsif character == '"'
+            in_string = false
+          end
+          next
+        end
+
+        case character
+        when '"'
+          in_string = true
+        when "{"
+          depth += 1
+        when "}"
+          depth -= 1
+          return source[..index] if depth.zero?
+        end
+      end
+
+      source
     end
 
     def json_parse_error(content)
