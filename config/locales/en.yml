@@ -912,6 +912,9 @@ en:
       subtitle: "%{from} to %{to} · complete calendar week"
       platforms: { wb: "WB", ozon: "Ozon" }
       store_label: "%{platform} · %{store}"
+      data_freshness:
+        aria_label: "Show Ozon search term data freshness details"
+        description: "Ozon search term data for the previous week is updated twice. On Monday, data from Monday through Friday is shown under the full previous calendar week. On Wednesday, data from Monday through Sunday is fetched and replaces the preliminary data. Weekend data is therefore not included when viewing the previous week on Monday or Tuesday."
       comparison:
         note: "Compared with %{from} to %{to}"
         unavailable: "-"
@@ -939,7 +942,7 @@ en:
         ozon_limit: "Ozon returns at most the Top 15 search terms per product"
         top_order_by:
           label: "Ranking metric"
-          options: { openCard: "Product clicks", addToCart: "Add to cart", openToCart: "Cart conversion", orders: "Orders", cartToOrder: "Order conversion" }
+          options: { openCard: "Product clicks", addToCart: "Add to cart", openToCart: "Cart conversion", orders: "Orders", cartToOrder: "Order conversion", BY_SEARCHES: "Search users", BY_VIEWS: "View users", BY_GMV: "Search GMV", BY_CONVERSION: "View conversion", BY_POSITION: "Search position" }
       actions: { expand: "Expand search terms for %{sku}", collapse: "Collapse search terms for %{sku}", loading: "Loading search terms..." }
       invalid_period: "Only a complete Monday-to-Sunday calendar week is supported. No data is shown for this period."
       empty: "No search term data matches the current filters"

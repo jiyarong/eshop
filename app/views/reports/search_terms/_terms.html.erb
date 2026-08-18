@@ -3,20 +3,18 @@
     <div class="search-terms-detail__header">
       <strong><%= t("reports.search_terms.detail.title", sku: @sku_code) %></strong>
       <% if @platform == "ozon" %><span><%= t("reports.search_terms.detail.ozon_limit") %></span><% end %>
-      <% if @platform == "wb" %>
-        <%= form_with url: reports_search_term_details_path(@sku_code), method: :get,
-                      class: "search-terms-detail__metric-form",
-                      data: { controller: "weekly-profit-filter", action: "change->weekly-profit-filter#submit" } do |form| %>
-          <%= form.hidden_field :platform, value: @platform %>
-          <%= form.hidden_field :store_id, value: @store.id %>
-          <%= form.hidden_field :from_date, value: @from_date %>
-          <%= form.hidden_field :to_date, value: @to_date %>
-          <%= form.hidden_field :q, value: @query if @query.present? %>
-          <%= form.label :top_order_by, t("reports.search_terms.detail.top_order_by.label"), class: "sr-only" %>
-          <%= form.select :top_order_by, options_for_select(search_terms_top_order_options, @top_order_by), {},
-                          class: "search-terms-detail__metric-select",
-                          aria: { label: t("reports.search_terms.detail.top_order_by.label") } %>
-        <% end %>
+      <%= form_with url: reports_search_term_details_path(@sku_code), method: :get,
+                    class: "search-terms-detail__metric-form",
+                    data: { controller: "weekly-profit-filter", action: "change->weekly-profit-filter#submit" } do |form| %>
+        <%= form.hidden_field :platform, value: @platform %>
+        <%= form.hidden_field :store_id, value: @store.id %>
+        <%= form.hidden_field :from_date, value: @from_date %>
+        <%= form.hidden_field :to_date, value: @to_date %>
+        <%= form.hidden_field :q, value: @query if @query.present? %>
+        <%= form.label :top_order_by, t("reports.search_terms.detail.top_order_by.label"), class: "sr-only" %>
+        <%= form.select :top_order_by, options_for_select(search_terms_top_order_options, @top_order_by), {},
+                        class: "search-terms-detail__metric-select",
+                        aria: { label: t("reports.search_terms.detail.top_order_by.label") } %>
       <% end %>
     </div>
     <div class="table-scroll">

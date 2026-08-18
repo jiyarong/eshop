@@ -8,8 +8,10 @@ class OzonSearchTermsScheduleTest < ActiveSupport::TestCase
       recurring.dig("ozon_search_terms_weekly_sync", "schedule")
     assert_equal "every wednesday at 6:30 in Asia/Shanghai",
       recurring.dig("ozon_search_terms_midweek_refresh", "schedule")
-    assert_equal recurring.dig("ozon_search_terms_weekly_sync", "command"),
-      recurring.dig("ozon_search_terms_midweek_refresh", "command")
+    assert_includes recurring.dig("ozon_search_terms_weekly_sync", "command"),
+      "sync_product_queries_through_friday"
+    assert_includes recurring.dig("ozon_search_terms_midweek_refresh", "command"),
+      "sync_product_queries"
     assert_not_includes recurring.dig("ozon_weekly_sync", "command"), "sync_product_queries"
   end
 end

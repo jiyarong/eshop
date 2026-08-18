@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_033148) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_062810) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1318,10 +1318,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_033148) do
     t.integer "query_index"
     t.bigint "sku", null: false
     t.datetime "synced_at"
+    t.string "top_order_by", default: "BY_SEARCHES", null: false
+    t.integer "top_order_rank"
     t.bigint "unique_search_users"
     t.bigint "unique_view_users"
     t.decimal "view_conversion", precision: 10, scale: 4
-    t.index ["account_id", "period_from", "sku", "query"], name: "idx_ozon_product_query_details_unique", unique: true
+    t.index ["account_id", "period_from", "period_to", "sku", "top_order_by", "top_order_rank"], name: "idx_ozon_product_query_details_dimension_rank"
+    t.index ["account_id", "period_from", "sku", "query", "top_order_by"], name: "idx_ozon_product_query_details_unique", unique: true
     t.index ["account_id"], name: "index_raw_ozon_product_query_details_on_account_id"
   end
 

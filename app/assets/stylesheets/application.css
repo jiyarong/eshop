@@ -3694,6 +3694,56 @@ pre {
   margin-bottom: 16px;
 }
 
+.search-terms-table-panel__header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px 0;
+}
+
+.search-terms-data-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--erp-muted);
+  cursor: help;
+  font-size: 16px;
+}
+
+.search-terms-data-help:focus-visible {
+  border-radius: 50%;
+  outline: 2px solid rgba(40, 86, 217, 0.35);
+  outline-offset: 2px;
+}
+
+.search-terms-data-tooltip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  width: min(380px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #182235;
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(24, 34, 53, 0.24);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: left;
+  white-space: normal;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.search-terms-data-help:hover .search-terms-data-tooltip,
+.search-terms-data-help:focus .search-terms-data-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
 .search-terms-filter-grid {
   align-items: end;
   display: grid;

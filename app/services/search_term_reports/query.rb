@@ -11,8 +11,8 @@ module SearchTermReports
       @period_to = period_to.to_date
       @sku_codes = Array(sku_codes).compact_blank.map(&:upcase).to_set
       @query = query.to_s.strip.downcase
-      @top_order_by = top_order_by.to_s.presence_in(RawWb::AnalyticsSearchTerm::TOP_ORDER_BY_VALUES) ||
-        RawWb::AnalyticsSearchTerm::TOP_ORDER_BY_VALUES.first
+      top_order_values = self.class.top_order_values_for(@platform)
+      @top_order_by = top_order_by.to_s.presence_in(top_order_values) || top_order_values.first
 
       raise ArgumentError, "invalid platform" unless PLATFORMS.include?(@platform)
       raise ArgumentError, "store platform mismatch" unless store.platform == @platform
@@ -28,12 +28,16 @@ module SearchTermReports
       return [] if product_ids.empty?
 
       records = term_scope.where(term_product_column => product_ids)
-      records = records.where(top_order_by: @top_order_by) if platform == "wb"
+      records = records.where(top_order_by: @top_order_by)
       records = records.where("LOWER(#{term_keyword_column}) LIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(@query)}%") if @query.present?
       aggregate_terms(records)
     end
 
     private
+
+    def self.top_order_values_for(platform)
+      platform.to_s == "ozon" ? RawOzon::ProductQueryDetail::TOP_ORDER_BY_VALUES : RawWb::AnalyticsSearchTerm::TOP_ORDER_BY_VALUES
+    end
 
     def natural_week?
       period_from.monday? && period_to.sunday? && period_to == period_from + 6.days
@@ -174,7 +178,8 @@ module SearchTermReports
             keyword:, search_volume: searches,
             avg_position: weighted_average(grouped, :position, :unique_search_users), median_position: nil,
             views:, add_to_cart: nil, orders: grouped.sum { |record| record.order_count.to_i },
-            conversion: ratio(views, searches), revenue: grouped.sum { |record| record.gmv.to_d }
+            conversion: ratio(views, searches), revenue: grouped.sum { |record| record.gmv.to_d },
+            top_order_rank: grouped.filter_map(&:top_order_rank).min
           }
         end
       end
@@ -182,7 +187,7 @@ module SearchTermReports
       if platform == "wb"
         terms.sort_by { |term| [term[:top_order_rank] || Float::INFINITY, -term[:search_volume].to_i, term[:keyword]] }
       else
-        terms.sort_by { |term| [-term[:search_volume].to_i, -term[:orders].to_i, term[:keyword]] }
+        terms.sort_by { |term| [term[:top_order_rank] || Float::INFINITY, -term[:search_volume].to_i, term[:keyword]] }
       end
     end
 
