@@ -1857,6 +1857,8 @@ zh:
         title: "%{event_type}详情"
       event_types:
         clearance_overdue: "清仓逾期"
+        grade_downgrade_alert: "降级确认"
+        grade_weekly_profit_drop: "单周利润严重下滑"
         missed_sales_alert: "错失销售预警"
         stockout_90day: "90 天断货风险"
         stockout_imminent: "即将断货"

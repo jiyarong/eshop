@@ -1663,6 +1663,8 @@ en:
         title: "%{event_type} details"
       event_types:
         clearance_overdue: "Clearance overdue"
+        grade_downgrade_alert: "Downgrade confirmation"
+        grade_weekly_profit_drop: "Severe weekly profit drop"
         missed_sales_alert: "Missed sales alert"
         stockout_90day: "90-day stockout risk"
         stockout_imminent: "Stockout imminent"

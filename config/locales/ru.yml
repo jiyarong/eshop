@@ -1614,6 +1614,8 @@ ru:
         title: "%{event_type}: сведения"
       event_types:
         clearance_overdue: "Просроченная распродажа"
+        grade_downgrade_alert: "Подтверждение понижения"
+        grade_weekly_profit_drop: "Резкое падение недельной прибыли"
         missed_sales_alert: "Риск упущенных продаж"
         stockout_90day: "Риск дефицита за 90 дней"
         stockout_imminent: "Скорый дефицит"
