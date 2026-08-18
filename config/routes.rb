@@ -14,6 +14,7 @@ Rails.application.routes.draw do
     resource :profile, only: [:show, :update]
     get "v1/profile/usage" => "profiles#usage"
     resources :agents, only: :index
+    resources :conversations, only: :show
   end
 
   # Google Sheets 连通性测试

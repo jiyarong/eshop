@@ -9,11 +9,22 @@
       <time datetime="<%= @diagnosis.created_at.iso8601 %>"><%= display_time(@diagnosis.created_at) %></time>
     </p>
   </div>
-  <%= link_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
-              class: "button button-secondary" do %>
-    <i class="bi bi-arrow-left" aria-hidden="true"></i>
-    <%= t("reports.sku_detail.ai_diagnosis_details.back") %>
-  <% end %>
+  <div class="ai-conversation-heading__actions">
+    <%# 先注释掉%>
+    <% if @conversation && false %>
+      <%= link_to "yclaw://conversation?conversation_id=#{@conversation.id}",
+                  class: "button",
+                  data: { turbo: false } do %>
+        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        <%= t("ai.conversations.follow_up_in_yclaw") %>
+      <% end %>
+    <% end %>
+    <%= link_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+                class: "button button-secondary" do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <%= t("reports.sku_detail.ai_diagnosis_details.back") %>
+    <% end %>
+  </div>
 </div>
 
 <% if @messages.present? %>

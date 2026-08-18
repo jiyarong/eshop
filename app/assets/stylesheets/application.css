@@ -2152,6 +2152,13 @@ textarea {
   font-weight: 650;
 }
 
+.ai-conversation-heading__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .ai-conversation {
   display: grid;
   gap: 14px;
@@ -2205,6 +2212,15 @@ textarea {
 @media (max-width: 720px) {
   .ai-conversation-heading {
     display: grid;
+  }
+
+  .ai-conversation-heading__actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .ai-conversation-heading__actions .button {
+    justify-content: center;
   }
 
   .ai-health-result__conversation-link {

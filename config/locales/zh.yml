@@ -38,6 +38,7 @@ zh:
   ai:
     conversations:
       back_to_diagnosis: "返回 AI 诊断"
+      follow_up_in_yclaw: "去 YClaw 追问"
       messages_aria_label: "AI 会话消息"
       page_heading: "AI 会话"
       roles:

@@ -9,13 +9,22 @@
       <time datetime="<%= @conversation.created_at.iso8601 %>"><%= display_time(@conversation.created_at) %></time>
     </p>
   </div>
-  <% if @linked_event %>
-    <%= link_to report_sku_path(@linked_event.ai_diagnosis.sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
-                class: "button button-secondary" do %>
-      <i class="bi bi-arrow-left" aria-hidden="true"></i>
-      <%= t("ai.conversations.back_to_diagnosis") %>
+  <div class="ai-conversation-heading__actions hidden">
+    <%= link_to "yclaw://conversation?conversation_id=#{@conversation.id}",
+                class: "button",
+                style: "display: none;",
+                data: { turbo: false } do %>
+      <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+      <%= t("ai.conversations.follow_up_in_yclaw") %>
     <% end %>
-  <% end %>
+    <% if @linked_event %>
+      <%= link_to report_sku_path(@linked_event.ai_diagnosis.sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+                  class: "button button-secondary" do %>
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+        <%= t("ai.conversations.back_to_diagnosis") %>
+      <% end %>
+    <% end %>
+  </div>
 </div>
 
 <section class="ai-conversation" aria-label="<%= t("ai.conversations.messages_aria_label") %>">

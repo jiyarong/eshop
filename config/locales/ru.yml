@@ -12,6 +12,7 @@ ru:
   ai:
     conversations:
       back_to_diagnosis: "Вернуться к AI-диагностике"
+      follow_up_in_yclaw: "Продолжить в YClaw"
       messages_aria_label: "Сообщения AI-диалога"
       page_heading: "AI-диалог"
       roles:

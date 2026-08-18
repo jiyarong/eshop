@@ -22,7 +22,6 @@ module ErpAI
       @linked_event = Ec::AIDiagnosisEvent
         .includes(ai_diagnosis: :sku)
         .find_by(conversation_id: @conversation.id)
-      raise ActiveRecord::RecordNotFound unless @conversation.user_id == current_user.id || @linked_event
 
       @messages = @conversation.messages.order(:created_at, :id)
     end

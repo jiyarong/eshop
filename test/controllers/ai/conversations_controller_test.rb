@@ -89,6 +89,9 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-conversation-message--tool", text: /工具调用结果/
     assert_select ".ai-conversation-message--tool", text: /库存 3 件/
     assert_select "article[data-markdown-target='output'][hidden]", count: 4
+    assert_select "a.button[href=?][data-turbo='false']",
+                  "yclaw://conversation?conversation_id=#{conversation.id}",
+                  "去 YClaw 追问"
   end
 
   test "does not expose another user's unlinked conversation" do

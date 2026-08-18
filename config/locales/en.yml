@@ -41,6 +41,7 @@ en:
   ai:
     conversations:
       back_to_diagnosis: "Back to AI diagnosis"
+      follow_up_in_yclaw: "Follow up in YClaw"
       messages_aria_label: "AI conversation messages"
       page_heading: "AI conversation"
       roles:

@@ -161,6 +161,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-diagnosis-raw-detail", text: /未关联本地 AI 会话/
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /sellable_inventory.*1117/m
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /最新诊断消息/m
+    assert_select "a[href^='yclaw://conversation']", count: 0
     assert_select "a[href=?]", report_sku_path(@sku.sku_code, tab: "ai_inventory_health"), text: "返回 AI 诊断"
   end
 
@@ -198,6 +199,10 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-conversation-message--user", text: /检查 #{@sku.sku_code} 的 Grade/
     assert_select ".ai-conversation-message--assistant", text: /id=#{diagnosis.id}/
     assert_select ".ai-diagnosis-raw-detail", { text: /未关联本地 AI 会话/, count: 0 }
+    assert_select ".ai-conversation-heading__actions" do
+      assert_select "a[href='yclaw://conversation?conversation_id=#{conversation.id}'][data-turbo='false']",
+        text: "去 YClaw 追问"
+    end
   end
 
   test "deletes an inventory health result from its sku" do
