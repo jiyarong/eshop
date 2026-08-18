@@ -36,7 +36,23 @@ module AITasks
 
     def candidate_skus
       scope = Ec::Sku.active.order(:sku_code)
-      @sku_code ? scope.where(sku_code: @sku_code) : scope
+      scope = scope.where(sku_code: @sku_code) if @sku_code
+      sku_codes = scope.pluck(:sku_code)
+      return scope.none if sku_codes.empty? || !Ec::WeeklyRate.exists?(week_start: last_week_start)
+
+      scope.where(sku_code: weekly_profit_sku_codes(sku_codes))
+    end
+
+    def weekly_profit_sku_codes(sku_codes)
+      report = Ec::WeeklySummaryDeepQuery.run(
+        from_date: last_week_start,
+        to_date: analysis_cutoff_date,
+        sku_codes: sku_codes
+      )
+
+      Array(report[:rows] || report["rows"]).filter_map do |row|
+        (row[:sku] || row["sku"]).to_s.strip.upcase.presence
+      end
     end
 
     def inspect_sku(sku)
@@ -104,6 +120,10 @@ module AITasks
 
     def analysis_cutoff_date
       @analysis_cutoff_date ||= current_week_start - 1.day
+    end
+
+    def last_week_start
+      @last_week_start ||= analysis_cutoff_date.beginning_of_week(:monday)
     end
 
     def diagnosis_user

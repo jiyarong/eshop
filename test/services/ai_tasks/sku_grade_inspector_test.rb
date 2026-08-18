@@ -31,6 +31,15 @@ class AITasks::SkuGradeInspectorTest < ActiveSupport::TestCase
     )
     @client = FakeClient.new { persist_grade_result }
     @agent_existed = Agent.exists?(code: AITasks::SkuGradeInspector::AGENT_CODE)
+    @original_profit_query_run = Ec::WeeklySummaryDeepQuery.method(:run)
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run) do |from_date:, to_date:, sku_codes:|
+      { rows: sku_codes.map { |sku_code| { sku: sku_code } } }
+    end
+    @weekly_rate_existed = Ec::WeeklyRate.exists?(week_start: last_week_start)
+    Ec::WeeklyRate.find_or_create_by!(week_start: last_week_start) do |rate|
+      rate.rate_cny_rub = 10
+      rate.rate_byn_rub = 3
+    end
   end
 
   teardown do
@@ -39,6 +48,8 @@ class AITasks::SkuGradeInspectorTest < ActiveSupport::TestCase
     Conversation.where(user: @user).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     Agent.where(code: AITasks::SkuGradeInspector::AGENT_CODE).delete_all unless @agent_existed
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, @original_profit_query_run)
+    Ec::WeeklyRate.where(week_start: last_week_start).delete_all unless @weekly_rate_existed
     User.where(id: @user&.id).delete_all
   end
 
@@ -120,8 +131,37 @@ class AITasks::SkuGradeInspectorTest < ActiveSupport::TestCase
     assert_empty @client.requests
   end
 
+  test "skips a SKU without last week's profit data" do
+    query_calls = []
+    original_profit_query_run = Ec::WeeklySummaryDeepQuery.method(:run)
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run) do |from_date:, to_date:, sku_codes:|
+      query_calls << { from_date: from_date, to_date: to_date, sku_codes: sku_codes }
+      { rows: [] }
+    end
+
+    result = AITasks::SkuGradeInspector.run(
+      as_of_date: @as_of_date,
+      sku_code: @sku.sku_code,
+      client: @client,
+      user: @user
+    )
+
+    assert_empty result
+    assert_empty @client.requests
+    assert_equal [ {
+      from_date: Date.new(2026, 7, 27),
+      to_date: Date.new(2026, 8, 2),
+      sku_codes: [ @sku.sku_code ]
+    } ], query_calls
+  ensure
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, original_profit_query_run)
+  end
 
   private
+
+  def last_week_start
+    @as_of_date.beginning_of_week(:monday) - 1.week
+  end
 
   def persist_grade_result
     diagnosis = Ec::GradeInspect.find_or_create_by!(
