@@ -1,14 +1,15 @@
 module RawOzon
   module Syncs
     module PerformancePpcSkuSpends
+      ARCHIVED_STATE = "CAMPAIGN_STATE_ARCHIVED"
+      ARCHIVED_CAMPAIGN_LOOKBACK_MONTHS = 4
+
       # POST /api/client/statistics/json（异步，每批 ≤10 campaigns）
       # 用 totals.moneySpent 对 per-SKU rows 归一化，消除日舍入误差。
       # 限制：同时只允许 1 个异步报告在处理，必须完全串行（提交→等完成→再提交下一批）。
 
       def sync_performance_ppc_sku_spends
-        campaign_ids = RawOzon::AdUnit
-          .where(account_id: @account.id, unit_type: "cpc_campaign")
-          .pluck(:external_id)
+        campaign_ids = ppc_campaign_ids
         return 0 if campaign_ids.empty?
 
         period_from = @from.to_date
@@ -64,6 +65,18 @@ module RawOzon
       end
 
       private
+
+      def ppc_campaign_ids
+        scope = RawOzon::AdUnit.where(account_id: @account.id, unit_type: "cpc_campaign")
+        cutoff = @to.advance(months: -ARCHIVED_CAMPAIGN_LOOKBACK_MONTHS)
+
+        scope
+          .where.not(state: ARCHIVED_STATE)
+          .or(scope.where(state: nil))
+          .or(scope.where(state: ARCHIVED_STATE, from_date: nil))
+          .or(scope.where(state: ARCHIVED_STATE, from_date: cutoff..))
+          .pluck(:external_id)
+      end
 
       def fetch_ppc_json(campaign_ids, period_from, period_to)
         resp = @perf_client.post('/api/client/statistics/json', {

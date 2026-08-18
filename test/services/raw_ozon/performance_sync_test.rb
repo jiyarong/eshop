@@ -59,4 +59,33 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
     assert_equal 500, stat.spend.to_i
     assert_equal 5_000, stat.ad_revenue.to_i
   end
+
+  test "excludes archived ppc campaigns that started more than four months before the period end" do
+    period_end = Date.new(2026, 8, 16)
+    cutoff = period_end.advance(months: -4)
+    create_ad_unit("archived-old", state: "CAMPAIGN_STATE_ARCHIVED", from_date: cutoff - 1)
+    create_ad_unit("archived-boundary", state: "CAMPAIGN_STATE_ARCHIVED", from_date: cutoff)
+    create_ad_unit("archived-without-date", state: "CAMPAIGN_STATE_ARCHIVED", from_date: nil)
+    create_ad_unit("running-old", state: "CAMPAIGN_STATE_RUNNING", from_date: cutoff - 1.year)
+
+    sync = RawOzon::PerformanceSync.new(@account, from_date: period_end - 6, to_date: period_end, client: Object.new)
+
+    assert_equal(
+      %w[archived-boundary archived-without-date running-old],
+      sync.send(:ppc_campaign_ids).sort
+    )
+  end
+
+  private
+
+  def create_ad_unit(external_id, state:, from_date:)
+    RawOzon::AdUnit.create!(
+      account: @account,
+      external_id: external_id,
+      unit_type: "cpc_campaign",
+      state: state,
+      from_date: from_date,
+      synced_at: Time.current
+    )
+  end
 end
