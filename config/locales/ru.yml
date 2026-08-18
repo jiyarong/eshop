@@ -2133,6 +2133,10 @@ ru:
         products: "Товары магазина"
         summary: "Информация о магазине"
   shared:
+    table_sort:
+      asc: "%{column}: сортировать по возрастанию"
+      clear: "%{column}: сбросить сортировку"
+      desc: "%{column}: сортировать по убыванию"
     attachments:
       actions: "Действия"
       created_at: "Загружено"
@@ -2222,6 +2226,7 @@ ru:
     title: "Список SKU"
     subtitle: "Продажи, прибыль, запасы и текущие проблемы по SKU"
     total: "SKU: %{count}"
+    sort_period_hint: "Сортировка по данным за 30 дней"
     filters:
       search_placeholder: "Поиск SKU, SPU или товара"
       submit: "Фильтр"

@@ -83,9 +83,18 @@
           <th style="width: 180px"><%= t("erp.sku_batches.fields.sku") %></th>
           <th style="min-width: 180px"><%= t("erp.sku_batches.fields.supplier") %></th>
           <th style="min-width: 240px"><%= t("erp.sku_batches.fields.product_name") %></th>
-          <th style="width: 112px"><%= t("erp.sku_batches.fields.purchase_date") %></th>
-          <th style="width: 112px"><%= t("erp.sku_batches.fields.expected_arrival_on") %></th>
-          <th style="width: 126px"><%= t("erp.sku_batches.fields.overseas_delivery_date") %></th>
+          <%= render "shared/sortable_table_header",
+            label: t("erp.sku_batches.fields.purchase_date"),
+            sort_key: "purchase_date",
+            style: "width: 112px" %>
+          <%= render "shared/sortable_table_header",
+            label: t("erp.sku_batches.fields.expected_arrival_on"),
+            sort_key: "expected_arrival_on",
+            style: "width: 112px" %>
+          <%= render "shared/sortable_table_header",
+            label: t("erp.sku_batches.fields.overseas_delivery_date"),
+            sort_key: "received_on",
+            style: "width: 126px" %>
           <th style="width: 130px; text-align: right"><%= t("erp.sku_batches.fields.purchase_cost_cny") %></th>
           <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.purchased_quantity") %></th>
           <th style="width: 100px; text-align: right"><%= t("erp.sku_batches.fields.received_quantity") %></th>

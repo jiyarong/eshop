@@ -2378,6 +2378,10 @@ zh:
         summary: "店铺信息"
         unbound_raw_products: "未绑定平台商品"
   shared:
+    table_sort:
+      asc: "%{column}，切换为升序"
+      clear: "%{column}，清除排序"
+      desc: "%{column}，切换为降序"
     attachments:
       actions: "操作"
       created_at: "上传时间"
@@ -2467,6 +2471,7 @@ zh:
     title: "SKU 列表"
     subtitle: "集中查看 SKU 的销售、利润、库存与当前问题"
     total: "共 %{count} 个 SKU"
+    sort_period_hint: "按 30 天数据排序"
     filters:
       search_placeholder: "搜索 SKU、SPU 或产品名称"
       submit: "筛选"

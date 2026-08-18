@@ -123,6 +123,88 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_match(/\.operator-sku-row:hover td\s*\{[^}]*background:/m, css)
   end
 
+  test "sortable metric headers preserve filters and toggle direction" do
+    with_empty_metrics do
+      get operator_skus_path,
+        params: { q: @token, grades: [ "A" ], sort: "sales", direction: "desc" },
+        headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select "th.sortable-table-header", count: 5
+    assert_select "th.sortable-table-header[aria-sort='descending'] a[href*='sort=sales'][href*='direction=asc'][href*='q=#{@token}']"
+    assert_select "th.sortable-table-header[aria-sort='none'] a[href*='sort=revenue'][href*='direction=desc']"
+    assert_select "th.sortable-table-header a[href*='grades%5B%5D=A']"
+
+    sign_in @user
+    with_empty_metrics do
+      get operator_skus_path,
+        params: { q: @token, grades: [ "A" ], sort: "sales", direction: "asc" },
+        headers: { "Accept" => "text/html" }
+    end
+
+    assert_select "th.sortable-table-header[aria-sort='ascending'] a[aria-label='销量，清除排序']" do |links|
+      href = links.first["href"]
+      assert_includes href, "q=#{@token}"
+      assert_includes href, "grades%5B%5D=A"
+      refute_includes href, "sort="
+      refute_includes href, "direction="
+    end
+  end
+
+  test "sorts all filtered skus by the selected 30 day metric before pagination" do
+    other_sku = Ec::Sku.create!(sku_code: "OPS-SORT-#{@token}", product_name: "Sortable #{@token}")
+    values = { @sku.sku_code => 10, other_sku.sku_code => 40 }
+
+    with_metric_values(values) do
+      get operator_skus_path,
+        params: { q: @token, sort: "sales", direction: "desc" },
+        headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    rows = css_select(".operator-sku-row .code-text.sub").map(&:text)
+    assert_equal [ other_sku.sku_code, @sku.sku_code ], rows
+
+    sign_in @user
+    with_metric_values(values) do
+      get operator_skus_path,
+        params: { q: @token, sort: "sales", direction: "asc" },
+        headers: { "Accept" => "text/html" }
+    end
+
+    rows = css_select(".operator-sku-row .code-text.sub").map(&:text)
+    assert_equal [ @sku.sku_code, other_sku.sku_code ], rows
+  end
+
+  test "defaults to 30 day profit descending" do
+    other_sku = Ec::Sku.create!(sku_code: "OPS-DEFAULT-SORT-#{@token}", product_name: "Default sort #{@token}")
+    values = { @sku.sku_code => 10, other_sku.sku_code => 40 }
+
+    with_metric_values(values) do
+      get operator_skus_path,
+        params: { q: @token },
+        headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    rows = css_select(".operator-sku-row .code-text.sub").map(&:text)
+    assert_equal [ other_sku.sku_code, @sku.sku_code ], rows
+    assert_select "th.sortable-table-header[aria-sort='descending']", text: "周期利润"
+  end
+
+  test "ignores unsupported sort keys" do
+    with_empty_metrics do
+      get operator_skus_path,
+        params: { q: @sku.sku_code, sort: "created_at desc" },
+        headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select "th.sortable-table-header[aria-sort='descending']", text: "周期利润"
+    assert_select "th.sortable-table-header[aria-sort='none']", count: 4
+  end
+
   test "new skus default to normal operation status" do
     assert_predicate @sku, :operation_status_normal?
   end
@@ -192,6 +274,39 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     original_new = Ec::OperatorSkuMetricsQuery.method(:new)
     Ec::OperatorSkuMetricsQuery.define_singleton_method(:new) do |**args|
       fake_query.new(args.fetch(:skus).to_a)
+    end
+    yield
+  ensure
+    Ec::OperatorSkuMetricsQuery.define_singleton_method(:new, original_new)
+  end
+
+  def with_metric_values(values)
+    fake_query = Struct.new(:skus, :values) do
+      def call
+        skus.index_with do |sku|
+          value = values.fetch(sku.sku_code, 0)
+          comparison = { delta_pct: nil, semantic: "neutral" }
+          {
+            sales: {
+              days_7: { value: value, comparison: comparison },
+              days_30: { value: value, comparison: comparison }
+            },
+            inventory: { available_stock: 0, incoming_quantity: 0, turnover_days: nil },
+            profit: %i[days_7 days_30].index_with do
+              {
+                revenue: { value: value, comparison: comparison },
+                after_tax: { value: value, comparison: comparison },
+                margin_pct: { value: value, comparison: comparison },
+                ads: { value: value, comparison: comparison }
+              }
+            end
+          }
+        end
+      end
+    end
+    original_new = Ec::OperatorSkuMetricsQuery.method(:new)
+    Ec::OperatorSkuMetricsQuery.define_singleton_method(:new) do |**args|
+      fake_query.new(args.fetch(:skus).to_a, values)
     end
     yield
   ensure

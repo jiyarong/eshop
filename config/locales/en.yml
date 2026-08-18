@@ -2184,6 +2184,10 @@ en:
         summary: "Store information"
         unbound_raw_products: "Unbound platform products"
   shared:
+    table_sort:
+      asc: "%{column}, sort ascending"
+      clear: "%{column}, clear sorting"
+      desc: "%{column}, sort descending"
     attachments:
       actions: "Actions"
       created_at: "Uploaded at"
@@ -2274,6 +2278,7 @@ en:
     title: "SKU List"
     subtitle: "Sales, profit, inventory, and current issues by SKU"
     total: "%{count} SKUs"
+    sort_period_hint: "Sort by 30-day value"
     filters:
       search_placeholder: "Search SKU, SPU, or product name"
       submit: "Filter"

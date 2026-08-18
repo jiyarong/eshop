@@ -1,0 +1,21 @@
+<% active = table_sort_key == sort_key.to_s %>
+<% query_params = request.query_parameters.except("page", "jump_page", "current_page", "sort", "direction") %>
+<% aria_sort = active ? (table_sort_direction == "asc" ? "ascending" : "descending") : "none" %>
+<% if active && table_sort_direction == "asc" %>
+  <% next_query_params = query_params %>
+  <% next_action = "clear" %>
+<% else %>
+  <% next_direction = active ? "asc" : "desc" %>
+  <% next_query_params = query_params.merge("sort" => sort_key, "direction" => next_direction) %>
+  <% next_action = next_direction %>
+<% end %>
+
+<th class="<%= local_assigns[:class_name] %> sortable-table-header<%= " is-active" if active %>" style="<%= local_assigns[:style] %>" aria-sort="<%= aria_sort %>">
+  <%= link_to url_for(next_query_params),
+    class: "sortable-table-header__link",
+    title: local_assigns[:title],
+    aria: { label: t("shared.table_sort.#{next_action}", column: label) } do %>
+    <span><%= label %></span>
+    <i class="bi <%= active ? (table_sort_direction == "asc" ? "bi-chevron-up" : "bi-chevron-down") : "bi-chevron-expand" %>" aria-hidden="true"></i>
+  <% end %>
+</th>
