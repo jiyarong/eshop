@@ -182,6 +182,10 @@ production:
     command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"
     schedule: every day at 3:00 in Asia/Shanghai
 
+  sku_inventory_level_retention:
+    command: "Ec::SkuInventoryLevelRetention.run"
+    schedule: every day at 3:40 in Asia/Shanghai
+
   # Fetch current-week CBR rate for W-1/W-2 report fallback.
   cbr_rate_fetch:
     command: "Ec::CbrRateFetcher.fetch_and_store"
