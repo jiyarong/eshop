@@ -167,7 +167,7 @@ module ErpAI
       first_object = first_json_object(payload)
       trailing_object = payload.delete_prefix(first_object).strip
       return nil unless valid_json_object?(first_object)
-      return nil unless trailing_object.start_with?("{") && valid_json_object?(trailing_object)
+      return nil unless trailing_object.start_with?("{")
 
       parsed = JSON.parse(first_object)
       parsed.is_a?(Hash) ? parsed : nil

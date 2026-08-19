@@ -169,6 +169,35 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal "wiki__search", result.fetch(:tool_calls).first.fetch(:name)
   end
 
+  test "uses the first JSON object when a provider repeats a tool call payload" do
+    first_payload = {
+      tool_calls: 12.times.map do |index|
+        {
+          id: "call_#{index + 1}",
+          name: "erp_ai_request",
+          arguments: { method: "get", url: "/ai/skus/overview?sku=KJ-217-GD" }
+        }
+      end
+    }.to_json
+    FakeGeneration.response = OpenStruct.new(
+      message: OpenStruct.new(content: "#{first_payload}{\"tool_calls\":[{\"id\":\"call_1\""),
+      usage: { "total_tokens" => 20 }
+    )
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "查资料" }],
+      tools: [{ name: "erp_ai_request", description: "Request ERP data" }],
+      thinking_enabled: false
+    )
+
+    assert_equal 1, FakeGeneration.generate_now_calls
+    assert_equal 12, result.fetch(:tool_calls).size
+  end
+
   test "normalizes tool calls emitted in a markdown JSON block" do
     FakeGeneration.response = OpenStruct.new(
       message: OpenStruct.new(
