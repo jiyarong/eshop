@@ -226,6 +226,7 @@ class ReportsController < ApplicationController
 
   def sku_profit_trend
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @comparison_sku_codes = comparison_sku_codes_from_params
     begin
       current_monday = user_today.beginning_of_week(:monday)
       @profit_trend_weeks = SKU_PROFIT_TREND_WEEKS.times.map do |index|
@@ -236,14 +237,14 @@ class ReportsController < ApplicationController
             report_type: "wsu_deep",
             from_date: from_date.iso8601,
             to_date: to_date.iso8601,
-            sku_codes: [@sku.sku_code]
+            sku_codes: [@sku.sku_code, *@comparison_sku_codes]
           },
           today: user_today
         )
-        row = report[:rows].find { |item| (item[:sku] || item["sku"]).to_s == @sku.sku_code }
-        { from_date:, to_date:, row: row || {} }
+        rows = report[:rows].select { |item| [@sku.sku_code, *@comparison_sku_codes].include?(profit_row_sku_code(item)) }
+        { from_date:, to_date:, row: rows.find { |item| profit_row_sku_code(item) == @sku.sku_code } || {}, rows: rows }
       end
-      @profit_trend_chart_option = build_sku_profit_trend_chart_option(@profit_trend_weeks)
+      @profit_trend_chart_option = build_sku_profit_trend_chart_option(@profit_trend_weeks, params[:profit_trend_metric])
     rescue StandardError => error
       Rails.logger.error("SKU profit trend failed for #{params[:sku_code]}: #{error.class}: #{error.message}")
       @profit_trend_error = true
@@ -259,11 +260,26 @@ class ReportsController < ApplicationController
       raise ArgumentError, "invalid_date_range"
     end
 
-    @funnel_store_trends = SalesFunnelReports::SkuDailyTrendQuery.new(
-      sku: @sku,
-      from_date: @funnel_trend_from_date,
-      to_date: @funnel_trend_to_date
-    ).call
+    comparison_codes = Array(params[:compare_sku_codes]).flat_map { |code| code.to_s.split(/[,\s]+/) }.map(&:upcase).reject(&:blank?).uniq.first(3)
+    skus = Ec::Sku.where(sku_code: [@sku.sku_code, *comparison_codes]).index_by(&:sku_code)
+    @funnel_store_trends = skus.values.flat_map do |sku|
+      SalesFunnelReports::SkuDailyTrendQuery.new(sku: sku, from_date: @funnel_trend_from_date, to_date: @funnel_trend_to_date).call.map do |trend|
+        trend[:sku_code] = sku.sku_code
+        trend
+      end
+    end
+    if skus.size > 1
+        grouped = @funnel_store_trends.group_by { |trend| [trend[:store_id], trend[:platform]] }
+        @funnel_store_trends = grouped.values.map do |trends|
+          base = trends.first.dup
+        platform_metric = params["trend_metric_#{base[:platform]}"].presence
+        selected_metric = platform_metric.presence_in(trends.first[:metrics].map(&:to_s))&.to_sym || trends.first[:metrics].first
+        base[:metrics] = [selected_metric]
+        base[:default_metrics] = [selected_metric]
+        base[:sku_rows] = trends.map { |trend| { sku_code: trend[:sku_code], rows: trend[:rows] } }
+        base
+      end
+    end
     @funnel_store_trends.each do |trend|
       trend[:chart_option] = build_sku_sales_funnel_trend_chart_option(trend)
     end
@@ -534,7 +550,7 @@ class ReportsController < ApplicationController
 
   private
 
-  def build_sku_profit_trend_chart_option(weeks)
+  def build_sku_profit_trend_chart_option(weeks, selected_metric = nil)
     labels = weeks.map { |week| "#{week[:from_date].strftime('%m-%d')} ~ #{week[:to_date].strftime('%m-%d')}" }
     metric_options = {
       net_sales: { axis: 0, color: "#176b87" },
@@ -545,7 +561,13 @@ class ReportsController < ApplicationController
       annualized_return_pct: { axis: 2, color: "#7c3aed" },
       annualized_net_profit_cny: { axis: 1, color: "#475569" }
     }
-    series = SKU_PROFIT_TREND_METRICS.map do |metric|
+    metrics = weeks.any? { |week| week[:rows].to_a.size > 1 } ? [selected_metric.presence_in(SKU_PROFIT_TREND_METRICS.map(&:to_s))&.to_sym || :net_sales] : SKU_PROFIT_TREND_METRICS
+    series = if metrics.size == 1 && weeks.any? { |week| week[:rows].to_a.size > 1 }
+      metric = metrics.first
+      sku_codes = weeks.flat_map { |week| week[:rows].to_a.map { |row| profit_row_sku_code(row) } }.uniq
+      sku_codes.map { |sku_code| { name: sku_code, type: "line", smooth: true, data: weeks.map { |week| row = week[:rows].to_a.find { |item| profit_row_sku_code(item) == sku_code }; profit_trend_value(row || {}, metric) } } }
+    else
+      metrics.map do |metric|
       settings = metric_options.fetch(metric)
       {
         name: t("reports.sku_detail.profit_trend.metrics.#{metric}"),
@@ -557,6 +579,7 @@ class ReportsController < ApplicationController
         lineStyle: { color: settings[:color], width: 2 },
         data: weeks.map { |week| profit_trend_value(week[:row], metric) }
       }
+      end
     end
 
     {
@@ -574,6 +597,15 @@ class ReportsController < ApplicationController
   end
 
   def build_sku_sales_funnel_trend_chart_option(trend)
+    if trend[:sku_rows].present?
+      metric = trend[:metrics].first
+      labels = trend[:sku_rows].first[:rows].map { |row| row[:date] }
+      series = trend[:sku_rows].map do |sku_row|
+        { name: sku_row[:sku_code], type: "line", smooth: true, showSymbol: false,
+          data: sku_row[:rows].map { |row| row.dig(:values, metric) } }
+      end
+      return { tooltip: { trigger: "axis" }, legend: { type: "scroll", top: 0 }, grid: { left: 48, right: 62, top: 62, bottom: 42, containLabel: true }, xAxis: { type: "category", boundaryGap: false, data: labels }, yAxis: [{ type: "value", name: t("reports.sku_detail.funnel_trends.axes.count") }], series: series }
+    end
     amount_metrics = %i[orders_sum buyouts_sum revenue]
     percent_metrics = %i[conv_to_cart cart_to_order buyout_percent conv_tocart]
     rank_metric = :position_category
@@ -629,6 +661,10 @@ class ReportsController < ApplicationController
     value.nil? ? nil : value.to_f
   end
 
+  def profit_row_sku_code(row)
+    (row[:sku] || row["sku"] || row[:sku_code] || row["sku_code"]).to_s
+  end
+
   def load_sku_detail(active_tab: nil)
     @sku = Ec::Sku.includes(
       { master_sku: { ec_category: :parent } },
@@ -644,6 +680,7 @@ class ReportsController < ApplicationController
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
     @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "sales_funnel"
     @active_tab = "sales_funnel" if @active_tab == "operation"
+    load_spu_sku_filter
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
     @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
@@ -1073,13 +1110,14 @@ class ReportsController < ApplicationController
       @funnel_to_date = parse_report_date(params[:funnel_to_date]) || user_today
       @funnel_from_date = parse_report_date(params[:funnel_from_date]) || (@funnel_to_date - 13.days)
       @funnel_store_ref = operation_store_ref(params[:funnel_store_ref])
+      @comparison_sku_codes = comparison_sku_codes_from_params
       begin
         @operation_funnel_report = SalesFunnelReports::SkuDailyReportQueryRunner.run(
           params: {
             from_date: @funnel_from_date.iso8601,
             to_date: @funnel_to_date.iso8601,
             store_ref: @funnel_store_ref,
-            sku_codes: [@sku.sku_code]
+            sku_codes: [@sku.sku_code, *@comparison_sku_codes]
           },
           today: user_today
         )
@@ -1087,6 +1125,7 @@ class ReportsController < ApplicationController
         @operation_funnel_error = error.message
       end
     else
+      @comparison_sku_codes = comparison_sku_codes_from_params
       last_monday = user_today.beginning_of_week(:monday) - 1.week
       @profit_from_date = parse_report_date(params[:profit_from_date]) || last_monday
       @profit_to_date = parse_report_date(params[:profit_to_date]) || last_monday.end_of_week(:monday)
@@ -1098,7 +1137,7 @@ class ReportsController < ApplicationController
           report_type: @profit_report_type,
           from_date: @profit_from_date.iso8601,
           to_date: @profit_to_date.iso8601,
-          sku_codes: [@sku.sku_code]
+          sku_codes: [@sku.sku_code, *@comparison_sku_codes]
         }
         profit_params[:store_ref] = @profit_store_ref if @profit_report_type == "wr"
         @operation_profit_report = WeeklyProfitReports::ReportQueryRunner.run(
@@ -1116,6 +1155,14 @@ class ReportsController < ApplicationController
     return requested_store if @operation_store_options.any? { |store| store[:ref] == requested_store }
 
     @operation_store_options.first&.dig(:ref)
+  end
+
+  def comparison_sku_codes_from_params
+    direct = Array(params[:compare_sku_codes]).flat_map { |code| code.to_s.split(/[,\s]+/) }
+    fallback = Array(params[:sku_codes]).flat_map { |code| code.to_s.split(/[,\s]+/) }
+    master_ids = Array(params[:compare_master_sku_ids]).filter_map { |id| Integer(id, exception: false) }
+    from_masters = Ec::Sku.where(master_sku_id: master_ids).pluck(:sku_code)
+    (direct + fallback + from_masters).map(&:upcase).reject(&:blank?).uniq.reject { |code| code == @sku.sku_code }.first(3)
   end
 
   def load_sku_supply_orders

@@ -1361,6 +1361,23 @@ textarea {
 
 .sku-funnel-trends-heading {
   margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sku-funnel-trend-metric-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.sku-funnel-trend-metric-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sku-funnel-trends-container {

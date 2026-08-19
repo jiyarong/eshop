@@ -1523,6 +1523,7 @@ en:
         sales_funnel: "Sales funnel"
         weekly_profit: "Weekly profit allocation"
       profit_trend:
+        metric: "Profit metric"
         axes:
           amount: "Amount"
           quantity: "Net sales"
@@ -1539,6 +1540,11 @@ en:
           revenue: "Revenue"
         title: "Latest 8-week WSU-DEEP trend"
       funnel_trends:
+        compare_wb: "WB comparison metric"
+        compare_ozon: "Ozon comparison metric"
+        metric: "Trend metric"
+        compare_skus: "Compare SKUs"
+        compare_hint: "Enter up to 3 SKUs separated by commas or spaces. With multiple SKUs, the trend chart uses one metric."
         axes:
           amount: "Amount"
           count: "Count"

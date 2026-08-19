@@ -1474,6 +1474,7 @@ ru:
         sales_funnel: "Воронка продаж"
         weekly_profit: "Недельное распределение прибыли"
       profit_trend:
+        metric: "Показатель прибыли"
         axes:
           amount: "Сумма"
           quantity: "Чистые продажи"
@@ -1490,6 +1491,11 @@ ru:
           revenue: "Выручка"
         title: "Тренд WSU-DEEP за последние 8 недель"
       funnel_trends:
+        compare_wb: "Метрика WB"
+        compare_ozon: "Метрика Ozon"
+        metric: "Показатель тренда"
+        compare_skus: "Сравнить SKU"
+        compare_hint: "Введите до 3 SKU через запятую или пробел. При нескольких SKU график показывает один показатель."
         axes:
           amount: "Сумма"
           count: "Количество"

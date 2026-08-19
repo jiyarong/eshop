@@ -1717,6 +1717,7 @@ zh:
         sales_funnel: "销售漏斗"
         weekly_profit: "周利润归集"
       profit_trend:
+        metric: "利润指标"
         axes:
           amount: "金额"
           quantity: "净销量"
@@ -1733,6 +1734,11 @@ zh:
           revenue: "销售额"
         title: "近 8 周 WSU-DEEP 趋势"
       funnel_trends:
+        compare_wb: "WB 对比指标"
+        compare_ozon: "Ozon 对比指标"
+        metric: "趋势指标"
+        compare_skus: "对比 SKU"
+        compare_hint: "可输入最多 3 个 SKU，用逗号或空格分隔；多个 SKU 时趋势图仅显示单一指标。"
         axes:
           amount: "金额"
           count: "数量"

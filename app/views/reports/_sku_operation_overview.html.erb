@@ -32,8 +32,15 @@
       <input type="hidden" name="tab" value="<%= @active_tab %>">
       <% if params[:locale].present? %><input type="hidden" name="locale" value="<%= params[:locale] %>"><% end %>
       <input type="hidden" name="sku_codes[]" value="<%= @sku.sku_code %>">
+      <% if section[:key] == :funnel %>
+        <% %w[wb ozon].each do |platform| %>
+          <% selected_metric = params["trend_metric_#{platform}"].presence %>
+          <% if selected_metric.present? %><input type="hidden" name="trend_metric_<%= platform %>" value="<%= selected_metric %>"><% end %>
+        <% end %>
+      <% end %>
       <% if section[:key] == :profit %>
         <input type="hidden" name="profit_report_type" value="<%= @profit_report_type %>" data-weekly-profit-filter-target="reportTypeInput">
+        <% if params[:profit_trend_metric].present? %><input type="hidden" name="profit_trend_metric" value="<%= params[:profit_trend_metric] %>"><% end %>
       <% end %>
 
       <div class="field field--time-range weekly-profit-top-filters">
@@ -48,6 +55,9 @@
                        to_name: "#{section[:key]}_to_date",
                        submit_on_apply: true %>
           </div>
+          <% if section[:key].in?(%i[funnel profit]) %>
+            <%= render "shared/spu_sku_filter", field_class: "weekly-profit-spu-sku-field", dom_id_prefix: "sku-operation-#{section[:key]}-compare-filter", label: t("reports.sku_detail.funnel_trends.compare_skus"), placeholder: t("shared.spu_sku_filter.all"), master_skus: @spu_sku_filter_master_skus, orphan_skus: @spu_sku_filter_orphan_skus, selected_sku_codes: @comparison_sku_codes, sku_input_name: "compare_sku_codes[]", master_sku_input_name: "compare_master_sku_ids[]", aria_label: t("shared.spu_sku_filter.aria_label") %>
+          <% end %>
           <div class="weekly-profit-filter-actions">
             <button class="button weekly-profit-submit-button" type="submit"><%= t("weekly_profit_reports.filters.submit") %></button>
           </div>
@@ -132,9 +142,8 @@
 
 <% if section[:key] == :profit %>
   <%= turbo_frame_tag "sku_profit_trend",
-                      src: report_sku_profit_trend_path(@sku.sku_code, locale: params[:locale]),
-                      loading: :lazy,
-                      data: { turbo_permanent: true } do %>
+                      src: report_sku_profit_trend_path(@sku.sku_code, compare_sku_codes: @comparison_sku_codes, profit_trend_metric: params[:profit_trend_metric], locale: params[:locale]),
+                      loading: :lazy do %>
     <section class="panel sku-profit-trend">
       <h2 class="section-title"><%= t("reports.sku_detail.profit_trend.title") %></h2>
       <div class="empty-state"><%= t("reports.sku_detail.profit_trend.loading") %></div>
@@ -145,10 +154,30 @@
 <% if section[:key] == :funnel %>
   <div class="sku-funnel-trends-heading">
     <h2 class="section-title"><%= t("reports.sku_detail.funnel_trends.title") %></h2>
+    <% if @comparison_sku_codes.present? %>
+      <div class="sku-funnel-trend-metric-filters">
+      <% %w[wb ozon].each do |platform| %>
+        <form method="get" action="<%= report_sku_sales_funnel_trends_path(@sku.sku_code) %>" class="field sku-funnel-trend-metric-filter" data-turbo-frame="sku_sales_funnel_trends">
+        <input type="hidden" name="trend_from_date" value="<%= @funnel_from_date %>">
+        <input type="hidden" name="trend_to_date" value="<%= @funnel_to_date %>">
+        <% @comparison_sku_codes.each do |code| %><input type="hidden" name="compare_sku_codes[]" value="<%= code %>"><% end %>
+        <label for="sku-funnel-trend-metric"><%= t("reports.sku_detail.funnel_trends.metric") %></label>
+        <label for="sku-funnel-trend-metric-<%= platform %>"><%= t("reports.sku_detail.funnel_trends.compare_#{platform}") %></label>
+        <select id="sku-funnel-trend-metric-<%= platform %>" name="trend_metric_<%= platform %>" onchange="this.form.requestSubmit()">
+          <% metrics = platform == "wb" ? SalesFunnelReports::SkuDailyTrendQuery::WB_METRICS : SalesFunnelReports::SkuDailyTrendQuery::OZON_METRICS %>
+          <% metrics.each do |metric| %>
+            <option value="<%= metric %>" <%= "selected" if params["trend_metric_#{platform}"].to_s == metric.to_s %>><%= t("sales_funnel_reports.columns.#{platform}.#{metric}") %></option>
+          <% end %>
+        </select>
+        </form>
+      <% end %>
+      </div>
+    <% end %>
   </div>
   <%= turbo_frame_tag "sku_sales_funnel_trends",
                       src: report_sku_sales_funnel_trends_path(@sku.sku_code,
-                        trend_from_date: @funnel_from_date, trend_to_date: @funnel_to_date, locale: params[:locale]),
+                        trend_from_date: @funnel_from_date, trend_to_date: @funnel_to_date, trend_metric_wb: params[:trend_metric_wb], trend_metric_ozon: params[:trend_metric_ozon],
+                        compare_sku_codes: @comparison_sku_codes, locale: params[:locale]),
                       loading: :lazy do %>
     <div class="empty-state"><%= t("reports.sku_detail.funnel_trends.loading") %></div>
   <% end %>
