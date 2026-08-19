@@ -827,6 +827,51 @@ a {
   margin-bottom: 14px;
 }
 
+.supply-order-status-summary {
+  margin-bottom: 14px;
+}
+
+.supply-order-status-summary__title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.supply-order-status-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.supply-order-status-summary__item {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface-soft);
+}
+
+.supply-order-status-summary__label {
+  display: block;
+  min-height: 34px;
+  color: var(--erp-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.supply-order-status-summary__value {
+  margin-right: 4px;
+  font-size: 22px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.supply-order-status-summary__unit {
+  color: var(--erp-muted);
+  font-size: 11px;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -1002,7 +1047,11 @@ textarea {
 
 .ozon-warehouse-table-panel {
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.ozon-warehouse-table-panel .table-scroll {
+  overflow: visible;
 }
 
 .ozon-warehouse-table-header {
@@ -1386,7 +1435,25 @@ textarea {
 }
 
 .table-scroll {
-  overflow-x: auto;
+  overflow: visible;
+}
+
+/* Keep long data tables readable while the page or table container scrolls. */
+table thead th {
+  position: sticky;
+  top: var(--erp-topbar-height);
+  z-index: 10;
+  background: var(--erp-surface-soft);
+  box-shadow: 0 1px 0 var(--erp-border);
+}
+
+/* Drawer tables scroll inside their own panel below the drawer header. */
+.inventory-drawer__content .table-scroll > table thead th {
+  top: 0;
+}
+
+.inventory-drawer__content.wb-ads-drawer-content > section .table-scroll {
+  overflow: auto;
 }
 
 .inventory-list-table {
@@ -3305,12 +3372,28 @@ pre {
 .sku-detail-drawer__content {
   min-height: 0;
   padding-top: 16px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sku-detail-tab-panels,
+.sku-detail-tab-panels > turbo-frame,
+.sku-detail-tab-panels .report-stack,
+.sku-detail-tab-panels .panel {
+  min-width: 0;
 }
 
 .sku-detail-tab-panels .table-scroll {
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
+  overflow: visible;
+  overscroll-behavior-x: contain;
+}
+
+/* The SKU drawer scrolls through its content panel; table wrappers must not
+   create a second scroll boundary or clip sticky headers. */
+.sku-detail-drawer__content table thead th {
+  top: 0;
 }
 
 .inventory-drawer__kicker {
@@ -6539,8 +6622,7 @@ textarea:focus {
 }
 
 .product-list-card {
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   padding: 0;
 }
 
@@ -7175,11 +7257,11 @@ body.erp-shell .erp-nav__link[aria-current="page"] i {
 }
 
 .operator-sku-table-card {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .operator-sku-table-card .table-scroll {
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .operator-sku-table {
