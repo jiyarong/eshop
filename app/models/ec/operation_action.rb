@@ -10,6 +10,7 @@ module Ec
       sku_inbound_change
       manual_note
       supply_order
+      sku_adv_budget
     ].freeze
 
     belongs_to :operated_by_user, class_name: "User"

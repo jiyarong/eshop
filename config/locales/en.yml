@@ -1815,6 +1815,8 @@ en:
         all_platforms: "All platforms"
         sku_placeholder: "Search SKU"
       fields:
+        advertisement: "Advertisement"
+        advertisement_id: "ID: %{id}"
         operated_at: "Changed at"
         operation_type: "Change type"
         platform: "Platform"
@@ -1828,6 +1830,7 @@ en:
         listing_specification: "Specification"
         manual_note: "Manual note"
         sku_adv_on_off: "Advertising on/off"
+        sku_adv_budget: "Advertising budget"
         sku_inbound_change: "Inbound inventory"
         supply_order: "Warehouse shipment"
       platforms:
@@ -1846,6 +1849,7 @@ en:
         barcodes: "Barcodes"
         brand: "Brand"
         advertising_enabled: "Advertising enabled"
+        daily_budget: "Daily advertising budget"
         platform_inbound_quantity: "Platform inbound quantity"
         category: "Category"
         category_id: "Category ID"
@@ -1870,6 +1874,7 @@ en:
         price: "Price"
         primary_image: "Primary image"
         title: "Title"
+        weekly_budget: "Weekly advertising budget"
         type_id: "Type ID"
         variants: "Variants"
         volume_weight: "Volume weight"

@@ -111,6 +111,23 @@ class Erp::OperationActionsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 21 条/
   end
 
+  test "shows advertisement name and id for advertising records" do
+    action = create_action(
+      @wb_product,
+      "sku_adv_on_off",
+      { "advertising_enabled" => { "from" => false, "to" => true } }
+    )
+    action.update!(diff_result: action.diff_result.merge(
+      "advertisement" => { "id" => "campaign-101", "name" => "KJ-217 Search" }
+    ))
+
+    get "/erp/operation_actions", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".operation-action-advertisement", /KJ-217 Search/
+    assert_select ".operation-action-advertisement", /campaign-101/
+  end
+
   private
 
   def create_sku_product(sku, store, product_id)

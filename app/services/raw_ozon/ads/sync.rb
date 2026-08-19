@@ -63,14 +63,21 @@ module RawOzon
         previous_units = RawOzon::AdUnit
           .where(account_id: @account.id, external_id: rows.map { |row| row[:external_id] })
           .index_by(&:external_id)
-        @unit_state_changes = rows.filter_map do |row|
+        @unit_changes = rows.filter_map do |row|
           previous = previous_units[row[:external_id]]
-          next unless previous && previous.state != row[:state]
+          next unless previous
 
-          [row[:external_id], previous.state, row[:state]]
+          changes = {
+            state: [previous.state, row[:state]],
+            daily_budget: [previous.daily_budget, row[:daily_budget]],
+            weekly_budget: [previous.weekly_budget, row[:weekly_budget]]
+          }.select { |_field, (before, after)| before != after }
+          next if changes.empty?
+
+          [row[:external_id], changes]
         end
         RawOzon::AdUnit.upsert_all(rows, unique_by: :idx_raw_ozon_ad_units_identity) if rows.any?
-        record_unit_state_changes
+        record_unit_changes
         rows.size
       end
 
@@ -279,9 +286,9 @@ module RawOzon
         rows.size
       end
 
-      def record_unit_state_changes
-        changes = Array(@unit_state_changes)
-        @unit_state_changes = []
+      def record_unit_changes
+        changes = Array(@unit_changes)
+        @unit_changes = []
         return if changes.empty?
 
         units = RawOzon::AdUnit
@@ -297,7 +304,7 @@ module RawOzon
           .where(store:, platform_sku_id: platform_sku_ids)
           .index_by(&:platform_sku_id)
 
-        changes.each do |external_id, before_state, after_state|
+        changes.each do |external_id, fields|
           unit = units[external_id]
           next unless unit
 
@@ -305,15 +312,32 @@ module RawOzon
             sku_product = sku_products[product.ozon_sku_id]
             next unless sku_product
 
-            Ec::AdStatusChangeRecorder.record(
-              sku_product:,
-              advertisement_id: external_id,
-              advertisement_name: unit.title,
-              before_status: before_state,
-              after_status: after_state
-            )
+            record_listing_ad_changes(sku_product, unit, fields)
           end
         end
+      end
+
+      def record_listing_ad_changes(sku_product, unit, fields)
+        if (states = fields[:state])
+          Ec::AdStatusChangeRecorder.record(
+            sku_product:,
+            advertisement_id: unit.external_id,
+            advertisement_name: unit.title,
+            before_status: states.first,
+            after_status: states.last
+          )
+        end
+
+        budget_fields = fields.slice(:daily_budget, :weekly_budget)
+        return if budget_fields.empty?
+
+        Ec::ListingChangeRecorder.record(
+          sku_product:,
+          operation_type: "sku_adv_budget",
+          before: budget_fields.transform_values(&:first),
+          after: budget_fields.transform_values(&:last),
+          metadata: { advertisement: { id: unit.external_id, name: unit.title } }
+        )
       end
 
       def build_cpc_sku_stat(item, unit, product_map)

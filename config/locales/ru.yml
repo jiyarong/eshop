@@ -1766,6 +1766,8 @@ ru:
         all_platforms: "Все платформы"
         sku_placeholder: "Поиск SKU"
       fields:
+        advertisement: "Реклама"
+        advertisement_id: "ID: %{id}"
         operated_at: "Время изменения"
         operation_type: "Тип изменения"
         platform: "Платформа"
@@ -1779,6 +1781,7 @@ ru:
         listing_specification: "Характеристики"
         manual_note: "Ручная запись"
         sku_adv_on_off: "Включение рекламы"
+        sku_adv_budget: "Рекламный бюджет"
         sku_inbound_change: "Товар в поставке"
         supply_order: "Поставка на склад"
       platforms:
@@ -1797,6 +1800,7 @@ ru:
         barcodes: "Штрихкоды"
         brand: "Бренд"
         advertising_enabled: "Реклама включена"
+        daily_budget: "Дневной рекламный бюджет"
         platform_inbound_quantity: "Количество в поставке"
         category: "Категория"
         category_id: "ID категории"
@@ -1821,6 +1825,7 @@ ru:
         price: "Цена"
         primary_image: "Главное изображение"
         title: "Название"
+        weekly_budget: "Недельный рекламный бюджет"
         type_id: "ID типа"
         variants: "Варианты"
         volume_weight: "Объемный вес"

@@ -2009,6 +2009,8 @@ zh:
         all_platforms: "全部平台"
         sku_placeholder: "搜索 SKU"
       fields:
+        advertisement: "广告"
+        advertisement_id: "ID：%{id}"
         operated_at: "变更时间"
         operation_type: "变更类型"
         platform: "平台"
@@ -2022,6 +2024,7 @@ zh:
         listing_specification: "规格"
         manual_note: "人工记录"
         sku_adv_on_off: "广告开关"
+        sku_adv_budget: "广告预算"
         sku_inbound_change: "平台在途"
         supply_order: "送仓记录"
       platforms:
@@ -2040,6 +2043,7 @@ zh:
         barcodes: "条码"
         brand: "品牌"
         advertising_enabled: "广告启用状态"
+        daily_budget: "广告日预算"
         platform_inbound_quantity: "平台在途数量"
         category: "类目"
         category_id: "类目 ID"
@@ -2064,6 +2068,7 @@ zh:
         price: "售价"
         primary_image: "主图"
         title: "标题"
+        weekly_budget: "广告周预算"
         type_id: "类型 ID"
         variants: "规格选项"
         volume_weight: "体积重量"

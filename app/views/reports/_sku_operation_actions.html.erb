@@ -47,6 +47,15 @@
                 <details class="operation-action-diff">
                   <summary><% diff_fields.keys.each do |field| %><span class="operation-action-field-chip"><%= operation_action_field_label(field) %></span><% end %></summary>
                   <div class="operation-action-diff-list">
+                    <% if (advertisement = operation_action_advertisement(action)) %>
+                      <div class="operation-action-advertisement">
+                        <strong><%= t("erp.operation_actions.fields.advertisement") %></strong>
+                        <span><%= advertisement[:name] || t("common.empty_value") %></span>
+                        <% if advertisement[:id] %>
+                          <span class="code-text sub"><%= t("erp.operation_actions.fields.advertisement_id", id: advertisement[:id]) %></span>
+                        <% end %>
+                      </div>
+                    <% end %>
                     <% operation_action_diff_entries(diff_fields).each do |path, changes| %>
                       <section class="operation-action-diff-item">
                         <h3><%= operation_action_diff_path(path) %></h3>

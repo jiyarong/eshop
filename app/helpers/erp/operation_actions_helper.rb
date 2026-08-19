@@ -42,5 +42,16 @@ module Erp
 
       JSON.pretty_generate(value)
     end
+
+    def operation_action_advertisement(action)
+      advertisement = action.diff_result["advertisement"]
+      return unless advertisement.is_a?(Hash)
+
+      name = advertisement["name"].presence
+      id = advertisement["id"].presence
+      return if name.blank? && id.blank?
+
+      { name:, id: }
+    end
   end
 end

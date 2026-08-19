@@ -239,6 +239,26 @@ class RawOzonAdsSyncTest < ActiveSupport::TestCase
     assert_equal false, action.diff_result.dig("fields", "advertising_enabled", "to")
   end
 
+  test "records a campaign budget change for a bound listing" do
+    create_operation_action_dependencies
+    @sync.sync_units
+    @sync.sync_unit_products
+    @client.define_singleton_method(:campaigns) do
+      super().map { |campaign| campaign["id"] == "101" ? campaign.merge("weeklyBudget" => "6000000000") : campaign }
+    end
+
+    assert_difference "Ec::OperationAction.count", 1 do
+      @sync.sync_units
+    end
+
+    action = Ec::OperationAction.order(:id).last
+    assert_equal "sku_adv_budget", action.operation_type
+    assert_equal "101", action.diff_result.dig("advertisement", "id")
+    assert_equal "CPC", action.diff_result.dig("advertisement", "name")
+    assert_equal "2000.0", action.diff_result.dig("fields", "weekly_budget", "from")
+    assert_equal "6000.0", action.diff_result.dig("fields", "weekly_budget", "to")
+  end
+
   private
 
   def create_operation_action_dependencies
