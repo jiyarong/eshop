@@ -35,23 +35,40 @@ module AITasks
     attr_reader :as_of_date, :client, :time_zone
 
     def candidate_skus
-      scope = Ec::Sku.active.order(:sku_code)
+      scope = Ec::Sku.active
+        .joins(:sku_products)
+        .distinct
+        .order(:sku_code)
       scope = scope.where(sku_code: @sku_code) if @sku_code
       sku_codes = scope.pluck(:sku_code)
-      return scope.none if sku_codes.empty? || !Ec::WeeklyRate.exists?(week_start: last_week_start)
+      return scope.none if sku_codes.empty?
 
       scope.where(sku_code: weekly_profit_sku_codes(sku_codes))
     end
 
     def weekly_profit_sku_codes(sku_codes)
-      report = Ec::WeeklySummaryDeepQuery.run(
-        from_date: last_week_start,
-        to_date: analysis_cutoff_date,
-        sku_codes: sku_codes
-      )
+      weeks_with_profit = Hash.new(0)
+      complete_week_ranges.each do |from_date, to_date|
+        next unless Ec::WeeklyRate.exists?(week_start: from_date)
 
-      Array(report[:rows] || report["rows"]).filter_map do |row|
-        (row[:sku] || row["sku"]).to_s.strip.upcase.presence
+        report = Ec::WeeklySummaryDeepQuery.run(
+          from_date: from_date,
+          to_date: to_date,
+          sku_codes: sku_codes
+        )
+        Array(report[:rows] || report["rows"]).each do |row|
+          sku = (row[:sku] || row["sku"]).to_s.strip.upcase.presence
+          weeks_with_profit[sku] += 1 if sku
+        end
+      end
+
+      weeks_with_profit.filter_map { |sku, weeks| sku if weeks >= 4 }
+    end
+
+    def complete_week_ranges
+      8.times.map do |weeks_ago|
+        from_date = analysis_cutoff_date.beginning_of_week(:monday) - weeks_ago.weeks
+        [from_date, from_date.end_of_week(:monday)]
       end
     end
 
