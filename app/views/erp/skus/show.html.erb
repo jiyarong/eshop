@@ -8,7 +8,7 @@
     <dt><%= t("erp.common.russian_name") %></dt>
     <dd><%= erp_value(@sku.product_name_ru) %></dd>
     <dt><%= t("erp.skus.fields.product_info") %></dt>
-    <dd><%= erp_value(@sku.product_info) %></dd>
+    <dd class="sku-product-info"><%= erp_value(@sku.product_info) %></dd>
     <dt><%= t("erp.common.category") %></dt>
     <dd><%= erp_value(@sku.sku_category&.name) %></dd>
     <dt><%= t("erp.skus.fields.color") %></dt>

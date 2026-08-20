@@ -841,13 +841,13 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "编辑 SKU"
     assert_select "input[name='ec_sku[is_active]']", count: 0
-    assert_select "textarea[name='ec_sku[product_info]']"
+    assert_select ".field.field--full textarea[name='ec_sku[product_info]'][rows='10']"
 
     sign_in @current_user
     patch "/erp/skus/#{@sku.id}", params: {
       ec_sku: {
         product_name: "更新商品",
-        product_info: "更新后的产品信息",
+        product_info: "更新后的产品信息\n第二行产品信息",
         color: "蓝色",
         is_active: "0"
       }
@@ -856,7 +856,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to "/erp/skus"
     @sku.reload
     assert_equal "更新商品", @sku.product_name
-    assert_equal "更新后的产品信息", @sku.product_info
+    assert_equal "更新后的产品信息\n第二行产品信息", @sku.product_info
     assert_equal "蓝色", @sku.color
     assert_not @sku.is_active
   end

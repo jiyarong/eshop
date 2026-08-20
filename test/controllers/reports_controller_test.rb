@@ -1174,6 +1174,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".definition-list", minimum: 1
   end
 
+  test "sku detail preserves product info line breaks" do
+    @sku.update!(product_info: "第一行产品信息\n第二行产品信息")
+
+    get report_sku_path(@sku.sku_code), params: { tab: "basic" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    product_info = css_select("dd.sku-product-info").first
+    assert_equal "第一行产品信息\n第二行产品信息", product_info.text
+  end
+
   test "sku detail renders basic configuration when selected" do
     assignment = Ec::SkuStoreAssignment.create!(
       sku_code: @sku.sku_code,

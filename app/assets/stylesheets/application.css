@@ -710,6 +710,7 @@ a {
 }
 
 .code-viewer {
+  color: black;
   max-height: 70vh;
   overflow: auto;
   margin: 12px 0 0;
@@ -3050,6 +3051,10 @@ table thead th {
   margin: 0;
   color: var(--erp-text);
   overflow-wrap: anywhere;
+}
+
+.sku-product-info {
+  white-space: pre-wrap;
 }
 
 .sku-detail-hero {
