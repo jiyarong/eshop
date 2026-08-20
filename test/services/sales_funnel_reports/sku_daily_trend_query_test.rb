@@ -13,6 +13,7 @@ class SalesFunnelReports::SkuDailyTrendQueryTest < ActiveSupport::TestCase
   end
 
   teardown do
+    Ec::Snapshot.where(snapshot_type: Ec::InventorySnapshot.snapshot_type, sku_id: @sku&.id).delete_all
     RawWb::SalesFunnelDaily.where(account_id: @wb_account&.id).delete_all
     RawOzon::SalesFunnelDaily.where(account_id: @ozon_account&.id).delete_all
     Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all
@@ -29,19 +30,41 @@ class SalesFunnelReports::SkuDailyTrendQueryTest < ActiveSupport::TestCase
     )
     RawOzon::SalesFunnelDaily.create!(
       account: @ozon_account, stat_date: Date.new(2026, 8, 11), sku: 81001,
-      hits_view: 200, position_category: 7.25, hits_tocart: 30, ordered_units: 12,
-      revenue: 1_500, synced_at: Time.current
+      hits_view: 200, hits_view_search: 100, hits_view_pdp: 50,
+      position_category: 7.25, hits_tocart: 30, hits_tocart_pdp: 20,
+      ordered_units: 12, delivered_units: 10, revenue: 1_500, synced_at: Time.current
+    )
+    Ec::Snapshot.create!(
+      sku: @sku, snapshot_type: Ec::InventorySnapshot.snapshot_type,
+      snapshot_date: Date.new(2026, 8, 11), content: {
+        overview: { book_stock: 120 },
+        distribution: { levels: [
+          { store_id: @ozon_store.id, fulfillment_type: "fbo", quantity: 20 },
+          { store_id: @ozon_store.id, fulfillment_type: "fbs", quantity: 5 },
+          { store_id: @ozon_store.id, fulfillment_type: "inbound", quantity: 9 }
+        ] }
+      }
     )
 
     trends = query.call
 
     assert_equal ["ozon", "wb"], trends.map { |trend| trend[:platform] }
     assert_equal ["Ozon 店 #{@token}", "WB 店 #{@token}"], trends.map { |trend| trend[:store_name] }
-    assert_equal %i[hits_view position_category hits_tocart ordered_units revenue], trends.first[:default_metrics]
+    assert_equal SalesFunnelReports::ReportQueryRunner::OZON_COLUMNS.drop(2), trends.first[:metrics]
+    assert_equal %i[position_category hits_view conv_tocart ordered_units revenue], trends.first[:default_metrics]
     assert_equal %i[open_card add_to_cart orders buyouts], trends.second[:default_metrics]
     assert_equal 4, trends.first[:rows].size
     assert_equal 1_500.0, trends.first[:rows].find { |row| row[:date] == "2026-08-11" }.dig(:values, :revenue)
-    assert_equal 7.25, trends.first[:rows].find { |row| row[:date] == "2026-08-11" }.dig(:values, :position_category)
+    ozon_values = trends.first[:rows].find { |row| row[:date] == "2026-08-11" }.fetch(:values)
+    assert_equal 7.25, ozon_values[:position_category]
+    assert_equal 50.0, ozon_values[:search_to_card_conversion]
+    assert_equal 40.0, ozon_values[:conv_tocart]
+    assert_equal 60.0, ozon_values[:cart_to_order]
+    assert_equal 6.0, ozon_values[:order_conversion]
+    assert_equal 125.0, ozon_values[:average_price]
+    assert_equal 10.0, ozon_values[:delivered_units]
+    assert_equal 120, ozon_values[:total_ending_inventory]
+    assert_equal 25, ozon_values[:store_ending_inventory]
     assert_equal 100.0, trends.second[:rows].find { |row| row[:date] == "2026-08-10" }.dig(:values, :open_card)
   end
 

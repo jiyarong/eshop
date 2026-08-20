@@ -606,8 +606,8 @@ class ReportsController < ApplicationController
       end
       return { tooltip: { trigger: "axis" }, legend: { type: "scroll", top: 0 }, grid: { left: 48, right: 62, top: 62, bottom: 42, containLabel: true }, xAxis: { type: "category", boundaryGap: false, data: labels }, yAxis: [{ type: "value", name: t("reports.sku_detail.funnel_trends.axes.count") }], series: series }
     end
-    amount_metrics = %i[orders_sum buyouts_sum revenue]
-    percent_metrics = %i[conv_to_cart cart_to_order buyout_percent conv_tocart]
+    amount_metrics = %i[orders_sum buyouts_sum revenue average_price]
+    percent_metrics = %i[conv_to_cart cart_to_order buyout_percent conv_tocart search_to_card_conversion order_conversion total_drr]
     rank_metric = :position_category
     has_rank = rank_metric.in?(trend[:metrics])
     labels = trend[:rows].map { |row| row[:date] }
@@ -1286,8 +1286,8 @@ class ReportsController < ApplicationController
   def sku_operation_report_value(row, key)
     value = row[key] || row[key.to_s]
     return "-" if value.nil? || value == ""
-    return helpers.number_to_percentage(value, precision: 2) if key.to_s.match?(/(percent|conversion|rate|conv_to_cart|cart_to_order|buyout_percent|_pct|margin)\z/)
-    return helpers.number_to_currency(value, unit: "", precision: 2) if key.to_s.match?(/(sum|amount|revenue)\z/)
+    return helpers.number_to_percentage(value, precision: 2) if key.to_s.match?(/(percent|conversion|rate|conv_to_cart|cart_to_order|buyout_percent|_pct|margin|drr)\z/)
+    return helpers.number_to_currency(value, unit: "", precision: 2) if key.to_s.match?(/(sum|amount|revenue|average_price)\z/)
     return format("%.2f", value) if value.is_a?(Float) || value.is_a?(BigDecimal)
 
     value

@@ -2,16 +2,17 @@ module SalesFunnelReports
   class ReportQueryRunner
     include Ec::WeeklySummarySupport
 
-    NEGATIVE_FUNNEL_COMPARISON_KEYS = %i[returns returns_count cancellations cancel_count cancel_sum position_category].freeze
+    NEGATIVE_FUNNEL_COMPARISON_KEYS = %i[returns returns_count cancellations cancel_count cancel_sum position_category total_drr].freeze
     WB_COLUMNS = %i[
       sku_code product_name open_card add_to_cart conv_to_cart cart_to_order
       orders orders_sum buyouts buyouts_sum buyout_percent cancel_count cancel_sum
       add_to_wishlist stock_wb stock_mp
     ].freeze
     OZON_COLUMNS = %i[
-      sku_code product_name hits_view position_category hits_view_search hits_view_pdp session_view
-      hits_tocart hits_tocart_search hits_tocart_pdp conv_tocart ordered_units
-      revenue returns_count cancellations
+      sku_code product_name position_category hits_view search_to_card_conversion
+      conv_tocart cart_to_order order_conversion average_price ordered_units revenue
+      total_drr cancellations returns_count delivered_units total_ending_inventory
+      store_ending_inventory
     ].freeze
 
     def self.run(params:, today:)
@@ -198,27 +199,50 @@ module SalesFunnelReports
     def ozon_rows(account, parsed)
       scope = full_week_scope(account.sales_funnel_periods, parsed)
       mapping = platform_product_mapping("ozon", account.id, :platform_sku_id)
+      store_id = mapping.values.first&.fetch(:store_id, nil)
+      ad_spend_by_sku = OzonTotalDrrQuery.spend_by_sku(
+        account_id: account.id, from_date: parsed[:from_date], to_date: parsed[:to_date]
+      )
+      inventory_by_sku = EndingInventoryQuery.by_sku(
+        sku_ids: mapping.values.pluck(:sku_id).compact.uniq,
+        store_id: store_id,
+        on_date: parsed[:to_date]
+      )
       ids = mapped_product_ids(mapping, parsed[:sku_codes]).map(&:to_i)
       scope = scope.where(sku: ids) if parsed[:sku_codes].any?
 
       grouped_platform_records(scope.order(:sku, :period_start), mapping, :sku).map do |product, records|
         hits_view = sum(records, :hits_view)
         hits_tocart = sum(records, :hits_tocart)
+        hits_view_search = sum(records, :hits_view_search)
         hits_view_pdp = sum(records, :hits_view_pdp)
         hits_tocart_pdp = sum(records, :hits_tocart_pdp)
+        ordered_units = sum(records, :ordered_units)
+        revenue = sum(records, :revenue)
+        platform_sku_ids = records.map { |record| record.sku.to_s }.uniq
+        ad_spend = platform_sku_ids.sum { |sku_id| ad_spend_by_sku.fetch(sku_id, 0) }
+        inventory = product ? inventory_by_sku[product[:sku_id]] : nil
         {
           sku_code: product&.fetch(:sku_code) || records.first.sku.to_s,
           product_name: product&.fetch(:product_name),
           hits_view: hits_view,
-          hits_view_search: sum(records, :hits_view_search),
+          hits_view_search: hits_view_search,
           hits_view_pdp: hits_view_pdp,
           session_view: sum(records, :session_view),
           hits_tocart: hits_tocart,
           hits_tocart_search: sum(records, :hits_tocart_search),
           hits_tocart_pdp: hits_tocart_pdp,
+          search_to_card_conversion: percent(hits_view_pdp, hits_view_search),
           conv_tocart: percent(hits_tocart_pdp, hits_view_pdp),
-          ordered_units: sum(records, :ordered_units),
-          revenue: sum(records, :revenue),
+          cart_to_order: percent(ordered_units, hits_tocart_pdp),
+          order_conversion: percent(ordered_units, hits_view),
+          average_price: ordered_units.positive? ? (revenue / ordered_units).round(2) : nil,
+          ordered_units: ordered_units,
+          delivered_units: sum(records, :delivered_units),
+          total_ending_inventory: inventory&.fetch(:total_ending_inventory),
+          store_ending_inventory: inventory&.fetch(:store_ending_inventory),
+          revenue: revenue,
+          total_drr: platform_sku_ids.any? { |sku_id| ad_spend_by_sku.key?(sku_id) } ? percent(ad_spend, revenue) : nil,
           returns_count: sum(records, :returns_count),
           cancellations: sum(records, :cancellations),
           position_category: average(records, :position_category)
@@ -238,6 +262,8 @@ module SalesFunnelReports
         .where.not(column => nil)
         .each_with_object({}) do |sku_product, mapping|
           mapping[sku_product.public_send(column).to_s] = {
+            sku_id: sku_product.sku&.id,
+            store_id: sku_product.store_id,
             sku_code: sku_product.sku_code,
             product_name: localized_product_name(sku_product.sku)
           }

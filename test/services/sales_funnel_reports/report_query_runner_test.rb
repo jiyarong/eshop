@@ -52,15 +52,23 @@ class SalesFunnelReports::ReportQueryRunnerTest < ActiveSupport::TestCase
     row = report[:rows].sole
 
     assert_equal "ozon", report.dig(:meta, :platform)
+    assert_operator report.dig(:meta, :columns).index(:revenue), :<, report.dig(:meta, :columns).index(:total_drr)
+    assert_operator report.dig(:meta, :columns).index(:total_drr), :<, report.dig(:meta, :columns).index(:cancellations)
+    assert_equal %i[delivered_units total_ending_inventory store_ending_inventory], report.dig(:meta, :columns).last(3)
     assert_equal @sku.sku_code, row[:sku_code]
     assert_equal "漏斗商品", row[:product_name]
     assert_equal BigDecimal("10176"), row[:hits_view]
     assert_equal BigDecimal("60"), row[:hits_tocart]
     assert_equal BigDecimal("671"), row[:hits_view_pdp]
     assert_equal BigDecimal("51"), row[:hits_tocart_pdp]
+    assert_equal BigDecimal("13.19"), row[:search_to_card_conversion]
     assert_equal BigDecimal("7.6"), row[:conv_tocart]
+    assert_equal BigDecimal("19.61"), row[:cart_to_order]
+    assert_equal BigDecimal("0.1"), row[:order_conversion]
+    assert_equal BigDecimal("100"), row[:average_price]
     assert_equal BigDecimal("7.6"), report.dig(:summary, :cart_conversion)
     assert_equal BigDecimal("10"), row[:ordered_units]
+    assert_equal BigDecimal("8"), row[:delivered_units]
     assert_equal BigDecimal("1000"), row[:revenue]
     assert_equal Date.new(2026, 6, 22), report.dig(:comparison, :period, :from_date)
     assert_equal Date.new(2026, 7, 5), report.dig(:comparison, :period, :to_date)
@@ -139,8 +147,8 @@ class SalesFunnelReports::ReportQueryRunnerTest < ActiveSupport::TestCase
     RawOzon::SalesFunnelPeriod.create!(
       account: @ozon_account, period_start: from, period_end: to, sku: 80001,
       product_name: "Ozon 漏斗商品", hits_view: views, hits_tocart: carts,
-      hits_view_pdp: pdp_views, hits_tocart_pdp: pdp_carts,
-      session_view: views / 2, ordered_units: orders, revenue: revenue,
+      hits_view_search: views / 2, hits_view_pdp: pdp_views, hits_tocart_pdp: pdp_carts,
+      session_view: views / 2, ordered_units: orders, delivered_units: orders - 1, revenue: revenue,
       returns_count: 1, cancellations: 1, synced_at: Time.current
     )
   end

@@ -1427,8 +1427,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller='echarts']", count: 2
     assert_includes response.body, "2026-08-09"
     assert_includes response.body, "2026-08-12"
-    assert_includes response.body, '"商品卡片访问":false'
-    assert_includes response.body, '"搜索平均排名":true'
+    assert_includes response.body, '"点击率 (CTR)":false'
+    assert_includes response.body, '"平均搜索排名":true'
     assert_includes response.body, '"inverse":true'
     assert_includes response.body, '"打开商品卡":true'
   end

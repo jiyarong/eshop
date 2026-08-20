@@ -79,12 +79,14 @@ class SalesFunnelReports::SkuDailyReportQueryRunnerTest < ActiveSupport::TestCas
     )
     RawOzon::SalesFunnelDaily.create!(
       account: account, stat_date: Date.new(2026, 8, 3), sku: 82001,
-      hits_view: 4_000, hits_tocart: 25, hits_view_pdp: 300, hits_tocart_pdp: 21,
+      hits_view: 4_000, hits_view_search: 2_000, hits_tocart: 25, hits_view_pdp: 300, hits_tocart_pdp: 21,
+      ordered_units: 4, delivered_units: 3, revenue: 400,
       synced_at: Time.current
     )
     RawOzon::SalesFunnelDaily.create!(
       account: account, stat_date: Date.new(2026, 8, 4), sku: 82001,
-      hits_view: 6_176, hits_tocart: 35, hits_view_pdp: 371, hits_tocart_pdp: 30,
+      hits_view: 6_176, hits_view_search: 3_088, hits_tocart: 35, hits_view_pdp: 371, hits_tocart_pdp: 30,
+      ordered_units: 6, delivered_units: 5, revenue: 600,
       synced_at: Time.current
     )
 
@@ -101,7 +103,12 @@ class SalesFunnelReports::SkuDailyReportQueryRunnerTest < ActiveSupport::TestCas
     assert_equal BigDecimal("60"), row[:hits_tocart]
     assert_equal BigDecimal("671"), row[:hits_view_pdp]
     assert_equal BigDecimal("51"), row[:hits_tocart_pdp]
+    assert_equal BigDecimal("13.19"), row[:search_to_card_conversion]
     assert_equal BigDecimal("7.6"), row[:conv_tocart]
+    assert_equal BigDecimal("19.61"), row[:cart_to_order]
+    assert_equal BigDecimal("0.1"), row[:order_conversion]
+    assert_equal BigDecimal("100"), row[:average_price]
+    assert_equal BigDecimal("8"), row[:delivered_units]
     assert_equal BigDecimal("7.6"), report.dig(:summary, :cart_conversion)
   ensure
     RawOzon::SalesFunnelDaily.where(account_id: account&.id).delete_all

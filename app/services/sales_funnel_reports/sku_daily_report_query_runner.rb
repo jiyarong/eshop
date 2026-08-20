@@ -41,27 +41,50 @@ module SalesFunnelReports
     def ozon_rows(account, parsed)
       scope = account.sales_funnel_daily.where(stat_date: parsed[:from_date]..parsed[:to_date])
       mapping = platform_product_mapping("ozon", account.id, :platform_sku_id)
+      store_id = mapping.values.first&.fetch(:store_id, nil)
+      ad_spend_by_sku = OzonTotalDrrQuery.spend_by_sku(
+        account_id: account.id, from_date: parsed[:from_date], to_date: parsed[:to_date]
+      )
+      inventory_by_sku = EndingInventoryQuery.by_sku(
+        sku_ids: mapping.values.pluck(:sku_id).compact.uniq,
+        store_id: store_id,
+        on_date: parsed[:to_date]
+      )
       ids = mapped_product_ids(mapping, parsed[:sku_codes]).map(&:to_i)
       scope = scope.where(sku: ids) if parsed[:sku_codes].any?
 
       grouped_platform_records(scope.order(:sku, :stat_date), mapping, :sku).map do |product, records|
         hits_view = sum(records, :hits_view)
         hits_tocart = sum(records, :hits_tocart)
+        hits_view_search = sum(records, :hits_view_search)
         hits_view_pdp = sum(records, :hits_view_pdp)
         hits_tocart_pdp = sum(records, :hits_tocart_pdp)
+        ordered_units = sum(records, :ordered_units)
+        revenue = sum(records, :revenue)
+        platform_sku_ids = records.map { |record| record.sku.to_s }.uniq
+        ad_spend = platform_sku_ids.sum { |sku_id| ad_spend_by_sku.fetch(sku_id, 0) }
+        inventory = product ? inventory_by_sku[product[:sku_id]] : nil
         {
           sku_code: product&.fetch(:sku_code) || records.first.sku.to_s,
           product_name: product&.fetch(:product_name),
           hits_view: hits_view,
-          hits_view_search: sum(records, :hits_view_search),
+          hits_view_search: hits_view_search,
           hits_view_pdp: hits_view_pdp,
           session_view: sum(records, :session_view),
           hits_tocart: hits_tocart,
           hits_tocart_search: sum(records, :hits_tocart_search),
           hits_tocart_pdp: hits_tocart_pdp,
+          search_to_card_conversion: percent(hits_view_pdp, hits_view_search),
           conv_tocart: percent(hits_tocart_pdp, hits_view_pdp),
-          ordered_units: sum(records, :ordered_units),
-          revenue: sum(records, :revenue),
+          cart_to_order: percent(ordered_units, hits_tocart_pdp),
+          order_conversion: percent(ordered_units, hits_view),
+          average_price: ordered_units.positive? ? (revenue / ordered_units).round(2) : nil,
+          ordered_units: ordered_units,
+          delivered_units: sum(records, :delivered_units),
+          total_ending_inventory: inventory&.fetch(:total_ending_inventory),
+          store_ending_inventory: inventory&.fetch(:store_ending_inventory),
+          revenue: revenue,
+          total_drr: platform_sku_ids.any? { |sku_id| ad_spend_by_sku.key?(sku_id) } ? percent(ad_spend, revenue) : nil,
           returns_count: sum(records, :returns_count),
           cancellations: sum(records, :cancellations),
           position_category: average(records, :position_category)
