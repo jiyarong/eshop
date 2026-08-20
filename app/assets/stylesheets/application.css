@@ -3088,6 +3088,28 @@ table thead th {
   margin: 0;
   color: var(--erp-muted);
 }
+.sku-detail-prototype-media-preview{
+  float: right;
+}
+.sku-detail-prototype-media-link {
+  display: block;
+  padding: 0;
+  width: 60px;
+  height: 60px;
+  margin-inline: auto;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: var(--erp-surface-muted, #f8fafc);
+  cursor: pointer;
+}
+
+.sku-detail-prototype-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 
 .sku-detail-marketing-state {
   margin-top: 12px;

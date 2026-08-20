@@ -796,6 +796,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
           sku_code: "created-sku-#{@token}",
           product_name: "新增商品",
           product_name_ru: "Новый товар",
+          product_info: "产品基础信息",
           sku_category_id: @category.id,
           color: "黑色",
           spec: "双支装",
@@ -816,6 +817,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to "/erp/skus"
     assert_equal @category, created.sku_category
     assert_equal @master_sku, created.master_sku
+    assert_equal "产品基础信息", created.product_info
   end
 
   test "invalid modal create rerenders sku form" do
@@ -839,11 +841,13 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "编辑 SKU"
     assert_select "input[name='ec_sku[is_active]']", count: 0
+    assert_select "textarea[name='ec_sku[product_info]']"
 
     sign_in @current_user
     patch "/erp/skus/#{@sku.id}", params: {
       ec_sku: {
         product_name: "更新商品",
+        product_info: "更新后的产品信息",
         color: "蓝色",
         is_active: "0"
       }
@@ -852,6 +856,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to "/erp/skus"
     @sku.reload
     assert_equal "更新商品", @sku.product_name
+    assert_equal "更新后的产品信息", @sku.product_info
     assert_equal "蓝色", @sku.color
     assert_not @sku.is_active
   end

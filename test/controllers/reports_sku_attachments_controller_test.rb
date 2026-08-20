@@ -35,6 +35,7 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", report_sku_attachments_path(@sku.sku_code)
     assert_select "button", text: /上传附件/
     assert_select "dialog.attachment-dialog"
+    assert_select "select[name='ec_attachment[attach_type]'] option[value='prototype_media']", "产品原型图"
     assert_select "input[type='file'][name='ec_attachment[files][]'][multiple]"
     assert_select ".attachment-dropzone", text: /点击或将文件拖到此区域/
     assert_select "#sku-#{@sku.id}-attachments-upload-dialog"
@@ -183,9 +184,9 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
     )
   end
 
-  def create_attachment!(body, filename: "invoice-#{@token}.txt", content_type: "text/plain")
+  def create_attachment!(body, filename: "invoice-#{@token}.txt", content_type: "text/plain", attach_type: :invoice)
     attachment = Ec::Attachment.create!(
-      attach_type: :invoice,
+      attach_type: attach_type,
       oss_path: "ec/test/#{@token}/#{SecureRandom.uuid}/#{filename}",
       qiniu_hash: Digest::SHA256.hexdigest(body),
       filename: filename

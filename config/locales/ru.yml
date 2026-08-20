@@ -1244,6 +1244,7 @@ ru:
           unknown: "Неизвестно"
           invoice: "Счет"
           sales_contract: "Договор продажи"
+          prototype_media: "Изображение прототипа товара"
         delete_confirm: "Удалить этот файл?"
         deleted: "Файл удален"
         file: "Файл"
@@ -1301,6 +1302,7 @@ ru:
         product_id: "ID товара"
         product_name: "Название на китайском"
         product_name_ru: "Название на русском"
+        product_info: "Информация о товаре"
         profit_cny: "Прибыль CNY"
         purchase_price_cny: "Закупочная цена CNY"
         revenue_cny: "Выручка CNY"
@@ -1520,6 +1522,7 @@ ru:
         no_store: "Для этого SKU нет доступного магазина распределения"
         store: "Магазин"
       title: "Детали SKU"
+      prototype_media_alt: "Изображение прототипа товара для %{sku}"
     sku_predicted_cost:
       fields:
         cost_currency: "Валюта"
@@ -2036,6 +2039,7 @@ ru:
         operators: "Операторы"
         platform_category: "Категория платформы"
         product_name: "Название товара"
+        product_info: "Информация о товаре"
         purchased: "Закуплено"
         quality_grade: "Качество"
         received: "Получено"

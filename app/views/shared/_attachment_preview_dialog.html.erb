@@ -1,0 +1,19 @@
+<dialog id="<%= id %>"
+        class="attachment-dialog attachment-preview-dialog"
+        data-attachment-preview-target="dialog"
+        data-action="click->attachment-preview#closeOnBackdrop cancel->attachment-preview#closeOnCancel">
+  <section class="attachment-dialog__content attachment-preview-dialog__content" role="document" aria-labelledby="<%= id %>-title">
+    <div class="erp-modal__header">
+      <h2 id="<%= id %>-title" data-attachment-preview-target="title"><%= t("shared.attachments.preview") %></h2>
+      <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="attachment-preview#close">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+      </button>
+    </div>
+    <iframe class="attachment-preview-frame" data-attachment-preview-target="frame" title="<%= t("shared.attachments.preview_frame_title") %>"></iframe>
+    <div class="attachment-preview-fallback" data-attachment-preview-target="fallback" hidden>
+      <i class="bi bi-file-earmark" aria-hidden="true" data-attachment-preview-target="fallbackIcon"></i>
+      <strong><%= t("shared.attachments.preview_unavailable") %></strong>
+      <span><%= t("shared.attachments.preview_unavailable_hint") %></span>
+    </div>
+  </section>
+</dialog>

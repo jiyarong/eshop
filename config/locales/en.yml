@@ -1279,6 +1279,7 @@ en:
           unknown: "Unknown"
           invoice: "Invoice"
           sales_contract: "Sales contract"
+          prototype_media: "Product prototype image"
         delete_confirm: "Delete this attachment?"
         deleted: "Attachment deleted"
         file: "File"
@@ -1338,6 +1339,7 @@ en:
         product_id: "Product ID"
         product_name: "Chinese name"
         product_name_ru: "Russian name"
+        product_info: "Product information"
         profit_cny: "Profit CNY"
         purchase_price_cny: "Purchase price CNY"
         revenue_cny: "Revenue CNY"
@@ -1569,6 +1571,7 @@ en:
         no_store: "This SKU has no available warehouse allocation store"
         store: "Store"
       title: "SKU Details"
+      prototype_media_alt: "Product prototype image for %{sku}"
     sku_predicted_cost:
       fields:
         cost_currency: "Currency"
@@ -2085,6 +2088,7 @@ en:
         operators: "Operators"
         platform_category: "Platform category"
         product_name: "Product name"
+        product_info: "Product information"
         purchased: "Purchased"
         quality_grade: "Quality"
         received: "Received"

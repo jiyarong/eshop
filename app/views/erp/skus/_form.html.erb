@@ -27,6 +27,10 @@
       <%= form.text_field :product_name_ru %>
     </div>
     <div class="field">
+      <%= form.label :product_info, t("erp.skus.fields.product_info") %>
+      <%= form.text_area :product_info, rows: 4 %>
+    </div>
+    <div class="field">
       <%= form.label :memo, t("erp.common.memo") %>
       <%= form.text_field :memo %>
     </div>

@@ -1473,6 +1473,7 @@ zh:
           unknown: "未知"
           invoice: "发票"
           sales_contract: "销售合同"
+          prototype_media: "产品原型图"
         delete_confirm: "确认删除这个附件？"
         deleted: "附件已删除"
         file: "文件"
@@ -1532,6 +1533,7 @@ zh:
         product_id: "商品 ID"
         product_name: "中文名"
         product_name_ru: "俄文名"
+        product_info: "产品信息"
         profit_cny: "利润 CNY"
         purchase_price_cny: "采购价 CNY"
         revenue_cny: "收入 CNY"
@@ -1763,6 +1765,7 @@ zh:
         no_store: "当前 SKU 暂无可用的分仓店铺"
         store: "店铺"
       title: "SKU 详情"
+      prototype_media_alt: "%{sku} 产品原型图"
     sku_predicted_cost:
       fields:
         cost_currency: "币种"
@@ -2279,6 +2282,7 @@ zh:
         operators: "运营人员"
         platform_category: "平台类目"
         product_name: "商品名"
+        product_info: "产品信息"
         purchased: "采购"
         quality_grade: "品质"
         received: "入库"

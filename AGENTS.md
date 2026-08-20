@@ -53,6 +53,7 @@
 ### 附件列表与上传
 
 - 附件列表、上传弹窗、批量拖拽、待提交文件列表、文件类型图标和预览弹窗统一使用 `app/views/shared/_attachments.html.erb`；交互由 `attachment_upload_controller.js` 和 `attachment_preview_controller.js` 提供，文件类型与行内编辑 locals 由 `AttachmentsHelper` 组装。`/reports/skus/:sku_code` 基础配置中的附件区域是参考实现。
+- 仅需在附件列表外触发同款预览弹窗时，复用 `app/views/shared/_attachment_preview_dialog.html.erb`，传入页面内唯一的 `id`；触发元素与外层容器仍须遵循 `attachment_preview_controller.js` 的 `data-controller`、`data-action` 和预览数据属性协议。
 - partial 必须传 `attachments`、页面内唯一的 `dom_id_prefix`、`can_manage`、`attach_type_options`、`upload_path`，以及 `download_path_for`、`preview_path_for`、`edit_path_for`、`delete_path_for` 四个接收 attachment 的 lambda。组件不应读取业务页面实例变量，也不要在 shared partial 中拼接某种模型的路由。
 - 上传表单统一提交 `ec_attachment[attach_type]` 和多文件参数 `ec_attachment[files][]`。Controller 必须逐个校验允许的附件类型，批量创建 `Ec::Attachment` 和 `Ec::AttachmentLink`，失败时清理本次已创建的 blob，避免遗留孤立文件。
 - 业务模型通过 `Ec::AttachmentLink` 的 polymorphic `attachable` 关联附件；接入模型应声明 `has_many :attachment_links, as: :attachable` 和通过关联得到的 `attachments`。页面组件支持任意已接入模型，但服务端路由和权限仍由各业务 Controller 提供；不要建立接收任意 `class_name + id` 并 `constantize` 的通用接口。

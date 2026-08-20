@@ -135,6 +135,7 @@ module Erp
         :master_sku_id,
         :product_name,
         :product_name_ru,
+        :product_info,
         :sku_category_id,
         :color,
         :spec,

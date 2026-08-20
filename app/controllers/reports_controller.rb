@@ -689,6 +689,12 @@ class ReportsController < ApplicationController
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
+    @prototype_media = @attachments.reverse.find do |attachment|
+      attachment.prototype_media? &&
+        attachment.file.attached? &&
+        view_context.attachment_browser_previewable?(attachment) &&
+        view_context.attachment_file_kind(attachment) == :image
+    end
     if @active_tab == "ai_inventory_health"
       @inventory_health_results = @sku.ai_diagnoses
         .where(type: [ Ec::RestockingDiagnosis.sti_name, Ec::OperationActionDiagnosis.sti_name, Ec::GradeInspect.sti_name ])

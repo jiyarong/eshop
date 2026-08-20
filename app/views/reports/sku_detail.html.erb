@@ -27,7 +27,26 @@
 
 <section class="panel sku-detail-hero">
   <div class="sku-detail-identity">
-    <h2><%= report_value(@sku.product_name) %></h2>
+    <h2>
+    <%= report_value(@sku.product_name) %>
+    <% if @prototype_media %>
+      <div class="sku-detail-prototype-media-preview" data-controller="attachment-preview">
+        <button type="button"
+                class="sku-detail-prototype-media-link"
+                aria-label="<%= t("reports.sku_detail.prototype_media_alt", sku: @sku.sku_code) %>"
+                data-action="attachment-preview#open"
+                data-preview-kind="browser"
+                data-preview-url="<%= preview_report_sku_attachment_path(@sku.sku_code, @prototype_media, request.query_parameters.slice(:locale)) %>"
+                data-preview-icon="<%= attachment_file_icon(@prototype_media) %>"
+                data-filename="<%= @prototype_media.filename %>">
+          <%= image_tag preview_report_sku_attachment_path(@sku.sku_code, @prototype_media, request.query_parameters.slice(:locale)),
+                        class: "sku-detail-prototype-media",
+                        alt: t("reports.sku_detail.prototype_media_alt", sku: @sku.sku_code) %>
+        </button>
+        <%= render "shared/attachment_preview_dialog", id: "sku-#{@sku.id}-prototype-media-preview-dialog" %>
+      </div>
+    <% end %>
+    </h2>
     <p><%= report_value(@sku.product_name_ru) %></p>
     <div class="sku-detail-marketing-state">
       <%= render "erp/sku_marketing_states/marketing_state",
@@ -35,6 +54,7 @@
                  locale_params: request.query_parameters.slice(:locale),
                  return_to: request.fullpath %>
     </div>
+    
   </div>
 
   <div class="summary-grid sku-detail-performance-grid">
