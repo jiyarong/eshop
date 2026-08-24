@@ -50,13 +50,15 @@ module Ec
       when "ozon"
         sku_code = product.offer_id.to_s.upcase
         return unless Ec::Sku.exists?(sku_code: sku_code)
+        platform_sku_id = product.raw_json&.dig("sku").to_s
+        return unless valid_ozon_sku?(platform_sku_id)
 
         {
           sku_code: sku_code,
           store: store,
           product_id: product.ozon_product_id.to_s,
           offer_id: product.offer_id,
-          platform_sku_id: product.raw_json&.dig("sku").to_s.presence,
+          platform_sku_id: platform_sku_id,
           product_name: product.name
         }
       when "wb"
@@ -71,6 +73,10 @@ module Ec
           product_name: product.title
         }
       end
+    end
+
+    def valid_ozon_sku?(value)
+      value.match?(/\A[1-9]\d*\z/)
     end
   end
 end

@@ -198,7 +198,10 @@ module Ec
           .joins(:store)
           .where(platform: "ozon", ec_stores: { ozon_raw_account_id: account.id })
           .group_by(&:sku_code)
-        ozon_skus = products_by_sku_code.values.flatten.filter_map { |product| product.platform_sku_id.to_s.presence }.uniq
+        ozon_skus = products_by_sku_code.values.flatten
+          .map { |product| product.platform_sku_id.to_s }
+          .select { |sku| valid_ozon_sku?(sku) }
+          .uniq
         stocks_by_product_id = ozon_stocks_by_product_id(account)
         analytics_stocks_by_sku = ozon_analytics_stocks_by_sku(account, ozon_skus)
         inbound_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
@@ -206,8 +209,11 @@ module Ec
         warehouse_clusters = ozon_warehouse_cluster_lookup(account)
 
         products_by_sku_code.flat_map do |sku_code, products|
+          products = products.select { |product| valid_ozon_sku?(product.platform_sku_id.to_s) }
+          next [] if products.empty?
+
           product_ids = products.map(&:product_id)
-          product_ozon_skus = products.map { |product| product.platform_sku_id.to_s }.reject(&:blank?)
+          product_ozon_skus = products.map { |product| product.platform_sku_id.to_s }
           fbo = ozon_available_quantity(analytics_stocks_by_sku, product_ozon_skus)
           fbs = product_ids.sum { |product_id| stocks_by_product_id.dig(product_id, "fbs").to_i }
           inbound = ozon_promised_quantity(inbound_breakdowns_by_sku, product_ozon_skus)
@@ -330,6 +336,10 @@ module Ec
       ozon_skus.sum do |ozon_sku|
         Array(analytics_stocks_by_sku[ozon_sku]).sum { |row| row["available_stock_count"].to_i }
       end
+    end
+
+    def valid_ozon_sku?(value)
+      value.match?(/\A[1-9]\d*\z/)
     end
 
     def ozon_analytics_warehouse_breakdown(analytics_stocks_by_sku, ozon_skus, warehouse_clusters = {})

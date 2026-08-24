@@ -348,4 +348,15 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
 
     assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @ozon_account.id }
   end
+
+  test "ozon inventory ignores bindings without a positive platform SKU" do
+    @ozon_product.update!(platform_sku_id: "0")
+    fake_client = FakeOzonClient.new(product_id: @ozon_product.product_id.to_i, ozon_sku: 0)
+    fetcher = Ec::SkuInventorySnapshotFetcher.new(ozon_client_factory: ->(_) { fake_client })
+
+    rows = fetcher.send(:ozon_rows, Time.zone.parse("2026-07-30 10:00:00"))
+
+    assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @ozon_account.id }
+    assert_not fake_client.posts.any? { |call| call[:path] == "/v1/analytics/stocks" }
+  end
 end

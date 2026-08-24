@@ -73,6 +73,12 @@ class OrderIncrementalSyncTest < ActiveSupport::TestCase
     assert_equal [["raw_wb:daily_sync", true, Rails.logger]], calls
   end
 
+  test "wb daily sync excludes the deprecated stocks endpoint" do
+    refute_includes RawWb::DailySync::STEPS, :sync_stocks
+    assert_includes RawWb::DailySync::STEPS, :sync_wb_warehouse_stocks
+    assert_includes RawWb::DailySync::STEPS, :sync_fbs_stocks
+  end
+
   test "ozon daily sync uses the platform sync lock and waits" do
     calls = []
 

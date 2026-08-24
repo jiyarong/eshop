@@ -34,7 +34,7 @@ module Ec
         ozon_product_id: "98#{@token.hex % 1_000_000}",
         offer_id: @ozon_sku.sku_code,
         name: "Ozon 平台商品",
-        raw_json: { "sku" => "OZON-PLATFORM-#{@token}" },
+        raw_json: { "sku" => "390#{@token.hex % 1_000_000}" },
         synced_at: Time.zone.parse("2026-06-15 10:00:00")
       )
       @wb_product = RawWb::Product.create!(
@@ -69,7 +69,7 @@ module Ec
       assert_equal @ozon_sku.sku_code, ozon_binding.sku_code
       assert_equal "ozon", ozon_binding.platform
       assert_equal @ozon_sku.sku_code, ozon_binding.offer_id
-      assert_equal "OZON-PLATFORM-#{@token}", ozon_binding.platform_sku_id
+      assert_equal "390#{@token.hex % 1_000_000}", ozon_binding.platform_sku_id
       assert_equal "Ozon 平台商品", ozon_binding.product_name
 
       wb_binding = Ec::SkuProduct.find_by!(store: @wb_store, product_id: @wb_product.nm_id.to_s)
@@ -93,6 +93,25 @@ module Ec
         assert_equal 1, result.created_count
         assert_equal 1, result.skipped_count
       end
+    end
+
+    test "waits for Ozon to assign a positive platform SKU before binding" do
+      @ozon_product.update!(raw_json: @ozon_product.raw_json.merge("sku" => 0))
+
+      assert_difference "Ec::SkuProduct.count", 1 do
+        result = Ec::SkuProductAutoBinder.call
+
+        assert_equal 1, result.created_count
+        assert_equal 0, result.skipped_count
+      end
+      assert_not Ec::SkuProduct.exists?(store: @ozon_store, product_id: @ozon_product.ozon_product_id.to_s)
+
+      @ozon_product.update!(raw_json: @ozon_product.raw_json.merge("sku" => "3901234567"))
+
+      assert_difference "Ec::SkuProduct.count", 1 do
+        Ec::SkuProductAutoBinder.call
+      end
+      assert_equal "3901234567", Ec::SkuProduct.find_by!(store: @ozon_store, product_id: @ozon_product.ozon_product_id.to_s).platform_sku_id
     end
   end
 end

@@ -11,7 +11,6 @@ module RawWb
       sync_orders
       sync_stats_orders
       sync_stats_sales
-      sync_stocks
       sync_wb_warehouse_stocks
       sync_fbs_stocks
       sync_supplies
