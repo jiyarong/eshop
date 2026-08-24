@@ -43,7 +43,7 @@ module RawOzon
         req = Net::HTTP::Get.new(uri)
         set_headers(req)
         resp = http_start(uri) { |h| h.request(req) }
-        raise ApiError, "#{resp.code} on #{path}: #{resp.body.to_s.truncate(300)}" unless resp.code.to_i == 200
+        raise ApiError, "#{resp.code} on #{path}: #{safe_text(resp.body).truncate(300)}" unless resp.code.to_i == 200
         resp.body
       end
     end
@@ -71,7 +71,7 @@ module RawOzon
       req['Content-Type'] = 'application/json'
       req.body = { client_id: @client_id, client_secret: @client_secret, grant_type: 'client_credentials' }.to_json
       resp = http_start(uri) { |h| h.request(req) }
-      raise ApiError, "Token fetch failed: #{resp.code} #{resp.body}" unless resp.code.to_i == 200
+      raise ApiError, "Token fetch failed: #{resp.code} #{safe_text(resp.body)}" unless resp.code.to_i == 200
       data = JSON.parse(resp.body)
       @token = data['access_token']
       @token_expires_at = Time.current + data.fetch('expires_in', 1800).to_i.seconds
@@ -123,14 +123,18 @@ module RawOzon
         end
         details = ["retry_after=#{wait}", ("request_id=#{request_id}" if request_id.present?),
                    ("headers=#{rate_headers.join(',')}" if rate_headers.any?),
-                   ("body=#{resp.body.to_s.truncate(500)}" if resp.body.present?)].compact.join(" ")
+                   ("body=#{safe_text(resp.body).truncate(500)}" if resp.body.present?)].compact.join(" ")
         Rails.logger.warn "[PerformanceClient] 429 path=#{path} #{details}"
         raise RetryableError.new("429 rate-limited on #{path} (#{details})", retry_after: wait)
       when 500..599
         raise RetryableError.new("#{code} server error on #{path}")
       else
-        raise ApiError, "#{code} on #{path}: #{resp.body.to_s.truncate(300)}"
+        raise ApiError, "#{code} on #{path}: #{safe_text(resp.body).truncate(300)}"
       end
+    end
+
+    def safe_text(value)
+      value.to_s.encode("UTF-8", invalid: :replace, undef: :replace)
     end
   end
 end

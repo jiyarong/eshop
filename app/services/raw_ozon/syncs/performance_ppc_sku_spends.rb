@@ -38,8 +38,6 @@ module RawOzon
             raise
           rescue PerformanceClient::ApiError => e
             log "  PPC batch #{idx + 1}/#{batches.size} 失败: #{e.message}", level: :warn
-          ensure
-            sleep 15 if idx < batches.size - 1  # 批次间冷却，等 API slot 释放
           end
         end
 

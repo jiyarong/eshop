@@ -95,6 +95,22 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
     assert_equal 1, calls
   end
 
+  test "pauses remaining account steps after a report slot timeout" do
+    sync = RawOzon::PerformanceSync.new(@account, from_date: @date, to_date: @date, client: Object.new)
+    calls = []
+    sync.define_singleton_method(:sync_ad_units) do
+      calls << :units
+      raise RawOzon::Ads::ReportRunner::SlotTimeout, "occupied"
+    end
+    sync.define_singleton_method(:sync_ad_daily_stats) { calls << :daily }
+
+    result = sync.run(sync_keys: %i[sync_ad_units sync_ad_daily_stats])
+
+    assert_equal [:units], calls
+    assert_equal({ error: "occupied" }, result[:sync_ad_units])
+    assert_nil result[:sync_ad_daily_stats]
+  end
+
   private
 
   def create_ad_unit(external_id, state:, from_date:)

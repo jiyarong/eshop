@@ -64,6 +64,13 @@ module RawOzon
           count = public_send(step)
           @results[step] = { ok: count }
           log "  ✓ #{step}: #{count} records"
+        rescue RawOzon::Ads::ReportRunner::PollTimeout,
+               RawOzon::Ads::ReportRunner::SlotTimeout,
+               PerformanceClient::RetryableError => e
+          msg = e.message.to_s.encode('UTF-8', invalid: :replace, undef: :replace)
+          @results[step] = { error: msg }
+          log "  ✗ #{step}: #{msg}; pausing remaining steps for account ##{@account.id}", level: :warn
+          break
         rescue PerformanceClient::ApiError => e
           msg = e.message.encode('UTF-8', invalid: :replace, undef: :replace)
           @results[step] = { error: msg }
