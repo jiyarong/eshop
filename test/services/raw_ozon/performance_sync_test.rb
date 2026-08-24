@@ -76,6 +76,25 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
     )
   end
 
+  test "stops later ppc batches when an asynchronous report remains processing" do
+    11.times do |index|
+      create_ad_unit("running-#{index}", state: "CAMPAIGN_STATE_RUNNING", from_date: @date)
+    end
+    runner = Object.new
+    calls = 0
+    runner.define_singleton_method(:run) do |**|
+      calls += 1
+      raise RawOzon::Ads::ReportRunner::PollTimeout, "still processing"
+    end
+    sync = RawOzon::PerformanceSync.new(@account, from_date: @date, to_date: @date, client: Object.new)
+    sync.instance_variable_set(:@report_runner, runner)
+
+    assert_raises(RawOzon::Ads::ReportRunner::PollTimeout) do
+      sync.sync_performance_ppc_sku_spends
+    end
+    assert_equal 1, calls
+  end
+
   private
 
   def create_ad_unit(external_id, state:, from_date:)

@@ -21,20 +21,22 @@ module RawOzon
         batches.each_with_index do |batch, idx|
           log "  PPC batch #{idx + 1}/#{batches.size} 提交..."
           begin
-            resp = @perf_client.post('/api/client/statistics/json', {
+            request = {
               campaigns: batch,
               dateFrom:  period_from.to_s,
               dateTo:    period_to.to_s,
               groupBy:   'DATE',
-            })
-            uuid = resp['UUID']
-            unless uuid
-              log "  PPC batch #{idx + 1}/#{batches.size} 无 UUID，跳过", level: :warn
-              next
+            }
+            raw = @report_runner.run(report_type: "performance_ppc_sku_spends",
+              endpoint: "/api/client/statistics/json", period_from: period_from, period_to: period_to,
+              request_body: request) do
+              @perf_client.post('/api/client/statistics/json', request)
             end
-            raw = poll_and_download(uuid)
             accumulate_ppc_spends(JSON.parse(raw), sku_spends) if raw
-          rescue PerformanceClient::ApiError, PerformanceClient::RetryableError => e
+          rescue RawOzon::Ads::ReportRunner::PollTimeout, PerformanceClient::RetryableError => e
+            log "  PPC batch #{idx + 1}/#{batches.size} 暂停: #{e.message}", level: :warn
+            raise
+          rescue PerformanceClient::ApiError => e
             log "  PPC batch #{idx + 1}/#{batches.size} 失败: #{e.message}", level: :warn
           ensure
             sleep 15 if idx < batches.size - 1  # 批次间冷却，等 API slot 释放
@@ -79,16 +81,17 @@ module RawOzon
       end
 
       def fetch_ppc_json(campaign_ids, period_from, period_to)
-        resp = @perf_client.post('/api/client/statistics/json', {
+        request = {
           campaigns: campaign_ids,
           dateFrom:  period_from.to_s,
           dateTo:    period_to.to_s,
           groupBy:   'DATE',
-        })
-        uuid = resp['UUID']
-        return nil unless uuid
-
-        raw = poll_and_download(uuid)
+        }
+        raw = @report_runner.run(report_type: "performance_ppc_sku_spends",
+          endpoint: "/api/client/statistics/json", period_from: period_from, period_to: period_to,
+          request_body: request) do
+          @perf_client.post('/api/client/statistics/json', request)
+        end
         raw ? JSON.parse(raw) : nil
       rescue PerformanceClient::ApiError => e
         log "  PPC batch #{campaign_ids.first}…#{campaign_ids.last}: #{e.message}", level: :warn

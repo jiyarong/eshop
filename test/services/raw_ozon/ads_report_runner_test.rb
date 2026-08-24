@@ -3,8 +3,18 @@ require "securerandom"
 
 class RawOzonAdsReportRunnerTest < ActiveSupport::TestCase
   class FakeClient
+    attr_reader :status_requests
+
+    def initialize(state: "OK")
+      @state = state
+      @status_requests = 0
+    end
+
     def get(path, params = {})
-      return { "state" => "OK" } if path == "/api/client/statistics/report-1"
+      if path == "/api/client/statistics/report-1"
+        @status_requests += 1
+        return { "state" => @state }
+      end
       raise "unexpected GET #{path} #{params.inspect}"
     end
 
@@ -40,5 +50,40 @@ class RawOzonAdsReportRunnerTest < ActiveSupport::TestCase
     assert_equal "report-1", report.external_uuid
     assert_predicate report.response_checksum, :present?
     assert_nil report.error_message
+  end
+
+  test "resumes a processing report without submitting a duplicate" do
+    request = { campaigns: ["101"], dateFrom: "2026-07-22" }
+    RawOzon::AdReportRun.create!(account: @account, report_type: "cpc_product_history",
+      endpoint: "/api/client/statistics", period_from: Date.new(2026, 7, 22),
+      period_to: Date.new(2026, 7, 22), request_body: request, state: "processing",
+      external_uuid: "report-1", submitted_at: Time.current)
+    runner = RawOzon::Ads::ReportRunner.new(account: @account, client: FakeClient.new,
+      poll_interval: 0, poll_timeout: 1)
+
+    body = runner.run(report_type: "cpc_product_history", endpoint: "/api/client/statistics",
+      period_from: Date.new(2026, 7, 22), period_to: Date.new(2026, 7, 22), request_body: request) do
+      flunk "must not submit a second report"
+    end
+
+    assert_match "SKU", body
+    assert_equal "completed", RawOzon::AdReportRun.last.state
+  end
+
+  test "keeps report processing after local polling timeout" do
+    client = FakeClient.new(state: "NOT_STARTED")
+    runner = RawOzon::Ads::ReportRunner.new(account: @account, client: client,
+      poll_interval: 0, poll_timeout: 0)
+
+    assert_raises(RawOzon::Ads::ReportRunner::PollTimeout) do
+      runner.run(report_type: "cpc_product_history", endpoint: "/api/client/statistics",
+        period_from: Date.new(2026, 7, 22), period_to: Date.new(2026, 7, 22),
+        request_body: { campaigns: ["101"] }) { { "UUID" => "report-1" } }
+    end
+
+    report = RawOzon::AdReportRun.last
+    assert_equal "processing", report.state
+    assert_equal "report-1", report.external_uuid
+    assert_nil report.completed_at
   end
 end

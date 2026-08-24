@@ -43,6 +43,7 @@ module RawOzon
         account.performance_client_id,
         account.performance_client_secret
       )
+      @report_runner = RawOzon::Ads::ReportRunner.new(account: account, client: @perf_client)
       @results = {}
     end
 

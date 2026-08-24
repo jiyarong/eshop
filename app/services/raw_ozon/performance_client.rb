@@ -117,7 +117,15 @@ module RawOzon
         body ? JSON.parse(body) : {}
       when 429
         wait = resp['Retry-After']&.to_i || 10
-        raise RetryableError.new("429 rate-limited on #{path}", retry_after: wait)
+        request_id = resp['X-Request-Id'] || resp['X-Request-ID'] || resp['Request-Id']
+        rate_headers = resp.each_header.filter_map do |name, value|
+          "#{name}=#{value}" if name.match?(/(?:rate.?limit|retry-after)/i)
+        end
+        details = ["retry_after=#{wait}", ("request_id=#{request_id}" if request_id.present?),
+                   ("headers=#{rate_headers.join(',')}" if rate_headers.any?),
+                   ("body=#{resp.body.to_s.truncate(500)}" if resp.body.present?)].compact.join(" ")
+        Rails.logger.warn "[PerformanceClient] 429 path=#{path} #{details}"
+        raise RetryableError.new("429 rate-limited on #{path} (#{details})", retry_after: wait)
       when 500..599
         raise RetryableError.new("#{code} server error on #{path}")
       else

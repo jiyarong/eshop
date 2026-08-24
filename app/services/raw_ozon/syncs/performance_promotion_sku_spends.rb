@@ -45,13 +45,15 @@ module RawOzon
       private
 
       def fetch_search_promo_spends(period_from, period_to)
-        resp = @perf_client.post('/api/client/statistic/products/generate', {
+        request = {
           from: "#{period_from}T00:00:00+03:00",
           to:   "#{period_to}T23:59:59+03:00",
-        })
-        uuid = resp['UUID']
-        return [] unless uuid
-        csv_body = poll_and_download(uuid)
+        }
+        csv_body = @report_runner.run(report_type: "performance_search_promo_spends",
+          endpoint: "/api/client/statistic/products/generate", period_from: period_from,
+          period_to: period_to, request_body: request) do
+          @perf_client.post('/api/client/statistic/products/generate', request)
+        end
         return [] unless csv_body
         parse_promotion_csv(csv_body)
       end
@@ -59,13 +61,15 @@ module RawOzon
       # GET /api/client/statistics/all_sku_promo/orders/generate
       # 返回逐单明细（含 SKU + 花费），需聚合到 SKU 维度
       def fetch_all_sku_promo_spends(period_from, period_to)
-        resp = @perf_client.get('/api/client/statistics/all_sku_promo/orders/generate', {
+        request = {
           'timeBounds.from' => "#{period_from}T00:00:00+03:00",
           'timeBounds.to'   => "#{period_to}T23:59:59+03:00",
-        })
-        uuid = resp['UUID']
-        return [] unless uuid
-        csv_body = poll_and_download(uuid)
+        }
+        csv_body = @report_runner.run(report_type: "performance_all_sku_promo_spends",
+          endpoint: "/api/client/statistics/all_sku_promo/orders/generate", period_from: period_from,
+          period_to: period_to, request_body: request) do
+          @perf_client.get('/api/client/statistics/all_sku_promo/orders/generate', request)
+        end
         return [] unless csv_body
         parse_all_sku_promo_orders_csv(csv_body)
       end
