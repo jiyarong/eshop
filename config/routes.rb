@@ -92,6 +92,8 @@ Rails.application.routes.draw do
     get "skus/weekly_profit_overview" => "skus#weekly_profit_overview"
     get "skus/inventory_availability" => "skus#inventory_availability"
     get "skus/dynamic_daily_sales_forecast" => "skus#dynamic_daily_sales_forecast"
+    get "skus/advertising_diagnosis" => "skus#advertising_diagnosis"
+    resources :stage_inspections, only: :create
     resources :diagnosis_results, only: [ :index, :create ]
     resources :sql_queries, only: [:create]
     resources :weekly_profit_reports, only: [:create]
