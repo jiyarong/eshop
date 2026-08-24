@@ -1,0 +1,55 @@
+<% page = suppliers.current_page %>
+<% page_count = suppliers.total_pages %>
+<% query_params = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page) %>
+<% total_count = suppliers.total_count.to_i %>
+<% from = total_count.zero? ? 0 : suppliers.offset_value.to_i + 1 %>
+<% to = [suppliers.offset_value.to_i + suppliers.limit_value.to_i, total_count].min %>
+
+<div class="inventory-pagination-bar">
+  <div class="pagination-meta">
+    <div class="inventory-pagination-bar__summary"><%= t("erp.suppliers.pagination.summary", from: from, to: to, total: total_count) %></div>
+    <span class="pagination-chip"><%= t("erp.suppliers.pagination.page_chip", page: page, pages: page_count) %></span>
+  </div>
+
+  <div class="pagination-shell">
+    <nav class="pagination-nav" aria-label="<%= t("erp.suppliers.pagination.aria_label") %>">
+      <% if page > 1 %>
+        <%= link_to erp_suppliers_path(query_params.merge(page: page - 1)), class: "pg-btn pg-btn-nav", aria: { label: t("erp.suppliers.pagination.previous_page") } do %>
+          <span aria-hidden="true">‹</span>
+        <% end %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">‹</span>
+      <% end %>
+
+      <% inventory_pagination_items(page, page_count).each do |item| %>
+        <% if item.is_a?(Symbol) %>
+          <span class="pg-ell" aria-hidden="true">…</span>
+        <% elsif item == page %>
+          <span class="pg-btn on"><%= item %></span>
+        <% else %>
+          <%= link_to item, erp_suppliers_path(query_params.merge(page: item)), class: "pg-btn" %>
+        <% end %>
+      <% end %>
+
+      <% if page < page_count %>
+        <%= link_to erp_suppliers_path(query_params.merge(page: page + 1)), class: "pg-btn pg-btn-nav", aria: { label: t("erp.suppliers.pagination.next_page") } do %>
+          <span aria-hidden="true">›</span>
+        <% end %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">›</span>
+      <% end %>
+    </nav>
+
+    <span class="pagination-divider" aria-hidden="true"></span>
+
+    <%= form_with url: erp_suppliers_path, method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("erp.suppliers.pagination.jump_label") } do %>
+      <% query_params.each do |key, value| %>
+        <%= hidden_field_tag key, value %>
+      <% end %>
+      <%= hidden_field_tag :current_page, page %>
+      <span class="pagination-jump-label"><%= t("erp.suppliers.pagination.jump_label") %></span>
+      <%= text_field_tag :jump_page, page, class: "pagination-jump-input", inputmode: "numeric", pattern: "[0-9]*", aria: { label: t("erp.suppliers.pagination.jump_label") } %>
+      <%= submit_tag t("erp.suppliers.pagination.jump_action"), class: "pg-btn pg-btn-jump" %>
+    <% end %>
+  </div>
+</div>
