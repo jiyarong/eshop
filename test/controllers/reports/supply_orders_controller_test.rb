@@ -34,6 +34,8 @@ class Reports::SupplyOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "7654321"
     assert_select "td", "已接收"
     assert_select "td", "箱装"
+    assert_select ".supply-order-status-summary__label", "已接收"
+    assert_select ".supply-order-status-summary__value", "1"
   end
 
   test "returns the flattened report as JSON" do

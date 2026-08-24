@@ -38,6 +38,7 @@ module SupplyOrderReports
 
       {
         meta: { platform: platform, store_ref: "#{platform}:#{account.id}", store_name: account_name(account, platform), columns: platform == "wb" ? WB_COLUMNS : OZON_COLUMNS },
+        status_summary: status_summary(all_rows, platform),
         rows: all_rows.slice((page - 1) * @per_page, @per_page) || [],
         pagination: { page: page, per_page: @per_page, total_count: all_rows.size, total_pages: total_pages }
       }
@@ -71,6 +72,15 @@ module SupplyOrderReports
     def positive_integer(value, fallback)
       parsed = Integer(value, exception: false)
       parsed&.positive? ? parsed : fallback
+    end
+
+    def status_summary(rows, platform)
+      counts = rows.each_with_object(Hash.new(0)) { |row, result| result[row[:status]] += 1 }
+      statuses = platform == "wb" ? WB_STATUSES : OZON_STATUSES
+      statuses.filter_map do |status|
+        count = counts[status]
+        { status: status, count: count } if count&.positive?
+      end
     end
 
     def parse_store_ref(value)

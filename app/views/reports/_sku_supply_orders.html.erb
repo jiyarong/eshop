@@ -41,6 +41,7 @@
 <% elsif @sku_supply_report.present? %>
   <section class="panel sku-supply-orders">
     <p class="report-meta"><%= @sku_supply_report.dig(:meta, :store_name) %> · <%= t("supply_order_reports.row_count", count: @sku_supply_report.dig(:pagination, :total_count)) %></p>
+    <%= render "reports/supply_orders/status_summary", report: @sku_supply_report %>
     <div class="table-scroll">
       <table>
         <thead><tr><% sku_supply_order_columns(@sku_supply_report).each do |_key, label| %><th><%= label %></th><% end %></tr></thead>

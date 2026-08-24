@@ -192,9 +192,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_022711) do
     t.index ["name"], name: "index_ec_companies_on_name", unique: true
     t.index ["purchaser_id"], name: "index_ec_companies_on_purchaser_id"
     t.index ["tags"], name: "index_ec_companies_on_tags", using: :gin
-    t.check_constraint "channel IS NULL OR (channel::text = ANY (ARRAY['online'::character varying, 'offline'::character varying]::text[]))", name: "ec_companies_channel_check"
-    t.check_constraint "invoice_type IS NULL OR (invoice_type::text = ANY (ARRAY['general'::character varying, 'special'::character varying]::text[]))", name: "ec_companies_invoice_type_check"
-    t.check_constraint "supplier_grade IS NULL OR (supplier_grade::text = ANY (ARRAY['S'::character varying, 'A'::character varying, 'B'::character varying, 'C'::character varying]::text[]))", name: "ec_companies_supplier_grade_check"
+    t.check_constraint "channel IS NULL OR (channel::text = ANY (ARRAY['online'::character varying::text, 'offline'::character varying::text]))", name: "ec_companies_channel_check"
+    t.check_constraint "invoice_type IS NULL OR (invoice_type::text = ANY (ARRAY['general'::character varying::text, 'special'::character varying::text]))", name: "ec_companies_invoice_type_check"
+    t.check_constraint "supplier_grade IS NULL OR (supplier_grade::text = ANY (ARRAY['S'::character varying::text, 'A'::character varying::text, 'B'::character varying::text, 'C'::character varying::text]))", name: "ec_companies_supplier_grade_check"
   end
 
   create_table "ec_cost_allocation_items", force: :cascade do |t|
@@ -2728,6 +2728,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_022711) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"

@@ -1607,6 +1607,14 @@ ru:
       messages:
         created: "Поставщик создан"
         updated: "Поставщик обновлен"
+      pagination:
+        aria_label: "Страницы поставщиков"
+        jump_action: "Перейти"
+        jump_label: "Перейти к"
+        next_page: "Следующая страница"
+        page_chip: "Страница %{page}/%{pages}"
+        previous_page: "Предыдущая страница"
+        summary: "Показано %{from}-%{to} из %{total}"
       purchase_orders:
         amount: "Сумма закупки"
         none: "Нет закупок"

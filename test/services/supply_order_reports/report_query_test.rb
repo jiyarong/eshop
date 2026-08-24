@@ -62,9 +62,11 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
 
     report = SupplyOrderReports::ReportQuery.new(params: { store_ref: "wb:#{@wb_account.id}" }).call
     assert_equal [newer.wb_supply_id, older.wb_supply_id], report[:rows].map { |row| row[:supply_id] }
+    assert_equal [{ status: 4, count: 1 }, { status: 5, count: 1 }], report[:status_summary]
 
     filtered = SupplyOrderReports::ReportQuery.new(params: { store_ref: "wb:#{@wb_account.id}", statuses: ["4", "COMPLETED"] }).call
     assert_equal [older.wb_supply_id], filtered[:rows].map { |row| row[:supply_id] }
+    assert_equal [{ status: 4, count: 1 }], filtered[:status_summary]
   end
 
   test "filters by the operator binding scoped to the selected store product" do

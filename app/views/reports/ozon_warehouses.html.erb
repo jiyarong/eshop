@@ -47,24 +47,26 @@
 
   <% if @ozon_warehouse_report %>
     <% summary = @ozon_warehouse_report[:summary] %>
-    <section class="ozon-warehouse-summary">
-      <div class="summary-grid">
-        <% %i[sku_count shortage_count available inbound recommended].each do |key| %>
-          <div class="weekly-profit-summary-card">
-            <div class="summary-label">
-              <%= t("reports.ozon_warehouses.summary.#{key}") %>
-              <% if key == :recommended %>
-                <span class="ozon-warehouse-formula-help" tabindex="0" aria-label="<%= t("reports.ozon_warehouses.formula.aria_label") %>">
-                  <i class="bi bi-question-circle" aria-hidden="true"></i>
-                  <span class="ozon-warehouse-formula-tooltip" role="tooltip"><%= t("reports.ozon_warehouses.formula.description") %></span>
-                </span>
-              <% end %>
+    <% unless @sku_warehouse_embed %>
+      <section class="ozon-warehouse-summary">
+        <div class="summary-grid">
+          <% %i[sku_count shortage_count available inbound recommended].each do |key| %>
+            <div class="weekly-profit-summary-card">
+              <div class="summary-label">
+                <%= t("reports.ozon_warehouses.summary.#{key}") %>
+                <% if key == :recommended %>
+                  <span class="ozon-warehouse-formula-help" tabindex="0" aria-label="<%= t("reports.ozon_warehouses.formula.aria_label") %>">
+                    <i class="bi bi-question-circle" aria-hidden="true"></i>
+                    <span class="ozon-warehouse-formula-tooltip" role="tooltip"><%= t("reports.ozon_warehouses.formula.description") %></span>
+                  </span>
+                <% end %>
+              </div>
+              <div class="summary-value"><%= number_with_delimiter(summary[key]) %></div>
             </div>
-            <div class="summary-value"><%= number_with_delimiter(summary[key]) %></div>
-          </div>
-        <% end %>
-      </div>
-    </section>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
 
     <section class="panel ozon-warehouse-table-panel">
       <div class="ozon-warehouse-table-header">

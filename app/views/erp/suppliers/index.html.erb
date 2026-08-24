@@ -69,5 +69,6 @@
         <% if @suppliers.empty? %><tr><td colspan="9" class="empty-state"><%= t("erp.suppliers.empty.none") %></td></tr><% end %>
       </tbody>
     </table>
+    <%= render "pagination", suppliers: @suppliers if @suppliers.total_pages > 1 %>
   </section>
 </div>

@@ -1544,6 +1544,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-supply-store-switch .ozon-ads-tab", count: 0
     assert_select "#sku-supply-order-status-filter-trigger"
     assert_select "input[name='statuses[]'][value='COMPLETED'][checked='checked']"
+    assert_select ".sku-supply-orders .supply-order-status-summary__label", "已完成"
+    assert_select ".sku-supply-orders .supply-order-status-summary__value", "11"
     assert_select ".sku-supply-orders td", text: additional_supplies.last.supply_order_id
     assert_select ".sku-supply-orders td", text: other_supply.supply_order_id, count: 0
     assert_select ".sku-supply-orders .inventory-pagination-bar"
@@ -1558,14 +1560,14 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-warehouse-store-filter a.is-active[aria-pressed='true']", text: @sales_store.store_name
     assert_select ".sku-warehouse-report", text: /#{@sku.sku_code}/
     assert_select ".sku-warehouse-report", text: /#{@second_sku.sku_code}/, count: 0
+    assert_select ".sku-warehouse-report .ozon-warehouse-summary", count: 0
 
     sign_in @current_user
     get report_sku_path(@sku.sku_code), params: { tab: "warehouses", store_id: @wb_sales_store.id }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select ".sku-warehouse-store-filter a.is-active[aria-pressed='true']", text: @wb_sales_store.store_name
-    assert_select ".sku-warehouse-report .summary-label", text: "FBW 可用库存"
-    assert_select ".sku-warehouse-report .summary-label", text: "仓库匹配率"
+    assert_select ".sku-warehouse-report .ozon-warehouse-summary", count: 0
 
     sign_in @current_user
     get report_sku_path(@sku.sku_code), params: { tab: "operation_actions" }, headers: { "Accept" => "text/html" }

@@ -6,6 +6,9 @@ zh:
     row_count: "共 %{count} 条明细"
     empty_state: "暂无可用店铺"
     empty_rows: "当前筛选条件下没有送仓明细"
+    summary:
+      title: "状态汇总"
+      item_count: "明细"
     filters:
       sku: "SPU / SKU"
       sku_placeholder: "搜索并选择 SPU 或 SKU"
@@ -105,6 +108,7 @@ en:
     row_count: "%{count} item rows"
     empty_state: "No available stores"
     empty_rows: "No supply items match these filters"
+    summary: { title: "Status summary", item_count: "items" }
     filters: { sku: "SPU / SKU", sku_placeholder: "Search and select an SPU or SKU", store: "Store", status: "Status", all_statuses: "All statuses", submit: "Search" }
     errors: { store_not_found: "Store was not found or is inactive", invalid_store_ref: "Invalid store" }
     columns:
@@ -123,6 +127,7 @@ ru:
     row_count: "Строк товаров: %{count}"
     empty_state: "Нет доступных магазинов"
     empty_rows: "Нет поставок по выбранным фильтрам"
+    summary: { title: "Сводка по статусам", item_count: "позиций" }
     filters: { sku: "SPU / SKU", sku_placeholder: "Найдите и выберите SPU или SKU", store: "Магазин", status: "Статус", all_statuses: "Все статусы", submit: "Найти" }
     errors: { store_not_found: "Магазин не найден или отключён", invalid_store_ref: "Некорректный магазин" }
     columns:

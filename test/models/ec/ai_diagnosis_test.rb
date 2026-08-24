@@ -33,6 +33,13 @@ class Ec::AIDiagnosisTest < ActiveSupport::TestCase
     assert_instance_of Ec::RestockingDiagnosis, diagnosis.reload
   end
 
+  test "stores advertising inspections without executing business changes" do
+    diagnosis = create_diagnosis(Ec::AdvertisingInspect)
+
+    assert_equal "AdvertisingInspect", diagnosis.type
+    assert_instance_of Ec::AdvertisingInspect, diagnosis.reload
+  end
+
   test "keeps only the newest diagnosis latest for each sku and type" do
     first = create_diagnosis(Ec::RestockingDiagnosis)
     pricing = create_diagnosis(Ec::PricingDiagnosis)

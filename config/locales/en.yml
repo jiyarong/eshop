@@ -1656,6 +1656,14 @@ en:
       messages:
         created: "Supplier created"
         updated: "Supplier updated"
+      pagination:
+        aria_label: "Supplier pagination"
+        jump_action: "Go"
+        jump_label: "Go to"
+        next_page: "Next page"
+        page_chip: "Page %{page}/%{pages}"
+        previous_page: "Previous page"
+        summary: "Showing %{from}-%{to} of %{total}"
       purchase_orders:
         amount: "Purchase amount"
         none: "No purchase orders"

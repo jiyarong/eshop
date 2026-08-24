@@ -2,7 +2,9 @@ module Ec
   class AIDiagnosisSubmission
     TYPES = {
       "RestockingDiagnosis" => Ec::RestockingDiagnosis,
-      "GradeInspect" => Ec::GradeInspect
+      "GradeInspect" => Ec::GradeInspect,
+      "StageInspect" => Ec::StageInspect,
+      "AdvertisingInspect" => Ec::AdvertisingInspect
     }.freeze
 
     def self.create!(type:, **attributes)

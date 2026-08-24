@@ -2,6 +2,8 @@ module Erp
   class SuppliersController < BaseController
     include InlineEditableResponse
 
+    SUPPLIER_PAGE_SIZE = 10
+
     before_action :set_supplier, only: [
       :show, :edit, :update, :attachments, :edit_attachment, :update_attachment,
       :preview_attachment, :download_attachment, :destroy_attachment
@@ -18,11 +20,9 @@ module Erp
         keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
         scope = scope.where("name ILIKE :keyword OR origin ILIKE :keyword", keyword: keyword)
       end
-      @suppliers = scope
-
       respond_to do |format|
-        format.html
-        format.json { render json: @suppliers }
+        format.html { @suppliers = paginated_suppliers(scope) }
+        format.json { render json: scope }
       end
     end
 
@@ -197,6 +197,25 @@ module Erp
     end
 
     private
+
+    def paginated_suppliers(scope)
+      current_page = supplier_page_param
+      suppliers = scope.page(current_page).per(SUPPLIER_PAGE_SIZE)
+      if suppliers.total_pages.positive? && current_page > suppliers.total_pages
+        suppliers = scope.page(suppliers.total_pages).per(SUPPLIER_PAGE_SIZE)
+      end
+      suppliers
+    end
+
+    def supplier_page_param
+      requested_page = params[:jump_page].presence || params[:page].presence
+      current_page = params[:current_page].presence || params[:page].presence
+
+      page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
+      page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
+      page = 1 if page.to_i <= 0
+      page
+    end
 
     def set_supplier
       @supplier = Ec::Company.tagged("supplier").find(params[:id])

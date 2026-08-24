@@ -39,6 +39,30 @@ class Erp::SuppliersControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", text: "供应商等级"
   end
 
+  test "index paginates suppliers and preserves filters" do
+    22.times do |index|
+      Ec::Company.create!(
+        name: format("分页供应商 %02d %s", index, @token),
+        tags: [ "supplier" ],
+        origin: "分页产地 #{@token}",
+        is_active: true
+      )
+    end
+
+    get erp_suppliers_path,
+        params: { q: "分页供应商", status: "active", page: 2 },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".prod-tbl tbody tr", count: 10
+    assert_select ".inventory-pagination-bar .pagination-chip", "第 2/3 页"
+    assert_select ".inventory-pagination-bar", /显示第 11-20 条，共 22 条/
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select ".inventory-pagination-bar a[href*='page=1'][href*='q=%E5%88%86%E9%A1%B5%E4%BE%9B%E5%BA%94%E5%95%86'][href*='status=active']"
+    assert_select ".inventory-pagination-bar form[action='#{erp_suppliers_path}'] input[name='q'][value='分页供应商']"
+    assert_select ".inventory-pagination-bar form input[name='status'][value='active']"
+  end
+
   test "show renders supplier fields and attachment controls" do
     get erp_supplier_path(@supplier), headers: { "Accept" => "text/html" }
 

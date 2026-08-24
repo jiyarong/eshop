@@ -19,6 +19,7 @@ module ErpAI
 - annualized_return_pct: 年化投资回报率
 - annualized_net_profit_cny: 年化净利润（人民币）".freeze
     DYNAMIC_DAILY_SALES_FORECAST_DESCRIPTION = "SKU动态日销量预测。过滤最近30天库存快照中的断货日后，基于S7、S15、S30均线和7天前短线斜率预测；calculation.path为cold_start、rising、declining、stable或no_valid_days。".freeze
+    ADVERTISING_DIAGNOSIS_DESCRIPTION = "SKU广告诊断只读数据。按平台、店铺和Listing返回逐日广告漏斗、商品整体销售漏斗、数据水位、活动状态、首次广告活动日期和库存约束。金额保留平台原币；广告归因销售额占比基于同平台同Listing同币种数据。".freeze
 
     def genernal_inventory
       sku = Ec::Sku.find_by!(sku_code: (params[:sku]||params[:sku_code]||params[:metrics][:sku]).to_s.strip.upcase)
@@ -156,6 +157,23 @@ module ErpAI
       render json: { error: "SKU not found" }, status: :not_found
     end
 
+    def advertising_diagnosis
+      sku = Ec::Sku.find_by!(sku_code: params.require(:sku).to_s.strip.upcase)
+      to_date = parse_advertising_date(params[:to_date]) || user_today
+      from_date = parse_advertising_date(params[:from_date]) || (to_date - 27.days)
+
+      render json: {
+        data: Ec::SkuAdvertisingDiagnosisQuery.new(sku:, from_date:, to_date:).call,
+        description: ADVERTISING_DIAGNOSIS_DESCRIPTION
+      }
+    rescue ActionController::ParameterMissing
+      render json: { error: "sku is required" }, status: :bad_request
+    rescue ActiveRecord::RecordNotFound
+      render json: { error: "SKU not found" }, status: :not_found
+    rescue ArgumentError => error
+      render json: { error: error.message }, status: :unprocessable_entity
+    end
+
     private
 
     def parsed_inventory_date(value)
@@ -187,6 +205,12 @@ module ErpAI
 
     def user_today
       Time.current.in_time_zone(User.profile_time_zone(@current_user&.time_zone)).to_date
+    end
+
+    def parse_advertising_date(value)
+      Date.iso8601(value.to_s) if value.present?
+    rescue Date::Error
+      raise ArgumentError, "invalid_date"
     end
 
     def unit_dimensions(dimension)

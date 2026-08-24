@@ -45,16 +45,18 @@
 
   <% if @wb_warehouse_report %>
     <% summary = @wb_warehouse_report[:summary] %>
-    <section class="ozon-warehouse-summary">
-      <div class="summary-grid">
-        <% %i[sku_count shortage_count available inbound recommended mapping_coverage].each do |key| %>
-          <div class="weekly-profit-summary-card">
-            <div class="summary-label"><%= t("reports.wb_warehouses.summary.#{key}") %></div>
-            <div class="summary-value"><%= key == :mapping_coverage ? number_to_percentage(summary[key], precision: 1) : number_with_delimiter(summary[key]) %></div>
-          </div>
-        <% end %>
-      </div>
-    </section>
+    <% unless @sku_warehouse_embed %>
+      <section class="ozon-warehouse-summary">
+        <div class="summary-grid">
+          <% %i[sku_count shortage_count available inbound recommended mapping_coverage].each do |key| %>
+            <div class="weekly-profit-summary-card">
+              <div class="summary-label"><%= t("reports.wb_warehouses.summary.#{key}") %></div>
+              <div class="summary-value"><%= key == :mapping_coverage ? number_to_percentage(summary[key], precision: 1) : number_with_delimiter(summary[key]) %></div>
+            </div>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
 
     <section class="panel ozon-warehouse-table-panel">
       <div class="ozon-warehouse-table-header">

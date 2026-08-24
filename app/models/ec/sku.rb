@@ -30,6 +30,8 @@ module Ec
     has_many :ai_diagnoses, class_name: "Ec::AIDiagnosis", foreign_key: :sku_id, dependent: :destroy
     has_many :inventory_health_results, class_name: "Ec::RestockingDiagnosis", foreign_key: :sku_id
     has_many :grade_inspects, class_name: "Ec::GradeInspect", foreign_key: :sku_id
+    has_many :stage_inspects, class_name: "Ec::StageInspect", foreign_key: :sku_id
+    has_many :advertising_inspects, class_name: "Ec::AdvertisingInspect", foreign_key: :sku_id
     has_many :operation_action_diagnoses, class_name: "Ec::OperationActionDiagnosis", foreign_key: :sku_id
     has_many :snapshots,         class_name: "Ec::Snapshot",           foreign_key: :sku_id
     has_many :marketing_states, class_name: "Ec::SkuMarketingState", foreign_key: :sku_id, dependent: :destroy
