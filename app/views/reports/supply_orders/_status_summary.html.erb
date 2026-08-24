@@ -1,0 +1,18 @@
+<% report = local_assigns.fetch(:report) %>
+<% platform = report.dig(:meta, :platform) %>
+<% summaries = report.fetch(:status_summary, []) %>
+
+<% if summaries.any? %>
+  <section class="supply-order-status-summary" aria-label="<%= t("supply_order_reports.summary.title") %>">
+    <h2 class="supply-order-status-summary__title"><%= t("supply_order_reports.summary.title") %></h2>
+    <div class="supply-order-status-summary__grid">
+      <% summaries.each do |summary| %>
+        <div class="supply-order-status-summary__item">
+          <span class="supply-order-status-summary__label"><%= t("supply_order_reports.statuses.#{platform}.#{summary[:status]}", default: summary[:status].to_s.humanize) %></span>
+          <strong class="supply-order-status-summary__value"><%= summary[:count] %></strong>
+          <span class="supply-order-status-summary__unit"><%= t("supply_order_reports.summary.item_count", count: summary[:count]) %></span>
+        </div>
+      <% end %>
+    </div>
+  </section>
+<% end %>
