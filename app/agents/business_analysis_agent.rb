@@ -47,8 +47,9 @@ class BusinessAnalysisAgent < ActiveAgent::Base
 
     <<~PROMPT.squish
       可用工具如下：#{tools.to_json}
-      如果需要调用工具，只输出严格 JSON：{"tool_calls":[{"id":"call_1","name":"工具名","arguments":{}}]}。
-      如果不需要调用工具或已经获得工具结果，只输出严格 JSON：{"content":"最终回答"}。
+      输出必须是严格的 json 对象。
+      如果需要调用工具，只输出：{"tool_calls":[{"id":"call_1","name":"工具名","arguments":{}}]}。
+      如果不需要调用工具或已经获得工具结果，只输出：{"content":"最终回答"}。
       不要使用 Markdown 代码块包裹 JSON。
     PROMPT
   end

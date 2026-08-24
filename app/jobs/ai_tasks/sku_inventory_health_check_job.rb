@@ -36,8 +36,6 @@ module AITasks
 
     def run_check(sku_code)
       AITasks::SkuInventoryHealthCheck.run(sku_code: sku_code)
-    rescue StandardError => error
-      Rails.logger.error("[AITasks::SkuInventoryHealthCheck] #{error.class}: #{error.message}")
     end
   end
 end

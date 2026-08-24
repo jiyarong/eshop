@@ -55,20 +55,21 @@ class AITasks::SkuInventoryHealthCheckJobTest < ActiveJob::TestCase
     assert_equal [ @checked_sku.sku_code ], calls
   end
 
-  test "logs a failed check" do
-    log_messages = []
+  test "reports and propagates a failed check" do
+    captured_errors = []
     run_check = ->(sku_code:) { raise RuntimeError, "AI unavailable" }
-
-    logger = Object.new
-    logger.define_singleton_method(:error) { |message| log_messages << message }
+    capture_exception = ->(error, **) { captured_errors << error }
 
     with_stubbed_singleton_method(AITasks::SkuInventoryHealthCheck, :run, run_check) do
-      with_stubbed_singleton_method(Rails, :logger, -> { logger }) do
-        AITasks::SkuInventoryHealthCheckJob.perform_now(sku_code: @checked_sku.sku_code)
+      with_stubbed_singleton_method(Sentry::Rails, :capture_exception, capture_exception) do
+        error = assert_raises RuntimeError do
+          AITasks::SkuInventoryHealthCheckJob.perform_now(sku_code: @checked_sku.sku_code)
+        end
+
+        assert_equal "AI unavailable", error.message
+        assert_equal [ error ], captured_errors
       end
     end
-
-    assert_includes log_messages, "[AITasks::SkuInventoryHealthCheck] RuntimeError: AI unavailable"
   end
 
   test "limits concurrent checks to three" do

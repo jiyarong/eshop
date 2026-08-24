@@ -94,5 +94,6 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
     assert_equal 8_192, generation.options.fetch(:max_tokens)
     assert_includes generation.messages.first.fetch(:content), "search__web_search"
     assert_includes generation.messages.first.fetch(:content), "tool_calls"
+    assert_match(/\bjson\b/, generation.messages.first.fetch(:content))
   end
 end
