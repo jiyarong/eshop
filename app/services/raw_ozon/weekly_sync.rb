@@ -6,7 +6,6 @@ module RawOzon
     STEPS = %i[
       sync_products
       sync_product_attributes
-      sync_analytics_stocks
       sync_promotions
       sync_finance_realization
       sync_product_queries

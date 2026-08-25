@@ -204,8 +204,7 @@ module Ec
           .uniq
         stocks_by_product_id = ozon_stocks_by_product_id(account)
         analytics_stocks_by_sku = ozon_analytics_stocks_by_sku(account, ozon_skus)
-        inbound_breakdowns_by_sku = ozon_warehouse_breakdowns_by_sku(account)
-        next [] unless analytics_stocks_by_sku && inbound_breakdowns_by_sku
+        next [] unless analytics_stocks_by_sku
         warehouse_clusters = ozon_warehouse_cluster_lookup(account)
 
         products_by_sku_code.flat_map do |sku_code, products|
@@ -216,7 +215,7 @@ module Ec
           product_ozon_skus = products.map { |product| product.platform_sku_id.to_s }
           fbo = ozon_available_quantity(analytics_stocks_by_sku, product_ozon_skus)
           fbs = product_ids.sum { |product_id| stocks_by_product_id.dig(product_id, "fbs").to_i }
-          inbound = ozon_promised_quantity(inbound_breakdowns_by_sku, product_ozon_skus)
+          inbound = ozon_transit_quantity(analytics_stocks_by_sku, product_ozon_skus)
           available_fbs = [fbs - inbound, 0].max
 
           %w[fbo fbs inbound].map do |fulfillment_type|
@@ -240,7 +239,7 @@ module Ec
                 ozon_skus: product_ozon_skus,
                 raw_fbs_quantity: fbs,
                 fbo_source: "ozon_analytics_stocks.available_stock_count",
-                inbound_source: "ozon_analytics_stock_on_warehouses.promised_amount",
+                inbound_source: "ozon_analytics_stocks.transit_stock_count",
                 inbound_deducted_quantity: fulfillment_type == "fbs" ? [inbound, fbs].min : 0
               },
               warehouse_breakdown: fulfillment_type == "fbo" ? ozon_analytics_warehouse_breakdown(analytics_stocks_by_sku, product_ozon_skus, warehouse_clusters) : []
@@ -292,43 +291,6 @@ module Ec
       result
     rescue => e
       Rails.logger.warn("[SkuInventorySnapshotFetcher] Ozon analytics stocks account=#{account.id} failed: #{e.message}")
-      nil
-    end
-
-    def ozon_warehouse_breakdowns_by_sku(account)
-      client = ozon_client(account)
-      offset = 0
-      limit = 1000
-      result = Hash.new { |hash, key| hash[key] = [] }
-
-      loop do
-        response = client.post("/v2/analytics/stock_on_warehouses", {
-          limit: limit,
-          offset: offset,
-          warehouse_type: "ALL"
-        })
-        rows = Array(response.dig("result", "rows"))
-        break if rows.empty?
-
-        rows.each do |row|
-          result[row["sku"].to_s] << {
-            warehouse_name: row["warehouse_name"],
-            item_code: row["item_code"],
-            quantity: row["free_to_sell_amount"].to_i,
-            promised: row["promised_amount"].to_i,
-            reserved: row["reserved_amount"].to_i
-          }
-        end
-
-        break if rows.size < limit
-
-        offset += limit
-        sleep 0.5
-      end
-
-      result
-    rescue => e
-      Rails.logger.warn("[SkuInventorySnapshotFetcher] Ozon warehouse stocks account=#{account.id} failed: #{e.message}")
       nil
     end
 
@@ -389,9 +351,9 @@ module Ec
       warehouse_clusters[normalized_name.delete_suffix("_НЕГАБАРИТ")]
     end
 
-    def ozon_promised_quantity(breakdowns_by_sku, ozon_skus)
+    def ozon_transit_quantity(analytics_stocks_by_sku, ozon_skus)
       ozon_skus.sum do |ozon_sku|
-        Array(breakdowns_by_sku[ozon_sku]).sum { |row| row[:promised].to_i }
+        Array(analytics_stocks_by_sku[ozon_sku]).sum { |row| row["transit_stock_count"].to_i }
       end
     end
 

@@ -20,7 +20,6 @@ module RawOzon
     include Syncs::FinanceAccrualByDay
     include Syncs::PostingDestinations
     include Syncs::CrossdockResolver
-    include Syncs::AnalyticsStocks
     include Syncs::Promotions
     include Syncs::ProductQueries
 

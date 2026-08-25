@@ -27,7 +27,6 @@
 | `raw_ozon_finance_transactions` | `/v3/finance/transaction/list` | 财务流水明细 |
 | `raw_ozon_finance_realization` | `/v2/finance/realization` | 月度对账报表 |
 | `raw_ozon_analytics` | `/v1/analytics/data` | 销售分析数据 |
-| `raw_ozon_analytics_stocks` | `/v2/analytics/stock_on_warehouses` | 仓库库存分析 |
 | `raw_ozon_reviews` | `/v1/review/list` | 商品评价 |
 | `raw_ozon_chats` | `/v1/chat/list` | 买家聊天会话 |
 | `raw_ozon_chat_messages` | `/v1/chat/history` | 聊天消息 |

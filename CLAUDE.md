@@ -216,7 +216,6 @@ chats · returnClaims · accountBalances · salesReports · syncTasks
 | finance_transactions | 财务流水 |
 | finance_realization | 财务对账单 |
 | analytics | 分析数据（按 SKU 维度） |
-| analytics_stocks | 库存分析 |
 | promotions | 促销活动 |
 
 ### Sync 服务结构
@@ -241,7 +240,6 @@ app/services/raw_ozon/
     ├── finance_transactions.rb
     ├── finance_realization.rb
     ├── analytics.rb
-    ├── analytics_stocks.rb
     └── promotions.rb
 ```
 

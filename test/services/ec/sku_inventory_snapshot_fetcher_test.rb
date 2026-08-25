@@ -121,29 +121,6 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
             }
           ]
         }
-      when "/v2/analytics/stock_on_warehouses"
-        {
-          "result" => {
-            "rows" => [
-              {
-                "sku" => @ozon_sku,
-                "warehouse_name" => "Екатеринбург_РФЦ_НОВЫЙ",
-                "item_code" => "OFFER-TEST",
-                "free_to_sell_amount" => 0,
-                "promised_amount" => 10,
-                "reserved_amount" => 0
-              },
-              {
-                "sku" => @ozon_sku,
-                "warehouse_name" => "Казань_РФЦ_НОВЫЙ",
-                "item_code" => "OFFER-TEST",
-                "free_to_sell_amount" => 45,
-                "promised_amount" => 0,
-                "reserved_amount" => 0
-              }
-            ]
-          }
-        }
       else
         raise "unexpected Ozon POST #{path}"
       end
@@ -165,9 +142,9 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     end
   end
 
-  class FailingOzonInboundClient < FakeOzonClient
+  class FailingOzonAnalyticsClient < FakeOzonClient
     def post(path, body = {})
-      raise "Ozon inbound unavailable" if path == "/v2/analytics/stock_on_warehouses"
+      raise "Ozon analytics unavailable" if path == "/v1/analytics/stocks"
 
       super
     end
@@ -324,8 +301,8 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     assert_equal "ozon_analytics_stocks.available_stock_count", fbo[:metadata][:fbo_source]
     analytics_call = fake_client.posts.find { |call| call[:path] == "/v1/analytics/stocks" }
     assert_equal({ skus: [@ozon_product.platform_sku_id.to_s] }, analytics_call[:body])
-    assert_equal "ozon_analytics_stock_on_warehouses.promised_amount", inbound[:metadata][:inbound_source]
-    assert fake_client.posts.any? { |call| call[:path] == "/v2/analytics/stock_on_warehouses" }
+    assert_equal "ozon_analytics_stocks.transit_stock_count", inbound[:metadata][:inbound_source]
+    assert_not fake_client.posts.any? { |call| call[:path] == "/v2/analytics/stock_on_warehouses" }
     assert_not fake_client.posts.any? { |call| call[:path] == "/v3/supply-order/list" }
   end
 
@@ -337,8 +314,8 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     assert_not rows.any? { |row| row[:sku_code] == @sku.sku_code && row[:account_id] == @wb_account.id }
   end
 
-  test "ozon inbound API failure omits inbound snapshot rows" do
-    fake_client = FailingOzonInboundClient.new(
+  test "ozon analytics API failure omits inventory snapshot rows" do
+    fake_client = FailingOzonAnalyticsClient.new(
       product_id: @ozon_product.product_id.to_i,
       ozon_sku: @ozon_product.platform_sku_id.to_i
     )

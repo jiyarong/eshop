@@ -103,7 +103,7 @@ production:
     schedule: every sunday at 2:00 in Asia/Shanghai
 
   # Ozon daily sync: FBS/FBO postings, returns, stocks, prices, finance
-  # transactions, supply orders, chats.
+  # transactions and supply orders.
   ozon_daily_sync_morning:
     command: "RawOzon::DailySync.run"
     schedule: every day at 8:30 in Asia/Shanghai
@@ -111,6 +111,10 @@ production:
   ozon_daily_sync_evening:
     command: "RawOzon::DailySync.run"
     schedule: every day at 20:30 in Asia/Shanghai
+
+  ozon_chat_sync:
+    command: "RawOzon::ChatSync.run"
+    schedule: every 15 minutes
 
   sku_product_auto_bind:
     command: "Ec::SkuProductAutoBinder.call"
@@ -143,7 +147,7 @@ production:
     schedule: every day at 1:10 in Asia/Shanghai
 
   ozon_weekly_sync:
-    command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_products, :sync_product_attributes, :sync_analytics_stocks, :sync_promotions, :sync_finance_realization])"
+    command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_products, :sync_product_attributes, :sync_promotions, :sync_finance_realization])"
     schedule: every tuesday at 3:00 in Asia/Shanghai
 
   ozon_search_terms_weekly_sync:

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_20_022711) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_25_073856) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1042,20 +1042,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_022711) do
     t.index ["account_id"], name: "index_raw_ozon_ad_units_on_account_id"
   end
 
-  create_table "raw_ozon_analytics_stocks", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "item_code"
-    t.string "item_name"
-    t.bigint "ozon_sku"
-    t.integer "present", default: 0
-    t.jsonb "raw_json", null: false
-    t.integer "reserved", default: 0
-    t.datetime "synced_at"
-    t.string "warehouse_name"
-    t.index ["account_id", "ozon_sku"], name: "index_raw_ozon_analytics_stocks_on_account_id_and_ozon_sku"
-    t.index ["account_id"], name: "index_raw_ozon_analytics_stocks_on_account_id"
-  end
-
   create_table "raw_ozon_categories", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "category_id", null: false
@@ -1070,31 +1056,59 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_022711) do
   end
 
   create_table "raw_ozon_chat_messages", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "chat_id", null: false
-    t.datetime "created_at"
-    t.jsonb "data"
-    t.string "direction"
-    t.string "message_id", null: false
-    t.jsonb "raw_json", null: false
-    t.datetime "synced_at"
-    t.index ["account_id", "chat_id"], name: "index_raw_ozon_chat_messages_on_account_id_and_chat_id"
-    t.index ["account_id", "message_id"], name: "index_raw_ozon_chat_messages_on_account_id_and_message_id", unique: true
-    t.index ["account_id"], name: "index_raw_ozon_chat_messages_on_account_id"
+    t.jsonb "attachment_urls", default: [], null: false
+    t.bigint "chat_id", null: false
+    t.boolean "is_image", default: false, null: false
+    t.boolean "is_read", default: false, null: false
+    t.jsonb "message_data", default: [], null: false
+    t.bigint "message_id", null: false
+    t.text "message_text"
+    t.string "order_number"
+    t.string "platform_sku_id"
+    t.jsonb "raw_json", default: {}, null: false
+    t.datetime "sent_at", null: false
+    t.datetime "synced_at", null: false
+    t.string "user_id"
+    t.string "user_type"
+    t.index ["chat_id", "message_id"], name: "index_raw_ozon_chat_messages_on_chat_id_and_message_id", unique: true
+    t.index ["chat_id", "sent_at"], name: "index_raw_ozon_chat_messages_on_chat_id_and_sent_at"
+    t.index ["chat_id"], name: "index_raw_ozon_chat_messages_on_chat_id"
+    t.index ["platform_sku_id", "sent_at"], name: "index_raw_ozon_chat_messages_on_platform_sku_id_and_sent_at"
+    t.index ["user_type", "sent_at"], name: "index_raw_ozon_chat_messages_on_user_type_and_sent_at"
+  end
+
+  create_table "raw_ozon_chat_sku_links", force: :cascade do |t|
+    t.bigint "chat_id", null: false
+    t.bigint "first_message_id", null: false
+    t.bigint "last_message_id", null: false
+    t.datetime "linked_at", null: false
+    t.string "platform_sku_id", null: false
+    t.bigint "sku_product_id"
+    t.index ["chat_id", "platform_sku_id"], name: "idx_raw_ozon_chat_sku_links_unique", unique: true
+    t.index ["chat_id"], name: "index_raw_ozon_chat_sku_links_on_chat_id"
+    t.index ["sku_product_id", "linked_at"], name: "idx_raw_ozon_chat_sku_links_product"
+    t.index ["sku_product_id"], name: "index_raw_ozon_chat_sku_links_on_sku_product_id"
   end
 
   create_table "raw_ozon_chats", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "chat_id", null: false
-    t.string "chat_type"
-    t.jsonb "last_message"
-    t.string "order_number"
-    t.jsonb "raw_json", null: false
+    t.string "chat_type", null: false
+    t.bigint "first_unread_message_id"
+    t.boolean "history_complete", default: false, null: false
+    t.datetime "history_synced_at"
+    t.datetime "last_message_at"
+    t.bigint "last_message_id"
+    t.text "last_message_preview"
+    t.string "last_message_user_type"
+    t.datetime "opened_at"
+    t.jsonb "raw_json", default: {}, null: false
     t.string "status"
-    t.datetime "synced_at"
-    t.integer "unread_count", default: 0
+    t.datetime "synced_at", null: false
+    t.integer "unread_count", default: 0, null: false
     t.index ["account_id", "chat_id"], name: "index_raw_ozon_chats_on_account_id_and_chat_id", unique: true
-    t.index ["account_id", "status"], name: "index_raw_ozon_chats_on_account_id_and_status"
+    t.index ["account_id", "chat_type", "last_message_at"], name: "idx_raw_ozon_chats_type_last_message"
+    t.index ["account_id", "unread_count"], name: "index_raw_ozon_chats_on_account_id_and_unread_count"
     t.index ["account_id"], name: "index_raw_ozon_chats_on_account_id"
   end
 
@@ -2937,9 +2951,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_022711) do
   add_foreign_key "raw_ozon_ad_sku_daily_stats", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_ad_unit_products", "raw_ozon_ad_units", column: "ad_unit_id"
   add_foreign_key "raw_ozon_ad_units", "raw_ozon_seller_accounts", column: "account_id"
-  add_foreign_key "raw_ozon_analytics_stocks", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_categories", "raw_ozon_seller_accounts", column: "account_id"
-  add_foreign_key "raw_ozon_chat_messages", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_chat_messages", "raw_ozon_chats", column: "chat_id", on_delete: :cascade
+  add_foreign_key "raw_ozon_chat_sku_links", "ec_sku_products", column: "sku_product_id", on_delete: :nullify
+  add_foreign_key "raw_ozon_chat_sku_links", "raw_ozon_chats", column: "chat_id", on_delete: :cascade
   add_foreign_key "raw_ozon_chats", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_finance_realizations", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_finance_transactions", "raw_ozon_seller_accounts", column: "account_id"

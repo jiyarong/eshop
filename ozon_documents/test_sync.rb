@@ -17,7 +17,7 @@ ALL_STEPS = {
     sync_finance_transactions sync_supply_orders
   ],
   weekly: %i[
-    sync_products sync_analytics sync_analytics_stocks
+    sync_products sync_analytics
     sync_promotions sync_finance_realization
   ],
 }
@@ -38,7 +38,6 @@ TABLE_MAP = {
   sync_supply_orders:        RawOzon::SupplyOrder,
   sync_products:             RawOzon::Product,
   sync_analytics:            RawOzon::Analytics,
-  sync_analytics_stocks:     RawOzon::AnalyticsStock,
   sync_promotions:           RawOzon::Promotion,
   sync_finance_realization:  RawOzon::FinanceRealization,
 }
