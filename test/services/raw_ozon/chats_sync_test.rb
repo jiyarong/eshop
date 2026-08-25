@@ -2,6 +2,8 @@ require "test_helper"
 require "securerandom"
 
 class RawOzonChatsSyncTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   class FakeOzonClient
     attr_reader :requests
 
@@ -106,6 +108,30 @@ class RawOzonChatsSyncTest < ActiveSupport::TestCase
     assert_equal 0, result[:messages]
     assert_equal ["/v3/chat/list"], client.requests.map(&:first)
     assert_equal 1, RawOzon::Chat.find_by!(account_id: @account.id, chat_id: "buyer-1").messages.count
+  end
+
+  test "new image messages enqueue storage jobs" do
+    clear_enqueued_jobs
+
+    assert_enqueued_with(job: RawOzon::ChatImageStoreJob) do
+      sync_with(FakeOzonClient.new([
+        chat_list([chat_item("buyer-image", type: "BUYER_SELLER", last_message_id: 101)], has_next: false),
+        history([message_payload(101, user_type: "Customer", text: "Photo", image: true)]),
+      ]))
+    end
+  end
+
+  test "historical image backfill is explicit and supports a limit" do
+    sync_with(FakeOzonClient.new([
+      chat_list([chat_item("buyer-image", type: "BUYER_SELLER", last_message_id: 101)], has_next: false),
+      history([message_payload(101, user_type: "Customer", text: "Photo", image: true)]),
+    ]))
+    message = RawOzon::Chat.find_by!(account_id: @account.id, chat_id: "buyer-image").messages.find_by!(message_id: 101)
+    clear_enqueued_jobs
+
+    assert_enqueued_with(job: RawOzon::ChatImageStoreJob, args: [message.id]) do
+      assert_equal 1, RawOzon::ChatImageBackfillJob.perform_now(account_id: @account.id, limit: 1)
+    end
   end
 
   test "incomplete history resumes backward pagination from the oldest stored message" do

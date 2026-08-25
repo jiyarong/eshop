@@ -175,6 +175,7 @@ en:
     operator_skus: "SKU List"
     sales_funnel: "Sales Funnel"
     search_terms: "Search Terms"
+    ozon_chats: "Ozon Chats"
     inventory: "Inventory"
     ozon_warehouses: "Ozon Distribution"
     wb_warehouses: "WB Distribution"
@@ -908,6 +909,52 @@ en:
       wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
       ozon: { sku_code: "SKU", product_name: "Product", revenue: "Order amount", total_drr: "Total DRR", position_category: "Average search rank", hits_view_search: "Search and catalog views", hits_view_pdp: "Product card visits", search_to_card_conversion: "Search and catalog to card conversion", conv_tocart: "Card-to-cart conversion", cart_to_order: "Product card cart-to-order conversion", order_conversion: "View-to-order conversion", average_price: "Average price", ordered_units: "Ordered units", delivered_units: "Delivered units", total_ending_inventory: "Total ending inventory", store_ending_inventory: "Store ending inventory", cancellations: "Cancellations (by order date)", returns_count: "Returns (by order date)", hits_view: "Views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search and catalog cart adds", hits_tocart_pdp: "Product card cart adds" }
   reports:
+    ozon_chats:
+      title: "Ozon Chats"
+      subtitle: "Review buyer questions, product context, and response history"
+      sync_note: "Synced automatically every 15 minutes"
+      filters:
+        aria_label: "Ozon chat filters"
+        sku: "SKU"
+        all_skus: "All SKUs"
+        store: "Store"
+        apply: "Filter"
+        clear: "Clear SKU filter"
+      inbox:
+        aria_label: "Conversation list"
+        title: "Conversations"
+        count: "%{count} total"
+        unlinked: "Unlinked SKU"
+        more_skus: "%{count} more SKUs"
+      detail:
+        aria_label: "Conversation detail"
+        back: "Back to conversations"
+        buyer_conversation: "Ozon buyer conversation"
+        unlinked_title: "Buyer conversation"
+      messages:
+        attachment: "Attachment"
+        image: "Image %{number}"
+        image_alt: "Chat image %{number}"
+        image_processing: "Processing image; refresh shortly"
+        read: "Read"
+      pagination:
+        page: "Page %{page} of %{pages}"
+        range: "%{from}–%{to} / %{total}"
+        previous: "Previous page"
+        next: "Next page"
+        chats_aria_label: "Conversation pagination"
+        messages_aria_label: "Message pagination"
+        older_messages: "Older messages"
+        newer_messages: "Newer messages"
+        message_page: "Message page %{page} of %{pages}"
+      empty:
+        filtered_title: "No matching conversations"
+        filtered_body: "Try changing the SKU or store filter"
+        detail_title: "Select a conversation"
+        detail_body: "Open a chat from the conversation list"
+        messages_title: "No messages"
+      errors:
+        no_store: "No Ozon store is available"
     search_terms:
       title: "Search Term Analytics"
       subtitle: "%{from} to %{to} · complete calendar week"

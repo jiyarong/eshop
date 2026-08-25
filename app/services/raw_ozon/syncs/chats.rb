@@ -156,6 +156,10 @@ module RawOzon
             platform_sku_id order_number sent_at raw_json synced_at
           ]
         )
+
+        message_ids = rows.filter_map { |row| row[:message_id] if row[:attachment_urls].present? }
+        RawOzon::ChatMessage.where(chat_id: rows.map { |row| row[:chat_id] }.uniq, message_id: message_ids)
+          .find_each { |message| RawOzon::ChatImageStoreJob.perform_later(message.id) }
       end
 
       def refresh_chat_from_messages(chat, history_complete:)

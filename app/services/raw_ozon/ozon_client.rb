@@ -45,6 +45,20 @@ module RawOzon
       end
     end
 
+    def download(path)
+      uri = URI("#{BASE_URL}#{path}")
+
+      with_retry(context: "GET #{path}") do
+        req = Net::HTTP::Get.new(uri)
+        set_headers(req)
+        resp = Net::HTTP.start(uri.host, uri.port,
+                               use_ssl: true,
+                               open_timeout: OPEN_TIMEOUT,
+                               read_timeout: READ_TIMEOUT) { |http| http.request(req) }
+        handle_download_response(resp, uri.path)
+      end
+    end
+
     private
 
     def set_headers(req)
@@ -88,6 +102,21 @@ module RawOzon
         raise RetryableError.new("#{code} server error on #{path}")
       else
         raise ApiError, "#{code} on #{path}: #{resp.body.to_s.encode('UTF-8', invalid: :replace, undef: :replace, replace: '').truncate(300)}"
+      end
+    end
+
+    def handle_download_response(resp, path)
+      code = resp.code.to_i
+      case code
+      when 200..299
+        { body: resp.body, content_type: resp["Content-Type"].to_s.split(";").first }
+      when 429
+        wait = resp["Retry-After"]&.to_i || 10
+        raise RetryableError.new("429 rate-limited on #{path}", retry_after: wait)
+      when 500..599
+        raise RetryableError.new("#{code} server error on #{path}")
+      else
+        raise ApiError, "#{code} on #{path}: attachment download failed"
       end
     end
   end

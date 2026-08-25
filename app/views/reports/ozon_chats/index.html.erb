@@ -1,0 +1,226 @@
+<% content_for :title, t("reports.ozon_chats.title") %>
+<% filter_params = {
+  store_id: @store.id,
+  master_sku_ids: @spu_sku_selected_master_sku_ids,
+  sku_codes: @spu_sku_selected_sku_codes
+}.compact %>
+
+<div class="ozon-chat-page <%= "has-explicit-chat" if @explicit_chat && @selected_chat %>">
+  <header class="ozon-chat-page__heading">
+    <div>
+      <h1 class="page-title"><%= t("reports.ozon_chats.title") %></h1>
+    </div>
+    <div class="ozon-chat-page__sync-state">
+      <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+      <span><%= t("reports.ozon_chats.sync_note") %></span>
+    </div>
+  </header>
+
+  <section class="ozon-chat-filters" aria-label="<%= t("reports.ozon_chats.filters.aria_label") %>">
+    <%= form_with url: reports_ozon_chats_path, method: :get, local: true, class: "ozon-chat-filter-form" do |form| %>
+      <%= form.hidden_field :store_id, value: @store.id %>
+      <%= render "shared/spu_sku_filter",
+                 dom_id_prefix: "ozon-chats-spu-sku",
+                 field_class: "ozon-chat-sku-filter",
+                 label: t("reports.ozon_chats.filters.sku"),
+                 placeholder: t("reports.ozon_chats.filters.all_skus") %>
+      <div class="ozon-chat-filter-actions">
+        <button class="button ozon-chat-filter-submit" type="submit">
+          <i class="bi bi-funnel" aria-hidden="true"></i>
+          <span><%= t("reports.ozon_chats.filters.apply") %></span>
+        </button>
+        <% if @spu_sku_selected_master_sku_ids.present? || @spu_sku_selected_sku_codes.present? %>
+          <%= link_to reports_ozon_chats_path(store_id: @store.id),
+                      class: "ozon-chat-filter-reset",
+                      title: t("reports.ozon_chats.filters.clear"),
+                      aria: { label: t("reports.ozon_chats.filters.clear") } do %>
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <nav class="ozon-chat-store-switcher" aria-label="<%= t("reports.ozon_chats.filters.store") %>">
+      <% @stores.each do |store| %>
+        <%= link_to store.store_name,
+                    reports_ozon_chats_path(filter_params.merge(store_id: store.id).except(:chat_id, :page, :message_page)),
+                    class: "ozon-chat-store-switcher__item #{"is-active" if store == @store}",
+                    aria: { current: ("page" if store == @store) } %>
+      <% end %>
+    </nav>
+  </section>
+
+  <main class="ozon-chat-workspace">
+    <aside class="ozon-chat-inbox" aria-label="<%= t("reports.ozon_chats.inbox.aria_label") %>">
+      <div class="ozon-chat-inbox__header">
+        <div>
+          <h2><%= t("reports.ozon_chats.inbox.title") %></h2>
+          <span><%= t("reports.ozon_chats.inbox.count", count: @chats.total_count) %></span>
+        </div>
+        <% if @chats.total_pages > 1 %>
+          <span class="ozon-chat-inbox__page"><%= t("reports.ozon_chats.pagination.page", page: @chats.current_page, pages: @chats.total_pages) %></span>
+        <% end %>
+      </div>
+
+      <div class="ozon-chat-inbox__list">
+        <% if @chats.any? %>
+          <% @chats.each do |chat| %>
+            <% sku_codes = chat.sku_products.map(&:sku_code).uniq %>
+            <% active = chat == @selected_chat %>
+            <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: chat.chat_id)),
+                        class: "ozon-chat-thread #{"is-active" if active}",
+                        aria: { current: ("page" if active) } do %>
+              <span class="ozon-chat-thread__avatar"><%= (sku_codes.first || "OZ").first(2).upcase %></span>
+              <span class="ozon-chat-thread__body">
+                <span class="ozon-chat-thread__topline">
+                  <strong><%= sku_codes.first || t("reports.ozon_chats.inbox.unlinked") %></strong>
+                  <time datetime="<%= chat.last_message_at&.iso8601 %>"><%= display_time(chat.last_message_at, format: "%m-%d %H:%M") %></time>
+                </span>
+                <% if sku_codes.many? %>
+                  <span class="ozon-chat-thread__secondary"><%= t("reports.ozon_chats.inbox.more_skus", count: sku_codes.size - 1) %></span>
+                <% end %>
+                <span class="ozon-chat-thread__preview">
+                  <% if chat.last_message_user_type == "Seller" %><i class="bi bi-reply-fill" aria-hidden="true"></i><% end %>
+                  <%= chat.last_message_preview.presence || t("reports.ozon_chats.messages.attachment") %>
+                </span>
+              </span>
+              <% if chat.unread_count.to_i.positive? %>
+                <span class="ozon-chat-thread__unread"><%= [chat.unread_count, 99].min %><%= "+" if chat.unread_count > 99 %></span>
+              <% end %>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="ozon-chat-empty ozon-chat-empty--inbox">
+            <i class="bi bi-chat-square" aria-hidden="true"></i>
+            <strong><%= t("reports.ozon_chats.empty.filtered_title") %></strong>
+            <span><%= t("reports.ozon_chats.empty.filtered_body") %></span>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @chats.total_pages > 1 %>
+        <nav class="ozon-chat-inbox__pagination" aria-label="<%= t("reports.ozon_chats.pagination.chats_aria_label") %>">
+          <% if @chats.prev_page %>
+            <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.prev_page)), aria: { label: t("reports.ozon_chats.pagination.previous") } do %>
+              <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            <% end %>
+          <% else %>
+            <span aria-disabled="true"><i class="bi bi-chevron-left" aria-hidden="true"></i></span>
+          <% end %>
+          <strong><%= t("reports.ozon_chats.pagination.range", from: @chats.offset_value + 1, to: [@chats.offset_value + @chats.length, @chats.total_count].min, total: @chats.total_count) %></strong>
+          <% if @chats.next_page %>
+            <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.next_page)), aria: { label: t("reports.ozon_chats.pagination.next") } do %>
+              <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            <% end %>
+          <% else %>
+            <span aria-disabled="true"><i class="bi bi-chevron-right" aria-hidden="true"></i></span>
+          <% end %>
+        </nav>
+      <% end %>
+    </aside>
+
+    <section class="ozon-chat-detail" aria-label="<%= t("reports.ozon_chats.detail.aria_label") %>">
+      <% if @selected_chat %>
+        <% selected_sku_codes = @selected_chat.sku_products.map(&:sku_code).uniq %>
+        <header class="ozon-chat-detail__header">
+          <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page)),
+                      class: "ozon-chat-detail__back",
+                      aria: { label: t("reports.ozon_chats.detail.back") } do %>
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+          <% end %>
+          <div class="ozon-chat-detail__identity">
+            <span class="ozon-chat-detail__avatar"><i class="bi bi-person" aria-hidden="true"></i></span>
+            <div>
+              <h2><%= selected_sku_codes.first || t("reports.ozon_chats.detail.unlinked_title") %></h2>
+              <span><%= t("reports.ozon_chats.detail.buyer_conversation") %></span>
+            </div>
+          </div>
+          <div class="ozon-chat-detail__skus">
+            <% selected_sku_codes.each do |sku_code| %>
+              <%= link_to sku_code, report_sku_path(sku_code), class: "ozon-chat-detail__sku", data: { turbo_frame: "_top" } %>
+            <% end %>
+          </div>
+        </header>
+
+        <% if @message_page.total_pages > 1 %>
+          <nav class="ozon-chat-message-pagination" aria-label="<%= t("reports.ozon_chats.pagination.messages_aria_label") %>">
+            <% if @message_page.next_page %>
+              <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: @selected_chat.chat_id, message_page: @message_page.next_page)) do %>
+                <i class="bi bi-arrow-up" aria-hidden="true"></i>
+                <span><%= t("reports.ozon_chats.pagination.older_messages") %></span>
+              <% end %>
+            <% end %>
+            <span><%= t("reports.ozon_chats.pagination.message_page", page: @message_page.current_page, pages: @message_page.total_pages) %></span>
+            <% if @message_page.prev_page %>
+              <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: @selected_chat.chat_id, message_page: @message_page.prev_page)) do %>
+                <span><%= t("reports.ozon_chats.pagination.newer_messages") %></span>
+                <i class="bi bi-arrow-down" aria-hidden="true"></i>
+              <% end %>
+            <% end %>
+          </nav>
+        <% end %>
+
+        <div class="ozon-chat-messages">
+          <% if @messages.empty? %>
+            <div class="ozon-chat-empty">
+              <i class="bi bi-chat" aria-hidden="true"></i>
+              <strong><%= t("reports.ozon_chats.empty.messages_title") %></strong>
+            </div>
+          <% end %>
+          <% previous_day = nil %>
+          <% @messages.each do |message| %>
+            <% message_day = message.sent_at.in_time_zone(user_time_zone).to_date %>
+            <% if message_day != previous_day %>
+              <div class="ozon-chat-messages__day"><span><%= display_time(message.sent_at, format: "%Y-%m-%d") %></span></div>
+              <% previous_day = message_day %>
+            <% end %>
+            <% seller_message = message.user_type == "Seller" %>
+            <article class="ozon-chat-message <%= seller_message ? "is-seller" : "is-customer" %>">
+              <div class="ozon-chat-message__bubble">
+                <% if message.message_text.present? %>
+                  <%= simple_format(message.message_text, {}, wrapper_tag: "div") %>
+                <% end %>
+                <% if message.attachment_urls.any? %>
+                  <div class="ozon-chat-message__attachments">
+                    <% message.attachment_urls.each_with_index do |url, index| %>
+                      <% stored_image = message.stored_image_for(url) %>
+                      <% image_path = reports_ozon_chat_attachment_path(
+                        store_id: @store.id,
+                        chat_id: @selected_chat.chat_id,
+                        message_id: message.message_id,
+                        attachment_index: index
+                      ) %>
+                      <% if stored_image %>
+                        <%= link_to image_path, target: "_blank", rel: "noopener", class: "ozon-chat-message__image-link" do %>
+                          <%= image_tag image_path,
+                                        alt: t("reports.ozon_chats.messages.image_alt", number: index + 1),
+                                        loading: "lazy",
+                                        class: "ozon-chat-message__image" %>
+                        <% end %>
+                      <% else %>
+                        <div class="ozon-chat-message__image-pending">
+                          <i class="bi bi-image" aria-hidden="true"></i>
+                          <span><%= t("reports.ozon_chats.messages.image_processing") %></span>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  </div>
+                <% end %>
+                <footer>
+                  <time datetime="<%= message.sent_at.iso8601 %>"><%= display_time(message.sent_at, format: "%H:%M") %></time>
+                  <% if seller_message && message.is_read? %><i class="bi bi-check2-all" aria-label="<%= t("reports.ozon_chats.messages.read") %>"></i><% end %>
+                </footer>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="ozon-chat-empty ozon-chat-empty--detail">
+          <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+          <strong><%= t("reports.ozon_chats.empty.detail_title") %></strong>
+          <span><%= t("reports.ozon_chats.empty.detail_body") %></span>
+        </div>
+      <% end %>
+    </section>
+  </main>
+</div>

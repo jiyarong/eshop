@@ -146,6 +146,7 @@ ru:
     operator_skus: "Список SKU"
     sales_funnel: "Воронка продаж"
     search_terms: "Поисковые запросы"
+    ozon_chats: "Чаты Ozon"
     inventory: "Склад"
     ozon_warehouses: "Распределение Ozon"
     wb_warehouses: "Распределение WB"
@@ -879,6 +880,52 @@ ru:
       wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
       ozon: { sku_code: "SKU", product_name: "Товар", revenue: "Заказано на сумму", total_drr: "Общая ДРР", position_category: "Позиция в поиске и каталоге", hits_view_search: "Показы в поиске и каталоге", hits_view_pdp: "Посещения карточки товара", search_to_card_conversion: "Конверсия из поиска и каталога в карточку", conv_tocart: "Конверсия из карточки в корзину", cart_to_order: "Конверсия из корзины в заказ", order_conversion: "Конверсия из показа в заказ", average_price: "Средняя цена", ordered_units: "Заказано товаров", delivered_units: "Доставлено товаров", total_ending_inventory: "Общий остаток на конец периода", store_ending_inventory: "Остаток магазина на конец периода", cancellations: "Отменено товаров", returns_count: "Возвращено товаров", hits_view: "Показы всего", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска и каталога", hits_tocart_pdp: "В корзину из карточки" }
   reports:
+    ozon_chats:
+      title: "Чаты Ozon"
+      subtitle: "Вопросы покупателей, контекст товара и история ответов"
+      sync_note: "Автоматическая синхронизация каждые 15 минут"
+      filters:
+        aria_label: "Фильтры чатов Ozon"
+        sku: "SKU"
+        all_skus: "Все SKU"
+        store: "Магазин"
+        apply: "Применить"
+        clear: "Сбросить фильтр SKU"
+      inbox:
+        aria_label: "Список диалогов"
+        title: "Диалоги"
+        count: "Всего: %{count}"
+        unlinked: "SKU не привязан"
+        more_skus: "Ещё SKU: %{count}"
+      detail:
+        aria_label: "Содержимое диалога"
+        back: "Назад к диалогам"
+        buyer_conversation: "Диалог с покупателем Ozon"
+        unlinked_title: "Диалог с покупателем"
+      messages:
+        attachment: "Вложение"
+        image: "Изображение %{number}"
+        image_alt: "Изображение из чата %{number}"
+        image_processing: "Изображение обрабатывается; обновите страницу позже"
+        read: "Прочитано"
+      pagination:
+        page: "Страница %{page} из %{pages}"
+        range: "%{from}–%{to} / %{total}"
+        previous: "Предыдущая страница"
+        next: "Следующая страница"
+        chats_aria_label: "Навигация по диалогам"
+        messages_aria_label: "Навигация по сообщениям"
+        older_messages: "Ранее"
+        newer_messages: "Позже"
+        message_page: "Страница сообщений %{page} из %{pages}"
+      empty:
+        filtered_title: "Подходящих диалогов нет"
+        filtered_body: "Измените фильтр SKU или магазина"
+        detail_title: "Выберите диалог"
+        detail_body: "Откройте чат из списка слева"
+        messages_title: "Сообщений нет"
+      errors:
+        no_store: "Нет доступного магазина Ozon"
     search_terms:
       title: "Аналитика поисковых запросов"
       subtitle: "%{from}–%{to} · полная календарная неделя"

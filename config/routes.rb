@@ -32,6 +32,9 @@ Rails.application.routes.draw do
   get "reports/sales_funnel" => "reports/sales_funnel#show", as: :reports_sales_funnel
   get "reports/search_terms" => "reports/search_terms#index", as: :reports_search_terms
   get "reports/search_terms/:sku_code/terms" => "reports/search_terms#terms", as: :reports_search_term_details
+  get "reports/ozon_chats" => "reports/ozon_chats#index", as: :reports_ozon_chats
+  get "reports/ozon_chats/:chat_id/messages/:message_id/attachments/:attachment_index" =>
+    "reports/ozon_chats#attachment", as: :reports_ozon_chat_attachment
   get "reports/supply_orders" => "reports/supply_orders#show", as: :reports_supply_orders
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
   patch "reports/inventory/:sku_code/returns" => "reports#update_inventory_returns", as: :report_inventory_returns
