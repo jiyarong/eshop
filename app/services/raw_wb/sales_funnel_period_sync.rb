@@ -1,11 +1,12 @@
 module RawWb
   class SalesFunnelPeriodSync
     API_PATH = "/api/analytics/v3/sales-funnel/products".freeze
+    BUSINESS_TIME_ZONE = "Europe/Moscow".freeze
     LIMIT = 1000
     RATE_LIMIT_SLEEP = 20
 
     def self.run_current_week
-      today = Date.current
+      today = Time.use_zone(BUSINESS_TIME_ZONE) { Time.zone.today }
       period_start = today.beginning_of_week(:monday)
       run_period(period_start: period_start, period_end: period_start + 6.days, selected_period_end: today)
     end

@@ -16,6 +16,22 @@ class RawWbSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
     end
   end
 
+  test "run_current_week uses the Moscow calendar date before UTC midnight" do
+    travel_to Time.utc(2026, 8, 23, 22, 20) do
+      captured = nil
+      original_run_period = RawWb::SalesFunnelPeriodSync.method(:run_period)
+      RawWb::SalesFunnelPeriodSync.define_singleton_method(:run_period) { |**args| captured = args }
+
+      RawWb::SalesFunnelPeriodSync.run_current_week
+
+      assert_equal Date.new(2026, 8, 24), captured[:period_start]
+      assert_equal Date.new(2026, 8, 30), captured[:period_end]
+      assert_equal Date.new(2026, 8, 24), captured[:selected_period_end]
+    ensure
+      RawWb::SalesFunnelPeriodSync.define_singleton_method(:run_period, original_run_period) if original_run_period
+    end
+  end
+
   test "sync_period stores natural week sales funnel period rows" do
     token = SecureRandom.hex(6)
     account = RawWb::SellerAccount.create!(

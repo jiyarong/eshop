@@ -132,8 +132,8 @@ class RawOzonProductQueriesSyncTest < ActiveSupport::TestCase
     end
   end
 
-  test "monday preliminary sync requests through friday but stores the natural week" do
-    travel_to Time.utc(2026, 8, 17, 8) do
+  test "monday in Moscow preliminary sync requests through friday but stores the natural week" do
+    travel_to Time.utc(2026, 8, 23, 22, 30) do
       token = SecureRandom.hex(6)
       account = RawOzon::SellerAccount.create!(
         client_id: "ozon-queries-friday-#{token}", api_key: "token-#{token}",
@@ -151,12 +151,12 @@ class RawOzonProductQueriesSyncTest < ActiveSupport::TestCase
       result = sync.sync_product_queries_through_friday
 
       assert_equal 1, result[:weeks]
-      assert_equal Array.new(6, "2026-08-14T23:59:59Z"),
+      assert_equal Array.new(6, "2026-08-21T23:59:59Z"),
         client.requests.map { |_path, body| body.fetch(:date_to) }
-      assert_equal [[Date.new(2026, 8, 10), Date.new(2026, 8, 16)]],
+      assert_equal [[Date.new(2026, 8, 17), Date.new(2026, 8, 23)]],
         RawOzon::ProductQuery.where(account:).pluck(:period_from, :period_to)
       assert_equal 5, RawOzon::ProductQueryDetail.where(
-        account:, period_from: Date.new(2026, 8, 10), period_to: Date.new(2026, 8, 16)
+        account:, period_from: Date.new(2026, 8, 17), period_to: Date.new(2026, 8, 23)
       ).count
     ensure
       RawOzon::ProductQueryDetail.where(account_id: account&.id).delete_all

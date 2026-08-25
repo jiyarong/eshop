@@ -1,6 +1,7 @@
 module RawOzon
   module Syncs
     module ProductQueries
+      BUSINESS_TIME_ZONE = "Europe/Moscow".freeze
       PRODUCT_QUERY_DETAIL_SORTS = RawOzon::ProductQueryDetail::TOP_ORDER_BY_VALUES
 
       # POST /v1/analytics/product-queries        — SKU 级搜索汇总
@@ -43,10 +44,11 @@ module RawOzon
       end
 
       def completed_product_query_weeks
-        first_week = @from.to_date.beginning_of_week(:monday)
+        business_today = Time.use_zone(BUSINESS_TIME_ZONE) { Time.zone.today }
+        first_week = (business_today - @days.days).beginning_of_week(:monday)
         # Fetch the newly completed week immediately, then let the recurring
         # midweek refresh replace Ozon's still-settling 1-2 day figures.
-        last_week_end = Date.current.beginning_of_week(:monday) - 1.day
+        last_week_end = business_today.beginning_of_week(:monday) - 1.day
         return [] if first_week > last_week_end
 
         first_week.step(last_week_end, 7).map { |week_start| [week_start, week_start + 6.days] }
