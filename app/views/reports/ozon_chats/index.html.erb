@@ -62,7 +62,7 @@
         <% end %>
       </div>
 
-      <div class="ozon-chat-inbox__list">
+      <div class="ozon-chat-inbox__list" data-controller="ozon-chat-inbox-scroll">
         <% if @chats.any? %>
           <% @chats.each do |chat| %>
             <% sku_codes = chat.sku_products.map(&:sku_code).uniq %>
