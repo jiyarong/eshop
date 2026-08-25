@@ -936,6 +936,8 @@ en:
         image: "Image %{number}"
         image_alt: "Chat image %{number}"
         image_processing: "Processing image; refresh shortly"
+        media_processing: "Processing media; refresh shortly"
+        video_label: "Chat video %{number}"
         read: "Read"
       pagination:
         page: "Page %{page} of %{pages}"

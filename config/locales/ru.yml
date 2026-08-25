@@ -907,6 +907,8 @@ ru:
         image: "Изображение %{number}"
         image_alt: "Изображение из чата %{number}"
         image_processing: "Изображение обрабатывается; обновите страницу позже"
+        media_processing: "Медиа обрабатывается; обновите страницу позже"
+        video_label: "Видео из чата %{number}"
         read: "Прочитано"
       pagination:
         page: "Страница %{page} из %{pages}"

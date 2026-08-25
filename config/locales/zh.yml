@@ -982,6 +982,8 @@ zh:
         image: "图片 %{number}"
         image_alt: "聊天图片 %{number}"
         image_processing: "图片处理中，稍后刷新查看"
+        media_processing: "媒体处理中，稍后刷新查看"
+        video_label: "聊天视频 %{number}"
         read: "已读"
       pagination:
         page: "第 %{page}/%{pages} 页"

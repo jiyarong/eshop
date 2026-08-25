@@ -43,6 +43,20 @@ class RawOzon::ChatImageStoreJobTest < ActiveJob::TestCase
     assert_equal "jpeg-data", @message.images.first.download
   end
 
+  test "accepts Ozon MP4 and MOV attachments" do
+    mp4 = RawOzon::ChatAttachment.parse(
+      "https://api-seller.ozon.ru/v2/chat/file/messenger/video.mp4"
+    )
+    mov = RawOzon::ChatAttachment.parse(
+      "https://api-seller.ozon.ru/v2/chat/file/messenger/video.MOV"
+    )
+
+    assert RawOzon::ChatAttachment.video?(mp4)
+    assert_equal "video/mp4", RawOzon::ChatAttachment.content_type(mp4)
+    assert RawOzon::ChatAttachment.video?(mov)
+    assert_equal "video/quicktime", RawOzon::ChatAttachment.content_type(mov)
+  end
+
   private
 
   def with_stubbed_ozon_client(client)

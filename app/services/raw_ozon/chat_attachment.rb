@@ -9,6 +9,8 @@ module RawOzon
       ".jpg" => "image/jpeg",
       ".png" => "image/png",
       ".webp" => "image/webp",
+      ".mov" => "video/quicktime",
+      ".mp4" => "video/mp4",
     }.freeze
 
     module_function
@@ -26,6 +28,10 @@ module RawOzon
 
     def content_type(uri)
       CONTENT_TYPES[File.extname(uri.path).downcase]
+    end
+
+    def video?(uri)
+      content_type(uri).to_s.start_with?("video/")
     end
   end
 end

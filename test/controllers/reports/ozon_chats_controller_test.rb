@@ -110,7 +110,7 @@ class Reports::OzonChatsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".ozon-chat-message__image", count: 0
-    assert_select ".ozon-chat-message__image-pending", I18n.t("reports.ozon_chats.messages.image_processing")
+    assert_select ".ozon-chat-message__image-pending", I18n.t("reports.ozon_chats.messages.media_processing")
 
     sign_in @user
     get expected_path

@@ -9645,6 +9645,14 @@ body.auth-shell .auth-submit:hover {
   object-fit: contain;
 }
 
+.ozon-chat-message__video {
+  display: block;
+  width: min(420px, 100%);
+  max-height: 420px;
+  border-radius: 6px;
+  background: #111827;
+}
+
 .ozon-chat-message__image-pending {
   width: min(220px, 100%);
   min-height: 92px;
