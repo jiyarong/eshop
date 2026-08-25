@@ -4,13 +4,6 @@
   master_sku_ids: @spu_sku_selected_master_sku_ids,
   sku_codes: @spu_sku_selected_sku_codes
 }.compact %>
-<% inbox_scroll_key = [
-  @store.id,
-  @chats.current_page,
-  Array(@spu_sku_selected_master_sku_ids).map(&:to_s).sort.join(","),
-  Array(@spu_sku_selected_sku_codes).map(&:to_s).sort.join(",")
-].join(":") %>
-
 <div class="ozon-chat-page <%= "has-explicit-chat" if @explicit_chat && @selected_chat %>">
   <header class="ozon-chat-page__heading">
     <div>
@@ -69,14 +62,15 @@
       </div>
 
       <div class="ozon-chat-inbox__list"
-           data-controller="ozon-chat-inbox-scroll"
-           data-ozon-chat-inbox-scroll-key-value="<%= inbox_scroll_key %>">
+           data-controller="ozon-chat-inbox"
+           data-action="click->ozon-chat-inbox#select">
         <% if @chats.any? %>
           <% @chats.each do |chat| %>
             <% sku_codes = chat.sku_products.map(&:sku_code).uniq %>
             <% active = chat == @selected_chat %>
             <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: chat.chat_id)),
                         class: "ozon-chat-thread #{"is-active" if active}",
+                        data: { turbo_frame: "ozon_chat_detail", turbo_action: "advance" },
                         aria: { current: ("page" if active) } do %>
               <span class="ozon-chat-thread__avatar"><%= (sku_codes.first || "OZ").first(2).upcase %></span>
               <span class="ozon-chat-thread__body">
@@ -127,12 +121,13 @@
       <% end %>
     </aside>
 
-    <section class="ozon-chat-detail" aria-label="<%= t("reports.ozon_chats.detail.aria_label") %>">
+    <%= turbo_frame_tag "ozon_chat_detail", class: "ozon-chat-detail", aria: { label: t("reports.ozon_chats.detail.aria_label") } do %>
       <% if @selected_chat %>
         <% selected_sku_codes = @selected_chat.sku_products.map(&:sku_code).uniq %>
         <header class="ozon-chat-detail__header">
           <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page)),
                       class: "ozon-chat-detail__back",
+                      data: { turbo_frame: "_top" },
                       aria: { label: t("reports.ozon_chats.detail.back") } do %>
             <i class="bi bi-arrow-left" aria-hidden="true"></i>
           <% end %>
@@ -153,14 +148,14 @@
         <% if @message_page.total_pages > 1 %>
           <nav class="ozon-chat-message-pagination" aria-label="<%= t("reports.ozon_chats.pagination.messages_aria_label") %>">
             <% if @message_page.next_page %>
-              <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: @selected_chat.chat_id, message_page: @message_page.next_page)) do %>
+              <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: @selected_chat.chat_id, message_page: @message_page.next_page)), data: { turbo_action: "advance" } do %>
                 <i class="bi bi-arrow-up" aria-hidden="true"></i>
                 <span><%= t("reports.ozon_chats.pagination.older_messages") %></span>
               <% end %>
             <% end %>
             <span><%= t("reports.ozon_chats.pagination.message_page", page: @message_page.current_page, pages: @message_page.total_pages) %></span>
             <% if @message_page.prev_page %>
-              <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: @selected_chat.chat_id, message_page: @message_page.prev_page)) do %>
+              <%= link_to reports_ozon_chats_path(filter_params.merge(page: @chats.current_page, chat_id: @selected_chat.chat_id, message_page: @message_page.prev_page)), data: { turbo_action: "advance" } do %>
                 <span><%= t("reports.ozon_chats.pagination.newer_messages") %></span>
                 <i class="bi bi-arrow-down" aria-hidden="true"></i>
               <% end %>
@@ -239,6 +234,6 @@
           <span><%= t("reports.ozon_chats.empty.detail_body") %></span>
         </div>
       <% end %>
-    </section>
+    <% end %>
   </main>
 </div>
