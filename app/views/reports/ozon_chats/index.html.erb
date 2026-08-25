@@ -4,6 +4,12 @@
   master_sku_ids: @spu_sku_selected_master_sku_ids,
   sku_codes: @spu_sku_selected_sku_codes
 }.compact %>
+<% inbox_scroll_key = [
+  @store.id,
+  @chats.current_page,
+  Array(@spu_sku_selected_master_sku_ids).map(&:to_s).sort.join(","),
+  Array(@spu_sku_selected_sku_codes).map(&:to_s).sort.join(",")
+].join(":") %>
 
 <div class="ozon-chat-page <%= "has-explicit-chat" if @explicit_chat && @selected_chat %>">
   <header class="ozon-chat-page__heading">
@@ -62,7 +68,9 @@
         <% end %>
       </div>
 
-      <div class="ozon-chat-inbox__list" data-controller="ozon-chat-inbox-scroll">
+      <div class="ozon-chat-inbox__list"
+           data-controller="ozon-chat-inbox-scroll"
+           data-ozon-chat-inbox-scroll-key-value="<%= inbox_scroll_key %>">
         <% if @chats.any? %>
           <% @chats.each do |chat| %>
             <% sku_codes = chat.sku_products.map(&:sku_code).uniq %>

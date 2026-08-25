@@ -48,6 +48,7 @@ class Reports::OzonChatsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", I18n.t("reports.ozon_chats.title")
     assert_select ".ozon-chat-workspace"
     assert_select ".ozon-chat-inbox__list[data-controller='ozon-chat-inbox-scroll']"
+    assert_select ".ozon-chat-inbox__list[data-ozon-chat-inbox-scroll-key-value]"
     assert_select "[data-controller='spu-sku-filter']"
     assert_select ".ozon-chat-store-switcher__item.is-active", @store.store_name
     assert_select ".ozon-chat-thread.is-active", 1
