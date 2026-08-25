@@ -180,9 +180,10 @@
                 <% if message.message_text.present? %>
                   <%= simple_format(message.message_text, {}, wrapper_tag: "div") %>
                 <% end %>
-                <% if message.attachment_urls.any? %>
+                <% image_urls = message.attachment_urls.select { |url| RawOzon::ChatAttachment.parse(url) } %>
+                <% if image_urls.any? %>
                   <div class="ozon-chat-message__attachments">
-                    <% message.attachment_urls.each_with_index do |url, index| %>
+                    <% image_urls.each_with_index do |url, index| %>
                       <% stored_image = message.stored_image_for(url) %>
                       <% image_path = reports_ozon_chat_attachment_path(
                         store_id: @store.id,

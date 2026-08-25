@@ -134,6 +134,23 @@ class RawOzonChatsSyncTest < ActiveSupport::TestCase
     end
   end
 
+  test "historical image backfill ignores ordinary links" do
+    chat = RawOzon::Chat.create!(
+      account: @account, chat_id: "ordinary-link-#{@token}", chat_type: "BUYER_SELLER",
+      raw_json: {}, synced_at: Time.current
+    )
+    RawOzon::ChatMessage.create!(
+      chat: chat, message_id: 9_000_000_000_000_000_000 + @token.hex % 100_000,
+      message_data: ["https://www.ozon.ru/help"], attachment_urls: ["https://www.ozon.ru/help"],
+      sent_at: Time.current, raw_json: {}, synced_at: Time.current
+    )
+    clear_enqueued_jobs
+
+    assert_no_enqueued_jobs only: RawOzon::ChatImageStoreJob do
+      assert_equal 0, RawOzon::ChatImageBackfillJob.perform_now(account_id: @account.id)
+    end
+  end
+
   test "incomplete history resumes backward pagination from the oldest stored message" do
     client = FakeOzonClient.new([
       chat_list([chat_item("buyer-1", type: "BUYER_SELLER", last_message_id: 102)], has_next: false),
@@ -189,7 +206,7 @@ class RawOzonChatsSyncTest < ActiveSupport::TestCase
       "created_at" => Time.utc(2026, 8, 24, 12, 0, id % 60).iso8601,
       "is_read" => true,
       "is_image" => image,
-      "data" => image ? [text, "![](https://example.test/#{id}.jpg)"] : [text],
+      "data" => image ? [text, "![](https://api-seller.ozon.ru/v2/chat/file/messenger/#{id}.jpg)"] : [text],
       "context" => { "sku" => sku.to_s, "order_number" => "" },
     }
   end
