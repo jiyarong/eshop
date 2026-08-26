@@ -1205,6 +1205,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#sku_detail_tab_ozon_chats"
+    assert_select ".sku-ozon-chat .ozon-chat-store-tag.is-active[aria-pressed='true']",
+                  text: @sales_store.store_name, count: 1
     assert_select ".sku-ozon-chat .ozon-chat-thread[href*=?]", linked_chat.chat_id, count: 1
     assert_select ".sku-ozon-chat .ozon-chat-thread[href*=?]", other_chat.chat_id, count: 0
     assert_select ".sku-ozon-chat .ozon-chat-message", /Scoped message/

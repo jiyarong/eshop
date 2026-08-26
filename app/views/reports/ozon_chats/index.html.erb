@@ -39,12 +39,13 @@
       </div>
     <% end %>
 
-    <nav class="ozon-chat-store-switcher" aria-label="<%= t("reports.ozon_chats.filters.store") %>">
+    <nav class="weekly-profit-tag-row ozon-chat-store-tags" aria-label="<%= t("reports.ozon_chats.filters.store") %>">
       <% @stores.each do |store| %>
+        <% active = store == @store %>
         <%= link_to store.store_name,
                     reports_ozon_chats_path(filter_params.merge(store_id: store.id).except(:chat_id, :page, :message_page)),
-                    class: "ozon-chat-store-switcher__item #{"is-active" if store == @store}",
-                    aria: { current: ("page" if store == @store) } %>
+                    class: "weekly-profit-filter-tag ozon-chat-store-tag#{" is-active" if active}",
+                    aria: { pressed: active } %>
       <% end %>
     </nav>
   </section>

@@ -51,7 +51,7 @@ class Reports::OzonChatsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#ozon_chat_detail.ozon-chat-detail"
     assert_select ".ozon-chat-thread[data-turbo-frame='ozon_chat_detail']"
     assert_select "[data-controller='spu-sku-filter']"
-    assert_select ".ozon-chat-store-switcher__item.is-active", @store.store_name
+    assert_select ".ozon-chat-store-tag.is-active[aria-pressed='true']", @store.store_name
     assert_select ".ozon-chat-thread.is-active", 1
     assert_select ".ozon-chat-thread__topline strong", @sku.sku_code
     assert_select ".ozon-chat-message.is-customer", /Buyer question/

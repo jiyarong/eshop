@@ -1,16 +1,22 @@
 <% if @sku_ozon_chat_store %>
   <% tab_frame_data = @sku_detail_drawer ? { turbo_frame: @sku_detail_tab_frame_id } : {} %>
   <div class="sku-ozon-chat">
-    <% if @sku_ozon_chat_stores.many? %>
-      <nav class="ozon-chat-store-switcher" aria-label="<%= t("reports.ozon_chats.filters.store") %>">
-        <% @sku_ozon_chat_stores.each do |store| %>
-          <%= link_to store.store_name,
-                      sku_detail_tab_path("ozon_chats", ozon_chat_store_id: store.id, ozon_chat_id: nil, ozon_chat_page: nil),
-                      class: "ozon-chat-store-switcher__item #{"is-active" if store == @sku_ozon_chat_store}",
-                      data: tab_frame_data,
-                      aria: { current: ("page" if store == @sku_ozon_chat_store) } %>
-        <% end %>
-      </nav>
+    <% if @sku_ozon_chat_stores.any? %>
+      <div class="weekly-profit-filter-block sku-ozon-chat__store-filter">
+        <div class="field field--full weekly-profit-store-field">
+          <span class="field-label"><%= t("reports.ozon_chats.filters.store") %></span>
+          <nav class="weekly-profit-tag-row" aria-label="<%= t("reports.ozon_chats.filters.store") %>">
+            <% @sku_ozon_chat_stores.each do |store| %>
+              <% active = store == @sku_ozon_chat_store %>
+              <%= link_to store.store_name,
+                          sku_detail_tab_path("ozon_chats", ozon_chat_store_id: store.id, ozon_chat_id: nil, ozon_chat_page: nil),
+                          class: "weekly-profit-filter-tag ozon-chat-store-tag#{" is-active" if active}",
+                          data: tab_frame_data,
+                          aria: { pressed: active } %>
+            <% end %>
+          </nav>
+        </div>
+      </div>
     <% end %>
 
     <div class="ozon-chat-workspace">
