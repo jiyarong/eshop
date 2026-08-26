@@ -56,7 +56,8 @@ class Reports::OzonChatsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ozon-chat-thread__topline strong", @sku.sku_code
     assert_select ".ozon-chat-message.is-customer", /Buyer question/
     assert_select ".ozon-chat-message.is-seller", /Seller reply/
-    assert_select ".ozon-chat-detail__sku[href=?]", report_sku_path(@sku.sku_code), text: @sku.sku_code
+    assert_select ".ozon-chat-detail__sku[href=?][data-turbo-frame='sku_detail_drawer']",
+      report_sku_path(@sku.sku_code, tab: "ozon_chats"), text: @sku.sku_code
   end
 
   test "filters chats through store-scoped SKU product links" do

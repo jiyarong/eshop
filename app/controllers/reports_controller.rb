@@ -20,7 +20,7 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :edit_sku_attachment, :update_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ai_inventory_health basic].freeze
+  SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats ai_inventory_health basic].freeze
   SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
@@ -721,6 +721,7 @@ class ReportsController < ApplicationController
     load_sku_operation_actions if @active_tab == "operation_actions"
     load_sku_inventory_detail if @active_tab == "inventory"
     load_sku_ads if @active_tab == "ads"
+    load_sku_ozon_chats if @active_tab == "ozon_chats"
 
     @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
     @to_date = parse_report_date(params[:to_date]) || user_today
@@ -742,6 +743,25 @@ class ReportsController < ApplicationController
     @sku_sales_summary = build_sku_sales_summary(@sku_sales_rows)
     @sku_sales_chart_series = build_sku_sales_chart_series(@sku_sales_rows)
     @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
+  end
+
+  def load_sku_ozon_chats
+    ozon_store_ids = @sku_products.filter_map { |product| product.store_id if product.platform == "ozon" }.uniq
+    @sku_ozon_chat_stores = Ec::Store.active.where(platform: "ozon", id: ozon_store_ids)
+      .where.not(ozon_raw_account_id: nil).order(:store_name)
+    @sku_ozon_chat_store = @sku_ozon_chat_stores.find_by(id: params[:ozon_chat_store_id]) || @sku_ozon_chat_stores.first
+    return unless @sku_ozon_chat_store
+
+    scope = OzonChats::InboxQuery.new(store: @sku_ozon_chat_store, sku_codes: [@sku.sku_code]).scope
+      .includes(sku_links: :sku_product)
+    page = Integer(params[:ozon_chat_page], exception: false)
+    @sku_ozon_chats = scope.page(page&.positive? ? page : 1).per(20)
+    @sku_ozon_selected_chat = scope.find_by(chat_id: params[:ozon_chat_id]) || @sku_ozon_chats.first
+    @sku_ozon_messages = if @sku_ozon_selected_chat
+      @sku_ozon_selected_chat.messages.with_attached_images.order(message_id: :desc).limit(100).to_a.reverse
+    else
+      []
+    end
   end
 
   def sku_predicted_cost_params

@@ -1338,6 +1338,7 @@ en:
         uploaded: "%{count} attachments uploaded"
       empty:
         ai_inventory_health: "No AI inventory diagnosis records"
+        ozon_chats: "No Ozon chats are linked to this SKU"
         attachments: "No attachments"
         cost_data: "No cost data"
         inventory_levels: "No platform inventory snapshots"
@@ -1553,6 +1554,7 @@ en:
         profit: "Profit allocation"
         sales_funnel: "Sales funnel"
         search_terms: "Search terms"
+        ozon_chats: "Ozon Chat"
         supply_orders: "Warehouse shipments"
         warehouses: "Allocation recommendations"
         operation_actions: "Operation records"

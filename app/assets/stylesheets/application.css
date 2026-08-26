@@ -9669,6 +9669,9 @@ body.auth-shell .auth-submit:hover {
 
 .ozon-chat-message__image-pending i { font-size: 22px; }
 .ozon-chat-message__bubble footer { display: flex; align-items: center; justify-content: end; gap: 4px; margin-top: 3px; color: #7c8998; font-size: 9px; }
+
+.sku-ozon-chat { display: grid; gap: 10px; min-width: 0; }
+.sku-ozon-chat .ozon-chat-workspace { height: min(680px, calc(100vh - 285px)); min-height: 520px; }
 .ozon-chat-message__bubble footer i { color: #2563eb; font-size: 12px; }
 
 .ozon-chat-empty {

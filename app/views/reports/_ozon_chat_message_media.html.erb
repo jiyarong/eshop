@@ -1,0 +1,38 @@
+<% media_items = message.attachment_urls.each_with_index.filter_map do |url, index| %>
+  <% uri = RawOzon::ChatAttachment.parse(url) %>
+  <% [url, index, uri] if uri %>
+<% end %>
+<% if media_items.any? %>
+  <div class="ozon-chat-message__attachments">
+    <% media_items.each do |url, index, media_uri| %>
+      <% stored_media = message.stored_image_for(url) %>
+      <% media_path = reports_ozon_chat_attachment_path(
+        store_id: store.id,
+        chat_id: chat.chat_id,
+        message_id: message.message_id,
+        attachment_index: index
+      ) %>
+      <% if stored_media %>
+        <% if RawOzon::ChatAttachment.video?(media_uri) %>
+          <%= video_tag media_path,
+                        controls: true,
+                        preload: "metadata",
+                        class: "ozon-chat-message__video",
+                        aria: { label: t("reports.ozon_chats.messages.video_label", number: index + 1) } %>
+        <% else %>
+          <%= link_to media_path, target: "_blank", rel: "noopener", class: "ozon-chat-message__image-link" do %>
+            <%= image_tag media_path,
+                          alt: t("reports.ozon_chats.messages.image_alt", number: index + 1),
+                          loading: "lazy",
+                          class: "ozon-chat-message__image" %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div class="ozon-chat-message__image-pending">
+          <i class="bi bi-image" aria-hidden="true"></i>
+          <span><%= t("reports.ozon_chats.messages.media_processing") %></span>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

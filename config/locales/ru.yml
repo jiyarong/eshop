@@ -1303,6 +1303,7 @@ ru:
         uploaded: "Загружено файлов: %{count}"
       empty:
         ai_inventory_health: "Нет записей AI-диагностики склада"
+        ozon_chats: "Для этого SKU нет связанных чатов Ozon"
         attachments: "Нет файлов"
         cost_data: "Нет данных о себестоимости"
         order_data: "Нет заказов в выбранном диапазоне"
@@ -1504,6 +1505,7 @@ ru:
         profit: "Распределение прибыли"
         sales_funnel: "Воронка продаж"
         search_terms: "Поисковые запросы"
+        ozon_chats: "Чаты Ozon"
         supply_orders: "Поставки на склад"
         warehouses: "Рекомендации по распределению"
         operation_actions: "Операционные записи"

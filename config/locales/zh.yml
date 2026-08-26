@@ -1540,6 +1540,7 @@ zh:
         uploaded: "已上传 %{count} 个附件"
       empty:
         ai_inventory_health: "暂无 AI 库存诊断记录"
+        ozon_chats: "当前 SKU 暂无关联的 Ozon 聊天"
         attachments: "暂无附件"
         cost_data: "暂无成本数据"
         inventory_levels: "暂无平台在库快照"
@@ -1755,6 +1756,7 @@ zh:
         profit: "利润归集"
         sales_funnel: "销售漏斗"
         search_terms: "搜索词"
+        ozon_chats: "Ozon Chat"
         supply_orders: "送仓记录"
         warehouses: "分仓建议"
         operation_actions: "运营记录"

@@ -1174,6 +1174,46 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".definition-list", minimum: 1
   end
 
+  test "sku detail Ozon Chat tab scopes conversations through SKU products" do
+    sku_product = Ec::SkuProduct.find_by!(store: @sales_store, sku_code: @sku.sku_code)
+    other_product = Ec::SkuProduct.find_by!(store: @sales_store, sku_code: @second_sku.sku_code)
+    linked_chat = RawOzon::Chat.create!(
+      account: @sales_ozon_account, chat_id: "linked-#{@sku_code}", chat_type: "BUYER_SELLER",
+      last_message_at: Time.current, last_message_preview: "Scoped conversation", raw_json: {}, synced_at: Time.current
+    )
+    other_chat = RawOzon::Chat.create!(
+      account: @sales_ozon_account, chat_id: "other-#{@sku_code}", chat_type: "BUYER_SELLER",
+      last_message_at: 1.minute.ago, last_message_preview: "Other conversation", raw_json: {}, synced_at: Time.current
+    )
+    RawOzon::ChatSkuLink.create!(
+      chat: linked_chat, platform_sku_id: sku_product.platform_sku_id, sku_product: sku_product,
+      first_message_id: 101, last_message_id: 101, linked_at: Time.current
+    )
+    RawOzon::ChatSkuLink.create!(
+      chat: other_chat, platform_sku_id: other_product.platform_sku_id, sku_product: other_product,
+      first_message_id: 201, last_message_id: 201, linked_at: Time.current
+    )
+    RawOzon::ChatMessage.create!(
+      chat: linked_chat, message_id: 8_000_000_000_000_000_000 + @sku.id,
+      user_type: "Customer", message_text: "Scoped message", message_data: ["Scoped message"],
+      sent_at: Time.current, raw_json: {}, synced_at: Time.current
+    )
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ozon_chats" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_tab_ozon_chats" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_detail_tab_ozon_chats"
+    assert_select ".sku-ozon-chat .ozon-chat-thread[href*=?]", linked_chat.chat_id, count: 1
+    assert_select ".sku-ozon-chat .ozon-chat-thread[href*=?]", other_chat.chat_id, count: 0
+    assert_select ".sku-ozon-chat .ozon-chat-message", /Scoped message/
+  ensure
+    RawOzon::ChatSkuLink.where(chat_id: [linked_chat&.id, other_chat&.id]).delete_all
+    RawOzon::ChatMessage.where(chat_id: [linked_chat&.id, other_chat&.id]).delete_all
+    RawOzon::Chat.where(id: [linked_chat&.id, other_chat&.id]).delete_all
+  end
+
   test "sku detail preserves product info line breaks" do
     @sku.update!(product_info: "第一行产品信息\n第二行产品信息")
 
