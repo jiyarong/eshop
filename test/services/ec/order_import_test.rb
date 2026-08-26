@@ -513,6 +513,41 @@ module Ec
       old_posting&.destroy
     end
 
+    test "ozon reimport preserves order items referenced by returns" do
+      Ec::OrderImport::Ozon.new.call
+      order = Ec::Order.find_by!(platform: "ozon", external_order_number: @ozon_fbo.order_number)
+      order_item = order.items.sole
+      normalized_return = Ec::Return.create!(
+        platform: "ozon",
+        store: @ozon_store,
+        order: order,
+        return_key: "RETURN-#{@token}",
+        return_type: "customer_return"
+      )
+      return_item = normalized_return.items.create!(
+        store: @ozon_store,
+        platform: "ozon",
+        order_item: order_item,
+        item_key: "ITEM-#{@token}",
+        quantity: 1
+      )
+      raw_item = RawOzon::PostingItem.find_by!(
+        account: @ozon_account,
+        posting_number: @ozon_fbo.posting_number,
+        posting_type: "fbo"
+      )
+      raw_item.update!(price: 199, name: "Updated product")
+
+      Ec::OrderImport::Ozon.new.call
+
+      assert_equal order_item.id, order.items.reload.sole.id
+      assert_equal order_item.id, return_item.reload.order_item_id
+      assert_equal BigDecimal("199"), order_item.reload.unit_price
+      assert_equal "Updated product", order_item.product_name_source
+    ensure
+      normalized_return&.destroy!
+    end
+
     private
   end
 end

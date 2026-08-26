@@ -106,23 +106,26 @@ module Ec
 
       def import_items(posting, store, order, fulfillment, type)
         existing = Ec::OrderItem.where(order: order, fulfillment: fulfillment)
+        existing_by_external_item_id = existing.order(:id).group_by(&:external_item_id)
         source_items = RawOzon::PostingItem.where(
           account_id: posting.account_id,
           posting_number: posting.posting_number,
           posting_type: type
         ).order(:id)
 
-        existing.delete_all
+        imported_item_ids = []
         source_items.each do |item|
           fin = financial_product(posting, item)
           product = product_for(posting.account_id, item)
           sku_product = sku_product_for(store, product&.ozon_product_id)
-          Ec::OrderItem.create!(
+          external_item_id = "#{posting.posting_number}:#{item.ozon_sku || item.offer_id}"
+          order_item = existing_by_external_item_id[external_item_id]&.shift || existing.build
+          order_item.assign_attributes(
             order: order,
             fulfillment: fulfillment,
             platform: "ozon",
             store: store,
-            external_item_id: "#{posting.posting_number}:#{item.ozon_sku || item.offer_id}",
+            external_item_id: external_item_id,
             platform_sku_id: item.ozon_sku&.to_s,
             offer_id: item.offer_id,
             sku_code: sku_product&.sku_code,
@@ -139,7 +142,12 @@ module Ec
             item_payload: item.raw_json,
             synced_at: item.synced_at || posting.synced_at
           )
+          order_item.save!
+          imported_item_ids << order_item.id
         end
+
+        stale_items = imported_item_ids.any? ? existing.where.not(id: imported_item_ids) : existing
+        stale_items.destroy_all
       end
 
       def financial_product(posting, item)
