@@ -269,8 +269,10 @@ module SalesFunnelReports
         .where(platform: platform, store_id: store_ids)
         .where.not(column => nil)
         .each_with_object({}) do |sku_product, mapping|
+          next unless sku_product.sku
+
           mapping[sku_product.public_send(column).to_s] = {
-            sku_id: sku_product.sku&.id,
+            sku_id: sku_product.sku.id,
             store_id: sku_product.store_id,
             sku_code: sku_product.sku_code,
             product_name: localized_product_name(sku_product.sku)

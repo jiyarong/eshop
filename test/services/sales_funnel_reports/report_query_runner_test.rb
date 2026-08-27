@@ -78,6 +78,32 @@ class SalesFunnelReports::ReportQueryRunnerTest < ActiveSupport::TestCase
     assert_equal "negative", report.dig(:comparison, :summary, :cancellations, :semantic)
   end
 
+  test "ignores platform bindings whose SKU no longer exists" do
+    orphan_sku = Ec::Sku.create!(sku_code: "FUNNEL-ORPHAN-#{@token}", product_name: "Orphaned product")
+    orphan_product = Ec::SkuProduct.create!(
+      sku_code: orphan_sku.sku_code,
+      store: @ozon_store,
+      product_id: "OZON-ORPHAN-#{@token}",
+      platform_sku_id: "89998"
+    )
+    orphan_sku.destroy!
+    create_ozon_period(
+      Date.new(2026, 7, 6),
+      Date.new(2026, 7, 12),
+      views: 100,
+      carts: 10,
+      orders: 2,
+      revenue: 200
+    )
+
+    report = run_report("ozon:#{@ozon_account.id}", sku_codes: [@sku.sku_code])
+
+    assert_equal [@sku.sku_code], report[:rows].map { |row| row[:sku_code] }
+  ensure
+    Ec::SkuProduct.where(id: orphan_product&.id).delete_all
+    Ec::Sku.with_deleted.where(id: orphan_sku&.id).delete_all
+  end
+
   test "rejects ranges whose boundaries are not a complete calendar week" do
     error = assert_raises(ArgumentError) do
       SalesFunnelReports::ReportQueryRunner.run(
