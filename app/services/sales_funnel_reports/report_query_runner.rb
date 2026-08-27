@@ -15,17 +15,18 @@ module SalesFunnelReports
       store_ending_inventory
     ].freeze
 
-    def self.run(params:, today:)
-      new(params: params, today: today).call
+    def self.run(params:, today:, include_comparison: true)
+      new(params: params, today: today, include_comparison: include_comparison).call
     end
 
     def self.store_options
       WeeklyProfitReports::ReportQueryRunner.store_options
     end
 
-    def initialize(params:, today:)
+    def initialize(params:, today:, include_comparison: true)
       @params = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : params.to_h
       @today = today.to_date
+      @include_comparison = include_comparison
     end
 
     def call
@@ -33,12 +34,9 @@ module SalesFunnelReports
       account = find_account(parsed[:store_ref])
       rows = rows_for(account, parsed)
       summary = build_summary(rows, parsed[:platform])
-      previous = previous_period(parsed)
-      previous_rows = rows_for(account, previous)
-      previous_summary = build_summary(previous_rows, parsed[:platform])
       columns = parsed[:platform] == "wb" ? WB_COLUMNS : OZON_COLUMNS
 
-      {
+      payload = {
         period: { from_date: parsed[:from_date], to_date: parsed[:to_date] },
         meta: {
           platform: parsed[:platform],
@@ -46,19 +44,12 @@ module SalesFunnelReports
           store_name: account_name(account, parsed[:platform]),
           columns: columns
         },
-        comparison: {
-          period: { from_date: previous[:from_date], to_date: previous[:to_date] },
-          summary: build_summary_comparison(summary, previous_summary, summary.keys),
-          rows: build_row_comparison_map(
-            rows,
-            previous_rows,
-            key_builder: ->(row) { row[:sku_code].to_s },
-            metric_keys: columns - %i[sku_code product_name]
-          )
-        },
         summary: summary,
         rows: rows
       }
+
+      payload[:comparison] = comparison_payload(account, parsed, rows, summary, columns) if @include_comparison
+      payload
     end
 
     def parsed_params
@@ -94,6 +85,23 @@ module SalesFunnelReports
     private
 
     attr_reader :params, :today
+
+    def comparison_payload(account, parsed, rows, summary, columns)
+      previous = previous_period(parsed)
+      previous_rows = rows_for(account, previous)
+      previous_summary = build_summary(previous_rows, parsed[:platform])
+
+      {
+        period: { from_date: previous[:from_date], to_date: previous[:to_date] },
+        summary: build_summary_comparison(summary, previous_summary, summary.keys),
+        rows: build_row_comparison_map(
+          rows,
+          previous_rows,
+          key_builder: ->(row) { row[:sku_code].to_s },
+          metric_keys: columns - %i[sku_code product_name]
+        )
+      }
+    end
 
     def param(name)
       params[name.to_s] || params[name.to_sym]

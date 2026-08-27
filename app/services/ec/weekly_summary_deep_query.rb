@@ -11,15 +11,16 @@ module Ec
       ad_ratio_pct cost_return_pct projected_roi_pct annualized_return_pct annualized_net_profit_cny
     ].freeze
 
-    def self.run(from_date:, to_date:, sku_codes: [])
-      new(from_date:, to_date:, sku_codes:).run
+    def self.run(from_date:, to_date:, sku_codes: [], include_comparison: true)
+      new(from_date:, to_date:, sku_codes:, include_comparison:).run
     end
 
-    def initialize(from_date:, to_date:, rate: nil, sku_codes: [])
+    def initialize(from_date:, to_date:, rate: nil, sku_codes: [], include_comparison: true)
       @from_date = from_date.to_date
       @to_date = to_date.to_date
       @rate = rate || Ec::WeeklyRate.resolve(@from_date)
       @sku_codes = sku_codes
+      @include_comparison = include_comparison
       raise "找不到 #{@from_date} 的汇率，请先录入 ec_weekly_rates" unless @rate
     end
 
@@ -28,30 +29,11 @@ module Ec
       aggregated_rows = aggregate_rows_by_sku(rows)
       current_rows = build_wsu_deep_row_hashes(aggregated_rows, from_date: @from_date, to_date: @to_date)
       current_summary = build_wsu_deep_summary_hash(aggregated_rows, unalloc_cny, rate: @rate, from_date: @from_date, to_date: @to_date)
-      prev_from, prev_to = previous_period_range(@from_date, @to_date)
-      prev_rows, prev_unalloc, prev_rate = previous_rows_data
-      previous_aggregated_rows = aggregate_rows_by_sku(prev_rows)
-      previous_rows = build_wsu_deep_row_hashes(previous_aggregated_rows, from_date: prev_from, to_date: prev_to)
-      previous_summary = prev_rate ? build_wsu_deep_summary_hash(previous_aggregated_rows, prev_unalloc, rate: prev_rate, from_date: prev_from, to_date: prev_to) : nil
-
-      {
+      payload = {
         report_type: "wsu_deep",
         period: {
           from_date: @from_date.to_s,
           to_date: @to_date.to_s
-        },
-        comparison: {
-          period: {
-            from_date: prev_from.to_s,
-            to_date: prev_to.to_s
-          },
-          summary: build_summary_comparison(current_summary, previous_summary, COMPARISON_SUMMARY_KEYS),
-          rows: build_row_comparison_map(
-            current_rows,
-            previous_rows,
-            key_builder: ->(row) { row[:sku].to_s },
-            metric_keys: COMPARISON_ROW_KEYS
-          )
         },
         meta: {
           rates: {
@@ -63,9 +45,31 @@ module Ec
         rows: current_rows,
         extras: {}
       }
+
+      payload[:comparison] = comparison_payload(current_rows, current_summary) if @include_comparison
+      payload
     end
 
     private
+
+    def comparison_payload(current_rows, current_summary)
+      prev_from, prev_to = previous_period_range(@from_date, @to_date)
+      prev_rows, prev_unalloc, prev_rate = previous_rows_data
+      previous_aggregated_rows = aggregate_rows_by_sku(prev_rows)
+      previous_rows = build_wsu_deep_row_hashes(previous_aggregated_rows, from_date: prev_from, to_date: prev_to)
+      previous_summary = prev_rate ? build_wsu_deep_summary_hash(previous_aggregated_rows, prev_unalloc, rate: prev_rate, from_date: prev_from, to_date: prev_to) : nil
+
+      {
+        period: { from_date: prev_from.to_s, to_date: prev_to.to_s },
+        summary: build_summary_comparison(current_summary, previous_summary, COMPARISON_SUMMARY_KEYS),
+        rows: build_row_comparison_map(
+          current_rows,
+          previous_rows,
+          key_builder: ->(row) { row[:sku].to_s },
+          metric_keys: COMPARISON_ROW_KEYS
+        )
+      }
+    end
 
     def previous_rows_data
       prev_from, prev_to = previous_period_range(@from_date, @to_date)

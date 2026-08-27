@@ -102,6 +102,10 @@ Rails.application.routes.draw do
     resources :weekly_profit_reports, only: [:create]
     resources :inventory_reports, only: [:create]
     resources :supply_order_reports, only: [:create]
+
+    namespace :v2 do
+      get "skus/full_context" => "skus#full_context"
+    end
   end
 
   namespace :admin do

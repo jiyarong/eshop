@@ -11,15 +11,16 @@ module Ec
       "ozon" => %i[sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
     }.freeze
 
-    def self.run(store_ref:, from_date:, to_date:, sku_codes: [])
-      new(store_ref:, from_date:, to_date:, sku_codes:).run
+    def self.run(store_ref:, from_date:, to_date:, sku_codes: [], include_comparison: true)
+      new(store_ref:, from_date:, to_date:, sku_codes:, include_comparison:).run
     end
 
-    def initialize(store_ref:, from_date:, to_date:, sku_codes: [])
+    def initialize(store_ref:, from_date:, to_date:, sku_codes: [], include_comparison: true)
       @store_ref = store_ref.to_s
       @from_date = from_date.to_date
       @to_date = to_date.to_date
       @sku_codes = sku_codes
+      @include_comparison = include_comparison
       @platform, @account_id = parse_store_ref!(@store_ref)
     end
 
@@ -29,35 +30,11 @@ module Ec
       raise ArgumentError, "missing_weekly_rate" unless rate
 
       service = build_service(rate).call
-      prev_from, prev_to = previous_period_range(@from_date, @to_date)
-      previous_rate = rate_for(prev_from)
-      previous_service = previous_rate ? build_service(previous_rate, from_date: prev_from, to_date: prev_to).call : nil
-
-      {
+      payload = {
         report_type: "wr",
         period: {
           from_date: @from_date.to_s,
           to_date: @to_date.to_s
-        },
-        comparison: {
-          period: {
-            from_date: prev_from.to_s,
-            to_date: prev_to.to_s
-          },
-          summary: build_summary_comparison(service.summary, previous_service&.summary, SUMMARY_KEYS.fetch(@platform)),
-          rows: build_row_comparison_map(
-            service.results,
-            previous_service&.results || [],
-            key_builder: ->(row) { wr_row_key(row) },
-            metric_keys: ROW_KEYS.fetch(@platform)
-          ),
-          extras: {
-            unallocated: build_unallocated_comparison_map(
-              wr_unallocated_rows(service.unallocated),
-              wr_unallocated_rows(previous_service&.unallocated),
-              key_builder: ->(row) { wr_unallocated_row_key(row) }
-            )
-          }
         },
         meta: {
           platform: @platform,
@@ -70,9 +47,36 @@ module Ec
           unallocated: service.unallocated
         }
       }
+
+      payload[:comparison] = comparison_payload(service) if @include_comparison
+      payload
     end
 
     private
+
+    def comparison_payload(service)
+      prev_from, prev_to = previous_period_range(@from_date, @to_date)
+      previous_rate = rate_for(prev_from)
+      previous_service = previous_rate ? build_service(previous_rate, from_date: prev_from, to_date: prev_to).call : nil
+
+      {
+        period: { from_date: prev_from.to_s, to_date: prev_to.to_s },
+        summary: build_summary_comparison(service.summary, previous_service&.summary, SUMMARY_KEYS.fetch(@platform)),
+        rows: build_row_comparison_map(
+          service.results,
+          previous_service&.results || [],
+          key_builder: ->(row) { wr_row_key(row) },
+          metric_keys: ROW_KEYS.fetch(@platform)
+        ),
+        extras: {
+          unallocated: build_unallocated_comparison_map(
+            wr_unallocated_rows(service.unallocated),
+            wr_unallocated_rows(previous_service&.unallocated),
+            key_builder: ->(row) { wr_unallocated_row_key(row) }
+          )
+        }
+      }
+    end
 
     def parse_store_ref!(value)
       platform, raw_id = value.split(":", 2)
