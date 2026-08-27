@@ -71,6 +71,66 @@ def scalar(value):
     return str(value)
 
 
+def table_cell(value):
+    return scalar(value).replace("\\", "\\\\").replace("|", "\\|").replace("\r\n", "<br>").replace("\n", "<br>")
+
+
+def flat_dict_list(value):
+    return all(
+        isinstance(item, dict) and all(not isinstance(child, (dict, list)) for child in item.values())
+        for item in value
+    )
+
+
+def render_table(value):
+    if flat_dict_list(value):
+        columns = list(dict.fromkeys(key for item in value for key in item))
+        lines = [
+            f"| {' | '.join(columns)} |",
+            f"| {' | '.join(['---'] * len(columns))} |",
+        ]
+        lines.extend(
+            f"| {' | '.join(table_cell(item.get(column)) for column in columns)} |"
+            for item in value
+        )
+        return lines
+
+    if all(not isinstance(item, (dict, list)) for item in value):
+        return ["| value |", "| --- |", *(f"| {table_cell(item)} |" for item in value)]
+
+    return None
+
+
+def flatten_dict(value, prefix=""):
+    flattened = {}
+    for key, child in value.items():
+        column = f"{prefix}.{key}" if prefix else key
+        if isinstance(child, dict):
+            flattened.update(flatten_dict(child, column))
+        elif isinstance(child, list):
+            flattened[column] = json.dumps(child, ensure_ascii=False, separators=(",", ":"))
+        else:
+            flattened[column] = child
+    return flattened
+
+
+def render_history_inventory(value):
+    if not isinstance(value, list) or not value:
+        return render_markdown(value)
+
+    rows = []
+    for snapshot in value:
+        if not isinstance(snapshot, dict):
+            return render_markdown(value)
+        content = snapshot.get("content")
+        overview = content.get("overview") if isinstance(content, dict) else None
+        row = {"snapshot_date": snapshot.get("snapshot_date")}
+        if isinstance(overview, dict):
+            row.update(flatten_dict(overview))
+        rows.append(row)
+    return render_table(rows)
+
+
 def render_markdown(value, level=2):
     lines = []
     heading = "#" * min(level, 6)
@@ -90,6 +150,9 @@ def render_markdown(value, level=2):
     if isinstance(value, list):
         if not value:
             return ["_Empty list._"]
+        table = render_table(value)
+        if table:
+            return table
         for index, child in enumerate(value, start=1):
             if isinstance(child, (dict, list)):
                 lines.extend([f"{heading} Item {index}", ""])
@@ -116,7 +179,8 @@ def write_context(output_dir, payload, source_url):
         raise RuntimeError("API response does not contain data.context")
 
     for key, value in data["context"].items():
-        body = [f"# {key}", "", *render_markdown(value), ""]
+        rendered = render_history_inventory(value) if key == "history_inventory_info" else render_markdown(value)
+        body = [f"# {key}", "", *rendered, ""]
         atomic_write(output_dir / f"{safe_path_part(key).lower()}.md", "\n".join(body).rstrip() + "\n")
 
     fetched_at = dt.datetime.now().astimezone().isoformat(timespec="seconds")
@@ -145,7 +209,7 @@ def main():
         return 2
 
     today = dt.datetime.now().astimezone().date().isoformat()
-    output_dir = Path.cwd() / "skus" / sku_path / today
+    output_dir = Path.cwd() / "skus" / sku_path / "context_data" / today
     metadata_path = output_dir / "_metadata.md"
     if metadata_path.exists() and not args.refresh:
         print(f"Using today's cached context: {output_dir}")

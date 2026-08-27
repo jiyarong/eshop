@@ -37,7 +37,10 @@ class ErpAI::V2::SkusControllerTest < ActionDispatch::IntegrationTest
       sku: @sku,
       snapshot_type: Ec::InventorySnapshot.snapshot_type,
       snapshot_date: Date.new(2026, 8, 8),
-      content: { overview: { book_stock: 12, platform_stock: 7 } }
+      content: {
+        overview: { book_stock: 12, platform_stock: 7, raw_payload: { oversized: true } },
+        raw_json: { oversized: true }
+      }
     )
     @outside_inventory_snapshot = Ec::Snapshot.create!(
       sku: @sku,
@@ -118,6 +121,29 @@ class ErpAI::V2::SkusControllerTest < ActionDispatch::IntegrationTest
       { "period_from" => "2026-08-10", "period_to" => "2026-08-16" },
       sales_funnel.last.slice("period_from", "period_to")
     )
+    advertising = response.parsed_body.dig("data", "context", "advertise_per_week")
+    assert_equal 2, advertising.size
+    assert_equal(
+      { "period_from" => "2026-08-03", "period_to" => "2026-08-09" },
+      advertising.first.slice("period_from", "period_to")
+    )
+    assert_equal(
+      { "period_from" => "2026-08-10", "period_to" => "2026-08-16" },
+      advertising.last.slice("period_from", "period_to")
+    )
+    assert_equal [], response.parsed_body.dig("data", "context", "ec_orders_full_period")
+    assert_equal [], response.parsed_body.dig("data", "context", "supply_orders_full_period")
+    assert_equal [], response.parsed_body.dig("data", "context", "operation_actions_full_period")
+    search_terms = response.parsed_body.dig("data", "context", "search_terms_per_week")
+    assert_equal 2, search_terms.size
+    assert_equal(
+      { "period_from" => "2026-08-03", "period_to" => "2026-08-09" },
+      search_terms.first.slice("period_from", "period_to")
+    )
+    assert_equal(
+      { "period_from" => "2026-08-10", "period_to" => "2026-08-16" },
+      search_terms.last.slice("period_from", "period_to")
+    )
     current_inventory = response.parsed_body.dig("data", "context", "current_inventory_info")
     assert_equal @sku.sku_code, current_inventory.dig("list", "sku_code")
     assert_equal @sku.sku_code, current_inventory.dig("detail", "sku_code")
@@ -149,6 +175,11 @@ class ErpAI::V2::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal 4, funnel_weeks.size
     assert_equal "2026-08-03", funnel_weeks.first.fetch("period_from")
     assert_equal "2026-08-30", funnel_weeks.last.fetch("period_to")
+    advertising_weeks = response.parsed_body.dig("data", "context", "advertise_per_week")
+    assert_equal 4, advertising_weeks.size
+    assert_equal "2026-08-03", advertising_weeks.first.fetch("period_from")
+    assert_equal "2026-08-30", advertising_weeks.last.fetch("period_to")
+    assert_equal true, advertising_weeks.last.fetch("is_partial")
   end
 
   test "requires authentication" do

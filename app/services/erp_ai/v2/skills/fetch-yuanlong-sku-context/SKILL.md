@@ -1,9 +1,9 @@
 ---
 name: fetch-yuanlong-sku-context
-description: 获取远龙 ERP 中单个 SKU 的完整业务上下文，包括基础信息、逐周利润、逐周销售漏斗和库存，并缓存为本地 Markdown 文件。当 AI 在分析、诊断、规划或生成报告前需要了解某个远龙 SKU 的当前或历史上下文时使用。
+description: 获取辕隆 ERP 中单个 SKU 的完整业务上下文，包括基础信息、逐周利润、逐周销售漏斗、逐周广告、逐周搜索词、周期订单、周期送仓、周期运营记录和库存，并缓存为本地 Markdown 文件。当 AI 在分析、诊断、规划或生成报告前需要了解某个辕隆 SKU 的当前或历史上下文时使用。
 ---
 
-# 获取远龙 SKU 上下文
+# 获取辕隆 SKU 上下文
 
 优先调用本接口获取权威上下文，不要通过无关 API 或自行拼接 SQL 重建 SKU 信息。
 
@@ -56,16 +56,21 @@ python3 <skill目录>/scripts/fetch_context.py SKU-CODE \
 脚本会在当前目录写入：
 
 ```text
-skus/<SKU_CODE>/<YYYY-MM-DD>/
+skus/<SKU_CODE>/context_data/<YYYY-MM-DD>/
 |-- _metadata.md
 |-- base.md
 |-- weekly_profit_per_week.md
 |-- sales_funnel_per_week.md
+|-- advertise_per_week.md
+|-- search_terms_per_week.md
+|-- ec_orders_full_period.md
+|-- supply_orders_full_period.md
+|-- operation_actions_full_period.md
 |-- current_inventory_info.md
 `-- history_inventory_info.md
 ```
 
-`context` 下每个一级 key 对应一个 Markdown 文件。同一天目录中已存在的同名文件会原子更新，不相关的其他文件会保留。
+`context` 下每个一级 key 对应一个 Markdown 文件。同一天目录中已存在的同名文件会原子更新，不相关的其他文件会保留。扁平对象列表和标量列表会渲染为 Markdown 表格；包含嵌套结构的复杂列表保留分节展示。接口统一排除 `raw_json`、`raw_payload`、`source_payload`、`item_payload` 等大体积原始载荷，但运营记录的 `diff_result` 及其中的变更前后值必须保留。`history_inventory_info.md` 只输出 `snapshot_date + content.overview`，嵌套汇总字段用点号展平，保证每个快照日期一行；仓库级 `distribution` 明细不写入历史趋势文件。
 
 如果当天目录已经存在 `_metadata.md`，直接使用缓存的 Markdown 文件，不要再次请求接口。即使当天后续提示要求了不同周期，也遵循“每个 SKU 每天只获取一次”的规则。
 

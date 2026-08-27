@@ -15,7 +15,7 @@ module ErpAI
           time_zone: user_time_zone
         ).call
 
-        render json: {
+        payload = {
           data: {
             sku_code: sku.sku_code,
             period: {
@@ -34,10 +34,41 @@ module ErpAI
                 period_from: period_from,
                 period_to: period_to
               ).call,
+              advertise_per_week: ErpAI::V2::AdvertisingContext.new(
+                sku: sku,
+                period_from: period_from,
+                period_to: period_to,
+                today: user_today
+              ).call,
+              ec_orders_full_period: ErpAI::V2::OrdersFullPeriodContext.new(
+                sku: sku,
+                period_from: period_from,
+                period_to: period_to,
+                time_zone: user_time_zone
+              ).call,
+              supply_orders_full_period: ErpAI::V2::SupplyOrdersFullPeriodContext.new(
+                sku: sku,
+                period_from: period_from,
+                period_to: period_to,
+                time_zone: user_time_zone
+              ).call,
+              operation_actions_full_period: ErpAI::V2::OperationActionsFullPeriodContext.new(
+                sku: sku,
+                period_from: period_from,
+                period_to: period_to,
+                time_zone: user_time_zone
+              ).call,
+              search_terms_per_week: ErpAI::V2::SearchTermsContext.new(
+                sku: sku,
+                period_from: period_from,
+                period_to: period_to,
+                today: user_today
+              ).call,
               **inventory_context
             }
           }
         }
+        render json: ErpAI::V2::ContextPayloadSanitizer.call(payload)
       rescue ActionController::ParameterMissing => error
         render json: { error: "#{error.param} is required" }, status: :bad_request
       rescue Date::Error
