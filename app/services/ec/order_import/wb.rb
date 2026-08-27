@@ -2,9 +2,16 @@ module Ec
   module OrderImport
     class Wb
       CURRENCY_MAP = {
+        51 => "AMD",
+        156 => "CNY",
+        398 => "KZT",
+        417 => "KGS",
         643 => "RUB",
+        860 => "UZS",
         933 => "BYN",
+        972 => "TJS",
         840 => "USD",
+        981 => "GEL",
         978 => "EUR"
       }.freeze
 
@@ -237,8 +244,8 @@ module Ec
           sku_code: sku_product&.sku_code,
           product_name_source: raw_order.article,
           quantity: 1,
-          unit_price: raw_order.converted_price || raw_order.price,
-          currency_code: CURRENCY_MAP.fetch(raw_order.currency_code.to_i, raw_order.currency_code&.to_s),
+          unit_price: raw_order.price,
+          currency_code: currency_code_for(raw_order),
           item_payload: raw_order.attributes.slice("nm_id", "article", "barcode", "price", "converted_price"),
           synced_at: raw_order.synced_at
         )
@@ -246,6 +253,7 @@ module Ec
 
       def import_item_from_stats(stats_order, store, order, fulfillment)
         sku_product = sku_product_for(store, stats_order.nm_id)
+        raw_order = marketplace_order_for(stats_order)
         Ec::OrderItem.where(order: order).delete_all
         Ec::OrderItem.create!(
           order: order,
@@ -258,8 +266,8 @@ module Ec
           sku_code: sku_product&.sku_code,
           product_name_source: stats_order.supplier_article,
           quantity: 1,
-          unit_price: stats_order.total_price,
-          currency_code: "RUB",
+          unit_price: raw_order ? raw_order.price : stats_order.total_price,
+          currency_code: raw_order ? currency_code_for(raw_order) : "RUB",
           item_payload: stats_order.attributes.slice(
             "nm_id", "supplier_article", "barcode", "total_price", "discount_percent"
           ),
@@ -276,6 +284,10 @@ module Ec
         else
           "unknown"
         end
+      end
+
+      def currency_code_for(raw_order)
+        CURRENCY_MAP.fetch(raw_order.currency_code.to_i, raw_order.currency_code&.to_s)
       end
 
       def sku_product_for(store, product_id)

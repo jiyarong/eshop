@@ -272,6 +272,26 @@ module Ec
       assert_equal @wb_order, wb_order.source_links.first.source
     end
 
+    test "wb stats import retains the matching raw order price and currency" do
+      @wb_order.update!(currency_code: 51, price: 789.12, converted_price: 1_200)
+
+      Ec::OrderImport::Wb.new.call
+
+      order = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid)
+      assert_equal "AMD", order.items.first.currency_code
+      assert_equal BigDecimal("789.12"), order.items.first.unit_price
+    end
+
+    test "wb importer maps supported currency codes" do
+      assert_equal(
+        {
+          51 => "AMD", 156 => "CNY", 398 => "KZT", 417 => "KGS", 643 => "RUB",
+          840 => "USD", 860 => "UZS", 933 => "BYN", 972 => "TJS", 978 => "EUR", 981 => "GEL"
+        },
+        Ec::OrderImport::Wb::CURRENCY_MAP
+      )
+    end
+
     test "wb import can limit raw orders by synced_at" do
       old_raw = RawWb::Order.create!(
         account: @wb_account,
@@ -441,6 +461,7 @@ module Ec
       assert_equal BigDecimal("456.78"), stats_order.items.first.unit_price
       assert_equal @wb_sku.sku_code, stats_order.items.first.sku_code
       assert_equal "fbw", stats_order.fulfillments.first.fulfillment_type
+      assert_equal "RUB", stats_order.items.first.currency_code
     end
 
     test "wb stats order import maps seller warehouse type to fbs fulfillment" do
@@ -465,7 +486,7 @@ module Ec
       assert_equal "fbs", stats_order.fulfillments.first.fulfillment_type
     end
 
-    test "wb import lets stats orders overwrite matching raw order data" do
+    test "wb import retains raw order price when stats orders update matching data" do
       stats_order = RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid)
       stats_order.update!(
         supplier_article: "WB707-STATS",
@@ -483,7 +504,7 @@ module Ec
       assert_equal Time.zone.parse("2026-06-09 15:00:00"), wb_order.cancelled_at
       assert_equal "Stats Cover Region", wb_order.buyer_city
       assert_equal "WB707-STATS", wb_order.items.first.offer_id
-      assert_equal BigDecimal("777.77"), wb_order.items.first.unit_price
+      assert_equal BigDecimal("1200"), wb_order.items.first.unit_price
       assert_equal "Stats Cover Warehouse", wb_order.fulfillments.first.warehouse_name
     end
 
