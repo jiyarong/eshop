@@ -53,6 +53,60 @@ Accept: application/json
 | `sku_products[].platform` | 平台 | `wb` 或 `ozon` |
 | `sku_products[].product_id` | 平台商品 ID | WB 使用商品 `nmId`；Ozon 为平台商品绑定 ID |
 | `sku_products[].offer_id` | 商家货号 | 平台侧 offer/vendor code |
+| `sku_products[].product_info` | 平台商品基础信息 | 当前同步到库的平台商品资料；未同步到对应商品时为 `null`，字段随平台不同 |
+| `sku_products[].price_info` | 当前价格信息 | 最近一次同步到库的当前价格；未同步价格或没有对应商品时为 `null`，不包含价格历史 |
+
+### WB 商品与价格字段
+
+| 字段 | 中文含义 | 说明 |
+| --- | --- | --- |
+| `product_info.nm_id` | WB 商品 ID | WB 的 `nmId` |
+| `product_info.vendor_code` | 商家编码 | WB 商品卡片中的商家货号 |
+| `product_info.title` | 商品标题 | WB 商品名称 |
+| `product_info.brand` | 品牌 | WB 商品品牌 |
+| `product_info.subject_id` | 品类 ID | WB 商品所属 subject ID |
+| `product_info.subject_name` | 品类名称 | WB 商品所属 subject 名称 |
+| `product_info.wb_category` | WB 类目 | WB 返回的类目名称 |
+| `product_info.description` | 商品描述 | WB 商品卡片描述 |
+| `product_info.is_in_trash` | 是否在回收站 | `true` 表示商品已进入 WB 回收站 |
+| `product_info.synced_at` | 商品同步时间 | 该商品基础信息最近同步时间 |
+| `price_info.price` | 商品原价 | 折扣前价格 |
+| `price_info.discount` | 普通折扣率 | WB 普通折扣百分比 |
+| `price_info.club_discount` | WB Club 折扣率 | 会员额外折扣百分比 |
+| `price_info.final_price` | 当前成交价 | 应用当前折扣后的最终价格 |
+| `price_info.is_in_quarantine` | 价格是否隔离 | `true` 表示当前价格处于 WB 价格隔离状态 |
+| `price_info.updated_at` | 价格更新时间 | 当前价格记录最近更新时间 |
+
+### Ozon 商品与价格字段
+
+| 字段 | 中文含义 | 说明 |
+| --- | --- | --- |
+| `product_info.ozon_product_id` | Ozon 商品 ID | Ozon 平台商品 ID |
+| `product_info.offer_id` | 商家货号 | Ozon 商品的 offer ID |
+| `product_info.name` | 商品名称 | Ozon 商品标题 |
+| `product_info.description_category_id` | 描述类目 ID | Ozon 描述类目编号 |
+| `product_info.type_id` | 商品类型 ID | Ozon 商品类型编号 |
+| `product_info.currency_code` | 商品币种 | 商品资料中的币种代码 |
+| `product_info.barcodes` | 条形码 | 商品绑定的条形码列表 |
+| `product_info.is_archived` | 是否归档 | `true` 表示商品已归档 |
+| `product_info.is_autoarchived` | 是否自动归档 | `true` 表示商品由 Ozon 自动归档 |
+| `product_info.has_discounted_fbo_item` | 是否有 FBO 折价品 | 是否存在 FBO 折价商品 |
+| `product_info.discounted_fbo_stocks` | FBO 折价品库存 | 当前同步的 FBO 折价品库存数量 |
+| `product_info.created_at` | 平台创建时间 | Ozon 返回的商品创建时间 |
+| `product_info.synced_at` | 商品同步时间 | 该商品基础信息最近同步时间 |
+| `price_info.price` | 当前售价 | Ozon 当前基础售价 |
+| `price_info.old_price` | 划线价 | 优惠前展示价格 |
+| `price_info.marketing_price` | 营销活动价 | 应用平台营销活动后的价格 |
+| `price_info.min_price` | 最低价格 | 商家设置或平台返回的最低价格 |
+| `price_info.buybox_price` | Buy Box 价格 | 当前主报价价格 |
+| `price_info.discount_percent` | 折扣率 | 当前折扣百分比 |
+| `price_info.is_in_discount` | 是否参与折扣 | 当前商品是否处于折扣状态 |
+| `price_info.currency_code` | 价格币种 | 各价格字段使用的币种代码 |
+| `price_info.acquiring` | 收单费 | 当前价格对应的收单费用 |
+| `price_info.volume_weight` | 体积重量 | Ozon 计费使用的体积重量 |
+| `price_info.synced_at` | 价格同步时间 | 当前价格最近同步时间 |
+
+`product_info` 和 `price_info` 只返回便于分析的结构化字段，不返回 `raw_json`、图片、佣金明细或平台完整原始载荷，避免基础上下文过大。
 
 ## `weekly_profit_per_week`：逐周利润归集
 

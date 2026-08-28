@@ -93,7 +93,9 @@ class ErpAI::V2::SkusControllerTest < ActionDispatch::IntegrationTest
             "store_id" => @store.id,
             "platform" => "ozon",
             "product_id" => @sku_product.product_id,
-            "offer_id" => @sku_product.offer_id
+            "offer_id" => @sku_product.offer_id,
+            "product_info" => nil,
+            "price_info" => nil
           }
         ]
       },

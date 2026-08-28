@@ -3,7 +3,7 @@ module ErpAI
     class SkusController < BaseController
       def full_context
         sku = Ec::Sku
-          .includes(:current_marketing_state, :sku_products, master_sku: :skus)
+          .includes(:current_marketing_state, sku_products: :store, master_sku: :skus)
           .find_by!(sku_code: params.require(:sku_code).to_s.strip.upcase)
         period_from, period_to = requested_period
         validate_complete_weeks!(period_from, period_to)
@@ -94,14 +94,7 @@ module ErpAI
           related_spu_sku_codes: related_spu_sku_codes(sku),
           current_stage: marketing_state&.stage&.upcase,
           current_grade: marketing_state&.grade,
-          sku_products: sku.sku_products.sort_by(&:id).map do |sku_product|
-            {
-              store_id: sku_product.store_id,
-              platform: sku_product.platform,
-              product_id: sku_product.product_id,
-              offer_id: sku_product.offer_id
-            }
-          end
+          sku_products: ErpAI::V2::PlatformProductsContext.new(sku_products: sku.sku_products).call
         }
       end
 
