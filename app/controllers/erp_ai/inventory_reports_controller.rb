@@ -59,7 +59,7 @@ module ErpAI
     end
 
     def inventory_skus_scope
-      scope = Ec::Sku.includes({ cost: :sku_dimension }, :current_marketing_state)
+      scope = Ec::Sku.includes(:cost, :dimension, :current_marketing_state)
       scope = apply_master_sku_category_filter_to_skus(scope)
       scope = apply_spu_sku_filter_to_skus(scope)
       scope = apply_marketing_state_filters(scope)

@@ -121,4 +121,25 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     Ec::SkuBatch.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(sku_code: sku&.sku_code).delete_all
   end
+
+  test "uses sku dimensions when no cost record exists" do
+    token = SecureRandom.hex(4).upcase
+    sku = Ec::Sku.create!(sku_code: "ROW-DIM-#{token}", product_name: "无成本尺寸商品")
+    Ec::SkuDimension.create!(
+      sku_code: sku.sku_code,
+      inner_length_cm: 108,
+      inner_width_cm: 57,
+      inner_height_cm: 19
+    )
+
+    row = Ec::InventoryPageRowQuery.new(sku).call
+
+    assert_equal BigDecimal("108"), row[:pkg_length_cm]
+    assert_equal BigDecimal("57"), row[:pkg_width_cm]
+    assert_equal BigDecimal("19"), row[:pkg_height_cm]
+    assert_equal BigDecimal("116.964"), row[:unit_volume_l]
+  ensure
+    Ec::SkuDimension.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(sku_code: sku&.sku_code).delete_all
+  end
 end

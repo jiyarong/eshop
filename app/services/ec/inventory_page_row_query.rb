@@ -10,6 +10,7 @@ module Ec
     def call
       summary = @sku.inventory_overview[:summary]
       cost = @sku.cost
+      dimension = @sku.dimension
 
       {
         sku_code: @sku.sku_code,
@@ -22,10 +23,10 @@ module Ec
         platform_inbound_stock: summary[:platform_inbound_stock],
         platform_stock: summary[:fbo_fbw_stock],
         available_stock: summary[:available_stock],
-        pkg_length_cm: cost&.pkg_length_cm,
-        pkg_width_cm: cost&.pkg_width_cm,
-        pkg_height_cm: cost&.pkg_height_cm,
-        unit_volume_l: cost&.pkg_volume_l,
+        pkg_length_cm: dimension&.inner_length_cm,
+        pkg_width_cm: dimension&.inner_width_cm,
+        pkg_height_cm: dimension&.inner_height_cm,
+        unit_volume_l: unit_volume_l(dimension, cost),
         daily_sales_velocity: @metrics[:daily_sales_velocity],
         turnover_days: @metrics[:turnover_days],
         turnover_days_with_procurement: @metrics[:turnover_days_with_procurement]
@@ -33,6 +34,13 @@ module Ec
     end
 
     private
+
+    def unit_volume_l(dimension, cost)
+      dimensions = [ dimension&.inner_length_cm, dimension&.inner_width_cm, dimension&.inner_height_cm ]
+      return dimension.inner_volume_l if dimensions.all?(&:present?)
+
+      cost&.pkg_volume_l
+    end
 
     def incoming_quantity
       procurement_batches.sum(Arel.sql(Ec::SkuBatch::EFFECTIVE_RECEIVED_QUANTITY_SQL)).to_i
