@@ -1,6 +1,7 @@
 module ErpAI
   module V2
     class SkusController < BaseController
+      MARKETING_CONTEXT_DEFAULT_WEEKS = 4
       MARKETING_CONTEXT_MAX_WEEKS = 12
 
       def full_context
@@ -82,9 +83,8 @@ module ErpAI
       def marketing_context
         sku = requested_marketing_sku
         today = user_today
-        period_from, period_to = requested_marketing_period(default: default_marketing_period(today))
-        validate_complete_weeks!(period_from, period_to)
-        validate_marketing_period!(period_from, period_to, today: today)
+        weeks = requested_marketing_weeks
+        period_from, period_to = marketing_period(today: today, weeks: weeks)
 
         context = ErpAI::V2::MarketingContext.new(
           sku: sku,
@@ -112,8 +112,6 @@ module ErpAI
         )
       rescue ActionController::ParameterMissing => error
         render json: { error: "#{error.param} is required" }, status: :bad_request
-      rescue Date::Error
-        render json: { error: "invalid_date" }, status: :unprocessable_entity
       rescue ActiveRecord::RecordNotFound
         render json: { error: "SKU not found" }, status: :not_found
       rescue ArgumentError => error
@@ -170,13 +168,17 @@ module ErpAI
         [parse_date(params.require(:period_from)), parse_date(params.require(:period_to))]
       end
 
-      def requested_marketing_period(default:)
-        return default if params[:period_from].nil? && params[:period_to].nil?
+      def requested_marketing_weeks
+        if params.key?(:period_from) || params.key?(:period_to)
+          raise ArgumentError, "unsupported_period_parameters"
+        end
 
-        raise ActionController::ParameterMissing, :period_from if params[:period_from].blank?
-        raise ActionController::ParameterMissing, :period_to if params[:period_to].blank?
+        return MARKETING_CONTEXT_DEFAULT_WEEKS if params[:weeks].nil?
 
-        [parse_date(params.require(:period_from)), parse_date(params.require(:period_to))]
+        weeks = Integer(params[:weeks].to_s, exception: false)
+        raise ArgumentError, "invalid_weeks" unless weeks&.between?(1, MARKETING_CONTEXT_MAX_WEEKS)
+
+        weeks
       end
 
       def default_period
@@ -184,9 +186,9 @@ module ErpAI
         [this_monday - 3.weeks, this_monday.end_of_week(:monday)]
       end
 
-      def default_marketing_period(today = user_today)
+      def marketing_period(today:, weeks:)
         last_completed_sunday = today.beginning_of_week(:monday) - 1.day
-        [last_completed_sunday.beginning_of_week(:monday) - 3.weeks, last_completed_sunday]
+        [last_completed_sunday.beginning_of_week(:monday) - (weeks - 1).weeks, last_completed_sunday]
       end
 
       def user_today
@@ -201,12 +203,6 @@ module ErpAI
         raise ArgumentError, "period_from_must_be_monday" unless period_from.monday?
         raise ArgumentError, "period_to_must_be_sunday" unless period_to.sunday?
         raise ArgumentError, "invalid_period_range" if period_to < period_from
-      end
-
-      def validate_marketing_period!(period_from, period_to, today:)
-        weeks = ((period_to - period_from).to_i + 1) / 7
-        raise ArgumentError, "period_too_long" if weeks > MARKETING_CONTEXT_MAX_WEEKS
-        raise ArgumentError, "future_period_unsupported" if period_to > today.end_of_week(:monday)
       end
     end
   end

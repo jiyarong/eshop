@@ -78,15 +78,10 @@ LEGACY_CONTEXT_FILES = (
 def parse_args():
     parser = argparse.ArgumentParser(description="Fetch and cache Yuanlong SKU context as Markdown")
     parser.add_argument("sku_code")
-    parser.add_argument("--period-from")
-    parser.add_argument("--period-to")
+    parser.add_argument("--weeks", type=int, choices=range(1, 13), default=4)
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--base-url", default=os.environ.get("YUANLONG_API_BASE_URL", DEFAULT_BASE_URL))
-    args = parser.parse_args()
-
-    if bool(args.period_from) != bool(args.period_to):
-        parser.error("--period-from and --period-to must be supplied together")
-    return args
+    return parser.parse_args()
 
 
 def safe_path_part(value):
@@ -97,9 +92,7 @@ def safe_path_part(value):
 
 
 def fetch_json(args, api_key):
-    query = {"sku_code": args.sku_code}
-    if args.period_from:
-        query.update(period_from=args.period_from, period_to=args.period_to)
+    query = {"sku_code": args.sku_code, "weeks": args.weeks}
     url = f"{args.base_url.rstrip('/')}{MARKETING_CONTEXT_PATH}?{urllib.parse.urlencode(query)}"
     request = urllib.request.Request(
         url,
@@ -273,14 +266,15 @@ def atomic_write(path, content):
     os.replace(temporary_path, path)
 
 
-def cache_is_current(metadata_path):
+def cache_is_current(metadata_path, weeks):
     try:
-        return MARKETING_CONTEXT_PATH in metadata_path.read_text(encoding="utf-8")
+        metadata = metadata_path.read_text(encoding="utf-8")
+        return MARKETING_CONTEXT_PATH in metadata and f"**weeks:** {weeks}" in metadata
     except OSError:
         return False
 
 
-def write_context(output_dir, payload, source_url):
+def write_context(output_dir, payload, source_url, weeks):
     data = payload.get("data")
     if not isinstance(data, dict):
         raise RuntimeError("API response does not contain data")
@@ -310,6 +304,7 @@ def write_context(output_dir, payload, source_url):
             f"- **sku_code:** {data.get('sku_code') or context_sku_code or ''}",
             f"- **period_from:** {period.get('from', '')}",
             f"- **period_to:** {period.get('to', '')}",
+            f"- **weeks:** {weeks}",
             f"- **endpoint:** {MARKETING_CONTEXT_PATH if MARKETING_CONTEXT_PATH in source_url else 'legacy'}",
             f"- **fetched_at:** {fetched_at}",
             f"- **source:** {source_url}",
@@ -330,7 +325,7 @@ def main():
     today = dt.datetime.now().astimezone().date().isoformat()
     output_dir = Path.cwd() / "skus" / sku_path / "context_data" / today
     metadata_path = output_dir / "_metadata.md"
-    if metadata_path.exists() and not args.refresh and cache_is_current(metadata_path):
+    if metadata_path.exists() and not args.refresh and cache_is_current(metadata_path, args.weeks):
         print(f"Using today's cached context: {output_dir}")
         return 0
 
@@ -341,7 +336,7 @@ def main():
 
     try:
         payload, source_url = fetch_json(args, api_key)
-        write_context(output_dir, payload, source_url)
+        write_context(output_dir, payload, source_url, args.weeks)
     except (RuntimeError, OSError, ValueError, json.JSONDecodeError) as error:
         print(str(error), file=sys.stderr)
         return 1

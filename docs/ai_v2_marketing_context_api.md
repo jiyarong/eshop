@@ -3,18 +3,16 @@
 ## 请求
 
 ```http
-GET /ai/v2/skus/marketing_context?sku_code=<SKU>&period_from=<MONDAY>&period_to=<SUNDAY>
+GET /ai/v2/skus/marketing_context?sku_code=<SKU>&weeks=<1-12>
 Authorization: Bearer <user_api_key>
 Accept: application/json
 ```
 
 - `sku_code` 必填，输入会去除首尾空格并转成大写。
 - API Key 所属用户必须拥有 `view_reports` 权限。
-- `period_from`、`period_to` 必须同时传入，且分别为周一和周日。
-- 周期最多 12 个自然周。
-- 未传周期时，返回最近 4 个已经结束的完整自然周。
-- 显式周期可以包含当前周；当前周会标记 `is_partial: true`，利润不会输出未完成周指标。
-- 周期不能超过当前自然周；包含尚未开始的未来周时返回 `future_period_unsupported`。
+- `weeks` 可选，必须是 1 到 12 的整数，默认是 4。
+- 接口根据 `weeks` 自动返回最近已经结束的完整自然周，并在响应的 `period.from`、`period.to` 中给出日期边界。
+- 旧的 `period_from`、`period_to` 参数不再支持，传入时返回 `unsupported_period_parameters`。
 - 日期边界和 `as_of` 使用 API Key 所属用户的时区。
 
 ## 响应结构
@@ -88,7 +86,6 @@ Ozon 多个平台商品合并时，`average_search_position` 按搜索曝光加�
 
 - `available`：存在已记录数据；不保证平台源数据覆盖整周，广告板块应同时检查 `days_with_data` 和 `data_through`。
 - `no_records`：系统在该范围内没有已记录数据，不能据此断言平台没有业务活动。
-- `partial_week`：自然周尚未结束，利润指标不输出。
 - `partial_sources`：部分绑定店铺不可用，返回的汇总不完整；检查 `unavailable_store_ids`。
 - `unavailable`：缺少账号、汇率或其他必要数据，检查 `reason`。
 

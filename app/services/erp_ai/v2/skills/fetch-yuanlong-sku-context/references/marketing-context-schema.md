@@ -6,14 +6,13 @@
 ## 请求
 
 ```http
-GET /ai/v2/skus/marketing_context?sku_code=<SKU>&period_from=<MONDAY>&period_to=<SUNDAY>
+GET /ai/v2/skus/marketing_context?sku_code=<SKU>&weeks=<1-12>
 Authorization: Bearer <assigned_user_api_key>
 Accept: application/json
 ```
 
-`sku_code` 必填。周期参数必须同时传入，且分别为周一和周日，最多 12 个自然周。
-未传周期时返回最近 4 个已结束的完整自然周。显式周期可以包含当前周；当前周标记
-`is_partial: true`，利润指标不输出未完成周。日期边界和 `as_of` 使用 API Key 所属用户的时区。
+`sku_code` 必填。`weeks` 可选，必须是 1 到 12 的整数，默认返回最近 4 个已结束的
+完整自然周。接口自动计算自然周日期边界；日期边界和 `as_of` 使用 API Key 所属用户的时区。
 
 ## 响应结构
 

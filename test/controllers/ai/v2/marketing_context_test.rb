@@ -19,14 +19,12 @@ class ErpAI::V2::MarketingContextControllerTest < ActionDispatch::IntegrationTes
     User.where(id: @user&.id).delete_all
   end
 
-  test "returns a compact marketing context for a completed week and normalizes the SKU code" do
-    get "/ai/v2/skus/marketing_context",
-      params: {
-        sku_code: "  #{@sku.sku_code.downcase}  ",
-        period_from: "2026-08-03",
-        period_to: "2026-08-09"
-      },
-      headers: bearer_headers
+  test "returns the requested recent weeks and normalizes the SKU code" do
+    travel_to Time.utc(2026, 8, 13, 12) do
+      get "/ai/v2/skus/marketing_context",
+        params: { sku_code: "  #{@sku.sku_code.downcase}  ", weeks: 1 },
+        headers: bearer_headers
+    end
 
     assert_response :success
 
@@ -97,81 +95,37 @@ class ErpAI::V2::MarketingContextControllerTest < ActionDispatch::IntegrationTes
     assert_equal "2026-08-23", response.parsed_body.dig("data", "period", "to")
   end
 
-  test "treats the current Sunday as an incomplete week" do
-    travel_to Time.utc(2026, 8, 23, 3) do
+  test "accepts up to twelve completed natural weeks" do
+    travel_to Time.utc(2026, 8, 27, 12) do
       get "/ai/v2/skus/marketing_context",
-        params: {
-          sku_code: @sku.sku_code,
-          period_from: "2026-08-17",
-          period_to: "2026-08-23"
-        },
+        params: { sku_code: @sku.sku_code, weeks: 12 },
         headers: bearer_headers
     end
 
     assert_response :success
     data = response.parsed_body.fetch("data")
-    assert_equal true, data.dig("channel_performance", "weekly", 0, "is_partial")
-    assert_equal "partial_week", data.dig("profitability", "weekly", 0, "data_status")
+    assert_equal({ "from" => "2026-06-01", "to" => "2026-08-23" }, data.fetch("period").slice("from", "to"))
+    assert_equal 12, data.dig("profitability", "weekly").size
+    assert_equal 12, data.dig("channel_performance", "weekly").size
+    assert_equal 12, data.dig("inventory", "weekly_snapshots").size
   end
 
-  test "rejects a period longer than twelve weeks" do
-    get "/ai/v2/skus/marketing_context",
-      params: { sku_code: @sku.sku_code, period_from: "2026-05-25", period_to: "2026-08-23" },
-      headers: bearer_headers
-
-    assert_response :unprocessable_entity
-    assert_equal "period_too_long", response.parsed_body.fetch("error")
-  end
-
-  test "rejects periods extending beyond the current natural week" do
-    travel_to Time.utc(2026, 8, 27, 12) do
+  test "rejects invalid week counts" do
+    [ 0, 13, "1.5", "bad", "" ].each do |weeks|
       get "/ai/v2/skus/marketing_context",
-        params: {
-          sku_code: @sku.sku_code,
-          period_from: "2026-08-24",
-          period_to: "2026-09-06"
-        },
+        params: { sku_code: @sku.sku_code, weeks: weeks },
         headers: bearer_headers
-    end
 
-    assert_response :unprocessable_entity
-    assert_equal "future_period_unsupported", response.parsed_body.fetch("error")
+      assert_response :unprocessable_entity
+      assert_equal "invalid_weeks", response.parsed_body.fetch("error")
+    end
   end
 
-  test "rejects a future complete week" do
-    travel_to Time.utc(2026, 8, 27, 12) do
-      get "/ai/v2/skus/marketing_context",
-        params: {
-          sku_code: @sku.sku_code,
-          period_from: "2026-08-31",
-          period_to: "2026-09-06"
-        },
-        headers: bearer_headers
-    end
-
-    assert_response :unprocessable_entity
-    assert_equal "future_period_unsupported", response.parsed_body.fetch("error")
-  end
-
-  test "requires a SKU and both period dates when either date is provided" do
+  test "requires a SKU" do
     get "/ai/v2/skus/marketing_context", headers: bearer_headers
 
     assert_response :bad_request
     assert_equal "sku_code is required", response.parsed_body.fetch("error")
-
-    get "/ai/v2/skus/marketing_context",
-      params: { sku_code: @sku.sku_code, period_from: "2026-08-03" },
-      headers: bearer_headers
-
-    assert_response :bad_request
-    assert_equal "period_to is required", response.parsed_body.fetch("error")
-
-    get "/ai/v2/skus/marketing_context",
-      params: { sku_code: @sku.sku_code, period_from: "", period_to: "" },
-      headers: bearer_headers
-
-    assert_response :bad_request
-    assert_equal "period_from is required", response.parsed_body.fetch("error")
 
     get "/ai/v2/skus/marketing_context",
       params: { sku_code: "   " },
@@ -181,14 +135,16 @@ class ErpAI::V2::MarketingContextControllerTest < ActionDispatch::IntegrationTes
     assert_equal "sku_code is required", response.parsed_body.fetch("error")
   end
 
-  test "reports invalid dates and unknown SKUs" do
+  test "rejects the removed period parameters" do
     get "/ai/v2/skus/marketing_context",
-      params: { sku_code: @sku.sku_code, period_from: "bad", period_to: "2026-08-09" },
+      params: { sku_code: @sku.sku_code, period_from: "2026-08-03", period_to: "2026-08-09" },
       headers: bearer_headers
 
     assert_response :unprocessable_entity
-    assert_equal "invalid_date", response.parsed_body.fetch("error")
+    assert_equal "unsupported_period_parameters", response.parsed_body.fetch("error")
+  end
 
+  test "reports unknown SKUs" do
     get "/ai/v2/skus/marketing_context",
       params: { sku_code: "MISSING-#{SecureRandom.hex(4)}" },
       headers: bearer_headers
