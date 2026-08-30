@@ -508,6 +508,38 @@ module Ec
       assert_equal "Stats Cover Warehouse", wb_order.fulfillments.first.warehouse_name
     end
 
+    test "wb reimport preserves order items referenced by returns" do
+      Ec::OrderImport::Wb.new.call
+      order = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid)
+      order_item = order.items.sole
+      normalized_return = Ec::Return.create!(
+        platform: "wb",
+        store: @wb_store,
+        order: order,
+        return_key: "WB-RETURN-#{@token}",
+        return_type: "customer_return"
+      )
+      return_item = normalized_return.items.create!(
+        store: @wb_store,
+        platform: "wb",
+        order_item: order_item,
+        item_key: "WB-ITEM-#{@token}",
+        quantity: 1
+      )
+      stats_order = RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid)
+      @wb_order.update!(price: 1_399)
+      stats_order.update!(supplier_article: "WB707-UPDATED")
+
+      Ec::OrderImport::Wb.new.call
+
+      assert_equal order_item.id, order.items.reload.sole.id
+      assert_equal order_item.id, return_item.reload.order_item_id
+      assert_equal BigDecimal("1399"), order_item.reload.unit_price
+      assert_equal "WB707-UPDATED", order_item.product_name_source
+    ensure
+      normalized_return&.destroy!
+    end
+
     test "ozon import can limit raw postings by synced_at" do
       old_posting = RawOzon::PostingFbo.create!(
         account: @ozon_account,

@@ -232,8 +232,8 @@ module Ec
 
       def import_item(raw_order, store, order, fulfillment)
         sku_product = sku_product_for(store, raw_order.nm_id)
-        Ec::OrderItem.where(order: order, fulfillment: fulfillment).delete_all
-        Ec::OrderItem.create!(
+        upsert_item(
+          order,
           order: order,
           fulfillment: fulfillment,
           platform: "wb",
@@ -254,8 +254,8 @@ module Ec
       def import_item_from_stats(stats_order, store, order, fulfillment)
         sku_product = sku_product_for(store, stats_order.nm_id)
         raw_order = marketplace_order_for(stats_order)
-        Ec::OrderItem.where(order: order).delete_all
-        Ec::OrderItem.create!(
+        upsert_item(
+          order,
           order: order,
           fulfillment: fulfillment,
           platform: "wb",
@@ -273,6 +273,14 @@ module Ec
           ),
           synced_at: stats_order.synced_at
         )
+      end
+
+      def upsert_item(order, attributes)
+        existing = Ec::OrderItem.where(order: order)
+        order_item = existing.order(:id).first || existing.build
+        order_item.update!(attributes)
+        existing.where.not(id: order_item.id).destroy_all
+        order_item
       end
 
       def fulfillment_type_from_warehouse_type(warehouse_type)
