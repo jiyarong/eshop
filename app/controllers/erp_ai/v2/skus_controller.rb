@@ -1,10 +1,10 @@
 module ErpAI
   module V2
     class SkusController < BaseController
+      MARKETING_CONTEXT_MAX_WEEKS = 12
+
       def full_context
-        sku = Ec::Sku
-          .includes(:current_marketing_state, sku_products: :store, master_sku: :skus)
-          .find_by!(sku_code: params.require(:sku_code).to_s.strip.upcase)
+        sku = requested_sku
         period_from, period_to = requested_period
         validate_complete_weeks!(period_from, period_to)
         inventory_context = ErpAI::V2::InventoryContext.new(
@@ -79,7 +79,65 @@ module ErpAI
         render json: { error: error.message }, status: :unprocessable_entity
       end
 
+      def marketing_context
+        sku = requested_marketing_sku
+        today = user_today
+        period_from, period_to = requested_marketing_period(default: default_marketing_period(today))
+        validate_complete_weeks!(period_from, period_to)
+        validate_marketing_period!(period_from, period_to, today: today)
+
+        context = ErpAI::V2::MarketingContext.new(
+          sku: sku,
+          period_from: period_from,
+          period_to: period_to,
+          today: today,
+          time_zone: user_time_zone
+        ).call
+
+        render json: ErpAI::V2::ContextPayloadSanitizer.call(
+          {
+            data: {
+              schema_version: 1,
+              period: {
+                from: period_from.iso8601,
+                to: period_to.iso8601,
+                as_of: today.iso8601,
+                time_zone: user_time_zone.name,
+                week_starts_on: "monday"
+              },
+              **context
+            }
+          },
+          normalize_numbers: true
+        )
+      rescue ActionController::ParameterMissing => error
+        render json: { error: "#{error.param} is required" }, status: :bad_request
+      rescue Date::Error
+        render json: { error: "invalid_date" }, status: :unprocessable_entity
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: "SKU not found" }, status: :not_found
+      rescue ArgumentError => error
+        render json: { error: error.message }, status: :unprocessable_entity
+      end
+
       private
+
+      def requested_sku
+        find_sku!(params.require(:sku_code))
+      end
+
+      def requested_marketing_sku
+        value = params.require(:sku_code)
+        raise ActionController::ParameterMissing, :sku_code if value.blank?
+
+        find_sku!(value)
+      end
+
+      def find_sku!(value)
+        Ec::Sku
+          .includes(:current_marketing_state, sku_products: :store, master_sku: :skus)
+          .find_by!(sku_code: value.to_s.strip.upcase)
+      end
 
       def parse_date(value)
         Date.iso8601(value.to_s)
@@ -112,9 +170,23 @@ module ErpAI
         [parse_date(params.require(:period_from)), parse_date(params.require(:period_to))]
       end
 
+      def requested_marketing_period(default:)
+        return default if params[:period_from].nil? && params[:period_to].nil?
+
+        raise ActionController::ParameterMissing, :period_from if params[:period_from].blank?
+        raise ActionController::ParameterMissing, :period_to if params[:period_to].blank?
+
+        [parse_date(params.require(:period_from)), parse_date(params.require(:period_to))]
+      end
+
       def default_period
         this_monday = user_today.beginning_of_week(:monday)
         [this_monday - 3.weeks, this_monday.end_of_week(:monday)]
+      end
+
+      def default_marketing_period(today = user_today)
+        last_completed_sunday = today.beginning_of_week(:monday) - 1.day
+        [last_completed_sunday.beginning_of_week(:monday) - 3.weeks, last_completed_sunday]
       end
 
       def user_today
@@ -129,6 +201,12 @@ module ErpAI
         raise ArgumentError, "period_from_must_be_monday" unless period_from.monday?
         raise ArgumentError, "period_to_must_be_sunday" unless period_to.sunday?
         raise ArgumentError, "invalid_period_range" if period_to < period_from
+      end
+
+      def validate_marketing_period!(period_from, period_to, today:)
+        weeks = ((period_to - period_from).to_i + 1) / 7
+        raise ArgumentError, "period_too_long" if weeks > MARKETING_CONTEXT_MAX_WEEKS
+        raise ArgumentError, "future_period_unsupported" if period_to > today.end_of_week(:monday)
       end
     end
   end

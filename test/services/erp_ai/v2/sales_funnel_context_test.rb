@@ -35,4 +35,32 @@ class ErpAI::V2::SalesFunnelContextTest < ActiveSupport::TestCase
     assert_equal({ store_ref: "ozon:22", platform: "ozon", store_id: 22, store_name: "Ozon Store" }, ozon_store.except(:data))
     assert_equal "ozon:22", ozon_store.fetch(:data).sole.fetch(:source)
   end
+
+  test "marks a store unavailable when its source disappears during the query" do
+    sku = Struct.new(:sku_code).new("SKU-CONTEXT")
+    stores = [
+      { ref: "wb:11", platform: "wb", name: "WB Store", label: "WB Store" },
+      { ref: "ozon:22", platform: "ozon", name: "Ozon Store", label: "Ozon Store" }
+    ]
+    query_runner = Object.new
+    query_runner.define_singleton_method(:run) do |params:, **|
+      raise ActiveRecord::RecordNotFound if params.fetch(:store_ref) == "wb:11"
+
+      { rows: [ { sku_code: params.fetch(:sku_code) } ] }
+    end
+
+    stores_payload = ErpAI::V2::SalesFunnelContext.new(
+      sku: sku,
+      period_from: Date.new(2026, 8, 3),
+      period_to: Date.new(2026, 8, 9),
+      store_options: stores,
+      query_runner: query_runner
+    ).call.sole.fetch(:stores)
+
+    assert_equal(
+      { data_status: "unavailable", reason: "source_unavailable", data: [] },
+      stores_payload.first.slice(:data_status, :reason, :data)
+    )
+    assert_equal "SKU-CONTEXT", stores_payload.last.fetch(:data).sole.fetch(:sku_code)
+  end
 end

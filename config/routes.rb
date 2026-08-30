@@ -105,6 +105,7 @@ Rails.application.routes.draw do
 
     namespace :v2 do
       get "skus/full_context" => "skus#full_context"
+      get "skus/marketing_context" => "skus#marketing_context"
     end
   end
 

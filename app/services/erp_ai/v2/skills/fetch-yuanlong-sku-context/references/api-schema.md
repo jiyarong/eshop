@@ -2,6 +2,11 @@
 
 本文档用于解释 `fetch-yuanlong-sku-context` 获取的数据。字段中文名称优先采用辕隆 ERP 页面中的中文文案；分析数据时仍以接口字段名和本文口径为准。
 
+> 本文档描述旧的 `/ai/v2/skus/full_context` 审计接口。营销分析默认使用
+> `/ai/v2/skus/marketing_context`，其字段说明见
+> [marketing-context-schema.md](marketing-context-schema.md)，不包含逐单订单和送仓明细。
+> 若脚本意外收到旧响应，输出层会按白名单过滤订单号、内部 ID、同步时间、买家信息和其他非分析字段。
+
 ## 请求
 
 ```http

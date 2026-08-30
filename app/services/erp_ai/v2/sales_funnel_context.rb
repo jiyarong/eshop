@@ -32,26 +32,43 @@ module ErpAI
       end
 
       def store_payloads(period)
-        store_options.map do |store|
-          report = query_runner.run(
-            params: {
-              store_ref: store.fetch(:ref),
-              from_date: period.fetch(:period_from).iso8601,
-              to_date: period.fetch(:period_to).iso8601,
-              sku_code: sku.sku_code
-            },
-            today: period.fetch(:period_to),
-            include_comparison: false
-          )
+        store_options.map { |store| store_payload(store, period) }
+      end
 
-          {
+      def store_payload(store, period)
+        report = query_runner.run(
+          params: {
             store_ref: store.fetch(:ref),
-            platform: store.fetch(:platform),
-            store_id: store.fetch(:ref).split(":", 2).last.to_i,
-            store_name: store.fetch(:name),
-            data: report.fetch(:rows)
-          }
-        end
+            from_date: period.fetch(:period_from).iso8601,
+            to_date: period.fetch(:period_to).iso8601,
+            sku_code: sku.sku_code
+          },
+          today: period.fetch(:period_to),
+          include_comparison: false
+        )
+
+        source_payload(store).merge(data: report.fetch(:rows))
+      rescue ActiveRecord::RecordNotFound, ArgumentError, KeyError, TypeError
+        source_payload(store).merge(
+          data_status: "unavailable",
+          reason: "source_unavailable",
+          data: []
+        )
+      end
+
+      def source_payload(store)
+        {
+          store_ref: store.fetch(:ref),
+          platform: store.fetch(:platform),
+          store_id: source_store_id(store.fetch(:ref)),
+          store_name: store.fetch(:name)
+        }
+      end
+
+      def source_store_id(store_ref)
+        value = store_ref.to_s.split(":", 2).last
+        store_id = Integer(value, exception: false)
+        store_id if store_id&.positive?
       end
 
       def period_payload(period)

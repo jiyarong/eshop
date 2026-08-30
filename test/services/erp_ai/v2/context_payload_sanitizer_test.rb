@@ -12,4 +12,11 @@ class ErpAI::V2::ContextPayloadSanitizerTest < ActiveSupport::TestCase
       ErpAI::V2::ContextPayloadSanitizer.call(value)
     )
   end
+
+  test "normalizes decimals only when requested" do
+    value = { whole: BigDecimal("2.00"), fraction: BigDecimal("1.25") }
+
+    assert_instance_of BigDecimal, ErpAI::V2::ContextPayloadSanitizer.call(value).fetch(:fraction)
+    assert_equal({ whole: 2, fraction: 1.25 }, ErpAI::V2::ContextPayloadSanitizer.call(value, normalize_numbers: true))
+  end
 end

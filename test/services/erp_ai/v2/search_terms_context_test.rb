@@ -63,4 +63,27 @@ class ErpAI::V2::SearchTermsContextTest < ActiveSupport::TestCase
     assert_not ozon.key?(:query)
     assert_equal "no_records", result.last.fetch(:stores).first.fetch(:data_status)
   end
+
+  test "limits report queries to the requested stores" do
+    result = ErpAI::V2::SearchTermsContext.new(
+      sku: @sku,
+      period_from: Date.new(2026, 8, 3),
+      period_to: Date.new(2026, 8, 9),
+      store_ids: [ @wb_store.id ]
+    ).call
+
+    assert_equal [ @wb_store.id ], result.sole.fetch(:stores).pluck(:store_id)
+  end
+
+  test "can mark the current Sunday as partial for compact marketing contexts" do
+    result = ErpAI::V2::SearchTermsContext.new(
+      sku: @sku,
+      period_from: Date.new(2026, 8, 17),
+      period_to: Date.new(2026, 8, 23),
+      today: Date.new(2026, 8, 23),
+      partial_on_today: true
+    ).call
+
+    assert_equal true, result.sole.fetch(:is_partial)
+  end
 end
