@@ -5,7 +5,10 @@ module Api
         success: true,
         data: profile_json(current_user).merge(
           api_key: usable_api_key(current_user),
-          llm_configs: llm_configs_json(current_user)
+          llm_configs: llm_configs_json(current_user),
+          envs: {
+            YUANLONG_API_KEY: current_user.api_keys.take&.raw_token,
+          }
         )
       }
     end
