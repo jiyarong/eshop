@@ -183,6 +183,7 @@ module Ec
       end
 
       def upsert_fulfillment(raw_order, store, order)
+        stats_order = stats_record_for(RawWb::StatsOrder, raw_order)
         fulfillment_id = raw_order.wb_order_id.to_s
         fulfillment_key = "wb:#{store.id}:#{fulfillment_id}"
         fulfillment = Ec::OrderFulfillment.find_or_initialize_by(platform: "wb", store: store, fulfillment_key: fulfillment_key)
@@ -192,7 +193,7 @@ module Ec
           fulfillment_type: raw_order.delivery_type.presence_in(%w[fbo fbs fba fbm]) || "unknown",
           status: combined_status(
             raw_order: raw_order,
-            stats_order: stats_record_for(RawWb::StatsOrder, raw_order)
+            stats_order: stats_order
           ),
           source_status: raw_order.wb_status,
           source_substatus: raw_order.supplier_status,
@@ -202,6 +203,7 @@ module Ec
           raw_source_id: raw_order.id,
           synced_at: raw_order.synced_at
         )
+        fulfillment.assign_attributes(RawWb::OrderClusterResolver.resolve(stats_order)) if stats_order
         fulfillment.save!
         fulfillment
       end
@@ -221,6 +223,7 @@ module Ec
           source_status: raw_order&.wb_status || stats_order.order_type,
           source_substatus: stats_order.is_cancel? ? "cancelled" : raw_order&.supplier_status,
           warehouse_name: stats_order.warehouse_name,
+          **RawWb::OrderClusterResolver.resolve(stats_order),
           delivery_type_source: stats_order.order_type,
           raw_source_type: raw_order ? "RawWb::Order" : "RawWb::StatsOrder",
           raw_source_id: raw_order&.id || stats_order.id,

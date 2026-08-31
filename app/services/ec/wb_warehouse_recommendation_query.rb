@@ -66,31 +66,29 @@ module Ec
     end
 
     def sales_by_sku_and_warehouse(products)
-      product_by_nm_id = products.group_by { |product| product.product_id.to_s }
-      nm_ids = product_by_nm_id.keys.filter_map { |value| Integer(value, exception: false) }
-      return [] if nm_ids.empty?
+      product_ids = products.map(&:id)
+      return [] if product_ids.empty?
 
-      grouped = RawWb::StatsOrder
-        .where(account_id: store.wb_raw_account_id, warehouse_type: FBO_WAREHOUSE_TYPE, nm_id: nm_ids)
-        .where.not(warehouse_name: EXCLUDED_TRANSIT_WAREHOUSE_NAMES)
-        .where(order_date: user_date_range)
-        .where(is_cancel: [false, nil])
-        .group(:nm_id, :warehouse_name)
-        .count
-
-      grouped.flat_map do |(nm_id, warehouse_name), quantity|
-        Array(product_by_nm_id[nm_id.to_s]).map do |product|
-          resolution = warehouse_resolution(warehouse_name)
+      Ec::OrderItem
+        .joins(:order, :fulfillment)
+        .joins(order_item_sku_product_join_sql)
+        .where(ec_order_items: { platform: "wb", store_id: store.id })
+        .where(ec_orders: { ordered_at: user_date_range })
+        .where(ec_order_fulfillments: { fulfillment_type: "fbw" })
+        .where(ec_sku_products: { id: product_ids })
+        .where.not(ec_orders: { order_status: %w[cancelled returned] })
+        .group("ec_sku_products.sku_code", "ec_order_fulfillments.cluster_to")
+        .sum("ec_order_items.quantity")
+        .map do |(sku_code, cluster_name), quantity|
           {
-            sku_code: product.sku_code,
-            warehouse_name: resolution&.warehouse_name || warehouse_name.to_s,
-            warehouse_id: resolution&.warehouse_id,
-            cluster_name: resolution&.region_name,
-            match_type: resolution&.match_type,
+            sku_code: sku_code,
+            warehouse_name: nil,
+            warehouse_id: nil,
+            cluster_name: cluster_name,
+            match_type: :fulfillment_cluster,
             quantity: quantity.to_i
           }
         end
-      end
     end
 
     def inventory_by_sku(sku_codes)
@@ -202,7 +200,9 @@ module Ec
           inbound: nil,
           distribution_gap: recommended_quantity(daily_sales, available),
           receiving_warehouse_count: warehouse_count_for_cluster(cluster_name),
-          warehouses: cluster_warehouses.sort_by { |row| [-row[:available], row[:warehouse_name].to_s] }
+          warehouses: cluster_warehouses
+            .select { |row| row[:warehouse_name].present? }
+            .sort_by { |row| [-row[:available], row[:warehouse_name].to_s] }
         }
       end.sort_by { |row| [-row[:distribution_gap], -row[:sales_quantity], row[:cluster_name].to_s] }
     end
@@ -283,6 +283,15 @@ module Ec
 
     def normalized_name(name)
       RawWb::WarehouseRegion.normalize_warehouse_name(name)
+    end
+
+    def order_item_sku_product_join_sql
+      <<~SQL.squish
+        INNER JOIN ec_sku_products
+          ON ec_sku_products.store_id = ec_order_items.store_id
+         AND ec_sku_products.platform = ec_order_items.platform
+         AND ec_sku_products.product_id = ec_order_items.platform_sku_id
+      SQL
     end
 
     def daily_average(quantity)

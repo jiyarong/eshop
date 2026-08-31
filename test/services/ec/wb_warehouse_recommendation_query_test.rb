@@ -30,11 +30,9 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
       confidence: 1,
       status: "verified"
     )
-    create_stats_orders("Склад WB", @mapping.historical_name, 28, false)
-    create_stats_orders("Склад WB", "В пути возвраты на склад WB", 9, false)
-    create_stats_orders("Склад WB", "В пути до получателей", 11, false)
-    create_stats_orders("Склад продавца", "FBS #{@token}", 50, false)
-    create_stats_orders("Склад WB", @mapping.historical_name, 5, true)
+    create_normalized_sales("fbw", "Центральный", 28, "processing")
+    create_normalized_sales("fbw", "Центральный", 5, "cancelled")
+    create_normalized_sales("fbs", "Центральный", 50, "processing")
     Ec::SkuInventoryLevel.create!(
       sku_code: @sku.sku_code,
       platform: "wb",
@@ -66,6 +64,11 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
 
   teardown do
     RawWb::StatsOrder.where(account_id: @account&.id).delete_all
+    order_scope = Ec::Order.where(store_id: @store&.id)
+    fulfillment_scope = Ec::OrderFulfillment.where(order_id: order_scope.select(:id))
+    Ec::OrderItem.where(order_id: order_scope.select(:id)).delete_all
+    fulfillment_scope.delete_all
+    order_scope.delete_all
     Ec::SkuInventoryLevel.where(store_id: @store&.id).delete_all
     RawWb::WarehouseNameMapping.where(account_id: @account&.id).delete_all
     RawWb::WarehouseRegion.where(account_id: @account&.id).delete_all
@@ -77,7 +80,7 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     User.where(id: @operator&.id).delete_all
   end
 
-  test "builds recommendations from FBO orders while excluding transit statuses" do
+  test "builds recommendations from normalized FBW fulfillment destination clusters" do
     report = Ec::WbWarehouseRecommendationQuery.new(
       store: @store,
       from_date: Date.new(2026, 7, 1),
@@ -141,20 +144,32 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
 
   private
 
-  def create_stats_orders(warehouse_type, warehouse_name, count, cancelled)
-    rows = count.times.map do |index|
-      {
-        account_id: @account.id,
-        order_date: Time.zone.parse("2026-07-14 12:00:00"),
-        last_change_date: Time.zone.parse("2026-07-14 12:05:00"),
-        nm_id: @product.product_id.to_i,
-        warehouse_name: warehouse_name,
-        warehouse_type: warehouse_type,
-        is_cancel: cancelled,
-        srid: "#{@token}-#{warehouse_type}-#{warehouse_name}-#{cancelled}-#{index}",
-        synced_at: Time.current
-      }
-    end
-    RawWb::StatsOrder.insert_all!(rows)
+  def create_normalized_sales(fulfillment_type, cluster_to, quantity, status)
+    suffix = SecureRandom.hex(3)
+    order = Ec::Order.create!(
+      platform: "wb",
+      store: @store,
+      order_key: "wb-warehouse-query-#{@token}-#{suffix}",
+      order_status: status,
+      ordered_at: Time.zone.parse("2026-07-14 12:00:00")
+    )
+    fulfillment = Ec::OrderFulfillment.create!(
+      platform: "wb",
+      store: @store,
+      order: order,
+      external_fulfillment_id: "wb-warehouse-query-#{suffix}",
+      fulfillment_key: "wb-warehouse-query-#{@token}-#{suffix}",
+      fulfillment_type: fulfillment_type,
+      status: status,
+      cluster_to: cluster_to
+    )
+    Ec::OrderItem.create!(
+      platform: "wb",
+      store: @store,
+      order: order,
+      fulfillment: fulfillment,
+      platform_sku_id: @product.product_id,
+      quantity: quantity
+    )
   end
 end

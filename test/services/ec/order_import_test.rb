@@ -56,6 +56,15 @@ module Ec
         company_type: "small",
         wb_raw_account_id: @wb_account.id
       )
+      @wb_region = RawWb::WarehouseRegion.create!(
+        account: @wb_account,
+        warehouse_id: 800_000_000 + @token.to_i(16),
+        warehouse_name: "Коледино #{@token}",
+        region_name: "Центральный",
+        source: "test",
+        raw_json: {},
+        synced_at: Time.zone.parse("2026-06-04 08:00:00")
+      )
       @wb_sku = Ec::Sku.create!(
         sku_code: "ERP-WB-#{@token}",
         product_name: "WB ERP SKU #{@token}"
@@ -189,6 +198,11 @@ module Ec
         supplier_article: @wb_order.article,
         barcode: @wb_order.barcode,
         total_price: @wb_order.converted_price,
+        warehouse_name: @wb_region.warehouse_name,
+        warehouse_type: "Склад WB",
+        oblast_okrug_name: "Сибирский федеральный округ",
+        region_name: "Новосибирская область",
+        country_name: "Россия",
         is_cancel: true,
         cancel_date: Time.zone.parse("2026-06-05 10:30:00"),
         nm_id: @wb_order.nm_id,
@@ -218,6 +232,7 @@ module Ec
       RawOzon::PostingItem.where(account_id: @ozon_account&.id).delete_all
       RawWb::StatsSale.where(account_id: @wb_account&.id).delete_all
       RawWb::StatsOrder.where(account_id: @wb_account&.id).delete_all
+      RawWb::WarehouseRegion.where(account_id: @wb_account&.id).delete_all
       RawOzon::Product.where(account_id: @ozon_account&.id).delete_all
       RawWb::Product.where(account_id: @wb_account&.id).delete_all
       @ozon_fbo&.destroy
@@ -270,6 +285,8 @@ module Ec
       assert_equal "WB707", wb_order.items.first.offer_id
       assert_equal @wb_sku.sku_code, wb_order.items.first.sku_code
       assert_equal @wb_order, wb_order.source_links.first.source
+      assert_equal "Центральный", wb_order.fulfillments.first.cluster_from
+      assert_equal "Дальневосточный и Сибирский", wb_order.fulfillments.first.cluster_to
     end
 
     test "wb stats import retains the matching raw order price and currency" do
