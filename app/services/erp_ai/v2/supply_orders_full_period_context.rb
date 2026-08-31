@@ -90,10 +90,10 @@ module ErpAI
           .pluck(:macrolocal_cluster_id, :cluster_name)
           .to_h
 
-        RawOzon::SupplyOrder.where(account_id: account_id, created_at: user_time_range).flat_map do |order|
+        RawOzon::SupplyOrder.includes(:supply_order_items).where(account_id: account_id, created_at: user_time_range).flat_map do |order|
           raw = order.raw_json || {}
-          order.items.to_h.filter_map do |platform_sku_id, quantity|
-            next unless platform_sku_id.to_s.in?(platform_sku_ids)
+          order.supply_order_items.filter_map do |item|
+            next unless item.platform_sku_id.to_s.in?(platform_sku_ids)
 
             timeslot = normalized_timeslot(order.timeslot)
             {
@@ -101,19 +101,24 @@ module ErpAI
               store_id: store.id,
               store_name: store.store_name,
               order_number: raw["order_number"],
-              supply_id: order.supply_order_id,
-              status: order.status,
-              platform_item_id: platform_sku_id,
+              parent_supply_order_id: order.supply_order_id,
+              supply_id: item.ozon_supply_id,
+              bundle_id: item.bundle_id,
+              status: item.state.presence || order.status,
+              platform_item_id: item.platform_sku_id.to_s,
               sku_code: sku.sku_code,
               product_name: sku.product_name,
-              quantity: quantity,
+              quantity: item.quantity,
               created_at: order.created_at,
               timeslot_from: timeslot["from"] || timeslot["date_from"],
               timeslot_to: timeslot["to"] || timeslot["date_to"],
               origin_warehouse: raw.dig("drop_off_warehouse", "name"),
-              destination_warehouses: ozon_destinations(raw, cluster_names),
+              destination_cluster_id: item.macrolocal_cluster_id,
+              destination_cluster: cluster_names[item.macrolocal_cluster_id.to_i],
+              destination_warehouse_id: item.storage_warehouse_id,
+              destination_warehouse: item.storage_warehouse_name,
               state_updated_at: raw["state_updated_date"],
-              synced_at: order.synced_at
+              synced_at: item.synced_at
             }
           end
         end
@@ -132,12 +137,6 @@ module ErpAI
 
       def normalized_timeslot(value)
         value.is_a?(Hash) ? (value["timeslot"] || value) : {}
-      end
-
-      def ozon_destinations(raw, cluster_names)
-        Array(raw["supplies"]).filter_map do |supply|
-          supply.dig("storage_warehouse", "name").presence || cluster_names[supply["macrolocal_cluster_id"].to_i].presence
-        end.uniq.join(" / ").presence
       end
 
       def positive_integer(value)

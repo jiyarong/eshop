@@ -16,6 +16,7 @@ class ErpAI::V2::SupplyOrdersFullPeriodContextTest < ActiveSupport::TestCase
   teardown do
     RawWb::SupplyItem.where(account_id: @wb_account&.id).delete_all
     RawWb::Supply.where(account_id: @wb_account&.id).delete_all
+    RawOzon::SupplyOrderItem.where(supply_order_id: RawOzon::SupplyOrder.where(account_id: @ozon_account&.id)).delete_all
     RawOzon::SupplyOrder.where(account_id: @ozon_account&.id).delete_all
     Ec::SkuProduct.where(id: [@wb_product&.id, @ozon_product&.id]).delete_all
     Ec::Store.where(id: [@wb_store&.id, @ozon_store&.id]).delete_all
@@ -35,7 +36,7 @@ class ErpAI::V2::SupplyOrdersFullPeriodContextTest < ActiveSupport::TestCase
       account: @wb_account, wb_supply_id: wb_supply.wb_supply_id, nm_id: 71_001,
       quantity: 12, accepted_qty: 5, synced_at: Time.current
     )
-    RawOzon::SupplyOrder.create!(
+    ozon_order = RawOzon::SupplyOrder.create!(
       account: @ozon_account, supply_order_id: "OZON-#{@token}", status: "IN_TRANSIT",
       items: { "81001" => 8, "99999" => 99 },
       created_at: @time_zone.parse("2026-08-04 09:00"),
@@ -46,6 +47,11 @@ class ErpAI::V2::SupplyOrdersFullPeriodContextTest < ActiveSupport::TestCase
         "supplies" => [{ "storage_warehouse" => { "name" => "Minsk storage" } }]
       },
       synced_at: Time.current
+    )
+    ozon_order.supply_order_items.create!(
+      ozon_supply_id: 2_000_064_845_539, bundle_id: "bundle-context", state: "IN_TRANSIT",
+      platform_sku_id: 81_001, quantity: 8, macrolocal_cluster_id: 4007,
+      storage_warehouse_id: 82_001, storage_warehouse_name: "Minsk storage", synced_at: Time.current
     )
     RawOzon::SupplyOrder.create!(
       account: @ozon_account, supply_order_id: "OUTSIDE-#{@token}", status: "COMPLETED",
@@ -62,9 +68,10 @@ class ErpAI::V2::SupplyOrdersFullPeriodContextTest < ActiveSupport::TestCase
     assert_equal "boxes", wb.fetch(:packaging)
     assert_equal "Ryazan", wb.fetch(:warehouse_name)
     ozon = result.find { |row| row[:platform] == "ozon" }
-    assert_equal({ supply_id: "OZON-#{@token}", quantity: 8, platform_item_id: "81001" }, ozon.slice(:supply_id, :quantity, :platform_item_id))
+    assert_equal({ parent_supply_order_id: "OZON-#{@token}", supply_id: 2_000_064_845_539, quantity: 8, platform_item_id: "81001" }, ozon.slice(:parent_supply_order_id, :supply_id, :quantity, :platform_item_id))
     assert_equal "Minsk drop-off", ozon.fetch(:origin_warehouse)
-    assert_equal "Minsk storage", ozon.fetch(:destination_warehouses)
+    assert_equal "Minsk storage", ozon.fetch(:destination_warehouse)
+    assert_equal 4007, ozon.fetch(:destination_cluster_id)
     assert_equal "2026-08-06T10:00:00Z", ozon.fetch(:timeslot_from)
   end
 end

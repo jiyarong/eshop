@@ -22,6 +22,7 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
   teardown do
     RawWb::SupplyItem.where(account_id: @wb_account.id).delete_all
     RawWb::Supply.where(account_id: @wb_account.id).delete_all
+    RawOzon::SupplyOrderItem.where(supply_order_id: RawOzon::SupplyOrder.where(account_id: @ozon_account.id)).delete_all
     RawOzon::SupplyOrder.where(account_id: @ozon_account.id).delete_all
     Ec::SkuProductOperator.where(user_id: @operator.id).delete_all
     Ec::SkuProduct.where(store_id: [@wb_store.id, @ozon_store.id]).delete_all
@@ -84,14 +85,23 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     other&.destroy!
   end
 
-  test "flattens Ozon item JSON and exposes only stored warehouse data" do
+  test "shows each Ozon destination supply quantity separately" do
     platform_id = Ec::SkuProduct.find_by!(store: @ozon_store).platform_sku_id
-    RawOzon::SupplyOrder.create!(account: @ozon_account, supply_order_id: "SO-#{@token}", status: "COMPLETED", items: { platform_id => 8 }, timeslot: { "from" => "2026-08-05T10:00:00Z" }, raw_json: { "order_number" => "ORD-#{@token}", "drop_off_warehouse" => { "name" => "Minsk drop-off" }, "supplies" => [{ "storage_warehouse" => { "name" => "Minsk storage" } }] }, synced_at: Time.current)
+    order = RawOzon::SupplyOrder.create!(account: @ozon_account, supply_order_id: "SO-#{@token}", status: "COMPLETED", items: { platform_id => 8 }, timeslot: { "from" => "2026-08-05T10:00:00Z" }, raw_json: { "order_number" => "ORD-#{@token}", "drop_off_warehouse" => { "name" => "Minsk drop-off" } }, synced_at: Time.current)
+    RawOzon::WarehouseCluster.create!(account: @ozon_account, warehouse_id: 91_001, warehouse_name: "Minsk cluster warehouse", cluster_name: "Minsk cluster", macrolocal_cluster_id: 4007, synced_at: Time.current)
+    order.supply_order_items.create!(ozon_supply_id: 2_000_064_845_539, bundle_id: "bundle-a", state: "COMPLETED", platform_sku_id: platform_id, quantity: 3, macrolocal_cluster_id: 4007, synced_at: Time.current)
+    order.supply_order_items.create!(ozon_supply_id: 2_000_064_845_540, bundle_id: "bundle-b", state: "COMPLETED", platform_sku_id: platform_id, quantity: 5, storage_warehouse_id: 92_001, storage_warehouse_name: "Minsk storage", synced_at: Time.current)
 
     report = SupplyOrderReports::ReportQuery.new(params: { store_ref: "ozon:#{@ozon_account.id}", sku_codes: [@sku.sku_code] }).call
 
-    assert_equal 1, report[:rows].size
-    assert_equal({ order_number: "ORD-#{@token}", platform_item_id: platform_id, sku_code: @sku.sku_code, quantity: 8, origin_warehouse: "Minsk drop-off", destination_warehouses: "Minsk storage" }, report[:rows].first.slice(:order_number, :platform_item_id, :sku_code, :quantity, :origin_warehouse, :destination_warehouses))
+    assert_equal 2, report[:rows].size
+    assert_equal [3, 5], report[:rows].map { |row| row[:quantity] }
+    assert_equal [2_000_064_845_539, 2_000_064_845_540], report[:rows].map { |row| row[:supply_id] }
+    assert_equal "Minsk cluster", report[:rows].first[:destination_cluster]
+    assert_equal "Minsk storage", report[:rows].last[:destination_warehouse]
+    assert_equal "Minsk drop-off", report[:rows].first[:origin_warehouse]
+  ensure
+    RawOzon::WarehouseCluster.where(account_id: @ozon_account.id, warehouse_id: 91_001).delete_all
   end
 
   test "keeps Ozon supply items mapped to a soft-deleted SKU" do
@@ -99,7 +109,7 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     product.update!(product_name: "Stored platform product")
     platform_id = product.platform_sku_id
     @sku.destroy!
-    RawOzon::SupplyOrder.create!(
+    order = RawOzon::SupplyOrder.create!(
       account: @ozon_account,
       supply_order_id: "SO-DELETED-#{@token}",
       status: "READY_TO_SUPPLY",
@@ -107,6 +117,7 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
       raw_json: {},
       synced_at: Time.current
     )
+    order.supply_order_items.create!(ozon_supply_id: 2_000_000_000_001, bundle_id: "deleted-bundle", state: "READY_TO_SUPPLY", platform_sku_id: platform_id, quantity: 3, synced_at: Time.current)
 
     report = SupplyOrderReports::ReportQuery.new(params: { store_ref: "ozon:#{@ozon_account.id}" }).call
 

@@ -17,7 +17,7 @@ module SupplyOrderReports
       acceptance_cost paid_acceptance_coefficient storage_coefficient delivery_coefficient supplier_assign_name reject_reason
       supply_quantity supply_accepted_quantity ready_for_sale_quantity unloading_quantity depersonalized_quantity can_show_quantity synced_at
     ].freeze
-    OZON_COLUMNS = %i[order_number supply_id status platform_item_id sku_code product_name quantity created_at timeslot origin_warehouse destination_warehouses state_updated_at synced_at].freeze
+    OZON_COLUMNS = %i[order_number supply_id status platform_item_id sku_code product_name quantity destination_cluster destination_warehouse created_at timeslot origin_warehouse state_updated_at synced_at].freeze
 
     def self.store_options
       WeeklyProfitReports::ReportQueryRunner.store_options
@@ -177,30 +177,25 @@ module SupplyOrderReports
         .where.not(cluster_name: nil)
         .pluck(:macrolocal_cluster_id, :cluster_name)
         .to_h
-      scope = RawOzon::SupplyOrder.where(account_id: account.id)
+      scope = RawOzon::SupplyOrder.includes(:supply_order_items).where(account_id: account.id)
       statuses = selected_statuses("ozon")
-      scope = scope.where(status: statuses) if statuses.any?
       rows = scope.flat_map do |order|
         raw = order.raw_json || {}
-        Array(order.items&.to_a).map do |platform_id, quantity|
-          product = mapping[platform_id.to_s]
+        order.supply_order_items.map do |item|
+          product = mapping[item.platform_sku_id.to_s]
           {
-            order_number: raw["order_number"], supply_id: order.supply_order_id, status: order.status,
-            platform_item_id: platform_id, sku_code: product&.dig(:sku_code), product_name: product&.dig(:product_name), operator_ids: product&.dig(:operator_ids).to_a, quantity: quantity,
+            order_number: raw["order_number"], supply_id: item.ozon_supply_id, status: item.state.presence || order.status,
+            platform_item_id: item.platform_sku_id.to_s, sku_code: product&.dig(:sku_code), product_name: product&.dig(:product_name), operator_ids: product&.dig(:operator_ids).to_a, quantity: item.quantity,
             created_at: order.created_at, timeslot: order.timeslot,
             origin_warehouse: raw.dig("drop_off_warehouse", "name"),
-            destination_warehouses: ozon_destinations(raw, cluster_names),
-            state_updated_at: raw["state_updated_date"], synced_at: order.synced_at
+            destination_cluster: cluster_names[item.macrolocal_cluster_id.to_i],
+            destination_warehouse: item.storage_warehouse_name,
+            state_updated_at: raw["state_updated_date"], synced_at: item.synced_at
           }
         end
       end
+      rows.select! { |row| statuses.include?(row[:status].to_s) } if statuses.any?
       filter_rows(rows).sort_by { |row| [-(row[:created_at]&.to_i || 0), row[:supply_id].to_s, row[:platform_item_id].to_s] }
-    end
-
-    def ozon_destinations(raw, cluster_names)
-      Array(raw["supplies"]).filter_map do |supply|
-        supply.dig("storage_warehouse", "name").presence || cluster_names[supply["macrolocal_cluster_id"].to_i].presence
-      end.uniq.join(" / ").presence
     end
   end
 end

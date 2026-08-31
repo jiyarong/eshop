@@ -62,7 +62,8 @@ zh:
         created_at: "创建时间"
         timeslot: "送仓时段"
         origin_warehouse: "交货仓（起点）"
-        destination_warehouses: "目的仓 / 集群"
+        destination_cluster: "目的集群"
+        destination_warehouse: "目的仓"
         state_updated_at: "状态更新时间"
         synced_at: "同步时间"
     statuses:
@@ -113,7 +114,7 @@ en:
     errors: { store_not_found: "Store was not found or is inactive", invalid_store_ref: "Invalid store" }
     columns:
       wb: { supply_id: "Supply ID", preorder_id: "Preorder ID", status: "Status", platform_item_id: "WB item ID", sku_code: "SKU", product_name: "Product", quantity: "Item planned qty", accepted_quantity: "Item accepted qty", remaining_quantity: "Item remaining qty", warehouse_name: "Planned warehouse", actual_warehouse_name: "Actual warehouse", transit_warehouse_name: "Transit warehouse", created_at: "Created", scheduled_at: "Scheduled", actual_at: "Actual", packaging: "Packaging", pallet: "On pallet", acceptance_cost: "Acceptance cost", paid_acceptance_coefficient: "Paid acceptance coefficient", storage_coefficient: "Storage coefficient", delivery_coefficient: "Delivery coefficient", supplier_assign_name: "Assigned supplier", reject_reason: "Reject reason", supply_quantity: "Supply total qty", supply_accepted_quantity: "Supply accepted qty", ready_for_sale_quantity: "Ready for sale qty", unloading_quantity: "Unloading qty", depersonalized_quantity: "Depersonalized qty", can_show_quantity: "Quantity visible", synced_at: "Synced" }
-      ozon: { order_number: "Order number", supply_id: "Supply ID", status: "Status", platform_item_id: "Ozon SKU ID", sku_code: "SKU", product_name: "Product", quantity: "Quantity", created_at: "Created", timeslot: "Timeslot", origin_warehouse: "Drop-off warehouse (origin)", destination_warehouses: "Destination warehouse / cluster", state_updated_at: "Status updated", synced_at: "Synced" }
+      ozon: { order_number: "Order number", supply_id: "Supply ID", status: "Status", platform_item_id: "Ozon SKU ID", sku_code: "SKU", product_name: "Product", quantity: "Quantity", created_at: "Created", timeslot: "Timeslot", origin_warehouse: "Drop-off warehouse (origin)", destination_cluster: "Destination cluster", destination_warehouse: "Destination warehouse", state_updated_at: "Status updated", synced_at: "Synced" }
     statuses:
       wb: { 1: "Not planned", 2: "Planned", 3: "Unloading allowed", 4: "Accepting", 5: "Accepted", 6: "Unloaded at gate" }
       ozon: { DATA_FILLING: "Data filling", READY_TO_SUPPLY: "Ready to supply", ACCEPTED_AT_SUPPLY_WAREHOUSE: "Accepted at supply warehouse", IN_TRANSIT: "In transit", ACCEPTANCE_AT_STORAGE_WAREHOUSE: "Acceptance at storage warehouse", REPORTS_CONFIRMATION_AWAITING: "Awaiting report confirmation", REPORT_REJECTED: "Report rejected", COMPLETED: "Completed", REJECTED_AT_SUPPLY_WAREHOUSE: "Rejected at supply warehouse", CANCELLED: "Cancelled", OVERDUE: "Overdue" }
@@ -132,7 +133,7 @@ ru:
     errors: { store_not_found: "Магазин не найден или отключён", invalid_store_ref: "Некорректный магазин" }
     columns:
       wb: { supply_id: "ID поставки", preorder_id: "ID предзаказа", status: "Статус", platform_item_id: "ID товара WB", sku_code: "SKU", product_name: "Товар", quantity: "План товара", accepted_quantity: "Принято товара", remaining_quantity: "Осталось товара", warehouse_name: "Плановый склад", actual_warehouse_name: "Фактический склад", transit_warehouse_name: "Транзитный склад", created_at: "Создано", scheduled_at: "Плановая дата", actual_at: "Фактическая дата", packaging: "Упаковка", pallet: "На паллете", acceptance_cost: "Стоимость приёмки", paid_acceptance_coefficient: "Коэффициент приёмки", storage_coefficient: "Коэффициент хранения", delivery_coefficient: "Коэффициент доставки", supplier_assign_name: "Назначенная сторона", reject_reason: "Причина отказа", supply_quantity: "Всего в поставке", supply_accepted_quantity: "Принято в поставке", ready_for_sale_quantity: "Готово к продаже", unloading_quantity: "Разгружается", depersonalized_quantity: "Обезличено", can_show_quantity: "Количество доступно", synced_at: "Синхронизация" }
-      ozon: { order_number: "Номер заказа", supply_id: "ID поставки", status: "Статус", platform_item_id: "SKU Ozon", sku_code: "SKU", product_name: "Товар", quantity: "Количество", created_at: "Создано", timeslot: "Интервал", origin_warehouse: "Склад сдачи (откуда)", destination_warehouses: "Склад / кластер назначения", state_updated_at: "Статус обновлён", synced_at: "Синхронизация" }
+      ozon: { order_number: "Номер заказа", supply_id: "ID поставки", status: "Статус", platform_item_id: "SKU Ozon", sku_code: "SKU", product_name: "Товар", quantity: "Количество", created_at: "Создано", timeslot: "Интервал", origin_warehouse: "Склад сдачи (откуда)", destination_cluster: "Кластер назначения", destination_warehouse: "Склад назначения", state_updated_at: "Статус обновлён", synced_at: "Синхронизация" }
     statuses:
       wb: { 1: "Не запланировано", 2: "Запланировано", 3: "Разгрузка разрешена", 4: "Приёмка", 5: "Принято", 6: "Разгружено у ворот" }
       ozon: { DATA_FILLING: "Заполнение данных", READY_TO_SUPPLY: "Готово к поставке", ACCEPTED_AT_SUPPLY_WAREHOUSE: "Принято на складе отправления", IN_TRANSIT: "В пути", ACCEPTANCE_AT_STORAGE_WAREHOUSE: "Приёмка на складе хранения", REPORTS_CONFIRMATION_AWAITING: "Ожидает подтверждения отчёта", REPORT_REJECTED: "Отчёт отклонён", COMPLETED: "Завершено", REJECTED_AT_SUPPLY_WAREHOUSE: "Отклонено на складе отправления", CANCELLED: "Отменено", OVERDUE: "Просрочено" }

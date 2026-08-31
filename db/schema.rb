@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_25_073856) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_31_085012) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1612,6 +1612,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_073856) do
     t.index ["client_id"], name: "index_raw_ozon_seller_accounts_on_client_id", unique: true
   end
 
+  create_table "raw_ozon_supply_order_items", force: :cascade do |t|
+    t.string "bundle_id", null: false
+    t.datetime "created_at", null: false
+    t.boolean "is_crossdock"
+    t.bigint "macrolocal_cluster_id"
+    t.bigint "ozon_supply_id", null: false
+    t.bigint "platform_sku_id", null: false
+    t.integer "quantity", default: 0, null: false
+    t.jsonb "raw_json", default: {}, null: false
+    t.string "state"
+    t.string "storage_warehouse_address"
+    t.bigint "storage_warehouse_id"
+    t.string "storage_warehouse_name"
+    t.bigint "supply_order_id", null: false
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.index ["ozon_supply_id"], name: "index_raw_ozon_supply_order_items_on_ozon_supply_id"
+    t.index ["platform_sku_id", "supply_order_id"], name: "idx_raw_ozon_supply_order_items_sku_order"
+    t.index ["supply_order_id", "bundle_id", "platform_sku_id"], name: "idx_raw_ozon_supply_order_items_unique", unique: true
+    t.index ["supply_order_id"], name: "index_raw_ozon_supply_order_items_on_supply_order_id"
+  end
+
   create_table "raw_ozon_supply_orders", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at"
@@ -2977,6 +2999,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_25_073856) do
   add_foreign_key "raw_ozon_reviews", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_sales_funnel_daily", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_sales_funnel_period", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_supply_order_items", "raw_ozon_supply_orders", column: "supply_order_id"
   add_foreign_key "raw_ozon_supply_orders", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_sync_tasks", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_warehouse_clusters", "raw_ozon_seller_accounts", column: "account_id"
