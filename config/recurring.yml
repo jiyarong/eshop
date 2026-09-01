@@ -186,6 +186,10 @@ production:
     command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"
     schedule: every day at 3:00 in Asia/Shanghai
 
+  sku_lifecycle_projection:
+    command: "Ec::SkuLifecycleEventProjector.run(from_date: Ec::Snapshot.current_date - 7, to_date: Ec::Snapshot.current_date - 1)"
+    schedule: every day at 3:05 in Asia/Shanghai
+
   sku_inventory_level_retention:
     command: "Ec::SkuInventoryLevelRetention.run"
     schedule: every day at 3:40 in Asia/Shanghai

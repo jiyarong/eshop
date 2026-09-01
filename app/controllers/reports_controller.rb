@@ -12,6 +12,7 @@ class ReportsController < ApplicationController
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tabs, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
                 :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
+                :sku_profit_period_comparison, :sku_profit_analysis_value,
                 :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class,
                 :search_terms_metric, :search_terms_metric_content, :search_terms_comparison_label, :search_terms_comparison_class,
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
@@ -20,7 +21,7 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :edit_sku_attachment, :update_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats ai_inventory_health basic].freeze
+  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats ai_inventory_health basic].freeze
   SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
@@ -226,30 +227,41 @@ class ReportsController < ApplicationController
 
   def sku_profit_trend
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @comparison_sku_codes = comparison_sku_codes_from_params
     begin
-      current_monday = user_today.beginning_of_week(:monday)
-      @profit_trend_weeks = SKU_PROFIT_TREND_WEEKS.times.map do |index|
-        from_date = current_monday - (SKU_PROFIT_TREND_WEEKS - index).weeks
-        to_date = from_date.end_of_week(:monday)
-        report = WeeklyProfitReports::ReportQueryRunner.run(
-          params: {
-            report_type: "wsu_deep",
-            from_date: from_date.iso8601,
-            to_date: to_date.iso8601,
-            sku_codes: [@sku.sku_code, *@comparison_sku_codes]
-          },
-          today: user_today
-        )
-        rows = report[:rows].select { |item| [@sku.sku_code, *@comparison_sku_codes].include?(profit_row_sku_code(item)) }
-        { from_date:, to_date:, row: rows.find { |item| profit_row_sku_code(item) == @sku.sku_code } || {}, rows: rows }
+      anchor_to = parse_report_date(params[:profit_to_date]) || (user_today.beginning_of_week(:monday) - 1.day)
+      @profit_trend = Ec::SkuProfitTrendQuery.run(sku: @sku, anchor_to:)
+      if params[:view] == "store"
+        requested_refs = Array(params[:store_refs])
+        groups = @profit_trend[:store_groups]
+        groups = groups.sort_by { |group| requested_refs.index(group[:store_ref]) || requested_refs.length }
+        @profit_store_trend_groups = groups.map do |group|
+          option = build_profit_time_chart(
+            @profit_trend[:weeks],
+            %i[net_sales revenue after_tax annualized_net_profit_cny average_profit_per_order ad_ratio_pct cost_return_pct annualized_return_pct],
+            default_metrics: %i[net_sales revenue after_tax annualized_net_profit_cny],
+            quantity_metrics: %i[net_sales], rows: group[:rows]
+          )
+          group.merge(chart_option: option)
+        end
+        return render partial: "reports/sku_store_profit_trend"
       end
-      @profit_trend_chart_option = build_sku_profit_trend_chart_option(@profit_trend_weeks, params[:profit_trend_metric])
+      @profit_scale_chart_option = build_profit_time_chart(
+        @profit_trend[:weeks],
+        %i[net_sales revenue after_tax annualized_net_profit_cny],
+        default_metrics: %i[after_tax annualized_net_profit_cny],
+        quantity_metrics: %i[net_sales]
+      )
+      @profit_quality_chart_option = build_profit_time_chart(
+        @profit_trend[:weeks],
+        %i[average_profit_per_order ad_ratio_pct cost_return_pct annualized_return_pct],
+        default_metrics: %i[average_profit_per_order annualized_return_pct]
+      )
     rescue StandardError => error
       Rails.logger.error("SKU profit trend failed for #{params[:sku_code]}: #{error.class}: #{error.message}")
       @profit_trend_error = true
+      @profit_store_trend_groups = []
     end
-    render partial: "reports/sku_profit_trend"
+    render partial: params[:view] == "store" ? "reports/sku_store_profit_trend" : "reports/sku_profit_trend"
   end
 
   def sku_sales_funnel_trends
@@ -678,7 +690,7 @@ class ReportsController < ApplicationController
       :predicted_costs,
       attachments: { file_attachment: :blob }
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "sales_funnel"
+    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "lifecycle"
     @active_tab = "sales_funnel" if @active_tab == "operation"
     load_spu_sku_filter
     @stores = Ec::Store.order(:platform, :store_name)
@@ -715,6 +727,9 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).performance_metrics.fetch(@sku)
+    @sku_lifecycle = Ec::SkuLifecycleQuery.new(
+      @sku, user_today: user_today, time_zone: user_time_zone
+    ).call if @active_tab == "lifecycle"
     load_sku_operation_overview if @active_tab.in?(%w[sales_funnel profit])
     load_sku_supply_orders if @active_tab == "supply_orders"
     load_sku_warehouses if @active_tab == "warehouses"
@@ -1151,29 +1166,53 @@ class ReportsController < ApplicationController
         @operation_funnel_error = error.message
       end
     else
-      @comparison_sku_codes = comparison_sku_codes_from_params
       last_monday = user_today.beginning_of_week(:monday) - 1.week
       @profit_from_date = parse_report_date(params[:profit_from_date]) || last_monday
       @profit_to_date = parse_report_date(params[:profit_to_date]) || last_monday.end_of_week(:monday)
-      @profit_report_type = params[:profit_report_type].presence_in(WeeklyProfitReports::ReportQueryRunner::REPORT_TYPES) || "wr"
-      @profit_store_ref = operation_store_ref(params[:profit_store_ref])
-
       begin
-        profit_params = {
-          report_type: @profit_report_type,
-          from_date: @profit_from_date.iso8601,
-          to_date: @profit_to_date.iso8601,
-          sku_codes: [@sku.sku_code, *@comparison_sku_codes]
-        }
-        profit_params[:store_ref] = @profit_store_ref if @profit_report_type == "wr"
-        @operation_profit_report = WeeklyProfitReports::ReportQueryRunner.run(
-          params: profit_params,
-          today: user_today
-        )
+        @profit_analysis = Ec::SkuProfitAnalysisQuery.run(sku: @sku, from_date: @profit_from_date, to_date: @profit_to_date)
       rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
         @operation_profit_error = error.message
       end
     end
+  end
+
+  def build_profit_time_chart(weeks, metrics, default_metrics:, quantity_metrics: [], rows: nil)
+    rows ||= weeks.map { |period| period[:sku_row] }
+    has_quantity_axis = quantity_metrics.any?
+    has_percentage_axis = metrics.any? { |metric| metric.to_s.end_with?("pct") }
+    series = metrics.map do |metric|
+      axis_index = if quantity_metrics.include?(metric)
+        0
+      elsif metric.to_s.end_with?("pct")
+        has_quantity_axis ? 2 : 1
+      else
+        has_quantity_axis ? 1 : 0
+      end
+      label = t("reports.sku_detail.profit_analysis.metrics.#{metric}")
+      label = "#{label} (CNY)" unless quantity_metrics.include?(metric) || metric.to_s.end_with?("pct")
+      { name: label, type: "line", connectNulls: false,
+        yAxisIndex: axis_index,
+        data: weeks.zip(rows).map { |period, row| [period[:to_date].iso8601, row[metric]] } }
+    end
+    selected = series.zip(metrics).to_h do |item, metric|
+      [item[:name], default_metrics.include?(metric)]
+    end
+    amount_axis_name = "#{t("reports.sku_detail.profit_trend.axes.amount")} (CNY)"
+    left_axis_name = has_quantity_axis ? t("reports.sku_detail.profit_trend.axes.quantity") : amount_axis_name
+    y_axes = if has_quantity_axis && has_percentage_axis
+      [
+        { type: "value", name: t("reports.sku_detail.profit_trend.axes.quantity") },
+        { type: "value", name: amount_axis_name, position: "right" },
+        { type: "value", name: "%", position: "right", offset: 52 }
+      ]
+    else
+      right_axis_name = has_quantity_axis ? amount_axis_name : "%"
+      [{ type: "value", name: left_axis_name }, { type: "value", name: right_axis_name, position: "right" }]
+    end
+    grid_right = has_quantity_axis && has_percentage_axis ? 108 : 55
+    { tooltip: { trigger: "axis" }, legend: { type: "scroll", selected: }, grid: { left: 50, right: grid_right, top: 48, bottom: 36, containLabel: true },
+      xAxis: { type: "time" }, yAxis: y_axes, series: }
   end
 
   def operation_store_ref(requested_store)
@@ -1338,6 +1377,49 @@ class ReportsController < ApplicationController
   def sku_operation_comparison_class(comparison)
     semantic = comparison&.dig(:semantic) || comparison&.dig("semantic")
     semantic.in?(%w[positive negative neutral]) ? "is-#{semantic}" : "is-none"
+  end
+
+  def sku_profit_period_comparison(current_row, previous_row, metric)
+    current = current_row[metric]
+    previous = previous_row[metric]
+    return if current.nil? || previous.nil?
+
+    current = BigDecimal(current.to_s)
+    previous = BigDecimal(previous.to_s)
+    return if previous.zero?
+
+    delta_pct = ((current - previous) / previous.abs * 100).round(2)
+    expense_metric = metric.in?(%i[
+      goods_cost cost_ratio_pct ads ad_ratio_pct commission_fee payment_fee delivery_fee
+      return_delivery_fee storage_fee dispatch_fee packing_fee defect_fee crossdock_fee
+      other_platform_fee tax
+    ])
+    favorable = expense_metric ? delta_pct.negative? : delta_pct.positive?
+    semantic = if delta_pct.zero?
+      "neutral"
+    elsif favorable
+      "positive"
+    else
+      "negative"
+    end
+
+    { delta_pct:, trend: delta_pct.positive? ? "up" : (delta_pct.negative? ? "down" : "flat"), semantic: }
+  rescue ArgumentError
+    nil
+  end
+
+  def sku_profit_analysis_value(row, metric)
+    value = row[metric]
+    return "-" if value.nil? || value == ""
+    return sku_operation_report_value(row, metric) unless metric.in?(%i[
+      revenue average_price commission_fee payment_fee delivery_fee return_delivery_fee storage_fee
+      dispatch_fee packing_fee defect_fee crossdock_fee other_platform_fee ads goods_cost pre_tax tax
+      after_tax average_profit_per_order annualized_net_profit_cny
+    ])
+
+    currency = (row[:currency] || "CNY").to_s.upcase
+    unit = { "CNY" => "¥", "BYN" => "Br ", "RUB" => "₽" }.fetch(currency, "#{currency} ")
+    helpers.number_to_currency(value, unit:, precision: 2)
   end
 
   def report_value(value)

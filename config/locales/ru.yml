@@ -1494,6 +1494,7 @@ ru:
         last_30_days_revenue: "Выручка за 30 дней"
         store_count: "Магазины"
       tabs:
+        lifecycle: "Жизненный цикл"
         ads: "Реклама"
         ai_inventory_health: "AI-диагностика"
         aria_label: "Разделы SKU"
@@ -1511,6 +1512,43 @@ ru:
         operation_actions: "Операционные записи"
         stores: "Продажи по магазинам"
         trend: "Тренд продаж"
+      lifecycle:
+        data_started_on: "Полные данные доступны с %{date}"
+        summary:
+          title: "Сводка жизненного цикла"
+          first_sale: "Первая продажа"
+          lifecycle_days: "Дней жизненного цикла"
+          current_state: "Текущий Grade / Stage"
+          net_sales: "Продажи итого"
+          revenue: "Выручка итого"
+          net_profit: "Чистая прибыль итого"
+          daily_sales_velocity: "Прогноз продаж в день"
+          inventory_cover_days: "Запас в днях"
+        timeline: { title: "Ключевые события", unsold: "Продаж пока нет", current: "Сейчас", collapsed: "Ранних событий: %{count}" }
+        events:
+          first_sale: { title: "Первая продажа" }
+          marketing_state_changed: { title: "Изменение Grade / Stage" }
+          purchase_ordered: { title: "Заказ поставщику" }
+          purchase_received: { title: "Приход закупки" }
+          replenishment: { title: "Поставка на платформу" }
+          platform_stockout: { title: "Нет остатка в магазине" }
+          all_platform_stockout: { title: "Нет остатка на платформах" }
+          stock_recovered: { title: "Остаток восстановлен" }
+        state_history:
+          title: "История статусов"
+          effective_at: "Вступило в силу"
+          change: "До / после"
+          changed_by: "Изменил"
+          note: "Примечание"
+          previous_week: "Предыдущая полная неделя"
+          sales: "Продажи"
+          revenue: "Выручка"
+          profit: "Прибыль"
+          margin: "Маржа"
+          daily_sales_velocity: "Прогноз в день"
+          inventory_cover_days: "Запас"
+          initial: "Начальный статус"
+          empty: "Истории Grade / Stage пока нет"
       ads:
         empty: "Нет рекламных данных по этому SKU за выбранный период"
         no_store: "Нет доступных рекламных магазинов"
@@ -1526,6 +1564,58 @@ ru:
         no_store: "Нет доступных магазинов"
         sales_funnel: "Воронка продаж"
         weekly_profit: "Недельное распределение прибыли"
+      profit_analysis:
+        title: "Атрибуция прибыли"
+        overview: "Периоды и обзор SKU"
+        store_detail: "Прибыль магазина / Listing"
+        trends: "Тренды и операционные события"
+        scale_trend: "Масштаб операций SKU за 8 недель"
+        quality_trend: "Качество прибыли SKU за 8 недель"
+        store_trend: "Тренд выбранного магазина / Listing"
+        metric: "Показатель"
+        selected_period: "Текущий выбор"
+        show_eight_week_trends: "Показать тренды за 8 недель"
+        hide_eight_week_trends: "Скрыть тренды за 8 недель"
+        period_filter: "Показать периоды"
+        store_eight_week_trend: "Тренд магазина / Listing за 8 недель"
+        select_store: "Выберите магазин"
+        loading: "Загрузка трендов прибыли..."
+        load_error: "Данные прибыли за период недоступны"
+        trend_error: "Не удалось загрузить тренды прибыли"
+        no_stores: "Нет данных магазина / Listing за период"
+        view_trend: "Показать тренд"
+        events:
+          system: "Система"
+        metrics:
+          store: "Платформа / Магазин"
+          listing: "Listing"
+          period: "Период"
+          net_sales: "Чистые продажи"
+          revenue: "Выручка"
+          average_price: "Средняя цена"
+          commission_fee: "Комиссия за продажу"
+          payment_fee: "Комиссия за оплату"
+          delivery_fee: "Логистика"
+          return_delivery_fee: "Логистика возврата"
+          storage_fee: "Хранение"
+          dispatch_fee: "Возврат продавцу"
+          packing_fee: "Упаковка"
+          defect_fee: "Обработка дефектов"
+          crossdock_fee: "Кросс-докинг"
+          other_platform_fee: "Прочие расходы платформы"
+          goods_cost: "Себестоимость"
+          cost_ratio_pct: "Доля себестоимости"
+          ads: "Реклама"
+          ad_ratio_pct: "Доля рекламы"
+          cost_return_pct: "Доходность затрат / ROI"
+          other_attributable_fees: "Прочие относимые расходы"
+          after_tax: "Чистая прибыль"
+          pre_tax: "Прибыль до налога"
+          tax: "Налог"
+          profit_margin_pct: "Маржа прибыли"
+          average_profit_per_order: "Средняя прибыль на заказ"
+          annualized_return_pct: "Годовая доходность"
+          annualized_net_profit_cny: "Годовая чистая прибыль"
       profit_trend:
         metric: "Показатель прибыли"
         axes:

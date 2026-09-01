@@ -34,6 +34,7 @@ module Ec
     has_many :advertising_inspects, class_name: "Ec::AdvertisingInspect", foreign_key: :sku_id
     has_many :operation_action_diagnoses, class_name: "Ec::OperationActionDiagnosis", foreign_key: :sku_id
     has_many :snapshots,         class_name: "Ec::Snapshot",           foreign_key: :sku_id
+    has_many :lifecycle_events,  class_name: "Ec::SkuLifecycleEvent",  foreign_key: :sku_id
     has_many :marketing_states, class_name: "Ec::SkuMarketingState", foreign_key: :sku_id, dependent: :destroy
     has_one :current_marketing_state, -> { current }, class_name: "Ec::SkuMarketingState", foreign_key: :sku_id
     has_many :attachment_links,  class_name: "Ec::AttachmentLink",      as: :attachable, dependent: :destroy

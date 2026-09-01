@@ -1543,6 +1543,7 @@ en:
         last_30_days_revenue: "Last 30 days revenue"
         store_count: "Stores"
       tabs:
+        lifecycle: "Lifecycle"
         ads: "Advertising"
         ai_inventory_health: "AI diagnosis"
         aria_label: "SKU detail sections"
@@ -1560,6 +1561,43 @@ en:
         operation_actions: "Operation records"
         stores: "Store sales"
         trend: "Sales trend"
+      lifecycle:
+        data_started_on: "Complete data is available from %{date}"
+        summary:
+          title: "Lifecycle summary"
+          first_sale: "First sale"
+          lifecycle_days: "Lifecycle days"
+          current_state: "Current Grade / Stage"
+          net_sales: "Cumulative net sales"
+          revenue: "Cumulative revenue"
+          net_profit: "Cumulative net profit"
+          daily_sales_velocity: "Forecast daily sales"
+          inventory_cover_days: "Inventory cover (days)"
+        timeline: { title: "Key events", unsold: "No sales yet", current: "Current", collapsed: "%{count} earlier events" }
+        events:
+          first_sale: { title: "First sale" }
+          marketing_state_changed: { title: "Grade / Stage changed" }
+          purchase_ordered: { title: "Purchase ordered" }
+          purchase_received: { title: "Purchase received" }
+          replenishment: { title: "Platform replenishment" }
+          platform_stockout: { title: "Store stockout" }
+          all_platform_stockout: { title: "All-platform stockout" }
+          stock_recovered: { title: "Stock recovered" }
+        state_history:
+          title: "State history"
+          effective_at: "Effective at"
+          change: "Before / after"
+          changed_by: "Changed by"
+          note: "Note"
+          previous_week: "Previous complete week"
+          sales: "Sales"
+          revenue: "Revenue"
+          profit: "Profit"
+          margin: "Margin"
+          daily_sales_velocity: "Forecast daily sales"
+          inventory_cover_days: "Inventory cover"
+          initial: "Initial state"
+          empty: "No Grade / Stage history"
       ads:
         empty: "No advertising data for this SKU in the selected period"
         no_store: "No advertising stores available"
@@ -1575,6 +1613,58 @@ en:
         no_store: "No stores available"
         sales_funnel: "Sales funnel"
         weekly_profit: "Weekly profit allocation"
+      profit_analysis:
+        title: "Profit attribution"
+        overview: "Period and SKU overview"
+        store_detail: "Store / Listing profit details"
+        trends: "Trends and operation events"
+        scale_trend: "SKU operating scale, last 8 weeks"
+        quality_trend: "SKU profit quality, last 8 weeks"
+        store_trend: "Selected store / Listing, last 8 weeks"
+        metric: "Metric"
+        selected_period: "Current selection"
+        show_eight_week_trends: "Show 8-week trends"
+        hide_eight_week_trends: "Hide 8-week trends"
+        period_filter: "Periods shown"
+        store_eight_week_trend: "Store / Listing 8-week trend"
+        select_store: "Select store"
+        loading: "Loading profit trends..."
+        load_error: "Profit data is unavailable for this period"
+        trend_error: "Profit trends could not be loaded"
+        no_stores: "No store / Listing profit data for this period"
+        view_trend: "View trend"
+        events:
+          system: "System"
+        metrics: &profit_analysis_metrics
+          store: "Platform / Store"
+          listing: "Listing"
+          period: "Period"
+          net_sales: "Net sales"
+          revenue: "Revenue"
+          average_price: "Average price"
+          commission_fee: "Sales commission"
+          payment_fee: "Payment fee"
+          delivery_fee: "Logistics fee"
+          return_delivery_fee: "Return logistics fee"
+          storage_fee: "Storage fee"
+          dispatch_fee: "Dispatch fee"
+          packing_fee: "Packing fee"
+          defect_fee: "Defect handling fee"
+          crossdock_fee: "Cross-dock fee"
+          other_platform_fee: "Other platform fee"
+          goods_cost: "Goods cost"
+          cost_ratio_pct: "Cost ratio"
+          ads: "Advertising"
+          ad_ratio_pct: "Ad ratio"
+          cost_return_pct: "Cost return / ROI"
+          other_attributable_fees: "Other attributable fees"
+          after_tax: "Net profit"
+          pre_tax: "Pre-tax profit"
+          tax: "Tax"
+          profit_margin_pct: "Profit margin"
+          average_profit_per_order: "Average profit per order"
+          annualized_return_pct: "Annualized return"
+          annualized_net_profit_cny: "Annualized net profit"
       profit_trend:
         metric: "Profit metric"
         axes:

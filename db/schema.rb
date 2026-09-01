@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_085012) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_01_050233) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -628,6 +628,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_085012) do
     t.index ["sku_code", "platform", "account_id", "fulfillment_type", "synced_at"], name: "idx_ec_sku_inventory_levels_history"
     t.index ["sku_code", "platform", "account_id", "fulfillment_type"], name: "idx_ec_sku_inventory_levels_latest", unique: true, where: "is_latest"
     t.index ["sku_code"], name: "index_ec_sku_inventory_levels_on_sku_code"
+  end
+
+  create_table "ec_sku_lifecycle_events", force: :cascade do |t|
+    t.jsonb "content", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.datetime "occurred_at", null: false
+    t.bigint "sku_id", null: false
+    t.bigint "sku_product_id"
+    t.bigint "source_id"
+    t.string "source_key", null: false
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.index ["event_type", "occurred_at"], name: "index_ec_sku_lifecycle_events_on_event_type_and_occurred_at"
+    t.index ["sku_id", "occurred_at"], name: "index_ec_sku_lifecycle_events_on_sku_id_and_occurred_at"
+    t.index ["sku_id"], name: "index_ec_sku_lifecycle_events_on_sku_id"
+    t.index ["sku_product_id", "occurred_at"], name: "idx_on_sku_product_id_occurred_at_b0cb030f58"
+    t.index ["sku_product_id"], name: "index_ec_sku_lifecycle_events_on_sku_product_id"
+    t.index ["source_key"], name: "index_ec_sku_lifecycle_events_on_source_key", unique: true
   end
 
   create_table "ec_sku_marketing_states", force: :cascade do |t|
@@ -2948,6 +2967,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_085012) do
   add_foreign_key "ec_sku_developer_assignments", "users"
   add_foreign_key "ec_sku_dimensions", "ec_skus", column: "sku_code", primary_key: "sku_code", on_delete: :cascade
   add_foreign_key "ec_sku_inventory_levels", "ec_stores", column: "store_id"
+  add_foreign_key "ec_sku_lifecycle_events", "ec_sku_products", column: "sku_product_id"
+  add_foreign_key "ec_sku_lifecycle_events", "ec_skus", column: "sku_id"
   add_foreign_key "ec_sku_marketing_states", "ec_skus", column: "sku_id", on_delete: :cascade
   add_foreign_key "ec_sku_marketing_states", "users", column: "changed_by_id", on_delete: :nullify
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"

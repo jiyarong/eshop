@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { applyOperationEventMarkLines } from "../lib/echarts_operation_event_markers";
 
 const ECHARTS_URL = "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js";
 
@@ -18,17 +19,24 @@ function loadEcharts() {
 }
 
 export default class extends Controller {
-  static targets = ["chart", "data"];
+  static targets = ["chart", "data", "events"];
 
   connect() {
     this.connected = true;
     loadEcharts().then(() => {
       if (!this.connected || !this.hasChartTarget || !this.hasDataTarget) return;
-      this.chart = window.echarts.init(this.chartTarget);
-      this.chart.setOption(JSON.parse(this.dataTarget.textContent));
+      try {
+        const option = JSON.parse(this.dataTarget.textContent);
+        const events = this.hasEventsTarget ? JSON.parse(this.eventsTarget.textContent) : [];
+        this.chart = window.echarts.init(this.chartTarget);
+        this.chart.setOption(applyOperationEventMarkLines(option, events));
+      } catch (error) {
+        console.error("Unable to initialize ECharts", error);
+        return;
+      }
       this.resizeObserver = new ResizeObserver(() => this.chart?.resize());
       this.resizeObserver.observe(this.chartTarget);
-    });
+    }).catch((error) => console.error("Unable to load ECharts", error));
   }
 
   disconnect() {

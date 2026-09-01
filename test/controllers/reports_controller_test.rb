@@ -1116,12 +1116,13 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select "a", text: "销量历史趋势", count: 0
       assert_select "a:last-child", text: "基础配置"
     end
-    assert_select ".sku-detail-tabs a:first-child", text: "销售漏斗"
-    assert_select ".sku-detail-tabs a:nth-child(2)", text: "利润归集"
-    assert_select ".sku-detail-tabs a:nth-child(3)", text: "库存概况"
-    assert_select ".sku-detail-tabs a:nth-child(4)", text: "送仓记录"
-    assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓建议"
-    assert_select ".sku-detail-tabs a:nth-child(6)", text: "运营记录"
+    assert_select ".sku-detail-tabs a:first-child", text: "生命周期"
+    assert_select ".sku-detail-tabs a:nth-child(2)", text: "销售漏斗"
+    assert_select ".sku-detail-tabs a:nth-child(3)", text: "利润归集"
+    assert_select ".sku-detail-tabs a:nth-child(4)", text: "库存概况"
+    assert_select ".sku-detail-tabs a:nth-child(5)", text: "送仓记录"
+    assert_select ".sku-detail-tabs a:nth-child(6)", text: "分仓建议"
+    assert_select ".sku-detail-tabs a:nth-child(7)", text: "运营记录"
     assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
   end
 
@@ -1133,6 +1134,18 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".sku-detail-identity > .status-pill", count: 0
     assert_select ".definition-list dt", text: I18n.t("reports.sku_detail.fields.status"), count: 0
+  end
+
+  test "sku detail defaults to a read-only lifecycle tab" do
+    event_count = Ec::SkuLifecycleEvent.count
+
+    get report_sku_path(@sku.sku_code), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", I18n.t("reports.sku_detail.tabs.lifecycle")
+    assert_select ".sku-lifecycle-timeline"
+    assert_select ".sku-lifecycle-node.is-muted", I18n.t("reports.sku_detail.lifecycle.timeline.unsold")
+    assert_equal event_count, Ec::SkuLifecycleEvent.count
   end
 
   test "sku detail drawer keeps each operation report filter inside its tab" do

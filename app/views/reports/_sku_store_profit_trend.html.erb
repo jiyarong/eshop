@@ -1,0 +1,19 @@
+<%= turbo_frame_tag "sku_store_profit_trend" do %>
+  <% pa = "reports.sku_detail.profit_analysis" %>
+  <div class="sku-profit-store-trend" data-controller="profit-store-trend-selector">
+    <h3><%= t("#{pa}.store_eight_week_trend") %></h3>
+    <% if @profit_trend_error %><div class="empty-state"><%= t("#{pa}.trend_error") %></div><% else %>
+    <fieldset class="sku-profit-store-trend__selector">
+      <legend><%= t("#{pa}.select_store") %></legend>
+      <% @profit_store_trend_groups.each_with_index do |group, index| %>
+        <label><input type="radio" name="profit_store_trend_ref" value="<%= group[:store_ref] %>" <%= "checked" if index.zero? %> data-action="profit-store-trend-selector#select"><span><%= group[:platform].to_s.upcase %> / <%= group[:shop] %></span></label>
+      <% end %>
+    </fieldset>
+    <% @profit_store_trend_groups.each_with_index do |group, index| %>
+      <div data-profit-store-trend-selector-target="panel" data-store-ref="<%= group[:store_ref] %>" <%= "hidden" unless index.zero? %>>
+        <div data-controller="echarts" class="sku-profit-trend__chart-wrap"><div data-echarts-target="chart" class="sku-profit-trend__chart"></div><script type="application/json" data-echarts-target="data"><%= raw JSON.generate(group[:chart_option]) %></script></div>
+      </div>
+    <% end %>
+    <% end %>
+  </div>
+<% end %>

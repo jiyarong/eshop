@@ -1,16 +1,9 @@
-<%= turbo_frame_tag "sku_profit_trend" do %>
-  <section class="panel sku-profit-trend">
-    <div class="sku-funnel-trends-heading"><h2 class="section-title"><%= t("reports.sku_detail.profit_trend.title") %></h2>
-    <% if @comparison_sku_codes.present? %><form method="get" action="<%= report_sku_profit_trend_path(@sku.sku_code) %>" data-turbo-frame="sku_profit_trend" class="sku-funnel-trend-metric-filter"><% @comparison_sku_codes.each do |code| %><input type="hidden" name="compare_sku_codes[]" value="<%= code %>"><% end %><label for="profit-trend-metric"><%= t("reports.sku_detail.profit_trend.metric") %></label><select id="profit-trend-metric" name="profit_trend_metric" onchange="this.form.requestSubmit()"><% ReportsController::SKU_PROFIT_TREND_METRICS.each do |metric| %><option value="<%= metric %>" <%= "selected" if params[:profit_trend_metric].to_s == metric.to_s %>><%= t("reports.sku_detail.profit_trend.metrics.#{metric}") %></option><% end %></select></form><% end %></div>
-    <% if @profit_trend_error %>
-      <div class="empty-state"><%= t("reports.sku_detail.profit_trend.load_error") %></div>
-    <% elsif @profit_trend_weeks.none? { |week| week[:row].present? } %>
-      <div class="empty-state"><%= t("reports.sku_detail.profit_trend.empty") %></div>
-    <% else %>
-      <div data-controller="echarts" class="sku-profit-trend__chart-wrap">
-        <div data-echarts-target="chart" class="sku-profit-trend__chart"></div>
-        <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(@profit_trend_chart_option) %></script>
-      </div>
+<%= turbo_frame_tag "sku_profit_trend" do %><% pa = "reports.sku_detail.profit_analysis" %>
+  <div class="sku-profit-analysis__trends">
+    <% if @profit_trend_error %><div class="empty-state"><%= t("#{pa}.trend_error") %></div><% else %>
+      <% [[t("#{pa}.scale_trend"), @profit_scale_chart_option], [t("#{pa}.quality_trend"), @profit_quality_chart_option]].each do |title, option| %>
+        <div class="sku-profit-analysis__chart-block"><h3><%= title %></h3><div data-controller="echarts" class="sku-profit-trend__chart-wrap"><div data-echarts-target="chart" class="sku-profit-trend__chart"></div><script type="application/json" data-echarts-target="data"><%= raw JSON.generate(option) %></script></div></div>
+      <% end %>
     <% end %>
-  </section>
+  </div>
 <% end %>

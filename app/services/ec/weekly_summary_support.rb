@@ -52,6 +52,16 @@ module Ec
             net_sales: net_sales,
             revenue: revenue,
             ads: ads,
+            commission_fee: nil,
+            payment_fee: nil,
+            delivery_fee: (sku_rows.sum { |row| row[:delivery] } * byn_cny).round(2),
+            return_delivery_fee: nil,
+            storage_fee: (sku_rows.sum { |row| row[:storage] } * byn_cny).round(2),
+            dispatch_fee: nil,
+            packing_fee: nil,
+            defect_fee: nil,
+            crossdock_fee: nil,
+            other_platform_fee: nil,
             goods_cost: goods_cost,
             pre_tax: pre_tax,
             tax: tax,
@@ -90,6 +100,16 @@ module Ec
             net_sales: row[:net_sales_count],
             revenue: revenue,
             ads: ads,
+            commission_fee: ozon_expense_cny(row[:commission], rub_cny),
+            payment_fee: ozon_expense_cny(row[:payment_fee], rub_cny),
+            delivery_fee: ozon_expense_cny(row[:delivery_charge], rub_cny),
+            return_delivery_fee: ozon_expense_cny(row[:return_delivery], rub_cny),
+            storage_fee: ozon_expense_cny(row[:storage_fee], rub_cny),
+            dispatch_fee: ozon_expense_cny(row[:dispatch_fee], rub_cny),
+            packing_fee: ozon_expense_cny(row[:packing_fee], rub_cny),
+            defect_fee: ozon_expense_cny(row[:defect_fee], rub_cny),
+            crossdock_fee: ozon_expense_cny(row[:crossdock_fee], rub_cny),
+            other_platform_fee: ozon_expense_cny(row[:other_fee], rub_cny),
             goods_cost: goods_cost,
             pre_tax: pre_tax,
             tax: tax,
@@ -112,6 +132,16 @@ module Ec
           net_sales: row[:net_sales],
           revenue: row[:revenue],
           ads: row[:ads],
+          commission_fee: row[:commission_fee],
+          payment_fee: row[:payment_fee],
+          delivery_fee: row[:delivery_fee],
+          return_delivery_fee: row[:return_delivery_fee],
+          storage_fee: row[:storage_fee],
+          dispatch_fee: row[:dispatch_fee],
+          packing_fee: row[:packing_fee],
+          defect_fee: row[:defect_fee],
+          crossdock_fee: row[:crossdock_fee],
+          other_platform_fee: row[:other_platform_fee],
           goods_cost: row[:goods_cost],
           pre_tax: row[:pre_tax],
           tax: row[:tax],
@@ -165,6 +195,16 @@ module Ec
             net_sales: sku_rows.sum { |row| row[:net_sales].to_i },
             revenue: sum_decimal(sku_rows, :revenue),
             ads: sum_decimal(sku_rows, :ads),
+            commission_fee: sum_optional_decimal(sku_rows, :commission_fee),
+            payment_fee: sum_optional_decimal(sku_rows, :payment_fee),
+            delivery_fee: sum_optional_decimal(sku_rows, :delivery_fee),
+            return_delivery_fee: sum_optional_decimal(sku_rows, :return_delivery_fee),
+            storage_fee: sum_optional_decimal(sku_rows, :storage_fee),
+            dispatch_fee: sum_optional_decimal(sku_rows, :dispatch_fee),
+            packing_fee: sum_optional_decimal(sku_rows, :packing_fee),
+            defect_fee: sum_optional_decimal(sku_rows, :defect_fee),
+            crossdock_fee: sum_optional_decimal(sku_rows, :crossdock_fee),
+            other_platform_fee: sum_optional_decimal(sku_rows, :other_platform_fee),
             goods_cost: sum_decimal(sku_rows, :goods_cost),
             pre_tax: sum_decimal(sku_rows, :pre_tax),
             tax: sum_decimal(sku_rows, :tax),
@@ -189,6 +229,16 @@ module Ec
           net_sales: row[:net_sales],
           revenue: row[:revenue],
           ads: row[:ads],
+          commission_fee: row[:commission_fee],
+          payment_fee: row[:payment_fee],
+          delivery_fee: row[:delivery_fee],
+          return_delivery_fee: row[:return_delivery_fee],
+          storage_fee: row[:storage_fee],
+          dispatch_fee: row[:dispatch_fee],
+          packing_fee: row[:packing_fee],
+          defect_fee: row[:defect_fee],
+          crossdock_fee: row[:crossdock_fee],
+          other_platform_fee: row[:other_platform_fee],
           goods_cost: row[:goods_cost],
           pre_tax: row[:pre_tax],
           tax: row[:tax],
@@ -395,6 +445,19 @@ module Ec
 
     def sum_decimal(rows, key)
       rows.sum { |row| decimal_or_zero(row[key]) }.round(2)
+    end
+
+    def sum_optional_decimal(rows, key)
+      values = rows.filter_map { |row| optional_decimal(row[key]) }
+      return nil if values.empty?
+
+      values.sum.round(2)
+    end
+
+    def ozon_expense_cny(value, rub_cny)
+      return nil if value.nil?
+
+      (-decimal_or_zero(value) * BigDecimal(rub_cny.to_s)).round(2)
     end
 
     def optional_decimal(value)
