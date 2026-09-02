@@ -393,11 +393,21 @@ module Ec
       scope = Ec::Snapshot.of_type("inventory").where.not(sku_id: nil).order(:sku_id, :snapshot_date)
       scope = scope.where(sku_id: @sku_ids) if @sku_ids
       scope = scope.where(snapshot_date: ..@to_date) if @to_date
+      target_ids = @sku_ids || scope.reorder(nil).distinct.pluck(:sku_id)
+      first_sale_dates = Ec::SkuLifecycleEvent.where(
+        sku_id: target_ids,
+        event_type: "first_sale"
+      ).pluck(:sku_id, :occurred_at).to_h.transform_values { |time| time.in_time_zone(SHANGHAI).to_date }
       scope.group_by(&:sku_id).each do |sku_id, snapshots|
+        first_sale_date = first_sale_dates[sku_id]
+        next unless first_sale_date
+
         sku = Ec::Sku.unscoped.includes(sku_products: :store).find_by(id: sku_id)
         next unless sku
 
-        observations = snapshots.filter_map { |snapshot| stock_observation(snapshot, sku) }
+        observations = snapshots.filter_map do |snapshot|
+          stock_observation(snapshot, sku) if snapshot.snapshot_date >= first_sale_date
+        end
         project_store_stock_intervals(sku, observations)
         project_all_platform_stock_intervals(sku, observations)
       end
@@ -512,6 +522,7 @@ module Ec
 
     def project_all_platform_stock_intervals(sku, observations)
       valid_sequence = observations.map { |observation| observation[:all_valid] ? observation : nil }
+      previous_positive = false
       stockout_run = []
       recovery_run = []
       active_stockout = nil
@@ -531,9 +542,15 @@ module Ec
           next
         end
 
-        stockout_run = substantive_stockout_day?(observation) ? consecutive_append(stockout_run, observation) : []
+        unless previous_positive
+          previous_positive = observation[:platform_stock].positive?
+          next
+        end
+
+        stockout_run = previous_positive && substantive_stockout_day?(observation) ? consecutive_append(stockout_run, observation) : []
         if stockout_run.size >= 3
           active_stockout = project_all_platform_stockout(sku, stockout_run.first, stockout_run.last)
+          previous_positive = false
           stockout_run = []
         end
       end

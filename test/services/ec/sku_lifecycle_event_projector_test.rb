@@ -167,6 +167,7 @@ class Ec::SkuLifecycleEventProjectorTest < ActiveSupport::TestCase
 
   test "confirms stockout and recovery from consecutive valid observations" do
     create_store_binding
+    create_order("FIRST", Time.zone.parse("2026-06-30 10:00"), "delivered")
     create_snapshot(Date.new(2026, 7, 1), 5)
     (2..4).each { |day| create_snapshot(Date.new(2026, 7, day), 0) }
     create_snapshot(Date.new(2026, 7, 5), 1)
@@ -182,6 +183,29 @@ class Ec::SkuLifecycleEventProjectorTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 7, 6), recovery.occurred_at.in_time_zone("Asia/Shanghai").to_date
     assert_equal stockout.source_key, recovery.content["stockout_source_key"]
     assert_equal 1, @sku.lifecycle_events.where(event_type: "all_platform_stockout").count
+  end
+
+  test "does not treat pre-sale zero inventory as stockout or recovery" do
+    create_store_binding
+    (26..28).each { |day| create_snapshot(Date.new(2026, 6, day), 0) }
+    create_order("FIRST", Time.zone.parse("2026-08-05 13:40"), "delivered")
+    create_snapshot(Date.new(2026, 8, 5), 0)
+    create_snapshot(Date.new(2026, 8, 6), 4)
+    create_snapshot(Date.new(2026, 8, 7), 4)
+
+    Ec::SkuLifecycleEventProjector.run(sku_ids: [ @sku.id ])
+
+    assert_not @sku.lifecycle_events.exists?(event_type: %w[platform_stockout all_platform_stockout stock_recovered])
+  end
+
+  test "requires positive saleable stock after first sale before confirming all-platform stockout" do
+    create_store_binding
+    create_order("FIRST", Time.zone.parse("2026-07-01 10:00"), "delivered")
+    (1..4).each { |day| create_snapshot(Date.new(2026, 7, day), 0) }
+
+    Ec::SkuLifecycleEventProjector.run(sku_ids: [ @sku.id ])
+
+    assert_not @sku.lifecycle_events.exists?(event_type: "all_platform_stockout")
   end
 
   private
