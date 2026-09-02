@@ -69,6 +69,29 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     end
   end
 
+  class FakeWbFbsClient
+    attr_reader :posts
+
+    def initialize(barcode:)
+      @barcode = barcode
+      @posts = []
+    end
+
+    def get(_service, path, _params = {})
+      return [{ "id" => 1, "name" => "Seller warehouse", "deliveryType" => 1 }] if path == "/api/v3/warehouses"
+
+      raise "unexpected WB GET #{path}"
+    end
+
+    def post(service, path, body = {})
+      @posts << { service: service, path: path, body: body }
+      return [] if service == :supplies && path == "/api/v1/supplies"
+      return { "stocks" => [{ "sku" => @barcode, "amount" => 9 }] } if service == :marketplace && path == "/api/v3/stocks/1"
+
+      raise "unexpected WB POST #{service} #{path}"
+    end
+  end
+
   class FakeOzonClient
     attr_reader :posts
 
@@ -166,6 +189,7 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     RawWb::Supply.where(account_id: @wb_account&.id).delete_all
     RawWb::WarehouseRegion.where(account_id: @wb_account&.id).delete_all
     RawOzon::WarehouseCluster.where(account_id: @ozon_account&.id).delete_all
+    RawWb::Product.where(account_id: @wb_account&.id).destroy_all
     Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all
     Ec::Store.where(id: [@wb_store&.id, @ozon_store&.id].compact).delete_all
     RawWb::SellerAccount.where(id: @wb_account&.id).delete_all
@@ -244,6 +268,35 @@ class Ec::SkuInventorySnapshotFetcherTest < ActiveSupport::TestCase
     }
     assert_not fbw[:warehouse_breakdown].any? { |warehouse| warehouse[:warehouse_name] == "В пути до получателей" }
     assert_not fbw[:warehouse_breakdown].any? { |warehouse| warehouse[:warehouse_name] == "В пути возвраты на склад WB" }
+  end
+
+  test "wb fbs requests seller stock by product barcode and maps it to the internal sku" do
+    barcode = "WB-BARCODE-#{@token}"
+    raw_product = RawWb::Product.create!(
+      account: @wb_account,
+      nm_id: @wb_product.product_id.to_i,
+      vendor_code: @sku.sku_code,
+      synced_at: Time.current
+    )
+    raw_product.product_skus.create!(
+      chrt_id: 900_000_000 + @token.hex,
+      barcode: barcode,
+      skus: [barcode]
+    )
+    fake_client = FakeWbFbsClient.new(barcode: barcode)
+    fetcher = Ec::SkuInventorySnapshotFetcher.new(wb_client_factory: ->(_) { fake_client })
+
+    rows = fetcher.send(:wb_fbs_rows, Time.zone.parse("2026-07-30 10:00:00"))
+
+    fbs = rows.find { |row| row[:sku_code] == @sku.sku_code && row[:fulfillment_type] == "fbs" }
+    assert_equal 9, fbs[:quantity]
+    assert_equal [barcode], fbs[:metadata][:barcodes]
+    assert_equal [{ warehouse_id: 1, warehouse_name: "Seller warehouse", quantity: 9 }], fbs[:warehouse_breakdown]
+    assert_includes fake_client.posts, {
+      service: :marketplace,
+      path: "/api/v3/stocks/1",
+      body: { skus: [barcode] }
+    }
   end
 
   test "ozon inbound uses promised warehouse stock amount" do

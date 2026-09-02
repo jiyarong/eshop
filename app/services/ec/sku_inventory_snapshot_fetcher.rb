@@ -122,52 +122,61 @@ module Ec
       RawWb::SellerAccount.where(is_active: true).flat_map do |account|
         store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: account.id)
         fbs_warehouses = wb_fbs_warehouses(account)
+        next [] unless fbs_warehouses
+
         inbound_by_sku_code = wb_inbound_quantities_by_sku_code(account)
         next [] unless inbound_by_sku_code
 
-        Ec::SkuProduct
+        products_by_sku_code = Ec::SkuProduct
           .joins(:store)
           .where(platform: "wb", ec_stores: { wb_raw_account_id: account.id })
           .group_by(&:sku_code)
-          .flat_map do |sku_code, products|
-            chrt_ids = products.map(&:platform_sku_id).compact
-            stocks_by_warehouse = chrt_ids.empty? ? [] : wb_fbs_stocks_by_warehouse(account, fbs_warehouses, chrt_ids)
-            fbs_quantity = stocks_by_warehouse.sum { |row| row[:quantity].to_i }
-            inbound_quantity = inbound_by_sku_code.fetch(sku_code, 0).to_i
-            available_fbs_quantity = [fbs_quantity - inbound_quantity, 0].max
+        barcodes_by_sku_code = wb_fbs_barcodes_by_sku_code(account, products_by_sku_code)
+        stocks_by_sku_code = wb_fbs_stocks_by_sku_code(account, fbs_warehouses, barcodes_by_sku_code)
+        next [] unless stocks_by_sku_code
 
-            [
-              row_for(
-                sku_code: sku_code,
-                platform: "wb",
-                account_id: account.id,
-                store: store || products.first.store,
-                store_name: account.name,
-                fulfillment_type: "fbs",
-                quantity: available_fbs_quantity,
-                synced_at: now,
-                metadata: {
-                  chrt_ids: chrt_ids,
-                  warehouse_count: fbs_warehouses.size,
-                  raw_fbs_quantity: fbs_quantity,
-                  inbound_deducted_quantity: [inbound_quantity, fbs_quantity].min
-                },
-                warehouse_breakdown: stocks_by_warehouse
-              ),
-              row_for(
-                sku_code: sku_code,
-                platform: "wb",
-                account_id: account.id,
-                store: store || products.first.store,
-                store_name: account.name,
-                fulfillment_type: "inbound",
-                quantity: inbound_quantity,
-                synced_at: now,
-                metadata: { source: "wb_supplies_api", status_ids: WB_INBOUND_STATUS_IDS, chrt_ids: chrt_ids },
-                warehouse_breakdown: []
-              )
-            ]
+        products_by_sku_code.flat_map do |sku_code, products|
+          barcodes = barcodes_by_sku_code.fetch(sku_code, [])
+          stocks_by_warehouse = stocks_by_sku_code.fetch(sku_code, [])
+          fbs_quantity = stocks_by_warehouse.sum { |row| row[:quantity].to_i }
+          inbound_quantity = inbound_by_sku_code.fetch(sku_code, 0).to_i
+          available_fbs_quantity = [fbs_quantity - inbound_quantity, 0].max
+          rows = []
+
+          if barcodes.any?
+            rows << row_for(
+              sku_code: sku_code,
+              platform: "wb",
+              account_id: account.id,
+              store: store || products.first.store,
+              store_name: account.name,
+              fulfillment_type: "fbs",
+              quantity: available_fbs_quantity,
+              synced_at: now,
+              metadata: {
+                barcodes: barcodes,
+                warehouse_count: fbs_warehouses.size,
+                raw_fbs_quantity: fbs_quantity,
+                inbound_deducted_quantity: [inbound_quantity, fbs_quantity].min
+              },
+              warehouse_breakdown: stocks_by_warehouse
+            )
           end
+
+          rows << row_for(
+            sku_code: sku_code,
+            platform: "wb",
+            account_id: account.id,
+            store: store || products.first.store,
+            store_name: account.name,
+            fulfillment_type: "inbound",
+            quantity: inbound_quantity,
+            synced_at: now,
+            metadata: { source: "wb_supplies_api", status_ids: WB_INBOUND_STATUS_IDS },
+            warehouse_breakdown: []
+          )
+          rows
+        end
       end
     end
 
@@ -176,19 +185,55 @@ module Ec
       Array(client.get(:marketplace, "/api/v3/warehouses")).select { |warehouse| warehouse["deliveryType"] == 1 }
     rescue => e
       Rails.logger.warn("[SkuInventorySnapshotFetcher] WB FBS warehouses account=#{account.id} failed: #{e.message}")
-      []
+      nil
     end
 
-    def wb_fbs_stocks_by_warehouse(account, warehouses, chrt_ids)
+    def wb_fbs_barcodes_by_sku_code(account, products_by_sku_code)
+      nm_ids = products_by_sku_code.values.flatten.map(&:product_id).compact.map(&:to_s)
+      raw_products_by_nm_id = RawWb::Product
+        .includes(:product_skus)
+        .where(account_id: account.id, nm_id: nm_ids)
+        .index_by { |product| product.nm_id.to_s }
+
+      products_by_sku_code.transform_values do |products|
+        products.flat_map do |product|
+          raw_product = raw_products_by_nm_id[product.product_id.to_s]
+          next [] unless raw_product
+
+          raw_product.product_skus.flat_map { |variant| Array(variant.skus) + [variant.barcode] }
+        end.filter_map(&:presence).map(&:to_s).uniq
+      end
+    end
+
+    def wb_fbs_stocks_by_sku_code(account, warehouses, barcodes_by_sku_code)
       client = wb_client(account)
-      warehouses.map do |warehouse|
-        response = client.post(:marketplace, "/api/v3/stocks/#{warehouse["id"]}", { chrtIds: chrt_ids.map(&:to_i) })
-        quantity = Array(response["stocks"]).sum { |stock| stock["amount"].to_i }
-        { warehouse_id: warehouse["id"], warehouse_name: warehouse["name"], quantity: quantity }
-      end.select { |row| row[:quantity].positive? }
+      sku_code_by_barcode = barcodes_by_sku_code.each_with_object({}) do |(sku_code, barcodes), lookup|
+        barcodes.each { |barcode| lookup[barcode] = sku_code }
+      end
+      quantities = Hash.new { |hash, sku_code| hash[sku_code] = Hash.new(0) }
+
+      warehouses.each do |warehouse|
+        sku_code_by_barcode.keys.each_slice(1_000) do |barcodes|
+          response = client.post(:marketplace, "/api/v3/stocks/#{warehouse["id"]}", { skus: barcodes })
+          Array(response["stocks"]).each do |stock|
+            sku_code = sku_code_by_barcode[stock["sku"].to_s]
+            next unless sku_code
+
+            quantities[sku_code][warehouse] += stock["amount"].to_i
+          end
+        end
+      end
+
+      quantities.transform_values do |warehouse_quantities|
+        warehouse_quantities.filter_map do |warehouse, quantity|
+          next unless quantity.positive?
+
+          { warehouse_id: warehouse["id"], warehouse_name: warehouse["name"], quantity: quantity }
+        end
+      end
     rescue => e
       Rails.logger.warn("[SkuInventorySnapshotFetcher] WB FBS stocks account=#{account.id} failed: #{e.message}")
-      []
+      nil
     end
 
     def ozon_rows(now)
