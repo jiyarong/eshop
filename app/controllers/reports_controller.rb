@@ -21,8 +21,8 @@ class ReportsController < ApplicationController
   before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :edit_sku_attachment, :update_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats ai_inventory_health basic].freeze
-  SKU_DETAIL_HIDDEN_TABS = %w[lifecycle operation costs stores trend].freeze
+  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats ai_inventory_health basic].freeze
+  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
   WB_WAREHOUSE_PAGE_SIZE = 10
@@ -690,7 +690,7 @@ class ReportsController < ApplicationController
       :predicted_costs,
       attachments: { file_attachment: :blob }
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "sales_funnel"
+    @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "lifecycle"
     @active_tab = "sales_funnel" if @active_tab == "operation"
     load_spu_sku_filter
     @stores = Ec::Store.order(:platform, :store_name)

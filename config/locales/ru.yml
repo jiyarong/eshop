@@ -1524,18 +1524,69 @@ ru:
           net_profit: "Чистая прибыль итого"
           daily_sales_velocity: "Прогноз продаж в день"
           inventory_cover_days: "Запас в днях"
-        timeline: { title: "Ключевые события", unsold: "Продаж пока нет", current: "Сейчас", collapsed: "Ранних событий: %{count}" }
+          daily_sales_formula:
+            aria_label: "Показать формулу прогноза продаж"
+            description: "Прогноз продаж в день = среднее за 7 календарных дней × 50% + среднее за 15 дней × 30% + среднее за 30 дней × 20%. Дни отсутствия товара из этого расчета не исключаются."
+          stockout_adjusted_daily_sales: "Прогноз продаж с учетом дефицита"
+          stockout_adjusted_inventory_cover_days: "Запас в днях с учетом дефицита"
+          stockout_adjusted_formula:
+            aria_label: "Показать формулу прогноза с учетом отсутствия товара"
+            description: "Сначала исключаются дни полного отсутствия товара за последние 30 снимков. S7, S15 и S30 — средние продажи за последние 7, 15 и 30 доступных дней. Стабильно: прогноз = (S7 + S15 + S30) / 3. Рост: min(S7 + (S7 - предыдущий S7) / 7 × 15, S7 × 1.5). Снижение: max(S7 + (S7 - предыдущий S7) / 7 × 15, S30 × 0.5). Если доступных дней меньше 7, используется их среднее; для распродажи рост рассчитывается по стабильной формуле."
+        timeline: { title: "Ключевые события", unsold: "Продаж пока нет", current: "Сейчас", collapsed: "Ранних событий: %{count}", expand_earlier: "Показать ранние события на шкале: %{count}" }
         events:
           first_sale: { title: "Первая продажа" }
           marketing_state_changed: { title: "Изменение Grade / Stage" }
           purchase_ordered: { title: "Заказ поставщику" }
           purchase_received: { title: "Приход закупки" }
+          profit_grade_reached: { title: "Годовая прибыль впервые достигла %{grade}" }
+          cumulative_profit_reached: { title: "Накопленная прибыль достигла CNY %{amount}" }
           replenishment: { title: "Поставка на платформу" }
           platform_stockout: { title: "Нет остатка в магазине" }
           all_platform_stockout: { title: "Нет остатка на платформах" }
           stock_recovered: { title: "Остаток восстановлен" }
+        details:
+          title: "Детали события"
+          close: "Закрыть детали события"
+          fields:
+            platform: "Платформа"
+            store_id: "ID магазина"
+            store: "Магазин"
+            quantity: "Количество"
+            previous_quantity: "Остаток до отсутствия"
+            platform_sku_id: "ID SKU платформы"
+            order_id: "ID заказа"
+            from_state: "Предыдущий статус"
+            to_state: "Новый статус"
+            note: "Примечание"
+            batch_code: "Партия закупки"
+            unit_price: "Цена за единицу CNY"
+            supplier_id: "ID поставщика"
+            expected_arrival_on: "Ожидаемая дата"
+            received_on: "Дата прихода"
+            purchase_date: "Дата закупки"
+            status: "Статус"
+            order_no: "Номер заказа"
+            supply_order_id: "Номер поставки"
+            warehouse: "Склад"
+            destination: "Склад назначения"
+            platform_stock: "Остаток платформы"
+            wb_stock: "Остаток WB FBW"
+            ozon_stock: "Остаток Ozon FBO"
+            daily_sales_velocity: "Прогноз продаж в день"
+            cover_days: "Дней запаса"
+            started_on: "Дата начала"
+            recovered_on: "Дата восстановления"
+            confirmed_on: "Дата подтверждения"
+            scope: "Область"
+            grade: "Достигнутый Grade"
+            week_range: "Отчетная неделя"
+            annualized_net_profit: "Годовая чистая прибыль"
+            annualized_return: "Годовая доходность"
+            weekly_after_tax: "Недельная прибыль после налогов"
+            milestone_threshold: "Порог события"
+            cumulative_profit: "Накопленная прибыль после налогов"
         state_history:
-          title: "История статусов"
+          title: "История Grade / Stage"
           effective_at: "Вступило в силу"
           change: "До / после"
           changed_by: "Изменил"

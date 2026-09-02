@@ -1,0 +1,65 @@
+<% content = event.content.with_indifferent_access %>
+<% event_time = if event.content["time_precision"] == "week"
+  "#{content[:week_from]} - #{content[:week_to]}"
+elsif event.content["time_precision"] == "date"
+  event.occurred_at.in_time_zone(user_time_zone).to_date.iso8601
+else
+  display_time(event.occurred_at)
+end %>
+<% event_title = t("reports.sku_detail.lifecycle.events.#{event.event_type}.title",
+  grade: content[:grade], amount: number_with_delimiter(content[:threshold_cny], delimiter: ",")) %>
+<% detail_rows = case event.event_type
+when "first_sale"
+  [["platform", content[:platform]], ["store_id", content[:store_id]], ["quantity", content[:quantity]], ["platform_sku_id", content[:platform_sku_id]], ["order_id", content[:order_id]]]
+when "marketing_state_changed"
+  [["from_state", [content[:from_grade], content[:from_stage]&.upcase].compact.join(" / ").presence], ["to_state", [content[:to_grade], content[:to_stage]&.upcase].compact.join(" / ")], ["note", content[:note]]]
+when "purchase_ordered"
+  [["batch_code", content[:batch_code]], ["quantity", content[:purchased_quantity]], ["unit_price", content[:purchase_unit_price_cny]], ["supplier_id", content[:supplier_id]], ["expected_arrival_on", content[:expected_arrival_on]], ["status", content[:status]], ["order_no", content[:order_no]]]
+when "purchase_received"
+  [["batch_code", content[:batch_code]], ["quantity", content[:received_quantity]], ["received_on", content[:received_on]], ["purchase_date", content[:purchase_date]], ["supplier_id", content[:supplier_id]], ["status", content[:status]]]
+when "profit_grade_reached"
+  [["grade", content[:grade]], ["week_range", "#{content[:week_from]} - #{content[:week_to]}"],
+   ["annualized_net_profit", number_to_currency(content[:annualized_net_profit_cny], unit: "CNY ", precision: 2)],
+   ["annualized_return", "#{number_with_precision(content[:annualized_return_pct], precision: 2)}%"],
+   ["weekly_after_tax", number_to_currency(content[:after_tax], unit: "CNY ", precision: 2)]]
+when "cumulative_profit_reached"
+  [["milestone_threshold", number_to_currency(content[:threshold_cny], unit: "CNY ", precision: 2)],
+   ["week_range", "#{content[:week_from]} - #{content[:week_to]}"],
+   ["cumulative_profit", number_to_currency(content[:cumulative_profit_cny], unit: "CNY ", precision: 2)]]
+when "replenishment"
+  [["platform", content[:platform]], ["quantity", content[:quantity]], ["supply_order_id", content[:wb_supply_id] || content[:supply_order_id]], ["order_no", content[:order_number]], ["warehouse", content[:actual_warehouse_name] || content[:warehouse_name] || content[:drop_off_warehouse]], ["destination", Array(content[:destination_warehouses]).filter_map { |item| item.is_a?(Hash) ? (item["name"] || item[:name] || item["warehouse_name"] || item[:warehouse_name]) : item }.join(", ").presence]]
+when "platform_stockout"
+  [["platform", content[:platform]], ["store", content[:store_name] || content[:store_id]], ["previous_quantity", content[:previous_quantity]], ["started_on", content[:first_zero_date]], ["confirmed_on", content[:confirmed_on]]]
+when "all_platform_stockout"
+  [["platform_stock", content[:platform_stock]], ["wb_stock", content[:wb_fbw_stock]], ["ozon_stock", content[:ozon_fbo_stock]], ["daily_sales_velocity", content[:daily_sales_velocity]], ["cover_days", content[:platform_cover_days]], ["started_on", content[:started_on]], ["confirmed_on", content[:confirmed_on]]]
+when "stock_recovered"
+  [["scope", content[:scope]], ["platform_stock", content[:platform_stock]], ["wb_stock", content[:wb_fbw_stock]], ["ozon_stock", content[:ozon_fbo_stock]], ["daily_sales_velocity", content[:daily_sales_velocity]], ["cover_days", content[:platform_cover_days]], ["recovered_on", content[:recovered_on]], ["confirmed_on", content[:confirmed_on]]]
+else
+  []
+end %>
+<% popover_id = "sku-lifecycle-event-#{event.id}-details" %>
+
+<div class="sku-lifecycle-node sku-lifecycle-node--has-popover sku-lifecycle-node--<%= event.event_type %> <%= "sku-lifecycle-node--anchor" if event.event_type == "first_sale" %>"
+     role="listitem"
+     data-controller="diagnosis-event-popover"
+     data-action="keydown.esc@window->diagnosis-event-popover#closeOnEscape"
+     <%= "hidden" if local_assigns[:hidden] %>
+     <% if local_assigns[:hidden] %>data-sku-lifecycle-timeline-target="hiddenEvent"<% end %>>
+  <button type="button" class="sku-lifecycle-node__trigger" aria-expanded="false" aria-controls="<%= popover_id %>" data-action="diagnosis-event-popover#toggle" data-diagnosis-event-popover-target="trigger">
+    <i class="bi <%= { "first_sale" => "bi-bag-check", "marketing_state_changed" => "bi-arrow-left-right", "purchase_ordered" => "bi-file-earmark-text", "purchase_received" => "bi-box-seam", "profit_grade_reached" => "bi-graph-up-arrow", "cumulative_profit_reached" => "bi-trophy", "replenishment" => "bi-truck", "platform_stockout" => "bi-shop-window", "all_platform_stockout" => "bi-exclamation-triangle", "stock_recovered" => "bi-arrow-repeat" }.fetch(event.event_type, "bi-circle") %>" aria-hidden="true"></i>
+    <strong><%= event_title %></strong>
+    <time><%= event_time %></time>
+  </button>
+  <div id="<%= popover_id %>" class="sku-lifecycle-event-popover" role="dialog" aria-label="<%= t("reports.sku_detail.lifecycle.details.title") %>" data-diagnosis-event-popover-target="popover" hidden>
+    <div class="sku-lifecycle-event-popover__header">
+      <div><strong><%= event_title %></strong><time><%= event_time %></time></div>
+      <button type="button" class="sku-lifecycle-event-popover__close" aria-label="<%= t("reports.sku_detail.lifecycle.details.close") %>" data-action="diagnosis-event-popover#close"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </div>
+    <dl class="sku-lifecycle-event-popover__details">
+      <% detail_rows.select { |_key, value| value.present? || value == 0 }.each do |key, value| %>
+        <dt><%= t("reports.sku_detail.lifecycle.details.fields.#{key}") %></dt>
+        <dd><%= value %></dd>
+      <% end %>
+    </dl>
+  </div>
+</div>

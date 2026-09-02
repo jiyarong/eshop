@@ -33,6 +33,7 @@ import ResponsibleUserFilterController from "./controllers/responsible_user_filt
 import ShellController from "./controllers/shell_controller";
 import SkuBatchFormController from "./controllers/sku_batch_form_controller";
 import SkuDetailTabsController from "./controllers/sku_detail_tabs_controller";
+import SkuLifecycleTimelineController from "./controllers/sku_lifecycle_timeline_controller";
 import SpuSkuFilterController from "./controllers/spu_sku_filter_controller";
 import TimeRangeSelectorController from "./controllers/time_range_selector_controller";
 import TableRowExpanderController from "./controllers/table_row_expander_controller";
@@ -74,6 +75,7 @@ Stimulus.register("responsible-user-filter", ResponsibleUserFilterController);
 Stimulus.register("shell", ShellController);
 Stimulus.register("sku-batch-form", SkuBatchFormController);
 Stimulus.register("sku-detail-tabs", SkuDetailTabsController);
+Stimulus.register("sku-lifecycle-timeline", SkuLifecycleTimelineController);
 Stimulus.register("spu-sku-filter", SpuSkuFilterController);
 Stimulus.register("time-range-selector", TimeRangeSelectorController);
 Stimulus.register("table-row-expander", TableRowExpanderController);

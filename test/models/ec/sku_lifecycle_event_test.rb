@@ -36,6 +36,36 @@ class Ec::SkuLifecycleEventTest < ActiveSupport::TestCase
     assert event.errors[:content].any?
   end
 
+  test "accepts a complete profit grade milestone" do
+    event = @sku.lifecycle_events.build(
+      event_type: "profit_grade_reached",
+      occurred_at: Time.zone.parse("2026-07-12 00:00"),
+      source_key: "profit_grade_reached:sku:#{@sku.id}:A",
+      content: {
+        grade: "A", week_from: "2026-07-06", week_to: "2026-07-12",
+        annualized_net_profit_cny: "100000", annualized_return_pct: "80.01",
+        after_tax: "2000", time_precision: "week"
+      }
+    )
+
+    assert event.valid?
+  end
+
+  test "accepts a complete cumulative profit milestone" do
+    event = @sku.lifecycle_events.build(
+      event_type: "cumulative_profit_reached",
+      occurred_at: Time.zone.parse("2026-07-12 00:00"),
+      source_key: "cumulative_profit_reached:sku:#{@sku.id}:100000",
+      content: {
+        threshold_cny: 100_000, cumulative_profit_cny: "105000",
+        weekly_after_tax: "10000", week_from: "2026-07-06", week_to: "2026-07-12",
+        time_precision: "week"
+      }
+    )
+
+    assert event.valid?
+  end
+
   test "requires a globally unique source key" do
     @sku.lifecycle_events.create!(valid_marketing_attributes)
     duplicate = @other_sku.lifecycle_events.build(valid_marketing_attributes)

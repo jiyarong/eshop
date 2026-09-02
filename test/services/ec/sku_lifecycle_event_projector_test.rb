@@ -74,6 +74,97 @@ class Ec::SkuLifecycleEventProjectorTest < ActiveSupport::TestCase
     assert_equal "missing_purchase_date", result[:warnings].find { |item| item[:source_id] == batch.id }[:reason]
   end
 
+  test "projects A and later S from the first single qualifying complete week" do
+    weeks = [ Date.new(2026, 7, 6)..Date.new(2026, 7, 12), Date.new(2026, 7, 13)..Date.new(2026, 7, 19) ]
+    reports = [
+      profit_report(annualized_profit: 100_000, annualized_return: 80.01, after_tax: 2_000),
+      profit_report(annualized_profit: 250_000.01, annualized_return: 100.01, after_tax: 5_000)
+    ]
+    projector = Ec::SkuLifecycleEventProjector.new(sku_ids: [ @sku.id ])
+    projector.define_singleton_method(:milestone_weeks) { weeks }
+
+    with_weekly_reports(->(**) { reports.shift }) do
+      projector.send(:project_profit_grade_milestones)
+    end
+
+    events = @sku.lifecycle_events.where(event_type: "profit_grade_reached").chronological.to_a
+    assert_equal %w[A S], events.map { |event| event.content["grade"] }
+    assert_equal %w[2026-07-12 2026-07-19], events.map { |event| event.content["week_to"] }
+  end
+
+  test "projects only S when the first qualifying week reaches S" do
+    week = Date.new(2026, 7, 6)..Date.new(2026, 7, 12)
+    projector = Ec::SkuLifecycleEventProjector.new(sku_ids: [ @sku.id ])
+    projector.define_singleton_method(:milestone_weeks) { [ week ] }
+
+    report = profit_report(annualized_profit: 300_000, annualized_return: 120, after_tax: 6_000)
+    with_weekly_reports(->(**) { report }) do
+      projector.send(:project_profit_grade_milestones)
+    end
+
+    assert_equal [ "S" ], @sku.lifecycle_events.where(event_type: "profit_grade_reached")
+      .pluck(:content).map { |content| content["grade"] }
+  end
+
+  test "uses strict annualized return boundaries without multi-week confirmation" do
+    projector = Ec::SkuLifecycleEventProjector.new(sku_ids: [ @sku.id ])
+
+    assert_nil projector.send(:profit_candidate_grade, profit_row(250_000, 80))
+    assert_equal "A", projector.send(:profit_candidate_grade, profit_row(250_000, 100))
+    assert_nil projector.send(:profit_candidate_grade, profit_row(nil, 120))
+    assert_equal "S", projector.send(:profit_candidate_grade, profit_row(250_000.01, 100.01))
+  end
+
+  test "projects cumulative profit milestones on the first crossing week" do
+    weeks = [ Date.new(2026, 7, 6)..Date.new(2026, 7, 12), Date.new(2026, 7, 13)..Date.new(2026, 7, 19) ]
+    reports = [
+      profit_report(annualized_profit: nil, annualized_return: nil, after_tax: 90_000),
+      profit_report(annualized_profit: nil, annualized_return: nil, after_tax: 920_000)
+    ]
+    cumulative_reports = [
+      profit_report(annualized_profit: nil, annualized_return: nil, after_tax: 90_000),
+      profit_report(annualized_profit: nil, annualized_return: nil, after_tax: 1_010_000)
+    ]
+    projector = Ec::SkuLifecycleEventProjector.new(sku_ids: [ @sku.id ])
+    projector.define_singleton_method(:milestone_weeks) { weeks }
+    projector.define_singleton_method(:cumulative_profit_groups) { |_sku_codes| {} }
+    projector.define_singleton_method(:cumulative_profit_rows) { |_week, _groups| cumulative_reports.shift.fetch(:rows) }
+
+    with_weekly_reports(->(**) { reports.shift }) do
+      projector.send(:project_profit_grade_milestones)
+    end
+
+    events = @sku.lifecycle_events.where(event_type: "cumulative_profit_reached").chronological.to_a
+    assert_equal [ 100_000, 250_000, 1_000_000 ], events.map { |event| event.content["threshold_cny"] }
+    assert events.all? { |event| event.content["week_to"] == "2026-07-19" }
+    assert_equal [ "1010000.0" ], events.map { |event| event.content["cumulative_profit_cny"] }.uniq
+  end
+
+  test "uses lifecycle-to-week profit for incremental projection" do
+    week = Date.new(2026, 7, 13)..Date.new(2026, 7, 19)
+    weekly = profit_report(annualized_profit: nil, annualized_return: nil, after_tax: 10_000)
+    cumulative = profit_report(annualized_profit: nil, annualized_return: nil, after_tax: 105_000)
+    calls = []
+    projector = Ec::SkuLifecycleEventProjector.new(
+      sku_ids: [ @sku.id ], from_date: week.begin, to_date: week.end
+    )
+    sku_code = @sku.sku_code
+    projector.define_singleton_method(:milestone_weeks) { [ week ] }
+    projector.define_singleton_method(:cumulative_profit_groups) do |_sku_codes|
+      { Date.new(2026, 7, 1).beginning_of_week(:monday) => [ sku_code ] }
+    end
+
+    with_weekly_reports(->(**args) { calls << args; calls.size == 1 ? weekly : cumulative }) do
+      projector.send(:project_profit_grade_milestones)
+    end
+
+    event = @sku.lifecycle_events.find_by!(event_type: "cumulative_profit_reached")
+    assert_equal 100_000, event.content["threshold_cny"]
+    assert_equal "105000.0", event.content["cumulative_profit_cny"]
+    assert_equal Date.new(2026, 7, 1).beginning_of_week(:monday), calls.second[:from_date]
+    assert_equal week.end, calls.second[:to_date]
+  end
+
   test "confirms stockout and recovery from consecutive valid observations" do
     create_store_binding
     create_snapshot(Date.new(2026, 7, 1), 5)
@@ -94,6 +185,23 @@ class Ec::SkuLifecycleEventProjectorTest < ActiveSupport::TestCase
   end
 
   private
+
+  def with_weekly_reports(replacement)
+    original = Ec::WeeklySummaryDeepQuery.method(:run)
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, replacement)
+    yield
+  ensure
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, original)
+  end
+
+  def profit_report(annualized_profit:, annualized_return:, after_tax:)
+    { rows: [ profit_row(annualized_profit, annualized_return).merge(after_tax:) ] }
+  end
+
+  def profit_row(annualized_profit, annualized_return)
+    { sku: @sku.sku_code, annualized_net_profit_cny: annualized_profit,
+      annualized_return_pct: annualized_return }
+  end
 
   def create_store_binding
     @store = Ec::Store.create!(platform: "ozon", store_name: "Lifecycle #{@token}", company_type: "general",

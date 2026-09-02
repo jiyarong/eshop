@@ -1775,22 +1775,74 @@ zh:
           net_profit: "累计净利润"
           daily_sales_velocity: "预测日销"
           inventory_cover_days: "库存覆盖（天）"
+          daily_sales_formula:
+            aria_label: "查看预测日销公式"
+            description: "预测日销 = 最近 7 个自然日日均销量 × 50% + 最近 15 个自然日日均销量 × 30% + 最近 30 个自然日日均销量 × 20%。该口径不剔除断货日。"
+          stockout_adjusted_daily_sales: "断货修正预测日销"
+          stockout_adjusted_inventory_cover_days: "断货修正库存覆盖（天）"
+          stockout_adjusted_formula:
+            aria_label: "查看断货修正预测日销公式"
+            description: "先剔除最近 30 天库存快照中的全平台断货日。S7、S15、S30 分别是最近 7、15、30 个有效销售日的日均销量。稳定：预测日销 = (S7 + S15 + S30) / 3；上升：min(S7 + (S7 - 历史 S7) / 7 × 15, S7 × 1.5)；下降：max(S7 + (S7 - 历史 S7) / 7 × 15, S30 × 0.5)。有效日不足 7 天时取全部有效日平均；清仓阶段上涨时按稳定公式计算。"
         timeline:
           title: "关键事件"
           unsold: "尚未成交"
           current: "当前"
           collapsed: "较早事件 %{count} 条"
+          expand_earlier: "在时间轴上展开 %{count} 条较早事件"
         events:
           first_sale: { title: "首次成交" }
           marketing_state_changed: { title: "Grade / Stage 调整" }
           purchase_ordered: { title: "采购下单" }
           purchase_received: { title: "采购到货" }
+          profit_grade_reached: { title: "年化利润首次达到 %{grade}" }
+          cumulative_profit_reached: { title: "累计利润达到 CNY %{amount}" }
           replenishment: { title: "平台送仓" }
           platform_stockout: { title: "店铺平台仓断货" }
           all_platform_stockout: { title: "全平台实质断货" }
           stock_recovered: { title: "库存恢复" }
+        details:
+          title: "事件详情"
+          close: "关闭事件详情"
+          fields:
+            platform: "平台"
+            store_id: "店铺 ID"
+            store: "店铺"
+            quantity: "数量"
+            previous_quantity: "断货前库存"
+            platform_sku_id: "平台 SKU ID"
+            order_id: "订单 ID"
+            from_state: "调整前"
+            to_state: "调整后"
+            note: "备注"
+            batch_code: "采购批次"
+            unit_price: "采购单价 CNY"
+            supplier_id: "供应商 ID"
+            expected_arrival_on: "预计到货日"
+            received_on: "实际到货日"
+            purchase_date: "采购日期"
+            status: "状态"
+            order_no: "单号"
+            supply_order_id: "送仓单号"
+            warehouse: "仓库"
+            destination: "目的仓"
+            platform_stock: "平台仓库存"
+            wb_stock: "WB FBW 库存"
+            ozon_stock: "Ozon FBO 库存"
+            daily_sales_velocity: "预测日销"
+            cover_days: "库存覆盖天数"
+            started_on: "开始日期"
+            recovered_on: "恢复日期"
+            confirmed_on: "确认日期"
+            scope: "范围"
+            grade: "达到等级"
+            week_range: "统计周"
+            annualized_net_profit: "年化净利润"
+            annualized_return: "年化回报率"
+            weekly_after_tax: "本周税后利润"
+            milestone_threshold: "里程碑门槛"
+            cumulative_profit: "累计税后利润"
         state_history:
-          title: "状态历史"
+          title: "Grade / Stage 历史"
           effective_at: "生效时间"
           change: "调整前后"
           changed_by: "调整人"

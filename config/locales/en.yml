@@ -1573,18 +1573,69 @@ en:
           net_profit: "Cumulative net profit"
           daily_sales_velocity: "Forecast daily sales"
           inventory_cover_days: "Inventory cover (days)"
-        timeline: { title: "Key events", unsold: "No sales yet", current: "Current", collapsed: "%{count} earlier events" }
+          daily_sales_formula:
+            aria_label: "View the forecast daily sales formula"
+            description: "Forecast daily sales = 7-calendar-day average × 50% + 15-calendar-day average × 30% + 30-calendar-day average × 20%. Stockout days are not excluded from this calculation."
+          stockout_adjusted_daily_sales: "Stockout-adjusted daily sales"
+          stockout_adjusted_inventory_cover_days: "Stockout-adjusted inventory cover (days)"
+          stockout_adjusted_formula:
+            aria_label: "View the stockout-adjusted daily sales formula"
+            description: "First remove all-platform stockout days from the latest 30 inventory snapshots. S7, S15 and S30 are average daily sales over the latest 7, 15 and 30 valid sales days. Stable: forecast = (S7 + S15 + S30) / 3. Rising: min(S7 + (S7 - historical S7) / 7 × 15, S7 × 1.5). Declining: max(S7 + (S7 - historical S7) / 7 × 15, S30 × 0.5). With fewer than 7 valid days, use their average; rising clearance SKUs use the stable formula."
+        timeline: { title: "Key events", unsold: "No sales yet", current: "Current", collapsed: "%{count} earlier events", expand_earlier: "Expand %{count} earlier events on the timeline" }
         events:
           first_sale: { title: "First sale" }
           marketing_state_changed: { title: "Grade / Stage changed" }
           purchase_ordered: { title: "Purchase ordered" }
           purchase_received: { title: "Purchase received" }
+          profit_grade_reached: { title: "Annualized profit first reached %{grade}" }
+          cumulative_profit_reached: { title: "Cumulative profit reached CNY %{amount}" }
           replenishment: { title: "Platform replenishment" }
           platform_stockout: { title: "Store stockout" }
           all_platform_stockout: { title: "All-platform stockout" }
           stock_recovered: { title: "Stock recovered" }
+        details:
+          title: "Event details"
+          close: "Close event details"
+          fields:
+            platform: "Platform"
+            store_id: "Store ID"
+            store: "Store"
+            quantity: "Quantity"
+            previous_quantity: "Stock before outage"
+            platform_sku_id: "Platform SKU ID"
+            order_id: "Order ID"
+            from_state: "Previous state"
+            to_state: "New state"
+            note: "Note"
+            batch_code: "Purchase batch"
+            unit_price: "Unit price CNY"
+            supplier_id: "Supplier ID"
+            expected_arrival_on: "Expected arrival"
+            received_on: "Received on"
+            purchase_date: "Purchase date"
+            status: "Status"
+            order_no: "Order number"
+            supply_order_id: "Supply order"
+            warehouse: "Warehouse"
+            destination: "Destination"
+            platform_stock: "Platform stock"
+            wb_stock: "WB FBW stock"
+            ozon_stock: "Ozon FBO stock"
+            daily_sales_velocity: "Forecast daily sales"
+            cover_days: "Cover days"
+            started_on: "Started on"
+            recovered_on: "Recovered on"
+            confirmed_on: "Confirmed on"
+            scope: "Scope"
+            grade: "Grade reached"
+            week_range: "Reporting week"
+            annualized_net_profit: "Annualized net profit"
+            annualized_return: "Annualized return"
+            weekly_after_tax: "Weekly after-tax profit"
+            milestone_threshold: "Milestone threshold"
+            cumulative_profit: "Cumulative after-tax profit"
         state_history:
-          title: "State history"
+          title: "Grade / Stage history"
           effective_at: "Effective at"
           change: "Before / after"
           changed_by: "Changed by"

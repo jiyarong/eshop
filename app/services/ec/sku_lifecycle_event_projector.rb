@@ -1,7 +1,10 @@
+require "set"
+
 module Ec
   class SkuLifecycleEventProjector
     SHANGHAI = ActiveSupport::TimeZone["Asia/Shanghai"]
     VALID_ORDER_STATUSES = %w[pending processing shipped delivered].freeze
+    CUMULATIVE_PROFIT_THRESHOLDS = [ 100_000, 250_000, 1_000_000, 10_000_000 ].freeze
 
     def self.run(sku_ids: nil, from_date: nil, to_date: nil)
       new(sku_ids:, from_date:, to_date:).run
@@ -35,8 +38,7 @@ module Ec
       project_first_sales
       project_marketing_states
       project_purchases
-      project_wb_replenishments
-      project_ozon_replenishments
+      project_profit_grade_milestones
       project_stock_lifecycle
       @result
     end
@@ -178,6 +180,142 @@ module Ec
     def purchase_received_event?(batch)
       batch.normal? && batch.status.in?(%w[received closed]) &&
         batch.received_on.present? && batch.received_quantity.positive?
+    end
+
+    def project_profit_grade_milestones
+      sku_scope = Ec::Sku.unscoped
+      sku_scope = sku_scope.where(id: @sku_ids) if @sku_ids
+      sku_codes = sku_scope.pluck(:sku_code, :id).to_h
+      return if sku_codes.empty?
+
+      achieved = existing_profit_grades(sku_codes.values)
+      cumulative_achieved = @from_date ? existing_cumulative_profit_thresholds(sku_codes.values) :
+        sku_codes.values.index_with { Set.new }
+      cumulative_groups = cumulative_profit_groups(sku_codes)
+      weeks = milestone_weeks
+      weeks.each do |week|
+        report = Ec::WeeklySummaryDeepQuery.run(
+          from_date: week.begin, to_date: week.end, sku_codes: sku_codes.keys, include_comparison: false
+        )
+        report.fetch(:rows, []).each do |row|
+          sku_code = row[:sku].to_s
+          sku_id = sku_codes[sku_code]
+          next unless sku_id
+
+          grade = profit_candidate_grade(row)
+          next unless grade
+          next if achieved[sku_id].include?("S")
+          next if grade == "A" && achieved[sku_id].include?("A")
+
+          upsert([ profit_grade_attributes(sku_id, grade, week, row) ])
+          achieved[sku_id] << grade
+        end
+        cumulative_profit_rows(week, cumulative_groups).each do |row|
+          sku_id = sku_codes[row[:sku].to_s]
+          project_cumulative_profit_milestones(sku_id, week, row, cumulative_achieved) if sku_id
+        end
+      rescue RuntimeError => error
+        @result[:warnings] << { event_type: "profit_grade_reached", week: week.begin.iso8601, reason: error.message }
+      end
+    end
+
+    def existing_profit_grades(sku_ids)
+      result = sku_ids.index_with { Set.new }
+      Ec::SkuLifecycleEvent.where(sku_id: sku_ids, event_type: "profit_grade_reached").find_each do |event|
+        result[event.sku_id] << event.content["grade"]
+      end
+      result
+    end
+
+    def existing_cumulative_profit_thresholds(sku_ids)
+      result = sku_ids.index_with { Set.new }
+      Ec::SkuLifecycleEvent.where(sku_id: sku_ids, event_type: "cumulative_profit_reached").find_each do |event|
+        result[event.sku_id] << event.content["threshold_cny"].to_i
+      end
+      result
+    end
+
+    def cumulative_profit_groups(sku_codes)
+      code_by_id = sku_codes.invert
+      Ec::SkuLifecycleEvent.where(sku_id: code_by_id.keys, event_type: "first_sale")
+        .group_by { |event| event.occurred_at.in_time_zone(SHANGHAI).to_date.beginning_of_week(:monday) }
+        .transform_values { |events| events.filter_map { |event| code_by_id[event.sku_id] } }
+    end
+
+    def cumulative_profit_rows(week, groups)
+      groups.flat_map do |from_date, sku_codes|
+        next [] if from_date > week.end
+
+        Ec::WeeklySummaryDeepQuery.run(
+          from_date:, to_date: week.end, sku_codes:, include_comparison: false
+        ).fetch(:rows, [])
+      end
+    end
+
+    def project_cumulative_profit_milestones(sku_id, week, row, achieved)
+      cumulative_profit = decimal_or_nil(row[:after_tax])
+      return unless cumulative_profit
+
+      CUMULATIVE_PROFIT_THRESHOLDS.each do |threshold|
+        next if achieved[sku_id].include?(threshold)
+        next if cumulative_profit < threshold
+
+        upsert([ cumulative_profit_attributes(sku_id, threshold, cumulative_profit, week) ])
+        achieved[sku_id] << threshold
+      end
+    end
+
+    def cumulative_profit_attributes(sku_id, threshold, cumulative_profit, week)
+      {
+        sku_id:, event_type: "cumulative_profit_reached", occurred_at: date_time(week.end),
+        source_type: "Ec::WeeklySummaryDeepQuery",
+        source_key: "cumulative_profit_reached:sku:#{sku_id}:#{threshold}",
+        content: {
+          threshold_cny: threshold, cumulative_profit_cny: cumulative_profit.to_s("F"),
+          week_from: week.begin.iso8601, week_to: week.end.iso8601, time_precision: "week"
+        }
+      }
+    end
+
+    def milestone_weeks
+      last_sunday = Ec::Snapshot.current_date.beginning_of_week(:monday) - 1.day
+      first_date = @from_date || first_profit_week_date
+      last_date = [ @to_date || last_sunday, last_sunday ].min
+      return [] if first_date.nil? || last_date < first_date
+
+      first_monday = first_date.beginning_of_week(:monday)
+      (first_monday..last_date).step(7).filter_map do |monday|
+        week = monday..monday.end_of_week(:monday)
+        week if week.end <= last_sunday
+      end
+    end
+
+    def first_profit_week_date
+      Ec::Order.where.not(ordered_at: nil).minimum(:ordered_at)&.in_time_zone(SHANGHAI)&.to_date
+    end
+
+    def profit_candidate_grade(row)
+      profit = decimal_or_nil(row[:annualized_net_profit_cny])
+      annual_return = decimal_or_nil(row[:annualized_return_pct])
+      return if profit.nil? || annual_return.nil?
+      return "S" if profit > 250_000 && annual_return > 100
+      return "A" if profit >= 100_000 && annual_return > 80
+    end
+
+    def profit_grade_attributes(sku_id, grade, week, row)
+      {
+        sku_id:, event_type: "profit_grade_reached", occurred_at: date_time(week.end),
+        source_type: "Ec::WeeklySummaryDeepQuery", source_key: "profit_grade_reached:sku:#{sku_id}:#{grade}",
+        content: {
+          grade:, week_from: week.begin.iso8601, week_to: week.end.iso8601,
+          annualized_net_profit_cny: row[:annualized_net_profit_cny].to_s,
+          annualized_return_pct: row[:annualized_return_pct].to_s,
+          after_tax: row[:after_tax].to_s,
+          threshold_annualized_net_profit_cny: grade == "S" ? 250_000 : 100_000,
+          threshold_annualized_return_pct: grade == "S" ? 100 : 80,
+          time_precision: "week"
+        }
+      }
     end
 
     def project_wb_replenishments

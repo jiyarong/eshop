@@ -1,6 +1,6 @@
 module Ec
   class SkuLifecycleQuery
-    DEFAULT_VISIBLE_EVENT_COUNT = 7
+    DEFAULT_VISIBLE_EVENT_COUNT = 12
 
     def initialize(sku, user_today:, time_zone:, visible_event_count: DEFAULT_VISIBLE_EVENT_COUNT)
       @sku = sku
@@ -29,6 +29,7 @@ module Ec
       inventory = Ec::InventoryTurnoverMetricsQuery.new(
         sku_codes: [ @sku.sku_code ], date_to: @user_today, time_zone: @time_zone
       ).call.fetch(@sku.sku_code, {})
+      dynamic_inventory = dynamic_inventory_metrics(inventory)
       cumulative = cumulative_metrics(first_sale)
       {
         first_sale_at: first_sale&.occurred_at,
@@ -39,7 +40,19 @@ module Ec
         revenue: cumulative[:revenue],
         net_profit: cumulative[:net_profit],
         daily_sales_velocity: inventory[:daily_sales_velocity],
-        inventory_cover_days: inventory[:turnover_days]
+        inventory_cover_days: inventory[:turnover_days],
+        stockout_adjusted_daily_sales: dynamic_inventory[:daily_sales],
+        stockout_adjusted_inventory_cover_days: dynamic_inventory[:cover_days]
+      }
+    end
+
+    def dynamic_inventory_metrics(inventory)
+      forecast = ErpAI::DynamicDailySalesForecast.new(
+        sku: @sku, date_to: @user_today - 1.day
+      ).call.fetch(:forecast_daily_sales).to_d
+      {
+        daily_sales: forecast,
+        cover_days: forecast.positive? ? inventory[:book_stock].to_d / forecast : nil
       }
     end
 
@@ -108,8 +121,7 @@ module Ec
     end
 
     def primary_timeline_event?(event)
-      return false if event.event_type == "platform_stockout"
-      return event.content["scope"] == "all_platform" if event.event_type == "stock_recovered"
+      return false if event.event_type == "replenishment"
 
       true
     end

@@ -7,6 +7,8 @@ module Ec
       marketing_state_changed
       purchase_ordered
       purchase_received
+      profit_grade_reached
+      cumulative_profit_reached
       replenishment
       platform_stockout
       all_platform_stockout
@@ -18,6 +20,8 @@ module Ec
       "marketing_state_changed" => %w[to_grade to_stage initial_state],
       "purchase_ordered" => %w[batch_code purchased_quantity status time_precision],
       "purchase_received" => %w[batch_code received_quantity received_on status initialized_batch time_precision],
+      "profit_grade_reached" => %w[grade week_from week_to annualized_net_profit_cny annualized_return_pct after_tax time_precision],
+      "cumulative_profit_reached" => %w[threshold_cny cumulative_profit_cny week_from week_to time_precision],
       "replenishment" => %w[platform quantity],
       "platform_stockout" => %w[platform quantity first_zero_date confirmed_on consecutive_zero_days time_precision],
       "all_platform_stockout" => %w[started_on confirmed_on platform_stock threshold_quantity confirmation_days time_precision],

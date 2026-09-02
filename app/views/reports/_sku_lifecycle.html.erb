@@ -1,21 +1,46 @@
 <% summary = lifecycle.fetch(:summary) %>
 <% metric = ->(value) { value.nil? ? t("common.empty_value") : number_with_delimiter(value) } %>
+<% decimal_metric = ->(value) { value.nil? ? t("common.empty_value") : number_with_precision(value, precision: 2, delimiter: ",") } %>
 
-<section class="sku-lifecycle-summary" aria-label="<%= t("reports.sku_detail.lifecycle.summary.title") %>">
-  <% [
+<% summary_items = [
     ["first_sale", summary[:first_sale_at] && display_time(summary[:first_sale_at])],
     ["lifecycle_days", summary[:lifecycle_days]],
     ["current_state", [summary[:current_grade], summary[:current_stage]&.upcase].compact.join(" / ").presence],
     ["net_sales", metric.call(summary[:net_sales])],
     ["revenue", metric.call(summary[:revenue])],
     ["net_profit", metric.call(summary[:net_profit])],
-    ["daily_sales_velocity", metric.call(summary[:daily_sales_velocity])],
-    ["inventory_cover_days", metric.call(summary[:inventory_cover_days])]
-  ].each do |key, value| %>
+    ["daily_sales_velocity", decimal_metric.call(summary[:daily_sales_velocity])],
+    ["inventory_cover_days", decimal_metric.call(summary[:inventory_cover_days])],
+    ["stockout_adjusted_daily_sales", decimal_metric.call(summary[:stockout_adjusted_daily_sales])],
+    ["stockout_adjusted_inventory_cover_days", decimal_metric.call(summary[:stockout_adjusted_inventory_cover_days])]
+  ] %>
+<section class="sku-lifecycle-summary" aria-label="<%= t("reports.sku_detail.lifecycle.summary.title") %>">
+  <% summary_items.each do |key, value| %>
     <div class="sku-lifecycle-summary__item">
-      <span><%= t("reports.sku_detail.lifecycle.summary.#{key}") %></span>
-      <strong><%= value.presence || t("common.empty_value") %></strong>
+      <span>
+        <%= t("reports.sku_detail.lifecycle.summary.#{key}") %>
+        <% if key == "daily_sales_velocity" %>
+          <span class="sku-lifecycle-formula-help" tabindex="0"
+                aria-label="<%= t("reports.sku_detail.lifecycle.summary.daily_sales_formula.aria_label") %>"
+                aria-describedby="sku-lifecycle-daily-sales-formula">
+            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+            <span id="sku-lifecycle-daily-sales-formula" class="sku-lifecycle-formula-tooltip" role="tooltip"><%= t("reports.sku_detail.lifecycle.summary.daily_sales_formula.description") %></span>
+          </span>
+        <% end %>
+        <% if key == "stockout_adjusted_daily_sales" %>
+          <span class="sku-lifecycle-formula-help" tabindex="0"
+                aria-label="<%= t("reports.sku_detail.lifecycle.summary.stockout_adjusted_formula.aria_label") %>"
+                aria-describedby="sku-lifecycle-stockout-adjusted-formula">
+            <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+            <span id="sku-lifecycle-stockout-adjusted-formula" class="sku-lifecycle-formula-tooltip" role="tooltip"><%= t("reports.sku_detail.lifecycle.summary.stockout_adjusted_formula.description") %></span>
+          </span>
+        <% end %>
+      </span>
+      <strong class="<%= "sku-lifecycle-decimal-metric" if key.in?(%w[daily_sales_velocity inventory_cover_days stockout_adjusted_daily_sales stockout_adjusted_inventory_cover_days]) %>"><%= value.presence || t("common.empty_value") %></strong>
     </div>
+  <% end %>
+  <% ((4 - (summary_items.size % 4)) % 4).times do %>
+    <div class="sku-lifecycle-summary__filler" aria-hidden="true"></div>
   <% end %>
 </section>
 
@@ -25,28 +50,30 @@
 
 <section class="panel sku-lifecycle-panel">
   <h2 class="section-title"><%= t("reports.sku_detail.lifecycle.timeline.title") %></h2>
-  <div class="sku-lifecycle-timeline" role="list">
+  <div class="sku-lifecycle-timeline"
+       role="list"
+       data-controller="sku-lifecycle-timeline"
+       data-sku-lifecycle-timeline-target="timeline">
     <% lifecycle.fetch(:timeline_nodes).each do |node| %>
       <% if node[:kind] == :collapsed %>
-        <details class="sku-lifecycle-node sku-lifecycle-node--collapsed" role="listitem">
-          <summary><i class="bi bi-three-dots" aria-hidden="true"></i><span><%= t("reports.sku_detail.lifecycle.timeline.collapsed", count: node[:count]) %></span></summary>
-          <div class="sku-lifecycle-collapsed-list">
-            <% node[:events].each do |event| %>
-              <span><%= display_time(event.occurred_at) %> · <%= t("reports.sku_detail.lifecycle.events.#{event.event_type}.title") %></span>
-            <% end %>
-          </div>
-        </details>
+        <button type="button"
+                class="sku-lifecycle-node sku-lifecycle-node--collapsed"
+                role="listitem"
+                aria-label="<%= t("reports.sku_detail.lifecycle.timeline.expand_earlier", count: node[:count]) %>"
+                data-sku-lifecycle-timeline-target="collapsed"
+                data-action="sku-lifecycle-timeline#expand">
+          <i class="bi bi-three-dots" aria-hidden="true"></i>
+          <strong><%= t("reports.sku_detail.lifecycle.timeline.collapsed", count: node[:count]) %></strong>
+        </button>
+        <% node[:events].each do |event| %>
+          <%= render "reports/sku_lifecycle_event_node", event: event, hidden: true %>
+        <% end %>
       <% elsif node[:kind] == :unsold %>
-        <div class="sku-lifecycle-node is-muted" role="listitem"><i class="bi bi-cart-x" aria-hidden="true"></i><strong><%= t("reports.sku_detail.lifecycle.timeline.unsold") %></strong></div>
+        <div class="sku-lifecycle-node sku-lifecycle-node--anchor is-muted" role="listitem"><i class="bi bi-cart-x" aria-hidden="true"></i><strong><%= t("reports.sku_detail.lifecycle.timeline.unsold") %></strong></div>
       <% elsif node[:kind] == :current %>
         <div class="sku-lifecycle-node is-current" role="listitem"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><strong><%= t("reports.sku_detail.lifecycle.timeline.current") %></strong><time><%= node[:occurred_at].to_date.iso8601 %></time></div>
       <% else %>
-        <% event = node[:event] %>
-        <div class="sku-lifecycle-node sku-lifecycle-node--<%= event.event_type %>" role="listitem">
-          <i class="bi <%= { "first_sale" => "bi-bag-check", "marketing_state_changed" => "bi-arrow-left-right", "purchase_ordered" => "bi-file-earmark-text", "purchase_received" => "bi-box-seam", "replenishment" => "bi-truck", "all_platform_stockout" => "bi-exclamation-triangle", "stock_recovered" => "bi-arrow-repeat" }.fetch(event.event_type, "bi-circle") %>" aria-hidden="true"></i>
-          <strong><%= t("reports.sku_detail.lifecycle.events.#{event.event_type}.title") %></strong>
-          <time><%= event.content["time_precision"] == "date" ? event.occurred_at.in_time_zone(user_time_zone).to_date.iso8601 : display_time(event.occurred_at) %></time>
-        </div>
+        <%= render "reports/sku_lifecycle_event_node", event: node[:event] %>
       <% end %>
     <% end %>
   </div>
@@ -57,7 +84,7 @@
   <div class="table-scroll">
     <table class="sku-lifecycle-state-table">
       <thead><tr>
-        <% %w[effective_at change changed_by note previous_week sales revenue profit margin daily_sales_velocity inventory_cover_days].each do |key| %><th><%= t("reports.sku_detail.lifecycle.state_history.#{key}") %></th><% end %>
+        <% %w[effective_at change changed_by previous_week sales revenue profit margin daily_sales_velocity inventory_cover_days note].each do |key| %><th><%= t("reports.sku_detail.lifecycle.state_history.#{key}") %></th><% end %>
       </tr></thead>
       <tbody>
         <% lifecycle[:marketing_state_changes].each do |change| %>
@@ -65,9 +92,10 @@
           <tr>
             <td><%= display_time(change[:event].occurred_at) %></td>
             <td><%= [content[:from_grade], content[:from_stage]&.upcase].compact.join("/").presence || t("reports.sku_detail.lifecycle.state_history.initial") %> → <%= [content[:to_grade], content[:to_stage]&.upcase].compact.join("/") %></td>
-            <td><%= report_value(change[:changed_by]&.email) %></td><td><%= report_value(content[:note]) %></td>
+            <td><%= report_value(change[:changed_by]&.email) %></td>
             <td><%= change[:week].begin.iso8601 %> - <%= change[:week].end.iso8601 %></td>
-            <% %i[sales revenue profit margin daily_sales_velocity inventory_cover_days].each do |key| %><td><%= metric.call(metrics[key]) %></td><% end %>
+            <% %i[sales revenue profit margin daily_sales_velocity inventory_cover_days].each do |key| %><td class="<%= "sku-lifecycle-decimal-metric" if key.in?(%i[daily_sales_velocity inventory_cover_days]) %>"><%= key.in?(%i[daily_sales_velocity inventory_cover_days]) ? decimal_metric.call(metrics[key]) : metric.call(metrics[key]) %></td><% end %>
+            <td><%= report_value(content[:note]) %></td>
           </tr>
         <% end %>
         <% if lifecycle[:marketing_state_changes].empty? %><tr><td colspan="11" class="empty-state"><%= t("reports.sku_detail.lifecycle.state_history.empty") %></td></tr><% end %>
