@@ -15,7 +15,7 @@
     drawer_style_parts << "flex-basis: #{drawer_width}"
   end
 %>
-<turbo-frame id="<%= frame_id %>">
+<% unless local_assigns[:content_only] %><turbo-frame id="<%= frame_id %>"><% end %>
   <div
     class="erp-modal-backdrop inventory-drawer-backdrop"
     data-controller="modal"
@@ -50,4 +50,4 @@
       <%= body %>
     </section>
   </div>
-</turbo-frame>
+<% unless local_assigns[:content_only] %></turbo-frame><% end %>

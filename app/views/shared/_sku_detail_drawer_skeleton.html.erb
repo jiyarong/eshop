@@ -1,0 +1,18 @@
+<div class="sku-detail-loading" aria-busy="true" aria-live="polite">
+  <span class="sr-only"><%= t("reports.sku_detail.loading.subtitle") %></span>
+  <div class="sku-detail-loading__hero">
+    <span class="sku-detail-loading__line sku-detail-loading__line--title"></span>
+    <span class="sku-detail-loading__line sku-detail-loading__line--short"></span>
+  </div>
+  <div class="sku-detail-loading__metrics">
+    <% 5.times do %>
+      <span class="sku-detail-loading__metric"></span>
+    <% end %>
+  </div>
+  <div class="sku-detail-loading__tabs"></div>
+  <div class="sku-detail-loading__content">
+    <% 6.times do %>
+      <span class="sku-detail-loading__line"></span>
+    <% end %>
+  </div>
+</div>

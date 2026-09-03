@@ -11,7 +11,7 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", type: "module", "data-turbo-track": "reload", defer: true %>
   </head>
-  <body class="erp-shell">
+  <body class="erp-shell" data-controller="sku-detail-drawer-loader">
     <% current_path = request.path %>
     <% active_link = ->(prefixes) { Array(prefixes).any? { |prefix| current_path == prefix || current_path.start_with?("#{prefix}/") } } %>
     <% nav_sections = [
@@ -254,8 +254,20 @@
           </section>
         </div>
       <% end %>
-      <%= turbo_frame_tag "sku_detail_drawer",
-                          data: { controller: "drawer-transition", action: "turbo:before-frame-render->drawer-transition#prepare" } if user_signed_in? %>
+      <%= turbo_frame_tag "sku_detail_drawer" if user_signed_in? %>
+      <% if user_signed_in? %>
+        <template data-sku-detail-drawer-loader-target="template">
+          <%= render "shared/overlay_drawer",
+                     frame_id: "sku_detail_drawer",
+                     title_id: "sku-detail-drawer-loading-title",
+                     title: t("reports.sku_detail.loading.title"),
+                     subtitle: t("reports.sku_detail.loading.subtitle"),
+                     drawer_width: "min(95vw, calc(100vw - 24px))",
+                     drawer_class: "sku-detail-loading-drawer",
+                     content_only: true,
+                     body: render("shared/sku_detail_drawer_skeleton") %>
+        </template>
+      <% end %>
     </div>
   </body>
 </html>
