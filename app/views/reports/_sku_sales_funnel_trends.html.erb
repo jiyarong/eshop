@@ -4,10 +4,18 @@
   <% elsif @funnel_store_trends.blank? %>
     <section class="panel"><div class="empty-state"><%= t("reports.sku_detail.funnel_trends.no_listings") %></div></section>
   <% else %>
-    <div class="sku-funnel-trends-container">
+    <div class="sku-funnel-trends-container sku-profit-store-trend" data-controller="profit-store-trend-selector">
+      <h3><%= t("reports.sku_detail.funnel_analysis.store_trends") %></h3>
+      <fieldset class="sku-profit-store-trend__selector">
+        <legend><%= t("reports.sku_detail.funnel_analysis.select_store") %></legend>
+        <% @funnel_store_trends.each_with_index do |trend, index| %>
+          <label><input type="radio" name="funnel_store_trend_ref" value="<%= trend[:store_id] %>" <%= "checked" if index.zero? %> data-action="profit-store-trend-selector#select"><span><%= trend[:platform].upcase %> / <%= trend[:store_name] %></span></label>
+        <% end %>
+      </fieldset>
       <div class="sku-funnel-trends-grid">
         <% @funnel_store_trends.each do |trend| %>
-          <section class="panel sku-funnel-trend-card">
+          <% index = @funnel_store_trends.index(trend) %>
+          <section class="panel sku-funnel-trend-card" data-profit-store-trend-selector-target="panel" data-store-ref="<%= trend[:store_id] %>" <%= "hidden" unless index.zero? %>>
             <div class="sku-funnel-trend-card__head">
               <h3><%= trend[:store_name] %></h3>
               <span class="status-pill"><%= t("common.platforms.#{trend[:platform]}", default: trend[:platform].upcase) %></span>

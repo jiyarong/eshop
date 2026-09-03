@@ -50,13 +50,15 @@ class SalesFunnelReports::SkuDailyTrendQueryTest < ActiveSupport::TestCase
 
     assert_equal ["ozon", "wb"], trends.map { |trend| trend[:platform] }
     assert_equal ["Ozon 店 #{@token}", "WB 店 #{@token}"], trends.map { |trend| trend[:store_name] }
-    assert_equal SalesFunnelReports::ReportQueryRunner::OZON_COLUMNS.drop(2), trends.first[:metrics]
+    assert_equal SalesFunnelReports::SkuDailyTrendQuery::OZON_METRICS, trends.first[:metrics]
     assert_equal %i[position_category hits_view conv_tocart ordered_units revenue], trends.first[:default_metrics]
     assert_equal %i[open_card add_to_cart orders buyouts], trends.second[:default_metrics]
     assert_equal 4, trends.first[:rows].size
     assert_equal 1_500.0, trends.first[:rows].find { |row| row[:date] == "2026-08-11" }.dig(:values, :revenue)
     ozon_values = trends.first[:rows].find { |row| row[:date] == "2026-08-11" }.fetch(:values)
     assert_equal 7.25, ozon_values[:position_category]
+    assert_equal 50.0, ozon_values[:hits_view_pdp]
+    assert_equal 20.0, ozon_values[:hits_tocart_pdp]
     assert_equal 50.0, ozon_values[:search_to_card_conversion]
     assert_equal 40.0, ozon_values[:conv_tocart]
     assert_equal 60.0, ozon_values[:cart_to_order]

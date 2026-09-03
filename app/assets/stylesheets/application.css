@@ -1400,6 +1400,15 @@ textarea {
   gap: 16px;
 }
 
+.sku-profit-store-trend .sku-funnel-trends-grid {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+
+.sku-profit-store-trend .sku-funnel-trend-card {
+  width: 100%;
+}
+
 .sku-funnel-trend-card {
   min-width: 0;
 }

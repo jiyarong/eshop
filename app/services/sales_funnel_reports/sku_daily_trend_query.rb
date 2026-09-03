@@ -5,7 +5,7 @@ module SalesFunnelReports
       buyout_percent cancel_count add_to_wishlist
     ].freeze
     OZON_METRICS = %i[
-      position_category hits_view search_to_card_conversion conv_tocart cart_to_order
+      position_category hits_view hits_view_pdp hits_tocart_pdp search_to_card_conversion conv_tocart cart_to_order
       order_conversion average_price ordered_units revenue total_drr cancellations
       returns_count delivered_units total_ending_inventory store_ending_inventory
     ].freeze
@@ -116,12 +116,12 @@ module SalesFunnelReports
       when :order_conversion then percent(records.sum(&:ordered_units), records.sum(&:hits_view))
       when :average_price
         units = records.sum(&:ordered_units)
-        units.positive? ? (records.sum(&:revenue).to_d / units).round(2).to_f : nil
+        units.positive? ? (records.sum { |record| record.revenue.to_d } / units).round(2).to_f : nil
       when :total_drr
         spend_keys = platform_sku_ids.map { |sku_id| [sku_id, date] }
         return unless spend_keys.any? { |key| ad_spend_by_sku_and_date.key?(key) }
 
-        percent(spend_keys.sum { |key| ad_spend_by_sku_and_date.fetch(key, 0) }, records.sum(&:revenue))
+        percent(spend_keys.sum { |key| ad_spend_by_sku_and_date.fetch(key, 0) }, records.sum { |record| record.revenue.to_d })
       when :position_category
         values = records.filter_map(&:position_category)
         values.present? ? (values.sum / values.size).to_f : nil

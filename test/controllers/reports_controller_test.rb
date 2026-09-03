@@ -1092,6 +1092,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "测试商品"
     assert_select "td", "Тестовый товар"
     assert_select ".status-pill", "上架"
+    assert_select "body[data-controller~='sku-detail-drawer-loader']"
+    assert_select "template[data-sku-detail-drawer-loader-target='template']", count: 1
+    assert_select "template .sku-detail-loading[aria-busy='true']", count: 1
   end
 
   test "sku detail renders in a drawer and keeps drawer mode for internal navigation" do
@@ -1169,16 +1172,18 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "sku detail sales funnel defaults to the latest fourteen days" do
+  test "sku detail sales funnel defaults to the latest completed natural week" do
     get report_sku_path(@sku.sku_code),
       params: { tab: "sales_funnel" },
       headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
 
     assert_response :success
-    assert_select "input[name='funnel_from_date'][value=?]", (Date.current - 13.days).iso8601
-    assert_select "input[name='funnel_to_date'][value=?]", Date.current.iso8601
-    assert_select "turbo-frame#sku_sales_funnel_trends[src*=?]", "trend_from_date=#{(Date.current - 13.days).iso8601}"
-    assert_select "turbo-frame#sku_sales_funnel_trends[src*=?]", "trend_to_date=#{Date.current.iso8601}"
+    latest_monday = Date.current.beginning_of_week(:monday) - 1.week
+    assert_select "input[name='funnel_from_date'][value=?]", latest_monday.iso8601
+    assert_select "input[name='funnel_to_date'][value=?]", latest_monday.end_of_week(:monday).iso8601
+    assert_select ".sku-funnel-analysis", count: 1
+    assert_select "turbo-frame#sku_common_funnel_trend[loading='lazy']", count: 1
+    assert_select "[data-controller='profit-trend-toggle'] [aria-expanded='false']", count: 1
   end
 
   test "sku detail tab frame renders only replaceable tab content" do
@@ -1344,10 +1349,11 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     funnel_calls = []
     profit_calls = []
     funnel_report = {
-      period: { from_date: Date.new(2026, 6, 1), to_date: Date.new(2026, 6, 7) },
-      meta: { platform: "wb", store_name: "Test WB", columns: %i[sku_code orders] },
-      comparison: { rows: {} },
-      rows: [{ sku_code: @sku.sku_code, orders: 8 }]
+      periods: %w[P-3 P-2 P-1 P0].each_with_index.map do |key, index|
+        { key:, from_date: Date.new(2026, 5, 11) + index.weeks, to_date: Date.new(2026, 5, 17) + index.weeks,
+          sku_row: { orders: index + 1, source_present: true, available_metrics: [:orders] } }
+      end,
+      common_metrics: [:orders], store_metrics: [:orders], store_groups: []
     }
     profit_report = {
       report_type: "wr",
@@ -1356,10 +1362,10 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       comparison: { rows: {} },
       rows: [{ vendor_code: @sku.sku_code, net_qty: 6, after_tax: 120 }]
     }
-    original_funnel_run = SalesFunnelReports::SkuDailyReportQueryRunner.method(:run)
+    original_funnel_run = SalesFunnelReports::SkuFunnelAnalysisQuery.method(:run)
     original_profit_run = WeeklyProfitReports::ReportQueryRunner.method(:run)
-    SalesFunnelReports::SkuDailyReportQueryRunner.define_singleton_method(:run) do |params:, today:|
-      funnel_calls << params
+    SalesFunnelReports::SkuFunnelAnalysisQuery.define_singleton_method(:run) do |**arguments|
+      funnel_calls << arguments
       funnel_report
     end
     WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run) do |params:, today:|
@@ -1368,29 +1374,25 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
 
     begin
-      funnel_store_ref = "wb:#{@sales_wb_account.id}"
       profit_store_ref = "ozon:#{@sales_ozon_account.id}"
       get "/reports/skus/#{@sku.sku_code}", params: {
         funnel_from_date: "2026-06-01",
         funnel_to_date: "2026-06-07",
-        funnel_store_ref: funnel_store_ref,
         sku_codes: [@second_sku.sku_code]
       }, headers: { "Accept" => "text/html" }
 
       assert_response :success
       assert_equal 1, funnel_calls.size
       assert_empty profit_calls
-      assert_equal [@sku.sku_code], funnel_calls.first.fetch(:sku_codes)
-      assert_equal "2026-06-01", funnel_calls.first.fetch(:from_date)
-      assert_equal funnel_store_ref, funnel_calls.first.fetch(:store_ref)
+      assert_equal @sku, funnel_calls.first.fetch(:sku)
+      assert_equal Date.new(2026, 6, 1), funnel_calls.first.fetch(:from_date)
+      assert_equal Date.new(2026, 6, 7), funnel_calls.first.fetch(:to_date)
       assert_select ".sku-detail-tabs a[aria-current='page']", "销售漏斗"
-      assert_select ".sku-operation-report--funnel", 1
+      assert_select ".sku-funnel-analysis", 1
       assert_select ".sku-operation-report--profit", 0
       assert_select "form.sku-operation-filter input[name='tab'][value='sales_funnel']"
-      assert_select ".sku-operation-report--funnel .section-title", "销售漏斗"
-      assert_select ".sku-funnel-trends-heading .section-title", "各店铺日漏斗趋势"
-      assert_select "form[action=?][data-turbo-frame='sku_sales_funnel_trends']", report_sku_sales_funnel_trends_path(@sku.sku_code), count: 0
-      assert_select "turbo-frame#sku_sales_funnel_trends[src*='trend_from_date=2026-06-01'][src*='trend_to_date=2026-06-07'][loading='lazy']:not([data-turbo-permanent])", count: 1
+      assert_select ".sku-funnel-analysis .section-title", "销售漏斗"
+      assert_select "turbo-frame#sku_common_funnel_trend[src*='view=sku'][src*='trend_to_date=2026-06-07'][loading='lazy']", count: 1
 
       sign_in @current_user
       get "/reports/skus/#{@sku.sku_code}", params: {
@@ -1401,7 +1403,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
         sku_codes: [@second_sku.sku_code]
       }, headers: { "Accept" => "text/html" }
     ensure
-      SalesFunnelReports::SkuDailyReportQueryRunner.define_singleton_method(:run, original_funnel_run)
+      SalesFunnelReports::SkuFunnelAnalysisQuery.define_singleton_method(:run, original_funnel_run)
       WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run, original_profit_run)
     end
 
@@ -1504,6 +1506,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, '"平均搜索排名":true'
     assert_includes response.body, '"inverse":true'
     assert_includes response.body, '"打开商品卡":true'
+
+    get report_sku_sales_funnel_trends_path(@sku.sku_code), params: {
+      view: "sku", trend_to_date: "2026-08-12"
+    }, headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_common_funnel_trend" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_common_funnel_trend", count: 1
+    assert_select "[data-controller='echarts']", count: 1
+    assert_includes response.body, "商品卡访问"
+    assert_includes response.body, "加购到下单率"
   end
 
   test "sku profit trend renders a non-blocking error state" do

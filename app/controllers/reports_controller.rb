@@ -13,6 +13,7 @@ class ReportsController < ApplicationController
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
                 :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
                 :sku_profit_period_comparison, :sku_profit_analysis_value,
+                :sku_funnel_value, :sku_funnel_period_comparison,
                 :sku_ads_metric, :sku_ads_comparison_label, :sku_ads_comparison_class,
                 :search_terms_metric, :search_terms_metric_content, :search_terms_comparison_label, :search_terms_comparison_class,
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
@@ -266,12 +267,22 @@ class ReportsController < ApplicationController
 
   def sku_sales_funnel_trends
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @funnel_trend_to_date = parse_report_date(params[:trend_to_date]) || user_today
-    @funnel_trend_from_date = parse_report_date(params[:trend_from_date]) || (@funnel_trend_to_date - 27.days)
+    @funnel_trend_to_date = parse_report_date(params[:trend_to_date]) || (user_today.beginning_of_week(:monday) - 1.day)
+    @funnel_trend_from_date = parse_report_date(params[:trend_from_date]) || (@funnel_trend_to_date - 55.days)
     if @funnel_trend_to_date < @funnel_trend_from_date || (@funnel_trend_to_date - @funnel_trend_from_date).to_i >= SKU_SALES_FUNNEL_TREND_MAX_DAYS
       raise ArgumentError, "invalid_date_range"
     end
 
+    if params[:view] == "sku"
+      @funnel_common_trend = SalesFunnelReports::SkuCommonDailyTrendQuery.run(
+        sku: @sku, from_date: @funnel_trend_from_date, to_date: @funnel_trend_to_date,
+        time_zone: Time.find_zone(current_user&.time_zone.presence || "Asia/Shanghai")
+      )
+      @funnel_common_trend[:chart_option] = build_common_funnel_trend_chart_option(
+        @funnel_common_trend[:rows], @funnel_common_trend[:metrics]
+      )
+      return render partial: "reports/sku_common_funnel_trend"
+    end
     comparison_codes = Array(params[:compare_sku_codes]).flat_map { |code| code.to_s.split(/[,\s]+/) }.map(&:upcase).reject(&:blank?).uniq.first(3)
     skus = Ec::Sku.where(sku_code: [@sku.sku_code, *comparison_codes]).index_by(&:sku_code)
     @funnel_store_trends = skus.values.flat_map do |sku|
@@ -279,6 +290,13 @@ class ReportsController < ApplicationController
         trend[:sku_code] = sku.sku_code
         trend
       end
+    end
+    if params[:store_id].present?
+      @funnel_store_trends.select! { |trend| trend[:store_id].to_s == params[:store_id].to_s }
+    elsif params[:store_ids].present?
+      store_order = Array(params[:store_ids]).map(&:to_s)
+      @funnel_store_trends.select! { |trend| trend[:store_id].to_s.in?(store_order) }
+      @funnel_store_trends.sort_by! { |trend| store_order.index(trend[:store_id].to_s) || store_order.length }
     end
     if skus.size > 1
         grouped = @funnel_store_trends.group_by { |trend| [trend[:store_id], trend[:platform]] }
@@ -302,7 +320,25 @@ class ReportsController < ApplicationController
     Rails.logger.error("SKU sales funnel trend failed for #{params[:sku_code]}: #{error.class}: #{error.message}")
     @funnel_trend_error = true
   ensure
-    render partial: "reports/sku_sales_funnel_trends" unless performed?
+    render partial: params[:view] == "sku" ? "reports/sku_common_funnel_trend" : "reports/sku_sales_funnel_trends" unless performed?
+  end
+
+  def build_common_funnel_trend_chart_option(rows, metrics)
+    percent_metrics = %i[cart_rate cart_to_order_rate visit_to_conversion_rate]
+    series = metrics.map do |metric|
+      {
+        name: t("reports.sku_detail.funnel_analysis.metrics.#{metric}"), type: "line", smooth: true,
+        showSymbol: false, yAxisIndex: percent_metrics.include?(metric) ? 1 : 0,
+        data: rows.map { |row| row.dig(:values, metric) }
+      }
+    end
+    {
+      tooltip: { trigger: "axis" }, legend: { type: "scroll", top: 0 },
+      grid: { left: 48, right: 62, top: 62, bottom: 42, containLabel: true },
+      xAxis: { type: "category", boundaryGap: false, data: rows.map { |row| row[:date] } },
+      yAxis: [{ type: "value", name: t("reports.sku_detail.funnel_trends.axes.count"), minInterval: 1 }, { type: "value", name: "%", position: "right" }],
+      series:
+    }
   end
 
   def new_sku_predicted_cost
@@ -1148,21 +1184,17 @@ class ReportsController < ApplicationController
   def load_sku_operation_overview
     @operation_store_options = WeeklyProfitReports::ReportQueryRunner.store_options
     if @active_tab == "sales_funnel"
-      @funnel_to_date = parse_report_date(params[:funnel_to_date]) || user_today
-      @funnel_from_date = parse_report_date(params[:funnel_from_date]) || (@funnel_to_date - 13.days)
-      @funnel_store_ref = operation_store_ref(params[:funnel_store_ref])
-      @comparison_sku_codes = comparison_sku_codes_from_params
+      last_monday = user_today.beginning_of_week(:monday) - 1.week
+      @funnel_from_date = parse_report_date(params[:funnel_from_date]) || last_monday
+      @funnel_to_date = parse_report_date(params[:funnel_to_date]) || last_monday.end_of_week(:monday)
       begin
-        @operation_funnel_report = SalesFunnelReports::SkuDailyReportQueryRunner.run(
-          params: {
-            from_date: @funnel_from_date.iso8601,
-            to_date: @funnel_to_date.iso8601,
-            store_ref: @funnel_store_ref,
-            sku_codes: [@sku.sku_code, *@comparison_sku_codes]
-          },
-          today: user_today
+        @funnel_analysis = SalesFunnelReports::SkuFunnelAnalysisQuery.run(
+          sku: @sku,
+          from_date: @funnel_from_date,
+          to_date: @funnel_to_date,
+          time_zone: Time.find_zone(current_user&.time_zone.presence || "Asia/Shanghai")
         )
-      rescue ActiveRecord::RecordNotFound, ActionController::ParameterMissing, ArgumentError => error
+      rescue ActiveRecord::RecordNotFound, ArgumentError => error
         @operation_funnel_error = error.message
       end
     else
@@ -1420,6 +1452,38 @@ class ReportsController < ApplicationController
     currency = (row[:currency] || "CNY").to_s.upcase
     unit = { "CNY" => "¥", "BYN" => "Br ", "RUB" => "₽" }.fetch(currency, "#{currency} ")
     helpers.number_to_currency(value, unit:, precision: 2)
+  end
+
+  def sku_funnel_value(row, metric)
+    return t("common.empty_value") unless row&.fetch(:available_metrics, [])&.include?(metric)
+
+    value = row[metric]
+    return t("common.empty_value") if value.nil?
+    return helpers.number_to_percentage(value, precision: 2) if metric.to_s.end_with?("_rate")
+    return helpers.number_to_currency(value, unit: "", precision: 2) if %i[order_amount wb_buyout_amount wb_cancel_amount].include?(metric)
+    return helpers.number_with_precision(value, precision: 2, strip_insignificant_zeros: true) if metric == :ozon_average_search_position
+
+    helpers.number_with_delimiter(value.to_i)
+  end
+
+  def sku_funnel_period_comparison(current_row, previous_row, metric)
+    return if current_row.blank? || previous_row.blank?
+
+    current = current_row[metric]
+    previous = previous_row[metric]
+    return if current.nil? || previous.nil? || previous.to_d.zero?
+
+    delta = ((current.to_d - previous.to_d) / previous.to_d.abs * 100).round(2)
+    unfavorable_increase = metric.in?(%i[cancellations ozon_returns wb_cancel_amount ozon_average_search_position])
+    favorable = unfavorable_increase ? delta.negative? : delta.positive?
+    semantic = if delta.zero?
+      "neutral"
+    elsif favorable
+      "positive"
+    else
+      "negative"
+    end
+    { delta_pct: delta, trend: delta.positive? ? "up" : (delta.negative? ? "down" : "flat"), semantic: }
   end
 
   def report_value(value)

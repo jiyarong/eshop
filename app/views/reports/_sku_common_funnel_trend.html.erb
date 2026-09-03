@@ -1,0 +1,13 @@
+<%= turbo_frame_tag "sku_common_funnel_trend" do %>
+  <% scope = "reports.sku_detail.funnel_analysis" %>
+  <% if @funnel_trend_error %>
+    <div class="empty-state"><%= t("reports.sku_detail.funnel_trends.load_error") %></div>
+  <% elsif @funnel_common_trend.blank? || @funnel_common_trend[:rows].none? { |row| row[:values].values.any?(&:present?) } %>
+    <div class="empty-state"><%= t("reports.sku_detail.funnel_trends.empty") %></div>
+  <% else %>
+    <div data-controller="echarts">
+      <div data-echarts-target="chart" class="sku-funnel-trend-card__chart"></div>
+      <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(@funnel_common_trend[:chart_option]) %></script>
+    </div>
+  <% end %>
+<% end %>
