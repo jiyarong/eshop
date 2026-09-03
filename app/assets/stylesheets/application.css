@@ -7640,6 +7640,10 @@ body.erp-shell .erp-nav__link[aria-current="page"] i {
   box-shadow: 0 1px 0 var(--erp-border), 0 4px 10px rgba(24, 34, 53, 0.08);
 }
 
+.sticky-table-header--nested {
+  z-index: 1003;
+}
+
 .sticky-table-header[hidden] {
   display: none;
 }
@@ -10085,6 +10089,11 @@ body.auth-shell .auth-submit:hover {
 .sku-profit-period-filter__options input { margin: 0; accent-color: var(--color-primary); }
 .sku-detail-tab-panels .table-scroll--horizontal { overflow-x: auto; }
 .sku-detail-tab-panels .table-scroll--contained { overflow: auto; }
+.sku-detail-tab-panels .sku-profit-analysis .table-viewport {
+  max-height: none;
+  overflow-y: clip;
+  overscroll-behavior-y: auto;
+}
 .sku-profit-store-trend__selector { margin: 12px 0 0; padding: 0; border: 0; }
 .sku-profit-store-trend__selector legend { margin-bottom: 6px; color: var(--erp-muted); font-size: 11px; }
 .sku-profit-store-trend__selector label { display: inline-flex; align-items: center; gap: 5px; margin: 0 16px 6px 0; cursor: pointer; }

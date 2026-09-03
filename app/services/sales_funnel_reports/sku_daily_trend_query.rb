@@ -49,6 +49,7 @@ module SalesFunnelReports
         store_id: store.id,
         store_name: store.store_name,
         platform: platform,
+        currency: trend_currency(platform, records),
         metrics: metrics,
         default_metrics: DEFAULT_METRICS.fetch(platform),
         rows: rows,
@@ -127,6 +128,12 @@ module SalesFunnelReports
         values.present? ? (values.sum / values.size).to_f : nil
       else records.sum { |record| record.public_send(metric).to_d }.to_f
       end
+    end
+
+    def trend_currency(platform, records)
+      return "RUB" if platform == "ozon"
+
+      records.filter_map { |record| record.currency.presence }.uniq.first || "RUB"
     end
 
     def ozon_inventory_by_date(store)

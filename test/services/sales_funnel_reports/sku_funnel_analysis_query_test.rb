@@ -51,6 +51,8 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
     assert_equal BigDecimal("5"), row[:visit_to_conversion_rate]
     assert_equal 20, row[:net_sales]
     assert_equal 150, row[:sku_ending_inventory]
+    assert_equal "RUB", result[:store_groups].find { |group| group[:platform] == "wb" }.dig(:rows_by_period, "P0", :currency)
+    assert_equal "RUB", result[:store_groups].find { |group| group[:platform] == "ozon" }.dig(:rows_by_period, "P0", :currency)
   end
 
   test "keeps platform-only values unavailable and distinguishes missing funnel data from zero" do

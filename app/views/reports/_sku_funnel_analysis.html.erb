@@ -12,7 +12,7 @@
   <% elsif @funnel_analysis.present? %>
     <section class="sku-profit-analysis__section">
       <h3><%= t("#{scope}.overview") %></h3>
-      <div class="table-scroll">
+      <%= table_viewport(sticky_header: true, class_name: "sku-funnel-overview-viewport") do %>
         <table class="sku-profit-matrix">
           <thead><tr><th><%= t("#{scope}.metric") %></th>
             <% @funnel_analysis[:periods].each do |period| %>
@@ -31,7 +31,7 @@
             <% end %>
           </tbody>
         </table>
-      </div>
+      <% end %>
     </section>
 
     <section class="sku-profit-analysis__section sku-profit-analysis__trend-toggle" data-controller="profit-trend-toggle" data-profit-trend-toggle-show-label-value="<%= t("#{scope}.show_common_trend") %>" data-profit-trend-toggle-hide-label-value="<%= t("#{scope}.hide_common_trend") %>">
@@ -41,7 +41,7 @@
 
     <section class="sku-profit-analysis__section" data-controller="profit-period-filter">
       <div class="sku-profit-analysis__store-heading"><h3><%= t("#{scope}.store_detail") %></h3><fieldset class="sku-profit-period-filter"><legend><%= t("#{scope}.period_filter") %></legend><div class="sku-profit-period-filter__options"><% @funnel_analysis[:periods].each do |period| %><label><input type="checkbox" value="<%= period[:key] %>" checked data-profit-period-filter-target="checkbox" data-action="profit-period-filter#update"><span><%= period[:key] %></span></label><% end %></div></fieldset></div>
-      <div class="table-scroll table-scroll--horizontal table-scroll--contained"><table class="sku-profit-store-table sku-funnel-store-table"><thead><tr>
+      <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal sku-funnel-store-viewport") do %><table class="sku-profit-store-table sku-funnel-store-table"><thead><tr>
         <th><%= t("#{scope}.metrics.store") %></th><th><%= t("#{scope}.metrics.period") %></th>
         <% @funnel_analysis[:store_metrics].each do |metric| %><th><%= t("#{scope}.metrics.#{metric}") %></th><% end %>
       </tr></thead>
@@ -51,7 +51,7 @@
           <td><strong><%= period[:key] %></strong><small><%= period[:from_date] %> - <%= period[:to_date] %></small></td>
           <% @funnel_analysis[:store_metrics].each do |metric| %><td><div class="weekly-profit-table-value"><%= sku_funnel_value(row, metric) %></div><% if index.positive? %><% comparison = sku_funnel_period_comparison(row, group[:rows_by_period][@funnel_analysis[:periods][index - 1][:key]], metric) %><% if comparison %><div class="weekly-profit-table-comparison <%= sku_operation_comparison_class(comparison) %>"><%= sku_operation_comparison_label(comparison) %></div><% end %><% end %></td><% end %>
         </tr><% end %></tbody><% end %>
-      </table></div>
+      </table><% end %>
     </section>
 
     <% if @funnel_analysis[:store_groups].any? %>

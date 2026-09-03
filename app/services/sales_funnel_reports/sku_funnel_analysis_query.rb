@@ -162,7 +162,7 @@ module SalesFunnelReports
       buyouts = sum(records, :buyouts)
       {
         product_card_views: views, cart_additions: carts, cart_rate: percent(carts, views),
-        orders:, cart_to_order_rate: percent(orders, carts), order_amount: sum(records, :orders_sum),
+        orders:, cart_to_order_rate: percent(orders, carts), order_amount: sum(records, :orders_sum), currency: wb_currency(records),
         platform_fulfilled: buyouts, cancellations: sum(records, :cancel_count),
         wb_buyout_amount: sum(records, :buyouts_sum), wb_buyout_rate: percent(buyouts, orders),
         wb_cancel_amount: sum(records, :cancel_sum), wb_wishlist: sum(records, :add_to_wishlist),
@@ -177,7 +177,7 @@ module SalesFunnelReports
       search_views = sum(records, :hits_view_search)
       {
         product_card_views: views, cart_additions: carts, cart_rate: percent(carts, views),
-        orders:, cart_to_order_rate: percent(orders, carts), order_amount: sum(records, :revenue),
+        orders:, cart_to_order_rate: percent(orders, carts), order_amount: sum(records, :revenue), currency: "RUB",
         platform_fulfilled: sum(records, :delivered_units), cancellations: sum(records, :cancellations),
         ozon_total_views: sum(records, :hits_view), ozon_search_views: search_views,
         ozon_click_rate: percent(views, search_views), ozon_all_cart_additions: sum(records, :hits_tocart),
@@ -225,6 +225,10 @@ module SalesFunnelReports
     def average(records, field)
       values = records.filter_map { |record| record.public_send(field)&.to_d }
       values.empty? ? nil : (values.sum / values.length).round(2)
+    end
+
+    def wb_currency(records)
+      records.filter_map { |record| record.currency.presence }.uniq.first || "RUB"
     end
 
     def latest_sum(records, field)

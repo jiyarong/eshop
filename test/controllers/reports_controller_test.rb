@@ -1168,6 +1168,11 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       assert_response :success
       assert_select "form.sku-operation-filter[data-turbo-frame='sku_detail_tab_#{tab}']", count: 1
       assert_select "form.sku-operation-filter input[name='tab'][value='#{tab}']", count: 1
+      if tab == "profit"
+        assert_select ".sku-profit-analysis .table-viewport[data-controller~='sticky-table-header']", count: 2
+        assert_select ".sku-profit-analysis .sku-profit-store-viewport.table-scroll--horizontal", count: 1
+        assert_select ".sku-profit-analysis .sku-profit-store-viewport.table-scroll--contained", count: 0
+      end
       sign_in @current_user
     end
   end
@@ -1182,6 +1187,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='funnel_from_date'][value=?]", latest_monday.iso8601
     assert_select "input[name='funnel_to_date'][value=?]", latest_monday.end_of_week(:monday).iso8601
     assert_select ".sku-funnel-analysis", count: 1
+    assert_select ".sku-funnel-analysis .table-viewport[data-controller~='sticky-table-header']", count: 2
+    assert_select ".sku-funnel-analysis .sku-funnel-store-viewport.table-scroll--horizontal", count: 1
+    assert_select ".sku-funnel-analysis .sku-funnel-store-viewport.table-scroll--contained", count: 0
     assert_select "turbo-frame#sku_common_funnel_trend[loading='lazy']", count: 1
     assert_select "[data-controller='profit-trend-toggle'] [aria-expanded='false']", count: 1
   end

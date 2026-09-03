@@ -661,8 +661,11 @@ class ReportsController < ApplicationController
     labels = trend[:rows].map { |row| row[:date] }
     series = trend[:metrics].map do |metric|
       selected = metric.in?(trend[:default_metrics])
+      metric_name = t("sales_funnel_reports.columns.#{trend[:platform]}.#{metric}")
+      currency_unit = { "CNY" => "¥", "RUB" => "₽", "BYN" => "Br" }.fetch(trend[:currency], trend[:currency])
+      metric_name = "#{metric_name} (#{currency_unit})" if amount_metrics.include?(metric)
       {
-        name: t("sales_funnel_reports.columns.#{trend[:platform]}.#{metric}"),
+        name: metric_name,
         type: "line",
         smooth: true,
         showSymbol: false,
@@ -1460,7 +1463,11 @@ class ReportsController < ApplicationController
     value = row[metric]
     return t("common.empty_value") if value.nil?
     return helpers.number_to_percentage(value, precision: 2) if metric.to_s.end_with?("_rate")
-    return helpers.number_to_currency(value, unit: "", precision: 2) if %i[order_amount wb_buyout_amount wb_cancel_amount].include?(metric)
+    if %i[order_amount wb_buyout_amount wb_cancel_amount].include?(metric)
+      currency = row[:currency].presence || "RUB"
+      unit = { "CNY" => "¥", "RUB" => "₽", "BYN" => "Br " }.fetch(currency, "#{currency} ")
+      return helpers.number_to_currency(value, unit:, precision: 2)
+    end
     return helpers.number_with_precision(value, precision: 2, strip_insignificant_zeros: true) if metric == :ozon_average_search_position
 
     helpers.number_with_delimiter(value.to_i)

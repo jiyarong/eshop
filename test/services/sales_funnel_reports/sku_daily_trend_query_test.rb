@@ -50,6 +50,7 @@ class SalesFunnelReports::SkuDailyTrendQueryTest < ActiveSupport::TestCase
 
     assert_equal ["ozon", "wb"], trends.map { |trend| trend[:platform] }
     assert_equal ["Ozon 店 #{@token}", "WB 店 #{@token}"], trends.map { |trend| trend[:store_name] }
+    assert_equal %w[RUB RUB], trends.map { |trend| trend[:currency] }
     assert_equal SalesFunnelReports::SkuDailyTrendQuery::OZON_METRICS, trends.first[:metrics]
     assert_equal %i[position_category hits_view conv_tocart ordered_units revenue], trends.first[:default_metrics]
     assert_equal %i[open_card add_to_cart orders buyouts], trends.second[:default_metrics]
