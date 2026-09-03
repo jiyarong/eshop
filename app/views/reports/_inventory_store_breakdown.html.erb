@@ -1,0 +1,43 @@
+<div class="inventory-section__header">
+  <h3 class="section-title"><%= t("reports.inventory.drawer.sections.shop_breakdown") %></h3>
+</div>
+<%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
+    <table class="inventory-distribution-table">
+      <thead>
+        <tr>
+          <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
+          <th><%= t("reports.inventory.fields.fbo_fbw") %></th>
+          <th><%= t("reports.inventory.fields.platform_inbound") %></th>
+          <th><%= t("reports.inventory.fields.fbs") %></th>
+          <th><%= t("reports.inventory.store_table.previous_week_net_sales") %></th>
+          <th><%= t("reports.inventory.store_table.forecast_daily_sales") %></th>
+          <th><%= t("reports.inventory.store_table.cover_days") %></th>
+          <th><%= t("reports.inventory.store_table.synced_at") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% inventory_detail[:platform_shop_rows].to_a.each do |row| %>
+          <tr>
+            <td><%= row[:store_label] %></td>
+            <td><%= row[:fbo].to_i %></td>
+            <td><%= row[:inbound].to_i %></td>
+            <td><%= row[:fbs].to_i %></td>
+            <td><%= row[:previous_week_net_sales].to_i %></td>
+            <td>-</td>
+            <td>-</td>
+            <td><%= display_time(row[:latest_synced_at]) %></td>
+          </tr>
+        <% end %>
+        <% if (summary_row = inventory_detail[:platform_shop_summary_row]).present? %>
+          <tr class="inventory-distribution-table__summary">
+            <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
+            <td><%= summary_row[:fbo].to_i %></td>
+            <td><%= summary_row[:inbound].to_i %></td>
+            <td><%= summary_row[:fbs].to_i %></td>
+            <td><%= inventory_detail[:platform_shop_rows].to_a.sum { |row| row[:previous_week_net_sales].to_i } %></td>
+            <td>-</td><td>-</td><td>-</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+<% end %>

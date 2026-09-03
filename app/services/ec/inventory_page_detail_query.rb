@@ -12,7 +12,7 @@ module Ec
     ].freeze
     def initialize(sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to: nil, time_zone: nil)
       @sku = sku
-      @detail_tab = detail_tab.presence_in(%w[incoming book platform returns]) || "incoming"
+      @detail_tab = detail_tab.presence_in(%w[overview incoming book platform returns history]) || "overview"
       @requested_book_batch_page = [book_batch_page.to_i, 1].max
       @return_page = return_page
       @return_restockable = return_restockable
@@ -25,6 +25,7 @@ module Ec
       book_batches = book_batches_scope
       pagination = book_batch_pagination(book_batches.count)
       velocity_metrics = inventory_velocity_metrics(overview[:summary])
+      strict_forecast = strict_forecast_metrics(overview[:summary])
 
       {
         sku_code: @sku.sku_code,
@@ -33,8 +34,11 @@ module Ec
         active_detail_tab: @detail_tab,
         summary: overview[:summary],
         daily_sales_velocity: velocity_metrics[:daily_sales_velocity],
+        forecast_explanation: velocity_metrics[:forecast_explanation],
         turnover_days: velocity_metrics[:turnover_days],
         turnover_days_with_procurement: velocity_metrics[:turnover_days_with_procurement],
+        strict_forecast: strict_forecast,
+        fbs_stock: overview[:latest_levels].select { |level| level.fulfillment_type.to_s == "fbs" }.sum(&:quantity),
         incoming_quantity: incoming_batches.sum { |row| row[:purchased_quantity].to_i },
         incoming_batches: incoming_batches,
         book_batches: paginate_book_batches(book_batches, pagination[:page]),
@@ -240,12 +244,33 @@ module Ec
     def platform_shop_rows(levels)
       grouped = levels.group_by { |level| [level.platform.to_s, level.store_name.to_s, level.store_id, level.account_id] }
 
-      grouped.map do |(platform, store_name, _store_id, _account_id), group_levels|
+      products = @sku.sku_products.includes(:store).group_by { |product| [product.platform.to_s, product.store_id] }
+      weekly_sales = previous_week_sales_by_store
+      product_store_keys = products.values.filter_map do |store_products|
+        product = store_products.first
+        store = product&.store
+        next unless store
+
+        account_id = product.platform.to_s == "wb" ? store.wb_raw_account_id : store.ozon_raw_account_id
+        [product.platform.to_s, store.store_name.to_s, store.id, account_id]
+      end
+
+      (grouped.keys + product_store_keys).uniq.map do |(platform, store_name, store_id, account_id)|
+        group_levels = grouped.fetch([platform, store_name, store_id, account_id], [])
+        listings = products.fetch([platform, store_id], [])
         {
+          platform: platform,
+          store_name: store_name,
+          store_id: store_id,
+          account_id: account_id,
           store_label: "#{platform_label(platform)} * #{store_name}",
           fbo: group_levels.select { |level| level.fulfillment_type.to_s.in?(%w[fbo fbw]) }.sum(&:quantity),
           inbound: group_levels.select { |level| level.fulfillment_type.to_s == "inbound" }.sum(&:quantity),
-          fbs: group_levels.select { |level| level.fulfillment_type.to_s == "fbs" }.sum(&:quantity)
+          fbs: group_levels.select { |level| level.fulfillment_type.to_s == "fbs" }.sum(&:quantity),
+          latest_synced_at: group_levels.filter_map(&:synced_at).max,
+          listing_count: listings.size,
+          listings: listings.map { |product| product.product_name.presence || product.offer_id.presence || product.product_id },
+          previous_week_net_sales: weekly_sales.fetch([platform, store_id], 0)
         }
       end.sort_by { |row| row[:store_label] }
     end
@@ -374,6 +399,42 @@ module Ec
           turnover_days_with_procurement: daily_sales_velocity.to_d.positive? ? ((book_stock + procurement_stock) / daily_sales_velocity.to_d) : nil
         )
       end
+    end
+
+    def previous_week_sales_by_store
+      @previous_week_sales_by_store ||= begin
+        week_end = @date_to.beginning_of_week(:monday) - 1.day
+        week_start = week_end.beginning_of_week(:monday)
+        range = @time_zone.local(week_start.year, week_start.month, week_start.day).beginning_of_day..
+          @time_zone.local(week_end.year, week_end.month, week_end.day).end_of_day
+
+        Ec::OrderItem
+          .joins(:order)
+          .joins(<<~SQL.squish)
+            INNER JOIN ec_sku_products
+              ON ec_sku_products.store_id = ec_order_items.store_id
+             AND ec_sku_products.platform = ec_order_items.platform
+             AND (
+               (ec_order_items.platform = 'ozon' AND ec_sku_products.platform_sku_id = ec_order_items.platform_sku_id)
+               OR
+               (ec_order_items.platform = 'wb' AND ec_sku_products.product_id = ec_order_items.platform_sku_id)
+             )
+          SQL
+          .where(ec_sku_products: { sku_code: @sku.sku_code })
+          .where.not(ec_orders: { order_status: %w[cancelled returned] })
+          .where(ec_orders: { ordered_at: range })
+          .group("ec_order_items.platform", "ec_order_items.store_id")
+          .sum(:quantity)
+          .transform_keys { |platform, store_id| [platform.to_s, store_id.to_i] }
+      end
+    end
+
+    def strict_forecast_metrics(summary)
+      result = ErpAI::DynamicDailySalesForecast.new(sku: @sku, date_to: @date_to - 1.day).call
+      forecast = result[:forecast_daily_sales].to_d
+      result.merge(
+        cover_days: forecast.positive? ? summary[:book_stock].to_d / forecast : nil
+      )
     end
 
     def platform_label(platform)

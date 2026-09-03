@@ -924,21 +924,15 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @current_user.time_zone, query_calls.first[4]
     assert_select "turbo-frame#inventory_drawer_content"
     assert_select ".erp-modal[role='dialog']", count: 0
-    assert_select "h3", I18n.t("reports.inventory.drawer.sections.overview", default: "概览")
-    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.pending_stock")
-    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.platform_stock")
-    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.overseas_available_stock")
-    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.daily_sales_velocity")
-    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.turnover_days")
-    assert_select ".inventory-metric-card__label", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
-    assert_select ".inventory-metric-card__value", text: "5", count: 1
-    assert_select ".inventory-metric-card__value", "1.23"
-    assert_select ".inventory-metric-card__value", "5.67"
-    assert_select ".inventory-metric-card__value", "8.91"
+    assert_select ".inventory-metric-card", count: 0
+    assert_select ".sku-inventory-trend", count: 0
     assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.book")
     assert_select ".inventory-detail-shell > .inventory-detail-body", count: 1
     assert_select ".inventory-detail-panel--scrollable", count: 0
+    assert_select ".inventory-detail-body .table-viewport.table-scroll--horizontal[data-controller~='sticky-table-header']", minimum: 1
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.batch_list")
+    assert_select ".inventory-book-batch-table th", I18n.t("reports.inventory.fields.received_on")
+    assert_select ".inventory-book-batch-table td", "2026-06-20"
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.sales_distribution")
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.return_distribution")
     assert_select ".inventory-formula__title", I18n.t("reports.inventory.drawer.sections.formula")
@@ -1045,6 +1039,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-distribution-table__summary td", "2"
     assert_select ".inventory-distribution-table__summary td", "5"
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.fbo_fbw_breakdown")
+    assert_select ".inventory-detail-body .table-viewport.table-scroll--horizontal[data-controller~='sticky-table-header']", count: 2
     assert_select "th", I18n.t("reports.inventory.fields.warehouse")
     assert_select "td", "Минск"
     assert_select "td", "Москва"
@@ -2056,6 +2051,20 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "sku detail renders inventory overview tab" do
+    inventory_snapshot = Ec::Snapshot.create!(
+      sku: @sku,
+      snapshot_type: Ec::InventorySnapshot.snapshot_type,
+      snapshot_date: Time.current.in_time_zone(@current_user.time_zone).to_date,
+      content: {
+        overview: { book_stock: 10 },
+        distribution: { levels: [
+          {
+            platform: "ozon", store_id: @sales_store.id, store_name: @sales_store.store_name,
+            account_id: @sales_ozon_account.id, fulfillment_type: "fbo", quantity: 4
+          }
+        ] }
+      }
+    )
     Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,
       batch_code: "INV-#{@sku_code}",
@@ -2084,14 +2093,25 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-metric-card__label", "采购中库存"
     assert_select ".inventory-metric-card__label", "账面可用库存"
     assert_select ".inventory-metric-card__label", "平台在库"
-    assert_select ".inventory-metric-card__label", "FBS库存"
-    assert_select ".inventory-detail-tabs__link", text: "待入库库存"
+    assert_select ".inventory-metric-card__label", "FBS总库存"
+    assert_select ".inventory-detail-tabs__link", text: "采购中库存"
     assert_select ".inventory-detail-tabs__link", text: "账面可用库存"
     assert_select ".inventory-detail-tabs__link", text: "平台在库"
-    assert_select ".inventory-detail-tabs__link", text: "退货记录"
-    assert_select ".inventory-detail-tabs__link[aria-current='page']", text: "待入库库存"
-    assert_select ".inventory-detail-tabs__link[data-turbo-frame='inventory_drawer_content']", count: 4
+    assert_select ".inventory-detail-tabs__link", text: "概览"
+    assert_select ".inventory-detail-tabs__link", text: "历史趋势", count: 0
+    assert_select ".inventory-detail-tabs__link[aria-current='page']", text: "概览"
+    assert_select ".inventory-detail-tabs__link[data-turbo-frame='inventory_drawer_content']", count: 5
+    assert_select ".inventory-overview-content", count: 1
+    assert_select ".inventory-overview-content > .inventory-section", count: 3
+    assert_select ".inventory-overview-content > .sku-inventory-trend", count: 1
+    assert_select ".inventory-overview-content .table-viewport.table-scroll--horizontal[data-controller~='sticky-table-header']", count: 1
+    assert_select ".sku-inventory-trend", count: 1
+    assert_select ".sku-inventory-trend [data-controller='echarts']", count: 2
+    assert_select ".sku-inventory-store-trend", count: 1
+    assert_select "input[name='detail_tab'][value='overview']", count: 1
+    assert_select ".sku-inventory-trend table", count: 0
   ensure
+    inventory_snapshot&.destroy
     Ec::SkuBatch.where(batch_code: "INV-#{@sku_code}").delete_all
   end
 
@@ -2134,6 +2154,52 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     other_order&.items&.delete_all
     other_order&.destroy
     Ec::Sku.with_deleted.where(sku_code: other_sku&.sku_code).delete_all
+  end
+
+  test "inventory history tab renders the shared trend chart and history table" do
+    snapshot_date = Time.current.in_time_zone(@current_user.time_zone).to_date
+    snapshot = Ec::Snapshot.create!(
+      sku: @sku,
+      snapshot_type: Ec::InventorySnapshot.snapshot_type,
+      snapshot_date: snapshot_date,
+      content: {
+        overview: {
+          book_stock: 20,
+          platform_stock: 8,
+          incoming_quantity: 4,
+          daily_sales_velocity: "2.0",
+          turnover_days: "10.0",
+          turnover_days_with_procurement: "12.0"
+        },
+        distribution: { levels: [
+          {
+            platform: "ozon", store_id: @sales_store.id, store_name: @sales_store.store_name,
+            account_id: @sales_ozon_account.id, fulfillment_type: "fbo", quantity: 8
+          }
+        ] }
+      }
+    )
+
+    get report_inventory_detail_path(@sku.sku_code),
+      params: { detail_tab: "history" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-detail-tabs__link", text: "历史趋势", count: 0
+    assert_select ".inventory-metric-card", count: 0
+    assert_select ".sku-inventory-trend [data-controller='echarts']", count: 2
+    assert_select ".sku-inventory-store-trend[data-controller='profit-store-trend-selector']", count: 1
+    assert_select "input[type='radio'][name='inventory_store_trend_ref'][checked]", count: 1
+    assert_select "form[data-turbo-frame='inventory_drawer_content'] input[name='detail_tab'][value='history']", count: 1
+    assert_select "input[name='store_trend_from_date'][value='#{Date.current - 27.days}']", count: 1
+    assert_select "input[name='store_trend_to_date'][value='#{Date.current}']", count: 1
+    assert_select ".sku-profit-store-trend__selector label", text: /#{Regexp.escape(@sales_store.store_name)}/
+    assert_select "[data-profit-store-trend-selector-target='panel'][data-store-ref]", count: 1
+    assert_select ".sku-inventory-trend table", count: 1
+    assert_select ".sku-inventory-trend .table-viewport.table-scroll--horizontal[data-controller~='sticky-table-header']", count: 1
+
+  ensure
+    snapshot&.destroy
   end
 
   test "sku detail inventory overview ignores sku code without sku product id binding" do

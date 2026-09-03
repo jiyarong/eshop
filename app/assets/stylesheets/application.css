@@ -2689,6 +2689,19 @@ table thead th {
   gap: 12px;
 }
 
+.sku-inventory-trend .sku-profit-trend__chart-wrap,
+.sku-inventory-trend .sku-profit-trend__chart {
+  min-height: 320px;
+  height: 320px;
+}
+.sku-inventory-trend { gap: 0; }
+.sku-inventory-trend > .inventory-section__header { margin-bottom: 12px; }
+.sku-inventory-store-trend { margin-top: 4px; }
+.sku-inventory-store-trend .inventory-section__header { align-items: center; }
+.inventory-merged-note { display: block; margin-top: 3px; color: var(--erp-warning, #b45309); font-size: 11px; }
+.inventory-distribution-table details { margin-top: 4px; font-size: 12px; }
+.inventory-distribution-table summary { color: var(--erp-brand); cursor: pointer; }
+
 .inventory-section__header {
   display: flex;
   align-items: center;
@@ -2784,6 +2797,38 @@ table thead th {
   overflow-x: hidden;
   display: grid;
   align-content: start;
+}
+
+.inventory-overview-content {
+  min-height: 0;
+  padding: 2px 4px 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 28px;
+}
+
+.inventory-overview-content > .inventory-section,
+.inventory-overview-content > .sku-inventory-trend {
+  margin: 0;
+}
+
+.inventory-overview-content > .sku-inventory-trend {
+  margin-top: 12px;
+}
+
+/* Inventory tables only own horizontal overflow; the drawer content owns vertical scrolling. */
+.inventory-drawer__content .table-viewport {
+  overflow-y: clip;
+  overscroll-behavior: auto;
+}
+
+.sku-detail-tab-panels .inventory-drawer__content .table-viewport {
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: clip;
+  overscroll-behavior: auto;
 }
 
 .erp-tabs {

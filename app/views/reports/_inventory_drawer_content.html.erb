@@ -1,5 +1,21 @@
 <div class="inventory-drawer__content">
-  <section class="inventory-section">
+  <% active_tab = inventory_detail[:active_detail_tab].presence || "overview" %>
+  <section class="inventory-section inventory-detail-shell">
+    <nav class="erp-tabs erp-tabs--underline inventory-detail-tabs" aria-label="<%= t("reports.inventory.title") %>">
+      <% %w[overview incoming book platform returns].each do |tab| %>
+        <% label = t("reports.inventory.drawer.tabs.#{tab}") %>
+        <% path = report_inventory_detail_path(sku.sku_code, detail_tab: tab, book_batch_page: (tab == "book" ? 1 : nil)) %>
+        <%= link_to label, path,
+                    class: "erp-tabs__link inventory-detail-tabs__link",
+                    aria: (active_tab == tab ? { current: "page" } : nil),
+                    data: { turbo_frame: "inventory_drawer_content" } %>
+      <% end %>
+    </nav>
+  </section>
+
+  <% if active_tab == "overview" %>
+  <div class="inventory-overview-content">
+    <section class="inventory-section">
     <div class="inventory-section__header">
       <div>
         <h3 class="section-title"><%= t("reports.inventory.drawer.sections.overview") %></h3>
@@ -25,6 +41,17 @@
       </div>
       <div class="inventory-metric-card inventory-metric-card--compact">
         <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.daily_sales_velocity") %></span>
+        <% explanation = inventory_detail[:forecast_explanation] || {} %>
+        <span class="sku-lifecycle-formula-help" tabindex="0" aria-label="<%= t("reports.inventory.forecast.aria_label") %>">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+          <span class="sku-lifecycle-formula-tooltip" role="tooltip">
+            <%= t("reports.inventory.forecast.period", date: explanation[:date_to]) %><br>
+            <% explanation[:windows].to_a.each do |window| %>
+              <%= t("reports.inventory.forecast.window", days: window[:days], quantity: window[:quantity].to_i, average: format("%.2f", window[:daily_average]), weight: (window[:weight].to_d * 100).to_i) %><br>
+            <% end %>
+            <%= t("reports.inventory.forecast.stockout_note") %>
+          </span>
+        </span>
         <strong class="inventory-metric-card__value">
           <%= inventory_detail[:daily_sales_velocity].present? ? format("%.2f", inventory_detail[:daily_sales_velocity].to_d) : "-" %>
         </strong>
@@ -41,30 +68,51 @@
           <%= inventory_detail[:turnover_days_with_procurement].present? ? format("%.2f", inventory_detail[:turnover_days_with_procurement].to_d) : "-" %>
         </strong>
       </div>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.fbs_stock") %></span>
+        <strong class="inventory-metric-card__value"><%= inventory_detail[:fbs_stock].to_i %></strong>
+      </div>
+      <% strict = inventory_detail[:strict_forecast] || {} %>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.strict_forecast_daily_sales") %></span>
+        <span class="sku-lifecycle-formula-help" tabindex="0" aria-label="<%= t("reports.inventory.strict_forecast.aria_label") %>">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+          <span class="sku-lifecycle-formula-tooltip" role="tooltip">
+            <%= t("reports.inventory.strict_forecast.period", from: strict.dig(:snapshot_period, :from), to: strict.dig(:snapshot_period, :to)) %><br>
+            <%= t("reports.inventory.strict_forecast.samples", snapshots: strict[:snapshot_days].to_i, valid: strict[:valid_days].to_i, stockout: strict[:stockout_days].to_i) %><br>
+            <%= t("reports.inventory.strict_forecast.path", path: t("reports.inventory.strict_forecast.paths.#{strict.dig(:calculation, :path)}", default: strict.dig(:calculation, :path).to_s)) %>
+            <% %i[s7 s15 s30 historical_s7 slope].each do |key| %>
+              <% value = strict.dig(:calculation, key) %>
+              <% if value.present? %><br><%= t("reports.inventory.strict_forecast.values.#{key}", value: format("%.2f", value.to_d)) %><% end %>
+            <% end %>
+          </span>
+        </span>
+        <strong class="inventory-metric-card__value"><%= strict.dig(:calculation, :path).to_s == "no_valid_days" ? "-" : format("%.2f", strict[:forecast_daily_sales].to_d) %></strong>
+      </div>
+      <div class="inventory-metric-card inventory-metric-card--compact">
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.strict_forecast_cover_days") %></span>
+        <strong class="inventory-metric-card__value"><%= strict[:cover_days].present? ? format("%.2f", strict[:cover_days].to_d) : "-" %></strong>
+      </div>
     </div>
-  </section>
+    </section>
+    <section class="inventory-section">
+      <%= render "reports/inventory_store_breakdown", inventory_detail: inventory_detail %>
+    </section>
+    <%= render "reports/sku_inventory_trend", sku: sku, trend: (@inventory_trend || { weeks: [], operation_events: [] }), chart_option: (@inventory_trend_chart_option || {}), store_trend_groups: (@store_inventory_trend_groups || []), show_table: false, detail_tab: "overview" %>
+  </div>
+  <% else %>
 
-  <% active_tab = inventory_detail[:active_detail_tab].presence || "incoming" %>
   <section class="inventory-section inventory-detail-shell">
-    <nav class="erp-tabs erp-tabs--underline inventory-detail-tabs" aria-label="<%= t("reports.inventory.title") %>">
-      <% %w[incoming book platform returns].each do |tab| %>
-        <% label = t("reports.inventory.drawer.tabs.#{tab}") %>
-        <% path = report_inventory_detail_path(sku.sku_code, detail_tab: tab, book_batch_page: (tab == "book" ? 1 : nil)) %>
-        <%= link_to label,
-                    path,
-                    class: "erp-tabs__link inventory-detail-tabs__link",
-                    aria: (active_tab == tab ? { current: "page" } : nil),
-                    data: { turbo_frame: "inventory_drawer_content" } %>
-      <% end %>
-    </nav>
-
     <div class="inventory-detail-body">
+      <% if active_tab == "history" %>
+        <%= render "reports/sku_inventory_trend", sku: sku, trend: (@inventory_trend || { weeks: [], operation_events: [] }), chart_option: (@inventory_trend_chart_option || {}), store_trend_groups: (@store_inventory_trend_groups || []), show_table: true, detail_tab: "history" %>
+      <% end %>
       <% if active_tab == "incoming" %>
         <section class="inventory-detail-panel">
           <div class="inventory-detail-panel__head">
             <h4><%= t("reports.inventory.drawer.sections.inbound_batches") %></h4>
           </div>
-          <div class="table-scroll">
+          <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
             <table class="inventory-detail-table">
               <thead>
                 <tr>
@@ -91,7 +139,7 @@
                 <% end %>
               </tbody>
             </table>
-          </div>
+          <% end %>
         </section>
       <% end %>
 
@@ -118,11 +166,12 @@
           <div class="inventory-detail-panel__head">
             <h4><%= t("reports.inventory.drawer.sections.batch_list") %></h4>
           </div>
-          <div class="table-scroll">
+          <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
             <table class="inventory-book-batch-table">
               <thead>
                 <tr>
                   <th><%= t("reports.inventory.fields.batch_code") %></th>
+                  <th><%= t("reports.inventory.fields.received_on") %></th>
                   <th><%= t("reports.inventory.fields.batch_type") %></th>
                   <th><%= t("reports.inventory.fields.defect_offset_note") %></th>
                   <th><%= t("reports.sku_detail.inventory.received_quantity") %></th>
@@ -133,6 +182,7 @@
                   <% inventory_detail[:book_batches].each do |row| %>
                     <tr>
                       <td><%= row[:batch_code] %></td>
+                      <td><%= row[:received_on].present? ? I18n.l(row[:received_on], format: "%Y-%m-%d") : "-" %></td>
                       <td>
                         <span class="inventory-batch-chip inventory-batch-chip--<%= row[:batch_type] %>">
                           <%= t("reports.inventory.batch_types.#{row[:batch_type]}", default: row[:batch_type].to_s) %>
@@ -143,11 +193,11 @@
                     </tr>
                   <% end %>
                 <% else %>
-                  <tr><td colspan="4" class="empty-state"><%= t("reports.inventory.empty") %></td></tr>
+                  <tr><td colspan="5" class="empty-state"><%= t("reports.inventory.empty") %></td></tr>
                 <% end %>
               </tbody>
             </table>
-          </div>
+          <% end %>
 
           <% pagination = inventory_detail[:book_batch_pagination] || {} %>
           <% if pagination[:total_pages].to_i > 1 %>
@@ -180,7 +230,7 @@
           <div class="inventory-detail-panel__head">
             <h4><%= t("reports.inventory.drawer.sections.sales_distribution") %></h4>
           </div>
-          <div class="table-scroll">
+          <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
             <table class="inventory-distribution-table">
               <thead>
                 <tr>
@@ -209,12 +259,12 @@
                 <% end %>
               </tbody>
             </table>
-          </div>
+          <% end %>
 
           <div class="inventory-detail-panel__head">
             <h4><%= t("reports.inventory.drawer.sections.return_distribution") %></h4>
           </div>
-          <div class="table-scroll">
+          <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
             <table class="inventory-distribution-table inventory-distribution-table--narrow">
               <thead>
                 <tr>
@@ -237,7 +287,7 @@
                 <% end %>
               </tbody>
             </table>
-          </div>
+          <% end %>
 
           <div class="inventory-formula">
             <h4 class="inventory-formula__title"><%= t("reports.inventory.drawer.sections.formula") %></h4>
@@ -271,39 +321,7 @@
             <% end %>
           </div>
 
-          <div class="inventory-detail-panel__head">
-            <h4><%= t("reports.inventory.drawer.sections.shop_breakdown") %></h4>
-          </div>
-          <div class="table-scroll">
-            <table class="inventory-distribution-table inventory-distribution-table--narrow">
-              <thead>
-                <tr>
-                  <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
-                  <th><%= t("reports.inventory.fields.fbo_fbw") %></th>
-                  <th><%= t("reports.inventory.fields.platform_inbound") %></th>
-                  <th><%= t("reports.inventory.fields.fbs") %></th>
-                </tr>
-              </thead>
-              <tbody>
-                <% inventory_detail[:platform_shop_rows].to_a.each do |row| %>
-                  <tr>
-                    <td><%= row[:store_label] %></td>
-                    <td><%= row[:fbo].to_i %></td>
-                    <td><%= row[:inbound].to_i %></td>
-                    <td><%= row[:fbs].to_i %></td>
-                  </tr>
-                <% end %>
-                <% if (summary_row = inventory_detail[:platform_shop_summary_row]).present? %>
-                  <tr class="inventory-distribution-table__summary">
-                    <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
-                    <td><%= summary_row[:fbo].to_i %></td>
-                    <td><%= summary_row[:inbound].to_i %></td>
-                    <td><%= summary_row[:fbs].to_i %></td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+          <%= render "reports/inventory_store_breakdown", inventory_detail: inventory_detail %>
 
           <div class="inventory-formula">
             <h4 class="inventory-formula__title"><%= t("reports.inventory.drawer.sections.formula") %></h4>
@@ -319,7 +337,7 @@
           <div class="inventory-detail-panel__head">
             <h4><%= t("reports.inventory.drawer.sections.fbo_fbw_breakdown") %></h4>
           </div>
-          <div class="table-scroll">
+          <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
             <table class="inventory-distribution-table">
               <thead>
                 <tr>
@@ -353,7 +371,7 @@
                 <% end %>
               </tbody>
             </table>
-          </div>
+          <% end %>
         </section>
       <% end %>
 
@@ -379,4 +397,5 @@
 
     </div>
   </section>
+  <% end %>
 </div>

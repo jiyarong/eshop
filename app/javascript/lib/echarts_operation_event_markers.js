@@ -39,14 +39,14 @@ export function applyOperationEventMarkLines(option, events, { seriesId = null, 
 
   const grouped = events.reduce((result, event) => {
     if (!event?.event_date || !event?.operated_at) return result;
-    (result[event.event_date] ||= []).push(event);
+    (result[event.marker_x || event.event_date] ||= []).push(event);
     return result;
   }, {});
   const markerData = Object.keys(grouped).sort().map((eventDate) => {
     const dayEvents = grouped[eventDate].slice().sort((left, right) =>
       left.operated_at.localeCompare(right.operated_at) || Number(left.id) - Number(right.id)
     );
-    return { xAxis: dayEvents[0].operated_at, operationEvents: dayEvents };
+    return { xAxis: dayEvents[0].marker_x || dayEvents[0].operated_at, operationEvents: dayEvents };
   });
   if (markerData.length === 0) return enhanced;
 

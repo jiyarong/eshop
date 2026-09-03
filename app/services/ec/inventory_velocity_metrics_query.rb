@@ -21,8 +21,22 @@ module Ec
       end
 
       @sku_codes.index_with do |sku_code|
+        windows = WINDOW_DAYS.index_with do |window_days|
+          quantity = sales_by_window.fetch(window_days, {}).fetch(sku_code, 0).to_d
+          {
+            days: window_days,
+            quantity: quantity,
+            daily_average: quantity / window_days,
+            weight: WINDOW_WEIGHTS.fetch(window_days)
+          }
+        end
         {
           daily_sales_velocity: weighted_daily_sales_velocity(sku_code, sales_by_window),
+          forecast_explanation: {
+            date_to: @date_to,
+            windows: windows.values,
+            excludes_stockout_days: false
+          },
           turnover_days: nil
         }
       end

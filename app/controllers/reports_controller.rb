@@ -65,6 +65,7 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call
+    load_inventory_trend
 
     if turbo_frame_request?
       if request.headers["Turbo-Frame"] == "inventory_drawer_content"
@@ -119,6 +120,7 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call.merge(return_update_count: updated_count)
+    load_inventory_trend
 
     render partial: "reports/inventory_drawer_content_frame",
       locals: { inventory_detail: @inventory_detail, sku: @sku }
@@ -1100,6 +1102,90 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call
+    load_inventory_trend
+  end
+
+  def load_inventory_trend
+    @store_trend_to_date = parse_report_date(params[:store_trend_to_date]) || user_today
+    @store_trend_from_date = parse_report_date(params[:store_trend_from_date]) || (@store_trend_to_date - 27.days)
+    if @store_trend_from_date > @store_trend_to_date
+      @store_trend_from_date, @store_trend_to_date = @store_trend_to_date, @store_trend_from_date
+    end
+    @inventory_trend = Ec::SkuInventoryTrendQuery.new(
+      @sku,
+      to_date: user_today,
+      time_zone: user_time_zone,
+      selected_store_key: params[:inventory_trend_store],
+      store_from_date: @store_trend_from_date,
+      store_to_date: @store_trend_to_date
+    ).call
+    @inventory_trend_chart_option = build_inventory_trend_chart_option(@inventory_trend)
+    @store_inventory_trend_groups = @inventory_trend.fetch(:store_trends).map do |store_trend|
+      store_trend.merge(chart_option: build_store_inventory_trend_chart_option(store_trend[:days]))
+    end
+  end
+
+  def build_inventory_trend_chart_option(trend)
+    rows = trend.fetch(:weeks)
+    metric_config = {
+      book_stock: [I18n.t("reports.inventory.trend.metrics.book_stock"), 0],
+      platform_stock: [I18n.t("reports.inventory.trend.metrics.platform_stock"), 0],
+      turnover_days_with_procurement: [I18n.t("reports.inventory.trend.metrics.turnover_days_with_procurement"), 1],
+      fbs_stock: [I18n.t("reports.inventory.trend.metrics.fbs_stock"), 0],
+      platform_inbound_stock: [I18n.t("reports.inventory.trend.metrics.platform_inbound_stock"), 0],
+      incoming_quantity: [I18n.t("reports.inventory.trend.metrics.incoming_quantity"), 0],
+      daily_sales_velocity: [I18n.t("reports.inventory.trend.metrics.daily_sales_velocity"), 1],
+      turnover_days: [I18n.t("reports.inventory.trend.metrics.turnover_days"), 1]
+    }
+    metric_config.select! { |key, _| trend.fetch(:available_metrics).include?(key) }
+    default_metrics = %i[book_stock platform_stock turnover_days_with_procurement]
+    {
+      tooltip: { trigger: "axis" },
+      legend: {
+        top: 0,
+        selected: metric_config.to_h { |key, (name, _axis)| [name, default_metrics.include?(key)] }
+      },
+      grid: { left: 48, right: 48, top: 48, bottom: 36, containLabel: true },
+      xAxis: {
+        type: "category",
+        data: rows.map { |row| "#{row[:week_start].cwyear}-W#{row[:week_start].cweek.to_s.rjust(2, "0")}" }
+      },
+      yAxis: [
+        { type: "value", name: I18n.t("reports.inventory.trend.quantity_axis") },
+        { type: "value", name: I18n.t("reports.inventory.trend.days_axis") }
+      ],
+      series: metric_config.map do |key, (name, axis)|
+        {
+          id: "inventory-#{key}", name: name, type: "line", yAxisIndex: axis,
+          connectNulls: false, symbolSize: 7,
+          data: rows.map { |row| row.dig(:metrics, key)&.to_f }
+        }
+      end
+    }
+  end
+
+  def build_store_inventory_trend_chart_option(rows)
+    metrics = {
+      platform_stock: I18n.t("reports.inventory.trend.metrics.platform_stock"),
+      fbs_stock: I18n.t("reports.inventory.trend.metrics.fbs_stock"),
+      platform_inbound_stock: I18n.t("reports.inventory.trend.metrics.platform_inbound_stock")
+    }
+    {
+      tooltip: { trigger: "axis" },
+      legend: { top: 0 },
+      grid: { left: 48, right: 32, top: 48, bottom: 36, containLabel: true },
+      xAxis: {
+        type: "category",
+        data: rows.map { |row| row[:date].iso8601 }
+      },
+      yAxis: { type: "value", name: I18n.t("reports.inventory.trend.quantity_axis") },
+      series: metrics.map do |key, name|
+        {
+          id: "store-inventory-#{key}", name: name, type: "line", connectNulls: false,
+          symbolSize: 7, data: rows.map { |row| row.dig(:metrics, key)&.to_f }
+        }
+      end
+    }
   end
 
   def load_sku_ads

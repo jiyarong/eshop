@@ -83,6 +83,10 @@ class Ec::InventoryVelocityMetricsQueryTest < ActiveSupport::TestCase
     assert_equal expected_other_sku_velocity, metrics.dig(@other_sku.sku_code, :daily_sales_velocity)
     assert_nil metrics.dig(@sku.sku_code, :turnover_days)
     assert_nil metrics.dig(@other_sku.sku_code, :turnover_days)
+    explanation = metrics.dig(@sku.sku_code, :forecast_explanation)
+    assert_equal [7, 15, 30], explanation[:windows].map { |window| window[:days] }
+    assert_equal [BigDecimal("0.5"), BigDecimal("0.3"), BigDecimal("0.2")], explanation[:windows].map { |window| window[:weight] }
+    assert_equal false, explanation[:excludes_stockout_days]
   end
 
   private

@@ -1,0 +1,71 @@
+<section class="inventory-section sku-inventory-trend">
+  <div class="inventory-section__header"><h3 class="section-title"><%= t("reports.inventory.trend.title") %></h3></div>
+  <% if trend[:weeks].blank? || trend[:weeks].all? { |row| row[:missing] } %>
+    <div class="empty-state"><%= t("reports.inventory.trend.empty") %></div>
+  <% else %>
+    <div data-controller="echarts" class="sku-profit-trend__chart-wrap">
+      <div data-echarts-target="chart" class="sku-profit-trend__chart"></div>
+      <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(chart_option) %></script>
+      <script type="application/json" data-echarts-target="events"><%= raw JSON.generate(trend[:operation_events]) %></script>
+    </div>
+    <section class="sku-inventory-store-trend sku-profit-store-trend" data-controller="profit-store-trend-selector">
+      <div class="inventory-section__header">
+        <h3 class="section-title"><%= t("reports.inventory.trend.store_title") %></h3>
+      </div>
+      <%= form_with url: report_inventory_detail_path(sku.sku_code), method: :get,
+                    class: "inventory-store-trend__filters",
+                    data: { turbo_frame: "inventory_drawer_content" } do %>
+        <%= hidden_field_tag :detail_tab, detail_tab %>
+        <div class="field field--time-range">
+          <label for="sku-inventory-store-trend-time-range-trigger"><%= t("reports.inventory.trend.store_date_range") %></label>
+          <%= render "shared/time_range_selector",
+                     id: "sku-inventory-store-trend-time-range",
+                     from_date: trend[:store_from_date],
+                     to_date: trend[:store_to_date],
+                     from_name: "store_trend_from_date",
+                     to_name: "store_trend_to_date",
+                     submit_on_apply: true %>
+        </div>
+      <% end %>
+      <% if store_trend_groups.blank? %>
+        <div class="empty-state"><%= t("reports.inventory.trend.store_empty") %></div>
+      <% else %>
+        <fieldset class="sku-profit-store-trend__selector">
+          <legend><%= t("reports.inventory.trend.store_selector") %></legend>
+          <% store_trend_groups.each_with_index do |group, index| %>
+            <label><input type="radio" name="inventory_store_trend_ref" value="<%= group[:key] %>" <%= "checked" if index.zero? %> data-action="profit-store-trend-selector#select"><span><%= group[:label] %></span></label>
+          <% end %>
+        </fieldset>
+        <% store_trend_groups.each_with_index do |group, index| %>
+          <div data-profit-store-trend-selector-target="panel" data-store-ref="<%= group[:key] %>" <%= "hidden" unless index.zero? %>>
+            <div data-controller="echarts" class="sku-profit-trend__chart-wrap">
+              <div data-echarts-target="chart" class="sku-profit-trend__chart"></div>
+              <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(group[:chart_option]) %></script>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </section>
+
+    <% if show_table %>
+    <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
+      <table class="inventory-distribution-table">
+        <thead><tr>
+          <% %i[week snapshot_date book_stock platform_stock turnover_days_with_procurement fbs_stock platform_inbound_stock incoming_quantity daily_sales_velocity turnover_days].each do |key| %><th><%= t("reports.inventory.trend.metrics.#{key}") %></th><% end %>
+        </tr></thead>
+        <tbody>
+          <% trend[:weeks].reverse_each do |row| %>
+            <tr>
+              <td><%= "#{row[:week_start].iso8601} - #{row[:week_end].iso8601}" %></td>
+              <td><%= row[:snapshot_date] || t("common.empty_value") %></td>
+              <% %i[book_stock platform_stock turnover_days_with_procurement fbs_stock platform_inbound_stock incoming_quantity daily_sales_velocity turnover_days].each do |key| %>
+                <% value = row.dig(:metrics, key) %><td><%= value.nil? ? t("common.empty_value") : number_with_precision(value, precision: key.to_s.include?("days") || key == :daily_sales_velocity ? 2 : 0, strip_insignificant_zeros: true) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+    <% end %>
+  <% end %>
+</section>
