@@ -96,8 +96,10 @@
       <% if @orders.empty? %>
         <div class="empty-state"><%= t("orders.index.empty") %></div>
       <% else %>
-        <div class="table-scroll">
-          <table>
+        <div class="table-list-card">
+          <%= paginate @orders %>
+          <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+            <table>
             <thead>
               <tr>
                 <th><%= t("orders.fields.platform") %></th>
@@ -147,10 +149,10 @@
                 </tr>
               <% end %>
             </tbody>
-          </table>
+            </table>
+          <% end %>
         </div>
       <% end %>
-      <%= paginate @orders %>
     </section>
   </div>
 </main>

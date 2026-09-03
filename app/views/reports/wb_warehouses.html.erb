@@ -81,8 +81,10 @@
       </nav>
 
       <% if @wb_warehouse_rows.any? %>
-        <div class="table-scroll">
-          <table class="inventory-list-table ozon-warehouse-table" data-controller="hierarchy-table">
+        <div class="table-list-card">
+          <%= render "wb_warehouse_pagination", rows: @wb_warehouse_rows if @wb_warehouse_rows.total_pages > 1 %>
+          <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+            <table class="inventory-list-table ozon-warehouse-table" data-controller="hierarchy-table">
             <thead>
               <tr>
                 <th><%= t("reports.wb_warehouses.fields.#{@wb_warehouse_view == 'clusters' ? 'cluster' : 'product'}") %></th>
@@ -178,9 +180,9 @@
                 <% end %>
               <% end %>
             </tbody>
-          </table>
+            </table>
+          <% end %>
         </div>
-        <%= render "wb_warehouse_pagination", rows: @wb_warehouse_rows if @wb_warehouse_rows.total_pages > 1 %>
       <% else %>
         <div class="empty-state"><%= t("reports.wb_warehouses.empty") %></div>
       <% end %>

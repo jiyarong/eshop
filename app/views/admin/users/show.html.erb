@@ -26,7 +26,8 @@
     <%= form.submit t("admin.users.api_keys.create") %>
   <% end %>
 
-  <table class="data-table">
+  <%= table_viewport do %>
+    <table class="data-table">
     <thead>
       <tr>
         <th><%= t("admin.users.api_keys.name") %></th>
@@ -51,5 +52,6 @@
         </tr>
       <% end %>
     </tbody>
-  </table>
+    </table>
+  <% end %>
 </section>

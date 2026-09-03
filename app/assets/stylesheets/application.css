@@ -1019,8 +1019,15 @@ textarea {
 
 .report-stack {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 16px;
   margin-top: 16px;
+}
+
+.report-stack > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ozon-warehouse-heading {
@@ -1452,19 +1459,19 @@ textarea {
   color: var(--erp-muted);
 }
 
+.table-viewport,
 .table-scroll {
-  overflow: visible;
-}
-
-/* Opt-in for field-heavy tables that must scroll inside their own viewport. */
-.table-scroll--horizontal {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+  max-height: var(--table-viewport-max-height, none);
   overflow-x: auto;
-  overscroll-behavior-x: contain;
+  overscroll-behavior: auto;
   scrollbar-gutter: stable;
 }
 
+.table-viewport > table,
+.table-scroll > table,
 .table-scroll--horizontal > table {
   width: max-content;
   min-width: 100%;
@@ -1475,7 +1482,9 @@ textarea {
   overflow: auto;
 }
 
-.table-scroll--contained > table thead th {
+.table-viewport > table > thead > tr > th,
+.table-scroll > table > thead > tr > th,
+.table-scroll--contained > table > thead > tr > th {
   top: 0;
   z-index: 11;
 }
@@ -3612,12 +3621,11 @@ pre {
 .sku-detail-tab-panels .table-scroll {
   width: 100%;
   max-width: 100%;
-  overflow: visible;
-  overscroll-behavior-x: contain;
+  max-height: var(--table-viewport-max-height, min(60vh, 560px));
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
-/* The SKU drawer scrolls through its content panel; table wrappers must not
-   create a second scroll boundary or clip sticky headers. */
 .sku-detail-drawer__content table thead th {
   top: 0;
 }
@@ -6848,8 +6856,17 @@ textarea:focus {
 }
 
 .product-list-card {
-  overflow: visible;
+  max-width: 100%;
+  max-height: var(--table-viewport-max-height, min(70vh, 720px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 0;
+}
+
+.product-list-card > table > thead > tr > th {
+  top: 0;
+  z-index: 11;
 }
 
 .product-management .product-list-card > .inventory-pagination-bar {
@@ -7416,12 +7433,26 @@ tr.master.open .chev,
 
 /* Final shell palette pass: keep the Rails shell aligned with docs/design/1.0.0. */
 body.erp-shell {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: clip;
   background: var(--gray-50);
   color: var(--gray-900);
 }
 
 body.erp-shell .app {
+  width: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  overflow-x: clip;
   background: var(--gray-50);
+}
+
+body.erp-shell .erp-main,
+body.erp-shell .erp-content,
+body.erp-shell .page {
+  min-width: 0;
+  max-width: 100%;
 }
 
 body.erp-shell .sidebar,
@@ -7482,12 +7513,86 @@ body.erp-shell .erp-nav__link[aria-current="page"] i {
   color: #4338ca;
 }
 
-.operator-sku-table-card {
+.table-list-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  max-height: none;
   overflow: visible;
 }
 
-.operator-sku-table-card .table-scroll {
-  overflow: visible;
+.table-list-viewport {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow-x: auto;
+  overscroll-behavior: auto;
+}
+
+.table-horizontal-scrollbar {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--erp-surface-soft);
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.product-management,
+.product-management > *,
+.table-list-card > * {
+  min-width: 0;
+}
+
+.product-management {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.table-horizontal-scrollbar[hidden] {
+  display: none;
+}
+
+.table-horizontal-scrollbar__spacer {
+  height: 1px;
+}
+
+.sticky-table-header {
+  position: fixed;
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: auto;
+  background: var(--erp-surface-soft);
+  box-shadow: 0 1px 0 var(--erp-border), 0 4px 10px rgba(24, 34, 53, 0.08);
+}
+
+.sticky-table-header[hidden] {
+  display: none;
+}
+
+.sticky-table-header__table {
+  margin: 0;
+  table-layout: fixed;
+  transform-origin: left top;
+}
+
+.sticky-table-header__table > thead > tr > th {
+  position: static;
+}
+
+.product-management .table-list-card > .inventory-pagination-bar,
+.table-list-card > .inventory-pagination-bar {
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
 }
 
 .operator-sku-table {

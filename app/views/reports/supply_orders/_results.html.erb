@@ -7,8 +7,10 @@
       · <%= t("supply_order_reports.row_count", count: @report.dig(:pagination, :total_count)) %>
     </div>
     <%= render "reports/supply_orders/status_summary", report: @report %>
-    <div class="table-scroll">
-      <table>
+    <div class="table-list-card">
+      <%= render "reports/supply_orders/pagination", report: @report if @report.dig(:pagination, :total_pages) > 1 %>
+      <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+        <table>
         <thead><tr><% supply_order_columns(@report).each do |_key, label| %><th><%= label %></th><% end %></tr></thead>
         <tbody>
           <% if @report[:rows].empty? %>
@@ -19,8 +21,8 @@
             <% end %>
           <% end %>
         </tbody>
-      </table>
+        </table>
+      <% end %>
     </div>
-    <%= render "reports/supply_orders/pagination", report: @report if @report.dig(:pagination, :total_pages) > 1 %>
   </section>
 <% if wrap_frame %></turbo-frame><% end %>

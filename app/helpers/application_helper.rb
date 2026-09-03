@@ -1,4 +1,22 @@
 module ApplicationHelper
+  def table_viewport(max_height: nil, class_name: nil, sticky_header: false, **html_options, &block)
+    classes = ["table-viewport", "table-scroll", class_name, html_options.delete(:class)].compact
+    styles = [html_options.delete(:style)]
+    styles << "--table-viewport-max-height: #{max_height}" if max_height.present?
+    data = html_options.delete(:data).to_h.symbolize_keys
+    controllers = [data[:controller], ("sticky-table-header" if sticky_header)].compact.join(" ")
+    data[:controller] = controllers if controllers.present?
+
+    content_tag(
+      :div,
+      capture(&block),
+      **html_options,
+      class: classes,
+      style: styles.compact.join("; ").presence,
+      data: data
+    )
+  end
+
   def sku_detail_drawer_link(sku_or_code, tab: nil, label: nil, **options)
     sku_code = sku_or_code.respond_to?(:sku_code) ? sku_or_code.sku_code : sku_or_code.to_s
     path_options = { tab: tab, locale: params[:locale].presence }.compact

@@ -10,7 +10,7 @@
 
   <section class="panel">
     <h2 class="section-title"><%= t("weekly_profit_reports.sections.wr_rows") %></h2>
-    <div class="table-scroll">
+    <div class="table-scroll" data-controller="sticky-table-header">
       <table>
         <thead>
           <tr>
@@ -49,7 +49,7 @@
 
   <section class="panel">
     <h2 class="section-title"><%= t("weekly_profit_reports.sections.unallocated") %></h2>
-    <div class="table-scroll">
+    <div class="table-scroll" data-controller="sticky-table-header">
       <table>
         <thead>
           <tr>

@@ -1,6 +1,7 @@
 <%= turbo_frame_tag "wb_ads_product_#{@nm_id}_campaigns" do %>
   <div class="wb-ads-product-campaigns">
-    <table class="inventory-list-table wb-ads-product-campaigns__table">
+    <%= table_viewport(max_height: "min(52vh, 480px)") do %>
+      <table class="inventory-list-table wb-ads-product-campaigns__table">
       <tbody>
         <% @rows.each do |row| %>
           <% campaign = row[:campaign] %>
@@ -49,6 +50,7 @@
           </tr>
         <% end %>
       </tbody>
-    </table>
+      </table>
+    <% end %>
   </div>
 <% end %>

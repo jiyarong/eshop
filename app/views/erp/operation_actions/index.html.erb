@@ -44,8 +44,11 @@
     <% end %>
   </section>
 
-  <section class="card product-list-card">
-    <table class="prod-tbl operation-actions-table">
+  <section class="card product-list-card table-list-card">
+    <%= render "pagination", operation_actions: @operation_actions if @operation_actions.total_pages > 1 %>
+
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="prod-tbl operation-actions-table">
       <thead>
         <tr>
           <th><%= t("erp.operation_actions.fields.operated_at") %></th>
@@ -111,8 +114,7 @@
           </tr>
         <% end %>
       </tbody>
-    </table>
-
-    <%= render "pagination", operation_actions: @operation_actions if @operation_actions.total_pages > 1 %>
+      </table>
+    <% end %>
   </section>
 </div>

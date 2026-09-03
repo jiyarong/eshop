@@ -102,6 +102,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "#operator-sku-stage-filter-trigger"
     assert_select "#operator-sku-responsible-user-filter-developer-trigger"
     assert_select "#operator-sku-responsible-user-filter-operator-trigger"
+    assert_select ".operator-sku-table-card.table-list-card > .table-viewport.table-list-viewport > table.operator-sku-table", count: 1
     assert_select ".erp-nav__section[data-nav-section='operations']" do
       links = css_select(".erp-nav__link")
       assert_equal "/operator_skus", links.first["href"]
@@ -236,10 +237,11 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal 10, css_select(".operator-sku-row").size
-    assert_select ".inventory-pagination-bar .pagination-shell"
-    assert_select "form.pagination-jump[action='/operator_skus'][method='get']"
+    assert_select ".inventory-pagination-bar .pagination-shell", count: 1
+    assert_select "form.pagination-jump[action='/operator_skus'][method='get']", count: 1
     assert_select "input[name='current_page'][value='1']"
     assert_select "input.pagination-jump-input[name='jump_page'][value='1']"
+    assert_select "#operator-skus-top-jump-page", count: 1
 
     sign_in @user
     with_empty_metrics do

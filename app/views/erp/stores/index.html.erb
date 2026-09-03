@@ -71,7 +71,8 @@
   </section>
 
   <section class="card product-list-card">
-    <table class="prod-tbl store-tbl">
+    <%= table_viewport(sticky_header: true) do %>
+      <table class="prod-tbl store-tbl">
       <thead>
         <tr>
           <th style="width: 120px"><%= t("erp.stores.fields.store_id") %></th>
@@ -122,6 +123,7 @@
           </tr>
         <% end %>
       </tbody>
-    </table>
+      </table>
+    <% end %>
   </section>
 </div>

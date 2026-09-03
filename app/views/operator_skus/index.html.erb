@@ -50,8 +50,10 @@
     <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
-  <section class="card product-list-card operator-sku-table-card">
-    <div class="table-scroll">
+  <section class="card product-list-card table-list-card operator-sku-table-card">
+    <%= render "pagination", skus: @skus, dom_id_prefix: "operator-skus-top" if @skus.total_pages > 1 %>
+
+    <%= table_viewport(class_name: "table-list-viewport operator-sku-table-viewport", sticky_header: true) do %>
       <table class="prod-tbl operator-sku-table">
         <thead>
           <tr>
@@ -131,8 +133,6 @@
           <% end %>
         </tbody>
       </table>
-    </div>
-
-    <%= render "pagination", skus: @skus if @skus.total_pages > 1 %>
+    <% end %>
   </section>
 </div>

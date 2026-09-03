@@ -32,8 +32,11 @@
     <% end %>
   </section>
 
-  <section class="card product-list-card">
-    <table class="prod-tbl">
+  <section class="card product-list-card table-list-card">
+    <%= render "pagination", suppliers: @suppliers if @suppliers.total_pages > 1 %>
+
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="prod-tbl">
       <thead><tr>
         <th><%= t("erp.suppliers.fields.name") %></th>
         <th><%= t("erp.suppliers.fields.origin") %></th>
@@ -68,7 +71,7 @@
         <% end %>
         <% if @suppliers.empty? %><tr><td colspan="9" class="empty-state"><%= t("erp.suppliers.empty.none") %></td></tr><% end %>
       </tbody>
-    </table>
-    <%= render "pagination", suppliers: @suppliers if @suppliers.total_pages > 1 %>
+      </table>
+    <% end %>
   </section>
 </div>

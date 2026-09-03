@@ -114,8 +114,12 @@
     </div>
   </section>
 
-  <section class="panel">
-    <div class="table-scroll">
+  <section class="panel table-list-card">
+    <% if @inventory_rows.respond_to?(:total_pages) && @inventory_rows.total_pages > 1 %>
+      <%= render "inventory_pagination", inventory_rows: @inventory_rows %>
+    <% end %>
+
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
       <table class="inventory-list-table">
         <thead>
           <tr>
@@ -234,11 +238,8 @@
           <% end %>
         </tbody>
       </table>
-    </div>
-
-    <% if @inventory_rows.respond_to?(:total_pages) && @inventory_rows.total_pages > 1 %>
-      <%= render "inventory_pagination", inventory_rows: @inventory_rows %>
     <% end %>
+
   </section>
 
 </div>

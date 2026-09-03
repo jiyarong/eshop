@@ -63,6 +63,7 @@
 
 ### 其他已复用组件
 
+- 表格滚动视口：业务表格使用 `ApplicationHelper#table_viewport` 包裹，调用形式为 `<%= table_viewport do %>...<% end %>`；字段过多时在组件内部横向滚动。需要明确限制高度时传 `max_height:`，需要附加样式类时传 `class_name:`，其他 HTML 属性可直接传入。菜单入口中的主列表使用 `.table-list-card` 包裹顶部分页和 `table_viewport(class_name: "table-list-viewport")`，分页必须位于表格视口上方；主列表只建立横向滚动边界，纵向滚动始终交给页面，避免鼠标位于表格上时形成滚动陷阱。需要在页面纵向滚动时固定表头的主列表传 `sticky_header: true`，交互由 `app/javascript/controllers/sticky_table_header_controller.js` 提供；该实现参考 floatThead 的 responsive window scrolling 架构，通过独立浮动表头同步列宽和横向位置，不要再给主列表增加内部纵向滚动。只有抽屉或明确使用 `.table-scroll--contained` 的局部表格可以建立内部纵向滚动。旧 `.table-scroll` 保留兼容行为，新页面不要自行重复实现 `overflow` 或 sticky 表头；展开行中的嵌套表格仅在自身确实需要独立滚动时再单独包裹。
 - 可排序表头：Controller `include TableSortable`，调用 `load_table_sort(allowed_keys: ...)` 对 `sort`、`direction` 做白名单解析；内存指标排序可使用 `sort_table_records(records) { |record| ... }`，空值会统一排在末尾。ERB 使用 `app/views/shared/_sortable_table_header.html.erb`，传 `label`、`sort_key`，按需传 `class_name`、`style`、`title`。组件会保留现有查询参数，按未排序、降序、升序三态切换并清除分页参数；业务 Controller 仍须显式定义字段到安全 SQL 或指标取值的映射，排序必须在分页前完成。
 - 任意枚举或简单选项的可搜索多选筛选：`app/views/shared/_popover_multiselect_filter.html.erb` + `popover_multiselect_filter_controller.js`。传 `dom_id_prefix`、`param_name`、`label`、`all_label`、`selected_values`、`options`；提交参数自动使用 `param_name[]`。
 - SPU 类目多选筛选：`app/views/shared/_master_sku_category_filter.html.erb` + `MasterSkuCategoryFilterable`。它按 Master SKU 的类目过滤，区别于编辑表单中选择单个类目的 `app/views/shared/_category_selector.html.erb`，两者不要混用。

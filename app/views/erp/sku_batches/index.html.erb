@@ -75,8 +75,13 @@
     <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
-  <section class="card product-list-card">
-    <table class="prod-tbl">
+  <section class="card product-list-card table-list-card">
+    <% if @batches.respond_to?(:total_pages) && @batches.total_pages > 1 %>
+      <%= render "pagination", batches: @batches %>
+    <% end %>
+
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="prod-tbl">
       <thead>
         <tr>
           <th style="min-width: 160px"><%= t("erp.sku_batches.fields.batch_code") %></th>
@@ -146,10 +151,7 @@
           </tr>
         <% end %>
       </tbody>
-    </table>
-
-    <% if @batches.respond_to?(:total_pages) && @batches.total_pages > 1 %>
-      <%= render "pagination", batches: @batches %>
+      </table>
     <% end %>
   </section>
 </div>

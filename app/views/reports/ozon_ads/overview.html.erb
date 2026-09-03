@@ -11,7 +11,7 @@
   <%= render "summary", summary: @summary, comparison: @summary_comparison %>
   <section class="panel">
     <h2 class="section-title"><%= t("reports.ozon_ads.overview.breakdown") %></h2>
-    <div class="table-scroll">
+    <div class="table-scroll" data-controller="sticky-table-header">
       <table class="inventory-list-table ozon-ads-table">
         <thead><tr>
           <th><%= t("reports.ozon_ads.fields.promotion_type") %></th><th><%= t("reports.ozon_ads.fields.placement") %></th>

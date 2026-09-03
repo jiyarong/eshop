@@ -5,7 +5,7 @@
   <%= render "filters", url: reports_ozon_ads_cpc_path, search: true, status_filter: true %>
   <p class="weekly-profit-comparison-note"><%= ozon_ads_comparison_note %></p>
   <%= render "summary", summary: @summary, comparison: @summary_comparison %>
-  <section class="panel"><div class="table-scroll"><table class="inventory-list-table ozon-ads-table">
+  <section class="panel"><div class="table-scroll" data-controller="sticky-table-header"><table class="inventory-list-table ozon-ads-table">
     <thead><tr><th>ID</th><th><%= t("reports.ozon_ads.fields.name") %></th><th><%= t("reports.ozon_ads.fields.state") %></th>
       <th><%= t("reports.ozon_ads.fields.strategy") %></th><th><%= t("reports.ozon_ads.fields.budget") %></th><th><%= t("reports.ozon_ads.fields.products") %></th>
       <th><%= t("reports.ozon_ads.fields.placement") %></th>

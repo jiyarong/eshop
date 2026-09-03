@@ -25,7 +25,7 @@
       <span class="gbrain-remote-count"><%= t("admin.gbrain.index.remote_summary", from: @remote_from, to: @remote_to, total: @remote_total) %></span>
     </div>
 
-    <div class="table-scroll">
+    <div class="table-scroll" data-controller="sticky-table-header">
       <table class="ai-admin-table gbrain-remote-pages-table">
         <thead>
           <tr>
@@ -107,7 +107,7 @@
   <% end %>
 
   <section class="panel ai-table-panel gbrain-list-panel">
-    <div class="table-scroll">
+    <div class="table-scroll" data-controller="sticky-table-header">
       <table class="ai-admin-table gbrain-pages-table">
         <thead>
           <tr>

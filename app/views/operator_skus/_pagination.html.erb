@@ -1,6 +1,7 @@
 <% page = skus.current_page %>
 <% page_count = skus.total_pages %>
 <% query_params = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page) %>
+<% dom_id_prefix = local_assigns.fetch(:dom_id_prefix, "operator-skus") %>
 
 <div class="inventory-pagination-bar">
   <div class="pagination-meta">
@@ -48,10 +49,11 @@
           <%= hidden_field_tag key, value %>
         <% end %>
       <% end %>
-      <%= hidden_field_tag :current_page, page %>
+      <%= hidden_field_tag :current_page, page, id: "#{dom_id_prefix}-current-page" %>
       <span class="pagination-jump-label"><%= t("operator_skus.pagination.jump_label") %></span>
       <%= text_field_tag :jump_page,
                          page,
+                         id: "#{dom_id_prefix}-jump-page",
                          class: "pagination-jump-input",
                          inputmode: "numeric",
                          pattern: "[0-9]*",

@@ -77,8 +77,13 @@
     <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
-  <section class="card product-list-card" data-controller="product-tree">
-    <table class="prod-tbl">
+  <section class="card product-list-card table-list-card" data-controller="product-tree">
+    <% if @spu_rows.respond_to?(:total_pages) && @spu_rows.total_pages > 1 %>
+      <%= render "pagination", spu_rows: @spu_rows %>
+    <% end %>
+
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="prod-tbl">
       <thead>
         <tr>
           <th style="width: 36px"></th>
@@ -415,10 +420,7 @@
           </tr>
         <% end %>
       </tbody>
-    </table>
-
-    <% if @spu_rows.respond_to?(:total_pages) && @spu_rows.total_pages > 1 %>
-      <%= render "pagination", spu_rows: @spu_rows %>
+      </table>
     <% end %>
   </section>
 </div>
