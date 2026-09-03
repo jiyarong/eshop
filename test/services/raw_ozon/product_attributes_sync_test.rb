@@ -95,4 +95,56 @@ class RawOzonProductAttributesSyncTest < ActiveSupport::TestCase
     assert_includes RawOzon::WeeklySync::STEPS, :sync_product_attributes
     assert_operator RawOzon::WeeklySync::STEPS.index(:sync_product_attributes), :>, RawOzon::WeeklySync::STEPS.index(:sync_products)
   end
+
+  test "keeps stored attribute names when category metadata is unavailable" do
+    token = SecureRandom.hex(6)
+    account = RawOzon::SellerAccount.create!(
+      client_id: "ozon-existing-attrs-#{token}",
+      api_key: "token-#{token}",
+      company_type: "general",
+      raw_json: {}
+    )
+    product = RawOzon::Product.create!(
+      account: account,
+      ozon_product_id: 654_321,
+      offer_id: "EXISTING-ATTR-#{token}",
+      name: "Existing Ozon attribute product #{token}",
+      raw_json: {}
+    )
+    RawOzon::ProductAttribute.create!(
+      account: account,
+      ozon_product_id: product.ozon_product_id,
+      offer_id: product.offer_id,
+      product_attributes: [
+        { "id" => 85, "name" => "Бренд", "values" => [ { "value" => "Old Brand" } ] }
+      ],
+      raw_json: {}
+    )
+    client = FakeOzonClient.new([
+      {
+        "result" => [
+          {
+            "id" => product.ozon_product_id,
+            "offer_id" => product.offer_id,
+            "description_category_id" => 17_038_062,
+            "type_id" => 9_463,
+            "attributes" => [ { "id" => 85, "values" => [ { "value" => "New Brand" } ] } ]
+          }
+        ]
+      },
+      { "result" => [] }
+    ])
+    sync = RawOzon::WeeklySync.new(account, days: 7)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_product_attributes
+
+    attribute = RawOzon::ProductAttribute.find_by!(account_id: account.id, ozon_product_id: product.ozon_product_id)
+    assert_equal "Бренд", attribute.product_attributes.first["name"]
+    assert_equal "New Brand", attribute.product_attributes.first.dig("values", 0, "value")
+  ensure
+    RawOzon::ProductAttribute.where(account_id: account&.id).delete_all
+    RawOzon::Product.where(account_id: account&.id).delete_all
+    RawOzon::SellerAccount.where(id: account&.id).delete_all
+  end
 end

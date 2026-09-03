@@ -79,10 +79,15 @@ module RawOzon
       retries = 0
       begin
         yield
-      rescue RetryableError => e
+      rescue RetryableError, Timeout::Error, SocketError, EOFError, IOError,
+        SystemCallError, OpenSSL::SSL::SSLError => e
         retries += 1
-        raise if retries > MAX_RETRIES
-        wait = e.retry_after || (2**retries)
+        if retries > MAX_RETRIES
+          raise if e.is_a?(RetryableError)
+
+          raise RetryableError, e.message
+        end
+        wait = (e.retry_after if e.respond_to?(:retry_after)) || (2**retries)
         Rails.logger.warn "[OzonClient] #{context} — retry #{retries}/#{MAX_RETRIES} in #{wait}s (#{e.message})"
         sleep wait
         retry

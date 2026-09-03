@@ -60,16 +60,41 @@ module RawOzon
       private
 
       def enrich_product_attribute_names(items)
+        stored_names = stored_product_attribute_names(items)
+
         items.each do |item|
           names = product_attribute_names(
             description_category_id: item['description_category_id'],
             type_id: item['type_id']
           )
+          names = stored_names[(item['id'] || item['product_id']).to_i] if names.empty?
           next if names.empty?
 
           item['attributes'] = attributes_with_names(item['attributes'], names)
           item['complex_attributes'] = attributes_with_names(item['complex_attributes'], names)
         end
+      end
+
+      def stored_product_attribute_names(items)
+        product_ids = items.filter_map { |item| item['id'] || item['product_id'] }
+        RawOzon::ProductAttribute
+          .where(account_id: @account.id, ozon_product_id: product_ids)
+          .each_with_object({}) do |record, names_by_product|
+            attributes = Array(record.product_attributes) + Array(record.complex_attributes)
+            names_by_product[record.ozon_product_id] = attribute_names(attributes)
+          end
+      end
+
+      def attribute_names(attributes, names = {})
+        Array(attributes).each do |attribute|
+          next unless attribute.is_a?(Hash)
+
+          id = attribute['id'] || attribute[:id]
+          name = attribute['name'] || attribute[:name]
+          names[id.to_s] = name if id.present? && name.present?
+          attribute_names(attribute['attributes'] || attribute[:attributes], names)
+        end
+        names
       end
 
       def product_attribute_names(description_category_id:, type_id:)

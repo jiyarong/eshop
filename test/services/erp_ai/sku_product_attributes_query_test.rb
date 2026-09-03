@@ -93,10 +93,24 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     assert_equal "Ozon Store #{@token}", ozon_item[:store]
     assert_equal "Ozon product", ozon_item[:name]
     assert_equal "Ozon description", ozon_item[:description]
-    assert_equal [ "https://example.test/image.jpg", "https://example.test/original.jpg" ], ozon_item[:image_urls]
+    assert_equal(
+      [
+        "https://example.test/primary.jpg",
+        "https://example.test/image.jpg",
+        "https://example.test/original.jpg",
+        "https://example.test/rich-desktop.jpg",
+        "https://example.test/rich-mobile.jpg"
+      ],
+      ozon_item[:image_urls]
+    )
     assert_equal [ "https://example.test/360.jpg" ], ozon_item[:image_360_urls]
     assert_equal [ "https://example.test/video.mp4" ], ozon_item[:video_urls]
-    assert_equal "Brand: Brand value\nType: Electric\nWidth, mm: 440", ozon_item[:attributes]
+    assert_equal(
+      "Brand: Brand value\nType: Electric\nWidth, mm: 440\nHashtags: #timer #heater\n" \
+        "Rich content: Why this product? | Fast and reliable\nVideo file: video-file.mp4",
+      ozon_item[:attributes]
+    )
+    refute_includes ozon_item[:attributes], '"content"'
     refute_includes ozon_item[:attributes], "4191"
     refute_includes ozon_item[:attributes], "21841"
     assert_equal "active", ozon_item[:status]
@@ -240,7 +254,10 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
       barcodes: [ "OZN123" ],
       description_category_id: 321,
       type_id: 654,
-      raw_json: { "api_key" => "must-not-leak" }
+      raw_json: {
+        "api_key" => "must-not-leak",
+        "primary_image" => [ "https://example.test/primary.jpg" ]
+      }
     )
     RawOzon::ProductAttribute.create!(
       account: account,
@@ -250,6 +267,31 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
         { "id" => 85, "name" => "Brand", "values" => [ { "value" => "Brand value" } ] },
         { "id" => 8229, "name" => "Type", "values" => [ { "value" => "Electric" } ] },
         { "id" => 1001, "name" => "Width, mm", "values" => [ { "value" => "440" } ] },
+        { "id" => 23171, "name" => "Hashtags", "values" => [ { "value" => "#timer #heater" } ] },
+        {
+          "id" => 11254,
+          "name" => "Rich content",
+          "values" => [
+            {
+              "value" => {
+                "content" => [
+                  {
+                    "title" => {
+                      "items" => [ { "type" => "text", "content" => "Why this product?" } ]
+                    },
+                    "text" => {
+                      "items" => [ { "type" => "text", "content" => "Fast and reliable" } ]
+                    },
+                    "img" => {
+                      "src" => "https://example.test/rich-desktop.jpg",
+                      "srcMobile" => "https://example.test/rich-mobile.jpg"
+                    }
+                  }
+                ]
+              }.to_json
+            }
+          ]
+        },
         { "id" => 4191, "name" => "Annotation", "values" => [ { "value" => "<p>#{description}</p>" } ] }
       ],
       complex_attributes: [

@@ -2,8 +2,9 @@ module ErpAI
   class SkuProductAttributesQuery
     DEFAULT_LIMIT = 100
     MAX_LIMIT = 500
-    CONTENT_ATTRIBUTE_IDS = %w[4191 11254 21837 21841 23171].freeze
+    PROMOTED_ATTRIBUTE_IDS = %w[4191 21841].freeze
     DESCRIPTION_ATTRIBUTE_ID = "4191"
+    RICH_CONTENT_ATTRIBUTE_ID = "11254"
 
     SQL = <<~SQL.freeze
       WITH sku_bindings AS (
@@ -27,6 +28,7 @@ module ErpAI
           b.*,
           p.name AS platform_product_name,
           COALESCE(p.raw_json ->> 'description', a.raw_json ->> 'description') AS product_description,
+          p.raw_json -> 'primary_image' AS primary_image_data,
           p.images AS image_data,
           p.images360 AS image_360_data,
           NULL::jsonb AS platform_video_data,
@@ -50,6 +52,7 @@ module ErpAI
           b.*,
           p.title AS platform_product_name,
           p.description AS product_description,
+          NULL::jsonb AS primary_image_data,
           COALESCE(wb_media.image_urls, '[]'::jsonb) AS image_data,
           NULL::jsonb AS image_360_data,
           COALESCE(wb_media.video_urls, '[]'::jsonb) AS platform_video_data,
@@ -136,7 +139,7 @@ module ErpAI
         name: row[:platform_product_name].presence || row[:bound_product_name],
         description: product_description(row),
         status: product_status(source_found:, archived:),
-        image_urls: media_urls(row[:image_data]),
+        image_urls: product_image_urls(row),
         image_360_urls: media_urls(row[:image_360_data]),
         video_urls: video_urls(row),
         attributes: attribute_text(row)
@@ -218,6 +221,40 @@ module ErpAI
       end.uniq
     end
 
+    def product_image_urls(row)
+      (
+        media_urls(row[:primary_image_data]) +
+        media_urls(row[:image_data]) +
+        rich_content_image_urls(row[:product_attributes])
+      ).uniq
+    end
+
+    def rich_content_image_urls(attributes)
+      entry = flattened_attributes(attributes).find do |attribute|
+        attribute["id"].to_s == RICH_CONTENT_ATTRIBUTE_ID
+      end
+      attribute_values(entry).flat_map do |value|
+        nested_urls(parsed_json(value), keys: %w[src srcMobile])
+      end.uniq
+    end
+
+    def nested_urls(value, keys:)
+      case value
+      when Array
+        value.flat_map { |item| nested_urls(item, keys:) }
+      when Hash
+        value.flat_map do |key, item|
+          if keys.include?(key.to_s) && item.is_a?(String) && item.match?(%r{\Ahttps?://}i)
+            item
+          else
+            nested_urls(item, keys:)
+          end
+        end
+      else
+        []
+      end
+    end
+
     def video_urls(row)
       attribute_urls = all_attribute_values(row).filter_map do |value|
         value if value.match?(%r{\Ahttps?://}i) && value.match?(/\.mp4(?:\?|\z)/i)
@@ -265,12 +302,34 @@ module ErpAI
         attribute = attribute.with_indifferent_access
         nested = attribute[:attributes]
         next attribute_entries(nested) if nested.is_a?(Array)
-        next if CONTENT_ATTRIBUTE_IDS.include?(attribute[:id].to_s)
+        next if PROMOTED_ATTRIBUTE_IDS.include?(attribute[:id].to_s)
 
         name = attribute[:name].to_s.strip
-        values = attribute_values(attribute)
+        values = if attribute[:id].to_s == RICH_CONTENT_ATTRIBUTE_ID
+          attribute_values(attribute).filter_map { |item| rich_content_text(item) }
+        else
+          attribute_values(attribute)
+        end
         attribute_line(name, values.join(", "))
       end.compact_blank
+    end
+
+    def rich_content_text(value)
+      parts = nested_text_values(parsed_json(value)).map { |item| item.gsub(/\s+/, " ").strip }.compact_blank
+      parts.uniq.join(" | ").presence
+    end
+
+    def nested_text_values(value)
+      case value
+      when Array
+        value.flat_map { |item| nested_text_values(item) }
+      when Hash
+        value.flat_map do |key, item|
+          key.to_s == "content" && item.is_a?(String) ? item : nested_text_values(item)
+        end
+      else
+        []
+      end
     end
 
     def attribute_line(name, value)
