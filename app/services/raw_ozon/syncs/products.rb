@@ -45,6 +45,7 @@ module RawOzon
             { filter: { product_id: product_ids, visibility: 'ALL' }, limit: 100, last_id: '' }
           )
           items = Array(resp['result'])
+          enrich_product_attribute_names(items)
           rows = items.map { |p| build_product_attribute(p, synced_at) }
           record_attribute_changes(items)
           merge_sync_count!(
@@ -57,6 +58,45 @@ module RawOzon
       end
 
       private
+
+      def enrich_product_attribute_names(items)
+        items.each do |item|
+          names = product_attribute_names(
+            description_category_id: item['description_category_id'],
+            type_id: item['type_id']
+          )
+          next if names.empty?
+
+          item['attributes'] = attributes_with_names(item['attributes'], names)
+          item['complex_attributes'] = attributes_with_names(item['complex_attributes'], names)
+        end
+      end
+
+      def product_attribute_names(description_category_id:, type_id:)
+        return {} if description_category_id.blank?
+
+        key = [description_category_id, type_id]
+        @product_attribute_names ||= {}
+        @product_attribute_names[key] ||= begin
+          body = { description_category_id: description_category_id, language: 'RU' }
+          body[:type_id] = type_id if type_id.present?
+          response = @client.post('/v1/description-category/attribute', body)
+          Array(response['result']).to_h { |attribute| [attribute['id'].to_s, attribute['name']] }
+        rescue OzonClient::ApiError, OzonClient::RetryableError => error
+          log "Could not load product attribute names for category #{description_category_id}: #{error.message}", level: :warn
+          {}
+        end
+      end
+
+      def attributes_with_names(attributes, names)
+        Array(attributes).map do |attribute|
+          next attribute unless attribute.is_a?(Hash)
+
+          attribute['name'] = names[attribute['id'].to_s] if attribute['name'].blank?
+          attribute['attributes'] = attributes_with_names(attribute['attributes'], names) if attribute['attributes'].is_a?(Array)
+          attribute
+        end
+      end
 
       def record_product_changes(items)
         existing = RawOzon::Product

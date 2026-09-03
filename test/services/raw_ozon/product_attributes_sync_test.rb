@@ -37,11 +37,12 @@ class RawOzonProductAttributesSyncTest < ActiveSupport::TestCase
           {
             "id" => product.ozon_product_id,
             "offer_id" => product.offer_id,
+            "description_category_id" => 17_038_062,
+            "type_id" => 9_463,
             "barcode" => "460000000001",
             "attributes" => [
               {
                 "id" => 85,
-                "name" => "Brand",
                 "values" => [{ "dictionary_value_id" => 971_082_156, "value" => "Test Brand" }]
               }
             ],
@@ -54,6 +55,12 @@ class RawOzonProductAttributesSyncTest < ActiveSupport::TestCase
           }
         ],
         "last_id" => ""
+      },
+      {
+        "result" => [
+          { "id" => 85, "name" => "Бренд" },
+          { "id" => 1, "name" => "Видео" }
+        ]
       }
     ])
     sync = RawOzon::WeeklySync.new(account, days: 7)
@@ -62,12 +69,20 @@ class RawOzonProductAttributesSyncTest < ActiveSupport::TestCase
     result = sync.sync_product_attributes
 
     assert_equal({ ok: 1, fetched: 1, created: 1, updated: 0 }, result)
-    assert_equal [["/v4/product/info/attributes", { filter: { product_id: [product.ozon_product_id], visibility: "ALL" }, limit: 100, last_id: "" }]], client.requests
+    assert_equal(
+      [
+        ["/v4/product/info/attributes", { filter: { product_id: [product.ozon_product_id], visibility: "ALL" }, limit: 100, last_id: "" }],
+        ["/v1/description-category/attribute", { description_category_id: 17_038_062, language: "RU", type_id: 9_463 }]
+      ],
+      client.requests
+    )
 
     attribute = RawOzon::ProductAttribute.find_by!(account_id: account.id, ozon_product_id: product.ozon_product_id)
     assert_equal product.offer_id, attribute.offer_id
     assert_equal "460000000001", attribute.barcode
+    assert_equal "Бренд", attribute.product_attributes.first["name"]
     assert_equal "Test Brand", attribute.product_attributes.first.dig("values", 0, "value")
+    assert_equal "Видео", attribute.complex_attributes.first["name"]
     assert_equal "Complex value", attribute[:complex_attributes].first.dig("values", 0, "value")
     assert_equal product.ozon_product_id, attribute.raw_json["id"]
   ensure

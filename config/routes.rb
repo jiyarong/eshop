@@ -96,6 +96,7 @@ Rails.application.routes.draw do
     get "skus/inventory_availability" => "skus#inventory_availability"
     get "skus/dynamic_daily_sales_forecast" => "skus#dynamic_daily_sales_forecast"
     get "skus/advertising_diagnosis" => "skus#advertising_diagnosis"
+    get "sku_product_attributes" => "sku_product_attributes#show"
     resources :stage_inspections, only: :create
     resources :diagnosis_results, only: [ :index, :create ]
     resources :sql_queries, only: [:create]
