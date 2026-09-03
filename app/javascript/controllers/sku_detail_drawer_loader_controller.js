@@ -5,11 +5,14 @@ export default class extends Controller {
 
   connect() {
     this.handleClick = this.handleClick.bind(this);
+    this.prepareFrameRender = this.prepareFrameRender.bind(this);
     document.addEventListener("click", this.handleClick);
+    document.addEventListener("turbo:before-frame-render", this.prepareFrameRender);
   }
 
   disconnect() {
     document.removeEventListener("click", this.handleClick);
+    document.removeEventListener("turbo:before-frame-render", this.prepareFrameRender);
   }
 
   handleClick(event) {
@@ -21,5 +24,17 @@ export default class extends Controller {
     if (!frame || !this.hasTemplateTarget) return;
 
     frame.replaceChildren(this.templateTarget.content.cloneNode(true));
+  }
+
+  prepareFrameRender(event) {
+    if (event.target.id !== "sku_detail_drawer") return;
+    if (!event.target.querySelector(".sku-detail-loading")) return;
+
+    event.detail.newFrame
+      .querySelector(".inventory-drawer-backdrop")
+      ?.classList.add("inventory-drawer-backdrop--replace-without-animation");
+    event.detail.newFrame
+      .querySelector(".inventory-drawer")
+      ?.classList.add("inventory-drawer--replace-without-animation");
   }
 }
