@@ -23,6 +23,7 @@ class RawOzonListingFieldMappingTest < ActiveSupport::TestCase
     }, Time.current)
 
     assert_equal 2945.0, row[:marketing_price]
+    assert_equal 3100.0, row[:price]
     assert_equal BigDecimal("29.45"), row[:acquiring]
     assert_equal 2500.0, row[:min_price]
   end

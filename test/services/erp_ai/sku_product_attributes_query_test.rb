@@ -65,6 +65,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
       discount: 15,
       club_discount: 5,
       final_price: 85,
+      currency_code: "BYN",
       is_in_quarantine: false
     )
     RawOzon::ProductPrice.create!(
@@ -140,14 +141,14 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     refute_includes ozon_item[:attributes], "21841"
     assert_equal "active", ozon_item[:status]
     assert_equal true, ozon_item[:is_active]
-    assert_equal BigDecimal("190"), ozon_item.dig(:price_info, "price")
+    assert_equal BigDecimal("200"), ozon_item.dig(:price_info, "price")
     assert_equal "RUB", ozon_item.dig(:price_info, "currency")
     assert_equal [ "price", "currency" ], ozon_item[:price_info].keys
 
     assert_equal "WB description", wb_item[:description]
     assert_equal false, wb_item[:is_active]
     assert_equal BigDecimal("85"), wb_item.dig(:price_info, "price")
-    assert_equal "RUB", wb_item.dig(:price_info, "currency")
+    assert_equal "BYN", wb_item.dig(:price_info, "currency")
     assert_equal [ "price", "currency" ], wb_item[:price_info].keys
     assert_equal(
       "Brand: Brand\nSubject: Subject\nCategory: Category\nWidth, mm: 440\nFeatures: Timer, Thermostat",

@@ -3,7 +3,7 @@ module RawWb
     module ProductPrices
       # GET /api/v2/list/goods/filter — discounts-prices-api (offset pagination)
       # Response: { "data": { "listGoods": [...] } }
-      # Price is in sizes[0].price; top-level has discount and clubDiscount.
+      # Price values are returned in the listing currency units (not minor units).
       def sync_product_prices
         offset = 0
         total  = 0
@@ -56,7 +56,7 @@ module RawWb
       end
 
       def wb_price_snapshot(values)
-        values.slice(:price, :discount, :club_discount, :final_price, :is_in_quarantine)
+        values.slice(:price, :discount, :club_discount, :final_price, :currency_code, :is_in_quarantine)
       end
 
       def wb_price_sku_product(nm_id)
@@ -73,8 +73,10 @@ module RawWb
         product = find_or_create_product(nm_id, r['vendorCode'])
         return nil unless product
 
-        price    = Array(r['sizes']).first&.dig('price').to_f / 100
+        size     = Array(r['sizes']).first.to_h
+        price    = size['price'].to_f
         discount = r['discount'].to_i
+        final_price = size['discountedPrice'].presence&.to_f || (price * (100 - discount) / 100.0).round(2)
 
         {
           product_id:       product.id,
@@ -82,7 +84,8 @@ module RawWb
           price:            price,
           discount:         discount,
           club_discount:    r['clubDiscount'].to_i,
-          final_price:      (price * (100 - discount) / 100.0).round(2),
+          final_price:      final_price,
+          currency_code:    r['currencyIsoCode4217'].presence || r['currencyIsoCode'].presence,
           is_in_quarantine: r['isInQuarantine'] || false,
         }
       end

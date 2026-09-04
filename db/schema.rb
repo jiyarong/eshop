@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_04_030259) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_042415) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -2208,6 +2208,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_030259) do
     t.bigint "account_id", null: false
     t.integer "club_discount"
     t.datetime "created_at", null: false
+    t.string "currency_code"
     t.integer "discount"
     t.decimal "final_price", precision: 15, scale: 2
     t.boolean "is_in_quarantine", default: false

@@ -37,7 +37,7 @@ module ErpAI
           a.product_attributes,
           a.complex_attributes,
           CASE WHEN pp.ozon_product_id IS NULL THEN NULL ELSE jsonb_build_object(
-            'price', COALESCE(pp.marketing_price, pp.price),
+            'price', COALESCE(pp.price, pp.marketing_price),
             'currency', pp.currency_code
           ) END AS price_info,
           p.ozon_product_id IS NOT NULL AS source_found,
@@ -69,7 +69,7 @@ module ErpAI
           NULL::jsonb AS complex_attributes,
           CASE WHEN pp.product_id IS NULL THEN NULL ELSE jsonb_build_object(
             'price', pp.final_price,
-            'currency', 'RUB'
+            'currency', pp.currency_code
           ) END AS price_info,
           p.nm_id IS NOT NULL AS source_found,
           CASE WHEN p.nm_id IS NULL THEN NULL ELSE jsonb_build_object(
@@ -123,7 +123,7 @@ module ErpAI
       {
         success: true,
         sku: sku_payload(sku),
-        listings: listings
+        listings: listings.find_all{|l|l[:is_active]}
       }
     end
 
@@ -153,6 +153,7 @@ module ErpAI
         store: row[:store_name],
         name: row[:platform_product_name].presence || row[:bound_product_name],
         description: product_description(row),
+        status: product_status(source_found:, archived:),
         image_urls: product_image_urls(row),
         image_360_urls: media_urls(row[:image_360_data]),
         video_urls: video_urls(row),
