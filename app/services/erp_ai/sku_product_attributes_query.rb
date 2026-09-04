@@ -13,6 +13,7 @@ module ErpAI
           sp.product_id,
           sp.platform_sku_id,
           sp.offer_id,
+          sp.is_active,
           sp.product_name AS bound_product_name,
           st.store_name,
           st.wb_raw_account_id,
@@ -35,6 +36,10 @@ module ErpAI
           p.is_archived,
           a.product_attributes,
           a.complex_attributes,
+          CASE WHEN pp.ozon_product_id IS NULL THEN NULL ELSE jsonb_build_object(
+            'price', COALESCE(pp.marketing_price, pp.price),
+            'currency', pp.currency_code
+          ) END AS price_info,
           p.ozon_product_id IS NOT NULL AS source_found,
           NULL::jsonb AS wb_product_info
         FROM sku_bindings b
@@ -44,6 +49,9 @@ module ErpAI
         LEFT JOIN raw_ozon_product_attributes a
           ON a.account_id = b.ozon_raw_account_id
          AND a.ozon_product_id::text = b.product_id
+        LEFT JOIN raw_ozon_product_prices pp
+          ON pp.account_id = b.ozon_raw_account_id
+         AND pp.ozon_product_id::text = b.product_id
         WHERE b.platform = 'ozon'
 
         UNION ALL
@@ -59,6 +67,10 @@ module ErpAI
           p.is_in_trash AS is_archived,
           COALESCE(wb_attributes.items, '[]'::jsonb) AS product_attributes,
           NULL::jsonb AS complex_attributes,
+          CASE WHEN pp.product_id IS NULL THEN NULL ELSE jsonb_build_object(
+            'price', pp.final_price,
+            'currency', 'RUB'
+          ) END AS price_info,
           p.nm_id IS NOT NULL AS source_found,
           CASE WHEN p.nm_id IS NULL THEN NULL ELSE jsonb_build_object(
             'brand', p.brand,
@@ -86,6 +98,9 @@ module ErpAI
           FROM raw_wb_product_media medium
           WHERE medium.product_id = p.id
         ) wb_media ON true
+        LEFT JOIN raw_wb_product_prices pp
+          ON pp.account_id = b.wb_raw_account_id
+         AND pp.product_id = p.id
         WHERE b.platform = 'wb'
       )
       SELECT *
@@ -133,17 +148,19 @@ module ErpAI
       source_found = ActiveModel::Type::Boolean.new.cast(row[:source_found])
       archived = ActiveModel::Type::Boolean.new.cast(row[:is_archived])
 
-      {
+      payload = {
         platform: row[:platform],
         store: row[:store_name],
         name: row[:platform_product_name].presence || row[:bound_product_name],
         description: product_description(row),
-        status: product_status(source_found:, archived:),
         image_urls: product_image_urls(row),
         image_360_urls: media_urls(row[:image_360_data]),
         video_urls: video_urls(row),
-        attributes: attribute_text(row)
+        attributes: attribute_text(row),
+        price_info: parsed_json(row[:price_info])
       }.compact_blank
+      payload[:is_active] = ActiveModel::Type::Boolean.new.cast(row[:is_active])
+      payload
     end
 
     def sku_payload(sku)

@@ -28,8 +28,10 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
   end
 
   teardown do
+    RawOzon::ProductPrice.where(account_id: [ @ozon_account&.id, @other_ozon_account&.id ]).delete_all
     RawOzon::ProductAttribute.where(account_id: [ @ozon_account&.id, @other_ozon_account&.id ]).delete_all
     RawOzon::Product.where(account_id: [ @ozon_account&.id, @other_ozon_account&.id ]).delete_all
+    RawWb::ProductPrice.where(account_id: @wb_account&.id).delete_all
     RawWb::ProductMedium.where(product_id: RawWb::Product.where(account_id: @wb_account&.id).select(:id)).delete_all
     RawWb::ProductCharacteristic.where(product_id: RawWb::Product.where(account_id: @wb_account&.id).select(:id)).delete_all
     RawWb::Product.where(account_id: @wb_account&.id).delete_all
@@ -56,6 +58,29 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
       wb_category: "Category",
       imt_id: 456
     )
+    RawWb::ProductPrice.create!(
+      product: wb_product,
+      account: @wb_account,
+      price: 100,
+      discount: 15,
+      club_discount: 5,
+      final_price: 85,
+      is_in_quarantine: false
+    )
+    RawOzon::ProductPrice.create!(
+      account: @ozon_account,
+      ozon_product_id: ozon_id,
+      offer_id: "OZON-#{@token}",
+      price: 200,
+      old_price: 250,
+      marketing_price: 190,
+      min_price: 180,
+      buybox_price: 188,
+      currency_code: "RUB",
+      discount_percent: 5,
+      is_in_discount: true,
+      raw_json: {}
+    )
     RawWb::ProductCharacteristic.create!(
       product: wb_product, charc_id: 1, charc_name: "Width, mm", value: 440
     )
@@ -77,7 +102,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     )
     Ec::SkuProduct.create!(
       sku: @sku, store: @wb_store, product_id: wb_product.nm_id.to_s,
-      offer_id: wb_product.vendor_code, product_name: "Bound WB name"
+      offer_id: wb_product.vendor_code, product_name: "Bound WB name", is_active: false
     )
 
     result = query
@@ -114,8 +139,16 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     refute_includes ozon_item[:attributes], "4191"
     refute_includes ozon_item[:attributes], "21841"
     assert_equal "active", ozon_item[:status]
+    assert_equal true, ozon_item[:is_active]
+    assert_equal BigDecimal("190"), ozon_item.dig(:price_info, "price")
+    assert_equal "RUB", ozon_item.dig(:price_info, "currency")
+    assert_equal [ "price", "currency" ], ozon_item[:price_info].keys
 
     assert_equal "WB description", wb_item[:description]
+    assert_equal false, wb_item[:is_active]
+    assert_equal BigDecimal("85"), wb_item.dig(:price_info, "price")
+    assert_equal "RUB", wb_item.dig(:price_info, "currency")
+    assert_equal [ "price", "currency" ], wb_item[:price_info].keys
     assert_equal(
       "Brand: Brand\nSubject: Subject\nCategory: Category\nWidth, mm: 440\nFeatures: Timer, Thermostat",
       wb_item[:attributes]
@@ -146,6 +179,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     assert_equal "source_not_found", item[:status]
     refute item.key?(:description)
     refute item.key?(:attributes)
+    refute item.key?(:price_info)
   end
 
   test "extracts readable attributes from the description for legacy unnamed Ozon data" do
