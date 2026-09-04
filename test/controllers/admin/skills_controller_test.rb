@@ -69,6 +69,28 @@ class Admin::SkillsControllerTest < ActionDispatch::IntegrationTest
     assert_select "textarea[name='skill[skill_md]']", false
   end
 
+  test "renders a ZIP upload control when editing a skill" do
+    sign_in @admin
+
+    skill = Skill.create!(
+      name: "edit-mode-skill-#{@token}",
+      description: "Skill description",
+      version: "1",
+      skill_md: skill_md("edit-mode-skill-#{@token}")
+    )
+    skill.archive.attach(
+      io: StringIO.new(SkillPackage.from_markdown(skill.skill_md).archive_data),
+      filename: "#{skill.name}.zip",
+      content_type: "application/zip"
+    )
+    @created_skill_ids << skill.id
+
+    sign_in @admin
+    get edit_admin_skill_path(skill), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select "form[enctype='multipart/form-data'] input[name='skill[archive]'][type='file']"
+  end
+
   test "uploads a ZIP package and keeps bundled resources after editing SKILL.md" do
     sign_in @admin
 
@@ -100,6 +122,44 @@ class Admin::SkillsControllerTest < ActionDispatch::IntegrationTest
     files = zip_files(skill.archive.download)
     assert_equal "Guide", files.fetch("#{name}/references/guide.md")
     assert_equal updated_md, files.fetch("#{name}/SKILL.md")
+  end
+
+  test "replaces a skill package when editing with a ZIP upload" do
+    sign_in @admin
+
+    name = "editable-skill-#{@token}"
+    original = SkillPackage.from_markdown(skill_md(name))
+    skill = Skill.create!(
+      name: original.name,
+      description: original.description,
+      version: "1",
+      skill_md: original.skill_md
+    )
+    skill.archive.attach(
+      io: StringIO.new(original.archive_data),
+      filename: "#{name}.zip",
+      content_type: "application/zip"
+    )
+    @created_skill_ids << skill.id
+
+    replacement_name = "replacement-skill-#{@token}"
+    archive = uploaded_file(build_zip(
+      "#{replacement_name}/SKILL.md" => skill_md(replacement_name, description: "Replacement skill"),
+      "#{replacement_name}/scripts/run.sh" => "#!/bin/sh\necho replaced\n"
+    ))
+
+    patch admin_skill_path(skill),
+      params: { skill: { version: "2", archive: archive } },
+      headers: { "Accept" => "text/html" }
+
+    assert_redirected_to admin_skill_path(skill)
+    skill.reload
+    assert_equal replacement_name, skill.name
+    assert_equal "Replacement skill", skill.description
+    assert_equal "2", skill.version
+    files = zip_files(skill.archive.download)
+    assert_equal "#!/bin/sh\necho replaced\n", files.fetch("#{replacement_name}/scripts/run.sh")
+    assert_equal skill_md(replacement_name, description: "Replacement skill"), files.fetch("#{replacement_name}/SKILL.md")
   end
 
   test "rejects a ZIP whose folder does not match its manifest" do

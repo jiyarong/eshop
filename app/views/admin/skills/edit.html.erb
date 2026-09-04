@@ -14,7 +14,7 @@
 
 <%= render "admin/shared/ai_navigation", section: :skills %>
 
-<%= form_with model: [:admin, @skill], class: "ai-skill-form" do |form| %>
+<%= form_with model: [:admin, @skill], multipart: true, class: "ai-skill-form" do |form| %>
   <% if @skill.errors.any? %>
     <div class="error-box ai-form-errors" role="alert">
       <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
@@ -24,6 +24,10 @@
 
   <div class="ai-skill-editor-layout">
     <section class="panel ai-skill-editor-panel">
+      <div class="field field--full">
+        <%= form.label :archive, t("admin.skills.fields.archive") %>
+        <%= form.file_field :archive, accept: ".zip,application/zip" %>
+      </div>
       <div class="field field--full">
         <%= form.label :skill_md, t("admin.skills.fields.skill_md") %>
         <%= form.text_area :skill_md, rows: 27, required: true, class: "code-editor ai-skill-code-editor" %>

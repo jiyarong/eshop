@@ -33,7 +33,11 @@ module Admin
     end
 
     def update
-      package = SkillPackage.replace_skill_md(@skill.archive.download, skill_params[:skill_md])
+      package = if skill_params[:archive].present?
+        SkillPackage.from_upload(skill_params[:archive])
+      else
+        SkillPackage.replace_skill_md(@skill.archive.download, skill_params[:skill_md])
+      end
       @skill.version = skill_params[:version]
 
       if save_with_package(package)
