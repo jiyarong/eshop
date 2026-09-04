@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_04_042415) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_073848) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1308,6 +1308,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_042415) do
     t.decimal "buybox_price", precision: 18, scale: 2
     t.jsonb "commissions"
     t.string "currency_code"
+    t.decimal "customer_price", precision: 18, scale: 2
     t.decimal "discount_percent", precision: 5, scale: 2
     t.boolean "is_in_discount", default: false
     t.decimal "marketing_price", precision: 18, scale: 2
@@ -2786,8 +2787,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_042415) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
     t.index ["warehouse_id", "status"], name: "idx_raw_wb_warehouse_name_mappings_target"

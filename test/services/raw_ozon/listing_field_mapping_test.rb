@@ -24,8 +24,18 @@ class RawOzonListingFieldMappingTest < ActiveSupport::TestCase
 
     assert_equal 2945.0, row[:marketing_price]
     assert_equal 3100.0, row[:price]
+    assert_nil row[:customer_price]
     assert_equal BigDecimal("29.45"), row[:acquiring]
     assert_equal 2500.0, row[:min_price]
+  end
+
+  test "maps the customer price returned by the prices details API" do
+    row = @sync.send(:build_price, {
+      "product_id" => 2_430_408_056,
+      "price" => { "price" => 3100, "currency_code" => "RUB" }
+    }, Time.current, customer_price: 2970.5)
+
+    assert_equal 2970.5, row[:customer_price]
   end
 
   test "maps primary image and dimensions from live product responses" do

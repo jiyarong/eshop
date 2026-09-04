@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
-# Refresh Ozon product prices so the API-facing price (including discounts) is current.
-# The listing API uses raw_ozon_product_prices.price as the customer-facing FBO/FBS price.
+# Refresh Ozon product prices, including the customer (Ozon Bank card) price.
+# The listing API uses raw_ozon_product_prices.customer_price as its final price.
 #
 # Preview the accounts that will be refreshed:
 #   bin/rails runner script/backfill_ozon_product_prices.rb

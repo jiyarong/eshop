@@ -37,7 +37,7 @@ module ErpAI
           a.product_attributes,
           a.complex_attributes,
           CASE WHEN pp.ozon_product_id IS NULL THEN NULL ELSE jsonb_build_object(
-            'price', COALESCE(pp.price, pp.marketing_price),
+            'price', COALESCE(pp.customer_price, pp.price, pp.marketing_price),
             'currency', pp.currency_code
           ) END AS price_info,
           p.ozon_product_id IS NOT NULL AS source_found,
@@ -123,7 +123,7 @@ module ErpAI
       {
         success: true,
         sku: sku_payload(sku),
-        listings: listings.find_all{|l|l[:is_active]}
+        listings: listings
       }
     end
 

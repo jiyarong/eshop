@@ -73,6 +73,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
       ozon_product_id: ozon_id,
       offer_id: "OZON-#{@token}",
       price: 200,
+      customer_price: 195,
       old_price: 250,
       marketing_price: 190,
       min_price: 180,
@@ -141,7 +142,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     refute_includes ozon_item[:attributes], "21841"
     assert_equal "active", ozon_item[:status]
     assert_equal true, ozon_item[:is_active]
-    assert_equal BigDecimal("200"), ozon_item.dig(:price_info, "price")
+    assert_equal BigDecimal("195"), ozon_item.dig(:price_info, "price")
     assert_equal "RUB", ozon_item.dig(:price_info, "currency")
     assert_equal [ "price", "currency" ], ozon_item[:price_info].keys
 
