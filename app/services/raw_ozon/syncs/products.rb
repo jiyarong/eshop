@@ -6,6 +6,8 @@ module RawOzon
         total    = 0
         last_id  = ''
         synced_at = Time.current
+        synced_product_ids = []
+        active_product_ids = []
 
         loop do
           list_resp = @client.post('/v3/product/list', { filter: { visibility: 'ALL' }, limit: 100, last_id: last_id })
@@ -17,6 +19,10 @@ module RawOzon
           info_items  = Array(info_resp['items'])
 
           rows = info_items.map { |p| build_product(p, synced_at) }
+          synced_product_ids.concat(info_items.filter_map { |product| product['id'] })
+          active_product_ids.concat(info_items.filter_map do |product|
+            product['id'] unless product['is_archived'] || product['is_autoarchived']
+          end)
           record_product_changes(info_items)
           RawOzon::Product.upsert_all(rows, unique_by: [:account_id, :ozon_product_id]) if rows.any?
           total   += rows.size
@@ -25,6 +31,7 @@ module RawOzon
           sleep 0.5
         end
 
+        sync_sku_product_activity(synced_product_ids, active_product_ids)
         total
       end
 
@@ -257,6 +264,19 @@ module RawOzon
 
       def ozon_store
         @ozon_store ||= Ec::Store.find_by(platform: 'ozon', ozon_raw_account_id: @account.id)
+      end
+
+      def sync_sku_product_activity(product_ids, active_product_ids)
+        store = ozon_store
+        return unless store
+
+        product_ids = product_ids.compact.map(&:to_s).uniq
+        active_product_ids = active_product_ids.compact.map(&:to_s).uniq
+        scope = Ec::SkuProduct.where(store_id: store.id, platform: "ozon")
+        scope.where(product_id: active_product_ids).update_all(is_active: true, updated_at: Time.current) if active_product_ids.any?
+        archived_ids = product_ids - active_product_ids
+        scope.where(product_id: archived_ids).update_all(is_active: false, updated_at: Time.current) if archived_ids.any?
+        scope.where.not(product_id: product_ids).update_all(is_active: false, updated_at: Time.current)
       end
 
       def build_product(p, synced_at)

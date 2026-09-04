@@ -29,6 +29,8 @@ module Ec
     before_validation { self.sku_code = sku_code&.upcase }
 
     scope :ordered, -> { joins(:store).order("ec_stores.platform", "ec_stores.store_name", :product_id) }
+    scope :active, -> { where(is_active: true) }
+    scope :inactive, -> { where(is_active: false) }
 
     private
 

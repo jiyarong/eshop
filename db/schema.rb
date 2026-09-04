@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_01_050233) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_030259) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -724,6 +724,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_050233) do
 
   create_table "ec_sku_products", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.boolean "is_active", default: true, null: false
     t.string "offer_id"
     t.string "platform", null: false
     t.string "platform_sku_id"
@@ -732,6 +733,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_050233) do
     t.string "sku_code", null: false
     t.bigint "store_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["is_active"], name: "index_ec_sku_products_on_is_active"
     t.index ["sku_code", "store_id"], name: "idx_ec_sku_products_sku_store"
     t.index ["store_id", "product_id"], name: "idx_ec_sku_products_unique_store_product", unique: true
     t.index ["store_id"], name: "index_ec_sku_products_on_store_id"

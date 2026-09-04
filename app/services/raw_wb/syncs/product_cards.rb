@@ -6,6 +6,7 @@ module RawWb
       def sync_product_cards
         cursor = nil
         total  = 0
+        synced_product_ids = []
 
         loop do
           body = {
@@ -22,6 +23,7 @@ module RawWb
           record_listing_card_changes(cards)
           subject_id_by_wb_id = RawWb::Subject.where(wb_id: cards.filter_map { |c| c['subjectID'] }).pluck(:wb_id, :id).to_h
           product_rows = cards.filter_map { |c| build_product_card(c, subject_id_by_wb_id) }
+          synced_product_ids.concat(product_rows.map { |row| row[:nm_id] })
           if product_rows.any?
             RawWb::Product.upsert_all(product_rows, unique_by: :nm_id,
               update_only: %i[imt_id brand title description subject_id subject_name synced_at])
@@ -53,6 +55,7 @@ module RawWb
           sleep 0.7
         end
 
+        sync_sku_product_activity(synced_product_ids)
         total
       end
 
@@ -171,6 +174,16 @@ module RawWb
 
       def wb_store
         @wb_store ||= Ec::Store.find_by(platform: 'wb', wb_raw_account_id: @account.id)
+      end
+
+      def sync_sku_product_activity(product_ids)
+        store = wb_store
+        return unless store
+
+        scope = Ec::SkuProduct.where(store_id: store.id, platform: "wb")
+        product_ids = product_ids.compact.map(&:to_s).uniq
+        scope.where(product_id: product_ids).update_all(is_active: true, updated_at: Time.current) if product_ids.any?
+        scope.where.not(product_id: product_ids).update_all(is_active: false, updated_at: Time.current)
       end
 
       def build_product_card(c, subject_id_by_wb_id)

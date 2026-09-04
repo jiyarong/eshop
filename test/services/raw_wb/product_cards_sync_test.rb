@@ -199,6 +199,32 @@ class RawWbProductCardsSyncTest < ActiveSupport::TestCase
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "marks missing store products inactive after a successful catalog sync" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(name: "wb-activity-#{token}", api_token: "token-#{token}", company_type: "small")
+    store = Ec::Store.create!(platform: "wb", store_name: "wb-activity-store-#{token}", company_type: "small", wb_raw_account_id: account.id)
+    sku = Ec::Sku.create!(sku_code: "WB-ACTIVITY-#{token}", product_name: "WB activity")
+    current = Ec::SkuProduct.create!(sku: sku, store: store, product_id: "77301", product_name: "Current")
+    missing = Ec::SkuProduct.create!(sku: sku, store: store, product_id: "77302", product_name: "Missing")
+    missing.update!(is_active: false)
+    client = FakeWbClient.new([
+      { "cards" => [{ "nmID" => 77_301, "vendorCode" => sku.sku_code, "characteristics" => [], "sizes" => [] }] }
+    ])
+    sync = RawWb::WeeklySync.new(account, days: 7)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_product_cards
+
+    assert current.reload.is_active
+    assert_not missing.reload.is_active
+  ensure
+    Ec::SkuProduct.where(id: [current&.id, missing&.id]).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all
+    Ec::Store.where(id: store&.id).delete_all
+    RawWb::Product.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
   private
 
   def unique_wb_id(token, offset)
