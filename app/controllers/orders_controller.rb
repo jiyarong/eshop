@@ -3,7 +3,7 @@ class OrdersController < ApplicationController
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
                 :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
-                :order_sku_linked?, :order_fulfillment_types
+                :order_fulfillment_types, :order_amount, :order_currency
   before_action -> { require_permission!(:view_reports) }
 
   def index
@@ -24,6 +24,7 @@ class OrdersController < ApplicationController
       .find(params[:id])
     @sku_by_item_id = sku_lookup_for(@order.items)
     @ozon_product_details_by_item_id = ozon_product_details_lookup(@order)
+    @raw_wb_order = @order.source_links.map(&:source).find { |source| source.is_a?(RawWb::Order) }
   end
 
   private
@@ -128,6 +129,17 @@ class OrdersController < ApplicationController
     format("%.2f", value)
   end
 
+  def order_amount(order)
+    return if order.items.empty? || order.items.any? { |item| item.unit_price.nil? }
+    return if order_currency_codes(order).length > 1
+
+    order.items.sum { |item| item.unit_price.to_d * item.quantity.to_i }
+  end
+
+  def order_currency(order)
+    order_currency_codes(order).join(" / ").presence
+  end
+
   def ozon_product_details_for(item)
     @ozon_product_details_by_item_id&.fetch(item.id, nil) || {}
   end
@@ -172,8 +184,8 @@ class OrdersController < ApplicationController
     item.sku || @sku_by_item_id&.[](item.id)
   end
 
-  def order_sku_linked?(order)
-    order.items.any? && order.items.all? { |item| @sku_by_item_id&.key?(item.id) }
+  def order_currency_codes(order)
+    order.items.filter_map { |item| item.currency_code.presence }.uniq
   end
 
   def sku_lookup_for(items)

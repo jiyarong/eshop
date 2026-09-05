@@ -655,6 +655,7 @@ ru:
       mode: "Режим"
       old_price: "Старая цена"
       ordered_at: "Время заказа"
+      order_amount: "Сумма заказа"
       payment_method: "Способ оплаты"
       platform: "Платформа"
       platform_sku: "SKU платформы"

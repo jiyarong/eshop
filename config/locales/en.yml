@@ -684,6 +684,7 @@ en:
       mode: "Mode"
       old_price: "Original price"
       ordered_at: "Ordered at"
+      order_amount: "Order amount"
       payment_method: "Payment method"
       platform: "Platform"
       platform_sku: "Platform SKU"

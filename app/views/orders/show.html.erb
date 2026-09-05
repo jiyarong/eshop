@@ -111,9 +111,9 @@
                 <td title="<%= display_value(sku&.product_name) %>"><%= truncated_display_value(sku&.product_name) %></td>
                 <td title="<%= display_value(item.product_name_source) %>"><%= truncated_display_value(item.product_name_source) %></td>
                 <td><%= item.quantity %></td>
-                <td><%= money_value(item.unit_price) %></td>
+                <td><%= money_value(@order.platform_wb? && @raw_wb_order ? @raw_wb_order.price : item.unit_price) %></td>
                 <td><%= money_value(item.old_unit_price) %></td>
-                <td><%= display_value(item.currency_code) %></td>
+                <td><%= display_value(@order.platform_wb? && @raw_wb_order ? @raw_wb_order.currency_code : item.currency_code) %></td>
                 <td><%= money_value(item.commission_amount) %></td>
                 <td><%= money_value(item.discount_amount) %></td>
               </tr>

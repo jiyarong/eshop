@@ -202,7 +202,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     User.where("email LIKE ?", "orders-#{@token.downcase}%").delete_all
   end
 
-  test "index renders unified order center with filters and sku summary" do
+  test "index renders unified order center with filters, amount, and currency" do
     get "/orders", params: { platform: "ozon", q: "0128619527" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -214,11 +214,15 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", { text: "源状态", count: 0 }
     assert_select "th", { text: "源子状态", count: 0 }
     assert_select "th", { text: "处理时间", count: 0 }
-    assert_select "th", "SKU已关联？"
+    assert_select "th", { text: "SKU已关联？", count: 0 }
+    assert_select "th", { text: "同步时间", count: 0 }
+    assert_select "th", "订单金额"
+    assert_select "th", "币种"
     assert_select "th", "履约模式"
     assert_select "td", { text: "delivering", count: 0 }
     assert_select "td", { text: "posting_on_way_to_city", count: 0 }
-    assert_select "td", "是"
+    assert_select "td", "140.00"
+    assert_select "td", "BYN"
     assert_select "td", "FBO"
     assert_select "td", "配送中" do |elements|
       assert_equal "源状态: delivering\n源子状态: posting_on_way_to_city", elements.first["title"]
@@ -253,6 +257,10 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "Platform"
     assert_select "th", "Fulfillment mode"
     assert_select "th", "Platform order number"
+    assert_select "th", { text: "SKU linked?", count: 0 }
+    assert_select "th", { text: "Synced at", count: 0 }
+    assert_select "th", "Order amount"
+    assert_select "th", "Currency"
     assert_select "td", "Shipped"
     assert_select "td", "FBO"
     assert_select "a[href=?]", "/orders/#{@order.id}", "View details"
@@ -279,7 +287,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name=?][value=?]", "q[external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont]", "WB-G-#{@token}"
     assert_select "td", "WB"
     assert_select "td", "订单中心 WB 店"
-    assert_select "td", "否"
+    assert_select "td", { text: "否", count: 0 }
     assert_select "td", { text: "订单中心 Ozon 店", count: 0 }
   end
 

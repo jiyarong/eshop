@@ -108,10 +108,10 @@
                 <th><%= t("orders.fields.fulfillment_mode") %></th>
                 <th><%= t("orders.fields.external_order_number") %></th>
                 <th><%= t("orders.fields.ordered_at") %></th>
-                <th><%= t("orders.fields.sku_linked") %></th>
                 <th><%= t("orders.fields.city") %></th>
                 <th><%= t("orders.fields.sku_quantity") %></th>
-                <th><%= t("orders.fields.synced_at") %></th>
+                <th><%= t("orders.fields.order_amount") %></th>
+                <th><%= t("orders.fields.currency") %></th>
                 <th><%= t("orders.fields.actions") %></th>
               </tr>
             </thead>
@@ -130,7 +130,6 @@
                     <% end %>
                   </td>
                   <td><%= display_time(order.ordered_at) %></td>
-                  <td><%= t(order_sku_linked?(order) ? "common.yes" : "common.no") %></td>
                   <td><%= display_value(order.buyer_city) %></td>
                   <td>
                     <% order.items.each_with_index do |item, index| %>
@@ -144,7 +143,8 @@
                     <% end %>
                     / <%= order.items.sum { |item| item.quantity.to_i } %>
                   </td>
-                  <td><%= display_time(order.synced_at) %></td>
+                  <td><%= money_value(order_amount(order)) %></td>
+                  <td><%= display_value(order_currency(order)) %></td>
                   <td><%= link_to t("orders.actions.view_details"), order_path(order) %></td>
                 </tr>
               <% end %>

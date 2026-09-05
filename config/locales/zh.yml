@@ -662,6 +662,7 @@ zh:
       mode: "模式"
       old_price: "原价"
       ordered_at: "下单时间"
+      order_amount: "订单金额"
       payment_method: "支付方式"
       platform: "平台"
       platform_sku: "平台 SKU"
