@@ -29,6 +29,7 @@ module Ec
           book_stock: book_stock,
           procurement_stock: procurement_stock,
           daily_sales_velocity: daily_sales_velocity,
+          forecast_explanation: velocity_metrics.dig(sku_code, :forecast_explanation),
           turnover_days: daily_sales_velocity.to_d.positive? ? (book_stock.to_d / daily_sales_velocity.to_d) : nil,
           turnover_days_with_procurement: daily_sales_velocity.to_d.positive? ? ((book_stock + procurement_stock).to_d / daily_sales_velocity.to_d) : nil
         }
@@ -75,13 +76,20 @@ module Ec
         .where.not(ec_orders: { order_status: "cancelled" })
         .where(ec_orders: { ordered_at: ..cutoff_time })
         .group("ec_sku_products.sku_code")
-        .sum(Arel.sql("CASE WHEN ec_orders.order_status = 'returned' THEN 0 ELSE ec_order_items.quantity END"))
+        .sum(:quantity)
         .transform_keys(&:to_s)
         .transform_values(&:to_i)
     end
 
     def returned_quantities_by_sku
-      merge_quantities_by_sku(ozon_return_quantities_by_sku, wb_return_quantities_by_sku)
+      Ec::ReturnItem
+        .joins(:sku_product, return: :order)
+        .where(ec_sku_products: { sku_code: @sku_codes }, restockable: true)
+        .where.not(ec_orders: { order_status: "cancelled" })
+        .group("ec_sku_products.sku_code")
+        .sum(:quantity)
+        .transform_keys(&:to_s)
+        .transform_values(&:to_i)
     end
 
     def ozon_return_quantities_by_sku

@@ -71,6 +71,7 @@
         <div class="operator-sku-profit">
           <% %i[days_7 days_30].each do |period_key| %>
             <% metric = group == :sales ? @operator_metrics.dig(:sales, period_key) : @operator_metrics.dig(:profit, period_key, metric_key) %>
+            <% metric ||= { value: nil, comparison: nil } %>
             <div class="operator-sku-period">
               <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= operator_sku_metric_value(metric[:value], type: type) %></strong></span>
               <span class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison]) %></span>

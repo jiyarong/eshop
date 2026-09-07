@@ -45,11 +45,7 @@
         <span class="sku-lifecycle-formula-help" tabindex="0" aria-label="<%= t("reports.inventory.forecast.aria_label") %>">
           <i class="bi bi-info-circle" aria-hidden="true"></i>
           <span class="sku-lifecycle-formula-tooltip" role="tooltip">
-            <%= t("reports.inventory.forecast.period", date: explanation[:date_to]) %><br>
-            <% explanation[:windows].to_a.each do |window| %>
-              <%= t("reports.inventory.forecast.window", days: window[:days], quantity: window[:quantity].to_i, average: format("%.2f", window[:daily_average]), weight: (window[:weight].to_d * 100).to_i) %><br>
-            <% end %>
-            <%= t("reports.inventory.forecast.stockout_note") %>
+            <%= render "shared/inventory_forecast_explanation", kind: :simple, explanation: explanation %>
           </span>
         </span>
         <strong class="inventory-metric-card__value">
@@ -78,13 +74,7 @@
         <span class="sku-lifecycle-formula-help" tabindex="0" aria-label="<%= t("reports.inventory.strict_forecast.aria_label") %>">
           <i class="bi bi-info-circle" aria-hidden="true"></i>
           <span class="sku-lifecycle-formula-tooltip" role="tooltip">
-            <%= t("reports.inventory.strict_forecast.period", from: strict.dig(:snapshot_period, :from), to: strict.dig(:snapshot_period, :to)) %><br>
-            <%= t("reports.inventory.strict_forecast.samples", snapshots: strict[:snapshot_days].to_i, valid: strict[:valid_days].to_i, stockout: strict[:stockout_days].to_i) %><br>
-            <%= t("reports.inventory.strict_forecast.path", path: t("reports.inventory.strict_forecast.paths.#{strict.dig(:calculation, :path)}", default: strict.dig(:calculation, :path).to_s)) %>
-            <% %i[s7 s15 s30 historical_s7 slope].each do |key| %>
-              <% value = strict.dig(:calculation, key) %>
-              <% if value.present? %><br><%= t("reports.inventory.strict_forecast.values.#{key}", value: format("%.2f", value.to_d)) %><% end %>
-            <% end %>
+            <%= render "shared/inventory_forecast_explanation", kind: :strict, explanation: strict %>
           </span>
         </span>
         <strong class="inventory-metric-card__value"><%= strict.dig(:calculation, :path).to_s == "no_valid_days" ? "-" : format("%.2f", strict[:forecast_daily_sales].to_d) %></strong>

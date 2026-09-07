@@ -950,10 +950,17 @@ class ReportsController < ApplicationController
       date_to: user_today,
       time_zone: user_time_zone
     ).call
+    strict_forecasts = if skus.empty?
+      {}
+    else
+      result = ErpAI::DynamicDailySalesForecast.new(skus: skus.to_a, date_to: user_today - 1.day).call
+      skus.one? ? { skus.first => result } : result
+    end
     event_types_by_sku_id = load_latest_red_ai_diagnosis_event_types_for(skus)
 
     rows = skus.map do |sku|
       fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {}).merge(
+        strict_forecast_daily_sales: strict_forecasts.dig(sku, :forecast_daily_sales),
         ai_diagnosis_event_types: event_types_by_sku_id.fetch(sku.id, [])
       )
     end

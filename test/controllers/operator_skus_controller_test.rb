@@ -95,7 +95,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_select "h1", "SKU 列表"
+    assert_select "h1", "SKU 工作台"
     assert_select ".category-multiselect"
     assert_select "#operator-sku-spu-sku-filter-trigger"
     assert_select "#operator-sku-grade-filter-trigger"
@@ -108,17 +108,14 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       assert_equal "/operator_skus", links.first["href"]
       assert_equal "/reports/sales_funnel", links[1]["href"]
     end
-    %w[SKU SPU 营销状态 负责人 销量 周期销售额 周期利润 周期利润率 周期广告花费 库存 状态 诊断标签].each do |heading|
+    %w[SKU 负责人 上周财报 上周订单 库存 分仓].each do |heading|
       assert_select ".operator-sku-table thead th", text: heading
     end
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
-    assert_select ".operator-status--normal", text: "正常"
     assert_select ".sku-ai-diagnosis-event-tags", text: "-"
-    assert_select ".operator-sku-profit .operator-sku-period", 10
-    assert_select ".operator-sku-sales .operator-sku-comparison", 2
-    assert_select ".operator-sku-period__value", text: /7天/
-    assert_select ".operator-sku-period__value", text: /30天/
-    assert_select ".operator-sku-comparison.is-positive", text: /12\.50% 环比/
+    assert_select ".operator-sku-finance-grid > span", minimum: 6
+    assert_select ".operator-sku-comparison.is-positive", text: /12\.50%/
+    assert_select ".operator-sku-comparison", { text: /环比/, count: 0 }
 
     css = Rails.root.join("app/assets/stylesheets/application.css").read
     assert_match(/\.operator-sku-row:hover td\s*\{[^}]*background:/m, css)
@@ -127,24 +124,24 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
   test "sortable metric headers preserve filters and toggle direction" do
     with_empty_metrics do
       get operator_skus_path,
-        params: { q: @token, grades: [ "A" ], sort: "sales", direction: "desc" },
+        params: { q: @token, grades: [ "A" ], sort: "weekly_orders", direction: "desc" },
         headers: { "Accept" => "text/html" }
     end
 
     assert_response :success
-    assert_select "th.sortable-table-header", count: 5
-    assert_select "th.sortable-table-header[aria-sort='descending'] a[href*='sort=sales'][href*='direction=asc'][href*='q=#{@token}']"
-    assert_select "th.sortable-table-header[aria-sort='none'] a[href*='sort=revenue'][href*='direction=desc']"
+    assert_select "th.sortable-table-header", count: 3
+    assert_select "th.sortable-table-header[aria-sort='descending'] a[href*='sort=weekly_orders'][href*='direction=asc'][href*='q=#{@token}']"
+    assert_select "th.sortable-table-header[aria-sort='none'] a[href*='sort=book_stock'][href*='direction=desc']"
     assert_select "th.sortable-table-header a[href*='grades%5B%5D=A']"
 
     sign_in @user
     with_empty_metrics do
       get operator_skus_path,
-        params: { q: @token, grades: [ "A" ], sort: "sales", direction: "asc" },
+        params: { q: @token, grades: [ "A" ], sort: "weekly_orders", direction: "asc" },
         headers: { "Accept" => "text/html" }
     end
 
-    assert_select "th.sortable-table-header[aria-sort='ascending'] a[aria-label='销量，清除排序']" do |links|
+    assert_select "th.sortable-table-header[aria-sort='ascending'] a[aria-label='上周订单，清除排序']" do |links|
       href = links.first["href"]
       assert_includes href, "q=#{@token}"
       assert_includes href, "grades%5B%5D=A"
@@ -153,13 +150,13 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "sorts all filtered skus by the selected 30 day metric before pagination" do
+  test "sorts all filtered skus by the selected weekly metric before pagination" do
     other_sku = Ec::Sku.create!(sku_code: "OPS-SORT-#{@token}", product_name: "Sortable #{@token}")
     values = { @sku.sku_code => 10, other_sku.sku_code => 40 }
 
-    with_metric_values(values) do
+    with_sort_values(values) do
       get operator_skus_path,
-        params: { q: @token, sort: "sales", direction: "desc" },
+        params: { q: @token, sort: "weekly_orders", direction: "desc" },
         headers: { "Accept" => "text/html" }
     end
 
@@ -168,9 +165,9 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ other_sku.sku_code, @sku.sku_code ], rows
 
     sign_in @user
-    with_metric_values(values) do
+    with_sort_values(values) do
       get operator_skus_path,
-        params: { q: @token, sort: "sales", direction: "asc" },
+        params: { q: @token, sort: "weekly_orders", direction: "asc" },
         headers: { "Accept" => "text/html" }
     end
 
@@ -178,11 +175,11 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ @sku.sku_code, other_sku.sku_code ], rows
   end
 
-  test "defaults to 30 day profit descending" do
+  test "defaults to last week profit descending" do
     other_sku = Ec::Sku.create!(sku_code: "OPS-DEFAULT-SORT-#{@token}", product_name: "Default sort #{@token}")
     values = { @sku.sku_code => 10, other_sku.sku_code => 40 }
 
-    with_metric_values(values) do
+    with_sort_values(values) do
       get operator_skus_path,
         params: { q: @token },
         headers: { "Accept" => "text/html" }
@@ -191,7 +188,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     rows = css_select(".operator-sku-row .code-text.sub").map(&:text)
     assert_equal [ other_sku.sku_code, @sku.sku_code ], rows
-    assert_select "th.sortable-table-header[aria-sort='descending']", text: "周期利润"
+    assert_select "th.sortable-table-header[aria-sort='descending']", text: "上周财报"
   end
 
   test "ignores unsupported sort keys" do
@@ -202,8 +199,8 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_select "th.sortable-table-header[aria-sort='descending']", text: "周期利润"
-    assert_select "th.sortable-table-header[aria-sort='none']", count: 4
+    assert_select "th.sortable-table-header[aria-sort='descending']", text: "上周财报"
+    assert_select "th.sortable-table-header[aria-sort='none']", count: 2
   end
 
   test "new skus default to normal operation status" do
@@ -313,5 +310,20 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     yield
   ensure
     Ec::OperatorSkuMetricsQuery.define_singleton_method(:new, original_new)
+  end
+
+  def with_sort_values(values)
+    fake_query = Struct.new(:values) do
+      def call
+        values
+      end
+    end
+    original_new = Ec::OperatorSkuSortMetricsQuery.method(:new)
+    Ec::OperatorSkuSortMetricsQuery.define_singleton_method(:new) do |**_args|
+      fake_query.new(values)
+    end
+    with_empty_metrics { yield }
+  ensure
+    Ec::OperatorSkuSortMetricsQuery.define_singleton_method(:new, original_new)
   end
 end

@@ -126,17 +126,20 @@ module ApplicationHelper
       number_to_percentage(value, precision: 2)
     when :days
       t("operator_skus.values.days", count: format("%.1f", value))
+    when :velocity
+      number_with_precision(value, precision: 2)
     else
       number_with_delimiter(value)
     end
   end
 
-  def operator_sku_comparison_text(comparison)
+  def operator_sku_comparison_text(comparison, compact: false)
     delta_pct = comparison&.dig(:delta_pct) || comparison&.dig("delta_pct")
     return t("operator_skus.values.unavailable") if delta_pct.nil?
 
     arrow = delta_pct.to_d.positive? ? "↑" : (delta_pct.to_d.negative? ? "↓" : "→")
-    t("operator_skus.values.comparison", arrow: arrow, value: format("%.2f", delta_pct.to_d.abs))
+    key = compact ? "operator_skus.values.comparison_compact" : "operator_skus.values.comparison"
+    t(key, arrow: arrow, value: format("%.2f", delta_pct.to_d.abs))
   end
 
   def operator_sku_comparison_class(comparison)

@@ -58,19 +58,11 @@
         <thead>
           <tr>
             <th><%= t("operator_skus.columns.sku") %></th>
-            <th><%= t("operator_skus.columns.spu") %></th>
-            <th><%= t("operator_skus.columns.marketing_state") %></th>
             <th><%= t("operator_skus.columns.responsible") %></th>
-            <% %w[sales revenue profit margin ads].each do |column| %>
-              <%= render "shared/sortable_table_header",
-                label: t("operator_skus.columns.#{column}"),
-                sort_key: column,
-                class_name: "numeric",
-                title: t("operator_skus.sort_period_hint") %>
-            <% end %>
-            <th class="numeric"><%= t("operator_skus.columns.inventory") %></th>
-            <th><%= t("operator_skus.columns.status") %></th>
-            <th><%= t("operator_skus.columns.events") %></th>
+            <%= render "shared/sortable_table_header", label: t("operator_skus.columns.weekly_finance"), sort_key: "weekly_profit", class_name: "numeric" %>
+            <%= render "shared/sortable_table_header", label: t("operator_skus.columns.weekly_orders"), sort_key: "weekly_orders", class_name: "numeric" %>
+            <%= render "shared/sortable_table_header", label: t("operator_skus.columns.inventory"), sort_key: "book_stock", class_name: "numeric" %>
+            <th><%= t("operator_skus.columns.distribution", default: "分仓") %></th>
           </tr>
         </thead>
         <tbody>
@@ -80,56 +72,81 @@
               <td>
                 <%= sku_detail_drawer_link sku, class: "code-text sub" %>
                 <span class="operator-sku-name"><%= sku.product_name.presence || t("operator_skus.values.unavailable") %></span>
+                <span class="operator-sku-name operator-sku-name--ru"><%= sku.product_name_ru.presence || t("operator_skus.values.unavailable") %></span>
+                <span class="operator-sku-meta"><%= t("operator_skus.columns.spu") %> <%= sku.master_sku&.master_sku_code || t("operator_skus.values.unavailable") %></span>
+                <span class="operator-sku-meta"><%= render "erp/sku_marketing_states/marketing_state", sku: sku %></span>
               </td>
-              <td><span class="code-text"><%= sku.master_sku&.master_sku_code || t("operator_skus.values.unavailable") %></span></td>
-              <td><%= render "erp/sku_marketing_states/marketing_state", sku: sku %></td>
               <td>
                 <div class="operator-sku-responsible">
                   <span><strong><%= t("operator_skus.responsible.developer") %></strong> <%= sku_developer_names(sku) || t("operator_skus.values.unassigned") %></span>
                   <span><strong><%= t("operator_skus.responsible.operator") %></strong> <%= sku_operator_names(sku) || t("operator_skus.values.unassigned") %></span>
+                  <%= render "shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-diagnosis" %>
                 </div>
               </td>
+              <% finance = metrics.dig(:profit, :days_7) || {} %>
+              <td class="numeric"><div class="operator-sku-pair operator-sku-finance-grid">
+                <% { net_sales: :number, after_tax: :currency, ads: :currency, ad_ratio_pct: :percentage, annualized_return_pct: :percentage, annualized_net_profit_cny: :currency }.each do |key, type| %>
+                  <% metric = finance[key] || {} %>
+                  <span><%= t("operator_skus.finance.#{key}") %> <strong><%= operator_sku_metric_value(metric[:value], type: type) %></strong><small class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison], compact: true) %></small></span>
+                <% end %>
+              </div></td>
+              <% orders = metrics[:weekly_orders] || {} %>
+              <td class="numeric"><div class="operator-sku-pair operator-sku-metric-grid">
+                <% %i[ordered signed in_transit cancelled returned].each do |key| %>
+                  <% comparison = orders.dig(:comparisons, key) %>
+                  <span><%= t("operator_skus.orders.#{key}") %> <strong><%= orders[key].to_i %></strong><small class="operator-sku-comparison <%= operator_sku_comparison_class(comparison) %>"><%= operator_sku_comparison_text(comparison, compact: true) %></small></span>
+                <% end %>
+              </div></td>
               <td class="numeric">
-                <div class="operator-sku-profit operator-sku-sales">
-                  <% %i[days_7 days_30].each do |period_key| %>
-                    <% sales_metric = metrics.dig(:sales, period_key) %>
-                    <div class="operator-sku-period">
-                      <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= operator_sku_metric_value(sales_metric[:value]) %></strong></span>
-                      <span class="operator-sku-comparison <%= operator_sku_comparison_class(sales_metric[:comparison]) %>"><%= operator_sku_comparison_text(sales_metric[:comparison]) %></span>
-                    </div>
-                  <% end %>
-                </div>
-              </td>
-              <% { revenue: :currency, after_tax: :currency, margin_pct: :percentage, ads: :currency }.each do |key, type| %>
-                <td class="numeric">
-                  <div class="operator-sku-profit">
-                    <% %i[days_7 days_30].each do |period_key| %>
-                      <% profit_metric = metrics.dig(:profit, period_key, key) %>
-                      <div class="operator-sku-period">
-                        <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= operator_sku_metric_value(profit_metric[:value], type: type) %></strong></span>
-                        <span class="operator-sku-comparison <%= operator_sku_comparison_class(profit_metric[:comparison]) %>"><%= operator_sku_comparison_text(profit_metric[:comparison]) %></span>
-                      </div>
-                    <% end %>
-                  </div>
-                </td>
-              <% end %>
-              <td class="numeric">
-                <div class="operator-sku-pair">
-                  <span><%= t("operator_skus.inventory.available") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :available_stock)) %></strong></span>
+                <div class="operator-sku-pair operator-sku-metric-grid">
+                  <span><%= t("operator_skus.inventory.book_stock") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :book_stock)) %></strong></span>
+                  <span><%= t("operator_skus.inventory.platform_stock") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :platform_stock)) %></strong></span>
                   <span><%= t("operator_skus.inventory.incoming") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :incoming_quantity)) %></strong></span>
-                  <span><%= t("operator_skus.inventory.coverage") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :turnover_days), type: :days) %></strong></span>
+                  <span><%= t("operator_skus.inventory.simple_coverage") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :turnover_days), type: :days) %></strong></span>
+                  <span><%= t("operator_skus.inventory.strict_coverage") %> <strong><%= operator_sku_metric_value(metrics.dig(:inventory, :strict_forecast, :cover_days), type: :days) %></strong></span>
+                  <% distribution = metrics.dig(:inventory, :distribution) || {} %>
+                  <% platforms = distribution[:platforms] || distribution["platforms"] || {} %>
+                  <% platforms = {
+                    "ozon" => { "fbo" => { total: 0, regions: { "俄罗斯" => 0, "白俄" => 0 } }, "fbs" => { total: 0, regions: {} } },
+                    "wb" => { "fbw" => { total: 0, regions: { "俄罗斯" => 0, "白俄" => 0 } }, "fbs" => { total: 0, regions: {} } }
+                  } if platforms.empty? %>
+                  <% simple_velocity = metrics.dig(:inventory, :daily_sales_velocity) %>
+                  <% strict_velocity = metrics.dig(:inventory, :strict_forecast, :forecast_daily_sales) %>
+                  <span class="operator-sku-forecast">
+                    <% { simple: simple_velocity, strict: strict_velocity }.each do |kind, value| %>
+                      <% popover_id = "operator-sku-#{sku.id}-#{kind}-forecast-formula" %>
+                      <span class="operator-sku-forecast__row">
+                        <span class="operator-sku-forecast__label"><%= t("operator_skus.inventory.#{kind}_forecast") %><span class="sku-ai-diagnosis-event-popover" data-controller="diagnosis-event-popover"><button type="button" class="operator-sku-forecast__help" aria-expanded="false" aria-controls="<%= popover_id %>" data-action="diagnosis-event-popover#toggle" data-diagnosis-event-popover-target="trigger"><i class="bi bi-info-circle" aria-hidden="true"></i></button><span id="<%= popover_id %>" class="sku-ai-diagnosis-event-popover__panel" role="tooltip" data-diagnosis-event-popover-target="popover" hidden><%= render "shared/inventory_forecast_explanation", kind: kind, explanation: kind == :simple ? metrics.dig(:inventory, :forecast_explanation) : metrics.dig(:inventory, :strict_forecast) %></span></span></span>
+                        <strong><%= operator_sku_metric_value(value, type: :velocity) %></strong>
+                      </span>
+                    <% end %>
+                  </span>
                 </div>
               </td>
-              <td><span class="operator-status operator-status--<%= sku.operation_status %>"><%= t("operator_skus.statuses.#{sku.operation_status}") %></span></td>
               <td>
-                <%= render "shared/sku_ai_diagnosis_event_tags",
-                  events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []),
-                  dom_id_prefix: "operator-sku-#{sku.id}-diagnosis" %>
+                <% platforms.each do |platform, buckets| %>
+                  <div class="operator-sku-distribution"><strong class="operator-sku-distribution__platform"><%= platform.to_s.upcase %></strong><div class="operator-sku-distribution__buckets">
+                    <% fulfillment_order = platform.to_s == "ozon" ? %w[fbo fbs] : %w[fbw fbs] %>
+                    <% buckets.sort_by { |fulfillment, _bucket| fulfillment_order.index(fulfillment.to_s) || fulfillment_order.length }.each do |fulfillment, bucket| %>
+                      <% next if fulfillment.to_s == "inbound" %>
+                      <% regions = bucket[:regions] || bucket["regions"] || {} %>
+                      <% if fulfillment.to_s == "fbo" || fulfillment.to_s == "fbw" %>
+                        <span><%= t("operator_skus.fulfillment_types.#{fulfillment}", default: fulfillment.to_s.upcase) %> <%= bucket[:total] || bucket["total"] || 0 %>（<%= t("operator_skus.distribution_regions.russia") %> <%= regions["俄罗斯"] || regions[:俄罗斯] || 0 %> / <%= t("operator_skus.distribution_regions.belarus") %> <%= regions["白俄"] || regions[:白俄] || 0 %>）</span>
+                      <% else %>
+                        <span><%= t("operator_skus.fulfillment_types.#{fulfillment}", default: fulfillment.to_s.upcase) %> <%= bucket[:total] || bucket["total"] || 0 %></span>
+                      <% end %>
+                    <% end %>
+                  </div></div>
+                <% end %>
+                <% Array(distribution[:warnings] || distribution["warnings"]).each do |warning| %>
+                  <% next if warning.to_s.end_with?("_out_of_stock") %>
+                  <span class="operator-sku-distribution-warning"><%= t("operator_skus.distribution_warnings.#{warning}", default: warning.to_s.tr("_", " ")) %></span>
+                <% end %>
               </td>
             </tr>
           <% end %>
           <% if @skus.empty? %>
-            <tr><td colspan="12" class="empty-state"><%= t("operator_skus.empty") %></td></tr>
+            <tr><td colspan="6" class="empty-state"><%= t("operator_skus.empty") %></td></tr>
           <% end %>
         </tbody>
       </table>

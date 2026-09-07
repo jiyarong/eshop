@@ -778,9 +778,11 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr.inventory-list-table__row td:nth-child(6) .inventory-list-table__subline", "0.0360 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(7) .inventory-list-table__subline", "0.0420 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "1.23"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "11.38"
+    assert_select "th", I18n.t("reports.inventory.fields.strict_forecast_daily_sales")
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "0.00"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(10)", "11.38"
     assert_select "th", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(10)", "21.14"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(11)", "21.14"
     drawer_path = report_sku_path(@sku_code, tab: "inventory")
     assert_select "a[href=?][data-turbo-frame=?]", drawer_path, "sku_detail_drawer", count: 2
     assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", drawer_path, "sku_detail_drawer"

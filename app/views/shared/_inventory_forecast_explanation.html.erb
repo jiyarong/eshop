@@ -1,0 +1,17 @@
+<% if kind.to_sym == :simple %>
+  <% data = explanation || {} %>
+  <%= t("reports.inventory.forecast.period", date: data[:date_to]) %><br>
+  <% data[:windows].to_a.each do |window| %>
+    <%= t("reports.inventory.forecast.window", days: window[:days], quantity: window[:quantity].to_i, average: format("%.2f", window[:daily_average]), weight: (window[:weight].to_d * 100).to_i) %><br>
+  <% end %>
+  <%= t("reports.inventory.forecast.stockout_note") %>
+<% else %>
+  <% data = explanation || {} %>
+  <%= t("reports.inventory.strict_forecast.period", from: data.dig(:snapshot_period, :from), to: data.dig(:snapshot_period, :to)) %><br>
+  <%= t("reports.inventory.strict_forecast.samples", snapshots: data[:snapshot_days].to_i, valid: data[:valid_days].to_i, stockout: data[:stockout_days].to_i) %><br>
+  <%= t("reports.inventory.strict_forecast.path", path: t("reports.inventory.strict_forecast.paths.#{data.dig(:calculation, :path)}", default: data.dig(:calculation, :path).to_s)) %>
+  <% %i[s7 s15 s30 historical_s7 slope].each do |key| %>
+    <% value = data.dig(:calculation, key) %>
+    <% if value.present? %><br><%= t("reports.inventory.strict_forecast.values.#{key}", value: format("%.2f", value.to_d)) %><% end %>
+  <% end %>
+<% end %>

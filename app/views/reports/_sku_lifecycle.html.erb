@@ -24,7 +24,7 @@
                 aria-label="<%= t("reports.sku_detail.lifecycle.summary.daily_sales_formula.aria_label") %>"
                 aria-describedby="sku-lifecycle-daily-sales-formula">
             <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
-            <span id="sku-lifecycle-daily-sales-formula" class="sku-lifecycle-formula-tooltip" role="tooltip"><%= t("reports.sku_detail.lifecycle.summary.daily_sales_formula.description") %></span>
+            <span id="sku-lifecycle-daily-sales-formula" class="sku-lifecycle-formula-tooltip" role="tooltip"><%= render "shared/inventory_forecast_explanation", kind: :simple, explanation: summary[:forecast_explanation] %></span>
           </span>
         <% end %>
         <% if key == "stockout_adjusted_daily_sales" %>
@@ -32,7 +32,7 @@
                 aria-label="<%= t("reports.sku_detail.lifecycle.summary.stockout_adjusted_formula.aria_label") %>"
                 aria-describedby="sku-lifecycle-stockout-adjusted-formula">
             <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
-            <span id="sku-lifecycle-stockout-adjusted-formula" class="sku-lifecycle-formula-tooltip" role="tooltip"><%= t("reports.sku_detail.lifecycle.summary.stockout_adjusted_formula.description") %></span>
+            <span id="sku-lifecycle-stockout-adjusted-formula" class="sku-lifecycle-formula-tooltip" role="tooltip"><%= render "shared/inventory_forecast_explanation", kind: :strict, explanation: summary[:strict_forecast] %></span>
           </span>
         <% end %>
       </span>

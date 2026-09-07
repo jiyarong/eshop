@@ -40,19 +40,23 @@ module Ec
         revenue: cumulative[:revenue],
         net_profit: cumulative[:net_profit],
         daily_sales_velocity: inventory[:daily_sales_velocity],
+        forecast_explanation: inventory[:forecast_explanation],
         inventory_cover_days: inventory[:turnover_days],
         stockout_adjusted_daily_sales: dynamic_inventory[:daily_sales],
-        stockout_adjusted_inventory_cover_days: dynamic_inventory[:cover_days]
+        stockout_adjusted_inventory_cover_days: dynamic_inventory[:cover_days],
+        strict_forecast: dynamic_inventory[:explanation]
       }
     end
 
     def dynamic_inventory_metrics(inventory)
-      forecast = ErpAI::DynamicDailySalesForecast.new(
+      result = ErpAI::DynamicDailySalesForecast.new(
         sku: @sku, date_to: @user_today - 1.day
-      ).call.fetch(:forecast_daily_sales).to_d
+      ).call
+      forecast = result.fetch(:forecast_daily_sales).to_d
       {
         daily_sales: forecast,
-        cover_days: forecast.positive? ? inventory[:book_stock].to_d / forecast : nil
+        cover_days: forecast.positive? ? inventory[:book_stock].to_d / forecast : nil,
+        explanation: result
       }
     end
 

@@ -131,6 +131,7 @@
             <th><%= t("reports.inventory.fields.platform_stock") %></th>
             <th><%= t("reports.inventory.fields.overseas_available_stock") %></th>
             <th><%= t("reports.inventory.fields.daily_sales_velocity") %></th>
+            <th><%= t("reports.inventory.fields.strict_forecast_daily_sales") %></th>
             <th><%= t("reports.inventory.fields.turnover_days") %></th>
             <th><%= t("reports.inventory.fields.turnover_days_with_procurement") %></th>
             <th><%= t("reports.inventory.fields.ai_inventory_health") %></th>
@@ -152,6 +153,7 @@
               <% platform_volume_text = inventory_estimated_volume_text(platform_stock, row[:unit_volume_l]) %>
               <% available_volume_text = inventory_estimated_volume_text(available_stock, row[:unit_volume_l]) %>
               <% daily_sales_velocity = row[:daily_sales_velocity] %>
+              <% strict_forecast_daily_sales = row[:strict_forecast_daily_sales] %>
               <% turnover_days = row[:turnover_days] %>
               <% turnover_days_with_procurement = row[:turnover_days_with_procurement] %>
               <% marketing_grade = row[:marketing_grade].presence %>
@@ -214,6 +216,7 @@
                   <% end %>
                 </td>
                 <td class="numeric inventory-list-table__metric"><%= daily_sales_velocity.present? ? format("%.2f", daily_sales_velocity.to_d) : "-" %></td>
+                <td class="numeric inventory-list-table__metric"><%= strict_forecast_daily_sales.present? ? format("%.2f", strict_forecast_daily_sales.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days.present? ? format("%.2f", turnover_days.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days_with_procurement.present? ? format("%.2f", turnover_days_with_procurement.to_d) : "-" %></td>
                 <td class="inventory-list-table__ai-health-cell">

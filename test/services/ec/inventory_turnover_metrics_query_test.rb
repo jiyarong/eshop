@@ -104,7 +104,7 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     expected_velocity_a = weighted_velocity_for(14)
     expected_velocity_b = weighted_velocity_for(28)
 
-    assert_equal 17, metrics.dig(@sku_a.sku_code, :book_stock)
+    assert_equal 16, metrics.dig(@sku_a.sku_code, :book_stock)
     assert_equal 15, metrics.dig(@sku_b.sku_code, :book_stock)
     assert_equal 15, metrics.dig(@sku_c.sku_code, :book_stock)
 
@@ -113,9 +113,9 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     assert_equal BigDecimal("0"), metrics.dig(@sku_c.sku_code, :daily_sales_velocity)
     assert_equal 9, metrics.dig(@sku_a.sku_code, :procurement_stock)
 
-    assert_equal BigDecimal("17") / expected_velocity_a, metrics.dig(@sku_a.sku_code, :turnover_days)
+    assert_equal BigDecimal("16") / expected_velocity_a, metrics.dig(@sku_a.sku_code, :turnover_days)
     assert_equal BigDecimal("15") / expected_velocity_b, metrics.dig(@sku_b.sku_code, :turnover_days)
-    assert_equal BigDecimal("26") / expected_velocity_a, metrics.dig(@sku_a.sku_code, :turnover_days_with_procurement)
+    assert_equal BigDecimal("25") / expected_velocity_a, metrics.dig(@sku_a.sku_code, :turnover_days_with_procurement)
     assert_equal BigDecimal("15") / expected_velocity_b, metrics.dig(@sku_b.sku_code, :turnover_days_with_procurement)
     assert_nil metrics.dig(@sku_c.sku_code, :turnover_days)
     assert_nil metrics.dig(@sku_c.sku_code, :turnover_days_with_procurement)

@@ -5,13 +5,33 @@ module ErpAI
     MEDIUM_WINDOW_DAYS = 15
     TREND_DAYS = 15
 
-    def initialize(sku:, date_to: Ec::Snapshot.current_date - 1)
-      @sku = sku
+    def initialize(sku: nil, skus: nil, date_to: Ec::Snapshot.current_date - 1)
+      @skus = Array(skus || sku).compact
+      raise ArgumentError, "sku or skus is required" if @skus.empty?
       @date_to = date_to.to_date
       @date_from = @date_to - (WINDOW_DAYS - 1).days
     end
 
     def call
+      return call_many if @skus.size > 1
+
+      call_one(@skus.first)
+    end
+
+    private
+
+    def call_many
+      snapshots_by_sku = snapshots.group_by(&:sku_id)
+      sales_by_date = fallback_sales_by_date
+      @skus.index_with do |sku|
+        call_one(sku, snapshot_rows: snapshots_by_sku.fetch(sku.id, []), sales_by_date: sales_by_date)
+      end
+    end
+
+    def call_one(sku, snapshot_rows: nil, sales_by_date: nil)
+      @sku = sku
+      @current_snapshots = snapshot_rows
+      @current_sales_by_date = sales_by_date
       timeline = effective_timeline
       calculation = calculate(timeline.map { |day| day.fetch(:sales) })
 
@@ -25,14 +45,17 @@ module ErpAI
         stockout_days: snapshots.count { |snapshot| out_of_stock?(snapshot) },
         calculation: calculation.except(:forecast).transform_values { |value| decimal(value) }
       }
+    ensure
+      @current_snapshots = nil
+      @current_sales_by_date = nil
     end
 
-    private
-
     def snapshots
+      return @current_snapshots if @current_snapshots
+
       @snapshots ||= Ec::Snapshot
         .of_type(Ec::InventorySnapshot.snapshot_type)
-        .for_sku(@sku)
+        .where(sku_id: @skus.map(&:id))
         .between(@date_from, @date_to)
         .order(:snapshot_date)
         .to_a
@@ -56,10 +79,13 @@ module ErpAI
     end
 
     def fallback_sales_by_date
-      return {} if snapshots.all? { |snapshot| snapshot.data.fetch(:overview, {}).key?(:daily_sales) }
+      return @current_sales_by_date if @current_sales_by_date
+
+      current = @current_snapshots || snapshots
+      return {} if current.all? { |snapshot| snapshot.data.fetch(:overview, {}).key?(:daily_sales) }
 
       Ec::SkuDailySalesQuery.new(
-        sku_codes: [ @sku.sku_code ],
+        sku_codes: @skus.map(&:sku_code),
         from_date: @date_from,
         to_date: @date_to,
         time_zone: snapshot_time_zone

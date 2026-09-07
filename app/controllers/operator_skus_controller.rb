@@ -7,13 +7,7 @@ class OperatorSkusController < ApplicationController
   include TableSortable
 
   PAGE_SIZE = 10
-  SORT_METRIC_PATHS = {
-    "sales" => %i[sales days_30 value],
-    "revenue" => %i[profit days_30 revenue value],
-    "profit" => %i[profit days_30 after_tax value],
-    "margin" => %i[profit days_30 margin_pct value],
-    "ads" => %i[profit days_30 ads value]
-  }.freeze
+  SORT_KEYS = %w[weekly_profit weekly_orders book_stock].freeze
 
   before_action -> { require_permission!(:view_erp) }
 
@@ -24,7 +18,7 @@ class OperatorSkusController < ApplicationController
     load_spu_sku_filter
     load_responsible_user_filters
     load_ai_diagnosis_event_filter
-    load_table_sort(allowed_keys: SORT_METRIC_PATHS.keys, default_key: "profit")
+    load_table_sort(allowed_keys: SORT_KEYS, default_key: "weekly_profit", default_direction: "desc")
 
     scope = Ec::Sku.includes(
       :master_sku,
@@ -47,16 +41,16 @@ class OperatorSkusController < ApplicationController
 
     if table_sort_key.present?
       all_skus = scope.to_a
-      all_metrics = metrics_for(all_skus)
-      sorted_skus = sort_table_records(all_skus) { |sku| all_metrics.fetch(sku).dig(*SORT_METRIC_PATHS.fetch(table_sort_key)) }
-      @skus = Kaminari.paginate_array(sorted_skus).page(page_param).per(PAGE_SIZE)
-      @skus = Kaminari.paginate_array(sorted_skus).page(@skus.total_pages).per(PAGE_SIZE) if @skus.total_pages.positive? && @skus.current_page > @skus.total_pages
-      @metrics_by_sku = @skus.index_with { |sku| all_metrics.fetch(sku) }
+      sort_values = Ec::OperatorSkuSortMetricsQuery.new(skus: all_skus, sort_key: table_sort_key, date_to: user_today, time_zone: user_time_zone).call
+      sorted = sort_table_records(all_skus) { |sku| sort_values[sku.sku_code] }
+      @skus = Kaminari.paginate_array(sorted).page(page_param).per(PAGE_SIZE)
     else
       @skus = scope.page(page_param).per(PAGE_SIZE)
-      @skus = scope.page(@skus.total_pages).per(PAGE_SIZE) if @skus.total_pages.positive? && @skus.current_page > @skus.total_pages
-      @metrics_by_sku = metrics_for(@skus)
     end
+    if @skus.total_pages.positive? && @skus.current_page > @skus.total_pages
+      @skus = table_sort_key.present? ? Kaminari.paginate_array(sorted).page(@skus.total_pages).per(PAGE_SIZE) : scope.page(@skus.total_pages).per(PAGE_SIZE)
+    end
+    @metrics_by_sku = metrics_for(@skus)
     load_latest_red_ai_diagnosis_events_for(@skus)
   end
 
