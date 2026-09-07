@@ -36,6 +36,7 @@ class ReportsSkuAttachmentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button", text: /上传附件/
     assert_select "dialog.attachment-dialog"
     assert_select "select[name='ec_attachment[attach_type]'] option[value='prototype_media']", "产品原型图"
+    assert_select "select[name='ec_attachment[attach_type]'] option[value='listing_image']", "Listing图"
     assert_select "input[type='file'][name='ec_attachment[files][]'][multiple]"
     assert_select ".attachment-dropzone", text: /点击或将文件拖到此区域/
     assert_select "#sku-#{@sku.id}-attachments-upload-dialog"

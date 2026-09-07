@@ -1381,6 +1381,7 @@ en:
         attach_types:
           unknown: "Unknown"
           invoice: "Invoice"
+          listing_image: "Listing image"
           sales_contract: "Sales contract"
           prototype_media: "Product prototype image"
         delete_confirm: "Delete this attachment?"

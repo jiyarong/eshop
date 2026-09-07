@@ -4,7 +4,7 @@ module Ec
 
     self.table_name = "ec_attachments"
 
-    SKU_ATTACH_TYPES = %w[unknown sales_contract invoice prototype_media].freeze
+    SKU_ATTACH_TYPES = %w[unknown sales_contract invoice prototype_media listing_image].freeze
     COMPANY_ATTACH_TYPES = %w[unknown business_license framework_agreement].freeze
     ATTACH_TYPES = {
       unknown: 0,
@@ -12,7 +12,8 @@ module Ec
       invoice: 2,
       business_license: 3,
       framework_agreement: 4,
-      prototype_media: 5
+      prototype_media: 5,
+      listing_image: 6
     }.freeze
 
     enum :attach_type, ATTACH_TYPES, validate: true

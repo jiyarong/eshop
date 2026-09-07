@@ -242,6 +242,8 @@ GEM
       logger
       mime-types-data (~> 3.2025, >= 3.2025.0507)
     mime-types-data (3.2026.0701)
+    mini_magick (5.4.0)
+      logger
     mini_mime (1.1.5)
     minitest (6.0.5)
       drb (~> 2.0)
@@ -541,6 +543,7 @@ DEPENDENCIES
   jsbundling-rails
   kamal
   kaminari
+  mini_magick
   mission_control-jobs
   openai
   pg (~> 1.1)

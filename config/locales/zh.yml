@@ -1583,6 +1583,7 @@ zh:
         attach_types:
           unknown: "未知"
           invoice: "发票"
+          listing_image: "Listing图"
           sales_contract: "销售合同"
           prototype_media: "产品原型图"
         delete_confirm: "确认删除这个附件？"

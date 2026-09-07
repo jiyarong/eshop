@@ -120,6 +120,10 @@ production:
     command: "Ec::SkuProductAutoBinder.call"
     schedule: every sunday at 21:30 in Asia/Shanghai
 
+  listing_image_attachment_sync:
+    command: "ErpAI::ListingImageAttachmentSync.run"
+    schedule: every day at 22:00 in Asia/Shanghai
+
   ozon_order_incremental_sync:
     command: "RawOzon::OrderIncrementalSync.run"
     schedule: every hour at minute 0

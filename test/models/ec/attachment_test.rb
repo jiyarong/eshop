@@ -33,6 +33,8 @@ class Ec::AttachmentTest < ActiveSupport::TestCase
     assert attachment.sales_contract?
     assert_equal 0, Ec::Attachment.attach_types.fetch("unknown")
     assert_equal 1, Ec::Attachment.attach_types.fetch("sales_contract")
+    assert_equal 6, Ec::Attachment.attach_types.fetch("listing_image")
+    assert_includes Ec::Attachment::SKU_ATTACH_TYPES, "listing_image"
     assert_equal "ec/test/#{@token}/contract.pdf", attachment.oss_path
     assert_equal "hash-#{@token}", attachment.qiniu_hash
     assert_equal "contract-#{@token}.pdf", attachment.filename

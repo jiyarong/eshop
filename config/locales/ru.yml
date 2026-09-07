@@ -1346,6 +1346,7 @@ ru:
         attach_types:
           unknown: "Неизвестно"
           invoice: "Счет"
+          listing_image: "Изображение листинга"
           sales_contract: "Договор продажи"
           prototype_media: "Изображение прототипа товара"
         delete_confirm: "Удалить этот файл?"
