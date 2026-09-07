@@ -10151,12 +10151,15 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-distribution__buckets { display: flex; flex-wrap: wrap; gap: 2px 10px; white-space: nowrap; }
 .operator-sku-distribution__platform { flex: 0 0 42px; text-align: right; }
 .operator-sku-finance-grid { display: grid; grid-template-columns: 1fr; gap: 3px; }
-.operator-sku-finance-grid > span { display: grid; grid-template-columns: 76px minmax(92px, auto) 1fr; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; text-align: left; }
+.operator-sku-finance-grid > span { display: grid; grid-template-columns: minmax(76px, 1fr) minmax(84px, auto) minmax(58px, 1fr); align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; text-align: left; }
+.operator-sku-finance-grid > span > :first-child,
+.operator-sku-metric-grid > span:not(.operator-sku-forecast) > :first-child,
+.operator-sku-forecast__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .operator-sku-finance-grid > span > strong { text-align: right; font-variant-numeric: tabular-nums; }
-.operator-sku-finance-grid .operator-sku-comparison { display: block; min-width: 72px; text-align: left; font-variant-numeric: tabular-nums; }
-.operator-sku-metric-grid > span:not(.operator-sku-forecast) { display: grid; grid-template-columns: 82px minmax(42px, auto) 1fr; align-items: baseline; gap: 6px; text-align: left; }
+.operator-sku-finance-grid .operator-sku-comparison { display: block; min-width: 58px; text-align: left; font-variant-numeric: tabular-nums; }
+.operator-sku-metric-grid > span:not(.operator-sku-forecast) { display: grid; grid-template-columns: minmax(82px, 1fr) minmax(42px, auto) minmax(0, 1fr); align-items: baseline; gap: 6px; text-align: left; }
 .operator-sku-metric-grid > span:not(.operator-sku-forecast) > strong { text-align: right; font-variant-numeric: tabular-nums; }
-.operator-sku-metric-grid .operator-sku-forecast__row { display: grid; grid-template-columns: 82px minmax(42px, auto) 1fr; align-items: baseline; gap: 6px; }
+.operator-sku-metric-grid .operator-sku-forecast__row { display: grid; grid-template-columns: minmax(82px, 1fr) minmax(42px, auto) minmax(0, 1fr); align-items: baseline; gap: 6px; }
 .operator-sku-metric-grid .operator-sku-forecast__row > strong { text-align: right; font-variant-numeric: tabular-nums; }
 .operator-sku-forecast__label { display: inline-flex; align-items: center; gap: 3px; }
 .operator-sku-forecast__help { display: inline-flex; padding: 0; border: 0; background: transparent; color: var(--erp-warning, #b45309); cursor: help; }
@@ -10166,12 +10169,12 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-table tbody td { text-align: left; vertical-align: top; }
 .operator-sku-table tbody td.numeric { text-align: left; }
 .operator-sku-meta { display: block; margin-top: 3px; color: var(--erp-muted); font-size: 11px; }
-.operator-sku-table { table-layout: fixed; min-width: 1400px; }
+.operator-sku-table { table-layout: fixed; min-width: 1480px; }
 .operator-sku-table th:nth-child(1), .operator-sku-table td:nth-child(1) { width: 14%; min-width: 150px; }
 .operator-sku-table th:nth-child(2), .operator-sku-table td:nth-child(2) { width: 12%; min-width: 140px; }
-.operator-sku-table th:nth-child(3), .operator-sku-table td:nth-child(3) { width: 24%; min-width: 260px; }
+.operator-sku-table th:nth-child(3), .operator-sku-table td:nth-child(3) { width: 25%; min-width: 290px; }
 .operator-sku-table th:nth-child(4), .operator-sku-table td:nth-child(4) { width: 18%; min-width: 230px; }
-.operator-sku-table th:nth-child(5), .operator-sku-table td:nth-child(5) { width: 22%; min-width: 270px; }
+.operator-sku-table th:nth-child(5), .operator-sku-table td:nth-child(5) { width: 23%; min-width: 290px; }
 .operator-sku-table th:nth-child(6), .operator-sku-table td:nth-child(6) { width: 10%; min-width: 170px; }
 .operator-sku-table td { overflow: visible; }
 .operator-sku-table td:nth-child(4) .operator-sku-pair,
@@ -10181,4 +10184,4 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-table td:nth-child(4) .operator-sku-pair,
 .operator-sku-table td:nth-child(5) .operator-sku-pair { text-align: left; }
 .operator-sku-table td:nth-child(5) .operator-sku-metric-grid > span:not(.operator-sku-forecast),
-.operator-sku-table td:nth-child(5) .operator-sku-forecast__row { grid-template-columns: 94px minmax(42px, auto) 1fr; }
+.operator-sku-table td:nth-child(5) .operator-sku-forecast__row { grid-template-columns: minmax(94px, 1fr) minmax(42px, auto) minmax(0, 1fr); }
