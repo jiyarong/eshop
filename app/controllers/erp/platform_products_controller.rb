@@ -12,6 +12,11 @@ module Erp
       return render_not_found unless @raw_product
 
       @raw_product_attribute = raw_product_attribute
+      @sku_product = @store.sku_products.find_by(platform: @platform, product_id: @product_id)
+      @listing_suggestions = @sku_product&.ai_suggestions
+        &.of_type(Ec::AISuggestion::LISTING_AUDIT_TYPE)
+        &.includes(:submitted_by)
+        &.recent_first
     end
 
     private

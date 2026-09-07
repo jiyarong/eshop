@@ -21,6 +21,10 @@ module Ec
       class_name: "Ec::OperationAction",
       foreign_key: :ec_sku_product_id,
       dependent: :restrict_with_error
+    has_many :ai_suggestions,
+      as: :suggestable,
+      class_name: "Ec::AISuggestion",
+      dependent: :destroy
 
     validates :sku_code, :store, :platform, :product_id, presence: true
     validates :product_id, uniqueness: { scope: :store_id }

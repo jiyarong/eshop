@@ -113,6 +113,10 @@ module Erp
     end
 
     teardown do
+      Ec::AISuggestion.where(
+        suggestable_type: "Ec::SkuProduct",
+        suggestable_id: Ec::SkuProduct.where(sku_code: @sku&.sku_code).select(:id)
+      ).destroy_all
       Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuProduct)
       RawOzon::ProductAttribute.where(account_id: @ozon_account&.id).delete_all
       RawOzon::Product.where(account_id: @ozon_account&.id).delete_all
@@ -138,7 +142,7 @@ module Erp
       assert_select "td", "绑定页面 Ozon 店 #{@token}"
       assert_select "td", @bound_raw_ozon_product.ozon_product_id.to_s
       assert_select "td", "BOUND-OZON-#{@token}"
-      assert_select "a[href=?]", "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}", "查看属性"
+      assert_select "a[href=?][data-turbo-frame=?]", "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}", "_top", "查看属性"
       assert_select "a[href=?][target=?]", "https://seller.ozon.ru/app/products/3902460130/edit/general-info", "_blank"
       assert_select "form[action=?][method=?]", "/erp/skus/#{@sku.id}/products", "post"
       assert_select "select[name=?]", "raw_product_platform"
@@ -168,7 +172,7 @@ module Erp
       get "/erp/skus/#{@sku.id}/products", headers: { "Accept" => "text/html" }
 
       assert_response :success
-      assert_select "a[href=?]", "/erp/platform_products/wb/#{@wb_store.id}/7777001", "查看属性"
+      assert_select "a[href=?][data-turbo-frame=?]", "/erp/platform_products/wb/#{@wb_store.id}/7777001", "_top", "查看属性"
       assert_select "a[href=?][target=?]", "https://seller.wildberries.ru/new-goods/card?nmID=7777001&type=EXIST_CARD", "_blank"
     ensure
       wb_binding&.destroy
@@ -203,6 +207,92 @@ module Erp
       assert_select "td", "Brand"
       assert_select "td", "Unbound Brand #{@token}"
       assert_select "body", text: /WB 商品属性/, count: 0
+      assert_select ".listing-diagnoses-panel", text: /尚未绑定 SKU/
+      assert_select "form[action*='listing_diagnoses']", count: 0
+    end
+
+    test "bound platform product renders listing diagnosis action and history" do
+      suggestion = @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user,
+        status: :completed,
+        content: "## 诊断结论\n\n需要优化标题。",
+        started_at: 2.minutes.ago,
+        completed_at: 1.minute.ago
+      )
+
+      get "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}",
+        headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "h2", "Listing AI 诊断"
+      assert_select "form[action=?]",
+        "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses.turbo_stream"
+      assert_select ".listing-diagnosis-status--completed", "已完成"
+      assert_select "a[href=?]",
+        "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses/#{suggestion.id}",
+        "查看详情"
+    end
+
+    test "starting a listing diagnosis returns immediately and enqueues the job" do
+      assert_enqueued_jobs 1, only: AITasks::ListingDiagnosisJob do
+        assert_difference -> { @binding.ai_suggestions.count }, 1 do
+          post "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses.turbo_stream"
+        end
+      end
+
+      assert_response :accepted
+      suggestion = @binding.ai_suggestions.recent_first.first
+      assert suggestion.pending?
+      assert_equal Ec::AISuggestion::LISTING_AUDIT_TYPE, suggestion.suggestion_type
+      assert_select "turbo-stream[action='replace'][target=?]", "listing_diagnoses_ec_sku_product_#{@binding.id}"
+      assert_select ".listing-diagnosis-status--pending", "等待诊断"
+      assert_select "[data-controller='listing-diagnosis-status']"
+    end
+
+    test "listing diagnosis status endpoint refreshes the history panel" do
+      @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user
+      )
+
+      get "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses.turbo_stream"
+      assert_response :success
+      assert_select "turbo-stream[action='replace'][target=?]", "listing_diagnoses_ec_sku_product_#{@binding.id}"
+    end
+
+    test "does not enqueue a second active listing diagnosis" do
+      @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user
+      )
+
+      assert_no_enqueued_jobs only: AITasks::ListingDiagnosisJob do
+        assert_no_difference -> { @binding.ai_suggestions.count } do
+          post "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses.turbo_stream"
+        end
+      end
+
+      assert_response :accepted
+      assert_select ".listing-diagnosis-status--pending", "等待诊断"
+    end
+
+    test "listing diagnosis detail renders a completed markdown result" do
+      suggestion = @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user,
+        status: :completed,
+        content: "## 诊断结论\n\n需要优化标题。",
+        completed_at: Time.current
+      )
+
+      get "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses/#{suggestion.id}",
+        headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "h1", "Listing AI 诊断详情"
+      assert_select "[data-controller='markdown']"
+      assert_select "pre", text: /需要优化标题/
     end
 
     test "platform product show renders unbound wb product characteristics with the wb template" do

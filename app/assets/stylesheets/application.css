@@ -2336,6 +2336,113 @@ table thead th {
   padding: 0;
 }
 
+.listing-diagnoses-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.listing-diagnoses-panel__header .section-title {
+  margin-bottom: 4px;
+}
+
+.listing-diagnoses-panel__description,
+.listing-diagnoses-panel__notice {
+  margin: 0;
+  color: var(--erp-muted);
+}
+
+.listing-diagnoses-panel__form {
+  flex: 0 0 auto;
+}
+
+.listing-diagnoses-panel__header .button {
+  min-height: 44px;
+}
+
+.listing-diagnoses-panel__header .button:disabled,
+.listing-diagnoses-panel__header .button:disabled:hover {
+  background: var(--color-primary, var(--erp-brand));
+  box-shadow: none;
+  cursor: wait;
+  opacity: .65;
+}
+
+.listing-diagnoses-panel__spinner {
+  display: inline-block;
+  animation: listing-diagnosis-spin 1s linear infinite;
+}
+
+.listing-diagnoses-table {
+  min-width: 720px;
+}
+
+.listing-diagnosis-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.listing-diagnosis-status--pending,
+.listing-diagnosis-status--running {
+  background: #fff4d6;
+  color: #805b00;
+}
+
+.listing-diagnosis-status--completed {
+  background: #e5f7ef;
+  color: #0d7651;
+}
+
+.listing-diagnosis-status--failed {
+  background: var(--erp-danger-bg);
+  color: var(--erp-danger-text);
+}
+
+.listing-diagnosis-detail__source {
+  max-height: none;
+  margin: 0;
+}
+
+.listing-diagnosis-detail__error {
+  padding: 14px 16px;
+}
+
+.listing-diagnosis-detail__pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--erp-muted);
+}
+
+@keyframes listing-diagnosis-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listing-diagnoses-panel__spinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .listing-diagnoses-panel__header {
+    display: grid;
+  }
+
+  .listing-diagnoses-panel__header .button,
+  .listing-diagnoses-panel__form {
+    width: 100%;
+  }
+}
+
 @media (max-width: 720px) {
   .ai-conversation-heading {
     display: grid;

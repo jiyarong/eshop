@@ -1831,7 +1831,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "销量统计 Ozon 店 #{@sku_code}"
     assert_select "td", "Ozon 绑定商品"
     binding = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
-    assert_select "a[href=?]", "/erp/platform_products/ozon/#{@sales_store.id}/#{binding.product_id}", "查看属性"
+    assert_select "a[href=?][data-turbo-frame=?]", "/erp/platform_products/ozon/#{@sales_store.id}/#{binding.product_id}", "_top", "查看属性"
     assert_select "a[href=?][target=?]", "https://seller.ozon.ru/app/products/#{binding.platform_sku_id}/edit/general-info", "_blank"
     assert_select "a[href=?][data-turbo-frame=?]", "/erp/skus/#{@sku.id}/products", "erp_modal"
   end

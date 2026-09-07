@@ -32,6 +32,17 @@
     </dl>
   </section>
 
+  <% if @sku_product %>
+    <%= render "erp/platform_products/listing_diagnoses",
+          sku_product: @sku_product,
+          listing_suggestions: @listing_suggestions %>
+  <% else %>
+    <section class="panel listing-diagnoses-panel">
+      <h2 class="section-title"><%= t("erp.sku_products.listing_diagnosis.title") %></h2>
+      <p class="listing-diagnoses-panel__notice"><%= t("erp.sku_products.listing_diagnosis.unbound") %></p>
+    </section>
+  <% end %>
+
   <% if @raw_product %>
     <%= render "erp/platform_products/#{@platform}_product_details" %>
   <% else %>

@@ -1,0 +1,61 @@
+<% content_for :page_heading, t("erp.sku_products.listing_diagnosis.detail_title") %>
+
+<div class="resource-header">
+  <div>
+    <p class="resource-eyebrow"><%= t("erp.sku_products.listing_diagnosis.eyebrow") %></p>
+    <h1 class="page-title"><%= t("erp.sku_products.listing_diagnosis.detail_title") %></h1>
+  </div>
+  <div class="resource-actions">
+    <%= link_to erp_platform_product_path(
+          @sku_product.platform,
+          @sku_product.store_id,
+          @sku_product.product_id,
+          locale: params[:locale].presence,
+          anchor: dom_id(@sku_product, :listing_diagnoses)
+        ), class: "button button-secondary" do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <%= t("erp.sku_products.listing_diagnosis.back") %>
+    <% end %>
+  </div>
+</div>
+
+<div class="report-stack">
+  <section class="panel">
+    <h2 class="section-title"><%= t("erp.sku_products.listing_diagnosis.summary") %></h2>
+    <dl class="definition-list">
+      <dt><%= t("erp.sku_products.fields.product_id") %></dt>
+      <dd><%= @sku_product.product_id %></dd>
+      <dt><%= t("erp.sku_products.listing_diagnosis.fields.sku") %></dt>
+      <dd><%= @sku_product.sku_code %></dd>
+      <dt><%= t("erp.sku_products.listing_diagnosis.fields.submitted_by") %></dt>
+      <dd><%= @listing_suggestion.submitted_by.display_name %></dd>
+      <dt><%= t("erp.sku_products.listing_diagnosis.fields.created_at") %></dt>
+      <dd><%= display_time(@listing_suggestion.created_at) %></dd>
+      <dt><%= t("erp.sku_products.listing_diagnosis.fields.status") %></dt>
+      <dd>
+        <span class="listing-diagnosis-status listing-diagnosis-status--<%= @listing_suggestion.status %>">
+          <%= t("erp.sku_products.listing_diagnosis.statuses.#{@listing_suggestion.status}") %>
+        </span>
+      </dd>
+      <dt><%= t("erp.sku_products.listing_diagnosis.fields.completed_at") %></dt>
+      <dd><%= display_time(@listing_suggestion.completed_at) %></dd>
+    </dl>
+  </section>
+
+  <section class="panel listing-diagnosis-detail">
+    <h2 class="section-title"><%= t("erp.sku_products.listing_diagnosis.result_title") %></h2>
+    <% if @listing_suggestion.completed? %>
+      <div data-controller="markdown">
+        <pre class="code-viewer listing-diagnosis-detail__source" data-markdown-target="source"><%= @listing_suggestion.content %></pre>
+        <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+      </div>
+    <% elsif @listing_suggestion.failed? %>
+      <div class="error-box listing-diagnosis-detail__error"><%= t("erp.sku_products.listing_diagnosis.failed_detail") %></div>
+    <% else %>
+      <p class="listing-diagnosis-detail__pending" aria-live="polite">
+        <i class="bi bi-arrow-repeat listing-diagnoses-panel__spinner" aria-hidden="true"></i>
+        <%= t("erp.sku_products.listing_diagnosis.pending_detail") %>
+      </p>
+    <% end %>
+  </section>
+</div>

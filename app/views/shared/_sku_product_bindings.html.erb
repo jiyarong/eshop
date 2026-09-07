@@ -36,7 +36,7 @@
               <td><%= binding.product_id %></td>
               <td><%= binding.offer_id.presence || "-" %></td>
               <td><span data-controller="long-text" data-long-text-limit-value="50"><%= binding.product_name.presence || "-" %></span></td>
-              <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(binding.platform, binding.store_id, binding.product_id) %></td>
+              <td><%= link_to t("erp.sku_products.actions.view_attributes"), erp_platform_product_path(binding.platform, binding.store_id, binding.product_id), data: { turbo_frame: "_top" } %></td>
               <td>
                 <% edit_url = product_edit_url(binding.platform, binding.platform_sku_id.presence || binding.product_id) %>
                 <% if edit_url %>

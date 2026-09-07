@@ -1,0 +1,88 @@
+<% active_suggestion = listing_suggestions.detect(&:active?) %>
+<% panel_id = dom_id(sku_product, :listing_diagnoses) %>
+<% status_url = erp_platform_product_listing_diagnoses_path(
+     sku_product.platform,
+     sku_product.store_id,
+     sku_product.product_id,
+     locale: params[:locale].presence,
+     format: :turbo_stream
+   ) %>
+
+<section id="<%= panel_id %>"
+         class="panel listing-diagnoses-panel"
+         <% if active_suggestion %>
+           data-controller="listing-diagnosis-status"
+           data-listing-diagnosis-status-url-value="<%= status_url %>"
+         <% end %>>
+  <div class="listing-diagnoses-panel__header">
+    <div>
+      <h2 class="section-title"><%= t("erp.sku_products.listing_diagnosis.title") %></h2>
+      <p class="listing-diagnoses-panel__description"><%= t("erp.sku_products.listing_diagnosis.description") %></p>
+    </div>
+
+    <% if active_suggestion %>
+      <button type="button" class="button" disabled aria-busy="true">
+        <i class="bi bi-arrow-repeat listing-diagnoses-panel__spinner" aria-hidden="true"></i>
+        <%= t("erp.sku_products.listing_diagnosis.statuses.#{active_suggestion.status}") %>
+      </button>
+    <% else %>
+      <%= button_to erp_platform_product_listing_diagnoses_path(
+            sku_product.platform,
+            sku_product.store_id,
+            sku_product.product_id,
+            locale: params[:locale].presence,
+            format: :turbo_stream
+          ),
+          method: :post,
+          class: "button",
+          form: { class: "listing-diagnoses-panel__form" },
+          data: { turbo_submits_with: t("erp.sku_products.listing_diagnosis.starting") } do %>
+        <i class="bi bi-stars" aria-hidden="true"></i>
+        <%= t("erp.sku_products.listing_diagnosis.start") %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if listing_suggestions.any? %>
+    <%= table_viewport do %>
+      <table class="listing-diagnoses-table">
+        <thead>
+          <tr>
+            <th><%= t("erp.sku_products.listing_diagnosis.fields.created_at") %></th>
+            <th><%= t("erp.sku_products.listing_diagnosis.fields.submitted_by") %></th>
+            <th><%= t("erp.sku_products.listing_diagnosis.fields.status") %></th>
+            <th><%= t("erp.sku_products.listing_diagnosis.fields.completed_at") %></th>
+            <th class="table-actions-column"><%= t("erp.sku_products.listing_diagnosis.fields.actions") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% listing_suggestions.each do |suggestion| %>
+            <tr>
+              <td><%= display_time(suggestion.created_at) %></td>
+              <td><%= suggestion.submitted_by.display_name %></td>
+              <td>
+                <span class="listing-diagnosis-status listing-diagnosis-status--<%= suggestion.status %>">
+                  <%= t("erp.sku_products.listing_diagnosis.statuses.#{suggestion.status}") %>
+                </span>
+              </td>
+              <td><%= display_time(suggestion.completed_at) %></td>
+              <td class="table-row-actions">
+                <%= link_to t("erp.sku_products.listing_diagnosis.view"),
+                      erp_platform_product_listing_diagnosis_path(
+                        sku_product.platform,
+                        sku_product.store_id,
+                        sku_product.product_id,
+                        suggestion,
+                        locale: params[:locale].presence
+                      ),
+                      class: "text-link" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  <% else %>
+    <p class="empty-state"><%= t("erp.sku_products.listing_diagnosis.empty") %></p>
+  <% end %>
+</section>

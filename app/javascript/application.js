@@ -19,6 +19,7 @@ import HistoryNavigationController from "./controllers/history_navigation_contro
 import HierarchyTableController from "./controllers/hierarchy_table_controller";
 import InlineCellController from "./controllers/inline_cell_controller";
 import LongTextController from "./controllers/long_text_controller";
+import ListingDiagnosisStatusController from "./controllers/listing_diagnosis_status_controller";
 import MarkdownController from "./controllers/markdown_controller";
 import ModalController from "./controllers/modal_controller";
 import OperatorDialogController from "./controllers/operator_dialog_controller";
@@ -63,6 +64,7 @@ Stimulus.register("history-navigation", HistoryNavigationController);
 Stimulus.register("hierarchy-table", HierarchyTableController);
 Stimulus.register("inline-cell", InlineCellController);
 Stimulus.register("long-text", LongTextController);
+Stimulus.register("listing-diagnosis-status", ListingDiagnosisStatusController);
 Stimulus.register("markdown", MarkdownController);
 Stimulus.register("modal", ModalController);
 Stimulus.register("operator-dialog", OperatorDialogController);
