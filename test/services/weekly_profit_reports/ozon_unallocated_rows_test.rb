@@ -16,10 +16,20 @@ class WeeklyProfitReports::OzonUnallocatedRowsTest < ActiveSupport::TestCase
     }
 
     assert_equal [
-      { type_id: 96, type_name: "Ускоренная проверка (AcceleratedReviewCollection)", amount: 3.5 },
-      { type_id: 41, type_name: "PPC (нет данных Performance)", amount: 5.0 },
-      { type_id: 54, type_name: "Продвижение (нет данных Performance)", amount: 7.0 },
-      { type_id: 999, type_name: "type_id=999", amount: 3.4 }
+      { type_id: 96, type_name: "加速审核费 / Ускоренная проверка / AcceleratedReviewCollection (Ozon type 96)", amount: 3.5 },
+      { type_id: 41, type_name: "PPC 广告费 / Оплата за клики (Ozon type 41)", amount: 5.0 },
+      { type_id: 54, type_name: "推广费 / Продвижение / Promotion (Ozon type 54)", amount: 7.0 },
+      { type_id: 999, type_name: "CustomFee (Ozon type 999)", amount: 3.4 }
     ], WeeklyProfitReports::OzonUnallocatedRows.normalize(unallocated)
+  end
+
+  test "uses a readable category for type 101 when Ozon omits the name" do
+    rows = WeeklyProfitReports::OzonUnallocatedRows.normalize(
+      total: -9_240,
+      rows: [{ type_id: 101, type_name: nil, amount: -9_240 }]
+    )
+
+    assert_equal "其他平台费用 / Прочие расходы Ozon (Ozon type 101)", rows.first[:type_name]
+    assert_equal(-9_240.0, rows.first[:amount])
   end
 end

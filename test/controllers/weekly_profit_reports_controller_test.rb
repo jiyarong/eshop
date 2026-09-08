@@ -347,9 +347,9 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#weekly_profit_report_results" do
-      assert_select ".weekly-profit-table-value", text: "Ускоренная проверка (AcceleratedReviewCollection)"
+      assert_select ".weekly-profit-table-value", text: "加速审核费 / Ускоренная проверка / AcceleratedReviewCollection (Ozon type 96)"
       assert_select ".weekly-profit-table-value", text: "3.50"
-      assert_select ".weekly-profit-table-value", text: "PPC (нет данных Performance)"
+      assert_select ".weekly-profit-table-value", text: "PPC 广告费 / Оплата за клики (Ozon type 41)"
       assert_select ".weekly-profit-table-value", text: "5.00"
       assert_select ".weekly-profit-table-value", text: "POST-1", count: 0
       assert_select ".weekly-profit-table-value", text: "POST-2", count: 0

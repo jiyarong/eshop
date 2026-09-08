@@ -138,7 +138,7 @@ module GoogleSheets
     SKU_HDR_ZH = [
       'SKU', '品号', '商品名称',
       '销售收入', '平台佣金', '物流费', '支付手续费', '出货费', '打包费',
-      '退货处理费', '临时仓储', '残次品处理', '越库费',
+      '退货处理费', '临时仓储', '残次品处理', '越库费', '其他平台费用',
       '客户下单数', '净成交数', '退货笔数',
       '广告费', '广告费占比%',
       '账面利润', '扣广告后利润',
@@ -150,7 +150,7 @@ module GoogleSheets
     SKU_HDR_RU = [
       'SKU', 'Артикул', 'Название товара',
       'Выручка', 'Комиссия Ozon', 'Доставка', 'Эквайринг', 'Отгрузка', 'Упаковка',
-      'Обработка возврата', 'Врем. хранение', 'Списание брака', 'Кросс-докинг',
+      'Обработка возврата', 'Врем. хранение', 'Списание брака', 'Кросс-докинг', 'Прочие расходы Ozon',
       'Заказано', 'Чистые продажи', 'Возвратов',
       'Реклама', 'Доля рекламы %',
       'Маржа Ozon', 'Маржа после рекламы',
@@ -162,7 +162,7 @@ module GoogleSheets
     SKU_COL_TYPES = [
       :text, :text, :text,
       :number, :number, :number, :number, :number, :number,
-      :number, :number, :number, :number,
+      :number, :number, :number, :number, :number,
       :integer, :integer, :integer,
       :number, :percent,
       :number, :number,
@@ -174,7 +174,7 @@ module GoogleSheets
     SKU_COL_WIDTHS = [
       220, 220, 220,
       90, 90, 90, 90, 80, 80,
-      90, 90, 90, 90,
+      90, 90, 90, 90, 100,
       75, 75, 75,
       90, 70,
       100, 100,
@@ -193,7 +193,7 @@ module GoogleSheets
         r[:ozon_sku_id], r[:sku_code], @name_map[r[:sku_code]],
         r[:sales_revenue], r[:commission], r[:delivery_charge],
         r[:payment_fee], r[:dispatch_fee], r[:packing_fee],
-        r[:return_delivery], r[:storage_fee], r[:defect_fee], r[:crossdock_fee],
+        r[:return_delivery], r[:storage_fee], r[:defect_fee], r[:crossdock_fee], r[:other_fee],
         r[:order_count], r[:net_sales_count], r[:return_count],
         total_ad.round(2), ad_pct,
         r[:book_profit], r[:book_profit_after_ad],
@@ -210,8 +210,8 @@ module GoogleSheets
       isum = ->(i) { data_rows.sum { |r| r[i].to_i } }
 
       total_sales = fsum.call(3)
-      total_ad    = fsum.call(16)
-      total_after = fsum.call(26)
+      total_ad    = fsum.call(17)
+      total_after = fsum.call(27)
       ad_pct      = total_sales != 0 ? (total_ad.abs / total_sales * 100).round(1) : nil
       margin_pct  = total_sales != 0 ? (total_after / total_sales * 100).round(1) : nil
 
@@ -219,13 +219,13 @@ module GoogleSheets
         '合计 / Итого', nil, nil,
         total_sales,    fsum.call(4),  fsum.call(5),  fsum.call(6),
         fsum.call(7),   fsum.call(8),  fsum.call(9),  fsum.call(10),
-        fsum.call(11),  fsum.call(12),
-        isum.call(13),  isum.call(14), isum.call(15),
+        fsum.call(11),  fsum.call(12), fsum.call(13),
+        isum.call(14),  isum.call(15), isum.call(16),
         total_ad, ad_pct,
-        fsum.call(18),  fsum.call(19),
-        isum.call(20),  isum.call(21),
-        fsum.call(22),  fsum.call(23), fsum.call(24),
-        fsum.call(25),  total_after,   margin_pct,
+        fsum.call(19),  fsum.call(20),
+        isum.call(21),  isum.call(22),
+        fsum.call(23),  fsum.call(24), fsum.call(25),
+        fsum.call(26),  total_after,   margin_pct,
       ]
     end
 
@@ -289,8 +289,9 @@ module GoogleSheets
       total_stor     = rsum(rs, :storage_fee)
       total_defect   = rsum(rs, :defect_fee)
       total_cross    = rsum(rs, :crossdock_fee)
+      total_other    = rsum(rs, :other_fee)
       total_platform = (total_comm + total_deliv + total_pay + total_dispatch + total_packing +
-                        total_ret  + total_stor  + total_defect + total_cross).round(2)
+                        total_ret  + total_stor  + total_defect + total_cross + total_other).round(2)
       total_promo    = rs.sum { |r| r[:promotion_cost].to_f.abs }.round(2)
       total_ppc      = rs.sum { |r| r[:ppc_cost].to_f.abs }.round(2)
       total_ad       = rsum(rs, :total_ad_cost)
@@ -300,6 +301,7 @@ module GoogleSheets
       total_pre_tax  = rsum(rs, :pre_tax_profit)
       total_after_tax = rsum(rs, :after_tax_profit)
       ua_total       = ua[:total].to_f.round(2)
+      platform_settlement = (rsum(rs, :book_profit_after_ad) + ua_total).round(2)
       blr_orders     = rs.sum { |r| r[:blr_count].to_i }
       exp_orders     = rs.sum { |r| r[:export_count].to_i }
 
@@ -326,6 +328,7 @@ module GoogleSheets
         { label: '临时仓储 / Хранение',        value: total_stor,                    type: :normal },
         { label: '残次品 / Брак',              value: total_defect,                  type: :normal },
         { label: '越库费 / Кросс-докинг',      value: total_cross,                   type: :normal },
+        { label: '其他平台费用 / Прочие расходы Ozon', value: total_other,            type: :normal },
         { label: '平台费合计 / Платформа итого', value: total_platform,              type: :subtotal },
         { label: '── 广告费 / Реклама ──',     value: nil,                           type: :section },
         { label: 'Promotion / Продвижение',     value: -total_promo,                  type: :normal },
@@ -338,10 +341,9 @@ module GoogleSheets
         { label: '白俄增值税 / НДС РБ',        value: total_blr_tax,                 type: :normal },
         { label: '出口退税 / Возмещение НДС',  value: total_exp_ref,                 type: :normal },
         { label: '── 未分摊 / Нераспределено ──', value: nil,                        type: :section },
-        { label: 'Ускоренная проверка (96)',    value: ua.dig(:rows)&.select { |r| r[:type_id].to_i == 96 }&.sum { |r| r[:amount].to_f }&.round(2) || 0, type: :normal },
-        { label: 'Штраф задержка отгрузки (94)', value: ua.dig(:rows)&.select { |r| r[:type_id].to_i == 94 }&.sum { |r| r[:amount].to_f }&.round(2) || 0, type: :normal },
-        { label: 'Эквайринг не привязан (1)',  value: ua.dig(:rows)&.select { |r| r[:type_id].to_i == 1 }&.sum { |r| r[:amount].to_f }&.round(2) || 0, type: :normal },
+        *WeeklyProfitReports::OzonUnallocatedRows.normalize(ua).map { |row| { label: row[:type_name], value: row[:amount], type: :normal } },
         { label: '未分摊合计 / Нераспред. итого', value: ua_total,                   type: :subtotal },
+        { label: '平台结算总额 / Выплата Ozon', value: platform_settlement,          type: :subtotal },
         { label: '── 利润 / Прибыль ──',       value: nil,                           type: :section },
         { label: '税前毛利 / Прибыль до налогов', value: total_pre_tax,              type: :normal },
         { label: '税后净利 / Чистая прибыль',  value: total_after_tax,               type: :total },
