@@ -108,6 +108,11 @@
                show_sku_code: false,
                show_actions: false,
                actions_path: erp_sku_sku_products_path(@sku) %>
+    <%= render "reports/sku_listing_diagnoses",
+               sku: @sku,
+               sku_products: @sku_products,
+               listing_suggestions_by_product_id: @listing_suggestions_by_product_id,
+               active_product_ids: @active_listing_suggestion_product_ids %>
     <%= render "reports/sku_attachments" %>
   <% elsif @active_tab == "inventory" %>
     <%= render "reports/inventory_drawer_content_frame", inventory_detail: @inventory_detail, sku: @sku %>

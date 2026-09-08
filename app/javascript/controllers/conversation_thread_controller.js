@@ -1,34 +1,39 @@
 import { Controller } from "@hotwired/stimulus";
 
-export function findToolExchangeRuns(elements) {
-  const runs = [];
+export function findToolExchangePairs(elements) {
+  const pendingRequests = new Map();
+  const pairs = [];
 
-  for (let index = 0; index < elements.length; index += 1) {
-    if (elements[index].dataset.toolRequest !== "true") continue;
+  elements.forEach((element) => {
+    const toolCallId = element.dataset.toolCallId;
+    if (!toolCallId) return;
 
-    const run = [elements[index]];
-    while (elements[index + 1]?.dataset.toolResponse === "true") {
-      index += 1;
-      run.push(elements[index]);
+    if (element.dataset.toolRequest === "true") {
+      const requests = pendingRequests.get(toolCallId) || [];
+      requests.push(element);
+      pendingRequests.set(toolCallId, requests);
+      return;
     }
 
-    if (run.length > 1) runs.push(run);
-  }
+    if (element.dataset.toolResponse !== "true") return;
 
-  return runs;
+    const requests = pendingRequests.get(toolCallId);
+    if (!requests?.length) return;
+
+    pairs.push([requests.shift(), element]);
+  });
+
+  return pairs;
 }
 
 export function mergeToolExchanges(container, label, createElement = (tagName) => document.createElement(tagName)) {
-  container.querySelectorAll(":scope > .ai-tool-exchange").forEach((exchange) => {
-    exchange.replaceWith(...exchange.children);
-  });
-
-  findToolExchangeRuns(Array.from(container.children)).forEach((messages) => {
+  findToolExchangePairs(Array.from(container.children)).forEach(([request, response]) => {
     const exchange = createElement("section");
     exchange.className = "ai-tool-exchange";
     exchange.setAttribute("aria-label", label);
-    messages[0].before(exchange);
-    messages.forEach((message) => exchange.append(message));
+    exchange.dataset.toolCallId = request.dataset.toolCallId;
+    request.before(exchange);
+    exchange.append(request, response);
   });
 }
 

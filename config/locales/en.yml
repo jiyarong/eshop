@@ -51,6 +51,7 @@ en:
         processing: "Processing"
         remove_image: "Remove image"
         send: "Send"
+      edit_agent: "Edit Agent"
       errors:
         empty_message: "Enter a message or select an image"
         enqueue_failed: "The message could not be submitted. Try again."
@@ -1388,6 +1389,9 @@ en:
       loading:
         title: "SKU details"
         subtitle: "Loading details..."
+      listing_diagnosis:
+        choose_product: "Select a platform product to diagnose"
+        no_products: "This SKU has no platform products to diagnose"
       actions:
         add_predicted_cost: "Add predicted cost"
         ai_diagnosis: "AI diagnosis"

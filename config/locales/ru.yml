@@ -22,6 +22,7 @@ ru:
         processing: "Обработка"
         remove_image: "Удалить изображение"
         send: "Отправить"
+      edit_agent: "Редактировать Agent"
       errors:
         empty_message: "Введите сообщение или выберите изображение"
         enqueue_failed: "Не удалось отправить сообщение. Повторите попытку."
@@ -1353,6 +1354,9 @@ ru:
       loading:
         title: "Данные SKU"
         subtitle: "Загрузка данных..."
+      listing_diagnosis:
+        choose_product: "Выберите товар платформы для диагностики"
+        no_products: "У этого SKU нет товаров платформы для диагностики"
       actions:
         add_predicted_cost: "Добавить прогнозную себестоимость"
         ai_diagnosis: "AI-диагностика"

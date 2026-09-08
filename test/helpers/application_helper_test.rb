@@ -51,13 +51,23 @@ class ApplicationHelperTest < ActionView::TestCase
     assert_equal "## SKU context\n\nInventory: 3", ai_conversation_context_markdown(context)
   end
 
-  test "conversation tool requests are identified from assistant payloads" do
+  test "conversation tool calls are extracted from assistant payloads" do
     tool_request = Message.new(
       role: "assistant",
-      content: { tool_calls: [ { name: "search" } ] }.to_json
+      content: { tool_calls: [ { id: "call_1", name: "search" } ] }.to_json
     )
 
-    assert ai_conversation_tool_request?(tool_request)
-    assert_not ai_conversation_tool_request?(Message.new(role: "assistant", content: "Answer"))
+    assert_equal "call_1", ai_conversation_tool_call_id(ai_conversation_tool_calls(tool_request).first)
+    assert_empty ai_conversation_tool_calls(Message.new(role: "assistant", content: "Answer"))
+  end
+
+  test "conversation tool responses expose their tool call id" do
+    tool_response = Message.new(
+      role: "tool",
+      content: { tool_call_id: "call_1", result: { content: "found" } }.to_json
+    )
+
+    assert_equal "call_1", ai_conversation_tool_response_id(tool_response)
+    assert_nil ai_conversation_tool_response_id(Message.new(role: "tool", content: "invalid"))
   end
 end

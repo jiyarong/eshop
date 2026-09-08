@@ -228,6 +228,46 @@ class ReportsController < ApplicationController
     end
   end
 
+  def sku_listing_diagnoses
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    load_sku_listing_diagnoses
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          helpers.dom_id(@sku, :listing_diagnoses),
+          partial: "reports/sku_listing_diagnoses",
+          locals: sku_listing_diagnosis_locals
+        )
+      end
+      format.html { redirect_to report_sku_path(@sku.sku_code, tab: "basic", locale: params[:locale].presence) }
+    end
+  end
+
+  def new_sku_listing_diagnosis
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    load_sku_listing_diagnoses
+    render :new_sku_listing_diagnosis_modal
+  end
+
+  def create_sku_listing_diagnosis
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    sku_product = @sku.sku_products.find(params[:sku_product_id])
+    suggestion = sku_product.ai_suggestions.create!(
+      suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+      submitted_by: current_user
+    )
+    AITasks::ListingDiagnosisJob.perform_later(suggestion.id, locale: I18n.locale.to_s)
+
+    redirect_to report_sku_path(@sku.sku_code, tab: "basic", locale: params[:locale].presence),
+      notice: t("erp.sku_products.listing_diagnosis.enqueued"),
+      status: :see_other
+  rescue ActiveRecord::RecordNotUnique
+    redirect_to report_sku_path(@sku.sku_code, tab: "basic", locale: params[:locale].presence),
+      notice: t("erp.sku_products.listing_diagnosis.already_running"),
+      status: :see_other
+  end
+
   def sku_profit_trend
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     begin
@@ -740,6 +780,7 @@ class ReportsController < ApplicationController
     @ozon_costs = @sku.platform_costs.select { |cost| cost.platform == "ozon" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
+    load_sku_listing_diagnoses if @active_tab == "basic"
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     @prototype_media = @attachments.reverse.find do |attachment|
@@ -818,6 +859,31 @@ class ReportsController < ApplicationController
     else
       []
     end
+  end
+
+  def load_sku_listing_diagnoses
+    @sku_products ||= @sku.sku_products.includes(:store)
+      .sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
+    suggestions = Ec::AISuggestion
+      .where(
+        suggestable_type: Ec::SkuProduct.polymorphic_name,
+        suggestable_id: @sku_products.map(&:id),
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE
+      )
+      .includes(:submitted_by)
+      .recent_first
+      .to_a
+    @listing_suggestions_by_product_id = suggestions.group_by(&:suggestable_id)
+    @active_listing_suggestion_product_ids = suggestions.select(&:active?).map(&:suggestable_id)
+  end
+
+  def sku_listing_diagnosis_locals
+    {
+      sku: @sku,
+      sku_products: @sku_products,
+      listing_suggestions_by_product_id: @listing_suggestions_by_product_id,
+      active_product_ids: @active_listing_suggestion_product_ids
+    }
   end
 
   def sku_predicted_cost_params

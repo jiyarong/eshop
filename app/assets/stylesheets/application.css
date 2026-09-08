@@ -2645,6 +2645,83 @@ table thead th {
   min-width: 720px;
 }
 
+.sku-listing-diagnoses__products {
+  display: grid;
+  gap: 20px;
+}
+
+.sku-listing-diagnoses__product + .sku-listing-diagnoses__product {
+  border-top: 1px solid var(--erp-border);
+  padding-top: 20px;
+}
+
+.sku-listing-diagnoses__product-header {
+  margin-bottom: 10px;
+}
+
+.sku-listing-diagnoses__product-header h3 {
+  margin: 0 0 2px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.sku-listing-diagnoses__product-header p {
+  margin: 0;
+  color: var(--erp-muted);
+  font-size: 13px;
+}
+
+.listing-diagnosis-product-picker {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 18px;
+  border: 0;
+  padding: 0;
+}
+
+.listing-diagnosis-product-picker legend {
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.listing-diagnosis-product-picker__option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.listing-diagnosis-product-picker__option:has(input:checked) {
+  border-color: var(--erp-brand);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--erp-brand) 18%, transparent);
+}
+
+.listing-diagnosis-product-picker__option.is-disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+.listing-diagnosis-product-picker__option span,
+.listing-diagnosis-product-picker__option small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.listing-diagnosis-product-picker__option small {
+  margin-top: 2px;
+  color: var(--erp-muted);
+}
+
+.listing-diagnosis-product-picker__status {
+  color: var(--erp-danger-text) !important;
+}
+
 .listing-diagnosis-status {
   display: inline-flex;
   align-items: center;

@@ -255,12 +255,7 @@ module ApplicationHelper
 
     if message.role == "assistant" && payload["tool_calls"].is_a?(Array)
       return payload["tool_calls"].map do |tool_call|
-        name = tool_call["name"] || tool_call.dig("function", "name")
-        arguments = tool_call["arguments"] || tool_call.dig("function", "arguments") || {}
-        [
-          include_tool_label ? "#### #{t('ai.conversations.tool_call')}: #{name}" : "**#{name}**",
-          markdown_json_block(arguments)
-        ].join("\n\n")
+        ai_conversation_tool_call_markdown(tool_call, include_tool_label: include_tool_label)
       end.join("\n\n")
     end
 
@@ -270,12 +265,34 @@ module ApplicationHelper
     message.content
   end
 
-  def ai_conversation_tool_request?(message)
-    return false unless message.role == "assistant"
+  def ai_conversation_tool_calls(message)
+    return [] unless message.role == "assistant"
 
-    JSON.parse(message.content)["tool_calls"].is_a?(Array)
+    tool_calls = JSON.parse(message.content)["tool_calls"]
+    tool_calls.is_a?(Array) ? tool_calls : []
   rescue JSON::ParserError, TypeError
-    false
+    []
+  end
+
+  def ai_conversation_tool_call_id(tool_call)
+    tool_call["id"] || tool_call[:id]
+  end
+
+  def ai_conversation_tool_response_id(message)
+    return unless message.role == "tool"
+
+    JSON.parse(message.content)["tool_call_id"].presence
+  rescue JSON::ParserError, TypeError
+    nil
+  end
+
+  def ai_conversation_tool_call_markdown(tool_call, include_tool_label: true)
+    name = tool_call["name"] || tool_call[:name] || tool_call.dig("function", "name") || tool_call.dig(:function, :name)
+    arguments = tool_call["arguments"] || tool_call[:arguments] || tool_call.dig("function", "arguments") || tool_call.dig(:function, :arguments) || {}
+    [
+      include_tool_label ? "#### #{t('ai.conversations.tool_call')}: #{name}" : "**#{name}**",
+      markdown_json_block(arguments)
+    ].join("\n\n")
   end
 
   def ai_conversation_context_markdown(context)

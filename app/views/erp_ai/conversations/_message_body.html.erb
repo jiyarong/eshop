@@ -1,4 +1,4 @@
-<div id="<%= dom_id(message) %>_body"
+<div id="<%= local_assigns[:body_id] || "#{dom_id(message)}_body" %>"
      class="ai-conversation-message__body<%= " is-streaming" if streaming %>"
      data-controller="markdown"
      aria-live="<%= streaming ? "polite" : "off" %>">

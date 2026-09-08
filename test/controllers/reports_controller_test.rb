@@ -1836,6 +1836,108 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?][data-turbo-frame=?]", "/erp/skus/#{@sku.id}/products", "erp_modal"
   end
 
+  test "sku detail groups listing diagnosis history by platform product" do
+    sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
+    suggestion = sku_product.ai_suggestions.create!(
+      suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+      submitted_by: @current_user,
+      status: :completed,
+      content: "## 诊断结论",
+      completed_at: Time.current
+    )
+
+    get report_sku_path(@sku.sku_code), params: { tab: "basic" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "section.sku-listing-diagnoses" do
+      assert_select "h2", "Listing AI 诊断"
+      assert_select ".sku-listing-diagnoses__product", count: 2
+      assert_select ".sku-listing-diagnoses__product-header", text: /Ozon 绑定商品/
+      assert_select ".sku-listing-diagnoses__product-header", text: /WB 绑定商品/
+      assert_select ".listing-diagnosis-status--completed", "已完成"
+      assert_select "a[href=?][data-turbo-frame='_top']",
+        erp_platform_product_listing_diagnosis_path(
+          sku_product.platform,
+          sku_product.store_id,
+          sku_product.product_id,
+          suggestion
+        ),
+        "查看详情"
+      assert_select "a.button[href=?][data-turbo-frame='erp_modal']",
+        new_report_sku_listing_diagnosis_path(@sku.sku_code),
+        "开始 AI 诊断"
+    end
+  ensure
+    suggestion&.destroy!
+  end
+
+  test "listing diagnosis picker disables products with an active diagnosis" do
+    sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
+    suggestion = sku_product.ai_suggestions.create!(
+      suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+      submitted_by: @current_user
+    )
+
+    get new_report_sku_listing_diagnosis_path(@sku.sku_code),
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select "form[action=?][data-turbo-frame='_top']", report_sku_listing_diagnoses_path(@sku.sku_code)
+    assert_select "input[type='radio'][name='sku_product_id'][value=?][disabled]", sku_product.id.to_s
+    assert_select "input[type='radio'][name='sku_product_id']:not([disabled])", count: 1
+    assert_select "input[type='submit'][value='开始 AI 诊断']:not([disabled])", count: 1
+  ensure
+    suggestion&.destroy!
+  end
+
+  test "starting a listing diagnosis from sku detail enqueues the selected product" do
+    sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @wb_sales_store)
+
+    assert_enqueued_jobs 1, only: AITasks::ListingDiagnosisJob do
+      assert_difference -> { sku_product.ai_suggestions.count }, 1 do
+        post report_sku_listing_diagnoses_path(@sku.sku_code), params: { sku_product_id: sku_product.id }
+      end
+    end
+
+    assert_response :see_other
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "basic")
+    suggestion = sku_product.ai_suggestions.recent_first.first
+    assert suggestion.pending?
+    assert_equal Ec::AISuggestion::LISTING_AUDIT_TYPE, suggestion.suggestion_type
+    assert_equal @current_user, suggestion.submitted_by
+  ensure
+    suggestion&.destroy!
+  end
+
+  test "listing diagnosis status refresh replaces the current sku panel" do
+    sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
+    suggestion = sku_product.ai_suggestions.create!(
+      suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+      submitted_by: @current_user
+    )
+
+    get report_sku_listing_diagnoses_path(@sku.sku_code, format: :turbo_stream)
+
+    assert_response :success
+    assert_select "turbo-stream[action='replace'][target=?]", "listing_diagnoses_ec_sku_#{@sku.id}"
+    assert_select "section[data-controller='listing-diagnosis-status']"
+    assert_select ".listing-diagnosis-status--pending", "等待诊断"
+  ensure
+    suggestion&.destroy!
+  end
+
+  test "listing diagnosis cannot start for a product belonging to another sku" do
+    other_product = Ec::SkuProduct.find_by!(sku_code: @second_sku.sku_code, store: @sales_store)
+
+    assert_no_enqueued_jobs only: AITasks::ListingDiagnosisJob do
+      post report_sku_listing_diagnoses_path(@sku.sku_code), params: { sku_product_id: other_product.id }
+    end
+
+    assert_response :not_found
+    assert_empty other_product.ai_suggestions
+  end
+
   test "sku detail localizes basic tab in english" do
     assignment = Ec::SkuStoreAssignment.create!(
       sku_code: @sku.sku_code,

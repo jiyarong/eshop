@@ -48,6 +48,7 @@ zh:
         processing: "正在处理"
         remove_image: "移除图片"
         send: "发送"
+      edit_agent: "编辑 Agent"
       errors:
         empty_message: "请输入消息或选择图片"
         enqueue_failed: "消息提交失败，请重试"
@@ -1590,6 +1591,9 @@ zh:
       loading:
         title: "SKU 详情"
         subtitle: "正在加载详情…"
+      listing_diagnosis:
+        choose_product: "选择要诊断的平台商品"
+        no_products: "当前 SKU 暂无可诊断的平台商品"
       actions:
         add_predicted_cost: "新增预测成本"
         ai_diagnosis: "AI诊断"

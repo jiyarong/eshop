@@ -10,6 +10,22 @@
     </p>
   </div>
   <div class="ai-conversation-heading__actions hidden">
+    <% if can?(:manage_users) %>
+      <%= link_to edit_admin_agent_path(@conversation.agent.code),
+                  class: "button button-secondary",
+                  target: "_blank",
+                  rel: "noopener",
+                  data: { turbo: false } do %>
+        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+        <%= t("ai.conversations.edit_agent") %>
+      <% end %>
+    <% end %>
+    <%= link_to root_path,
+                class: "button button-secondary",
+                data: { controller: "history-navigation", action: "history-navigation#back" } do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <%= t("common.actions.back") %>
+    <% end %>
     <%= link_to "yclaw://conversation?conversation_id=#{@conversation.id}",
                 class: "button",
                 style: "display: none;",

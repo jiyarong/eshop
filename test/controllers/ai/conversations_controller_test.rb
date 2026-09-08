@@ -83,11 +83,20 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     conversation.messages.create!(role: "user", content: "分析 SKU-1")
     conversation.messages.create!(
       role: "assistant",
-      content: { tool_calls: [ { "name" => "query_inventory_data", "arguments" => { "sku" => "SKU-1" } } ] }.to_json
+      content: {
+        tool_calls: [
+          { "id" => "call_1", "name" => "query_inventory_data", "arguments" => { "sku" => "SKU-1" } },
+          { "id" => "call_2", "name" => "query_sales_data", "arguments" => { "sku" => "SKU-1" } }
+        ]
+      }.to_json
     )
     conversation.messages.create!(
       role: "tool",
-      content: { "tool_name" => "query_inventory_data", "content" => [ { "type" => "text", "text" => "库存 3 件" } ] }.to_json
+      content: { "tool_call_id" => "call_1", "tool_name" => "query_inventory_data", "content" => [ { "type" => "text", "text" => "库存 3 件" } ] }.to_json
+    )
+    conversation.messages.create!(
+      role: "tool",
+      content: { "tool_call_id" => "call_2", "tool_name" => "query_sales_data", "content" => [ { "type" => "text", "text" => "销量 2 件" } ] }.to_json
     )
     conversation.messages.create!(role: "assistant", content: "## 结论\n\n库存需要补充确认。")
 
@@ -98,12 +107,15 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-conversation-context__summary", text: /Agent 上下文/
     assert_select ".ai-conversation-context__source", text: /SKU context/
     assert_select ".ai-conversation-context__source", text: /response_status/, count: 0
-    assert_select ".ai-conversation-message", count: 4
-    assert_select ".ai-conversation-message--tool-request[data-tool-request='true'] .ai-conversation-message__source", text: /query_inventory_data/
-    assert_select ".ai-conversation-message--tool[data-tool-response='true']", count: 1
+    assert_select ".ai-conversation-message", count: 6
+    assert_select ".ai-conversation-message--tool-request[data-tool-request='true'][data-tool-call-id='call_1'] .ai-conversation-message__source", text: /query_inventory_data/
+    assert_select ".ai-conversation-message--tool-request[data-tool-request='true'][data-tool-call-id='call_2'] .ai-conversation-message__source", text: /query_sales_data/
+    assert_select ".ai-conversation-message--tool[data-tool-response='true'][data-tool-call-id='call_1']", count: 1
+    assert_select ".ai-conversation-message--tool[data-tool-response='true'][data-tool-call-id='call_2']", count: 1
     assert_select ".ai-conversation-message--tool", text: /工具调用结果/
     assert_select ".ai-conversation-message--tool", text: /库存 3 件/
-    assert_select "#conversation_messages article[data-markdown-target='output'][hidden]", count: 4
+    assert_select "#conversation_messages article[data-markdown-target='output'][hidden]", count: 6
+    assert_select "#message_#{conversation.messages.where(role: 'assistant').first.id}_tool_call_2_body", count: 1
     assert_select "a.button[href=?][data-turbo='false']",
                   "yclaw://conversation?conversation_id=#{conversation.id}",
                   "去 YClaw 追问"
@@ -111,6 +123,22 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", "/ai/conversations/#{conversation.id}/messages"
     assert_select "textarea[name='message[content]'][data-action*='paste->conversation-composer#paste']"
     assert_select "input[type='file'][name='message[images][]'][multiple]"
+    assert_select "a[href=?]", edit_admin_agent_path(@agent.code), count: 0
+    assert_select "a.button[href='/'][data-controller='history-navigation'][data-action='history-navigation#back']",
+                  text: "返回"
+  end
+
+  test "opens the agent editor in a new tab for admins" do
+    @user.roles << Role.find_by!(code: "super_admin")
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user)
+
+    get "/ai/conversations/#{conversation.id}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a.button[href=?][target='_blank'][rel='noopener'][data-turbo='false']",
+                  edit_admin_agent_path(@agent.code),
+                  text: "编辑 Agent"
   end
 
   test "queues a follow-up message without running AI in the request" do

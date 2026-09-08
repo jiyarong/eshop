@@ -1,0 +1,44 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal" role="dialog" aria-modal="true" aria-labelledby="sku-listing-diagnosis-modal-title">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="sku-listing-diagnosis-modal-title"><%= t("erp.sku_products.listing_diagnosis.start") %></h2>
+          <p class="erp-modal__subtitle"><%= @sku.sku_code %></p>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <%= form_with url: report_sku_listing_diagnoses_path(@sku.sku_code, locale: params[:locale].presence),
+                    method: :post,
+                    data: { turbo_frame: "_top" } do |form| %>
+        <fieldset class="listing-diagnosis-product-picker">
+          <legend><%= t("reports.sku_detail.listing_diagnosis.choose_product") %></legend>
+          <% @sku_products.each do |sku_product| %>
+            <% active = @active_listing_suggestion_product_ids.include?(sku_product.id) %>
+            <label class="listing-diagnosis-product-picker__option<%= " is-disabled" if active %>">
+              <%= form.radio_button :sku_product_id, sku_product.id, required: true, disabled: active %>
+              <span>
+                <strong><%= sku_product.product_name.presence || sku_product.product_id %></strong>
+                <small><%= t("common.platforms.#{sku_product.platform}", default: sku_product.platform) %> · <%= sku_product.store.store_name %> · <%= sku_product.product_id %></small>
+                <% if active %>
+                  <small class="listing-diagnosis-product-picker__status"><%= t("erp.sku_products.listing_diagnosis.already_running") %></small>
+                <% end %>
+              </span>
+            </label>
+          <% end %>
+        </fieldset>
+
+        <div class="modal-form-actions">
+          <%= form.submit t("erp.sku_products.listing_diagnosis.start"),
+                          class: "button",
+                          disabled: @sku_products.empty? || @sku_products.all? { |product| @active_listing_suggestion_product_ids.include?(product.id) },
+                          data: { turbo_submits_with: t("erp.sku_products.listing_diagnosis.starting") } %>
+          <button class="button button-secondary" type="button" data-action="modal#close"><%= t("common.actions.cancel") %></button>
+        </div>
+      <% end %>
+    </section>
+  </div>
+<% end %>

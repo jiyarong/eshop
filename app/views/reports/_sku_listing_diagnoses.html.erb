@@ -1,0 +1,90 @@
+<% panel_id = dom_id(sku, :listing_diagnoses) %>
+<% has_active_diagnosis = active_product_ids.any? %>
+
+<section id="<%= panel_id %>"
+         class="panel listing-diagnoses-panel sku-listing-diagnoses"
+         <% if has_active_diagnosis %>
+           data-controller="listing-diagnosis-status"
+           data-listing-diagnosis-status-url-value="<%= report_sku_listing_diagnoses_path(sku.sku_code, locale: params[:locale].presence, format: :turbo_stream) %>"
+         <% end %>>
+  <div class="listing-diagnoses-panel__header">
+    <div>
+      <h2 class="section-title"><%= t("erp.sku_products.listing_diagnosis.title") %></h2>
+      <p class="listing-diagnoses-panel__description"><%= t("erp.sku_products.listing_diagnosis.description") %></p>
+    </div>
+
+    <% if sku_products.any? %>
+      <%= link_to new_report_sku_listing_diagnosis_path(sku.sku_code, locale: params[:locale].presence),
+                  class: "button",
+                  data: { turbo_frame: "erp_modal" } do %>
+        <i class="bi bi-stars" aria-hidden="true"></i>
+        <%= t("erp.sku_products.listing_diagnosis.start") %>
+      <% end %>
+    <% else %>
+      <button type="button" class="button" disabled>
+        <i class="bi bi-stars" aria-hidden="true"></i>
+        <%= t("erp.sku_products.listing_diagnosis.start") %>
+      </button>
+    <% end %>
+  </div>
+
+  <% if sku_products.any? %>
+    <div class="sku-listing-diagnoses__products">
+      <% sku_products.each do |sku_product| %>
+        <% suggestions = listing_suggestions_by_product_id.fetch(sku_product.id, []) %>
+        <section class="sku-listing-diagnoses__product" aria-labelledby="sku-listing-diagnoses-product-<%= sku_product.id %>">
+          <div class="sku-listing-diagnoses__product-header">
+            <h3 id="sku-listing-diagnoses-product-<%= sku_product.id %>"><%= sku_product.product_name.presence || sku_product.product_id %></h3>
+            <p><%= t("common.platforms.#{sku_product.platform}", default: sku_product.platform) %> · <%= sku_product.store.store_name %> · <%= sku_product.product_id %></p>
+          </div>
+
+          <% if suggestions.any? %>
+            <%= table_viewport do %>
+              <table class="listing-diagnoses-table">
+                <thead>
+                  <tr>
+                    <th><%= t("erp.sku_products.listing_diagnosis.fields.created_at") %></th>
+                    <th><%= t("erp.sku_products.listing_diagnosis.fields.submitted_by") %></th>
+                    <th><%= t("erp.sku_products.listing_diagnosis.fields.status") %></th>
+                    <th><%= t("erp.sku_products.listing_diagnosis.fields.completed_at") %></th>
+                    <th class="table-actions-column"><%= t("erp.sku_products.listing_diagnosis.fields.actions") %></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% suggestions.each do |suggestion| %>
+                    <tr>
+                      <td><%= display_time(suggestion.created_at) %></td>
+                      <td><%= suggestion.submitted_by.display_name %></td>
+                      <td>
+                        <span class="listing-diagnosis-status listing-diagnosis-status--<%= suggestion.status %>">
+                          <%= t("erp.sku_products.listing_diagnosis.statuses.#{suggestion.status}") %>
+                        </span>
+                      </td>
+                      <td><%= display_time(suggestion.completed_at) %></td>
+                      <td class="table-row-actions">
+                        <%= link_to t("erp.sku_products.listing_diagnosis.view"),
+                                    erp_platform_product_listing_diagnosis_path(
+                                      sku_product.platform,
+                                      sku_product.store_id,
+                                      sku_product.product_id,
+                                      suggestion,
+                                      locale: params[:locale].presence
+                                    ),
+                                    class: "text-link",
+                                    data: { turbo_frame: "_top" } %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            <% end %>
+          <% else %>
+            <p class="empty-state"><%= t("erp.sku_products.listing_diagnosis.empty") %></p>
+          <% end %>
+        </section>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="empty-state"><%= t("reports.sku_detail.listing_diagnosis.no_products") %></p>
+  <% end %>
+</section>
