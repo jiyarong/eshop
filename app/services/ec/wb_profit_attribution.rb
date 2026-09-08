@@ -41,6 +41,7 @@ module Ec
     end
 
     def call
+      load_settlement_reports
       load_finance_rows
       build_shk_nm_mapping
       attribute_costs
@@ -65,10 +66,19 @@ module Ec
 
     # ─── Step 1: 加载财务明细行 ──────────────────────────────────────────────────
 
+    def load_settlement_reports
+      @settlement_reports = RawWb::SalesReport
+        .where(account_id: @account_id, date_to: @from_date..@to_date)
+        .to_a
+      @platform_settlement_byn = @settlement_reports.sum do |report|
+        report.bank_payment_sum || report.net_payable || 0
+      end.to_f
+    end
+
     def load_finance_rows
       @rows = RawWb::FinanceDetail
         .where(account_id: @account_id)
-        .where('sale_dt BETWEEN ? AND ?', @from_date, @to_date)
+        .where(wb_report_id: @settlement_reports.map(&:wb_report_id))
         .to_a
     end
 
@@ -100,32 +110,43 @@ module Ec
         bucket = @buckets[key]
         op     = r.seller_oper_name.to_s
 
+        bucket[:settlement_byn] += signed_for_pay(r)
+        bucket[:delivery_byn] += r.delivery_rub.to_f
+        bucket[:penalty_byn] += r.penalty.to_f
+        bucket[:deduction_byn] += r.deduction.to_f unless advertising_deduction?(r)
+        bucket[:additional_payment_byn] += r.additional_payment.to_f
+
         case
         when op.include?(RawWb::FinanceDetail::SALE_KEYWORD)
-          bucket[:settlement_byn]    += r.for_pay.to_f
           bucket[:acquiring_byn]     += r.acquiring_fee.to_f
           bucket[:sales_qty]         += r.quantity.to_i
           bucket[:tax_base_byn]      += r.retail_price_with_disc.to_f * r.quantity.to_i
           bucket[:retail_amount_byn] += r.retail_amount.to_f * r.quantity.to_i
         when op.include?(RawWb::FinanceDetail::RETURN_KEYWORD)
-          bucket[:settlement_byn] -= r.for_pay.to_f
           bucket[:acquiring_byn]  += r.acquiring_fee.to_f
           bucket[:return_qty]     += r.quantity.to_i.abs
         when op.include?(RawWb::FinanceDetail::LOGISTIC_KEYWORD)
-          bucket[:delivery_byn]   += r.delivery_rub.to_f   # WB 此字段已是账户货币
         when op.include?(RawWb::FinanceDetail::REIMB_KEYWORD)
           bucket[:reimb_byn]           += r.rebill_logistic_cost.to_f
           bucket[:logistics_reimb_byn] += r.vw.to_f
         when op.include?(RawWb::FinanceDetail::PICKUP_KEYWORD)
           bucket[:pickup_byn]          += r.ppvz_reward.to_f + r.vw.to_f
-        when op.include?(RawWb::FinanceDetail::PENALTY_KEYWORD)
-          bucket[:penalty_byn]    += r.penalty.to_f
         when op.include?(RawWb::FinanceDetail::STORAGE_KEYWORD)
           # 被 paid_storage API 覆盖，不计入
         when op.include?(RawWb::FinanceDetail::DEDUCT_KEYWORD)
           # 被 ad_settled_fees API 覆盖，不计入
         end
       end
+    end
+
+    def signed_for_pay(row)
+      amount = row.for_pay.to_f
+      row.seller_oper_name.to_s.include?(RawWb::FinanceDetail::RETURN_KEYWORD) ? -amount.abs : amount
+    end
+
+    def advertising_deduction?(row)
+      row.seller_oper_name.to_s.include?(RawWb::FinanceDetail::DEDUCT_KEYWORD) &&
+        row.bonus_type_name.to_s.include?(RawWb::FinanceDetail::DEDUCT_AD_KEYWORD)
     end
 
     # ─── Step 4: 仓储费（RUB，全归 Type2 出口）──────────────────────────────────
@@ -319,10 +340,12 @@ module Ec
         # RUB → BYN（仓储费，3% 缓冲对齐 Python）；广告费已在 load_ad_costs 折算为 BYN
         storage = rub_to_byn_storage(b[:storage_rub])
         ad      = b[:ad_byn]
+        deduction = b[:deduction_byn]
+        additional_payment = b[:additional_payment_byn]
 
-        # 账面小计（BYN）— 对齐 Python Phase1：
-        # acquiring/penalty/reimb/pickup 是 WB 内部调整，不影响 Итого，仅展示用
-        net = settlement - delivery - storage - ad
+        # 报告头口径：forPay - delivery - storage - deduction - penalty + additional payment。
+        # acquiring/reimb/pickup 是展示性拆分，不重复影响净额。
+        net = settlement - delivery - storage - ad - deduction - penalty + additional_payment
 
         # 货物成本（CNY → BYN）— 基于 signed 净成交数；退货超过销售时冲回成本
         net_qty        = b[:sales_qty] - b[:return_qty]
@@ -351,6 +374,8 @@ module Ec
           logistics_reimb: logistics_reimb.round(2),
           pickup:          pickup.round(2),
           penalty:       penalty.round(2),
+          deduction:     deduction.round(2),
+          additional_payment: additional_payment.round(2),
           storage:       storage.round(2),
           ad:            ad.round(2),
           net:           net.round(2),
@@ -383,18 +408,26 @@ module Ec
     def build_unallocated_summary
       # 广告类 Удержание（bonusTypeName 含 "Продвижение"）已由 ad_settled_fees 路径处理，排除
       # 非广告类 Удержание（如 "Джем" 等服务扣款）保留，与 Python Phase1 口径一致
-      @unalloc_rows
+      categorized = @unalloc_rows
         .reject { |r|
-          r.seller_oper_name.to_s.include?(RawWb::FinanceDetail::DEDUCT_KEYWORD) &&
-          r.bonus_type_name.to_s.include?(RawWb::FinanceDetail::DEDUCT_AD_KEYWORD)
+          advertising_deduction?(r) ||
+            r.seller_oper_name.to_s.include?(RawWb::FinanceDetail::STORAGE_KEYWORD)
         }
         .group_by { |r|
           label = r.bonus_type_name.to_s.strip
           label.present? ? label : r.seller_oper_name.to_s
         }
         .transform_values do |rows|
-          rows.sum { |r| r.paid_storage.to_f + r.deduction.to_f + r.penalty.to_f }
+          rows.sum do |r|
+            r.delivery_rub.to_f + r.paid_storage.to_f + r.deduction.to_f + r.penalty.to_f -
+              signed_for_pay(r) - r.additional_payment.to_f
+          end
         end
+      platform_settlement = @platform_settlement_byn.to_f
+      expected_unallocated = @results.sum { |row| row[:net] }.round(2) - platform_settlement.round(2)
+      residual = (expected_unallocated - categorized.values.sum).round(2)
+      categorized[I18n.t('weekly_profit_reports.unallocated_labels.settlement_residual')] = residual unless residual.zero?
+      categorized
     end
 
     def build_summary
@@ -403,6 +436,10 @@ module Ec
         total_sales_qty:  @results.sum { |r| r[:sales_qty] },
         total_return_qty: @results.sum { |r| r[:return_qty] },
         total_net:        @results.sum { |r| r[:net] }.round(2),
+        platform_settlement: @sku_codes.empty? ? @platform_settlement_byn.to_f.round(2) : nil,
+        reconciliation_difference: @sku_codes.empty? ? (
+          @results.sum { |r| r[:net] } - @unallocated.values.sum - @platform_settlement_byn.to_f
+        ).round(2) : nil,
         total_goods_cost: @results.sum { |r| r[:goods_cost] }.round(2),
         total_pre_tax:    @results.sum { |r| r[:pre_tax] }.round(2),
         total_tax:        @results.sum { |r| r[:tax] }.round(2),
@@ -415,6 +452,7 @@ module Ec
       return if @sku_codes.empty?
 
       @results.select! { |row| @sku_codes.include?(row[:vendor_code].to_s.strip.upcase) }
+      @unallocated = {}
       @summary = build_summary
     end
 
@@ -423,6 +461,7 @@ module Ec
         settlement_byn: 0.0, acquiring_byn: 0.0, delivery_byn: 0.0,
         reimb_byn: 0.0, logistics_reimb_byn: 0.0, pickup_byn: 0.0, penalty_byn: 0.0,
         storage_rub: 0.0, ad_byn: 0.0,
+        deduction_byn: 0.0, additional_payment_byn: 0.0,
         sales_qty: 0, return_qty: 0, tax_base_byn: 0.0,
         retail_amount_byn: 0.0,
       }

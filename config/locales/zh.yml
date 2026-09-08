@@ -730,6 +730,8 @@ zh:
       shipped: "配送中"
       total: "订单数"
   weekly_profit_reports:
+    unallocated_labels:
+      settlement_residual: "平台结算分配差额"
     comparison:
       note: "环比基准：上一等长自然周范围"
       unavailable: "-"

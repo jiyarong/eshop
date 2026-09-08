@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -119,27 +119,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
     t.index ["ai_diagnosis_id", "position"], name: "idx_ai_diagnosis_events_on_diagnosis_and_position"
     t.index ["ai_diagnosis_id"], name: "index_ec_ai_diagnosis_events_on_ai_diagnosis_id"
     t.index ["conversation_id"], name: "index_ec_ai_diagnosis_events_on_conversation_id"
-  end
-
-  create_table "ec_ai_suggestions", force: :cascade do |t|
-    t.datetime "completed_at"
-    t.text "content"
-    t.bigint "conversation_id"
-    t.datetime "created_at", null: false
-    t.text "error_message"
-    t.datetime "started_at"
-    t.string "status", default: "pending", null: false
-    t.bigint "submitted_by_id", null: false
-    t.bigint "suggestable_id", null: false
-    t.string "suggestable_type", null: false
-    t.string "suggestion_type", null: false
-    t.datetime "updated_at", null: false
-    t.index ["conversation_id"], name: "index_ec_ai_suggestions_on_conversation_id"
-    t.index ["submitted_by_id"], name: "index_ec_ai_suggestions_on_submitted_by_id"
-    t.index ["suggestable_type", "suggestable_id", "suggestion_type", "created_at"], name: "idx_ec_ai_suggestions_on_target_type_created_at"
-    t.index ["suggestable_type", "suggestable_id", "suggestion_type"], name: "idx_ec_ai_suggestions_one_active_per_target", unique: true, where: "((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying])::text[]))"
-    t.index ["suggestable_type", "suggestable_id"], name: "idx_ec_ai_suggestions_on_suggestable"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "ec_ai_suggestions_status_check"
   end
 
   create_table "ec_attachment_links", force: :cascade do |t|
@@ -2068,6 +2047,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
   create_table "raw_wb_finance_details", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.decimal "acquiring_fee", precision: 15, scale: 2
+    t.decimal "additional_payment", precision: 15, scale: 2
     t.string "barcode"
     t.string "bonus_type_name"
     t.string "brand_name"
@@ -2092,6 +2072,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
     t.decimal "retail_amount", precision: 15, scale: 2
     t.decimal "retail_price", precision: 15, scale: 2
     t.decimal "retail_price_with_disc", precision: 15, scale: 2
+    t.date "rr_dt"
     t.bigint "rrdid", null: false
     t.string "sa_name"
     t.date "sale_dt"
@@ -2104,9 +2085,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
     t.string "ts_name"
     t.datetime "updated_at", null: false
     t.decimal "vw", precision: 15, scale: 2
+    t.bigint "wb_report_id"
     t.index ["account_id", "nm_id", "sale_dt"], name: "idx_raw_wb_finance_details_nm_sale"
     t.index ["account_id", "rrdid"], name: "idx_raw_wb_finance_details_unique", unique: true
     t.index ["account_id", "shk_id"], name: "idx_raw_wb_finance_details_shk"
+    t.index ["account_id", "wb_report_id"], name: "idx_raw_wb_finance_details_report"
   end
 
   create_table "raw_wb_goods_returns", force: :cascade do |t|
@@ -2549,9 +2532,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
 
   create_table "raw_wb_sales_reports", force: :cascade do |t|
     t.bigint "account_id", null: false
+    t.decimal "additional_payment_sum", precision: 15, scale: 2
+    t.decimal "bank_payment_sum", precision: 15, scale: 2
     t.date "date_from"
     t.date "date_to"
+    t.decimal "deduction_sum", precision: 15, scale: 2
+    t.decimal "for_pay_sum", precision: 15, scale: 2
     t.decimal "net_payable", precision: 15, scale: 2
+    t.decimal "paid_storage_sum", precision: 15, scale: 2
     t.date "report_created_at"
     t.datetime "synced_at"
     t.decimal "total_commission", precision: 15, scale: 2
@@ -2809,6 +2797,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
     t.index ["warehouse_id", "status"], name: "idx_raw_wb_warehouse_name_mappings_target"
@@ -2948,8 +2937,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_094718) do
   add_foreign_key "ec_ai_diagnosis", "users", column: "submitted_by_id"
   add_foreign_key "ec_ai_diagnosis_events", "conversations"
   add_foreign_key "ec_ai_diagnosis_events", "ec_ai_diagnosis", column: "ai_diagnosis_id"
-  add_foreign_key "ec_ai_suggestions", "conversations"
-  add_foreign_key "ec_ai_suggestions", "users", column: "submitted_by_id"
   add_foreign_key "ec_attachment_links", "ec_attachments"
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
   add_foreign_key "ec_companies", "users", column: "developer_id", on_delete: :nullify

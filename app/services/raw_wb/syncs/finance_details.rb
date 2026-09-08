@@ -1,46 +1,68 @@
 module RawWb
   module Syncs
     module FinanceDetails
+      CHUNK_RETRY_LIMIT = 3
+
       # POST /api/finance/v1/sales-reports/detailed
       # Body: { dateFrom, dateTo, limit, rrdid }
       # 游标分页：rrdid=0 起始，取响应末行 rrdId 作为下次游标；返回行数 < limit 结束。
       def sync_finance_details
-        rrdid = 0
         total = 0
 
-        loop do
-          body = {
-            dateFrom: @from.iso8601,
-            dateTo:   Date.current.iso8601,
-            limit:    100_000,
-            rrdid:    rrdid,
-          }
-          resp  = @client.post(:finance, '/api/finance/v1/sales-reports/detailed', body)
-          items = resp.is_a?(Array) ? resp : Array(resp['data'] || resp['items'] || resp)
-          break if items.empty?
+        date_chunks(chunk_days: 7).reverse_each do |from_date, to_date|
+          rrdid = 0
 
-          rows = items.filter_map { |r| build_finance_detail(r) }
-          if rows.any?
-            RawWb::FinanceDetail.upsert_all(
-              rows,
-              unique_by: :idx_raw_wb_finance_details_unique,
-              update_only: %i[for_pay acquiring_fee delivery_rub vw penalty rebill_logistic_cost
-                              ppvz_reward retail_price_with_disc retail_amount commission_percent
-                              quantity country office_name ppvz_office_name delivery_method
-                              bonus_type_name synced_at]
-            )
+          loop do
+            body = {
+              dateFrom: from_date.iso8601,
+              dateTo:   to_date.iso8601,
+              limit:    100_000,
+              rrdid:    rrdid,
+            }
+            resp  = fetch_finance_details(body)
+            items = resp.is_a?(Array) ? resp : Array(resp['data'] || resp['items'] || resp)
+            break if items.empty?
+
+            rows = items.filter_map { |r| build_finance_detail(r) }
+            if rows.any?
+              RawWb::FinanceDetail.upsert_all(
+                rows,
+                unique_by: :idx_raw_wb_finance_details_unique,
+                update_only: %i[for_pay acquiring_fee delivery_rub vw penalty rebill_logistic_cost
+                                ppvz_reward retail_price_with_disc retail_amount commission_percent
+                                quantity country office_name ppvz_office_name delivery_method
+                                bonus_type_name paid_storage deduction additional_payment wb_report_id rr_dt synced_at]
+              )
+            end
+
+            total += rows.size
+            rrdid = items.last['rrdId'].to_i
+            break if items.size < 100_000
+            sleep 2
           end
-
-          total += rows.size
-          rrdid  = items.last['rrdId'].to_i
-          break if items.size < 100_000
-          sleep 2
         end
 
         total
       end
 
       private
+
+      def fetch_finance_details(body)
+        retries = 0
+
+        begin
+          @client.post(:finance, '/api/finance/v1/sales-reports/detailed', body)
+        rescue WbClient::RetryableError => e
+          retries += 1
+          raise if retries > CHUNK_RETRY_LIMIT
+
+          wait = e.retry_after || 30
+          log "  finance chunk #{body[:dateFrom]}..#{body[:dateTo]} rate-limited; " \
+              "retry #{retries}/#{CHUNK_RETRY_LIMIT} in #{wait}s", level: :warn
+          sleep wait
+          retry
+        end
+      end
 
       def build_finance_detail(r)
         rrdid = r['rrdId'].to_i
@@ -49,6 +71,8 @@ module RawWb
         {
           account_id:             @account.id,
           rrdid:                  rrdid,
+          wb_report_id:           r['reportId'] || r['realizationReportId'] ||
+                                  r['realizationreportId'] || r['realizationreport_id'],
           nm_id:                  r['nmId'],
           shk_id:                 r['shkId'],
           sa_name:                r['vendorCode'],
@@ -76,12 +100,14 @@ module RawWb
           delivery_method:        r['deliveryMethod'],
           paid_storage:           r['paidStorage'].to_f,
           deduction:              r['deduction'].to_f,
+          additional_payment:     r['additionalPayment'].to_f,
           bonus_type_name:        r['bonusTypeName'],
           quantity:               r['quantity'].to_i,
           doc_type:               r['docTypeName'],
           srid:                   r['srid'],
           order_dt:               parse_date(r['orderDt']),
           sale_dt:                parse_date(r['saleDt']),
+          rr_dt:                  parse_date(r['rrDate'] || r['rrDt']),
           synced_at:              Time.current,
         }
       end

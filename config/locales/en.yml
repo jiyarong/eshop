@@ -752,6 +752,8 @@ en:
       shipped: "Shipped"
       total: "Orders"
   weekly_profit_reports:
+    unallocated_labels:
+      settlement_residual: "Platform settlement allocation residual"
     comparison:
       note: "Comparison baseline: previous equal-length natural-week range"
       unavailable: "-"

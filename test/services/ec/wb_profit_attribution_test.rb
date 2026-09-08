@@ -25,7 +25,72 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     RawWb::AdSkuSpend.where(campaign_id: @campaign_ids).delete_all if @campaign_ids.any?
     RawWb::AdCampaignProduct.where(campaign_id: @campaign_ids).delete_all if @campaign_ids.any?
     RawWb::AdCampaign.where(id: @campaign_ids).delete_all if @campaign_ids.any?
+    RawWb::FinanceDetail.where(account_id: @account.id).delete_all
+    RawWb::SalesReport.where(account_id: @account.id).destroy_all
     @account.destroy
+  end
+
+  test "attributes finance rows by settlement report instead of sale date" do
+    nm_id = rand(10_000_000..99_999_999)
+    report_id = rand(100_000_000..999_999_999)
+    @nm_ids << nm_id
+    RawWb::Product.create!(account: @account, nm_id:, vendor_code: "WSU-DEEP-TEST")
+    create_sales_report(
+      report_id:, date_from: Date.new(2026, 9, 1), date_to: Date.new(2026, 9, 6),
+      bank_payment_sum: 85
+    )
+    create_finance_detail(
+      report_id:, nm_id:, sale_dt: Date.new(2026, 8, 31), rr_dt: Date.new(2026, 9, 1),
+      for_pay: 100, delivery_rub: 10, penalty: 5
+    )
+
+    service = build_service(from_date: Date.new(2026, 8, 31), to_date: Date.new(2026, 9, 6)).call
+
+    assert_equal 1, service.results.size
+    assert_equal "WSU-DEEP-TEST", service.results.first[:vendor_code]
+    assert_equal 85.0, service.results.first[:net]
+    assert_equal 85.0, service.summary[:platform_settlement]
+    assert_equal 0.0, service.summary[:reconciliation_difference]
+  end
+
+  test "merges reports across natural weeks and excludes sale dates from other reports" do
+    nm_id = rand(10_000_000..99_999_999)
+    first_report_id = rand(100_000_000..499_999_999)
+    second_report_id = rand(500_000_000..899_999_999)
+    outside_report_id = rand(900_000_000..999_999_999)
+    @nm_ids << nm_id
+    RawWb::Product.create!(account: @account, nm_id:, vendor_code: "WB-MULTI-WEEK")
+    create_sales_report(report_id: first_report_id, date_from: Date.new(2026, 8, 24), date_to: Date.new(2026, 8, 30), bank_payment_sum: 40)
+    create_sales_report(report_id: second_report_id, date_from: Date.new(2026, 9, 1), date_to: Date.new(2026, 9, 6), bank_payment_sum: 60)
+    create_sales_report(report_id: outside_report_id, date_from: Date.new(2026, 8, 17), date_to: Date.new(2026, 8, 23), bank_payment_sum: 999)
+    create_finance_detail(report_id: first_report_id, nm_id:, sale_dt: Date.new(2026, 8, 24), for_pay: 40)
+    create_finance_detail(report_id: second_report_id, nm_id:, sale_dt: Date.new(2026, 8, 31), for_pay: 60)
+    create_finance_detail(report_id: outside_report_id, nm_id:, sale_dt: Date.new(2026, 8, 24), for_pay: 999)
+
+    service = build_service(from_date: Date.new(2026, 8, 24), to_date: Date.new(2026, 9, 6)).call
+
+    assert_equal 100.0, service.results.sum { |row| row[:net] }
+    assert_equal 100.0, service.summary[:platform_settlement]
+    assert_equal 0.0, service.summary[:reconciliation_difference]
+  end
+
+  test "puts unassigned compensation into reconciliation without losing platform total" do
+    nm_id = rand(10_000_000..99_999_999)
+    report_id = rand(100_000_000..999_999_999)
+    @nm_ids << nm_id
+    RawWb::Product.create!(account: @account, nm_id:, vendor_code: "WB-COMP")
+    create_sales_report(report_id:, date_from: Date.new(2026, 8, 31), date_to: Date.new(2026, 9, 6), bank_payment_sum: 120)
+    create_finance_detail(report_id:, nm_id:, sale_dt: Date.new(2026, 9, 1), for_pay: 100)
+    create_finance_detail(
+      report_id:, nm_id: nil, sale_dt: Date.new(2026, 9, 1), for_pay: 20,
+      seller_oper_name: "Добровольная компенсация при возврате"
+    )
+
+    service = build_service(from_date: Date.new(2026, 8, 31), to_date: Date.new(2026, 9, 6)).call
+
+    assert_equal(-20.0, service.unallocated["Добровольная компенсация при возврате"])
+    assert_equal 120.0, service.results.sum { |row| row[:net] } - service.unallocated.values.sum
+    assert_equal 0.0, service.summary[:reconciliation_difference]
   end
 
   test "resolve_ad_fee_periods returns exact range when cache exists" do
@@ -235,5 +300,37 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     end
 
     campaign
+  end
+
+
+  def create_sales_report(report_id:, date_from:, date_to:, bank_payment_sum:)
+    RawWb::SalesReport.create!(
+      account: @account,
+      wb_report_id: report_id,
+      date_from:,
+      date_to:,
+      bank_payment_sum:,
+      net_payable: bank_payment_sum,
+      synced_at: Time.current
+    )
+  end
+
+  def create_finance_detail(report_id:, nm_id:, sale_dt:, rr_dt: sale_dt, for_pay:,
+                            delivery_rub: 0, penalty: 0, seller_oper_name: "Продажа")
+    RawWb::FinanceDetail.create!(
+      account: @account,
+      rrdid: rand(1_000_000_000..9_999_999_999),
+      wb_report_id: report_id,
+      nm_id:,
+      seller_oper_name:,
+      report_type: Ec::WbProfitAttribution::REPORT_TYPE_EXPORT,
+      for_pay:,
+      delivery_rub:,
+      penalty:,
+      quantity: seller_oper_name.include?(RawWb::FinanceDetail::SALE_KEYWORD) ? 1 : 0,
+      sale_dt:,
+      rr_dt:,
+      synced_at: Time.current
+    )
   end
 end

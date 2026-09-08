@@ -7,7 +7,7 @@ module Ec
       "ozon" => %i[sku_count total_sales_revenue total_orders total_returns total_ad total_goods_cost total_after_tax_profit unallocated_total]
     }.freeze
     ROW_KEYS = {
-      "wb" => %i[sales_qty return_qty net_qty settlement delivery storage ad goods_cost pre_tax tax after_tax],
+      "wb" => %i[sales_qty return_qty net_qty settlement delivery penalty deduction additional_payment storage ad goods_cost pre_tax tax after_tax],
       "ozon" => %i[sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
     }.freeze
 

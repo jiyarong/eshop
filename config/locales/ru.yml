@@ -723,6 +723,8 @@ ru:
       shipped: "В доставке"
       total: "Заказы"
   weekly_profit_reports:
+    unallocated_labels:
+      settlement_residual: "Остаток распределения выплаты платформы"
     comparison:
       note: "База сравнения: предыдущий диапазон той же длины по естественным неделям"
       unavailable: "-"

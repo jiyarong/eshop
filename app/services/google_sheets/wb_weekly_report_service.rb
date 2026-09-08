@@ -76,7 +76,7 @@ module GoogleSheets
 
       # ── Section 1: SKU ───────────────────────────────────────────────────
       sku_data_rows = @results
-        .select { |r| r[:sales_qty] > 0 || r[:storage] != 0 || r[:ad] != 0 || r[:delivery] != 0 }
+        .select { |r| reportable_result?(r) }
         .map { |r| sku_row(r) }
       sku_total_row = build_sku_total_row
       sku_all_rows  = [SKU_HDR_ZH, SKU_HDR_RU] + sku_data_rows + [sku_total_row]
@@ -163,7 +163,7 @@ module GoogleSheets
       'nmId', '品号', '商品名称', '区域',
       '下单数', '退货', '净销量',
       '标价收入',
-      '结算额', '收单费', '配送费', '补收运费', '自提点费', '罚款',
+      '结算额', '收单费', '配送费', '补收运费', '自提点费', '罚款', '其他扣款', '补偿/补款',
       '仓储费', '广告费',
       '账面小计',
       '税基(折后价)', '进口VAT/件', '货物成本', '税前利润', '税额', '税后净利',
@@ -173,7 +173,7 @@ module GoogleSheets
       'nmId', 'Артикул', 'Название', 'Регион',
       'Заказано', 'Возвраты', 'Чистые продажи',
       'Выручка (справ.)',
-      'forPay', 'Эквайринг', 'Доставка', 'Доп.доставка', 'Выдача ПВЗ', 'Штраф',
+      'forPay', 'Эквайринг', 'Доставка', 'Доп.доставка', 'Выдача ПВЗ', 'Штраф', 'Прочие удержания', 'Доплата',
       'Хранение', 'Реклама',
       'Итого',
       'База (цена)', 'Ввозной НДС/шт', 'Себестоимость', 'До налогов', 'Налог', 'Чистая прибыль',
@@ -183,7 +183,7 @@ module GoogleSheets
       :text, :text, :text, :text,
       :integer, :integer, :integer,
       :number,
-      :number, :number, :number, :number, :number, :number,
+      :number, :number, :number, :number, :number, :number, :number, :number,
       :number, :number,
       :number,
       :number, :number, :number, :number, :number, :number,
@@ -193,7 +193,7 @@ module GoogleSheets
       180, 200, 200, 55,
       55, 55, 65,
       90,
-      80, 75, 75, 80, 75, 70,
+      80, 75, 75, 80, 75, 70, 85, 85,
       75, 75,
       85,
       90, 80, 90, 90, 80, 100,
@@ -207,6 +207,7 @@ module GoogleSheets
         r[:retail_amount],
         r[:settlement], r[:acquiring], r[:delivery],
         r[:reimb], (r[:logistics_reimb].to_f + r[:pickup].to_f).round(2), r[:penalty],
+        r[:deduction], r[:additional_payment],
         r[:storage], r[:ad],
         r[:net],
         r[:tax_base], r[:import_vat], r[:goods_cost],
@@ -215,7 +216,7 @@ module GoogleSheets
     end
 
     def build_sku_total_row
-      rs = @results.select { |r| r[:sales_qty] > 0 || r[:storage] != 0 || r[:ad] != 0 || r[:delivery] != 0 }
+      rs = @results.select { |r| reportable_result?(r) }
       [
         nil, '合计 / Итого', nil, nil,
         rs.sum { |r| r[:sales_qty] }, rs.sum { |r| r[:return_qty] }, rs.sum { |r| r[:net_qty] },
@@ -226,6 +227,8 @@ module GoogleSheets
         rs.sum { |r| r[:reimb] }.round(2),
         rs.sum { |r| r[:logistics_reimb].to_f + r[:pickup].to_f }.round(2),
         rs.sum { |r| r[:penalty] }.round(2),
+        rs.sum { |r| r[:deduction].to_f }.round(2),
+        rs.sum { |r| r[:additional_payment].to_f }.round(2),
         rs.sum { |r| r[:storage] }.round(2),
         rs.sum { |r| r[:ad] }.round(2),
         rs.sum { |r| r[:net] }.round(2),
@@ -236,6 +239,13 @@ module GoogleSheets
         rs.sum { |r| r[:tax] }.round(2),
         rs.sum { |r| r[:after_tax] }.round(2),
       ]
+    end
+
+    def reportable_result?(row)
+      row[:sales_qty].to_i != 0 || row[:return_qty].to_i != 0 ||
+        %i[settlement delivery penalty deduction additional_payment storage ad].any? do |key|
+          row[key].to_f != 0
+        end
     end
 
     # ══════════════════════════════════════════════════════════
@@ -256,6 +266,8 @@ module GoogleSheets
       total_reimb  = rsum.(:reimb)
       total_pickup = rs.sum { |r| r[:logistics_reimb].to_f + r[:pickup].to_f }.round(2)
       total_pen    = rsum.(:penalty)
+      total_deduct = rsum.(:deduction)
+      total_additional = rsum.(:additional_payment)
       total_stor   = rsum.(:storage)
       total_ad     = rsum.(:ad)
       total_net    = rsum.(:net)
@@ -283,9 +295,13 @@ module GoogleSheets
         { label: '补收运费 / Доп.доставка',       value: -total_reimb,                   type: :normal },
         { label: '自提点费 / Выдача ПВЗ',         value: -total_pickup,                  type: :normal },
         { label: '罚款 / Штраф',                  value: -total_pen,                     type: :normal },
+        { label: '其他扣款 / Прочие удержания',   value: -total_deduct,                  type: :normal },
+        { label: '补偿及补款 / Доплата',          value: total_additional,               type: :normal },
         { label: '仓储费 / Хранение',             value: -total_stor,                    type: :normal },
         { label: '广告费 / Реклама',              value: -total_ad,                      type: :normal },
         { label: '账面小计 / Итого',              value: total_net,                       type: :subtotal },
+        { label: '平台结算总额 / К перечислению', value: @summary[:platform_settlement],  type: :subtotal },
+        { label: '对账差额 / Разница',            value: @summary[:reconciliation_difference], type: :normal },
         { label: '── 货物成本 ──',                value: nil,                            type: :section },
         { label: '货物成本 / Себестоимость',       value: -total_goods,                   type: :normal },
         { label: '税前利润 / До налогов',          value: total_pre,                      type: :subtotal },

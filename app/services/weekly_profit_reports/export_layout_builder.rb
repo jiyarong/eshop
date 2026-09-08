@@ -97,7 +97,7 @@ module WeeklyProfitReports
       helper.instance_variable_set(:@name_map, sku_name_map)
 
       sku_rows = (@report[:rows] || [])
-        .select { |row| row[:sales_qty].to_i > 0 || row[:storage].to_f != 0 || row[:ad].to_f != 0 || row[:delivery].to_f != 0 }
+        .select { |row| helper.send(:reportable_result?, row) }
         .map { |row| helper.send(:sku_row, row) }
       total_row = helper.send(:build_sku_total_row)
       summary_defs = helper.send(:build_summary_rows)

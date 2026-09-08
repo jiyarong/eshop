@@ -5,13 +5,15 @@ module RawWb
       def sync_sales_reports
         body    = { dateFrom: @from.iso8601, dateTo: Date.current.iso8601 }
         data    = @client.post(:finance, '/api/finance/v1/sales-reports/list', body)
-        reports = Array(data.is_a?(Hash) ? data['reports'] || data : data)
+        reports = Array(data.is_a?(Hash) ? data['reports'] || data['data'] || data : data)
         return 0 if reports.empty?
 
         rows = reports.filter_map { |r| build_sales_report(r) }
         RawWb::SalesReport.upsert_all(rows, unique_by: :wb_report_id,
-          update_only: %i[total_sales total_returns total_commission total_delivery
-                          total_penalty net_payable synced_at]) if rows.any?
+          update_only: %i[date_from date_to report_created_at total_sales total_returns
+                          total_commission total_delivery total_penalty net_payable for_pay_sum
+                          paid_storage_sum deduction_sum additional_payment_sum bank_payment_sum
+                          synced_at]) if rows.any?
         rows.size
       end
 
@@ -47,45 +49,55 @@ module RawWb
         {
           account_id:        @account.id,
           wb_report_id:      report_id,
-          date_from:         r['date_from'],
-          date_to:           r['date_to'],
-          report_created_at: r['create_dt'],
-          total_sales:       r['total_sales'].to_f,
-          total_returns:     r['total_returns'].to_f,
-          total_commission:  r['total_commission'].to_f,
-          total_delivery:    r['total_delivery'].to_f,
-          total_penalty:     r['total_penalty'].to_f,
-          net_payable:       r['net_payable'].to_f,
+          date_from:         r['dateFrom'] || r['date_from'],
+          date_to:           r['dateTo'] || r['date_to'],
+          report_created_at: r['createDate'] || r['create_dt'],
+          total_sales:       decimal_value(r, 'retailAmountSum', 'total_sales'),
+          total_returns:     decimal_value(r, 'returnAmountSum', 'total_returns'),
+          total_commission:  decimal_value(r, 'commissionSum', 'total_commission'),
+          total_delivery:    decimal_value(r, 'deliveryServiceSum', 'total_delivery'),
+          total_penalty:     decimal_value(r, 'penaltySum', 'total_penalty'),
+          net_payable:       decimal_value(r, 'bankPaymentSum', 'net_payable'),
+          for_pay_sum:       decimal_value(r, 'forPaySum'),
+          paid_storage_sum:  decimal_value(r, 'paidStorageSum'),
+          deduction_sum:     decimal_value(r, 'deductionSum'),
+          additional_payment_sum: decimal_value(r, 'additionalPaymentSum'),
+          bank_payment_sum:  decimal_value(r, 'bankPaymentSum'),
           synced_at:         Time.current,
         }
       end
 
+      def decimal_value(hash, *keys)
+        value = keys.lazy.map { |key| hash[key] }.find { |candidate| !candidate.nil? }
+        value&.to_d
+      end
+
       def build_sales_report_item(item, report)
-        srid = item['srid'].presence
-        doc_type = item['doc_type_name'].presence
+        srid = item['srid'].presence || ("rrd:#{item['rrdId']}" if item['rrdId'].present?)
+        doc_type = item['docTypeName'].presence || item['sellerOperName'].presence || item['doc_type_name'].presence
         return nil if srid.blank? && doc_type.blank?
         {
           sales_report_id:    report.id,
           account_id:         @account.id,
-          nm_id:              item['nm_id'],
-          sa_name:            item['sa_name'],
-          ts_name:            item['ts_name'],
-          barcode:            item['barcode'],
-          brand_name:         item['brand_name'],
-          subject_name:       item['subject_name'],
+          nm_id:              item['nmId'] || item['nm_id'],
+          sa_name:            item['vendorCode'] || item['sa_name'],
+          ts_name:            item['techSize'] || item['ts_name'],
+          barcode:            item['sku'] || item['barcode'],
+          brand_name:         item['brandName'] || item['brand_name'],
+          subject_name:       item['subjectName'] || item['subject_name'],
           doc_type:           doc_type,
           quantity:           item['quantity'].to_i,
-          retail_price:       item['retail_price'].to_f,
-          retail_amount:      item['retail_amount'].to_f,
-          sale_percent:       item['sale_percent'].to_i,
-          commission_percent: item['commission_percent'].to_f,
-          delivery_rub:       item['delivery_rub'].to_f,
+          retail_price:       (item['retailPrice'] || item['retail_price']).to_f,
+          retail_amount:      (item['retailAmount'] || item['retail_amount']).to_f,
+          sale_percent:       (item['salePercent'] || item['sale_percent']).to_i,
+          commission_percent: (item['commissionPercent'] || item['commission_percent']).to_f,
+          delivery_rub:       (item['deliveryService'] || item['delivery_rub']).to_f,
           penalty:            item['penalty'].to_f,
-          additional_payment: item['additional_payment'].to_f,
-          ppvz_for_pay:       item['ppvz_for_pay'].to_f,
+          additional_payment: (item['additionalPayment'] || item['additional_payment']).to_f,
+          ppvz_for_pay:       (item['forPay'] || item['ppvz_for_pay']).to_f,
           srid:               srid,
-          order_dt:           item['order_dt'],
-          sale_dt:            item['sale_dt'],
+          order_dt:           item['orderDt'] || item['order_dt'],
+          sale_dt:            item['saleDt'] || item['sale_dt'],
         }
       end
     end
