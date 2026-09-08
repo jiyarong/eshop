@@ -60,7 +60,7 @@
             <th><%= t("operator_skus.columns.sku") %></th>
             <th><%= t("operator_skus.columns.responsible") %></th>
             <%= render "shared/sortable_table_header", label: t("operator_skus.columns.weekly_finance"), sort_key: "weekly_profit", class_name: "numeric" %>
-            <%= render "shared/sortable_table_header", label: t("operator_skus.columns.weekly_orders"), sort_key: "weekly_orders", class_name: "numeric" %>
+            <th><%= t("operator_skus.columns.sales_funnel") %></th>
             <%= render "shared/sortable_table_header", label: t("operator_skus.columns.inventory"), sort_key: "book_stock", class_name: "numeric" %>
             <th><%= t("operator_skus.columns.distribution", default: "分仓") %></th>
           </tr>
@@ -90,11 +90,12 @@
                   <span><%= t("operator_skus.finance.#{key}") %> <strong><%= operator_sku_metric_value(metric[:value], type: type) %></strong><small class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison], compact: true) %></small></span>
                 <% end %>
               </div></td>
-              <% orders = metrics[:weekly_orders] || {} %>
-              <td class="numeric"><div class="operator-sku-pair operator-sku-metric-grid">
-                <% %i[ordered signed in_transit cancelled returned].each do |key| %>
-                  <% comparison = orders.dig(:comparisons, key) %>
-                  <span><%= t("operator_skus.orders.#{key}") %> <strong><%= orders[key].to_i %></strong><small class="operator-sku-comparison <%= operator_sku_comparison_class(comparison) %>"><%= operator_sku_comparison_text(comparison, compact: true) %></small></span>
+              <% sales_funnel = metrics[:sales_funnel] || {} %>
+              <td class="numeric"><div class="operator-sku-pair operator-sku-metric-grid operator-sku-funnel-grid">
+                <% Ec::OperatorSkuSalesFunnelMetricsQuery::METRICS.each do |key| %>
+                  <% metric = sales_funnel[key] || {} %>
+                  <% type = key.to_s.end_with?("_rate") ? :percentage : :number %>
+                  <span><span class="operator-sku-metric-label"><%= t("reports.sku_detail.funnel_analysis.metrics.#{key}") %></span><strong><%= operator_sku_metric_value(metric[:value], type: type) %></strong><small class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison], compact: true) %></small></span>
                 <% end %>
               </div></td>
               <td class="numeric">

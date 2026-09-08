@@ -338,6 +338,26 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 7, overview.dig(:summary, :book_stock)
   end
 
+  test "batch overview matches detail overview inventory values" do
+    create_ozon_removal_item(return_id: "REMOVAL-BATCH-#{@token}", state: "В пути", quantity: 1)
+    Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "ADJUST-INCOMING-#{@token}",
+      status: "in_transit",
+      batch_type: :wb_fbw_offset,
+      purchased_quantity: 4,
+      received_quantity: 0,
+      purchase_unit_price_cny: 1
+    )
+
+    detail_summary = @sku.inventory_overview[:summary]
+    batch_summary = Ec::SkuInventoryOverviewBatchQuery.new(skus: [@sku]).call.fetch(@sku.sku_code)
+
+    assert_equal detail_summary[:book_stock], batch_summary[:book_stock]
+    assert_equal detail_summary[:fbo_fbw_stock], batch_summary[:platform_stock]
+    assert_equal 4, batch_summary[:incoming_quantity]
+  end
+
   test "builds return summary with Ozon removals and WB completion states" do
     @wb_return.update!(process_status: "completed")
     wb_in_transit_return = Ec::Return.create!(

@@ -2888,6 +2888,7 @@ zh:
       events: "诊断标签"
       weekly_finance: "上周财报"
       weekly_orders: "上周订单"
+      sales_funnel: "销售漏斗"
     finance:
       net_sales: "净销量"
       profit: "利润"

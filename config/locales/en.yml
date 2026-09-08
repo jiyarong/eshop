@@ -2681,6 +2681,7 @@ en:
       events: "Diagnosis tags"
       weekly_finance: "Last week finance"
       weekly_orders: "Last week orders"
+      sales_funnel: "Sales funnel"
       distribution: "Distribution"
     finance:
       net_sales: "Net sales"

@@ -60,7 +60,8 @@ class OperatorSkusController < ApplicationController
     Ec::OperatorSkuMetricsQuery.new(
       skus: skus,
       date_to: user_today,
-      time_zone: user_time_zone
+      time_zone: user_time_zone,
+      include_days_30: false
     ).call
   end
 

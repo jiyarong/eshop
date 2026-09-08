@@ -108,12 +108,14 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       assert_equal "/operator_skus", links.first["href"]
       assert_equal "/reports/sales_funnel", links[1]["href"]
     end
-    %w[SKU 负责人 上周财报 上周订单 库存 分仓].each do |heading|
+    %w[SKU 负责人 上周财报 销售漏斗 库存 分仓].each do |heading|
       assert_select ".operator-sku-table thead th", text: heading
     end
+    assert_select ".operator-sku-table thead th", { text: "上周订单", count: 0 }
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
     assert_select ".sku-ai-diagnosis-event-tags", text: "-"
     assert_select ".operator-sku-finance-grid > span", minimum: 6
+    assert_select ".operator-sku-funnel-grid > span", minimum: 8
     assert_select ".operator-sku-comparison.is-positive", text: /12\.50%/
     assert_select ".operator-sku-comparison", { text: /环比/, count: 0 }
 
@@ -124,24 +126,24 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
   test "sortable metric headers preserve filters and toggle direction" do
     with_empty_metrics do
       get operator_skus_path,
-        params: { q: @token, grades: [ "A" ], sort: "weekly_orders", direction: "desc" },
+        params: { q: @token, grades: [ "A" ], sort: "book_stock", direction: "desc" },
         headers: { "Accept" => "text/html" }
     end
 
     assert_response :success
-    assert_select "th.sortable-table-header", count: 3
-    assert_select "th.sortable-table-header[aria-sort='descending'] a[href*='sort=weekly_orders'][href*='direction=asc'][href*='q=#{@token}']"
-    assert_select "th.sortable-table-header[aria-sort='none'] a[href*='sort=book_stock'][href*='direction=desc']"
+    assert_select "th.sortable-table-header", count: 2
+    assert_select "th.sortable-table-header[aria-sort='descending'] a[href*='sort=book_stock'][href*='direction=asc'][href*='q=#{@token}']"
+    assert_select "th.sortable-table-header[aria-sort='none'] a[href*='sort=weekly_profit'][href*='direction=desc']"
     assert_select "th.sortable-table-header a[href*='grades%5B%5D=A']"
 
     sign_in @user
     with_empty_metrics do
       get operator_skus_path,
-        params: { q: @token, grades: [ "A" ], sort: "weekly_orders", direction: "asc" },
+        params: { q: @token, grades: [ "A" ], sort: "book_stock", direction: "asc" },
         headers: { "Accept" => "text/html" }
     end
 
-    assert_select "th.sortable-table-header[aria-sort='ascending'] a[aria-label='上周订单，清除排序']" do |links|
+    assert_select "th.sortable-table-header[aria-sort='ascending'] a[aria-label='库存，清除排序']" do |links|
       href = links.first["href"]
       assert_includes href, "q=#{@token}"
       assert_includes href, "grades%5B%5D=A"
@@ -200,7 +202,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "th.sortable-table-header[aria-sort='descending']", text: "上周财报"
-    assert_select "th.sortable-table-header[aria-sort='none']", count: 2
+    assert_select "th.sortable-table-header[aria-sort='none']", count: 1
   end
 
   test "new skus default to normal operation status" do

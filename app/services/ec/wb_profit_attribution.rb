@@ -199,9 +199,11 @@ module Ec
       end
 
       # 各活动内 nm_id 的 fullstats 花费合计（分摊比例的分子分母）
-      campaign_ids = fees.map { |f|
-        RawWb::AdCampaign.find_by(wb_advert_id: f.advert_id)&.id
-      }.compact
+      campaigns_by_advert_id = RawWb::AdCampaign
+        .where(wb_advert_id: fees.map(&:advert_id))
+        .pluck(:wb_advert_id, :id)
+        .to_h
+      campaign_ids = campaigns_by_advert_id.values
 
       sku_spend_by_campaign = RawWb::AdSkuSpend
         .where(campaign_id: campaign_ids)
@@ -222,12 +224,12 @@ module Ec
         .to_h
 
       fees.each do |fee|
-        campaign = RawWb::AdCampaign.find_by(wb_advert_id: fee.advert_id)
-        next unless campaign
+        campaign_id = campaigns_by_advert_id[fee.advert_id]
+        next unless campaign_id
         campaign_rub = fee.upd_sum_rub.to_f
         next if campaign_rub.zero?
 
-        cid          = campaign.id
+        cid          = campaign_id
         total_spend  = campaign_total_spend[cid]
         nm_spends    = sku_spend_by_campaign.select { |(c, _), _| c == cid }
 

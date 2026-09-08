@@ -2,11 +2,12 @@ module Ec
   class OperatorSkuMetricsQuery
     PROFIT_KEYS = %i[net_sales revenue after_tax margin_pct ads ad_ratio_pct annualized_return_pct annualized_net_profit_cny].freeze
 
-    def initialize(skus:, date_to:, time_zone:)
+    def initialize(skus:, date_to:, time_zone:, include_days_30: true)
       @skus = skus.to_a
       @sku_codes = @skus.map(&:sku_code)
       @date_to = date_to.to_date
       @time_zone = time_zone
+      @include_days_30 = include_days_30
     end
 
     def call
@@ -16,14 +17,17 @@ module Ec
       inventory = inventory_metrics
       distribution = Ec::OperatorSkuInventoryDistributionQuery.new(sku_codes: @sku_codes).call
       last_week_start = @date_to.beginning_of_week(:monday) - 1.week
-      weekly_orders = Ec::OperatorSkuWeeklyOrderMetricsQuery.new(sku_codes: @sku_codes, from_date: last_week_start, to_date: last_week_start.end_of_week(:monday), time_zone: @time_zone).call
+      sales_funnel = Ec::OperatorSkuSalesFunnelMetricsQuery.new(
+        skus: @skus, from_date: last_week_start,
+        to_date: last_week_start.end_of_week(:monday), time_zone: @time_zone
+      ).call
 
       @skus.index_with do |sku|
         code = sku.sku_code
         performance.fetch(sku).merge(
             inventory: inventory.fetch(code, empty_inventory)
             .merge(distribution: distribution.fetch(code, {})),
-          weekly_orders: weekly_orders.fetch(code, {})
+          sales_funnel: sales_funnel.fetch(sku, {})
         )
       end
     end
@@ -94,7 +98,8 @@ module Ec
     end
 
     def inventory_metrics
-      turnover = Ec::InventoryTurnoverMetricsQuery.new(
+      overview = Ec::SkuInventoryOverviewBatchQuery.new(skus: @skus).call
+      velocity = Ec::InventoryVelocityMetricsQuery.new(
         sku_codes: @sku_codes,
         date_to: @date_to,
         time_zone: @time_zone
@@ -104,28 +109,22 @@ module Ec
         date_to: @date_to - 1.day
       ).call
       strict_forecasts = @skus.one? ? { @skus.first => strict_result } : strict_result
-      platform_reserved = Ec::SkuInventoryLevel
-        .latest
-        .where(sku_code: @sku_codes, fulfillment_type: %w[fbo fbw])
-        .group(:sku_code)
-        .sum(:quantity)
-        .transform_keys(&:to_s)
-
       @sku_codes.index_with do |sku_code|
-        metrics = turnover.fetch(sku_code, {})
+        summary = overview.fetch(sku_code, {})
+        velocity_metrics = velocity.fetch(sku_code, {})
         sku = @skus.find { |record| record.sku_code == sku_code }
         strict = sku ? strict_forecasts.fetch(sku, {}) : {}
         strict_daily_sales = strict[:forecast_daily_sales]
-        book_stock = metrics.fetch(:book_stock, 0).to_d
-        platform_stock = platform_reserved.fetch(sku_code, 0).to_d
-        simple_velocity = metrics[:daily_sales_velocity].to_d
+        book_stock = summary.fetch(:book_stock, 0).to_d
+        platform_stock = summary.fetch(:platform_stock, 0).to_d
+        simple_velocity = velocity_metrics[:daily_sales_velocity].to_d
         {
           book_stock: book_stock.to_i,
           platform_stock: platform_stock.to_i,
           available_stock: platform_stock.to_i,
-          incoming_quantity: metrics.fetch(:procurement_stock, 0).to_i,
-          daily_sales_velocity: metrics[:daily_sales_velocity],
-          forecast_explanation: metrics[:forecast_explanation],
+          incoming_quantity: summary.fetch(:incoming_quantity, 0).to_i,
+          daily_sales_velocity: velocity_metrics[:daily_sales_velocity],
+          forecast_explanation: velocity_metrics[:forecast_explanation],
           turnover_days: simple_velocity.positive? ? (book_stock / simple_velocity).round(2) : nil,
           strict_forecast: strict.merge(
             cover_days: strict_daily_sales.to_d.positive? ? (book_stock / strict_daily_sales.to_d).round(2) : nil
@@ -137,9 +136,9 @@ module Ec
     def profit_metrics
       last_week_start = @date_to.beginning_of_week(:monday) - 1.week
       periods = {
-        days_7: last_week_start..last_week_start.end_of_week(:monday),
-        days_30: (last_week_start - 3.weeks)..last_week_start.end_of_week(:monday)
+        days_7: last_week_start..last_week_start.end_of_week(:monday)
       }
+      periods[:days_30] = (last_week_start - 3.weeks)..last_week_start.end_of_week(:monday) if @include_days_30
 
       period_metrics = periods.transform_values do |period|
         profit_metrics_for_period(period.begin, period.end)

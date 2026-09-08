@@ -10556,6 +10556,7 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-finance-grid > span > :first-child,
 .operator-sku-metric-grid > span:not(.operator-sku-forecast) > :first-child,
 .operator-sku-forecast__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.operator-sku-metric-label { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .operator-sku-finance-grid > span > strong { text-align: right; font-variant-numeric: tabular-nums; }
 .operator-sku-finance-grid .operator-sku-comparison { display: block; min-width: 58px; text-align: left; font-variant-numeric: tabular-nums; }
 .operator-sku-metric-grid > span:not(.operator-sku-forecast) { display: grid; grid-template-columns: minmax(82px, 1fr) minmax(42px, auto) minmax(0, 1fr); align-items: baseline; gap: 6px; text-align: left; }
@@ -10570,13 +10571,13 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-table tbody td { text-align: left; vertical-align: top; }
 .operator-sku-table tbody td.numeric { text-align: left; }
 .operator-sku-meta { display: block; margin-top: 3px; color: var(--erp-muted); font-size: 11px; }
-.operator-sku-table { table-layout: fixed; min-width: 1480px; }
-.operator-sku-table th:nth-child(1), .operator-sku-table td:nth-child(1) { width: 14%; min-width: 150px; }
-.operator-sku-table th:nth-child(2), .operator-sku-table td:nth-child(2) { width: 12%; min-width: 140px; }
-.operator-sku-table th:nth-child(3), .operator-sku-table td:nth-child(3) { width: 25%; min-width: 290px; }
-.operator-sku-table th:nth-child(4), .operator-sku-table td:nth-child(4) { width: 18%; min-width: 230px; }
-.operator-sku-table th:nth-child(5), .operator-sku-table td:nth-child(5) { width: 23%; min-width: 290px; }
-.operator-sku-table th:nth-child(6), .operator-sku-table td:nth-child(6) { width: 10%; min-width: 170px; }
+.operator-sku-table { table-layout: fixed; min-width: 1450px; }
+.operator-sku-table th:nth-child(1), .operator-sku-table td:nth-child(1) { width: 13%; min-width: 150px; }
+.operator-sku-table th:nth-child(2), .operator-sku-table td:nth-child(2) { width: 11%; min-width: 140px; }
+.operator-sku-table th:nth-child(3), .operator-sku-table td:nth-child(3) { width: 21%; min-width: 280px; }
+.operator-sku-table th:nth-child(4), .operator-sku-table td:nth-child(4) { width: 20%; min-width: 270px; }
+.operator-sku-table th:nth-child(5), .operator-sku-table td:nth-child(5) { width: 24%; min-width: 290px; }
+.operator-sku-table th:nth-child(6), .operator-sku-table td:nth-child(6) { width: 11%; min-width: 170px; }
 .operator-sku-table td { overflow: visible; }
 .operator-sku-table td:nth-child(4) .operator-sku-pair,
 .operator-sku-table td:nth-child(5) .operator-sku-pair { display: grid; grid-template-columns: 1fr; gap: 3px; min-width: 0; }

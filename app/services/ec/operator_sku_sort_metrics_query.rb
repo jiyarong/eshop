@@ -41,7 +41,7 @@ module Ec
     end
 
     def book_stock
-      Ec::InventoryTurnoverMetricsQuery.new(sku_codes: @sku_codes, date_to: @date_to, time_zone: @time_zone).call
+      Ec::SkuInventoryOverviewBatchQuery.new(skus: @skus).call
         .transform_values { |metrics| metrics[:book_stock] }
     end
 

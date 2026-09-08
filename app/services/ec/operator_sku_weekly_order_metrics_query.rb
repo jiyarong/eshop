@@ -13,7 +13,7 @@ module Ec
     def call
       result = @codes.index_with { empty_metrics }
       previous = @codes.index_with { empty_metrics }
-      rows = Ec::OrderItem.joins(:order).joins("INNER JOIN ec_sku_products sp ON sp.store_id = ec_order_items.store_id AND sp.platform = ec_order_items.platform AND ((sp.platform = 'ozon' AND sp.platform_sku_id = ec_order_items.platform_sku_id) OR (sp.platform = 'wb' AND sp.product_id = ec_order_items.platform_sku_id))").where(sp: { sku_code: @codes }).where(ec_orders: { ordered_at: @previous_from..@to }).select("ec_order_items.*, sp.sku_code AS internal_sku_code")
+      rows = Ec::OrderItem.includes(:order).joins(:order).joins("INNER JOIN ec_sku_products sp ON sp.store_id = ec_order_items.store_id AND sp.platform = ec_order_items.platform AND ((sp.platform = 'ozon' AND sp.platform_sku_id = ec_order_items.platform_sku_id) OR (sp.platform = 'wb' AND sp.product_id = ec_order_items.platform_sku_id))").where(sp: { sku_code: @codes }).where(ec_orders: { ordered_at: @previous_from..@to }).select("ec_order_items.*, sp.sku_code AS internal_sku_code")
       rows.group_by { |item| item.internal_sku_code.to_s }.each do |code, items|
         weighted_days = 0.to_d
         weighted_quantity = 0

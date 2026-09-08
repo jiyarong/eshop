@@ -2629,6 +2629,7 @@ ru:
       events: "Метки диагностики"
       weekly_finance: "Финансы за нед."
       weekly_orders: "Заказы за нед."
+      sales_funnel: "Воронка продаж"
       distribution: "Распред."
     finance:
       net_sales: "Чистые продажи"
