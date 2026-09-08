@@ -1,4 +1,5 @@
 require "test_helper"
+require "open3"
 
 class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
   setup do
@@ -110,6 +111,34 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     end
 
     assert_equal [ "/retry.png", "/retry.png", "/retry.png" ], request_paths
+  end
+
+  test "loads disk service before checking a non-disk attachment service" do
+    script = <<~RUBY
+      require "openssl"
+      require "active_storage"
+      require #{Rails.root.join("app/services/erp_ai/listing_diagnosis_context").to_s.inspect}
+
+      file = Struct.new(:service) do
+        def url(**)
+          "https://assets.example.test/image.jpg"
+        end
+      end.new(Object.new)
+      attachment = Struct.new(:file, :filename).new(file, "image.jpg")
+
+      puts ErpAI::ListingDiagnosisContext.send(:attachment_image_url, attachment)
+    RUBY
+
+    stdout, stderr, status = Open3.capture3(
+      RbConfig.ruby,
+      "-rbundler/setup",
+      "-e",
+      script,
+      chdir: Rails.root.to_s
+    )
+
+    assert status.success?, stderr
+    assert_equal "https://assets.example.test/image.jpg\n", stdout
   end
 
   private

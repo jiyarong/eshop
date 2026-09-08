@@ -1,3 +1,4 @@
+require "active_storage/service/disk_service"
 require "mini_magick"
 require "net/http"
 require "tmpdir"

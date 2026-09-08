@@ -1,7 +1,7 @@
 module Erp
   class ListingDiagnosesController < BaseController
     before_action :set_sku_product
-    before_action :set_listing_diagnosis, only: :show
+    before_action :set_listing_diagnosis, only: %i[show retry_failed destroy]
 
     def index
       load_listing_suggestions
@@ -59,6 +59,43 @@ module Erp
     def show
     end
 
+    def retry_failed
+      retried = @listing_suggestion.with_lock do
+        if @listing_suggestion.failed?
+          @listing_suggestion.update!(
+            status: :pending,
+            content: nil,
+            conversation: nil,
+            error_message: nil,
+            started_at: nil,
+            completed_at: nil
+          )
+          true
+        else
+          false
+        end
+      end
+
+      unless retried
+        redirect_to listing_diagnosis_path_options,
+          alert: t("erp.sku_products.listing_diagnosis.retry_unavailable")
+        return
+      end
+
+      AITasks::ListingDiagnosisJob.perform_later(@listing_suggestion.id, locale: I18n.locale.to_s)
+      redirect_to listing_diagnosis_path_options,
+        notice: t("erp.sku_products.listing_diagnosis.retried")
+    rescue ActiveRecord::RecordNotUnique
+      redirect_to listing_diagnosis_path_options,
+        alert: t("erp.sku_products.listing_diagnosis.already_running")
+    end
+
+    def destroy
+      @listing_suggestion.destroy!
+      redirect_to platform_product_path_options(anchor: helpers.dom_id(@sku_product, :listing_diagnoses)),
+        notice: t("erp.sku_products.listing_diagnosis.deleted")
+    end
+
     private
 
     def set_sku_product
@@ -92,6 +129,16 @@ module Erp
         @sku_product.product_id,
         locale: params[:locale].presence,
         anchor: anchor
+      )
+    end
+
+    def listing_diagnosis_path_options
+      erp_platform_product_listing_diagnosis_path(
+        @sku_product.platform,
+        @sku_product.store_id,
+        @sku_product.product_id,
+        @listing_suggestion,
+        locale: params[:locale].presence
       )
     end
   end

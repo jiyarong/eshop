@@ -295,6 +295,86 @@ module Erp
       assert_select "pre", text: /需要优化标题/
     end
 
+    test "failed listing diagnosis detail renders retry and delete actions" do
+      suggestion = @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user,
+        status: :failed,
+        error_message: "temporary failure",
+        completed_at: Time.current
+      )
+      diagnosis_path = "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses/#{suggestion.id}"
+
+      get diagnosis_path, headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "form[action='#{diagnosis_path}/retry'] button", text: "重试"
+      assert_select "form[action='#{diagnosis_path}'][data-turbo-confirm='确认删除这条 Listing 诊断记录？']" do
+        assert_select "button.btn-danger", text: "删除记录"
+      end
+    end
+
+    test "retrying a failed listing diagnosis resets and enqueues it" do
+      suggestion = @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user,
+        status: :failed,
+        content: "stale content",
+        error_message: "temporary failure",
+        started_at: 2.minutes.ago,
+        completed_at: 1.minute.ago
+      )
+      diagnosis_path = "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses/#{suggestion.id}"
+
+      assert_enqueued_jobs 1, only: AITasks::ListingDiagnosisJob do
+        post "#{diagnosis_path}/retry"
+      end
+
+      assert_redirected_to diagnosis_path
+      suggestion.reload
+      assert suggestion.pending?
+      assert_nil suggestion.content
+      assert_nil suggestion.conversation_id
+      assert_nil suggestion.error_message
+      assert_nil suggestion.started_at
+      assert_nil suggestion.completed_at
+    end
+
+    test "does not retry a listing diagnosis unless it failed" do
+      suggestion = @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user,
+        status: :completed,
+        content: "done",
+        completed_at: Time.current
+      )
+      diagnosis_path = "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses/#{suggestion.id}"
+
+      assert_no_enqueued_jobs only: AITasks::ListingDiagnosisJob do
+        post "#{diagnosis_path}/retry"
+      end
+
+      assert_redirected_to diagnosis_path
+      assert suggestion.reload.completed?
+    end
+
+    test "deletes a listing diagnosis record" do
+      suggestion = @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user,
+        status: :failed,
+        error_message: "temporary failure",
+        completed_at: Time.current
+      )
+      diagnosis_path = "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses/#{suggestion.id}"
+
+      assert_difference -> { @binding.ai_suggestions.count }, -1 do
+        delete diagnosis_path
+      end
+
+      assert_redirected_to "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}#listing_diagnoses_ec_sku_product_#{@binding.id}"
+    end
+
     test "platform product show renders unbound wb product characteristics with the wb template" do
       get "/erp/platform_products/wb/#{@wb_store.id}/#{@raw_wb_product.nm_id}", headers: { "Accept" => "text/html" }
 

@@ -163,6 +163,8 @@ Rails.application.routes.draw do
     get "platform_products/:platform/:store_id/:product_id/listing_diagnoses" => "listing_diagnoses#index", as: :platform_product_listing_diagnoses
     post "platform_products/:platform/:store_id/:product_id/listing_diagnoses" => "listing_diagnoses#create"
     get "platform_products/:platform/:store_id/:product_id/listing_diagnoses/:id" => "listing_diagnoses#show", as: :platform_product_listing_diagnosis
+    post "platform_products/:platform/:store_id/:product_id/listing_diagnoses/:id/retry" => "listing_diagnoses#retry_failed", as: :retry_platform_product_listing_diagnosis
+    delete "platform_products/:platform/:store_id/:product_id/listing_diagnoses/:id" => "listing_diagnoses#destroy"
     resources :categories, only: [:index]
     resources :master_skus, only: [:new, :create, :edit, :update]
     resources :sku_categories, except: [:destroy]

@@ -16,6 +16,28 @@
       <i class="bi bi-arrow-left" aria-hidden="true"></i>
       <%= t("erp.sku_products.listing_diagnosis.back") %>
     <% end %>
+    <% if @listing_suggestion.failed? %>
+      <%= button_to erp_retry_platform_product_listing_diagnosis_path(
+            @sku_product.platform,
+            @sku_product.store_id,
+            @sku_product.product_id,
+            @listing_suggestion,
+            locale: params[:locale].presence
+          ), class: "button", data: { turbo_submits_with: t("erp.sku_products.listing_diagnosis.retrying") } do %>
+        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+        <%= t("erp.sku_products.listing_diagnosis.retry") %>
+      <% end %>
+    <% end %>
+    <%= button_to erp_platform_product_listing_diagnosis_path(
+          @sku_product.platform,
+          @sku_product.store_id,
+          @sku_product.product_id,
+          @listing_suggestion,
+          locale: params[:locale].presence
+        ), method: :delete, class: "button btn-danger", form: { data: { turbo_confirm: t("erp.sku_products.listing_diagnosis.delete_confirm") } } do %>
+      <i class="bi bi-trash" aria-hidden="true"></i>
+      <%= t("erp.sku_products.listing_diagnosis.delete") %>
+    <% end %>
   </div>
 </div>
 
