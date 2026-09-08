@@ -64,7 +64,8 @@ module SalesFunnelReports
         to_date: to_date,
         store_ref: store_ref,
         platform: platform,
-        sku_codes: selected_sku_codes
+        sku_codes: selected_sku_codes,
+        sku_product_id: selected_sku_product_id
       }
     end
 
@@ -175,8 +176,8 @@ module SalesFunnelReports
     def wb_rows(account, parsed)
       scope = full_week_scope(account.sales_funnel_periods, parsed)
       mapping = platform_product_mapping("wb", account.id, :product_id)
-      ids = mapped_product_ids(mapping, parsed[:sku_codes])
-      scope = scope.where(nm_id: ids) if parsed[:sku_codes].any?
+      ids = mapped_product_ids(mapping, parsed[:sku_codes], sku_product_id: parsed[:sku_product_id])
+      scope = scope.where(nm_id: ids) if product_filter?(parsed)
 
       grouped_platform_records(scope.order(:nm_id, :period_start), mapping, :nm_id).map do |product, records|
         open_card = sum(records, :open_card)
@@ -216,8 +217,8 @@ module SalesFunnelReports
         store_id: store_id,
         on_date: parsed[:to_date]
       )
-      ids = mapped_product_ids(mapping, parsed[:sku_codes]).map(&:to_i)
-      scope = scope.where(sku: ids) if parsed[:sku_codes].any?
+      ids = mapped_product_ids(mapping, parsed[:sku_codes], sku_product_id: parsed[:sku_product_id]).map(&:to_i)
+      scope = scope.where(sku: ids) if product_filter?(parsed)
 
       grouped_platform_records(scope.order(:sku, :period_start), mapping, :sku).map do |product, records|
         hits_view = sum(records, :hits_view)
@@ -272,6 +273,7 @@ module SalesFunnelReports
           next unless sku_product.sku
 
           mapping[sku_product.public_send(column).to_s] = {
+            sku_product_id: sku_product.id,
             sku_id: sku_product.sku.id,
             store_id: sku_product.store_id,
             sku_code: sku_product.sku_code,
@@ -286,8 +288,29 @@ module SalesFunnelReports
       sku.product_name
     end
 
-    def mapped_product_ids(mapping, sku_codes)
+    def mapped_product_ids(mapping, sku_codes, sku_product_id: nil)
+      if sku_product_id
+        return mapping.filter_map do |platform_id, product|
+          matches_sku = sku_codes.empty? || product[:sku_code].in?(sku_codes)
+          platform_id if product[:sku_product_id] == sku_product_id && matches_sku
+        end
+      end
+
       mapping.filter_map { |platform_id, product| platform_id if product[:sku_code].in?(sku_codes) }
+    end
+
+    def product_filter?(parsed)
+      parsed[:sku_product_id].present? || parsed[:sku_codes].any?
+    end
+
+    def selected_sku_product_id
+      value = param(:sku_product_id)
+      return if value.blank?
+
+      id = Integer(value, exception: false)
+      raise ArgumentError, "invalid_sku_product_id" unless id&.positive?
+
+      id
     end
 
     def grouped_platform_records(scope, mapping, platform_id_field)

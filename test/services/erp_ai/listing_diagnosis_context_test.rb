@@ -41,7 +41,7 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     RawOzon::SellerAccount.where(id: @ozon_account&.id).delete_all
   end
 
-  test "expands SKU and numbered listings into one Markdown context" do
+  test "includes only the requested product listing in the Markdown context" do
     wb_product = RawWb::Product.create!(
       account: @wb_account,
       nm_id: 910_000_000 + @token.hex % 1_000_000,
@@ -62,13 +62,13 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
         url: "https://example.test/wb-#{index + 1}.png"
       )
     end
-    Ec::SkuProduct.create!(
+    wb_binding = Ec::SkuProduct.create!(
       sku: @sku,
       store: @wb_store,
       product_id: wb_product.nm_id.to_s,
       product_name: "WB listing"
     )
-    2.times do |index|
+    ozon_bindings = 2.times.map do |index|
       Ec::SkuProduct.create!(
         sku: @sku,
         store: @ozon_store,
@@ -83,22 +83,26 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     )
 
     with_forbidden_image_download do
-      @context = ErpAI::ListingDiagnosisContext.call(sku_code: " #{@sku.sku_code.downcase} ")
-      @cached_context = ErpAI::ListingDiagnosisContext.call(sku_code: @sku.sku_code)
+      @context = ErpAI::ListingDiagnosisContext.call(sku_product: wb_binding)
+      @ozon_context = ErpAI::ListingDiagnosisContext.call(sku_product: ozon_bindings.second)
     end
 
     assert_includes @context, "# SKU 基础信息"
     assert_includes @context, "## sku_code\n\n#{@sku.sku_code}"
     assert_includes @context, "## product_info\n\n_未提供_"
     assert_includes @context, "## specifications\n\nColor: gold"
-    assert_includes @context, "# Ozon Listing 1"
-    assert_includes @context, "# Ozon Listing 2"
-    assert_includes @context, "# Wildberries Listing 1"
+    assert_includes @context, "# Wildberries Listing"
+    refute_includes @context, "# Ozon Listing"
+    refute_includes @context, "Ozon listing 1"
+    refute_includes @context, "Ozon listing 2"
     refute_includes @context, "https://example.test/wb-1.png"
     assert_match(/```json\n\{\n  "price": 85/, @context)
     refute_includes @context, "success"
     assert_match(%r{## image_url\n\n/rails/active_storage/blobs/redirect/.+/wb_WB#{@token}_merged_4\.jpg}, @context)
-    assert_match(%r{## image_url\n\n/rails/active_storage/blobs/redirect/.+/wb_WB#{@token}_merged_4\.jpg}, @cached_context)
+    assert_includes @ozon_context, "# Ozon Listing"
+    assert_includes @ozon_context, "Ozon listing 2"
+    refute_includes @ozon_context, "Ozon listing 1"
+    refute_includes @ozon_context, "# Wildberries Listing"
   end
 
   test "public image combiner retries a failed download twice" do

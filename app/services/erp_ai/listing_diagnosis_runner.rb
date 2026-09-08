@@ -89,7 +89,7 @@ module ErpAI
     def data_summary
       [
         target_context,
-        listing_context.call(sku_code: sku_product.sku_code),
+        listing_context.call(sku_product: sku_product),
         sales_funnel_summary
       ].join("\n---\n\n")
     end
@@ -122,6 +122,7 @@ module ErpAI
     def sales_funnel_data
       sales_funnel_context.new(
         sku: sku_product.sku,
+        sku_product: sku_product,
         period_from: period_from,
         period_to: period_to,
         store_options: [store_option]

@@ -70,8 +70,10 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
       end
     end
     listing_context = Object.new
-    listing_context.define_singleton_method(:call) do |sku_code:|
-      "# Listing context for #{sku_code}"
+    listing_context_argument = nil
+    listing_context.define_singleton_method(:call) do |sku_product:|
+      listing_context_argument = sku_product
+      "# Listing context for #{sku_product.sku_code}"
     end
     funnel_arguments = nil
     funnel_context = Class.new do
@@ -100,7 +102,9 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_includes ask_arguments.fetch(:data_summary), "product_id: #{@sku_product.product_id}"
     assert_includes ask_arguments.fetch(:data_summary), "# Listing context for #{@sku.sku_code}"
     assert_includes ask_arguments.fetch(:data_summary), '"hits_view": 120'
+    assert_equal @sku_product, listing_context_argument
     assert_equal @sku, funnel_arguments.fetch(:sku)
+    assert_equal @sku_product, funnel_arguments.fetch(:sku_product)
     assert_equal Date.new(2026, 8, 10), funnel_arguments.fetch(:period_from)
     assert_equal Date.new(2026, 9, 6), funnel_arguments.fetch(:period_to)
     assert_equal "ozon:#{@account.id}", funnel_arguments.fetch(:store_options).sole.fetch(:ref)

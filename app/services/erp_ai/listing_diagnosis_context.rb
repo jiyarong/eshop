@@ -13,31 +13,26 @@ module ErpAI
     DOWNLOAD_ATTEMPTS = 3
 
     class << self
-      def call(sku_code:)
-        normalized_sku_code = sku_code.to_s.strip.upcase
+      def call(sku_product:)
+        sku = sku_product.sku
         data = SkuProductAttributesQuery.new(
-          sku_code: normalized_sku_code
+          sku_code: sku.sku_code,
+          sku_product_id: sku_product.id
         ).call
-        counters = Hash.new(0)
-        listing_occurrences = Hash.new(0)
-        sku = Ec::Sku.find_by!(sku_code: normalized_sku_code)
         listing_image_attachments = sku.attachments.where(attach_type: :listing_image).with_attached_file.to_a
         documents = [ render_document("SKU 基础信息", data.fetch(:sku)) ]
 
         data.fetch(:listings).each do |listing|
           platform = listing.fetch(:platform).to_s.downcase
-          counters[platform] += 1
-          identity = [ platform, listing[:store].to_s ]
-          listing_occurrences[identity] += 1
           platform_name = platform == "ozon" ? "Ozon" : "Wildberries"
           listing = replace_image_urls(
             listing,
             sku: sku,
-            occurrence: listing_occurrences.fetch(identity),
+            occurrence: listing_occurrence(sku_product),
             attachments: listing_image_attachments
           )
           documents << render_document(
-            "#{platform_name} Listing #{counters.fetch(platform)}",
+            "#{platform_name} Listing",
             listing
           )
         end
@@ -65,6 +60,14 @@ module ErpAI
       end
 
       private
+
+      def listing_occurrence(sku_product)
+        Ec::SkuProduct.joins(:store)
+          .where(sku_code: sku_product.sku_code, platform: sku_product.platform)
+          .where(ec_stores: { store_name: sku_product.store.store_name })
+          .where("ec_sku_products.product_id <= ?", sku_product.product_id)
+          .count
+      end
 
       def replace_image_urls(listing, sku:, occurrence:, attachments:)
         attachment = ListingImageAttachment.find(

@@ -6,7 +6,7 @@ class SalesFunnelReports::SkuDailyReportQueryRunnerTest < ActiveSupport::TestCas
     @account = RawWb::SellerAccount.create!(name: "Daily report #{@token}", api_token: "token-#{@token}", company_type: :small)
     @store = Ec::Store.create!(platform: "wb", store_name: "Daily report #{@token}", company_type: "small", wb_raw_account_id: @account.id)
     @sku = Ec::Sku.create!(sku_code: "DAILY-REPORT-#{@token}", product_name: "日漏斗汇总商品")
-    Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: @store, product_id: "72001")
+    @sku_product = Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: @store, product_id: "72001")
   end
 
   teardown do
@@ -65,6 +65,36 @@ class SalesFunnelReports::SkuDailyReportQueryRunnerTest < ActiveSupport::TestCas
     assert_equal Date.new(2026, 8, 2), report.dig(:comparison, :period, :to_date)
   end
 
+  test "filters funnel rows to one SKU product when requested" do
+    Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: @store, product_id: "72002")
+    create_daily(Date.new(2026, 8, 3), open_card: 100, carts: 20, orders: 8, amount: 800)
+    RawWb::SalesFunnelDaily.create!(
+      account: @account,
+      stat_date: Date.new(2026, 8, 3),
+      nm_id: 72002,
+      open_card: 900,
+      add_to_cart: 180,
+      orders: 72,
+      orders_sum: 7_200,
+      synced_at: Time.current
+    )
+
+    report = SalesFunnelReports::SkuDailyReportQueryRunner.run(
+      params: {
+        store_ref: "wb:#{@account.id}",
+        from_date: "2026-08-03",
+        to_date: "2026-08-09",
+        sku_code: @sku.sku_code,
+        sku_product_id: @sku_product.id
+      },
+      today: Date.new(2026, 8, 12),
+      include_comparison: false
+    )
+
+    assert_equal BigDecimal("100"), report[:rows].sole[:open_card]
+    assert_equal BigDecimal("8"), report[:rows].sole[:orders]
+  end
+
   test "uses Ozon product-card views and carts for cart conversion" do
     account = RawOzon::SellerAccount.create!(
       company_name: "Daily Ozon #{@token}", client_id: "daily-ozon-#{@token}",
@@ -74,8 +104,11 @@ class SalesFunnelReports::SkuDailyReportQueryRunnerTest < ActiveSupport::TestCas
       platform: "ozon", store_name: "Daily Ozon #{@token}", company_type: "small",
       ozon_raw_account_id: account.id
     )
-    Ec::SkuProduct.create!(
+    sku_product = Ec::SkuProduct.create!(
       sku_code: @sku.sku_code, store: store, product_id: "DAILY-OZON-#{@token}", platform_sku_id: "82001"
+    )
+    Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code, store: store, product_id: "OTHER-OZON-#{@token}", platform_sku_id: "82002"
     )
     RawOzon::SalesFunnelDaily.create!(
       account: account, stat_date: Date.new(2026, 8, 3), sku: 82001,
@@ -89,11 +122,17 @@ class SalesFunnelReports::SkuDailyReportQueryRunnerTest < ActiveSupport::TestCas
       ordered_units: 6, delivered_units: 5, revenue: 600,
       synced_at: Time.current
     )
+    RawOzon::SalesFunnelDaily.create!(
+      account: account, stat_date: Date.new(2026, 8, 4), sku: 82002,
+      hits_view: 50_000, hits_view_search: 20_000, hits_tocart: 500, hits_view_pdp: 5_000, hits_tocart_pdp: 400,
+      ordered_units: 100, delivered_units: 80, revenue: 10_000,
+      synced_at: Time.current
+    )
 
     report = SalesFunnelReports::SkuDailyReportQueryRunner.run(
       params: {
         store_ref: "ozon:#{account.id}", from_date: "2026-08-03", to_date: "2026-08-09",
-        sku_codes: [@sku.sku_code]
+        sku_codes: [@sku.sku_code], sku_product_id: sku_product.id
       },
       today: Date.new(2026, 8, 12)
     )

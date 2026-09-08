@@ -3,12 +3,14 @@ module ErpAI
     class SalesFunnelContext
       def initialize(
         sku:,
+        sku_product: nil,
         period_from:,
         period_to:,
         store_options: SalesFunnelReports::ReportQueryRunner.store_options,
         query_runner: SalesFunnelReports::SkuDailyReportQueryRunner
       )
         @sku = sku
+        @sku_product = sku_product
         @period_from = period_from
         @period_to = period_to
         @store_options = store_options
@@ -23,7 +25,7 @@ module ErpAI
 
       private
 
-      attr_reader :sku, :period_from, :period_to, :store_options, :query_runner
+      attr_reader :sku, :sku_product, :period_from, :period_to, :store_options, :query_runner
 
       def weekly_periods
         (period_from..period_to).step(7).map do |week_start|
@@ -36,13 +38,15 @@ module ErpAI
       end
 
       def store_payload(store, period)
+        params = {
+          store_ref: store.fetch(:ref),
+          from_date: period.fetch(:period_from).iso8601,
+          to_date: period.fetch(:period_to).iso8601,
+          sku_code: sku.sku_code
+        }
+        params[:sku_product_id] = sku_product.id if sku_product
         report = query_runner.run(
-          params: {
-            store_ref: store.fetch(:ref),
-            from_date: period.fetch(:period_from).iso8601,
-            to_date: period.fetch(:period_to).iso8601,
-            sku_code: sku.sku_code
-          },
+          params: params,
           today: period.fetch(:period_to),
           include_comparison: false
         )

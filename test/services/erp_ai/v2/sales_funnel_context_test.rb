@@ -3,6 +3,7 @@ require "test_helper"
 class ErpAI::V2::SalesFunnelContextTest < ActiveSupport::TestCase
   test "groups daily funnel rows by natural week and store without comparison" do
     sku = Struct.new(:sku_code).new("SKU-CONTEXT")
+    sku_product = Struct.new(:id).new(42)
     stores = [
       { ref: "wb:11", platform: "wb", name: "WB Store", label: "WB Store" },
       { ref: "ozon:22", platform: "ozon", name: "Ozon Store", label: "Ozon Store" }
@@ -16,6 +17,7 @@ class ErpAI::V2::SalesFunnelContextTest < ActiveSupport::TestCase
 
     result = ErpAI::V2::SalesFunnelContext.new(
       sku: sku,
+      sku_product: sku_product,
       period_from: Date.new(2026, 8, 3),
       period_to: Date.new(2026, 8, 16),
       store_options: stores,
@@ -28,6 +30,7 @@ class ErpAI::V2::SalesFunnelContextTest < ActiveSupport::TestCase
     assert_equal 4, calls.size
     assert calls.all? { |call| call.fetch(:include_comparison) == false }
     assert calls.all? { |call| call.dig(:params, :sku_code) == "SKU-CONTEXT" }
+    assert calls.all? { |call| call.dig(:params, :sku_product_id) == 42 }
 
     wb_store, ozon_store = result.first.fetch(:stores)
     assert_equal({ store_ref: "wb:11", platform: "wb", store_id: 11, store_name: "WB Store" }, wb_store.except(:data))

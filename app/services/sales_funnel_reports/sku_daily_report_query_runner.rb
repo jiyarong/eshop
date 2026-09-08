@@ -9,8 +9,8 @@ module SalesFunnelReports
     def wb_rows(account, parsed)
       scope = account.sales_funnel_daily.where(stat_date: parsed[:from_date]..parsed[:to_date])
       mapping = platform_product_mapping("wb", account.id, :product_id)
-      ids = mapped_product_ids(mapping, parsed[:sku_codes])
-      scope = scope.where(nm_id: ids) if parsed[:sku_codes].any?
+      ids = mapped_product_ids(mapping, parsed[:sku_codes], sku_product_id: parsed[:sku_product_id])
+      scope = scope.where(nm_id: ids) if product_filter?(parsed)
 
       grouped_platform_records(scope.order(:nm_id, :stat_date), mapping, :nm_id).map do |product, records|
         open_card = sum(records, :open_card)
@@ -50,8 +50,8 @@ module SalesFunnelReports
         store_id: store_id,
         on_date: parsed[:to_date]
       )
-      ids = mapped_product_ids(mapping, parsed[:sku_codes]).map(&:to_i)
-      scope = scope.where(sku: ids) if parsed[:sku_codes].any?
+      ids = mapped_product_ids(mapping, parsed[:sku_codes], sku_product_id: parsed[:sku_product_id]).map(&:to_i)
+      scope = scope.where(sku: ids) if product_filter?(parsed)
 
       grouped_platform_records(scope.order(:sku, :stat_date), mapping, :sku).map do |product, records|
         hits_view = sum(records, :hits_view)

@@ -1,5 +1,6 @@
 require "test_helper"
 require "ostruct"
+require "active_agent/providers/open_ai/chat_provider"
 
 class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
   class FakeGeneration
@@ -87,6 +88,21 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     )
 
     assert_same callback, FakeAgent.last_generation.params.fetch(:stream_callback)
+  end
+
+  test "ignores streaming usage chunks with no choices" do
+    stream_events = []
+    provider = ActiveAgent::Providers::OpenAI::ChatProvider.new(
+      service: "OpenAI",
+      access_token: "test-token",
+      stream_broadcaster: ->(_message, _delta, event) { stream_events << event }
+    )
+    chunk = Struct.new(:choices, :usage).new([], nil)
+    event = Struct.new(:type, :chunk).new(:chunk, chunk)
+
+    provider.send(:process_stream_chunk, event)
+
+    assert_equal [:open], stream_events
   end
 
   test "normalizes provider tool calls exposed on response message" do

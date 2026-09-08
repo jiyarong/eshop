@@ -23,6 +23,7 @@ module ErpAI
         INNER JOIN ec_stores st ON st.id = sp.store_id
         WHERE sk.sku_code = $1
           AND sk.deleted_at IS NULL
+          AND ($4::bigint IS NULL OR sp.id = $4)
       ),
       all_platform_products AS (
         SELECT
@@ -109,10 +110,11 @@ module ErpAI
       LIMIT $2 OFFSET $3
     SQL
 
-    def initialize(sku_code:, limit: DEFAULT_LIMIT, offset: 0)
+    def initialize(sku_code:, limit: DEFAULT_LIMIT, offset: 0, sku_product_id: nil)
       @sku_code = sku_code
       @limit = limit
       @offset = offset
+      @sku_product_id = sku_product_id
     end
 
     def call
@@ -129,13 +131,14 @@ module ErpAI
 
     private
 
-    attr_reader :sku_code, :limit, :offset
+    attr_reader :sku_code, :limit, :offset, :sku_product_id
 
     def execute_query
       binds = [
         query_attribute("sku_code", sku_code, ActiveRecord::Type::String.new),
         query_attribute("limit", limit, ActiveRecord::Type::Integer.new),
-        query_attribute("offset", offset, ActiveRecord::Type::Integer.new)
+        query_attribute("offset", offset, ActiveRecord::Type::Integer.new),
+        query_attribute("sku_product_id", sku_product_id, ActiveRecord::Type::Integer.new)
       ]
       ActiveRecord::Base.connection.exec_query(SQL, self.class.name, binds)
     end
