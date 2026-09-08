@@ -293,6 +293,37 @@ module Erp
       assert_select "h1", "Listing AI 诊断详情"
       assert_select "[data-controller='markdown']"
       assert_select "pre", text: /需要优化标题/
+      assert_select "a", text: "查看原始对话/继续诊断", count: 0
+    end
+
+    test "listing diagnosis detail links to its original conversation" do
+      agent = Agent.create!(
+        code: "listing-audit-#{@token.downcase}",
+        name: "Listing Audit #{@token}",
+        system_prompt: "Audit the supplied listing.",
+        model_id: "fake-model",
+        temperature: 0.2,
+        tools: []
+      )
+      conversation = agent.conversations.create!(user: @current_user)
+      suggestion = @binding.ai_suggestions.create!(
+        suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+        submitted_by: @current_user,
+        conversation: conversation,
+        status: :completed,
+        content: "## 诊断结论",
+        completed_at: Time.current
+      )
+
+      get "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses/#{suggestion.id}",
+        headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "a.button[href=?]", "/ai/conversations/#{conversation.id}", "查看原始对话/继续诊断"
+    ensure
+      suggestion&.destroy!
+      conversation&.destroy!
+      agent&.destroy!
     end
 
     test "failed listing diagnosis detail renders retry and delete actions" do

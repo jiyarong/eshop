@@ -2493,6 +2493,7 @@ zh:
         title: "Listing AI 诊断"
         unbound: "该平台商品尚未绑定 SKU，绑定后才能结合 Listing 上下文和销售漏斗进行诊断。"
         view: "查看详情"
+        view_conversation: "查看原始对话/继续诊断"
       pagination:
         aria_label: "平台商品分页"
         jump_action: "确定"

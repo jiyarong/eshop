@@ -2286,6 +2286,7 @@ en:
         title: "Listing AI diagnosis"
         unbound: "This platform product is not bound to a SKU. Bind it before diagnosing it with listing context and sales funnel data."
         view: "View details"
+        view_conversation: "View original conversation / continue diagnosis"
       pagination:
         aria_label: "Platform product pagination"
         jump_action: "Go"

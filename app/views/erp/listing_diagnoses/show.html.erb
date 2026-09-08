@@ -16,6 +16,15 @@
       <i class="bi bi-arrow-left" aria-hidden="true"></i>
       <%= t("erp.sku_products.listing_diagnosis.back") %>
     <% end %>
+    <% if @listing_suggestion.conversation %>
+      <%= link_to ai_conversation_path(
+            @listing_suggestion.conversation,
+            locale: params[:locale].presence
+          ), class: "button" do %>
+        <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+        <%= t("erp.sku_products.listing_diagnosis.view_conversation") %>
+      <% end %>
+    <% end %>
     <% if @listing_suggestion.failed? %>
       <%= button_to erp_retry_platform_product_listing_diagnosis_path(
             @sku_product.platform,
