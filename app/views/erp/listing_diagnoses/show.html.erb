@@ -57,7 +57,7 @@
       <dt><%= t("erp.sku_products.fields.product_id") %></dt>
       <dd><%= @sku_product.product_id %></dd>
       <dt><%= t("erp.sku_products.listing_diagnosis.fields.sku") %></dt>
-      <dd><%= @sku_product.sku_code %></dd>
+      <dd><%= link_to @sku_product.sku_code, report_sku_path(@sku_product.sku_code, current_locale_params.merge(tab: "basic")) %></dd>
       <dt><%= t("erp.sku_products.listing_diagnosis.fields.submitted_by") %></dt>
       <dd><%= @listing_suggestion.submitted_by.display_name %></dd>
       <dt><%= t("erp.sku_products.listing_diagnosis.fields.created_at") %></dt>

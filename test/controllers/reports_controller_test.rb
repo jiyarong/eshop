@@ -1852,8 +1852,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "section.sku-listing-diagnoses" do
       assert_select "h2", "Listing AI 诊断"
       assert_select ".sku-listing-diagnoses__product", count: 2
-      assert_select ".sku-listing-diagnoses__product-header", text: /Ozon 绑定商品/
-      assert_select ".sku-listing-diagnoses__product-header", text: /WB 绑定商品/
+      assert_select ".sku-listing-diagnoses__product-header p", "Ozon · 销量统计 Ozon 店 #{@sku_code} · 9876543210"
+      assert_select ".sku-listing-diagnoses__product-header p", "WB · 销量统计 WB 店 #{@sku_code} · 123456"
+      assert_select ".sku-listing-diagnoses__product-header", { text: /Ozon 绑定商品|WB 绑定商品/, count: 0 }
       assert_select ".listing-diagnosis-status--completed", "已完成"
       assert_select "a[href=?][data-turbo-frame='_top']",
         erp_platform_product_listing_diagnosis_path(

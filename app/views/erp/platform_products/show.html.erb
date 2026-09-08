@@ -6,6 +6,9 @@
     <h1 class="page-title"><%= erp_value(@raw_product.try(:name) || @raw_product.try(:title)) %></h1>
   </div>
   <div class="resource-actions">
+    <% if @sku_product %>
+      <%= link_to t("erp.sku_products.actions.back_to_sku"), report_sku_path(@sku_product.sku_code, current_locale_params.merge(tab: "basic")), class: "button button-secondary" %>
+    <% end %>
     <% edit_url = product_edit_url(@platform, @platform == "ozon" ? @raw_product.raw_json&.dig("sku").presence || @product_id : @product_id) %>
     <% if edit_url %>
       <%= link_to t("erp.sku_products.actions.open_platform_product"), edit_url, target: "_blank", rel: "noreferrer noopener", class: "button" %>

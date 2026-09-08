@@ -209,6 +209,7 @@ module Erp
       assert_select "body", text: /WB 商品属性/, count: 0
       assert_select ".listing-diagnoses-panel", text: /尚未绑定 SKU/
       assert_select "form[action*='listing_diagnoses']", count: 0
+      assert_select "a", text: "返回 SKU 详情", count: 0
     end
 
     test "bound platform product renders listing diagnosis action and history" do
@@ -225,6 +226,7 @@ module Erp
         headers: { "Accept" => "text/html" }
 
       assert_response :success
+      assert_select "a[href=?]", report_sku_path(@sku.sku_code), "返回 SKU 详情"
       assert_select "h2", "Listing AI 诊断"
       assert_select "form[action=?]",
         "/erp/platform_products/ozon/#{@store.id}/#{@bound_raw_ozon_product.ozon_product_id}/listing_diagnoses.turbo_stream"
@@ -291,6 +293,7 @@ module Erp
 
       assert_response :success
       assert_select "h1", "Listing AI 诊断详情"
+      assert_select "a[href=?]", report_sku_path(@sku.sku_code, tab: "basic"), @sku.sku_code
       assert_select "[data-controller='markdown']"
       assert_select "pre", text: /需要优化标题/
       assert_select "a", text: "查看原始对话/继续诊断", count: 0

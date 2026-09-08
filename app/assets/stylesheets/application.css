@@ -2678,12 +2678,6 @@ table thead th {
   margin-bottom: 10px;
 }
 
-.sku-listing-diagnoses__product-header h3 {
-  margin: 0 0 2px;
-  font-size: 15px;
-  overflow-wrap: anywhere;
-}
-
 .sku-listing-diagnoses__product-header p {
   margin: 0;
   color: var(--erp-muted);
