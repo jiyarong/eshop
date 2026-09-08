@@ -109,7 +109,7 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
                   "去 YClaw 追问"
     assert_select "turbo-cable-stream-source", count: 1
     assert_select "form[action=?]", "/ai/conversations/#{conversation.id}/messages"
-    assert_select "textarea[name='message[content]']"
+    assert_select "textarea[name='message[content]'][data-action*='paste->conversation-composer#paste']"
     assert_select "input[type='file'][name='message[images][]'][multiple]"
   end
 

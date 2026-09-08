@@ -33,7 +33,7 @@
                          aria: { label: t("ai.conversations.composer.label") },
                          data: {
                            conversation_composer_target: "content",
-                           action: "input->conversation-composer#resize keydown->conversation-composer#keydown"
+                           action: "input->conversation-composer#resize keydown->conversation-composer#keydown paste->conversation-composer#paste"
                          } %>
 
       <%= form.file_field :images,

@@ -1,5 +1,22 @@
 import { Controller } from "@hotwired/stimulus";
 
+export function clipboardImageFiles(clipboardData, acceptedTypes = []) {
+  const items = Array.from(clipboardData?.items || []);
+  const itemFiles = items
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter(Boolean);
+  const files = itemFiles.length > 0 ? itemFiles : Array.from(clipboardData?.files || []);
+
+  return files.filter((file) => (
+    file.type.startsWith("image/") && (acceptedTypes.length === 0 || acceptedTypes.includes(file.type))
+  ));
+}
+
+export function canAppendImages(currentCount, newCount, maxImages) {
+  return newCount > 0 && currentCount + newCount <= maxImages;
+}
+
 export default class extends Controller {
   static targets = ["content", "images", "previews", "submit", "error"];
   static values = {
@@ -29,6 +46,26 @@ export default class extends Controller {
     } else {
       this.clearError();
     }
+    this.renderPreviews();
+  }
+
+  paste(event) {
+    const acceptedTypes = this.imagesTarget.accept.split(",").filter(Boolean);
+    const pastedImages = clipboardImageFiles(event.clipboardData, acceptedTypes);
+    if (pastedImages.length === 0) return;
+
+    event.preventDefault();
+
+    if (!canAppendImages(this.imagesTarget.files.length, pastedImages.length, this.maxImagesValue)) {
+      this.showError(this.tooManyErrorValue);
+      return;
+    }
+
+    const transfer = new DataTransfer();
+    Array.from(this.imagesTarget.files).forEach((file) => transfer.items.add(file));
+    pastedImages.forEach((file) => transfer.items.add(file));
+    this.imagesTarget.files = transfer.files;
+    this.clearError();
     this.renderPreviews();
   }
 
