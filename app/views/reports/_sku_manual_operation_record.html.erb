@@ -1,0 +1,28 @@
+<section class="panel ai-health-result ai-health-operation">
+  <div class="ai-health-result__header">
+    <h3 class="section-title"><%= t("reports.sku_detail.operation_record.title") %></h3>
+    <div class="ai-health-result__meta">
+      <span><%= action.operated_by_user.display_name %></span>
+      <time datetime="<%= action.operated_at.iso8601 %>"><%= display_time(action.operated_at) %></time>
+    </div>
+    <% if can?(:manage_skus) %>
+      <div class="ai-health-operation__actions">
+        <%= link_to edit_report_sku_operation_action_path(@sku.sku_code, action, request.query_parameters.slice(:locale)),
+                    class: "ico-btn",
+                    title: t("reports.sku_detail.operation_record.edit"),
+                    aria: { label: t("reports.sku_detail.operation_record.edit") },
+                    data: { turbo_frame: "erp_modal" } do %>
+          <i class="bi bi-pencil" aria-hidden="true"></i>
+        <% end %>
+        <%= link_to report_sku_operation_action_path(@sku.sku_code, action, request.query_parameters.slice(:locale)),
+                    class: "ico-btn ai-health-operation__delete",
+                    title: t("reports.sku_detail.operation_record.delete"),
+                    aria: { label: t("reports.sku_detail.operation_record.delete") },
+                    data: { turbo_method: :delete, turbo_confirm: t("reports.sku_detail.operation_record.delete_confirm") } do %>
+          <i class="bi bi-trash" aria-hidden="true"></i>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  <div class="ai-health-operation__note"><%= simple_format(action.diff_result["note"].to_s) %></div>
+</section>

@@ -11,7 +11,7 @@
         </button>
       </div>
 
-      <%= form_with url: report_sku_listing_diagnoses_path(@sku.sku_code, locale: params[:locale].presence),
+      <%= form_with url: report_sku_listing_diagnoses_path(@sku.sku_code, locale: params[:locale].presence, return_tab: params[:return_tab].presence),
                     method: :post,
                     data: { turbo_frame: "_top" } do |form| %>
         <fieldset class="listing-diagnosis-product-picker">
@@ -21,8 +21,7 @@
             <label class="listing-diagnosis-product-picker__option<%= " is-disabled" if active %>">
               <%= form.radio_button :sku_product_id, sku_product.id, required: true, disabled: active %>
               <span>
-                <strong><%= sku_product.product_name.presence || sku_product.product_id %></strong>
-                <small><%= t("common.platforms.#{sku_product.platform}", default: sku_product.platform) %> · <%= sku_product.store.store_name %> · <%= sku_product.product_id %></small>
+                <strong><%= t("common.platforms.#{sku_product.platform}", default: sku_product.platform) %> · <%= sku_product.store.store_name %> · <%= sku_product.product_id %></strong>
                 <% if active %>
                   <small class="listing-diagnosis-product-picker__status"><%= t("erp.sku_products.listing_diagnosis.already_running") %></small>
                 <% end %>

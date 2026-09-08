@@ -1,11 +1,12 @@
 <% panel_id = dom_id(sku, :listing_diagnoses) %>
 <% has_active_diagnosis = active_product_ids.any? %>
+<% return_tab_param = return_tab == "basic" ? nil : return_tab %>
 
 <section id="<%= panel_id %>"
          class="panel listing-diagnoses-panel sku-listing-diagnoses"
          <% if has_active_diagnosis %>
            data-controller="listing-diagnosis-status"
-           data-listing-diagnosis-status-url-value="<%= report_sku_listing_diagnoses_path(sku.sku_code, locale: params[:locale].presence, format: :turbo_stream) %>"
+           data-listing-diagnosis-status-url-value="<%= report_sku_listing_diagnoses_path(sku.sku_code, locale: params[:locale].presence, return_tab: return_tab_param, format: :turbo_stream) %>"
          <% end %>>
   <div class="listing-diagnoses-panel__header">
     <div>
@@ -14,7 +15,7 @@
     </div>
 
     <% if sku_products.any? %>
-      <%= link_to new_report_sku_listing_diagnosis_path(sku.sku_code, locale: params[:locale].presence),
+      <%= link_to new_report_sku_listing_diagnosis_path(sku.sku_code, locale: params[:locale].presence, return_tab: return_tab_param),
                   class: "button",
                   data: { turbo_frame: "erp_modal" } do %>
         <i class="bi bi-stars" aria-hidden="true"></i>

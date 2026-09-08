@@ -1887,6 +1887,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='radio'][name='sku_product_id'][value=?][disabled]", sku_product.id.to_s
     assert_select "input[type='radio'][name='sku_product_id']:not([disabled])", count: 1
     assert_select "input[type='submit'][value='开始 AI 诊断']:not([disabled])", count: 1
+    assert_select ".listing-diagnosis-product-picker__option", text: /Ozon.*销量统计 Ozon 店 #{@sku_code}.*9876543210/
+    assert_select ".listing-diagnosis-product-picker", { text: /Ozon 绑定商品/, count: 0 }
   ensure
     suggestion&.destroy!
   end

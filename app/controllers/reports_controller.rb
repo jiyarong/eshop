@@ -259,11 +259,11 @@ class ReportsController < ApplicationController
     )
     AITasks::ListingDiagnosisJob.perform_later(suggestion.id, locale: I18n.locale.to_s)
 
-    redirect_to report_sku_path(@sku.sku_code, tab: "basic", locale: params[:locale].presence),
+    redirect_to report_sku_path(@sku.sku_code, tab: listing_diagnosis_return_tab, locale: params[:locale].presence),
       notice: t("erp.sku_products.listing_diagnosis.enqueued"),
       status: :see_other
   rescue ActiveRecord::RecordNotUnique
-    redirect_to report_sku_path(@sku.sku_code, tab: "basic", locale: params[:locale].presence),
+    redirect_to report_sku_path(@sku.sku_code, tab: listing_diagnosis_return_tab, locale: params[:locale].presence),
       notice: t("erp.sku_products.listing_diagnosis.already_running"),
       status: :see_other
   end
@@ -780,7 +780,7 @@ class ReportsController < ApplicationController
     @ozon_costs = @sku.platform_costs.select { |cost| cost.platform == "ozon" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
-    load_sku_listing_diagnoses if @active_tab == "basic"
+    load_sku_listing_diagnoses if @active_tab.in?(%w[basic ai_inventory_health])
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     @prototype_media = @attachments.reverse.find do |attachment|
@@ -791,7 +791,17 @@ class ReportsController < ApplicationController
     end
     if @active_tab == "ai_inventory_health"
       @inventory_health_results = @sku.ai_diagnoses
-        .where(type: [ Ec::RestockingDiagnosis.sti_name, Ec::OperationActionDiagnosis.sti_name, Ec::GradeInspect.sti_name ])
+        .where(type: Ec::RestockingDiagnosis.sti_name)
+        .includes(:submitted_by, events: :conversation)
+        .recent_first
+        .limit(3)
+      @grade_inspection_results = @sku.ai_diagnoses
+        .where(type: Ec::GradeInspect.sti_name)
+        .includes(:submitted_by, events: :conversation)
+        .recent_first
+        .limit(3)
+      @operation_diagnosis_results = @sku.ai_diagnoses
+        .where(type: Ec::OperationActionDiagnosis.sti_name)
         .includes(:submitted_by, events: :conversation)
         .recent_first
         .limit(3)
@@ -800,7 +810,7 @@ class ReportsController < ApplicationController
         .includes(:operated_by_user, :sku_product, :store)
         .order(operated_at: :desc, id: :desc)
         .limit(7)
-      @inventory_health_timeline = build_inventory_health_timeline
+      @operation_timeline = build_operation_timeline
     end
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
@@ -882,8 +892,13 @@ class ReportsController < ApplicationController
       sku: @sku,
       sku_products: @sku_products,
       listing_suggestions_by_product_id: @listing_suggestions_by_product_id,
-      active_product_ids: @active_listing_suggestion_product_ids
+      active_product_ids: @active_listing_suggestion_product_ids,
+      return_tab: listing_diagnosis_return_tab
     }
+  end
+
+  def listing_diagnosis_return_tab
+    params[:return_tab].presence_in(%w[basic ai_inventory_health]) || "basic"
   end
 
   def sku_predicted_cost_params
@@ -901,8 +916,8 @@ class ReportsController < ApplicationController
     (params.dig(:ec_operation_action, :note).presence || params[:note]).to_s.strip
   end
 
-  def build_inventory_health_timeline
-    diagnosis_entries = @inventory_health_results.map do |result|
+  def build_operation_timeline
+    diagnosis_entries = @operation_diagnosis_results.map do |result|
       { type: :diagnosis, record: result, occurred_at: result.created_at, id: result.id }
     end
     operation_entries = @operation_actions.map do |action|

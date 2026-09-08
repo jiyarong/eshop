@@ -1914,6 +1914,16 @@ table thead th {
   gap: 16px;
 }
 
+.ai-diagnosis-section {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-diagnosis-section > .section-title,
+.ai-diagnosis-section > .table-section-header .section-title {
+  margin: 0;
+}
+
 .ai-health-timeline {
   display: grid;
   gap: 16px;
@@ -1932,6 +1942,11 @@ table thead th {
 .ai-health-result--operation-diagnosis {
   border-left: 4px solid #ea580c;
   background: #fff8f2;
+}
+
+.ai-health-result--grade-diagnosis {
+  border-left: 4px solid #7c3aed;
+  background: #faf7ff;
 }
 
 .ai-health-result__summary {
@@ -2033,6 +2048,10 @@ table thead th {
 
 .ai-health-result--inventory-diagnosis .section-title {
   color: #2856d9;
+}
+
+.ai-health-result--grade-diagnosis .section-title {
+  color: #6d28d9;
 }
 
 .ai-health-operation .section-title {

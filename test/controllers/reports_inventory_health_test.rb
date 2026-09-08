@@ -47,6 +47,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
   teardown do
     Ec::OperationAction.where(ec_sku_id: @sku&.id).delete_all
+    Ec::AISuggestion.where(suggestable: @sku_product).delete_all if @sku_product
     Ec::SkuProduct.where(id: @sku_product&.id).delete_all
     Ec::Store.where(id: @store&.id).delete_all
     Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
@@ -66,12 +67,15 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".sku-detail-tabs a[aria-current='page']", "AI诊断"
+    assert_select ".ai-diagnosis-section--inventory > h2", "库存诊断"
+    assert_select ".ai-diagnosis-section--grade > h2", "Grade 检查"
+    assert_select ".ai-diagnosis-section--operations h2", "运营记录"
     assert_select "a[data-turbo-frame='erp_modal'][href='#{new_report_sku_operation_action_path(@sku.sku_code)}']", "新增运营记录"
     assert_select "form.ai-health-operation-form__form", count: 0
     assert_select ".ai-health-result", count: 2
     assert_select ".ai-health-result:not([open])", count: 2
     assert_select ".ai-health-result:first-child" do
-      assert_select "h2", "AI 库存诊断 ##{@latest_result.id}"
+      assert_select "h3", "AI 库存诊断 ##{@latest_result.id}"
       assert_select ".ai-health-result__meta" do
         assert_select "span", { text: @user.display_name, count: 1 }
         assert_select "time", { text: "2026-07-26 09:30", count: 1 }
@@ -141,7 +145,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".ai-health-result--grade-diagnosis" do
-      assert_select "h2", "Grade 检查 ##{diagnosis.id}"
+      assert_select "h3", "Grade 检查 ##{diagnosis.id}"
       assert_select ".ai-operation-diagnosis__badge", text: /当前 Grade：A/
       assert_select ".ai-operation-diagnosis__badge", text: /建议 Grade：维持当前/
       assert_select ".ai-operation-diagnosis__meta dd", text: "2026-08-09"
@@ -247,7 +251,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "h2", "AI 运营操作诊断 ##{diagnosis.id}"
+    assert_select "h3", "AI 运营操作诊断 ##{diagnosis.id}"
     assert_select ".ai-operation-diagnosis__summary", text: /浏览和下单表现有所改善/
     assert_select ".ai-operation-diagnosis__meta dd", text: "1", count: 2
     assert_select ".ai-operation-diagnosis__meta dd", text: "2026-08-02", count: 1
@@ -368,7 +372,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_equal "运营记录已删除", flash[:notice]
   end
 
-  test "interleaves the latest seven manual operation records with ai diagnoses" do
+  test "shows the latest seven manual operation records in the operation section" do
     timestamps = [
       "2026-07-20 08:00:00",
       "2026-07-26 10:00:00",
@@ -397,14 +401,88 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select ".ai-health-timeline > .ai-health-result", count: 9
+    assert_select ".ai-diagnosis-section--operations .ai-health-timeline > .ai-health-result", count: 7
     assert_select ".ai-health-timeline > .ai-health-operation", count: 7
     assert_select ".ai-health-operation__note", text: /运营记录 8/
     assert_select ".ai-health-operation__note", text: /运营记录 1/, count: 0
 
     timeline_text = css_select(".ai-health-timeline > .ai-health-result").map(&:text).join(" ")
-    assert_operator timeline_text.index("运营记录 2"), :<, timeline_text.index("最新诊断消息")
-    assert_operator timeline_text.index("最新诊断消息"), :<, timeline_text.index("运营记录 3")
+    assert_operator timeline_text.index("运营记录 2"), :<, timeline_text.index("运营记录 3")
+  end
+
+  test "limits inventory and grade diagnosis sections to three records each" do
+    create_health_result(
+      created_at: Time.zone.parse("2026-07-27 08:00:00"),
+      severity: "green",
+      event_type: "newer_inventory",
+      message: "较新库存诊断"
+    )
+    create_health_result(
+      created_at: Time.zone.parse("2026-07-28 08:00:00"),
+      severity: "green",
+      event_type: "newest_inventory",
+      message: "最新库存诊断"
+    )
+    grade_results = 4.times.map do |index|
+      Ec::GradeInspect.create!(
+        sku: @sku,
+        submitted_by: @user,
+        analyzed_at: Time.zone.parse("2026-08-#{index + 1} 08:00:00"),
+        data: {},
+        created_at: Time.zone.parse("2026-08-#{index + 1} 08:00:00"),
+        updated_at: Time.zone.parse("2026-08-#{index + 1} 08:00:00")
+      )
+    end
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-diagnosis-section--inventory .ai-health-result", count: 3
+    assert_select ".ai-diagnosis-section--inventory", { text: /旧诊断消息/, count: 0 }
+    assert_select ".ai-diagnosis-section--grade .ai-health-result", count: 3
+    assert_select ".ai-diagnosis-section--grade", { text: /Grade 检查 ##{grade_results.first.id}/, count: 0 }
+  end
+
+  test "ai diagnosis tab renders listing diagnoses and preserves the source tab" do
+    suggestion = @sku_product.ai_suggestions.create!(
+      suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
+      submitted_by: @user,
+      status: :completed,
+      content: "Listing 诊断完成",
+      completed_at: Time.current
+    )
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "section.sku-listing-diagnoses" do
+      assert_select "h2", "Listing AI 诊断"
+      assert_select ".listing-diagnosis-status--completed", "已完成"
+      assert_select "a[href=?][data-turbo-frame='erp_modal']",
+        new_report_sku_listing_diagnosis_path(@sku.sku_code, return_tab: "ai_inventory_health"),
+        "开始 AI 诊断"
+    end
+
+    sign_in @user
+    get new_report_sku_listing_diagnosis_path(@sku.sku_code, return_tab: "ai_inventory_health"),
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "form[action=?]",
+      report_sku_listing_diagnoses_path(@sku.sku_code, return_tab: "ai_inventory_health")
+
+    sign_in @user
+    assert_enqueued_jobs 1, only: AITasks::ListingDiagnosisJob do
+      post report_sku_listing_diagnoses_path(@sku.sku_code, return_tab: "ai_inventory_health"),
+        params: { sku_product_id: @sku_product.id }
+    end
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+  ensure
+    suggestion&.destroy!
   end
 
   test "does not include other manual operation types in the operation record timeline" do
