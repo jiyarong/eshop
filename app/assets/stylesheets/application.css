@@ -2286,6 +2286,68 @@ table thead th {
   gap: 8px;
 }
 
+.ai-conversation-context {
+  max-width: 1040px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface);
+}
+
+.ai-conversation-context__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: var(--erp-text);
+  list-style: none;
+}
+
+.ai-conversation-context__summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-conversation-context__summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-conversation-context__summary:focus-visible {
+  outline: 2px solid var(--erp-brand);
+  outline-offset: -2px;
+}
+
+.ai-conversation-context__chevron {
+  transition: transform 180ms ease;
+}
+
+.ai-conversation-context[open] .ai-conversation-context__chevron {
+  transform: rotate(180deg);
+}
+
+.ai-conversation-context__body {
+  max-height: min(70vh, 720px);
+  overflow: auto;
+  border-top: 1px solid var(--erp-border);
+  padding: 18px;
+  background: var(--erp-surface-soft);
+}
+
+.ai-conversation-context__source {
+  max-width: none;
+  max-height: none;
+  margin: 0;
+}
+
+.ai-conversation-context__body .gbrain-markdown {
+  max-width: none;
+  margin: 0;
+}
+
 .ai-conversation {
   display: grid;
   gap: 18px;
@@ -2317,6 +2379,39 @@ table thead th {
 
 .ai-conversation-message--tool {
   border-left-color: var(--erp-accent);
+  background: #f7fcfa;
+}
+
+.ai-conversation-message--tool-request {
+  border-left-color: var(--erp-accent);
+  background: var(--erp-surface-soft);
+}
+
+.ai-tool-exchange {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--erp-border);
+  border-left: 4px solid var(--erp-accent);
+  border-radius: 8px;
+  background: var(--erp-surface);
+}
+
+.ai-tool-exchange > .ai-conversation-message {
+  margin-left: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ai-tool-exchange > .ai-conversation-message + .ai-conversation-message {
+  border-top: 1px solid var(--erp-border);
+}
+
+.ai-tool-exchange > .ai-conversation-message--tool-request {
+  background: var(--erp-surface-soft);
+}
+
+.ai-tool-exchange > .ai-conversation-message--tool {
   background: #f7fcfa;
 }
 
@@ -2653,6 +2748,10 @@ table thead th {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ai-conversation-context__chevron {
+    transition: none;
+  }
+
   .ai-conversation-message__body.is-streaming::after {
     animation: none;
   }

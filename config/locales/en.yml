@@ -41,6 +41,9 @@ en:
   ai:
     conversations:
       back_to_diagnosis: "Back to AI diagnosis"
+      context:
+        empty: "This conversation has no additional context."
+        title: "Agent context"
       composer:
         attach_images: "Add images"
         label: "Continue conversation"
@@ -67,6 +70,7 @@ en:
         user: "Analysis request"
       title: "AI conversation #%{id}"
       tool_call: "Tool call"
+      tool_exchange: "Tool call record"
       tool_result: "Tool call result"
   locale:
     switcher_label: "Language"

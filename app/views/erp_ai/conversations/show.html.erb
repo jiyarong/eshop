@@ -27,10 +27,27 @@
   </div>
 </div>
 
+<details class="ai-conversation-context">
+  <summary class="ai-conversation-context__summary">
+    <span>
+      <i class="bi bi-braces" aria-hidden="true"></i>
+      <%= t("ai.conversations.context.title") %>
+    </span>
+    <i class="bi bi-chevron-down ai-conversation-context__chevron" aria-hidden="true"></i>
+  </summary>
+  <div class="ai-conversation-context__body" data-controller="markdown">
+    <pre class="code-viewer ai-conversation-context__source" data-markdown-target="source"><%= ai_conversation_context_markdown(@conversation.context) %></pre>
+    <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+  </div>
+</details>
+
 <section class="ai-conversation" aria-label="<%= t("ai.conversations.messages_aria_label") %>">
   <%= turbo_stream_from @conversation %>
 
-  <div id="conversation_messages" class="ai-conversation__messages" data-controller="conversation-thread">
+  <div id="conversation_messages"
+       class="ai-conversation__messages"
+       data-controller="conversation-thread"
+       data-conversation-thread-tool-exchange-label-value="<%= t("ai.conversations.tool_exchange") %>">
     <%= render "erp_ai/conversations/messages", messages: @messages %>
   </div>
 

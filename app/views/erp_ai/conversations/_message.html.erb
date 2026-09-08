@@ -1,8 +1,19 @@
-<article id="<%= dom_id(message) %>" class="ai-conversation-message ai-conversation-message--<%= message.role %>">
+<% tool_request = ai_conversation_tool_request?(message) %>
+<% tool_response = message.role == "tool" %>
+<article id="<%= dom_id(message) %>"
+         class="<%= class_names("ai-conversation-message", "ai-conversation-message--#{message.role}", "ai-conversation-message--tool-request": tool_request) %>"
+         data-tool-request="<%= tool_request %>"
+         data-tool-response="<%= tool_response %>">
   <header class="ai-conversation-message__header">
     <span class="ai-conversation-message__role">
-      <i class="bi <%= message.role == "assistant" ? "bi-stars" : (message.role == "tool" ? "bi-wrench-adjustable" : "bi-person") %>" aria-hidden="true"></i>
-      <%= ai_conversation_role_label(message.role) %>
+      <i class="bi <%= tool_request || tool_response ? "bi-wrench-adjustable" : (message.role == "assistant" ? "bi-stars" : "bi-person") %>" aria-hidden="true"></i>
+      <%= if tool_request
+            t("ai.conversations.tool_call")
+          elsif tool_response
+            t("ai.conversations.tool_result")
+          else
+            ai_conversation_role_label(message.role)
+          end %>
     </span>
     <time datetime="<%= message.created_at.iso8601 %>"><%= local_assigns[:displayed_at] || display_time(message.created_at) %></time>
   </header>
@@ -25,6 +36,6 @@
 
   <%= render "erp_ai/conversations/message_body",
              message: message,
-             content: ai_conversation_message_markdown(message),
+             content: ai_conversation_message_markdown(message, include_tool_label: !tool_request && !tool_response),
              streaming: false %>
 </article>

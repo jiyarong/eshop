@@ -38,6 +38,9 @@ zh:
   ai:
     conversations:
       back_to_diagnosis: "返回 AI 诊断"
+      context:
+        empty: "本次会话没有额外上下文。"
+        title: "Agent 上下文"
       composer:
         attach_images: "添加图片"
         label: "继续对话"
@@ -64,6 +67,7 @@ zh:
         user: "分析请求"
       title: "AI 会话 #%{id}"
       tool_call: "工具调用"
+      tool_exchange: "工具调用记录"
       tool_result: "工具调用结果"
   category_selector:
     cancel: "取消"

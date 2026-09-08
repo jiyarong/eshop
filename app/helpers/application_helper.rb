@@ -250,7 +250,7 @@ module ApplicationHelper
     t("erp.operation_actions.operation_types.#{operation_type}")
   end
 
-  def ai_conversation_message_markdown(message)
+  def ai_conversation_message_markdown(message, include_tool_label: true)
     payload = JSON.parse(message.content)
 
     if message.role == "assistant" && payload["tool_calls"].is_a?(Array)
@@ -258,16 +258,32 @@ module ApplicationHelper
         name = tool_call["name"] || tool_call.dig("function", "name")
         arguments = tool_call["arguments"] || tool_call.dig("function", "arguments") || {}
         [
-          "#### #{t('ai.conversations.tool_call')}: #{name}",
+          include_tool_label ? "#### #{t('ai.conversations.tool_call')}: #{name}" : "**#{name}**",
           markdown_json_block(arguments)
         ].join("\n\n")
       end.join("\n\n")
     end
 
-    heading = message.role == "tool" ? "#### #{t('ai.conversations.tool_result')}\n\n" : ""
+    heading = message.role == "tool" && include_tool_label ? "#### #{t('ai.conversations.tool_result')}\n\n" : ""
     "#{heading}#{markdown_json_block(payload)}"
   rescue JSON::ParserError, TypeError
     message.content
+  end
+
+  def ai_conversation_tool_request?(message)
+    return false unless message.role == "assistant"
+
+    JSON.parse(message.content)["tool_calls"].is_a?(Array)
+  rescue JSON::ParserError, TypeError
+    false
+  end
+
+  def ai_conversation_context_markdown(context)
+    agent_context = context.to_h.except("response_status")
+    return t("ai.conversations.context.empty") if agent_context.blank?
+    return agent_context["data_summary"] if agent_context.keys == [ "data_summary" ]
+
+    markdown_json_block(agent_context)
   end
 
   def ai_conversation_role_label(role)

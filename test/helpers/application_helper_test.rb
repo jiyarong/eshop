@@ -41,4 +41,23 @@ class ApplicationHelperTest < ActionView::TestCase
     assert_equal "2026-06-02 00:30", display_time(value)
     assert_equal "-", display_time(nil)
   end
+
+  test "conversation context renders the data summary without runtime state" do
+    context = {
+      "data_summary" => "## SKU context\n\nInventory: 3",
+      "response_status" => "running"
+    }
+
+    assert_equal "## SKU context\n\nInventory: 3", ai_conversation_context_markdown(context)
+  end
+
+  test "conversation tool requests are identified from assistant payloads" do
+    tool_request = Message.new(
+      role: "assistant",
+      content: { tool_calls: [ { name: "search" } ] }.to_json
+    )
+
+    assert ai_conversation_tool_request?(tool_request)
+    assert_not ai_conversation_tool_request?(Message.new(role: "assistant", content: "Answer"))
+  end
 end

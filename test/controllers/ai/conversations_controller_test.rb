@@ -75,7 +75,11 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
 
   test "renders the conversation as markdown and includes tool results" do
     sign_in @user
-    conversation = @agent.conversations.create!(user: @user, module_name: "inventory")
+    conversation = @agent.conversations.create!(
+      user: @user,
+      module_name: "inventory",
+      context: { "data_summary" => "## SKU context\n\n库存 3 件", "response_status" => "idle" }
+    )
     conversation.messages.create!(role: "user", content: "分析 SKU-1")
     conversation.messages.create!(
       role: "assistant",
@@ -90,11 +94,16 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     get "/ai/conversations/#{conversation.id}", headers: { "Accept" => "text/html" }
 
     assert_response :success
+    assert_select "details.ai-conversation-context:not([open])"
+    assert_select ".ai-conversation-context__summary", text: /Agent 上下文/
+    assert_select ".ai-conversation-context__source", text: /SKU context/
+    assert_select ".ai-conversation-context__source", text: /response_status/, count: 0
     assert_select ".ai-conversation-message", count: 4
-    assert_select ".ai-conversation-message--assistant .ai-conversation-message__source", text: /query_inventory_data/
+    assert_select ".ai-conversation-message--tool-request[data-tool-request='true'] .ai-conversation-message__source", text: /query_inventory_data/
+    assert_select ".ai-conversation-message--tool[data-tool-response='true']", count: 1
     assert_select ".ai-conversation-message--tool", text: /工具调用结果/
     assert_select ".ai-conversation-message--tool", text: /库存 3 件/
-    assert_select "article[data-markdown-target='output'][hidden]", count: 4
+    assert_select "#conversation_messages article[data-markdown-target='output'][hidden]", count: 4
     assert_select "a.button[href=?][data-turbo='false']",
                   "yclaw://conversation?conversation_id=#{conversation.id}",
                   "去 YClaw 追问"

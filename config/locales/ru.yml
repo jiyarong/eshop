@@ -12,6 +12,9 @@ ru:
   ai:
     conversations:
       back_to_diagnosis: "Вернуться к AI-диагностике"
+      context:
+        empty: "В этом диалоге нет дополнительного контекста."
+        title: "Контекст Agent"
       composer:
         attach_images: "Добавить изображения"
         label: "Продолжить диалог"
@@ -38,6 +41,7 @@ ru:
         user: "Запрос на анализ"
       title: "AI-диалог #%{id}"
       tool_call: "Вызов инструмента"
+      tool_exchange: "Запись вызова инструмента"
       tool_result: "Результат вызова инструмента"
   locale:
     switcher_label: "Язык"
