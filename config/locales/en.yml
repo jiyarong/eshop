@@ -41,9 +41,26 @@ en:
   ai:
     conversations:
       back_to_diagnosis: "Back to AI diagnosis"
+      composer:
+        attach_images: "Add images"
+        label: "Continue conversation"
+        placeholder: "Type a message"
+        processing: "Processing"
+        remove_image: "Remove image"
+        send: "Send"
+      errors:
+        empty_message: "Enter a message or select an image"
+        enqueue_failed: "The message could not be submitted. Try again."
+        image_too_large: "Each image must be %{size} MB or smaller"
+        invalid_image_type: "Only JPG, PNG, WebP, or GIF images are supported"
+        response_failed: "The AI response failed. Try again."
+        response_in_progress: "The AI is still processing the previous message"
+        too_many_images: "Select up to %{count} images"
       follow_up_in_yclaw: "Follow up in YClaw"
+      image_alt: "Conversation image: %{filename}"
       messages_aria_label: "AI conversation messages"
       page_heading: "AI conversation"
+      processing: "Generating response..."
       roles:
         assistant: "AI response"
         tool: "Tool result"

@@ -3,6 +3,10 @@ class BusinessAnalysisAgent < ActiveAgent::Base
 
   generate_with :openai, api_version: :chat
 
+  on_stream do |chunk|
+    params[:stream_callback]&.call(chunk.delta)
+  end
+
   def analyze
     messages = [
       {
@@ -18,7 +22,8 @@ class BusinessAnalysisAgent < ActiveAgent::Base
 
     options = {
       model: params.fetch(:model),
-      temperature: params.fetch(:temperature)
+      temperature: params.fetch(:temperature),
+      stream: params[:stream_callback].present?
     }
     if params.fetch(:available_tools, []).present?
       options[:response_format] = { type: "json_object" }

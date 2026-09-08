@@ -1,0 +1,30 @@
+<article id="<%= dom_id(message) %>" class="ai-conversation-message ai-conversation-message--<%= message.role %>">
+  <header class="ai-conversation-message__header">
+    <span class="ai-conversation-message__role">
+      <i class="bi <%= message.role == "assistant" ? "bi-stars" : (message.role == "tool" ? "bi-wrench-adjustable" : "bi-person") %>" aria-hidden="true"></i>
+      <%= ai_conversation_role_label(message.role) %>
+    </span>
+    <time datetime="<%= message.created_at.iso8601 %>"><%= local_assigns[:displayed_at] || display_time(message.created_at) %></time>
+  </header>
+
+  <% if message.images.attached? %>
+    <div class="ai-conversation-message__images">
+      <% message.images.each do |image| %>
+        <%= link_to rails_blob_path(image, disposition: "inline", only_path: true),
+                    target: "_blank",
+                    rel: "noopener",
+                    class: "ai-conversation-message__image-link" do %>
+          <%= image_tag rails_blob_path(image, disposition: "inline", only_path: true),
+                        alt: t("ai.conversations.image_alt", filename: image.filename),
+                        loading: "lazy",
+                        class: "ai-conversation-message__image" %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= render "erp_ai/conversations/message_body",
+             message: message,
+             content: ai_conversation_message_markdown(message),
+             streaming: false %>
+</article>

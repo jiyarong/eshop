@@ -28,5 +28,14 @@
 </div>
 
 <section class="ai-conversation" aria-label="<%= t("ai.conversations.messages_aria_label") %>">
-  <%= render "erp_ai/conversations/messages", messages: @messages %>
+  <%= turbo_stream_from @conversation %>
+
+  <div id="conversation_messages" class="ai-conversation__messages" data-controller="conversation-thread">
+    <%= render "erp_ai/conversations/messages", messages: @messages %>
+  </div>
+
+  <%= render "erp_ai/conversations/composer",
+             conversation: @conversation,
+             message: @message,
+             busy: @conversation.responding? %>
 </section>

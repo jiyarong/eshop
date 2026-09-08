@@ -14,12 +14,12 @@ module ErpAI
       @agent_class = agent_class
     end
 
-    def complete(request)
-      response = generate(request)
+    def complete(request, &on_stream)
+      response = generate(request, on_stream)
       result = normalize_response(response)
       return result unless invalid_structured_response?(response)
 
-      response = generate(retry_request(request))
+      response = generate(retry_request(request), on_stream)
       raise invalid_response_error(response) if invalid_structured_response?(response)
 
       normalize_response(response)
@@ -29,7 +29,7 @@ module ErpAI
 
     attr_reader :agent_class
 
-    def generate(request)
+    def generate(request, on_stream)
       agent_class.with(
         model: request.fetch(:model),
         temperature: request.fetch(:temperature),
@@ -37,7 +37,8 @@ module ErpAI
         system_prompt: request.fetch(:system_prompt),
         context: request.fetch(:context),
         messages: request.fetch(:messages),
-        available_tools: request.fetch(:tools)
+        available_tools: request.fetch(:tools),
+        stream_callback: on_stream
       ).analyze.generate_now
     end
 

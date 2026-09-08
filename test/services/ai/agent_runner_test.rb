@@ -73,6 +73,52 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     end
   end
 
+  class StreamingToolLoopClient < ToolLoopClient
+    def complete(request)
+      @requests << request
+      if requests.size == 1
+        yield '{"tool_calls":[{"name":"search__web_search"' if block_given?
+        {
+          content: nil,
+          tool_calls: [
+            { id: "call_1", name: "search__web_search", arguments: { "query" => "SKU-1" } }
+          ],
+          usage: {}
+        }
+      else
+        yield '{"content":"工具查询后，' if block_given?
+        yield 'SKU-1 需要补货。"}' if block_given?
+        { content: "工具查询后，SKU-1 需要补货。", tool_calls: [], usage: {} }
+      end
+    end
+  end
+
+  class FakeBroadcaster
+    attr_reader :events
+
+    def initialize
+      @events = []
+    end
+
+    def append_message(message)
+      events << [ :append, message.role, message.content ]
+    end
+
+    def replace_message(message)
+      events << [ :replace, message.role, message.content ]
+    end
+
+    def stream_message(message, content)
+      events << [ :stream, message.id, content ]
+    end
+  end
+
+  class FailingToolExecutor
+    def call(**)
+      raise "tool unavailable"
+    end
+  end
+
   class FakeMcpClient
     def list_tools
       [
@@ -251,5 +297,73 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
 
     assert_includes error.message, "content"
     assert_includes error.message, "tool_calls"
+  end
+
+  test "continues an existing conversation and streams only final content" do
+    conversation = @agent.conversations.create!(user: @user)
+    conversation.messages.create!(role: "user", content: "先分析 SKU-1")
+    conversation.messages.create!(role: "assistant", content: "请告诉我需要查询什么")
+    conversation.messages.create!(role: "user", content: "查询库存")
+    client = StreamingToolLoopClient.new
+    broadcaster = FakeBroadcaster.new
+
+    ErpAI::AgentRunner.new(
+      agent: @agent,
+      user: @user,
+      client: client,
+      server_registry: FakeServerRegistry.new,
+      max_tool_rounds: 2
+    ).reply(conversation: conversation, broadcaster: broadcaster)
+
+    assert_equal [ "user", "assistant", "user", "assistant", "tool", "assistant" ],
+                 conversation.messages.order(:created_at, :id).pluck(:role)
+    second_request_messages = client.requests.second.fetch(:messages)
+    assert_includes second_request_messages[-2].fetch(:content), "search__web_search"
+    assert_includes second_request_messages.last.fetch(:content), "工具调用结果"
+    assert_includes second_request_messages.last.fetch(:content), "库存数据"
+    streamed_contents = broadcaster.events.select { |event| event.first == :stream }.map(&:last)
+    assert_equal "工具查询后，SKU-1 需要补货。", streamed_contents.last
+    assert streamed_contents.none? { |content| content.include?("tool_calls") }
+  end
+
+  test "serializes attached user images as multimodal content" do
+    conversation = @agent.conversations.create!(user: @user)
+    message = conversation.messages.new(role: "user", content: "看一下图片")
+    message.images.attach(
+      io: StringIO.new("image-bytes"),
+      filename: "sample.png",
+      content_type: "image/png"
+    )
+    message.save!
+    client = FakeClient.new
+
+    ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client).reply(conversation: conversation)
+
+    content = client.request.fetch(:messages).first.fetch(:content)
+    assert_equal({ type: "text", text: "看一下图片" }, content.first)
+    assert_equal "image_url", content.second.fetch(:type)
+    assert_match %r{\Adata:image/png;base64,}, content.second.dig(:image_url, :url)
+  ensure
+    message&.images&.each { |image| image.purge }
+  end
+
+  test "preserves the tool call and appends an error when tool execution fails" do
+    conversation = @agent.conversations.create!(user: @user)
+    conversation.messages.create!(role: "user", content: "查询库存")
+    broadcaster = FakeBroadcaster.new
+
+    assert_raises RuntimeError do
+      ErpAI::AgentRunner.new(
+        agent: @agent,
+        user: @user,
+        client: StreamingToolLoopClient.new,
+        server_registry: FakeServerRegistry.new,
+        tool_executor: FailingToolExecutor.new
+      ).reply(conversation: conversation, broadcaster: broadcaster)
+    end
+
+    assistant_messages = conversation.messages.order(:created_at, :id).where(role: "assistant")
+    assert_includes assistant_messages.first.content, "search__web_search"
+    assert_equal I18n.t("ai.conversations.errors.response_failed"), assistant_messages.last.content
   end
 end

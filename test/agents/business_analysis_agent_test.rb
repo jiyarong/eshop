@@ -29,7 +29,7 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
       temperature: 0.2,
       system_prompt: "系统提示词",
       context: "ERP 上下文",
-      messages: [{ role: "user", content: "分析库存" }],
+      messages: [ { role: "user", content: "分析库存" } ],
       tools: [],
       thinking_enabled: false
     ).analyze
@@ -76,6 +76,21 @@ class BusinessAnalysisAgentTest < ActiveSupport::TestCase
     ).analyze
 
     assert_not generation.options.key?(:request_options)
+  end
+
+  test "enables provider streaming when a callback is provided" do
+    generation = BusinessAnalysisAgent.with(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "系统提示词",
+      context: "ERP 上下文",
+      messages: [{ role: "user", content: "分析库存" }],
+      available_tools: [],
+      thinking_enabled: false,
+      stream_callback: proc { |_delta| }
+    ).analyze
+
+    assert_equal true, generation.options.fetch(:stream)
   end
 
   test "describes available tools in system prompt without native tool options" do

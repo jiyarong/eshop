@@ -1,0 +1,66 @@
+<div id="conversation_composer" class="ai-conversation-composer">
+  <%= form_with scope: :message,
+                url: ai_conversation_messages_path(conversation),
+                method: :post,
+                class: "ai-conversation-composer__form",
+                multipart: true,
+                data: {
+                  controller: "conversation-composer",
+                  action: "submit->conversation-composer#validate turbo:submit-start->conversation-composer#submitStart turbo:submit-end->conversation-composer#submitEnd",
+                  conversation_composer_max_images_value: Message::MAX_IMAGES,
+                  conversation_composer_empty_error_value: t("ai.conversations.errors.empty_message"),
+                  conversation_composer_too_many_error_value: t("ai.conversations.errors.too_many_images", count: Message::MAX_IMAGES),
+                  conversation_composer_remove_image_label_value: t("ai.conversations.composer.remove_image")
+                } do |form| %>
+    <%= form.label :content, t("ai.conversations.composer.label"), class: "ai-conversation-composer__label" %>
+
+    <% if message.errors.any? %>
+      <div class="ai-conversation-composer__errors" role="alert">
+        <%= message.errors.map(&:message).uniq.to_sentence %>
+      </div>
+    <% else %>
+      <div class="ai-conversation-composer__errors" role="alert" data-conversation-composer-target="error" hidden></div>
+    <% end %>
+
+    <div class="ai-conversation-composer__previews" data-conversation-composer-target="previews" hidden></div>
+
+    <div class="ai-conversation-composer__input-row">
+      <%= form.text_area :content,
+                         value: message.content,
+                         rows: 2,
+                         disabled: busy,
+                         placeholder: t("ai.conversations.composer.placeholder"),
+                         aria: { label: t("ai.conversations.composer.label") },
+                         data: {
+                           conversation_composer_target: "content",
+                           action: "input->conversation-composer#resize keydown->conversation-composer#keydown"
+                         } %>
+
+      <%= form.file_field :images,
+                          multiple: true,
+                          accept: Message::IMAGE_CONTENT_TYPES.join(","),
+                          disabled: busy,
+                          class: "ai-conversation-composer__file-input",
+                          data: {
+                            conversation_composer_target: "images",
+                            action: "change->conversation-composer#imagesChanged"
+                          } %>
+
+      <button type="button"
+              class="ai-conversation-composer__attach"
+              title="<%= t("ai.conversations.composer.attach_images") %>"
+              aria-label="<%= t("ai.conversations.composer.attach_images") %>"
+              <%= "disabled" if busy %>
+              data-action="conversation-composer#chooseImages">
+        <i class="bi bi-image" aria-hidden="true"></i>
+      </button>
+
+      <%= form.button class: "button ai-conversation-composer__send",
+                      disabled: busy,
+                      data: { conversation_composer_target: "submit" } do %>
+        <i class="bi <%= busy ? "bi-hourglass-split" : "bi-send" %>" aria-hidden="true"></i>
+        <span><%= t(busy ? "ai.conversations.composer.processing" : "ai.conversations.composer.send") %></span>
+      <% end %>
+    </div>
+  <% end %>
+</div>

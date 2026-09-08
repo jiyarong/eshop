@@ -121,6 +121,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
     t.index ["conversation_id"], name: "index_ec_ai_diagnosis_events_on_conversation_id"
   end
 
+  create_table "ec_ai_suggestions", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.text "content"
+    t.bigint "conversation_id"
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.bigint "submitted_by_id", null: false
+    t.bigint "suggestable_id", null: false
+    t.string "suggestable_type", null: false
+    t.string "suggestion_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id"], name: "index_ec_ai_suggestions_on_conversation_id"
+    t.index ["submitted_by_id"], name: "index_ec_ai_suggestions_on_submitted_by_id"
+    t.index ["suggestable_type", "suggestable_id", "suggestion_type", "created_at"], name: "idx_ec_ai_suggestions_on_target_type_created_at"
+    t.index ["suggestable_type", "suggestable_id", "suggestion_type"], name: "idx_ec_ai_suggestions_one_active_per_target", unique: true, where: "((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying])::text[]))"
+    t.index ["suggestable_type", "suggestable_id"], name: "idx_ec_ai_suggestions_on_suggestable"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "ec_ai_suggestions_status_check"
+  end
+
   create_table "ec_attachment_links", force: :cascade do |t|
     t.bigint "attachable_id", null: false
     t.string "attachable_type", null: false
@@ -2797,7 +2818,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
     t.index ["warehouse_id", "status"], name: "idx_raw_wb_warehouse_name_mappings_target"
@@ -2937,6 +2957,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
   add_foreign_key "ec_ai_diagnosis", "users", column: "submitted_by_id"
   add_foreign_key "ec_ai_diagnosis_events", "conversations"
   add_foreign_key "ec_ai_diagnosis_events", "ec_ai_diagnosis", column: "ai_diagnosis_id"
+  add_foreign_key "ec_ai_suggestions", "conversations"
+  add_foreign_key "ec_ai_suggestions", "users", column: "submitted_by_id"
   add_foreign_key "ec_attachment_links", "ec_attachments"
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
   add_foreign_key "ec_companies", "users", column: "developer_id", on_delete: :nullify

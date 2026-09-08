@@ -12,9 +12,26 @@ ru:
   ai:
     conversations:
       back_to_diagnosis: "Вернуться к AI-диагностике"
+      composer:
+        attach_images: "Добавить изображения"
+        label: "Продолжить диалог"
+        placeholder: "Введите сообщение"
+        processing: "Обработка"
+        remove_image: "Удалить изображение"
+        send: "Отправить"
+      errors:
+        empty_message: "Введите сообщение или выберите изображение"
+        enqueue_failed: "Не удалось отправить сообщение. Повторите попытку."
+        image_too_large: "Размер каждого изображения не должен превышать %{size} МБ"
+        invalid_image_type: "Поддерживаются только JPG, PNG, WebP и GIF"
+        response_failed: "Не удалось получить ответ AI. Повторите попытку."
+        response_in_progress: "AI всё ещё обрабатывает предыдущее сообщение"
+        too_many_images: "Можно выбрать не более %{count} изображений"
       follow_up_in_yclaw: "Продолжить в YClaw"
+      image_alt: "Изображение в диалоге: %{filename}"
       messages_aria_label: "Сообщения AI-диалога"
       page_heading: "AI-диалог"
+      processing: "Формируется ответ..."
       roles:
         assistant: "Ответ AI"
         tool: "Результат инструмента"

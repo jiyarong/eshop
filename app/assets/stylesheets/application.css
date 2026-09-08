@@ -2288,8 +2288,13 @@ table thead th {
 
 .ai-conversation {
   display: grid;
-  gap: 14px;
+  gap: 18px;
   max-width: 1040px;
+}
+
+.ai-conversation__messages {
+  display: grid;
+  gap: 14px;
 }
 
 .ai-conversation-message {
@@ -2302,6 +2307,12 @@ table thead th {
 
 .ai-conversation-message--assistant {
   border-left-color: var(--erp-brand);
+}
+
+.ai-conversation-message--user {
+  margin-left: clamp(0px, 8vw, 96px);
+  border-left-color: #64748b;
+  background: #f8fafc;
 }
 
 .ai-conversation-message--tool {
@@ -2334,6 +2345,166 @@ table thead th {
 
 .ai-conversation-message__body .gbrain-markdown {
   padding: 0;
+}
+
+.ai-conversation-message__body.is-streaming::after {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 3px;
+  background: var(--erp-brand);
+  content: "";
+  vertical-align: -2px;
+  animation: ai-conversation-cursor 900ms steps(1) infinite;
+}
+
+.ai-conversation-message__images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 180px));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-conversation-message__image-link {
+  overflow: hidden;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  aspect-ratio: 4 / 3;
+  background: #eef2f7;
+}
+
+.ai-conversation-message__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ai-conversation-composer {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  padding: 12px 0 4px;
+  background: var(--erp-bg, #f4f7fb);
+}
+
+.ai-conversation-composer__form {
+  border: 1px solid var(--erp-border-strong);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--erp-surface);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 8%);
+}
+
+.ai-conversation-composer__label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--erp-text);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ai-conversation-composer__errors {
+  margin-bottom: 8px;
+  color: var(--erp-danger-text);
+  font-size: 12px;
+}
+
+.ai-conversation-composer__input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.ai-conversation-composer textarea {
+  width: 100%;
+  min-height: 44px;
+  max-height: 180px;
+  resize: none;
+}
+
+.ai-conversation-composer__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ai-conversation-composer__attach {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--erp-border-strong);
+  border-radius: 6px;
+  background: var(--erp-surface);
+  color: var(--erp-text);
+  cursor: pointer;
+}
+
+.ai-conversation-composer__attach:hover {
+  border-color: var(--erp-brand);
+  color: var(--erp-brand);
+}
+
+.ai-conversation-composer__attach:focus-visible,
+.ai-conversation-composer__send:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 24%);
+  outline-offset: 2px;
+}
+
+.ai-conversation-composer__attach:disabled,
+.ai-conversation-composer__send:disabled {
+  cursor: wait;
+  opacity: .58;
+}
+
+.ai-conversation-composer__send {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.ai-conversation-composer__previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ai-conversation-composer__preview {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.ai-conversation-composer__preview img {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.ai-conversation-composer__preview button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--erp-surface);
+  border-radius: 50%;
+  background: #334155;
+  color: #fff;
+  cursor: pointer;
+}
+
+@keyframes ai-conversation-cursor {
+  50% { opacity: 0; }
 }
 
 .listing-diagnoses-panel__header {
@@ -2460,6 +2631,30 @@ table thead th {
   .ai-health-result__conversation-link {
     width: 100%;
     justify-content: center;
+  }
+
+  .ai-conversation-message--user {
+    margin-left: 0;
+  }
+
+  .ai-conversation-composer__input-row {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .ai-conversation-composer textarea {
+    font-size: 16px;
+  }
+
+  .ai-conversation-composer__send {
+    grid-column: 1 / -1;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-conversation-message__body.is-streaming::after {
+    animation: none;
   }
 }
 

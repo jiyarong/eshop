@@ -8,8 +8,8 @@ module ErpAI
       end
     end
 
-    def complete(request)
-      self.class.default_client.complete(request)
+    def complete(request, &on_stream)
+      self.class.default_client.complete(request, &on_stream)
     end
   end
 end

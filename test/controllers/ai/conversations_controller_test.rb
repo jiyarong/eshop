@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
+
   class FakeClient
     def complete(_request)
       {
@@ -11,6 +13,7 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   setup do
+    clear_enqueued_jobs
     @token = SecureRandom.hex(4)
     @user = create_user_with_roles("ai-controller-#{@token}@example.com", "manager")
     @agent = Agent.ensure_fixed!("business_analysis")
@@ -19,12 +22,15 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    message_ids = Message.where(conversation: Conversation.where(user: @user)).select(:id)
+    ActiveStorage::Attachment.where(record_type: "Message", record_id: message_ids).find_each(&:purge)
     ErpAI::DefaultClient.default_client = @old_default_client
     Message.where(conversation: Conversation.where(user: @user)).delete_all if defined?(Message)
     Conversation.where(user: @user).delete_all if defined?(Conversation)
     Agent.where(id: @agent.id).delete_all if defined?(Agent) && @agent&.id
     UserRole.where(user: @user).delete_all
     User.where(id: @user.id).delete_all
+    clear_enqueued_jobs
   end
 
   test "requires login" do
@@ -92,6 +98,90 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.button[href=?][data-turbo='false']",
                   "yclaw://conversation?conversation_id=#{conversation.id}",
                   "去 YClaw 追问"
+    assert_select "turbo-cable-stream-source", count: 1
+    assert_select "form[action=?]", "/ai/conversations/#{conversation.id}/messages"
+    assert_select "textarea[name='message[content]']"
+    assert_select "input[type='file'][name='message[images][]'][multiple]"
+  end
+
+  test "queues a follow-up message without running AI in the request" do
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user)
+    conversation.messages.create!(role: "assistant", content: "已有回复")
+
+    assert_enqueued_with(job: ConversationReplyJob) do
+      post "/ai/conversations/#{conversation.id}/messages",
+           params: { message: { content: "继续分析销量" } },
+           headers: { "Accept" => Mime[:turbo_stream].to_s }
+    end
+
+    assert_response :accepted
+    assert_equal "queued", conversation.reload.response_status
+    assert_equal "继续分析销量", conversation.messages.order(:created_at, :id).last.content
+    assert_equal "user", conversation.messages.order(:created_at, :id).last.role
+    assert_select "turbo-stream[action='append'][target='conversation_messages']"
+    assert_select "turbo-stream[action='replace'][target='conversation_composer']"
+  end
+
+  test "accepts an image-only follow-up" do
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user)
+    tempfile = Tempfile.new([ "conversation-image", ".png" ])
+    tempfile.binmode
+    tempfile.write("\x89PNG\r\n\x1A\nimage")
+    tempfile.rewind
+    upload = Rack::Test::UploadedFile.new(
+      tempfile.path,
+      "image/png",
+      true,
+      original_filename: "photo.png"
+    )
+
+    post "/ai/conversations/#{conversation.id}/messages",
+         params: { message: { content: "", images: [ upload ] } },
+         headers: { "Accept" => Mime[:turbo_stream].to_s }
+
+    assert_response :accepted
+    message = conversation.messages.order(:created_at, :id).last
+    assert_equal "", message.content
+    assert message.images.attached?
+    assert_equal "photo.png", message.images.first.filename.to_s
+  ensure
+    tempfile&.close!
+  end
+
+  test "rejects another message while a response is in progress" do
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user)
+    conversation.update_response_status!("running")
+
+    assert_no_enqueued_jobs only: ConversationReplyJob do
+      post "/ai/conversations/#{conversation.id}/messages",
+           params: { message: { content: "重复消息" } },
+           headers: { "Accept" => Mime[:turbo_stream].to_s }
+    end
+
+    assert_response :unprocessable_entity
+    assert_empty conversation.messages.reload
+    assert_select "turbo-stream[action='replace'][target='conversation_composer']"
+  end
+
+  test "does not allow posting to another user's conversation" do
+    other_user = create_user_with_roles("ai-message-other-#{@token}@example.com", "manager")
+    conversation = @agent.conversations.create!(user: other_user)
+    sign_in @user
+
+    post "/ai/conversations/#{conversation.id}/messages",
+         params: { message: { content: "越权消息" } },
+         headers: { "Accept" => Mime[:turbo_stream].to_s }
+
+    assert_response :not_found
+    assert_empty conversation.messages.reload
+  ensure
+    Message.where(conversation: Conversation.where(user: other_user)).delete_all if other_user
+    Conversation.where(user: other_user).delete_all if other_user
+    UserRole.where(user: other_user).delete_all if other_user
+    User.where(id: other_user&.id).delete_all if other_user
   end
 
   test "does not expose another user's unlinked conversation" do

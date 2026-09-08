@@ -23,6 +23,7 @@ class User < ApplicationRecord
   has_one :sub2_user_api_key, dependent: :destroy
   has_many :access_tokens, class_name: "UserAccessToken", dependent: :destroy
   has_many :feedback_tasks, dependent: :destroy
+  has_many :conversations
   has_many :sku_product_operator_assignments,
     class_name: "Ec::SkuProductOperator",
     dependent: :destroy

@@ -70,6 +70,25 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal({ "total_tokens" => 18 }, result.fetch(:usage))
   end
 
+  test "passes the streaming callback to the active agent" do
+    callback = proc { |_delta| }
+
+    ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      {
+        model: "custom-model",
+        temperature: 0.2,
+        system_prompt: "系统提示词",
+        context: "ERP 上下文",
+        messages: [ { role: "user", content: "分析库存" } ],
+        tools: [],
+        thinking_enabled: false
+      },
+      &callback
+    )
+
+    assert_same callback, FakeAgent.last_generation.params.fetch(:stream_callback)
+  end
+
   test "normalizes provider tool calls exposed on response message" do
     FakeGeneration.response = OpenStruct.new(
       message: OpenStruct.new(

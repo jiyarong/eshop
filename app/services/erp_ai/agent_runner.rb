@@ -1,3 +1,5 @@
+require "base64"
+
 module ErpAI
   class AgentRunner
     class InvalidResponse < StandardError; end
@@ -29,71 +31,109 @@ module ErpAI
       conversation
     end
 
+    def reply(conversation:, broadcaster: nil)
+      unless conversation.agent_id == agent.id && conversation.user_id == user.id
+        raise ArgumentError, "conversation does not belong to this agent and user"
+      end
+
+      run_loop(conversation, conversation.context["data_summary"], broadcaster: broadcaster)
+      conversation
+    end
+
     private
 
     attr_reader :agent, :user, :client, :server_registry, :max_tool_rounds
 
-    def run_loop(conversation, data_summary)
+    def run_loop(conversation, data_summary, broadcaster: nil)
       tool_rounds = 0
+      assistant_message = nil
+      assistant_pending = false
 
       loop do
-        response = complete(conversation, data_summary)
+        assistant_message = streaming_placeholder(conversation, broadcaster)
+        assistant_pending = assistant_message.present?
+        stream = structured_stream(assistant_message, broadcaster)
+        response = complete(conversation, data_summary, excluded_message: assistant_message, &stream)
         tool_calls = Array(response[:tool_calls] || response["tool_calls"])
 
         if tool_calls.blank?
           content = response[:content] || response["content"]
           raise InvalidResponse, "模型响应同时缺少 content 和 tool_calls" if content.blank?
 
-          conversation.messages.create!(
-            role: "assistant",
+          persist_assistant_message(
+            conversation,
+            assistant_message,
             content: content,
-            usage: response.fetch(:usage, {})
+            usage: response.fetch(:usage, {}),
+            broadcaster: broadcaster
           )
           return
         end
 
-        conversation.messages.create!(
-          role: "assistant",
+        persist_assistant_message(
+          conversation,
+          assistant_message,
           content: { tool_calls: tool_calls }.to_json,
-          usage: response.fetch(:usage, {})
+          usage: response.fetch(:usage, {}),
+          broadcaster: broadcaster
         )
+        assistant_pending = false
 
-        execute_tool_calls(conversation, tool_calls)
+        execute_tool_calls(conversation, tool_calls, broadcaster: broadcaster)
         tool_rounds += 1
         Rails.logger.info "----> turn #{tool_rounds} completed, tool calls executed: \n\t#{tool_calls.map { |tc| "#{tc[:name] || tc['name']}-->#{tc[:arguments] || tc['arguments']}".truncate(100) }.join("\n\t")}"
 
         if tool_rounds >= max_tool_rounds
-          conversation.messages.create!(role: "assistant", content: TOOL_LIMIT_MESSAGE)
+          message = conversation.messages.create!(role: "assistant", content: TOOL_LIMIT_MESSAGE)
+          broadcaster&.append_message(message)
           return
         end
       end
+    rescue StandardError
+      if assistant_pending && assistant_message&.persisted?
+        assistant_message.update!(content: I18n.t("ai.conversations.errors.response_failed"), usage: {})
+        broadcaster&.replace_message(assistant_message)
+      elsif broadcaster
+        failure_message = conversation.messages.create!(
+          role: "assistant",
+          content: I18n.t("ai.conversations.errors.response_failed")
+        )
+        broadcaster.append_message(failure_message)
+      end
+      raise
     end
 
-    def complete(conversation, data_summary)
-      client.complete(
+    def complete(conversation, data_summary, excluded_message: nil, &on_stream)
+      messages = conversation.messages.order(:created_at, :id)
+      messages = messages.where.not(id: excluded_message.id) if excluded_message
+
+      request = {
         model: agent.model_id,
         temperature: agent.temperature.to_f,
         thinking_enabled: agent.thinking_enabled?,
         system_prompt: agent.system_prompt,
         context: build_context(conversation, data_summary),
-        messages: conversation.messages.order(:created_at, :id).map { |message| serialize_message(message) },
+        messages: messages.with_attached_images.map { |message| serialize_message(message) },
         tools: selected_tools
-      ).tap do |response|
+      }
+
+      client.complete(request, &on_stream).tap do |response|
         response[:tool_calls] = [] unless response.key?(:tool_calls) || response.key?("tool_calls")
       end
     end
 
-    def execute_tool_calls(conversation, tool_calls)
+    def execute_tool_calls(conversation, tool_calls, broadcaster: nil)
       tool_calls.each do |tool_call|
         result = current_tool_executor.call(
           id: fetch_tool_call_value(tool_call, :id),
           name: fetch_tool_call_value(tool_call, :name),
           arguments: fetch_tool_call_value(tool_call, :arguments) || {}
         )
-        conversation.messages.create!(
+        message = conversation.messages.create!(
           role: "tool",
           content: result.to_json
         )
+        broadcaster&.append_message(message)
       end
     end
 
@@ -158,9 +198,54 @@ module ErpAI
         }
       end
 
+      if message.role == "user" && message.images.attached?
+        content = []
+        content << { type: "text", text: message.content } if message.content.present?
+        content.concat(message.images.map { |image| image_content(image) })
+        return { role: "user", content: content }
+      end
+
       {
         role: message.role,
         content: message.content
+      }
+    end
+
+    def streaming_placeholder(conversation, broadcaster)
+      return unless broadcaster
+
+      message = conversation.messages.create!(
+        role: "assistant",
+        content: I18n.t("ai.conversations.processing")
+      )
+      broadcaster.append_message(message)
+      message
+    end
+
+    def structured_stream(message, broadcaster)
+      return unless message && broadcaster
+
+      parser = StructuredContentStream.new do |content|
+        broadcaster.stream_message(message, content)
+      end
+      ->(delta) { parser.append(delta) }
+    end
+
+    def persist_assistant_message(conversation, message, content:, usage:, broadcaster:)
+      if message
+        message.update!(content: content, usage: usage)
+        broadcaster.replace_message(message)
+        message
+      else
+        conversation.messages.create!(role: "assistant", content: content, usage: usage)
+      end
+    end
+
+    def image_content(image)
+      encoded = image.blob.open { |file| Base64.strict_encode64(file.read) }
+      {
+        type: "image_url",
+        image_url: { url: "data:#{image.content_type};base64,#{encoded}" }
       }
     end
 

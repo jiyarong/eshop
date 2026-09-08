@@ -23,7 +23,8 @@ module ErpAI
         .includes(ai_diagnosis: :sku)
         .find_by(conversation_id: @conversation.id)
 
-      @messages = @conversation.messages.order(:created_at, :id)
+      @messages = @conversation.messages.with_attached_images.order(:created_at, :id)
+      @message = @conversation.messages.new
     end
 
     private
