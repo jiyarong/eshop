@@ -2476,7 +2476,7 @@ zh:
         agent_question: "请基于当前诊断目标、Listing 上下文和近期销售漏斗数据，对该 Listing 进行诊断并给出可执行的优化建议。"
         already_running: "该 Listing 已有诊断任务正在进行。"
         back: "返回平台商品"
-        description: "AI 将结合商品内容与最近四个完整自然周的当前店铺销售漏斗进行诊断。"
+        description: "AI 将结合商品内容与最近两个完整自然周的当前店铺销售漏斗进行诊断。"
         detail_title: "Listing AI 诊断详情"
         delete: "删除记录"
         delete_confirm: "确认删除这条 Listing 诊断记录？"

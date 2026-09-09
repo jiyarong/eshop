@@ -54,7 +54,7 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     User.where(id: @user&.id).delete_all
   end
 
-  test "runs listing-audit with listing, funnel, and search term data for four complete weeks" do
+  test "runs listing-audit with weekly funnel and search term data for two complete weeks" do
     ask_arguments = nil
     runner_factory = lambda do |agent:, user:|
       assert_equal @agent, agent
@@ -89,16 +89,17 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     search_terms_query = Class.new do
       define_singleton_method(:new) do |**arguments|
         search_query_arguments << arguments
+        first_week = arguments.fetch(:period_from) == Date.new(2026, 8, 24)
         Object.new.tap do |query|
           query.define_singleton_method(:terms_for) do |sku_code|
             requested_search_sku_codes << sku_code
             [
               {
                 keyword: "summer dress",
-                search_volume: 320,
-                avg_position: 12.5,
+                search_volume: first_week ? 320 : 80,
+                avg_position: first_week ? 12.5 : 22.5,
                 median_position: nil,
-                views: 48,
+                views: first_week ? 48 : 12,
                 orders: 3
               }
             ]
@@ -119,7 +120,7 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     assert result.completed?
     assert_equal "## Result\n\nImprove the title.", result.content
     assert_equal "listing-audit", result.conversation.agent.code
-    assert_equal "2026-08-10", ask_arguments.dig(:time_range, :from)
+    assert_equal "2026-08-24", ask_arguments.dig(:time_range, :from)
     assert_equal "2026-09-06", ask_arguments.dig(:time_range, :to)
     assert_includes ask_arguments.fetch(:data_summary), "# 当前诊断目标"
     assert_includes ask_arguments.fetch(:data_summary), "product_id: #{@sku_product.product_id}"
@@ -127,21 +128,29 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_includes ask_arguments.fetch(:data_summary), '"hits_view": 120'
     assert_includes ask_arguments.fetch(:data_summary), "# 近期搜索关键词"
     assert_includes ask_arguments.fetch(:data_summary), '"keyword": "summer dress"'
+    assert_includes ask_arguments.fetch(:data_summary), '"period_from": "2026-08-24"'
+    assert_includes ask_arguments.fetch(:data_summary), '"period_to": "2026-08-30"'
+    assert_includes ask_arguments.fetch(:data_summary), '"period_from": "2026-08-31"'
+    assert_includes ask_arguments.fetch(:data_summary), '"period_to": "2026-09-06"'
     assert_includes ask_arguments.fetch(:data_summary), '"search_volume": 320'
+    assert_includes ask_arguments.fetch(:data_summary), '"search_volume": 80'
     assert_includes ask_arguments.fetch(:data_summary), '"avg_position": 12.5'
+    assert_includes ask_arguments.fetch(:data_summary), '"avg_position": 22.5'
     assert_includes ask_arguments.fetch(:data_summary), '"views": 48'
+    assert_includes ask_arguments.fetch(:data_summary), '"views": 12'
     refute_includes ask_arguments.fetch(:data_summary), '"orders": 3'
+    assert_equal 2, ask_arguments.fetch(:data_summary).scan('"keyword": "summer dress"').size
     assert_equal @sku_product, listing_context_argument
     assert_equal @sku, funnel_arguments.fetch(:sku)
     assert_equal @sku_product, funnel_arguments.fetch(:sku_product)
-    assert_equal Date.new(2026, 8, 10), funnel_arguments.fetch(:period_from)
+    assert_equal Date.new(2026, 8, 24), funnel_arguments.fetch(:period_from)
     assert_equal Date.new(2026, 9, 6), funnel_arguments.fetch(:period_to)
     assert_equal "ozon:#{@account.id}", funnel_arguments.fetch(:store_options).sole.fetch(:ref)
-    assert_equal 4, search_query_arguments.size
+    assert_equal 2, search_query_arguments.size
     assert_equal [
-      Date.new(2026, 8, 10), Date.new(2026, 8, 17), Date.new(2026, 8, 24), Date.new(2026, 8, 31)
+      Date.new(2026, 8, 24), Date.new(2026, 8, 31)
     ], search_query_arguments.pluck(:period_from)
-    assert_equal [ @sku.sku_code ] * 4, requested_search_sku_codes
+    assert_equal [ @sku.sku_code ] * 2, requested_search_sku_codes
     search_query_arguments.each do |arguments|
       assert_equal "ozon", arguments.fetch(:platform)
       assert_equal @store, arguments.fetch(:store)

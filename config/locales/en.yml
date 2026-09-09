@@ -2269,7 +2269,7 @@ en:
         agent_question: "Diagnose this listing using the current target, listing context, and recent sales funnel data, then provide actionable optimization recommendations."
         already_running: "A diagnosis is already running for this listing."
         back: "Back to platform product"
-        description: "AI evaluates the product content and the current store's sales funnel for the latest four complete calendar weeks."
+        description: "AI evaluates the product content and the current store's sales funnel for the latest two complete calendar weeks."
         detail_title: "Listing AI diagnosis details"
         delete: "Delete record"
         delete_confirm: "Delete this listing diagnosis record?"

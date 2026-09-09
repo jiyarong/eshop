@@ -1500,7 +1500,6 @@ textarea {
 
 /* Keep long data tables readable while the page or table container scrolls. */
 table thead th {
-  position: sticky;
   top: var(--erp-topbar-height);
   z-index: 10;
   background: var(--erp-surface-soft);
@@ -2306,7 +2305,7 @@ table thead th {
 }
 
 .ai-conversation-context {
-  max-width: 1040px;
+  max-width: none;
   margin-bottom: 18px;
   overflow: hidden;
   border: 1px solid var(--erp-border);
@@ -2377,7 +2376,7 @@ table thead th {
 .ai-conversation {
   display: grid;
   gap: 18px;
-  max-width: 1040px;
+  max-width: none;
 }
 
 .ai-conversation__messages {
@@ -2476,6 +2475,8 @@ table thead th {
 }
 
 .ai-conversation-message__body .gbrain-markdown {
+  max-width: none;
+  margin: 0;
   padding: 0;
 }
 
@@ -2781,6 +2782,11 @@ table thead th {
 
 .listing-diagnosis-detail__source {
   max-height: none;
+  margin: 0;
+}
+
+.listing-diagnosis-detail .gbrain-markdown {
+  max-width: none;
   margin: 0;
 }
 

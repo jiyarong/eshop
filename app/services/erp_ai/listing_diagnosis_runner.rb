@@ -1,7 +1,7 @@
 module ErpAI
   class ListingDiagnosisRunner
     AGENT_CODE = "listing-audit".freeze
-    RECENT_WEEK_COUNT = 4
+    RECENT_WEEK_COUNT = 2
 
     def self.run(suggestion_id:)
       new(suggestion: Ec::AISuggestion.find(suggestion_id)).run
