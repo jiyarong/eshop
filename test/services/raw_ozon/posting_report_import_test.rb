@@ -31,6 +31,25 @@ class RawOzonPostingReportImportTest < ActiveSupport::TestCase
     cleanup(account, store, order)
   end
 
+  test "keeps overlapping FBO and FBS evidence without linking the order item twice" do
+    token = SecureRandom.hex(6)
+    account, store, order, order_item, fbo_report = create_records(token)
+    body = csv_body(order_item.external_item_id.split(":", 2), "125.50")
+    RawOzon::PostingReportImport.new(report: fbo_report, body:, buyer_paid_value_kind: :unit_price).call
+    fbs_report = RawOzon::Report.create!(
+      account:, report_code: "fbs-report-#{token}", report_type: "postings_fbs", status: "success",
+      params: { "delivery_schema" => "fbs" }, raw_json: {}
+    )
+
+    result = RawOzon::PostingReportImport.new(report: fbs_report, body:, buyer_paid_value_kind: :unit_price).call
+
+    assert_equal 1, result[:conflicts]
+    assert_equal 2, RawOzon::PostingReportItem.where(account:).count
+    assert_equal 1, RawOzon::PostingReportItem.where(account:).where.not(ec_order_item_id: nil).count
+  ensure
+    cleanup(account, store, order)
+  end
+
   private
 
   def create_records(token)

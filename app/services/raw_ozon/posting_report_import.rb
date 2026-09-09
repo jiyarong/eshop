@@ -52,6 +52,12 @@ module RawOzon
       return :pending if matches.empty?
       return :conflicts if matches.many?
 
+      existing_link = RawOzon::PostingReportItem.where(ec_order_item_id: matches.first.id).where.not(id: item.id).exists?
+      if existing_link
+        item.ec_order_item = nil
+        return :conflicts
+      end
+
       item.ec_order_item = matches.first
       :linked
     end
