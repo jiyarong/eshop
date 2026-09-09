@@ -45,6 +45,8 @@ class RawOzonPostingReportImportTest < ActiveSupport::TestCase
 
     assert_equal 1, result[:conflicts]
     assert_equal 2, RawOzon::PostingReportItem.where(account:).count
+    assert_equal({ linked: 0, pending: 0, conflicts: 1 }, RawOzon::PostingReportLinker.run(account:))
+    assert_equal 1, RawOzon::PostingReportItem.where(account:).where.not(ec_order_item_id: nil).count
     assert_equal 1, RawOzon::PostingReportItem.where(account:).where.not(ec_order_item_id: nil).count
   ensure
     cleanup(account, store, order)

@@ -18,6 +18,8 @@ module RawOzon
           stats[:pending] += 1
         elsif matches.many?
           stats[:conflicts] += 1
+        elsif RawOzon::PostingReportItem.where(ec_order_item_id: matches.first.id).where.not(id: report_item.id).exists?
+          stats[:conflicts] += 1
         else
           RawOzon::PostingReportItem.transaction do
             report_item.update!(ec_order_item: matches.first)
