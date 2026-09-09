@@ -2,6 +2,6 @@
      class="ai-conversation-message__body<%= " is-streaming" if streaming %>"
      data-controller="markdown"
      aria-live="<%= streaming ? "polite" : "off" %>">
-  <pre class="code-viewer ai-conversation-message__source" data-markdown-target="source"><%= content %></pre>
+  <pre class="code-viewer ai-conversation-message__source" data-markdown-target="source" data-clipboard-target="source"><%= content %></pre>
   <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
 </div>

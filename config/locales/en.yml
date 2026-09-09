@@ -41,6 +41,8 @@ en:
   ai:
     conversations:
       back_to_diagnosis: "Back to AI diagnosis"
+      copied: "Original copied"
+      copy_original: "Copy original"
       context:
         empty: "This conversation has no additional context."
         title: "Agent context"

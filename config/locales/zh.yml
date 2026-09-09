@@ -38,6 +38,8 @@ zh:
   ai:
     conversations:
       back_to_diagnosis: "返回 AI 诊断"
+      copied: "已复制原文"
+      copy_original: "复制原文"
       context:
         empty: "本次会话没有额外上下文。"
         title: "Agent 上下文"

@@ -3,10 +3,12 @@
 <% message_parts = tool_calls.any? ? tool_calls : [nil] %>
 <% message_parts.each_with_index do |tool_call, index| %>
   <% tool_request = !tool_call.nil? %>
+  <% copyable_reply = message.role == "assistant" && !tool_request %>
   <% part_id = index.zero? ? dom_id(message) : "#{dom_id(message)}_tool_call_#{index + 1}" %>
   <% tool_call_id = tool_request ? ai_conversation_tool_call_id(tool_call) : ai_conversation_tool_response_id(message) %>
   <article id="<%= part_id %>"
            class="<%= class_names("ai-conversation-message", "ai-conversation-message--#{message.role}", "ai-conversation-message--tool-request": tool_request) %>"
+           <% if copyable_reply %>data-controller="clipboard" data-clipboard-copied-label-value="<%= t("ai.conversations.copied") %>"<% end %>
            data-tool-request="<%= tool_request %>"
            data-tool-response="<%= tool_response %>"
            data-tool-call-id="<%= tool_call_id %>">
@@ -21,7 +23,20 @@
               ai_conversation_role_label(message.role)
             end %>
       </span>
-      <time datetime="<%= message.created_at.iso8601 %>"><%= local_assigns[:displayed_at] || display_time(message.created_at) %></time>
+      <span class="ai-conversation-message__meta">
+        <time datetime="<%= message.created_at.iso8601 %>"><%= local_assigns[:displayed_at] || display_time(message.created_at) %></time>
+        <% if copyable_reply %>
+          <button type="button"
+                  class="icon-button ai-conversation-copy"
+                  title="<%= t("ai.conversations.copy_original") %>"
+                  aria-label="<%= t("ai.conversations.copy_original") %>"
+                  data-clipboard-target="button"
+                  data-action="clipboard#copy">
+            <i class="bi bi-copy" data-clipboard-target="icon" aria-hidden="true"></i>
+          </button>
+          <span class="sr-only" role="status" aria-live="polite" data-clipboard-target="status"></span>
+        <% end %>
+      </span>
     </header>
 
     <% if message.images.attached? %>

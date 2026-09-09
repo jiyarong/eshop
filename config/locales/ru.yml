@@ -12,6 +12,8 @@ ru:
   ai:
     conversations:
       back_to_diagnosis: "Вернуться к AI-диагностике"
+      copied: "Исходный текст скопирован"
+      copy_original: "Копировать исходный текст"
       context:
         empty: "В этом диалоге нет дополнительного контекста."
         title: "Контекст Agent"

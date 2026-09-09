@@ -107,6 +107,11 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-conversation-context__summary", text: /Agent 上下文/
     assert_select ".ai-conversation-context__source", text: /SKU context/
     assert_select ".ai-conversation-context__source", text: /response_status/, count: 0
+    assert_select "details.ai-conversation-context[data-controller='clipboard']" do
+      assert_select "button.ai-conversation-copy[data-action='clipboard#copy'][aria-label='复制原文']", count: 1
+      assert_select "[data-clipboard-target='status'][role='status'][aria-live='polite']", count: 1
+      assert_select "[data-clipboard-target='source']", text: /库存 3 件/, count: 1
+    end
     assert_select ".ai-conversation-message", count: 6
     assert_select ".ai-conversation-message--tool-request[data-tool-request='true'][data-tool-call-id='call_1'] .ai-conversation-message__source", text: /query_inventory_data/
     assert_select ".ai-conversation-message--tool-request[data-tool-request='true'][data-tool-call-id='call_2'] .ai-conversation-message__source", text: /query_sales_data/
@@ -116,6 +121,12 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-conversation-message--tool", text: /库存 3 件/
     assert_select "#conversation_messages article[data-markdown-target='output'][hidden]", count: 6
     assert_select "#message_#{conversation.messages.where(role: 'assistant').first.id}_tool_call_2_body", count: 1
+    assert_select ".ai-conversation-message--assistant[data-controller='clipboard']", count: 1 do
+      assert_select "button.ai-conversation-copy[data-action='clipboard#copy'][aria-label='复制原文']", count: 1
+      assert_select "[data-clipboard-target='status'][role='status'][aria-live='polite']", count: 1
+      assert_select "[data-clipboard-target='source']", text: /库存需要补充确认。/, count: 1
+    end
+    assert_select ".ai-conversation-message--tool-request button.ai-conversation-copy", count: 0
     assert_select "a.button[href=?][data-turbo='false']",
                   "yclaw://conversation?conversation_id=#{conversation.id}",
                   "去 YClaw 追问"

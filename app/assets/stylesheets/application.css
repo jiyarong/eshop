@@ -2335,6 +2335,13 @@ table thead th {
   gap: 8px;
 }
 
+.ai-conversation-context__actions,
+.ai-conversation-message__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .ai-conversation-context__summary:focus-visible {
   outline: 2px solid var(--erp-brand);
   outline-offset: -2px;
@@ -2450,6 +2457,17 @@ table thead th {
   gap: 7px;
   color: var(--erp-text);
   font-weight: 750;
+}
+
+.ai-conversation-copy {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.ai-conversation-copy.is-copied {
+  background: var(--suc-bg);
+  color: var(--suc-text);
 }
 
 .ai-conversation-message__source {

@@ -43,16 +43,29 @@
   </div>
 </div>
 
-<details class="ai-conversation-context">
+<details class="ai-conversation-context"
+         data-controller="clipboard"
+         data-clipboard-copied-label-value="<%= t("ai.conversations.copied") %>">
   <summary class="ai-conversation-context__summary">
     <span>
       <i class="bi bi-braces" aria-hidden="true"></i>
       <%= t("ai.conversations.context.title") %>
     </span>
-    <i class="bi bi-chevron-down ai-conversation-context__chevron" aria-hidden="true"></i>
+    <span class="ai-conversation-context__actions">
+      <button type="button"
+              class="icon-button ai-conversation-copy"
+              title="<%= t("ai.conversations.copy_original") %>"
+              aria-label="<%= t("ai.conversations.copy_original") %>"
+              data-clipboard-target="button"
+              data-action="clipboard#copy">
+        <i class="bi bi-copy" data-clipboard-target="icon" aria-hidden="true"></i>
+      </button>
+      <span class="sr-only" role="status" aria-live="polite" data-clipboard-target="status"></span>
+      <i class="bi bi-chevron-down ai-conversation-context__chevron" aria-hidden="true"></i>
+    </span>
   </summary>
   <div class="ai-conversation-context__body" data-controller="markdown">
-    <pre class="code-viewer ai-conversation-context__source" data-markdown-target="source"><%= ai_conversation_context_markdown(@conversation.context) %></pre>
+    <pre class="code-viewer ai-conversation-context__source" data-markdown-target="source" data-clipboard-target="source"><%= ai_conversation_context_markdown(@conversation.context) %></pre>
     <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
   </div>
 </details>
