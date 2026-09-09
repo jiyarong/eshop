@@ -1539,6 +1539,29 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#sku_profit_trend .empty-state", "利润趋势暂时无法加载"
   end
 
+  test "sku operation records expose list and store scoped trend views" do
+    get report_sku_path(@sku.sku_code), params: { tab: "operation_actions" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-operation-actions-tabs a[aria-current='page']", text: "记录列表"
+    assert_select ".sku-operation-actions"
+
+    sign_in @current_user
+    get report_sku_path(@sku.sku_code), params: {
+      tab: "operation_actions",
+      operation_actions_view: "trend",
+      operation_trend_store_id: @wb_sales_store.id,
+      operation_trend_to_date: "2026-06-06"
+    }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-operation-actions-tabs a[aria-current='page']", text: "趋势图"
+    assert_select "select[name='operation_trend_store_id'] option[value='#{@wb_sales_store.id}'][selected='selected']"
+    assert_select "input[name='operation_trend_from_date'][value='2026-05-24']"
+    assert_select "input[name='operation_trend_to_date'][value='2026-06-06']"
+    assert_select ".sku-operation-trend-grid"
+  end
+
   test "sku detail supply orders and operation actions are scoped to current sku" do
     current_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store_id: @sales_store.id)
     current_wb_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store_id: @wb_sales_store.id)

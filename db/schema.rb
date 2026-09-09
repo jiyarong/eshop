@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_09_065957) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_09_094825) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -379,6 +379,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_065957) do
     t.string "platform_sku_id"
     t.string "product_name_source"
     t.integer "quantity", default: 1, null: false
+    t.string "seller_discount_currency_code"
+    t.datetime "seller_discount_synced_at"
+    t.decimal "seller_discount_unit_price", precision: 18, scale: 2
     t.string "sku_code"
     t.bigint "store_id", null: false
     t.datetime "synced_at"

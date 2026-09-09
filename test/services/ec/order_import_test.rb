@@ -182,7 +182,7 @@ module Ec
         supplier_status: "confirm",
         wb_status: "waiting",
         price: 1200,
-        converted_price: 1200,
+        converted_price: 42.63,
         currency_code: 643,
         wb_office: "Moscow Office",
         buyer_info: { "fio" => "Test Buyer" },
@@ -198,6 +198,8 @@ module Ec
         supplier_article: @wb_order.article,
         barcode: @wb_order.barcode,
         total_price: @wb_order.converted_price,
+        price_with_disc: 1200,
+        finished_price: 876.54,
         warehouse_name: @wb_region.warehouse_name,
         warehouse_type: "Склад WB",
         oblast_okrug_name: "Сибирский федеральный округ",
@@ -284,6 +286,11 @@ module Ec
       assert_equal 1, Ec::Order.where(platform: "wb", external_order_id: "WB-SRID-#{@token}").count
       assert_equal "WB707", wb_order.items.first.offer_id
       assert_equal @wb_sku.sku_code, wb_order.items.first.sku_code
+      assert_equal BigDecimal("876.54"), wb_order.items.first.buyer_paid_unit_price
+      assert_equal "RUB", wb_order.items.first.buyer_currency_code
+      assert_equal Time.zone.parse("2026-06-05 10:35:00"), wb_order.items.first.buyer_paid_synced_at
+      assert_equal BigDecimal("42.63"), wb_order.items.first.seller_discount_unit_price
+      assert_equal "BYN", wb_order.items.first.seller_discount_currency_code
       assert_equal @wb_order, wb_order.source_links.first.source
       assert_equal "Центральный", wb_order.fulfillments.first.cluster_from
       assert_equal "Дальневосточный и Сибирский", wb_order.fulfillments.first.cluster_to

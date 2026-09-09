@@ -1462,6 +1462,8 @@ class ReportsController < ApplicationController
   end
 
   def load_sku_operation_actions
+    @sku_operation_actions_view = params[:operation_actions_view].presence_in(%w[list trend]) || "list"
+    load_sku_operation_trend if @sku_operation_actions_view == "trend"
     @sku_operation_action_type = params[:operation_action_type].presence_in(Ec::OperationAction::OPERATION_TYPES)
     @sku_operation_action_platform = params[:operation_action_platform].presence_in(Erp::OperationActionsController::PLATFORMS)
     page = (params[:jump_page].presence || params[:operation_actions_page]).to_i
@@ -1474,6 +1476,26 @@ class ReportsController < ApplicationController
     @sku_operation_actions = scope
       .page(page)
       .per(10)
+  end
+
+  def load_sku_operation_trend
+    @operation_trend_stores = @sku_products.map(&:store).uniq(&:id)
+      .select { |store| store.is_active? && store.platform.in?(%w[wb ozon]) }
+      .sort_by { |store| [store.platform.to_s, store.store_name.to_s, store.id] }
+    requested_store_id = Integer(params[:operation_trend_store_id], exception: false)
+    @operation_trend_store = @operation_trend_stores.find { |store| store.id == requested_store_id } || @operation_trend_stores.first
+    @operation_trend_to_date = parse_report_date(params[:operation_trend_to_date]) || user_today
+    @operation_trend_from_date = parse_report_date(params[:operation_trend_from_date]) || (@operation_trend_to_date - 13.days)
+    @operation_trend_from_date, @operation_trend_to_date = @operation_trend_to_date, @operation_trend_from_date if @operation_trend_from_date > @operation_trend_to_date
+    return unless @operation_trend_store
+
+    @operation_trend = Ec::SkuOperationTrendQuery.new(
+      sku: @sku,
+      store: @operation_trend_store,
+      from_date: @operation_trend_from_date,
+      to_date: @operation_trend_to_date,
+      time_zone: user_time_zone
+    ).call
   end
 
   def load_sku_warehouses

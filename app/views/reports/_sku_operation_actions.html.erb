@@ -1,5 +1,15 @@
+<nav class="erp-tabs erp-tabs--underline sku-operation-actions-tabs" aria-label="<%= t('erp.operation_actions.trends.tabs.aria_label') %>">
+  <% [["list", t("erp.operation_actions.trends.tabs.list")], ["trend", t("erp.operation_actions.trends.tabs.trend")]].each do |view, label| %>
+    <%= link_to label, sku_detail_tab_path("operation_actions", operation_actions_view: view, operation_actions_page: nil), class: "erp-tabs__link", aria: { current: ("page" if @sku_operation_actions_view == view) }, data: { turbo_frame: (@sku_detail_drawer ? @sku_detail_tab_frame_id : nil) }.compact %>
+  <% end %>
+</nav>
+
+<% if @sku_operation_actions_view == "trend" %>
+  <%= render "reports/sku_operation_action_trend" %>
+<% else %>
 <%= form_with url: report_sku_path(@sku.sku_code), method: :get, class: "report-form sku-operation-actions-filter", data: { turbo_frame: (@sku_detail_drawer ? @sku_detail_tab_frame_id : nil) }.compact do |form| %>
   <%= hidden_field_tag :tab, "operation_actions" %>
+  <%= hidden_field_tag :operation_actions_view, "list" %>
   <%= hidden_field_tag :locale, params[:locale] if params[:locale].present? %>
   <div class="weekly-profit-filter-block">
     <div class="supply-order-primary-filters">
@@ -81,3 +91,4 @@
              page_param: :operation_actions_page,
              turbo_frame: (@sku_detail_drawer ? @sku_detail_tab_frame_id : nil) if @sku_operation_actions.total_pages > 1 %>
 </section>
+<% end %>

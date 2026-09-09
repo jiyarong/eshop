@@ -271,6 +271,10 @@ module Ec
           quantity: 1,
           unit_price: raw_order ? raw_order.price : stats_order.total_price,
           currency_code: raw_order ? currency_code_for(raw_order) : "RUB",
+          buyer_paid_unit_price: stats_order.finished_price,
+          buyer_currency_code: stats_order.finished_price.present? ? "RUB" : nil,
+          buyer_paid_synced_at: stats_order.finished_price.present? ? stats_order.synced_at : nil,
+          **seller_discount_attributes(stats_order, raw_order),
           item_payload: stats_order.attributes.slice(
             "nm_id", "supplier_article", "barcode", "total_price", "discount_percent"
           ),
@@ -299,6 +303,28 @@ module Ec
 
       def currency_code_for(raw_order)
         CURRENCY_MAP.fetch(raw_order.currency_code.to_i, raw_order.currency_code&.to_s)
+      end
+
+      def seller_discount_attributes(stats_order, raw_order)
+        rate = wb_implicit_rub_byn_rate(stats_order, raw_order)
+        return {} unless rate&.positive? && stats_order.price_with_disc.present?
+
+        {
+          seller_discount_unit_price: (stats_order.price_with_disc / rate).round(2),
+          seller_discount_currency_code: "BYN",
+          seller_discount_synced_at: stats_order.synced_at
+        }
+      end
+
+      def wb_implicit_rub_byn_rate(stats_order, raw_order)
+        return unless raw_order
+
+        case raw_order.currency_code.to_i
+        when 643
+          raw_order.price.to_d / raw_order.converted_price.to_d if raw_order.converted_price.to_d.positive?
+        when 933
+          stats_order.finished_price.to_d / raw_order.price.to_d if raw_order.price.to_d.positive?
+        end
       end
 
       def sku_product_for(store, product_id)

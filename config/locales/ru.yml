@@ -2103,6 +2103,22 @@ ru:
         title: "Операционные записи"
         subtitle: "История изменений контента, цен и характеристик листингов"
         total: "Всего: %{count}"
+      trends:
+        tabs: { aria_label: "Представление операционных записей", list: "Список записей", trend: "Графики" }
+        filters: { store: "Магазин", date_range: "Период" }
+        charts: { combined: "Цена, оплата покупателя и чистые продажи" }
+        metrics: { buyer_price: "Средняя цена покупателя", seller_discount_price_byn: "Цена продавца со скидкой · BYN", net_sales: "Чистые продажи", unit_profit: "Недельная прибыль на единицу" }
+        axes: { price: "Цена RUB", quantity: "Штуки", unit_profit: "CNY/шт.", seller_discount_byn: "Цена продавца BYN" }
+        listing_price: "Цена продавца · %{listing}"
+        buyer_price_currency: "Средняя цена покупателя · %{currency}"
+        empty:
+          no_store: "Для SKU нет доступного магазина WB или Ozon"
+          no_price_data: "За выбранный период нет надежных данных о цене"
+          no_sales: "За выбранный период нет данных о чистых продажах"
+          no_data: "За выбранный период нет надежных данных для графика"
+        notices:
+          no_listing_price_history: "Нет истории изменений цены; текущая цена не переносится назад."
+          no_buyer_price: "Нет данных об оплате покупателем; цена продавца не используется вместо нее."
       filters:
         operation_type: "Тип изменения"
         all_operation_types: "Все типы"

@@ -2359,6 +2359,22 @@ zh:
         title: "运营记录"
         subtitle: "平台 Listing 内容、价格与规格的变更历史"
         total: "共 %{count} 条"
+      trends:
+        tabs: { aria_label: "运营记录视图", list: "记录列表", trend: "趋势图" }
+        filters: { store: "店铺", date_range: "日期范围" }
+        charts: { combined: "价格、客户成交与净销量趋势" }
+        metrics: { buyer_price: "客户平均成交价", seller_discount_price_byn: "卖家折扣价 · BYN", net_sales: "净销量", unit_profit: "周归集单件利润" }
+        axes: { price: "RUB 价格", quantity: "件数", unit_profit: "CNY/件", seller_discount_byn: "BYN 卖家价" }
+        listing_price: "后台实际定价 · %{listing}"
+        buyer_price_currency: "客户平均成交价 · %{currency}"
+        empty:
+          no_store: "当前 SKU 没有可用的 WB 或 Ozon 店铺"
+          no_price_data: "所选范围内暂无可靠的价格数据"
+          no_sales: "所选范围内暂无净销量数据"
+          no_data: "所选范围内暂无可靠的趋势数据"
+        notices:
+          no_listing_price_history: "暂无后台定价变更历史；不会用当前价格反向填充。"
+          no_buyer_price: "订单尚无买家实付数据；不会使用卖家价格代替。"
       filters:
         operation_type: "变更类型"
         all_operation_types: "全部类型"

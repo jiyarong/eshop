@@ -2152,6 +2152,22 @@ en:
         title: "Operation Records"
         subtitle: "History of platform listing content, pricing, and specification changes"
         total: "%{count} records"
+      trends:
+        tabs: { aria_label: "Operation record views", list: "Records", trend: "Trends" }
+        filters: { store: "Store", date_range: "Date range" }
+        charts: { combined: "Price, buyer-paid price, and net sales" }
+        metrics: { buyer_price: "Average buyer-paid price", seller_discount_price_byn: "Seller discount price · BYN", net_sales: "Net sales", unit_profit: "Weekly unit profit" }
+        axes: { price: "RUB price", quantity: "Units", unit_profit: "CNY/unit", seller_discount_byn: "BYN seller price" }
+        listing_price: "Seller price · %{listing}"
+        buyer_price_currency: "Average buyer-paid price · %{currency}"
+        empty:
+          no_store: "This SKU has no available WB or Ozon store"
+          no_price_data: "No reliable price data in the selected range"
+          no_sales: "No net sales data in the selected range"
+          no_data: "No reliable trend data in the selected range"
+        notices:
+          no_listing_price_history: "No seller price change history; the current price is not backfilled."
+          no_buyer_price: "Buyer-paid order data is unavailable; seller price is not used as a substitute."
       filters:
         operation_type: "Change type"
         all_operation_types: "All types"

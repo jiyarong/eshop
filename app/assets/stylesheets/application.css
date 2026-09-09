@@ -3410,6 +3410,11 @@ table thead th {
   background: var(--erp-brand);
 }
 
+.sku-operation-actions-tabs { margin-bottom: 16px; }
+.sku-operation-trend-grid { display: grid; gap: 16px; }
+.sku-operation-trend-chart .sku-profit-trend__chart-wrap,
+.sku-operation-trend-chart .sku-profit-trend__chart { min-height: 360px; height: 360px; }
+
 .inventory-detail-tabs {
   gap: 22px;
 }
