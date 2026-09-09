@@ -306,7 +306,7 @@ module ErpAI
       lines.concat(attribute_entries(row[:product_attributes]))
       lines.concat(attribute_entries(row[:complex_attributes]))
       lines.concat(description_attribute_lines(product_description(row))) if row[:platform] == "ozon" && lines.compact_blank.empty?
-      lines.compact_blank.uniq.join("\n")
+      lines.compact_blank.uniq.join("\n\n")
     end
 
     def description_attribute_lines(description)
@@ -354,7 +354,7 @@ module ErpAI
     end
 
     def attribute_line(name, value)
-      "#{name}: #{value}" if name.present? && value.present?
+      "#{name}:\n#{value}" if name.present? && value.present?
     end
 
     def attribute_value(attributes, id)

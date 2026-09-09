@@ -54,7 +54,7 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     User.where(id: @user&.id).delete_all
   end
 
-  test "runs listing-audit with listing context and four complete weeks of store funnel data" do
+  test "runs listing-audit with listing, funnel, and search term data for four complete weeks" do
     ask_arguments = nil
     runner_factory = lambda do |agent:, user:|
       assert_equal @agent, agent
@@ -84,11 +84,34 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
         end
       end
     end
+    search_query_arguments = []
+    requested_search_sku_codes = []
+    search_terms_query = Class.new do
+      define_singleton_method(:new) do |**arguments|
+        search_query_arguments << arguments
+        Object.new.tap do |query|
+          query.define_singleton_method(:terms_for) do |sku_code|
+            requested_search_sku_codes << sku_code
+            [
+              {
+                keyword: "summer dress",
+                search_volume: 320,
+                avg_position: 12.5,
+                median_position: nil,
+                views: 48,
+                orders: 3
+              }
+            ]
+          end
+        end
+      end
+    end
 
     result = ErpAI::ListingDiagnosisRunner.new(
       suggestion: @suggestion,
       listing_context: listing_context,
       sales_funnel_context: funnel_context,
+      search_terms_query: search_terms_query,
       runner_factory: runner_factory,
       today: Date.new(2026, 9, 7)
     ).run
@@ -102,12 +125,29 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_includes ask_arguments.fetch(:data_summary), "product_id: #{@sku_product.product_id}"
     assert_includes ask_arguments.fetch(:data_summary), "# Listing context for #{@sku.sku_code}"
     assert_includes ask_arguments.fetch(:data_summary), '"hits_view": 120'
+    assert_includes ask_arguments.fetch(:data_summary), "# 近期搜索关键词"
+    assert_includes ask_arguments.fetch(:data_summary), '"keyword": "summer dress"'
+    assert_includes ask_arguments.fetch(:data_summary), '"search_volume": 320'
+    assert_includes ask_arguments.fetch(:data_summary), '"avg_position": 12.5'
+    assert_includes ask_arguments.fetch(:data_summary), '"views": 48'
+    refute_includes ask_arguments.fetch(:data_summary), '"orders": 3'
     assert_equal @sku_product, listing_context_argument
     assert_equal @sku, funnel_arguments.fetch(:sku)
     assert_equal @sku_product, funnel_arguments.fetch(:sku_product)
     assert_equal Date.new(2026, 8, 10), funnel_arguments.fetch(:period_from)
     assert_equal Date.new(2026, 9, 6), funnel_arguments.fetch(:period_to)
     assert_equal "ozon:#{@account.id}", funnel_arguments.fetch(:store_options).sole.fetch(:ref)
+    assert_equal 4, search_query_arguments.size
+    assert_equal [
+      Date.new(2026, 8, 10), Date.new(2026, 8, 17), Date.new(2026, 8, 24), Date.new(2026, 8, 31)
+    ], search_query_arguments.pluck(:period_from)
+    assert_equal [ @sku.sku_code ] * 4, requested_search_sku_codes
+    search_query_arguments.each do |arguments|
+      assert_equal "ozon", arguments.fetch(:platform)
+      assert_equal @store, arguments.fetch(:store)
+      assert_equal [ @sku.sku_code ], arguments.fetch(:sku_codes)
+      assert_equal arguments.fetch(:period_from).end_of_week(:monday), arguments.fetch(:period_to)
+    end
   end
 
   test "marks the diagnosis failed when the agent call raises" do

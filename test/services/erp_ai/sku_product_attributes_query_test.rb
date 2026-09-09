@@ -133,8 +133,8 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     assert_equal [ "https://example.test/360.jpg" ], ozon_item[:image_360_urls]
     assert_equal [ "https://example.test/video.mp4" ], ozon_item[:video_urls]
     assert_equal(
-      "Brand: Brand value\nType: Electric\nWidth, mm: 440\nHashtags: #timer #heater\n" \
-        "Rich content: Why this product? | Fast and reliable\nVideo file: video-file.mp4",
+      "Brand:\nBrand value\n\nType:\nElectric\n\nWidth, mm:\n440\n\nHashtags:\n#timer #heater\n\n" \
+        "Rich content:\nWhy this product? | Fast and reliable\n\nVideo file:\nvideo-file.mp4",
       ozon_item[:attributes]
     )
     refute_includes ozon_item[:attributes], '"content"'
@@ -152,7 +152,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     assert_equal "BYN", wb_item.dig(:price_info, "currency")
     assert_equal [ "price", "currency" ], wb_item[:price_info].keys
     assert_equal(
-      "Brand: Brand\nSubject: Subject\nCategory: Category\nWidth, mm: 440\nFeatures: Timer, Thermostat",
+      "Brand:\nBrand\n\nSubject:\nSubject\n\nCategory:\nCategory\n\nWidth, mm:\n440\n\nFeatures:\nTimer, Thermostat",
       wb_item[:attributes]
     )
     assert_equal [ "https://example.test/wb-first.jpg", "https://example.test/wb-second.jpg" ], wb_item[:image_urls]
@@ -211,7 +211,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
 
     listing = query[:listings].first
 
-    assert_equal "Ширина, мм: 440\nЦвет: Матовое золото", listing[:attributes]
+    assert_equal "Ширина, мм:\n440\n\nЦвет:\nМатовое золото", listing[:attributes]
   end
 
   test "returns empty listings for an existing unbound SKU" do

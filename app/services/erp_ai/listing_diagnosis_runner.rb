@@ -11,12 +11,14 @@ module ErpAI
       suggestion:,
       listing_context: ErpAI::ListingDiagnosisContext,
       sales_funnel_context: ErpAI::V2::SalesFunnelContext,
+      search_terms_query: SearchTermReports::Query,
       runner_factory: ->(agent:, user:) { ErpAI::AgentRunner.new(agent: agent, user: user) },
       today: nil
     )
       @suggestion = suggestion
       @listing_context = listing_context
       @sales_funnel_context = sales_funnel_context
+      @search_terms_query = search_terms_query
       @runner_factory = runner_factory
       @today = today
     end
@@ -52,7 +54,7 @@ module ErpAI
 
     private
 
-    attr_reader :suggestion, :listing_context, :sales_funnel_context, :runner_factory
+    attr_reader :suggestion, :listing_context, :sales_funnel_context, :search_terms_query, :runner_factory
 
     def validate_suggestion!
       return if listing_audit_suggestion?
@@ -90,7 +92,8 @@ module ErpAI
       [
         target_context,
         listing_context.call(sku_product: sku_product),
-        sales_funnel_summary
+        sales_funnel_summary,
+        search_terms_summary
       ].join("\n---\n\n")
     end
 
@@ -127,6 +130,39 @@ module ErpAI
         period_to: period_to,
         store_options: [store_option]
       ).call
+    end
+
+    def search_terms_summary
+      <<~MARKDOWN.rstrip
+        # 近期搜索关键词
+
+        数据范围：#{period_from.iso8601} 至 #{period_to.iso8601}（最近 #{RECENT_WEEK_COUNT} 个完整自然周）
+
+        字段说明：search_volume 为搜索频次/搜索人数；avg_position 为平均排名（数值越小越靠前）；median_position 为 WB 中位排名；views 为点击或浏览次数。
+
+        ```json
+        #{JSON.pretty_generate(search_terms_data)}
+        ```
+      MARKDOWN
+    end
+
+    def search_terms_data
+      (period_from..period_to).step(7).map do |week_start|
+        week_end = week_start.end_of_week(:monday)
+        terms = search_terms_query.new(
+          platform: sku_product.platform,
+          store: sku_product.store,
+          period_from: week_start,
+          period_to: week_end,
+          sku_codes: [ sku_product.sku_code ]
+        ).terms_for(sku_product.sku_code)
+
+        {
+          period_from: week_start.iso8601,
+          period_to: week_end.iso8601,
+          terms: terms.map { |term| term.slice(:keyword, :search_volume, :avg_position, :median_position, :views) }
+        }
+      end
     end
 
     def store_option
