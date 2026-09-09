@@ -152,6 +152,15 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
                   text: "编辑 Agent"
   end
 
+  test "conversation grid can shrink around wide markdown tables" do
+    css = Rails.root.join("app/assets/stylesheets/application.css").read
+
+    assert_match(
+      /\.ai-conversation,\s*\.ai-conversation__messages,\s*\.ai-conversation-message,\s*\.ai-tool-exchange\s*\{[^}]*min-width:\s*0/m,
+      css
+    )
+  end
+
   test "queues a follow-up message without running AI in the request" do
     sign_in @user
     conversation = @agent.conversations.create!(user: @user)

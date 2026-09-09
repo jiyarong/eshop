@@ -40,6 +40,14 @@ module ErpAI
         documents.join("\n---\n\n")
       end
 
+      def image_attachment(sku_product:)
+        ListingImageAttachment.find(
+          sku_product.sku,
+          listing: { platform: sku_product.platform, store: sku_product.store.store_name },
+          occurrence: listing_occurrence(sku_product)
+        )
+      end
+
       def combined_image(image_urls)
         image_urls = normalized_image_urls(image_urls)
 

@@ -201,6 +201,30 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_equal({ "total_tokens" => 42 }, conversation.messages.order(:created_at, :id).last.usage)
   end
 
+  test "attaches images supplied with the initial question and sends them to the model" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("image-bytes"),
+      filename: "listing.png",
+      content_type: "image/png"
+    )
+    client = FakeClient.new
+
+    conversation = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client).ask(
+      question: "诊断这个 Listing",
+      images: [ blob ]
+    )
+
+    user_message = conversation.messages.order(:created_at, :id).first
+    assert_equal [ blob.id ], user_message.images.blobs.pluck(:id)
+    content = client.request.fetch(:messages).first.fetch(:content)
+    assert_equal({ type: "text", text: "诊断这个 Listing" }, content.first)
+    assert_equal "image_url", content.second.fetch(:type)
+    assert_match %r{\Adata:image/png;base64,}, content.second.dig(:image_url, :url)
+  ensure
+    user_message&.images&.detach
+    blob&.purge
+  end
+
   test "injects ERP context and query-only tools into LLM request" do
     client = FakeClient.new
 

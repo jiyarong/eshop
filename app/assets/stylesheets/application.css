@@ -2373,6 +2373,13 @@ table thead th {
   margin: 0;
 }
 
+.ai-conversation,
+.ai-conversation__messages,
+.ai-conversation-message,
+.ai-tool-exchange {
+  min-width: 0;
+}
+
 .ai-conversation {
   display: grid;
   gap: 18px;

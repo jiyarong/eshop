@@ -71,9 +71,17 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     end
     listing_context = Object.new
     listing_context_argument = nil
+    listing_image_blob = Object.new
     listing_context.define_singleton_method(:call) do |sku_product:|
       listing_context_argument = sku_product
       "# Listing context for #{sku_product.sku_code}"
+    end
+    listing_context.define_singleton_method(:image_attachment) do |sku_product:|
+      listing_context_argument = sku_product
+      file = Struct.new(:blob) do
+        def attached? = true
+      end.new(listing_image_blob)
+      Struct.new(:file).new(file)
     end
     funnel_arguments = nil
     funnel_context = Class.new do
@@ -140,6 +148,7 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_includes ask_arguments.fetch(:data_summary), '"views": 12'
     refute_includes ask_arguments.fetch(:data_summary), '"orders": 3'
     assert_equal 2, ask_arguments.fetch(:data_summary).scan('"keyword": "summer dress"').size
+    assert_equal [ listing_image_blob ], ask_arguments.fetch(:images)
     assert_equal @sku_product, listing_context_argument
     assert_equal @sku, funnel_arguments.fetch(:sku)
     assert_equal @sku_product, funnel_arguments.fetch(:sku_product)
@@ -167,6 +176,7 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     end
     listing_context = Object.new
     listing_context.define_singleton_method(:call) { |**| "listing" }
+    listing_context.define_singleton_method(:image_attachment) { |**| nil }
     funnel_context = Class.new do
       define_singleton_method(:new) do |**|
         Object.new.tap { |context| context.define_singleton_method(:call) { [] } }

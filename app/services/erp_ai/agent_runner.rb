@@ -16,7 +16,7 @@ module ErpAI
       @max_tool_rounds = max_tool_rounds || ENV.fetch("ERP_AI_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS).to_i
     end
 
-    def ask(question:, module_name: nil, business_object_type: nil, business_object_id: nil, time_range: {}, data_summary: nil)
+    def ask(question:, module_name: nil, business_object_type: nil, business_object_id: nil, time_range: {}, data_summary: nil, images: [])
       conversation = agent.conversations.create!(
         user: user,
         module_name: module_name,
@@ -25,7 +25,9 @@ module ErpAI
         time_range: time_range || {},
         context: { "data_summary" => data_summary }.compact
       )
-      conversation.messages.create!(role: "user", content: question)
+      message = conversation.messages.new(role: "user", content: question)
+      message.images.attach(images) if images.present?
+      message.save!
 
       run_loop(conversation, data_summary)
       conversation

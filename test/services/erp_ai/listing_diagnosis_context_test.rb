@@ -99,6 +99,8 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     assert_match(/```json\n\{\n  "price": 85/, @context)
     refute_includes @context, "success"
     assert_match(%r{## image_url\n\n/rails/active_storage/blobs/redirect/.+/wb_WB#{@token}_merged_4\.jpg}, @context)
+    assert_equal "wb_WB#{@token}_merged_4.jpg",
+                 ErpAI::ListingDiagnosisContext.image_attachment(sku_product: wb_binding).filename
     assert_includes @ozon_context, "# Ozon Listing"
     assert_includes @ozon_context, "Ozon listing 2"
     refute_includes @ozon_context, "Ozon listing 1"

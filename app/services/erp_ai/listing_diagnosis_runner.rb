@@ -36,7 +36,8 @@ module ErpAI
         business_object_type: "Ec::SkuProduct",
         business_object_id: sku_product.id,
         time_range: { from: period_from.iso8601, to: period_to.iso8601 },
-        data_summary: data_summary
+        data_summary: data_summary,
+        images: listing_images
       )
       result = conversation.messages.where(role: "assistant").order(:created_at, :id).last!.content
       suggestion.update!(
@@ -108,6 +109,11 @@ module ErpAI
         - platform_sku_id: #{sku_product.platform_sku_id.presence || "_未提供_"}
         - sku_code: #{sku_product.sku_code}
       MARKDOWN
+    end
+
+    def listing_images
+      attachment = listing_context.image_attachment(sku_product: sku_product)
+      attachment&.file&.attached? ? [ attachment.file.blob ] : []
     end
 
     def sales_funnel_summary
