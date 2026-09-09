@@ -31,6 +31,7 @@ module Ec
         fbs_scope.find_each do |posting|
           total += import_posting(posting, "fbs", "RawOzon::PostingFbs")
         end
+        RawOzon::PostingReportLinker.run
         total
       end
 

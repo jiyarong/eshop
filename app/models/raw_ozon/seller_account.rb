@@ -29,6 +29,7 @@ module RawOzon
     has_many :sales_funnel_daily,     class_name: 'RawOzon::SalesFunnelDaily',     foreign_key: :account_id, dependent: :destroy
     has_many :promotions,             class_name: 'RawOzon::Promotion',            foreign_key: :account_id, dependent: :destroy
     has_many :reports,                class_name: 'RawOzon::Report',               foreign_key: :account_id, dependent: :destroy
+    has_many :posting_report_items,   class_name: 'RawOzon::PostingReportItem',    foreign_key: :account_id, dependent: :destroy
     has_many :sync_tasks,             class_name: 'RawOzon::SyncTask',             foreign_key: :account_id, dependent: :destroy
     has_many :warehouse_clusters,      class_name: 'RawOzon::WarehouseCluster',     foreign_key: :account_id, dependent: :destroy
   end

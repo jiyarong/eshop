@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_09_065957) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -359,6 +359,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
   end
 
   create_table "ec_order_items", force: :cascade do |t|
+    t.string "buyer_currency_code"
+    t.datetime "buyer_paid_synced_at"
+    t.decimal "buyer_paid_unit_price", precision: 18, scale: 2
     t.decimal "commission_amount", precision: 18, scale: 2
     t.decimal "commission_percent", precision: 8, scale: 2
     t.datetime "created_at", null: false
@@ -1251,6 +1254,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
     t.index ["account_id", "ozon_sku"], name: "index_raw_ozon_posting_items_on_account_id_and_ozon_sku"
     t.index ["account_id", "posting_number"], name: "index_raw_ozon_posting_items_on_account_id_and_posting_number"
     t.index ["account_id"], name: "index_raw_ozon_posting_items_on_account_id"
+  end
+
+  create_table "raw_ozon_posting_report_items", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "buyer_currency_code"
+    t.decimal "buyer_paid_unit_price", precision: 18, scale: 2
+    t.datetime "created_at", null: false
+    t.string "delivery_schema", null: false
+    t.bigint "ec_order_item_id"
+    t.string "offer_id"
+    t.string "order_number"
+    t.bigint "ozon_sku", null: false
+    t.string "posting_number", null: false
+    t.datetime "processed_at"
+    t.integer "quantity", null: false
+    t.jsonb "raw_json", default: {}, null: false
+    t.bigint "report_id"
+    t.string "seller_currency_code"
+    t.decimal "seller_unit_price", precision: 18, scale: 2
+    t.datetime "synced_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "delivery_schema", "posting_number", "ozon_sku"], name: "idx_raw_ozon_posting_report_items_identity", unique: true
+    t.index ["account_id", "offer_id"], name: "idx_raw_ozon_posting_report_items_offer"
+    t.index ["account_id", "processed_at"], name: "idx_raw_ozon_posting_report_items_processed"
+    t.index ["account_id"], name: "index_raw_ozon_posting_report_items_on_account_id"
+    t.index ["ec_order_item_id"], name: "idx_raw_ozon_posting_report_items_order_item", unique: true, where: "(ec_order_item_id IS NOT NULL)"
+    t.index ["report_id"], name: "index_raw_ozon_posting_report_items_on_report_id"
   end
 
   create_table "raw_ozon_postings_fbo", force: :cascade do |t|
@@ -3039,6 +3069,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_023943) do
   add_foreign_key "raw_ozon_performance_sku_spends", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_posting_destinations", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_posting_items", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_posting_report_items", "ec_order_items"
+  add_foreign_key "raw_ozon_posting_report_items", "raw_ozon_reports", column: "report_id"
+  add_foreign_key "raw_ozon_posting_report_items", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_postings_fbo", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_postings_fbs", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_product_attributes", "raw_ozon_seller_accounts", column: "account_id"

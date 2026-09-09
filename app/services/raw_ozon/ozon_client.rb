@@ -46,11 +46,11 @@ module RawOzon
     end
 
     def download(path)
-      uri = URI("#{BASE_URL}#{path}")
+      uri = URI(path.to_s.match?(%r{\Ahttps?://}) ? path : "#{BASE_URL}#{path}")
 
       with_retry(context: "GET #{path}") do
         req = Net::HTTP::Get.new(uri)
-        set_headers(req)
+        set_headers(req) if uri.host == URI(BASE_URL).host
         resp = Net::HTTP.start(uri.host, uri.port,
                                use_ssl: true,
                                open_timeout: OPEN_TIMEOUT,
