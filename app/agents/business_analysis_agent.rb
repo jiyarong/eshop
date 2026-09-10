@@ -1,5 +1,5 @@
 class BusinessAnalysisAgent < ActiveAgent::Base
-  TOOL_RESPONSE_MAX_TOKENS = 8_192
+  TOOL_RESPONSE_MAX_TOKENS = 65_536
 
   generate_with :openai, api_version: :chat
 
