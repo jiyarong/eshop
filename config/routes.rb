@@ -63,6 +63,8 @@ Rails.application.routes.draw do
   get "reports/skus/:sku_code/listing_diagnoses/new" => "reports#new_sku_listing_diagnosis", as: :new_report_sku_listing_diagnosis
   post "reports/skus/:sku_code/listing_diagnoses" => "reports#create_sku_listing_diagnosis"
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
+  delete "reports/skus/:sku_code/competitor_data_batches/:batch_id" => "reports#destroy_sku_competitor_data_batch", as: :report_sku_competitor_data_batch
+  delete "reports/skus/:sku_code/competitor_data_batches/:batch_id/data/:competitor_datum_id" => "reports#destroy_sku_competitor_datum", as: :report_sku_competitor_datum
   post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments
   get "reports/skus/:sku_code/attachments/:attachment_id/edit" => "reports#edit_sku_attachment", as: :edit_report_sku_attachment
   patch "reports/skus/:sku_code/attachments/:attachment_id" => "reports#update_sku_attachment"
@@ -112,6 +114,7 @@ Rails.application.routes.draw do
     namespace :v2 do
       get "skus/full_context" => "skus#full_context"
       get "skus/marketing_context" => "skus#marketing_context"
+      post "skus/competitor_data_batches" => "competitor_data_batches#create"
     end
   end
 

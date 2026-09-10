@@ -1,0 +1,72 @@
+<% if @competitor_data_batches.any? %>
+  <section class="competitor-data-history" aria-labelledby="competitor-data-title">
+    <div class="competitor-data-history__heading">
+      <div>
+        <h2 id="competitor-data-title" class="section-title"><%= t("reports.sku_detail.competitor_data.title") %></h2>
+        <p><%= t("reports.sku_detail.competitor_data.batch_total", count: @competitor_data_batches.size) %></p>
+      </div>
+    </div>
+
+    <% @competitor_data_batches.each_with_index do |batch, batch_index| %>
+      <section class="competitor-data-batch" aria-labelledby="competitor-data-batch-<%= batch.id %>">
+        <div class="competitor-data-batch__heading">
+          <div>
+            <h3 id="competitor-data-batch-<%= batch.id %>"><%= t("reports.sku_detail.competitor_data.batch", id: batch.id) %></h3>
+            <p><%= t("reports.sku_detail.competitor_data.batch_meta", time: display_time(batch.created_at), count: batch.competitor_data.size) %></p>
+          </div>
+          <% if can?(:manage_skus) %>
+            <%= link_to report_sku_competitor_data_batch_path(@sku.sku_code, batch, locale: params[:locale].presence),
+                        class: "ico-btn competitor-data-delete",
+                        title: t("reports.sku_detail.competitor_data.delete_batch"),
+                        aria: { label: t("reports.sku_detail.competitor_data.delete_batch") },
+                        data: { turbo_method: :delete, turbo_confirm: t("reports.sku_detail.competitor_data.confirm_delete_batch") } do %>
+              <i class="bi bi-trash" aria-hidden="true"></i>
+            <% end %>
+          <% end %>
+        </div>
+
+        <details class="competitor-data-batch__details" <%= "open" if batch_index.zero? %>>
+          <summary><%= t("reports.sku_detail.competitor_data.view_batch") %></summary>
+          <div class="competitor-data-grid">
+            <% batch.competitor_data.each_with_index do |datum, datum_index| %>
+              <article class="competitor-data-card">
+                <header class="competitor-data-card__heading">
+                  <h4><%= t("reports.sku_detail.competitor_data.competitor", index: datum_index + 1) %></h4>
+                  <% if can?(:manage_skus) %>
+                    <%= link_to report_sku_competitor_datum_path(@sku.sku_code, batch, datum, locale: params[:locale].presence),
+                                class: "ico-btn competitor-data-delete",
+                                title: t("reports.sku_detail.competitor_data.delete_datum"),
+                                aria: { label: t("reports.sku_detail.competitor_data.delete_datum") },
+                                data: { turbo_method: :delete, turbo_confirm: t("reports.sku_detail.competitor_data.confirm_delete_datum") } do %>
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    <% end %>
+                  <% end %>
+                </header>
+
+                <% if datum.combined_image.attached? %>
+                  <%= link_to rails_blob_path(datum.combined_image, disposition: :inline),
+                              class: "competitor-data-card__image-link",
+                              target: "_blank",
+                              rel: "noopener",
+                              aria: { label: t("reports.sku_detail.competitor_data.view_image", index: datum_index + 1) } do %>
+                    <%= image_tag datum.combined_image,
+                                  class: "competitor-data-card__image",
+                                  loading: "lazy",
+                                  alt: t("reports.sku_detail.competitor_data.image_alt", index: datum_index + 1) %>
+                  <% end %>
+                <% end %>
+
+                <div class="competitor-data-card__markdown" data-controller="markdown">
+                  <pre class="code-viewer" data-markdown-target="source"><%= datum.markdown %></pre>
+                  <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+                </div>
+              </article>
+            <% end %>
+          </div>
+        </details>
+      </section>
+    <% end %>
+  </section>
+<% else %>
+  <section class="panel empty-state"><%= t("reports.sku_detail.competitor_data.empty") %></section>
+<% end %>

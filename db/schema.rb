@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_09_094825) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -216,6 +216,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_094825) do
     t.check_constraint "channel IS NULL OR (channel::text = ANY (ARRAY['online'::character varying::text, 'offline'::character varying::text]))", name: "ec_companies_channel_check"
     t.check_constraint "invoice_type IS NULL OR (invoice_type::text = ANY (ARRAY['general'::character varying::text, 'special'::character varying::text]))", name: "ec_companies_invoice_type_check"
     t.check_constraint "supplier_grade IS NULL OR (supplier_grade::text = ANY (ARRAY['S'::character varying::text, 'A'::character varying::text, 'B'::character varying::text, 'C'::character varying::text]))", name: "ec_companies_supplier_grade_check"
+  end
+
+  create_table "ec_competitor_data", force: :cascade do |t|
+    t.bigint "competitor_data_batch_id", null: false
+    t.datetime "created_at", null: false
+    t.text "markdown", null: false
+    t.datetime "updated_at", null: false
+    t.index ["competitor_data_batch_id"], name: "idx_ec_competitor_data_on_batch"
+  end
+
+  create_table "ec_competitor_data_batches", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "sku_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sku_id", "created_at"], name: "idx_ec_competitor_batches_on_sku_and_created_at"
   end
 
   create_table "ec_cost_allocation_items", force: :cascade do |t|
@@ -2996,6 +3011,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_094825) do
   add_foreign_key "ec_categories", "ec_categories", column: "parent_id"
   add_foreign_key "ec_companies", "users", column: "developer_id", on_delete: :nullify
   add_foreign_key "ec_companies", "users", column: "purchaser_id", on_delete: :nullify
+  add_foreign_key "ec_competitor_data", "ec_competitor_data_batches", column: "competitor_data_batch_id"
+  add_foreign_key "ec_competitor_data_batches", "ec_skus", column: "sku_id"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_master_skus", "ec_categories"

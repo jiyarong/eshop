@@ -39,6 +39,11 @@ module Ec
     has_one :current_marketing_state, -> { current }, class_name: "Ec::SkuMarketingState", foreign_key: :sku_id
     has_many :attachment_links,  class_name: "Ec::AttachmentLink",      as: :attachable, dependent: :destroy
     has_many :attachments,       through: :attachment_links,            source: :ec_attachment
+    has_many :competitor_data_batches,
+      class_name: "Ec::CompetitorDataBatch",
+      foreign_key: :sku_id,
+      inverse_of: :sku,
+      dependent: :destroy
 
     validates :sku_code, presence: true, uniqueness: true
     validate :sku_code_cannot_change, on: :update

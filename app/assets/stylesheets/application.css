@@ -3747,6 +3747,113 @@ table thead th {
   color: var(--erp-brand);
 }
 
+.competitor-data-history {
+  min-width: 0;
+}
+
+.competitor-data-history__heading,
+.competitor-data-batch__heading,
+.competitor-data-card__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.competitor-data-history__heading p,
+.competitor-data-batch__heading p {
+  margin: 4px 0 0;
+  color: var(--erp-muted);
+  font-size: 13px;
+}
+
+.competitor-data-batch {
+  padding: 18px 0;
+  border-top: 1px solid var(--erp-border);
+}
+
+.competitor-data-batch__heading h3,
+.competitor-data-card__heading h4 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.competitor-data-batch__heading h3 {
+  font-size: 16px;
+}
+
+.competitor-data-batch__details > summary {
+  min-height: 44px;
+  width: fit-content;
+  box-sizing: border-box;
+  padding: 12px 0;
+  color: var(--erp-brand);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.competitor-data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.competitor-data-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  background: var(--erp-surface);
+}
+
+.competitor-data-card__heading {
+  min-height: 46px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.competitor-data-card__heading h4 {
+  font-size: 14px;
+}
+
+.competitor-data-delete {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  color: var(--erp-danger-text);
+}
+
+.competitor-data-card__image-link {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-surface-soft);
+}
+
+.competitor-data-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.competitor-data-card__markdown {
+  padding: 14px;
+}
+
+.competitor-data-card__markdown .gbrain-markdown {
+  max-width: none;
+  margin: 0;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .competitor-data-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .sku-lifecycle-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(140px, 1fr));

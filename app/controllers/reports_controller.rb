@@ -19,10 +19,23 @@ class ReportsController < ApplicationController
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
-  before_action -> { require_permission!(:manage_skus) }, only: [:create_sku_attachment, :edit_sku_attachment, :update_sku_attachment, :new_sku_operation_action, :create_sku_operation_action, :edit_sku_operation_action, :update_sku_operation_action, :destroy_sku_operation_action, :destroy_sku_attachment, :destroy_sku_inventory_health_result]
+  before_action -> { require_permission!(:manage_skus) }, only: %i[
+    create_sku_attachment
+    edit_sku_attachment
+    update_sku_attachment
+    new_sku_operation_action
+    create_sku_operation_action
+    edit_sku_operation_action
+    update_sku_operation_action
+    destroy_sku_operation_action
+    destroy_sku_attachment
+    destroy_sku_inventory_health_result
+    destroy_sku_competitor_data_batch
+    destroy_sku_competitor_datum
+  ]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats ai_inventory_health basic].freeze
+  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats competitor_data ai_inventory_health basic].freeze
   SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
@@ -242,6 +255,31 @@ class ReportsController < ApplicationController
       end
       format.html { redirect_to report_sku_path(@sku.sku_code, tab: "basic", locale: params[:locale].presence) }
     end
+  end
+
+  def destroy_sku_competitor_data_batch
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    batch = sku.competitor_data_batches.find(params[:batch_id])
+    batch.competitor_data.each do |datum|
+      datum.combined_image.purge if datum.combined_image.attached?
+    end
+    batch.destroy!
+
+    redirect_to report_sku_path(sku.sku_code, tab: "competitor_data", locale: params[:locale].presence),
+      notice: t("reports.sku_detail.competitor_data.batch_deleted"),
+      status: :see_other
+  end
+
+  def destroy_sku_competitor_datum
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    batch = sku.competitor_data_batches.find(params[:batch_id])
+    datum = batch.competitor_data.find(params[:competitor_datum_id])
+    datum.combined_image.purge if datum.combined_image.attached?
+    datum.destroy!
+
+    redirect_to report_sku_path(sku.sku_code, tab: "competitor_data", locale: params[:locale].presence),
+      notice: t("reports.sku_detail.competitor_data.datum_deleted"),
+      status: :see_other
   end
 
   def new_sku_listing_diagnosis
@@ -829,6 +867,7 @@ class ReportsController < ApplicationController
     load_sku_inventory_detail if @active_tab == "inventory"
     load_sku_ads if @active_tab == "ads"
     load_sku_ozon_chats if @active_tab == "ozon_chats"
+    load_sku_competitor_data if @active_tab == "competitor_data"
 
     @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
     @to_date = parse_report_date(params[:to_date]) || user_today
@@ -869,6 +908,12 @@ class ReportsController < ApplicationController
     else
       []
     end
+  end
+
+  def load_sku_competitor_data
+    @competitor_data_batches = @sku.competitor_data_batches
+      .includes(competitor_data: { combined_image_attachment: :blob })
+      .order(created_at: :desc, id: :desc)
   end
 
   def load_sku_listing_diagnoses
