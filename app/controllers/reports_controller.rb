@@ -252,7 +252,7 @@ class ReportsController < ApplicationController
 
   def create_sku_listing_diagnosis
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    sku_product = @sku.sku_products.find(params[:sku_product_id])
+    sku_product = @sku.sku_products.active.find(params[:sku_product_id])
     suggestion = sku_product.ai_suggestions.create!(
       suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE,
       submitted_by: current_user
@@ -872,12 +872,12 @@ class ReportsController < ApplicationController
   end
 
   def load_sku_listing_diagnoses
-    @sku_products ||= @sku.sku_products.includes(:store)
+    @listing_diagnosis_products = @sku.sku_products.active.includes(:store)
       .sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     suggestions = Ec::AISuggestion
       .where(
         suggestable_type: Ec::SkuProduct.polymorphic_name,
-        suggestable_id: @sku_products.map(&:id),
+        suggestable_id: @listing_diagnosis_products.map(&:id),
         suggestion_type: Ec::AISuggestion::LISTING_AUDIT_TYPE
       )
       .includes(:submitted_by)
@@ -890,7 +890,7 @@ class ReportsController < ApplicationController
   def sku_listing_diagnosis_locals
     {
       sku: @sku,
-      sku_products: @sku_products,
+      sku_products: @listing_diagnosis_products,
       listing_suggestions_by_product_id: @listing_suggestions_by_product_id,
       active_product_ids: @active_listing_suggestion_product_ids,
       return_tab: listing_diagnosis_return_tab

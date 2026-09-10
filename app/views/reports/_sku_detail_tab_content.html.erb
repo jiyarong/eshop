@@ -110,7 +110,7 @@
                actions_path: erp_sku_sku_products_path(@sku) %>
     <%= render "reports/sku_listing_diagnoses",
                sku: @sku,
-               sku_products: @sku_products,
+               sku_products: @listing_diagnosis_products,
                listing_suggestions_by_product_id: @listing_suggestions_by_product_id,
                active_product_ids: @active_listing_suggestion_product_ids,
                return_tab: "basic" %>
@@ -317,7 +317,7 @@
 
     <%= render "reports/sku_listing_diagnoses",
                sku: @sku,
-               sku_products: @sku_products,
+               sku_products: @listing_diagnosis_products,
                listing_suggestions_by_product_id: @listing_suggestions_by_product_id,
                active_product_ids: @active_listing_suggestion_product_ids,
                return_tab: "ai_inventory_health" %>

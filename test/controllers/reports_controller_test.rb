@@ -1917,6 +1917,28 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     suggestion&.destroy!
   end
 
+  test "listing diagnosis excludes inactive products" do
+    inactive_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @wb_sales_store)
+    inactive_product.update!(is_active: false)
+
+    get report_sku_path(@sku.sku_code), params: { tab: "basic" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "section.sku-listing-diagnoses .sku-listing-diagnoses__product", count: 1
+    assert_select "section.sku-listing-diagnoses", { text: /123456/, count: 0 }
+  end
+
+  test "listing diagnosis picker excludes inactive products" do
+    inactive_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @wb_sales_store)
+    inactive_product.update!(is_active: false)
+
+    get new_report_sku_listing_diagnosis_path(@sku.sku_code),
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "input[type='radio'][name='sku_product_id'][value=?]", inactive_product.id.to_s, count: 0
+  end
+
   test "starting a listing diagnosis from sku detail enqueues the selected product" do
     sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @wb_sales_store)
 
@@ -1962,6 +1984,18 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
     assert_empty other_product.ai_suggestions
+  end
+
+  test "listing diagnosis cannot start for an inactive product" do
+    inactive_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @wb_sales_store)
+    inactive_product.update!(is_active: false)
+
+    assert_no_enqueued_jobs only: AITasks::ListingDiagnosisJob do
+      post report_sku_listing_diagnoses_path(@sku.sku_code), params: { sku_product_id: inactive_product.id }
+    end
+
+    assert_response :not_found
+    assert_empty inactive_product.ai_suggestions
   end
 
   test "sku detail localizes basic tab in english" do

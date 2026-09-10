@@ -16,7 +16,7 @@
                     data: { turbo_frame: "_top" } do |form| %>
         <fieldset class="listing-diagnosis-product-picker">
           <legend><%= t("reports.sku_detail.listing_diagnosis.choose_product") %></legend>
-          <% @sku_products.each do |sku_product| %>
+          <% @listing_diagnosis_products.each do |sku_product| %>
             <% active = @active_listing_suggestion_product_ids.include?(sku_product.id) %>
             <label class="listing-diagnosis-product-picker__option<%= " is-disabled" if active %>">
               <%= form.radio_button :sku_product_id, sku_product.id, required: true, disabled: active %>
@@ -33,7 +33,7 @@
         <div class="modal-form-actions">
           <%= form.submit t("erp.sku_products.listing_diagnosis.start"),
                           class: "button",
-                          disabled: @sku_products.empty? || @sku_products.all? { |product| @active_listing_suggestion_product_ids.include?(product.id) },
+                          disabled: @listing_diagnosis_products.empty? || @listing_diagnosis_products.all? { |product| @active_listing_suggestion_product_ids.include?(product.id) },
                           data: { turbo_submits_with: t("erp.sku_products.listing_diagnosis.starting") } %>
           <button class="button button-secondary" type="button" data-action="modal#close"><%= t("common.actions.cancel") %></button>
         </div>
