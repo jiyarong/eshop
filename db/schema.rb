@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_093954) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1105,6 +1105,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
     t.index ["account_id"], name: "index_raw_ozon_ad_units_on_account_id"
   end
 
+  create_table "raw_ozon_attribute_values", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "attribute_id", null: false
+    t.bigint "description_category_id", null: false
+    t.bigint "dictionary_value_id", null: false
+    t.string "info"
+    t.string "picture"
+    t.jsonb "raw_json", default: {}, null: false
+    t.datetime "synced_at"
+    t.bigint "type_id", default: 0, null: false
+    t.string "value"
+    t.index ["account_id", "attribute_id"], name: "idx_raw_ozon_attr_values_attribute"
+    t.index ["account_id", "description_category_id", "type_id", "attribute_id", "dictionary_value_id"], name: "idx_raw_ozon_attr_values_unique", unique: true
+    t.index ["account_id", "value"], name: "idx_raw_ozon_attr_values_value"
+    t.index ["account_id"], name: "index_raw_ozon_attribute_values_on_account_id"
+  end
+
   create_table "raw_ozon_categories", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "category_id", null: false
@@ -1116,6 +1133,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
     t.string "title"
     t.index ["account_id", "category_id"], name: "index_raw_ozon_categories_on_account_id_and_category_id", unique: true
     t.index ["account_id"], name: "index_raw_ozon_categories_on_account_id"
+  end
+
+  create_table "raw_ozon_category_attributes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "attribute_complex_id", default: 0, null: false
+    t.bigint "attribute_id", null: false
+    t.boolean "category_dependent", default: false, null: false
+    t.boolean "complex_is_collection", default: false, null: false
+    t.text "description"
+    t.bigint "description_category_id", null: false
+    t.bigint "dictionary_id", default: 0, null: false
+    t.bigint "group_id"
+    t.string "group_name"
+    t.boolean "is_aspect", default: false, null: false
+    t.boolean "is_collection", default: false, null: false
+    t.boolean "is_required", default: false, null: false
+    t.integer "max_value_count"
+    t.string "name"
+    t.jsonb "raw_json", default: {}, null: false
+    t.datetime "synced_at"
+    t.bigint "type_id", default: 0, null: false
+    t.string "value_type"
+    t.index ["account_id", "description_category_id", "type_id", "attribute_id", "attribute_complex_id"], name: "idx_raw_ozon_cat_attrs_unique", unique: true
+    t.index ["account_id", "description_category_id", "type_id"], name: "idx_raw_ozon_cat_attrs_category_type"
+    t.index ["account_id", "dictionary_id"], name: "idx_raw_ozon_cat_attrs_dictionary"
+    t.index ["account_id"], name: "index_raw_ozon_category_attributes_on_account_id"
   end
 
   create_table "raw_ozon_chat_messages", force: :cascade do |t|
@@ -2052,8 +2095,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
     t.string "dict_type", null: false
     t.string "name", null: false
     t.string "name_en"
+    t.string "name_zh"
+    t.string "parent_name"
+    t.jsonb "raw_json", default: {}, null: false
+    t.string "scope_key", default: "", null: false
+    t.bigint "subject_id"
+    t.datetime "synced_at"
+    t.string "value_key", default: "", null: false
     t.string "wb_id"
+    t.index ["dict_type", "name"], name: "index_raw_wb_attribute_dicts_on_dict_type_and_name"
+    t.index ["dict_type", "scope_key", "value_key"], name: "idx_raw_wb_attribute_dicts_unique", unique: true
     t.index ["dict_type", "wb_id"], name: "index_raw_wb_attribute_dicts_on_dict_type_and_wb_id"
+    t.index ["subject_id"], name: "index_raw_wb_attribute_dicts_on_subject_id"
   end
 
   create_table "raw_wb_categories", force: :cascade do |t|
@@ -2066,17 +2119,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
   end
 
   create_table "raw_wb_characteristics", force: :cascade do |t|
+    t.integer "charc_type"
     t.string "data_type"
+    t.string "dictionary_type"
+    t.boolean "has_filter", default: false, null: false
     t.boolean "is_popular", default: false
     t.boolean "is_required", default: false
     t.integer "max_count", default: 1
     t.string "name", null: false
+    t.jsonb "raw_json", default: {}, null: false
     t.bigint "subject_id", null: false
     t.datetime "synced_at"
     t.string "unit_name"
     t.integer "wb_id", null: false
+    t.index ["dictionary_type"], name: "index_raw_wb_characteristics_on_dictionary_type"
+    t.index ["subject_id", "wb_id"], name: "idx_raw_wb_characteristics_subject_charc", unique: true
     t.index ["subject_id"], name: "index_raw_wb_characteristics_on_subject_id"
-    t.index ["wb_id"], name: "index_raw_wb_characteristics_on_wb_id", unique: true
   end
 
   create_table "raw_wb_chat_messages", force: :cascade do |t|
@@ -3079,7 +3137,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
   add_foreign_key "raw_ozon_ad_sku_daily_stats", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_ad_unit_products", "raw_ozon_ad_units", column: "ad_unit_id"
   add_foreign_key "raw_ozon_ad_units", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_attribute_values", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_categories", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "raw_ozon_category_attributes", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_chat_messages", "raw_ozon_chats", column: "chat_id", on_delete: :cascade
   add_foreign_key "raw_ozon_chat_sku_links", "ec_sku_products", column: "sku_product_id", on_delete: :nullify
   add_foreign_key "raw_ozon_chat_sku_links", "raw_ozon_chats", column: "chat_id", on_delete: :cascade
@@ -3128,6 +3188,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_10_115948) do
   add_foreign_key "raw_wb_adv_expenses", "raw_wb_adv_campaigns", column: "campaign_id"
   add_foreign_key "raw_wb_adv_product_daily_stats", "raw_wb_adv_campaigns", column: "campaign_id"
   add_foreign_key "raw_wb_analytics_search_terms", "raw_wb_seller_accounts", column: "account_id"
+  add_foreign_key "raw_wb_attribute_dicts", "raw_wb_subjects", column: "subject_id"
   add_foreign_key "raw_wb_characteristics", "raw_wb_subjects", column: "subject_id"
   add_foreign_key "raw_wb_chat_messages", "raw_wb_chats", column: "chat_id"
   add_foreign_key "raw_wb_chats", "raw_wb_orders", column: "order_id"

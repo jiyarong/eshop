@@ -3,6 +3,7 @@ module RawOzon
     include Syncs::RegisterStore
     include Syncs::SellerInfo
     include Syncs::Categories
+    include Syncs::CategoryAttributes
     include Syncs::Warehouses
     include Syncs::Products
     include Syncs::ProductPrices

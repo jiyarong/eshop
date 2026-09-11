@@ -12,6 +12,8 @@ module RawWb
     include Syncs::SellerInfo
     include Syncs::Categories
     include Syncs::Subjects
+    include Syncs::Characteristics
+    include Syncs::AttributeDicts
     include Syncs::ProductCards
     include Syncs::Warehouses
     include Syncs::ProductPrices

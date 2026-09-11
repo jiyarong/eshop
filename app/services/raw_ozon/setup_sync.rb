@@ -7,6 +7,7 @@ module RawOzon
       sync_register_store
       sync_seller_info
       sync_categories
+      sync_category_attributes
       sync_warehouses
     ].freeze
 

@@ -11,6 +11,8 @@ module RawWb
       sync_seller_info
       sync_categories
       sync_subjects
+      sync_characteristics
+      sync_attribute_dicts
       sync_warehouses
     ].freeze
 

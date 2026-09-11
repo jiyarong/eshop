@@ -151,7 +151,7 @@ production:
     schedule: every day at 1:10 in Asia/Shanghai
 
   ozon_weekly_sync:
-    command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_products, :sync_product_attributes, :sync_promotions, :sync_finance_realization])"
+    command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_products, :sync_category_attributes, :sync_product_attributes, :sync_promotions, :sync_finance_realization])"
     schedule: every tuesday at 3:00 in Asia/Shanghai
 
   ozon_search_terms_weekly_sync:
