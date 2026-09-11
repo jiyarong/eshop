@@ -13,7 +13,7 @@ module ErpAI
     def initialize(
       sku_scope: Ec::Sku.active,
       listing_loader: nil,
-      image_combiner: ListingDiagnosisContext.method(:combined_image)
+      image_combiner: ListingDiagnosisContext.method(:combined_images)
     )
       @sku_scope = sku_scope
       @listing_loader = listing_loader || method(:load_listings)
@@ -50,10 +50,26 @@ module ErpAI
 
     def sync_listing(sku, listing, occurrence, result)
       image_urls = Array(listing[:image_urls]).compact_blank.first(ListingDiagnosisContext::MAX_IMAGES_PER_LISTING)
-      image_data = image_combiner.call(image_urls)
-      filename = ListingImageAttachment.filename(listing, image_count: image_urls.size, occurrence: occurrence)
+      images = image_combiner.call(image_urls)
+
+      images.each do |kind, image_data|
+        sync_image(sku, listing, occurrence, kind, image_data, image_urls.size, result)
+      end
+      remove_stale_images(sku, listing, occurrence, images.keys)
+    rescue StandardError => error
+      result.failed += 1
+      log_failure(sku, listing, error)
+    end
+
+    def sync_image(sku, listing, occurrence, kind, image_data, image_count, result)
+      filename = ListingImageAttachment.filename(
+        listing,
+        kind: kind,
+        image_count: kind == :main ? 1 : image_count - 1,
+        occurrence: occurrence
+      )
       digest = Digest::SHA256.hexdigest(image_data)
-      attachment = ListingImageAttachment.find(sku, listing: listing, occurrence: occurrence)
+      attachment = ListingImageAttachment.find(sku, listing: listing, occurrence: occurrence, kind: kind)
 
       if attachment&.qiniu_hash == digest && attachment.filename == filename && attachment.file.attached?
         result.unchanged += 1
@@ -64,9 +80,16 @@ module ErpAI
         create_attachment!(sku, filename, image_data, digest)
         result.created += 1
       end
-    rescue StandardError => error
-      result.failed += 1
-      log_failure(sku, listing, error)
+    end
+
+    def remove_stale_images(sku, listing, occurrence, retained_kinds)
+      (%i[main merged] - retained_kinds).each do |kind|
+        attachment = ListingImageAttachment.find(sku, listing: listing, occurrence: occurrence, kind: kind)
+        next unless attachment
+
+        attachment.file.purge
+        attachment.destroy!
+      end
     end
 
     def load_listings(sku)

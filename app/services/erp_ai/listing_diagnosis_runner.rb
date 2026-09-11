@@ -112,8 +112,9 @@ module ErpAI
     end
 
     def listing_images
-      attachment = listing_context.image_attachment(sku_product: sku_product)
-      attachment&.file&.attached? ? [ attachment.file.blob ] : []
+      listing_context.image_attachments(sku_product: sku_product).filter_map do |attachment|
+        attachment.file.blob if attachment.file.attached?
+      end
     end
 
     def sales_funnel_summary

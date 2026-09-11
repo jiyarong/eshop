@@ -6,8 +6,11 @@ require "uri"
 
 module ErpAI
   class ListingDiagnosisContext
-    MAX_IMAGES_PER_LISTING = 4
-    IMAGE_SCALE = "66.6667%".freeze
+    MAX_SECONDARY_IMAGES_PER_LISTING = 12
+    MAX_IMAGES_PER_LISTING = MAX_SECONDARY_IMAGES_PER_LISTING + 1
+    MAIN_IMAGE_SCALE = "50%".freeze
+    SECONDARY_IMAGE_SCALE = "33.3333%".freeze
+    IMAGES_PER_ROW = 3
     OPEN_TIMEOUT = 10
     READ_TIMEOUT = 30
     DOWNLOAD_ATTEMPTS = 3
@@ -40,30 +43,41 @@ module ErpAI
         documents.join("\n---\n\n")
       end
 
-      def image_attachment(sku_product:)
-        ListingImageAttachment.find(
+      def image_attachments(sku_product:)
+        ListingImageAttachment.find_all(
           sku_product.sku,
           listing: { platform: sku_product.platform, store: sku_product.store.store_name },
           occurrence: listing_occurrence(sku_product)
         )
       end
 
-      def combined_image(image_urls)
+      def image_attachment(sku_product:)
+        image_attachments(sku_product: sku_product).last
+      end
+
+      def combined_images(image_urls)
         image_urls = normalized_image_urls(image_urls)
 
         Dir.mktmpdir("listing-images") do |temporary_directory|
-          image_paths = image_urls.each_with_index.map do |url, index|
-            resized_image_path(url, temporary_directory, index)
+          main_image_path = resized_image_path(
+            image_urls.first,
+            temporary_directory,
+            "main",
+            MAIN_IMAGE_SCALE
+          )
+          images = { main: jpeg_blob(main_image_path) }
+          secondary_image_paths = image_urls.drop(1).each_with_index.map do |url, index|
+            resized_image_path(url, temporary_directory, "secondary-#{index}", SECONDARY_IMAGE_SCALE)
           end
-          row_paths = image_paths.each_slice(2).with_index.map do |paths, index|
+
+          return images if secondary_image_paths.empty?
+
+          row_paths = secondary_image_paths.each_slice(IMAGES_PER_ROW).with_index.map do |paths, index|
             joined_image_path(paths, temporary_directory, "row-#{index}.png", "+append")
           end
           joined_image_path(row_paths, temporary_directory, "combined.png", "-append")
-          combined = MiniMagick::Image.open(File.join(temporary_directory, "combined.png"))
-          combined.background "white"
-          combined.alpha "remove"
-          combined.format "jpg"
-          combined.to_blob
+          images[:merged] = jpeg_blob(File.join(temporary_directory, "combined.png"))
+          images
         end
       end
 
@@ -78,12 +92,12 @@ module ErpAI
       end
 
       def replace_image_urls(listing, sku:, occurrence:, attachments:)
-        attachment = ListingImageAttachment.find(
+        attachment = ListingImageAttachment.find_all(
           sku,
           listing: listing,
           occurrence: occurrence,
           attachments: attachments
-        )
+        ).last
         image_url = attachment_image_url(attachment) if attachment&.file&.attached?
 
         listing.except(:image_urls).merge(image_url: image_url)
@@ -112,14 +126,22 @@ module ErpAI
         path
       end
 
-      def resized_image_path(url, directory, index)
+      def resized_image_path(url, directory, basename, scale)
         image = MiniMagick::Image.read(download_image(url))
         image.auto_orient
-        image.resize IMAGE_SCALE
-        path = File.join(directory, "#{index}.png")
+        image.resize scale
+        path = File.join(directory, "#{basename}.png")
         image.format "png"
         image.write(path)
         path
+      end
+
+      def jpeg_blob(path)
+        image = MiniMagick::Image.open(path)
+        image.background "white"
+        image.alpha "remove"
+        image.format "jpg"
+        image.to_blob
       end
 
       def normalized_image_urls(image_urls)

@@ -78,6 +78,10 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     end
 
     create_listing_image_attachment!(
+      filename: "wb_WB#{@token}_main.jpg",
+      image_data: build_image("blue")
+    )
+    create_listing_image_attachment!(
       filename: "wb_WB#{@token}_merged_4.jpg",
       image_data: build_image("green")
     )
@@ -101,6 +105,10 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     assert_match(%r{## image_url\n\n/rails/active_storage/blobs/redirect/.+/wb_WB#{@token}_merged_4\.jpg}, @context)
     assert_equal "wb_WB#{@token}_merged_4.jpg",
                  ErpAI::ListingDiagnosisContext.image_attachment(sku_product: wb_binding).filename
+    assert_equal(
+      [ "wb_WB#{@token}_main.jpg", "wb_WB#{@token}_merged_4.jpg" ],
+      ErpAI::ListingDiagnosisContext.image_attachments(sku_product: wb_binding).map(&:filename)
+    )
     assert_includes @ozon_context, "# Ozon Listing"
     assert_includes @ozon_context, "Ozon listing 2"
     refute_includes @ozon_context, "Ozon listing 1"
@@ -111,12 +119,28 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     request_paths = []
 
     with_stubbed_image_download(request_paths, failures: 2) do
-      image_data = ErpAI::ListingDiagnosisContext.combined_image([ "https://example.test/retry.png" ])
+      images = ErpAI::ListingDiagnosisContext.combined_images([ "https://example.test/retry.png" ])
 
-      assert_equal [ 60, 40 ], MiniMagick::Image.read(image_data).dimensions
+      assert_equal [ :main ], images.keys
+      assert_equal [ 45, 30 ], MiniMagick::Image.read(images.fetch(:main)).dimensions
     end
 
     assert_equal [ "/retry.png", "/retry.png", "/retry.png" ], request_paths
+  end
+
+  test "creates a half-size main image and a three-column collage from at most twelve secondary images" do
+    request_paths = []
+    urls = 14.times.map { |index| "https://example.test/#{index}.png" }
+
+    with_stubbed_image_download(request_paths) do
+      images = ErpAI::ListingDiagnosisContext.combined_images(urls)
+
+      assert_equal [ :main, :merged ], images.keys
+      assert_equal [ 45, 30 ], MiniMagick::Image.read(images.fetch(:main)).dimensions
+      assert_equal [ 90, 80 ], MiniMagick::Image.read(images.fetch(:merged)).dimensions
+    end
+
+    assert_equal (0..12).map { |index| "/#{index}.png" }, request_paths
   end
 
   test "loads disk service before checking a non-disk attachment service" do
