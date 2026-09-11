@@ -1,7 +1,7 @@
 module RawOzon
   module Syncs
     module CategoryAttributes
-      ATTRIBUTE_VALUES_LIMIT = 5_000
+      ATTRIBUTE_VALUES_PREFETCH_LIMIT = 500
 
       # POST /v1/description-category/attribute + /v1/description-category/attribute/values
       # Syncs attribute metadata and dictionary values for categories already present
@@ -53,33 +53,26 @@ module RawOzon
 
       def fetch_ozon_attribute_value_rows(attribute, description_category_id, type_id, synced_at)
         attribute_id = attribute["id"].to_i
-        last_value_id = 0
-        rows = []
+        body = {
+          description_category_id: description_category_id,
+          attribute_id: attribute_id,
+          language: "RU",
+          limit: ATTRIBUTE_VALUES_PREFETCH_LIMIT,
+          last_value_id: 0
+        }
+        body[:type_id] = type_id if type_id.positive?
 
-        loop do
-          body = {
-            description_category_id: description_category_id,
-            attribute_id: attribute_id,
-            language: "RU",
-            limit: ATTRIBUTE_VALUES_LIMIT,
-            last_value_id: last_value_id
-          }
-          body[:type_id] = type_id if type_id.positive?
-
-          response = @client.post("/v1/description-category/attribute/values", body)
-          values = Array(response["result"])
-          rows.concat(values.filter_map do |value|
-            build_ozon_attribute_value(value, description_category_id, type_id, attribute_id, synced_at)
-          end)
-
-          next_last_value_id = values.filter_map { |value| ozon_dictionary_value_id(value) }.last.to_i
-          break unless response["has_next"] && next_last_value_id.positive? && next_last_value_id != last_value_id
-
-          last_value_id = next_last_value_id
-          sleep 0.5
+        response = @client.post("/v1/description-category/attribute/values", body)
+        values = Array(response["result"])
+        if response["has_next"]
+          delete_ozon_attribute_values(description_category_id, type_id, attribute_id)
+          log "Skipped large Ozon attribute dictionary for category #{description_category_id}, attribute #{attribute_id}", level: :warn
+          return []
         end
 
-        rows
+        values.filter_map do |value|
+          build_ozon_attribute_value(value, description_category_id, type_id, attribute_id, synced_at)
+        end
       rescue OzonClient::ApiError, OzonClient::RetryableError => error
         log "Could not load Ozon attribute values for category #{description_category_id}, attribute #{attribute_id}: #{error.message}", level: :warn
         []
@@ -153,6 +146,15 @@ module RawOzon
         )
         RawOzon::AttributeValue.upsert_all(rows, unique_by: "idx_raw_ozon_attr_values_unique")
         result
+      end
+
+      def delete_ozon_attribute_values(description_category_id, type_id, attribute_id)
+        RawOzon::AttributeValue.where(
+          account_id: @account.id,
+          description_category_id: description_category_id,
+          type_id: type_id.to_i,
+          attribute_id: attribute_id
+        ).delete_all
       end
 
       def scoped_upsert_count_result(rows, model:, unique_keys:)

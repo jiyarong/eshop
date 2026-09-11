@@ -7,6 +7,8 @@ module RawWb
 
     STEPS = %i[
       sync_product_cards
+      sync_characteristics
+      sync_attribute_dicts
       sync_ad_campaign_count
       sync_ad_campaigns
       sync_ad_stats

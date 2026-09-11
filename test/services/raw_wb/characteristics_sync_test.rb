@@ -45,6 +45,7 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     account = RawWb::SellerAccount.create!(name: "wb-char-account-#{token}", api_token: "token-#{token}", company_type: "small")
     category = RawWb::Category.create!(wb_id: unique_wb_id(1), name: "WB category #{token}")
     subject = RawWb::Subject.create!(wb_id: unique_wb_id(2), name: "WB subject #{token}", category: category)
+    product = RawWb::Product.create!(account: account, nm_id: unique_wb_id(20), vendor_code: "WB-CHAR-#{token}", subject: subject)
     client = FakeWbClient.new(subject.wb_id)
     sync = RawWb::SetupSync.new(account, days: 365)
     sync.instance_variable_set(:@client, client)
@@ -61,6 +62,7 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     assert characteristic.is_required
     assert characteristic.is_popular
   ensure
+    RawWb::Product.where(id: product&.id).delete_all
     RawWb::Characteristic.where(subject_id: subject&.id).delete_all
     RawWb::Subject.where(id: subject&.id).delete_all
     RawWb::Category.where(id: category&.id).delete_all
@@ -71,6 +73,7 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     account = RawWb::SellerAccount.create!(name: "wb-dict-account-#{token}", api_token: "token-#{token}", company_type: "small")
     category = RawWb::Category.create!(wb_id: unique_wb_id(3), name: "WB dict category #{token}")
     subject = RawWb::Subject.create!(wb_id: unique_wb_id(4), name: "WB dict subject #{token}", category: category)
+    product = RawWb::Product.create!(account: account, nm_id: unique_wb_id(30), vendor_code: "WB-DICT-#{token}", subject: subject)
     client = FakeWbClient.new(subject.wb_id)
     sync = RawWb::SetupSync.new(account, days: 365)
     sync.instance_variable_set(:@client, client)
@@ -85,6 +88,7 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     assert_equal subject.id, tnved.subject_id
     assert_equal "test tnved", tnved.name
   ensure
+    RawWb::Product.where(id: product&.id).delete_all
     RawWb::AttributeDict.where(subject_id: subject&.id).delete_all
     RawWb::AttributeDict.where(dict_type: "color", value_key: "черный").delete_all
     RawWb::Subject.where(id: subject&.id).delete_all

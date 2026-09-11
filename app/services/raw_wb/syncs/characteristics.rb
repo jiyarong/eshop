@@ -5,7 +5,7 @@ module RawWb
       def sync_characteristics
         total = empty_sync_count
 
-        RawWb::Subject.find_each do |subject|
+        wb_attribute_subject_scope.find_each do |subject|
           data = @client.get(:content, "/content/v2/object/charcs/#{subject.wb_id}")
           items = Array(data["data"])
           synced_at = Time.current
@@ -24,6 +24,12 @@ module RawWb
       end
 
       private
+
+      def wb_attribute_subject_scope
+        RawWb::Subject.where(
+          id: RawWb::Product.where(account_id: @account.id).where.not(subject_id: nil).select(:subject_id).distinct
+        )
+      end
 
       def build_wb_characteristic(subject, item, synced_at)
         charc_id = item["charcID"] || item["charcId"] || item["id"]

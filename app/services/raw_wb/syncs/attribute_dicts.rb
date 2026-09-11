@@ -22,7 +22,7 @@ module RawWb
           log "Could not load WB #{dict_type} dictionary: #{error.message}", level: :warn
         end
 
-        RawWb::Subject.find_each do |subject|
+        wb_attribute_subject_scope.find_each do |subject|
           rows = wb_dictionary_rows(
             "tnved",
             @client.get(:content, "/content/v2/directory/tnved", subjectID: subject.wb_id),
@@ -39,6 +39,12 @@ module RawWb
       end
 
       private
+
+      def wb_attribute_subject_scope
+        RawWb::Subject.where(
+          id: RawWb::Product.where(account_id: @account.id).where.not(subject_id: nil).select(:subject_id).distinct
+        )
+      end
 
       def wb_dictionary_rows(dict_type, response, subject: nil, synced_at:)
         wb_dictionary_items(response).filter_map do |item|
