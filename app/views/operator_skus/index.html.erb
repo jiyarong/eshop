@@ -92,10 +92,26 @@
               </div></td>
               <% sales_funnel = metrics[:sales_funnel] || {} %>
               <td class="numeric"><div class="operator-sku-pair operator-sku-metric-grid operator-sku-funnel-grid">
-                <% Ec::OperatorSkuSalesFunnelMetricsQuery::METRICS.each do |key| %>
+                <% [
+                  [:product_card_views, nil],
+                  [:cart_additions, :cart_rate],
+                  [:orders, :cart_to_order_rate],
+                  [:conversions, :visit_to_conversion_rate],
+                  [:cancellations, nil],
+                  [:net_sales, nil]
+                ].each do |key, rate_key| %>
                   <% metric = sales_funnel[key] || {} %>
-                  <% type = key.to_s.end_with?("_rate") ? :percentage : :number %>
-                  <span><span class="operator-sku-metric-label"><%= t("reports.sku_detail.funnel_analysis.metrics.#{key}") %></span><strong><%= operator_sku_metric_value(metric[:value], type: type) %></strong><small class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison], compact: true) %></small></span>
+                  <% rate_metric = sales_funnel[rate_key] || {} if rate_key %>
+                  <span>
+                    <span class="operator-sku-metric-label"><%= t("reports.sku_detail.funnel_analysis.metrics.#{key}") %></span>
+                    <strong class="operator-sku-funnel-value">
+                      <% if rate_key && rate_metric[:value].present? %>
+                        <span class="operator-sku-funnel-value__rate">(<%= operator_sku_metric_value(rate_metric[:value], type: :percentage) %>)</span>
+                      <% end %>
+                      <%= operator_sku_metric_value(metric[:value]) %>
+                    </strong>
+                    <small class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison], compact: true) %></small>
+                  </span>
                 <% end %>
               </div></td>
               <td class="numeric">

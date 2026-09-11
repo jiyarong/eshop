@@ -10794,6 +10794,8 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-finance-grid .operator-sku-comparison { display: block; min-width: 58px; text-align: left; font-variant-numeric: tabular-nums; }
 .operator-sku-metric-grid > span:not(.operator-sku-forecast) { display: grid; grid-template-columns: minmax(82px, 1fr) minmax(42px, auto) minmax(0, 1fr); align-items: baseline; gap: 6px; text-align: left; }
 .operator-sku-metric-grid > span:not(.operator-sku-forecast) > strong { text-align: right; font-variant-numeric: tabular-nums; }
+.operator-sku-funnel-value { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.operator-sku-funnel-value__rate { margin-right: .35ch; color: inherit; font-size: inherit; font-weight: inherit; }
 .operator-sku-metric-grid .operator-sku-forecast__row { display: grid; grid-template-columns: minmax(82px, 1fr) minmax(42px, auto) minmax(0, 1fr); align-items: baseline; gap: 6px; }
 .operator-sku-metric-grid .operator-sku-forecast__row > strong { text-align: right; font-variant-numeric: tabular-nums; }
 .operator-sku-forecast__label { display: inline-flex; align-items: center; gap: 3px; }
@@ -10808,7 +10810,7 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-table th:nth-child(1), .operator-sku-table td:nth-child(1) { width: 13%; min-width: 150px; }
 .operator-sku-table th:nth-child(2), .operator-sku-table td:nth-child(2) { width: 11%; min-width: 140px; }
 .operator-sku-table th:nth-child(3), .operator-sku-table td:nth-child(3) { width: 21%; min-width: 280px; }
-.operator-sku-table th:nth-child(4), .operator-sku-table td:nth-child(4) { width: 20%; min-width: 270px; }
+.operator-sku-table th:nth-child(4), .operator-sku-table td:nth-child(4) { width: 21%; min-width: 320px; }
 .operator-sku-table th:nth-child(5), .operator-sku-table td:nth-child(5) { width: 24%; min-width: 290px; }
 .operator-sku-table th:nth-child(6), .operator-sku-table td:nth-child(6) { width: 11%; min-width: 170px; }
 .operator-sku-table td { overflow: visible; }
@@ -10818,5 +10820,20 @@ body.auth-shell .auth-submit:hover {
 .operator-sku-table td:nth-child(5) .operator-sku-pair > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .operator-sku-table td:nth-child(4) .operator-sku-pair,
 .operator-sku-table td:nth-child(5) .operator-sku-pair { text-align: left; }
+.operator-sku-table td:nth-child(4) .operator-sku-funnel-grid > span:not(.operator-sku-forecast) {
+  grid-template-columns: 6.6em 13.5ch 7ch;
+  column-gap: 6px;
+}
+.operator-sku-table td:nth-child(4) .operator-sku-funnel-value {
+  display: block;
+  justify-self: end;
+  width: 13.5ch;
+  text-align: right;
+}
+.operator-sku-table td:nth-child(4) .operator-sku-comparison {
+  display: block;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
 .operator-sku-table td:nth-child(5) .operator-sku-metric-grid > span:not(.operator-sku-forecast),
 .operator-sku-table td:nth-child(5) .operator-sku-forecast__row { grid-template-columns: minmax(94px, 1fr) minmax(42px, auto) minmax(0, 1fr); }

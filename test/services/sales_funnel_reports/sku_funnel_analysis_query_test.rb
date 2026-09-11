@@ -27,10 +27,10 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
 
   test "builds four equal periods and recomputes the cross-platform SKU funnel" do
     RawWb::SalesFunnelDaily.create!(account: @wb_account, stat_date: Date.new(2026, 8, 4), nm_id: 71001,
-      open_card: 100, add_to_cart: 20, orders: 10, buyouts: 8, synced_at: Time.current)
+      open_card: 100, add_to_cart: 20, orders: 10, buyouts: 8, cancel_count: 1, synced_at: Time.current)
     RawOzon::SalesFunnelDaily.create!(account: @ozon_account, stat_date: Date.new(2026, 8, 4), sku: 81001,
       hits_view: 1_000, hits_view_search: 400, hits_view_pdp: 300, hits_tocart: 90,
-      hits_tocart_pdp: 60, ordered_units: 30, delivered_units: 20, synced_at: Time.current)
+      hits_tocart_pdp: 60, ordered_units: 30, delivered_units: 20, cancellations: 2, synced_at: Time.current)
     create_order(@wb_store, "wb", "71001", "delivered", 6)
     create_order(@ozon_store, "ozon", "81001", "delivered", 14)
     unmatched_order = Ec::Order.create!(store: @wb_store, platform: "wb", order_key: "unmatched-#{@token}",
@@ -41,12 +41,15 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
 
     result = query
     assert_equal %w[P-3 P-2 P-1 P0], result[:periods].map { |period| period[:key] }
+    assert_equal result[:store_metrics].uniq, result[:store_metrics]
+    assert_includes result[:common_metrics], :cancellations
     row = result[:periods].last[:sku_row]
     assert_equal 400, row[:product_card_views]
     assert_equal 80, row[:cart_additions]
     assert_equal BigDecimal("20"), row[:cart_rate]
     assert_equal 40, row[:orders]
     assert_equal BigDecimal("50"), row[:cart_to_order_rate]
+    assert_equal 3, row[:cancellations]
     assert_equal 20, row[:conversions]
     assert_equal BigDecimal("5"), row[:visit_to_conversion_rate]
     assert_equal 20, row[:net_sales]

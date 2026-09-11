@@ -3,10 +3,10 @@ module SalesFunnelReports
     PERIOD_COUNT = 4
     COMMON_METRICS = %i[
       product_card_views cart_additions cart_rate orders cart_to_order_rate
-      conversions visit_to_conversion_rate net_sales store_ending_inventory sku_ending_inventory
+      cancellations conversions visit_to_conversion_rate net_sales store_ending_inventory sku_ending_inventory
     ].freeze
     STORE_METRICS = (COMMON_METRICS + %i[
-      order_amount platform_fulfilled cancellations
+      order_amount platform_fulfilled
       ozon_total_views ozon_search_views ozon_click_rate ozon_all_cart_additions
       ozon_search_cart_additions ozon_average_search_position ozon_returns
       wb_buyout_amount wb_buyout_rate wb_cancel_amount wb_wishlist wb_stock wb_seller_stock
@@ -193,7 +193,9 @@ module SalesFunnelReports
       conversions = rows.sum { |row| row[:conversions].to_d }
       {
         product_card_views: views, cart_additions: carts, cart_rate: percent(carts, views),
-        orders:, cart_to_order_rate: percent(orders, carts), conversions:,
+        orders:, cart_to_order_rate: percent(orders, carts),
+        cancellations: rows.sum { |row| row[:cancellations].to_d },
+        conversions:,
         visit_to_conversion_rate: percent(conversions, views),
         net_sales: rows.sum { |row| row[:net_sales].to_d }, sku_ending_inventory: total_inventory,
         source_present: rows.any? { |row| row[:source_present] },

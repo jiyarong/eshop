@@ -78,7 +78,18 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
                 margin_pct: { value: 20, comparison: comparison },
                 ads: { value: -50 * multiplier, comparison: { delta_pct: -5, semantic: "positive" } }
               }
-            end
+            end,
+            sales_funnel: {
+              product_card_views: { value: 1_247, comparison: comparison },
+              cart_additions: { value: BigDecimal("157.0"), comparison: comparison },
+              cart_rate: { value: BigDecimal("12.59"), comparison: comparison },
+              orders: { value: 53, comparison: comparison },
+              cart_to_order_rate: { value: BigDecimal("33.76"), comparison: comparison },
+              conversions: { value: 41, comparison: comparison },
+              visit_to_conversion_rate: { value: BigDecimal("3.29"), comparison: comparison },
+              cancellations: { value: 4, comparison: { delta_pct: -20, semantic: "positive" } },
+              net_sales: { value: 38, comparison: comparison }
+            }
           }
         end
       end
@@ -89,7 +100,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       fake_query.new(args.fetch(:skus).to_a)
     end
     begin
-      get operator_skus_path, headers: { "Accept" => "text/html" }
+      get operator_skus_path, params: { q: @token }, headers: { "Accept" => "text/html" }
     ensure
       Ec::OperatorSkuMetricsQuery.define_singleton_method(:new, original_new)
     end
@@ -115,7 +126,16 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
     assert_select ".sku-ai-diagnosis-event-tags", text: "-"
     assert_select ".operator-sku-finance-grid > span", minimum: 6
-    assert_select ".operator-sku-funnel-grid > span", minimum: 8
+    sku_row = css_select(".operator-sku-row").find { |row| row.text.include?(@sku.sku_code) }
+    assert_equal %w[商品卡访问 加购 下单 成交 取消数 净销量],
+      sku_row.css(".operator-sku-funnel-grid .operator-sku-metric-label").map { |node| node.text.squish }
+    assert_select ".operator-sku-funnel-grid > span", count: 6
+    assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "加购率", count: 0 }
+    assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "加购到下单率", count: 0 }
+    assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "访问到成交率", count: 0 }
+    assert_select ".operator-sku-funnel-value", text: "(12.59%) 157.0"
+    assert_select ".operator-sku-funnel-value", text: "(33.76%) 53"
+    assert_select ".operator-sku-funnel-value", text: "(3.29%) 41"
     assert_select ".operator-sku-comparison.is-positive", text: /12\.50%/
     assert_select ".operator-sku-comparison", { text: /环比/, count: 0 }
 
