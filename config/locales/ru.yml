@@ -167,6 +167,7 @@ ru:
       sku: "SKU"
       administration: "Администрирование"
     weekly_profit_reports: "Недельная прибыль"
+    capital_distribution: "Распределение капитала"
     operator_skus: "Рабочая панель SKU"
     sales_funnel: "Воронка продаж"
     search_terms: "Поисковые запросы"
@@ -907,6 +908,59 @@ ru:
       wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
       ozon: { sku_code: "SKU", product_name: "Товар", revenue: "Заказано на сумму", total_drr: "Общая ДРР", position_category: "Позиция в поиске и каталоге", hits_view_search: "Показы в поиске и каталоге", hits_view_pdp: "Посещения карточки товара", search_to_card_conversion: "Конверсия из поиска и каталога в карточку", conv_tocart: "Конверсия из карточки в корзину", cart_to_order: "Конверсия из корзины в заказ", order_conversion: "Конверсия из показа в заказ", average_price: "Средняя цена", ordered_units: "Заказано товаров", delivered_units: "Доставлено товаров", total_ending_inventory: "Общий остаток на конец периода", store_ending_inventory: "Остаток магазина на конец периода", cancellations: "Отменено товаров", returns_count: "Возвращено товаров", hits_view: "Показы всего", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска и каталога", hits_tocart_pdp: "В корзину из карточки" }
   reports:
+    capital_distribution:
+      title: "Распределение капитала"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "Введите SKU"
+        apply: "Применить"
+        reset: "Сбросить"
+      summary:
+        in_transit: "Капитал в пути"
+        book_stock: "Учетный запас в Беларуси"
+        sold: "Себестоимость проданного"
+        total: "Общий капитал"
+        quantity: "Количество: %{quantity}"
+        missing_cost: "Количество без себестоимости"
+        sku_and_batch_counts: "SKU: %{skus} · партий: %{batches}"
+      tabs:
+        aria_label: "Виды распределения капитала"
+        sku_summary: "Сводка по SKU"
+        batch_detail: "Детализация партий"
+      sections:
+        sku_summary: "Сводка по SKU"
+        batch_detail: "Детализация партий"
+      fields:
+        sku: "SKU"
+        product_name: "Товар"
+        batch: "Партия"
+        batch_type: "Тип партии"
+        status: "Статус"
+        cost_date: "Дата себестоимости"
+        unit_cost: "Себестоимость товара CNY"
+        in_transit: "В пути"
+        book_stock: "Учетный запас в Беларуси"
+        sold: "Продано"
+        total: "Итого"
+        batch_count: "Партии"
+        missing_cost: "Без себестоимости"
+      labels:
+        batch_count: "Партий: %{count}"
+        cost_effective_on: "Действует с: %{date}"
+        quantity: "Количество: %{quantity}"
+        sku_batches: "Детализация партий %{sku}"
+      values:
+        unavailable: "-"
+        unmatched_sold: "Партия не сопоставлена"
+      pagination:
+        aria_label: "Пагинация партий распределения капитала"
+        previous: "Назад"
+        next: "Далее"
+        jump_label: "Перейти"
+        jump_action: "Открыть"
+        page_chip: "Страница %{page}/%{pages}"
+        summary: "Показаны строки %{from}–%{to} из %{total}"
+      empty: "Нет данных о распределении капитала для выбранных фильтров"
     ozon_chats:
       title: "Чаты Ozon"
       subtitle: "Вопросы покупателей, контекст товара и история ответов"

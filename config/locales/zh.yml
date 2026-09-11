@@ -174,6 +174,7 @@ zh:
       sku: "SKU"
       administration: "系统管理"
     weekly_profit_reports: "周利润报表"
+    capital_distribution: "资金分布"
     operator_skus: "SKU 工作台"
     sales_funnel: "销售漏斗"
     search_terms: "搜索词"
@@ -982,6 +983,59 @@ zh:
         hits_tocart_search: "搜索/目录加购"
         hits_tocart_pdp: "详情页加购"
   reports:
+    capital_distribution:
+      title: "资金分布"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "输入 SKU"
+        apply: "查询"
+        reset: "重置"
+      summary:
+        in_transit: "在途资金"
+        book_stock: "白俄在库资金"
+        sold: "已售成本"
+        total: "资金总览"
+        quantity: "数量：%{quantity}"
+        missing_cost: "缺少成本的数量"
+        sku_and_batch_counts: "%{skus} 个 SKU · %{batches} 个批次"
+      tabs:
+        aria_label: "资金分布视图"
+        sku_summary: "SKU 汇总"
+        batch_detail: "批次明细"
+      sections:
+        sku_summary: "SKU 汇总"
+        batch_detail: "批次明细"
+      fields:
+        sku: "SKU"
+        product_name: "商品名"
+        batch: "批次"
+        batch_type: "批次类型"
+        status: "状态"
+        cost_date: "成本日期"
+        unit_cost: "货物成本 CNY"
+        in_transit: "在途"
+        book_stock: "白俄在库"
+        sold: "已售"
+        total: "合计"
+        batch_count: "批次数"
+        missing_cost: "缺成本数量"
+      labels:
+        batch_count: "%{count} 个批次"
+        cost_effective_on: "生效：%{date}"
+        quantity: "数量：%{quantity}"
+        sku_batches: "%{sku} 的批次明细"
+      values:
+        unavailable: "-"
+        unmatched_sold: "未匹配批次"
+      pagination:
+        aria_label: "资金分布批次分页"
+        previous: "上一页"
+        next: "下一页"
+        jump_label: "跳至"
+        jump_action: "前往"
+        page_chip: "第 %{page}/%{pages} 页"
+        summary: "显示第 %{from}–%{to} 条，共 %{total} 条"
+      empty: "当前筛选条件下暂无资金分布数据"
     ozon_chats:
       title: "Ozon 聊天"
       subtitle: "集中查看买家咨询、商品上下文与回复记录"

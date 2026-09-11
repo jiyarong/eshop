@@ -305,6 +305,38 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", count: 1
   end
 
+  test "capital distribution renders sku summary tab with expandable batch detail" do
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "REPORT-CAPITAL-#{@sku_code}",
+      batch_type: :normal,
+      status: :received,
+      purchased_quantity: 10,
+      received_quantity: 10,
+      purchase_date: Date.current,
+      received_on: Date.current,
+      purchase_unit_price_cny: 999
+    )
+
+    get "/reports/capital_distribution", params: { sku: @sku_code.downcase }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", text: "资金分布"
+    assert_select "a[href='/reports/capital_distribution']", text: "资金分布"
+    assert_select "nav.erp-tabs a[aria-current='page']", text: "SKU 汇总"
+    assert_select "button.product-tree-toggle[aria-expanded='false']", count: 1
+    assert_select "tr.batch-row[hidden]", count: 1
+    assert_select "tr.batch-row", text: /#{batch.batch_code}/
+    assert_select "tbody tr.sku-row td.numeric:nth-child(6)", text: /¥/
+
+    sign_in @current_user
+    get "/reports/capital_distribution", params: { sku: @sku_code.downcase, view: "batch_detail" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "nav.erp-tabs a[aria-current='page']", text: "批次明细"
+    assert_select "td div", text: batch.batch_code
+  end
+
   test "inventory report filters by responsible users" do
     developer = User.create!(
       email: "reports-#{@sku_code.downcase}-dev@example.com",

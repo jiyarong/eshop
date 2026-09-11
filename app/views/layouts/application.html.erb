@@ -49,6 +49,7 @@
         id: "draft",
         label: t("navigation.sections.draft"),
         links: [
+          { label: t("navigation.capital_distribution"), path: "/reports/capital_distribution", icon: "bi-pie-chart", active: current_path == "/reports/capital_distribution" },
           { label: t("navigation.orders"), path: "/orders", icon: "bi-receipt", active: active_link.call("/orders") },
           { label: t("navigation.sku_sales"), path: "/reports/sku_sales", icon: "bi-bar-chart-line", active: current_path == "/reports/sku_sales" },
           { label: t("navigation.costs"), path: "/reports/costs", icon: "bi-cash-coin", active: current_path == "/reports/costs" },

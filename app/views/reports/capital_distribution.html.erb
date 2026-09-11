@@ -1,0 +1,173 @@
+<h1 class="page-title"><%= t("reports.capital_distribution.title") %></h1>
+
+<div class="report-stack">
+  <section class="panel">
+    <form action="/reports/capital_distribution" method="get" class="report-form">
+      <% if params[:locale].present? %>
+        <input type="hidden" name="locale" value="<%= params[:locale] %>">
+      <% end %>
+      <div class="field">
+        <label for="capital_distribution_sku"><%= t("reports.capital_distribution.filters.sku") %></label>
+        <input id="capital_distribution_sku"
+               type="search"
+               name="sku"
+               value="<%= @sku_query %>"
+               placeholder="<%= t("reports.capital_distribution.filters.sku_placeholder") %>">
+      </div>
+
+      <%= render "shared/spu_sku_filter",
+        field_class: "",
+        dom_id_prefix: "capital-distribution-spu-sku-filter" %>
+
+      <%= render "shared/master_sku_category_filter",
+        field_class: "" %>
+
+      <%= render "shared/popover_multiselect_filter",
+        field_class: "",
+        dom_id_prefix: "capital-distribution-grade-filter",
+        param_name: "grades",
+        label: t("erp.sku_marketing_states.fields.grade"),
+        all_label: t("erp.skus.filters.all_grades"),
+        selected_values: @grades,
+        options: Ec::SkuMarketingState::GRADES.map { |grade| [grade, grade] } %>
+
+      <%= render "shared/popover_multiselect_filter",
+        field_class: "",
+        dom_id_prefix: "capital-distribution-stage-filter",
+        param_name: "stages",
+        label: t("erp.sku_marketing_states.fields.stage"),
+        all_label: t("erp.skus.filters.all_stages"),
+        selected_values: @stages,
+        options: Ec::SkuMarketingState::STAGES.map { |stage| [stage.upcase, stage] } %>
+
+      <%= render "shared/responsible_user_filters",
+        field_class: "",
+        dom_id_prefix: "capital-distribution-responsible-user-filter" %>
+
+      <button class="button" type="submit"><%= t("reports.capital_distribution.filters.apply") %></button>
+      <% if capital_distribution_filters_active? %>
+        <% reset_path = params[:locale].present? ? "/reports/capital_distribution?locale=#{ERB::Util.url_encode(params[:locale])}" : "/reports/capital_distribution" %>
+        <%= link_to t("reports.capital_distribution.filters.reset"), reset_path, class: "button button-secondary" %>
+      <% end %>
+    </form>
+    <%= render "shared/ai_diagnosis_event_filter" %>
+  </section>
+
+  <section class="panel">
+    <div class="summary-grid">
+      <% [
+        [:in_transit, :in_transit_quantity, :in_transit_amount_cny],
+        [:book_stock, :book_stock_quantity, :book_stock_amount_cny],
+        [:sold, :sold_quantity, :sold_amount_cny],
+        [:total, :total_quantity, :total_amount_cny]
+      ].each do |key, quantity_key, amount_key| %>
+        <div class="weekly-profit-summary-card">
+          <div class="summary-label"><%= t("reports.capital_distribution.summary.#{key}") %></div>
+          <div class="summary-value"><%= capital_distribution_currency(@capital_distribution_summary[amount_key]) %></div>
+          <div class="summary-label"><%= t("reports.capital_distribution.summary.quantity", quantity: capital_distribution_quantity(@capital_distribution_summary[quantity_key])) %></div>
+        </div>
+      <% end %>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.missing_cost") %></div>
+        <div class="summary-value"><%= capital_distribution_quantity(@capital_distribution_summary[:missing_cost_quantity]) %></div>
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.sku_and_batch_counts", skus: @capital_distribution_summary[:sku_count], batches: @capital_distribution_summary[:batch_count]) %></div>
+      </div>
+    </div>
+  </section>
+
+  <% tab_query_params = request.query_parameters.symbolize_keys.except(:view, :page, :jump_page, :current_page) %>
+  <nav class="erp-tabs erp-tabs--underline" aria-label="<%= t("reports.capital_distribution.tabs.aria_label") %>">
+    <% [["sku_summary", t("reports.capital_distribution.tabs.sku_summary")], ["batch_detail", t("reports.capital_distribution.tabs.batch_detail")]].each do |view, label| %>
+      <%= link_to label,
+                  "/reports/capital_distribution?#{tab_query_params.merge(view: view).to_query}",
+                  class: "erp-tabs__link",
+                  aria: { current: ("page" if @capital_distribution_view == view) } %>
+    <% end %>
+  </nav>
+
+  <% if @capital_distribution_view == "sku_summary" %>
+    <section class="panel table-list-card" data-controller="product-tree">
+      <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+        <table class="inventory-list-table">
+          <thead>
+            <tr>
+              <th style="width: 36px"></th>
+              <th><%= t("reports.capital_distribution.fields.sku") %></th>
+              <th><%= t("reports.capital_distribution.fields.product_name") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.in_transit") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.book_stock") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.sold") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.total") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.batch_count") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.missing_cost") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @capital_distribution_sku_rows.any? %>
+              <% @capital_distribution_sku_rows.each do |row| %>
+                <% child_rows = @capital_distribution_batch_rows_by_sku.fetch(row[:sku_code], []) %>
+                <tr class="inventory-list-table__row sku-row master">
+                  <td>
+                    <% if child_rows.any? %>
+                      <button class="chev product-tree-toggle"
+                              type="button"
+                              data-action="product-tree#toggleMaster"
+                              data-label="<%= t("reports.capital_distribution.labels.sku_batches", sku: row[:sku_code]) %>"
+                              data-tree-key="capital-distribution-<%= row[:sku_code].parameterize %>"
+                              aria-label="<%= t("erp.common.actions.expand_named", name: t("reports.capital_distribution.labels.sku_batches", sku: row[:sku_code])) %>"
+                              aria-expanded="false">
+                        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                      </button>
+                    <% end %>
+                  </td>
+                  <td><%= sku_detail_drawer_link row[:sku_code], tab: "inventory", class: "inventory-list-table__sku-link" %></td>
+                  <td class="inventory-list-table__name-cell"><%= report_value(row[:product_name]) %></td>
+                  <% [[:in_transit_quantity, :in_transit_amount_cny], [:book_stock_quantity, :book_stock_amount_cny], [:sold_quantity, :sold_amount_cny], [:total_quantity, :total_amount_cny]].each do |quantity_key, amount_key| %>
+                    <td class="numeric">
+                      <div><%= capital_distribution_currency(row[amount_key]) %></div>
+                      <div class="inventory-list-table__subline"><%= t("reports.capital_distribution.labels.quantity", quantity: capital_distribution_quantity(row[quantity_key])) %></div>
+                    </td>
+                  <% end %>
+                  <td class="numeric"><%= capital_distribution_quantity(row[:batch_count]) %></td>
+                  <td class="numeric"><%= capital_distribution_quantity(row[:missing_cost_quantity]) %></td>
+                </tr>
+                <% if child_rows.any? %>
+                  <tr class="batch-row" hidden>
+                    <td colspan="9">
+                      <div class="batch-shell">
+                        <div class="batch-h">
+                          <div>
+                            <span class="batch-title"><%= t("reports.capital_distribution.sections.batch_detail") %></span>
+                            <span><%= t("reports.capital_distribution.labels.batch_count", count: child_rows.size) %></span>
+                          </div>
+                        </div>
+                        <%= render "capital_distribution_batch_rows_table",
+                          rows: child_rows,
+                          include_sku: false,
+                          table_class: "batch-tbl" %>
+                      </div>
+                    </td>
+                  </tr>
+                <% end %>
+              <% end %>
+            <% else %>
+              <tr><td colspan="9" class="empty-state"><%= t("reports.capital_distribution.empty") %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+  <% else %>
+    <section class="panel table-list-card">
+      <% if @capital_distribution_batch_rows.respond_to?(:total_pages) && @capital_distribution_batch_rows.total_pages > 1 %>
+        <%= render "capital_distribution_pagination", rows: @capital_distribution_batch_rows %>
+      <% end %>
+      <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+        <%= render "capital_distribution_batch_rows_table",
+          rows: @capital_distribution_batch_rows,
+          include_sku: true,
+          table_class: "inventory-list-table" %>
+      <% end %>
+    </section>
+  <% end %>
+</div>

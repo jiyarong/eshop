@@ -25,6 +25,7 @@ Rails.application.routes.draw do
   get "weekly_profit_reports"          => "weekly_profit_reports#show"
   resources :operator_skus, only: :index
 
+  get "reports/capital_distribution" => "reports#capital_distribution", as: :reports_capital_distribution
   get "reports/inventory" => "reports#inventory"
   get "reports/warehouses" => "reports#warehouses", as: :reports_warehouses
   get "reports/ozon_warehouses" => "reports#ozon_warehouses", as: :reports_ozon_warehouses

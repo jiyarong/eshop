@@ -196,6 +196,7 @@ en:
       sku: "SKU"
       administration: "Administration"
     weekly_profit_reports: "Weekly Profit"
+    capital_distribution: "Capital Distribution"
     operator_skus: "SKU Workbench"
     sales_funnel: "Sales Funnel"
     search_terms: "Search Terms"
@@ -936,6 +937,59 @@ en:
       wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
       ozon: { sku_code: "SKU", product_name: "Product", revenue: "Order amount", total_drr: "Total DRR", position_category: "Average search rank", hits_view_search: "Search and catalog views", hits_view_pdp: "Product card visits", search_to_card_conversion: "Search and catalog to card conversion", conv_tocart: "Card-to-cart conversion", cart_to_order: "Product card cart-to-order conversion", order_conversion: "View-to-order conversion", average_price: "Average price", ordered_units: "Ordered units", delivered_units: "Delivered units", total_ending_inventory: "Total ending inventory", store_ending_inventory: "Store ending inventory", cancellations: "Cancellations (by order date)", returns_count: "Returns (by order date)", hits_view: "Views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search and catalog cart adds", hits_tocart_pdp: "Product card cart adds" }
   reports:
+    capital_distribution:
+      title: "Capital Distribution"
+      filters:
+        sku: "SKU"
+        sku_placeholder: "Enter SKU"
+        apply: "Apply"
+        reset: "Reset"
+      summary:
+        in_transit: "In-transit capital"
+        book_stock: "Belarus book stock capital"
+        sold: "Sold cost"
+        total: "Total capital"
+        quantity: "Quantity: %{quantity}"
+        missing_cost: "Quantity missing cost"
+        sku_and_batch_counts: "%{skus} SKUs · %{batches} batches"
+      tabs:
+        aria_label: "Capital distribution views"
+        sku_summary: "SKU Summary"
+        batch_detail: "Batch Detail"
+      sections:
+        sku_summary: "SKU Summary"
+        batch_detail: "Batch Detail"
+      fields:
+        sku: "SKU"
+        product_name: "Product"
+        batch: "Batch"
+        batch_type: "Batch type"
+        status: "Status"
+        cost_date: "Cost date"
+        unit_cost: "Goods cost CNY"
+        in_transit: "In transit"
+        book_stock: "Belarus book stock"
+        sold: "Sold"
+        total: "Total"
+        batch_count: "Batches"
+        missing_cost: "Missing-cost qty"
+      labels:
+        batch_count: "%{count} batches"
+        cost_effective_on: "Effective: %{date}"
+        quantity: "Quantity: %{quantity}"
+        sku_batches: "Batch detail for %{sku}"
+      values:
+        unavailable: "-"
+        unmatched_sold: "Unmatched batch"
+      pagination:
+        aria_label: "Capital distribution batch pagination"
+        previous: "Previous page"
+        next: "Next page"
+        jump_label: "Go to"
+        jump_action: "Go"
+        page_chip: "Page %{page}/%{pages}"
+        summary: "Showing %{from}–%{to} of %{total} rows"
+      empty: "No capital distribution data matches the current filters"
     ozon_chats:
       title: "Ozon Chats"
       subtitle: "Review buyer questions, product context, and response history"

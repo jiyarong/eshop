@@ -10,6 +10,7 @@ class ReportsController < ApplicationController
   include AIDiagnosisEventFilterable
 
   helper_method :report_value, :sku_sales_series_name, :sku_detail_tabs, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
+                :capital_distribution_filters_active?,
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
                 :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
                 :sku_profit_period_comparison, :sku_profit_analysis_value,
@@ -45,6 +46,7 @@ class ReportsController < ApplicationController
     net_sales revenue ads goods_cost average_profit_per_order annualized_return_pct annualized_net_profit_cny
   ].freeze
   SKU_SALES_FUNNEL_TREND_MAX_DAYS = 366
+  CAPITAL_DISTRIBUTION_VIEWS = %w[sku_summary batch_detail].freeze
 
   def inventory
     @sku_query = params[:sku].to_s.strip
@@ -65,6 +67,22 @@ class ReportsController < ApplicationController
     scope = apply_inventory_turnover_filter(scope)
     @inventory_volume_summary = build_inventory_volume_summary(scope)
     @inventory_rows = build_inventory_rows(scope)
+  end
+
+  def capital_distribution
+    @sku_query = params[:sku].to_s.strip
+    load_master_sku_category_filter
+    load_spu_sku_filter
+    load_sku_marketing_state_filters
+    load_responsible_user_filters
+    load_ai_diagnosis_event_filter
+    @capital_distribution_view = params[:view].presence_in(CAPITAL_DISTRIBUTION_VIEWS) || "sku_summary"
+
+    report = Ec::InventoryCapitalDistributionQuery.new(skus: capital_distribution_skus_scope.order(:sku_code)).call
+    @capital_distribution_summary = report.fetch(:summary)
+    @capital_distribution_sku_rows = report.fetch(:sku_rows)
+    @capital_distribution_batch_rows_by_sku = report.fetch(:batch_rows).group_by { |row| row[:sku_code] }
+    @capital_distribution_batch_rows = paginated_capital_distribution_batch_rows(report.fetch(:batch_rows))
   end
 
   def inventory_detail
@@ -1157,6 +1175,27 @@ class ReportsController < ApplicationController
     scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)
   end
 
+  def capital_distribution_skus_scope
+    scope = Ec::Sku.includes(:current_marketing_state)
+    scope = apply_master_sku_category_filter_to_skus(scope)
+    scope = apply_spu_sku_filter_to_skus(scope)
+    scope = apply_marketing_state_filters(scope)
+    scope = apply_responsible_user_filters_to_skus(scope)
+    scope = apply_ai_diagnosis_event_filter_to_skus(scope)
+    return scope if @sku_query.blank?
+
+    scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)
+  end
+
+  def paginated_capital_distribution_batch_rows(rows)
+    current_page = inventory_page_param
+    paginated = Kaminari.paginate_array(rows).page(current_page).per(20)
+    if paginated.total_pages.positive? && current_page > paginated.total_pages
+      paginated = Kaminari.paginate_array(rows).page(paginated.total_pages).per(20)
+    end
+    paginated
+  end
+
   def apply_inventory_turnover_filter(scope)
     return scope unless inventory_turnover_filter_active?
 
@@ -1190,6 +1229,10 @@ class ReportsController < ApplicationController
 
   def inventory_filters_active?
     @sku_query.present? || inventory_turnover_filter_active? || responsible_user_filters_active? || spu_sku_filter_active? || sku_marketing_state_filters_active? || master_sku_category_filter_active? || ai_diagnosis_event_filter_active?
+  end
+
+  def capital_distribution_filters_active?
+    @sku_query.present? || responsible_user_filters_active? || spu_sku_filter_active? || sku_marketing_state_filters_active? || master_sku_category_filter_active? || ai_diagnosis_event_filter_active?
   end
 
   def inventory_turnover_matches_all?(turnover_days:, turnover_days_with_procurement:)

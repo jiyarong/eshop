@@ -1,0 +1,60 @@
+<% include_sku = local_assigns.fetch(:include_sku, true) %>
+<% table_class = local_assigns.fetch(:table_class, "inventory-list-table") %>
+<% empty_colspan = include_sku ? 10 : 9 %>
+
+<table class="<%= table_class %>">
+  <thead>
+    <tr>
+      <% if include_sku %>
+        <th><%= t("reports.capital_distribution.fields.sku") %></th>
+      <% end %>
+      <th><%= t("reports.capital_distribution.fields.batch") %></th>
+      <th><%= t("reports.capital_distribution.fields.batch_type") %></th>
+      <th><%= t("reports.capital_distribution.fields.status") %></th>
+      <th><%= t("reports.capital_distribution.fields.cost_date") %></th>
+      <th class="numeric"><%= t("reports.capital_distribution.fields.unit_cost") %></th>
+      <th class="numeric"><%= t("reports.capital_distribution.fields.in_transit") %></th>
+      <th class="numeric"><%= t("reports.capital_distribution.fields.book_stock") %></th>
+      <th class="numeric"><%= t("reports.capital_distribution.fields.sold") %></th>
+      <th class="numeric"><%= t("reports.capital_distribution.fields.total") %></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if rows.any? %>
+      <% rows.each do |row| %>
+        <tr>
+          <% if include_sku %>
+            <td><%= sku_detail_drawer_link row[:sku_code], tab: "inventory", class: "inventory-list-table__sku-link" %></td>
+          <% end %>
+          <td>
+            <div><%= row[:batch_code].presence || t("reports.capital_distribution.values.unmatched_sold") %></div>
+            <% if include_sku %>
+              <div class="inventory-list-table__subline"><%= report_value(row[:product_name]) %></div>
+            <% end %>
+          </td>
+          <td><%= row[:batch_type].present? ? t("reports.inventory.batch_types.#{row[:batch_type]}", default: row[:batch_type]) : t("reports.capital_distribution.values.unmatched_sold") %></td>
+          <td><%= row[:status].present? ? t("reports.inventory.batch_statuses.#{row[:status]}", default: row[:status]) : t("reports.capital_distribution.values.unmatched_sold") %></td>
+          <td>
+            <div><%= capital_distribution_date(row[:cost_date]) %></div>
+            <% if row[:cost_effective_on].present? %>
+              <div class="inventory-list-table__subline"><%= t("reports.capital_distribution.labels.cost_effective_on", date: row[:cost_effective_on]) %></div>
+            <% end %>
+          </td>
+          <td class="numeric"><%= capital_distribution_currency(row[:unit_goods_cost_cny], precision: 4) %></td>
+          <% [[:in_transit_quantity, :in_transit_amount_cny], [:book_stock_quantity, :book_stock_amount_cny], [:sold_quantity, :sold_amount_cny]].each do |quantity_key, amount_key| %>
+            <td class="numeric">
+              <div><%= capital_distribution_currency(row[amount_key]) %></div>
+              <div class="inventory-list-table__subline"><%= t("reports.capital_distribution.labels.quantity", quantity: capital_distribution_quantity(row[quantity_key])) %></div>
+            </td>
+          <% end %>
+          <td class="numeric">
+            <div><%= capital_distribution_currency(capital_distribution_total_amount(row)) %></div>
+            <div class="inventory-list-table__subline"><%= t("reports.capital_distribution.labels.quantity", quantity: capital_distribution_quantity(%i[in_transit_quantity book_stock_quantity sold_quantity].sum { |key| row[key].to_i })) %></div>
+          </td>
+        </tr>
+      <% end %>
+    <% else %>
+      <tr><td colspan="<%= empty_colspan %>" class="empty-state"><%= t("reports.capital_distribution.empty") %></td></tr>
+    <% end %>
+  </tbody>
+</table>

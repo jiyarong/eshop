@@ -1,0 +1,71 @@
+<% page = rows.current_page %>
+<% page_count = rows.total_pages %>
+<% query_params = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page) %>
+
+<div class="inventory-pagination-bar">
+  <div class="pagination-meta">
+    <div class="inventory-pagination-bar__summary"><%= capital_distribution_pagination_summary(rows) %></div>
+    <span class="pagination-chip"><%= capital_distribution_pagination_page_chip(rows) %></span>
+  </div>
+
+  <div class="pagination-shell">
+    <nav class="pagination-nav" aria-label="<%= t("reports.capital_distribution.pagination.aria_label") %>">
+      <% previous_page = page - 1 %>
+      <% if previous_page >= 1 %>
+        <%= link_to "/reports/capital_distribution?#{query_params.merge(page: previous_page).to_query}",
+                    class: "pg-btn pg-btn-nav",
+                    aria: { label: t("reports.capital_distribution.pagination.previous") } do %>
+          <span aria-hidden="true">‹</span>
+        <% end %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">‹</span>
+      <% end %>
+
+      <% inventory_pagination_items(page, page_count).each do |item| %>
+        <% if item.is_a?(Symbol) %>
+          <span class="pg-ell" aria-hidden="true">…</span>
+        <% elsif item == page %>
+          <span class="pg-btn on"><%= item %></span>
+        <% else %>
+          <%= link_to item,
+                      "/reports/capital_distribution?#{query_params.merge(page: item).to_query}",
+                      class: "pg-btn" %>
+        <% end %>
+      <% end %>
+
+      <% next_page = page + 1 %>
+      <% if next_page <= page_count %>
+        <%= link_to "/reports/capital_distribution?#{query_params.merge(page: next_page).to_query}",
+                    class: "pg-btn pg-btn-nav",
+                    aria: { label: t("reports.capital_distribution.pagination.next") } do %>
+          <span aria-hidden="true">›</span>
+        <% end %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">›</span>
+      <% end %>
+    </nav>
+
+    <span class="pagination-divider" aria-hidden="true"></span>
+
+    <%= form_with url: "/reports/capital_distribution", method: :get, local: true, class: "pagination-jump", role: "group", aria: { label: t("reports.capital_distribution.pagination.jump_label") } do %>
+      <% query_params.each do |key, value| %>
+        <% if value.is_a?(Array) %>
+          <% value.each do |item| %>
+            <%= hidden_field_tag "#{key}[]", item %>
+          <% end %>
+        <% else %>
+          <%= hidden_field_tag key, value %>
+        <% end %>
+      <% end %>
+      <%= hidden_field_tag :current_page, page %>
+      <span class="pagination-jump-label"><%= t("reports.capital_distribution.pagination.jump_label") %></span>
+      <%= text_field_tag :jump_page,
+                         page,
+                         class: "pagination-jump-input",
+                         inputmode: "numeric",
+                         pattern: "[0-9]*",
+                         aria: { label: t("reports.capital_distribution.pagination.jump_label") } %>
+      <%= submit_tag t("reports.capital_distribution.pagination.jump_action"), class: "pg-btn pg-btn-jump" %>
+    <% end %>
+  </div>
+</div>

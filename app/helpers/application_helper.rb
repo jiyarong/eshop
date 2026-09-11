@@ -53,6 +53,41 @@ module ApplicationHelper
     t("reports.inventory.pagination.page_chip", page: scope.current_page, pages: scope.total_pages)
   end
 
+  def capital_distribution_pagination_summary(scope)
+    total_count = scope.total_count.to_i
+    return t("reports.capital_distribution.pagination.summary", from: 0, to: 0, total: 0) if total_count.zero?
+
+    from = scope.offset_value.to_i + 1
+    to = [scope.offset_value.to_i + scope.limit_value.to_i, total_count].min
+
+    t("reports.capital_distribution.pagination.summary", from: from, to: to, total: total_count)
+  end
+
+  def capital_distribution_pagination_page_chip(scope)
+    t("reports.capital_distribution.pagination.page_chip", page: scope.current_page, pages: scope.total_pages)
+  end
+
+  def capital_distribution_currency(value, precision: 2)
+    return t("reports.capital_distribution.values.unavailable") if value.nil?
+
+    number_to_currency(value, unit: "¥", precision: precision)
+  end
+
+  def capital_distribution_quantity(value)
+    number_with_delimiter(value.to_i)
+  end
+
+  def capital_distribution_date(value)
+    value.presence || t("reports.capital_distribution.values.unavailable")
+  end
+
+  def capital_distribution_total_amount(row)
+    amount_keys = %i[in_transit_amount_cny book_stock_amount_cny sold_amount_cny]
+    return nil if amount_keys.all? { |key| row[key].nil? }
+
+    amount_keys.sum { |key| row[key].to_d }
+  end
+
   def sku_pagination_summary(scope)
     total_count = scope.total_count.to_i
     return t("erp.skus.pagination.summary", from: 0, to: 0, total: 0) if total_count.zero?
