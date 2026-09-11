@@ -116,6 +116,21 @@ Rails.application.routes.draw do
       get "skus/marketing_context" => "skus#marketing_context"
       post "skus/competitor_data_batches" => "competitor_data_batches#create"
     end
+
+    namespace :v3 do
+      get "sku/full_context" => "skus#full_context"
+      get "sku/base_context" => "skus#base_context"
+      get "sku/sales_funnel_context" => "skus#sales_funnel_context"
+      get "sku/profit_context" => "skus#profit_context"
+      get "sku/inventory_context" => "skus#inventory_context"
+      get "sku/lifecycle_context" => "skus#lifecycle_context"
+      get "sku/advertising_context" => "skus#advertising_context"
+      get "sku/orders_context" => "skus#orders_context"
+      get "sku/supply_orders_context" => "skus#supply_orders_context"
+      get "sku/operation_actions_context" => "skus#operation_actions_context"
+      get "sku/warehouse_recommendation_context" => "skus#warehouse_recommendation_context"
+      get "sku/search_terms_context" => "skus#search_terms_context"
+    end
   end
 
   namespace :admin do
