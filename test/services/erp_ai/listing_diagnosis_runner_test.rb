@@ -134,6 +134,7 @@ class ErpAI::ListingDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal "listing-audit", result.conversation.agent.code
     assert_equal "2026-08-24", ask_arguments.dig(:time_range, :from)
     assert_equal "2026-09-06", ask_arguments.dig(:time_range, :to)
+    assert_includes ask_arguments.fetch(:question), "给出的图片第一张为主图，第二张为其他产品图的合集(9张拼接起来的)"
     assert_includes ask_arguments.fetch(:data_summary), "# 当前诊断目标"
     assert_includes ask_arguments.fetch(:data_summary), "product_id: #{@sku_product.product_id}"
     assert_includes ask_arguments.fetch(:data_summary), "# Listing context for #{@sku.sku_code}"

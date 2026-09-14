@@ -2353,7 +2353,7 @@ en:
         previous_page: "Previous page"
     sku_products:
       listing_diagnosis:
-        agent_question: "Diagnose this listing using the current target, listing context, and recent sales funnel data, then provide actionable optimization recommendations."
+        agent_question: "Diagnose this listing using the current target, listing context, and recent sales funnel data, then provide actionable optimization recommendations. The first provided image is the main image, and the second is a collage of the other product images (9 images stitched together)."
         already_running: "A diagnosis is already running for this listing."
         back: "Back to platform product"
         description: "AI evaluates the product content and the current store's sales funnel for the latest two complete calendar weeks."

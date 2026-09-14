@@ -2560,7 +2560,7 @@ zh:
         previous_page: "上一页"
     sku_products:
       listing_diagnosis:
-        agent_question: "请基于当前诊断目标、Listing 上下文和近期销售漏斗数据，对该 Listing 进行诊断并给出可执行的优化建议。"
+        agent_question: "请基于当前诊断目标、Listing 上下文和近期销售漏斗数据，对该 Listing 进行诊断并给出可执行的优化建议。给出的图片第一张为主图，第二张为其他产品图的合集(9张拼接起来的)。"
         already_running: "该 Listing 已有诊断任务正在进行。"
         back: "返回平台商品"
         description: "AI 将结合商品内容与最近两个完整自然周的当前店铺销售漏斗进行诊断。"
