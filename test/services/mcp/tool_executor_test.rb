@@ -52,6 +52,7 @@ module Mcp
 
     teardown do
       Ec::SkuInventoryLevel.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
+      Ec::AIDiagnosis.where(sku_id: [@sku&.id, @ozon_sku&.id, @other_sku&.id].compact).destroy_all
       store_ids = [@store&.id, @ozon_store&.id, @other_store&.id].compact
       Ec::OrderItem.joins(:order).where(ec_orders: { store_id: store_ids }).delete_all
       Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: store_ids }).delete_all
@@ -84,6 +85,41 @@ module Mcp
       assert_includes result.fetch(:tools), "ozon_cluster_sales_distribution"
       assert_includes result.fetch(:tools), "ozon_sku_localization"
       assert_includes result.fetch(:tools), "sql_query"
+      assert_includes result.fetch(:tools), "save_sku_event"
+    end
+
+    test "save_sku_event creates and overwrites a same-day sub-agent event" do
+      executor = ToolExecutor.new(current_user: @user)
+      arguments = {
+        "sku_code" => @sku.sku_code,
+        "sub_agent_id" => 7,
+        "severity" => "warning",
+        "reason" => "库存偏低",
+        "message" => "需要关注",
+        "advise" => "检查补货计划"
+      }
+
+      first = executor.call("save_sku_event", arguments)
+      second = executor.call("save_sku_event", arguments.merge(
+        "severity" => "danger",
+        "reason" => "库存严重偏低",
+        "message" => "立即处理",
+        "advise" => "立即补货"
+      ))
+
+      assert first.fetch(:success)
+      assert second.fetch(:success)
+      assert_equal first.fetch(:diagnosis_id), second.fetch(:diagnosis_id)
+      assert_equal first.fetch(:event_id), second.fetch(:event_id)
+
+      diagnosis = Ec::GeneralDiagnosis.find(first.fetch(:diagnosis_id))
+      event = diagnosis.events.sole
+      assert_equal "general_event_v1", event.event_type
+      assert_equal 7, event.sub_agent_id
+      assert_equal "danger", event.severity
+      assert_equal "库存严重偏低", event.reason
+      assert_equal "立即处理", event.message
+      assert_equal "立即补货", event.advise
     end
 
     test "sql_query uses the read only SQL query behavior" do

@@ -30,6 +30,8 @@ module Mcp
         erp_ai_request(args)
       when "operation_context"
         operation_context
+      when "save_sku_event"
+        save_sku_event(args)
       else
         { error: "Unknown MCP tool: #{name}" }
       end
@@ -68,6 +70,74 @@ module Mcp
         global_scope: visible_scope.global_user?,
         visible_sku_count: visible_scope.sku_count,
         tools: Mcp::ToolRegistry.new(current_user: current_user).definitions.map { |tool| tool.fetch(:name) }
+      }
+    end
+
+    def save_sku_event(args)
+      sku_code = args["sku_code"].to_s.upcase
+      return { error: "sku_code is required" } if sku_code.blank?
+
+      sku = visible_sku(sku_code)
+      return { error: "SKU is not visible to current user" } unless sku
+
+      sub_agent_id = Integer(args["sub_agent_id"], exception: false)
+      return { error: "sub_agent_id is required" } if sub_agent_id.nil?
+
+      severity = args["severity"].to_s
+      return { error: "severity is required" } if severity.blank?
+
+      message = args["message"].to_s
+      return { error: "message is required" } if message.blank?
+
+      today = user_today
+      day_start = user_time_zone.local(today.year, today.month, today.day)
+      day_end = day_start + 1.day
+      event = nil
+      diagnosis = nil
+
+      sku.with_lock do
+        diagnosis = Ec::GeneralDiagnosis
+          .where(sku_id: sku.id, created_at: day_start...day_end)
+          .order(id: :desc)
+          .first
+        diagnosis ||= Ec::GeneralDiagnosis.create!(
+          sku: sku,
+          submitted_by: current_user,
+          data: {}
+        )
+
+        diagnosis.with_lock do
+          event = diagnosis.events
+            .where(event_type: Ec::GeneralDiagnosis::EVENT_TYPE, sub_agent_id: sub_agent_id)
+            .where(created_at: day_start...day_end)
+            .order(id: :desc)
+            .first
+
+          attributes = {
+            event_type: Ec::GeneralDiagnosis::EVENT_TYPE,
+            sub_agent_id: sub_agent_id,
+            severity: severity,
+            reason: args["reason"],
+            message: message,
+            advise: args["advise"],
+            position: 0
+          }
+
+          if event
+            event.update!(attributes)
+          else
+            event = diagnosis.events.create!(attributes)
+          end
+        end
+      end
+
+      {
+        success: true,
+        sku_code: sku.sku_code,
+        diagnosis_id: diagnosis.id,
+        event_id: event.id,
+        event_type: event.event_type,
+        sub_agent_id: event.sub_agent_id
       }
     end
 

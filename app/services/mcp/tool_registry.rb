@@ -95,6 +95,19 @@ module Mcp
           "operation_context",
           "返回当前用户、时区、权限和可用数据范围。",
           {}
+        ),
+        definition(
+          "save_sku_event",
+          "保存当前用户可见 SKU 的通用 AI 诊断事件。同一 SKU、同一子代理、同一天的结果会覆盖之前的记录。",
+          {
+            sku_code: string_schema("内部 SKU code"),
+            sub_agent_id: integer_schema("子代理 ID"),
+            severity: string_schema("事件严重级别"),
+            reason: string_schema("诊断原因"),
+            message: string_schema("诊断消息"),
+            advise: string_schema("处理建议")
+          },
+          required: %w[sku_code sub_agent_id severity message]
         )
       ]
     end

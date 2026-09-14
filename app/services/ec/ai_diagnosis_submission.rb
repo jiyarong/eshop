@@ -2,6 +2,7 @@ module Ec
   class AIDiagnosisSubmission
     TYPES = {
       "RestockingDiagnosis" => Ec::RestockingDiagnosis,
+      "GeneralDiagnosis" => Ec::GeneralDiagnosis,
       "GradeInspect" => Ec::GradeInspect,
       "StageInspect" => Ec::StageInspect,
       "AdvertisingInspect" => Ec::AdvertisingInspect

@@ -106,6 +106,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
   end
 
   create_table "ec_ai_diagnosis_events", force: :cascade do |t|
+    t.string "advise"
     t.bigint "ai_diagnosis_id", null: false
     t.bigint "conversation_id"
     t.datetime "created_at", null: false
@@ -113,8 +114,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
     t.string "event_type", null: false
     t.text "message", null: false
     t.integer "position", default: 0, null: false
+    t.string "reason"
     t.string "scope"
     t.string "severity", null: false
+    t.integer "sub_agent_id"
     t.datetime "updated_at", null: false
     t.index ["ai_diagnosis_id", "position"], name: "idx_ai_diagnosis_events_on_diagnosis_and_position"
     t.index ["ai_diagnosis_id"], name: "index_ec_ai_diagnosis_events_on_ai_diagnosis_id"
