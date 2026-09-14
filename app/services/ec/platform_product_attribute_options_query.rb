@@ -1,5 +1,6 @@
 module Ec
   class PlatformProductAttributeOptionsQuery
+    OZON_LARGE_DICTIONARY_ATTRIBUTE_IDS = [85, 4389, 22232].freeze
     DEFAULT_LIMIT = 100
     MAX_LIMIT = 500
 
@@ -29,11 +30,10 @@ module Ec
     private
 
     def ozon_options
-      return empty_result if @account_id.blank? || @description_category_id.blank? || @attribute_id.zero?
+      return empty_result if @description_category_id.blank? || @attribute_id.zero?
 
       attribute = RawOzon::CategoryAttribute
         .where(
-          account_id: @account_id,
           description_category_id: @description_category_id,
           type_id: @type_id,
           attribute_id: @attribute_id
@@ -41,24 +41,27 @@ module Ec
         .order(:attribute_complex_id)
         .first
 
-      options = RawOzon::AttributeValue
-        .where(
-          account_id: @account_id,
-          description_category_id: @description_category_id,
-          type_id: @type_id,
-          attribute_id: @attribute_id
-        )
-        .then { |scope| filter_option_scope(scope, :value) }
-        .order(:value)
-        .limit(@limit)
-        .map do |value|
-          {
-            id: value.dictionary_value_id,
-            value: value.value,
-            info: value.info,
-            picture: value.picture
-          }
-        end
+      options = if large_ozon_dictionary?
+        search_ozon_dictionary_values
+      else
+        RawOzon::AttributeValue
+          .where(
+            description_category_id: @description_category_id,
+            type_id: @type_id,
+            attribute_id: @attribute_id
+          )
+          .then { |scope| filter_option_scope(scope, :value) }
+          .order(:value)
+          .limit(@limit)
+          .map do |value|
+            {
+              id: value.dictionary_value_id,
+              value: value.value,
+              info: value.info,
+              picture: value.picture
+            }
+          end
+      end
 
       {
         platform: "ozon",
@@ -97,6 +100,41 @@ module Ec
       return if @subject_id.blank?
 
       RawWb::Subject.find_by(id: @subject_id) || RawWb::Subject.find_by(wb_id: @subject_id)
+    end
+
+    def large_ozon_dictionary?
+      OZON_LARGE_DICTIONARY_ATTRIBUTE_IDS.include?(@attribute_id)
+    end
+
+    def search_ozon_dictionary_values
+      return [] if @query.length < 2 || @account_id.blank?
+
+      account = RawOzon::SellerAccount.find_by(id: @account_id)
+      return [] unless account
+
+      response = RawOzon::OzonClient.new(account.client_id, account.api_key).post(
+        "/v1/description-category/attribute/values/search",
+        {
+          attribute_id: @attribute_id,
+          description_category_id: @description_category_id,
+          type_id: @type_id,
+          value: @query,
+          limit: [@limit, 100].min
+        }
+      )
+      Array(response["result"]).filter_map do |value|
+        dictionary_value_id = value["id"] || value["dictionary_value_id"]
+        next if dictionary_value_id.blank?
+
+        {
+          id: dictionary_value_id,
+          value: value["value"],
+          info: value["info"],
+          picture: value["picture"]
+        }
+      end
+    rescue RawOzon::OzonClient::ApiError, RawOzon::OzonClient::RetryableError
+      []
     end
 
     def filter_option_scope(scope, column)

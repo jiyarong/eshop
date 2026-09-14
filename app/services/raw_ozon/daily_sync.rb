@@ -10,6 +10,7 @@ module RawOzon
       sync_removal_items
       sync_product_prices
       sync_products
+      sync_category_attributes
       sync_product_attributes
       sync_product_stocks
       sync_finance_transactions

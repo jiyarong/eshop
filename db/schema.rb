@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_11_093954) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_14_060103) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1106,7 +1106,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_093954) do
   end
 
   create_table "raw_ozon_attribute_values", force: :cascade do |t|
-    t.bigint "account_id", null: false
     t.bigint "attribute_id", null: false
     t.bigint "description_category_id", null: false
     t.bigint "dictionary_value_id", null: false
@@ -1116,10 +1115,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_093954) do
     t.datetime "synced_at"
     t.bigint "type_id", default: 0, null: false
     t.string "value"
-    t.index ["account_id", "attribute_id"], name: "idx_raw_ozon_attr_values_attribute"
-    t.index ["account_id", "description_category_id", "type_id", "attribute_id", "dictionary_value_id"], name: "idx_raw_ozon_attr_values_unique", unique: true
-    t.index ["account_id", "value"], name: "idx_raw_ozon_attr_values_value"
-    t.index ["account_id"], name: "index_raw_ozon_attribute_values_on_account_id"
+    t.index ["description_category_id", "type_id", "attribute_id"], name: "idx_raw_ozon_attr_values_attribute"
+    t.index ["description_category_id", "type_id", "attribute_id", "dictionary_value_id"], name: "idx_raw_ozon_attr_values_unique", unique: true
   end
 
   create_table "raw_ozon_categories", force: :cascade do |t|
@@ -1136,7 +1133,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_093954) do
   end
 
   create_table "raw_ozon_category_attributes", force: :cascade do |t|
-    t.bigint "account_id", null: false
     t.bigint "attribute_complex_id", default: 0, null: false
     t.bigint "attribute_id", null: false
     t.boolean "category_dependent", default: false, null: false
@@ -1155,10 +1151,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_093954) do
     t.datetime "synced_at"
     t.bigint "type_id", default: 0, null: false
     t.string "value_type"
-    t.index ["account_id", "description_category_id", "type_id", "attribute_id", "attribute_complex_id"], name: "idx_raw_ozon_cat_attrs_unique", unique: true
-    t.index ["account_id", "description_category_id", "type_id"], name: "idx_raw_ozon_cat_attrs_category_type"
-    t.index ["account_id", "dictionary_id"], name: "idx_raw_ozon_cat_attrs_dictionary"
-    t.index ["account_id"], name: "index_raw_ozon_category_attributes_on_account_id"
+    t.index ["description_category_id", "type_id", "attribute_id", "attribute_complex_id"], name: "idx_raw_ozon_cat_attrs_unique", unique: true
+    t.index ["description_category_id", "type_id"], name: "idx_raw_ozon_cat_attrs_category_type"
   end
 
   create_table "raw_ozon_chat_messages", force: :cascade do |t|
@@ -3137,9 +3131,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_093954) do
   add_foreign_key "raw_ozon_ad_sku_daily_stats", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_ad_unit_products", "raw_ozon_ad_units", column: "ad_unit_id"
   add_foreign_key "raw_ozon_ad_units", "raw_ozon_seller_accounts", column: "account_id"
-  add_foreign_key "raw_ozon_attribute_values", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_categories", "raw_ozon_seller_accounts", column: "account_id"
-  add_foreign_key "raw_ozon_category_attributes", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_chat_messages", "raw_ozon_chats", column: "chat_id", on_delete: :cascade
   add_foreign_key "raw_ozon_chat_sku_links", "ec_sku_products", column: "sku_product_id", on_delete: :nullify
   add_foreign_key "raw_ozon_chat_sku_links", "raw_ozon_chats", column: "chat_id", on_delete: :cascade
