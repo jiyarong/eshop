@@ -41,6 +41,7 @@
             <div data-controller="echarts" class="sku-profit-trend__chart-wrap">
               <div data-echarts-target="chart" class="sku-profit-trend__chart"></div>
               <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(group[:chart_option]) %></script>
+              <script type="application/json" data-echarts-target="events"><%= raw JSON.generate(group[:operation_events] || Array(local_assigns[:events])) %></script>
             </div>
           </div>
         <% end %>

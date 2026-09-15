@@ -26,6 +26,7 @@
               <div data-controller="echarts">
                 <div data-echarts-target="chart" class="sku-funnel-trend-card__chart"></div>
                 <script type="application/json" data-echarts-target="data"><%= raw JSON.generate(trend[:chart_option]) %></script>
+                <script type="application/json" data-echarts-target="events"><%= raw JSON.generate(Array(local_assigns[:events])) %></script>
               </div>
             <% end %>
           </section>
