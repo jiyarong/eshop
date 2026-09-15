@@ -2410,6 +2410,10 @@ ru:
         bound: "Связан"
       wb_fields:
         brand: "Бренд"
+        package_dimensions: "Размеры упаковки"
+        package_dimensions_value: "%{length} × %{width} × %{height} см"
+        package_weight: "Вес упаковки брутто"
+        package_weight_value: "%{weight} кг"
         subject: "Subject"
         subject_id: "Subject ID"
         wb_category: "Категория WB"

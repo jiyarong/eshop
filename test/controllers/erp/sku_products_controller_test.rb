@@ -94,6 +94,7 @@ module Erp
         title: "可选 WB 平台商品 #{@token}",
         subject_name: "WB Subject #{@token}",
         wb_category: "WB Category #{@token}",
+        raw_json: { "dimensions" => { "length" => 123, "width" => 9, "height" => 7, "weightBrutto" => 9 } },
         synced_at: Time.zone.parse("2026-06-15 10:20:00")
       )
       @raw_wb_characteristic = RawWb::ProductCharacteristic.create!(
@@ -421,6 +422,10 @@ module Erp
       assert_select "dd", "WB Category #{@token}"
       assert_select "dt", "Subject"
       assert_select "dd", "WB Subject #{@token}"
+      assert_select "dt", "包装尺寸"
+      assert_select "dd", "123 × 9 × 7 cm"
+      assert_select "dt", "包装毛重"
+      assert_select "dd", "9 kg"
       assert_select "td", "Color"
       assert_select "td", "black, white"
       assert_select "body", text: /Ozon 商品属性/, count: 0

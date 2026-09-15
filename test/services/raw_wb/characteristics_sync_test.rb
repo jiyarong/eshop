@@ -34,7 +34,7 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
            "/content/v2/directory/seasons", "/content/v2/directory/vat"
         { "data" => [] }
       when "/content/v2/directory/tnved"
-        params[:subjectID].to_i == @subject_wb_id ? { "data" => [{ "tnved" => "123456", "name" => "test tnved" }] } : { "data" => [] }
+        params[:subjectID].to_i == @subject_wb_id ? { "data" => [{ "tnved" => "123456", "isKiz" => true }] } : { "data" => [] }
       else
         { "data" => [] }
       end
@@ -46,6 +46,9 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     category = RawWb::Category.create!(wb_id: unique_wb_id(1), name: "WB category #{token}")
     subject = RawWb::Subject.create!(wb_id: unique_wb_id(2), name: "WB subject #{token}", category: category)
     product = RawWb::Product.create!(account: account, nm_id: unique_wb_id(20), vendor_code: "WB-CHAR-#{token}", subject: subject)
+    unbound_subject = RawWb::Subject.create!(wb_id: unique_wb_id(3), name: "Unbound subject #{token}", category: category)
+    unbound_product = RawWb::Product.create!(account: account, nm_id: unique_wb_id(21), vendor_code: "WB-UNBOUND-#{token}", subject: unbound_subject)
+    store, sku, binding = create_active_binding(account, product)
     client = FakeWbClient.new(subject.wb_id)
     sync = RawWb::SetupSync.new(account, days: 365)
     sync.instance_variable_set(:@client, client)
@@ -61,10 +64,14 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     assert_equal "color", characteristic.dictionary_type
     assert characteristic.is_required
     assert characteristic.is_popular
+    refute client.requests.any? { |_, path, _| path == "/content/v2/object/charcs/#{unbound_subject.wb_id}" }
   ensure
-    RawWb::Product.where(id: product&.id).delete_all
+    RawWb::Product.where(id: [product&.id, unbound_product&.id]).delete_all
+    Ec::SkuProduct.where(id: binding&.id).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all
+    Ec::Store.where(id: store&.id).delete_all
     RawWb::Characteristic.where(subject_id: subject&.id).delete_all
-    RawWb::Subject.where(id: subject&.id).delete_all
+    RawWb::Subject.where(id: [subject&.id, unbound_subject&.id]).delete_all
     RawWb::Category.where(id: category&.id).delete_all
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end
@@ -74,6 +81,7 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     category = RawWb::Category.create!(wb_id: unique_wb_id(3), name: "WB dict category #{token}")
     subject = RawWb::Subject.create!(wb_id: unique_wb_id(4), name: "WB dict subject #{token}", category: category)
     product = RawWb::Product.create!(account: account, nm_id: unique_wb_id(30), vendor_code: "WB-DICT-#{token}", subject: subject)
+    store, sku, binding = create_active_binding(account, product)
     client = FakeWbClient.new(subject.wb_id)
     sync = RawWb::SetupSync.new(account, days: 365)
     sync.instance_variable_set(:@client, client)
@@ -86,9 +94,13 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
     assert_equal "Черный", color.parent_name
     tnved = RawWb::AttributeDict.find_by!(dict_type: "tnved", scope_key: subject.wb_id.to_s, value_key: "123456")
     assert_equal subject.id, tnved.subject_id
-    assert_equal "test tnved", tnved.name
+    assert_equal "123456", tnved.name
+    assert_equal true, tnved.raw_json["isKiz"]
   ensure
     RawWb::Product.where(id: product&.id).delete_all
+    Ec::SkuProduct.where(id: binding&.id).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all
+    Ec::Store.where(id: store&.id).delete_all
     RawWb::AttributeDict.where(subject_id: subject&.id).delete_all
     RawWb::AttributeDict.where(dict_type: "color", value_key: "черный").delete_all
     RawWb::Subject.where(id: subject&.id).delete_all
@@ -111,5 +123,14 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
 
   def unique_wb_id(offset)
     token.hex % 1_000_000 + offset
+  end
+
+  def create_active_binding(account, product)
+    store = Ec::Store.create!(
+      platform: "wb", store_name: "WB attr store #{token}", company_type: "small", wb_raw_account_id: account.id
+    )
+    sku = Ec::Sku.create!(sku_code: "WB-ATTR-#{token}")
+    binding = Ec::SkuProduct.create!(sku: sku, store: store, product_id: product.nm_id.to_s)
+    [store, sku, binding]
   end
 end

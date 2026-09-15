@@ -40,12 +40,6 @@ module RawWb
 
       private
 
-      def wb_attribute_subject_scope
-        RawWb::Subject.where(
-          id: RawWb::Product.where(account_id: @account.id).where.not(subject_id: nil).select(:subject_id).distinct
-        )
-      end
-
       def wb_dictionary_rows(dict_type, response, subject: nil, synced_at:)
         wb_dictionary_items(response).filter_map do |item|
           item = { "name" => item } unless item.is_a?(Hash)
@@ -85,7 +79,7 @@ module RawWb
       end
 
       def wb_dictionary_name(item)
-        item["name"] || item["fullName"] || item["value"] || item["tnvedName"] || item["code"]
+        item["name"] || item["fullName"] || item["value"] || item["tnvedName"] || item["code"] || item["tnved"]
       end
 
       def upsert_wb_attribute_dicts(rows)

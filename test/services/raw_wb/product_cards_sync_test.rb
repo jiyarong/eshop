@@ -34,6 +34,7 @@ class RawWbProductCardsSyncTest < ActiveSupport::TestCase
             "title" => "WB attribute product #{token}",
             "description" => "Product with characteristics",
             "subjectName" => "Test subject",
+            "dimensions" => { "length" => 123, "width" => 9, "height" => 7, "weightBrutto" => 9 },
             "characteristics" => [
               { "id" => 12, "name" => "Color", "value" => ["black"] },
               { "id" => 34, "name" => "Width", "value" => 10 }
@@ -59,8 +60,39 @@ class RawWbProductCardsSyncTest < ActiveSupport::TestCase
     assert_equal ["black"], characteristics.first.value
     assert_equal "Width", characteristics.second.charc_name
     assert_equal 10, characteristics.second.value
+    assert_equal({ length_cm: 123, width_cm: 9, height_cm: 7, weight_kg: 9 }, product.package_dimensions)
+    assert_equal 123, product.raw_json.dig("dimensions", "length")
   ensure
     RawWb::ProductCharacteristic.where(product_id: RawWb::Product.where(account_id: account&.id).select(:id)).delete_all
+    RawWb::Product.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  test "sync_product_cards overwrites changed product text and raw card data" do
+    token = SecureRandom.hex(6)
+    account = RawWb::SellerAccount.create!(name: "wb-update-#{token}", api_token: "token-#{token}", company_type: "small")
+    product = RawWb::Product.create!(
+      account: account, nm_id: 77_401, vendor_code: "WB-UPDATE-#{token}",
+      description: "Old description", raw_json: { "dimensions" => { "length" => 1 } }
+    )
+    client = FakeWbClient.new([
+      {
+        "cards" => [{
+          "nmID" => product.nm_id, "vendorCode" => product.vendor_code,
+          "description" => "New description",
+          "dimensions" => { "length" => 10, "width" => 20, "height" => 30, "weight" => 1.5 },
+          "characteristics" => [], "sizes" => []
+        }]
+      }
+    ])
+    sync = RawWb::WeeklySync.new(account, days: 7)
+    sync.instance_variable_set(:@client, client)
+
+    sync.sync_product_cards
+
+    assert_equal "New description", product.reload.description
+    assert_equal({ length_cm: 10, width_cm: 20, height_cm: 30, weight_kg: 1.5 }, product.package_dimensions)
+  ensure
     RawWb::Product.where(account_id: account&.id).delete_all
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end

@@ -128,6 +128,30 @@ class EcPlatformProductAttributeOptionsQueryTest < ActiveSupport::TestCase
     RawWb::Category.where(id: category&.id).delete_all
   end
 
+  test "does not confuse a WB subject id with another subject local primary key" do
+    token = SecureRandom.hex(6)
+    category = RawWb::Category.create!(wb_id: token.hex % 1_000_000 + 30, name: "WB id category #{token}")
+    wrong_subject = RawWb::Subject.create!(wb_id: token.hex % 1_000_000 + 31, name: "Wrong subject #{token}", category: category)
+    subject = RawWb::Subject.create!(wb_id: wrong_subject.id, name: "Correct WB subject #{token}", category: category)
+    characteristic = RawWb::Characteristic.create!(
+      subject: subject, wb_id: 99, name: "Correct attribute", data_type: "string", raw_json: {}
+    )
+
+    by_local_id = Ec::PlatformProductAttributeOptionsQuery.new(
+      platform: "wb", subject_id: wrong_subject.id, attribute_id: 99
+    ).call
+    by_wb_id = Ec::PlatformProductAttributeOptionsQuery.new(
+      platform: "wb", subject_wb_id: subject.wb_id, attribute_id: 99
+    ).call
+
+    assert_nil by_local_id[:attribute]
+    assert_equal "Correct attribute", by_wb_id.dig(:attribute, :name)
+  ensure
+    RawWb::Characteristic.where(id: characteristic&.id).delete_all
+    RawWb::Subject.where(id: [subject&.id, wrong_subject&.id]).delete_all
+    RawWb::Category.where(id: category&.id).delete_all
+  end
+
   private
 
   def with_stubbed_constructor(klass, replacement)

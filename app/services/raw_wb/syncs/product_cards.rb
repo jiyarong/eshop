@@ -26,7 +26,7 @@ module RawWb
           synced_product_ids.concat(product_rows.map { |row| row[:nm_id] })
           if product_rows.any?
             RawWb::Product.upsert_all(product_rows, unique_by: :nm_id,
-              update_only: %i[imt_id brand title description subject_id subject_name synced_at])
+              update_only: %i[imt_id brand title description subject_id subject_name raw_json synced_at])
           end
 
           # Sync SKUs for this batch
@@ -111,6 +111,7 @@ module RawWb
 
       def wb_specification_snapshot(product)
         {
+          dimensions: product.package_dimensions,
           characteristics: product.product_characteristics.sort_by(&:charc_id).to_h do |item|
             [item.charc_id.to_s, { name: item.charc_name, value: item.value }]
           end,
@@ -126,6 +127,7 @@ module RawWb
 
       def wb_card_specification_snapshot(card)
         {
+          dimensions: normalized_dimensions(card['dimensions']),
           characteristics: Array(card['characteristics']).sort_by { |item| item['id'].to_i }.to_h do |item|
             [item['id'].to_s, { name: item['name'], value: item['value'] }]
           end,
@@ -199,8 +201,13 @@ module RawWb
           description:  c['description'],
           subject_id:   subject_id_by_wb_id[c['subjectID']],
           subject_name: c['subjectName'],
+          raw_json:     c,
           synced_at:    Time.current,
         }
+      end
+
+      def normalized_dimensions(dimensions)
+        dimensions.to_h.slice('length', 'width', 'height', 'weightBrutto', 'weight')
       end
 
       def build_sku_rows(c, id_map)

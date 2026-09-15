@@ -2666,6 +2666,10 @@ zh:
         bound: "已绑定"
       wb_fields:
         brand: "品牌"
+        package_dimensions: "包装尺寸"
+        package_dimensions_value: "%{length} × %{width} × %{height} cm"
+        package_weight: "包装毛重"
+        package_weight_value: "%{weight} kg"
         subject: "Subject"
         subject_id: "Subject ID"
         wb_category: "WB 类别"

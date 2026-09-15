@@ -1,4 +1,5 @@
 <section class="panel">
+  <% package_dimensions = @raw_product.package_dimensions %>
   <h2 class="section-title"><%= t("erp.sku_products.show.wb_attributes") %></h2>
   <dl class="definition-list">
     <dt><%= t("erp.sku_products.wb_fields.brand") %></dt>
@@ -9,6 +10,10 @@
     <dd><%= erp_value(@raw_product.subject_name || @raw_product.subject&.name) %></dd>
     <dt><%= t("erp.sku_products.wb_fields.subject_id") %></dt>
     <dd><%= erp_value(@raw_product.subject&.wb_id) %></dd>
+    <dt><%= t("erp.sku_products.wb_fields.package_dimensions") %></dt>
+    <dd><%= erp_value(package_dimensions.values_at(:length_cm, :width_cm, :height_cm).all?(&:present?) ? t("erp.sku_products.wb_fields.package_dimensions_value", length: package_dimensions[:length_cm], width: package_dimensions[:width_cm], height: package_dimensions[:height_cm]) : nil) %></dd>
+    <dt><%= t("erp.sku_products.wb_fields.package_weight") %></dt>
+    <dd><%= erp_value(package_dimensions[:weight_kg].present? ? t("erp.sku_products.wb_fields.package_weight_value", weight: package_dimensions[:weight_kg]) : nil) %></dd>
     <dt><%= t("erp.sku_products.fields.synced_at") %></dt>
     <dd><%= display_time(@raw_product.synced_at) %></dd>
   </dl>

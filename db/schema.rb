@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_14_060103) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -2382,6 +2382,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_060103) do
     t.bigint "imt_id"
     t.boolean "is_in_trash", default: false
     t.bigint "nm_id"
+    t.jsonb "raw_json", default: {}, null: false
     t.bigint "subject_id"
     t.string "subject_name"
     t.datetime "synced_at"

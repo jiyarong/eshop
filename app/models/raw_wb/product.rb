@@ -12,5 +12,15 @@ module RawWb
     has_many :product_tags,            through: :product_tag_links
     has_one  :product_price,           class_name: 'RawWb::ProductPrice',          foreign_key: :product_id, dependent: :destroy
     has_many :product_price_histories, class_name: 'RawWb::ProductPriceHistory',   foreign_key: :product_id, dependent: :destroy
+
+    def package_dimensions
+      dimensions = raw_json.to_h["dimensions"].to_h
+      {
+        length_cm: dimensions["length"],
+        width_cm: dimensions["width"],
+        height_cm: dimensions["height"],
+        weight_kg: dimensions["weightBrutto"] || dimensions["weight"]
+      }.compact
+    end
   end
 end

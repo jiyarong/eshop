@@ -76,7 +76,8 @@ module ErpAI
           CASE WHEN p.nm_id IS NULL THEN NULL ELSE jsonb_build_object(
             'brand', p.brand,
             'subject_name', p.subject_name,
-            'category', p.wb_category
+            'category', p.wb_category,
+            'dimensions', p.raw_json -> 'dimensions'
           ) END AS wb_product_info
         FROM sku_bindings b
         LEFT JOIN raw_wb_products p
@@ -303,10 +304,18 @@ module ErpAI
         attribute_line("Subject", wb_attributes["subject_name"]),
         attribute_line("Category", wb_attributes["category"])
       ]
+      dimensions = wb_attributes["dimensions"].to_h
+      lines << attribute_line("Package dimensions, cm", package_dimensions_text(dimensions))
+      lines << attribute_line("Package weight, kg", dimensions["weightBrutto"] || dimensions["weight"])
       lines.concat(attribute_entries(row[:product_attributes]))
       lines.concat(attribute_entries(row[:complex_attributes]))
       lines.concat(description_attribute_lines(product_description(row))) if row[:platform] == "ozon" && lines.compact_blank.empty?
       lines.compact_blank.uniq.join("\n\n")
+    end
+
+    def package_dimensions_text(dimensions)
+      values = dimensions.values_at("length", "width", "height")
+      values.join(" x ") if values.all?(&:present?)
     end
 
     def description_attribute_lines(description)

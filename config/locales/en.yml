@@ -2459,6 +2459,10 @@ en:
         bound: "Bound"
       wb_fields:
         brand: "Brand"
+        package_dimensions: "Package dimensions"
+        package_dimensions_value: "%{length} × %{width} × %{height} cm"
+        package_weight: "Package gross weight"
+        package_weight_value: "%{weight} kg"
         subject: "Subject"
         subject_id: "Subject ID"
         wb_category: "WB category"

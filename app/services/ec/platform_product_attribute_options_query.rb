@@ -5,13 +5,14 @@ module Ec
     MAX_LIMIT = 500
 
     def initialize(platform:, attribute_id:, account_id: nil, description_category_id: nil, type_id: nil,
-      subject_id: nil, query: nil, limit: DEFAULT_LIMIT)
+      subject_id: nil, subject_wb_id: nil, query: nil, limit: DEFAULT_LIMIT)
       @platform = platform.to_s
       @attribute_id = attribute_id.to_i
       @account_id = account_id
       @description_category_id = description_category_id
       @type_id = type_id.to_i
       @subject_id = subject_id
+      @subject_wb_id = subject_wb_id
       @query = query.to_s.strip
       @limit = [[limit.to_i, 1].max, MAX_LIMIT].min
     end
@@ -97,9 +98,10 @@ module Ec
     end
 
     def wb_subject
+      return RawWb::Subject.find_by(wb_id: @subject_wb_id) if @subject_wb_id.present?
       return if @subject_id.blank?
 
-      RawWb::Subject.find_by(id: @subject_id) || RawWb::Subject.find_by(wb_id: @subject_id)
+      RawWb::Subject.find_by(id: @subject_id)
     end
 
     def large_ozon_dictionary?

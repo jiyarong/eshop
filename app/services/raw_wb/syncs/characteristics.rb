@@ -25,12 +25,6 @@ module RawWb
 
       private
 
-      def wb_attribute_subject_scope
-        RawWb::Subject.where(
-          id: RawWb::Product.where(account_id: @account.id).where.not(subject_id: nil).select(:subject_id).distinct
-        )
-      end
-
       def build_wb_characteristic(subject, item, synced_at)
         charc_id = item["charcID"] || item["charcId"] || item["id"]
         name = item["name"]

@@ -56,6 +56,7 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
       brand: "Brand",
       subject_name: "Subject",
       wb_category: "Category",
+      raw_json: { "dimensions" => { "length" => 77, "width" => 17, "height" => 7, "weightBrutto" => 1.5 } },
       imt_id: 456
     )
     RawWb::ProductPrice.create!(
@@ -152,7 +153,8 @@ class ErpAI::SkuProductAttributesQueryTest < ActiveSupport::TestCase
     assert_equal "BYN", wb_item.dig(:price_info, "currency")
     assert_equal [ "price", "currency" ], wb_item[:price_info].keys
     assert_equal(
-      "Brand:\nBrand\n\nSubject:\nSubject\n\nCategory:\nCategory\n\nWidth, mm:\n440\n\nFeatures:\nTimer, Thermostat",
+      "Brand:\nBrand\n\nSubject:\nSubject\n\nCategory:\nCategory\n\nPackage dimensions, cm:\n77 x 17 x 7\n\n" \
+        "Package weight, kg:\n1.5\n\nWidth, mm:\n440\n\nFeatures:\nTimer, Thermostat",
       wb_item[:attributes]
     )
     assert_equal [ "https://example.test/wb-first.jpg", "https://example.test/wb-second.jpg" ], wb_item[:image_urls]

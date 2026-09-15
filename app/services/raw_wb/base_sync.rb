@@ -50,6 +50,30 @@ module RawWb
     include Syncs::FbsStocks
     include Syncs::ArchiveOrders
 
+    private
+
+    def wb_attribute_subject_scope
+      subject_ids = RawWb::Product
+        .joins(<<~SQL.squish)
+          INNER JOIN ec_stores
+            ON ec_stores.wb_raw_account_id = raw_wb_products.account_id
+           AND ec_stores.platform = 'wb'
+          INNER JOIN ec_sku_products
+            ON ec_sku_products.store_id = ec_stores.id
+           AND ec_sku_products.platform = 'wb'
+           AND ec_sku_products.product_id = raw_wb_products.nm_id::text
+          INNER JOIN ec_skus
+            ON ec_skus.sku_code = ec_sku_products.sku_code
+           AND ec_skus.deleted_at IS NULL
+        SQL
+        .where(account_id: @account.id, ec_sku_products: { is_active: true })
+        .where.not(subject_id: nil)
+        .select(:subject_id)
+        .distinct
+
+      RawWb::Subject.where(id: subject_ids)
+    end
+
     def self.run(days: nil, sync_keys: nil)
       stores = Ec::Store.where(platform: 'wb', is_active: true)
       raise ArgumentError, 'No active WB stores found in ec_stores' if stores.none?
