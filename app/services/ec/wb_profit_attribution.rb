@@ -141,7 +141,12 @@ module Ec
 
     def signed_for_pay(row)
       amount = row.for_pay.to_f
-      row.seller_oper_name.to_s.include?(RawWb::FinanceDetail::RETURN_KEYWORD) ? -amount.abs : amount
+      op = row.seller_oper_name.to_s
+      if op.include?(RawWb::FinanceDetail::RETURN_KEYWORD) || op.include?(RawWb::FinanceDetail::CORR_SALE_KEYWORD)
+        -amount.abs
+      else
+        amount
+      end
     end
 
     def advertising_deduction?(row)

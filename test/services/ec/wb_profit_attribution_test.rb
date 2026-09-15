@@ -93,6 +93,25 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     assert_equal 0.0, service.summary[:reconciliation_difference]
   end
 
+  test "treats sale correction rows as a deduction from settlement, like returns" do
+    nm_id = rand(10_000_000..99_999_999)
+    report_id = rand(100_000_000..999_999_999)
+    @nm_ids << nm_id
+    RawWb::Product.create!(account: @account, nm_id:, vendor_code: "WB-CORR")
+    create_sales_report(report_id:, date_from: Date.new(2026, 8, 31), date_to: Date.new(2026, 9, 6), bank_payment_sum: 80)
+    create_finance_detail(report_id:, nm_id:, sale_dt: Date.new(2026, 9, 1), for_pay: 100)
+    create_finance_detail(
+      report_id:, nm_id:, sale_dt: Date.new(2026, 9, 1), for_pay: 20,
+      seller_oper_name: "Коррекция продаж"
+    )
+
+    service = build_service(from_date: Date.new(2026, 8, 31), to_date: Date.new(2026, 9, 6)).call
+
+    assert_equal 1, service.results.size
+    assert_equal 80.0, service.results.first[:net]
+    assert_equal 0.0, service.summary[:reconciliation_difference]
+  end
+
   test "resolve_ad_fee_periods returns exact range when cache exists" do
     from_date = Date.new(2026, 6, 22)
     to_date = Date.new(2026, 6, 28)

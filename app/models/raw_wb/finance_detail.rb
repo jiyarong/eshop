@@ -6,6 +6,7 @@ module RawWb
 
     # 用 include? 做模糊匹配，避免 WB 改变操作类型描述文字
     SALE_KEYWORD     = 'Продажа'.freeze
+    CORR_SALE_KEYWORD = 'Коррекция продаж'.freeze
     RETURN_KEYWORD   = 'Возврат'.freeze
     LOGISTIC_KEYWORD      = 'Логистика'.freeze
     CORR_LOGISTIC_KEYWORD = 'Коррекция логистики'.freeze
