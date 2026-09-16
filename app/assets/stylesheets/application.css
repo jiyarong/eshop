@@ -1923,6 +1923,14 @@ table thead th {
   margin: 0;
 }
 
+.sku-general-diagnosis-rule-picker {
+  margin-bottom: 16px;
+}
+
+.sku-general-diagnosis-rule-picker .checkbox-option {
+  min-height: 44px;
+}
+
 .ai-health-timeline {
   display: grid;
   gap: 16px;

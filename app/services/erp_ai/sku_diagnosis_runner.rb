@@ -27,13 +27,14 @@ module ErpAI
       end
     end
 
-    def self.run(as_of_date: nil, sku_code: nil)
-      new(as_of_date: as_of_date, sku_code: sku_code).run
+    def self.run(as_of_date: nil, sku_code: nil, rule_ids: nil)
+      new(as_of_date: as_of_date, sku_code: sku_code, rule_ids: rule_ids).run
     end
 
-    def initialize(as_of_date:, sku_code: nil, client: DefaultClient.new, user: nil, snapshot_fetcher: Ec::SkuContextSnapshotFetcher)
+    def initialize(as_of_date:, sku_code: nil, rule_ids: nil, client: DefaultClient.new, user: nil, snapshot_fetcher: Ec::SkuContextSnapshotFetcher)
       @as_of_date = as_of_date.present? ? as_of_date.to_date : Time.current.in_time_zone(TIME_ZONE).to_date
       @sku_code = sku_code
+      @rule_ids = rule_ids&.filter_map { |id| Integer(id, exception: false) }&.uniq
       @client = client
       @user = user
       @snapshot_fetcher = snapshot_fetcher
@@ -44,7 +45,11 @@ module ErpAI
       return unless agent.enabled?
 
       user = @user || execution_user
-      rules = Ec::SkuDiagnosisRule.enabled_for(as_of_date).order(:id)
+      rules = if rule_ids.nil?
+        Ec::SkuDiagnosisRule.enabled_for(as_of_date).order(:id)
+      else
+        Ec::SkuDiagnosisRule.where(id: rule_ids).order(:id)
+      end
       skus = Ec::Sku.where(sku_code: sku_code).to_a if sku_code.present?
       skus ||= Ec::Sku.order(:sku_code).to_a
       skus.each { |sku| rules.each { |rule| run_rule(agent, user, sku, rule) } }
@@ -52,19 +57,22 @@ module ErpAI
 
     private
 
-    attr_reader :as_of_date, :sku_code, :client, :snapshot_fetcher
+    attr_reader :as_of_date, :sku_code, :rule_ids, :client, :snapshot_fetcher
 
     def run_rule(agent, user, sku, rule)
       period_from = as_of_date.beginning_of_week(:monday) - 1.week
       period_to = period_from.end_of_week(:monday)
       snapshot = snapshot_fetcher.fetch(sku.sku_code, snapshot_date: as_of_date)
-      categories = rule.context_keys.index_with do |key|
+      context_sections = rule.context_keys.map do |key|
         category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
-        {
-          name: category.fetch("name"),
-          markdown: category.fetch("markdown")
-        }
+        "**#{category.fetch('name')}**\n\n#{category.fetch('markdown').strip}"
       end
+      period = snapshot.fetch("period")
+      data_summary = [
+        "SKU：#{snapshot.fetch('sku_code')}",
+        "数据周期：#{period.fetch('from')} 至 #{period.fetch('to')}；快照日期：#{period.fetch('as_of')}",
+        context_sections.join("\n\n---\n\n")
+      ].join("\n\n")
       event_type_instruction = if rule.allowed_event_types.any?
         "event_type 建议优先使用以下值，也可按诊断结论填写其他具体类型：#{rule.allowed_event_types.join(', ')}"
       else
@@ -87,11 +95,7 @@ module ErpAI
         business_object_type: "Ec::Sku",
         business_object_id: sku.id.to_s,
         time_range: { from: period_from.iso8601, to: period_to.iso8601 },
-        data_summary: {
-          sku_code: snapshot.fetch("sku_code"),
-          period: snapshot.fetch("period"),
-          categories: categories
-        }.to_json
+        data_summary: data_summary
       )
       saved = conversation.messages.where(role: "tool").any? do |message|
         payload = JSON.parse(message.content)

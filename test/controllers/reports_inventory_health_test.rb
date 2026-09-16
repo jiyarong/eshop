@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
+  include ActiveJob::TestHelper
+
   setup do
     @token = SecureRandom.hex(4)
     @user = create_user_with_roles("reports-ai-health-#{@token}@example.com", "manager")
@@ -54,7 +56,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::OperationActionDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::GradeInspect.where(sku_id: @sku&.id).destroy_all
     Ec::GeneralDiagnosis.where(sku_id: @sku&.id).destroy_all
-    @diagnosis_rule&.destroy!
+    Ec::SkuDiagnosisRule.where("name LIKE ?", "%#{@token}%").destroy_all
     Message.where(conversation: Conversation.where(user: @user)).delete_all
     Conversation.where(user: @user).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
@@ -69,6 +71,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".sku-detail-tabs a[aria-current='page']", "AI诊断"
+    assert_select ".sku-detail-ai-diagnosis", count: 0
+    assert_select "a[href^='yclaw://sku_trace']", count: 0
     assert_select ".ai-diagnosis-section--inventory > h2", "库存诊断"
     assert_select ".ai-diagnosis-section--grade > h2", "Grade 检查"
     assert_select ".ai-diagnosis-section--operations h2", "运营记录"
@@ -107,7 +111,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-health-message__link[href='#{report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result)}']", text: "最新诊断消息"
   end
 
-  test "sku detail ai tab displays general diagnoses" do
+  test "sku detail ai tab displays general diagnoses with only the diagnosis date" do
     @diagnosis_rule = Ec::SkuDiagnosisRule.create!(
       name: "库存风险诊断 #{@token}",
       prompt: "检查库存风险",
@@ -124,7 +128,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     diagnosis = Ec::GeneralDiagnosis.create!(
       sku: @sku,
       submitted_by: @user,
-      data: {}
+      data: {},
+      created_at: Time.iso8601("2026-08-12T09:30:00+08:00")
     )
     diagnosis.events.create!(
       conversation: conversation,
@@ -141,10 +146,16 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       headers: { "Accept" => "text/html" }
 
     assert_response :success
+    assert_select ".sku-detail-ai-diagnosis", count: 0
+    assert_select "a[href^='yclaw://sku_trace']", count: 0
     assert_select "section.ai-diagnosis-section--general" do
       assert_select "h2", "通用诊断"
+      assert_select "a[data-turbo-frame='erp_modal'][href='#{new_report_sku_general_diagnosis_path(@sku.sku_code)}']", "手动诊断"
       assert_select ".ai-health-result--general-diagnosis", count: 1
-      assert_select "h3", "通用诊断 ##{diagnosis.id}"
+      assert_select "h3 time[datetime='2026-08-12']", "2026-08-12"
+      assert_select "h3", { text: /通用诊断|#{diagnosis.id}/, count: 0 }
+      assert_select ".ai-health-result__meta", count: 0
+      assert_select ".ai-health-result--general-diagnosis", { text: /#{Regexp.escape(@user.display_name)}/, count: 0 }
       assert_select "th", "诊断项目"
       assert_select "th", { text: "严重级别", count: 0 }
       assert_select "th", "事件类型"
@@ -170,6 +181,53 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"sub_agent_id": #{@diagnosis_rule.id}/
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"message": "#{Regexp.escape(long_message)}"/
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"advise": "#{Regexp.escape(long_advise)}"/
+  end
+
+  test "manual general diagnosis modal lists rules and enqueues selected rules" do
+    first_rule = Ec::SkuDiagnosisRule.create!(
+      name: "库存诊断 #{@token}",
+      prompt: "检查库存",
+      frequency: "daily"
+    )
+    second_rule = Ec::SkuDiagnosisRule.create!(
+      name: "利润诊断 #{@token}",
+      prompt: "检查利润",
+      frequency: "weekly",
+      enabled: false
+    )
+
+    get new_report_sku_general_diagnosis_path(@sku.sku_code),
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select "h2", "手动通用诊断"
+    assert_select "form[action='#{report_sku_general_diagnoses_path(@sku.sku_code)}']" do
+      assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{first_rule.id}']"
+      assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{second_rule.id}']"
+      assert_select "input[type='submit'][value='开始诊断'][data-turbo-submits-with='正在提交...']"
+    end
+
+    sign_in @user
+    assert_enqueued_with(
+      job: AITasks::SkuDiagnosisJob,
+      args: [ { sku_code: @sku.sku_code, rule_ids: [ first_rule.id, second_rule.id ] } ]
+    ) do
+      post report_sku_general_diagnoses_path(@sku.sku_code),
+        params: { sku_diagnosis_rule_ids: [ second_rule.id, "invalid", first_rule.id ] }
+    end
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal "通用诊断任务已提交。", flash[:notice]
+  end
+
+  test "manual general diagnosis requires at least one selected rule" do
+    assert_no_enqueued_jobs only: AITasks::SkuDiagnosisJob do
+      post report_sku_general_diagnoses_path(@sku.sku_code)
+    end
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal "请至少选择一个诊断项目。", flash[:alert]
   end
 
   test "shows Grade Inspector records and links to their original conversation" do

@@ -13,11 +13,17 @@ end %>
   <summary class="ai-health-result__summary">
     <i class="bi bi-chevron-right ai-health-result__chevron" aria-hidden="true"></i>
     <div class="ai-health-result__header">
-      <h3 class="section-title"><%= ai_diagnosis_submission_title(result) %></h3>
-      <div class="ai-health-result__meta">
-        <span><%= result.submitted_by.display_name %></span>
-        <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
-      </div>
+      <% if general_diagnosis %>
+        <h3 class="section-title">
+          <time datetime="<%= display_time(result.created_at, format: "%Y-%m-%d") %>"><%= display_time(result.created_at, format: "%Y-%m-%d") %></time>
+        </h3>
+      <% else %>
+        <h3 class="section-title"><%= ai_diagnosis_submission_title(result) %></h3>
+        <div class="ai-health-result__meta">
+          <span><%= result.submitted_by.display_name %></span>
+          <time datetime="<%= result.created_at.iso8601 %>"><%= display_time(result.created_at) %></time>
+        </div>
+      <% end %>
       <div class="ai-health-star-summary" aria-label="<%= t("reports.sku_detail.ai_inventory_health.star_summary") %>">
         <% ai_inventory_health_star_counts(result.events).each do |severity, count| %>
           <span class="ai-health-star-summary__item ai-health-star-summary__item--<%= severity %>" title="<%= ai_inventory_health_star_label(severity, count) %>">

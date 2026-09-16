@@ -1324,13 +1324,12 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.button[href='/operator_skus'][data-controller='history-navigation'][data-action='history-navigation#back']", "返回"
   end
 
-  test "sku detail renders AI diagnosis launcher" do
+  test "sku detail hides the legacy AI diagnosis launcher" do
     get "/reports/skus/#{@sku.sku_code}", headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "a.sku-detail-ai-diagnosis[href=?][data-turbo='false']",
-                  "yclaw://sku_trace?agent=erp_ai_sql_query_agent&from=sku_detail&prompt=获取SKU近期数据，帮我诊断",
-                  "AI诊断"
+    assert_select "a.sku-detail-ai-diagnosis", count: 0
+    assert_select "a[href^='yclaw://sku_trace']", count: 0
   end
 
   test "sku detail renders operator performance cards with matching period logic" do

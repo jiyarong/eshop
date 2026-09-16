@@ -31,6 +31,8 @@ class ReportsController < ApplicationController
     destroy_sku_operation_action
     destroy_sku_attachment
     destroy_sku_inventory_health_result
+    new_sku_general_diagnosis
+    create_sku_general_diagnosis
     destroy_sku_competitor_data_batch
     destroy_sku_competitor_datum
   ]
@@ -133,6 +135,28 @@ class ReportsController < ApplicationController
         }
       end
     }
+  end
+
+  def new_sku_general_diagnosis
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @sku_diagnosis_rules = Ec::SkuDiagnosisRule.order(:id)
+    render :new_sku_general_diagnosis_modal
+  end
+
+  def create_sku_general_diagnosis
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    rule_ids = Array(params[:sku_diagnosis_rule_ids]).filter_map { |id| Integer(id, exception: false) }.uniq
+    selected_rule_ids = Ec::SkuDiagnosisRule.where(id: rule_ids).order(:id).ids
+
+    if selected_rule_ids.empty?
+      redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+                  alert: t("reports.sku_detail.ai_general_diagnosis.selection_required")
+      return
+    end
+
+    AITasks::SkuDiagnosisJob.perform_later(sku_code: @sku.sku_code, rule_ids: selected_rule_ids)
+    redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+                notice: t("reports.sku_detail.ai_general_diagnosis.enqueued")
   end
 
   def update_inventory_returns

@@ -296,7 +296,17 @@
     </section>
   <% elsif @active_tab == "ai_inventory_health" %>
     <section class="ai-diagnosis-section ai-diagnosis-section--general">
-      <h2 class="section-title"><%= t("reports.sku_detail.sections.general_diagnoses") %></h2>
+      <div class="table-section-header">
+        <h2 class="section-title"><%= t("reports.sku_detail.sections.general_diagnoses") %></h2>
+        <% if can?(:manage_skus) %>
+          <%= link_to new_report_sku_general_diagnosis_path(@sku.sku_code, request.query_parameters.slice(:locale)),
+                      class: "button",
+                      data: { turbo_frame: "erp_modal" } do %>
+            <i class="bi bi-play-circle" aria-hidden="true"></i>
+            <%= t("reports.sku_detail.ai_general_diagnosis.manual_diagnosis") %>
+          <% end %>
+        <% end %>
+      </div>
       <% if @general_diagnosis_results.any? %>
         <div class="ai-health-result-list">
           <%= render partial: "reports/sku_ai_diagnosis_result", collection: @general_diagnosis_results, as: :result %>

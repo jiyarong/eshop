@@ -60,6 +60,8 @@ Rails.application.routes.draw do
   get "reports/skus/:sku_code/profit_trend" => "reports#sku_profit_trend", as: :report_sku_profit_trend
   get "reports/skus/:sku_code/sales_funnel_trends" => "reports#sku_sales_funnel_trends", as: :report_sku_sales_funnel_trends
   get "reports/skus/:sku_code/ai_diagnoses/:diagnosis_id" => "reports#sku_ai_diagnosis", as: :report_sku_ai_diagnosis
+  get "reports/skus/:sku_code/general_diagnoses/new" => "reports#new_sku_general_diagnosis", as: :new_report_sku_general_diagnosis
+  post "reports/skus/:sku_code/general_diagnoses" => "reports#create_sku_general_diagnosis", as: :report_sku_general_diagnoses
   get "reports/skus/:sku_code/listing_diagnoses" => "reports#sku_listing_diagnoses", as: :report_sku_listing_diagnoses
   get "reports/skus/:sku_code/listing_diagnoses/new" => "reports#new_sku_listing_diagnosis", as: :new_report_sku_listing_diagnosis
   post "reports/skus/:sku_code/listing_diagnoses" => "reports#create_sku_listing_diagnosis"

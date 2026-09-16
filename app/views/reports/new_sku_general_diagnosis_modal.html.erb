@@ -1,0 +1,43 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal" role="dialog" aria-modal="true" aria-labelledby="sku-general-diagnosis-modal-title">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="sku-general-diagnosis-modal-title"><%= t("reports.sku_detail.ai_general_diagnosis.modal_title") %></h2>
+          <p class="erp-modal__subtitle"><%= @sku.sku_code %></p>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <%= form_with url: report_sku_general_diagnoses_path(@sku.sku_code, locale: params[:locale].presence),
+                    method: :post,
+                    data: { turbo_frame: "_top" } do |form| %>
+        <fieldset class="form-section sku-general-diagnosis-rule-picker">
+          <legend><%= t("reports.sku_detail.ai_general_diagnosis.choose_rules") %></legend>
+          <% if @sku_diagnosis_rules.any? %>
+            <div class="checkbox-grid">
+              <% @sku_diagnosis_rules.each do |rule| %>
+                <label class="checkbox-option">
+                  <%= check_box_tag "sku_diagnosis_rule_ids[]", rule.id, false, id: "sku-diagnosis-rule-#{rule.id}" %>
+                  <span><%= rule.name %></span>
+                </label>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="empty-state"><%= t("reports.sku_detail.ai_general_diagnosis.empty_rules") %></p>
+          <% end %>
+        </fieldset>
+
+        <div class="modal-form-actions">
+          <%= form.submit t("reports.sku_detail.ai_general_diagnosis.start"),
+                          class: "button",
+                          disabled: @sku_diagnosis_rules.empty?,
+                          data: { turbo_submits_with: t("reports.sku_detail.ai_general_diagnosis.starting") } %>
+          <button class="button button-secondary" type="button" data-action="modal#close"><%= t("common.actions.cancel") %></button>
+        </div>
+      <% end %>
+    </section>
+  </div>
+<% end %>

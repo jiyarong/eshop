@@ -82,10 +82,12 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal 2, client.requests.size
     request = client.requests.first
     assert_equal ["save_sku_event"], request.fetch(:tools).map { |tool| tool.fetch(:name) }
-    summary = JSON.parse(request.fetch(:context).split("已查询到的业务数据摘要：", 2).last)
-    assert_equal ["base"], summary.fetch("categories").keys
-    assert_equal "Snapshot base", summary.dig("categories", "base", "name")
-    assert_equal "# Snapshot base\n", summary.dig("categories", "base", "markdown")
+    summary = request.fetch(:context).split("已查询到的业务数据摘要：", 2).last
+    assert_includes summary, "SKU：#{@sku.sku_code}"
+    assert_includes summary, "数据周期：2026-09-07 至 2026-09-13；快照日期：2026-09-15"
+    assert_includes summary, "**Snapshot base**\n\n# Snapshot base"
+    assert_not_includes summary, '"categories"'
+    assert_not_includes summary, "Snapshot lifecycle"
     assert_equal [{ sku_code: @sku.sku_code, snapshot_date: date }], @snapshot_fetcher.calls
     assert_includes request.fetch(:messages).first.fetch(:content), @daily.prompt
     assert_includes request.fetch(:messages).first.fetch(:content), "event_type 建议优先使用以下值，也可按诊断结论填写其他具体类型：stock_risk, 库存风险"
@@ -103,6 +105,26 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
     assert_equal 4, client.requests.size
     assert_equal [@daily.id, @weekly.id].sort, Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
+  end
+
+  test "runs only manually selected rules regardless of schedule or enabled state" do
+    @weekly.update!(enabled: false)
+    client = SavingClient.new
+
+    ErpAI::SkuDiagnosisRunner.new(
+      as_of_date: Date.new(2026, 9, 15),
+      sku_code: @sku.sku_code,
+      rule_ids: [ @weekly.id ],
+      client: client,
+      user: @user,
+      snapshot_fetcher: @snapshot_fetcher
+    ).run
+
+    assert_equal 2, client.requests.size
+    assert_equal [ @weekly.id ], Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id)
+    summary = client.requests.first.fetch(:context).split("已查询到的业务数据摘要：", 2).last
+    assert_includes summary, "**Snapshot lifecycle**\n\n# Snapshot lifecycle"
+    assert_not_includes summary, "Snapshot base"
   end
 
   test "rerunning the same date overwrites the rule event" do
