@@ -179,6 +179,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"sub_agent_id": #{@diagnosis_rule.id}/
+    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"is_latest": true/
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"message": "#{Regexp.escape(long_message)}"/
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"advise": "#{Regexp.escape(long_advise)}"/
   end
@@ -716,8 +717,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
   test "inventory report renders legacy red and critical general diagnosis events" do
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
-    diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Critical risk")
-    diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored risk")
+    diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Critical risk", is_latest: true)
+    diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored risk", is_latest: true)
     diagnosis.events.create!(event_type: "warning_risk", severity: "warning", message: "Warning risk")
 
     get "/reports/inventory",

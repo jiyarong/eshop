@@ -16,28 +16,39 @@ module ErpAI
     DOWNLOAD_ATTEMPTS = 3
 
     class << self
-      def call(sku_product:)
-        sku = sku_product.sku
-        data = SkuProductAttributesQuery.new(
-          sku_code: sku.sku_code,
-          sku_product_id: sku_product.id
-        ).call
-        listing_image_attachments = sku.attachments.where(attach_type: :listing_image).with_attached_file.to_a
-        documents = [ render_document("SKU 基础信息", data.fetch(:sku)) ]
+      def call(sku_product: nil, sku: nil)
+        if sku_product.nil? == sku.nil?
+          raise ArgumentError, "provide exactly one of sku_product or sku"
+        end
 
-        data.fetch(:listings).each do |listing|
-          platform = listing.fetch(:platform).to_s.downcase
-          platform_name = platform == "ozon" ? "Ozon" : "Wildberries"
-          listing = replace_image_urls(
-            listing,
-            sku: sku,
-            occurrence: listing_occurrence(sku_product),
-            attachments: listing_image_attachments
-          )
-          documents << render_document(
-            "#{platform_name} Listing",
-            listing
-          )
+        sku ||= sku_product.sku
+        sku_products = sku_product ? [ sku_product ] : sku.sku_products.active.ordered.includes(:store).to_a
+        return "_没有 active product_" if sku_products.empty?
+
+        listing_image_attachments = sku.attachments.where(attach_type: :listing_image).with_attached_file.to_a
+        documents = []
+
+        sku_products.each do |product|
+          data = SkuProductAttributesQuery.new(
+            sku_code: sku.sku_code,
+            sku_product_id: product.id
+          ).call
+          documents << render_document("SKU 基础信息", data.fetch(:sku)) if documents.empty?
+
+          data.fetch(:listings).each do |listing|
+            platform = listing.fetch(:platform).to_s.downcase
+            platform_name = platform == "ozon" ? "Ozon" : "Wildberries"
+            listing = replace_image_urls(
+              listing,
+              sku: sku,
+              occurrence: listing_occurrence(product),
+              attachments: listing_image_attachments
+            )
+            documents << render_document(
+              "#{platform_name} Listing",
+              listing
+            )
+          end
         end
 
         documents.join("\n---\n\n")

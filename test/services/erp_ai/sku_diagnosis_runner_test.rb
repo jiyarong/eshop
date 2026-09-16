@@ -59,6 +59,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     @sku = Ec::Sku.create!(sku_code: "DIAG-#{@token}", product_name: "Diagnosis test")
     @daily = Ec::SkuDiagnosisRule.create!(name: "Daily #{@token}", prompt: "Check base data", configuration: { "context_keys" => ["base"], "allowed_event_types" => ["stock_risk", "库存风险"] })
     @weekly = Ec::SkuDiagnosisRule.create!(name: "Weekly #{@token}", prompt: "Check lifecycle", frequency: "weekly", configuration: { "context_keys" => ["lifecycle"] })
+    @manual = Ec::SkuDiagnosisRule.create!(name: "Manual #{@token}", prompt: "Check manually", frequency: "manual", configuration: { "context_keys" => [ "base" ] })
     @agent_existed = Agent.exists?(code: "sku_diagnosis")
     @snapshot_fetcher = FakeSnapshotFetcher.new
   end
@@ -67,7 +68,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     Ec::AIDiagnosis.where(sku_id: @sku&.id).destroy_all
     Message.where(conversation: Conversation.where(user_id: @user.id)).delete_all
     Conversation.where(user_id: @user.id).delete_all
-    Ec::SkuDiagnosisRule.where(id: [@daily&.id, @weekly&.id]).delete_all
+    Ec::SkuDiagnosisRule.where(id: [ @daily&.id, @weekly&.id, @manual&.id ]).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     Agent.where(code: "sku_diagnosis").delete_all unless @agent_existed
     UserRole.where(user_id: @user&.id).delete_all
@@ -107,6 +108,20 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal [@daily.id, @weekly.id].sort, Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
   end
 
+  test "keeps one latest event per SKU and sub-agent across diagnosis dates" do
+    diagnosis_runner(date: Date.new(2026, 9, 14), client: SavingClient.new).run
+    diagnosis_runner(date: Date.new(2026, 9, 15), client: SavingClient.new).run
+
+    events = Ec::AIDiagnosisEvent
+      .joins(:ai_diagnosis)
+      .where(ec_ai_diagnosis: { sku_id: @sku.id, type: Ec::GeneralDiagnosis.sti_name })
+    daily_events = events.where(sub_agent_id: @daily.id).order(:created_at, :id)
+    weekly_events = events.where(sub_agent_id: @weekly.id)
+
+    assert_equal [ false, true ], daily_events.pluck(:is_latest)
+    assert weekly_events.sole.is_latest?
+  end
+
   test "runs only manually selected rules regardless of schedule or enabled state" do
     @weekly.update!(enabled: false)
     client = SavingClient.new
@@ -124,6 +139,49 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal [ @weekly.id ], Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id)
     summary = client.requests.first.fetch(:context).split("已查询到的业务数据摘要：", 2).last
     assert_includes summary, "**Snapshot lifecycle**\n\n# Snapshot lifecycle"
+    assert_not_includes summary, "Snapshot base"
+  end
+
+  test "manual frequency runs only when explicitly selected" do
+    automatic_client = SavingClient.new
+    diagnosis_runner(date: Date.new(2026, 9, 14), client: automatic_client).run
+
+    assert_equal [ @daily.id, @weekly.id ].sort,
+      Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
+
+    ErpAI::SkuDiagnosisRunner.new(
+      as_of_date: Date.new(2026, 9, 14),
+      sku_code: @sku.sku_code,
+      rule_ids: [ @manual.id ],
+      client: SavingClient.new,
+      user: @user,
+      snapshot_fetcher: @snapshot_fetcher
+    ).run
+
+    assert_equal [ @daily.id, @weekly.id, @manual.id ].sort,
+      Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
+  end
+
+  test "loads listing content for rules that select it" do
+    @daily.update!(configuration: { "context_keys" => [ "listing_content" ] })
+    listing_context = Object.new
+    listing_context.define_singleton_method(:call) do |sku:|
+      "# Active listings for #{sku.sku_code}"
+    end
+    client = SavingClient.new
+
+    ErpAI::SkuDiagnosisRunner.new(
+      as_of_date: Date.new(2026, 9, 15),
+      sku_code: @sku.sku_code,
+      client: client,
+      user: @user,
+      snapshot_fetcher: @snapshot_fetcher,
+      listing_context: listing_context
+    ).run
+
+    summary = client.requests.first.fetch(:context).split("已查询到的业务数据摘要：", 2).last
+    assert_includes summary, "**Listing Content**"
+    assert_includes summary, "# Active listings for #{@sku.sku_code}"
     assert_not_includes summary, "Snapshot base"
   end
 
@@ -167,10 +225,12 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     client = SavingClient.new
     diagnosis_runner(date: Date.new(2026, 9, 15), client: client).run
     latest = Ec::GeneralDiagnosis.find_by!(sku: @sku, is_latest: true)
+    latest_event = latest.events.find_by!(sub_agent_id: @daily.id)
 
     diagnosis_runner(date: Date.new(2026, 9, 14), client: SavingClient.new).run
 
     assert_equal latest.id, Ec::GeneralDiagnosis.find_by!(sku: @sku, is_latest: true).id
+    assert_equal latest_event.id, Ec::AIDiagnosisEvent.latest.find_by!(sub_agent_id: @daily.id).id
   end
 
   test "new rules persist all contexts and reject unsupported ones" do

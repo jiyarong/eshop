@@ -638,6 +638,7 @@ en:
         operation_actions_full_period: "Operations"
         warehouse_recommendation: "Warehouse recommendation"
         search_terms_per_week: "Search terms"
+        listing_content: "Listing content"
       edit:
         title: "Edit SKU diagnosis rule"
       fields:
@@ -652,9 +653,10 @@ en:
         status: "Status"
       hints:
         allowed_event_types: "Enter one event type per line or paste multiple lines. Event types are saved as entered. Leave blank for no restriction."
-        enabled: "When enabled, this rule runs on its configured schedule."
+        enabled: "When enabled, the rule participates at its configured frequency; manual rules never run automatically."
       frequencies:
         daily: "Daily"
+        manual: "Manual"
         weekly: "Weekly"
       index:
         empty: "No SKU diagnosis rules yet."
@@ -666,6 +668,7 @@ en:
         deleted: "SKU diagnosis rule deleted."
         updated: "SKU diagnosis rule updated."
       sections:
+        details: "Rule details"
         identity: "Rule configuration"
       statuses:
         disabled: "Disabled"

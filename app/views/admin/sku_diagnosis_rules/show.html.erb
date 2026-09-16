@@ -1,0 +1,51 @@
+<% content_for :title, @rule.name %>
+<% content_for :page_heading, @rule.name %>
+
+<div class="ai-admin-heading">
+  <div>
+    <h1 class="page-title"><%= @rule.name %></h1>
+    <span class="ai-heading-code"><%= t("admin.sku_diagnosis_rules.fields.rule_id", id: @rule.id) %></span>
+  </div>
+  <div class="page-actions">
+    <%= link_to admin_sku_diagnosis_rules_path, class: "button button-secondary" do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <span><%= t("common.actions.back") %></span>
+    <% end %>
+    <%= link_to edit_admin_sku_diagnosis_rule_path(@rule), class: "button" do %>
+      <i class="bi bi-pencil" aria-hidden="true"></i>
+      <span><%= t("common.actions.edit") %></span>
+    <% end %>
+  </div>
+</div>
+
+<%= render "admin/shared/ai_navigation", section: :sku_diagnosis_rules %>
+
+<div class="report-stack">
+  <section class="panel">
+    <div class="ai-form-section__heading">
+      <i class="bi bi-markdown" aria-hidden="true"></i>
+      <h2><%= t("admin.sku_diagnosis_rules.fields.prompt") %></h2>
+    </div>
+    <div data-controller="markdown">
+      <pre class="code-viewer gbrain-markdown__source" data-markdown-target="source"><%= @rule.prompt %></pre>
+      <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="ai-form-section__heading">
+      <i class="bi bi-info-circle" aria-hidden="true"></i>
+      <h2><%= t("admin.sku_diagnosis_rules.sections.details") %></h2>
+    </div>
+    <dl class="definition-list">
+      <dt><%= t("admin.sku_diagnosis_rules.fields.frequency") %></dt>
+      <dd><%= t("admin.sku_diagnosis_rules.frequencies.#{@rule.frequency}") %></dd>
+      <dt><%= t("admin.sku_diagnosis_rules.fields.status") %></dt>
+      <dd><%= @rule.enabled? ? t("admin.sku_diagnosis_rules.statuses.enabled") : t("admin.sku_diagnosis_rules.statuses.disabled") %></dd>
+      <dt><%= t("admin.sku_diagnosis_rules.fields.contexts") %></dt>
+      <dd><%= @rule.context_keys.map { |key| t("admin.sku_diagnosis_rules.contexts.#{key}") }.join(t("common.list_separator")) %></dd>
+      <dt><%= t("admin.sku_diagnosis_rules.fields.allowed_event_types") %></dt>
+      <dd><%= @rule.allowed_event_types.presence&.join(t("common.list_separator")) || t("common.empty_value") %></dd>
+    </dl>
+  </section>
+</div>

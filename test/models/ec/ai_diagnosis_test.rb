@@ -77,6 +77,40 @@ class Ec::AIDiagnosisTest < ActiveSupport::TestCase
     assert event.errors[:status].any?
   end
 
+  test "keeps and promotes the latest general diagnosis event by sku and sub-agent" do
+    first_diagnosis = create_diagnosis(Ec::GeneralDiagnosis)
+    second_diagnosis = create_diagnosis(Ec::GeneralDiagnosis)
+    first = first_diagnosis.events.create!(
+      event_type: "stock_risk",
+      sub_agent_id: 101,
+      severity: "warning",
+      message: "Earlier",
+      created_at: 2.days.ago
+    )
+    second = second_diagnosis.events.create!(
+      event_type: "stock_risk",
+      sub_agent_id: 101,
+      severity: "warning",
+      message: "Later",
+      created_at: 1.day.ago
+    )
+    another_rule = first_diagnosis.events.create!(
+      event_type: "profit_risk",
+      sub_agent_id: 102,
+      severity: "warning",
+      message: "Independent rule",
+      created_at: 2.days.ago
+    )
+
+    assert_not first.reload.is_latest?
+    assert second.reload.is_latest?
+    assert another_rule.reload.is_latest?
+
+    second.destroy!
+
+    assert first.reload.is_latest?
+  end
+
   private
 
   def create_diagnosis(klass)

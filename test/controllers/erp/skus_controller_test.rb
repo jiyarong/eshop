@@ -87,16 +87,16 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
 
   test "index renders legacy red and critical general diagnosis event tags and filters skus by event type" do
     stale_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
-    stale_diagnosis.events.create!(event_type: "clearance_overdue", severity: "critical", message: "Stale")
+    stale_diagnosis.events.create!(event_type: "clearance_overdue", severity: "critical", message: "Stale", is_latest: false)
     current_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
-    current_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "critical", message: "Current")
+    current_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "critical", message: "Current", is_latest: true)
     current_diagnosis.events.create!(event_type: "inventory_sufficient", severity: "info", message: "Healthy")
-    current_diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored")
+    current_diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored", is_latest: true)
     inventory_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @current_user)
     inventory_diagnosis.events.create!(event_type: "stockout_90day", severity: "red", message: "Legacy risk")
     inventory_diagnosis.events.create!(event_type: "inventory_critical", severity: "critical", message: "Not general")
     other_diagnosis = Ec::GeneralDiagnosis.create!(sku: @inactive_sku, submitted_by: @current_user)
-    other_diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Other")
+    other_diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Other", is_latest: true)
 
     get "/erp/skus", params: { ai_event_type: "missed_sales_alert" }, headers: { "Accept" => "text/html" }
 

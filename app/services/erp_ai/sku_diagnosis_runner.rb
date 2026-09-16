@@ -31,13 +31,18 @@ module ErpAI
       new(as_of_date: as_of_date, sku_code: sku_code, rule_ids: rule_ids).run
     end
 
-    def initialize(as_of_date:, sku_code: nil, rule_ids: nil, client: DefaultClient.new, user: nil, snapshot_fetcher: Ec::SkuContextSnapshotFetcher)
+    def initialize(
+      as_of_date:, sku_code: nil, rule_ids: nil, client: DefaultClient.new, user: nil,
+      snapshot_fetcher: Ec::SkuContextSnapshotFetcher,
+      listing_context: ErpAI::ListingDiagnosisContext
+    )
       @as_of_date = as_of_date.present? ? as_of_date.to_date : Time.current.in_time_zone(TIME_ZONE).to_date
       @sku_code = sku_code
       @rule_ids = rule_ids&.filter_map { |id| Integer(id, exception: false) }&.uniq
       @client = client
       @user = user
       @snapshot_fetcher = snapshot_fetcher
+      @listing_context = listing_context
     end
 
     def run
@@ -57,15 +62,14 @@ module ErpAI
 
     private
 
-    attr_reader :as_of_date, :sku_code, :rule_ids, :client, :snapshot_fetcher
+    attr_reader :as_of_date, :sku_code, :rule_ids, :client, :snapshot_fetcher, :listing_context
 
     def run_rule(agent, user, sku, rule)
       period_from = as_of_date.beginning_of_week(:monday) - 1.week
       period_to = period_from.end_of_week(:monday)
       snapshot = snapshot_fetcher.fetch(sku.sku_code, snapshot_date: as_of_date)
       context_sections = rule.context_keys.map do |key|
-        category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
-        "**#{category.fetch('name')}**\n\n#{category.fetch('markdown').strip}"
+        context_section(key, sku, snapshot)
       end
       period = snapshot.fetch("period")
       data_summary = [
@@ -110,6 +114,15 @@ module ErpAI
       conversation
     rescue StandardError => e
       Rails.logger.error("SKU diagnosis failed for #{sku.sku_code}/#{rule.id}: #{e.class}: #{e.message}")
+    end
+
+    def context_section(key, sku, snapshot)
+      if key == "listing_content"
+        "**Listing Content**\n\n#{listing_context.call(sku: sku).strip}"
+      else
+        category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
+        "**#{category.fetch('name')}**\n\n#{category.fetch('markdown').strip}"
+      end
     end
 
     def execution_user

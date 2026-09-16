@@ -28,7 +28,7 @@
         <% @rules.each do |rule| %>
           <tr>
             <td>
-              <strong><%= rule.name %></strong>
+              <strong><%= link_to rule.name, admin_sku_diagnosis_rule_path(rule), class: "ai-row-action" %></strong>
               <small class="ai-empty-value"><%= t("admin.sku_diagnosis_rules.fields.rule_id", id: rule.id) %></small>
             </td>
             <td><%= t("admin.sku_diagnosis_rules.frequencies.#{rule.frequency}") %></td>

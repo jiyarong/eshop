@@ -142,6 +142,8 @@ module Mcp
           else
             event = diagnosis.events.create!(attributes.merge(@event_date ? { created_at: day_start + 3.hours } : {}))
           end
+
+          event.reload
         end
       end
 
@@ -151,7 +153,8 @@ module Mcp
         diagnosis_id: diagnosis.id,
         event_id: event.id,
         event_type: event.event_type,
-        sub_agent_id: event.sub_agent_id
+        sub_agent_id: event.sub_agent_id,
+        is_latest: event.is_latest
       }
     end
 

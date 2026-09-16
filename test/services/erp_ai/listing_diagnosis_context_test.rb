@@ -115,6 +115,36 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     refute_includes @ozon_context, "# Wildberries Listing"
   end
 
+  test "combines all active products for a SKU and excludes inactive products" do
+    active_wb = Ec::SkuProduct.create!(
+      sku: @sku,
+      store: @wb_store,
+      product_id: "930000001",
+      product_name: "Active WB listing"
+    )
+    active_ozon = Ec::SkuProduct.create!(
+      sku: @sku,
+      store: @ozon_store,
+      product_id: "930000002",
+      product_name: "Active Ozon listing"
+    )
+    Ec::SkuProduct.create!(
+      sku: @sku,
+      store: @ozon_store,
+      product_id: "930000003",
+      product_name: "Inactive Ozon listing",
+      is_active: false
+    )
+
+    context = ErpAI::ListingDiagnosisContext.call(sku: @sku)
+
+    assert_equal 1, context.scan("# SKU 基础信息").size
+    assert_includes context, active_wb.product_name
+    assert_includes context, active_ozon.product_name
+    refute_includes context, "Inactive Ozon listing"
+    assert_equal 2, context.scan(/# (?:Wildberries|Ozon) Listing/).size
+  end
+
   test "public image combiner retries a failed download twice" do
     request_paths = []
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_16_083332) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_093033) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -112,6 +112,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_083332) do
     t.datetime "created_at", null: false
     t.jsonb "details", default: {}, null: false
     t.string "event_type", null: false
+    t.boolean "is_latest", default: false, null: false
     t.text "message", null: false
     t.integer "position", default: 0, null: false
     t.string "scope"
@@ -123,6 +124,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_083332) do
     t.index ["ai_diagnosis_id"], name: "index_ec_ai_diagnosis_events_on_ai_diagnosis_id"
     t.index ["conversation_id"], name: "index_ec_ai_diagnosis_events_on_conversation_id"
     t.index ["status"], name: "index_ec_ai_diagnosis_events_on_status"
+    t.index ["sub_agent_id", "ai_diagnosis_id"], name: "idx_ai_diagnosis_events_latest_sub_agent", where: "(is_latest AND (sub_agent_id IS NOT NULL))"
   end
 
   create_table "ec_ai_suggestions", force: :cascade do |t|
@@ -642,7 +644,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_083332) do
   end
 
   create_table "ec_sku_diagnosis_rules", force: :cascade do |t|
-    t.jsonb "configuration", default: {"context_keys" => ["base", "inventory", "lifecycle", "profit", "sales_funnel", "advertise_per_week", "ec_orders_full_period", "supply_orders_full_period", "operation_actions_full_period", "warehouse_recommendation", "search_terms_per_week"]}, null: false
+    t.jsonb "configuration", default: {"context_keys" => ["base", "inventory", "lifecycle", "profit", "sales_funnel", "advertise_per_week", "ec_orders_full_period", "supply_orders_full_period", "operation_actions_full_period", "warehouse_recommendation", "search_terms_per_week", "listing_content"]}, null: false
     t.datetime "created_at", null: false
     t.boolean "enabled", default: true, null: false
     t.string "frequency", default: "daily", null: false

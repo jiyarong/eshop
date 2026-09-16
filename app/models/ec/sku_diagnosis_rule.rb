@@ -2,11 +2,12 @@ module Ec
   class SkuDiagnosisRule < ApplicationRecord
     self.table_name = "ec_sku_diagnosis_rules"
 
-    FREQUENCIES = %w[daily weekly].freeze
+    SCHEDULED_FREQUENCIES = %w[daily weekly].freeze
+    FREQUENCIES = (SCHEDULED_FREQUENCIES + %w[manual]).freeze
     CONTEXT_KEYS = %w[
       base inventory lifecycle profit sales_funnel advertise_per_week
       ec_orders_full_period supply_orders_full_period operation_actions_full_period
-      warehouse_recommendation search_terms_per_week
+      warehouse_recommendation search_terms_per_week listing_content
     ].freeze
 
     after_initialize :default_context_keys, if: :new_record?
@@ -15,7 +16,10 @@ module Ec
     validates :frequency, inclusion: { in: FREQUENCIES }
     validate :context_keys_are_supported
 
-    scope :enabled_for, ->(date) { where(enabled: true).where(frequency: date.monday? ? FREQUENCIES : ["daily"]) }
+    scope :enabled_for, ->(date) do
+      frequencies = date.monday? ? SCHEDULED_FREQUENCIES : [ "daily" ]
+      where(enabled: true, frequency: frequencies)
+    end
 
     def context_keys
       configured = configuration.is_a?(Hash) ? configuration["context_keys"] || configuration[:context_keys] : nil

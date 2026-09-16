@@ -128,6 +128,7 @@ class ReportsController < ApplicationController
         {
           event_type: event.event_type,
           sub_agent_id: event.sub_agent_id,
+          is_latest: event.is_latest,
           severity: event.severity,
           status: event.status,
           scope: event.scope,

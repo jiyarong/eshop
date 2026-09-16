@@ -1,6 +1,6 @@
 module Admin
   class SkuDiagnosisRulesController < BaseController
-    before_action :set_rule, only: %i[edit update destroy]
+    before_action :set_rule, only: %i[show edit update destroy]
 
     def index
       @rules = Ec::SkuDiagnosisRule.order(:id)
@@ -21,6 +21,9 @@ module Admin
       else
         render :new, status: :unprocessable_entity
       end
+    end
+
+    def show
     end
 
     def edit

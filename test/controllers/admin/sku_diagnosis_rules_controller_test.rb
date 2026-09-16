@@ -5,7 +5,11 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     @token = SecureRandom.hex(5)
     @admin = create_user_with_roles("sku-rules-admin-#{@token}@example.com", "super_admin")
     @viewer = create_user_with_roles("sku-rules-viewer-#{@token}@example.com", "auditor")
-    @rule = Ec::SkuDiagnosisRule.create!(name: "Rule #{@token}", prompt: "Check inventory", frequency: "weekly")
+    @rule = Ec::SkuDiagnosisRule.create!(
+      name: "Rule #{@token}",
+      prompt: "## Check inventory\n\n- Verify stock",
+      frequency: "weekly"
+    )
   end
 
   teardown do
@@ -21,6 +25,7 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     get admin_sku_diagnosis_rules_path, headers: { "Accept" => "text/html" }
     assert_response :success
     assert_select "h1", "SKU诊断规则"
+    assert_select "a[href=?]", admin_sku_diagnosis_rule_path(@rule), text: @rule.name
     assert_select "a[href=?]", edit_admin_sku_diagnosis_rule_path(@rule)
     assert_select "a[href=?]", edit_admin_agent_path("sku_diagnosis")
 
@@ -29,6 +34,21 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "input[name='agent[tools][]'][value='save_sku_event']"
     assert_select "input[name='agent[tools][]'][value='erp_ai_request']", count: 0
+  end
+
+  test "admin can view a rule with its prompt rendered as markdown" do
+    sign_in @admin
+
+    get admin_sku_diagnosis_rule_path(@rule), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "h1", @rule.name
+    assert_select "[data-controller='markdown']" do
+      assert_select "pre[data-markdown-target='source']", text: /## Check inventory/
+      assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]"
+    end
+    assert_select "a[href=?]", edit_admin_sku_diagnosis_rule_path(@rule)
+    assert_select ".definition-list", text: /每周/
   end
 
   test "scheduled agent cannot be started as an interactive conversation" do
@@ -45,6 +65,7 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "input[name='ec_sku_diagnosis_rule[context_keys][]'][checked]", count: Ec::SkuDiagnosisRule::CONTEXT_KEYS.size
     assert_select "textarea[name='ec_sku_diagnosis_rule[allowed_event_types_text]']"
+    assert_select "select[name='ec_sku_diagnosis_rule[frequency]'] option[value='manual']", text: "手动"
 
     sign_in @admin
     post admin_sku_diagnosis_rules_path, headers: { "Accept" => "text/html" }, params: {
@@ -62,14 +83,14 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     sign_in @admin
     patch admin_sku_diagnosis_rule_path(rule), headers: { "Accept" => "text/html" }, params: {
       ec_sku_diagnosis_rule: {
-        name: rule.name, prompt: "Check stock", frequency: "weekly", enabled: "0",
+        name: rule.name, prompt: "Check stock", frequency: "manual", enabled: "0",
         context_keys: ["inventory"], allowed_event_types_text: "inventory_risk"
       }
     }
     assert_redirected_to admin_sku_diagnosis_rules_path
     assert_equal ["inventory"], rule.reload.context_keys
     assert_equal ["inventory_risk"], rule.allowed_event_types
-    assert_equal "weekly", rule.frequency
+    assert_equal "manual", rule.frequency
     assert_not rule.enabled?
 
     sign_in @admin
@@ -103,6 +124,10 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
   test "non admin cannot manage rules" do
     sign_in @viewer
     get admin_sku_diagnosis_rules_path, headers: { "Accept" => "text/html" }
+    assert_response :forbidden
+
+    sign_in @viewer
+    get admin_sku_diagnosis_rule_path(@rule), headers: { "Accept" => "text/html" }
     assert_response :forbidden
   end
 end

@@ -27,6 +27,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     diagnosis.events.create!(
       event_type: "stockout_imminent",
       severity: "critical",
+      is_latest: true,
       message: "Risk details #{@token}",
       scope: "inventory",
       details: { "available" => 3 }
@@ -66,6 +67,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       event_type: "stockout_imminent",
       severity: "critical",
       status: "ignored",
+      is_latest: true,
       message: "Ignored risk #{@token}"
     )
     legacy_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)

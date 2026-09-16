@@ -70,10 +70,14 @@ module AIDiagnosisEventFilterable
     base_scope = Ec::AIDiagnosisEvent
       .joins(:ai_diagnosis)
       .active
+    legacy_scope = base_scope
       .where(ec_ai_diagnosis: { is_latest: true })
+      .where(severity: "red")
+    general_scope = base_scope
+      .latest
+      .where(ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name })
+      .where(severity: "critical")
 
-    base_scope.where(severity: "red").or(
-      base_scope.where(ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name }, severity: "critical")
-    )
+    legacy_scope.or(general_scope)
   end
 end

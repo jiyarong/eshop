@@ -616,6 +616,7 @@ zh:
         operation_actions_full_period: "运营操作"
         warehouse_recommendation: "仓储建议"
         search_terms_per_week: "搜索词"
+        listing_content: "Listing 内容"
       edit:
         title: "编辑 SKU 诊断规则"
       fields:
@@ -630,9 +631,10 @@ zh:
         status: "状态"
       hints:
         allowed_event_types: "每行填写一个 event type，可一次粘贴多行并直接使用中文。留空表示不限制。"
-        enabled: "启用后按执行频率参与自动诊断。"
+        enabled: "启用后按配置的执行频率参与诊断；手动规则不会自动执行。"
       frequencies:
         daily: "每天"
+        manual: "手动"
         weekly: "每周"
       index:
         empty: "暂无 SKU 诊断规则。"
@@ -644,6 +646,7 @@ zh:
         deleted: "SKU 诊断规则已删除。"
         updated: "SKU 诊断规则已更新。"
       sections:
+        details: "规则详情"
         identity: "规则配置"
       statuses:
         disabled: "停用"

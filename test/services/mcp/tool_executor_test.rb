@@ -119,6 +119,8 @@ module Mcp
       assert_equal "danger", event.severity
       assert_equal "库存严重偏低，立即处理", event.message
       assert_equal "立即补货", event.advise
+      assert event.is_latest?
+      assert second.fetch(:is_latest)
     end
 
     test "sql_query uses the read only SQL query behavior" do
