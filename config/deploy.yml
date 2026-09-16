@@ -87,6 +87,9 @@ volumes:
 # Configure the image builder.
 builder:
   arch: amd64
+  cache:
+    type: registry
+    options: mode=max
   secrets:
     - RAILS_MASTER_KEY
 
