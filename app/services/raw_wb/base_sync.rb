@@ -74,6 +74,8 @@ module RawWb
       RawWb::Subject.where(id: subject_ids)
     end
 
+    public
+
     def self.run(days: nil, sync_keys: nil)
       stores = Ec::Store.where(platform: 'wb', is_active: true)
       raise ArgumentError, 'No active WB stores found in ec_stores' if stores.none?

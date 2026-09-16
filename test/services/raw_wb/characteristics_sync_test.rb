@@ -109,6 +109,9 @@ class RawWbCharacteristicsSyncTest < ActiveSupport::TestCase
   end
 
   test "setup sync includes characteristics and attribute dictionaries" do
+    assert RawWb::SetupSync.new(
+      RawWb::SellerAccount.new(api_token: "test"), days: 365
+    ).respond_to?(:run)
     assert_includes RawWb::SetupSync::STEPS, :sync_characteristics
     assert_includes RawWb::SetupSync::STEPS, :sync_attribute_dicts
     assert_operator RawWb::SetupSync::STEPS.index(:sync_characteristics), :>, RawWb::SetupSync::STEPS.index(:sync_subjects)
