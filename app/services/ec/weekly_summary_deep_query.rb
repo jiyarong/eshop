@@ -7,8 +7,9 @@ module Ec
       total_pre_tax total_after_tax total_margin_pct unallocated_total after_tax_with_unallocated
     ].freeze
     COMPARISON_ROW_KEYS = %i[
-      net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct average_profit_per_order
-      ad_ratio_pct cost_return_pct projected_roi_pct annualized_return_pct annualized_net_profit_cny
+      net_sales revenue average_price ads goods_cost cost_ratio_pct pre_tax tax after_tax margin_pct
+      profit_margin_pct average_profit_per_order ad_ratio_pct cost_return_pct projected_roi_pct
+      annualized_return_pct annualized_net_profit_cny
     ].freeze
 
     def self.run(from_date:, to_date:, sku_codes: [], include_comparison: true)

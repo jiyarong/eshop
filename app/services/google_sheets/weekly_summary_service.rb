@@ -15,15 +15,21 @@ module GoogleSheets
   class WeeklySummaryService < BaseService
     HDR_ZH = ['SKU', '平台', '店铺', '净销量', '销售额(CNY)', '广告费(CNY)', '货物成本(CNY)',
               '税前毛利(CNY)', '税/营业税(CNY)', '税后净利(CNY)', '利润率%',
-              '上周净销量', '上周销售额(CNY)', '销量环比%', '销售额环比%'].freeze
+              '上周净销量', '上周销售额(CNY)', '销量环比%', '销售额环比%',
+              '销售均价', '成本占比%', '广告占比%', '平均每单利润', '年化收益率%', '年化净利(CNY)',
+              '销售佣金(CNY)', '支付手续费(CNY)', '物流费(CNY)', '退货物流费(CNY)', '仓储费(CNY)',
+              '退件费(CNY)', '包装费(CNY)', '瑕疵处理费(CNY)', '越库费(CNY)', '其它平台费(CNY)'].freeze
 
     HDR_RU = ['Артикул', 'Платформа', 'Магазин', 'Чистые продажи', 'Выручка(CNY)',
               'Реклама(CNY)', 'Себестоимость(CNY)', 'До налогов(CNY)', 'Налог(CNY)',
               'Чистая прибыль(CNY)', 'Рентабельность%',
-              'Продажи пр.н.', 'Выручка пр.н.(CNY)', 'Δ продаж%', 'Δ выручки%'].freeze
+              'Продажи пр.н.', 'Выручка пр.н.(CNY)', 'Δ продаж%', 'Δ выручки%',
+              'Средняя цена', 'Доля себестоимости%', 'Доля рекламы%', 'Ср. прибыль/заказ', 'Годовая доходность%', 'Годовая чистая прибыль(CNY)',
+              'Комиссия за продажу(CNY)', 'Комиссия за оплату(CNY)', 'Логистика(CNY)', 'Логистика возврата(CNY)', 'Хранение(CNY)',
+              'Возврат продавцу(CNY)', 'Упаковка(CNY)', 'Обработка дефектов(CNY)', 'Кросс-докинг(CNY)', 'Прочие расходы платформы(CNY)'].freeze
 
-    COL_TYPES = %i[text text text int num num num num num num pct int num pct pct].freeze
-    COL_WIDTHS = [100, 60, 120, 70, 100, 90, 100, 100, 100, 100, 70, 80, 100, 70, 70].freeze
+    COL_TYPES = %i[text text text int num num num num num num pct int num pct pct num pct pct num pct num num num num num num num num num num num].freeze
+    COL_WIDTHS = [100, 60, 120, 70, 100, 90, 100, 100, 100, 100, 70, 80, 100, 70, 70, 90, 90, 90, 100, 100, 110, 110, 110, 100, 110, 100, 100, 100, 110, 100, 120].freeze
 
     def self.run(from_date:, to_date:, week_label:)
       new(from_date: from_date, to_date: to_date, week_label: week_label).call
@@ -108,7 +114,23 @@ module GoogleSheets
           comparison.dig(:net_sales, :previous),
           comparison.dig(:revenue, :previous),
           comparison.dig(:net_sales, :delta_pct),
-          comparison.dig(:revenue, :delta_pct)
+          comparison.dig(:revenue, :delta_pct),
+          row[:average_price],
+          row[:cost_ratio_pct],
+          row[:ad_ratio_pct],
+          row[:average_profit_per_order],
+          row[:annualized_return_pct],
+          row[:annualized_net_profit_cny],
+          row[:commission_fee],
+          row[:payment_fee],
+          row[:delivery_fee],
+          row[:return_delivery_fee],
+          row[:storage_fee],
+          row[:dispatch_fee],
+          row[:packing_fee],
+          row[:defect_fee],
+          row[:crossdock_fee],
+          row[:other_platform_fee]
         ]
       end
     end
@@ -127,7 +149,18 @@ module GoogleSheets
         rows.sum { |row| row[:pre_tax].to_f }.round(2),
         rows.sum { |row| row[:tax].to_f }.round(2),
         total_after_tax,
-        margin, "", "", "", ""
+        margin, "", "", "", "",
+        nil, nil, nil, nil, nil, nil,
+        rows.sum { |row| row[:commission_fee].to_f }.round(2),
+        rows.sum { |row| row[:payment_fee].to_f }.round(2),
+        rows.sum { |row| row[:delivery_fee].to_f }.round(2),
+        rows.sum { |row| row[:return_delivery_fee].to_f }.round(2),
+        rows.sum { |row| row[:storage_fee].to_f }.round(2),
+        rows.sum { |row| row[:dispatch_fee].to_f }.round(2),
+        rows.sum { |row| row[:packing_fee].to_f }.round(2),
+        rows.sum { |row| row[:defect_fee].to_f }.round(2),
+        rows.sum { |row| row[:crossdock_fee].to_f }.round(2),
+        rows.sum { |row| row[:other_platform_fee].to_f }.round(2)
       ]
     end
 

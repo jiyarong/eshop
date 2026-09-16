@@ -6,13 +6,13 @@ module Ec
       total_sku_count total_net_sales margin_with_unallocated_pct total_sales_revenue total_after_tax total_pre_tax
       wb_sales_revenue wb_pre_tax wb_after_tax ozon_sales_revenue ozon_pre_tax ozon_after_tax
       sales_qty net_qty settlement pre_tax after_tax sales_revenue order_count net_sales_count blr_count export_count
-      after_tax_margin_pct revenue net_sales margin_pct average_profit_per_order cost_return_pct projected_roi_pct
-      annualized_return_pct annualized_net_profit_cny
+      after_tax_margin_pct revenue net_sales margin_pct profit_margin_pct average_profit_per_order cost_return_pct
+      projected_roi_pct annualized_return_pct annualized_net_profit_cny
     ].freeze
     NEGATIVE_COMPARISON_KEYS = %i[
       total_return_qty total_returns total_tax unallocated_rows unallocated_total wb_ads wb_goods_cost wb_unallocated
-      ozon_ads ozon_goods_cost ozon_unallocated ads goods_cost tax ad_ratio_pct return_qty delivery storage ad
-      commission delivery_charge total_ad_cost amount
+      ozon_ads ozon_goods_cost ozon_unallocated ads goods_cost tax ad_ratio_pct cost_ratio_pct return_qty delivery
+      storage ad commission delivery_charge total_ad_cost amount
     ].freeze
 
     private
@@ -123,15 +123,27 @@ module Ec
       [rows, unalloc]
     end
 
-    def build_wsu_row_hashes(rows)
+    def build_wsu_row_hashes(rows, from_date:, to_date:)
+      cost_by_sku = Ec::SkuCost
+        .latest_by_sku_as_of(rows.map { |row| row[:sku] }, from_date.beginning_of_week(:monday))
+        .includes(:sku_dimension)
+        .index_by(&:sku_code)
+      days_count = (to_date - from_date).to_i + 1
+
       rows.sort_by { |row| -decimal_or_zero(row[:after_tax]) }.map do |row|
+        roi_result = projected_roi_for_row(row, cost_by_sku, days_count)
+        revenue = decimal_or_zero(row[:revenue])
+        net_sales = row[:net_sales].to_i
+
         {
           sku: row[:sku],
           platform: row[:platform],
           shop: row[:shop],
           net_sales: row[:net_sales],
           revenue: row[:revenue],
+          average_price: net_sales.zero? ? nil : (revenue / net_sales).round(2),
           ads: row[:ads],
+          ad_ratio_pct: percentage(row[:ads], row[:revenue]),
           commission_fee: row[:commission_fee],
           payment_fee: row[:payment_fee],
           delivery_fee: row[:delivery_fee],
@@ -143,10 +155,15 @@ module Ec
           crossdock_fee: row[:crossdock_fee],
           other_platform_fee: row[:other_platform_fee],
           goods_cost: row[:goods_cost],
+          cost_ratio_pct: percentage(row[:goods_cost], row[:revenue]),
           pre_tax: row[:pre_tax],
           tax: row[:tax],
           after_tax: row[:after_tax],
-          margin_pct: percentage(row[:after_tax], row[:revenue])
+          margin_pct: percentage(row[:after_tax], row[:revenue]),
+          profit_margin_pct: percentage(row[:after_tax], row[:revenue]),
+          average_profit_per_order: ratio(row[:after_tax], row[:net_sales]),
+          annualized_return_pct: roi_result[:annualized_return] && (BigDecimal(roi_result[:annualized_return].to_s) * 100).round(2),
+          annualized_net_profit_cny: roi_result[:annualized_net_profit_cny] && BigDecimal(roi_result[:annualized_net_profit_cny].to_s).round(2)
         }
       end
     end
@@ -223,11 +240,14 @@ module Ec
 
       rows.sort_by { |row| -row[:after_tax].to_d }.map do |row|
         roi_result = projected_roi_for_row(row, cost_by_sku, days_count)
+        revenue = decimal_or_zero(row[:revenue])
+        net_sales = row[:net_sales].to_i
 
         {
           sku: row[:sku],
           net_sales: row[:net_sales],
           revenue: row[:revenue],
+          average_price: net_sales.zero? ? nil : (revenue / net_sales).round(2),
           ads: row[:ads],
           commission_fee: row[:commission_fee],
           payment_fee: row[:payment_fee],
@@ -240,10 +260,12 @@ module Ec
           crossdock_fee: row[:crossdock_fee],
           other_platform_fee: row[:other_platform_fee],
           goods_cost: row[:goods_cost],
+          cost_ratio_pct: percentage(row[:goods_cost], row[:revenue]),
           pre_tax: row[:pre_tax],
           tax: row[:tax],
           after_tax: row[:after_tax],
           margin_pct: percentage(row[:after_tax], row[:revenue]),
+          profit_margin_pct: percentage(row[:after_tax], row[:revenue]),
           average_profit_per_order: ratio(row[:after_tax], row[:net_sales]),
           ad_ratio_pct: percentage(row[:ads], row[:revenue]),
           cost_return_pct: percentage(row[:after_tax], row[:goods_cost]),

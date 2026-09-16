@@ -536,6 +536,74 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     query_class.define_singleton_method(:run, original_run)
   end
 
+  test "show renders wsu result with average price and cost ratio columns matching sku detail metrics" do
+    payload = {
+      report_type: "wsu",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sales_revenue: 100.0 },
+      rows: [
+        { sku: @direct_sku.sku_code, platform: "WB", shop: "WB Test Shop", net_sales: 2, revenue: 100.0, average_price: 50.0, ads: 10.0, goods_cost: 20.0, cost_ratio_pct: 20.0, pre_tax: 35.0, tax: 5.0, after_tax: 30.0, margin_pct: 30.0 }
+      ],
+      extras: {}
+    }
+
+    query_class = Ec::WeeklySummaryQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: {
+      report_type: "wsu",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => "text/html",
+      "Turbo-Frame" => "weekly_profit_report_results"
+    }
+
+    assert_response :success
+    assert_select "th", text: I18n.t("weekly_profit_reports.columns.wsu.average_price")
+    assert_select "th", text: I18n.t("weekly_profit_reports.columns.wsu.cost_ratio_pct")
+    assert_select ".weekly-profit-table-value", text: "50.00"
+    assert_select ".weekly-profit-table-value", text: "20.00%"
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
+  test "show renders wsu deep result with average price and cost ratio columns matching sku detail metrics" do
+    payload = {
+      report_type: "wsu_deep",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_after_tax: 50.0 },
+      rows: [
+        { sku: @direct_sku.sku_code, net_sales: 4, revenue: 100.0, average_price: 25.0, ads: 10.0, goods_cost: 20.0, cost_ratio_pct: 20.0, pre_tax: 60.0, tax: 10.0, after_tax: 50.0, margin_pct: 50.0 }
+      ],
+      extras: {}
+    }
+
+    query_class = Ec::WeeklySummaryDeepQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: {
+      report_type: "wsu_deep",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }, headers: {
+      "Accept" => "text/html",
+      "Turbo-Frame" => "weekly_profit_report_results"
+    }
+
+    assert_response :success
+    assert_select "th", text: I18n.t("weekly_profit_reports.columns.wsu_deep.average_price")
+    assert_select "th", text: I18n.t("weekly_profit_reports.columns.wsu_deep.cost_ratio_pct")
+    assert_select ".weekly-profit-table-value", text: "25.00"
+    assert_select ".weekly-profit-table-value", text: "20.00%"
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
   test "show renders readable comparison labels when previous values are negative" do
     payload = {
       report_type: "wsu_deep",

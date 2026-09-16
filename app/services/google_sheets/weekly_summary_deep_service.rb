@@ -3,17 +3,23 @@ module GoogleSheets
     HDR_ZH = [
       "SKU", "净销量", "销售额(CNY)", "广告费(CNY)", "货物成本(CNY)",
       "税前毛利(CNY)", "税/营业税(CNY)", "税后净利(CNY)", "利润率%",
-      "平均每单利润", "广告占比%", "成本回报率%", "ROI(按180天备货)", "年化(按180天备货)", "年化净利(按180天备货)"
+      "平均每单利润", "广告占比%", "成本回报率%", "ROI(按180天备货)", "年化(按180天备货)", "年化净利(按180天备货)",
+      "销售均价", "成本占比%",
+      "销售佣金(CNY)", "支付手续费(CNY)", "物流费(CNY)", "退货物流费(CNY)", "仓储费(CNY)",
+      "退件费(CNY)", "包装费(CNY)", "瑕疵处理费(CNY)", "越库费(CNY)", "其它平台费(CNY)"
     ].freeze
 
     HDR_RU = [
       "Артикул", "Чистые продажи", "Выручка(CNY)", "Реклама(CNY)", "Себестоимость(CNY)",
       "До налогов(CNY)", "Налог(CNY)", "Чистая прибыль(CNY)", "Рентабельность%",
-      "Ср. прибыль/заказ", "Доля рекламы%", "Окупаемость себестоимости%", "ROI(180 дней запаса)", "Годовая доходность (180 дней запаса)", "Годовая чистая прибыль (180 дней запаса)"
+      "Ср. прибыль/заказ", "Доля рекламы%", "Окупаемость себестоимости%", "ROI(180 дней запаса)", "Годовая доходность (180 дней запаса)", "Годовая чистая прибыль (180 дней запаса)",
+      "Средняя цена", "Доля себестоимости%",
+      "Комиссия за продажу(CNY)", "Комиссия за оплату(CNY)", "Логистика(CNY)", "Логистика возврата(CNY)", "Хранение(CNY)",
+      "Возврат продавцу(CNY)", "Упаковка(CNY)", "Обработка дефектов(CNY)", "Кросс-докинг(CNY)", "Прочие расходы платформы(CNY)"
     ].freeze
 
-    COL_TYPES = %i[text int num num num num num num pct num pct pct num num num].freeze
-    COL_WIDTHS = [120, 80, 100, 100, 100, 100, 100, 100, 80, 100, 90, 100, 120, 130, 140].freeze
+    COL_TYPES = %i[text int num num num num num num pct num pct pct num num num num pct num num num num num num num num num num].freeze
+    COL_WIDTHS = [120, 80, 100, 100, 100, 100, 100, 100, 80, 100, 90, 100, 120, 130, 140, 100, 90, 110, 110, 100, 110, 100, 100, 100, 110, 100, 120].freeze
 
     def self.run(from_date:, to_date:, week_label:)
       new(from_date: from_date, to_date: to_date, week_label: week_label).call
@@ -80,7 +86,19 @@ module GoogleSheets
           row[:cost_return_pct],
           row[:projected_roi_pct],
           row[:annualized_return_pct],
-          row[:annualized_net_profit_cny]
+          row[:annualized_net_profit_cny],
+          row[:average_price],
+          row[:cost_ratio_pct],
+          row[:commission_fee],
+          row[:payment_fee],
+          row[:delivery_fee],
+          row[:return_delivery_fee],
+          row[:storage_fee],
+          row[:dispatch_fee],
+          row[:packing_fee],
+          row[:defect_fee],
+          row[:crossdock_fee],
+          row[:other_platform_fee]
         ]
       end
     end
@@ -98,7 +116,17 @@ module GoogleSheets
         rows.sum { |row| row[:tax].to_f }.round(2),
         total_after_tax,
         total_revenue.zero? ? nil : ((total_after_tax / total_revenue) * 100).round(2),
-        nil, nil, nil, nil, nil, nil
+        nil, nil, nil, nil, nil, nil,
+        rows.sum { |row| row[:commission_fee].to_f }.round(2),
+        rows.sum { |row| row[:payment_fee].to_f }.round(2),
+        rows.sum { |row| row[:delivery_fee].to_f }.round(2),
+        rows.sum { |row| row[:return_delivery_fee].to_f }.round(2),
+        rows.sum { |row| row[:storage_fee].to_f }.round(2),
+        rows.sum { |row| row[:dispatch_fee].to_f }.round(2),
+        rows.sum { |row| row[:packing_fee].to_f }.round(2),
+        rows.sum { |row| row[:defect_fee].to_f }.round(2),
+        rows.sum { |row| row[:crossdock_fee].to_f }.round(2),
+        rows.sum { |row| row[:other_platform_fee].to_f }.round(2)
       ]
     end
 

@@ -22,8 +22,6 @@ module Ec
         rows, = collect_rows(period.fetch(:from_date), period.fetch(:to_date), rate)
         sku_rows = rows.select { |row| row[:sku].to_s.casecmp?(@sku.sku_code) }
         aggregated_rows = aggregate_rows_by_sku(sku_rows)
-        cost = Ec::SkuCost.latest_by_sku_as_of([@sku.sku_code], period.fetch(:from_date).beginning_of_week(:monday))
-          .includes(:sku_dimension).first
 
         {
           key: period.fetch(:key),
@@ -34,9 +32,13 @@ module Ec
             from_date: period.fetch(:from_date),
             to_date: period.fetch(:to_date)
           ).first || {}),
-          store_rows: build_wsu_row_hashes(sku_rows).map do |row|
+          store_rows: build_wsu_row_hashes(
+            sku_rows,
+            from_date: period.fetch(:from_date),
+            to_date: period.fetch(:to_date)
+          ).map do |row|
             metadata = store_metadata[[row[:platform].to_s.downcase, row[:shop].to_s.strip]] || {}
-            decorate_store_row(row, metadata, period, cost)
+            decorate_store_row(row, metadata)
           end
         }
       end
@@ -78,44 +80,19 @@ module Ec
       }
     end
 
-    def decorate_store_row(row, metadata, period, cost)
-      revenue = decimal_or_zero(row[:revenue])
-      net_sales = row[:net_sales].to_i
-      after_tax = decimal_or_zero(row[:after_tax])
-      goods_cost = decimal_or_zero(row[:goods_cost])
-      ads = decimal_or_zero(row[:ads])
-      roi = Ec::ProjectedStockRoiCalculator.call(
-        net_sales_quantity: net_sales,
-        operating_profit_cny: after_tax,
-        days_count: (period.fetch(:to_date) - period.fetch(:from_date)).to_i + 1,
-        unit_goods_cost_cny: cost&.goods_cost_cny,
-        unit_volume_l: cost&.pkg_volume_l
-      )
-
+    def decorate_store_row(row, metadata)
       row.merge(
         metadata,
         currency: "CNY",
         listing_label: metadata[:listing_label].presence || @sku.sku_code,
-        average_price: net_sales.zero? ? nil : (revenue / net_sales).round(2),
-        cost_ratio_pct: percentage(goods_cost, revenue),
-        ad_ratio_pct: percentage(ads, revenue),
-        average_profit_per_order: net_sales.zero? ? nil : (after_tax / net_sales).round(2),
-        cost_return_pct: percentage(after_tax, goods_cost),
-        annualized_return_pct: roi[:annualized_return] && (BigDecimal(roi[:annualized_return].to_s) * 100).round(2),
-        annualized_net_profit_cny: roi[:annualized_net_profit_cny]&.round(2),
+        cost_return_pct: percentage(row[:after_tax], row[:goods_cost]),
         other_attributable_fees: nil
       )
     end
 
     def decorate_sku_row(row)
-      revenue = decimal_or_zero(row[:revenue])
-      net_sales = row[:net_sales].to_i
-
       row.merge(
         currency: "CNY",
-        average_price: net_sales.zero? ? nil : (revenue / net_sales).round(2),
-        cost_ratio_pct: percentage(decimal_or_zero(row[:goods_cost]), revenue),
-        profit_margin_pct: percentage(decimal_or_zero(row[:after_tax]), revenue),
         other_attributable_fees: nil
       )
     end

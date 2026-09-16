@@ -108,6 +108,55 @@ class Ec::WeeklySummaryDeepQueryTest < ActiveSupport::TestCase
     assert_equal "none", payload.dig(:comparison, :rows, "WSUDEEP-A", :projected_roi_pct, :trend)
   end
 
+  test "run decorates wsu deep rows with average_price, cost_ratio_pct, and profit_margin_pct matching sku detail metrics" do
+    query = Ec::WeeklySummaryDeepQuery.new(
+      from_date: Date.new(2026, 5, 25),
+      to_date: Date.new(2026, 5, 31),
+      rate: RateStub.new(BigDecimal("7.2"), BigDecimal("0.28")),
+      include_comparison: false
+    )
+
+    query.define_singleton_method(:collect_rows) do |_from_date, _to_date, _rate|
+      [
+        [
+          { sku: "WSUDEEP-A", platform: "WB", shop: "WB-1", net_sales: 5, revenue: 100, ads: 10, goods_cost: 30, pre_tax: 40, tax: 5, after_tax: 35 },
+          { sku: "WSUDEEP-A", platform: "Ozon", shop: "OZ-1", net_sales: 3, revenue: 60, ads: 6, goods_cost: 18, pre_tax: 24, tax: 4, after_tax: 20 }
+        ],
+        { wb: 0, ozon: 0 }
+      ]
+    end
+
+    row = query.run[:rows].first
+
+    assert_equal 20.0, row[:average_price]
+    assert_equal 30.0, row[:cost_ratio_pct]
+    assert_in_delta 34.38, row[:profit_margin_pct].to_f, 0.1
+  end
+
+  test "run includes comparison for cost_ratio_pct with negative semantic when it worsens" do
+    query = Ec::WeeklySummaryDeepQuery.new(
+      from_date: Date.new(2026, 5, 25),
+      to_date: Date.new(2026, 5, 31),
+      rate: RateStub.new(BigDecimal("7.2"), BigDecimal("0.28"))
+    )
+
+    query.define_singleton_method(:collect_rows) do |from_date, _to_date, _rate|
+      rows = if from_date == Date.new(2026, 5, 25)
+        [{ sku: "WSUDEEP-A", platform: "WB", shop: "WB-1", net_sales: 5, revenue: 100, ads: 10, goods_cost: 40, pre_tax: 40, tax: 5, after_tax: 35 }]
+      else
+        [{ sku: "WSUDEEP-A", platform: "WB", shop: "WB-1", net_sales: 5, revenue: 100, ads: 10, goods_cost: 20, pre_tax: 40, tax: 5, after_tax: 35 }]
+      end
+      [rows, { wb: 0, ozon: 0 }]
+    end
+
+    payload = query.run
+
+    comparison = payload.dig(:comparison, :rows, "WSUDEEP-A", :cost_ratio_pct)
+    assert_equal "negative", comparison[:semantic], "成本占比上升是不利变化"
+    assert payload.dig(:comparison, :rows, "WSUDEEP-A", :profit_margin_pct).present?
+    assert payload.dig(:comparison, :rows, "WSUDEEP-A", :average_price).present?
+  end
+
   private
 
   def create_sku_with_cost(sku_code, purchase_price_cny:, freight_to_by_cny:, pkg_volume_override_l:)

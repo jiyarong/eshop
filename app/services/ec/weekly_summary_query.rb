@@ -8,7 +8,10 @@ module Ec
       ozon_after_tax wb_unallocated ozon_unallocated unallocated_total after_tax_with_unallocated
       margin_with_unallocated_pct
     ].freeze
-    COMPARISON_ROW_KEYS = %i[net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct].freeze
+    COMPARISON_ROW_KEYS = %i[
+      net_sales revenue average_price ads ad_ratio_pct goods_cost cost_ratio_pct pre_tax tax after_tax
+      margin_pct profit_margin_pct average_profit_per_order annualized_return_pct annualized_net_profit_cny
+    ].freeze
 
     def self.run(from_date:, to_date:, sku_codes: [], include_comparison: true)
       new(from_date:, to_date:, sku_codes:, include_comparison:).run
@@ -25,7 +28,7 @@ module Ec
 
     def run
       rows, unalloc_cny = collect_rows(@from_date, @to_date, @rate)
-      current_rows = build_wsu_row_hashes(rows)
+      current_rows = build_wsu_row_hashes(rows, from_date: @from_date, to_date: @to_date)
       current_summary = build_wsu_summary_hash(rows, unalloc_cny, rate: @rate, from_date: @from_date, to_date: @to_date)
       payload = {
         report_type: "wsu",
@@ -53,7 +56,7 @@ module Ec
     def comparison_payload(current_rows, current_summary)
       prev_from, prev_to = previous_period_range(@from_date, @to_date)
       prev_rows, prev_unalloc, prev_rate = previous_rows_data
-      previous_rows = build_wsu_row_hashes(prev_rows)
+      previous_rows = build_wsu_row_hashes(prev_rows, from_date: prev_from, to_date: prev_to)
       previous_summary = prev_rate ? build_wsu_summary_hash(prev_rows, prev_unalloc, rate: prev_rate, from_date: prev_from, to_date: prev_to) : nil
 
       {

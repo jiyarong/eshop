@@ -8,8 +8,17 @@ class WeeklyProfitReportsController < ApplicationController
     "wb" => %i[nm_id vendor_code region sales_qty return_qty net_qty settlement delivery storage ad goods_cost pre_tax tax after_tax],
     "ozon" => %i[ozon_sku_id sku_code sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
   }.freeze
-  WSU_COLUMNS = %i[sku platform shop net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct].freeze
-  WSU_DEEP_COLUMNS = %i[sku net_sales revenue ads goods_cost pre_tax tax after_tax margin_pct average_profit_per_order ad_ratio_pct cost_return_pct projected_roi_pct annualized_return_pct annualized_net_profit_cny].freeze
+  WSU_COLUMNS = %i[
+    sku platform shop net_sales revenue average_price commission_fee payment_fee delivery_fee return_delivery_fee
+    storage_fee dispatch_fee packing_fee defect_fee crossdock_fee other_platform_fee goods_cost cost_ratio_pct
+    ads ad_ratio_pct pre_tax tax after_tax margin_pct average_profit_per_order annualized_return_pct annualized_net_profit_cny
+  ].freeze
+  WSU_DEEP_COLUMNS = %i[
+    sku net_sales revenue average_price commission_fee payment_fee delivery_fee return_delivery_fee storage_fee
+    dispatch_fee packing_fee defect_fee crossdock_fee other_platform_fee goods_cost cost_ratio_pct ads ad_ratio_pct
+    pre_tax tax after_tax margin_pct average_profit_per_order cost_return_pct projected_roi_pct annualized_return_pct
+    annualized_net_profit_cny
+  ].freeze
   WR_SUMMARY_KEYS = {
     "wb" => %i[total_sales_qty total_return_qty total_net total_goods_cost total_pre_tax total_tax total_after_tax unallocated_rows],
     "ozon" => %i[sku_count total_sales_revenue total_orders total_returns total_ad total_goods_cost total_after_tax_profit unallocated_total]
