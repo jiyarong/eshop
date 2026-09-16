@@ -164,9 +164,43 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
   test "loads listing content for rules that select it" do
     @daily.update!(configuration: { "context_keys" => [ "listing_content" ] })
+    stores = 3.times.map do |index|
+      Ec::Store.create!(
+        platform: "ozon",
+        store_name: "Listing #{index + 1} #{@token}",
+        company_type: "small",
+        is_active: true
+      )
+    end
+    expected_sku_products = stores.each_with_index.map do |store, index|
+      Ec::SkuProduct.create!(
+        sku: @sku,
+        store: store,
+        platform: "ozon",
+        product_id: "LISTING-#{index + 1}-#{@token}",
+        is_active: true
+      )
+    end
+    image_blobs_by_product = expected_sku_products.to_h do |sku_product|
+      blobs = %w[main merged].map do |kind|
+        ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new("#{sku_product.product_id}-#{kind}-image"),
+          filename: "#{sku_product.product_id}-#{kind}.jpg",
+          content_type: "image/jpeg"
+        )
+      end
+      [ sku_product.id, blobs ]
+    end
+    image_blobs = expected_sku_products.flat_map { |sku_product| image_blobs_by_product.fetch(sku_product.id) }
     listing_context = Object.new
     listing_context.define_singleton_method(:call) do |sku:|
       "# Active listings for #{sku.sku_code}"
+    end
+    listing_context.define_singleton_method(:image_attachments) do |sku_product:|
+      file = Struct.new(:blob) do
+        def attached? = true
+      end
+      image_blobs_by_product.fetch(sku_product.id).map { |blob| Struct.new(:file).new(file.new(blob)) }
     end
     client = SavingClient.new
 
@@ -183,6 +217,19 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_includes summary, "**Listing Content**"
     assert_includes summary, "# Active listings for #{@sku.sku_code}"
     assert_not_includes summary, "Snapshot base"
+    assert_includes client.requests.first.fetch(:messages).first.fetch(:content).first.fetch(:text),
+      "每个 Listing product 的图片均按两张一组排列"
+    image_parts = client.requests.first.fetch(:messages).first.fetch(:content).select do |part|
+      part.fetch(:type) == "image_url"
+    end
+    assert_equal 6, image_parts.size
+    user_message = Conversation.where(user: @user).order(:id).last.messages.find_by!(role: "user")
+    assert_equal image_blobs.map(&:id), user_message.images.blobs.pluck(:id)
+  ensure
+    user_message&.images&.detach
+    image_blobs&.each(&:purge)
+    expected_sku_products&.each(&:destroy!)
+    stores&.each(&:destroy!)
   end
 
   test "loads product attributes for rules that select them" do

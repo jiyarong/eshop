@@ -27,7 +27,7 @@ module ErpAI
       )
       message = conversation.messages.new(role: "user", content: question)
       message.images.attach(images) if images.present?
-      message.save!
+      message.save!(context: images.present? ? :system_generated : nil)
 
       run_loop(conversation, data_summary)
       conversation

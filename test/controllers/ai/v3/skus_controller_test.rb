@@ -194,17 +194,13 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
           "store_id" => @wb_store.id,
           "platform" => "wb",
           "product_id" => @wb_product.product_id,
-          "offer_id" => @wb_product.offer_id,
-          "product_info" => nil,
-          "price_info" => nil
+          "offer_id" => @wb_product.offer_id
         },
         {
           "store_id" => @ozon_store.id,
           "platform" => "ozon",
           "product_id" => @ozon_product.product_id,
-          "offer_id" => @ozon_product.offer_id,
-          "product_info" => nil,
-          "price_info" => nil
+          "offer_id" => @ozon_product.offer_id
         }
       ],
       base.fetch("sku_products")

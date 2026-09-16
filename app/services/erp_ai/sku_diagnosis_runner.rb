@@ -71,7 +71,8 @@ module ErpAI
       period_from = as_of_date.beginning_of_week(:monday) - 1.week
       period_to = period_from.end_of_week(:monday)
       snapshot = snapshot_fetcher.fetch(sku.sku_code, snapshot_date: as_of_date)
-      context_sections = rule.context_keys.map do |key|
+      context_keys = rule.context_keys
+      context_sections = context_keys.map do |key|
         context_section(key, sku, snapshot)
       end
       period = snapshot.fetch("period")
@@ -85,11 +86,15 @@ module ErpAI
       else
         "event_type 写具体诊断事件类型"
       end
+      listing_image_instruction = if context_keys.include?("listing_content")
+        "每个 Listing product 的图片均按两张一组排列：第一张为主图，第二张为其余产品图合集。"
+      end
       question = <<~PROMPT
         当前 SKU：#{sku.sku_code}
         当前子规则 ID：#{rule.id}
         子规则追加提示词：
         #{rule.prompt}
+        #{listing_image_instruction}
 
         请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，advise 写操作建议；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
       PROMPT
@@ -102,7 +107,8 @@ module ErpAI
         business_object_type: "Ec::Sku",
         business_object_id: sku.id.to_s,
         time_range: { from: period_from.iso8601, to: period_to.iso8601 },
-        data_summary: data_summary
+        data_summary: data_summary,
+        images: context_keys.include?("listing_content") ? listing_images(sku) : []
       )
       saved = conversation.messages.where(role: "tool").any? do |message|
         payload = JSON.parse(message.content)
@@ -128,6 +134,14 @@ module ErpAI
       else
         category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
         "**#{category.fetch('name')}**\n\n#{category.fetch('markdown').strip}"
+      end
+    end
+
+    def listing_images(sku)
+      sku.sku_products.active.ordered.includes(:store).flat_map do |sku_product|
+        listing_context.image_attachments(sku_product: sku_product).filter_map do |attachment|
+          attachment.file.blob if attachment.file.attached?
+        end
       end
     end
 

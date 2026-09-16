@@ -21,7 +21,7 @@ class Message < ApplicationRecord
   end
 
   def images_are_supported
-    if images.attachments.size > MAX_IMAGES
+    if validation_context != :system_generated && images.attachments.size > MAX_IMAGES
       errors.add(:images, I18n.t("ai.conversations.errors.too_many_images", count: MAX_IMAGES))
     end
 
