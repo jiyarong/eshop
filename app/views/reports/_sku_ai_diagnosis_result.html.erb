@@ -156,10 +156,12 @@ end %>
                   <% end %>
                 </td>
                 <td class="ai-health-event-type">
-                  <span class="ai-health-star ai-health-star--<%= ai_inventory_health_severity_class(event.severity) %>"
-                        title="<%= ai_inventory_health_star_label(ai_inventory_health_severity_class(event.severity), 1) %>"
-                        aria-label="<%= ai_inventory_health_star_label(ai_inventory_health_severity_class(event.severity), 1) %>">★</span>
-                  <span><%= event.event_type %></span>
+                  <div class="ai-health-event-type__content">
+                    <span class="ai-health-star ai-health-star--<%= ai_inventory_health_severity_class(event.severity) %>"
+                          title="<%= ai_inventory_health_star_label(ai_inventory_health_severity_class(event.severity), 1) %>"
+                          aria-label="<%= ai_inventory_health_star_label(ai_inventory_health_severity_class(event.severity), 1) %>">★</span>
+                    <span><%= event.event_type %></span>
+                  </div>
                 </td>
                 <td class="ai-health-message">
                   <%= render "reports/sku_ai_diagnosis_long_text",

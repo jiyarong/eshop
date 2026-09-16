@@ -152,7 +152,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select "th", "建议操作"
       assert_select "tr.ai-health-table__linked-row[data-controller='table-row-link'][data-action='click->table-row-link#visit'][data-table-row-link-url-value='#{ai_conversation_path(conversation)}']" do
         assert_select "a.ai-health-table__row-link[href='#{ai_conversation_path(conversation)}']", @diagnosis_rule.name
-        assert_select "td.ai-health-event-type", text: /★.*stock_risk/m
+        assert_select "td.ai-health-event-type > .ai-health-event-type__content", text: /★.*stock_risk/m
         assert_select ".ai-health-star--warning", count: 1
       end
       assert_select ".ai-health-long-text__preview", count: 2

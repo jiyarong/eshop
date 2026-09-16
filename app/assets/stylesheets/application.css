@@ -2240,7 +2240,7 @@ table thead th {
 }
 
 .ai-health-severity-cell,
-.ai-health-event-type {
+.ai-health-event-type__content {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -2284,6 +2284,11 @@ table thead th {
 
 .ai-health-result--general-diagnosis .ai-health-table {
   min-width: 1120px;
+}
+
+.ai-health-result--general-diagnosis .ai-health-table th,
+.ai-health-result--general-diagnosis .ai-health-table td {
+  vertical-align: top;
 }
 
 .ai-health-long-text__preview {
