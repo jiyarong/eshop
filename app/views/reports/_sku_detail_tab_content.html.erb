@@ -295,6 +295,17 @@
       </div>
     </section>
   <% elsif @active_tab == "ai_inventory_health" %>
+    <section class="ai-diagnosis-section ai-diagnosis-section--general">
+      <h2 class="section-title"><%= t("reports.sku_detail.sections.general_diagnoses") %></h2>
+      <% if @general_diagnosis_results.any? %>
+        <div class="ai-health-result-list">
+          <%= render partial: "reports/sku_ai_diagnosis_result", collection: @general_diagnosis_results, as: :result %>
+        </div>
+      <% else %>
+        <div class="empty-state"><%= t("reports.sku_detail.empty.general_diagnoses") %></div>
+      <% end %>
+    </section>
+
     <section class="ai-diagnosis-section ai-diagnosis-section--inventory">
       <h2 class="section-title"><%= t("reports.sku_detail.sections.inventory_diagnoses") %></h2>
       <% if @inventory_health_results.any? %>

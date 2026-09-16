@@ -127,6 +127,14 @@ class Agent < ApplicationRecord
       default_system_prompt: GBRAIN_PAGE_CLASSIFIER_PROMPT,
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.1
+    },
+    "sku_diagnosis" => {
+      name: "通用SKU诊断",
+      tools: [ "save_sku_event" ],
+      enabled: true,
+      default_system_prompt: "你是一个后端运行的通用 SKU 诊断 Agent。你不会独立运行，只会按系统提供的诊断规则和 SKU 上下文逐个分析 SKU。必须基于上下文给出诊断结论、诊断依据和建议操作，并调用 save_sku_event 保存结果。每次只处理当前 SKU 和当前子规则。",
+      default_model_id: "deepseek-v4-flash",
+      default_temperature: 0.1
     }
   }.freeze
 
@@ -152,6 +160,7 @@ class Agent < ApplicationRecord
   validate :tools_are_registered
   validate :client_agent_has_no_tools
   validate :web_agent_has_no_skills
+  validate :sku_diagnosis_capabilities
 
   def self.ensure_fixed!(code)
     definition = definition_for!(code)
@@ -165,6 +174,7 @@ class Agent < ApplicationRecord
     agent.model_id = definition.fetch(:default_model_id) if agent.model_id.blank?
     agent.temperature = definition.fetch(:default_temperature) if agent.temperature.blank?
     agent.tools = [] if agent.client?
+    agent.tools = Array(agent.tools) - [ "save_sku_event" ] unless code == "sku_diagnosis"
     agent.save!
     agent
   end
@@ -182,7 +192,8 @@ class Agent < ApplicationRecord
   private
 
   def tools_are_registered
-    invalid_tools = Array(tools) - ErpAI::ToolRegistry.default_tool_names
+    invalid_tools = Array(tools) - ErpAI::ToolRegistry.default_tools.map { |tool| tool.fetch(:name) }
+    invalid_tools << "save_sku_event" if code != "sku_diagnosis" && Array(tools).include?("save_sku_event")
     return if invalid_tools.empty?
 
     errors.add(:tools, I18n.t("admin.agents.errors.invalid_tools", tools: invalid_tools.join(", ")))
@@ -198,5 +209,12 @@ class Agent < ApplicationRecord
     return unless web? && skills.any?
 
     errors.add(:skills, I18n.t("admin.agents.errors.skills_unavailable_for_web"))
+  end
+
+  def sku_diagnosis_capabilities
+    return unless code == "sku_diagnosis"
+
+    errors.add(:agent_type, :invalid) unless web?
+    errors.add(:tools, :invalid) unless tools == [ "save_sku_event" ]
   end
 end

@@ -58,6 +58,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", text: "Agent 类型"
     assert_select "td", text: "Web Agent"
     assert_select "a.ai-row-action[href=?]", "/admin/agents/sku_replenishment_advisor/edit"
+    assert_select ".ai-table-panel.table-list-card > .table-viewport.table-list-viewport[data-controller~='sticky-table-header'] > table.ai-agent-table",
+      count: 1
   end
 
   test "non admin cannot manage agents" do
@@ -85,7 +87,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[data-controller='agent-form']"
     assert_select "section[data-agent-form-target='toolPanel']"
     assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
-      count: ErpAI::ToolRegistry.default_tools.size
+      count: ErpAI::ToolRegistry.default_tools.size - 1
     assert_select "input[data-agent-form-target='toolInput'][value='erp_ai_request']"
     assert_select "section[data-agent-form-target='skillPanel']"
     assert_select "input[data-agent-form-target='skillInput'][value=?]", @skill.id.to_s
@@ -107,7 +109,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='agent[code]']"
     assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
     assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
-      count: ErpAI::ToolRegistry.default_tools.size
+      count: ErpAI::ToolRegistry.default_tools.size - 1
     assert_select "input[name='agent[skill_ids][]'][value=?]", @skill.id.to_s
   end
 

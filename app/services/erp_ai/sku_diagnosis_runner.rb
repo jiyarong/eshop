@@ -1,0 +1,115 @@
+module ErpAI
+  class SkuDiagnosisRunner
+    AGENT_CODE = "sku_diagnosis".freeze
+    TIME_ZONE = "Asia/Shanghai".freeze
+
+    class ScopedToolExecutor
+      def initialize(user:, date:, sku:, rule:)
+        @sku = sku
+        @rule = rule
+        @executor = ErpAI::ToolExecutor.new(mcp_clients: {}, current_user: user, event_date: date)
+      end
+
+      def conversation_id=(conversation_id)
+        @executor.conversation_id = conversation_id
+      end
+
+      def call(id:, name:, arguments:)
+        args = arguments.to_h.stringify_keys
+        if name != "save_sku_event" || args["sku_code"].to_s.upcase != @sku.sku_code ||
+            Integer(args["sub_agent_id"], exception: false) != @rule.id ||
+            %w[event_type message advise].any? { |key| args[key].blank? } ||
+            !%w[info warning critical].include?(args["severity"])
+          return { tool_call_id: id, name: name, error: { code: "invalid_scope" } }
+        end
+
+        @executor.call(id: id, name: name, arguments: args)
+      end
+    end
+
+    def self.run(as_of_date: nil, sku_code: nil)
+      new(as_of_date: as_of_date, sku_code: sku_code).run
+    end
+
+    def initialize(as_of_date:, sku_code: nil, client: DefaultClient.new, user: nil, snapshot_fetcher: Ec::SkuContextSnapshotFetcher)
+      @as_of_date = as_of_date.present? ? as_of_date.to_date : Time.current.in_time_zone(TIME_ZONE).to_date
+      @sku_code = sku_code
+      @client = client
+      @user = user
+      @snapshot_fetcher = snapshot_fetcher
+    end
+
+    def run
+      agent = Agent.ensure_fixed!(AGENT_CODE)
+      return unless agent.enabled?
+
+      user = @user || execution_user
+      rules = Ec::SkuDiagnosisRule.enabled_for(as_of_date).order(:id)
+      skus = Ec::Sku.where(sku_code: sku_code).to_a if sku_code.present?
+      skus ||= Ec::Sku.order(:sku_code).to_a
+      skus.each { |sku| rules.each { |rule| run_rule(agent, user, sku, rule) } }
+    end
+
+    private
+
+    attr_reader :as_of_date, :sku_code, :client, :snapshot_fetcher
+
+    def run_rule(agent, user, sku, rule)
+      period_from = as_of_date.beginning_of_week(:monday) - 1.week
+      period_to = period_from.end_of_week(:monday)
+      snapshot = snapshot_fetcher.fetch(sku.sku_code, snapshot_date: as_of_date)
+      categories = rule.context_keys.index_with do |key|
+        category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
+        {
+          name: category.fetch("name"),
+          markdown: category.fetch("markdown")
+        }
+      end
+      event_type_instruction = if rule.allowed_event_types.any?
+        "event_type 建议优先使用以下值，也可按诊断结论填写其他具体类型：#{rule.allowed_event_types.join(', ')}"
+      else
+        "event_type 写具体诊断事件类型"
+      end
+      question = <<~PROMPT
+        当前 SKU：#{sku.sku_code}
+        当前子规则 ID：#{rule.id}
+        子规则追加提示词：
+        #{rule.prompt}
+
+        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，advise 写操作建议；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
+      PROMPT
+      conversation = ErpAI::AgentRunner.new(
+        agent: agent, user: user, client: client,
+        tool_executor: ScopedToolExecutor.new(user: user, date: as_of_date, sku: sku, rule: rule)
+      ).ask(
+        question: question,
+        module_name: "sku_diagnosis",
+        business_object_type: "Ec::Sku",
+        business_object_id: sku.id.to_s,
+        time_range: { from: period_from.iso8601, to: period_to.iso8601 },
+        data_summary: {
+          sku_code: snapshot.fetch("sku_code"),
+          period: snapshot.fetch("period"),
+          categories: categories
+        }.to_json
+      )
+      saved = conversation.messages.where(role: "tool").any? do |message|
+        payload = JSON.parse(message.content)
+        result = payload["result"] || {}
+        payload["name"] == "save_sku_event" && result["success"] &&
+          result["sku_code"] == sku.sku_code && result["sub_agent_id"] == rule.id
+      rescue JSON::ParserError
+        false
+      end
+      raise "SKU diagnosis did not save an event" unless saved
+
+      conversation
+    rescue StandardError => e
+      Rails.logger.error("SKU diagnosis failed for #{sku.sku_code}/#{rule.id}: #{e.class}: #{e.message}")
+    end
+
+    def execution_user
+      User.joins(:roles).where(active: true, roles: { code: "super_admin" }).first || raise("No super admin available for SKU diagnosis")
+    end
+  end
+end

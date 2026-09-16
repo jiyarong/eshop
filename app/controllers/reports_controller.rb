@@ -124,9 +124,11 @@ class ReportsController < ApplicationController
       events: @diagnosis.events.map do |event|
         {
           event_type: event.event_type,
+          sub_agent_id: event.sub_agent_id,
           severity: event.severity,
           scope: event.scope,
           message: event.message,
+          advise: event.advise,
           details: event.details
         }
       end
@@ -846,6 +848,11 @@ class ReportsController < ApplicationController
         view_context.attachment_file_kind(attachment) == :image
     end
     if @active_tab == "ai_inventory_health"
+      @general_diagnosis_results = @sku.ai_diagnoses
+        .where(type: Ec::GeneralDiagnosis.sti_name)
+        .includes(:submitted_by, events: [ :conversation, :sub_agent ])
+        .recent_first
+        .limit(3)
       @inventory_health_results = @sku.ai_diagnoses
         .where(type: Ec::RestockingDiagnosis.sti_name)
         .includes(:submitted_by, events: :conversation)

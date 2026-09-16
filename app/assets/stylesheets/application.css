@@ -1938,6 +1938,11 @@ table thead th {
   background: #f5f8ff;
 }
 
+.ai-health-result--general-diagnosis {
+  border-left: 4px solid #0f766e;
+  background: #f0fdfa;
+}
+
 .ai-health-result--operation-diagnosis {
   border-left: 4px solid #ea580c;
   background: #fff8f2;
@@ -2047,6 +2052,10 @@ table thead th {
 
 .ai-health-result--inventory-diagnosis .section-title {
   color: #2856d9;
+}
+
+.ai-health-result--general-diagnosis .section-title {
+  color: #0f766e;
 }
 
 .ai-health-result--grade-diagnosis .section-title {
@@ -2230,10 +2239,36 @@ table thead th {
   min-width: 720px;
 }
 
-.ai-health-table td:first-child {
+.ai-health-severity-cell,
+.ai-health-event-type {
   display: flex;
   align-items: center;
   gap: 7px;
+}
+
+.ai-health-table__linked-row {
+  cursor: pointer;
+}
+
+.ai-health-table__linked-row:hover > td {
+  background: var(--pri-bg);
+}
+
+.ai-health-table__row-link {
+  color: var(--erp-brand);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ai-health-table__row-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ai-health-table__row-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--erp-brand);
+  outline-offset: 2px;
 }
 
 .ai-health-severity {
@@ -2245,6 +2280,65 @@ table thead th {
   min-width: 360px;
   white-space: normal;
   line-height: 1.5;
+}
+
+.ai-health-result--general-diagnosis .ai-health-table {
+  min-width: 1120px;
+}
+
+.ai-health-long-text__preview {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ai-health-long-text__trigger {
+  min-height: 32px;
+  margin-top: 4px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--erp-brand);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ai-health-long-text__trigger:hover {
+  color: var(--erp-brand-dark);
+}
+
+.ai-health-long-text__trigger:focus-visible {
+  outline: 2px solid var(--erp-brand);
+  outline-offset: 2px;
+}
+
+.ai-health-long-text-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface);
+  box-shadow: 0 24px 70px rgba(24, 34, 53, 0.26);
+}
+
+.ai-health-long-text-dialog::backdrop {
+  background: rgba(24, 34, 53, 0.42);
+}
+
+.ai-health-long-text-dialog__content {
+  padding: 18px;
+}
+
+.ai-health-long-text-dialog__text {
+  margin: 16px 0 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .ai-health-message__link {
@@ -8946,6 +9040,10 @@ body.auth-shell .auth-submit:hover {
   table-layout: fixed;
 }
 
+.ai-table-panel .ai-agent-table {
+  width: 100%;
+}
+
 .ai-admin-table th,
 .ai-admin-table td {
   padding: 14px 16px;
@@ -9192,6 +9290,10 @@ body.auth-shell .auth-submit:hover {
   grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr);
 }
 
+.ai-form-grid--rule-identity {
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.55fr) minmax(210px, 0.7fr);
+}
+
 .ai-form-grid--model {
   grid-template-columns: minmax(220px, 1fr) 130px minmax(300px, 1.4fr);
   align-items: end;
@@ -9223,6 +9325,41 @@ body.auth-shell .auth-submit:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.ai-toggle-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+
+.ai-toggle-grid--compact .ai-toggle-option {
+  min-height: 38px;
+  align-items: center;
+  padding: 7px 9px;
+}
+
+.ai-toggle-grid--compact .ai-toggle-option input {
+  margin-top: 0;
+}
+
+.ai-toggle-option--status {
+  min-height: 42px;
+  align-items: center;
+  padding: 7px 10px;
+  background: var(--erp-surface-soft);
+}
+
+.ai-toggle-option--status:has(input:checked) {
+  border-color: #a8b9e8;
+  background: #f0f4ff;
+}
+
+.ai-toggle-option--status input {
+  margin-top: 0;
+}
+
+.ai-toggle-option--status strong {
+  color: var(--erp-text);
 }
 
 .ai-toggle-option,

@@ -1,0 +1,29 @@
+<% value = text.to_s %>
+<% if value.length > 80 %>
+  <div class="ai-health-long-text" data-controller="operator-dialog">
+    <p class="ai-health-long-text__preview"><%= truncate(value, length: 80) %></p>
+    <button type="button"
+            class="ai-health-long-text__trigger"
+            data-action="operator-dialog#open"
+            data-operator-dialog-id="<%= dialog_id %>">
+      <%= t("reports.sku_detail.ai_general_diagnosis.view_full_details") %>
+    </button>
+  </div>
+
+  <dialog id="<%= dialog_id %>"
+          class="ai-health-long-text-dialog"
+          data-controller="operator-dialog"
+          data-action="click->operator-dialog#closeOnBackdrop">
+    <section class="ai-health-long-text-dialog__content" role="document" aria-labelledby="<%= dialog_id %>-title">
+      <div class="erp-modal__header">
+        <h3 id="<%= dialog_id %>-title"><%= t("reports.sku_detail.ai_general_diagnosis.full_details_title", field: label) %></h3>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="operator-dialog#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="ai-health-long-text-dialog__text"><%= value %></p>
+    </section>
+  </dialog>
+<% else %>
+  <%= report_value(value.presence) %>
+<% end %>

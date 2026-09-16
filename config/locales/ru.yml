@@ -120,6 +120,8 @@ ru:
     attributes:
       ec/sku:
         sku_code: "Код SKU"
+      ec/sku_diagnosis_rule:
+        allowed_event_types_text: "Разрешенные типы событий диагностики"
       ec/sku_marketing_state:
         effective_at: "Начало действия"
         ended_at: "Окончание действия"
@@ -198,6 +200,7 @@ ru:
     users: "Пользователи"
     sub2_usage: "Использование AI"
     agents: "AI Agent"
+    sku_diagnosis_rules: "Правила диагностики SKU"
     skills: "AI Skills"
     feedback_tasks: "Задачи изменений"
     mcp_debug: "MCP debug"
@@ -224,6 +227,7 @@ ru:
       cancel: "Отмена"
       close: "Закрыть"
       edit: "Редактировать"
+      delete: "Удалить"
       open: "Открыть"
       save: "Сохранить"
       view: "Просмотр"
@@ -585,6 +589,58 @@ ru:
         query_sales_data:
           description: "Запрашивает продажи ERP, заказы, товары, регионы и динамику по времени."
           name: "Запрос данных о продажах"
+        save_sku_event:
+          description: "Сохранить результат и основание диагностики SKU, а также рекомендуемое действие."
+          name: "Сохранить событие диагностики SKU"
+    sku_diagnosis_rules:
+      actions:
+        delete_confirm: "Удалить это правило диагностики SKU?"
+        edit_agent: "Изменить Agent диагностики SKU"
+        new: "Новое правило диагностики"
+      contexts:
+        base: "Основные данные"
+        inventory: "Запасы"
+        lifecycle: "Жизненный цикл"
+        profit: "Прибыль"
+        sales_funnel: "Воронка продаж"
+        advertise_per_week: "Реклама"
+        ec_orders_full_period: "Заказы"
+        supply_orders_full_period: "Поставки"
+        operation_actions_full_period: "Операции"
+        warehouse_recommendation: "Рекомендация склада"
+        search_terms_per_week: "Поисковые запросы"
+      edit:
+        title: "Изменить правило диагностики SKU"
+      fields:
+        actions: "Действия"
+        allowed_event_types: "Разрешенные типы событий диагностики"
+        contexts: "Контексты"
+        enabled: "Включено"
+        frequency: "Периодичность"
+        name: "Название правила"
+        prompt: "Дополнительный промпт"
+        rule_id: "Правило #%{id}"
+        status: "Статус"
+      hints:
+        allowed_event_types: "Введите по одному типу события в строке или вставьте несколько строк. Типы событий сохраняются как введены. Пустое поле снимает ограничение."
+        enabled: "После включения правило выполняется с заданной периодичностью."
+      frequencies:
+        daily: "Ежедневно"
+        weekly: "Еженедельно"
+      index:
+        empty: "Правил диагностики SKU пока нет."
+        title: "Правила диагностики SKU"
+      new:
+        title: "Новое правило диагностики SKU"
+      notices:
+        created: "Правило диагностики SKU создано."
+        deleted: "Правило диагностики SKU удалено."
+        updated: "Правило диагностики SKU обновлено."
+      sections:
+        identity: "Настройка правила"
+      statuses:
+        disabled: "Отключено"
+        enabled: "Включено"
     skills:
       actions:
         download: "Скачать ZIP"
@@ -1485,6 +1541,7 @@ ru:
         uploaded: "Загружено файлов: %{count}"
       empty:
         ai_inventory_health: "Нет записей AI-диагностики склада"
+        general_diagnoses: "Нет записей общей диагностики"
         grade_inspections: "Нет записей проверки Grade"
         inventory_diagnoses: "Нет записей диагностики запасов"
         operation_records: "Нет операционных записей"
@@ -1619,6 +1676,14 @@ ru:
         page_heading: "Исходные данные AI-диагностики"
         page_title: "Исходные данные AI-диагностики #%{id}"
         raw_payload: "Исходные данные диагностики"
+      ai_general_diagnosis:
+        advise: "Рекомендуемое действие"
+        event_type: "Тип события"
+        full_details_title: "%{field}: полная информация"
+        message: "Результат и основание диагностики"
+        sub_agent: "Пункт диагностики"
+        submission_title: "Общая диагностика №%{id}"
+        view_full_details: "Показать полностью"
       ai_operation_diagnosis:
         analysis_cutoff_date: "Граница анализа"
         confidence: "Уверенность"
@@ -1659,6 +1724,7 @@ ru:
         attachments: "Загрузить файл"
         basic_information: "Основная информация"
         grade_inspections: "Проверки Grade"
+        general_diagnoses: "Общая диагностика"
         inventory_diagnoses: "Диагностика запасов"
         ozon_cost: "Себестоимость Ozon"
         operation_records: "Операционные записи"

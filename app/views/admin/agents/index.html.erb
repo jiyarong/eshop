@@ -11,8 +11,8 @@
 
 <%= render "admin/shared/ai_navigation", section: :agents %>
 
-<section class="panel ai-table-panel">
-  <div class="table-scroll" data-controller="sticky-table-header">
+<section class="panel ai-table-panel table-list-card">
+  <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
     <table class="ai-admin-table ai-agent-table">
       <thead>
         <tr>
@@ -74,5 +74,5 @@
         <% end %>
       </tbody>
     </table>
-  </div>
+  <% end %>
 </section>

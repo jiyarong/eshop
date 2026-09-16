@@ -1,0 +1,37 @@
+<%= form_with model: rule, url: rule.persisted? ? admin_sku_diagnosis_rule_path(rule) : admin_sku_diagnosis_rules_path, class: "ai-agent-form" do |form| %>
+  <% if rule.errors.any? %>
+    <div class="error-box ai-form-errors" role="alert"><%= rule.errors.full_messages.join(t("common.list_separator")) %></div>
+  <% end %>
+  <div class="panel ai-editor-main">
+    <section class="ai-form-section">
+      <div class="ai-form-section__heading"><i class="bi bi-clipboard2-pulse" aria-hidden="true"></i><h2><%= t("admin.sku_diagnosis_rules.sections.identity") %></h2></div>
+      <div class="ai-form-grid ai-form-grid--identity ai-form-grid--rule-identity">
+        <div class="field"><%= form.label :name, t("admin.sku_diagnosis_rules.fields.name") %><%= form.text_field :name, required: true %></div>
+        <div class="field"><%= form.label :frequency, t("admin.sku_diagnosis_rules.fields.frequency") %><%= form.select :frequency, Ec::SkuDiagnosisRule::FREQUENCIES.map { |key| [t("admin.sku_diagnosis_rules.frequencies.#{key}"), key] }, {}, required: true %></div>
+        <div class="field">
+          <span class="field-label"><%= t("admin.sku_diagnosis_rules.fields.status") %></span>
+          <label class="checkbox-option ai-toggle-option ai-toggle-option--status">
+            <%= form.check_box :enabled %>
+            <span>
+              <strong><%= t("admin.sku_diagnosis_rules.fields.enabled") %></strong>
+              <small><%= t("admin.sku_diagnosis_rules.hints.enabled") %></small>
+            </span>
+          </label>
+        </div>
+        <div class="field field--full"><%= form.label :prompt, t("admin.sku_diagnosis_rules.fields.prompt") %><%= form.text_area :prompt, rows: 8, required: true %></div>
+        <div class="field field--full"><label><%= t("admin.sku_diagnosis_rules.fields.contexts") %></label><div class="ai-toggle-grid ai-toggle-grid--compact">
+          <%= hidden_field_tag "ec_sku_diagnosis_rule[context_keys][]", "" %>
+          <% Ec::SkuDiagnosisRule::CONTEXT_KEYS.each do |key| %>
+            <label class="checkbox-option ai-toggle-option"><%= check_box_tag "ec_sku_diagnosis_rule[context_keys][]", key, rule.context_keys.include?(key), id: "rule_context_#{key}" %><span><strong><%= t("admin.sku_diagnosis_rules.contexts.#{key}") %></strong></span></label>
+          <% end %>
+        </div></div>
+        <div class="field field--full">
+          <%= form.label :allowed_event_types_text, t("admin.sku_diagnosis_rules.fields.allowed_event_types") %>
+          <%= form.text_area :allowed_event_types_text, rows: 5, class: "code-input", aria: { describedby: "allowed-event-types-hint" } %>
+          <small id="allowed-event-types-hint" class="form-hint"><%= t("admin.sku_diagnosis_rules.hints.allowed_event_types") %></small>
+        </div>
+      </div>
+    </section>
+    <div class="form-actions"><%= link_to t("common.actions.cancel"), admin_sku_diagnosis_rules_path, class: "button button-secondary" %><%= form.submit t("common.actions.save"), class: "button" %></div>
+  </div>
+<% end %>

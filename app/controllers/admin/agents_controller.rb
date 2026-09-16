@@ -82,6 +82,7 @@ module Admin
     def load_capabilities
       @skills = Skill.order(:name)
       @tools = ErpAI::ToolRegistry.default_tools
+      @tools = @tools.select { |tool| (tool.fetch(:name) == "save_sku_event") == (@agent&.code == "sku_diagnosis") }
     end
   end
 end

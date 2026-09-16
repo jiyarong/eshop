@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_042317) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -106,7 +106,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
   end
 
   create_table "ec_ai_diagnosis_events", force: :cascade do |t|
-    t.string "advise"
+    t.text "advise"
     t.bigint "ai_diagnosis_id", null: false
     t.bigint "conversation_id"
     t.datetime "created_at", null: false
@@ -114,7 +114,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
     t.string "event_type", null: false
     t.text "message", null: false
     t.integer "position", default: 0, null: false
-    t.string "reason"
     t.string "scope"
     t.string "severity", null: false
     t.integer "sub_agent_id"
@@ -640,6 +639,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
     t.index ["user_id"], name: "index_ec_sku_developer_assignments_on_user_id"
   end
 
+  create_table "ec_sku_diagnosis_rules", force: :cascade do |t|
+    t.jsonb "configuration", default: {"context_keys" => ["base", "inventory", "lifecycle", "profit", "sales_funnel", "advertise_per_week", "ec_orders_full_period", "supply_orders_full_period", "operation_actions_full_period", "warehouse_recommendation", "search_terms_per_week"]}, null: false
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "frequency", default: "daily", null: false
+    t.string "name", null: false
+    t.text "prompt", null: false
+    t.datetime "updated_at", null: false
+    t.index ["enabled"], name: "index_ec_sku_diagnosis_rules_on_enabled"
+    t.index ["frequency"], name: "index_ec_sku_diagnosis_rules_on_frequency"
+  end
+
   create_table "ec_sku_dimensions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.decimal "inner_box_weight_kg", precision: 10, scale: 3
@@ -1118,8 +1129,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_071118) do
     t.datetime "synced_at"
     t.bigint "type_id", default: 0, null: false
     t.string "value"
-    t.index ["description_category_id", "type_id", "attribute_id"], name: "idx_raw_ozon_attr_values_attribute"
     t.index ["description_category_id", "type_id", "attribute_id", "dictionary_value_id"], name: "idx_raw_ozon_attr_values_unique", unique: true
+    t.index ["description_category_id", "type_id", "attribute_id"], name: "idx_raw_ozon_attr_values_attribute"
   end
 
   create_table "raw_ozon_categories", force: :cascade do |t|

@@ -53,6 +53,8 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::RestockingDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::OperationActionDiagnosis.where(sku_id: @sku&.id).destroy_all
     Ec::GradeInspect.where(sku_id: @sku&.id).destroy_all
+    Ec::GeneralDiagnosis.where(sku_id: @sku&.id).destroy_all
+    @diagnosis_rule&.destroy!
     Message.where(conversation: Conversation.where(user: @user)).delete_all
     Conversation.where(user: @user).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
@@ -103,6 +105,71 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-health-result__raw-link[href='#{report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result)}']"
     assert_select ".ai-health-message__link", count: 3
     assert_select ".ai-health-message__link[href='#{report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result)}']", text: "最新诊断消息"
+  end
+
+  test "sku detail ai tab displays general diagnoses" do
+    @diagnosis_rule = Ec::SkuDiagnosisRule.create!(
+      name: "库存风险诊断 #{@token}",
+      prompt: "检查库存风险",
+      frequency: "daily"
+    )
+    long_message = "近期销量增长但库存偏低，" * 10
+    long_advise = "补充两周安全库存，并持续观察销量变化。" * 8
+    conversation = Agent.ensure_fixed!("sku_diagnosis").conversations.create!(
+      user: @user,
+      module_name: "sku_diagnosis",
+      business_object_type: "Ec::Sku",
+      business_object_id: @sku.id.to_s
+    )
+    diagnosis = Ec::GeneralDiagnosis.create!(
+      sku: @sku,
+      submitted_by: @user,
+      data: {}
+    )
+    diagnosis.events.create!(
+      conversation: conversation,
+      event_type: "stock_risk",
+      sub_agent_id: @diagnosis_rule.id,
+      severity: "warning",
+      message: long_message,
+      advise: long_advise,
+      position: 0
+    )
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "section.ai-diagnosis-section--general" do
+      assert_select "h2", "通用诊断"
+      assert_select ".ai-health-result--general-diagnosis", count: 1
+      assert_select "h3", "通用诊断 ##{diagnosis.id}"
+      assert_select "th", "诊断项目"
+      assert_select "th", { text: "严重级别", count: 0 }
+      assert_select "th", "事件类型"
+      assert_select "th", "诊断结果和依据"
+      assert_select "th", "建议操作"
+      assert_select "tr.ai-health-table__linked-row[data-controller='table-row-link'][data-action='click->table-row-link#visit'][data-table-row-link-url-value='#{ai_conversation_path(conversation)}']" do
+        assert_select "a.ai-health-table__row-link[href='#{ai_conversation_path(conversation)}']", @diagnosis_rule.name
+        assert_select "td.ai-health-event-type", text: /★.*stock_risk/m
+        assert_select ".ai-health-star--warning", count: 1
+      end
+      assert_select ".ai-health-long-text__preview", count: 2
+      assert_select "button.ai-health-long-text__trigger[data-action='operator-dialog#open']", text: "查看完整信息", count: 2
+      assert_select "dialog.ai-health-long-text-dialog", count: 2
+      assert_select ".ai-health-long-text-dialog__text", text: long_message
+      assert_select ".ai-health-long-text-dialog__text", text: long_advise
+      assert_select ".ai-health-result__raw-link", count: 0
+    end
+
+    sign_in @user
+    get report_sku_ai_diagnosis_path(@sku.sku_code, diagnosis), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"sub_agent_id": #{@diagnosis_rule.id}/
+    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"message": "#{Regexp.escape(long_message)}"/
+    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"advise": "#{Regexp.escape(long_advise)}"/
   end
 
   test "shows Grade Inspector records and links to their original conversation" do

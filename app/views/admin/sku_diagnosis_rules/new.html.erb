@@ -1,0 +1,5 @@
+<% content_for :title, t("admin.sku_diagnosis_rules.new.title") %>
+<% content_for :page_heading, t("admin.sku_diagnosis_rules.new.title") %>
+<div class="ai-admin-heading"><h1 class="page-title"><%= t("admin.sku_diagnosis_rules.new.title") %></h1></div>
+<%= render "admin/shared/ai_navigation", section: :sku_diagnosis_rules %>
+<%= render "form", rule: @rule %>

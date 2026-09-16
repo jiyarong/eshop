@@ -120,6 +120,8 @@ zh:
     attributes:
       ec/sku:
         sku_code: "SKU编码"
+      ec/sku_diagnosis_rule:
+        allowed_event_types_text: "允许诊断的 event types"
       ec/sku_marketing_state:
         effective_at: "生效时间"
         ended_at: "结束时间"
@@ -205,6 +207,7 @@ zh:
     users: "用户管理"
     sub2_usage: "AI 用量看板"
     agents: "AI Agent"
+    sku_diagnosis_rules: "SKU诊断规则"
     skills: "AI Skills"
     feedback_tasks: "改动任务"
     mcp_debug: "MCP调试"
@@ -231,6 +234,7 @@ zh:
       cancel: "取消"
       close: "关闭"
       edit: "编辑"
+      delete: "删除"
       open: "打开"
       save: "保存"
       view: "查看"
@@ -592,6 +596,58 @@ zh:
         query_sales_data:
           description: "查询销售额、订单量、商品、区域和时间趋势等 ERP 销售数据。"
           name: "销售数据查询"
+        save_sku_event:
+          description: "保存 SKU 诊断结果、依据和操作建议。"
+          name: "保存 SKU 诊断事件"
+    sku_diagnosis_rules:
+      actions:
+        delete_confirm: "确认删除这条 SKU 诊断规则吗？"
+        edit_agent: "编辑通用SKU诊断 Agent"
+        new: "新增诊断规则"
+      contexts:
+        base: "基础资料"
+        inventory: "库存"
+        lifecycle: "生命周期"
+        profit: "利润"
+        sales_funnel: "销售漏斗"
+        advertise_per_week: "广告"
+        ec_orders_full_period: "订单"
+        supply_orders_full_period: "供应订单"
+        operation_actions_full_period: "运营操作"
+        warehouse_recommendation: "仓储建议"
+        search_terms_per_week: "搜索词"
+      edit:
+        title: "编辑 SKU 诊断规则"
+      fields:
+        actions: "操作"
+        allowed_event_types: "允许诊断的 event types"
+        contexts: "上下文"
+        enabled: "启用"
+        frequency: "执行频率"
+        name: "规则名称"
+        prompt: "追加提示词"
+        rule_id: "规则 #%{id}"
+        status: "状态"
+      hints:
+        allowed_event_types: "每行填写一个 event type，可一次粘贴多行并直接使用中文。留空表示不限制。"
+        enabled: "启用后按执行频率参与自动诊断。"
+      frequencies:
+        daily: "每天"
+        weekly: "每周"
+      index:
+        empty: "暂无 SKU 诊断规则。"
+        title: "SKU诊断规则"
+      new:
+        title: "新增 SKU 诊断规则"
+      notices:
+        created: "SKU 诊断规则已创建。"
+        deleted: "SKU 诊断规则已删除。"
+        updated: "SKU 诊断规则已更新。"
+      sections:
+        identity: "规则配置"
+      statuses:
+        disabled: "停用"
+        enabled: "启用"
     skills:
       actions:
         download: "下载 ZIP"
@@ -1722,6 +1778,7 @@ zh:
         uploaded: "已上传 %{count} 个附件"
       empty:
         ai_inventory_health: "暂无 AI 库存诊断记录"
+        general_diagnoses: "暂无通用诊断记录"
         grade_inspections: "暂无 Grade 检查记录"
         inventory_diagnoses: "暂无库存诊断记录"
         operation_records: "暂无运营记录"
@@ -1855,6 +1912,14 @@ zh:
         page_heading: "AI 诊断原始详情"
         page_title: "AI 诊断原始详情 #%{id}"
         raw_payload: "原始诊断数据"
+      ai_general_diagnosis:
+        advise: "建议操作"
+        event_type: "事件类型"
+        full_details_title: "%{field}完整信息"
+        message: "诊断结果和依据"
+        sub_agent: "诊断项目"
+        submission_title: "通用诊断 #%{id}"
+        view_full_details: "查看完整信息"
       ai_operation_diagnosis:
         analysis_cutoff_date: "分析截止"
         confidence: "置信度"
@@ -1908,6 +1973,7 @@ zh:
         attachments: "上传附件"
         basic_information: "基础信息"
         grade_inspections: "Grade 检查"
+        general_diagnoses: "通用诊断"
         inventory_reconciliation: "库存校对汇总"
         inventory_diagnoses: "库存诊断"
         latest_inventory_levels: "最新平台在库"

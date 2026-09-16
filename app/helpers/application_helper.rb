@@ -261,8 +261,14 @@ module ApplicationHelper
     diagnosis.is_a?(Ec::RestockingDiagnosis)
   end
 
+  def ai_general_diagnosis?(diagnosis)
+    diagnosis.is_a?(Ec::GeneralDiagnosis)
+  end
+
   def ai_diagnosis_submission_title(diagnosis)
-    key = if ai_grade_inspector_diagnosis?(diagnosis)
+    key = if ai_general_diagnosis?(diagnosis)
+      "reports.sku_detail.ai_general_diagnosis.submission_title"
+    elsif ai_grade_inspector_diagnosis?(diagnosis)
       "reports.sku_detail.ai_grade_inspector.submission_title"
     elsif ai_operation_action_diagnosis?(diagnosis)
       "reports.sku_detail.ai_operation_diagnosis.submission_title"

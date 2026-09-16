@@ -1,0 +1,55 @@
+<% content_for :title, t("admin.sku_diagnosis_rules.index.title") %>
+<% content_for :page_heading, t("admin.sku_diagnosis_rules.index.title") %>
+
+<div class="ai-admin-heading">
+  <h1 class="page-title"><%= t("admin.sku_diagnosis_rules.index.title") %></h1>
+  <%= link_to new_admin_sku_diagnosis_rule_path, class: "button" do %>
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    <span><%= t("admin.sku_diagnosis_rules.actions.new") %></span>
+  <% end %>
+</div>
+
+<%= render "admin/shared/ai_navigation", section: :sku_diagnosis_rules %>
+<p><%= link_to t("admin.sku_diagnosis_rules.actions.edit_agent"), edit_admin_agent_path("sku_diagnosis"), class: "ai-row-action" %></p>
+
+<section class="table-list-card">
+  <%= table_viewport(class_name: "table-list-viewport") do %>
+    <table class="ai-admin-table">
+      <thead>
+        <tr>
+          <th><%= t("admin.sku_diagnosis_rules.fields.name") %></th>
+          <th><%= t("admin.sku_diagnosis_rules.fields.frequency") %></th>
+          <th><%= t("admin.sku_diagnosis_rules.fields.contexts") %></th>
+          <th><%= t("admin.sku_diagnosis_rules.fields.status") %></th>
+          <th><%= t("admin.sku_diagnosis_rules.fields.actions") %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rules.each do |rule| %>
+          <tr>
+            <td>
+              <strong><%= rule.name %></strong>
+              <small class="ai-empty-value"><%= t("admin.sku_diagnosis_rules.fields.rule_id", id: rule.id) %></small>
+            </td>
+            <td><%= t("admin.sku_diagnosis_rules.frequencies.#{rule.frequency}") %></td>
+            <td><%= rule.context_keys.map { |key| t("admin.sku_diagnosis_rules.contexts.#{key}") }.join(t("common.list_separator")) %></td>
+            <td><%= rule.enabled? ? t("admin.sku_diagnosis_rules.statuses.enabled") : t("admin.sku_diagnosis_rules.statuses.disabled") %></td>
+            <td>
+              <%= link_to edit_admin_sku_diagnosis_rule_path(rule), class: "ai-row-action" do %>
+                <i class="bi bi-pencil" aria-hidden="true"></i>
+                <span><%= t("common.actions.edit") %></span>
+              <% end %>
+              <%= button_to admin_sku_diagnosis_rule_path(rule), method: :delete, class: "ai-row-action", data: { turbo_confirm: t("admin.sku_diagnosis_rules.actions.delete_confirm") } do %>
+                <i class="bi bi-trash" aria-hidden="true"></i>
+                <span><%= t("common.actions.delete") %></span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @rules.empty? %>
+          <tr><td colspan="5" class="empty-state"><%= t("admin.sku_diagnosis_rules.index.empty") %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</section>

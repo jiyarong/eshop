@@ -102,12 +102,12 @@ module Mcp
           {
             sku_code: string_schema("内部 SKU code"),
             sub_agent_id: integer_schema("子代理 ID"),
+            event_type: string_schema("诊断事件类型"),
             severity: string_schema("事件严重级别"),
-            reason: string_schema("诊断原因"),
-            message: string_schema("诊断消息"),
-            advise: string_schema("处理建议")
+            message: string_schema("诊断结果和依据"),
+            advise: string_schema("操作建议")
           },
-          required: %w[sku_code sub_agent_id severity message]
+          required: %w[sku_code sub_agent_id event_type severity message advise]
         )
       ]
     end

@@ -93,17 +93,17 @@ module Mcp
       arguments = {
         "sku_code" => @sku.sku_code,
         "sub_agent_id" => 7,
+        "event_type" => "stock_risk",
         "severity" => "warning",
-        "reason" => "库存偏低",
-        "message" => "需要关注",
+        "message" => "库存偏低，需要关注",
         "advise" => "检查补货计划"
       }
 
       first = executor.call("save_sku_event", arguments)
       second = executor.call("save_sku_event", arguments.merge(
+        "event_type" => "inventory_recovery",
         "severity" => "danger",
-        "reason" => "库存严重偏低",
-        "message" => "立即处理",
+        "message" => "库存严重偏低，立即处理",
         "advise" => "立即补货"
       ))
 
@@ -114,11 +114,10 @@ module Mcp
 
       diagnosis = Ec::GeneralDiagnosis.find(first.fetch(:diagnosis_id))
       event = diagnosis.events.sole
-      assert_equal "general_event_v1", event.event_type
+      assert_equal "inventory_recovery", event.event_type
       assert_equal 7, event.sub_agent_id
       assert_equal "danger", event.severity
-      assert_equal "库存严重偏低", event.reason
-      assert_equal "立即处理", event.message
+      assert_equal "库存严重偏低，立即处理", event.message
       assert_equal "立即补货", event.advise
     end
 

@@ -41,6 +41,7 @@ import SkuLifecycleTimelineController from "./controllers/sku_lifecycle_timeline
 import SpuSkuFilterController from "./controllers/spu_sku_filter_controller";
 import TimeRangeSelectorController from "./controllers/time_range_selector_controller";
 import TableRowExpanderController from "./controllers/table_row_expander_controller";
+import TableRowLinkController from "./controllers/table_row_link_controller";
 import StickyTableHeaderController from "./controllers/sticky_table_header_controller";
 import ToastController from "./controllers/toast_controller";
 import WeeklyProfitFilterController from "./controllers/weekly_profit_filter_controller";
@@ -88,6 +89,7 @@ Stimulus.register("sku-lifecycle-timeline", SkuLifecycleTimelineController);
 Stimulus.register("spu-sku-filter", SpuSkuFilterController);
 Stimulus.register("time-range-selector", TimeRangeSelectorController);
 Stimulus.register("table-row-expander", TableRowExpanderController);
+Stimulus.register("table-row-link", TableRowLinkController);
 Stimulus.register("sticky-table-header", StickyTableHeaderController);
 Stimulus.register("toast", ToastController);
 Stimulus.register("weekly-profit-filter", WeeklyProfitFilterController);

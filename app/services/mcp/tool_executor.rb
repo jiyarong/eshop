@@ -3,8 +3,10 @@ module Mcp
     DEFAULT_LIMIT = 50
     MAX_LIMIT = 100
 
-    def initialize(current_user:)
+    def initialize(current_user:, event_date: nil, conversation_id: nil)
       @current_user = current_user
+      @event_date = event_date
+      @conversation_id = conversation_id
       @visible_scope = Mcp::VisibleSkuScope.new(current_user)
     end
 
@@ -77,7 +79,7 @@ module Mcp
       sku_code = args["sku_code"].to_s.upcase
       return { error: "sku_code is required" } if sku_code.blank?
 
-      sku = visible_sku(sku_code)
+      sku = visible_scope.global_user? ? Ec::Sku.find_by(sku_code: sku_code) : visible_sku(sku_code)
       return { error: "SKU is not visible to current user" } unless sku
 
       sub_agent_id = Integer(args["sub_agent_id"], exception: false)
@@ -86,16 +88,23 @@ module Mcp
       severity = args["severity"].to_s
       return { error: "severity is required" } if severity.blank?
 
+      event_type = args["event_type"].to_s
+      return { error: "event_type is required" } if event_type.blank?
+
       message = args["message"].to_s
       return { error: "message is required" } if message.blank?
 
-      today = user_today
-      day_start = user_time_zone.local(today.year, today.month, today.day)
+      advise = args["advise"].to_s
+      return { error: "advise is required" } if advise.blank?
+
+      today = @event_date || user_today
+      day_start = (@event_date ? Time.find_zone!("Asia/Shanghai") : user_time_zone).local(today.year, today.month, today.day)
       day_end = day_start + 1.day
       event = nil
       diagnosis = nil
 
       sku.with_lock do
+        previous_latest = Ec::GeneralDiagnosis.find_by(sku_id: sku.id, is_latest: true)
         diagnosis = Ec::GeneralDiagnosis
           .where(sku_id: sku.id, created_at: day_start...day_end)
           .order(id: :desc)
@@ -103,30 +112,35 @@ module Mcp
         diagnosis ||= Ec::GeneralDiagnosis.create!(
           sku: sku,
           submitted_by: current_user,
-          data: {}
+          data: {},
+          **(@event_date ? { created_at: day_start + 3.hours } : {})
         )
+        if previous_latest && previous_latest.created_at > diagnosis.created_at && previous_latest.id != diagnosis.id
+          diagnosis.update_column(:is_latest, false)
+          previous_latest.update_column(:is_latest, true)
+        end
 
         diagnosis.with_lock do
           event = diagnosis.events
-            .where(event_type: Ec::GeneralDiagnosis::EVENT_TYPE, sub_agent_id: sub_agent_id)
+            .where(sub_agent_id: sub_agent_id)
             .where(created_at: day_start...day_end)
             .order(id: :desc)
             .first
 
           attributes = {
-            event_type: Ec::GeneralDiagnosis::EVENT_TYPE,
+            event_type: event_type,
             sub_agent_id: sub_agent_id,
             severity: severity,
-            reason: args["reason"],
             message: message,
-            advise: args["advise"],
+            advise: advise,
             position: 0
           }
+          attributes[:conversation_id] = @conversation_id if @conversation_id.present?
 
           if event
             event.update!(attributes)
           else
-            event = diagnosis.events.create!(attributes)
+            event = diagnosis.events.create!(attributes.merge(@event_date ? { created_at: day_start + 3.hours } : {}))
           end
         end
       end

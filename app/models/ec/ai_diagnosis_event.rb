@@ -4,6 +4,7 @@ module Ec
 
     belongs_to :ai_diagnosis, class_name: "Ec::AIDiagnosis", inverse_of: :events
     belongs_to :conversation, optional: true
+    belongs_to :sub_agent, class_name: "Ec::SkuDiagnosisRule", foreign_key: :sub_agent_id, optional: true
 
     validates :event_type, :severity, :message, presence: true
     validates :position, numericality: { only_integer: true, greater_than_or_equal_to: 0 }

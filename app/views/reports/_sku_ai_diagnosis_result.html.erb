@@ -1,6 +1,7 @@
 <% operation_diagnosis = ai_operation_action_diagnosis?(result) %>
 <% grade_diagnosis = ai_grade_inspector_diagnosis?(result) %>
 <% inventory_diagnosis = ai_inventory_health_diagnosis?(result) %>
+<% general_diagnosis = ai_general_diagnosis?(result) %>
 <% conversation_id = result.events.find(&:conversation_id)&.conversation_id %>
 <% raw_details_path = if conversation_id
   ai_conversation_path(conversation_id, locale: params[:locale].presence)
@@ -8,7 +9,7 @@ else
   report_sku_ai_diagnosis_path(@sku.sku_code, result, locale: params[:locale].presence)
 end %>
 
-<details class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis, "ai-health-result--grade-diagnosis": grade_diagnosis, "ai-health-result--inventory-diagnosis": inventory_diagnosis) %>">
+<details class="<%= class_names("panel ai-health-result", "ai-health-result--operation-diagnosis": operation_diagnosis, "ai-health-result--grade-diagnosis": grade_diagnosis, "ai-health-result--inventory-diagnosis": inventory_diagnosis, "ai-health-result--general-diagnosis": general_diagnosis) %>">
   <summary class="ai-health-result__summary">
     <i class="bi bi-chevron-right ai-health-result__chevron" aria-hidden="true"></i>
     <div class="ai-health-result__header">
@@ -27,24 +28,26 @@ end %>
     </div>
   </summary>
   <div class="ai-health-result__body">
-    <div class="ai-health-result__actions">
-      <%= link_to raw_details_path, target: "_blank", rel: "noopener noreferrer",
-                  class: "button button-secondary ai-health-result__conversation-link ai-health-result__raw-link" do %>
-        <i class="bi bi-chat-square-text" aria-hidden="true"></i>
-        <%= t("reports.sku_detail.ai_inventory_health.view_raw_details") %>
-      <% end %>
-      <% if can?(:manage_skus) && inventory_diagnosis %>
-        <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
-                      method: :delete,
-                      class: "ico-btn ai-health-result__delete-button",
-                      title: t("reports.sku_detail.actions.delete_inventory_health_result"),
-                      form_class: "ai-health-result__delete-form",
-                      form: { data: { turbo_confirm: t("reports.sku_detail.ai_inventory_health.delete_confirm") } } do %>
-          <i class="bi bi-trash" aria-hidden="true"></i>
-          <span class="sr-only"><%= t("reports.sku_detail.actions.delete_inventory_health_result") %></span>
+    <% unless general_diagnosis %>
+      <div class="ai-health-result__actions">
+        <%= link_to raw_details_path, target: "_blank", rel: "noopener noreferrer",
+                    class: "button button-secondary ai-health-result__conversation-link ai-health-result__raw-link" do %>
+          <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+          <%= t("reports.sku_detail.ai_inventory_health.view_raw_details") %>
         <% end %>
-      <% end %>
-    </div>
+        <% if can?(:manage_skus) && inventory_diagnosis %>
+          <%= button_to report_sku_inventory_health_result_path(@sku.sku_code, result, request.query_parameters.slice(:locale)),
+                        method: :delete,
+                        class: "ico-btn ai-health-result__delete-button",
+                        title: t("reports.sku_detail.actions.delete_inventory_health_result"),
+                        form_class: "ai-health-result__delete-form",
+                        form: { data: { turbo_confirm: t("reports.sku_detail.ai_inventory_health.delete_confirm") } } do %>
+            <i class="bi bi-trash" aria-hidden="true"></i>
+            <span class="sr-only"><%= t("reports.sku_detail.actions.delete_inventory_health_result") %></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
 
     <% if grade_diagnosis %>
       <section class="ai-operation-diagnosis ai-grade-diagnosis">
@@ -123,31 +126,72 @@ end %>
       <table class="ai-health-table">
         <thead>
           <tr>
-            <th><%= t("reports.sku_detail.ai_inventory_health.severity") %></th>
-            <th><%= t("reports.sku_detail.ai_inventory_health.event_type") %></th>
-            <th><%= t("reports.sku_detail.ai_inventory_health.message") %></th>
+            <% if general_diagnosis %>
+              <th><%= t("reports.sku_detail.ai_general_diagnosis.sub_agent") %></th>
+              <th><%= t("reports.sku_detail.ai_general_diagnosis.event_type") %></th>
+              <th><%= t("reports.sku_detail.ai_general_diagnosis.message") %></th>
+              <th><%= t("reports.sku_detail.ai_general_diagnosis.advise") %></th>
+            <% else %>
+              <th><%= t("reports.sku_detail.ai_inventory_health.severity") %></th>
+              <th><%= t("reports.sku_detail.ai_inventory_health.event_type") %></th>
+              <th><%= t("reports.sku_detail.ai_inventory_health.message") %></th>
+            <% end %>
           </tr>
         </thead>
         <tbody>
           <% result.events.each do |event| %>
-            <tr>
-              <td>
-                <span class="ai-health-star ai-health-star--<%= ai_inventory_health_severity_class(event.severity) %>"
-                      title="<%= event.message %>"
-                      aria-label="<%= event.message %>">★</span>
-                <span class="ai-health-severity"><%= event.severity %></span>
-              </td>
-              <td>
-                <% if operation_diagnosis && event.details.dig("action", "operation_type").present? %>
-                  <div class="ai-operation-diagnosis__event-action">
-                    <%= ai_operation_action_type_label(event.details.dig("action", "operation_type")) %>
-                    · <%= event.details.dig("action", "platform").to_s.upcase %>
-                  </div>
-                <% else %>
-                  <%= event.event_type %>
-                <% end %>
-              </td>
-              <td class="ai-health-message"><%= event.message %></td>
+            <% conversation_path = general_diagnosis && event.conversation_id ? ai_conversation_path(event.conversation_id, locale: params[:locale].presence) : nil %>
+            <tr class="<%= "ai-health-table__linked-row" if conversation_path %>"
+                <% if conversation_path %>
+                  data-controller="table-row-link"
+                  data-action="click->table-row-link#visit"
+                  data-table-row-link-url-value="<%= conversation_path %>"
+                <% end %>>
+              <% if general_diagnosis %>
+                <td>
+                  <% if conversation_path %>
+                    <%= link_to report_value(event.sub_agent&.name), conversation_path, class: "ai-health-table__row-link" %>
+                  <% else %>
+                    <%= report_value(event.sub_agent&.name) %>
+                  <% end %>
+                </td>
+                <td class="ai-health-event-type">
+                  <span class="ai-health-star ai-health-star--<%= ai_inventory_health_severity_class(event.severity) %>"
+                        title="<%= ai_inventory_health_star_label(ai_inventory_health_severity_class(event.severity), 1) %>"
+                        aria-label="<%= ai_inventory_health_star_label(ai_inventory_health_severity_class(event.severity), 1) %>">★</span>
+                  <span><%= event.event_type %></span>
+                </td>
+                <td class="ai-health-message">
+                  <%= render "reports/sku_ai_diagnosis_long_text",
+                             text: event.message,
+                             label: t("reports.sku_detail.ai_general_diagnosis.message"),
+                             dialog_id: "ai-diagnosis-event-#{event.id}-message" %>
+                </td>
+                <td class="ai-health-message">
+                  <%= render "reports/sku_ai_diagnosis_long_text",
+                             text: event.advise,
+                             label: t("reports.sku_detail.ai_general_diagnosis.advise"),
+                             dialog_id: "ai-diagnosis-event-#{event.id}-advise" %>
+                </td>
+              <% else %>
+                <td class="ai-health-severity-cell">
+                  <span class="ai-health-star ai-health-star--<%= ai_inventory_health_severity_class(event.severity) %>"
+                        title="<%= event.message %>"
+                        aria-label="<%= event.message %>">★</span>
+                  <span class="ai-health-severity"><%= event.severity %></span>
+                </td>
+                <td>
+                  <% if operation_diagnosis && event.details.dig("action", "operation_type").present? %>
+                    <div class="ai-operation-diagnosis__event-action">
+                      <%= ai_operation_action_type_label(event.details.dig("action", "operation_type")) %>
+                      · <%= event.details.dig("action", "platform").to_s.upcase %>
+                    </div>
+                  <% else %>
+                    <%= event.event_type %>
+                  <% end %>
+                </td>
+                <td class="ai-health-message"><%= event.message %></td>
+              <% end %>
             </tr>
           <% end %>
         </tbody>

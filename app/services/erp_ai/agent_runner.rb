@@ -47,6 +47,7 @@ module ErpAI
     attr_reader :agent, :user, :client, :server_registry, :max_tool_rounds
 
     def run_loop(conversation, data_summary, broadcaster: nil)
+      assign_conversation_id(conversation)
       tool_rounds = 0
       assistant_message = nil
       assistant_pending = false
@@ -147,6 +148,11 @@ module ErpAI
       )
     end
 
+    def assign_conversation_id(conversation)
+      executor = current_tool_executor
+      executor.conversation_id = conversation.id if executor.respond_to?(:conversation_id=)
+    end
+
     def build_context(conversation, data_summary)
       role_names = user.roles.order(:position, :id).map(&:name).join("、")
       permission_names = user.roles.flat_map(&:permissions).uniq.map(&:to_s).sort.join("、")
@@ -166,6 +172,8 @@ module ErpAI
     end
 
     def mcp_tools
+      return [] if agent.code == "sku_diagnosis"
+
       mcp_clients.flat_map do |server_name, mcp_client|
         ErpAI::Mcp::ToolAdapter.adapt(server_name: server_name, tools: filtered_mcp_tools(server_name, mcp_client.list_tools))
       rescue StandardError

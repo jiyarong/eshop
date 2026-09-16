@@ -149,6 +149,8 @@ en:
     attributes:
       ec/sku:
         sku_code: "SKU code"
+      ec/sku_diagnosis_rule:
+        allowed_event_types_text: "Allowed diagnosis event types"
       ec/sku_marketing_state:
         effective_at: "Effective at"
         ended_at: "Ended at"
@@ -227,6 +229,7 @@ en:
     users: "Users"
     sub2_usage: "AI Usage"
     agents: "AI Agents"
+    sku_diagnosis_rules: "SKU Diagnosis Rules"
     skills: "AI Skills"
     feedback_tasks: "Change Tasks"
     mcp_debug: "MCP Debug"
@@ -253,6 +256,7 @@ en:
       cancel: "Cancel"
       close: "Close"
       edit: "Edit"
+      delete: "Delete"
       open: "Open"
       save: "Save"
       view: "View"
@@ -614,6 +618,58 @@ en:
         query_sales_data:
           description: "Query ERP sales, orders, products, regions, and trends over time."
           name: "Sales data query"
+        save_sku_event:
+          description: "Save a SKU diagnosis result, basis, and recommended action."
+          name: "Save SKU diagnosis event"
+    sku_diagnosis_rules:
+      actions:
+        delete_confirm: "Delete this SKU diagnosis rule?"
+        edit_agent: "Edit general SKU diagnosis agent"
+        new: "New diagnosis rule"
+      contexts:
+        base: "Base profile"
+        inventory: "Inventory"
+        lifecycle: "Lifecycle"
+        profit: "Profit"
+        sales_funnel: "Sales funnel"
+        advertise_per_week: "Advertising"
+        ec_orders_full_period: "Orders"
+        supply_orders_full_period: "Supply orders"
+        operation_actions_full_period: "Operations"
+        warehouse_recommendation: "Warehouse recommendation"
+        search_terms_per_week: "Search terms"
+      edit:
+        title: "Edit SKU diagnosis rule"
+      fields:
+        actions: "Actions"
+        allowed_event_types: "Allowed diagnosis event types"
+        contexts: "Contexts"
+        enabled: "Enabled"
+        frequency: "Frequency"
+        name: "Rule name"
+        prompt: "Additional prompt"
+        rule_id: "Rule #%{id}"
+        status: "Status"
+      hints:
+        allowed_event_types: "Enter one event type per line or paste multiple lines. Event types are saved as entered. Leave blank for no restriction."
+        enabled: "When enabled, this rule runs on its configured schedule."
+      frequencies:
+        daily: "Daily"
+        weekly: "Weekly"
+      index:
+        empty: "No SKU diagnosis rules yet."
+        title: "SKU Diagnosis Rules"
+      new:
+        title: "New SKU diagnosis rule"
+      notices:
+        created: "SKU diagnosis rule created."
+        deleted: "SKU diagnosis rule deleted."
+        updated: "SKU diagnosis rule updated."
+      sections:
+        identity: "Rule configuration"
+      statuses:
+        disabled: "Disabled"
+        enabled: "Enabled"
     skills:
       actions:
         download: "Download ZIP"
@@ -1520,6 +1576,7 @@ en:
         uploaded: "%{count} attachments uploaded"
       empty:
         ai_inventory_health: "No AI inventory diagnosis records"
+        general_diagnoses: "No general diagnosis records"
         grade_inspections: "No Grade inspection records"
         inventory_diagnoses: "No inventory diagnosis records"
         operation_records: "No operation records"
@@ -1653,6 +1710,14 @@ en:
         page_heading: "Original AI diagnosis details"
         page_title: "Original AI diagnosis details #%{id}"
         raw_payload: "Original diagnosis data"
+      ai_general_diagnosis:
+        advise: "Recommended action"
+        event_type: "Event type"
+        full_details_title: "Full %{field}"
+        message: "Diagnosis result and basis"
+        sub_agent: "Diagnosis item"
+        submission_title: "General diagnosis #%{id}"
+        view_full_details: "View full details"
       ai_operation_diagnosis:
         analysis_cutoff_date: "Analysis cutoff"
         confidence: "Confidence"
@@ -1706,6 +1771,7 @@ en:
         attachments: "Upload attachment"
         basic_information: "Basic information"
         grade_inspections: "Grade inspections"
+        general_diagnoses: "General diagnoses"
         inventory_reconciliation: "Inventory reconciliation"
         inventory_diagnoses: "Inventory diagnoses"
         latest_inventory_levels: "Latest platform inventory"

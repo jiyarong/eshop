@@ -142,6 +142,7 @@ Rails.application.routes.draw do
     get "users/:id/edit" => "users#edit", as: :edit_user
     post "agents/:id" => "agents#update"
     resources :agents, only: [:index, :new, :create, :edit, :update], param: :id
+    resources :sku_diagnosis_rules, only: [:index, :new, :create, :edit, :update, :destroy]
     resources :skills, only: [:index, :new, :create, :show, :edit, :update] do
       get :download, on: :member
     end

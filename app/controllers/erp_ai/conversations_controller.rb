@@ -4,6 +4,10 @@ module ErpAI
     before_action -> { require_permission!(:view_reports) }
 
     def create
+      if conversation_params[:agent_code] == "sku_diagnosis"
+        return render json: { error: "sku_diagnosis is scheduled-only" }, status: :unprocessable_entity
+      end
+
       agent = Agent.ensure_fixed!(conversation_params[:agent_code].presence || "business_analysis")
       conversation = ErpAI::AgentRunner.new(agent: agent, user: current_user).ask(
         question: conversation_params.fetch(:question),
