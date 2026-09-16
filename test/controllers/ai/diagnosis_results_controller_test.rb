@@ -47,6 +47,7 @@ class ErpAI::DiagnosisResultsControllerTest < ActionDispatch::IntegrationTest
   test "returns recent GradeInspect diagnoses with their events" do
     older = create_history_diagnosis("2026-07-26", analyzed_at: "2026-07-28T12:00:00+08:00")
     newer = create_history_diagnosis("2026-08-02", analyzed_at: "2026-08-04T12:00:00+08:00")
+    newer.events.sole.ignored!
 
     get "/ai/diagnosis_results",
       params: { type: "GradeInspect", sku: @sku.sku_code, limit: 2 },
@@ -60,6 +61,8 @@ class ErpAI::DiagnosisResultsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ newer.id, older.id ], diagnoses.map { |diagnosis| diagnosis.fetch("id") }
     assert_equal "2026-08-02", diagnoses.first.dig("data", "analysis_cutoff_date")
     assert_equal "grade_under_observation", diagnoses.first.dig("events", 0, "event_type")
+    assert_equal "ignored", diagnoses.first.dig("events", 0, "status")
+    assert_equal "active", diagnoses.second.dig("events", 0, "status")
   end
 
   test "rejects an empty event list" do

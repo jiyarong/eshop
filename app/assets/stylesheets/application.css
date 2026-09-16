@@ -2262,6 +2262,20 @@ table thead th {
   background: var(--pri-bg);
 }
 
+.ai-health-table__row--ignored > td {
+  color: var(--erp-muted);
+  opacity: 0.72;
+}
+
+.ai-health-table__actions {
+  width: 64px;
+  text-align: right;
+}
+
+.ai-health-table__actions form {
+  margin: 0;
+}
+
 .ai-health-table__row-link {
   color: var(--erp-brand);
   font-weight: 700;

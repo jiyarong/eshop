@@ -31,6 +31,7 @@ class ReportsController < ApplicationController
     destroy_sku_operation_action
     destroy_sku_attachment
     destroy_sku_inventory_health_result
+    ignore_sku_ai_diagnosis_event
     new_sku_general_diagnosis
     create_sku_general_diagnosis
     destroy_sku_competitor_data_batch
@@ -128,6 +129,7 @@ class ReportsController < ApplicationController
           event_type: event.event_type,
           sub_agent_id: event.sub_agent_id,
           severity: event.severity,
+          status: event.status,
           scope: event.scope,
           message: event.message,
           advise: event.advise,
@@ -157,6 +159,21 @@ class ReportsController < ApplicationController
     AITasks::SkuDiagnosisJob.perform_later(sku_code: @sku.sku_code, rule_ids: selected_rule_ids)
     redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
                 notice: t("reports.sku_detail.ai_general_diagnosis.enqueued")
+  end
+
+  def ignore_sku_ai_diagnosis_event
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    event = Ec::AIDiagnosisEvent
+      .joins(:ai_diagnosis)
+      .where(ec_ai_diagnosis: { sku_id: @sku.id })
+      .find(params[:event_id])
+    event.ignored!
+
+    redirect_to report_sku_path(
+      @sku.sku_code,
+      tab: "ai_inventory_health",
+      locale: params[:locale].presence
+    ), notice: t("reports.sku_detail.ai_inventory_health.ignored"), status: :see_other
   end
 
   def update_inventory_returns
@@ -1131,7 +1148,7 @@ class ReportsController < ApplicationController
       result = ErpAI::DynamicDailySalesForecast.new(skus: skus.to_a, date_to: user_today - 1.day).call
       skus.one? ? { skus.first => result } : result
     end
-    event_types_by_sku_id = load_latest_red_ai_diagnosis_event_types_for(skus)
+    event_types_by_sku_id = load_latest_active_ai_diagnosis_risk_event_types_for(skus)
 
     rows = skus.map do |sku|
       fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {}).merge(

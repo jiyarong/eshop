@@ -232,7 +232,7 @@ module ApplicationHelper
 
   def ai_inventory_health_star_counts(events)
     order = %w[success warning orange danger info neutral]
-    events.each_with_object(Hash.new(0)) do |event, counts|
+    events.select(&:active?).each_with_object(Hash.new(0)) do |event, counts|
       counts[ai_inventory_health_severity_class(event.severity)] += 1
     end.sort_by { |severity, _count| order.index(severity) || order.length }
   end

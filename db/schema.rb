@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_16_042317) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_083332) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -116,11 +116,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_042317) do
     t.integer "position", default: 0, null: false
     t.string "scope"
     t.string "severity", null: false
+    t.string "status", default: "active", null: false
     t.integer "sub_agent_id"
     t.datetime "updated_at", null: false
     t.index ["ai_diagnosis_id", "position"], name: "idx_ai_diagnosis_events_on_diagnosis_and_position"
     t.index ["ai_diagnosis_id"], name: "index_ec_ai_diagnosis_events_on_ai_diagnosis_id"
     t.index ["conversation_id"], name: "index_ec_ai_diagnosis_events_on_conversation_id"
+    t.index ["status"], name: "index_ec_ai_diagnosis_events_on_status"
   end
 
   create_table "ec_ai_suggestions", force: :cascade do |t|

@@ -1676,12 +1676,20 @@ en:
         sales_quantity: "Sold units"
         supply_quantity: "Supplied units"
       ai_inventory_health:
+        actions: "Actions"
         delete_confirm: "Delete this AI inventory diagnosis?"
         deleted: "AI inventory diagnosis deleted"
         event_type: "Event type"
+        ignore: "Ignore"
+        ignore_confirm: "Ignore this diagnosis event?"
+        ignored: "Diagnosis event ignored"
         message: "Message"
         metrics_title: "Diagnosis metrics"
         severity: "Severity"
+        status: "Status"
+        statuses:
+          active: "Active"
+          ignored: "Ignored"
         severity_labels:
           danger: "Red"
           info: "Blue"

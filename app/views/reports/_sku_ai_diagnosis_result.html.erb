@@ -142,12 +142,16 @@ end %>
               <th><%= t("reports.sku_detail.ai_inventory_health.event_type") %></th>
               <th><%= t("reports.sku_detail.ai_inventory_health.message") %></th>
             <% end %>
+            <th><%= t("reports.sku_detail.ai_inventory_health.status") %></th>
+            <% if can?(:manage_skus) %>
+              <th><%= t("reports.sku_detail.ai_inventory_health.actions") %></th>
+            <% end %>
           </tr>
         </thead>
         <tbody>
           <% result.events.each do |event| %>
             <% conversation_path = general_diagnosis && event.conversation_id ? ai_conversation_path(event.conversation_id, locale: params[:locale].presence) : nil %>
-            <tr class="<%= "ai-health-table__linked-row" if conversation_path %>"
+            <tr class="<%= class_names("ai-health-table__linked-row": conversation_path, "ai-health-table__row--ignored": event.ignored?) %>"
                 <% if conversation_path %>
                   data-controller="table-row-link"
                   data-action="click->table-row-link#visit"
@@ -199,6 +203,25 @@ end %>
                   <% end %>
                 </td>
                 <td class="ai-health-message"><%= event.message %></td>
+              <% end %>
+              <td>
+                <span class="status-pill <%= event.active? ? "is-active" : "is-muted" %>">
+                  <%= t("reports.sku_detail.ai_inventory_health.statuses.#{event.status}") %>
+                </span>
+              </td>
+              <% if can?(:manage_skus) %>
+                <td class="ai-health-table__actions">
+                  <% if event.active? %>
+                    <%= button_to ignore_report_sku_ai_diagnosis_event_path(@sku.sku_code, event, request.query_parameters.slice(:locale)),
+                                  method: :patch,
+                                  class: "ico-btn ai-health-table__ignore-button",
+                                  title: t("reports.sku_detail.ai_inventory_health.ignore"),
+                                  form: { data: { turbo_confirm: t("reports.sku_detail.ai_inventory_health.ignore_confirm") } } do %>
+                      <i class="bi bi-eye-slash" aria-hidden="true"></i>
+                      <span class="sr-only"><%= t("reports.sku_detail.ai_inventory_health.ignore") %></span>
+                    <% end %>
+                  <% end %>
+                </td>
               <% end %>
             </tr>
           <% end %>

@@ -51,7 +51,7 @@ class OperatorSkusController < ApplicationController
       @skus = table_sort_key.present? ? Kaminari.paginate_array(sorted).page(@skus.total_pages).per(PAGE_SIZE) : scope.page(@skus.total_pages).per(PAGE_SIZE)
     end
     @metrics_by_sku = metrics_for(@skus)
-    load_latest_red_ai_diagnosis_events_for(@skus)
+    load_latest_active_ai_diagnosis_risk_events_for(@skus)
   end
 
   private

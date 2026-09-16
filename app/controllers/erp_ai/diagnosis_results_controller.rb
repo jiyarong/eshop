@@ -199,6 +199,7 @@ module ErpAI
           {
             event_type: event.event_type,
             severity: event.severity,
+            status: event.status,
             scope: event.scope,
             message: event.message,
             details: event.details

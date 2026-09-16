@@ -4,7 +4,7 @@ module AIDiagnosisEventFilterable
   private
 
   def load_ai_diagnosis_event_filter
-    @ai_diagnosis_event_tags = latest_red_ai_diagnosis_events
+    @ai_diagnosis_event_tags = latest_active_ai_diagnosis_risk_events
       .group(:event_type)
       .order(:event_type)
       .count("DISTINCT ec_ai_diagnosis.sku_id")
@@ -39,14 +39,14 @@ module AIDiagnosisEventFilterable
     @ai_diagnosis_event_filtered_sku_codes ||= Ec::Sku.where(id: ai_diagnosis_event_sku_ids).pluck(:sku_code).to_set
   end
 
-  def load_latest_red_ai_diagnosis_event_types_for(skus)
-    load_latest_red_ai_diagnosis_events_for(skus)
+  def load_latest_active_ai_diagnosis_risk_event_types_for(skus)
+    load_latest_active_ai_diagnosis_risk_events_for(skus)
     @ai_diagnosis_event_types_by_sku_id
   end
 
-  def load_latest_red_ai_diagnosis_events_for(skus)
+  def load_latest_active_ai_diagnosis_risk_events_for(skus)
     sku_ids = Array(skus).map(&:id)
-    events = latest_red_ai_diagnosis_events
+    events = latest_active_ai_diagnosis_risk_events
       .where(ec_ai_diagnosis: { sku_id: sku_ids })
       .select("ec_ai_diagnosis_events.*", "ec_ai_diagnosis.sku_id AS diagnosis_sku_id")
       .order(:event_type, :position, :id)
@@ -61,14 +61,19 @@ module AIDiagnosisEventFilterable
   end
 
   def ai_diagnosis_event_sku_ids
-    latest_red_ai_diagnosis_events
+    latest_active_ai_diagnosis_risk_events
       .where(event_type: @ai_diagnosis_event_type)
       .select("ec_ai_diagnosis.sku_id")
   end
 
-  def latest_red_ai_diagnosis_events
-    Ec::AIDiagnosisEvent
+  def latest_active_ai_diagnosis_risk_events
+    base_scope = Ec::AIDiagnosisEvent
       .joins(:ai_diagnosis)
-      .where(ec_ai_diagnosis: { is_latest: true }, severity: "red")
+      .active
+      .where(ec_ai_diagnosis: { is_latest: true })
+
+    base_scope.where(severity: "red").or(
+      base_scope.where(ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name }, severity: "critical")
+    )
   end
 end

@@ -1642,12 +1642,20 @@ ru:
         month: "Месяц"
         week: "Неделя"
       ai_inventory_health:
+        actions: "Действия"
         delete_confirm: "Удалить эту AI-диагностику склада?"
         deleted: "AI-диагностика склада удалена"
         event_type: "Тип события"
+        ignore: "Игнорировать"
+        ignore_confirm: "Игнорировать это событие диагностики?"
+        ignored: "Событие диагностики проигнорировано"
         message: "Сообщение"
         metrics_title: "Метрики диагностики"
         severity: "Уровень"
+        status: "Статус"
+        statuses:
+          active: "Активно"
+          ignored: "Проигнорировано"
         severity_labels:
           danger: "Красный"
           info: "Синий"

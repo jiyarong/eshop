@@ -6,6 +6,8 @@ module Ec
     belongs_to :conversation, optional: true
     belongs_to :sub_agent, class_name: "Ec::SkuDiagnosisRule", foreign_key: :sub_agent_id, optional: true
 
+    enum :status, { active: "active", ignored: "ignored" }, validate: true
+
     validates :event_type, :severity, :message, presence: true
     validates :position, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
     validate :details_must_be_an_object

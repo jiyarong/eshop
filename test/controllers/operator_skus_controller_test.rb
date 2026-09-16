@@ -22,17 +22,18 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     User.where(id: @user.id).delete_all
   end
 
-  test "index filters skus by latest red diagnosis event tag" do
-    diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
+  test "index filters skus by legacy red and critical general diagnosis event tags" do
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis.events.create!(
       event_type: "stockout_imminent",
-      severity: "red",
+      severity: "critical",
       message: "Risk details #{@token}",
       scope: "inventory",
       details: { "available" => 3 }
     )
-    diagnosis.events.create!(event_type: "missed_sales_alert", severity: "red", message: "Sales risk")
-    diagnosis.events.create!(event_type: "inventory_sufficient", severity: "green", message: "Healthy")
+    diagnosis.events.create!(event_type: "inventory_sufficient", severity: "info", message: "Healthy")
+    legacy_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
+    legacy_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "red", message: "Sales risk")
     other_sku = Ec::Sku.create!(sku_code: "OPS-OTHER-#{@token}", product_name: "其他运营商品")
 
     with_empty_metrics do
@@ -57,6 +58,31 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
         assert_select "code", text: /\"available\": 3/
       end
     end
+  end
+
+  test "index excludes ignored diagnosis events from tags and filtering" do
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    diagnosis.events.create!(
+      event_type: "stockout_imminent",
+      severity: "critical",
+      status: "ignored",
+      message: "Ignored risk #{@token}"
+    )
+    legacy_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
+    legacy_diagnosis.events.create!(
+      event_type: "stockout_imminent",
+      severity: "red",
+      status: "ignored",
+      message: "Ignored legacy risk #{@token}"
+    )
+
+    with_empty_metrics do
+      get operator_skus_path, params: { ai_event_type: "stockout_imminent" }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".ai-diagnosis-event-tag", { text: /即将断货/, count: 0 }
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Ignored risk/, count: 0 }
   end
 
   test "index renders operator sku columns and puts link before sales funnel" do

@@ -61,11 +61,20 @@ class Ec::AIDiagnosisTest < ActiveSupport::TestCase
 
   test "persists filterable event records in order" do
     diagnosis = create_diagnosis(Ec::RestockingDiagnosis)
-    diagnosis.events.create!(event_type: "stockout", severity: "danger", message: "Risk", position: 1)
+    event = diagnosis.events.create!(event_type: "stockout", severity: "danger", message: "Risk", position: 1)
     diagnosis.events.create!(event_type: "insight", severity: "info", message: "Info", position: 0)
 
     assert_equal %w[insight stockout], diagnosis.events.reload.pluck(:event_type)
     assert_equal diagnosis.id, Ec::AIDiagnosisEvent.find_by!(event_type: "stockout").ai_diagnosis_id
+    assert event.active?
+  end
+
+  test "only accepts supported event statuses" do
+    diagnosis = create_diagnosis(Ec::RestockingDiagnosis)
+    event = diagnosis.events.build(event_type: "stockout", severity: "danger", message: "Risk", status: "unknown")
+
+    assert_not event.valid?
+    assert event.errors[:status].any?
   end
 
   private

@@ -183,6 +183,20 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"advise": "#{Regexp.escape(long_advise)}"/
   end
 
+  test "sku detail ai tab shows event statuses and ignore actions" do
+    event = @latest_result.events.find_by!(event_type: "missed_sales_alert")
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".status-pill.is-active", { text: "生效中", minimum: 3 }
+    assert_select "form[action='#{ignore_report_sku_ai_diagnosis_event_path(@sku.sku_code, event)}'][data-turbo-confirm='确认忽略这条诊断事件？']" do
+      assert_select "button.ai-health-table__ignore-button[title='忽略']", count: 1
+    end
+  end
+
   test "manual general diagnosis modal lists rules and enqueues selected rules" do
     first_rule = Ec::SkuDiagnosisRule.create!(
       name: "库存诊断 #{@token}",
@@ -343,6 +357,58 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_equal "AI 库存诊断结果已删除", flash[:notice]
     assert_not Ec::RestockingDiagnosis.exists?(@latest_result.id)
     assert Ec::RestockingDiagnosis.exists?(@older_result.id)
+  end
+
+  test "ignores a diagnosis event and excludes it from active summaries" do
+    event = @latest_result.events.find_by!(event_type: "missed_sales_alert")
+
+    patch ignore_report_sku_ai_diagnosis_event_path(@sku.sku_code, event)
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal "诊断事件已忽略", flash[:notice]
+    assert event.reload.ignored?
+
+    sign_in @user
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "tr.ai-health-table__row--ignored", text: /最新红色诊断消息/ do
+      assert_select ".status-pill.is-muted", "已忽略"
+      assert_select ".ai-health-table__ignore-button", count: 0
+    end
+    assert_select ".ai-health-result:first-child .ai-health-star-summary__item--danger", count: 0
+  end
+
+  test "does not ignore a diagnosis event through another sku" do
+    other_sku = Ec::Sku.create!(
+      sku_code: "REPORT-HEALTH-OTHER-#{@token.upcase}",
+      product_name: "其他诊断商品 #{@token}",
+      is_active: true
+    )
+    event = @latest_result.events.find_by!(event_type: "missed_sales_alert")
+
+    patch ignore_report_sku_ai_diagnosis_event_path(other_sku.sku_code, event)
+
+    assert_response :not_found
+    assert event.reload.active?
+  ensure
+    Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
+  end
+
+  test "requires sku management permission to ignore a diagnosis event" do
+    viewer = create_user_with_roles("reports-ai-health-viewer-#{@token}@example.com", "operator")
+    sign_in viewer
+    event = @latest_result.events.find_by!(event_type: "missed_sales_alert")
+
+    patch ignore_report_sku_ai_diagnosis_event_path(@sku.sku_code, event)
+
+    assert_response :forbidden
+    assert event.reload.active?
+  ensure
+    UserRole.where(user_id: viewer&.id).delete_all
+    User.where(id: viewer&.id).delete_all
   end
 
   test "clips operation diagnosis data to a concise summary and events" do
@@ -648,7 +714,12 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
 
-  test "inventory report renders red event tags from only the latest diagnosis" do
+  test "inventory report renders legacy red and critical general diagnosis events" do
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Critical risk")
+    diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored risk")
+    diagnosis.events.create!(event_type: "warning_risk", severity: "warning", message: "Warning risk")
+
     get "/reports/inventory",
       params: { sku: @sku.sku_code },
       headers: { "Accept" => "text/html" }
@@ -656,8 +727,11 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "th", "AI诊断"
     assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", text: "错失销售预警"
+    assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", text: "即将断货"
     assert_select ".inventory-list-table__ai-health-cell", { text: /Inventory sufficient/, count: 0 }
     assert_select ".inventory-list-table__ai-health-cell", { text: /Stockout risk/, count: 0 }
+    assert_select ".inventory-list-table__ai-health-cell", { text: /Ignored risk/, count: 0 }
+    assert_select ".inventory-list-table__ai-health-cell", { text: /Warning risk/, count: 0 }
   end
 
   private
