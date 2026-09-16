@@ -617,6 +617,7 @@ zh:
         warehouse_recommendation: "仓储建议"
         search_terms_per_week: "搜索词"
         listing_content: "Listing 内容"
+        product_attributes: "商品属性及可选项"
       edit:
         title: "编辑 SKU 诊断规则"
       fields:

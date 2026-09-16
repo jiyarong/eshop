@@ -64,6 +64,9 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     get new_admin_sku_diagnosis_rule_path, headers: { "Accept" => "text/html" }
     assert_response :success
     assert_select "input[name='ec_sku_diagnosis_rule[context_keys][]'][checked]", count: Ec::SkuDiagnosisRule::CONTEXT_KEYS.size
+    assert_select "label.checkbox-option", text: /商品属性及可选项/ do
+      assert_select "input#rule_context_product_attributes[value='product_attributes'][checked]"
+    end
     assert_select "textarea[name='ec_sku_diagnosis_rule[allowed_event_types_text]']"
     assert_select "select[name='ec_sku_diagnosis_rule[frequency]'] option[value='manual']", text: "手动"
 

@@ -610,6 +610,7 @@ ru:
         warehouse_recommendation: "Рекомендация склада"
         search_terms_per_week: "Поисковые запросы"
         listing_content: "Содержимое листинга"
+        product_attributes: "Атрибуты товара и варианты"
       edit:
         title: "Изменить правило диагностики SKU"
       fields:

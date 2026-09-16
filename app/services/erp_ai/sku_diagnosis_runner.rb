@@ -34,7 +34,8 @@ module ErpAI
     def initialize(
       as_of_date:, sku_code: nil, rule_ids: nil, client: DefaultClient.new, user: nil,
       snapshot_fetcher: Ec::SkuContextSnapshotFetcher,
-      listing_context: ErpAI::ListingDiagnosisContext
+      listing_context: ErpAI::ListingDiagnosisContext,
+      product_attributes_context: ErpAI::V3::ProductAttributesContext
     )
       @as_of_date = as_of_date.present? ? as_of_date.to_date : Time.current.in_time_zone(TIME_ZONE).to_date
       @sku_code = sku_code
@@ -43,6 +44,7 @@ module ErpAI
       @user = user
       @snapshot_fetcher = snapshot_fetcher
       @listing_context = listing_context
+      @product_attributes_context = product_attributes_context
     end
 
     def run
@@ -62,7 +64,8 @@ module ErpAI
 
     private
 
-    attr_reader :as_of_date, :sku_code, :rule_ids, :client, :snapshot_fetcher, :listing_context
+    attr_reader :as_of_date, :sku_code, :rule_ids, :client, :snapshot_fetcher, :listing_context,
+      :product_attributes_context
 
     def run_rule(agent, user, sku, rule)
       period_from = as_of_date.beginning_of_week(:monday) - 1.week
@@ -119,6 +122,9 @@ module ErpAI
     def context_section(key, sku, snapshot)
       if key == "listing_content"
         "**Listing Content**\n\n#{listing_context.call(sku: sku).strip}"
+      elsif key == "product_attributes"
+        attributes = product_attributes_context.call(sku: sku)
+        "**Product Attributes**\n\n```json\n#{JSON.pretty_generate(attributes)}\n```"
       else
         category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
         "**#{category.fetch('name')}**\n\n#{category.fetch('markdown').strip}"

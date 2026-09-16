@@ -7,7 +7,7 @@ module Ec
     CONTEXT_KEYS = %w[
       base inventory lifecycle profit sales_funnel advertise_per_week
       ec_orders_full_period supply_orders_full_period operation_actions_full_period
-      warehouse_recommendation search_terms_per_week listing_content
+      warehouse_recommendation search_terms_per_week listing_content product_attributes
     ].freeze
 
     after_initialize :default_context_keys, if: :new_record?

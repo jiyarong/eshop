@@ -185,6 +185,37 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_not_includes summary, "Snapshot base"
   end
 
+  test "loads product attributes for rules that select them" do
+    @daily.update!(configuration: { "context_keys" => [ "product_attributes" ] })
+    product_attributes_context = Object.new
+    product_attributes_context.define_singleton_method(:call) do |sku:|
+      {
+        listings: [
+          {
+            platform: "ozon",
+            product_id: "123",
+            attributes: [ { id: 85, current_values: [ { value: "Test brand" } ] } ]
+          }
+        ]
+      }
+    end
+    client = SavingClient.new
+
+    ErpAI::SkuDiagnosisRunner.new(
+      as_of_date: Date.new(2026, 9, 15),
+      sku_code: @sku.sku_code,
+      client: client,
+      user: @user,
+      snapshot_fetcher: @snapshot_fetcher,
+      product_attributes_context: product_attributes_context
+    ).run
+
+    summary = client.requests.first.fetch(:context).split("已查询到的业务数据摘要：", 2).last
+    assert_includes summary, "**Product Attributes**"
+    assert_includes summary, "Test brand"
+    assert_not_includes summary, "Snapshot base"
+  end
+
   test "rerunning the same date overwrites the rule event" do
     client = SavingClient.new
     runner = diagnosis_runner(date: Date.new(2026, 9, 15), client: client)

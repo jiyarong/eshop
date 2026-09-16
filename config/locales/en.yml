@@ -639,6 +639,7 @@ en:
         warehouse_recommendation: "Warehouse recommendation"
         search_terms_per_week: "Search terms"
         listing_content: "Listing content"
+        product_attributes: "Product attributes and options"
       edit:
         title: "Edit SKU diagnosis rule"
       fields:
