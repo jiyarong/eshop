@@ -2,6 +2,9 @@ module Ec
   class SkuContextSnapshot
     SNAPSHOT_TYPE = "sku_context".freeze
     RETENTION_DAYS = 10
+    API_SCHEMA_PATH = Rails.root.join(
+      "app/services/erp_ai/v3/skills/fetch-yuanlong-sku-context/references/api-schema.md"
+    ).freeze
     CATEGORIES = {
       base: "基础资料",
       inventory: "库存",
@@ -33,6 +36,12 @@ module Ec
         snapshot_date: snapshot_date,
         sku_scope: Ec::Sku.where(id: sku.id)
       ).capture.sole
+    end
+
+    def self.context_descriptions
+      @context_descriptions ||= File.read(API_SCHEMA_PATH).scan(
+        /^## `[^`]+` \/ `([^`]+)`：[^\n]*\n(.*?)(?=^## |\z)/m
+      ).to_h.transform_keys(&:to_sym).transform_values(&:strip).freeze
     end
 
     def initialize(
@@ -76,6 +85,7 @@ module Ec
             category_payload = { data: envelope.merge(section_key => data.fetch(section_key)) }
             categories[section_key] = {
               name: category_name,
+              description: self.class.context_descriptions.fetch(section_key),
               raw_json: category_payload,
               markdown: markdown_renderer.call(category_payload)
             }

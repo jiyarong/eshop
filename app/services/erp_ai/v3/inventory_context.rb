@@ -48,7 +48,6 @@ module ErpAI
 
         {
           current_inventory_info: {
-            fields: CURRENT_INVENTORY_FIELDS,
             values: current_values(detail),
             forecast_explanation: detail[:forecast_explanation],
             strict_forecast: detail[:strict_forecast],

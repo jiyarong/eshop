@@ -68,7 +68,7 @@ class ErpAI::V3::LifecycleContextTest < ActiveSupport::TestCase
     ).call
 
     summary = result.fetch(:summary)
-    assert_equal ErpAI::V3::LifecycleContext::SUMMARY_FIELDS, summary.fetch(:fields)
+    assert_not summary.key?(:fields)
     assert_equal 41, summary.dig(:values, :lifecycle_days)
     assert_equal BigDecimal("2.4"), summary.dig(:values, :daily_sales_velocity)
     assert_not summary.key?(:forecast_explanation)

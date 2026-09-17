@@ -183,7 +183,6 @@ Accept: text/markdown
 
 | 字段 | 中文含义 | 说明 |
 | --- | --- | --- |
-| `current_inventory_info.fields` | 当前库存字段列表 | `values` 中字段的展示顺序 |
 | `current_inventory_info.values` | 当前库存值 | 以 `period.as_of` 对应日期为准的库存概览 |
 | `current_inventory_info.forecast_explanation` | 简单预测说明 | SKU 详情页中普通预测日销的公式解释 |
 | `current_inventory_info.strict_forecast` | 严谨预测详情 | 断货修正预测的输入、路径和结果；若有效观察日不足，预测日销可能为空 |
@@ -236,7 +235,6 @@ Accept: text/markdown
 
 | 字段 | 中文含义 | 说明 |
 | --- | --- | --- |
-| `summary.fields` | 汇总字段列表 | `values` 中字段的展示顺序 |
 | `summary.values` | 生命周期汇总值 | 当前 SKU 的生命周期、状态、累计销量利润和库存覆盖 |
 | `key_events.sold` | 是否已成交 | `true` 表示已有首次成交事件或销量记录 |
 | `key_events.data_started_on` | 完整可用数据始于 | 用于解释早期数据不完整的日期 |
@@ -334,61 +332,24 @@ Accept: text/markdown
 | `store_id` | ERP 店铺 ID | `Ec::Store` ID |
 | `store_name` | 店铺名称 | ERP 内店铺展示名 |
 | `order_id` | ERP 订单 ID | 内部订单记录 ID |
-| `order_key` | 订单键 | ERP 内唯一订单键 |
-| `external_order_id` | 平台订单 ID | 平台侧订单 ID |
-| `external_order_number` | 平台订单号 | 平台侧可读订单号 |
 | `order_status` | ERP 订单状态 | 标准化状态，如已下单、已签收、取消、退货等 |
-| `order_source_status` | 来源订单状态 | 平台原始状态 |
-| `order_source_substatus` | 来源订单子状态 | 平台原始子状态 |
 | `ordered_at` | 下单时间 | 按请求时区边界筛选 |
 | `in_process_at` | 处理中时间 | 平台进入处理状态时间 |
-| `order_completed_at` | 订单完成时间 | 订单完成或签收时间 |
 | `order_cancelled_at` | 订单取消时间 | 订单取消时间 |
 | `buyer_city` / `buyer_region` / `buyer_country` | 买家地区 | 买家城市、区域、国家 |
-| `payment_method_source` | 支付方式来源 | 平台原始支付方式 |
 | `is_legal_entity` | 是否法人买家 | `true` 表示法人/企业买家 |
-| `order_synced_at` | 订单同步时间 | 订单记录最近同步时间 |
-| `fulfillment_id` | ERP 履约 ID | 内部履约记录 ID |
-| `external_fulfillment_id` | 平台履约 ID | 平台侧履约 ID |
-| `fulfillment_key` | 履约键 | ERP 内唯一履约键 |
 | `fulfillment_type` | 履约类型 | FBO、FBW、FBS 等平台履约口径 |
 | `fulfillment_status` | ERP 履约状态 | 标准化履约状态 |
-| `fulfillment_source_status` | 来源履约状态 | 平台原始履约状态 |
-| `fulfillment_source_substatus` | 来源履约子状态 | 平台原始履约子状态 |
-| `warehouse_external_id` | 平台仓库 ID | 平台侧仓库 ID |
 | `warehouse_name` | 仓库名称 | 发货或履约仓库 |
-| `delivery_method_name` | 配送方式 | 平台配送方式名称 |
-| `delivery_type_source` | 配送类型来源 | 平台原始配送类型 |
 | `cluster_from` / `cluster_to` | 发出/目的集群 | 平台履约集群或区域 |
-| `tracking_number` | 物流单号 | 平台或物流商跟踪号 |
-| `shipped_at` | 发货时间 | 履约发货时间 |
-| `delivered_at` | 签收时间 | 履约签收时间 |
-| `fulfillment_cancelled_at` | 履约取消时间 | 履约取消时间 |
 | `cancel_reason_source` | 取消原因 | 平台原始取消原因 |
-| `fulfillment_raw_source_type` / `fulfillment_raw_source_id` | 履约原始来源 | 便于追溯原始同步记录 |
-| `fulfillment_synced_at` | 履约同步时间 | 履约记录最近同步时间 |
-| `item_id` | ERP 订单商品 ID | 内部订单商品记录 ID |
-| `external_item_id` | 平台商品行 ID | 平台侧商品行 ID |
-| `sku_code` | 内部 SKU | 当前 SKU 编码 |
-| `platform_sku_id` | 平台 SKU ID | 订单商品上的平台 SKU ID |
-| `offer_id` | 商家货号 | 订单商品上的 offer/vendor code |
-| `product_name_source` | 商品名来源 | 平台订单商品名称 |
 | `quantity` | 件数 | 订单商品数量 |
 | `currency_code` | 币种 | 价格字段币种 |
 | `unit_price` | 单价 | 平台同步的商品单价 |
-| `old_unit_price` | 原单价 | 优惠前或原始单价 |
-| `discount_amount` | 折扣金额 | 平台商品行折扣额 |
-| `discount_percent` | 折扣率 | 平台商品行折扣百分比 |
-| `commission_amount` | 佣金金额 | 平台商品行佣金 |
-| `commission_percent` | 佣金率 | 平台商品行佣金百分比 |
-| `payout` | 预计结算 | 平台商品行预计结算额 |
 | `buyer_paid_unit_price` | 买家支付单价 | Ozon 买家实际支付单价等补充价格 |
 | `buyer_currency_code` | 买家支付币种 | 买家支付单价币种 |
-| `buyer_paid_synced_at` | 买家支付价同步时间 | 补充价格最近同步时间 |
 | `seller_discount_unit_price` | 卖家折扣单价 | 卖家承担折扣后的单价 |
 | `seller_discount_currency_code` | 卖家折扣币种 | 卖家折扣单价币种 |
-| `seller_discount_synced_at` | 卖家折扣价同步时间 | 补充价格最近同步时间 |
-| `item_synced_at` | 商品行同步时间 | 订单商品记录最近同步时间 |
 
 ## `supply_orders_full_period.md` / `supply_orders_full_period`：周期送仓记录
 

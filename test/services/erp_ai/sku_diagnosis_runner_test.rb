@@ -45,7 +45,11 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
           "as_of" => snapshot_date.iso8601
         },
         "categories" => Ec::SkuContextSnapshot::CATEGORIES.keys.map(&:to_s).index_with do |key|
-          { "name" => "Snapshot #{key}", "markdown" => "# Snapshot #{key}\n" }
+          {
+            "name" => "Snapshot #{key}",
+            "description" => "Description #{key}",
+            "markdown" => "# Snapshot #{key}\n"
+          }
         end
       }
     end
@@ -86,7 +90,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     summary = request.fetch(:context).split("已查询到的业务数据摘要：", 2).last
     assert_includes summary, "SKU：#{@sku.sku_code}"
     assert_includes summary, "数据周期：2026-09-07 至 2026-09-13；快照日期：2026-09-15"
-    assert_includes summary, "**Snapshot base**\n\n# Snapshot base"
+    assert_includes summary, "**Snapshot base**\n\nDescription base\n\n# Snapshot base"
     assert_not_includes summary, '"categories"'
     assert_not_includes summary, "Snapshot lifecycle"
     assert_equal [{ sku_code: @sku.sku_code, snapshot_date: date }], @snapshot_fetcher.calls
@@ -138,7 +142,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal 2, client.requests.size
     assert_equal [ @weekly.id ], Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id)
     summary = client.requests.first.fetch(:context).split("已查询到的业务数据摘要：", 2).last
-    assert_includes summary, "**Snapshot lifecycle**\n\n# Snapshot lifecycle"
+    assert_includes summary, "**Snapshot lifecycle**\n\nDescription lifecycle\n\n# Snapshot lifecycle"
     assert_not_includes summary, "Snapshot base"
   end
 

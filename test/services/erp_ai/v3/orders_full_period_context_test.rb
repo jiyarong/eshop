@@ -18,7 +18,7 @@ class ErpAI::V3::OrdersFullPeriodContextTest < ActiveSupport::TestCase
       platform: "ozon", store: @store, external_fulfillment_id: "F-#{@token}",
       fulfillment_key: "v3-ozon:#{@store.id}:F-#{@token}", fulfillment_type: "fbo", status: "processing"
     )
-    @item = @order.items.create!(
+    @order.items.create!(
       fulfillment: @fulfillment, platform: "ozon", store: @store,
       external_item_id: "ITEM-#{@token}", platform_sku_id: "81001",
       sku_code: @other_sku.sku_code, quantity: 2, unit_price: 100,
@@ -50,15 +50,14 @@ class ErpAI::V3::OrdersFullPeriodContextTest < ActiveSupport::TestCase
     ).call
 
     row = result.sole
-    assert_equal @item.id, row.fetch(:item_id)
-    assert_equal @sku.sku_code, row.fetch(:sku_code)
+    assert_equal @order.id, row.fetch(:order_id)
     assert_equal BigDecimal("100"), row.fetch(:unit_price)
     assert_equal "RUB", row.fetch(:currency_code)
     assert_equal BigDecimal("876.54"), row.fetch(:buyer_paid_unit_price)
     assert_equal "RUB", row.fetch(:buyer_currency_code)
-    assert_equal @time_zone.parse("2026-08-04 10:35:00"), row.fetch(:buyer_paid_synced_at)
     assert_equal BigDecimal("42.63"), row.fetch(:seller_discount_unit_price)
     assert_equal "BYN", row.fetch(:seller_discount_currency_code)
-    assert_equal @time_zone.parse("2026-08-04 11:35:00"), row.fetch(:seller_discount_synced_at)
+    assert_not row.key?(:buyer_paid_synced_at)
+    assert_not row.key?(:seller_discount_synced_at)
   end
 end

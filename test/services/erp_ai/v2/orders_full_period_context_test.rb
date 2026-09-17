@@ -23,7 +23,7 @@ class ErpAI::V2::OrdersFullPeriodContextTest < ActiveSupport::TestCase
       fulfillment_key: "ozon:#{@store.id}:F-#{@token}", fulfillment_type: "fbo", status: "processing",
       warehouse_name: "Test warehouse", cluster_to: "Minsk"
     )
-    @items = 2.times.map do |index|
+    2.times do |index|
       @order.items.create!(
         fulfillment: @fulfillment, platform: "ozon", store: @store,
         external_item_id: "ITEM-#{@token}-#{index}", platform_sku_id: "81001",
@@ -56,15 +56,12 @@ class ErpAI::V2::OrdersFullPeriodContextTest < ActiveSupport::TestCase
     ).call
 
     assert_equal 2, result.size
-    assert_equal @items.map(&:id), result.map { |row| row.fetch(:item_id) }
-    assert_equal [@sku.sku_code], result.map { |row| row.fetch(:sku_code) }.uniq
     assert_equal [@order.id], result.map { |row| row.fetch(:order_id) }.uniq
-    assert_equal [@fulfillment.id], result.map { |row| row.fetch(:fulfillment_id) }.uniq
     assert_equal ["ozon"], result.map { |row| row.fetch(:platform) }.uniq
     assert_equal [@store.id], result.map { |row| row.fetch(:store_id) }.uniq
     assert_equal "Test warehouse", result.first.fetch(:warehouse_name)
-    assert_equal 1, result.first.fetch(:quantity)
-    assert_equal 2, result.last.fetch(:quantity)
+    assert_equal [ 1, 2 ], result.map { |row| row.fetch(:quantity) }
+    assert_not_includes result.map { |row| row.fetch(:quantity) }, 999
   end
 
   test "matches WB items through the bound product id" do
@@ -74,7 +71,7 @@ class ErpAI::V2::OrdersFullPeriodContextTest < ActiveSupport::TestCase
       platform: "wb", store: wb_store, order_key: "wb:#{@token}", order_status: "delivered",
       ordered_at: @time_zone.parse("2026-08-04 10:00")
     )
-    wb_item = wb_order.items.create!(
+    wb_order.items.create!(
       platform: "wb", store: wb_store, external_item_id: "WB-ITEM-#{@token}",
       platform_sku_id: "91001", quantity: 1, currency_code: "RUB"
     )
@@ -86,7 +83,8 @@ class ErpAI::V2::OrdersFullPeriodContextTest < ActiveSupport::TestCase
       time_zone: @time_zone
     ).call
 
-    assert_equal [wb_item.id, *@items.map(&:id)].sort, result.map { |row| row.fetch(:item_id) }.sort
+    assert_equal 3, result.size
+    assert_equal({ "ozon" => 2, "wb" => 1 }, result.group_by { |row| row.fetch(:platform) }.transform_values(&:size))
   ensure
     Ec::OrderItem.where(order_id: wb_order&.id).delete_all
     Ec::Order.where(id: wb_order&.id).delete_all

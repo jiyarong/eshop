@@ -104,7 +104,7 @@ class ErpAI::V3::InventoryContextTest < ActiveSupport::TestCase
     ).call
 
     current = result.fetch(:current_inventory_info)
-    assert_equal ErpAI::V3::InventoryContext::CURRENT_INVENTORY_FIELDS, current.fetch(:fields)
+    assert_not current.key?(:fields)
     assert_equal(
       {
         incoming_quantity: 5,

@@ -87,7 +87,7 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
       hits_tocart: 90, hits_tocart_pdp: 60, ordered_units: 30, delivered_units: 20,
       cancellations: 2, synced_at: Time.current
     )
-    wb_order_item = create_order(
+    create_order(
       @wb_store, "wb", "71001", "delivered", 6,
       buyer_paid_unit_price: 876.54,
       buyer_currency_code: "RUB",
@@ -226,7 +226,7 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal "2026-08-04", lifecycle.dig("key_events", "events").first.fetch("occurred_on")
     assert_equal "v3:first-sale:#{@token}", lifecycle.dig("key_events", "events").first.fetch("source_key")
     assert_equal first_sale.id, lifecycle.dig("key_events", "events").first.fetch("id")
-    assert_includes lifecycle.dig("summary", "fields"), "lifecycle_days"
+    assert_not lifecycle.fetch("summary").key?("fields")
     assert_equal 7, lifecycle.dig("summary", "values", "lifecycle_days")
 
     assert_equal [], data.fetch("supply_orders_full_period")
@@ -253,8 +253,7 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
 
     orders = data.fetch("ec_orders_full_period")
     assert_equal 2, orders.size
-    wb_order = orders.find { |row| row.fetch("item_id") == wb_order_item.id }
-    assert_equal @sku.sku_code, wb_order.fetch("sku_code")
+    wb_order = orders.find { |row| row.fetch("platform") == "wb" }
     assert_equal 876.54, wb_order.fetch("buyer_paid_unit_price")
     assert_equal "RUB", wb_order.fetch("buyer_currency_code")
     assert_equal 42.63, wb_order.fetch("seller_discount_unit_price")

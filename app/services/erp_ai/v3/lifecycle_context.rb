@@ -46,7 +46,6 @@ module ErpAI
 
       def summary_payload(summary)
         {
-          fields: SUMMARY_FIELDS,
           values: SUMMARY_FIELDS.index_with { |field| summary[field] }
         }
       end

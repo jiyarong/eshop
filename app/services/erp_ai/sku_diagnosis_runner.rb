@@ -133,7 +133,11 @@ module ErpAI
         "**Product Attributes**\n\n```json\n#{JSON.pretty_generate(attributes)}\n```"
       else
         category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
-        "**#{category.fetch('name')}**\n\n#{category.fetch('markdown').strip}"
+        [
+          "**#{category.fetch('name')}**",
+          category["description"],
+          category.fetch("markdown").strip
+        ].filter_map { |value| value.to_s.strip.presence }.join("\n\n")
       end
     end
 

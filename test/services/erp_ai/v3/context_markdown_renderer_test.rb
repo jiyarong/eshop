@@ -56,7 +56,7 @@ class ErpAI::V3::ContextMarkdownRendererTest < ActiveSupport::TestCase
       "| P-1 | 2026-07-13 | 2026-08-09 | 700 | 9.57 | 6 | product_card_views, cart_rate, net_sales |"
     assert_includes markdown,
       "| P0 | 2026-08-10 | 2026-09-06 | 5707 | 9.58 | 51 |  |"
-    assert_includes markdown, "| listing_label | Hydraulic \\| crane |"
+    assert_includes markdown, "listing_label: Hydraulic | crane"
     assert_not_includes markdown, "- **product_card_views:** 700"
   end
 
@@ -84,9 +84,8 @@ class ErpAI::V3::ContextMarkdownRendererTest < ActiveSupport::TestCase
 
     assert_includes markdown, "##### Item 1"
     assert_includes markdown, "###### content"
-    assert_includes markdown, "| key | value |"
-    assert_includes markdown, "| id | 100 |"
-    assert_includes markdown, "| quantity | 1 |"
+    assert_includes markdown, "id: 100"
+    assert_includes markdown, "quantity: 1"
   end
 
   test "renders operation actions as a log table with summaries" do
@@ -124,6 +123,21 @@ class ErpAI::V3::ContextMarkdownRendererTest < ActiveSupport::TestCase
     assert_includes markdown,
       "| 1 | 2026-08-10T03:13:51Z | listing_pricing | 价格 | ozon | NEVASTAL | DJ001 | 113 | 4821521797 | Operator | true | 营销价: 修改前: 100; 修改后: 120 |"
     assert_not_includes markdown, "#### diff_result"
-    assert_not_includes markdown, "| from | 100 |"
+    assert_not_includes markdown, "from: 100"
+  end
+
+  test "renders simple objects as key value lines" do
+    markdown = ErpAI::V3::ContextMarkdownRenderer.call(
+      data: {
+        schema_version: 3,
+        sku_code: "DJ001",
+        period: {},
+        base: { current_stage: "GRW", related_spu_sku_codes: %w[DJ002 DJ003] }
+      }
+    )
+
+    assert_includes markdown, "current_stage: GRW"
+    assert_includes markdown, "related_spu_sku_codes: DJ002, DJ003"
+    assert_not_includes markdown, "| key | value |"
   end
 end

@@ -60,7 +60,7 @@ module ErpAI
 
       def render_hash(value, level, path)
         return ["_Empty object._"] if value.empty?
-        return key_value_table_lines(value) if flat_hash?(value)
+        return key_value_lines(value) if flat_hash?(value)
 
         lines = []
         scalar_entries = []
@@ -148,18 +148,14 @@ module ErpAI
         value
       end
 
-      def key_value_table_lines(value)
-        [
-          "| key | value |",
-          "| --- | --- |",
-          *value.map { |key, item| "| #{table_cell(key)} | #{table_cell(item)} |" }
-        ]
+      def key_value_lines(value)
+        value.map { |key, item| "#{key}: #{inline_scalar(item)}" }
       end
 
       def flush_scalar_entries(lines, scalar_entries)
         return if scalar_entries.empty?
 
-        lines.concat(key_value_table_lines(scalar_entries))
+        lines.concat(key_value_lines(scalar_entries))
         lines << ""
         scalar_entries.clear
       end
@@ -237,6 +233,10 @@ module ErpAI
         return value.map { |item| scalar(item) }.join(", ") if value.is_a?(Array)
 
         scalar(value)
+      end
+
+      def inline_scalar(value)
+        table_scalar(value).gsub("\r\n", " ").gsub("\n", " ")
       end
 
       def scalar(value)

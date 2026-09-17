@@ -85,10 +85,17 @@ class Ec::SkuContextSnapshotTest < ActiveSupport::TestCase
     Ec::SkuContextSnapshot::CATEGORIES.each do |section_key, category_name|
       category = categories.fetch(section_key)
       assert_equal category_name, category.fetch(:name)
+      assert category.fetch(:description).present?
+      assert_includes category.fetch(:description), "| 字段 | 中文含义 | 说明 |"
       assert_equal [ :schema_version, :sku_code, :period, section_key ], category.dig(:raw_json, :data).keys
       assert_equal({ value: section_key.to_s }, category.dig(:raw_json, :data, section_key))
       assert_equal "# #{section_key}\n", category.fetch(:markdown)
     end
+
+    orders_description = categories.dig(:ec_orders_full_period, :description)
+    assert_includes orders_description, "`buyer_paid_unit_price`"
+    assert_not_includes orders_description, "`order_key`"
+    assert_not_includes orders_description, "`buyer_paid_synced_at`"
   end
 
   test "is registered with ten-day retention" do
