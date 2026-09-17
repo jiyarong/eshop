@@ -3,12 +3,12 @@ require "googleauth"
 require "json"
 require "optparse"
 
-require_dependency Rails.root.join("app/services/ec/sku_profit_google_sheet_importer.rb").to_s
-require_dependency Rails.root.join("app/services/google_sheets/base_service.rb").to_s
+DEFAULT_SPREADSHEET_ID = "1JbhVK4adukKD2b2KnAHHbruCsB9Y9G7xixFkVqMTrpg".freeze
+DEFAULT_CREDENTIALS_PATH = Rails.root.join("config", "ecommerce-sheets-495606-2f1153f07139.json").to_s
 
 options = {
   apply: ENV["APPLY"].to_s == "true",
-  spreadsheet_id: ENV.fetch("LOGISTICS_SPREADSHEET_ID", Ec::SkuProfitGoogleSheetImporter::DEFAULT_SPREADSHEET_ID),
+  spreadsheet_id: ENV.fetch("LOGISTICS_SPREADSHEET_ID", DEFAULT_SPREADSHEET_ID),
   sheet_id: Integer(ENV.fetch("LOGISTICS_SHEET_ID", "628756970")),
   credentials_path: ENV["GOOGLE_SHEETS_CREDENTIALS_PATH"],
   effective_on: ENV.fetch("EFFECTIVE_ON", "2026-09-01"),
@@ -33,8 +33,7 @@ end
 begin
   parser.parse!(ARGV)
   target_date = Date.iso8601(options.fetch(:effective_on))
-  credentials_path = options[:credentials_path].presence ||
-    (defined?(GoogleSheets::BaseService::CREDENTIALS_PATH) && GoogleSheets::BaseService::CREDENTIALS_PATH.to_s)
+  credentials_path = options[:credentials_path].presence || DEFAULT_CREDENTIALS_PATH
   raise OptionParser::MissingArgument, "--credentials or GOOGLE_SHEETS_CREDENTIALS_PATH" if credentials_path.blank?
   raise OptionParser::InvalidArgument, "Google Sheets credential file does not exist: #{credentials_path}" unless File.file?(credentials_path)
 rescue OptionParser::ParseError, Date::Error => error
@@ -46,6 +45,75 @@ end
 SKU_COLUMN_INDEX = 1
 FREIGHT_COLUMN_INDEX = 34
 FIRST_DATA_ROW_INDEX = 1
+
+class SkuCodeNormalizer
+  DASHES = /[\u058A\u05BE\u1400\u1806\u2010-\u2015\u2E17\u2E1A\u2E3A-\u2E3B\u2E40\u301C\u3030\u30A0\uFE31-\uFE32\uFE58\uFE63\uFF0D]/.freeze
+  INVISIBLE = /[\u0000-\u001F\u007F\u00A0\u200B-\u200D\u2060\uFEFF]/.freeze
+
+  def self.call(value)
+    value.to_s
+      .unicode_normalize(:nfkc)
+      .gsub(DASHES, "-")
+      .gsub(INVISIBLE, "")
+      .upcase
+      .gsub(/[^\p{Alnum}]/u, "")
+  end
+end
+
+class SkuResolver
+  Result = Data.define(:status, :skus, :raw_value, :details)
+
+  def initialize(skus: Ec::Sku.all)
+    @skus = skus.to_a
+    @by_normalized_code = @skus.group_by { |sku| SkuCodeNormalizer.call(sku.sku_code) }
+  end
+
+  def resolve(candidate_cells)
+    raw_value = candidate_cells.first.to_s
+    normalized_candidates = candidate_cells.flat_map { |value| candidate_variants(value) }.uniq
+    embedded_codes = embedded_code_keys(candidate_cells.first)
+    collisions = (normalized_candidates + embedded_codes).uniq.filter_map do |candidate|
+      matches = @by_normalized_code[candidate]
+      [ candidate, matches.map(&:sku_code) ] if matches&.many?
+    end
+    return Result.new(status: :ambiguous, skus: [], raw_value:, details: collisions) if collisions.any?
+
+    direct_matches = normalized_candidates.flat_map { |candidate| @by_normalized_code.fetch(candidate, []) }
+    direct_matches.concat(embedded_codes.flat_map { |code| @by_normalized_code.fetch(code, []) })
+    matches = direct_matches.uniq(&:id)
+
+    if matches.empty?
+      Result.new(status: :unmatched, skus: [], raw_value:, details: nil)
+    else
+      Result.new(status: :matched, skus: matches, raw_value:, details: nil)
+    end
+  end
+
+  private
+
+  def candidate_variants(value)
+    text = value.to_s
+    return [] if text.blank?
+
+    variants = [ text, *text.lines ]
+    variants += text.split(/[,;|]/)
+    variants.map do |candidate|
+      stripped = candidate.gsub(/\b(?:FBO|FBS|FBW)\b/i, "")
+      SkuCodeNormalizer.call(stripped)
+    end.reject(&:blank?)
+  end
+
+  def embedded_code_keys(value)
+    normalized = SkuCodeNormalizer.call(value)
+    return [] if normalized.blank?
+
+    matching_codes = @by_normalized_code.keys.select { |code| code.length >= 4 && normalized.include?(code) }
+    return [] if matching_codes.empty?
+
+    max_length = matching_codes.map(&:length).max
+    matching_codes.select { |code| code.length == max_length }
+  end
+end
 
 def column_name(index)
   value = index + 1
@@ -105,7 +173,7 @@ values = service.get_spreadsheet_values(
   value_render_option: "FORMATTED_VALUE"
 ).values || []
 filled_values = fill_merged_cells(values, sheet.merges || [])
-resolver = Ec::SkuProfitGoogleSheetImporter::SkuResolver.new
+resolver = SkuResolver.new
 
 summary = {
   mode: options[:apply] ? "apply" : "dry_run",
@@ -141,7 +209,7 @@ latest_by_sku_code = {}
     next
   end
 
-  resolution = resolver.resolve([ raw_sku ], platform: "wb")
+  resolution = resolver.resolve([ raw_sku ])
   case resolution.status
   when :matched
     resolution.skus.each do |sku|
