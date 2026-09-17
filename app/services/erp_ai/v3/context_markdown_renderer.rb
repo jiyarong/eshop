@@ -17,8 +17,7 @@ module ErpAI
 
       def call
         data = payload.fetch(:data) { payload.fetch("data") }
-        lines = ["# SKU context", ""]
-        lines.concat(metadata_lines(data))
+        lines = []
         section_entries(data).each do |key, value|
           lines.concat(["", "## #{key}", ""])
           lines.concat(render_value(value, 3, [key.to_s]))
@@ -31,16 +30,7 @@ module ErpAI
       attr_reader :payload
 
       def metadata_lines(data)
-        period = hash_value(data, :period) || {}
-        [
-          "- **schema_version:** #{scalar(hash_value(data, :schema_version))}",
-          "- **sku_code:** #{scalar(hash_value(data, :sku_code))}",
-          "- **period_from:** #{scalar(hash_value(period, :from))}",
-          "- **period_to:** #{scalar(hash_value(period, :to))}",
-          "- **as_of:** #{scalar(hash_value(period, :as_of))}",
-          "- **time_zone:** #{scalar(hash_value(period, :time_zone))}",
-          "- **week_starts_on:** #{scalar(hash_value(period, :week_starts_on))}"
-        ]
+        []
       end
 
       def section_entries(data)
@@ -149,7 +139,7 @@ module ErpAI
       end
 
       def key_value_lines(value)
-        value.map { |key, item| "#{key}: #{inline_scalar(item)}" }
+        value.map { |key, item| "- #{key}: #{inline_scalar(item)}" }
       end
 
       def flush_scalar_entries(lines, scalar_entries)

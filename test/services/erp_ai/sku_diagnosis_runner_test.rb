@@ -104,6 +104,17 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal date, event.created_at.in_time_zone("Asia/Shanghai").to_date
   end
 
+  test "uses the canonical context description when an older snapshot has none" do
+    snapshot = @snapshot_fetcher.fetch(@sku.sku_code, snapshot_date: Date.new(2026, 9, 15))
+    snapshot.fetch("categories").fetch("base").delete("description")
+    runner = diagnosis_runner(date: Date.new(2026, 9, 15), client: SavingClient.new)
+
+    section = runner.send(:context_section, "base", snapshot)
+
+    assert_includes section, Ec::SkuContextSnapshot.context_descriptions.fetch(:base)
+    assert_includes section, "# Snapshot base"
+  end
+
   test "runs weekly rules only on monday" do
     client = SavingClient.new
     diagnosis_runner(date: Date.new(2026, 9, 14), client: client).run
@@ -167,7 +178,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
   end
 
   test "loads listing content for rules that select it" do
-    @daily.update!(configuration: { "context_keys" => [ "listing_content" ] })
+    @daily.update!(configuration: { "context_keys" => [ "ozon_listing_content" ] })
     stores = 3.times.map do |index|
       Ec::Store.create!(
         platform: "ozon",
@@ -197,8 +208,21 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     end
     image_blobs = expected_sku_products.flat_map { |sku_product| image_blobs_by_product.fetch(sku_product.id) }
     listing_context = Object.new
-    listing_context.define_singleton_method(:call) do |sku:|
-      "# Active listings for #{sku.sku_code}"
+    received_attributes = nil
+    received_listing_platforms = nil
+    received_attribute_platforms = nil
+    listing_context.define_singleton_method(:description) do
+      "**Listing Context Data Description**\n\n- `name`: platform listing name."
+    end
+    listing_context.define_singleton_method(:call) do |sku:, product_attributes:, platforms:|
+      received_attributes = product_attributes
+      received_listing_platforms = platforms
+      "# Ozon Listing Context\n\n## Active listings for #{sku.sku_code}"
+    end
+    product_attributes_context = Object.new
+    product_attributes_context.define_singleton_method(:call) do |sku:, platforms:|
+      received_attribute_platforms = platforms
+      { listings: [ { sku_product_id: expected_sku_products.first.id, marker: "attributes for #{sku.sku_code}" } ] }
     end
     listing_context.define_singleton_method(:image_attachments) do |sku_product:|
       file = Struct.new(:blob) do
@@ -214,12 +238,19 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       client: client,
       user: @user,
       snapshot_fetcher: @snapshot_fetcher,
-      listing_context: listing_context
+      listing_context: listing_context,
+      product_attributes_context: product_attributes_context
     ).run
 
     summary = client.requests.first.fetch(:context).split("已查询到的业务数据摘要：", 2).last
-    assert_includes summary, "**Listing Content**"
-    assert_includes summary, "# Active listings for #{@sku.sku_code}"
+    assert_includes summary, "**Listing Context Data Description**"
+    assert_includes summary, "- `name`: platform listing name."
+    assert_includes summary, "# Ozon Listing Context"
+    assert_includes summary, "## Active listings for #{@sku.sku_code}"
+    assert_equal 1, summary.scan("# Ozon Listing Context").size
+    assert_equal "attributes for #{@sku.sku_code}", received_attributes.dig(:listings, 0, :marker)
+    assert_equal [ "ozon" ], received_listing_platforms
+    assert_equal [ "ozon" ], received_attribute_platforms
     assert_not_includes summary, "Snapshot base"
     assert_includes client.requests.first.fetch(:messages).first.fetch(:content).first.fetch(:text),
       "每个 Listing product 的图片均按两张一组排列"
@@ -236,10 +267,12 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     stores&.each(&:destroy!)
   end
 
-  test "loads product attributes for rules that select them" do
+  test "loads the combined listing context for legacy product attributes rules" do
     @daily.update!(configuration: { "context_keys" => [ "product_attributes" ] })
+    received_platforms = nil
     product_attributes_context = Object.new
-    product_attributes_context.define_singleton_method(:call) do |sku:|
+    product_attributes_context.define_singleton_method(:call) do |sku:, platforms:|
+      received_platforms = platforms
       {
         listings: [
           {
@@ -250,6 +283,15 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
         ]
       }
     end
+    listing_context = Object.new
+    listing_context.define_singleton_method(:description) { "**Listing Context Data Description**" }
+    listing_context.define_singleton_method(:call) do |sku:, product_attributes:, platforms:|
+      listing = product_attributes.fetch(:listings).sole
+      raise "platform mismatch" unless platforms == %w[ozon wb]
+
+      "# Ozon Listing Context\n\n## #{sku.sku_code}\n\n- attributes: #{listing.dig(:attributes, 0, :current_values, 0, :value)}"
+    end
+    listing_context.define_singleton_method(:image_attachments) { |sku_product:| [] }
     client = SavingClient.new
 
     ErpAI::SkuDiagnosisRunner.new(
@@ -258,13 +300,17 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       client: client,
       user: @user,
       snapshot_fetcher: @snapshot_fetcher,
-      product_attributes_context: product_attributes_context
+      product_attributes_context: product_attributes_context,
+      listing_context: listing_context
     ).run
 
     summary = client.requests.first.fetch(:context).split("已查询到的业务数据摘要：", 2).last
-    assert_includes summary, "**Product Attributes**"
+    assert_includes summary, "# Ozon Listing Context"
     assert_includes summary, "Test brand"
+    assert_not_includes summary, "**Product Attributes**"
     assert_not_includes summary, "Snapshot base"
+    assert_equal %w[ozon wb], received_platforms
+    assert_equal %w[ozon_listing_content wb_listing_content], @daily.reload.context_keys
   end
 
   test "rerunning the same date overwrites the rule event" do

@@ -126,6 +126,28 @@ class ErpAI::V3::ContextMarkdownRendererTest < ActiveSupport::TestCase
     assert_not_includes markdown, "from: 100"
   end
 
+  test "renders compact listing change counts in the operation log" do
+    markdown = ErpAI::V3::ContextMarkdownRenderer.call(
+      data: {
+        schema_version: 3,
+        sku_code: "DJ001",
+        period: {},
+        operation_actions_full_period: [
+          {
+            action_id: 2,
+            operation_type: "listing_content",
+            diff_summary: [ "修改了2个属性，删除了1个属性" ],
+            diff_result: { fields: { description: { from: "old", to: nil } } }
+          }
+        ]
+      }
+    )
+
+    assert_includes markdown, "修改了2个属性，删除了1个属性"
+    assert_not_includes markdown, "description"
+    assert_not_includes markdown, "from: old"
+  end
+
   test "renders simple objects as key value lines" do
     markdown = ErpAI::V3::ContextMarkdownRenderer.call(
       data: {

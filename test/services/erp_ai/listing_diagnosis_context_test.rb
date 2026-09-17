@@ -95,24 +95,24 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
     assert_includes @context, "## sku_code\n\n#{@sku.sku_code}"
     assert_includes @context, "## product_info\n\n_未提供_"
     assert_includes @context, "## specifications\n\nColor: gold"
-    assert_includes @context, "# Wildberries Listing"
-    refute_includes @context, "# Ozon Listing"
+    assert_includes @context, "# WB Listing Context"
+    refute_includes @context, "# Ozon Listing Context"
     refute_includes @context, "Ozon listing 1"
     refute_includes @context, "Ozon listing 2"
     refute_includes @context, "https://example.test/wb-1.png"
     assert_match(/```json\n\{\n  "price": 85/, @context)
     refute_includes @context, "success"
-    assert_match(%r{## image_url\n\n/rails/active_storage/blobs/redirect/.+/wb_WB#{@token}_merged_4\.jpg}, @context)
+    assert_match(%r{### image_url\n\n/rails/active_storage/blobs/redirect/.+/wb_WB#{@token}_merged_4\.jpg}, @context)
     assert_equal "wb_WB#{@token}_merged_4.jpg",
                  ErpAI::ListingDiagnosisContext.image_attachment(sku_product: wb_binding).filename
     assert_equal(
       [ "wb_WB#{@token}_main.jpg", "wb_WB#{@token}_merged_4.jpg" ],
       ErpAI::ListingDiagnosisContext.image_attachments(sku_product: wb_binding).map(&:filename)
     )
-    assert_includes @ozon_context, "# Ozon Listing"
+    assert_includes @ozon_context, "# Ozon Listing Context"
     assert_includes @ozon_context, "Ozon listing 2"
     refute_includes @ozon_context, "Ozon listing 1"
-    refute_includes @ozon_context, "# Wildberries Listing"
+    refute_includes @ozon_context, "# WB Listing Context"
   end
 
   test "combines all active products for a SKU and excludes inactive products" do
@@ -128,21 +128,73 @@ class ErpAI::ListingDiagnosisContextTest < ActiveSupport::TestCase
       product_id: "930000002",
       product_name: "Active Ozon listing"
     )
-    Ec::SkuProduct.create!(
+    second_active_ozon = Ec::SkuProduct.create!(
       sku: @sku,
       store: @ozon_store,
       product_id: "930000003",
+      product_name: "Second active Ozon listing"
+    )
+    inactive_ozon = Ec::SkuProduct.create!(
+      sku: @sku,
+      store: @ozon_store,
+      product_id: "930000004",
       product_name: "Inactive Ozon listing",
       is_active: false
     )
 
-    context = ErpAI::ListingDiagnosisContext.call(sku: @sku)
+    context = ErpAI::ListingDiagnosisContext.call(
+      sku: @sku,
+      product_attributes: {
+        listings: [
+          {
+            sku_product_id: active_ozon.id,
+            source_found: true,
+            attributes_synced: true,
+            category: { description_category_id: 42, type_id: 7 },
+            attributes: [
+              {
+                id: 85,
+                name: "Brand",
+                current_values: [ { id: 5, value: "Active Brand" } ],
+                definition: { required: true, max_count: 1 },
+                input_mode: "dictionary",
+                options: [ { id: 5, value: "Active Brand" }, { id: 6, value: "Other Brand" } ]
+              }
+            ]
+          },
+          {
+            sku_product_id: inactive_ozon.id,
+            source_found: true,
+            attributes_synced: true,
+            category: {},
+            attributes: [ { id: 86, name: "Inactive attribute", options: [] } ]
+          }
+        ]
+      }
+    )
 
     assert_equal 1, context.scan("# SKU 基础信息").size
     assert_includes context, active_wb.product_name
     assert_includes context, active_ozon.product_name
+    assert_includes context, second_active_ozon.product_name
     refute_includes context, "Inactive Ozon listing"
-    assert_equal 2, context.scan(/# (?:Wildberries|Ozon) Listing/).size
+    assert_equal 1, context.scan(/^# Ozon Listing Context$/).size
+    assert_equal 1, context.scan(/^# WB Listing Context$/).size
+    assert_equal 3, context.scan(/^## Listing \d+$/).size
+    assert_includes context, "### Product Attributes and Options"
+    assert_includes context, "#### Brand"
+    assert_includes context, "- current_values: id=5, value=Active Brand"
+    assert_includes context, "- options: id=5, value=Active Brand; id=6, value=Other Brand"
+    refute_includes context, "Inactive attribute"
+    refute_includes context, "```json"
+    assert_equal "_没有 active product_", ErpAI::ListingDiagnosisContext.call(sku_product: inactive_ozon)
+    assert_includes ErpAI::ListingDiagnosisContext.description, "`sku_product_id`"
+    assert_includes ErpAI::ListingDiagnosisContext.description, "`Product Attributes and Options`"
+
+    ozon_context = ErpAI::ListingDiagnosisContext.call(sku: @sku, platforms: [ "ozon" ])
+    assert_includes ozon_context, "# Ozon Listing Context"
+    refute_includes ozon_context, "# WB Listing Context"
+    refute_includes ozon_context, active_wb.product_name
   end
 
   test "public image combiner retries a failed download twice" do

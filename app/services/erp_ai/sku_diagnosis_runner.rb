@@ -72,8 +72,12 @@ module ErpAI
       period_to = period_from.end_of_week(:monday)
       snapshot = snapshot_fetcher.fetch(sku.sku_code, snapshot_date: as_of_date)
       context_keys = rule.context_keys
-      context_sections = context_keys.map do |key|
-        context_section(key, sku, snapshot)
+      selected_listing_platforms = listing_platforms(context_keys)
+      context_sections = (context_keys - Ec::SkuDiagnosisRule::LISTING_CONTEXT_KEYS).map do |key|
+        context_section(key, snapshot)
+      end
+      if selected_listing_platforms.any?
+        context_sections << listing_context_section(sku, selected_listing_platforms)
       end
       period = snapshot.fetch("period")
       data_summary = [
@@ -86,7 +90,7 @@ module ErpAI
       else
         "event_type 写具体诊断事件类型"
       end
-      listing_image_instruction = if context_keys.include?("listing_content")
+      listing_image_instruction = if selected_listing_platforms.any?
         "每个 Listing product 的图片均按两张一组排列：第一张为主图，第二张为其余产品图合集。"
       end
       question = <<~PROMPT
@@ -108,7 +112,7 @@ module ErpAI
         business_object_id: sku.id.to_s,
         time_range: { from: period_from.iso8601, to: period_to.iso8601 },
         data_summary: data_summary,
-        images: context_keys.include?("listing_content") ? listing_images(sku) : []
+        images: selected_listing_platforms.any? ? listing_images(sku, selected_listing_platforms) : []
       )
       saved = conversation.messages.where(role: "tool").any? do |message|
         payload = JSON.parse(message.content)
@@ -125,24 +129,33 @@ module ErpAI
       Rails.logger.error("SKU diagnosis failed for #{sku.sku_code}/#{rule.id}: #{e.class}: #{e.message}")
     end
 
-    def context_section(key, sku, snapshot)
-      if key == "listing_content"
-        "**Listing Content**\n\n#{listing_context.call(sku: sku).strip}"
-      elsif key == "product_attributes"
-        attributes = product_attributes_context.call(sku: sku)
-        "**Product Attributes**\n\n```json\n#{JSON.pretty_generate(attributes)}\n```"
-      else
-        category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
-        [
-          "**#{category.fetch('name')}**",
-          category["description"],
-          category.fetch("markdown").strip
-        ].filter_map { |value| value.to_s.strip.presence }.join("\n\n")
-      end
+    def context_section(key, snapshot)
+      category = snapshot.dig("categories", key) || raise(KeyError, "missing snapshot category: #{key}")
+      [
+        "**#{category.fetch('name')}**",
+        category["description"].presence || Ec::SkuContextSnapshot.context_descriptions.fetch(key.to_sym),
+        category.fetch("markdown").strip
+      ].filter_map { |value| value.to_s.strip.presence }.join("\n\n")
     end
 
-    def listing_images(sku)
-      sku.sku_products.active.ordered.includes(:store).flat_map do |sku_product|
+    def listing_context_section(sku, platforms)
+      attributes = product_attributes_context.call(sku: sku, platforms: platforms)
+      [
+        listing_context.description,
+        listing_context.call(sku: sku, product_attributes: attributes, platforms: platforms).strip
+      ].filter_map { |value| value.to_s.strip.presence }.join("\n\n")
+    end
+
+    def listing_platforms(context_keys)
+      platforms_by_key = {
+        "ozon_listing_content" => "ozon",
+        "wb_listing_content" => "wb"
+      }
+      context_keys.filter_map { |key| platforms_by_key[key] }
+    end
+
+    def listing_images(sku, platforms)
+      sku.sku_products.active.where(platform: platforms).ordered.includes(:store).flat_map do |sku_product|
         listing_context.image_attachments(sku_product: sku_product).filter_map do |attachment|
           attachment.file.blob if attachment.file.attached?
         end

@@ -616,8 +616,8 @@ zh:
         operation_actions_full_period: "运营操作"
         warehouse_recommendation: "仓储建议"
         search_terms_per_week: "搜索词"
-        listing_content: "Listing 内容"
-        product_attributes: "商品属性及可选项"
+        ozon_listing_content: "Ozon Listing 内容"
+        wb_listing_content: "WB Listing 内容"
       edit:
         title: "编辑 SKU 诊断规则"
       fields:
@@ -2648,6 +2648,8 @@ zh:
         removed: "移除"
         primary_from: "原主图"
         primary_to: "新主图"
+      diff_summaries:
+        attribute_counts: "修改了%{modified_count}个属性，删除了%{deleted_count}个属性"
       diff_fields:
         acquiring: "收单费用"
         attributes: "属性"

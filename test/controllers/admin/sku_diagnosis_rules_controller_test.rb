@@ -64,8 +64,11 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     get new_admin_sku_diagnosis_rule_path, headers: { "Accept" => "text/html" }
     assert_response :success
     assert_select "input[name='ec_sku_diagnosis_rule[context_keys][]'][checked]", count: Ec::SkuDiagnosisRule::CONTEXT_KEYS.size
-    assert_select "label.checkbox-option", text: /商品属性及可选项/ do
-      assert_select "input#rule_context_product_attributes[value='product_attributes'][checked]"
+    assert_select "label.checkbox-option", text: /Ozon Listing 内容/ do
+      assert_select "input#rule_context_ozon_listing_content[value='ozon_listing_content'][checked]"
+    end
+    assert_select "label.checkbox-option", text: /WB Listing 内容/ do
+      assert_select "input#rule_context_wb_listing_content[value='wb_listing_content'][checked]"
     end
     assert_select "textarea[name='ec_sku_diagnosis_rule[allowed_event_types_text]']"
     assert_select "select[name='ec_sku_diagnosis_rule[frequency]'] option[value='manual']", text: "手动"
@@ -74,13 +77,13 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     post admin_sku_diagnosis_rules_path, headers: { "Accept" => "text/html" }, params: {
       ec_sku_diagnosis_rule: {
         name: "New #{@token}", prompt: "Check profit", frequency: "daily", enabled: "1",
-        context_keys: ["base", "profit"],
+        context_keys: ["base", "profit", "ozon_listing_content"],
         allowed_event_types_text: "库存风险（紧急）\n\n利润 下滑\n库存风险（紧急）\r\n"
       }
     }
     rule = Ec::SkuDiagnosisRule.find_by!(name: "New #{@token}")
     assert_redirected_to admin_sku_diagnosis_rules_path
-    assert_equal %w[base profit], rule.configuration.fetch("context_keys")
+    assert_equal %w[base profit ozon_listing_content], rule.configuration.fetch("context_keys")
     assert_equal ["库存风险（紧急）", "利润 下滑"], rule.allowed_event_types
 
     sign_in @admin
@@ -101,6 +104,8 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "textarea[name='ec_sku_diagnosis_rule[allowed_event_types_text]']", text: "inventory_risk"
     assert_select ".ai-toggle-option--status input[name='ec_sku_diagnosis_rule[enabled]']"
+    assert_select "input#rule_context_ozon_listing_content[value='ozon_listing_content']"
+    assert_select "input#rule_context_wb_listing_content[value='wb_listing_content']"
 
     sign_in @admin
     delete admin_sku_diagnosis_rule_path(rule), headers: { "Accept" => "text/html" }

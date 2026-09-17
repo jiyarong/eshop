@@ -31,11 +31,9 @@ module ErpAI
 
         {
           sku_profit_overview_per_week: {
-            metrics: OVERVIEW_METRICS,
             periods: overview_periods(report)
           },
           sku_profit_store_listing_perweek: {
-            metrics: STORE_LISTING_METRICS,
             periods: periods(report),
             store_listings: store_listings(report)
           }

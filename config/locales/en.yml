@@ -638,8 +638,8 @@ en:
         operation_actions_full_period: "Operations"
         warehouse_recommendation: "Warehouse recommendation"
         search_terms_per_week: "Search terms"
-        listing_content: "Listing content"
-        product_attributes: "Product attributes and options"
+        ozon_listing_content: "Ozon listing content"
+        wb_listing_content: "WB listing content"
       edit:
         title: "Edit SKU diagnosis rule"
       fields:
@@ -2436,6 +2436,8 @@ en:
         removed: "Removed"
         primary_from: "Previous primary image"
         primary_to: "New primary image"
+      diff_summaries:
+        attribute_counts: "Modified %{modified_count} attributes and deleted %{deleted_count} attributes"
       diff_fields:
         acquiring: "Acquiring fee"
         attributes: "Attributes"

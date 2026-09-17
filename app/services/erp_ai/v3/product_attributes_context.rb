@@ -3,18 +3,21 @@ module ErpAI
     class ProductAttributesContext
       OPTIONS_LIMIT = 100
 
-      def self.call(sku:)
-        new(sku: sku).call
+      def self.call(sku:, platforms: nil)
+        new(sku: sku, platforms: platforms).call
       end
 
-      def initialize(sku:, options_query: Ec::PlatformProductAttributeOptionsQuery)
+      def initialize(sku:, platforms: nil, options_query: Ec::PlatformProductAttributeOptionsQuery)
         @sku = sku
+        @platforms = Array(platforms).map(&:to_s).presence
         @options_query = options_query
       end
 
       def call
+        scope = sku.sku_products.active
+        scope = scope.where(platform: platforms) if platforms
         {
-          listings: sku.sku_products.active.ordered.includes(:store).map do |sku_product|
+          listings: scope.ordered.includes(:store).map do |sku_product|
             listing_context(sku_product)
           end
         }
@@ -22,7 +25,7 @@ module ErpAI
 
       private
 
-      attr_reader :sku, :options_query
+      attr_reader :sku, :platforms, :options_query
 
       def listing_context(sku_product)
         base = {

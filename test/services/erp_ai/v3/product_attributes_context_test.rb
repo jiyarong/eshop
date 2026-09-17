@@ -65,6 +65,9 @@ class ErpAI::V3::ProductAttributesContextTest < ActiveSupport::TestCase
     assert_equal "dictionary", wb_attribute[:input_mode]
     assert_equal [ { id: @wb_value_key, value: "Black #{@token}", parent_name: nil } ], wb_attribute[:options]
     assert_equal 3, wb_attribute.dig(:definition, :max_count)
+
+    ozon_only = ErpAI::V3::ProductAttributesContext.call(sku: @sku, platforms: [ "ozon" ])
+    assert_equal [ "ozon" ], ozon_only.fetch(:listings).pluck(:platform)
   end
 
   test "marks large Ozon dictionaries for remote search without calling the API" do

@@ -37,11 +37,7 @@ module ErpAI
           platform: action.store.platform,
           store_id: action.store.id,
           store_name: action.store.store_name,
-          sku_code: sku.sku_code,
           sku_product_id: product.id,
-          platform_product_id: product.product_id,
-          platform_sku_id: product.platform_sku_id,
-          offer_id: product.offer_id,
           operated_by_user_id: operator.id,
           operated_by_user_name: operator.display_name,
           diff_result: ErpAI::V2::ContextPayloadSanitizer.call(action.diff_result)

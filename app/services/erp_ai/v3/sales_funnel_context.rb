@@ -25,11 +25,9 @@ module ErpAI
 
         {
           sku_funnel_overview_per_week: {
-            metrics: overview_metrics(report),
             periods: overview_periods(report)
           },
           sku_funnel_store_listing_perweek: {
-            metrics: report.fetch(:store_metrics),
             periods: periods(report),
             store_listings: store_listings(report)
           }
@@ -50,7 +48,6 @@ module ErpAI
           row = period.fetch(:sku_row)
           period_payload(period).merge(
             values: values_for(row, metrics),
-            available_metrics: row.fetch(:available_metrics, []) & metrics
           )
         end
       end
@@ -73,7 +70,6 @@ module ErpAI
               row = group.fetch(:rows_by_period).fetch(period.fetch(:key))
               period_payload(period).merge(
                 values: values_for(row, metrics),
-                available_metrics: row.fetch(:available_metrics, []) & metrics
               )
             end
           }

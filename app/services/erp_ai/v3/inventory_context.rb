@@ -70,12 +70,9 @@ module ErpAI
 
         {
           sku_inventory_trend: {
-            metrics: HISTORY_TREND_FIELDS,
-            available_metrics: trend.fetch(:available_metrics),
             weeks: trend.fetch(:weeks).map { |row| weekly_trend_row(row) }
           },
           store_listing_inventory_trend: {
-            metrics: STORE_TREND_FIELDS,
             from_date: trend.fetch(:store_from_date).iso8601,
             to_date: trend.fetch(:store_to_date).iso8601,
             selected_store_key: trend[:selected_store_key],

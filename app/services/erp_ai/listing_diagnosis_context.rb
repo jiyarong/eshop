@@ -14,45 +14,129 @@ module ErpAI
     OPEN_TIMEOUT = 10
     READ_TIMEOUT = 30
     DOWNLOAD_ATTEMPTS = 3
+    CONTEXT_DESCRIPTION = <<~MARKDOWN.strip.freeze
+      **Listing Context Data Description**
+
+      - `sku_product_id`: ERP SKU 与平台商品的绑定 ID。
+      - `platform`, `store`: 平台和店铺。
+      - `name`, `description`, `status`: 平台商品标题、描述和状态。
+      - `image_url`, `image_360_urls`, `video_urls`: 商品媒体；随请求附带的图片与 Listing 顺序一致。
+      - `price_info`: 当前平台价格及币种。
+      - `Product Attributes and Options`: 当前属性值、输入方式、字段定义和可选项。
+      - `source_found`, `attributes_synced`: 是否找到平台商品、是否已同步属性。
+    MARKDOWN
 
     class << self
-      def call(sku_product: nil, sku: nil)
+      def description
+        CONTEXT_DESCRIPTION
+      end
+
+      def call(sku_product: nil, sku: nil, product_attributes: nil, platforms: nil)
         if sku_product.nil? == sku.nil?
           raise ArgumentError, "provide exactly one of sku_product or sku"
         end
 
         sku ||= sku_product.sku
-        sku_products = sku_product ? [ sku_product ] : sku.sku_products.active.ordered.includes(:store).to_a
+        platforms = Array(platforms).map(&:to_s).presence
+        sku_products = if sku_product
+          sku_product.is_active? && (platforms.nil? || platforms.include?(sku_product.platform)) ? [ sku_product ] : []
+        else
+          scope = sku.sku_products.active
+          scope = scope.where(platform: platforms) if platforms
+          scope.ordered.includes(:store).to_a
+        end
         return "_没有 active product_" if sku_products.empty?
 
         listing_image_attachments = sku.attachments.where(attach_type: :listing_image).with_attached_file.to_a
-        documents = []
-
-        sku_products.each do |product|
+        attributes_by_product_id = Array(product_attributes&.with_indifferent_access&.fetch(:listings, nil)).index_by do |listing|
+          listing[:sku_product_id] || listing["sku_product_id"]
+        end
+        product_data = sku_products.map do |product|
           data = SkuProductAttributesQuery.new(
             sku_code: sku.sku_code,
             sku_product_id: product.id
           ).call
-          documents << render_document("SKU 基础信息", data.fetch(:sku)) if documents.empty?
+          [ product, data ]
+        end
+        documents = [ render_document("SKU 基础信息", product_data.first.last.fetch(:sku)) ]
 
-          data.fetch(:listings).each do |listing|
-            platform = listing.fetch(:platform).to_s.downcase
-            platform_name = platform == "ozon" ? "Ozon" : "Wildberries"
-            listing = replace_image_urls(
-              listing,
-              sku: sku,
-              occurrence: listing_occurrence(product),
-              attachments: listing_image_attachments
-            )
-            documents << render_document(
-              "#{platform_name} Listing",
-              listing
-            )
+        product_data.group_by { |product, _data| product.platform }.each do |platform, entries|
+          listings = entries.flat_map.with_index(1) do |(product, data), index|
+            data.fetch(:listings).map do |listing|
+              listing = replace_image_urls(
+                listing,
+                sku: sku,
+                occurrence: listing_occurrence(product),
+                attachments: listing_image_attachments
+              )
+              render_listing(
+                listing,
+                index: index,
+                sku_product_id: product.id,
+                product_attributes: attributes_by_product_id[product.id]
+              )
+            end
           end
+          next if listings.empty?
+
+          documents << [
+            "# #{platform_name(platform)} Listing Context",
+            listings.join("\n\n")
+          ].join("\n\n")
         end
 
-        documents.join("\n---\n\n")
+        documents.join("\n\n---\n\n")
       end
+
+      def platform_name(platform)
+        platform.to_s.downcase == "ozon" ? "Ozon" : "WB"
+      end
+
+      def render_listing(listing, index:, sku_product_id:, product_attributes:)
+        sections = [ "## Listing #{index}" ]
+        { sku_product_id: sku_product_id }.merge(listing).each do |key, value|
+          sections << "### #{key}\n\n#{render_value(value)}"
+        end
+        sections << render_product_attributes(product_attributes) if product_attributes
+        sections.join("\n\n")
+      end
+
+      def render_product_attributes(context)
+        context = context.with_indifferent_access
+        lines = [ "### Product Attributes and Options" ]
+        lines << "- source_found: #{render_inline(context[:source_found])}"
+        lines << "- attributes_synced: #{render_inline(context[:attributes_synced])}"
+        lines << "- category: #{render_inline(context[:category])}"
+
+        attributes = Array(context[:attributes])
+        lines << "- attributes: _none_" if attributes.empty?
+        attributes.each do |attribute|
+          attribute = attribute.with_indifferent_access
+          name = attribute[:name].presence || "Attribute #{attribute[:id]}"
+          lines << "#### #{name}"
+          lines << "- id: #{render_inline(attribute[:id])}"
+          lines << "- current_values: #{render_inline(attribute[:current_values])}"
+          lines << "- input_mode: #{render_inline(attribute[:input_mode])}"
+          lines << "- definition: #{render_inline(attribute[:definition])}"
+          lines << "- options: #{render_inline(attribute[:options])}"
+        end
+        lines.join("\n")
+      end
+
+      def render_inline(value)
+        case value
+        when nil
+          "null"
+        when Hash
+          value.map { |key, item| "#{key}=#{render_inline(item)}" }.join(", ")
+        when Array
+          value.empty? ? "[]" : value.map { |item| render_inline(item) }.join("; ")
+        else
+          value.to_s.gsub(/\s+/, " ").strip
+        end
+      end
+
+      private :platform_name, :render_listing, :render_product_attributes, :render_inline
 
       def image_attachments(sku_product:)
         ListingImageAttachment.find_all(

@@ -43,17 +43,56 @@ class ErpAI::V3::OperationActionsFullPeriodContextTest < ActiveSupport::TestCase
         }
       }
     )
+    content_action = create_action(
+      operation_type: "listing_content",
+      operated_at: @time_zone.parse("2026-08-04 12:00"),
+      diff_result: {
+        "fields" => {
+          "title" => { "from" => "Old", "to" => "New" },
+          "description" => { "from" => "Old description", "to" => nil },
+          "images" => { "added" => [ "new.jpg" ], "removed" => [ "old.jpg" ] }
+        }
+      }
+    )
+    specification_action = create_action(
+      operation_type: "listing_specification",
+      operated_at: @time_zone.parse("2026-08-04 13:00"),
+      diff_result: {
+        "fields" => {
+          "attributes" => {
+            "10" => { "values" => { "added" => [ "blue" ], "removed" => [ "red" ] } },
+            "20" => { "from" => { "name" => "Width" }, "to" => nil },
+            "30" => { "from" => nil, "to" => { "name" => "Height" } }
+          },
+          "dimensions" => {
+            "width" => { "from" => 10, "to" => 12 },
+            "height" => { "from" => 20, "to" => nil }
+          }
+        }
+      }
+    )
 
-    result = ErpAI::V3::OperationActionsFullPeriodContext.new(
-      sku: @sku, period_from: Date.new(2026, 8, 3), period_to: Date.new(2026, 8, 9), time_zone: @time_zone
-    ).call
+    result = I18n.with_locale(:zh) do
+      ErpAI::V3::OperationActionsFullPeriodContext.new(
+        sku: @sku, period_from: Date.new(2026, 8, 3), period_to: Date.new(2026, 8, 9), time_zone: @time_zone
+      ).call
+    end
 
-    row = result.sole
+    assert_equal 3, result.size
+    row = result.find { |item| item.fetch(:action_id) == pricing_action.id }
     assert_equal pricing_action.id, row.fetch(:action_id)
     assert_equal "listing_pricing", row.fetch(:operation_type)
     assert row.fetch(:operation_type_label).present?
     assert_equal({ "from" => 100, "to" => 120 }, row.dig(:diff_result, "fields", "marketing_price"))
     assert row.fetch(:diff_summary).any? { |summary| summary.include?("100") && summary.include?("120") }
+
+    content_row = result.find { |item| item.fetch(:action_id) == content_action.id }
+    assert_equal [ "修改了2个属性，删除了1个属性" ], content_row.fetch(:diff_summary)
+    assert_equal "New", content_row.dig(:diff_result, "fields", "title", "to")
+
+    specification_row = result.find { |item| item.fetch(:action_id) == specification_action.id }
+    assert_equal [ "修改了3个属性，删除了2个属性" ], specification_row.fetch(:diff_summary)
+    assert_equal "blue", specification_row.dig(:diff_result, "fields", "attributes", "10", "values", "added", 0)
   end
 
   private

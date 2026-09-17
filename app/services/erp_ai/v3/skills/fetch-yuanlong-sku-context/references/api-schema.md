@@ -411,7 +411,7 @@ Accept: text/markdown
 
 此板块是请求周期内当前 SKU 的运营动作日志，按 `operated_at`、`action_id` 升序排列。它不是指标汇总，也不是因果诊断结果。分析效果时必须结合动作时间、销售漏斗、利润、库存和同期其他动作，不能把动作后的指标变化直接归因给单个动作。
 
-v3 Markdown 会把此文件整体渲染为日志表，核心列包含动作 ID、时间、类型、平台、店铺、Listing、操作人、系统/人工标记和 `diff_summary`。JSON 额外保留完整 `diff_result`。v3 默认排除 `sku_inbound_change`，因为平台在途已归入库存和送仓上下文。
+v3 Markdown 会把此文件整体渲染为日志表，核心列包含动作 ID、时间、类型、平台、店铺、Listing、操作人、系统/人工标记和 `diff_summary`。`listing_content` 与 `listing_specification` 的摘要仅统计修改和删除的属性数量；JSON 仍保留完整 `diff_result`。v3 默认排除 `sku_inbound_change`，因为平台在途已归入库存和送仓上下文。
 
 | 字段 | 中文含义 | 说明 |
 | --- | --- | --- |
@@ -430,7 +430,7 @@ v3 Markdown 会把此文件整体渲染为日志表，核心列包含动作 ID�
 | `offer_id` | 商家货号 | 平台侧 offer/vendor code |
 | `operated_by_user_id` | 操作人 ID | 系统或用户 ID |
 | `operated_by_user_name` | 操作人 | 页面展示名 |
-| `diff_summary` | 变更摘要 | 已格式化的人类可读差异，适合直接读日志 |
+| `diff_summary` | 变更摘要 | 内容和规格变更显示修改/删除属性数量，其它类型显示格式化的字段差异 |
 | `diff_result` | 完整变更明细 | JSON 中可用；字段随 `operation_type` 变化，Markdown 中通常省略 |
 
 常见 `operation_type`：

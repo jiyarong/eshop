@@ -4,11 +4,14 @@ module Ec
 
     SCHEDULED_FREQUENCIES = %w[daily weekly].freeze
     FREQUENCIES = (SCHEDULED_FREQUENCIES + %w[manual]).freeze
+    LISTING_CONTEXT_KEYS = %w[ozon_listing_content wb_listing_content].freeze
+    LEGACY_LISTING_CONTEXT_KEYS = %w[listing_content product_attributes].freeze
     CONTEXT_KEYS = %w[
       base inventory lifecycle profit sales_funnel advertise_per_week
       ec_orders_full_period supply_orders_full_period operation_actions_full_period
-      warehouse_recommendation search_terms_per_week listing_content product_attributes
+      warehouse_recommendation search_terms_per_week ozon_listing_content wb_listing_content
     ].freeze
+    SUPPORTED_CONTEXT_KEYS = (CONTEXT_KEYS + LEGACY_LISTING_CONTEXT_KEYS).freeze
 
     after_initialize :default_context_keys, if: :new_record?
 
@@ -23,7 +26,7 @@ module Ec
 
     def context_keys
       configured = configuration.is_a?(Hash) ? configuration["context_keys"] || configuration[:context_keys] : nil
-      Array(configured).map(&:to_s) & CONTEXT_KEYS
+      normalize_context_keys(configured)
     end
 
     def context_keys=(value)
@@ -51,13 +54,21 @@ module Ec
 
     def context_keys_are_supported
       configured = configuration.is_a?(Hash) ? configuration["context_keys"] || configuration[:context_keys] : nil
-      invalid = Array(configured).map(&:to_s) - CONTEXT_KEYS
+      invalid = Array(configured).map(&:to_s) - SUPPORTED_CONTEXT_KEYS
       errors.add(:configuration, "contains unsupported context keys: #{invalid.join(', ')}") if invalid.any?
       errors.add(:configuration, :blank) if Array(configured).empty?
     end
 
     def normalize_event_types(value)
       Array(value).flat_map { |item| item.to_s.lines }.map(&:strip).reject(&:blank?).uniq
+    end
+
+    def normalize_context_keys(value)
+      keys = Array(value).map(&:to_s)
+      if (keys & LEGACY_LISTING_CONTEXT_KEYS).any?
+        keys = (keys - LEGACY_LISTING_CONTEXT_KEYS) + LISTING_CONTEXT_KEYS
+      end
+      keys.uniq & CONTEXT_KEYS
     end
 
     def default_context_keys

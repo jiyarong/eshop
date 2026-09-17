@@ -609,8 +609,8 @@ ru:
         operation_actions_full_period: "Операции"
         warehouse_recommendation: "Рекомендация склада"
         search_terms_per_week: "Поисковые запросы"
-        listing_content: "Содержимое листинга"
-        product_attributes: "Атрибуты товара и варианты"
+        ozon_listing_content: "Содержимое листинга Ozon"
+        wb_listing_content: "Содержимое листинга WB"
       edit:
         title: "Изменить правило диагностики SKU"
       fields:
@@ -2387,6 +2387,8 @@ ru:
         removed: "Удалено"
         primary_from: "Предыдущее главное фото"
         primary_to: "Новое главное фото"
+      diff_summaries:
+        attribute_counts: "Изменено атрибутов: %{modified_count}, удалено: %{deleted_count}"
       diff_fields:
         acquiring: "Эквайринг"
         attributes: "Атрибуты"
