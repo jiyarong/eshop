@@ -42,9 +42,7 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
       sku: @sku, store: @ozon_store, product_id: "OZ-#{@token}", platform_sku_id: "81001",
       product_name: "Ozon Listing"
     )
-    @created_weekly_rates = %w[
-      2026-07-13 2026-07-20 2026-07-27 2026-08-03 2026-08-10 2026-08-17
-    ].filter_map do |week_start|
+    @created_weekly_rates = (0...14).map { |offset| Date.new(2026, 8, 17) - offset.weeks }.sort.filter_map do |week_start|
       next if Ec::WeeklyRate.exists?(week_start: week_start)
 
       Ec::WeeklyRate.create!(week_start: week_start, rate_cny_rub: 12.0, rate_byn_rub: 27.0)
@@ -205,6 +203,8 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
       ],
       base.fetch("sku_products")
     )
+    assert_equal 12, base.fetch("sales_amount_last_3_months").size
+    assert_equal 0, base.dig("sales_amount_last_3_months", "2026-08-03")
 
     inventory_values = data.dig("inventory", "current_inventory_info", "values")
     assert_equal 5, inventory_values.fetch("platform_fbs_stock")

@@ -68,6 +68,7 @@ Accept: text/markdown
 | `related_spu_sku_codes` | 同 SPU 关联 SKU | 同一 SPU 下除当前 SKU 外的其他 SKU 编码 |
 | `current_stage` | 当前营销阶段 | 常见值：`NEW` 新品、`GRW` 成长、`MAT` 成熟、`CLR` 清仓 |
 | `current_grade` | 当前营销等级 | 常见值：`S`、`A`、`B`、`C` |
+| `sales_amount_last_3_months` | 近三个月周销量 | 最近 12 个完整自然周的净销量，键为周一日期；口径与利润归集的 `net_sales` 一致，没有销量的周为 `0` |
 | `sku_products` | 平台商品绑定 | 当前 SKU 在各店铺的平台商品绑定列表 |
 | `sku_products[].store_id` | ERP 店铺 ID | `Ec::Store` ID |
 | `sku_products[].platform` | 平台 | `wb` 或 `ozon` |

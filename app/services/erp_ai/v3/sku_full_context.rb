@@ -47,7 +47,7 @@ module ErpAI
               time_zone: time_zone.name,
               week_starts_on: "monday"
             },
-            base: base_context.new(sku: sku).call,
+            base: base_context.new(sku: sku, period_to: period_to).call,
             inventory: ErpAI::V3::InventoryContext.new(
               sku: sku,
               today: today,

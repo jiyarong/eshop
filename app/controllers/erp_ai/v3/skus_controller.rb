@@ -22,8 +22,8 @@ module ErpAI
       end
 
       def base_context
-        render_section_context(:base) do |sku, _period_from, _period_to|
-          ErpAI::V3::BaseContext.new(sku: sku).call
+        render_section_context(:base) do |sku, _period_from, period_to|
+          ErpAI::V3::BaseContext.new(sku: sku, period_to: period_to).call
         end
       end
 
