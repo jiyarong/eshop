@@ -12,6 +12,7 @@ module ErpAI
 
     def call(id:, name:, arguments:)
       return save_sku_event_result(id, name, arguments) if name == "save_sku_event"
+      return update_sku_diagnosis_event_result(id, name, arguments) if name == "update_sku_diagnosis_event"
       return erp_ai_request_result(id, name, arguments) if name == "erp_ai_request"
 
       parsed = ErpAI::Mcp::ToolAdapter.parse_model_tool_name(name)
@@ -52,6 +53,16 @@ module ErpAI
           current_user: current_user,
           event_date: @event_date,
           conversation_id: @conversation_id
+        ).call(name, (arguments || {}).stringify_keys)
+      }
+    end
+
+    def update_sku_diagnosis_event_result(id, name, arguments)
+      {
+        tool_call_id: id,
+        name: name,
+        result: ::Mcp::ToolExecutor.new(
+          current_user: current_user
         ).call(name, (arguments || {}).stringify_keys)
       }
     end

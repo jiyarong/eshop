@@ -169,6 +169,9 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select ".ai-health-long-text__preview", count: 2
       assert_select "button.ai-health-long-text__trigger[data-action='operator-dialog#open']", text: "查看完整信息", count: 2
       assert_select "dialog.ai-health-long-text-dialog", count: 2
+      assert_select ".ai-health-long-text-dialog__text[data-controller='markdown']", count: 2
+      assert_select ".ai-health-long-text-dialog__source[data-markdown-target='source']", count: 2
+      assert_select ".ai-health-long-text-dialog__text article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 2
       assert_select ".ai-health-long-text-dialog__text", text: long_message
       assert_select ".ai-health-long-text-dialog__text", text: long_advise
       assert_select ".ai-health-result__raw-link", count: 0
@@ -220,16 +223,30 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select "form[action='#{report_sku_general_diagnoses_path(@sku.sku_code)}']" do
       assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{first_rule.id}']"
       assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{second_rule.id}']"
+      assert_select "input[type='checkbox'][name='include_summary'][value='1']"
       assert_select "input[type='submit'][value='开始诊断'][data-turbo-submits-with='正在提交...']"
     end
 
     sign_in @user
     assert_enqueued_with(
       job: AITasks::SkuDiagnosisJob,
-      args: [ { sku_code: @sku.sku_code, rule_ids: [ first_rule.id, second_rule.id ] } ]
+      args: [ { sku_code: @sku.sku_code, rule_ids: [ first_rule.id, second_rule.id ], summary: false } ]
     ) do
       post report_sku_general_diagnoses_path(@sku.sku_code),
         params: { sku_diagnosis_rule_ids: [ second_rule.id, "invalid", first_rule.id ] }
+    end
+
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal "通用诊断任务已提交。", flash[:notice]
+  end
+
+  test "manual general diagnosis can enqueue the summary independently" do
+    assert_enqueued_with(
+      job: AITasks::SkuDiagnosisJob,
+      args: [ { sku_code: @sku.sku_code, rule_ids: [], summary: true } ]
+    ) do
+      post report_sku_general_diagnoses_path(@sku.sku_code),
+        params: { include_summary: "1" }
     end
 
     assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")

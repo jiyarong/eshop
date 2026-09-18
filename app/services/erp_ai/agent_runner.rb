@@ -7,13 +7,15 @@ module ErpAI
     DEFAULT_MAX_TOOL_ROUNDS = 20
     TOOL_LIMIT_MESSAGE = "工具调用次数已达到上限，请缩小问题范围后重试。".freeze
 
-    def initialize(agent:, user:, client: DefaultClient.new, server_registry: ErpAI::Mcp::ServerRegistry.new, tool_executor: nil, max_tool_rounds: nil)
+    def initialize(agent:, user:, client: DefaultClient.new, server_registry: ErpAI::Mcp::ServerRegistry.new, tool_executor: nil, max_tool_rounds: nil, tool_names: nil, system_prompt: nil)
       @agent = agent
       @user = user
       @client = client
       @server_registry = server_registry
       @tool_executor = tool_executor
       @max_tool_rounds = max_tool_rounds || ENV.fetch("ERP_AI_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS).to_i
+      @tool_names = tool_names
+      @system_prompt = system_prompt
     end
 
     def ask(question:, module_name: nil, business_object_type: nil, business_object_id: nil, time_range: {}, data_summary: nil, images: [])
@@ -44,7 +46,7 @@ module ErpAI
 
     private
 
-    attr_reader :agent, :user, :client, :server_registry, :max_tool_rounds
+    attr_reader :agent, :user, :client, :server_registry, :max_tool_rounds, :tool_names, :system_prompt
 
     def run_loop(conversation, data_summary, broadcaster: nil)
       assign_conversation_id(conversation)
@@ -114,7 +116,7 @@ module ErpAI
         model: agent.model_id,
         temperature: agent.temperature.to_f,
         thinking_enabled: agent.thinking_enabled?,
-        system_prompt: agent.system_prompt,
+        system_prompt: system_prompt || agent.system_prompt,
         context: build_context(conversation, data_summary),
         messages: messages.with_attached_images.map { |message| serialize_message(message) },
         tools: selected_tools
@@ -167,7 +169,9 @@ module ErpAI
     end
 
     def selected_tools
-      erp_tools = ErpAI::ToolRegistry.default_tools.select { |tool| agent.tools.include?(tool.fetch(:name)) }
+      available_tools = ErpAI::ToolRegistry.default_tools + ErpAI::ToolRegistry.joint_diagnosis_tools
+      selected_tool_names = tool_names || agent.tools
+      erp_tools = available_tools.select { |tool| selected_tool_names.include?(tool.fetch(:name)) }
       erp_tools + mcp_tools
     end
 

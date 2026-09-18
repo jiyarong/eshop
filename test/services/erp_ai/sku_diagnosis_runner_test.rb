@@ -14,13 +14,17 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
       question = request.fetch(:messages).first.fetch(:content)
       sku_code = question[/当前 SKU：([^\n]+)/, 1]
-      rule_id = question[/当前子规则 ID：(\d+)/, 1].to_i
+      summary = question.include?("最终联合诊断")
       {
         content: nil,
         tool_calls: [{
           id: "save-#{requests.size}", name: "save_sku_event",
-          arguments: {
-            sku_code: sku_code, sub_agent_id: rule_id, severity: "warning",
+          arguments: summary ? {
+            sku_code: sku_code, sub_agent_id: nil, severity: "critical",
+            event_type: ErpAI::SkuDiagnosisRunner::SUMMARY_EVENT_TYPE,
+            message: "Joint conclusion with duplicate and conflict review", advise: "Prioritize replenishment"
+          } : {
+            sku_code: sku_code, sub_agent_id: question[/当前子规则 ID：(\d+)/, 1].to_i, severity: "warning",
             event_type: "stock_risk", message: "Stock issue: sales increased", advise: "Replenish"
           }
         }]
@@ -326,6 +330,49 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_not_equal first_conversation_id, event.conversation_id
   end
 
+  test "runs the final joint diagnosis after sub-rules and includes latest events and required context" do
+    client = SavingClient.new
+    diagnosis_runner(date: Date.new(2026, 9, 15), client: client, summary: true).run
+
+    assert_equal 4, client.requests.size
+    summary_request = client.requests.third
+    assert_equal [ "save_sku_event", "update_sku_diagnosis_event" ],
+      summary_request.fetch(:tools).map { |tool| tool.fetch(:name) }
+    assert_includes summary_request.fetch(:system_prompt), "有依据且合理的判断"
+    summary = summary_request.fetch(:context).split("已查询到的业务数据摘要：", 2).last
+    assert_includes summary, "**Snapshot base**"
+    assert_includes summary, "**Snapshot lifecycle**"
+    assert_includes summary, "**Snapshot sales_funnel**"
+    assert_includes summary, "**Snapshot inventory**"
+    assert_includes summary, "sub_agent_rule.name=#{@daily.name}"
+    assert_includes summary, "event_type=stock_risk"
+    assert_includes summary_request.fetch(:messages).first.fetch(:content), "sub_agent_id 必须传 null"
+    assert_includes summary_request.fetch(:messages).first.fetch(:content), "重复事件识别"
+    assert_includes summary_request.fetch(:messages).first.fetch(:content), "每一项子规则诊断都已经基于自己的上下文和规则完成了有依据且合理的判断"
+    assert_includes summary_request.fetch(:messages).first.fetch(:content), "需要立即执行操作时使用 critical，需要关注或跟进时使用 warning，确认无风险时使用 info"
+
+    events = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.order(:id)
+    assert_equal [ @daily.id, nil ], events.map(&:sub_agent_id)
+    assert_equal ErpAI::SkuDiagnosisRunner::SUMMARY_EVENT_TYPE, events.last.event_type
+  end
+
+  test "runs the joint diagnosis independently without sub-rules" do
+    client = SavingClient.new
+    ErpAI::SkuDiagnosisRunner.new(
+      as_of_date: Date.new(2026, 9, 15),
+      sku_code: @sku.sku_code,
+      rule_ids: [],
+      summary: true,
+      client: client,
+      user: @user,
+      snapshot_fetcher: @snapshot_fetcher
+    ).run
+
+    event = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole
+    assert_nil event.sub_agent_id
+    assert_equal ErpAI::SkuDiagnosisRunner::SUMMARY_EVENT_TYPE, event.event_type
+  end
+
   test "scoped tool rejects another SKU or rule" do
     executor = ErpAI::SkuDiagnosisRunner::ScopedToolExecutor.new(user: @user, date: Date.new(2026, 9, 15), sku: @sku, rule: @daily)
     result = executor.call(id: "bad", name: "save_sku_event", arguments: {
@@ -389,10 +436,11 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
   private
 
-  def diagnosis_runner(date:, client:)
+  def diagnosis_runner(date:, client:, summary: false)
     ErpAI::SkuDiagnosisRunner.new(
       as_of_date: date,
       sku_code: @sku.sku_code,
+      summary: summary,
       client: client,
       user: @user,
       snapshot_fetcher: @snapshot_fetcher

@@ -30,10 +30,20 @@
           <% end %>
         </fieldset>
 
+        <fieldset class="form-section sku-general-diagnosis-summary-picker">
+          <legend><%= t("reports.sku_detail.ai_general_diagnosis.summary_section") %></legend>
+          <label class="checkbox-option">
+            <%= check_box_tag "include_summary", "1", false, id: "sku-diagnosis-summary" %>
+            <span>
+              <strong><%= t("reports.sku_detail.ai_general_diagnosis.summary_label") %></strong>
+              <small><%= t("reports.sku_detail.ai_general_diagnosis.summary_hint") %></small>
+            </span>
+          </label>
+        </fieldset>
+
         <div class="modal-form-actions">
           <%= form.submit t("reports.sku_detail.ai_general_diagnosis.start"),
                           class: "button",
-                          disabled: @sku_diagnosis_rules.empty?,
                           data: { turbo_submits_with: t("reports.sku_detail.ai_general_diagnosis.starting") } %>
           <button class="button button-secondary" type="button" data-action="modal#close"><%= t("common.actions.cancel") %></button>
         </div>

@@ -45,6 +45,9 @@ module Mcp
         platform_sku_id: "OZON-SKU-#{@token}",
         product_name: "其他平台商品 #{@token}"
       )
+      @diagnosis_rule = Ec::SkuDiagnosisRule.create!(
+        name: "MCP 诊断规则 #{@token}", prompt: "检查库存", configuration: { "context_keys" => [ "inventory" ] }
+      )
       Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @user)
       Ec::SkuProductOperator.create!(sku_product: @ozon_sku_product, user: @user)
       Ec::SkuDeveloperAssignment.create!(sku: @other_sku, user: @user)
@@ -60,6 +63,7 @@ module Mcp
       Ec::SkuDeveloperAssignment.where(user_id: [@user&.id, @other_user&.id]).delete_all
       Ec::SkuProductOperator.where(user_id: [@user&.id, @other_user&.id]).delete_all
       Ec::SkuProduct.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
+      Ec::SkuDiagnosisRule.where(id: @diagnosis_rule&.id).delete_all
       Ec::Sku.with_deleted.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
       Ec::Store.where(id: store_ids).delete_all
       UserRole.where(user_id: [@user&.id, @other_user&.id]).delete_all
@@ -121,6 +125,66 @@ module Mcp
       assert_equal "立即补货", event.advise
       assert event.is_latest?
       assert second.fetch(:is_latest)
+    end
+
+    test "save_sku_event accepts a nil sub-agent for the joint summary" do
+      result = ToolExecutor.new(current_user: @user).call("save_sku_event", {
+        "sku_code" => @sku.sku_code,
+        "sub_agent_id" => nil,
+        "event_type" => "综合风险",
+        "severity" => "warning",
+        "message" => "综合判断",
+        "advise" => "按优先级处理"
+      })
+
+      assert result.fetch(:success)
+      event = Ec::GeneralDiagnosis.find(result.fetch(:diagnosis_id)).events.sole
+      assert_nil event.sub_agent_id
+      assert_equal "综合风险", event.event_type
+    end
+
+    test "update_sku_diagnosis_event changes only requested fields and prefixes AI advice" do
+      diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+      event = diagnosis.events.create!(
+        sub_agent_id: @diagnosis_rule.id,
+        event_type: "stock_risk",
+        severity: "warning",
+        message: "库存风险依据",
+        advise: "原始建议"
+      )
+
+      result = ToolExecutor.new(current_user: @user).call("update_sku_diagnosis_event", {
+        "sku_code" => @sku.sku_code,
+        "event_id" => event.id,
+        "advise" => "建议复核补货点",
+        "status" => "ignore"
+      })
+
+      assert result.fetch(:success)
+      event.reload
+      assert_equal "warning", event.severity
+      assert_equal "AI：建议复核补货点", event.advise
+      assert event.ignored?
+    end
+
+    test "update_sku_diagnosis_event rejects an event from another sku" do
+      other_diagnosis = Ec::GeneralDiagnosis.create!(sku: @other_sku, submitted_by: @user)
+      event = other_diagnosis.events.create!(
+        sub_agent_id: @diagnosis_rule.id,
+        event_type: "stock_risk",
+        severity: "warning",
+        message: "其他 SKU 风险",
+        advise: "原始建议"
+      )
+
+      result = ToolExecutor.new(current_user: @user).call("update_sku_diagnosis_event", {
+        "sku_code" => @sku.sku_code,
+        "event_id" => event.id,
+        "severity" => "critical"
+      })
+
+      assert_equal "diagnosis event not found", result.fetch(:error)
+      assert_equal "warning", event.reload.severity
     end
 
     test "sql_query uses the read only SQL query behavior" do

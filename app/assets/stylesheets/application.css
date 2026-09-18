@@ -2365,7 +2365,14 @@ table thead th {
   margin: 16px 0 0;
   line-height: 1.7;
   overflow-wrap: anywhere;
+}
+
+.ai-health-long-text-dialog__source {
+  margin: 0;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
+  font: inherit;
+  line-height: inherit;
 }
 
 .ai-health-message__link {

@@ -98,10 +98,10 @@ module Mcp
         ),
         definition(
           "save_sku_event",
-          "保存当前用户可见 SKU 的通用 AI 诊断事件。同一 SKU、同一子代理、同一天的结果会覆盖之前的记录。",
+          "保存当前用户可见 SKU 的通用 AI 诊断事件。同一 SKU、同一子代理（最终联合诊断为空）、同一天的结果会覆盖之前的记录。",
           {
             sku_code: string_schema("内部 SKU code"),
-            sub_agent_id: integer_schema("子代理 ID"),
+            sub_agent_id: { type: [ "integer", "null" ], description: "子代理 ID；最终联合诊断传 null" },
             event_type: string_schema("诊断事件类型"),
             severity: string_schema("事件严重级别"),
             message: string_schema("诊断结果和依据"),

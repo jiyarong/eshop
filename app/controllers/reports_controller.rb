@@ -150,14 +150,16 @@ class ReportsController < ApplicationController
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     rule_ids = Array(params[:sku_diagnosis_rule_ids]).filter_map { |id| Integer(id, exception: false) }.uniq
     selected_rule_ids = Ec::SkuDiagnosisRule.where(id: rule_ids).order(:id).ids
+    summary_selected = ActiveModel::Type::Boolean.new.cast(params[:include_summary]) == true
 
-    if selected_rule_ids.empty?
+    if selected_rule_ids.empty? && !summary_selected
       redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
                   alert: t("reports.sku_detail.ai_general_diagnosis.selection_required")
       return
     end
 
-    AITasks::SkuDiagnosisJob.perform_later(sku_code: @sku.sku_code, rule_ids: selected_rule_ids)
+    job_args = { sku_code: @sku.sku_code, rule_ids: selected_rule_ids, summary: summary_selected }
+    AITasks::SkuDiagnosisJob.perform_later(**job_args)
     redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
                 notice: t("reports.sku_detail.ai_general_diagnosis.enqueued")
   end

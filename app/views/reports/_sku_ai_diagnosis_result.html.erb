@@ -162,7 +162,7 @@ end %>
                   <% if conversation_path %>
                     <%= link_to report_value(event.sub_agent&.name), conversation_path, class: "ai-health-table__row-link" %>
                   <% else %>
-                    <%= report_value(event.sub_agent&.name) %>
+                    <%= report_value(event.sub_agent&.name || (event.sub_agent_id.nil? ? t("reports.sku_detail.ai_general_diagnosis.summary_label") : nil)) %>
                   <% end %>
                 </td>
                 <td class="ai-health-event-type">

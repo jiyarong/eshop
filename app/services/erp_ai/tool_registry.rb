@@ -1,5 +1,24 @@
 module ErpAI
   class ToolRegistry
+    JOINT_DIAGNOSIS_TOOL_DEFINITIONS = [
+      {
+        name: "update_sku_diagnosis_event",
+        description: "联合诊断专用：按事件 ID 修正当前 SKU 子规则事件的严重级别、AI 建议，或将事件标记为 ignored。只有确有必要时才调用；不传 advise 时保留原建议。",
+        parameters: {
+          type: "object",
+          properties: {
+            sku_code: { type: "string", description: "内部 SKU code" },
+            event_id: { type: "integer", description: "要调整的诊断事件 ID" },
+            severity: { type: "string", enum: %w[info warning critical], description: "新的事件严重级别，可选" },
+            advise: { type: "string", description: "新的建议，可选；传入后必须以 AI： 开头" },
+            status: { type: "string", enum: %w[ignore ignored], description: "传 ignore 或 ignored 将事件标记为 ignored，可选" }
+          },
+          required: %w[sku_code event_id],
+          additionalProperties: false
+        }
+      }
+    ].freeze
+
     TOOL_DEFINITIONS = [
       {
         name: "query_sales_data",
@@ -53,12 +72,12 @@ module ErpAI
       },
       {
         name: "save_sku_event",
-        description: "保存当前 SKU 的诊断事件。同一 SKU、同一子规则、同一天的结果会覆盖之前的记录。",
+        description: "保存当前 SKU 的诊断事件。同一 SKU、同一子规则（最终联合诊断为空）、同一天的结果会覆盖之前的记录。",
         parameters: {
           type: "object",
           properties: {
             sku_code: { type: "string", description: "内部 SKU code" },
-            sub_agent_id: { type: "integer", description: "SKU 诊断规则 ID" },
+            sub_agent_id: { type: [ "integer", "null" ], description: "SKU 诊断规则 ID；最终联合诊断必须传 null" },
             event_type: { type: "string", description: "诊断事件类型" },
             severity: { type: "string", description: "事件严重级别" },
             message: { type: "string", description: "诊断结果和依据" },
@@ -72,6 +91,10 @@ module ErpAI
 
     def self.default_tools
       TOOL_DEFINITIONS
+    end
+
+    def self.joint_diagnosis_tools
+      JOINT_DIAGNOSIS_TOOL_DEFINITIONS
     end
 
     def self.default_tool_names

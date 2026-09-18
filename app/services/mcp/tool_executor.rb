@@ -34,6 +34,8 @@ module Mcp
         operation_context
       when "save_sku_event"
         save_sku_event(args)
+      when "update_sku_diagnosis_event"
+        update_sku_diagnosis_event(args)
       else
         { error: "Unknown MCP tool: #{name}" }
       end
@@ -82,8 +84,8 @@ module Mcp
       sku = visible_scope.global_user? ? Ec::Sku.find_by(sku_code: sku_code) : visible_sku(sku_code)
       return { error: "SKU is not visible to current user" } unless sku
 
+      return { error: "sub_agent_id is required" } unless args.key?("sub_agent_id")
       sub_agent_id = Integer(args["sub_agent_id"], exception: false)
-      return { error: "sub_agent_id is required" } if sub_agent_id.nil?
 
       severity = args["severity"].to_s
       return { error: "severity is required" } if severity.blank?
@@ -155,6 +157,60 @@ module Mcp
         event_type: event.event_type,
         sub_agent_id: event.sub_agent_id,
         is_latest: event.is_latest
+      }
+    end
+
+    def update_sku_diagnosis_event(args)
+      sku_code = args["sku_code"].to_s.upcase
+      return { error: "sku_code is required" } if sku_code.blank?
+
+      sku = visible_scope.global_user? ? Ec::Sku.find_by(sku_code: sku_code) : visible_sku(sku_code)
+      return { error: "SKU is not visible to current user" } unless sku
+
+      event_id = Integer(args["event_id"], exception: false)
+      return { error: "event_id is required" } if event_id.nil?
+
+      event = Ec::AIDiagnosisEvent
+        .joins(:ai_diagnosis)
+        .where(
+          id: event_id,
+          sub_agent_id: Ec::SkuDiagnosisRule.select(:id),
+          is_latest: true,
+          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name }
+        )
+        .first
+      return { error: "diagnosis event not found" } unless event
+
+      attributes = {}
+      if args.key?("severity")
+        severity = args["severity"].to_s
+        return { error: "severity must be info, warning or critical" } unless severity.in?(%w[info warning critical])
+
+        attributes[:severity] = severity
+      end
+      if args.key?("advise")
+        advise = args["advise"].to_s.strip
+        return { error: "advise is required when provided" } if advise.blank?
+
+        advise = advise.sub(/\AA[：:]\s*/, "")
+        attributes[:advise] = "AI：#{advise}"
+      end
+      if args.key?("status")
+        status = args["status"].to_s
+        return { error: "status must be ignore or ignored" } unless status.in?(%w[ignore ignored])
+
+        attributes[:status] = "ignored"
+      end
+      return { error: "at least one event change is required" } if attributes.empty?
+
+      event.with_lock { event.update!(attributes) }
+      {
+        success: true,
+        sku_code: sku.sku_code,
+        event_id: event.id,
+        severity: event.severity,
+        advise: event.advise,
+        status: event.status
       }
     end
 

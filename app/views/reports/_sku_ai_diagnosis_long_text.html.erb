@@ -21,7 +21,10 @@
           <i class="bi bi-x-lg" aria-hidden="true"></i>
         </button>
       </div>
-      <p class="ai-health-long-text-dialog__text"><%= value %></p>
+      <div class="ai-health-long-text-dialog__text" data-controller="markdown">
+        <pre class="ai-health-long-text-dialog__source" data-markdown-target="source"><%= value %></pre>
+        <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+      </div>
     </section>
   </dialog>
 <% else %>
