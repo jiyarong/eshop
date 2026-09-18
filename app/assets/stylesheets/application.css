@@ -6785,6 +6785,20 @@ textarea:focus {
   line-height: 1.5;
 }
 
+.sku-ai-diagnosis-event-popover__message-source {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font: inherit;
+  line-height: inherit;
+}
+
+.sku-ai-diagnosis-event-popover__message .gbrain-markdown {
+  max-width: none;
+  font-size: inherit;
+  line-height: inherit;
+}
+
 .sku-ai-diagnosis-event-popover__meta,
 .sku-ai-diagnosis-event-popover__details > span {
   color: var(--fg-muted);

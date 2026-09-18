@@ -54,7 +54,10 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-popover']" do
       assert_select "button.ai-diagnosis-event-tag[aria-expanded='false'][aria-controls]", text: "即将断货"
       assert_select ".sku-ai-diagnosis-event-popover__panel[hidden][role='dialog']" do
-        assert_select ".sku-ai-diagnosis-event-popover__message", text: "Risk details #{@token}"
+        assert_select ".sku-ai-diagnosis-event-popover__message[data-controller='markdown']", count: 2 do
+          assert_select ".sku-ai-diagnosis-event-popover__message-source[data-markdown-target='source']", text: "Risk details #{@token}"
+          assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 2
+        end
         assert_select ".sku-ai-diagnosis-event-popover__meta", text: /诊断范围：inventory/
         assert_select "code", text: /\"available\": 3/
       end

@@ -19,12 +19,12 @@
                 data-diagnosis-event-popover-target="trigger">
           <%= event_label %>
         </button>
-        <span id="<%= popover_id %>"
-              class="sku-ai-diagnosis-event-popover__panel"
-              role="dialog"
-              aria-label="<%= t("erp.ai_diagnosis_event_filter.details.title", event_type: event_label) %>"
-              data-diagnosis-event-popover-target="popover"
-              hidden>
+        <div id="<%= popover_id %>"
+             class="sku-ai-diagnosis-event-popover__panel"
+             role="dialog"
+             aria-label="<%= t("erp.ai_diagnosis_event_filter.details.title", event_type: event_label) %>"
+             data-diagnosis-event-popover-target="popover"
+             hidden>
           <span class="sku-ai-diagnosis-event-popover__header">
             <strong><%= event_label %></strong>
             <button type="button" class="sku-ai-diagnosis-event-popover__close" aria-label="<%= t("erp.ai_diagnosis_event_filter.details.close") %>" data-action="diagnosis-event-popover#close">
@@ -32,8 +32,11 @@
             </button>
           </span>
           <% event_details.each_with_index do |event, index| %>
-            <span class="sku-ai-diagnosis-event-popover__event<%= " is-separated" if index.positive? %>">
-              <span class="sku-ai-diagnosis-event-popover__message"><%= event.message %></span>
+            <div class="sku-ai-diagnosis-event-popover__event<%= " is-separated" if index.positive? %>">
+              <div class="sku-ai-diagnosis-event-popover__message" data-controller="markdown">
+                <pre class="sku-ai-diagnosis-event-popover__message-source" data-markdown-target="source"><%= event.message %></pre>
+                <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+              </div>
               <% if event.scope.present? %>
                 <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.scope", value: event.scope) %></span>
               <% end %>
@@ -44,9 +47,9 @@
                 </span>
               <% end %>
               <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.diagnosed_at", value: display_time(event.created_at)) %></span>
-            </span>
+            </div>
           <% end %>
-        </span>
+        </div>
       </span>
     <% else %>
       <span class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact"><%= event_label %></span>
