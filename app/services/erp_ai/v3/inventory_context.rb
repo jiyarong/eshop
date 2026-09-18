@@ -1,6 +1,7 @@
 module ErpAI
   module V3
     class InventoryContext
+      HISTORY_WEEKS = 12
       CURRENT_INVENTORY_FIELDS = %i[
         incoming_quantity
         book_stock
@@ -65,7 +66,8 @@ module ErpAI
         trend = trend_query.new(
           sku,
           to_date: today,
-          time_zone: time_zone
+          time_zone: time_zone,
+          weeks: HISTORY_WEEKS
         ).call
 
         {

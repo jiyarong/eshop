@@ -188,7 +188,7 @@ Accept: text/markdown
 | `current_inventory_info.forecast_explanation` | 简单预测说明 | SKU 详情页中普通预测日销的公式解释 |
 | `current_inventory_info.strict_forecast` | 严谨预测详情 | 断货修正预测的输入、路径和结果；若有效观察日不足，预测日销可能为空 |
 | `current_inventory_info.data_through` | 库存数据截至 | 最新平台库存同步时间 |
-| `history_inventory_info.sku_inventory_trend` | SKU 周库存趋势 | 最近若干周的库存快照汇总，按周展示 |
+| `history_inventory_info.sku_inventory_trend` | SKU 周库存趋势 | 最近 12 周的库存快照汇总，按周展示 |
 | `history_inventory_info.store_listing_inventory_trend` | 店铺库存日趋势 | 店铺/Listing 级别近日期间库存走势 |
 
 ### 当前库存字段

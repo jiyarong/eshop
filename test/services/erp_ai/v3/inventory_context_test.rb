@@ -47,8 +47,8 @@ class ErpAI::V3::InventoryContextTest < ActiveSupport::TestCase
       end
       self.calls = []
 
-      def self.new(sku, to_date:, time_zone:)
-        calls << { sku: sku, to_date: to_date, time_zone: time_zone }
+      def self.new(sku, to_date:, time_zone:, weeks:)
+        calls << { sku: sku, to_date: to_date, time_zone: time_zone, weeks: weeks }
         Object.new.tap do |instance|
           instance.define_singleton_method(:call) do
             {
@@ -125,7 +125,10 @@ class ErpAI::V3::InventoryContextTest < ActiveSupport::TestCase
     assert_equal "weighted_recent_sales", current.dig(:strict_forecast, :calculation, :path)
     assert_equal Time.zone.parse("2026-08-09 10:00"), current.fetch(:data_through)
 
-    assert_equal [{ sku: sku, to_date: Date.new(2026, 8, 10), time_zone: time_zone }], trend_query.calls
+    assert_equal(
+      [{ sku: sku, to_date: Date.new(2026, 8, 10), time_zone: time_zone, weeks: 12 }],
+      trend_query.calls
+    )
     history = result.fetch(:history_inventory_info)
     total_trend = history.fetch(:sku_inventory_trend)
     assert_equal Ec::SkuInventoryTrendQuery::METRICS, total_trend.fetch(:metrics)

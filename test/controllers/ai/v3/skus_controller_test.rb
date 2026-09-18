@@ -211,7 +211,7 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal 8, inventory_values.fetch("platform_reported_fbs_stock")
     history = data.dig("inventory", "history_inventory_info")
     total_trend = history.fetch("sku_inventory_trend")
-    assert_equal 8, total_trend.fetch("weeks").size
+    assert_equal 12, total_trend.fetch("weeks").size
     assert_includes total_trend.fetch("metrics"), "daily_sales_velocity"
     assert_equal "2026-08-09", total_trend.fetch("weeks").find { |week| week.fetch("week_start") == "2026-08-03" }.fetch("snapshot_date")
     store_trend = history.fetch("store_listing_inventory_trend")
