@@ -75,8 +75,11 @@ module ErpAI
       else
         Ec::SkuDiagnosisRule.where(id: rule_ids).order(:id)
       end
-      skus = Ec::Sku.where(sku_code: sku_code).to_a if sku_code.present?
-      skus ||= Ec::Sku.order(:sku_code).to_a
+      skus = if sku_code.present?
+        Ec::Sku.where(sku_code: sku_code).to_a
+      else
+        batch_candidate_skus
+      end
       skus.each do |sku|
         rules.each { |rule| run_rule(agent, user, sku, rule) }
         run_summary(agent, user, sku) if summary
@@ -87,6 +90,22 @@ module ErpAI
 
     attr_reader :as_of_date, :sku_code, :rule_ids, :summary, :client, :snapshot_fetcher, :listing_context,
       :product_attributes_context
+
+    def batch_candidate_skus
+      period_from = as_of_date.beginning_of_week(:monday) - 1.week
+      period_to = period_from.end_of_week(:monday)
+      report = Ec::WeeklySummaryDeepQuery.run(
+        from_date: period_from,
+        to_date: period_to,
+        sku_codes: [],
+        include_comparison: false
+      )
+      report_sku_codes = Array(report[:rows] || report["rows"]).filter_map do |row|
+        (row[:sku] || row["sku"]).to_s.strip.upcase.presence
+      end.uniq
+
+      Ec::Sku.where(sku_code: report_sku_codes).order(:sku_code).to_a
+    end
 
     def run_rule(agent, user, sku, rule)
       period_from = as_of_date.beginning_of_week(:monday) - 1.week

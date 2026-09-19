@@ -108,6 +108,37 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal date, event.created_at.in_time_zone("Asia/Shanghai").to_date
   end
 
+  test "batch diagnosis only runs for SKUs present in the previous weekly profit report" do
+    report_sku = @sku
+    no_report_sku = Ec::Sku.create!(sku_code: "NO-REPORT-#{@token}", product_name: "No report")
+    original_run = Ec::WeeklySummaryDeepQuery.method(:run)
+    report_query_args = nil
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run) do |from_date:, to_date:, sku_codes:, include_comparison:|
+      report_query_args = { from_date: from_date, to_date: to_date, sku_codes: sku_codes, include_comparison: include_comparison }
+      { rows: [ { sku: report_sku.sku_code } ] }
+    end
+
+    client = SavingClient.new
+    ErpAI::SkuDiagnosisRunner.new(
+      as_of_date: Date.new(2026, 9, 15),
+      client: client,
+      user: @user,
+      snapshot_fetcher: @snapshot_fetcher
+    ).run
+
+    assert Ec::GeneralDiagnosis.exists?(sku: report_sku)
+    assert_not Ec::GeneralDiagnosis.exists?(sku: no_report_sku)
+    assert_equal [ report_sku.sku_code ], @snapshot_fetcher.calls.map { |call| call.fetch(:sku_code) }
+    assert_equal(
+      { from_date: Date.new(2026, 9, 7), to_date: Date.new(2026, 9, 13), sku_codes: [], include_comparison: false },
+      report_query_args
+    )
+  ensure
+    Ec::AIDiagnosis.where(sku_id: no_report_sku&.id).destroy_all
+    no_report_sku&.destroy!
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, original_run) if original_run
+  end
+
   test "uses the canonical context description when an older snapshot has none" do
     snapshot = @snapshot_fetcher.fetch(@sku.sku_code, snapshot_date: Date.new(2026, 9, 15))
     snapshot.fetch("categories").fetch("base").delete("description")

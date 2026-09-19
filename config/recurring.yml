@@ -182,7 +182,7 @@ production:
 
   sku_diagnosis:
     command: "AITasks::SkuDiagnosisJob.perform_later"
-    schedule: every day at 03:30 in Asia/Shanghai
+    schedule: every tuesday at 03:30 in Asia/Shanghai
 
   sku_operation_action_effect_diagnosis:
     command: "AITasks::SkuOperationActionEffectDiagnosisJob.perform_later"
