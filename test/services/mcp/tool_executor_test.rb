@@ -143,6 +143,30 @@ module Mcp
       assert_equal "综合风险", event.event_type
     end
 
+    test "create_sku_advise creates separate advice events with a fixed scope" do
+      executor = ToolExecutor.new(current_user: @user, event_date: Date.new(2026, 9, 15))
+      arguments = {
+        "sku_code" => @sku.sku_code,
+        "event_type" => "补充库存",
+        "severity" => "warning",
+        "message" => "近四周销量上升且库存偏低；本周补充库存，补货后观察缺货率。",
+        "scope" => "profit"
+      }
+
+      first = executor.call("create_sku_advise", arguments)
+      second = executor.call("create_sku_advise", arguments.merge("event_type" => "优化主图"))
+
+      assert first.fetch(:success)
+      assert second.fetch(:success)
+      assert_not_equal first.fetch(:event_id), second.fetch(:event_id)
+
+      events = Ec::GeneralDiagnosis.find(first.fetch(:diagnosis_id)).events.order(:id)
+      assert_equal [ "补充库存", "优化主图" ], events.map(&:event_type)
+      assert_equal [ "advise", "advise" ], events.map(&:scope)
+      assert_nil events.first.advise
+      assert_nil events.first.sub_agent_id
+    end
+
     test "update_sku_diagnosis_event changes only requested fields and prefixes AI advice" do
       diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
       event = diagnosis.events.create!(

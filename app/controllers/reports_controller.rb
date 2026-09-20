@@ -159,6 +159,7 @@ class ReportsController < ApplicationController
     end
 
     job_args = { sku_code: @sku.sku_code, rule_ids: selected_rule_ids, summary: summary_selected }
+    job_args[:force] = true if summary_selected
     AITasks::SkuDiagnosisJob.perform_later(**job_args)
     redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
                 notice: t("reports.sku_detail.ai_general_diagnosis.enqueued")

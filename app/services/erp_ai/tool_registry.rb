@@ -2,18 +2,17 @@ module ErpAI
   class ToolRegistry
     JOINT_DIAGNOSIS_TOOL_DEFINITIONS = [
       {
-        name: "update_sku_diagnosis_event",
-        description: "联合诊断专用：按事件 ID 修正当前 SKU 子规则事件的严重级别、AI 建议，或将事件标记为 ignored。只有确有必要时才调用；不传 advise 时保留原建议。",
+        name: "create_sku_advise",
+        description: "SKU 运营建议专用：为当前 SKU 创建一条新的运营建议事件，不会修改任何已有子规则事件。建议内容写入 message，scope 由系统固定为 advise。",
         parameters: {
           type: "object",
           properties: {
             sku_code: { type: "string", description: "内部 SKU code" },
-            event_id: { type: "integer", description: "要调整的诊断事件 ID" },
-            severity: { type: "string", enum: %w[info warning critical], description: "新的事件严重级别，可选" },
-            advise: { type: "string", description: "新的建议，可选；传入后必须以 AI： 开头" },
-            status: { type: "string", enum: %w[ignore ignored], description: "传 ignore 或 ignored 将事件标记为 ignored，可选" }
+            event_type: { type: "string", description: "具体建议操作的简写，使用中文且少于 10 个汉字" },
+            severity: { type: "string", enum: %w[info warning critical], description: "建议执行紧迫程度" },
+            message: { type: "string", description: "诊断依据和具体实施细节" }
           },
-          required: %w[sku_code event_id],
+          required: %w[sku_code event_type severity message],
           additionalProperties: false
         }
       }

@@ -243,7 +243,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
   test "manual general diagnosis can enqueue the summary independently" do
     assert_enqueued_with(
       job: AITasks::SkuDiagnosisJob,
-      args: [ { sku_code: @sku.sku_code, rule_ids: [], summary: true } ]
+      args: [ { sku_code: @sku.sku_code, rule_ids: [], summary: true, force: true } ]
     ) do
       post report_sku_general_diagnoses_path(@sku.sku_code),
         params: { include_summary: "1" }

@@ -14,21 +14,19 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
       question = request.fetch(:messages).first.fetch(:content)
       sku_code = question[/当前 SKU：([^\n]+)/, 1]
-      summary = question.include?("最终联合诊断")
-      {
-        content: nil,
-        tool_calls: [{
-          id: "save-#{requests.size}", name: "save_sku_event",
-          arguments: summary ? {
-            sku_code: sku_code, sub_agent_id: nil, severity: "critical",
-            event_type: ErpAI::SkuDiagnosisRunner::SUMMARY_EVENT_TYPE,
-            message: "Joint conclusion with duplicate and conflict review", advise: "Prioritize replenishment"
-          } : {
-            sku_code: sku_code, sub_agent_id: question[/当前子规则 ID：(\d+)/, 1].to_i, severity: "warning",
-            event_type: "stock_risk", message: "Stock issue: sales increased", advise: "Replenish"
-          }
-        }]
-      }
+      advice = question.include?("运营执行的建议操作")
+      tool_call = if advice
+        { id: "create-#{requests.size}", name: "create_sku_advise", arguments: {
+          sku_code: sku_code, severity: "critical", event_type: "补充库存",
+          message: "销量增长且库存偏低；运营在本周补充库存，补货后观察缺货率。"
+        } }
+      else
+        { id: "save-#{requests.size}", name: "save_sku_event", arguments: {
+          sku_code: sku_code, sub_agent_id: question[/当前子规则 ID：(\d+)/, 1].to_i, severity: "warning",
+          event_type: "stock_risk", message: "Stock issue: sales increased", advise: "Replenish"
+        } }
+      end
+      { content: nil, tool_calls: [tool_call] }
     end
   end
 
@@ -68,6 +66,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     @daily = Ec::SkuDiagnosisRule.create!(name: "Daily #{@token}", prompt: "Check base data", configuration: { "context_keys" => ["base"], "allowed_event_types" => ["stock_risk", "库存风险"] })
     @weekly = Ec::SkuDiagnosisRule.create!(name: "Weekly #{@token}", prompt: "Check lifecycle", frequency: "weekly", configuration: { "context_keys" => ["lifecycle"] })
     @manual = Ec::SkuDiagnosisRule.create!(name: "Manual #{@token}", prompt: "Check manually", frequency: "manual", configuration: { "context_keys" => [ "base" ] })
+    @additional_rules = []
     @agent_existed = Agent.exists?(code: "sku_diagnosis")
     @snapshot_fetcher = FakeSnapshotFetcher.new
   end
@@ -76,6 +75,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     Ec::AIDiagnosis.where(sku_id: @sku&.id).destroy_all
     Message.where(conversation: Conversation.where(user_id: @user.id)).delete_all
     Conversation.where(user_id: @user.id).delete_all
+    Ec::SkuDiagnosisRule.where(id: @additional_rules&.map(&:id)).delete_all
     Ec::SkuDiagnosisRule.where(id: [ @daily&.id, @weekly&.id, @manual&.id ]).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     Agent.where(code: "sku_diagnosis").delete_all unless @agent_existed
@@ -361,15 +361,21 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_not_equal first_conversation_id, event.conversation_id
   end
 
-  test "runs the final joint diagnosis after sub-rules and includes latest events and required context" do
+  test "creates operational advice after sub-rules and includes recent weekly events and required context" do
     client = SavingClient.new
-    diagnosis_runner(date: Date.new(2026, 9, 15), client: client, summary: true).run
+    extra_rules = create_additional_rules(4)
+    rule_ids = [ @daily, @weekly, *extra_rules ].map(&:id)
+    travel_to Time.zone.local(2026, 9, 15, 12) do
+      diagnosis_runner(date: Date.new(2026, 9, 15), client: client, summary: true, rule_ids: rule_ids).run
+    end
 
-    assert_equal 4, client.requests.size
-    summary_request = client.requests.third
-    assert_equal [ "save_sku_event", "update_sku_diagnosis_event" ],
+    summary_request = client.requests.find do |request|
+      request.fetch(:messages).first.fetch(:content).to_s.include?("运营执行的建议操作")
+    end
+    assert summary_request
+    assert_equal [ "create_sku_advise" ],
       summary_request.fetch(:tools).map { |tool| tool.fetch(:name) }
-    assert_includes summary_request.fetch(:system_prompt), "有依据且合理的判断"
+    assert_includes summary_request.fetch(:system_prompt), "电商运营建议生成器"
     summary = summary_request.fetch(:context).split("已查询到的业务数据摘要：", 2).last
     assert_includes summary, "**Snapshot base**"
     assert_includes summary, "**Snapshot lifecycle**"
@@ -377,17 +383,79 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_includes summary, "**Snapshot inventory**"
     assert_includes summary, "sub_agent_rule.name=#{@daily.name}"
     assert_includes summary, "event_type=stock_risk"
-    assert_includes summary_request.fetch(:messages).first.fetch(:content), "sub_agent_id 必须传 null"
-    assert_includes summary_request.fetch(:messages).first.fetch(:content), "重复事件识别"
-    assert_includes summary_request.fetch(:messages).first.fetch(:content), "每一项子规则诊断都已经基于自己的上下文和规则完成了有依据且合理的判断"
-    assert_includes summary_request.fetch(:messages).first.fetch(:content), "需要立即执行操作时使用 critical，需要关注或跟进时使用 warning，确认无风险时使用 info"
+    assert_includes summary_request.fetch(:messages).first.fetch(:content), "event_type 是具体动作的简写"
+    assert_includes summary_request.fetch(:messages).first.fetch(:content), "工具不需要也不接受 advise"
+    assert_includes summary_request.fetch(:messages).first.fetch(:content), "不要调用任何 update 工具"
 
     events = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.order(:id)
-    assert_equal [ @daily.id, nil ], events.map(&:sub_agent_id)
-    assert_equal ErpAI::SkuDiagnosisRunner::SUMMARY_EVENT_TYPE, events.last.event_type
+    assert_equal rule_ids.sort, events.filter_map(&:sub_agent_id).sort
+    assert_nil events.last.sub_agent_id
+    assert_equal "补充库存", events.last.event_type
+    assert_equal "advise", events.last.scope
+    assert_nil events.last.advise
   end
 
-  test "runs the joint diagnosis independently without sub-rules" do
+  test "selects at most one event per rule in each of the four recent weeks" do
+    diagnosis_ids = []
+    week_starts = 3.downto(0).map { |weeks_ago| Date.new(2026, 9, 14) - weeks_ago.weeks }
+    week_starts.each_with_index do |week_start, index|
+      diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user, data: {}, created_at: week_start.to_time + 3.hours)
+      diagnosis_ids << diagnosis.id
+      diagnosis.events.create!(
+        sub_agent_id: @daily.id,
+        event_type: "daily_#{index}",
+        severity: "warning",
+        message: "daily #{index}",
+        advise: "follow #{index}",
+        created_at: week_start.to_time + 4.hours
+      )
+    end
+    duplicate_week = week_starts.last
+    diagnosis = Ec::GeneralDiagnosis.find(diagnosis_ids.last)
+    newest = diagnosis.events.create!(
+      sub_agent_id: @daily.id,
+      event_type: "daily_newest",
+      severity: "critical",
+      message: "newest event",
+      advise: "follow newest",
+      created_at: duplicate_week.to_time + 5.hours
+    )
+
+    runner = diagnosis_runner(date: Date.new(2026, 9, 15), client: SavingClient.new)
+    events = runner.send(:summary_events_for, @sku)
+
+    assert_equal 4, events.size
+    assert_equal [ "daily_0", "daily_1", "daily_2", "daily_newest" ], events.map(&:event_type)
+    assert_equal newest.id, events.last.id
+  end
+
+  test "skips the joint diagnosis when fewer than six latest sub-rule events exist" do
+    client = SavingClient.new
+    extra_rules = create_additional_rules(3)
+    rule_ids = [ @daily, @weekly, *extra_rules ].map(&:id)
+    travel_to Time.zone.local(2026, 9, 15, 12) do
+      diagnosis_runner(date: Date.new(2026, 9, 15), client: client, summary: true, rule_ids: rule_ids).run
+    end
+
+    events = Ec::GeneralDiagnosis.find_by!(sku: @sku).events
+    assert_equal 5, events.where(is_latest: true).count
+    assert_not events.where(sub_agent_id: nil).exists?
+  end
+
+  test "skips the joint diagnosis when the latest sub-rule event is older than thirty hours" do
+    client = SavingClient.new
+    extra_rules = create_additional_rules(4)
+    rule_ids = [ @daily, @weekly, *extra_rules ].map(&:id)
+    travel_to Time.zone.local(2026, 9, 16, 12) do
+      diagnosis_runner(date: Date.new(2026, 9, 15), client: client, summary: true, rule_ids: rule_ids).run
+    end
+
+    events = Ec::GeneralDiagnosis.find_by!(sku: @sku).events
+    assert_equal 6, events.where(is_latest: true).count
+    assert_not events.where(sub_agent_id: nil).exists?
+  end
+
+  test "skips the joint diagnosis without sub-rules" do
     client = SavingClient.new
     ErpAI::SkuDiagnosisRunner.new(
       as_of_date: Date.new(2026, 9, 15),
@@ -399,9 +467,20 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       snapshot_fetcher: @snapshot_fetcher
     ).run
 
+    assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
+    assert_empty client.requests
+  end
+
+  test "force runs the joint advice manually without sub-rule events" do
+    client = SavingClient.new
+    diagnosis_runner(
+      date: Date.new(2026, 9, 15), client: client, summary: true, force: true, rule_ids: []
+    ).run
+
+    assert client.requests.any? { |request| request.fetch(:tools).map { |tool| tool.fetch(:name) } == [ "create_sku_advise" ] }
     event = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole
+    assert_equal "advise", event.scope
     assert_nil event.sub_agent_id
-    assert_equal ErpAI::SkuDiagnosisRunner::SUMMARY_EVENT_TYPE, event.event_type
   end
 
   test "scoped tool rejects another SKU or rule" do
@@ -413,6 +492,17 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
     assert_equal "invalid_scope", result.dig(:error, :code)
     assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
+  end
+
+  test "scoped joint tool rejects event updates" do
+    executor = ErpAI::SkuDiagnosisRunner::ScopedToolExecutor.new(
+      user: @user, date: Date.new(2026, 9, 15), sku: @sku, allowed_tools: [ "create_sku_advise" ]
+    )
+    result = executor.call(id: "update", name: "update_sku_diagnosis_event", arguments: {
+      sku_code: @sku.sku_code, event_id: 1, severity: "critical"
+    })
+
+    assert_equal "invalid_scope", result.dig(:error, :code)
   end
 
   test "scoped tool accepts an event type outside the rule suggestions" do
@@ -467,14 +557,24 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
   private
 
-  def diagnosis_runner(date:, client:, summary: false)
+  def diagnosis_runner(date:, client:, summary: false, force: false, rule_ids: nil)
     ErpAI::SkuDiagnosisRunner.new(
       as_of_date: date,
       sku_code: @sku.sku_code,
+      rule_ids: rule_ids,
       summary: summary,
+      force: force,
       client: client,
       user: @user,
       snapshot_fetcher: @snapshot_fetcher
     )
+  end
+
+  def create_additional_rules(count)
+    count.times.map do |index|
+      rule = Ec::SkuDiagnosisRule.create!(name: "Additional #{index} #{@token}", prompt: "Check additional data")
+      @additional_rules << rule
+      rule
+    end
   end
 end

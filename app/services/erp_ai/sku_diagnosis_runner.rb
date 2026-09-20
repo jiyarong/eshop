@@ -2,10 +2,13 @@ module ErpAI
   class SkuDiagnosisRunner
     AGENT_CODE = "sku_diagnosis".freeze
     TIME_ZONE = "Asia/Shanghai".freeze
-    SUMMARY_EVENT_TYPE = "综合风险".freeze
+    SUMMARY_MIN_LATEST_EVENT_COUNT = 5
+    SUMMARY_MAX_EVENT_AGE = 30.hours
     SUMMARY_CONTEXT_KEYS = %w[base lifecycle sales_funnel inventory].freeze
-    JOINT_SYSTEM_PROMPT = <<~PROMPT.strip.freeze
-      你正在执行当前 SKU 的最终联合诊断，而不是单个子规则诊断。所有输入的子规则事件都已经基于各自上下文和规则形成了有依据且合理的判断；你的职责是让这些互相独立的判断彼此可见，解释重叠与冲突，并在确有必要时调用事件修正工具。不要因为结论不同就擅自判定任何子规则错误。
+    SUMMARY_CONTEXT_WEEKS = 4
+    ADVICE_EVENT_SCOPE = "advise".freeze
+    ADVICE_SYSTEM_PROMPT = <<~PROMPT.strip.freeze
+      你是电商运营建议生成器。请基于当前 SKU 近四周各子规则的诊断结果，提炼需要运营执行的具体动作。不要修改、忽略或评价任何已有诊断事件；只通过 create_sku_advise 创建新的建议事件。建议要能直接交给运营执行，使用电商业务人员熟悉的表达，不能编造上下文中没有的数据。
     PROMPT
 
     class ScopedToolExecutor
@@ -36,20 +39,21 @@ module ErpAI
           return { tool_call_id: id, name: name, error: { code: "invalid_scope" } }
         end
 
-        if name == "update_sku_diagnosis_event" && Integer(args["event_id"], exception: false).nil?
-          return { tool_call_id: id, name: name, error: { code: "invalid_scope" } }
+        if name == "create_sku_advise"
+          args.delete("advise")
+          args["scope"] = ADVICE_EVENT_SCOPE
         end
 
         @executor.call(id: id, name: name, arguments: args)
       end
     end
 
-    def self.run(as_of_date: nil, sku_code: nil, rule_ids: nil, summary: false)
-      new(as_of_date: as_of_date, sku_code: sku_code, rule_ids: rule_ids, summary: summary).run
+    def self.run(as_of_date: nil, sku_code: nil, rule_ids: nil, summary: false, force: false)
+      new(as_of_date: as_of_date, sku_code: sku_code, rule_ids: rule_ids, summary: summary, force: force).run
     end
 
     def initialize(
-      as_of_date:, sku_code: nil, rule_ids: nil, summary: false, client: DefaultClient.new, user: nil,
+      as_of_date:, sku_code: nil, rule_ids: nil, summary: false, force: false, client: DefaultClient.new, user: nil,
       snapshot_fetcher: Ec::SkuContextSnapshotFetcher,
       listing_context: ErpAI::ListingDiagnosisContext,
       product_attributes_context: ErpAI::V3::ProductAttributesContext
@@ -58,6 +62,7 @@ module ErpAI
       @sku_code = sku_code
       @rule_ids = rule_ids&.filter_map { |id| Integer(id, exception: false) }&.uniq
       @summary = summary
+      @force = force
       @client = client
       @user = user
       @snapshot_fetcher = snapshot_fetcher
@@ -82,13 +87,13 @@ module ErpAI
       end
       skus.each do |sku|
         rules.each { |rule| run_rule(agent, user, sku, rule) }
-        run_summary(agent, user, sku) if summary
+        run_summary(agent, user, sku) if summary && (force || summary_due?(sku))
       end
     end
 
     private
 
-    attr_reader :as_of_date, :sku_code, :rule_ids, :summary, :client, :snapshot_fetcher, :listing_context,
+    attr_reader :as_of_date, :sku_code, :rule_ids, :summary, :force, :client, :snapshot_fetcher, :listing_context,
       :product_attributes_context
 
     def batch_candidate_skus
@@ -176,27 +181,21 @@ module ErpAI
       question = <<~PROMPT
         当前 SKU：#{sku.sku_code}
 
-        这是所有子规则诊断完成后的最终联合诊断。请只分析当前 SKU，并严格使用下方 SKU 上下文和子规则最新事件。
-        你必须完成以下工作：
-        1. 甄别所有 sub_agent_rule 的 is_latest=true 事件，逐条参考其 event_id、severity、event_type、message、advise 和 sub_agent_rule.name。
-        2. 每一项子规则诊断都已经基于自己的上下文和规则完成了有依据且合理的判断。不要因为结论不同就判定某个子规则错误；冲突或重叠通常来自分析视角、证据范围或时间窗口不同。
-        3. 识别不同子规则之间 event_type 相同的重复事件，并判断它们是同一问题的重复证据还是独立问题；保留各自合理依据。
-        4. 识别 event_type、severity 或结论互相冲突的事件，解释冲突来源、各自依据和需要人工确认的地方；不要强行消除不确定性。
-        5. 综合基础资料、生命周期、销售漏斗和库存，给出当前 SKU 的总体判断和按优先级排序的最终建议。
-
-        只有确有必要时才调用 update_sku_diagnosis_event：必须使用上下文中给出的 event_id，只能修改当前 SKU 的子规则事件。severity 只有在联合判断确实需要重新标定优先级时才修改；advise 只有在能显著补充或纠正行动建议时才修改，传入的新 advise 必须以“AI：”开头；只有事件确实是重复、过时或不再需要跟进时才将 status 改为 ignored。不要为了统一格式修改每个事件，也不要因为冲突本身就忽略任何合理事件。未修改的字段必须保留原值。
-        如调用了 update_sku_diagnosis_event，必须先完成必要修正，再基于修正后的事件状态、severity 和 advise 生成最终总结。
-        最后必须调用 save_sku_event 保存最终结果：sku_code 使用 #{sku.sku_code}，sub_agent_id 必须传 null（不要填写任何子规则 ID），event_type 固定为“#{SUMMARY_EVENT_TYPE}”。最终联合诊断的 severity 必须按总体结论选择：需要立即执行操作时使用 critical，需要关注或跟进时使用 warning，确认无风险时使用 info；不能仅因为存在事件就使用 critical。
-        message 必须包含：总体结论、重复事件识别、冲突事件识别、各项结论为何仍合理、关键证据和数据不足；advise 必须包含：按优先级排序的具体行动、验证指标/时限以及无冲突时的保持项。不要处理其他 SKU。
+        请根据下方 SKU 上下文和近四周子规则诊断结果，输出方便运营执行的建议操作，不要重新做联合诊断，也不要修改任何已有事件。
+        1. 只提炼有明确依据、能改善经营结果或降低风险的动作；相同动作合并，按优先级分别创建事件。
+        2. 每次调用 create_sku_advise 只创建一条建议事件：event_type 是具体动作的简写，使用中文且少于 10 个汉字，例如“补充库存”“优化主图”“调整售价”；不要写成“风险”“问题”等诊断名词。
+        3. severity 使用 info、warning 或 critical，按执行紧迫程度选择。message 必须同时写清诊断依据和具体实施细节，尽量包含涉及的平台、数量/范围、负责人要做什么、观察什么指标和何时复核；只能使用上下文中已有信息。
+        4. 工具不需要也不接受 advise；建议内容全部写入 message，系统会把 scope 固定为 advise。不要调用任何 update 工具，不要处理其他 SKU。
+        5. 有明确可执行建议时至少创建一条事件；没有足够依据时不要编造动作，可创建一条说明需要补充什么数据后再执行的建议。
       PROMPT
       conversation = ErpAI::AgentRunner.new(
         agent: agent, user: user, client: client,
         tool_executor: ScopedToolExecutor.new(
-          user: user, date: as_of_date, sku: sku, expected_event_type: SUMMARY_EVENT_TYPE,
-          allowed_tools: [ "save_sku_event", "update_sku_diagnosis_event" ]
+          user: user, date: as_of_date, sku: sku,
+          allowed_tools: [ "create_sku_advise" ]
         ),
-        tool_names: [ "save_sku_event", "update_sku_diagnosis_event" ],
-        system_prompt: JOINT_SYSTEM_PROMPT
+        tool_names: [ "create_sku_advise" ],
+        system_prompt: ADVICE_SYSTEM_PROMPT
       ).ask(
         question: question,
         module_name: "sku_diagnosis",
@@ -208,40 +207,84 @@ module ErpAI
       saved = conversation.messages.where(role: "tool").any? do |message|
         payload = JSON.parse(message.content)
         result = payload["result"] || {}
-        payload["name"] == "save_sku_event" && result["success"] &&
-          result["sku_code"] == sku.sku_code && result["sub_agent_id"].nil? &&
-          result["event_type"] == SUMMARY_EVENT_TYPE
+        payload["name"] == "create_sku_advise" && result["success"] &&
+          result["sku_code"] == sku.sku_code && result["scope"] == ADVICE_EVENT_SCOPE
       rescue JSON::ParserError
         false
       end
-      raise "SKU joint diagnosis did not save an event" unless saved
+      raise "SKU operation advice did not create an event" unless saved
 
       conversation
     rescue StandardError => e
-      Rails.logger.error("SKU joint diagnosis failed for #{sku.sku_code}: #{e.class}: #{e.message}")
+      Rails.logger.error("SKU operation advice failed for #{sku.sku_code}: #{e.class}: #{e.message}")
+    end
+
+    def summary_due?(sku)
+      latest_events = latest_sub_agent_events_for(sku)
+      return false unless latest_events.count > SUMMARY_MIN_LATEST_EVENT_COUNT
+
+      latest_event = latest_events.order(created_at: :desc, id: :desc).first
+      latest_event.present? && latest_event.created_at >= SUMMARY_MAX_EVENT_AGE.ago
     end
 
     def summary_data_summary(sku, snapshot)
       period = snapshot.fetch("period")
       context_sections = SUMMARY_CONTEXT_KEYS.map { |key| context_section(key, snapshot) }
-      latest_events = Ec::AIDiagnosisEvent
-        .joins(:ai_diagnosis)
-        .includes(:sub_agent)
-        .where(
-          is_latest: true,
-          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name }
-        )
-        .where.not(sub_agent_id: nil)
-        .order(:sub_agent_id, :id)
-      event_lines = latest_events.map do |event|
-        "- event_id=#{event.id}; sub_agent_rule.name=#{event.sub_agent&.name || '(unknown)'}; severity=#{event.severity}; event_type=#{event.event_type}; status=#{event.status}; message=#{event.message}; advise=#{event.advise}"
+      event_lines = summary_events_for(sku).map do |event|
+        week = event.created_at.in_time_zone(TIME_ZONE).beginning_of_week(:monday).to_date
+        "- week=#{week}; event_id=#{event.id}; sub_agent_rule.name=#{event.sub_agent&.name || '(unknown)'}; severity=#{event.severity}; event_type=#{event.event_type}; status=#{event.status}; message=#{event.message}; advise=#{event.advise}"
       end
       [
         "SKU：#{snapshot.fetch('sku_code')}",
         "数据周期：#{period.fetch('from')} 至 #{period.fetch('to')}；快照日期：#{period.fetch('as_of')}",
         context_sections.join("\n\n---\n\n"),
-        "**所有 sub_agent_rule 的 is_latest=true 事件**\n#{event_lines.presence&.join("\n") || '暂无可用子规则最新事件。'}"
+        "**近#{SUMMARY_CONTEXT_WEEKS}周各子规则诊断事件（每周最多一条）**\n#{event_lines.presence&.join("\n") || '暂无可用子规则诊断事件。'}"
       ].join("\n\n")
+    end
+
+    def summary_events_for(sku)
+      from = summary_context_from
+      to = summary_context_to
+      events = Ec::AIDiagnosisEvent
+        .joins(:ai_diagnosis)
+        .where(
+          created_at: from...to,
+          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name }
+        )
+        .where.not(sub_agent_id: nil)
+        .includes(:sub_agent)
+        .order(created_at: :desc, id: :desc)
+
+      events.each_with_object({}) do |event, selected|
+        week = event.created_at.in_time_zone(TIME_ZONE).beginning_of_week(:monday).to_date
+        selected[[ event.sub_agent_id, week ]] ||= event
+      end.values.sort_by { |event| [ event.sub_agent_id, event.created_at, event.id ] }
+    end
+
+    def summary_context_from
+      summary_context_week_start - (SUMMARY_CONTEXT_WEEKS - 1).weeks
+    end
+
+    def summary_context_to
+      Time.find_zone!(TIME_ZONE).local(as_of_date.year, as_of_date.month, as_of_date.day) + 1.day
+    end
+
+    def summary_context_week_start
+      @summary_context_week_start ||= Time.find_zone!(TIME_ZONE).local(
+        as_of_date.beginning_of_week(:monday).year,
+        as_of_date.beginning_of_week(:monday).month,
+        as_of_date.beginning_of_week(:monday).day
+      )
+    end
+
+    def latest_sub_agent_events_for(sku)
+      Ec::AIDiagnosisEvent
+        .joins(:ai_diagnosis)
+        .where(
+          is_latest: true,
+          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name }
+        )
+        .where.not(sub_agent_id: nil)
     end
 
     def context_section(key, snapshot)

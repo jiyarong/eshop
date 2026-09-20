@@ -30,6 +30,8 @@ module Mcp
         sql_query(args)
       when "erp_ai_request"
         erp_ai_request(args)
+      when "create_sku_advise"
+        create_sku_advise(args)
       when "operation_context"
         operation_context
       when "save_sku_event"
@@ -155,6 +157,71 @@ module Mcp
         diagnosis_id: diagnosis.id,
         event_id: event.id,
         event_type: event.event_type,
+        sub_agent_id: event.sub_agent_id,
+        is_latest: event.is_latest
+      }
+    end
+
+    def create_sku_advise(args)
+      sku_code = args["sku_code"].to_s.upcase
+      return { error: "sku_code is required" } if sku_code.blank?
+
+      sku = visible_scope.global_user? ? Ec::Sku.find_by(sku_code: sku_code) : visible_sku(sku_code)
+      return { error: "SKU is not visible to current user" } unless sku
+
+      event_type = args["event_type"].to_s.strip
+      return { error: "event_type is required" } if event_type.blank?
+      return { error: "event_type must be fewer than 10 characters" } if event_type.each_char.count >= 10
+
+      severity = args["severity"].to_s
+      return { error: "severity must be info, warning or critical" } unless severity.in?(%w[info warning critical])
+
+      message = args["message"].to_s.strip
+      return { error: "message is required" } if message.blank?
+
+      today = @event_date || user_today
+      day_start = (@event_date ? Time.find_zone!("Asia/Shanghai") : user_time_zone).local(today.year, today.month, today.day)
+      day_end = day_start + 1.day
+      diagnosis = nil
+      event = nil
+
+      sku.with_lock do
+        previous_latest = Ec::GeneralDiagnosis.find_by(sku_id: sku.id, is_latest: true)
+        diagnosis = Ec::GeneralDiagnosis
+          .where(sku_id: sku.id, created_at: day_start...day_end)
+          .order(id: :desc)
+          .first
+        diagnosis ||= Ec::GeneralDiagnosis.create!(
+          sku: sku,
+          submitted_by: current_user,
+          data: {},
+          **(@event_date ? { created_at: day_start + 3.hours } : {})
+        )
+        if previous_latest && previous_latest.created_at > diagnosis.created_at && previous_latest.id != diagnosis.id
+          diagnosis.update_column(:is_latest, false)
+          previous_latest.update_column(:is_latest, true)
+        end
+
+        attributes = {
+          event_type: event_type,
+          sub_agent_id: nil,
+          severity: severity,
+          message: message,
+          scope: "advise",
+          position: 0
+        }
+        attributes[:conversation_id] = @conversation_id if @conversation_id.present?
+        event = diagnosis.events.create!(attributes.merge(@event_date ? { created_at: day_start + 3.hours } : {}))
+      end
+
+      {
+        success: true,
+        sku_code: sku.sku_code,
+        diagnosis_id: diagnosis.id,
+        event_id: event.id,
+        event_type: event.event_type,
+        severity: event.severity,
+        scope: event.scope,
         sub_agent_id: event.sub_agent_id,
         is_latest: event.is_latest
       }
