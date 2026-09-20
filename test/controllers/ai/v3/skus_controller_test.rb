@@ -306,7 +306,7 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_equal 14, ozon_listing.fetch("rows_per_week").last.dig("values", "net_sales")
   end
 
-  test "defaults to the latest completed natural week like the sku drawer sales funnel tab" do
+  test "defaults give profit four completed weeks and the other sections four weeks including the current week" do
     travel_to Time.utc(2026, 8, 27, 12) do
       get "/ai/v3/sku/full_context",
         params: { sku_code: @sku.sku_code },
@@ -314,10 +314,30 @@ class ErpAI::V3::SkusControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_equal(
-      { "from" => "2026-08-17", "to" => "2026-08-23" },
-      response.parsed_body.dig("data", "period").slice("from", "to")
-    )
+    data = response.parsed_body.fetch("data")
+    assert_equal({ "from" => "2026-08-03", "to" => "2026-08-30" }, data.fetch("period").slice("from", "to"))
+    assert_equal %w[2026-08-03 2026-08-10 2026-08-17 2026-08-24],
+      data.fetch("advertise_per_week").map { |week| week.fetch("period_from") }
+    assert_equal %w[2026-08-03 2026-08-10 2026-08-17 2026-08-24],
+      data.fetch("search_terms_per_week").map { |week| week.fetch("period_from") }
+    assert_equal %w[P-3 P-2 P-1 P0],
+      data.dig("profit", "sku_profit_overview_per_week", "periods").map { |period| period.fetch("period_key") }
+    assert_equal %w[P-3 P-2 P-1 P0],
+      data.dig("sales_funnel", "sku_funnel_overview_per_week", "periods").map { |period| period.fetch("period_key") }
+  end
+
+  test "section endpoints default profit to the last completed week and funnel to the current week" do
+    travel_to Time.utc(2026, 8, 27, 12) do
+      {
+        "profit_context" => { "from" => "2026-08-17", "to" => "2026-08-23" },
+        "sales_funnel_context" => { "from" => "2026-08-24", "to" => "2026-08-30" },
+        "advertising_context" => { "from" => "2026-08-03", "to" => "2026-08-30" }
+      }.each do |path, expected|
+        get "/ai/v3/sku/#{path}", params: { sku_code: @sku.sku_code }, headers: bearer_headers
+        assert_response :success
+        assert_equal expected, response.parsed_body.dig("data", "period").slice("from", "to"), path
+      end
+    end
   end
 
   test "returns individual context sections with a common v3 envelope" do

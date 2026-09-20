@@ -1,6 +1,8 @@
 module ErpAI
   module V3
     class SkusController < BaseController
+      DEFAULT_PERIOD_WEEKS = 4
+
       rescue_from ActionController::ParameterMissing, with: :render_missing_parameter
       rescue_from ActiveRecord::RecordNotFound, with: :render_sku_not_found
       rescue_from ArgumentError, with: :render_invalid_argument
@@ -10,11 +12,17 @@ module ErpAI
         sku = requested_sku
         period_from, period_to = requested_period
         validate_complete_weeks!(period_from, period_to)
+        profit_from, profit_to = requested_period(:profit)
+        funnel_from, funnel_to = requested_period(:funnel)
 
         render_context_payload ErpAI::V3::SkuFullContext.new(
           sku: sku,
           period_from: period_from,
           period_to: period_to,
+          profit_period_from: profit_from,
+          profit_period_to: profit_to,
+          funnel_period_from: funnel_from,
+          funnel_period_to: funnel_to,
           today: user_today,
           time_zone: user_time_zone,
           warehouse_target_days: requested_target_days
@@ -22,13 +30,13 @@ module ErpAI
       end
 
       def base_context
-        render_section_context(:base) do |sku, _period_from, period_to|
+        render_section_context(:base, period_kind: :profit) do |sku, _period_from, period_to|
           ErpAI::V3::BaseContext.new(sku: sku, period_to: period_to).call
         end
       end
 
       def sales_funnel_context
-        render_section_context(:sales_funnel) do |sku, period_from, period_to|
+        render_section_context(:sales_funnel, period_kind: :funnel) do |sku, period_from, period_to|
           ErpAI::V3::SalesFunnelContext.new(
             sku: sku,
             period_from: period_from,
@@ -39,7 +47,7 @@ module ErpAI
       end
 
       def profit_context
-        render_section_context(:profit) do |sku, period_from, period_to|
+        render_section_context(:profit, period_kind: :profit) do |sku, period_from, period_to|
           ErpAI::V3::ProfitContext.new(
             sku: sku,
             period_from: period_from,
@@ -137,9 +145,9 @@ module ErpAI
 
       private
 
-      def render_section_context(section_key)
+      def render_section_context(section_key, period_kind: :range)
         sku = requested_sku
-        period_from, period_to = requested_period
+        period_from, period_to = requested_period(period_kind)
         validate_complete_weeks!(period_from, period_to)
 
         render_context_payload(
@@ -169,8 +177,8 @@ module ErpAI
           .find_by!(sku_code: value.to_s.strip.upcase)
       end
 
-      def requested_period
-        return default_period if params[:period_from].blank? && params[:period_to].blank?
+      def requested_period(kind = :range)
+        return default_period(kind) if params[:period_from].blank? && params[:period_to].blank?
 
         [parse_date(params.require(:period_from)), parse_date(params.require(:period_to))]
       end
@@ -181,9 +189,20 @@ module ErpAI
         Integer(params[:target_days].to_s, exception: false) || raise(ArgumentError, "invalid_target_days")
       end
 
-      def default_period
-        last_monday = user_today.beginning_of_week(:monday) - 1.week
-        [last_monday, last_monday.end_of_week(:monday)]
+      # 未传日期时的默认周期，按 kind 区分：
+      # - :range  本周 + 前三个完整周（本周未结束，含 is_partial 数据），逐周返回的段落使用。
+      # - :funnel 本周。销售漏斗自身会向前再取 3 个等长周期（P-3..P0），合计本周 + 前三周。
+      # - :profit 上一个已结束的自然周。利润归集同样向前取 3 个等长周期，合计 4 个已结束周。
+      def default_period(kind)
+        this_monday = user_today.beginning_of_week(:monday)
+        case kind
+        when :profit
+          [this_monday - 1.week, this_monday - 1.day]
+        when :funnel
+          [this_monday, this_monday.end_of_week(:monday)]
+        else
+          [this_monday - (DEFAULT_PERIOD_WEEKS - 1).weeks, this_monday.end_of_week(:monday)]
+        end
       end
 
       def parse_date(value)

@@ -7,6 +7,10 @@ module ErpAI
         sku:,
         period_from:,
         period_to:,
+        profit_period_from: nil,
+        profit_period_to: nil,
+        funnel_period_from: nil,
+        funnel_period_to: nil,
         today:,
         time_zone:,
         warehouse_target_days: nil,
@@ -22,6 +26,10 @@ module ErpAI
         @sku = sku
         @period_from = period_from.to_date
         @period_to = period_to.to_date
+        @profit_period_from = (profit_period_from || period_from).to_date
+        @profit_period_to = (profit_period_to || period_to).to_date
+        @funnel_period_from = (funnel_period_from || period_from).to_date
+        @funnel_period_to = (funnel_period_to || period_to).to_date
         @today = today.to_date
         @time_zone = time_zone
         @warehouse_target_days = warehouse_target_days
@@ -47,7 +55,7 @@ module ErpAI
               time_zone: time_zone.name,
               week_starts_on: "monday"
             },
-            base: base_context.new(sku: sku, period_to: period_to).call,
+            base: base_context.new(sku: sku, period_to: profit_period_to).call,
             inventory: ErpAI::V3::InventoryContext.new(
               sku: sku,
               today: today,
@@ -60,13 +68,13 @@ module ErpAI
             ).call,
             profit: ErpAI::V3::ProfitContext.new(
               sku: sku,
-              period_from: period_from,
-              period_to: period_to
+              period_from: profit_period_from,
+              period_to: profit_period_to
             ).call,
             sales_funnel: sales_funnel_context.new(
               sku: sku,
-              period_from: period_from,
-              period_to: period_to,
+              period_from: funnel_period_from,
+              period_to: funnel_period_to,
               time_zone: time_zone
             ).call,
             advertise_per_week: advertising_context.new(
@@ -112,7 +120,7 @@ module ErpAI
 
       private
 
-      attr_reader :sku, :period_from, :period_to, :today, :time_zone, :warehouse_target_days, :base_context,
+      attr_reader :sku, :period_from, :period_to, :profit_period_from, :profit_period_to, :funnel_period_from, :funnel_period_to, :today, :time_zone, :warehouse_target_days, :base_context,
         :sales_funnel_context, :advertising_context, :orders_context, :supply_orders_context,
         :operation_actions_context, :warehouse_recommendation_context, :search_terms_context
 
