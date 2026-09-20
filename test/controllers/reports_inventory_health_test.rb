@@ -160,20 +160,20 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select "th", { text: "严重级别", count: 0 }
       assert_select "th", "事件类型"
       assert_select "th", "诊断结果和依据"
-      assert_select "th", "建议操作"
+      assert_select "th", { text: "建议操作", count: 0 }
       assert_select "tr.ai-health-table__linked-row[data-controller='table-row-link'][data-action='click->table-row-link#visit'][data-table-row-link-url-value='#{ai_conversation_path(conversation)}']" do
         assert_select "a.ai-health-table__row-link[href='#{ai_conversation_path(conversation)}']", @diagnosis_rule.name
         assert_select "td.ai-health-event-type > .ai-health-event-type__content", text: /★.*stock_risk/m
         assert_select ".ai-health-star--warning", count: 1
       end
-      assert_select ".ai-health-long-text__preview", count: 2
-      assert_select "button.ai-health-long-text__trigger[data-action='operator-dialog#open']", text: "查看完整信息", count: 2
-      assert_select "dialog.ai-health-long-text-dialog", count: 2
-      assert_select ".ai-health-long-text-dialog__text[data-controller='markdown']", count: 2
-      assert_select ".ai-health-long-text-dialog__source[data-markdown-target='source']", count: 2
-      assert_select ".ai-health-long-text-dialog__text article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 2
+      assert_select ".ai-health-long-text__preview", count: 1
+      assert_select "button.ai-health-long-text__trigger[data-action='operator-dialog#open']", text: "查看完整信息", count: 1
+      assert_select "dialog.ai-health-long-text-dialog", count: 1
+      assert_select ".ai-health-long-text-dialog__text[data-controller='markdown']", count: 1
+      assert_select ".ai-health-long-text-dialog__source[data-markdown-target='source']", count: 1
+      assert_select ".ai-health-long-text-dialog__text article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 1
       assert_select ".ai-health-long-text-dialog__text", text: long_message
-      assert_select ".ai-health-long-text-dialog__text", text: long_advise
+      assert_select ".ai-health-long-text-dialog__text", text: long_advise, count: 0
       assert_select ".ai-health-result__raw-link", count: 0
     end
 
@@ -184,7 +184,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"sub_agent_id": #{@diagnosis_rule.id}/
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"is_latest": true/
     assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"message": "#{Regexp.escape(long_message)}"/
-    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"advise": "#{Regexp.escape(long_advise)}"/
+    assert_select ".ai-diagnosis-raw-detail .code-viewer", text: /"advise"/, count: 0
   end
 
   test "sku detail ai tab shows event statuses and ignore actions" do
@@ -238,6 +238,34 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
     assert_equal "通用诊断任务已提交。", flash[:notice]
+  end
+
+  test "labels general diagnosis events without a sub-agent as operational advice" do
+    conversation = Agent.ensure_fixed!("sku_diagnosis").conversations.create!(
+      user: @user,
+      module_name: "sku_diagnosis",
+      business_object_type: "Ec::Sku",
+      business_object_id: @sku.id.to_s
+    )
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    diagnosis.events.create!(
+      conversation: conversation,
+      event_type: "补充库存",
+      severity: "critical",
+      scope: "advise",
+      message: "当前库存不足，建议补货。",
+      is_latest: true
+    )
+
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-health-result--general-diagnosis" do
+      assert_select "a.ai-health-table__row-link", text: "运营建议"
+      assert_select "td", { text: "总结诊断结果", count: 0 }
+    end
   end
 
   test "manual general diagnosis can enqueue the summary independently" do

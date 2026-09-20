@@ -619,7 +619,7 @@ en:
           description: "Query ERP sales, orders, products, regions, and trends over time."
           name: "Sales data query"
         save_sku_event:
-          description: "Save a SKU diagnosis result, basis, and recommended action."
+          description: "Save a SKU diagnosis result and basis."
           name: "Save SKU diagnosis event"
     sku_diagnosis_rules:
       actions:
@@ -642,11 +642,26 @@ en:
         wb_listing_content: "WB listing content"
       edit:
         title: "Edit SKU diagnosis rule"
+      execution_conditions:
+        grade: "Grade"
+        stage: "Stage"
+        values:
+          grade:
+            S: "S"
+            A: "A"
+            B: "B"
+            C: "C"
+          stage:
+            new: "NEW"
+            grw: "GRW"
+            mat: "MAT"
+            clr: "CLR"
       fields:
         actions: "Actions"
         allowed_event_types: "Allowed diagnosis event types"
         contexts: "Contexts"
         enabled: "Enabled"
+        execution_conditions: "Execution conditions"
         frequency: "Frequency"
         name: "Rule name"
         prompt: "Additional prompt"
@@ -655,6 +670,7 @@ en:
       hints:
         allowed_event_types: "Enter one event type per line or paste multiple lines. Event types are saved as entered. Leave blank for no restriction."
         enabled: "When enabled, the rule participates at its configured frequency; manual rules never run automatically."
+        execution_conditions: "Scheduled runs process only SKUs matching every selected condition; leave all blank for no restriction. Manual runs ignore these conditions."
       frequencies:
         daily: "Daily"
         manual: "Manual"
@@ -1723,7 +1739,7 @@ en:
         page_title: "Original AI diagnosis details #%{id}"
         raw_payload: "Original diagnosis data"
       ai_general_diagnosis:
-        advise: "Recommended action"
+        advice_label: "Operational advice"
         choose_rules: "Select diagnosis items"
         empty_rules: "No diagnosis items are available."
         enqueued: "The general diagnosis was queued."

@@ -104,10 +104,9 @@ module Mcp
             sub_agent_id: { type: [ "integer", "null" ], description: "子代理 ID；最终联合诊断传 null" },
             event_type: string_schema("诊断事件类型"),
             severity: string_schema("事件严重级别"),
-            message: string_schema("诊断结果和依据"),
-            advise: string_schema("操作建议")
+            message: string_schema("诊断结果和依据")
           },
-          required: %w[sku_code sub_agent_id event_type severity message advise]
+          required: %w[sku_code sub_agent_id event_type severity message]
         )
       ]
     end

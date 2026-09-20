@@ -23,7 +23,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       else
         { id: "save-#{requests.size}", name: "save_sku_event", arguments: {
           sku_code: sku_code, sub_agent_id: question[/当前子规则 ID：(\d+)/, 1].to_i, severity: "warning",
-          event_type: "stock_risk", message: "Stock issue: sales increased", advise: "Replenish"
+          event_type: "stock_risk", message: "Stock issue: sales increased"
         } }
       end
       { content: nil, tool_calls: [tool_call] }
@@ -145,7 +145,9 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     event = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole
     assert_equal @daily.id, event.sub_agent_id
     assert_equal Conversation.where(user: @user).order(:id).last.id, event.conversation_id
-    assert_equal ["stock_risk", "Stock issue: sales increased", "Replenish"], [event.event_type, event.message, event.advise]
+    assert_equal ["stock_risk", "Stock issue: sales increased"], [event.event_type, event.message]
+    assert_nil event.advise
+    assert_not_includes request.fetch(:messages).first.fetch(:content), "advise"
     assert_equal date, event.created_at.in_time_zone("Asia/Shanghai").to_date
   end
 
@@ -251,6 +253,32 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
     assert_equal [ @daily.id, @weekly.id, @manual.id ].sort,
       Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
+  end
+
+  test "scheduled runs apply execution conditions while manual runs ignore them" do
+    @daily.update!(configuration: {
+      "context_keys" => ["base"],
+      "execution_conditions" => { "grade" => ["A"], "stage" => ["grw"] }
+    })
+    @sku.marketing_states.create!(grade: "B", stage: "new", effective_at: Time.current)
+
+    scheduled_client = SavingClient.new
+    diagnosis_runner(date: Date.new(2026, 9, 15), client: scheduled_client).run
+    assert_empty scheduled_client.requests
+    assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
+
+    manual_client = SavingClient.new
+    ErpAI::SkuDiagnosisRunner.new(
+      as_of_date: Date.new(2026, 9, 15),
+      sku_code: @sku.sku_code,
+      rule_ids: [@daily.id],
+      client: manual_client,
+      user: @user,
+      snapshot_fetcher: @snapshot_fetcher
+    ).run
+
+    assert_equal 2, manual_client.requests.size
+    assert_equal [@daily.id], Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id)
   end
 
   test "loads listing content for rules that select it" do
@@ -586,7 +614,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     executor = ErpAI::SkuDiagnosisRunner::ScopedToolExecutor.new(user: @user, date: Date.new(2026, 9, 15), sku: @sku, rule: @daily)
     result = executor.call(id: "bad", name: "save_sku_event", arguments: {
       sku_code: @sku.sku_code, sub_agent_id: @weekly.id,
-      event_type: "stock_risk", severity: "warning", message: "Issue: Evidence", advise: "Action"
+      event_type: "stock_risk", severity: "warning", message: "Issue: Evidence"
     })
 
     assert_equal "invalid_scope", result.dig(:error, :code)
@@ -608,7 +636,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     executor = ErpAI::SkuDiagnosisRunner::ScopedToolExecutor.new(user: @user, date: Date.new(2026, 9, 15), sku: @sku, rule: @daily)
     result = executor.call(id: "save", name: "save_sku_event", arguments: {
       sku_code: @sku.sku_code, sub_agent_id: @daily.id,
-      event_type: "profit_drop", severity: "warning", message: "Issue: Evidence", advise: "Action"
+      event_type: "profit_drop", severity: "warning", message: "Issue: Evidence"
     })
 
     assert result.dig(:result, :success)
@@ -636,6 +664,18 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert rule.valid?
     rule.context_keys = ["unknown"]
     assert_not rule.valid?
+  end
+
+  test "normalizes and validates execution conditions" do
+    rule = Ec::SkuDiagnosisRule.new(name: "Conditions", prompt: "Check")
+    rule.execution_conditions = { grade: ["a", "A"], stage: ["GRW"] }
+
+    assert_equal({ "grade" => ["A"], "stage" => ["grw"] }, rule.execution_conditions)
+    assert rule.valid?
+
+    rule.execution_conditions = { grade: ["D"], stage: ["old"] }
+    assert_not rule.valid?
+    assert_includes rule.errors[:configuration].join, "unsupported grade values"
   end
 
   test "rule accepts event types as entered without localization" do

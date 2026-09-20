@@ -72,19 +72,29 @@ class Admin::SkuDiagnosisRulesControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "textarea[name='ec_sku_diagnosis_rule[allowed_event_types_text]']"
     assert_select "select[name='ec_sku_diagnosis_rule[frequency]'] option[value='manual']", text: "手动"
+    assert_select "input[name='ec_sku_diagnosis_rule[execution_conditions][grade][]'][value='A']"
+    assert_select "input[name='ec_sku_diagnosis_rule[execution_conditions][stage][]'][value='grw']"
 
     sign_in @admin
     post admin_sku_diagnosis_rules_path, headers: { "Accept" => "text/html" }, params: {
       ec_sku_diagnosis_rule: {
         name: "New #{@token}", prompt: "Check profit", frequency: "daily", enabled: "1",
         context_keys: ["base", "profit", "ozon_listing_content"],
+        execution_conditions: { grade: ["A"], stage: ["grw"] },
         allowed_event_types_text: "库存风险（紧急）\n\n利润 下滑\n库存风险（紧急）\r\n"
       }
     }
     rule = Ec::SkuDiagnosisRule.find_by!(name: "New #{@token}")
     assert_redirected_to admin_sku_diagnosis_rules_path
     assert_equal %w[base profit ozon_listing_content], rule.configuration.fetch("context_keys")
+    assert_equal({ "grade" => ["A"], "stage" => ["grw"] }, rule.configuration.fetch("execution_conditions"))
     assert_equal ["库存风险（紧急）", "利润 下滑"], rule.allowed_event_types
+
+    sign_in @admin
+    get edit_admin_sku_diagnosis_rule_path(rule), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select "input[name='ec_sku_diagnosis_rule[execution_conditions][grade][]'][value='A'][checked]"
+    assert_select "input[name='ec_sku_diagnosis_rule[execution_conditions][stage][]'][value='grw'][checked]"
 
     sign_in @admin
     patch admin_sku_diagnosis_rule_path(rule), headers: { "Accept" => "text/html" }, params: {

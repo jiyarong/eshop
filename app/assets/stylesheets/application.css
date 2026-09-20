@@ -6740,6 +6740,35 @@ textarea:focus {
   background: #fff7f7;
 }
 
+.ai-diagnosis-event-tag--advice {
+  border-color: #90caf9;
+  color: #1565c0;
+  background: #f3f8ff;
+}
+
+.ai-diagnosis-event-tag--advice:hover {
+  border-color: #64b5f6;
+  background: #e3f2fd;
+}
+
+.ai-diagnosis-event-tag.ai-diagnosis-event-tag--advice.is-active {
+  border-color: #1976d2;
+  color: #fff;
+  background: #1976d2;
+}
+
+.ai-diagnosis-event-tag.ai-diagnosis-event-tag--advice .ai-diagnosis-event-tag__count {
+  background: rgba(21, 101, 192, 0.1);
+}
+
+.ai-diagnosis-event-tag.ai-diagnosis-event-tag--advice.is-active .ai-diagnosis-event-tag__count {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label {
+  color: #1565c0;
+}
+
 .sku-ai-diagnosis-event-popover {
   position: relative;
   display: inline-flex;

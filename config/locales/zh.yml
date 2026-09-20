@@ -597,7 +597,7 @@ zh:
           description: "查询销售额、订单量、商品、区域和时间趋势等 ERP 销售数据。"
           name: "销售数据查询"
         save_sku_event:
-          description: "保存 SKU 诊断结果、依据和操作建议。"
+          description: "保存 SKU 诊断结果和依据。"
           name: "保存 SKU 诊断事件"
     sku_diagnosis_rules:
       actions:
@@ -620,11 +620,26 @@ zh:
         wb_listing_content: "WB Listing 内容"
       edit:
         title: "编辑 SKU 诊断规则"
+      execution_conditions:
+        grade: "Grade"
+        stage: "Stage"
+        values:
+          grade:
+            S: "S"
+            A: "A"
+            B: "B"
+            C: "C"
+          stage:
+            new: "NEW"
+            grw: "GRW"
+            mat: "MAT"
+            clr: "CLR"
       fields:
         actions: "操作"
         allowed_event_types: "允许诊断的 event types"
         contexts: "上下文"
         enabled: "启用"
+        execution_conditions: "执行条件"
         frequency: "执行频率"
         name: "规则名称"
         prompt: "追加提示词"
@@ -633,6 +648,7 @@ zh:
       hints:
         allowed_event_types: "每行填写一个 event type，可一次粘贴多行并直接使用中文。留空表示不限制。"
         enabled: "启用后按配置的执行频率参与诊断；手动规则不会自动执行。"
+        execution_conditions: "定时任务仅处理同时满足所选条件的 SKU；全部留空表示不限制。手动执行不受此条件影响。"
       frequencies:
         daily: "每天"
         manual: "手动"
@@ -1925,7 +1941,7 @@ zh:
         page_title: "AI 诊断原始详情 #%{id}"
         raw_payload: "原始诊断数据"
       ai_general_diagnosis:
-        advise: "建议操作"
+        advice_label: "运营建议"
         choose_rules: "选择诊断项目"
         empty_rules: "暂无可用的诊断项目。"
         enqueued: "通用诊断任务已提交。"

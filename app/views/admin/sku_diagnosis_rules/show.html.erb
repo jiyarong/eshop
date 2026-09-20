@@ -42,6 +42,13 @@
       <dd><%= t("admin.sku_diagnosis_rules.frequencies.#{@rule.frequency}") %></dd>
       <dt><%= t("admin.sku_diagnosis_rules.fields.status") %></dt>
       <dd><%= @rule.enabled? ? t("admin.sku_diagnosis_rules.statuses.enabled") : t("admin.sku_diagnosis_rules.statuses.disabled") %></dd>
+      <dt><%= t("admin.sku_diagnosis_rules.fields.execution_conditions") %></dt>
+      <dd>
+        <% selected_conditions = @rule.execution_conditions.flat_map do |key, values|
+             values.map { |value| "#{t("admin.sku_diagnosis_rules.execution_conditions.#{key}")}: #{t("admin.sku_diagnosis_rules.execution_conditions.values.#{key}.#{value}")}" }
+           end %>
+        <%= selected_conditions.presence&.join(t("common.list_separator")) || t("common.empty_value") %>
+      </dd>
       <dt><%= t("admin.sku_diagnosis_rules.fields.contexts") %></dt>
       <dd><%= @rule.context_keys.map { |key| t("admin.sku_diagnosis_rules.contexts.#{key}") }.join(t("common.list_separator")) %></dd>
       <dt><%= t("admin.sku_diagnosis_rules.fields.allowed_event_types") %></dt>

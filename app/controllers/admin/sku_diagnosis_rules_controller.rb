@@ -50,9 +50,15 @@ module Admin
 
     def rule_params
       permitted = params.require(:ec_sku_diagnosis_rule).permit(
-        :name, :prompt, :frequency, :enabled, :allowed_event_types_text, context_keys: []
+        :name, :prompt, :frequency, :enabled, :allowed_event_types_text, context_keys: [],
+        execution_conditions: { grade: [], stage: [] }
       )
       permitted[:context_keys] = Array(permitted[:context_keys]).reject(&:blank?)
+      conditions = permitted[:execution_conditions] || {}
+      permitted[:execution_conditions] = {
+        grade: Array(conditions[:grade]).reject(&:blank?),
+        stage: Array(conditions[:stage]).reject(&:blank?)
+      }
       permitted
     end
   end

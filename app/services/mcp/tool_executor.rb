@@ -98,9 +98,6 @@ module Mcp
       message = args["message"].to_s
       return { error: "message is required" } if message.blank?
 
-      advise = args["advise"].to_s
-      return { error: "advise is required" } if advise.blank?
-
       today = @event_date || user_today
       day_start = (@event_date ? Time.find_zone!("Asia/Shanghai") : user_time_zone).local(today.year, today.month, today.day)
       day_end = day_start + 1.day
@@ -136,7 +133,6 @@ module Mcp
             sub_agent_id: sub_agent_id,
             severity: severity,
             message: message,
-            advise: advise,
             position: 0
           }
           attributes[:conversation_id] = @conversation_id if @conversation_id.present?
@@ -256,13 +252,6 @@ module Mcp
 
         attributes[:severity] = severity
       end
-      if args.key?("advise")
-        advise = args["advise"].to_s.strip
-        return { error: "advise is required when provided" } if advise.blank?
-
-        advise = advise.sub(/\AA[：:]\s*/, "")
-        attributes[:advise] = "AI：#{advise}"
-      end
       if args.key?("status")
         status = args["status"].to_s
         return { error: "status must be ignore or ignored" } unless status.in?(%w[ignore ignored])
@@ -277,7 +266,6 @@ module Mcp
         sku_code: sku.sku_code,
         event_id: event.id,
         severity: event.severity,
-        advise: event.advise,
         status: event.status
       }
     end

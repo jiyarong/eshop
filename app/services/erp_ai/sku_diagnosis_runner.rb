@@ -32,7 +32,7 @@ module ErpAI
 
         if name == "save_sku_event" && (
           Integer(args["sub_agent_id"], exception: false) != @rule&.id ||
-          %w[event_type message advise].any? { |key| args[key].blank? } ||
+          %w[event_type message].any? { |key| args[key].blank? } ||
           !%w[info warning critical].include?(args["severity"]) ||
           (@expected_event_type.present? && args["event_type"] != @expected_event_type)
         )
@@ -81,12 +81,16 @@ module ErpAI
         Ec::SkuDiagnosisRule.where(id: rule_ids).order(:id)
       end
       skus = if sku_code.present?
-        Ec::Sku.where(sku_code: sku_code).to_a
+        Ec::Sku.where(sku_code: sku_code).includes(:current_marketing_state).to_a
       else
         batch_candidate_skus
       end
       skus.each do |sku|
-        rules.each { |rule| run_rule(agent, user, sku, rule) }
+        rules.each do |rule|
+          next if rule_ids.nil? && !rule.applies_to_sku?(sku)
+
+          run_rule(agent, user, sku, rule)
+        end
         run_summary(agent, user, sku) if summary && (force || summary_due?(sku))
       end
     end
@@ -109,7 +113,7 @@ module ErpAI
         (row[:sku] || row["sku"]).to_s.strip.upcase.presence
       end.uniq
 
-      Ec::Sku.where(sku_code: report_sku_codes).order(:sku_code).to_a
+      Ec::Sku.where(sku_code: report_sku_codes).includes(:current_marketing_state).order(:sku_code).to_a
     end
 
     def run_rule(agent, user, sku, rule)
@@ -145,7 +149,7 @@ module ErpAI
         #{rule.prompt}
         #{listing_image_instruction}
 
-        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，advise 写操作建议；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
+        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
       PROMPT
       conversation = ErpAI::AgentRunner.new(
         agent: agent, user: user, client: client,
@@ -259,7 +263,7 @@ module ErpAI
       context_sections = SUMMARY_CONTEXT_KEYS.map { |key| context_section(key, snapshot) }
       event_lines = summary_events_for(sku).map do |event|
         week = event.created_at.in_time_zone(TIME_ZONE).beginning_of_week(:monday).to_date
-        "- week=#{week}; event_id=#{event.id}; sub_agent_rule.name=#{event.sub_agent&.name || '(unknown)'}; severity=#{event.severity}; event_type=#{event.event_type}; status=#{event.status}; message=#{event.message}; advise=#{event.advise}"
+        "- week=#{week}; event_id=#{event.id}; sub_agent_rule.name=#{event.sub_agent&.name || '(unknown)'}; severity=#{event.severity}; event_type=#{event.event_type}; status=#{event.status}; message=#{event.message}"
       end
       [
         "SKU：#{snapshot.fetch('sku_code')}",

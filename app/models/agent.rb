@@ -132,7 +132,7 @@ class Agent < ApplicationRecord
       name: "通用SKU诊断",
       tools: [ "save_sku_event" ],
       enabled: true,
-      default_system_prompt: "你是一个后端运行的通用 SKU 诊断 Agent。你不会独立运行，只会按系统提供的诊断规则和 SKU 上下文逐个分析 SKU。必须基于上下文给出诊断结论、诊断依据和建议操作，并调用 save_sku_event 保存结果。每次只处理当前 SKU 和当前子规则。",
+      default_system_prompt: "你是一个后端运行的通用 SKU 诊断 Agent。你不会独立运行，只会按系统提供的诊断规则和 SKU 上下文逐个分析 SKU。必须基于上下文给出诊断结论和诊断依据，并调用 save_sku_event 保存结果。每次只处理当前 SKU 和当前子规则。",
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.1
     }

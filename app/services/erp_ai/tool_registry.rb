@@ -79,10 +79,9 @@ module ErpAI
             sub_agent_id: { type: [ "integer", "null" ], description: "SKU 诊断规则 ID；最终联合诊断必须传 null" },
             event_type: { type: "string", description: "诊断事件类型" },
             severity: { type: "string", description: "事件严重级别" },
-            message: { type: "string", description: "诊断结果和依据" },
-            advise: { type: "string", description: "操作建议" }
+            message: { type: "string", description: "诊断结果和依据" }
           },
-          required: %w[sku_code sub_agent_id event_type severity message advise],
+          required: %w[sku_code sub_agent_id event_type severity message],
           additionalProperties: false
         }
       }

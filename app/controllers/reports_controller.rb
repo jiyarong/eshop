@@ -125,7 +125,7 @@ class ReportsController < ApplicationController
       analyzed_at: @diagnosis.analyzed_at,
       data: @diagnosis.data,
       events: @diagnosis.events.map do |event|
-        {
+        payload = {
           event_type: event.event_type,
           sub_agent_id: event.sub_agent_id,
           is_latest: event.is_latest,
@@ -133,9 +133,10 @@ class ReportsController < ApplicationController
           status: event.status,
           scope: event.scope,
           message: event.message,
-          advise: event.advise,
           details: event.details
         }
+        payload[:advise] = event.advise unless @diagnosis.is_a?(Ec::GeneralDiagnosis)
+        payload
       end
     }
   end

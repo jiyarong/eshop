@@ -122,7 +122,7 @@ module Mcp
       assert_equal 7, event.sub_agent_id
       assert_equal "danger", event.severity
       assert_equal "库存严重偏低，立即处理", event.message
-      assert_equal "立即补货", event.advise
+      assert_nil event.advise
       assert event.is_latest?
       assert second.fetch(:is_latest)
     end
@@ -169,7 +169,7 @@ module Mcp
       assert second.fetch(:is_latest)
     end
 
-    test "update_sku_diagnosis_event changes only requested fields and prefixes AI advice" do
+    test "update_sku_diagnosis_event does not write an event advise" do
       diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
       event = diagnosis.events.create!(
         sub_agent_id: @diagnosis_rule.id,
@@ -189,7 +189,7 @@ module Mcp
       assert result.fetch(:success)
       event.reload
       assert_equal "warning", event.severity
-      assert_equal "AI：建议复核补货点", event.advise
+      assert_equal "原始建议", event.advise
       assert event.ignored?
     end
 

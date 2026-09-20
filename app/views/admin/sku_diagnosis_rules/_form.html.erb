@@ -19,6 +19,21 @@
           </label>
         </div>
         <div class="field field--full"><%= form.label :prompt, t("admin.sku_diagnosis_rules.fields.prompt") %><%= form.text_area :prompt, rows: 8, required: true %></div>
+        <div class="field field--full">
+          <label><%= t("admin.sku_diagnosis_rules.fields.execution_conditions") %></label>
+          <small class="form-hint"><%= t("admin.sku_diagnosis_rules.hints.execution_conditions") %></small>
+          <div class="ai-toggle-grid ai-toggle-grid--compact">
+            <% Ec::SkuDiagnosisRule::EXECUTION_CONDITION_VALUES.each do |key, values| %>
+              <%= hidden_field_tag "ec_sku_diagnosis_rule[execution_conditions][#{key}][]", "" %>
+              <% values.each do |value| %>
+                <label class="checkbox-option ai-toggle-option">
+                  <%= check_box_tag "ec_sku_diagnosis_rule[execution_conditions][#{key}][]", value, rule.execution_conditions.fetch(key).include?(value), id: "rule_execution_condition_#{key}_#{value}" %>
+                  <span><strong><%= t("admin.sku_diagnosis_rules.execution_conditions.#{key}") %>: <%= t("admin.sku_diagnosis_rules.execution_conditions.values.#{key}.#{value}") %></strong></span>
+                </label>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
         <div class="field field--full"><label><%= t("admin.sku_diagnosis_rules.fields.contexts") %></label><div class="ai-toggle-grid ai-toggle-grid--compact">
           <%= hidden_field_tag "ec_sku_diagnosis_rule[context_keys][]", "" %>
           <% Ec::SkuDiagnosisRule::CONTEXT_KEYS.each do |key| %>

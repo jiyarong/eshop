@@ -136,7 +136,6 @@ end %>
               <th><%= t("reports.sku_detail.ai_general_diagnosis.sub_agent") %></th>
               <th><%= t("reports.sku_detail.ai_general_diagnosis.event_type") %></th>
               <th><%= t("reports.sku_detail.ai_general_diagnosis.message") %></th>
-              <th><%= t("reports.sku_detail.ai_general_diagnosis.advise") %></th>
             <% else %>
               <th><%= t("reports.sku_detail.ai_inventory_health.severity") %></th>
               <th><%= t("reports.sku_detail.ai_inventory_health.event_type") %></th>
@@ -151,6 +150,7 @@ end %>
         <tbody>
           <% result.events.each do |event| %>
             <% conversation_path = general_diagnosis && event.conversation_id ? ai_conversation_path(event.conversation_id, locale: params[:locale].presence) : nil %>
+            <% event_label = event.sub_agent&.name || (event.sub_agent_id.nil? ? t("reports.sku_detail.ai_general_diagnosis.advice_label") : nil) %>
             <tr class="<%= class_names("ai-health-table__linked-row": conversation_path, "ai-health-table__row--ignored": event.ignored?) %>"
                 <% if conversation_path %>
                   data-controller="table-row-link"
@@ -160,9 +160,9 @@ end %>
               <% if general_diagnosis %>
                 <td>
                   <% if conversation_path %>
-                    <%= link_to report_value(event.sub_agent&.name), conversation_path, class: "ai-health-table__row-link" %>
+                    <%= link_to report_value(event_label), conversation_path, class: "ai-health-table__row-link" %>
                   <% else %>
-                    <%= report_value(event.sub_agent&.name || (event.sub_agent_id.nil? ? t("reports.sku_detail.ai_general_diagnosis.summary_label") : nil)) %>
+                    <%= report_value(event_label) %>
                   <% end %>
                 </td>
                 <td class="ai-health-event-type">
@@ -178,12 +178,6 @@ end %>
                              text: event.message,
                              label: t("reports.sku_detail.ai_general_diagnosis.message"),
                              dialog_id: "ai-diagnosis-event-#{event.id}-message" %>
-                </td>
-                <td class="ai-health-message">
-                  <%= render "reports/sku_ai_diagnosis_long_text",
-                             text: event.advise,
-                             label: t("reports.sku_detail.ai_general_diagnosis.advise"),
-                             dialog_id: "ai-diagnosis-event-#{event.id}-advise" %>
                 </td>
               <% else %>
                 <td class="ai-health-severity-cell">
