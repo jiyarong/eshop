@@ -180,21 +180,9 @@ production:
     command: "Ec::SkuInventorySnapshotSync.run"
     schedule: every hour
 
-  sku_inventory_health_check:
-    command: "AITasks::SkuInventoryHealthCheckJob.perform_later"
-    schedule: every day at 03:10 in Asia/Shanghai
-
   sku_diagnosis:
     command: "AITasks::SkuDiagnosisJob.perform_later"
     schedule: every tuesday at 03:30 in Asia/Shanghai
-
-  sku_operation_action_effect_diagnosis:
-    command: "AITasks::SkuOperationActionEffectDiagnosisJob.perform_later"
-    schedule: every tuesday at 04:10 in Asia/Shanghai
-
-  sku_grade_inspector:
-    command: "AITasks::SkuGradeInspectorJob.perform_later"
-    schedule: every tuesday at 05:10 in Asia/Shanghai
 
   daily_snapshot:
     command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"

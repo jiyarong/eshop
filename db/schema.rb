@@ -12,7 +12,6 @@
 
 ActiveRecord::Schema[8.1].define(version: 2026_09_18_084146) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
 
   create_table "active_storage_attachments", force: :cascade do |t|
@@ -798,87 +797,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_084146) do
     t.index ["sku_code", "store_id"], name: "idx_ec_sku_products_sku_store"
     t.index ["store_id", "product_id"], name: "idx_ec_sku_products_unique_store_product", unique: true
     t.index ["store_id"], name: "index_ec_sku_products_on_store_id"
-  end
-
-  create_table "ec_sku_profit_version_contexts", force: :cascade do |t|
-    t.decimal "acquiring_cny", precision: 20, scale: 8
-    t.decimal "acquiring_rate", precision: 14, scale: 10
-    t.decimal "advertising_cny", precision: 20, scale: 8
-    t.decimal "advertising_fixed_rub", precision: 20, scale: 8
-    t.decimal "advertising_rate", precision: 14, scale: 10
-    t.datetime "calculated_at"
-    t.string "calculation_status", default: "pending", null: false
-    t.decimal "commission_cny", precision: 20, scale: 8
-    t.decimal "commission_rate", precision: 14, scale: 10
-    t.string "company_type"
-    t.datetime "created_at", null: false
-    t.decimal "cross_docking_cny", precision: 20, scale: 8
-    t.decimal "customs_misc_cny", precision: 20, scale: 8
-    t.decimal "damage_rate", precision: 14, scale: 10
-    t.string "delivery_mode", null: false
-    t.decimal "duty_cny", precision: 20, scale: 8
-    t.decimal "duty_rate", precision: 14, scale: 10
-    t.decimal "exchange_rate_rub_cny", precision: 20, scale: 8
-    t.decimal "fbo_delivery_cny", precision: 20, scale: 8
-    t.string "formula_version"
-    t.decimal "freight_cny", precision: 20, scale: 8
-    t.decimal "goods_cost_cny", precision: 20, scale: 8
-    t.decimal "height_cm", precision: 12, scale: 4
-    t.decimal "import_vat_cny", precision: 20, scale: 8
-    t.decimal "import_vat_rate", precision: 14, scale: 10
-    t.decimal "length_cm", precision: 12, scale: 4
-    t.decimal "logistics_cny", precision: 20, scale: 8
-    t.decimal "logistics_coeff", precision: 14, scale: 10
-    t.decimal "logistics_tax_rate", precision: 14, scale: 10
-    t.decimal "margin", precision: 14, scale: 10
-    t.string "market", default: "ru", null: false
-    t.decimal "misc_cny", precision: 20, scale: 8
-    t.decimal "other_cny", precision: 20, scale: 8
-    t.decimal "other_cost_cny", precision: 20, scale: 8
-    t.decimal "outbound_logistics_rub", precision: 20, scale: 8
-    t.decimal "ozon_import_vat_cost_rate", precision: 14, scale: 10
-    t.decimal "ozon_warehouse_rate", precision: 14, scale: 10
-    t.string "platform", null: false
-    t.decimal "price_rub", precision: 20, scale: 8
-    t.decimal "profit_cny", precision: 20, scale: 8
-    t.decimal "purchase_price_cny", precision: 20, scale: 8
-    t.decimal "return_amortization_factor_override", precision: 14, scale: 10
-    t.decimal "return_logistics_rub", precision: 20, scale: 8
-    t.decimal "return_rate", precision: 14, scale: 10
-    t.decimal "returns_cny", precision: 20, scale: 8
-    t.decimal "revenue_cny", precision: 20, scale: 8
-    t.decimal "rf_price_rub", precision: 20, scale: 8
-    t.decimal "sales_vat_rate", precision: 14, scale: 10
-    t.bigint "sku_profit_version_id", null: false
-    t.decimal "storage_cny", precision: 20, scale: 8
-    t.decimal "storage_cost_cny", precision: 20, scale: 8
-    t.decimal "tax_cny", precision: 20, scale: 8
-    t.decimal "tax_rate", precision: 14, scale: 10
-    t.decimal "total_cost_cny", precision: 20, scale: 8
-    t.datetime "updated_at", null: false
-    t.decimal "warehouse_operation_rub", precision: 20, scale: 8
-    t.string "warehouse_region"
-    t.decimal "wb_fixed_return_base_rub", precision: 20, scale: 8
-    t.decimal "wb_logistics_base_rub", precision: 20, scale: 8
-    t.decimal "wb_logistics_override_cny", precision: 20, scale: 8
-    t.decimal "width_cm", precision: 12, scale: 4
-    t.index ["sku_profit_version_id", "platform", "market", "delivery_mode", "warehouse_region", "company_type"], name: "idx_sku_profit_contexts_unique", unique: true, nulls_not_distinct: true
-    t.index ["sku_profit_version_id"], name: "index_ec_sku_profit_version_contexts_on_sku_profit_version_id"
-  end
-
-  create_table "ec_sku_profit_versions", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.date "effective_from", null: false
-    t.date "effective_to"
-    t.integer "lock_version", default: 0, null: false
-    t.string "name", null: false
-    t.text "note"
-    t.bigint "sku_id", null: false
-    t.string "status", default: "draft", null: false
-    t.datetime "updated_at", null: false
-    t.index ["sku_id", "effective_from"], name: "idx_sku_profit_versions_sku_start"
-    t.index ["sku_id"], name: "index_ec_sku_profit_versions_on_sku_id"
-    t.exclusion_constraint "sku_id WITH =, daterange(effective_from, COALESCE(effective_to, 'infinity'::date), '[]'::text) WITH &&", where: "(status)::text = 'published'::text", using: :gist, name: "ec_sku_profit_versions_no_published_overlap"
   end
 
   create_table "ec_sku_store_assignments", force: :cascade do |t|
@@ -3056,7 +2974,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_084146) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
@@ -3254,8 +3171,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_084146) do
   add_foreign_key "ec_sku_product_operators", "users"
   add_foreign_key "ec_sku_products", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_products", "ec_stores", column: "store_id"
-  add_foreign_key "ec_sku_profit_version_contexts", "ec_sku_profit_versions", column: "sku_profit_version_id"
-  add_foreign_key "ec_sku_profit_versions", "ec_skus", column: "sku_id"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
