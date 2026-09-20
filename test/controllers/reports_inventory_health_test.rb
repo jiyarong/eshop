@@ -734,10 +734,10 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
   test "inventory report renders critical general diagnosis events and separates advice" do
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
-    diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Critical risk", is_latest: true)
-    diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice")
-    diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored risk", is_latest: true)
-    diagnosis.events.create!(event_type: "warning_risk", severity: "warning", message: "Warning risk")
+    diagnosis.events.create!(event_type: "stockout_imminent", sub_agent_id: 101, severity: "critical", message: "Critical risk", is_latest: true)
+    diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice", is_latest: true)
+    diagnosis.events.create!(event_type: "ignored_risk", sub_agent_id: 102, severity: "critical", status: "ignored", message: "Ignored risk", is_latest: true)
+    diagnosis.events.create!(event_type: "warning_risk", sub_agent_id: 103, severity: "warning", message: "Warning risk")
 
     get "/reports/inventory",
       params: { sku: @sku.sku_code },

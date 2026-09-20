@@ -43,7 +43,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
 
   test "index filters batches by latest active critical general diagnosis event type" do
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
-    diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Risk", is_latest: true)
+    diagnosis.events.create!(event_type: "stockout_imminent", sub_agent_id: 101, severity: "critical", message: "Risk", is_latest: true)
 
     get "/erp/sku_batches",
       params: { ai_event_type: "stockout_imminent", statuses: [@batch.status] },

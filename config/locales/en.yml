@@ -2240,6 +2240,7 @@ en:
       aria_label: "AI diagnosis risk filters"
       label: "AI diagnosis risks"
       advice_label: "AI advice"
+      advice_aria_label: "AI advice filters"
       details:
         close: "Close diagnosis details"
         data: "Structured details"

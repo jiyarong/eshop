@@ -6650,6 +6650,12 @@ textarea:focus {
   border-top: 1px solid var(--border);
 }
 
+.ai-diagnosis-event-filter--advice {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .ai-diagnosis-event-filter__label {
   flex: 0 0 auto;
   color: var(--fg-muted);
@@ -6732,17 +6738,6 @@ textarea:focus {
 .ai-diagnosis-event-tag--compact:hover {
   border-color: #ef9a9a;
   background: #fff7f7;
-}
-
-.ai-diagnosis-event-tag--advice {
-  border-color: #8ac7a2;
-  color: #17633a;
-  background: #f3fbf5;
-}
-
-.ai-diagnosis-event-tag--advice:hover {
-  border-color: #4d9d6d;
-  background: #e8f7ec;
 }
 
 .sku-ai-diagnosis-event-popover {

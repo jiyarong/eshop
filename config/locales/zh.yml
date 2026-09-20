@@ -2452,6 +2452,7 @@ zh:
       aria_label: "AI 诊断风险筛选"
       label: "AI 诊断风险"
       advice_label: "AI 建议"
+      advice_aria_label: "AI 建议筛选"
       details:
         close: "关闭诊断详情"
         data: "结构化详情"

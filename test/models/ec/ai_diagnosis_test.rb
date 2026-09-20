@@ -111,6 +111,27 @@ class Ec::AIDiagnosisTest < ActiveSupport::TestCase
     assert first.reload.is_latest?
   end
 
+  test "does not collapse latest joint general diagnosis events without a sub-agent" do
+    diagnosis = create_diagnosis(Ec::GeneralDiagnosis)
+    first = diagnosis.events.create!(
+      event_type: "补充库存",
+      severity: "warning",
+      scope: "advise",
+      message: "Earlier advice",
+      is_latest: true
+    )
+    second = diagnosis.events.create!(
+      event_type: "优化主图",
+      severity: "warning",
+      scope: "advise",
+      message: "Later advice",
+      is_latest: true
+    )
+
+    assert first.reload.is_latest?
+    assert second.reload.is_latest?
+  end
+
   private
 
   def create_diagnosis(klass)

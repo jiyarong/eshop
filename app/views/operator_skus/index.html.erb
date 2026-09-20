@@ -47,7 +47,9 @@
       <div class="spacer"></div>
       <span class="text-sm text-muted"><%= t("operator_skus.total", count: @skus.total_count) %></span>
     <% end %>
-    <%= render "shared/ai_diagnosis_event_filter" %>
+    <%= render "shared/ai_diagnosis_event_filter",
+      advice_tags: @ai_diagnosis_advice_tags,
+      selected_advice_type: @ai_diagnosis_advice_type %>
   </section>
 
   <section class="card product-list-card table-list-card operator-sku-table-card">

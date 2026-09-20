@@ -30,6 +30,47 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     end
   end
 
+  class MultipleAdviceClient
+    def initialize(fail_after_tools: false)
+      @fail_after_tools = fail_after_tools
+      @request_count = 0
+    end
+
+    def complete(request)
+      @request_count += 1
+      raise "Advice generation failed" if @fail_after_tools && @request_count > 1
+      return { content: "Saved", tool_calls: [] } if @request_count > 1
+
+      question = request.fetch(:messages).first.fetch(:content)
+      sku_code = question[/当前 SKU：([^\n]+)/, 1]
+      {
+        content: nil,
+        tool_calls: [
+          {
+            id: "create-stock",
+            name: "create_sku_advise",
+            arguments: {
+              sku_code: sku_code,
+              severity: "critical",
+              event_type: "补充库存",
+              message: "库存不足，需要补充库存。"
+            }
+          },
+          {
+            id: "create-listing",
+            name: "create_sku_advise",
+            arguments: {
+              sku_code: sku_code,
+              severity: "critical",
+              event_type: "优化主图",
+              message: "转化偏低，需要优化主图。"
+            }
+          }
+        ]
+      }
+    end
+  end
+
   class FakeSnapshotFetcher
     attr_reader :calls
 
@@ -393,6 +434,63 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal "补充库存", events.last.event_type
     assert_equal "advise", events.last.scope
     assert_nil events.last.advise
+    assert events.last.is_latest?
+  end
+
+  test "refreshes daily advice and keeps every advice from the successful joint diagnosis latest" do
+    date = Date.new(2026, 9, 15)
+    zone = Time.find_zone!(ErpAI::SkuDiagnosisRunner::TIME_ZONE)
+    previous_diagnosis = Ec::GeneralDiagnosis.create!(
+      sku: @sku, submitted_by: @user, created_at: zone.local(2026, 9, 14, 3)
+    )
+    previous_advice = previous_diagnosis.events.create!(
+      event_type: "历史建议", severity: "critical", scope: "advise", message: "Previous", is_latest: true
+    )
+    daily_diagnosis = Ec::GeneralDiagnosis.create!(
+      sku: @sku, submitted_by: @user, created_at: zone.local(2026, 9, 15, 3)
+    )
+    stale_daily_advice = daily_diagnosis.events.create!(
+      event_type: "当日旧建议", severity: "critical", scope: "advise", message: "Stale", is_latest: true
+    )
+
+    diagnosis_runner(
+      date: date, client: MultipleAdviceClient.new, summary: true, force: true, rule_ids: []
+    ).run
+
+    assert_not previous_advice.reload.is_latest?
+    assert_not Ec::AIDiagnosisEvent.exists?(stale_daily_advice.id)
+    refreshed = daily_diagnosis.events.where(scope: "advise").order(:id)
+    assert_equal [ "补充库存", "优化主图" ], refreshed.pluck(:event_type)
+    assert_equal [ true, true ], refreshed.pluck(:is_latest)
+  end
+
+  test "restores advice events when the joint diagnosis fails after creating advice" do
+    date = Date.new(2026, 9, 15)
+    zone = Time.find_zone!(ErpAI::SkuDiagnosisRunner::TIME_ZONE)
+    previous_diagnosis = Ec::GeneralDiagnosis.create!(
+      sku: @sku, submitted_by: @user, created_at: zone.local(2026, 9, 14, 3)
+    )
+    previous_advice = previous_diagnosis.events.create!(
+      event_type: "历史建议", severity: "critical", scope: "advise", message: "Previous", is_latest: true
+    )
+    daily_diagnosis = Ec::GeneralDiagnosis.create!(
+      sku: @sku, submitted_by: @user, created_at: zone.local(2026, 9, 15, 3)
+    )
+    daily_advice = daily_diagnosis.events.create!(
+      event_type: "当日旧建议", severity: "critical", scope: "advise", message: "Current", is_latest: true
+    )
+
+    diagnosis_runner(
+      date: date,
+      client: MultipleAdviceClient.new(fail_after_tools: true),
+      summary: true,
+      force: true,
+      rule_ids: []
+    ).run
+
+    assert previous_advice.reload.is_latest?
+    assert daily_advice.reload.is_latest?
+    assert_equal [ "当日旧建议" ], daily_diagnosis.events.where(scope: "advise").pluck(:event_type)
   end
 
   test "selects at most one event per rule in each of the four recent weeks" do
@@ -481,6 +579,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     event = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole
     assert_equal "advise", event.scope
     assert_nil event.sub_agent_id
+    assert event.is_latest?
   end
 
   test "scoped tool rejects another SKU or rule" do

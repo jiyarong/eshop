@@ -188,31 +188,39 @@ module ErpAI
         4. 工具不需要也不接受 advise；建议内容全部写入 message，系统会把 scope 固定为 advise。不要调用任何 update 工具，不要处理其他 SKU。
         5. 有明确可执行建议时至少创建一条事件；没有足够依据时不要编造动作，可创建一条说明需要补充什么数据后再执行的建议。
       PROMPT
-      conversation = ErpAI::AgentRunner.new(
-        agent: agent, user: user, client: client,
-        tool_executor: ScopedToolExecutor.new(
-          user: user, date: as_of_date, sku: sku,
-          allowed_tools: [ "create_sku_advise" ]
-        ),
-        tool_names: [ "create_sku_advise" ],
-        system_prompt: ADVICE_SYSTEM_PROMPT
-      ).ask(
-        question: question,
-        module_name: "sku_diagnosis",
-        business_object_type: "Ec::Sku",
-        business_object_id: sku.id.to_s,
-        time_range: { from: as_of_date.beginning_of_week(:monday).iso8601, to: as_of_date.iso8601 },
-        data_summary: data_summary
-      )
-      saved = conversation.messages.where(role: "tool").any? do |message|
-        payload = JSON.parse(message.content)
-        result = payload["result"] || {}
-        payload["name"] == "create_sku_advise" && result["success"] &&
-          result["sku_code"] == sku.sku_code && result["scope"] == ADVICE_EVENT_SCOPE
-      rescue JSON::ParserError
-        false
+      conversation = Ec::AIDiagnosis.transaction do
+        sku.lock!
+        reset_advice_events_for_summary!(sku)
+
+        result = ErpAI::AgentRunner.new(
+          agent: agent, user: user, client: client,
+          tool_executor: ScopedToolExecutor.new(
+            user: user, date: as_of_date, sku: sku,
+            allowed_tools: [ "create_sku_advise" ]
+          ),
+          tool_names: [ "create_sku_advise" ],
+          system_prompt: ADVICE_SYSTEM_PROMPT
+        ).ask(
+          question: question,
+          module_name: "sku_diagnosis",
+          business_object_type: "Ec::Sku",
+          business_object_id: sku.id.to_s,
+          time_range: { from: as_of_date.beginning_of_week(:monday).iso8601, to: as_of_date.iso8601 },
+          data_summary: data_summary
+        )
+        tool_messages = result.messages.where(role: "tool").to_a
+        saved = tool_messages.present? && tool_messages.all? do |message|
+          payload = JSON.parse(message.content)
+          tool_result = payload["result"] || {}
+          payload["name"] == "create_sku_advise" && tool_result["success"] &&
+            tool_result["sku_code"] == sku.sku_code && tool_result["scope"] == ADVICE_EVENT_SCOPE
+        rescue JSON::ParserError
+          false
+        end
+        raise "SKU operation advice did not create an event" unless saved
+
+        result
       end
-      raise "SKU operation advice did not create an event" unless saved
 
       conversation
     rescue StandardError => e
@@ -225,6 +233,25 @@ module ErpAI
 
       latest_event = latest_events.order(created_at: :desc, id: :desc).first
       latest_event.present? && latest_event.created_at >= SUMMARY_MAX_EVENT_AGE.ago
+    end
+
+    def reset_advice_events_for_summary!(sku)
+      day_start = Time.find_zone!(TIME_ZONE).local(as_of_date.year, as_of_date.month, as_of_date.day)
+      day_end = day_start + 1.day
+      diagnosis = Ec::GeneralDiagnosis
+        .where(sku_id: sku.id, created_at: day_start...day_end)
+        .order(id: :desc)
+        .first
+      advice_events = Ec::AIDiagnosisEvent
+        .joins(:ai_diagnosis)
+        .where(
+          sub_agent_id: nil,
+          scope: ADVICE_EVENT_SCOPE,
+          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name }
+        )
+
+      advice_events.where.not(ai_diagnosis_id: diagnosis&.id).update_all(is_latest: false)
+      advice_events.where(ai_diagnosis_id: diagnosis.id).delete_all if diagnosis
     end
 
     def summary_data_summary(sku, snapshot)

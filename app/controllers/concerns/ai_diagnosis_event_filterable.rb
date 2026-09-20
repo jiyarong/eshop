@@ -13,10 +13,26 @@ module AIDiagnosisEventFilterable
     @ai_diagnosis_event_type = params[:ai_event_type].to_s.presence_in(available_types)
   end
 
+  def load_ai_diagnosis_advice_filter
+    @ai_diagnosis_advice_tags = latest_active_ai_diagnosis_advice_events
+      .group(:event_type)
+      .order(:event_type)
+      .count("DISTINCT ec_ai_diagnosis.sku_id")
+      .map { |event_type, count| { event_type: event_type, count: count } }
+    available_types = @ai_diagnosis_advice_tags.pluck(:event_type)
+    @ai_diagnosis_advice_type = params[:ai_advice_type].to_s.presence_in(available_types)
+  end
+
   def apply_ai_diagnosis_event_filter_to_skus(scope)
     return scope if @ai_diagnosis_event_type.blank?
 
     scope.where(id: ai_diagnosis_event_sku_ids)
+  end
+
+  def apply_ai_diagnosis_advice_filter_to_skus(scope)
+    return scope if @ai_diagnosis_advice_type.blank?
+
+    scope.where(id: ai_diagnosis_advice_sku_ids)
   end
 
   def apply_ai_diagnosis_event_filter_to_sku_records(scope)
@@ -48,13 +64,15 @@ module AIDiagnosisEventFilterable
     sku_ids = Array(skus).map(&:id)
     events = latest_active_ai_diagnosis_events
       .where(ec_ai_diagnosis: { sku_id: sku_ids })
+      .where(severity: "critical")
+      .where("ec_ai_diagnosis_events.sub_agent_id IS NOT NULL OR ec_ai_diagnosis_events.scope = ?", "advise")
       .select("ec_ai_diagnosis_events.*", "ec_ai_diagnosis.sku_id AS diagnosis_sku_id")
       .order(:event_type, :position, :id)
       .to_a
 
     @ai_diagnosis_events_by_sku_id = events.group_by { |event| event.diagnosis_sku_id.to_i }
     @ai_diagnosis_event_types_by_sku_id = @ai_diagnosis_events_by_sku_id.transform_values do |sku_events|
-      sku_events.select { |event| event.scope != "advise" && event.severity == "critical" }.map(&:event_type).uniq
+      sku_events.select { |event| event.sub_agent_id.present? }.map(&:event_type).uniq
     end
 
     @ai_diagnosis_events_by_sku_id
@@ -66,17 +84,27 @@ module AIDiagnosisEventFilterable
       .select("ec_ai_diagnosis.sku_id")
   end
 
+  def ai_diagnosis_advice_sku_ids
+    latest_active_ai_diagnosis_advice_events
+      .where(event_type: @ai_diagnosis_advice_type)
+      .select("ec_ai_diagnosis.sku_id")
+  end
+
   def latest_active_ai_diagnosis_risk_events
     latest_active_ai_diagnosis_events
       .where(severity: "critical")
-      .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope <> ?", "advise")
+      .where.not(sub_agent_id: nil)
+  end
+
+  def latest_active_ai_diagnosis_advice_events
+    latest_active_ai_diagnosis_events.where(sub_agent_id: nil, scope: "advise", severity: "critical")
   end
 
   def latest_active_ai_diagnosis_events
     Ec::AIDiagnosisEvent
       .joins(:ai_diagnosis)
       .active
-      .where(ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name, is_latest: true })
-      .where("ec_ai_diagnosis_events.is_latest = TRUE OR ec_ai_diagnosis_events.scope = ?", "advise")
+      .where(is_latest: true)
+      .where(ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name })
   end
 end

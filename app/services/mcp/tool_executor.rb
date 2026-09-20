@@ -208,6 +208,7 @@ module Mcp
           severity: severity,
           message: message,
           scope: "advise",
+          is_latest: true,
           position: 0
         }
         attributes[:conversation_id] = @conversation_id if @conversation_id.present?

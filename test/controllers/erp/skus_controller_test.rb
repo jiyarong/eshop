@@ -87,17 +87,17 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
 
   test "index renders critical general diagnosis event tags and filters skus by event type" do
     stale_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
-    stale_diagnosis.events.create!(event_type: "clearance_overdue", severity: "critical", message: "Stale", is_latest: false)
+    stale_diagnosis.events.create!(event_type: "clearance_overdue", sub_agent_id: 101, severity: "critical", message: "Stale", is_latest: false)
     current_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
-    current_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "critical", message: "Current", is_latest: true)
+    current_diagnosis.events.create!(event_type: "missed_sales_alert", sub_agent_id: 101, severity: "critical", message: "Current", is_latest: true)
     current_diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice", is_latest: true)
-    current_diagnosis.events.create!(event_type: "inventory_sufficient", severity: "info", message: "Healthy")
-    current_diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored", is_latest: true)
+    current_diagnosis.events.create!(event_type: "inventory_sufficient", sub_agent_id: 102, severity: "info", message: "Healthy")
+    current_diagnosis.events.create!(event_type: "ignored_risk", sub_agent_id: 103, severity: "critical", status: "ignored", message: "Ignored", is_latest: true)
     inventory_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @current_user)
     inventory_diagnosis.events.create!(event_type: "stockout_90day", severity: "red", message: "Legacy risk")
     inventory_diagnosis.events.create!(event_type: "inventory_critical", severity: "critical", message: "Not general")
     other_diagnosis = Ec::GeneralDiagnosis.create!(sku: @inactive_sku, submitted_by: @current_user)
-    other_diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Other", is_latest: true)
+    other_diagnosis.events.create!(event_type: "stockout_imminent", sub_agent_id: 104, severity: "critical", message: "Other", is_latest: true)
 
     get "/erp/skus", params: { ai_event_type: "missed_sales_alert" }, headers: { "Accept" => "text/html" }
 

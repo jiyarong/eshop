@@ -1,7 +1,7 @@
 <% events = Array(local_assigns[:events]) %>
 <% component_prefix = local_assigns[:dom_id_prefix].presence || "sku-diagnosis-#{SecureRandom.hex(4)}" %>
-<% risk_events = events.select { |event| event.scope != "advise" && event.severity == "critical" } %>
-<% advice_events = events.select { |event| event.scope == "advise" } %>
+<% risk_events = events.select { |event| event.sub_agent_id.present? && event.severity == "critical" } %>
+<% advice_events = events.select { |event| event.sub_agent_id.nil? && event.scope == "advise" && event.severity == "critical" } %>
 <% risk_event_groups = risk_events.group_by(&:event_type) %>
 <% advice_event_groups = advice_events.group_by(&:event_type) %>
 <% risk_event_types = risk_event_groups.any? ? risk_event_groups.keys : Array(local_assigns[:event_types]) %>

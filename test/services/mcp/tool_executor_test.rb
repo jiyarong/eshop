@@ -165,6 +165,8 @@ module Mcp
       assert_equal [ "advise", "advise" ], events.map(&:scope)
       assert_nil events.first.advise
       assert_nil events.first.sub_agent_id
+      assert_equal [ true, true ], events.map(&:is_latest)
+      assert second.fetch(:is_latest)
     end
 
     test "update_sku_diagnosis_event changes only requested fields and prefixes AI advice" do

@@ -26,6 +26,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis.events.create!(
       event_type: "stockout_imminent",
+      sub_agent_id: 101,
       severity: "critical",
       is_latest: true,
       message: "Risk details #{@token}",
@@ -33,7 +34,9 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       details: { "available" => 3 }
     )
     diagnosis.events.create!(event_type: "inventory_sufficient", severity: "info", message: "Healthy")
-    diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice")
+    diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice", is_latest: true)
+    Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    assert_not diagnosis.reload.is_latest?
     legacy_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
     legacy_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "red", message: "Sales risk")
     other_sku = Ec::Sku.create!(sku_code: "OPS-OTHER-#{@token}", product_name: "其他运营商品")
@@ -71,6 +74,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis.events.create!(
       event_type: "stockout_imminent",
+      sub_agent_id: 101,
       severity: "critical",
       status: "ignored",
       is_latest: true,
@@ -91,6 +95,38 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".ai-diagnosis-event-tag", { text: /即将断货/, count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Ignored risk/, count: 0 }
+  end
+
+  test "index renders and filters by active advice from the latest general diagnosis" do
+    stale_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    stale_diagnosis.events.create!(event_type: "历史建议", severity: "info", scope: "advise", message: "Stale advice", is_latest: false)
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    diagnosis.events.create!(event_type: "调整售价", severity: "critical", scope: "advise", message: "Superseded advice", is_latest: false)
+    diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice #{@token}", is_latest: true)
+    diagnosis.events.create!(event_type: "补充库存", sub_agent_id: 101, severity: "critical", scope: "inventory", message: "Not advice")
+    legacy_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
+    legacy_diagnosis.events.create!(event_type: "旧版建议", severity: "info", scope: "advise", message: "Legacy advice")
+
+    other_sku = Ec::Sku.create!(sku_code: "OPS-ADVICE-OTHER-#{@token}", product_name: "其他建议商品")
+    other_diagnosis = Ec::GeneralDiagnosis.create!(sku: other_sku, submitted_by: @user)
+    other_diagnosis.events.create!(event_type: "优化主图", severity: "critical", scope: "advise", message: "Other advice", is_latest: true)
+    warning_sku = Ec::Sku.create!(sku_code: "OPS-ADVICE-WARNING-#{@token}", product_name: "非紧急建议商品")
+    warning_diagnosis = Ec::GeneralDiagnosis.create!(sku: warning_sku, submitted_by: @user)
+    warning_diagnosis.events.create!(event_type: "检查广告", severity: "warning", scope: "advise", message: "Non-critical advice", is_latest: true)
+
+    with_empty_metrics do
+      get operator_skus_path, params: { ai_advice_type: "补充库存" }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".ai-diagnosis-event-filter--advice[aria-label='AI 建议筛选']" do
+      assert_select ".ai-diagnosis-event-filter__label", text: "AI 建议"
+      assert_select ".ai-diagnosis-event-tag--advice.is-active[aria-pressed='true']", text: /补充库存/
+      assert_select ".ai-diagnosis-event-tag--advice", text: /优化主图/
+      assert_select ".ai-diagnosis-event-tag--advice", { text: /历史建议|调整售价|检查广告|旧版建议/, count: 0 }
+    end
+    assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
+    assert_select ".operator-sku-row .code-text.sub", { text: other_sku.sku_code, count: 0 }
   end
 
   test "index renders operator sku columns and puts link before sales funnel" do
