@@ -2190,6 +2190,7 @@ ru:
     ai_diagnosis_event_filter:
       aria_label: "Фильтры рисков AI-диагностики"
       label: "Риски AI-диагностики"
+      advice_label: "Рекомендации AI"
       details:
         close: "Закрыть сведения о диагностике"
         data: "Структурированные данные"

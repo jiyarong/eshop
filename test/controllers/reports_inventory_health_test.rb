@@ -732,9 +732,10 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
 
-  test "inventory report renders legacy red and critical general diagnosis events" do
+  test "inventory report renders critical general diagnosis events and separates advice" do
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis.events.create!(event_type: "stockout_imminent", severity: "critical", message: "Critical risk", is_latest: true)
+    diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice")
     diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored risk", is_latest: true)
     diagnosis.events.create!(event_type: "warning_risk", severity: "warning", message: "Warning risk")
 
@@ -744,8 +745,10 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "th", "AI诊断"
-    assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", text: "错失销售预警"
     assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", text: "即将断货"
+    assert_select ".inventory-list-table__ai-health-cell .sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label", text: "AI 建议"
+    assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag--advice", text: "补充库存"
+    assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", { text: "错失销售预警", count: 0 }
     assert_select ".inventory-list-table__ai-health-cell", { text: /Inventory sufficient/, count: 0 }
     assert_select ".inventory-list-table__ai-health-cell", { text: /Stockout risk/, count: 0 }
     assert_select ".inventory-list-table__ai-health-cell", { text: /Ignored risk/, count: 0 }

@@ -46,7 +46,7 @@ module AIDiagnosisEventFilterable
 
   def load_latest_active_ai_diagnosis_risk_events_for(skus)
     sku_ids = Array(skus).map(&:id)
-    events = latest_active_ai_diagnosis_risk_events
+    events = latest_active_ai_diagnosis_events
       .where(ec_ai_diagnosis: { sku_id: sku_ids })
       .select("ec_ai_diagnosis_events.*", "ec_ai_diagnosis.sku_id AS diagnosis_sku_id")
       .order(:event_type, :position, :id)
@@ -54,7 +54,7 @@ module AIDiagnosisEventFilterable
 
     @ai_diagnosis_events_by_sku_id = events.group_by { |event| event.diagnosis_sku_id.to_i }
     @ai_diagnosis_event_types_by_sku_id = @ai_diagnosis_events_by_sku_id.transform_values do |sku_events|
-      sku_events.map(&:event_type).uniq
+      sku_events.select { |event| event.scope != "advise" && event.severity == "critical" }.map(&:event_type).uniq
     end
 
     @ai_diagnosis_events_by_sku_id
@@ -67,17 +67,16 @@ module AIDiagnosisEventFilterable
   end
 
   def latest_active_ai_diagnosis_risk_events
-    base_scope = Ec::AIDiagnosisEvent
+    latest_active_ai_diagnosis_events
+      .where(severity: "critical")
+      .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope <> ?", "advise")
+  end
+
+  def latest_active_ai_diagnosis_events
+    Ec::AIDiagnosisEvent
       .joins(:ai_diagnosis)
       .active
-    legacy_scope = base_scope
-      .where(ec_ai_diagnosis: { is_latest: true })
-      .where(severity: "red")
-    general_scope = base_scope
-      .latest
-      .where(ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name })
-      .where(severity: "critical")
-
-    legacy_scope.or(general_scope)
+      .where(ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name, is_latest: true })
+      .where("ec_ai_diagnosis_events.is_latest = TRUE OR ec_ai_diagnosis_events.scope = ?", "advise")
   end
 end

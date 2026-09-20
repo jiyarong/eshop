@@ -1,61 +1,77 @@
 <% events = Array(local_assigns[:events]) %>
-<% event_groups = events.group_by(&:event_type) %>
-<% event_types = event_groups.any? ? event_groups.keys : Array(local_assigns[:event_types]) %>
 <% component_prefix = local_assigns[:dom_id_prefix].presence || "sku-diagnosis-#{SecureRandom.hex(4)}" %>
-<div class="sku-ai-diagnosis-event-tags">
-  <% event_types.each do |event_type| %>
-    <% event_label = t("erp.ai_diagnosis_event_filter.event_types.#{event_type}", default: event_type.to_s.humanize) %>
-    <% event_details = event_groups.fetch(event_type, []) %>
-    <% if event_details.any? %>
-      <% popover_id = "#{component_prefix}-#{event_type.parameterize}-popover" %>
-      <span class="sku-ai-diagnosis-event-popover"
-            data-controller="diagnosis-event-popover"
-            data-action="keydown.esc@window->diagnosis-event-popover#closeOnEscape">
-        <button type="button"
-                class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact"
-                aria-expanded="false"
-                aria-controls="<%= popover_id %>"
-                data-action="diagnosis-event-popover#toggle"
-                data-diagnosis-event-popover-target="trigger">
-          <%= event_label %>
-        </button>
-        <div id="<%= popover_id %>"
-             class="sku-ai-diagnosis-event-popover__panel"
-             role="dialog"
-             aria-label="<%= t("erp.ai_diagnosis_event_filter.details.title", event_type: event_label) %>"
-             data-diagnosis-event-popover-target="popover"
-             hidden>
-          <span class="sku-ai-diagnosis-event-popover__header">
-            <strong><%= event_label %></strong>
-            <button type="button" class="sku-ai-diagnosis-event-popover__close" aria-label="<%= t("erp.ai_diagnosis_event_filter.details.close") %>" data-action="diagnosis-event-popover#close">
-              <i class="bi bi-x-lg" aria-hidden="true"></i>
-            </button>
-          </span>
-          <% event_details.each_with_index do |event, index| %>
-            <div class="sku-ai-diagnosis-event-popover__event<%= " is-separated" if index.positive? %>">
-              <div class="sku-ai-diagnosis-event-popover__message" data-controller="markdown">
-                <pre class="sku-ai-diagnosis-event-popover__message-source" data-markdown-target="source"><%= event.message %></pre>
-                <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
-              </div>
-              <% if event.scope.present? %>
-                <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.scope", value: event.scope) %></span>
-              <% end %>
-              <% if event.details.present? %>
-                <span class="sku-ai-diagnosis-event-popover__details">
-                  <span><%= t("erp.ai_diagnosis_event_filter.details.data") %></span>
-                  <code><%= JSON.pretty_generate(event.details) %></code>
-                </span>
-              <% end %>
-              <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.diagnosed_at", value: display_time(event.created_at)) %></span>
-            </div>
-          <% end %>
-        </div>
-      </span>
-    <% else %>
-      <span class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact"><%= event_label %></span>
+<% risk_events = events.select { |event| event.scope != "advise" && event.severity == "critical" } %>
+<% advice_events = events.select { |event| event.scope == "advise" } %>
+<% risk_event_groups = risk_events.group_by(&:event_type) %>
+<% advice_event_groups = advice_events.group_by(&:event_type) %>
+<% risk_event_types = risk_event_groups.any? ? risk_event_groups.keys : Array(local_assigns[:event_types]) %>
+<% tag_groups = [
+  { event_types: risk_event_types, event_groups: risk_event_groups, label: nil, tag_modifier: nil },
+  { event_types: advice_event_groups.keys, event_groups: advice_event_groups, label: t("erp.ai_diagnosis_event_filter.advice_label"), tag_modifier: "ai-diagnosis-event-tag--advice" }
+] %>
+<% rendered_group = false %>
+<% tag_groups.each do |tag_group| %>
+  <% next if tag_group[:event_types].empty? %>
+  <% rendered_group = true %>
+  <div class="sku-ai-diagnosis-event-tags<%= " sku-ai-diagnosis-event-tags--advice" if tag_group[:tag_modifier] %>">
+    <% if tag_group[:label] %>
+      <span class="sku-ai-diagnosis-event-tags__label"><%= tag_group[:label] %></span>
     <% end %>
-  <% end %>
-  <% if event_types.empty? %>
-    <span class="text-muted">-</span>
-  <% end %>
-</div>
+    <% tag_group[:event_types].each do |event_type| %>
+      <% event_label = t("erp.ai_diagnosis_event_filter.event_types.#{event_type}", default: event_type.to_s.humanize) %>
+      <% event_details = tag_group[:event_groups].fetch(event_type, []) %>
+      <% if event_details.any? %>
+        <% event_key = event_type.to_s.parameterize.presence || event_details.first.id %>
+        <% popover_id = "#{component_prefix}-#{tag_group[:tag_modifier].presence || "risk"}-#{event_key}-popover" %>
+        <span class="sku-ai-diagnosis-event-popover"
+              data-controller="diagnosis-event-popover"
+              data-action="keydown.esc@window->diagnosis-event-popover#closeOnEscape">
+          <button type="button"
+                  class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact <%= tag_group[:tag_modifier] %>"
+                  aria-expanded="false"
+                  aria-controls="<%= popover_id %>"
+                  data-action="diagnosis-event-popover#toggle"
+                  data-diagnosis-event-popover-target="trigger">
+            <%= event_label %>
+          </button>
+          <div id="<%= popover_id %>"
+               class="sku-ai-diagnosis-event-popover__panel"
+               role="dialog"
+               aria-label="<%= t("erp.ai_diagnosis_event_filter.details.title", event_type: event_label) %>"
+               data-diagnosis-event-popover-target="popover"
+               hidden>
+            <span class="sku-ai-diagnosis-event-popover__header">
+              <strong><%= event_label %></strong>
+              <button type="button" class="sku-ai-diagnosis-event-popover__close" aria-label="<%= t("erp.ai_diagnosis_event_filter.details.close") %>" data-action="diagnosis-event-popover#close">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+              </button>
+            </span>
+            <% event_details.each_with_index do |event, index| %>
+              <div class="sku-ai-diagnosis-event-popover__event<%= " is-separated" if index.positive? %>">
+                <div class="sku-ai-diagnosis-event-popover__message" data-controller="markdown">
+                  <pre class="sku-ai-diagnosis-event-popover__message-source" data-markdown-target="source"><%= event.message %></pre>
+                  <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+                </div>
+                <% if event.scope.present? %>
+                  <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.scope", value: event.scope) %></span>
+                <% end %>
+                <% if event.details.present? %>
+                  <span class="sku-ai-diagnosis-event-popover__details">
+                    <span><%= t("erp.ai_diagnosis_event_filter.details.data") %></span>
+                    <code><%= JSON.pretty_generate(event.details) %></code>
+                  </span>
+                <% end %>
+                <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.diagnosed_at", value: display_time(event.created_at)) %></span>
+              </div>
+            <% end %>
+          </div>
+        </span>
+      <% else %>
+        <span class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact <%= tag_group[:tag_modifier] %>"><%= event_label %></span>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+<% unless rendered_group %>
+  <div class="sku-ai-diagnosis-event-tags"><span class="text-muted">-</span></div>
+<% end %>

@@ -85,11 +85,12 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     User.where("email LIKE ?", "erp-skus-#{@token.downcase}%").delete_all
   end
 
-  test "index renders legacy red and critical general diagnosis event tags and filters skus by event type" do
+  test "index renders critical general diagnosis event tags and filters skus by event type" do
     stale_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
     stale_diagnosis.events.create!(event_type: "clearance_overdue", severity: "critical", message: "Stale", is_latest: false)
     current_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
     current_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "critical", message: "Current", is_latest: true)
+    current_diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice", is_latest: true)
     current_diagnosis.events.create!(event_type: "inventory_sufficient", severity: "info", message: "Healthy")
     current_diagnosis.events.create!(event_type: "ignored_risk", severity: "critical", status: "ignored", message: "Ignored", is_latest: true)
     inventory_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @current_user)
@@ -104,7 +105,8 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-diagnosis-event-filter"
     assert_select ".ai-diagnosis-event-tag.is-active", text: /错失销售预警/
     assert_select ".ai-diagnosis-event-tag", text: /即将断货/
-    assert_select ".ai-diagnosis-event-tag", text: /90 天断货风险/
+    assert_select ".ai-diagnosis-event-tag", { text: /90 天断货风险/, count: 0 }
+    assert_select ".ai-diagnosis-event-tag--advice", { text: /补充库存/, count: 0 }
     assert_select ".ai-diagnosis-event-tag", { text: /清仓逾期/, count: 0 }
     assert_select ".ai-diagnosis-event-tag", { text: /Inventory sufficient/, count: 0 }
     assert_select ".ai-diagnosis-event-tag", { text: /Ignored risk/, count: 0 }

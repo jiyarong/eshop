@@ -1157,7 +1157,8 @@ class ReportsController < ApplicationController
     rows = skus.map do |sku|
       fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {}).merge(
         strict_forecast_daily_sales: strict_forecasts.dig(sku, :forecast_daily_sales),
-        ai_diagnosis_event_types: event_types_by_sku_id.fetch(sku.id, [])
+        ai_diagnosis_event_types: event_types_by_sku_id.fetch(sku.id, []),
+        ai_diagnosis_events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, [])
       )
     end
 

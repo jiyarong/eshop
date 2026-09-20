@@ -221,7 +221,8 @@
                 <td class="numeric inventory-list-table__metric"><%= turnover_days_with_procurement.present? ? format("%.2f", turnover_days_with_procurement.to_d) : "-" %></td>
                 <td class="inventory-list-table__ai-health-cell">
                   <%= render "shared/sku_ai_diagnosis_event_tags",
-                    event_types: row[:ai_diagnosis_event_types] %>
+                    event_types: row[:ai_diagnosis_event_types],
+                    events: row[:ai_diagnosis_events] %>
                 </td>
                 <td class="inventory-list-table__actions-cell">
                   <div class="resource-actions inventory-list-table__actions">

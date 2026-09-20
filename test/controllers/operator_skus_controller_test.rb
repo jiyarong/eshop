@@ -22,7 +22,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     User.where(id: @user.id).delete_all
   end
 
-  test "index filters skus by legacy red and critical general diagnosis event tags" do
+  test "index filters skus by critical general diagnosis event tags and separates advice" do
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis.events.create!(
       event_type: "stockout_imminent",
@@ -33,6 +33,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       details: { "available" => 3 }
     )
     diagnosis.events.create!(event_type: "inventory_sufficient", severity: "info", message: "Healthy")
+    diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice")
     legacy_diagnosis = Ec::RestockingDiagnosis.create!(sku: @sku, submitted_by: @user)
     legacy_diagnosis.events.create!(event_type: "missed_sales_alert", severity: "red", message: "Sales risk")
     other_sku = Ec::Sku.create!(sku_code: "OPS-OTHER-#{@token}", product_name: "其他运营商品")
@@ -49,7 +50,9 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       report_sku_path(@sku.sku_code), text: @sku.sku_code
     assert_select ".operator-sku-row .code-text.sub", { text: other_sku.sku_code, count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "即将断货"
-    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "错失销售预警"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label", text: "AI 建议"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .ai-diagnosis-event-tag--advice", text: "补充库存"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--advice) .ai-diagnosis-event-tag", { text: "错失销售预警", count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Inventory sufficient/, count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-popover']" do
       assert_select "button.ai-diagnosis-event-tag[aria-expanded='false'][aria-controls]", text: "即将断货"
