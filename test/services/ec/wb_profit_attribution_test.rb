@@ -34,7 +34,13 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     nm_id = rand(10_000_000..99_999_999)
     report_id = rand(100_000_000..999_999_999)
     @nm_ids << nm_id
-    RawWb::Product.create!(account: @account, nm_id:, vendor_code: "WSU-DEEP-TEST")
+    @sku_codes << "WSU-DEEP-TEST"
+    Ec::Sku.create!(sku_code: "WSU-DEEP-TEST")
+    RawWb::Product.create!(account: @account, nm_id:, vendor_code: "WSU-DEEP-LISTING-CODE")
+    Ec::SkuProduct.create!(
+      sku_code: "WSU-DEEP-TEST", store: create_wb_store("WB WSU #{nm_id}", @account),
+      product_id: nm_id.to_s, platform_sku_id: "WSU-#{nm_id}"
+    )
     create_sales_report(
       report_id:, date_from: Date.new(2026, 9, 1), date_to: Date.new(2026, 9, 6),
       bank_payment_sum: 85
@@ -230,10 +236,9 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
       customs_duty_rate: 0,
       import_vat_rate: 0
     )
-    RawWb::Product.create!(
-      account: @account,
-      nm_id: nm_id,
-      vendor_code: sku_code.downcase
+    Ec::SkuProduct.create!(
+      sku_code: sku_code, store: create_wb_store("WB Cost #{sku_code}", @account),
+      product_id: nm_id.to_s, platform_sku_id: "WB-COST-#{nm_id}"
     )
 
     service = build_service(from_date: Date.new(2026, 7, 1), to_date: Date.new(2026, 7, 5))
@@ -280,7 +285,67 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     assert_equal({ nm_id => sku_code }, service.send(:build_nm_to_sku_map, [nm_id]))
   end
 
+  test "default nm to sku map uses sku product binding instead of vendor code" do
+    sku_code = "WB-DEF-#{SecureRandom.hex(4).upcase}"
+    nm_a, nm_b, nm_unbound, nm_other_store = Array.new(4) { rand(10_000_000..99_999_999) }
+    @sku_codes << sku_code
+    @nm_ids.concat([nm_a, nm_b, nm_unbound, nm_other_store])
+
+    Ec::Sku.create!(sku_code: sku_code)
+    store = create_wb_store("WB Default #{sku_code}", @account)
+    other_account = RawWb::SellerAccount.create!(
+      name: "WB Other #{sku_code}", api_token: "wb-other-#{sku_code}", is_active: true, company_type: :small
+    )
+    other_store = create_wb_store("WB Other #{sku_code}", other_account)
+    Ec::SkuProduct.create!(sku_code: sku_code, store: store, product_id: nm_a.to_s, platform_sku_id: "A-#{sku_code}")
+    Ec::SkuProduct.create!(sku_code: sku_code, store: store, product_id: nm_b.to_s, platform_sku_id: "B-#{sku_code}")
+    Ec::SkuProduct.create!(sku_code: sku_code, store: other_store, product_id: nm_other_store.to_s, platform_sku_id: "C-#{sku_code}")
+    # vendor_code 恰好等于内部 SKU，但没有绑定，不能被归属
+    RawWb::Product.create!(account: @account, nm_id: nm_unbound, vendor_code: sku_code)
+    RawWb::Product.create!(account: @account, nm_id: nm_a, vendor_code: "#{sku_code}-M")
+    RawWb::Product.create!(account: @account, nm_id: nm_b, vendor_code: "#{sku_code}-L")
+
+    service = build_service(from_date: Date.new(2026, 7, 1), to_date: Date.new(2026, 7, 5))
+
+    assert_equal(
+      { nm_a => sku_code, nm_b => sku_code },
+      service.send(:build_nm_to_sku_map, [nm_a, nm_b, nm_unbound, nm_other_store])
+    )
+  ensure
+    Ec::SkuProduct.where(store_id: other_store&.id).delete_all if other_store
+    Ec::Store.where(id: other_store.id).delete_all if other_store
+    other_account&.destroy
+  end
+
+  test "default nm to sku map is empty when account has no store" do
+    service = build_service(from_date: Date.new(2026, 7, 1), to_date: Date.new(2026, 7, 5))
+
+    assert_equal({}, service.send(:build_nm_to_sku_map, [123]))
+  end
+
+  test "compute_profit leaves unbound listings without sku so reports can surface them" do
+    service = build_service(from_date: Date.new(2026, 7, 1), to_date: Date.new(2026, 7, 5))
+    bucket = service.send(:new_bucket).merge(settlement_byn: 100.0, sales_qty: 1)
+    service.instance_variable_set(:@buckets, { [555, Ec::WbProfitAttribution::REPORT_TYPE_EXPORT] => bucket })
+    service.instance_variable_set(:@goods_costs, {})
+    service.instance_variable_set(:@unalloc_rows, [])
+    service.define_singleton_method(:build_nm_to_sku_map) { |_nm_ids| {} }
+
+    service.send(:compute_profit)
+
+    assert_nil service.results.first[:vendor_code]
+    assert_equal 555, service.results.first[:nm_id]
+  end
+
   private
+
+  def create_wb_store(name, account)
+    store = Ec::Store.create!(
+      platform: "wb", store_name: name, company_type: "small", wb_raw_account_id: account.id, is_active: true
+    )
+    @store_ids << store.id if @store_ids
+    store
+  end
 
   def build_service(from_date:, to_date:, rate_cny_rub: 10.0, rate_byn_rub: 3.0, sku_codes: [])
     Ec::WbProfitAttribution.new(

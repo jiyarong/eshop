@@ -109,7 +109,7 @@ module Ec
     end
 
     # ── Per-unit costs from SKU-level results ────────────────────────────────────
-    # WbProfitAttribution already resolved vendor_code aliases and computed correct
+    # WbProfitAttribution already resolved sku bindings (ec_sku_products) and computed correct
     # goods_cost (BYN) and import_vat (CNY). Divide by net_qty for per-shkId values.
 
     def build_per_unit_costs

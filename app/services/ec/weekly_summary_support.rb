@@ -35,7 +35,11 @@ module Ec
 
         shop = acct.name.to_s.strip
         svc.results.group_by { |row| row[:vendor_code] }.each do |sku, sku_rows|
-          next if sku.blank?
+          if sku.blank?
+            # 未在 ec_sku_products 绑定内部 SKU 的 Listing：不冒充 SKU 行，利润计入未归属，避免总额丢失
+            unalloc[:wb] += (sku_rows.sum { |row| row[:after_tax] } * byn_cny).round(2)
+            next
+          end
 
           net_sales = sku_rows.sum { |row| row[:sales_qty] - row[:return_qty] }
           revenue = (sku_rows.sum { |row| row[:settlement] } * byn_cny).round(2)
@@ -84,7 +88,11 @@ module Ec
 
         shop = acct.company_name.to_s.strip
         svc.results.each do |row|
-          next if row[:sku_code].blank?
+          if row[:sku_code].blank?
+            unbound_after_tax = (row[:after_tax_profit] || row[:book_profit_after_ad]).to_f
+            unalloc[:ozon] += (unbound_after_tax * rub_cny).round(2)
+            next
+          end
 
           revenue = (row[:sales_revenue] * rub_cny).round(2)
           ads = (-(row[:ppc_cost].to_f + row[:promotion_cost].to_f) * rub_cny).round(2)

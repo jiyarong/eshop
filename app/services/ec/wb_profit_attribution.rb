@@ -474,42 +474,23 @@ module Ec
       }
     end
 
-    # WB vendorCode → internal sku_code 别名表
-    # 当 WB 侧代码与内部 sku_code 不同时在此登记
-    VENDOR_CODE_ALIASES = {
-      'par1'  => 'HD-QJ206',
-      'par18' => 'HD-QJ310',
-    }.freeze
-
+    # nm_id → 内部 sku_code，只认 ec_sku_products 硬关联（同 store、platform=wb、product_id=nm_id）。
+    # 未绑定的 nm_id 不返回，结果行的 vendor_code 为 nil，由报表层作为未绑定 Listing 处理。
     def build_nm_to_sku_map(nm_ids)
-      return build_bound_nm_to_sku_map(nm_ids) if @sku_codes.present?
-
-      sku_map = {}
-      RawWb::Product.where(nm_id: nm_ids).pluck(:nm_id, :vendor_code).each do |nm_id, vc|
-        sku_map[nm_id] = vc if vc.present?
-      end
-      sku_map
-    end
-
-    def build_bound_nm_to_sku_map(nm_ids)
       store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: @account_id)
       return {} unless store
 
-      Ec::SkuProduct
-        .where(store_id: store.id, platform: "wb", sku_code: @sku_codes, product_id: nm_ids.map(&:to_s))
-        .pluck(:product_id, :sku_code)
-        .each_with_object({}) do |(product_id, sku_code), sku_map|
-          sku_map[product_id.to_i] = sku_code
-        end
+      scope = Ec::SkuProduct.where(store_id: store.id, platform: "wb", product_id: nm_ids.map(&:to_s))
+      scope = scope.where(sku_code: @sku_codes) if @sku_codes.present?
+      scope.pluck(:product_id, :sku_code).each_with_object({}) do |(product_id, sku_code), sku_map|
+        sku_map[product_id.to_i] = sku_code
+      end
     end
 
-    # 将 WB vendorCode 解析为 ec_sku_costs 中的 sku_code
-    # 优先走别名表，其次大小写不敏感匹配
-    def resolve_sku_code(vendor_code, sku_code_index)
-      return nil if vendor_code.blank?
-      alias_code = VENDOR_CODE_ALIASES[vendor_code.downcase]
-      return alias_code if alias_code
-      sku_code_index[vendor_code.downcase]
+    # 将已绑定的内部 sku_code 大小写不敏感地对应到 ec_sku_costs 中的 sku_code
+    def resolve_sku_code(sku_code, sku_code_index)
+      return nil if sku_code.blank?
+      sku_code_index[sku_code.downcase]
     end
   end
 end

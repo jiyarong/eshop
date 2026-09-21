@@ -69,63 +69,22 @@ module Ec
         .to_a
     end
 
+    # ozon sku → 内部 sku_code，只认 ec_sku_products 硬关联（同 store、platform=ozon、platform_sku_id）。
+    # offer_id 不参与归属；未绑定的 Listing 的 sku_code 为 nil，由报表层作为未绑定 Listing 处理。
     def load_sku_mappings
-      return load_bound_sku_mappings if @sku_codes.present?
-
-      # offer_id → sku_code（大写匹配，ec_skus 中 sku_code 均为大写）
-      # 先建 code_by_upper，供 ozon_sku 映射时优先选能命中的 offer_id
-      code_by_upper = Ec::Sku.pluck(:sku_code)
-                              .each_with_object({}) { |c, h| h[c.upcase] = c }
-
-      # ozon_sku → offer_id：同一 ozon_sku 可能对应多个 offer_id（数据录入错误/历史变更）
-      # 优先选能在 ec_skus 里命中的 offer_id；均不命中时取最后一条
-      ozon_to_offers = Hash.new { |h, k| h[k] = [] }
-      RawOzon::PostingItem
-        .where(account_id: @account_id)
-        .where.not(ozon_sku: nil).where.not(offer_id: nil)
-        .distinct.pluck(:ozon_sku, :offer_id)
-        .each { |sku, oid| ozon_to_offers[sku] << oid }
-      ozon_to_offer = ozon_to_offers.transform_values do |oids|
-        oids.find { |oid| code_by_upper.key?(oid.to_s.upcase) } || oids.last
-      end
-
-      # sku_code → {cost_cny, import_vat_cny} (ec_sku_costs)
-      cost_date = @from_date.beginning_of_week(:monday)
-      cost_map = Ec::SkuCost.latest_as_of(cost_date).each_with_object({}) do |c, h|
-        h[c.sku_code] = {
-          cost_cny:       c.goods_cost_cny.to_f,
-          import_vat_cny: c.import_vat_cny.to_f,
-        }
-      end
-
       @sku_to_code = {}
-      ozon_to_offer.each do |ozon_sku, offer_id|
-        code = code_by_upper[offer_id.to_s.upcase]
-        @sku_to_code[ozon_sku] = code if code
-      end
-
       @cost_by_sku = {}
-      @sku_to_code.each do |ozon_sku, code|
-        @cost_by_sku[ozon_sku] = cost_map[code] if cost_map[code]
-      end
-    end
-
-    def load_bound_sku_mappings
       store = Ec::Store.find_by(platform: "ozon", ozon_raw_account_id: @account_id)
-      @sku_to_code = {}
-      @cost_by_sku = {}
       return unless store
 
-      Ec::SkuProduct
-        .where(store_id: store.id, platform: "ozon", sku_code: @sku_codes)
-        .where.not(platform_sku_id: nil)
-        .pluck(:platform_sku_id, :sku_code)
-        .each do |platform_sku_id, sku_code|
-          @sku_to_code[ozon_sku_key(platform_sku_id)] = sku_code
-        end
+      scope = Ec::SkuProduct.where(store_id: store.id, platform: "ozon").where.not(platform_sku_id: nil)
+      scope = scope.where(sku_code: @sku_codes) if @sku_codes.present?
+      scope.pluck(:platform_sku_id, :sku_code).each do |platform_sku_id, sku_code|
+        @sku_to_code[ozon_sku_key(platform_sku_id)] = sku_code
+      end
 
       cost_date = @from_date.beginning_of_week(:monday)
-      cost_map = Ec::SkuCost.latest_by_sku_as_of(@sku_codes, cost_date).index_by(&:sku_code)
+      cost_map = Ec::SkuCost.latest_by_sku_as_of(@sku_to_code.values.uniq, cost_date).index_by(&:sku_code)
       @sku_to_code.each do |ozon_sku, sku_code|
         cost = cost_map[sku_code]
         next unless cost

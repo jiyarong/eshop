@@ -96,13 +96,13 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
       customs_duty_rate: 0,
       import_vat_rate: 0
     )
-    RawOzon::PostingItem.create!(
-      account: @ozon_account,
-      posting_number: "posting-#{@token}",
-      posting_type: "fbo",
-      ozon_sku: ozon_sku,
-      offer_id: sku_code,
-      raw_json: {}
+    store = Ec::Store.create!(
+      platform: "ozon", store_name: "Ozon Cost #{sku_code}", company_type: "small",
+      ozon_raw_account_id: @ozon_account.id, is_active: true
+    )
+    @store_ids << store.id
+    Ec::SkuProduct.create!(
+      sku_code: sku_code, store: store, product_id: "OZON-C-#{@token}", platform_sku_id: ozon_sku.to_s
     )
 
     service = Ec::OzonProfitAttribution.new(
@@ -168,5 +168,47 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
 
     assert_equal sku_code, service.instance_variable_get(:@sku_to_code).fetch(ozon_sku)
     assert_equal 12.0, service.instance_variable_get(:@cost_by_sku).dig(ozon_sku, :cost_cny)
+  end
+
+  test "default sku mapping uses sku product binding and merges listings of one sku" do
+    sku_code = "OZ-DEF-#{@token}"
+    ozon_sku_a, ozon_sku_b, ozon_sku_unbound = Array.new(3) { rand(10_000_000..99_999_999) }
+    @sku_codes << sku_code
+
+    Ec::Sku.create!(sku_code: sku_code)
+    Ec::SkuCost.create!(
+      sku_code: sku_code, effective_on: Date.new(2026, 6, 29),
+      purchase_price_cny: 12, customs_duty_rate: 0, import_vat_rate: 0
+    )
+    store = Ec::Store.create!(
+      platform: "ozon", store_name: "Ozon Default #{sku_code}", company_type: "small",
+      ozon_raw_account_id: @ozon_account.id, is_active: true
+    )
+    @store_ids << store.id
+    Ec::SkuProduct.create!(sku_code: sku_code, store: store, product_id: "P-A-#{@token}",
+                           platform_sku_id: ozon_sku_a.to_s, offer_id: "#{sku_code}-RED")
+    Ec::SkuProduct.create!(sku_code: sku_code, store: store, product_id: "P-B-#{@token}",
+                           platform_sku_id: ozon_sku_b.to_s, offer_id: "#{sku_code}-BLUE")
+    # offer_id 恰好等于内部 SKU，但没有绑定，不能被归属
+    RawOzon::PostingItem.create!(
+      account: @ozon_account, posting_number: "posting-default-#{@token}", posting_type: "fbo",
+      ozon_sku: ozon_sku_unbound, offer_id: sku_code, raw_json: {}
+    )
+
+    service = Ec::OzonProfitAttribution.new(
+      account_id: @ozon_account.id,
+      from_date: Date.new(2026, 7, 1),
+      to_date: Date.new(2026, 7, 5),
+      rate_cny_rub: 10.0,
+      sync_missing_ad_costs: false
+    )
+
+    service.send(:load_sku_mappings)
+
+    mapping = service.instance_variable_get(:@sku_to_code)
+    assert_equal sku_code, mapping.fetch(ozon_sku_a)
+    assert_equal sku_code, mapping.fetch(ozon_sku_b)
+    assert_not mapping.key?(ozon_sku_unbound)
+    assert_equal 12.0, service.instance_variable_get(:@cost_by_sku).dig(ozon_sku_b, :cost_cny)
   end
 end
