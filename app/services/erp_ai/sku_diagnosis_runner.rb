@@ -91,7 +91,6 @@ module ErpAI
 
           run_rule(agent, user, sku, rule)
         end
-        run_summary(agent, user, sku) if summary && (force || summary_due?(sku))
       end
     end
 

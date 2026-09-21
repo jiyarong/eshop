@@ -430,7 +430,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_not_equal first_conversation_id, event.conversation_id
   end
 
-  test "creates operational advice after sub-rules and includes recent weekly events and required context" do
+  test "does not create operational advice when summary is requested" do
     client = SavingClient.new
     extra_rules = create_additional_rules(4)
     rule_ids = [ @daily, @weekly, *extra_rules ].map(&:id)
@@ -438,34 +438,15 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       diagnosis_runner(date: Date.new(2026, 9, 15), client: client, summary: true, rule_ids: rule_ids).run
     end
 
-    summary_request = client.requests.find do |request|
-      request.fetch(:messages).first.fetch(:content).to_s.include?("运营执行的建议操作")
-    end
-    assert summary_request
-    assert_equal [ "create_sku_advise" ],
-      summary_request.fetch(:tools).map { |tool| tool.fetch(:name) }
-    assert_includes summary_request.fetch(:system_prompt), "电商运营建议生成器"
-    summary = summary_request.fetch(:context).split("已查询到的业务数据摘要：", 2).last
-    assert_includes summary, "**Snapshot base**"
-    assert_includes summary, "**Snapshot lifecycle**"
-    assert_includes summary, "**Snapshot sales_funnel**"
-    assert_includes summary, "**Snapshot inventory**"
-    assert_includes summary, "sub_agent_rule.name=#{@daily.name}"
-    assert_includes summary, "event_type=stock_risk"
-    assert_includes summary_request.fetch(:messages).first.fetch(:content), "event_type 是具体动作的简写"
-    assert_includes summary_request.fetch(:messages).first.fetch(:content), "工具不需要也不接受 advise"
-    assert_includes summary_request.fetch(:messages).first.fetch(:content), "不要调用任何 update 工具"
+    assert_operator client.requests.size, :>=, rule_ids.size
+    assert_empty client.requests.select { |request| request.fetch(:tools).map { |tool| tool.fetch(:name) } == [ "create_sku_advise" ] }
 
     events = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.order(:id)
     assert_equal rule_ids.sort, events.filter_map(&:sub_agent_id).sort
-    assert_nil events.last.sub_agent_id
-    assert_equal "补充库存", events.last.event_type
-    assert_equal "advise", events.last.scope
-    assert_nil events.last.advise
-    assert events.last.is_latest?
+    assert_not events.any? { |event| event.scope == "advise" }
   end
 
-  test "refreshes daily advice and keeps every advice from the successful joint diagnosis latest" do
+  test "does not refresh advice when summary is requested" do
     date = Date.new(2026, 9, 15)
     zone = Time.find_zone!(ErpAI::SkuDiagnosisRunner::TIME_ZONE)
     previous_diagnosis = Ec::GeneralDiagnosis.create!(
@@ -485,11 +466,11 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       date: date, client: MultipleAdviceClient.new, summary: true, force: true, rule_ids: []
     ).run
 
-    assert_not previous_advice.reload.is_latest?
-    assert_not Ec::AIDiagnosisEvent.exists?(stale_daily_advice.id)
+    assert previous_advice.reload.is_latest?
+    assert Ec::AIDiagnosisEvent.exists?(stale_daily_advice.id)
     refreshed = daily_diagnosis.events.where(scope: "advise").order(:id)
-    assert_equal [ "补充库存", "优化主图" ], refreshed.pluck(:event_type)
-    assert_equal [ true, true ], refreshed.pluck(:is_latest)
+    assert_equal [ "当日旧建议" ], refreshed.pluck(:event_type)
+    assert_equal [ true ], refreshed.pluck(:is_latest)
   end
 
   test "restores advice events when the joint diagnosis fails after creating advice" do
@@ -597,17 +578,14 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_empty client.requests
   end
 
-  test "force runs the joint advice manually without sub-rule events" do
+  test "does not force-run joint advice without sub-rule events" do
     client = SavingClient.new
     diagnosis_runner(
       date: Date.new(2026, 9, 15), client: client, summary: true, force: true, rule_ids: []
     ).run
 
-    assert client.requests.any? { |request| request.fetch(:tools).map { |tool| tool.fetch(:name) } == [ "create_sku_advise" ] }
-    event = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole
-    assert_equal "advise", event.scope
-    assert_nil event.sub_agent_id
-    assert event.is_latest?
+    assert_empty client.requests
+    assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
   end
 
   test "scoped tool rejects another SKU or rule" do

@@ -223,14 +223,14 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select "form[action='#{report_sku_general_diagnoses_path(@sku.sku_code)}']" do
       assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{first_rule.id}']"
       assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{second_rule.id}']"
-      assert_select "input[type='checkbox'][name='include_summary'][value='1']"
+      assert_select "input[name='include_summary']", count: 0
       assert_select "input[type='submit'][value='开始诊断'][data-turbo-submits-with='正在提交...']"
     end
 
     sign_in @user
     assert_enqueued_with(
       job: AITasks::SkuDiagnosisJob,
-      args: [ { sku_code: @sku.sku_code, rule_ids: [ first_rule.id, second_rule.id ], summary: false } ]
+      args: [ { sku_code: @sku.sku_code, rule_ids: [ first_rule.id, second_rule.id ] } ]
     ) do
       post report_sku_general_diagnoses_path(@sku.sku_code),
         params: { sku_diagnosis_rule_ids: [ second_rule.id, "invalid", first_rule.id ] }
@@ -268,17 +268,14 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "manual general diagnosis can enqueue the summary independently" do
-    assert_enqueued_with(
-      job: AITasks::SkuDiagnosisJob,
-      args: [ { sku_code: @sku.sku_code, rule_ids: [], summary: true, force: true } ]
-    ) do
+  test "manual general diagnosis does not enqueue a summary without selected rules" do
+    assert_no_enqueued_jobs only: AITasks::SkuDiagnosisJob do
       post report_sku_general_diagnoses_path(@sku.sku_code),
         params: { include_summary: "1" }
     end
 
     assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
-    assert_equal "通用诊断任务已提交。", flash[:notice]
+    assert_equal "请至少选择一个诊断项目。", flash[:alert]
   end
 
   test "manual general diagnosis requires at least one selected rule" do
