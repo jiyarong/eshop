@@ -23,7 +23,8 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       else
         { id: "save-#{requests.size}", name: "save_sku_event", arguments: {
           sku_code: sku_code, sub_agent_id: question[/当前子规则 ID：(\d+)/, 1].to_i, severity: "warning",
-          event_type: "stock_risk", message: "Stock issue: sales increased"
+          event_type: "stock_risk", message: "Stock issue: sales increased",
+          simple_context: "### Evidence\n- Sales increased"
         } }
       end
       { content: nil, tool_calls: [tool_call] }
@@ -592,7 +593,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     executor = ErpAI::SkuDiagnosisRunner::ScopedToolExecutor.new(user: @user, date: Date.new(2026, 9, 15), sku: @sku, rule: @daily)
     result = executor.call(id: "bad", name: "save_sku_event", arguments: {
       sku_code: @sku.sku_code, sub_agent_id: @weekly.id,
-      event_type: "stock_risk", severity: "warning", message: "Issue: Evidence"
+      event_type: "stock_risk", severity: "warning", message: "Issue: Evidence", simple_context: "### Evidence"
     })
 
     assert_equal "invalid_scope", result.dig(:error, :code)
@@ -614,12 +615,13 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     executor = ErpAI::SkuDiagnosisRunner::ScopedToolExecutor.new(user: @user, date: Date.new(2026, 9, 15), sku: @sku, rule: @daily)
     result = executor.call(id: "save", name: "save_sku_event", arguments: {
       sku_code: @sku.sku_code, sub_agent_id: @daily.id,
-      event_type: "profit_drop", severity: "warning", message: "Issue: Evidence"
+      event_type: "profit_drop", severity: "warning", message: "Issue: Evidence", simple_context: "### Evidence"
     })
 
     assert result.dig(:result, :success)
     event = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole
     assert_equal "profit_drop", event.event_type
+    assert_equal "### Evidence", event.simple_context
   end
 
   test "historical rerun keeps the newer diagnosis latest" do

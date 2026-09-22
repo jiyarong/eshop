@@ -32,7 +32,7 @@ module ErpAI
 
         if name == "save_sku_event" && (
           Integer(args["sub_agent_id"], exception: false) != @rule&.id ||
-          %w[event_type message].any? { |key| args[key].blank? } ||
+          %w[event_type message simple_context].any? { |key| args[key].blank? } ||
           !%w[info warning critical].include?(args["severity"]) ||
           (@expected_event_type.present? && args["event_type"] != @expected_event_type)
         )
@@ -148,7 +148,7 @@ module ErpAI
         #{rule.prompt}
         #{listing_image_instruction}
 
-        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
+        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，simple_context 写相关诊断依据的上下文（使用 Markdown 格式）；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
       PROMPT
       conversation = ErpAI::AgentRunner.new(
         agent: agent, user: user, client: client,

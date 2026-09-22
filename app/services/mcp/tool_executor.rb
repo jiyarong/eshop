@@ -98,6 +98,9 @@ module Mcp
       message = args["message"].to_s
       return { error: "message is required" } if message.blank?
 
+      simple_context = args["simple_context"].to_s
+      return { error: "simple_context is required" } if simple_context.blank?
+
       today = @event_date || user_today
       day_start = (@event_date ? Time.find_zone!("Asia/Shanghai") : user_time_zone).local(today.year, today.month, today.day)
       day_end = day_start + 1.day
@@ -133,6 +136,7 @@ module Mcp
             sub_agent_id: sub_agent_id,
             severity: severity,
             message: message,
+            simple_context: simple_context,
             position: 0
           }
           attributes[:conversation_id] = @conversation_id if @conversation_id.present?

@@ -100,6 +100,7 @@ module Mcp
         "event_type" => "stock_risk",
         "severity" => "warning",
         "message" => "库存偏低，需要关注",
+        "simple_context" => "### 库存依据\n- 可用库存持续下降",
         "advise" => "检查补货计划"
       }
 
@@ -108,6 +109,7 @@ module Mcp
         "event_type" => "inventory_recovery",
         "severity" => "danger",
         "message" => "库存严重偏低，立即处理",
+        "simple_context" => "### 最新库存依据\n- 可用库存已低于安全线",
         "advise" => "立即补货"
       ))
 
@@ -122,6 +124,7 @@ module Mcp
       assert_equal 7, event.sub_agent_id
       assert_equal "danger", event.severity
       assert_equal "库存严重偏低，立即处理", event.message
+      assert_equal "### 最新库存依据\n- 可用库存已低于安全线", event.simple_context
       assert_nil event.advise
       assert event.is_latest?
       assert second.fetch(:is_latest)
@@ -134,6 +137,7 @@ module Mcp
         "event_type" => "综合风险",
         "severity" => "warning",
         "message" => "综合判断",
+        "simple_context" => "### 综合依据\n- 多项指标异常",
         "advise" => "按优先级处理"
       })
 

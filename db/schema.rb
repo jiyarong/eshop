@@ -118,6 +118,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
     t.integer "position", default: 0, null: false
     t.string "scope"
     t.string "severity", null: false
+    t.text "simple_context"
     t.string "status", default: "active", null: false
     t.integer "sub_agent_id"
     t.datetime "updated_at", null: false
