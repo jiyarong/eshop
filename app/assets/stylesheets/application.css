@@ -1918,6 +1918,12 @@ table thead th {
   gap: 12px;
 }
 
+.ai-diagnosis-section[hidden],
+.sku-listing-diagnoses[hidden],
+.ai-health-result[hidden] {
+  display: none !important;
+}
+
 .ai-diagnosis-section > .section-title,
 .ai-diagnosis-section > .table-section-header .section-title {
   margin: 0;
@@ -3860,6 +3866,13 @@ table thead th {
 
 .sku-detail-marketing-state {
   margin-top: 12px;
+}
+
+.sku-detail-marketing-state__row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 12px;
 }
 
 .sku-detail-tabs {
@@ -6663,6 +6676,14 @@ textarea:focus {
   font-weight: 600;
 }
 
+.ai-diagnosis-event-filter__tag-groups {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
 .ai-diagnosis-event-filter__tags {
   display: flex;
   flex-wrap: wrap;
@@ -6721,6 +6742,11 @@ textarea:focus {
   align-items: center;
 }
 
+.sku-ai-diagnosis-event-tags--warning {
+  flex-basis: 100%;
+  align-items: center;
+}
+
 .sku-ai-diagnosis-event-tags__label {
   flex: 0 0 auto;
   color: var(--erp-muted);
@@ -6738,6 +6764,31 @@ textarea:focus {
 .ai-diagnosis-event-tag--compact:hover {
   border-color: #ef9a9a;
   background: #fff7f7;
+}
+
+.ai-diagnosis-event-tag--warning {
+  border-color: #e6b94a;
+  color: #8a5b00;
+  background: #fff9e6;
+}
+
+.ai-diagnosis-event-tag--warning:hover {
+  border-color: #d39b1f;
+  background: #fff3c4;
+}
+
+.ai-diagnosis-event-tag.ai-diagnosis-event-tag--warning.is-active {
+  border-color: #b77900;
+  color: #fff;
+  background: #b77900;
+}
+
+.ai-diagnosis-event-tag.ai-diagnosis-event-tag--warning .ai-diagnosis-event-tag__count {
+  background: rgba(138, 91, 0, 0.1);
+}
+
+.ai-diagnosis-event-tag.ai-diagnosis-event-tag--warning.is-active .ai-diagnosis-event-tag__count {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .ai-diagnosis-event-tag--advice {

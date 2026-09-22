@@ -152,6 +152,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select "h2", "通用诊断"
       assert_select "a[data-turbo-frame='erp_modal'][href='#{new_report_sku_general_diagnosis_path(@sku.sku_code)}']", "手动诊断"
       assert_select ".ai-health-result--general-diagnosis", count: 1
+      assert_select ".ai-health-result--general-diagnosis[open]", count: 1
       assert_select "h3 time[datetime='2026-08-12']", "2026-08-12"
       assert_select "h3", { text: /通用诊断|#{diagnosis.id}/, count: 0 }
       assert_select ".ai-health-result__meta", count: 0
@@ -176,6 +177,10 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select ".ai-health-long-text-dialog__text", text: long_advise, count: 0
       assert_select ".ai-health-result__raw-link", count: 0
     end
+    assert_select ".ai-diagnosis-section--inventory[hidden]", count: 1
+    assert_select ".ai-diagnosis-section--grade[hidden]", count: 1
+    assert_select ".sku-listing-diagnoses[hidden]", count: 1
+    assert_select ".ai-diagnosis-section--operations[hidden]", count: 1
 
     sign_in @user
     get report_sku_ai_diagnosis_path(@sku.sku_code, diagnosis), headers: { "Accept" => "text/html" }
@@ -491,6 +496,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-operation-diagnosis__meta dd", text: "2026-08-02", count: 1
     assert_select ".ai-operation-diagnosis__event-action", text: /广告开关.*WB/
     assert_select ".ai-health-result--operation-diagnosis" do
+      assert_select "[hidden]", count: 1
       assert_select ".ai-health-result__summary .ai-health-star-summary__item--info", text: /★\*1/
       assert_select ".ai-health-metrics", count: 0
       assert_select "form.ai-health-result__delete-form", count: 0
@@ -757,12 +763,12 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
   end
 
-  test "inventory report renders critical general diagnosis events and separates advice" do
+  test "inventory report renders critical and warning general diagnosis events and separates advice" do
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis.events.create!(event_type: "stockout_imminent", sub_agent_id: 101, severity: "critical", message: "Critical risk", is_latest: true)
     diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice", is_latest: true)
     diagnosis.events.create!(event_type: "ignored_risk", sub_agent_id: 102, severity: "critical", status: "ignored", message: "Ignored risk", is_latest: true)
-    diagnosis.events.create!(event_type: "warning_risk", sub_agent_id: 103, severity: "warning", message: "Warning risk")
+    diagnosis.events.create!(event_type: "warning_risk", sub_agent_id: 103, severity: "warning", message: "Warning risk", is_latest: true)
 
     get "/reports/inventory",
       params: { sku: @sku.sku_code },
@@ -770,14 +776,17 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "th", "AI诊断"
+    assert_select ".ai-diagnosis-event-filter .ai-diagnosis-event-tag", text: /Warning risk/
     assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", text: "即将断货"
+    assert_select ".inventory-list-table__ai-health-cell .sku-ai-diagnosis-event-tags--warning" do
+      assert_select ".ai-diagnosis-event-tag--warning", text: "Warning risk"
+    end
     assert_select ".inventory-list-table__ai-health-cell .sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label", text: "AI 建议"
     assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag--advice", text: "补充库存"
     assert_select ".inventory-list-table__ai-health-cell .ai-diagnosis-event-tag", { text: "错失销售预警", count: 0 }
     assert_select ".inventory-list-table__ai-health-cell", { text: /Inventory sufficient/, count: 0 }
     assert_select ".inventory-list-table__ai-health-cell", { text: /Stockout risk/, count: 0 }
     assert_select ".inventory-list-table__ai-health-cell", { text: /Ignored risk/, count: 0 }
-    assert_select ".inventory-list-table__ai-health-cell", { text: /Warning risk/, count: 0 }
   end
 
   private

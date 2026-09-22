@@ -33,6 +33,14 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       scope: "inventory",
       details: { "available" => 3 }
     )
+    diagnosis.events.create!(
+      event_type: "grade_weekly_profit_drop",
+      sub_agent_id: 102,
+      severity: "warning",
+      is_latest: true,
+      message: "Warning details #{@token}",
+      scope: "profit"
+    )
     diagnosis.events.create!(event_type: "inventory_sufficient", severity: "info", message: "Healthy")
     diagnosis.events.create!(event_type: "补充库存", severity: "critical", scope: "advise", message: "Advice", is_latest: true)
     Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
@@ -48,26 +56,41 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".ai-diagnosis-event-filter"
     assert_select ".ai-diagnosis-event-tag.is-active", text: /即将断货/
+    assert_select ".ai-diagnosis-event-filter__tags--warning" do
+      assert_select ".ai-diagnosis-event-tag--warning", text: /单周利润严重下滑/
+    end
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
     assert_select ".operator-sku-row a[href=?][data-turbo-frame='sku_detail_drawer']",
       report_sku_path(@sku.sku_code), text: @sku.sku_code
     assert_select ".operator-sku-row .code-text.sub", { text: other_sku.sku_code, count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags .ai-diagnosis-event-tag", text: "即将断货"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--warning" do
+      assert_select ".ai-diagnosis-event-tag--warning", text: "单周利润严重下滑"
+    end
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label", text: "AI 建议"
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .ai-diagnosis-event-tag--advice", text: "补充库存"
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--advice) .ai-diagnosis-event-tag", { text: "错失销售预警", count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Inventory sufficient/, count: 0 }
-    assert_select ".operator-sku-row .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-popover']" do
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--warning):not(.sku-ai-diagnosis-event-tags--advice) .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-popover']" do
       assert_select "button.ai-diagnosis-event-tag[aria-expanded='false'][aria-controls]", text: "即将断货"
       assert_select ".sku-ai-diagnosis-event-popover__panel[hidden][role='dialog']" do
-        assert_select ".sku-ai-diagnosis-event-popover__message[data-controller='markdown']", count: 2 do
+        assert_select ".sku-ai-diagnosis-event-popover__message[data-controller='markdown']", count: 1 do
           assert_select ".sku-ai-diagnosis-event-popover__message-source[data-markdown-target='source']", text: "Risk details #{@token}"
-          assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 2
+          assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 1
         end
         assert_select ".sku-ai-diagnosis-event-popover__meta", text: /诊断范围：inventory/
         assert_select "code", text: /\"available\": 3/
       end
     end
+
+    sign_in @user
+    with_empty_metrics do
+      get operator_skus_path, params: { ai_event_type: "grade_weekly_profit_drop" }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".ai-diagnosis-event-tag.is-active", text: /单周利润严重下滑/
+    assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
   end
 
   test "index excludes ignored diagnosis events from tags and filtering" do

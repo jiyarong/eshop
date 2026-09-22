@@ -4,6 +4,7 @@
 
 <section id="<%= panel_id %>"
          class="panel listing-diagnoses-panel sku-listing-diagnoses"
+         <%= "hidden" if local_assigns.fetch(:hidden, false) %>
          <% if has_active_diagnosis %>
            data-controller="listing-diagnosis-status"
            data-listing-diagnosis-status-url-value="<%= report_sku_listing_diagnoses_path(sku.sku_code, locale: params[:locale].presence, return_tab: return_tab_param, format: :turbo_stream) %>"

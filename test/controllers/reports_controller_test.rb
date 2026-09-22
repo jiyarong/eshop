@@ -1830,6 +1830,48 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "sku detail renders latest diagnosis labels beside marketing state" do
+    Ec::SkuMarketingStateChange.new(
+      sku: @sku,
+      grade: "A",
+      stage: "grw",
+      changed_by: @current_user
+    ).call
+    diagnosis_rule = Ec::SkuDiagnosisRule.create!(
+      name: "详情页诊断标签 #{@sku_code}",
+      prompt: "检查详情页诊断标签",
+      frequency: "daily"
+    )
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user, data: {})
+    diagnosis.events.create!(
+      sub_agent: diagnosis_rule,
+      event_type: "stockout_imminent",
+      severity: "critical",
+      message: "库存即将断货",
+      position: 0
+    )
+    diagnosis.events.create!(
+      sub_agent_id: 102,
+      event_type: "grade_weekly_profit_drop",
+      severity: "warning",
+      message: "利润预警",
+      position: 1,
+      is_latest: true
+    )
+
+    get "/reports/skus/#{@sku.sku_code}", params: { tab: "basic" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".sku-detail-marketing-state__row" do
+      assert_select ".sku-marketing-state .marketing-grade--a", "A"
+      assert_select ".ai-diagnosis-event-tag--compact", "即将断货"
+      assert_select ".sku-ai-diagnosis-event-tags--warning .ai-diagnosis-event-tag--warning", "单周利润严重下滑"
+    end
+  ensure
+    diagnosis&.destroy
+    diagnosis_rule&.destroy
+  end
+
   test "sku detail renders master sku category instead of sku category" do
     sku_category = Ec::SkuCategory.create!(
       code: "SKU-CAT-#{@sku_code}",

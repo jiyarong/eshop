@@ -43,10 +43,17 @@
     </h2>
     <p><%= report_value(@sku.product_name_ru) %></p>
     <div class="sku-detail-marketing-state">
-      <%= render "erp/sku_marketing_states/marketing_state",
-                 sku: @sku,
-                 locale_params: request.query_parameters.slice(:locale),
-                 return_to: request.fullpath %>
+      <div class="sku-detail-marketing-state__row">
+        <%= render "erp/sku_marketing_states/marketing_state",
+                   sku: @sku,
+                   locale_params: request.query_parameters.slice(:locale),
+                   return_to: request.fullpath %>
+        <% if @sku_ai_diagnosis_events.present? %>
+          <%= render "shared/sku_ai_diagnosis_event_tags",
+                     events: @sku_ai_diagnosis_events,
+                     dom_id_prefix: "sku-detail-#{@sku.id}-diagnosis" %>
+        <% end %>
+      </div>
     </div>
     
   </div>

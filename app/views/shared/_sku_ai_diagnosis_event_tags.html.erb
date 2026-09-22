@@ -1,19 +1,24 @@
 <% events = Array(local_assigns[:events]) %>
 <% component_prefix = local_assigns[:dom_id_prefix].presence || "sku-diagnosis-#{SecureRandom.hex(4)}" %>
 <% risk_events = events.select { |event| event.sub_agent_id.present? && event.severity == "critical" } %>
+<% warning_events = events.select { |event| event.sub_agent_id.present? && event.severity == "warning" } %>
 <% advice_events = events.select { |event| event.sub_agent_id.nil? && event.scope == "advise" && event.severity == "critical" } %>
 <% risk_event_groups = risk_events.group_by(&:event_type) %>
+<% warning_event_groups = warning_events.group_by(&:event_type) %>
 <% advice_event_groups = advice_events.group_by(&:event_type) %>
-<% risk_event_types = risk_event_groups.any? ? risk_event_groups.keys : Array(local_assigns[:event_types]) %>
+<% risk_event_types = risk_event_groups.keys %>
+<% warning_event_types = warning_event_groups.keys %>
+<% risk_event_types = Array(local_assigns[:event_types]) if risk_event_types.empty? && warning_event_types.empty? %>
 <% tag_groups = [
   { event_types: risk_event_types, event_groups: risk_event_groups, label: nil, tag_modifier: nil },
+  { event_types: warning_event_types, event_groups: warning_event_groups, label: nil, container_modifier: "sku-ai-diagnosis-event-tags--warning", tag_modifier: "ai-diagnosis-event-tag--warning" },
   { event_types: advice_event_groups.keys, event_groups: advice_event_groups, label: t("erp.ai_diagnosis_event_filter.advice_label"), tag_modifier: "ai-diagnosis-event-tag--advice" }
 ] %>
 <% rendered_group = false %>
 <% tag_groups.each do |tag_group| %>
   <% next if tag_group[:event_types].empty? %>
   <% rendered_group = true %>
-  <div class="sku-ai-diagnosis-event-tags<%= " sku-ai-diagnosis-event-tags--advice" if tag_group[:tag_modifier] %>">
+  <div class="sku-ai-diagnosis-event-tags<%= " #{tag_group[:container_modifier]}" if tag_group[:container_modifier] %><%= " sku-ai-diagnosis-event-tags--advice" if tag_group[:tag_modifier] == "ai-diagnosis-event-tag--advice" %>">
     <% if tag_group[:label] %>
       <span class="sku-ai-diagnosis-event-tags__label"><%= tag_group[:label] %></span>
     <% end %>

@@ -309,14 +309,16 @@
       </div>
       <% if @general_diagnosis_results.any? %>
         <div class="ai-health-result-list">
-          <%= render partial: "reports/sku_ai_diagnosis_result", collection: @general_diagnosis_results, as: :result %>
+          <% @general_diagnosis_results.each_with_index do |result, index| %>
+            <%= render "reports/sku_ai_diagnosis_result", result: result, expanded: index.zero? %>
+          <% end %>
         </div>
       <% else %>
         <div class="empty-state"><%= t("reports.sku_detail.empty.general_diagnoses") %></div>
       <% end %>
     </section>
 
-    <section class="ai-diagnosis-section ai-diagnosis-section--inventory">
+    <section class="ai-diagnosis-section ai-diagnosis-section--inventory" hidden>
       <h2 class="section-title"><%= t("reports.sku_detail.sections.inventory_diagnoses") %></h2>
       <% if @inventory_health_results.any? %>
         <div class="ai-health-result-list">
@@ -327,7 +329,7 @@
       <% end %>
     </section>
 
-    <section class="ai-diagnosis-section ai-diagnosis-section--grade">
+    <section class="ai-diagnosis-section ai-diagnosis-section--grade" hidden>
       <h2 class="section-title"><%= t("reports.sku_detail.sections.grade_inspections") %></h2>
       <% if @grade_inspection_results.any? %>
         <div class="ai-health-result-list">
@@ -343,9 +345,10 @@
                sku_products: @listing_diagnosis_products,
                listing_suggestions_by_product_id: @listing_suggestions_by_product_id,
                active_product_ids: @active_listing_suggestion_product_ids,
-               return_tab: "ai_inventory_health" %>
+               return_tab: "ai_inventory_health",
+               hidden: true %>
 
-    <section class="ai-diagnosis-section ai-diagnosis-section--operations">
+    <section class="ai-diagnosis-section ai-diagnosis-section--operations" hidden>
       <div class="table-section-header">
         <h2 class="section-title"><%= t("reports.sku_detail.sections.operation_records") %></h2>
         <% if can?(:manage_skus) && @sku_products.any? %>
@@ -363,7 +366,9 @@
             <% if entry[:type] == :operation %>
               <%= render "reports/sku_manual_operation_record", action: entry[:record] %>
             <% else %>
-              <%= render "reports/sku_ai_diagnosis_result", result: entry[:record] %>
+              <%= render "reports/sku_ai_diagnosis_result",
+                         result: entry[:record],
+                         hidden: ai_operation_action_diagnosis?(entry[:record]) %>
             <% end %>
           <% end %>
         </div>
