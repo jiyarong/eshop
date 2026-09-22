@@ -3,8 +3,8 @@ module AIDiagnosisEventFilterable
 
   private
 
-  def load_ai_diagnosis_event_filter
-    @ai_diagnosis_event_tags = latest_active_ai_diagnosis_risk_events
+  def load_ai_diagnosis_event_filter(sku_ids: nil)
+    @ai_diagnosis_event_tags = latest_active_ai_diagnosis_risk_events(sku_ids: sku_ids)
       .group(:severity, :event_type)
       .order(:severity, :event_type)
       .count("DISTINCT ec_ai_diagnosis.sku_id")
@@ -13,8 +13,8 @@ module AIDiagnosisEventFilterable
     @ai_diagnosis_event_type = params[:ai_event_type].to_s.presence_in(available_types)
   end
 
-  def load_ai_diagnosis_advice_filter
-    @ai_diagnosis_advice_tags = latest_active_ai_diagnosis_advice_events
+  def load_ai_diagnosis_advice_filter(sku_ids: nil)
+    @ai_diagnosis_advice_tags = latest_active_ai_diagnosis_advice_events(sku_ids: sku_ids)
       .group(:event_type)
       .order(:event_type)
       .count("DISTINCT ec_ai_diagnosis.sku_id")
@@ -90,14 +90,16 @@ module AIDiagnosisEventFilterable
       .select("ec_ai_diagnosis.sku_id")
   end
 
-  def latest_active_ai_diagnosis_risk_events
-    latest_active_ai_diagnosis_events
+  def latest_active_ai_diagnosis_risk_events(sku_ids: nil)
+    events = latest_active_ai_diagnosis_events
       .where(severity: %w[critical warning])
       .where.not(sub_agent_id: nil)
+    sku_ids ? events.where(ec_ai_diagnosis: { sku_id: sku_ids }) : events
   end
 
-  def latest_active_ai_diagnosis_advice_events
-    latest_active_ai_diagnosis_events.where(sub_agent_id: nil, scope: "advise", severity: "critical")
+  def latest_active_ai_diagnosis_advice_events(sku_ids: nil)
+    events = latest_active_ai_diagnosis_events.where(sub_agent_id: nil, scope: "advise", severity: "critical")
+    sku_ids ? events.where(ec_ai_diagnosis: { sku_id: sku_ids }) : events
   end
 
   def latest_active_ai_diagnosis_events

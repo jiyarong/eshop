@@ -95,6 +95,80 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
   end
 
+  test "ai diagnosis tag counts reflect the currently active responsible user filter" do
+    operator_a = User.create!(
+      email: "operator-skus-#{@token.downcase}-operator-a@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "运营 A #{@token}"
+    )
+    operator_b = User.create!(
+      email: "operator-skus-#{@token.downcase}-operator-b@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      name: "运营 B #{@token}"
+    )
+    other_sku = Ec::Sku.create!(sku_code: "OPS-OTHER-#{@token}", product_name: "其他运营商品")
+    store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "运营筛选店 #{@token}",
+      company_type: "general",
+      is_active: true
+    )
+    sku_product_a = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code,
+      store: store,
+      product_id: "OPS-FILTER-P-A-#{@token}",
+      platform_sku_id: "OPS-FILTER-PS-A-#{@token}",
+      product_name: "运营筛选商品 A #{@token}"
+    )
+    sku_product_b = Ec::SkuProduct.create!(
+      sku_code: other_sku.sku_code,
+      store: store,
+      product_id: "OPS-FILTER-P-B-#{@token}",
+      platform_sku_id: "OPS-FILTER-PS-B-#{@token}",
+      product_name: "运营筛选商品 B #{@token}"
+    )
+    Ec::SkuProductOperator.create!(sku_product: sku_product_a, user: operator_a)
+    Ec::SkuProductOperator.create!(sku_product: sku_product_b, user: operator_b)
+
+    diagnosis_a = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    diagnosis_a.events.create!(
+      event_type: "stockout_imminent",
+      sub_agent_id: 101,
+      severity: "critical",
+      is_latest: true,
+      message: "Risk details A #{@token}"
+    )
+    diagnosis_b = Ec::GeneralDiagnosis.create!(sku: other_sku, submitted_by: @user)
+    diagnosis_b.events.create!(
+      event_type: "grade_weekly_profit_drop",
+      sub_agent_id: 102,
+      severity: "critical",
+      is_latest: true,
+      message: "Risk details B #{@token}"
+    )
+
+    with_empty_metrics do
+      get operator_skus_path, params: { operator_id: operator_a.id }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
+    assert_select ".operator-sku-row .code-text.sub", { text: other_sku.sku_code, count: 0 }
+    assert_select ".ai-diagnosis-event-tag", text: /即将断货/
+    assert_select ".ai-diagnosis-event-tag", { text: /单周利润严重下滑/, count: 0 }
+  ensure
+    Ec::AIDiagnosis.where(sku_id: [ @sku.id, other_sku&.id ].compact).destroy_all
+    Ec::SkuProductOperator.where(sku_product_id: [ sku_product_a&.id, sku_product_b&.id ].compact).delete_all if defined?(Ec::SkuProductOperator)
+    sku_product_a&.destroy
+    sku_product_b&.destroy
+    store&.destroy
+    other_sku&.destroy
+    operator_a&.destroy
+    operator_b&.destroy
+  end
+
   test "index excludes ignored diagnosis events from tags and filtering" do
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis.events.create!(

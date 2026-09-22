@@ -17,8 +17,6 @@ class OperatorSkusController < ApplicationController
     load_sku_marketing_state_filters
     load_spu_sku_filter
     load_responsible_user_filters
-    load_ai_diagnosis_event_filter
-    load_ai_diagnosis_advice_filter
     load_table_sort(allowed_keys: SORT_KEYS, default_key: "weekly_profit", default_direction: "desc")
 
     scope = Ec::Sku.includes(
@@ -31,8 +29,6 @@ class OperatorSkusController < ApplicationController
     scope = apply_spu_sku_filter_to_skus(scope)
     scope = apply_responsible_user_filters_to_skus(scope)
     scope = apply_marketing_state_filters(scope)
-    scope = apply_ai_diagnosis_event_filter_to_skus(scope)
-    scope = apply_ai_diagnosis_advice_filter_to_skus(scope)
     if @q.present?
       keyword = "%#{ActiveRecord::Base.sanitize_sql_like(@q)}%"
       scope = scope.left_joins(:master_sku).where(
@@ -40,6 +36,12 @@ class OperatorSkusController < ApplicationController
         keyword: keyword
       ).distinct
     end
+
+    filtered_sku_ids = scope.reorder(nil).pluck(:id)
+    load_ai_diagnosis_event_filter(sku_ids: filtered_sku_ids)
+    load_ai_diagnosis_advice_filter(sku_ids: filtered_sku_ids)
+    scope = apply_ai_diagnosis_event_filter_to_skus(scope)
+    scope = apply_ai_diagnosis_advice_filter_to_skus(scope)
 
     if table_sort_key.present?
       all_skus = scope.to_a
