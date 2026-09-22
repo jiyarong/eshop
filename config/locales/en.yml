@@ -622,6 +622,9 @@ en:
         save_sku_event:
           description: "Save a SKU diagnosis result and basis."
           name: "Save SKU diagnosis event"
+        save_sku_plan:
+          description: "Save a concrete SKU operation plan."
+          name: "Save SKU operation plan"
     sku_diagnosis_rules:
       actions:
         delete_confirm: "Delete this SKU diagnosis rule?"

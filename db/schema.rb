@@ -129,6 +129,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
     t.index ["sub_agent_id", "ai_diagnosis_id"], name: "idx_ai_diagnosis_events_latest_sub_agent", where: "(is_latest AND (sub_agent_id IS NOT NULL))"
   end
 
+  create_table "ec_ai_sku_operation_plans", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.text "message", null: false
+    t.string "operation", null: false
+    t.jsonb "referer", default: [], null: false
+    t.datetime "retain_until", null: false
+    t.bigint "sku_id", null: false
+    t.string "status", default: "active", null: false
+    t.string "target", null: false
+    t.datetime "updated_at", null: false
+    t.index ["retain_until"], name: "index_ec_ai_sku_operation_plans_on_retain_until"
+    t.index ["sku_id", "status"], name: "index_ec_ai_sku_operation_plans_on_sku_id_and_status"
+    t.index ["sku_id"], name: "index_ec_ai_sku_operation_plans_on_sku_id"
+  end
+
   create_table "ec_ai_suggestions", force: :cascade do |t|
     t.datetime "completed_at"
     t.text "content"
@@ -3333,6 +3349,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
   add_foreign_key "ec_ai_diagnosis", "users", column: "submitted_by_id"
   add_foreign_key "ec_ai_diagnosis_events", "conversations"
   add_foreign_key "ec_ai_diagnosis_events", "ec_ai_diagnosis", column: "ai_diagnosis_id"
+  add_foreign_key "ec_ai_sku_operation_plans", "ec_skus", column: "sku_id"
   add_foreign_key "ec_ai_suggestions", "conversations"
   add_foreign_key "ec_ai_suggestions", "users", column: "submitted_by_id"
   add_foreign_key "ec_attachment_links", "ec_attachments"

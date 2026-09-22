@@ -85,6 +85,35 @@ module ErpAI
           required: %w[sku_code sub_agent_id event_type severity message simple_context],
           additionalProperties: false
         }
+      },
+      {
+        name: "save_sku_plan",
+        description: "SKU Planner 专用：保存一条具体的 SKU 运营操作计划。每次调用保存一条计划，允许调用零次或多次。",
+        parameters: {
+          type: "object",
+          properties: {
+            sku_code: { type: "string", description: "内部 SKU code" },
+            target: {
+              type: "string",
+              enum: %w[price advertising listing_attribute listing_image],
+              description: "操作目标：价格、广告、listing 属性或 listing 图"
+            },
+            operation: {
+              type: "string",
+              enum: %w[increase open close modify maintain],
+              description: "具体操作：增加、打开、关闭、修改或维持"
+            },
+            referer: {
+              type: "array",
+              items: { type: "string" },
+              minItems: 1,
+              description: "对应的一个或多个通用诊断 event_type"
+            },
+            message: { type: "string", description: "具体操作的依据和操作详情" }
+          },
+          required: %w[sku_code target operation referer message],
+          additionalProperties: false
+        }
       }
     ].freeze
 
@@ -97,7 +126,7 @@ module ErpAI
     end
 
     def self.default_tool_names
-      TOOL_DEFINITIONS.map { |tool| tool.fetch(:name) } - ["save_sku_event"]
+      TOOL_DEFINITIONS.map { |tool| tool.fetch(:name) } - %w[save_sku_event save_sku_plan]
     end
   end
 end

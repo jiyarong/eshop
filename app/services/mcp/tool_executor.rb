@@ -36,6 +36,8 @@ module Mcp
         operation_context
       when "save_sku_event"
         save_sku_event(args)
+      when "save_sku_plan"
+        save_sku_plan(args)
       when "update_sku_diagnosis_event"
         update_sku_diagnosis_event(args)
       else
@@ -225,6 +227,51 @@ module Mcp
         scope: event.scope,
         sub_agent_id: event.sub_agent_id,
         is_latest: event.is_latest
+      }
+    end
+
+    def save_sku_plan(args)
+      sku_code = args["sku_code"].to_s.upcase
+      return { error: "sku_code is required" } if sku_code.blank?
+
+      sku = visible_scope.global_user? ? Ec::Sku.find_by(sku_code: sku_code) : visible_sku(sku_code)
+      return { error: "SKU is not visible to current user" } unless sku
+
+      target = Ec::SkuOperationPlan::TARGET_ALIASES.fetch(args["target"].to_s, args["target"].to_s)
+      return { error: "target is invalid" } unless Ec::SkuOperationPlan.targets.key?(target)
+
+      operation = Ec::SkuOperationPlan::OPERATION_ALIASES.fetch(args["operation"].to_s, args["operation"].to_s)
+      return { error: "operation is invalid" } unless Ec::SkuOperationPlan.operations.key?(operation)
+
+      referer = Array(args["referer"]).filter_map { |event_type| event_type.to_s.strip.presence }.uniq
+      return { error: "referer is required" } if referer.empty?
+
+      latest_event_types = Ec::AIDiagnosisEvent
+        .joins(:ai_diagnosis)
+        .where(
+          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name, is_latest: true }
+        )
+        .pluck(:event_type)
+      return { error: "referer does not match latest diagnosis events" } unless (referer - latest_event_types).empty?
+
+      message = args["message"].to_s.strip
+      return { error: "message is required" } if message.blank?
+
+      plan = sku.sku_operation_plans.create!(
+        target: target,
+        operation: operation,
+        referer: referer,
+        message: message
+      )
+      {
+        success: true,
+        sku_code: sku.sku_code,
+        plan_id: plan.id,
+        target: plan.target,
+        operation: plan.operation,
+        referer: plan.referer,
+        status: plan.status,
+        retain_until: plan.retain_until.iso8601
       }
     end
 

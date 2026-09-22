@@ -29,6 +29,7 @@ module Ec
     has_many :inventory_levels,  class_name: 'Ec::SkuInventoryLevel',   foreign_key: :sku_code, primary_key: :sku_code
     has_many :operation_actions, class_name: "Ec::OperationAction", foreign_key: :ec_sku_id
     has_many :ai_diagnoses, class_name: "Ec::AIDiagnosis", foreign_key: :sku_id, dependent: :destroy
+    has_many :sku_operation_plans, class_name: "Ec::SkuOperationPlan", foreign_key: :sku_id, dependent: :destroy
     has_many :inventory_health_results, class_name: "Ec::RestockingDiagnosis", foreign_key: :sku_id
     has_many :grade_inspects, class_name: "Ec::GradeInspect", foreign_key: :sku_id
     has_many :stage_inspects, class_name: "Ec::StageInspect", foreign_key: :sku_id

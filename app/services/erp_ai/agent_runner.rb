@@ -171,12 +171,16 @@ module ErpAI
     def selected_tools
       available_tools = ErpAI::ToolRegistry.default_tools + ErpAI::ToolRegistry.joint_diagnosis_tools
       selected_tool_names = tool_names || agent.tools
+      selected_tool_names = Array(selected_tool_names).reject do |name|
+        (name == "save_sku_event" && agent.code != "sku_diagnosis") ||
+          (name == "save_sku_plan" && agent.code != "sku_planner")
+      end
       erp_tools = available_tools.select { |tool| selected_tool_names.include?(tool.fetch(:name)) }
       erp_tools + mcp_tools
     end
 
     def mcp_tools
-      return [] if agent.code == "sku_diagnosis"
+      return [] if agent.code.in?(%w[sku_diagnosis sku_planner])
 
       mcp_clients.flat_map do |server_name, mcp_client|
         ErpAI::Mcp::ToolAdapter.adapt(server_name: server_name, tools: filtered_mcp_tools(server_name, mcp_client.list_tools))

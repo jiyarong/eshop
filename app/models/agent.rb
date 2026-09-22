@@ -35,6 +35,13 @@ class Agent < ApplicationRecord
 
   SKU_GRADE_INSPECTOR_PROMPT = Rails.root.join("config/agent_prompts/sku_grade_inspector.md").read.freeze
 
+  SKU_PLANNER_PROMPT = <<~PROMPT.squish.freeze
+    #{DEFAULT_SYSTEM_PROMPT}
+    你的固定用途是把通用 SKU 诊断事件转化为具体、可执行的运营操作计划。
+    只能基于系统提供的最新诊断事件制定计划；每条计划必须选择一个操作目标和一个具体操作，referer 必须引用一个或多个对应的诊断 event_type，并在 message 中写清操作依据和执行详情。
+    可以创建一条或多条计划，也可以在没有足够依据时不创建计划。不要编造诊断事件或业务数据。
+  PROMPT
+
   PAGE_TRANSLATION_PROMPT = <<~PROMPT.squish.freeze
     你是一个嵌入 ERP 系统的页面翻译 AI Agent。你的固定用途是把用户提供的系统页面文本、页面片段、HTML 或 Markdown 翻译为当前用户界面语言。
     只输出翻译结果，不输出解释、分析、寒暄或额外建议；如果输入内容已经是目标语言，普通翻译请求要保持原意并做必要的自然化表达。
@@ -135,6 +142,14 @@ class Agent < ApplicationRecord
       default_system_prompt: "你是一个后端运行的通用 SKU 诊断 Agent。你不会独立运行，只会按系统提供的诊断规则和 SKU 上下文逐个分析 SKU。必须基于上下文给出诊断结论和诊断依据，并调用 save_sku_event 保存结果。每次只处理当前 SKU 和当前子规则。",
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.1
+    },
+    "sku_planner" => {
+      name: "SKU Planner",
+      tools: [ "save_sku_plan" ],
+      enabled: true,
+      default_system_prompt: SKU_PLANNER_PROMPT,
+      default_model_id: "deepseek-v4-flash",
+      default_temperature: 0.1
     }
   }.freeze
 
@@ -161,6 +176,7 @@ class Agent < ApplicationRecord
   validate :client_agent_has_no_tools
   validate :web_agent_has_no_skills
   validate :sku_diagnosis_capabilities
+  validate :sku_planner_capabilities
 
   def self.ensure_fixed!(code)
     definition = definition_for!(code)
@@ -175,6 +191,7 @@ class Agent < ApplicationRecord
     agent.temperature = definition.fetch(:default_temperature) if agent.temperature.blank?
     agent.tools = [] if agent.client?
     agent.tools = Array(agent.tools) - [ "save_sku_event" ] unless code == "sku_diagnosis"
+    agent.tools = Array(agent.tools) - [ "save_sku_plan" ] unless code == "sku_planner"
     agent.save!
     agent
   end
@@ -194,6 +211,7 @@ class Agent < ApplicationRecord
   def tools_are_registered
     invalid_tools = Array(tools) - ErpAI::ToolRegistry.default_tools.map { |tool| tool.fetch(:name) }
     invalid_tools << "save_sku_event" if code != "sku_diagnosis" && Array(tools).include?("save_sku_event")
+    invalid_tools << "save_sku_plan" if code != "sku_planner" && Array(tools).include?("save_sku_plan")
     return if invalid_tools.empty?
 
     errors.add(:tools, I18n.t("admin.agents.errors.invalid_tools", tools: invalid_tools.join(", ")))
@@ -216,5 +234,12 @@ class Agent < ApplicationRecord
 
     errors.add(:agent_type, :invalid) unless web?
     errors.add(:tools, :invalid) unless tools == [ "save_sku_event" ]
+  end
+
+  def sku_planner_capabilities
+    return unless code == "sku_planner"
+
+    errors.add(:agent_type, :invalid) unless web?
+    errors.add(:tools, :invalid) unless tools == [ "save_sku_plan" ]
   end
 end

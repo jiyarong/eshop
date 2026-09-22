@@ -600,6 +600,9 @@ zh:
         save_sku_event:
           description: "保存 SKU 诊断结果和依据。"
           name: "保存 SKU 诊断事件"
+        save_sku_plan:
+          description: "保存 SKU 具体运营操作计划。"
+          name: "保存 SKU 运营计划"
     sku_diagnosis_rules:
       actions:
         delete_confirm: "确认删除这条 SKU 诊断规则吗？"

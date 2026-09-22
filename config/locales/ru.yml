@@ -593,6 +593,9 @@ ru:
         save_sku_event:
           description: "Сохранить результат и основание диагностики SKU, а также рекомендуемое действие."
           name: "Сохранить событие диагностики SKU"
+        save_sku_plan:
+          description: "Сохранить конкретный план операции для SKU."
+          name: "Сохранить план операции SKU"
     sku_diagnosis_rules:
       actions:
         delete_confirm: "Удалить это правило диагностики SKU?"

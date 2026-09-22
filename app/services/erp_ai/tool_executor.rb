@@ -12,6 +12,7 @@ module ErpAI
 
     def call(id:, name:, arguments:)
       return save_sku_event_result(id, name, arguments) if name == "save_sku_event"
+      return save_sku_plan_result(id, name, arguments) if name == "save_sku_plan"
       return create_sku_advise_result(id, name, arguments) if name == "create_sku_advise"
       return update_sku_diagnosis_event_result(id, name, arguments) if name == "update_sku_diagnosis_event"
       return erp_ai_request_result(id, name, arguments) if name == "erp_ai_request"
@@ -65,6 +66,17 @@ module ErpAI
         result: ::Mcp::ToolExecutor.new(
           current_user: current_user,
           event_date: @event_date,
+          conversation_id: @conversation_id
+        ).call(name, (arguments || {}).stringify_keys)
+      }
+    end
+
+    def save_sku_plan_result(id, name, arguments)
+      {
+        tool_call_id: id,
+        name: name,
+        result: ::Mcp::ToolExecutor.new(
+          current_user: current_user,
           conversation_id: @conversation_id
         ).call(name, (arguments || {}).stringify_keys)
       }
