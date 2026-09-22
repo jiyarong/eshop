@@ -10,14 +10,17 @@
 <% warning_event_types = warning_event_groups.keys %>
 <% risk_event_types = Array(local_assigns[:event_types]) if risk_event_types.empty? && warning_event_types.empty? %>
 <% tag_groups = [
-  { event_types: risk_event_types, event_groups: risk_event_groups, label: nil, tag_modifier: nil },
-  { event_types: warning_event_types, event_groups: warning_event_groups, label: nil, container_modifier: "sku-ai-diagnosis-event-tags--warning", tag_modifier: "ai-diagnosis-event-tag--warning" },
-  { event_types: advice_event_groups.keys, event_groups: advice_event_groups, label: t("erp.ai_diagnosis_event_filter.advice_label"), tag_modifier: "ai-diagnosis-event-tag--advice" }
+  { key: :risk, event_types: risk_event_types, event_groups: risk_event_groups, label: nil, tag_modifier: nil },
+  { key: :warning, event_types: warning_event_types, event_groups: warning_event_groups, label: nil, container_modifier: "sku-ai-diagnosis-event-tags--warning", tag_modifier: "ai-diagnosis-event-tag--warning" },
+  { key: :advice, event_types: advice_event_groups.keys, event_groups: advice_event_groups, label: local_assigns[:hide_advice_label] ? nil : t("erp.ai_diagnosis_event_filter.advice_label"), tag_modifier: "ai-diagnosis-event-tag--advice" }
 ] %>
-<% rendered_group = false %>
+<% allowed_groups = local_assigns[:only].present? ? Array(local_assigns[:only]).map(&:to_sym) : %i[risk warning advice] %>
+<% tag_groups = tag_groups.select { |tag_group| allowed_groups.include?(tag_group[:key]) } %>
+<% rendered_group = tag_groups.any? { |tag_group| tag_group[:event_types].present? } %>
+<% if rendered_group %>
+<div class="sku-ai-diagnosis-event-tag-groups">
 <% tag_groups.each do |tag_group| %>
   <% next if tag_group[:event_types].empty? %>
-  <% rendered_group = true %>
   <div class="sku-ai-diagnosis-event-tags<%= " #{tag_group[:container_modifier]}" if tag_group[:container_modifier] %><%= " sku-ai-diagnosis-event-tags--advice" if tag_group[:tag_modifier] == "ai-diagnosis-event-tag--advice" %>">
     <% if tag_group[:label] %>
       <span class="sku-ai-diagnosis-event-tags__label"><%= tag_group[:label] %></span>
@@ -29,46 +32,52 @@
         <% event_key = event_type.to_s.parameterize.presence || event_details.first.id %>
         <% popover_id = "#{component_prefix}-#{tag_group[:tag_modifier].presence || "risk"}-#{event_key}-popover" %>
         <span class="sku-ai-diagnosis-event-popover"
-              data-controller="diagnosis-event-popover"
-              data-action="keydown.esc@window->diagnosis-event-popover#closeOnEscape">
+              data-controller="diagnosis-event-dialog"
+              data-action="keydown.esc@window->diagnosis-event-dialog#closeOnEscape">
           <button type="button"
                   class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact <%= tag_group[:tag_modifier] %>"
                   aria-expanded="false"
                   aria-controls="<%= popover_id %>"
-                  data-action="diagnosis-event-popover#toggle"
-                  data-diagnosis-event-popover-target="trigger">
+                  data-action="diagnosis-event-dialog#toggle"
+                  data-diagnosis-event-dialog-target="trigger">
             <%= event_label %>
           </button>
-          <div id="<%= popover_id %>"
-               class="sku-ai-diagnosis-event-popover__panel"
-               role="dialog"
-               aria-label="<%= t("erp.ai_diagnosis_event_filter.details.title", event_type: event_label) %>"
-               data-diagnosis-event-popover-target="popover"
+          <div class="sku-ai-diagnosis-event-dialog-backdrop"
+               data-diagnosis-event-dialog-target="backdrop"
+               data-action="click->diagnosis-event-dialog#closeOnBackdrop"
                hidden>
-            <span class="sku-ai-diagnosis-event-popover__header">
-              <strong><%= event_label %></strong>
-              <button type="button" class="sku-ai-diagnosis-event-popover__close" aria-label="<%= t("erp.ai_diagnosis_event_filter.details.close") %>" data-action="diagnosis-event-popover#close">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
-              </button>
-            </span>
-            <% event_details.each_with_index do |event, index| %>
-              <div class="sku-ai-diagnosis-event-popover__event<%= " is-separated" if index.positive? %>">
-                <div class="sku-ai-diagnosis-event-popover__message" data-controller="markdown">
-                  <pre class="sku-ai-diagnosis-event-popover__message-source" data-markdown-target="source"><%= event.message %></pre>
-                  <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
-                </div>
-                <% if event.scope.present? %>
-                  <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.scope", value: event.scope) %></span>
+            <div id="<%= popover_id %>"
+                 class="sku-ai-diagnosis-event-popover__panel sku-ai-diagnosis-event-popover__panel--dialog"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="<%= t("erp.ai_diagnosis_event_filter.details.title", event_type: event_label) %>">
+              <span class="sku-ai-diagnosis-event-popover__header">
+                <strong><%= event_label %></strong>
+                <button type="button" class="sku-ai-diagnosis-event-popover__close" aria-label="<%= t("erp.ai_diagnosis_event_filter.details.close") %>" data-action="diagnosis-event-dialog#close">
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+              </span>
+              <div class="sku-ai-diagnosis-event-popover__body">
+                <% event_details.each_with_index do |event, index| %>
+                  <div class="sku-ai-diagnosis-event-popover__event<%= " is-separated" if index.positive? %>">
+                    <div class="sku-ai-diagnosis-event-popover__message" data-controller="markdown">
+                      <pre class="sku-ai-diagnosis-event-popover__message-source" data-markdown-target="source"><%= event.message %></pre>
+                      <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+                    </div>
+                    <% if event.scope.present? %>
+                      <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.scope", value: event.scope) %></span>
+                    <% end %>
+                    <% if event.details.present? %>
+                      <span class="sku-ai-diagnosis-event-popover__details">
+                        <span><%= t("erp.ai_diagnosis_event_filter.details.data") %></span>
+                        <code><%= JSON.pretty_generate(event.details) %></code>
+                      </span>
+                    <% end %>
+                    <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.diagnosed_at", value: display_time(event.created_at)) %></span>
+                  </div>
                 <% end %>
-                <% if event.details.present? %>
-                  <span class="sku-ai-diagnosis-event-popover__details">
-                    <span><%= t("erp.ai_diagnosis_event_filter.details.data") %></span>
-                    <code><%= JSON.pretty_generate(event.details) %></code>
-                  </span>
-                <% end %>
-                <span class="sku-ai-diagnosis-event-popover__meta"><%= t("erp.ai_diagnosis_event_filter.details.diagnosed_at", value: display_time(event.created_at)) %></span>
               </div>
-            <% end %>
+            </div>
           </div>
         </span>
       <% else %>
@@ -77,6 +86,7 @@
     <% end %>
   </div>
 <% end %>
-<% unless rendered_group %>
+</div>
+<% else %>
   <div class="sku-ai-diagnosis-event-tags"><span class="text-muted">-</span></div>
 <% end %>

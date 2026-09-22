@@ -3087,6 +3087,9 @@ zh:
       type: "附件类型"
       upload: "上传附件"
       upload_title: "上传附件"
+    collapsible_tags:
+      show_less: "收起"
+      show_more: "展开"
     popover_multiselect:
       clear: "清空选择"
       no_options: "没有匹配的选项"

@@ -3,7 +3,7 @@
     <span class="ai-diagnosis-event-filter__label"><%= t("erp.ai_diagnosis_event_filter.label") %></span>
     <div class="ai-diagnosis-event-filter__tag-groups">
       <% @ai_diagnosis_event_tags.group_by { |tag| tag[:severity] == "warning" }.each do |warning, tags| %>
-        <div class="ai-diagnosis-event-filter__tags<%= " ai-diagnosis-event-filter__tags--warning" if warning %>">
+        <% tags_markup = capture do %>
           <% tags.each do |tag| %>
             <% event_type = tag[:event_type] %>
             <% active = event_type == @ai_diagnosis_event_type %>
@@ -14,7 +14,18 @@
               <span class="ai-diagnosis-event-tag__count"><%= tag[:count] %></span>
             <% end %>
           <% end %>
-        </div>
+        <% end %>
+        <% if warning %>
+          <div class="ai-diagnosis-collapsible-tags"
+               data-controller="collapsible-tag-row"
+               data-collapsible-tag-row-expand-label-value="<%= t("shared.collapsible_tags.show_more") %>"
+               data-collapsible-tag-row-collapse-label-value="<%= t("shared.collapsible_tags.show_less") %>">
+            <div class="ai-diagnosis-event-filter__tags ai-diagnosis-event-filter__tags--warning" data-collapsible-tag-row-target="content"><%= tags_markup %></div>
+            <button type="button" class="ai-diagnosis-collapsible-tags__toggle" data-collapsible-tag-row-target="toggle" data-action="collapsible-tag-row#toggle" hidden></button>
+          </div>
+        <% else %>
+          <div class="ai-diagnosis-event-filter__tags"><%= tags_markup %></div>
+        <% end %>
       <% end %>
     </div>
   </div>

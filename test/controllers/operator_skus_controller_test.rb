@@ -67,19 +67,21 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--warning" do
       assert_select ".ai-diagnosis-event-tag--warning", text: "单周利润严重下滑"
     end
-    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label", text: "AI 建议"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label", count: 0
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .ai-diagnosis-event-tag--advice", text: "补充库存"
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--advice) .ai-diagnosis-event-tag", { text: "错失销售预警", count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Inventory sufficient/, count: 0 }
-    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--warning):not(.sku-ai-diagnosis-event-tags--advice) .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-popover']" do
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--warning):not(.sku-ai-diagnosis-event-tags--advice) .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-dialog']" do
       assert_select "button.ai-diagnosis-event-tag[aria-expanded='false'][aria-controls]", text: "即将断货"
-      assert_select ".sku-ai-diagnosis-event-popover__panel[hidden][role='dialog']" do
-        assert_select ".sku-ai-diagnosis-event-popover__message[data-controller='markdown']", count: 1 do
-          assert_select ".sku-ai-diagnosis-event-popover__message-source[data-markdown-target='source']", text: "Risk details #{@token}"
-          assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 1
+      assert_select ".sku-ai-diagnosis-event-dialog-backdrop[hidden]" do
+        assert_select ".sku-ai-diagnosis-event-popover__panel--dialog[role='dialog']" do
+          assert_select ".sku-ai-diagnosis-event-popover__message[data-controller='markdown']", count: 1 do
+            assert_select ".sku-ai-diagnosis-event-popover__message-source[data-markdown-target='source']", text: "Risk details #{@token}"
+            assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 1
+          end
+          assert_select ".sku-ai-diagnosis-event-popover__meta", text: /诊断范围：inventory/
+          assert_select "code", text: /\"available\": 3/
         end
-        assert_select ".sku-ai-diagnosis-event-popover__meta", text: /诊断范围：inventory/
-        assert_select "code", text: /\"available\": 3/
       end
     end
 
@@ -212,7 +214,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       assert_equal "/operator_skus", links.first["href"]
       assert_equal "/reports/sales_funnel", links[1]["href"]
     end
-    %w[SKU 负责人 上周财报 销售漏斗 库存 分仓].each do |heading|
+    [ "SKU", "诊断标签", "AI 建议", "上周财报", "销售漏斗", "库存", "分仓" ].each do |heading|
       assert_select ".operator-sku-table thead th", text: heading
     end
     assert_select ".operator-sku-table thead th", { text: "上周订单", count: 0 }

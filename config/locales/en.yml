@@ -2875,6 +2875,9 @@ en:
       type: "Attachment type"
       upload: "Upload attachments"
       upload_title: "Upload attachments"
+    collapsible_tags:
+      show_less: "Show less"
+      show_more: "Show more"
     popover_multiselect:
       clear: "Clear selection"
       no_options: "No matching options"

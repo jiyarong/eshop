@@ -60,7 +60,8 @@
         <thead>
           <tr>
             <th><%= t("operator_skus.columns.sku") %></th>
-            <th><%= t("operator_skus.columns.responsible") %></th>
+            <th><%= t("operator_skus.columns.events") %></th>
+            <th><%= t("erp.ai_diagnosis_event_filter.advice_label") %></th>
             <%= render "shared/sortable_table_header", label: t("operator_skus.columns.weekly_finance"), sort_key: "weekly_profit", class_name: "numeric" %>
             <th><%= t("operator_skus.columns.sales_funnel") %></th>
             <%= render "shared/sortable_table_header", label: t("operator_skus.columns.inventory"), sort_key: "book_stock", class_name: "numeric" %>
@@ -77,13 +78,16 @@
                 <span class="operator-sku-name operator-sku-name--ru"><%= sku.product_name_ru.presence || t("operator_skus.values.unavailable") %></span>
                 <span class="operator-sku-meta"><%= t("operator_skus.columns.spu") %> <%= sku.master_sku&.master_sku_code || t("operator_skus.values.unavailable") %></span>
                 <span class="operator-sku-meta"><%= render "erp/sku_marketing_states/marketing_state", sku: sku %></span>
-              </td>
-              <td>
                 <div class="operator-sku-responsible">
                   <span><strong><%= t("operator_skus.responsible.developer") %></strong> <%= sku_developer_names(sku) || t("operator_skus.values.unassigned") %></span>
                   <span><strong><%= t("operator_skus.responsible.operator") %></strong> <%= sku_operator_names(sku) || t("operator_skus.values.unassigned") %></span>
-                  <%= render "shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-diagnosis" %>
                 </div>
+              </td>
+              <td>
+                <%= render "shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-diagnosis", only: %i[risk warning] %>
+              </td>
+              <td>
+                <%= render "shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-advice", only: %i[advice], hide_advice_label: true %>
               </td>
               <% finance = metrics.dig(:profit, :days_7) || {} %>
               <td class="numeric"><div class="operator-sku-pair operator-sku-finance-grid">
@@ -165,7 +169,7 @@
             </tr>
           <% end %>
           <% if @skus.empty? %>
-            <tr><td colspan="6" class="empty-state"><%= t("operator_skus.empty") %></td></tr>
+            <tr><td colspan="7" class="empty-state"><%= t("operator_skus.empty") %></td></tr>
           <% end %>
         </tbody>
       </table>

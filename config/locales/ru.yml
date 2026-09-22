@@ -2824,6 +2824,9 @@ ru:
       type: "Тип файла"
       upload: "Загрузить файлы"
       upload_title: "Загрузить файлы"
+    collapsible_tags:
+      show_less: "Свернуть"
+      show_more: "Показать все"
     popover_multiselect:
       clear: "Очистить"
       no_options: "Опции не найдены"
