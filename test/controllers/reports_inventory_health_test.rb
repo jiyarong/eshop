@@ -48,6 +48,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::SkuOperationPlan.where(sku_id: @sku&.id).delete_all
     Ec::OperationAction.where(ec_sku_id: @sku&.id).delete_all
     Ec::AISuggestion.where(suggestable: @sku_product).delete_all if @sku_product
     Ec::SkuProduct.where(id: @sku_product&.id).delete_all
@@ -109,6 +110,30 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select ".ai-health-result__raw-link[href='#{report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result)}']"
     assert_select ".ai-health-message__link", count: 3
     assert_select ".ai-health-message__link[href='#{report_sku_ai_diagnosis_path(@sku.sku_code, @latest_result)}']", text: "最新诊断消息"
+  end
+
+  test "SKU Planner section displays plans and enqueues a manual run" do
+    plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain",
+      referer: [ "stock_risk" ], message: "Keep price stable")
+
+    get report_sku_path(@sku.sku_code), params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-diagnosis-section--planner" do
+      assert_select "h2", "SKU Planner"
+      assert_select "form[action='#{report_sku_planner_path(@sku.sku_code)}'] button", "手动运行 Planner"
+      assert_select ".ai-health-result--planner h3", "运营计划 ##{plan.id}"
+      assert_select ".ai-health-result--planner .ai-operation-diagnosis__summary", "Keep price stable"
+      assert_select ".ai-health-result--planner dd", "stock_risk"
+    end
+
+    sign_in @user
+    assert_enqueued_with(job: AITasks::SkuPlannerJob, args: [ { sku_code: @sku.sku_code } ]) do
+      post report_sku_planner_path(@sku.sku_code)
+    end
+    assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+    assert_equal "SKU Planner 任务已提交。", flash[:notice]
   end
 
   test "sku detail ai tab displays general diagnoses with only the diagnosis date" do

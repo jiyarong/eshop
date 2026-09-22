@@ -41,6 +41,7 @@ module Ec
     validate :referer_must_be_event_types
 
     scope :retained, -> { where("retain_until > ?", Time.current) }
+    scope :latest, -> { where(is_latest: true) }
 
     private
 

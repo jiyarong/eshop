@@ -35,6 +35,7 @@ class ReportsController < ApplicationController
     ignore_sku_ai_diagnosis_event
     new_sku_general_diagnosis
     create_sku_general_diagnosis
+    create_sku_planner
     destroy_sku_competitor_data_batch
     destroy_sku_competitor_datum
   ]
@@ -162,6 +163,13 @@ class ReportsController < ApplicationController
     AITasks::SkuDiagnosisJob.perform_later(sku_code: @sku.sku_code, rule_ids: selected_rule_ids)
     redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
                 notice: t("reports.sku_detail.ai_general_diagnosis.enqueued")
+  end
+
+  def create_sku_planner
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    AITasks::SkuPlannerJob.perform_later(sku_code: @sku.sku_code)
+    redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),
+                notice: t("reports.sku_detail.planner.enqueued"), status: :see_other
   end
 
   def ignore_sku_ai_diagnosis_event
@@ -1033,6 +1041,7 @@ class ReportsController < ApplicationController
         view_context.attachment_file_kind(attachment) == :image
     end
     if @active_tab == "ai_inventory_health"
+      @sku_operation_plans = @sku.sku_operation_plans.order(created_at: :desc, id: :desc).limit(20)
       @general_diagnosis_results = @sku.ai_diagnoses
         .where(type: Ec::GeneralDiagnosis.sti_name)
         .includes(:submitted_by, events: [ :conversation, :sub_agent ])

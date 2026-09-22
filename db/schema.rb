@@ -132,6 +132,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
   create_table "ec_ai_sku_operation_plans", force: :cascade do |t|
     t.datetime "completed_at"
     t.datetime "created_at", null: false
+    t.boolean "is_latest", default: true, null: false
     t.text "message", null: false
     t.string "operation", null: false
     t.jsonb "referer", default: [], null: false

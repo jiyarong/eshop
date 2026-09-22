@@ -17,7 +17,11 @@ module ErpAI
         return { tool_call_id: id, name: name, error: { code: "invalid_scope" } } unless name == "save_sku_plan"
         return { tool_call_id: id, name: name, error: { code: "invalid_scope" } } unless args["sku_code"].to_s.upcase == @sku.sku_code
 
-        @executor.call(id: id, name: name, arguments: args)
+        result = @executor.call(id: id, name: name, arguments: args)
+        error = result[:error] || result.dig(:result, :error)
+        raise "SKU planner tool failed: #{error}" if error
+
+        result
       end
     end
 
@@ -87,13 +91,23 @@ module ErpAI
         有明确依据时可以创建一条或多条计划；没有足够依据时可以不调用工具。不要处理其他 SKU，不要编造事件。
       PROMPT
 
-      @runner_factory.call(agent: agent, user: user, sku: sku).ask(
-        question: question,
-        module_name: "sku_planner",
-        business_object_type: "Ec::Sku",
-        business_object_id: sku.id.to_s,
-        data_summary: data_summary
-      )
+      sku.with_lock do
+        zone = Time.find_zone!("Asia/Shanghai")
+        day_start = zone.now.beginning_of_day
+        day_end = day_start + 1.day
+        plans = sku.sku_operation_plans
+        plans.where(created_at: day_start...day_end).delete_all
+
+        conversation = @runner_factory.call(agent: agent, user: user, sku: sku).ask(
+          question: question,
+          module_name: "sku_planner",
+          business_object_type: "Ec::Sku",
+          business_object_id: sku.id.to_s,
+          data_summary: data_summary
+        )
+        plans.where.not(created_at: day_start...day_end).latest.update_all(is_latest: false)
+        conversation
+      end
     end
 
     def latest_events_for(sku)

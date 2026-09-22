@@ -1957,6 +1957,11 @@ table thead th {
   background: #f0fdfa;
 }
 
+.ai-health-result--planner {
+  border-left: 4px solid #256b62;
+  background: #f3faf8;
+}
+
 .ai-health-result--operation-diagnosis {
   border-left: 4px solid #ea580c;
   background: #fff8f2;
