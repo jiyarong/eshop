@@ -33,7 +33,7 @@ module Ec
     validate :execution_conditions_are_supported
 
     scope :enabled_for, ->(date) do
-      frequencies = date.monday? ? SCHEDULED_FREQUENCIES : [ "daily" ]
+      frequencies = date.tuesday? ? SCHEDULED_FREQUENCIES : [ "daily" ]
       where(enabled: true, frequency: frequencies)
     end
 
