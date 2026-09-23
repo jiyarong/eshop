@@ -1825,6 +1825,9 @@ en:
         view_conversation: "View complete AI messages"
       planner:
         conversation: "AI conversation"
+        remaining_hours: "%{hours} h"
+        expired: "Expired"
+        tag_name: "%{target} · %{operation}"
         enqueued: "SKU Planner was queued."
         latest: "Latest"
         message: "Plan details"

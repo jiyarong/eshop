@@ -2027,6 +2027,9 @@ zh:
         view_conversation: "查看完整 AI 消息"
       planner:
         conversation: "AI 会话"
+        remaining_hours: "%{hours} h"
+        expired: "已超期"
+        tag_name: "%{target} · %{operation}"
         enqueued: "SKU Planner 任务已提交。"
         latest: "最新"
         message: "计划详情"

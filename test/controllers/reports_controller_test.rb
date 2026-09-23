@@ -1872,6 +1872,53 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     diagnosis_rule&.destroy
   end
 
+  test "sku detail advice tags show latest plan status and expiry" do
+    diagnosis = nil
+    travel_to Time.zone.parse("2026-09-23 10:00:00") do
+      diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
+      diagnosis.events.create!(event_type: "旧诊断建议", severity: "critical", scope: "advise", message: "不应展示", is_latest: true)
+      plan = @sku.sku_operation_plans.create!(target: "listing_image", operation: "modify", referer: [ "stockout_imminent" ],
+        message: "修正主图产地", retain_until: 26.5.hours.from_now)
+      expired_plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: [ "stockout_imminent" ],
+        message: "过期建议", retain_until: 1.hour.ago)
+      done_plan = @sku.sku_operation_plans.create!(target: "advertising", operation: "increase", referer: [ "stockout_imminent" ],
+        message: "已完成建议", status: "done")
+      ignored_plan = @sku.sku_operation_plans.create!(target: "listing_attribute", operation: "maintain", referer: [ "stockout_imminent" ],
+        message: "已忽略建议", status: "ignored")
+      expired_done_plan = @sku.sku_operation_plans.create!(target: "listing_image", operation: "maintain", referer: [ "stockout_imminent" ],
+        message: "过期已完成", status: "done", retain_until: 1.hour.ago)
+      expired_ignored_plan = @sku.sku_operation_plans.create!(target: "advertising", operation: "close", referer: [ "stockout_imminent" ],
+        message: "过期已忽略", status: "ignored", retain_until: 1.hour.ago)
+      nearly_expired_plan = @sku.sku_operation_plans.create!(target: "price", operation: "increase", referer: [ "stockout_imminent" ],
+        message: "即将超期", retain_until: 1.minute.from_now)
+      due_plan = @sku.sku_operation_plans.create!(target: "price", operation: "close", referer: [ "stockout_imminent" ],
+        message: "到期建议", retain_until: Time.current)
+      @sku.sku_operation_plans.create!(target: "listing_attribute", operation: "modify", referer: [ "stockout_imminent" ],
+        message: "历史计划", is_latest: false)
+      @second_sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: [ "stockout_imminent" ],
+        message: "其他 SKU 建议")
+
+      get report_sku_path(@sku.sku_code), params: { tab: "basic" }, headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select ".sku-detail-marketing-state__row .sku-ai-diagnosis-event-tags--advice" do
+        assert_select ".sku-ai-diagnosis-event-tags__label", "AI 建议"
+        assert_select "a.sku-operation-plan-tag--active:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, plan)}']", text: /Listing 图片 · 修改.*生效中.*26\.5 h/, count: 1
+        assert_select "a.sku-operation-plan-tag--active.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, expired_plan)}']", text: /价格 · 维持.*生效中.*已超期/, count: 1
+        assert_select "a.sku-operation-plan-tag--done:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, done_plan)}']", text: /广告 · 增加.*已完成.*48\.0 h/, count: 1
+        assert_select "a.sku-operation-plan-tag--ignored:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, ignored_plan)}']", text: /Listing 属性 · 维持.*已忽略.*48\.0 h/, count: 1
+        assert_select "a.sku-operation-plan-tag--done.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, expired_done_plan)}']", text: /已完成.*已超期/, count: 1
+        assert_select "a.sku-operation-plan-tag--ignored.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, expired_ignored_plan)}']", text: /已忽略.*已超期/, count: 1
+        assert_select "a.sku-operation-plan-tag--active:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, nearly_expired_plan)}']", text: /生效中.*0\.1 h/, count: 1
+        assert_select "a.sku-operation-plan-tag--active.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, due_plan)}']", text: /生效中.*已超期/, count: 1
+        assert_select "a.ai-diagnosis-event-tag--advice", { text: /修正主图产地/, count: 0 }
+        assert_select "a.ai-diagnosis-event-tag--advice", { text: /旧诊断建议|历史计划|其他 SKU 建议/, count: 0 }
+      end
+    end
+  ensure
+    diagnosis&.destroy!
+  end
+
   test "sku detail renders master sku category instead of sku category" do
     sku_category = Ec::SkuCategory.create!(
       code: "SKU-CAT-#{@sku_code}",

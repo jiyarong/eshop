@@ -17,6 +17,7 @@ module Ec
     belongs_to :sku_product, class_name: "Ec::SkuProduct", foreign_key: :ec_sku_product_id
     belongs_to :sku, class_name: "Ec::Sku", foreign_key: :ec_sku_id
     belongs_to :store, class_name: "Ec::Store", foreign_key: :ec_store_id
+    belongs_to :plan, class_name: "Ec::SkuOperationPlan", optional: true
 
     validates :operation_type, inclusion: { in: OPERATION_TYPES }
     validates :operated_at, :diff_result, presence: true

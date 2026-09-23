@@ -325,6 +325,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
     t.datetime "operated_at", null: false
     t.bigint "operated_by_user_id", null: false
     t.string "operation_type", null: false
+    t.bigint "plan_id"
     t.boolean "record_by_system", default: true, null: false
     t.datetime "updated_at", null: false
     t.index ["ec_sku_id"], name: "index_ec_operation_actions_on_ec_sku_id"
@@ -333,6 +334,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
     t.index ["ec_store_id"], name: "index_ec_operation_actions_on_ec_store_id"
     t.index ["operated_by_user_id"], name: "index_ec_operation_actions_on_operated_by_user_id"
     t.index ["operation_type", "operated_at"], name: "idx_ec_operation_actions_type_time"
+    t.index ["plan_id"], name: "index_ec_operation_actions_on_plan_id"
   end
 
   create_table "ec_operation_logs", force: :cascade do |t|
@@ -3367,6 +3369,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
   add_foreign_key "ec_master_skus", "ec_categories"
+  add_foreign_key "ec_operation_actions", "ec_ai_sku_operation_plans", column: "plan_id", on_delete: :nullify
   add_foreign_key "ec_operation_actions", "ec_sku_products"
   add_foreign_key "ec_operation_actions", "ec_skus"
   add_foreign_key "ec_operation_actions", "ec_stores"

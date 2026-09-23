@@ -1791,6 +1791,9 @@ ru:
         view_conversation: "Показать все сообщения AI"
       planner:
         conversation: "Диалог AI"
+        remaining_hours: "%{hours} h"
+        expired: "Срок истёк"
+        tag_name: "%{target} · %{operation}"
         enqueued: "Задача SKU Planner поставлена в очередь."
         latest: "Актуальный"
         message: "Подробности плана"

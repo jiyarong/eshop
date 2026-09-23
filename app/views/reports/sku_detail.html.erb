@@ -51,7 +51,26 @@
         <% if @sku_ai_diagnosis_events.present? %>
           <%= render "shared/sku_ai_diagnosis_event_tags",
                      events: @sku_ai_diagnosis_events,
-                     dom_id_prefix: "sku-detail-#{@sku.id}-diagnosis" %>
+                     dom_id_prefix: "sku-detail-#{@sku.id}-diagnosis",
+                     only: %i[risk warning] %>
+        <% end %>
+        <% if @sku_operation_plan_tags.any? %>
+          <div class="sku-ai-diagnosis-event-tags sku-ai-diagnosis-event-tags--advice">
+            <span class="sku-ai-diagnosis-event-tags__label"><%= t("erp.ai_diagnosis_event_filter.advice_label") %></span>
+            <% @sku_operation_plan_tags.each do |plan| %>
+              <% remaining_hours = (plan.retain_until - Time.current) / 1.hour %>
+              <% expired = remaining_hours <= 0 %>
+              <%= link_to report_sku_operation_plan_path(@sku.sku_code, plan, locale: params[:locale].presence),
+                          class: ["ai-diagnosis-event-tag ai-diagnosis-event-tag--compact ai-diagnosis-event-tag--advice",
+                                  "sku-operation-plan-tag--#{plan.status}", ("sku-operation-plan-tag--expired" if expired)].compact.join(" ") do %>
+                <%= t("reports.sku_detail.planner.tag_name",
+                      target: t("reports.sku_detail.planner.targets.#{plan.target}"),
+                      operation: t("reports.sku_detail.planner.operations.#{plan.operation}")) %>
+                <span class="sku-operation-plan-tag__status"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span>
+                <span class="sku-operation-plan-tag__time"><%= expired ? t("reports.sku_detail.planner.expired") : t("reports.sku_detail.planner.remaining_hours", hours: format("%.1f", (remaining_hours * 10).ceil / 10.0)) %></span>
+              <% end %>
+            <% end %>
+          </div>
         <% end %>
       </div>
     </div>

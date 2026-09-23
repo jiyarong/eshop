@@ -7188,6 +7188,30 @@ textarea:focus {
   color: #1565c0;
 }
 
+.sku-operation-plan-tag__status,
+.sku-operation-plan-tag__time {
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.ai-diagnosis-event-tag--advice.sku-operation-plan-tag--expired.sku-operation-plan-tag--active {
+  border-color: #e6b94a;
+  color: #8a5b00;
+  background: #fff9e6;
+}
+
+.ai-diagnosis-event-tag--advice.sku-operation-plan-tag--done {
+  border-color: #a5d6a7;
+  color: #2e7d32;
+  background: #f1f8f2;
+}
+
+.ai-diagnosis-event-tag--advice.sku-operation-plan-tag--ignored {
+  border-color: #cbd5e1;
+  color: #64748b;
+  background: #f8fafc;
+}
+
 .sku-ai-diagnosis-event-popover {
   position: relative;
   display: inline-flex;

@@ -25,6 +25,7 @@ module Ec
 
     teardown do
       Ec::OperationAction.where(ec_sku_product_id: @sku_product&.id).delete_all
+      Ec::SkuOperationPlan.where(sku_id: @sku&.id).delete_all
       Ec::SkuProductOperator.where(sku_product_id: @sku_product&.id).delete_all
       Ec::SkuProduct.where(id: @sku_product&.id).delete_all
       Ec::Store.where(id: @store&.id).delete_all
@@ -118,7 +119,113 @@ module Ec
       end
     end
 
+    test "links a matching latest price plan and completes it at the operation time" do
+      plan = create_plan(target: "price", operation: "increase")
+      unrelated = create_plan(target: "advertising", operation: "open")
+      old_plan = create_plan(target: "price", operation: "increase", is_latest: false)
+      operated_at = Time.current
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }, operated_at: operated_at
+      )
+
+      assert_equal plan, action.reload.plan
+      assert plan.reload.done?
+      assert_equal operated_at, plan.completed_at
+      assert unrelated.reload.active?
+      assert old_plan.reload.active?
+    end
+
+    test "does not complete plans for unrelated, opposite, historical, or unchanged operations" do
+      plan = create_plan(target: "price", operation: "increase")
+      unchanged = create_plan(target: "price", operation: "maintain")
+      earlier = plan.created_at - 1.minute
+
+      assert_nil Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 100 }
+      )
+      historical = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }, operated_at: earlier
+      )
+      opposite = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 120 }, after: { price: 100 }
+      )
+
+      assert_nil historical.plan
+      assert_nil opposite.plan
+      assert plan.reload.active?
+      assert unchanged.reload.active?
+    end
+
+    test "matches advertising status and listing image plans without completing other targets" do
+      open_plan = create_plan(target: "advertising", operation: "open")
+      image_plan = create_plan(target: "listing_image", operation: "modify")
+      attribute_plan = create_plan(target: "listing_attribute", operation: "modify")
+
+      opened = Ec::AdStatusChangeRecorder.record(
+        sku_product: @sku_product, advertisement_id: "ADV-1", advertisement_name: "Test",
+        before_status: 11, after_status: 9
+      )
+      image = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_content",
+        before: { images: [ "old" ] }, after: { images: [ "new" ] }
+      )
+
+      assert_equal open_plan, opened.plan
+      assert_equal image_plan, image.plan
+      assert open_plan.reload.done?
+      assert image_plan.reload.done?
+      assert attribute_plan.reload.active?
+    end
+
+    test "links only one matching plan per synced action" do
+      older = create_plan(target: "listing_attribute", operation: "modify")
+      newer = create_plan(target: "listing_attribute", operation: "modify")
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_specification",
+        before: { dimensions: "old" }, after: { dimensions: "new" }
+      )
+
+      assert_equal newer, action.plan
+      assert older.reload.active?
+    end
+
+    test "does not link an expired or already completed plan" do
+      expired = create_plan(target: "price", operation: "increase", retain_until: 1.minute.ago)
+      completed = create_plan(target: "price", operation: "increase", status: "done")
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }
+      )
+
+      assert_nil action.plan
+      assert expired.reload.active?
+      assert completed.reload.done?
+    end
+
+    test "removing a regenerated plan leaves its operation action intact" do
+      plan = create_plan(target: "price", operation: "increase")
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }
+      )
+
+      plan.delete
+
+      assert_nil action.reload.plan_id
+      assert Ec::OperationAction.exists?(action.id)
+    end
+
     private
+
+    def create_plan(target:, operation:, **attributes)
+      @sku.sku_operation_plans.create!(target: target, operation: operation,
+        referer: [ "listing_change_#{@token}" ], message: "Change listing #{@token}", **attributes)
+    end
 
     def create_user(prefix)
       User.create!(

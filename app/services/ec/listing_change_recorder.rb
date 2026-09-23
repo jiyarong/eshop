@@ -10,20 +10,24 @@ module Ec
         operator, attribution = attributed_user(sku_product)
         return log_missing_operator(sku_product) unless operator
 
-        Ec::OperationAction.create!(
-          operation_type: operation_type,
-          operated_by_user: operator,
-          operated_at: operated_at,
-          sku_product: sku_product,
-          sku: sku_product.sku,
-          store: sku_product.store,
-          diff_result: {
-            "platform" => sku_product.platform,
-            "attribution" => attribution,
-            "fields" => fields
-          }.merge(normalize_hash(metadata)),
-          record_by_system: true
-        )
+        Ec::OperationAction.transaction do
+          action = Ec::OperationAction.create!(
+            operation_type: operation_type,
+            operated_by_user: operator,
+            operated_at: operated_at,
+            sku_product: sku_product,
+            sku: sku_product.sku,
+            store: sku_product.store,
+            diff_result: {
+              "platform" => sku_product.platform,
+              "attribution" => attribution,
+              "fields" => fields
+            }.merge(normalize_hash(metadata)),
+            record_by_system: true
+          )
+          Ec::OperationActionPlanMatcher.call(action)
+          action
+        end
       end
 
       private

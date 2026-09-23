@@ -18,6 +18,7 @@ module Ec
 
     belongs_to :sku, class_name: "Ec::Sku"
     belongs_to :conversation, optional: true
+    has_many :operation_actions, class_name: "Ec::OperationAction", foreign_key: :plan_id, dependent: :nullify
 
     enum :status, { active: "active", done: "done", ignored: "ignored" }, validate: true
     enum :target, {

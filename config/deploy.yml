@@ -56,10 +56,10 @@ env:
     PORT: 3000
 
     # Set number of processes dedicated to Solid Queue (default: 1)
-    JOB_CONCURRENCY: 10
+    JOB_CONCURRENCY: 4
 
     # Set number of cores available to the application on each server (default: 1).
-    WEB_CONCURRENCY: 12
+    WEB_CONCURRENCY: 4
 
     # Match this to any external database server to configure Active Record correctly
     # Use eshop_manage-db for a db accessory server on same machine via local kamal docker network.
