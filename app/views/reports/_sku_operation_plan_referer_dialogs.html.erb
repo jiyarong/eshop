@@ -1,0 +1,21 @@
+<% plan.referer.each_with_index do |reference, index| %>
+  <% event = reference.to_s.match?(/\A[1-9]\d*\z/) ? events_by_id[reference.to_i] : nil %>
+  <% next unless event %>
+  <% dialog_id = "#{dom_id_prefix}-#{index}-dialog" %>
+  <dialog id="<%= dialog_id %>"
+          class="sku-planner-dialog sku-plan-referers__dialog"
+          data-controller="operator-dialog"
+          data-action="click->operator-dialog#closeOnBackdrop"
+          aria-labelledby="<%= dialog_id %>-title">
+    <div class="sku-planner-dialog__header">
+      <h3 id="<%= dialog_id %>-title"><%= event.event_type %></h3>
+      <button class="icon-button" type="button" aria-label="<%= t('common.actions.close') %>" data-action="operator-dialog#close">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="sku-planner-dialog__body" data-controller="markdown">
+      <pre data-markdown-target="source"><%= event.message %></pre>
+      <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+    </div>
+  </dialog>
+<% end %>

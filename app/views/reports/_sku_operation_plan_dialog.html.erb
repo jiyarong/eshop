@@ -22,7 +22,7 @@
       <div><dt><%= t("reports.sku_detail.planner.target") %></dt><dd><%= t("reports.sku_detail.planner.targets.#{plan.target}") %></dd></div>
       <div><dt><%= t("reports.sku_detail.planner.operation") %></dt><dd><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></dd></div>
       <div><dt><%= t("reports.sku_detail.planner.status") %></dt><dd><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></dd></div>
-      <div><dt><%= t("reports.sku_detail.planner.referer") %></dt><dd><%= plan.referer.join(", ") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.referer") %></dt><dd><%= render "reports/sku_operation_plan_referers", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-tag-referer" %></dd></div>
       <div><dt><%= t("reports.sku_detail.fields.created_at") %></dt><dd><%= display_time(plan.created_at) %></dd></div>
     </dl>
     <section class="sku-operation-plan-dialog__section">
@@ -32,6 +32,7 @@
         <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
       </div>
     </section>
+    <%= render "reports/sku_operation_plan_details", plan: plan %>
     <section class="sku-operation-plan-dialog__section">
       <h4 class="section-title"><%= t("reports.sku_detail.sections.operation_records") %></h4>
       <% if plan.operation_actions.any? %>

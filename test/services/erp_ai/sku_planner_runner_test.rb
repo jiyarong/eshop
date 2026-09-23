@@ -96,7 +96,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
 
     result = executor.call(id: "save", name: "save_sku_plan", arguments: {
       sku_code: @sku.sku_code, target: "price", operation: "maintain",
-      referer: [ @diagnosis.events.first.id ], message: "Keep price stable"
+      referer: [ @diagnosis.events.first.id ], **plan_details
     })
 
     assert result.dig(:result, :success)
@@ -104,6 +104,44 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_equal conversation.id, plan.conversation_id
     assert_equal [ @diagnosis.events.first.id ], plan.referer
     assert_equal plan.referer, result.dig(:result, :referer)
+    assert_equal "SKU", plan.scope
+    assert_equal @sku.sku_code, plan.scope_id
+    assert_equal 1, plan.priority
+    assert_equal "No price change", plan.constraints
+    assert_equal "Keep price stable", result.dig(:result, :message)
+  end
+
+  test "planner saves a listing-specific plan and rejects invalid scope or detail types" do
+    @user.roles << Role.find_by!(code: "manager")
+    store = Ec::Store.create!(platform: "wb", store_name: "Planner #{@token}", company_type: "small", is_active: true)
+    listing = @sku.sku_products.create!(store: store, product_id: "PLANNER-#{@token}")
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
+    args = { sku_code: @sku.sku_code, target: "advertising", operation: "maintain",
+             referer: [ @diagnosis.events.first.id ], **plan_details, scope: "LISTING", scope_id: listing.id.to_s }
+
+    result = executor.call(id: "listing", name: "save_sku_plan", arguments: args)
+    plan = @sku.sku_operation_plans.find(result.dig(:result, :plan_id))
+    assert_equal listing.id.to_s, plan.scope_id
+    assert_equal "LISTING", result.dig(:result, :scope)
+    assert_equal "Expected savings", plan.expected_effect
+
+    [ { scope_id: "unknown" }, { scope_id: "-1" }, { priority: "1" }, { constraints: [ "No price change" ] },
+      { baseline: "" }, { message: 5 } ].each do |invalid|
+      assert_raises(RuntimeError) { executor.call(id: "invalid", name: "save_sku_plan", arguments: args.merge(invalid)) }
+    end
+    assert_equal 1, @sku.sku_operation_plans.count
+  ensure
+    listing&.destroy!
+    store&.destroy!
+  end
+
+  test "planner tool requires all detail fields with string types except priority" do
+    schema = ErpAI::ToolRegistry.default_tools.find { |tool| tool[:name] == "save_sku_plan" }.fetch(:parameters)
+    assert_equal %w[sku_code target operation referer scope scope_id priority message reason baseline constraints expected_effect], schema.fetch(:required)
+    assert_equal "integer", schema.dig(:properties, :priority, :type)
+    %i[scope scope_id message reason baseline constraints expected_effect].each do |field|
+      assert_equal "string", schema.dig(:properties, field, :type)
+    end
   end
 
   test "planner stores distinct event IDs and rejects unrelated references" do
@@ -115,7 +153,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     other_sku = Ec::Sku.create!(sku_code: "OTHER-PLANNER-#{@token}", product_name: "Other planner SKU")
     other_diagnosis = Ec::GeneralDiagnosis.create!(sku: other_sku, submitted_by: @user)
     other_event = other_diagnosis.events.create!(event_type: first_event.event_type, severity: "warning", message: "Other SKU event")
-    args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", message: "Keep price stable" }
+    args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", **plan_details }
 
     [ [ first_event.event_type ], [ info_event.id ], [ other_event.id ], [ first_event.id, other_event.id ], [ 0 ] ].each do |referer|
       assert_raises(RuntimeError) do
@@ -140,7 +178,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     latest_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     latest_event = latest_diagnosis.events.create!(event_type: stale_event.event_type, severity: "warning", message: "Latest risk")
     executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
-    args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", message: "Keep price stable" }
+    args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", **plan_details }
 
     assert_raises(RuntimeError) do
       executor.call(id: "stale", name: "save_sku_plan", arguments: args.merge(referer: [ stale_event.id ]))
@@ -151,6 +189,12 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   end
 
   private
+
+  def plan_details
+    { scope: "SKU", scope_id: @sku.sku_code, priority: 1, message: "Keep price stable",
+      reason: "Low stock", baseline: "Current price unchanged", constraints: "No price change",
+      expected_effect: "Expected savings" }
+  end
 
   def create_plan(message, created_at: Time.current, plan_date: created_at.in_time_zone("Asia/Shanghai").to_date)
     @sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: [ "stock_risk" ],

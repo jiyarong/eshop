@@ -42,9 +42,7 @@
     <div>
       <dt><%= t("reports.sku_detail.planner.referer") %></dt>
       <dd class="sku-plan-detail__references">
-        <% @plan.referer.each do |event_type| %>
-          <span><%= event_type %></span>
-        <% end %>
+        <%= render "reports/sku_operation_plan_referers", plan: @plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{@plan.id}-detail-referer" %>
       </dd>
     </div>
     <div>
@@ -60,4 +58,6 @@
       <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
     </div>
   </section>
+  <%= render "reports/sku_operation_plan_details", plan: @plan %>
 </div>
+<%= render "reports/sku_operation_plan_referer_dialogs", plan: @plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{@plan.id}-detail-referer" %>

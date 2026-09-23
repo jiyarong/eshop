@@ -80,16 +80,21 @@ module ErpAI
           severity: event.severity,
           event_type: event.event_type,
           simple_context: event.simple_context,
+          details: event.details,
           message: event.message,
           rule_name: event.sub_agent&.name
         }
       end.to_json
+      listings = sku.sku_products.order(:id).pluck(:id, :platform, :store_id, :product_id).map do |id, platform, store_id, product_id|
+        { id: id.to_s, platform: platform, store_id: store_id, product_id: product_id }
+      end
       question = <<~PROMPT
         当前 SKU：#{sku.sku_code}
+        可用 Listing（scope_id 使用内部 id）：#{listings.to_json}
 
         下方是该 SKU 通用诊断中最新的非 info 事件。severity 表示执行紧迫程度：info 是仅供了解、暂不需要操作的信息；warning 是需要关注并安排处理的问题；critical 是需要优先处理的紧急问题。info 事件已从上下文排除，不要为其制定计划。
         请仅基于下方事件制定运营操作计划。
-        每条计划必须调用 save_sku_plan，target 只能是 price、advertising、listing_attribute、listing_image，operation 只能是 increase、open、close、modify、maintain，referer 必须填写上下文中对应的一个或多个事件 id，message 写清操作依据和具体执行详情。
+        每条计划必须调用 save_sku_plan，target 只能是 price、advertising、listing_attribute、listing_image，operation 只能是 increase、open、close、modify、maintain，referer 必须填写上下文中对应的一个或多个事件 id。scope 为 SKU 时 scope_id 填当前 SKU code；scope 为 LISTING 时 scope_id 填上方该 Listing 的内部 id，不确定具体 Listing 时用 SKU。priority 为正整数，1 最优先；message 写执行动作，reason 写依据，baseline 写已知现状（不清楚时明确写待核实），constraints 为换行分隔的限制条件，expected_effect 写预期效果。除 priority 和 referer 外的新字段均为字符串，不得编造数据。
         有明确依据时可以创建一条或多条计划；没有足够依据时可以不调用工具。不要处理其他 SKU，不要编造事件。
       PROMPT
 

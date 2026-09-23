@@ -130,15 +130,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
   end
 
   create_table "ec_ai_sku_operation_plans", force: :cascade do |t|
+    t.text "baseline"
     t.datetime "completed_at"
+    t.text "constraints"
     t.bigint "conversation_id"
     t.datetime "created_at", null: false
+    t.text "expected_effect"
     t.boolean "is_latest", default: true, null: false
     t.text "message", null: false
     t.string "operation", null: false
     t.date "plan_date", null: false
+    t.integer "priority"
+    t.text "reason"
     t.jsonb "referer", default: [], null: false
     t.datetime "retain_until", null: false
+    t.string "scope"
+    t.string "scope_id"
     t.bigint "sku_id", null: false
     t.string "status", default: "active", null: false
     t.string "target", null: false

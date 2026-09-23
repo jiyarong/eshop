@@ -259,14 +259,37 @@ module Mcp
         .pluck(:id)
       return { error: "referer does not match latest diagnosis events" } unless (referer - latest_event_ids).empty?
 
-      message = args["message"].to_s.strip
-      return { error: "message is required" } if message.blank?
+      message = args["message"]
+      return { error: "message must be a non-empty string" } unless message.is_a?(String) && message.strip.present?
+      message = message.strip
+
+      scope = args["scope"]
+      return { error: "scope must be SKU or LISTING" } unless scope.in?(%w[SKU LISTING])
+
+      scope_id = args["scope_id"]
+      return { error: "scope_id must be a string" } unless scope_id.is_a?(String) && scope_id.present?
+      if scope == "SKU"
+        return { error: "scope_id does not match SKU" } unless scope_id == sku.sku_code
+      else
+        listing_id = Integer(scope_id, exception: false)
+        return { error: "scope_id does not match a Listing of this SKU" } unless listing_id&.positive? && sku.sku_products.exists?(id: listing_id)
+      end
+
+      priority = args["priority"]
+      return { error: "priority must be a positive integer" } unless priority.is_a?(Integer) && priority.positive?
+
+      details = %w[reason baseline constraints expected_effect].index_with { |field| args[field] }
+      return { error: "plan details must be non-empty strings" } unless details.values.all? { |value| value.is_a?(String) && value.strip.present? }
 
       plan = sku.sku_operation_plans.create!(
         target: target,
         operation: operation,
         referer: referer,
         message: message,
+        scope: scope,
+        scope_id: scope_id,
+        priority: priority,
+        **details.transform_values(&:strip).symbolize_keys,
         conversation_id: @conversation_id
       )
       {
@@ -276,6 +299,14 @@ module Mcp
         target: plan.target,
         operation: plan.operation,
         referer: plan.referer,
+        scope: plan.scope,
+        scope_id: plan.scope_id,
+        priority: plan.priority,
+        message: plan.message,
+        reason: plan.reason,
+        baseline: plan.baseline,
+        constraints: plan.constraints,
+        expected_effect: plan.expected_effect,
         status: plan.status,
         retain_until: plan.retain_until.iso8601
       }

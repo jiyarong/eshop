@@ -2030,6 +2030,33 @@ table thead th {
   overflow-wrap: anywhere;
 }
 
+.sku-plan-referers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sku-plan-referers__trigger {
+  padding: 3px 8px;
+  border: 1px solid var(--erp-border);
+  border-radius: 4px;
+  background: var(--erp-surface-soft);
+  color: var(--erp-brand);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.sku-plan-referers__trigger:hover,
+.sku-plan-referers__trigger:focus-visible {
+  border-color: var(--erp-brand);
+}
+
+.sku-plan-referers__dialog {
+  text-align: left;
+}
+
 .sku-planner-table__preview {
   display: block;
   width: 100%;

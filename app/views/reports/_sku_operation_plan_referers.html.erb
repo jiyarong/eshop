@@ -1,0 +1,18 @@
+<div class="sku-plan-referers">
+  <% plan.referer.each_with_index do |reference, index| %>
+    <% numeric_reference = reference.to_s.match?(/\A[1-9]\d*\z/) %>
+    <% event = numeric_reference ? events_by_id[reference.to_i] : nil %>
+    <% if event %>
+      <% dialog_id = "#{dom_id_prefix}-#{index}-dialog" %>
+      <button type="button"
+              class="sku-plan-referers__trigger"
+              data-controller="operator-dialog"
+              data-action="operator-dialog#open"
+              data-operator-dialog-id="<%= dialog_id %>"
+              aria-haspopup="dialog"
+              aria-controls="<%= dialog_id %>"><%= event.event_type %></button>
+    <% else %>
+      <span><%= numeric_reference ? t("reports.sku_detail.planner.referer_unavailable") : reference %></span>
+    <% end %>
+  <% end %>
+</div>

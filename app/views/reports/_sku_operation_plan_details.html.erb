@@ -1,0 +1,18 @@
+<% if plan.scope.present? || plan.priority.present? %>
+  <dl class="sku-plan-detail__facts">
+    <% if plan.scope.present? %>
+      <div><dt><%= t("reports.sku_detail.planner.scope") %></dt><dd><%= t("reports.sku_detail.planner.scopes.#{plan.scope}") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.scope_id") %></dt><dd><%= plan.scope_id %></dd></div>
+    <% end %>
+    <% if plan.priority.present? %>
+      <div><dt><%= t("reports.sku_detail.planner.priority") %></dt><dd><%= plan.priority %></dd></div>
+    <% end %>
+  </dl>
+<% end %>
+<% %w[reason baseline constraints expected_effect].each do |field| %>
+  <% next if plan.public_send(field).blank? %>
+  <section class="sku-operation-plan-dialog__section">
+    <h4 class="section-title"><%= t("reports.sku_detail.planner.#{field}") %></h4>
+    <div><%= simple_format(plan.public_send(field)) %></div>
+  </section>
+<% end %>

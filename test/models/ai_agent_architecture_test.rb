@@ -95,6 +95,9 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
 
     assert_equal Agent::SKU_PLANNER_PROMPT, Agent.ensure_fixed!("sku_planner").system_prompt
 
+    agent.update!(system_prompt: Agent::SKU_PLANNER_PREVIOUS_PROMPT)
+    assert_equal Agent::SKU_PLANNER_PROMPT, Agent.ensure_fixed!("sku_planner").system_prompt
+
     agent.update!(system_prompt: "自定义 SKU Planner 提示词")
     assert_equal "自定义 SKU Planner 提示词", Agent.ensure_fixed!("sku_planner").system_prompt
   end

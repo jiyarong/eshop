@@ -114,6 +114,7 @@
 
 <% @sku_operation_plan_tags.each do |plan| %>
   <%= render "reports/sku_operation_plan_dialog", plan: plan, sku: @sku %>
+  <%= render "reports/sku_operation_plan_referer_dialogs", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-tag-referer" %>
 <% end %>
 
 <nav class="erp-tabs erp-tabs--underline sku-detail-tabs"

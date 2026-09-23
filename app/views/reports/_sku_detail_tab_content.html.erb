@@ -375,7 +375,7 @@
                           <% end %>
                         </td>
                         <td><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></td>
-                        <td class="sku-planner-table__referer"><%= plan.referer.join(", ") %></td>
+                        <td class="sku-planner-table__referer"><%= render "reports/sku_operation_plan_referers", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-list-referer" %></td>
                         <td>
                           <button type="button"
                                   class="sku-planner-table__preview"
@@ -429,8 +429,10 @@
                   <div class="sku-planner-dialog__body" data-controller="markdown">
                     <pre data-markdown-target="source"><%= plan.message %></pre>
                     <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+                    <%= render "reports/sku_operation_plan_details", plan: plan %>
                   </div>
                 </dialog>
+                <%= render "reports/sku_operation_plan_referer_dialogs", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-list-referer" %>
               <% end %>
             </details>
           <% end %>

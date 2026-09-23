@@ -109,9 +109,16 @@ module ErpAI
               minItems: 1,
               description: "上下文中对应的一个或多个通用诊断事件 id"
             },
-            message: { type: "string", description: "具体操作的依据和操作详情" }
+            scope: { type: "string", enum: %w[SKU LISTING], description: "执行范围：整个 SKU 或单个 Listing" },
+            scope_id: { type: "string", description: "执行对象的内部 ID：SKU 使用 SKU code，LISTING 使用 ec_sku_products.id" },
+            priority: { type: "integer", description: "执行优先级，1 为最高优先级，必须为正整数" },
+            message: { type: "string", description: "具体执行动作" },
+            reason: { type: "string", description: "执行该动作的诊断依据" },
+            baseline: { type: "string", description: "当前可核实的基线数据；没有数据时说明尚待核实，不得编造" },
+            constraints: { type: "string", description: "执行限制，多条限制用换行分隔" },
+            expected_effect: { type: "string", description: "预期效果，不得编造数值" }
           },
-          required: %w[sku_code target operation referer message],
+          required: %w[sku_code target operation referer scope scope_id priority message reason baseline constraints expected_effect],
           additionalProperties: false
         }
       }
