@@ -76,6 +76,7 @@ module ErpAI
 
       data_summary = events.map do |event|
         {
+          id: event.id,
           severity: event.severity,
           event_type: event.event_type,
           simple_context: event.simple_context,
@@ -88,7 +89,7 @@ module ErpAI
 
         下方是该 SKU 通用诊断中最新的非 info 事件。severity 表示执行紧迫程度：info 是仅供了解、暂不需要操作的信息；warning 是需要关注并安排处理的问题；critical 是需要优先处理的紧急问题。info 事件已从上下文排除，不要为其制定计划。
         请仅基于下方事件制定运营操作计划。
-        每条计划必须调用 save_sku_plan，target 只能是 price、advertising、listing_attribute、listing_image，operation 只能是 increase、open、close、modify、maintain，referer 必须填写对应的一个或多个 event_type，message 写清操作依据和具体执行详情。
+        每条计划必须调用 save_sku_plan，target 只能是 price、advertising、listing_attribute、listing_image，operation 只能是 increase、open、close、modify、maintain，referer 必须填写上下文中对应的一个或多个事件 id，message 写清操作依据和具体执行详情。
         有明确依据时可以创建一条或多条计划；没有足够依据时可以不调用工具。不要处理其他 SKU，不要编造事件。
       PROMPT
 

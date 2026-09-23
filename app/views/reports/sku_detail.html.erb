@@ -59,16 +59,25 @@
             <span class="sku-ai-diagnosis-event-tags__label"><%= t("erp.ai_diagnosis_event_filter.advice_label") %></span>
             <% @sku_operation_plan_tags.each do |plan| %>
               <% remaining_hours = (plan.retain_until - Time.current) / 1.hour %>
-              <% expired = remaining_hours <= 0 %>
-              <%= link_to report_sku_operation_plan_path(@sku.sku_code, plan, locale: params[:locale].presence),
-                          class: ["ai-diagnosis-event-tag ai-diagnosis-event-tag--compact ai-diagnosis-event-tag--advice",
-                                  "sku-operation-plan-tag--#{plan.status}", ("sku-operation-plan-tag--expired" if expired)].compact.join(" ") do %>
+              <% expired = plan.active? && remaining_hours <= 0 %>
+              <button type="button"
+                      class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact ai-diagnosis-event-tag--advice sku-operation-plan-tag--<%= plan.status %><%= ' sku-operation-plan-tag--expired' if expired %>"
+                      data-controller="operator-dialog"
+                      data-action="operator-dialog#open"
+                      data-operator-dialog-id="sku-detail-plan-<%= plan.id %>-dialog"
+                      aria-haspopup="dialog"
+                      aria-controls="sku-detail-plan-<%= plan.id %>-dialog">
+                <i class="bi <%= plan.active? ? (expired ? 'bi-exclamation-triangle' : 'bi-hourglass-split') : (plan.done? ? 'bi-check-circle' : 'bi-slash-circle') %>" aria-hidden="true"></i>
                 <%= t("reports.sku_detail.planner.tag_name",
                       target: t("reports.sku_detail.planner.targets.#{plan.target}"),
                       operation: t("reports.sku_detail.planner.operations.#{plan.operation}")) %>
-                <span class="sku-operation-plan-tag__status"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span>
-                <span class="sku-operation-plan-tag__time"><%= expired ? t("reports.sku_detail.planner.expired") : t("reports.sku_detail.planner.remaining_hours", hours: format("%.1f", (remaining_hours * 10).ceil / 10.0)) %></span>
-              <% end %>
+                <span class="sr-only"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span>
+                <% if expired %>
+                  <span class="sku-operation-plan-tag__time"><%= t("reports.sku_detail.planner.expired") %></span>
+                <% elsif plan.active? %>
+                  <span class="sku-operation-plan-tag__time"><%= t("reports.sku_detail.planner.remaining_hours", hours: format("%.1f", (remaining_hours * 10).ceil / 10.0)) %></span>
+                <% end %>
+              </button>
             <% end %>
           </div>
         <% end %>
@@ -102,6 +111,10 @@
     <% end %>
   </div>
 </section>
+
+<% @sku_operation_plan_tags.each do |plan| %>
+  <%= render "reports/sku_operation_plan_dialog", plan: plan, sku: @sku %>
+<% end %>
 
 <nav class="erp-tabs erp-tabs--underline sku-detail-tabs"
      aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>"

@@ -1828,6 +1828,7 @@ en:
         remaining_hours: "%{hours} h"
         expired: "Expired"
         tag_name: "%{target} · %{operation}"
+        action_meta: "%{time} · %{store} · %{operator}"
         enqueued: "SKU Planner was queued."
         latest: "Latest"
         message: "Plan details"

@@ -59,6 +59,8 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
 
     events = JSON.parse(captured.fetch(:data_summary))
     assert_equal %w[stock_risk urgent_stock], events.map { |event| event.fetch("event_type") }
+    assert_equal @diagnosis.events.where.not(severity: "info").order(:position, :id).pluck(:id), events.map { |event| event.fetch("id") }
+    assert_includes captured.fetch(:question), "事件 id"
     assert_includes captured.fetch(:question), "info 是仅供了解"
     assert_includes captured.fetch(:question), "warning 是需要关注"
     assert_includes captured.fetch(:question), "critical 是需要优先处理"
@@ -94,11 +96,58 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
 
     result = executor.call(id: "save", name: "save_sku_plan", arguments: {
       sku_code: @sku.sku_code, target: "price", operation: "maintain",
-      referer: [ "stock_risk" ], message: "Keep price stable"
+      referer: [ @diagnosis.events.first.id ], message: "Keep price stable"
     })
 
     assert result.dig(:result, :success)
-    assert_equal conversation.id, @sku.sku_operation_plans.find(result.dig(:result, :plan_id)).conversation_id
+    plan = @sku.sku_operation_plans.find(result.dig(:result, :plan_id))
+    assert_equal conversation.id, plan.conversation_id
+    assert_equal [ @diagnosis.events.first.id ], plan.referer
+    assert_equal plan.referer, result.dig(:result, :referer)
+  end
+
+  test "planner stores distinct event IDs and rejects unrelated references" do
+    @user.roles << Role.find_by!(code: "manager")
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
+    first_event = @diagnosis.events.first
+    same_type_event = @diagnosis.events.create!(event_type: first_event.event_type, severity: "critical", message: "Same type, different event")
+    info_event = @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
+    other_sku = Ec::Sku.create!(sku_code: "OTHER-PLANNER-#{@token}", product_name: "Other planner SKU")
+    other_diagnosis = Ec::GeneralDiagnosis.create!(sku: other_sku, submitted_by: @user)
+    other_event = other_diagnosis.events.create!(event_type: first_event.event_type, severity: "warning", message: "Other SKU event")
+    args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", message: "Keep price stable" }
+
+    [ [ first_event.event_type ], [ info_event.id ], [ other_event.id ], [ first_event.id, other_event.id ], [ 0 ] ].each do |referer|
+      assert_raises(RuntimeError) do
+        executor.call(id: "invalid", name: "save_sku_plan", arguments: args.merge(referer: referer))
+      end
+    end
+    assert_empty @sku.sku_operation_plans
+
+    result = executor.call(id: "save", name: "save_sku_plan",
+      arguments: args.merge(referer: [ first_event.id, same_type_event.id, first_event.id ]))
+
+    assert_equal [ first_event.id, same_type_event.id ], result.dig(:result, :referer)
+    assert_equal [ first_event.id, same_type_event.id ], @sku.sku_operation_plans.find(result.dig(:result, :plan_id)).referer
+  ensure
+    other_diagnosis&.destroy!
+    Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
+  end
+
+  test "planner rejects an event from a previous diagnosis" do
+    @user.roles << Role.find_by!(code: "manager")
+    stale_event = @diagnosis.events.first
+    latest_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    latest_event = latest_diagnosis.events.create!(event_type: stale_event.event_type, severity: "warning", message: "Latest risk")
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
+    args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", message: "Keep price stable" }
+
+    assert_raises(RuntimeError) do
+      executor.call(id: "stale", name: "save_sku_plan", arguments: args.merge(referer: [ stale_event.id ]))
+    end
+
+    result = executor.call(id: "latest", name: "save_sku_plan", arguments: args.merge(referer: [ latest_event.id ]))
+    assert_equal [ latest_event.id ], @sku.sku_operation_plans.find(result.dig(:result, :plan_id)).referer
   end
 
   private

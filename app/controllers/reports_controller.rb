@@ -1018,7 +1018,8 @@ class ReportsController < ApplicationController
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     load_latest_active_ai_diagnosis_risk_events_for([@sku])
     @sku_ai_diagnosis_events = @ai_diagnosis_events_by_sku_id.fetch(@sku.id, []).select { |event| event.sub_agent_id.present? }
-    @sku_operation_plan_tags = @sku.sku_operation_plans.latest.order(created_at: :desc, id: :desc)
+    @sku_operation_plan_tags = @sku.sku_operation_plans.latest.includes(operation_actions: [ :operated_by_user, :store ])
+      .order(created_at: :desc, id: :desc)
     load_sku_listing_diagnoses if @active_tab.in?(%w[basic ai_inventory_health])
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     if @active_tab == "profit_prediction"

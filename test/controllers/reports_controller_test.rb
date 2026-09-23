@@ -1874,6 +1874,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
   test "sku detail advice tags show latest plan status and expiry" do
     diagnosis = nil
+    linked_action = nil
     travel_to Time.zone.parse("2026-09-23 10:00:00") do
       diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @current_user)
       diagnosis.events.create!(event_type: "旧诊断建议", severity: "critical", scope: "advise", message: "不应展示", is_latest: true)
@@ -1897,25 +1898,54 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
         message: "历史计划", is_latest: false)
       @second_sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: [ "stockout_imminent" ],
         message: "其他 SKU 建议")
+      linked_action = Ec::OperationAction.create!(
+        plan: done_plan, sku: @sku, sku_product: Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store),
+        store: @sales_store, operated_by_user: @current_user, operated_at: Time.current,
+        operation_type: "listing_pricing", diff_result: { "fields" => { "price" => { "from" => 100, "to" => 120 } } }
+      )
 
       get report_sku_path(@sku.sku_code), params: { tab: "basic" }, headers: { "Accept" => "text/html" }
 
       assert_response :success
       assert_select ".sku-detail-marketing-state__row .sku-ai-diagnosis-event-tags--advice" do
         assert_select ".sku-ai-diagnosis-event-tags__label", "AI 建议"
-        assert_select "a.sku-operation-plan-tag--active:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, plan)}']", text: /Listing 图片 · 修改.*生效中.*26\.5 h/, count: 1
-        assert_select "a.sku-operation-plan-tag--active.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, expired_plan)}']", text: /价格 · 维持.*生效中.*已超期/, count: 1
-        assert_select "a.sku-operation-plan-tag--done:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, done_plan)}']", text: /广告 · 增加.*已完成.*48\.0 h/, count: 1
-        assert_select "a.sku-operation-plan-tag--ignored:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, ignored_plan)}']", text: /Listing 属性 · 维持.*已忽略.*48\.0 h/, count: 1
-        assert_select "a.sku-operation-plan-tag--done.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, expired_done_plan)}']", text: /已完成.*已超期/, count: 1
-        assert_select "a.sku-operation-plan-tag--ignored.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, expired_ignored_plan)}']", text: /已忽略.*已超期/, count: 1
-        assert_select "a.sku-operation-plan-tag--active:not(.sku-operation-plan-tag--expired)[href='#{report_sku_operation_plan_path(@sku.sku_code, nearly_expired_plan)}']", text: /生效中.*0\.1 h/, count: 1
-        assert_select "a.sku-operation-plan-tag--active.sku-operation-plan-tag--expired[href='#{report_sku_operation_plan_path(@sku.sku_code, due_plan)}']", text: /生效中.*已超期/, count: 1
-        assert_select "a.ai-diagnosis-event-tag--advice", { text: /修正主图产地/, count: 0 }
-        assert_select "a.ai-diagnosis-event-tag--advice", { text: /旧诊断建议|历史计划|其他 SKU 建议/, count: 0 }
+        assert_select "button.sku-operation-plan-tag--active:not(.sku-operation-plan-tag--expired)[aria-haspopup='dialog'][data-action='operator-dialog#open'][aria-controls='sku-detail-plan-#{plan.id}-dialog']", text: /Listing 图片 · 修改.*生效中.*26\.5 h/, count: 1 do
+          assert_select "i.bi-hourglass-split[aria-hidden='true']"
+          assert_select "span.sr-only", "生效中"
+        end
+        assert_select "button.sku-operation-plan-tag--active.sku-operation-plan-tag--expired[aria-controls='sku-detail-plan-#{expired_plan.id}-dialog']", text: /价格 · 维持.*生效中.*已超期/, count: 1 do
+          assert_select "i.bi-exclamation-triangle[aria-hidden='true']"
+          assert_select ".sku-operation-plan-tag__time", text: /h/, count: 0
+        end
+        assert_select "button.sku-operation-plan-tag--done[aria-controls='sku-detail-plan-#{done_plan.id}-dialog']", text: /广告 · 增加.*已完成/, count: 1 do
+          assert_select "i.bi-check-circle[aria-hidden='true']"
+          assert_select "span.sr-only", "已完成"
+          assert_select ".sku-operation-plan-tag__time", count: 0
+        end
+        assert_select "button.sku-operation-plan-tag--ignored[aria-controls='sku-detail-plan-#{ignored_plan.id}-dialog']", text: /Listing 属性 · 维持.*已忽略/, count: 1 do
+          assert_select "i.bi-slash-circle[aria-hidden='true']"
+          assert_select "span.sr-only", "已忽略"
+          assert_select ".sku-operation-plan-tag__time", count: 0
+        end
+        assert_select ".sku-operation-plan-tag__status", count: 0
+        assert_select "button.sku-operation-plan-tag--done[aria-controls='sku-detail-plan-#{expired_done_plan.id}-dialog'] .sku-operation-plan-tag__time", count: 0
+        assert_select "button.sku-operation-plan-tag--ignored[aria-controls='sku-detail-plan-#{expired_ignored_plan.id}-dialog'] .sku-operation-plan-tag__time", count: 0
+        assert_select "button.sku-operation-plan-tag--active[aria-controls='sku-detail-plan-#{nearly_expired_plan.id}-dialog']", text: /0\.1 h/, count: 1
+        assert_select "button.sku-operation-plan-tag--active.sku-operation-plan-tag--expired[aria-controls='sku-detail-plan-#{due_plan.id}-dialog']", text: /已超期/, count: 1
+        assert_select "button.ai-diagnosis-event-tag--advice", { text: /修正主图产地|旧诊断建议|历史计划|其他 SKU 建议/, count: 0 }
       end
+      assert_select "dialog#sku-detail-plan-#{done_plan.id}-dialog[aria-labelledby='sku-detail-plan-#{done_plan.id}-title']" do
+        assert_select ".sku-planner-dialog__message pre", text: "已完成建议"
+        assert_select ".sku-operation-plan-dialog__action", count: 1 do
+          assert_select "strong", "价格"
+          assert_select "div", text: /120/
+        end
+      end
+      assert_select "dialog#sku-detail-plan-#{plan.id}-dialog .text-muted", "暂无运营记录"
+      assert_select "dialog#sku-detail-plan-#{plan.id}-dialog .sku-operation-plan-dialog__action", count: 0
     end
   ensure
+    linked_action&.destroy!
     diagnosis&.destroy!
   end
 

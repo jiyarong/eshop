@@ -1,0 +1,60 @@
+<dialog id="sku-detail-plan-<%= plan.id %>-dialog"
+        class="sku-planner-dialog sku-operation-plan-dialog"
+        data-controller="operator-dialog"
+        data-action="click->operator-dialog#closeOnBackdrop"
+        aria-labelledby="sku-detail-plan-<%= plan.id %>-title">
+  <div class="sku-planner-dialog__header">
+    <div>
+      <h3 id="sku-detail-plan-<%= plan.id %>-title"><%= t("reports.sku_detail.planner.plan_title", id: plan.id) %></h3>
+      <p><%= sku.sku_code %></p>
+    </div>
+    <div class="sku-planner-dialog__actions">
+      <%= link_to t("reports.sku_detail.planner.view_details"), report_sku_operation_plan_path(sku.sku_code, plan, locale: params[:locale].presence),
+                  class: "button button-secondary", target: "_blank", rel: "noopener noreferrer", data: { turbo: false } %>
+      <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="operator-dialog#close">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+  <div class="sku-planner-dialog__body">
+    <dl class="sku-plan-detail__facts sku-operation-plan-dialog__facts">
+      <div><dt><%= t("reports.sku_detail.planner.plan_date") %></dt><dd><%= plan.plan_date.iso8601 %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.target") %></dt><dd><%= t("reports.sku_detail.planner.targets.#{plan.target}") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.operation") %></dt><dd><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.status") %></dt><dd><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.referer") %></dt><dd><%= plan.referer.join(", ") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.fields.created_at") %></dt><dd><%= display_time(plan.created_at) %></dd></div>
+    </dl>
+    <section class="sku-operation-plan-dialog__section">
+      <h4 class="section-title"><%= t("reports.sku_detail.planner.message") %></h4>
+      <div class="sku-planner-dialog__message" data-controller="markdown">
+        <pre data-markdown-target="source"><%= plan.message %></pre>
+        <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+      </div>
+    </section>
+    <section class="sku-operation-plan-dialog__section">
+      <h4 class="section-title"><%= t("reports.sku_detail.sections.operation_records") %></h4>
+      <% if plan.operation_actions.any? %>
+        <% plan.operation_actions.sort_by { |action| [action.operated_at, action.id] }.reverse_each do |action| %>
+          <% fields = action.diff_result.fetch("fields", {}) %>
+          <div class="sku-operation-plan-dialog__action">
+            <strong><%= t("erp.operation_actions.operation_types.#{action.operation_type}") %></strong>
+            <p><%= t("reports.sku_detail.planner.action_meta", time: display_time(action.operated_at), store: action.store.store_name, operator: action.operated_by_user.display_name) %></p>
+            <% if action.diff_result["note"].present? %>
+              <div><%= simple_format(action.diff_result["note"]) %></div>
+            <% end %>
+            <% operation_action_diff_entries(fields).each do |path, changes| %>
+              <div><strong><%= operation_action_diff_path(path) %></strong>
+                <% changes.each do |change_type, value| %>
+                  <span><%= t("erp.operation_actions.change_types.#{change_type}") %>: <%= operation_action_diff_value(value) %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="text-muted"><%= t("erp.operation_actions.empty.no_actions") %></p>
+      <% end %>
+    </section>
+  </div>
+</dialog>

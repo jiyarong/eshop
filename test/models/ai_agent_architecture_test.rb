@@ -89,6 +89,16 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_equal 0.45, tuned_agent.temperature.to_f
   end
 
+  test "updates the legacy default SKU Planner prompt without changing custom prompts" do
+    agent = Agent.ensure_fixed!("sku_planner")
+    agent.update!(system_prompt: Agent::SKU_PLANNER_LEGACY_PROMPT)
+
+    assert_equal Agent::SKU_PLANNER_PROMPT, Agent.ensure_fixed!("sku_planner").system_prompt
+
+    agent.update!(system_prompt: "自定义 SKU Planner 提示词")
+    assert_equal "自定义 SKU Planner 提示词", Agent.ensure_fixed!("sku_planner").system_prompt
+  end
+
   test "custom agents are allowed" do
     agent = Agent.new(
       code: "custom_dynamic_agent",

@@ -7188,16 +7188,19 @@ textarea:focus {
   color: #1565c0;
 }
 
-.sku-operation-plan-tag__status,
 .sku-operation-plan-tag__time {
   font-weight: 400;
   white-space: nowrap;
 }
 
-.ai-diagnosis-event-tag--advice.sku-operation-plan-tag--expired.sku-operation-plan-tag--active {
-  border-color: #e6b94a;
-  color: #8a5b00;
-  background: #fff9e6;
+.ai-diagnosis-event-tag--advice.sku-operation-plan-tag--active {
+  border-color: #ef9a9a;
+  color: #9f2525;
+  background: #fff7f7;
+}
+
+.ai-diagnosis-event-tag--advice.sku-operation-plan-tag--active:hover {
+  background: #ffeded;
 }
 
 .ai-diagnosis-event-tag--advice.sku-operation-plan-tag--done {
@@ -7210,6 +7213,29 @@ textarea:focus {
   border-color: #cbd5e1;
   color: #64748b;
   background: #f8fafc;
+}
+
+.ai-diagnosis-event-tag--advice[class*="sku-operation-plan-tag--"]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.sku-operation-plan-dialog__section + .sku-operation-plan-dialog__section {
+  margin-top: 24px;
+}
+
+.sku-operation-plan-dialog__facts {
+  margin: 0 0 24px;
+}
+
+.sku-operation-plan-dialog__action {
+  padding: 12px 0;
+  border-top: 1px solid var(--erp-border);
+}
+
+.sku-operation-plan-dialog__action p {
+  margin: 6px 0 0;
+  color: var(--erp-muted);
 }
 
 .sku-ai-diagnosis-event-popover {

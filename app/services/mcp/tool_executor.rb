@@ -243,16 +243,21 @@ module Mcp
       operation = Ec::SkuOperationPlan::OPERATION_ALIASES.fetch(args["operation"].to_s, args["operation"].to_s)
       return { error: "operation is invalid" } unless Ec::SkuOperationPlan.operations.key?(operation)
 
-      referer = Array(args["referer"]).filter_map { |event_type| event_type.to_s.strip.presence }.uniq
-      return { error: "referer is required" } if referer.empty?
+      references = Array(args["referer"])
+      return { error: "referer is required" } if references.empty?
 
-      latest_event_types = Ec::AIDiagnosisEvent
+      referer = references.map { |id| Integer(id, exception: false) if id.is_a?(Integer) || id.is_a?(String) }.uniq
+      return { error: "referer must contain diagnosis event IDs" } unless referer.all? { |id| id&.positive? }
+
+      latest_event_ids = Ec::AIDiagnosisEvent
         .joins(:ai_diagnosis)
         .where(
           ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name, is_latest: true }
         )
-        .pluck(:event_type)
-      return { error: "referer does not match latest diagnosis events" } unless (referer - latest_event_types).empty?
+        .where.not(severity: "info")
+        .where(id: referer)
+        .pluck(:id)
+      return { error: "referer does not match latest diagnosis events" } unless (referer - latest_event_ids).empty?
 
       message = args["message"].to_s.strip
       return { error: "message is required" } if message.blank?

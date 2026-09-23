@@ -2030,6 +2030,7 @@ zh:
         remaining_hours: "%{hours} h"
         expired: "已超期"
         tag_name: "%{target} · %{operation}"
+        action_meta: "%{time} · %{store} · %{operator}"
         enqueued: "SKU Planner 任务已提交。"
         latest: "最新"
         message: "计划详情"

@@ -41,7 +41,7 @@ module Ec
     before_validation :normalize_plan_values
 
     validates :message, :retain_until, :plan_date, presence: true
-    validate :referer_must_be_event_types
+    validate :referer_must_be_present
 
     scope :retained, -> { where("retain_until > ?", Time.current) }
     scope :latest, -> { where(is_latest: true) }
@@ -67,8 +67,11 @@ module Ec
       self.completed_at ||= Time.current
     end
 
-    def referer_must_be_event_types
-      self.referer = Array(referer).filter_map { |event_type| event_type.to_s.strip.presence }.uniq
+    def referer_must_be_present
+      self.referer = Array(referer).filter_map do |reference|
+        value = reference.is_a?(String) ? reference.strip : reference
+        value if value.present?
+      end.uniq
       errors.add(:referer, :blank) if referer.empty?
     end
   end

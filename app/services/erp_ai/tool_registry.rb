@@ -105,9 +105,9 @@ module ErpAI
             },
             referer: {
               type: "array",
-              items: { type: "string" },
+              items: { type: "integer" },
               minItems: 1,
-              description: "对应的一个或多个通用诊断 event_type"
+              description: "上下文中对应的一个或多个通用诊断事件 id"
             },
             message: { type: "string", description: "具体操作的依据和操作详情" }
           },

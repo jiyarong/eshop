@@ -1794,6 +1794,7 @@ ru:
         remaining_hours: "%{hours} h"
         expired: "Срок истёк"
         tag_name: "%{target} · %{operation}"
+        action_meta: "%{time} · %{store} · %{operator}"
         enqueued: "Задача SKU Planner поставлена в очередь."
         latest: "Актуальный"
         message: "Подробности плана"
