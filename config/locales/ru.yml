@@ -1878,6 +1878,7 @@ ru:
         aria_label: "Разделы SKU"
         attachments: "Файлы"
         basic: "Основное"
+        context: "Контекст SKU"
         costs: "Себестоимость"
         competitor_data: "Данные конкурентов"
         inventory: "Обзор запасов"
@@ -1891,6 +1892,23 @@ ru:
         operation_actions: "Операционные записи"
         stores: "Продажи по магазинам"
         trend: "Тренд продаж"
+      context:
+        title: "Контекст SKU"
+        snapshot_meta: "Снимок: %{date} · Период данных: %{from} — %{to}"
+        read_only_note: "Показан последний сохранённый снимок общей диагностики. Просмотр страницы не собирает новые данные."
+        index_label: "Разделы контекста"
+        description: "Описание"
+        view_description: "Показать полное описание"
+        copy_description_short: "Копировать описание"
+        copy_description: "Копировать описание %{name}"
+        copy_format: "Копировать %{format_name} — %{name}"
+        copy: "Копировать"
+        copied: "Скопировано"
+        view_format: "Показать %{format_name}"
+        formats:
+          markdown: "Markdown"
+          json: "JSON"
+        empty: "Сохранённый снимок контекста SKU отсутствует."
       lifecycle:
         data_started_on: "Полные данные доступны с %{date}"
         summary:

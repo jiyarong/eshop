@@ -257,6 +257,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::Snapshot.where(id: @context_snapshot_ids).delete_all if @context_snapshot_ids
     sku_codes = [@sku&.sku_code, @second_sku&.sku_code].compact
     marketing_state_ids = Ec::SkuMarketingState.where(sku_id: [ @sku&.id, @second_sku&.id ].compact).pluck(:id)
     Ec::OperationLog.where(record_type: "Ec::SkuMarketingState", record_id: marketing_state_ids).delete_all
@@ -1156,6 +1157,61 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓建议"
     assert_select ".sku-detail-tabs a:nth-child(6)", text: "运营记录"
     assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
+  end
+
+  test "sku context tab shows the latest saved diagnosis snapshot with separate copy sources" do
+    @context_snapshot_ids = []
+    older = Ec::Snapshot.create!(snapshot_type: Ec::SkuContextSnapshot.snapshot_type,
+      snapshot_date: Date.new(2026, 6, 9), sku: @sku,
+      content: { period: { from: "2026-06-01", to: "2026-06-07" }, categories: {
+        base: { name: "旧版", description: "旧描述", markdown: "旧 Markdown", raw_json: { data: { base: { old: true } } } }
+      } })
+    @context_snapshot_ids << older.id
+    latest = Ec::Snapshot.create!(snapshot_type: Ec::SkuContextSnapshot.snapshot_type,
+      snapshot_date: Date.new(2026, 6, 10), sku: @sku,
+      content: { period: { from: "2026-06-02", to: "2026-06-08" }, categories: {
+        base: { name: "基础资料", description: "描述第一行\n更多描述", markdown: "**SKU** #{@sku_code}",
+          raw_json: { data: { sku_code: @sku_code, base: { quantity: 3 } } } }
+      } })
+    @context_snapshot_ids << latest.id
+    other = Ec::Snapshot.create!(snapshot_type: Ec::SkuContextSnapshot.snapshot_type,
+      snapshot_date: Date.new(2026, 6, 11), sku: @second_sku,
+      content: { period: { from: "2026-06-03", to: "2026-06-09" }, categories: {} })
+    @context_snapshot_ids << other.id
+
+    assert_no_difference "Ec::Snapshot.count" do
+      get report_sku_path(@sku_code, tab: "context"), headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".sku-detail-tabs a[aria-current='page']", "SKU上下文"
+    assert_select ".sku-context__meta", text: /2026-06-10.*2026-06-02.*2026-06-08/
+    assert_select "nav.sku-context__index a[href='#sku-context-#{@sku.id}-base'][data-turbo='false']", "基础资料"
+    assert_select "#sku-context-#{@sku.id}-base" do
+      assert_select ".sku-context__description[data-controller='clipboard']" do
+        assert_select "button[data-action='clipboard#copy']", text: "复制描述"
+        assert_select "details summary", text: "查看完整描述"
+        assert_select "pre[data-clipboard-target='source']", text: /更多描述/
+      end
+      assert_select ".sku-context__format[data-controller='clipboard']", count: 2
+      assert_select ".sku-context__format pre[data-clipboard-target='source']", text: /\*\*SKU\*\* #{@sku_code}/, count: 1
+      assert_select ".sku-context__format pre[data-clipboard-target='source']", text: /"quantity": 3/, count: 1
+      assert_select "button[data-action='clipboard#copy']", count: 3
+      assert_select "[data-clipboard-target='icon'].bi-copy", count: 3
+      assert_select "[data-clipboard-target='status'][aria-live='polite']", count: 3
+    end
+    assert_select ".sku-context__section", count: 1
+    assert_select ".sku-context", text: /旧版/, count: 0
+  end
+
+  test "sku context tab has a read-only empty state in a drawer" do
+    assert_no_difference "Ec::Snapshot.count" do
+      get report_sku_path(@sku_code, tab: "context"),
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_tab_context" }
+    end
+
+    assert_response :success
+    assert_select "turbo-frame#sku_detail_tab_context .sku-context .empty-state", text: /暂无已保存的 SKU 上下文快照/
   end
 
   test "sku detail hides the unmaintained sku listing status" do

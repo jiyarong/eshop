@@ -2128,6 +2128,7 @@ zh:
         aria_label: "SKU详情分组"
         attachments: "附件"
         basic: "基础配置"
+        context: "SKU上下文"
         costs: "成本情况"
         competitor_data: "竞品数据"
         inventory: "库存概况"
@@ -2142,6 +2143,23 @@ zh:
         operation_actions: "运营记录"
         stores: "各店铺销量情况"
         trend: "销量历史趋势"
+      context:
+        title: "SKU上下文"
+        snapshot_meta: "快照日期：%{date} · 数据周期：%{from} 至 %{to}"
+        read_only_note: "展示最近一次已保存的通用诊断快照；查看页面不会重新采集数据。"
+        index_label: "上下文板块导航"
+        description: "描述"
+        view_description: "查看完整描述"
+        copy_description_short: "复制描述"
+        copy_description: "复制%{name}描述"
+        copy_format: "复制%{name}%{format_name}"
+        copy: "复制"
+        copied: "已复制"
+        view_format: "查看%{format_name}"
+        formats:
+          markdown: "Markdown"
+          json: "JSON"
+        empty: "暂无已保存的 SKU 上下文快照。"
       lifecycle:
         data_started_on: "完整可用数据始于 %{date}"
         summary:

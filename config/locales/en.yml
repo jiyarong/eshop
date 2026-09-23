@@ -1927,6 +1927,7 @@ en:
         aria_label: "SKU detail sections"
         attachments: "Attachments"
         basic: "Basic"
+        context: "SKU context"
         costs: "Costs"
         competitor_data: "Competitor data"
         inventory: "Inventory"
@@ -1940,6 +1941,23 @@ en:
         operation_actions: "Operation records"
         stores: "Store sales"
         trend: "Sales trend"
+      context:
+        title: "SKU context"
+        snapshot_meta: "Snapshot: %{date} · Data period: %{from} to %{to}"
+        read_only_note: "Shows the latest saved general-diagnosis snapshot. Viewing this page does not collect new data."
+        index_label: "Context sections"
+        description: "Description"
+        view_description: "View full description"
+        copy_description_short: "Copy description"
+        copy_description: "Copy %{name} description"
+        copy_format: "Copy %{name} %{format_name}"
+        copy: "Copy"
+        copied: "Copied"
+        view_format: "View %{format_name}"
+        formats:
+          markdown: "Markdown"
+          json: "JSON"
+        empty: "No saved SKU context snapshot is available."
       lifecycle:
         data_started_on: "Complete data is available from %{date}"
         summary:

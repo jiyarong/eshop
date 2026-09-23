@@ -41,7 +41,7 @@ class ReportsController < ApplicationController
   ]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit profit_prediction inventory supply_orders warehouses operation_actions ads search_terms ozon_chats competitor_data ai_inventory_health basic].freeze
+  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit profit_prediction inventory supply_orders warehouses operation_actions ads search_terms ozon_chats competitor_data ai_inventory_health context basic].freeze
   SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
@@ -1096,6 +1096,8 @@ class ReportsController < ApplicationController
     load_sku_ads if @active_tab == "ads"
     load_sku_ozon_chats if @active_tab == "ozon_chats"
     load_sku_competitor_data if @active_tab == "competitor_data"
+    @sku_context_snapshot = Ec::Snapshot.of_type(Ec::SkuContextSnapshot.snapshot_type)
+      .for_sku(@sku).order(snapshot_date: :desc).first if @active_tab == "context"
 
     @from_date = parse_report_date(params[:from_date]) || default_sku_detail_from_date
     @to_date = parse_report_date(params[:to_date]) || user_today

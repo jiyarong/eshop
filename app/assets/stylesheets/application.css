@@ -4191,6 +4191,63 @@ table thead th {
   color: var(--erp-brand);
 }
 
+.sku-context { min-width: 0; }
+.sku-context__header { margin-bottom: 20px; }
+.sku-context__header .section-title { margin-bottom: 8px; }
+.sku-context__meta { margin: 0 0 4px; font-weight: 600; }
+.sku-context__note { margin: 0; color: var(--erp-muted); }
+.sku-context__index { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.sku-context__index-link {
+  padding: 8px 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  background: var(--erp-surface-soft);
+  text-decoration: none;
+  color: var(--erp-brand);
+}
+.sku-context__index-link:hover, .sku-context__index-link:focus-visible { border-color: var(--erp-brand); }
+.sku-context__sections { display: grid; gap: 16px; }
+.sku-context__section {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: var(--erp-surface);
+  scroll-margin-top: 20px;
+}
+.sku-context__section h3 { margin: 0 0 14px; font-size: 16px; }
+.sku-context__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sku-context__row .button { min-height: 36px; flex-shrink: 0; }
+.sku-context__row .button.is-copied { background: var(--erp-accent); }
+.sku-context__description, .sku-context__format {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  background: var(--erp-surface-soft);
+}
+.sku-context__excerpt { margin: 8px 0; color: var(--erp-muted); overflow-wrap: anywhere; }
+.sku-context__formats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.sku-context details { margin-top: 8px; }
+.sku-context summary { width: fit-content; cursor: pointer; color: var(--erp-brand); }
+.sku-context pre {
+  max-height: 480px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  background: var(--erp-surface);
+  color: var(--erp-text);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .sku-context__formats { grid-template-columns: 1fr; }
+}
+
 .competitor-data-history {
   min-width: 0;
 }

@@ -1,0 +1,66 @@
+<section class="panel sku-context">
+  <header class="sku-context__header">
+    <h2 class="section-title"><%= t("reports.sku_detail.context.title") %></h2>
+    <% if @sku_context_snapshot %>
+      <% period = @sku_context_snapshot.data.fetch("period") %>
+      <p class="sku-context__meta"><%= t("reports.sku_detail.context.snapshot_meta", date: @sku_context_snapshot.snapshot_date, from: period.fetch("from"), to: period.fetch("to")) %></p>
+      <p class="sku-context__note"><%= t("reports.sku_detail.context.read_only_note") %></p>
+    <% end %>
+  </header>
+
+  <% if @sku_context_snapshot %>
+    <% categories = @sku_context_snapshot.data.fetch("categories") %>
+    <nav class="sku-context__index" aria-label="<%= t("reports.sku_detail.context.index_label") %>">
+      <% Ec::SkuContextSnapshot::CATEGORIES.each_key do |key| %>
+        <% next unless categories[key] %>
+        <%= link_to categories[key].fetch("name"), "#sku-context-#{@sku.id}-#{key}", class: "sku-context__index-link", data: { turbo: false } %>
+      <% end %>
+    </nav>
+
+    <div class="sku-context__sections">
+      <% Ec::SkuContextSnapshot::CATEGORIES.each_key do |key| %>
+        <% category = categories[key] %>
+        <% next unless category %>
+        <article id="sku-context-<%= @sku.id %>-<%= key %>" class="sku-context__section">
+          <h3><%= category.fetch("name") %></h3>
+          <div class="sku-context__description" data-controller="clipboard" data-clipboard-copied-label-value="<%= t("reports.sku_detail.context.copied") %>">
+            <div class="sku-context__row">
+              <strong><%= t("reports.sku_detail.context.description") %></strong>
+              <button type="button" class="button" data-clipboard-target="button" data-action="clipboard#copy" aria-label="<%= t("reports.sku_detail.context.copy_description", name: category.fetch("name")) %>">
+                <i class="bi bi-copy" data-clipboard-target="icon" aria-hidden="true"></i>
+                <%= t("reports.sku_detail.context.copy_description_short") %>
+              </button>
+              <span class="sr-only" role="status" aria-live="polite" data-clipboard-target="status"></span>
+            </div>
+            <p class="sku-context__excerpt"><%= category.fetch("description").lines.first.to_s.strip %></p>
+            <details>
+              <summary><%= t("reports.sku_detail.context.view_description") %></summary>
+              <pre data-clipboard-target="source"><%= category.fetch("description") %></pre>
+            </details>
+          </div>
+
+          <div class="sku-context__formats">
+            <% { markdown: category.fetch("markdown"), json: JSON.pretty_generate(category.fetch("raw_json")) }.each do |format, content| %>
+              <div class="sku-context__format" data-controller="clipboard" data-clipboard-copied-label-value="<%= t("reports.sku_detail.context.copied") %>">
+                <div class="sku-context__row">
+                  <strong><%= t("reports.sku_detail.context.formats.#{format}") %></strong>
+                  <button type="button" class="button" data-clipboard-target="button" data-action="clipboard#copy" aria-label="<%= t("reports.sku_detail.context.copy_format", format_name: t("reports.sku_detail.context.formats.#{format}"), name: category.fetch("name")) %>">
+                    <i class="bi bi-copy" data-clipboard-target="icon" aria-hidden="true"></i>
+                    <%= t("reports.sku_detail.context.copy") %>
+                  </button>
+                  <span class="sr-only" role="status" aria-live="polite" data-clipboard-target="status"></span>
+                </div>
+                <details>
+                  <summary><%= t("reports.sku_detail.context.view_format", format_name: t("reports.sku_detail.context.formats.#{format}")) %></summary>
+                  <pre data-clipboard-target="source"><%= content %></pre>
+                </details>
+              </div>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="empty-state"><%= t("reports.sku_detail.context.empty") %></p>
+  <% end %>
+</section>
