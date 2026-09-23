@@ -86,17 +86,16 @@ module ErpAI
       question = <<~PROMPT
         当前 SKU：#{sku.sku_code}
 
-        下方是该 SKU 通用诊断中所有 is_latest 事件。请仅基于这些事件制定运营操作计划。
+        下方是该 SKU 通用诊断中最新的非 info 事件。severity 表示执行紧迫程度：info 是仅供了解、暂不需要操作的信息；warning 是需要关注并安排处理的问题；critical 是需要优先处理的紧急问题。info 事件已从上下文排除，不要为其制定计划。
+        请仅基于下方事件制定运营操作计划。
         每条计划必须调用 save_sku_plan，target 只能是 price、advertising、listing_attribute、listing_image，operation 只能是 increase、open、close、modify、maintain，referer 必须填写对应的一个或多个 event_type，message 写清操作依据和具体执行详情。
         有明确依据时可以创建一条或多条计划；没有足够依据时可以不调用工具。不要处理其他 SKU，不要编造事件。
       PROMPT
 
       sku.with_lock do
-        zone = Time.find_zone!("Asia/Shanghai")
-        day_start = zone.now.beginning_of_day
-        day_end = day_start + 1.day
+        plan_date = Time.current.in_time_zone("Asia/Shanghai").to_date
         plans = sku.sku_operation_plans
-        plans.where(created_at: day_start...day_end).delete_all
+        plans.where(plan_date: plan_date).delete_all
 
         conversation = @runner_factory.call(agent: agent, user: user, sku: sku).ask(
           question: question,
@@ -105,7 +104,7 @@ module ErpAI
           business_object_id: sku.id.to_s,
           data_summary: data_summary
         )
-        plans.where.not(created_at: day_start...day_end).latest.update_all(is_latest: false)
+        plans.where.not(plan_date: plan_date).latest.update_all(is_latest: false)
         conversation
       end
     end
@@ -116,6 +115,7 @@ module ErpAI
         .where(
           ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name, is_latest: true }
         )
+        .where.not(severity: "info")
         .includes(:sub_agent)
         .order(:position, :id)
         .to_a

@@ -331,34 +331,105 @@
           <% end %>
         <% end %>
       </div>
-      <% if @sku_operation_plans.any? %>
-        <div class="ai-health-result-list">
-          <% @sku_operation_plans.each_with_index do |plan, index| %>
-            <details class="panel ai-health-result ai-health-result--planner"<%= " open" if index.zero? %>>
-              <summary class="ai-health-result__summary">
-                <i class="bi bi-chevron-right ai-health-result__chevron" aria-hidden="true"></i>
-                <div class="ai-health-result__header">
-                  <h3 class="section-title"><%= t("reports.sku_detail.planner.plan_title", id: plan.id) %></h3>
-                  <div class="ai-health-result__meta">
-                    <time datetime="<%= plan.created_at.iso8601 %>"><%= display_time(plan.created_at) %></time>
-                    <span><%= t("reports.sku_detail.planner.#{plan.is_latest? ? 'latest' : 'previous'}") %></span>
-                  </div>
-                </div>
+      <% if @sku_operation_plans_by_date.any? %>
+        <div class="sku-planner-history">
+          <% @sku_operation_plans_by_date.each_with_index do |(plan_date, plans), index| %>
+            <details class="sku-planner-day"<%= " open" if index.zero? %>>
+              <summary class="sku-planner-day__summary">
+                <i class="bi bi-chevron-right sku-planner-day__chevron" aria-hidden="true"></i>
+                <time datetime="<%= plan_date.iso8601 %>"><%= plan_date.iso8601 %></time>
+                <span class="sku-planner-day__count"><%= t("reports.sku_detail.planner.plan_count", count: plans.size) %></span>
+                <% if plans.any?(&:is_latest?) %>
+                  <span class="sku-planner-day__latest"><%= t("reports.sku_detail.planner.latest") %></span>
+                <% end %>
               </summary>
-              <div class="ai-health-result__body">
-                <div class="ai-operation-diagnosis__badges">
-                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--neutral"><%= t("reports.sku_detail.planner.targets.#{plan.target}") %></span>
-                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--neutral"><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></span>
-                  <span class="status-pill ai-operation-diagnosis__badge ai-operation-diagnosis__badge--neutral"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span>
-                </div>
-                <p class="ai-operation-diagnosis__summary"><%= plan.message %></p>
-                <dl class="ai-operation-diagnosis__meta">
-                  <div>
-                    <dt><%= t("reports.sku_detail.planner.referer") %></dt>
-                    <dd><%= plan.referer.join(", ") %></dd>
+              <%= table_viewport do %>
+                <table class="ai-health-table sku-planner-table">
+                  <thead>
+                    <tr>
+                      <th><%= t("reports.sku_detail.planner.target") %></th>
+                      <th><%= t("reports.sku_detail.planner.operation") %></th>
+                      <th><%= t("reports.sku_detail.planner.referer") %></th>
+                      <th><%= t("reports.sku_detail.planner.message") %></th>
+                      <th><%= t("reports.sku_detail.planner.status") %></th>
+                      <th><%= t("reports.sku_detail.planner.conversation") %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% plans.each do |plan| %>
+                      <% conversation_path = plan.conversation ? ai_conversation_path(plan.conversation, locale: params[:locale].presence) : nil %>
+                      <tr class="<%= class_names("ai-health-table__linked-row": conversation_path) %>"
+                          <% if conversation_path %>
+                            data-controller="table-row-link"
+                            data-action="click->table-row-link#visit"
+                            data-table-row-link-url-value="<%= conversation_path %>"
+                          <% end %>>
+                        <td>
+                          <% if conversation_path %>
+                            <%= link_to t("reports.sku_detail.planner.targets.#{plan.target}"), conversation_path,
+                                        class: "ai-health-table__row-link", data: { turbo_frame: "_top" } %>
+                          <% else %>
+                            <%= t("reports.sku_detail.planner.targets.#{plan.target}") %>
+                          <% end %>
+                        </td>
+                        <td><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></td>
+                        <td class="sku-planner-table__referer"><%= plan.referer.join(", ") %></td>
+                        <td>
+                          <button type="button"
+                                  class="sku-planner-table__preview"
+                                  data-controller="operator-dialog"
+                                  data-action="operator-dialog#open"
+                                  data-operator-dialog-id="sku-plan-<%= plan.id %>-message"
+                                  aria-label="<%= t("reports.sku_detail.planner.view_details") %>">
+                            <%= truncate(plan.message.squish, length: 80) %>
+                          </button>
+                        </td>
+                        <td><span class="status-pill <%= plan.active? ? 'is-active' : 'is-muted' %>"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span></td>
+                        <td>
+                          <% if conversation_path %>
+                            <%= link_to conversation_path,
+                                        class: "ai-health-table__row-link sku-planner-table__conversation",
+                                        data: { turbo_frame: "_top" } do %>
+                              <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                              <%= t("reports.sku_detail.planner.view_conversation") %>
+                            <% end %>
+                          <% else %>
+                            <%= report_value(nil) %>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% end %>
+              <% plans.each do |plan| %>
+                <dialog id="sku-plan-<%= plan.id %>-message"
+                        class="sku-planner-dialog"
+                        data-controller="operator-dialog"
+                        data-action="click->operator-dialog#closeOnBackdrop"
+                        aria-labelledby="sku-plan-<%= plan.id %>-title">
+                  <div class="sku-planner-dialog__header">
+                    <div>
+                      <h3 id="sku-plan-<%= plan.id %>-title"><%= t("reports.sku_detail.planner.plan_title", id: plan.id) %></h3>
+                      <p><%= t("reports.sku_detail.planner.targets.#{plan.target}") %> / <%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></p>
+                    </div>
+                    <div class="sku-planner-dialog__actions">
+                      <%= link_to report_sku_operation_plan_path(@sku.sku_code, plan, locale: params[:locale].presence),
+                                  class: "button button-secondary", target: "_blank", rel: "noopener noreferrer", data: { turbo: false } do %>
+                        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                        <%= t("reports.sku_detail.planner.view_details") %>
+                      <% end %>
+                      <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="operator-dialog#close">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                      </button>
+                    </div>
                   </div>
-                </dl>
-              </div>
+                  <div class="sku-planner-dialog__body" data-controller="markdown">
+                    <pre data-markdown-target="source"><%= plan.message %></pre>
+                    <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+                  </div>
+                </dialog>
+              <% end %>
             </details>
           <% end %>
         </div>

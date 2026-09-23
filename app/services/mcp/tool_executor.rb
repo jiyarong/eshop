@@ -261,7 +261,8 @@ module Mcp
         target: target,
         operation: operation,
         referer: referer,
-        message: message
+        message: message,
+        conversation_id: @conversation_id
       )
       {
         success: true,

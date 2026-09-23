@@ -22,8 +22,9 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   end
 
   test "same-day rerun replaces plans and makes previous days non-latest" do
-    previous = create_plan("Previous", created_at: 1.day.ago)
-    replaced = create_plan("Replaced")
+    today = Time.current.in_time_zone("Asia/Shanghai").to_date
+    previous = create_plan("Previous", plan_date: today - 1.day)
+    replaced = create_plan("Replaced", created_at: 1.day.ago, plan_date: today)
 
     run_with_plan("First")
     assert_not Ec::SkuOperationPlan.exists?(replaced.id)
@@ -46,11 +47,65 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert existing.reload.is_latest?
   end
 
+  test "planner context excludes info events and explains all three severity levels" do
+    @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
+    @diagnosis.events.create!(event_type: "urgent_stock", severity: "critical", message: "Immediate action")
+    captured = nil
+    fake_runner = Object.new
+    fake_runner.define_singleton_method(:ask) { |**args| captured = args }
+
+    ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user,
+      runner_factory: ->(**_args) { fake_runner }).run
+
+    events = JSON.parse(captured.fetch(:data_summary))
+    assert_equal %w[stock_risk urgent_stock], events.map { |event| event.fetch("event_type") }
+    assert_includes captured.fetch(:question), "info 是仅供了解"
+    assert_includes captured.fetch(:question), "warning 是需要关注"
+    assert_includes captured.fetch(:question), "critical 是需要优先处理"
+  end
+
+  test "planner skips SKUs with only info events" do
+    @diagnosis.events.delete_all
+    @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
+    existing = create_plan("Existing")
+
+    result = ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user,
+      runner_factory: ->(**_args) { flunk "Planner should not run for info-only events" }).run
+
+    assert_empty result
+    assert existing.reload.is_latest?
+  end
+
+  test "plan date uses Shanghai calendar day" do
+    travel_to Time.utc(2026, 9, 21, 17, 30) do
+      plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain",
+        referer: [ "stock_risk" ], message: "After midnight")
+      assert_equal Date.new(2026, 9, 22), plan.plan_date
+    end
+  end
+
+  test "planner tool attaches its conversation to saved plans" do
+    @user.roles << Role.find_by!(code: "manager")
+    conversation = Agent.ensure_fixed!("sku_planner").conversations.create!(
+      user: @user, module_name: "sku_planner", business_object_type: "Ec::Sku", business_object_id: @sku.id.to_s
+    )
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
+    executor.conversation_id = conversation.id
+
+    result = executor.call(id: "save", name: "save_sku_plan", arguments: {
+      sku_code: @sku.sku_code, target: "price", operation: "maintain",
+      referer: [ "stock_risk" ], message: "Keep price stable"
+    })
+
+    assert result.dig(:result, :success)
+    assert_equal conversation.id, @sku.sku_operation_plans.find(result.dig(:result, :plan_id)).conversation_id
+  end
+
   private
 
-  def create_plan(message, created_at: Time.current)
+  def create_plan(message, created_at: Time.current, plan_date: created_at.in_time_zone("Asia/Shanghai").to_date)
     @sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: [ "stock_risk" ],
-                                     message: message, created_at: created_at)
+                                     message: message, created_at: created_at, plan_date: plan_date)
   end
 
   def run_with_plan(message, fail_after_save: false)

@@ -1,0 +1,63 @@
+<% content_for :title, t("reports.sku_detail.planner.plan_title", id: @plan.id) %>
+<% content_for :page_heading, t("reports.sku_detail.sections.sku_planner") %>
+
+<div class="sku-plan-detail">
+  <header class="sku-plan-detail__header">
+    <div class="sku-plan-detail__heading">
+      <p class="resource-eyebrow"><%= @sku.sku_code %> / <%= t("reports.sku_detail.sections.sku_planner") %></p>
+      <h1 class="page-title"><%= t("reports.sku_detail.planner.plan_title", id: @plan.id) %></h1>
+      <p class="sku-plan-detail__product"><%= report_value(@sku.product_name) %></p>
+    </div>
+    <div class="sku-plan-detail__actions">
+      <% if @plan.conversation %>
+        <%= link_to ai_conversation_path(@plan.conversation, locale: params[:locale].presence), class: "button" do %>
+          <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+          <%= t("reports.sku_detail.planner.view_conversation") %>
+        <% end %>
+      <% end %>
+      <%= link_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence), class: "button button-secondary" do %>
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+        <%= t("reports.sku_detail.ai_diagnosis_details.back") %>
+      <% end %>
+    </div>
+  </header>
+
+  <dl class="sku-plan-detail__facts">
+    <div>
+      <dt><%= t("reports.sku_detail.planner.plan_date") %></dt>
+      <dd><time datetime="<%= @plan.plan_date.iso8601 %>"><%= @plan.plan_date.iso8601 %></time></dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.planner.target") %></dt>
+      <dd><%= t("reports.sku_detail.planner.targets.#{@plan.target}") %></dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.planner.operation") %></dt>
+      <dd><%= t("reports.sku_detail.planner.operations.#{@plan.operation}") %></dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.planner.status") %></dt>
+      <dd><span class="status-pill <%= @plan.active? ? 'is-active' : 'is-muted' %>"><%= t("reports.sku_detail.planner.statuses.#{@plan.status}") %></span></dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.planner.referer") %></dt>
+      <dd class="sku-plan-detail__references">
+        <% @plan.referer.each do |event_type| %>
+          <span><%= event_type %></span>
+        <% end %>
+      </dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.fields.created_at") %></dt>
+      <dd><time datetime="<%= @plan.created_at.iso8601 %>"><%= display_time(@plan.created_at) %></time></dd>
+    </div>
+  </dl>
+
+  <section class="sku-plan-detail__message" aria-labelledby="sku-plan-message-title">
+    <h2 id="sku-plan-message-title" class="section-title"><%= t("reports.sku_detail.planner.message") %></h2>
+    <div class="sku-plan-detail__body" data-controller="markdown">
+      <pre data-markdown-target="source"><%= @plan.message %></pre>
+      <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
+    </div>
+  </section>
+</div>

@@ -143,6 +143,11 @@ class ReportsController < ApplicationController
     }
   end
 
+  def sku_operation_plan
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @plan = @sku.sku_operation_plans.includes(:conversation).find(params[:plan_id])
+  end
+
   def new_sku_general_diagnosis
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     @sku_diagnosis_rules = Ec::SkuDiagnosisRule.order(:id)
@@ -1041,7 +1046,9 @@ class ReportsController < ApplicationController
         view_context.attachment_file_kind(attachment) == :image
     end
     if @active_tab == "ai_inventory_health"
-      @sku_operation_plans = @sku.sku_operation_plans.order(created_at: :desc, id: :desc).limit(20)
+      plan_dates = @sku.sku_operation_plans.select(:plan_date).distinct.order(plan_date: :desc).limit(5)
+      @sku_operation_plans_by_date = @sku.sku_operation_plans.where(plan_date: plan_dates).includes(:conversation)
+        .order(plan_date: :desc, created_at: :desc, id: :desc).group_by(&:plan_date)
       @general_diagnosis_results = @sku.ai_diagnoses
         .where(type: Ec::GeneralDiagnosis.sti_name)
         .includes(:submitted_by, events: [ :conversation, :sub_agent ])

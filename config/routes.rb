@@ -67,6 +67,7 @@ Rails.application.routes.draw do
   get "reports/skus/:sku_code/general_diagnoses/new" => "reports#new_sku_general_diagnosis", as: :new_report_sku_general_diagnosis
   post "reports/skus/:sku_code/general_diagnoses" => "reports#create_sku_general_diagnosis", as: :report_sku_general_diagnoses
   post "reports/skus/:sku_code/planner" => "reports#create_sku_planner", as: :report_sku_planner
+  get "reports/skus/:sku_code/plans/:plan_id" => "reports#sku_operation_plan", as: :report_sku_operation_plan
   patch "reports/skus/:sku_code/diagnosis_events/:event_id/ignore" => "reports#ignore_sku_ai_diagnosis_event", as: :ignore_report_sku_ai_diagnosis_event
   get "reports/skus/:sku_code/listing_diagnoses" => "reports#sku_listing_diagnoses", as: :report_sku_listing_diagnoses
   get "reports/skus/:sku_code/listing_diagnoses/new" => "reports#new_sku_listing_diagnosis", as: :new_report_sku_listing_diagnosis

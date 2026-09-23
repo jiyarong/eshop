@@ -17,6 +17,7 @@ module Ec
     }.freeze
 
     belongs_to :sku, class_name: "Ec::Sku"
+    belongs_to :conversation, optional: true
 
     enum :status, { active: "active", done: "done", ignored: "ignored" }, validate: true
     enum :target, {
@@ -34,10 +35,11 @@ module Ec
     }, validate: true
 
     before_validation :set_retain_until, on: :create
+    before_validation :set_plan_date, on: :create
     before_validation :set_completed_at
     before_validation :normalize_plan_values
 
-    validates :message, :retain_until, presence: true
+    validates :message, :retain_until, :plan_date, presence: true
     validate :referer_must_be_event_types
 
     scope :retained, -> { where("retain_until > ?", Time.current) }
@@ -47,6 +49,10 @@ module Ec
 
     def set_retain_until
       self.retain_until ||= 48.hours.from_now
+    end
+
+    def set_plan_date
+      self.plan_date ||= Time.current.in_time_zone("Asia/Shanghai").to_date
     end
 
     def normalize_plan_values
