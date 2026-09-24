@@ -146,7 +146,7 @@ class ReportsController < ApplicationController
   def sku_operation_plan
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     @plan = @sku.sku_operation_plans.includes(:conversation).find(params[:plan_id])
-    @sku_plan_referer_events = load_sku_plan_referer_events([ @plan ])
+    @sku_plan_referer_events = Ec::SkuOperationPlan.referenced_events_by_sku_id([ @plan ]).fetch(@sku.id, {})
   end
 
   def new_sku_general_diagnosis
@@ -1079,9 +1079,9 @@ class ReportsController < ApplicationController
         .limit(7)
       @operation_timeline = build_operation_timeline
     end
-    @sku_plan_referer_events = load_sku_plan_referer_events(
+    @sku_plan_referer_events = Ec::SkuOperationPlan.referenced_events_by_sku_id(
       @sku_operation_plan_tags.to_a + (@sku_operation_plans_by_date&.values&.flatten || [])
-    )
+    ).fetch(@sku.id, {})
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
     @operator_metrics = Ec::OperatorSkuMetricsQuery.new(
@@ -1123,17 +1123,6 @@ class ReportsController < ApplicationController
     @sku_sales_summary = build_sku_sales_summary(@sku_sales_rows)
     @sku_sales_chart_series = build_sku_sales_chart_series(@sku_sales_rows)
     @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
-  end
-
-  def load_sku_plan_referer_events(plans)
-    event_ids = plans.flat_map(&:referer).filter_map do |reference|
-      Integer(reference, exception: false) if reference.is_a?(String) || reference.is_a?(Integer)
-    end.select(&:positive?).uniq
-    return {} if event_ids.empty?
-
-    Ec::AIDiagnosisEvent.joins(:ai_diagnosis)
-      .where(id: event_ids, ec_ai_diagnosis: { sku_id: @sku.id })
-      .index_by(&:id)
   end
 
   def load_sku_ozon_chats

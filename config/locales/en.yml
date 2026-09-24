@@ -2846,6 +2846,9 @@ en:
     sku_marketing_states:
       actions:
         adjust: "Adjust marketing state for %{sku}"
+      operation_record:
+        change: "Manual marketing state change: Grade %{grade_from} → %{grade_to}, Stage %{stage_from} → %{stage_to}"
+        reason: "Reason: %{reason}"
       fields:
         changed_by: "Changed by"
         effective_at: "Effective at"

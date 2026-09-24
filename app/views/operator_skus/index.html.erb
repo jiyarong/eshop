@@ -71,6 +71,7 @@
         <tbody>
           <% @skus.each do |sku| %>
             <% metrics = @metrics_by_sku.fetch(sku) %>
+            <% plans = @sku_operation_plans_by_sku_id.fetch(sku.id, []) %>
             <tr class="operator-sku-row">
               <td>
                 <%= sku_detail_drawer_link sku, class: "code-text sub" %>
@@ -87,7 +88,15 @@
                 <%= render "shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-diagnosis", only: %i[risk warning] %>
               </td>
               <td>
-                <%= render "shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-advice", only: %i[advice], hide_advice_label: true %>
+                <% if plans.any? %>
+                  <div class="sku-ai-diagnosis-event-tag-groups">
+                    <div class="sku-ai-diagnosis-event-tags sku-ai-diagnosis-event-tags--advice">
+                      <%= render "shared/sku_operation_plan_tags", plans: plans, dom_id_prefix: "operator-sku-#{sku.id}-plan" %>
+                    </div>
+                  </div>
+                <% else %>
+                  <div class="sku-ai-diagnosis-event-tags"><span class="text-muted"><%= t("operator_skus.values.unavailable") %></span></div>
+                <% end %>
               </td>
               <% finance = metrics.dig(:profit, :days_7) || {} %>
               <td class="numeric"><div class="operator-sku-pair operator-sku-finance-grid">
@@ -173,6 +182,13 @@
           <% end %>
         </tbody>
       </table>
+    <% end %>
+    <% @skus.each do |sku| %>
+      <% @sku_operation_plans_by_sku_id.fetch(sku.id, []).each do |plan| %>
+        <% events_by_id = @sku_plan_referer_events_by_sku_id.fetch(sku.id, {}) %>
+        <%= render "reports/sku_operation_plan_dialog", plan: plan, sku: sku, events_by_id: events_by_id, dom_id_prefix: "operator-sku-#{sku.id}-plan", referer_dom_id_prefix: "operator-sku-#{sku.id}-plan-#{plan.id}-tag-referer" %>
+        <%= render "reports/sku_operation_plan_referer_dialogs", plan: plan, events_by_id: events_by_id, dom_id_prefix: "operator-sku-#{sku.id}-plan-#{plan.id}-tag-referer" %>
+      <% end %>
     <% end %>
   </section>
 </div>

@@ -41,7 +41,7 @@
         <% query = request.query_parameters.symbolize_keys.except(:page, :jump_page, :current_page, :ai_advice_type) %>
         <% query[:ai_advice_type] = event_type unless active %>
         <%= link_to url_for(only_path: true, **query), class: class_names("ai-diagnosis-event-tag", "ai-diagnosis-event-tag--advice", "is-active": active), aria: { pressed: active } do %>
-          <span><%= t("erp.ai_diagnosis_event_filter.event_types.#{event_type}", default: event_type.to_s.humanize) %></span>
+          <span><%= tag[:label] %></span>
           <span class="ai-diagnosis-event-tag__count"><%= tag[:count] %></span>
         <% end %>
       <% end %>

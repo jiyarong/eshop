@@ -1,0 +1,23 @@
+<% plans.each do |plan| %>
+  <% remaining_hours = (plan.retain_until - Time.current) / 1.hour %>
+  <% expired = plan.active? && remaining_hours <= 0 %>
+  <% dialog_id = "#{dom_id_prefix}-#{plan.id}-dialog" %>
+  <button type="button"
+          class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact ai-diagnosis-event-tag--advice sku-operation-plan-tag--<%= plan.status %><%= ' sku-operation-plan-tag--expired' if expired %>"
+          data-controller="operator-dialog"
+          data-action="operator-dialog#open"
+          data-operator-dialog-id="<%= dialog_id %>"
+          aria-haspopup="dialog"
+          aria-controls="<%= dialog_id %>">
+    <i class="bi <%= plan.active? ? (expired ? 'bi-exclamation-triangle' : 'bi-hourglass-split') : (plan.done? ? 'bi-check-circle' : 'bi-slash-circle') %>" aria-hidden="true"></i>
+    <%= t("reports.sku_detail.planner.tag_name",
+          target: t("reports.sku_detail.planner.targets.#{plan.target}"),
+          operation: t("reports.sku_detail.planner.operations.#{plan.operation}")) %>
+    <span class="sr-only"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span>
+    <% if expired %>
+      <span class="sku-operation-plan-tag__time"><%= t("reports.sku_detail.planner.expired") %></span>
+    <% elsif plan.active? %>
+      <span class="sku-operation-plan-tag__time"><%= t("reports.sku_detail.planner.remaining_hours", hours: format("%.1f", (remaining_hours * 10).ceil / 10.0)) %></span>
+    <% end %>
+  </button>
+<% end %>

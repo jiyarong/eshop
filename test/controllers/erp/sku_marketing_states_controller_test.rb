@@ -38,17 +38,64 @@ class Erp::SkuMarketingStatesControllerTest < ActionDispatch::IntegrationTest
 
   test "create records current state and redirects to safe return path" do
     sign_in @manager
-    assert_difference "Ec::SkuMarketingState.count", 1 do
-      post erp_sku_marketing_states_path(@sku), params: {
-        return_to: "/erp/skus?status=active",
-        ec_sku_marketing_state: { grade: "A", stage: "grw", note: "开始增长" }
-      }
+    assert_no_difference "Ec::OperationAction.count" do
+      assert_difference "Ec::SkuMarketingState.count", 1 do
+        post erp_sku_marketing_states_path(@sku), params: {
+          return_to: "/erp/skus?status=active",
+          ec_sku_marketing_state: { grade: "A", stage: "grw", note: "开始增长" }
+        }
+      end
     end
 
     state = @sku.reload.current_marketing_state
     assert_redirected_to "/erp/skus?status=active"
     assert_equal [ "A", "grw", "开始增长" ], [ state.grade, state.stage, state.note ]
     assert_equal @manager, state.changed_by
+  end
+
+  test "create adds a manual operation record for a linked product" do
+    store = Ec::Store.create!(platform: "wb", store_name: "Marketing page #{@token}", company_type: "small", is_active: true)
+    product = Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: store, product_id: "MARKETING-PAGE-#{@token}")
+    sign_in @manager
+
+    assert_difference "Ec::OperationAction.where(ec_sku_id: @sku.id).count", 1 do
+      post erp_sku_marketing_states_path(@sku), params: {
+        ec_sku_marketing_state: { grade: "A", stage: "grw", note: "开始增长" }
+      }
+    end
+
+    assert_redirected_to erp_skus_path
+    action = Ec::OperationAction.find_by!(ec_sku_id: @sku.id)
+    assert_equal product, action.sku_product
+    assert_equal @manager, action.operated_by_user
+    assert_equal @sku.current_marketing_state.effective_at, action.operated_at
+    assert_equal false, action.record_by_system
+    assert_equal "manual_note", action.operation_type
+    assert_match(/Grade - → A/, action.diff_result.fetch("note"))
+    assert_match(/Stage - → GRW/, action.diff_result.fetch("note"))
+    assert_match(/开始增长/, action.diff_result.fetch("note"))
+
+    sign_in @manager
+    assert_difference "Ec::OperationAction.where(ec_sku_id: @sku.id).count", 1 do
+      post erp_sku_marketing_states_path(@sku), params: {
+        ec_sku_marketing_state: { grade: "B", stage: "mat" }
+      }
+      assert_redirected_to erp_skus_path
+      assert_equal "B", @sku.reload.current_marketing_state.grade
+    end
+    assert_match(/Grade A → B/, Ec::OperationAction.where(ec_sku_id: @sku.id).order(:id).last.diff_result.fetch("note"))
+    assert_match(/Stage GRW → MAT/, Ec::OperationAction.where(ec_sku_id: @sku.id).order(:id).last.diff_result.fetch("note"))
+
+    sign_in @manager
+    assert_no_difference "Ec::OperationAction.where(ec_sku_id: @sku.id).count" do
+      post erp_sku_marketing_states_path(@sku), params: {
+        ec_sku_marketing_state: { grade: "b", stage: "MAT", note: "重复提交" }
+      }
+    end
+  ensure
+    Ec::OperationAction.where(ec_sku_id: @sku.id).delete_all
+    product&.delete
+    store&.delete
   end
 
   test "invalid create rerenders modal without closing current state" do

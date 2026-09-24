@@ -57,28 +57,7 @@
         <% if @sku_operation_plan_tags.any? %>
           <div class="sku-ai-diagnosis-event-tags sku-ai-diagnosis-event-tags--advice">
             <span class="sku-ai-diagnosis-event-tags__label"><%= t("erp.ai_diagnosis_event_filter.advice_label") %></span>
-            <% @sku_operation_plan_tags.each do |plan| %>
-              <% remaining_hours = (plan.retain_until - Time.current) / 1.hour %>
-              <% expired = plan.active? && remaining_hours <= 0 %>
-              <button type="button"
-                      class="ai-diagnosis-event-tag ai-diagnosis-event-tag--compact ai-diagnosis-event-tag--advice sku-operation-plan-tag--<%= plan.status %><%= ' sku-operation-plan-tag--expired' if expired %>"
-                      data-controller="operator-dialog"
-                      data-action="operator-dialog#open"
-                      data-operator-dialog-id="sku-detail-plan-<%= plan.id %>-dialog"
-                      aria-haspopup="dialog"
-                      aria-controls="sku-detail-plan-<%= plan.id %>-dialog">
-                <i class="bi <%= plan.active? ? (expired ? 'bi-exclamation-triangle' : 'bi-hourglass-split') : (plan.done? ? 'bi-check-circle' : 'bi-slash-circle') %>" aria-hidden="true"></i>
-                <%= t("reports.sku_detail.planner.tag_name",
-                      target: t("reports.sku_detail.planner.targets.#{plan.target}"),
-                      operation: t("reports.sku_detail.planner.operations.#{plan.operation}")) %>
-                <span class="sr-only"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span>
-                <% if expired %>
-                  <span class="sku-operation-plan-tag__time"><%= t("reports.sku_detail.planner.expired") %></span>
-                <% elsif plan.active? %>
-                  <span class="sku-operation-plan-tag__time"><%= t("reports.sku_detail.planner.remaining_hours", hours: format("%.1f", (remaining_hours * 10).ceil / 10.0)) %></span>
-                <% end %>
-              </button>
-            <% end %>
+            <%= render "shared/sku_operation_plan_tags", plans: @sku_operation_plan_tags, dom_id_prefix: "sku-detail-plan" %>
           </div>
         <% end %>
       </div>
@@ -113,7 +92,7 @@
 </section>
 
 <% @sku_operation_plan_tags.each do |plan| %>
-  <%= render "reports/sku_operation_plan_dialog", plan: plan, sku: @sku %>
+  <%= render "reports/sku_operation_plan_dialog", plan: plan, sku: @sku, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-detail-plan", referer_dom_id_prefix: "sku-plan-#{plan.id}-tag-referer" %>
   <%= render "reports/sku_operation_plan_referer_dialogs", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-tag-referer" %>
 <% end %>
 

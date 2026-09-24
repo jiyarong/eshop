@@ -2797,6 +2797,9 @@ ru:
     sku_marketing_states:
       actions:
         adjust: "Изменить маркетинговый статус %{sku}"
+      operation_record:
+        change: "Ручное изменение маркетингового статуса: Grade %{grade_from} → %{grade_to}, Stage %{stage_from} → %{stage_to}"
+        reason: "Причина: %{reason}"
       fields:
         changed_by: "Кто изменил"
         effective_at: "Начало действия"

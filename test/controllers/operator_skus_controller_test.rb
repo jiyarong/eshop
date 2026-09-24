@@ -15,6 +15,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::SkuOperationPlan.where(sku_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).delete_all
     Ec::AIDiagnosis.where(sku_id: Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").select(:id)).destroy_all
     Ec::Sku.with_deleted.where("sku_code LIKE ?", "%#{@token}%").delete_all
     Ec::MasterSku.where(id: @master_sku.id).delete_all
@@ -68,7 +69,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       assert_select ".ai-diagnosis-event-tag--warning", text: "单周利润严重下滑"
     end
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .sku-ai-diagnosis-event-tags__label", count: 0
-    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .ai-diagnosis-event-tag--advice", text: "补充库存"
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice .ai-diagnosis-event-tag--advice", { text: "补充库存", count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--advice) .ai-diagnosis-event-tag", { text: "错失销售预警", count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Inventory sufficient/, count: 0 }
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags:not(.sku-ai-diagnosis-event-tags--warning):not(.sku-ai-diagnosis-event-tags--advice) .sku-ai-diagnosis-event-popover[data-controller='diagnosis-event-dialog']" do
@@ -196,7 +197,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", { text: /Ignored risk/, count: 0 }
   end
 
-  test "index renders and filters by active advice from the latest general diagnosis" do
+  test "index ignores deprecated diagnosis advice in filters and table" do
     stale_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     stale_diagnosis.events.create!(event_type: "历史建议", severity: "info", scope: "advise", message: "Stale advice", is_latest: false)
     diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
@@ -214,18 +215,84 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     warning_diagnosis.events.create!(event_type: "检查广告", severity: "warning", scope: "advise", message: "Non-critical advice", is_latest: true)
 
     with_empty_metrics do
-      get operator_skus_path, params: { ai_advice_type: "补充库存" }, headers: { "Accept" => "text/html" }
+      get operator_skus_path, params: { q: @token, ai_advice_type: "补充库存" }, headers: { "Accept" => "text/html" }
     end
 
     assert_response :success
-    assert_select ".ai-diagnosis-event-filter--advice[aria-label='AI 建议筛选']" do
-      assert_select ".ai-diagnosis-event-filter__label", text: "AI 建议"
-      assert_select ".ai-diagnosis-event-tag--advice.is-active[aria-pressed='true']", text: /补充库存/
-      assert_select ".ai-diagnosis-event-tag--advice", text: /优化主图/
-      assert_select ".ai-diagnosis-event-tag--advice", { text: /历史建议|调整售价|检查广告|旧版建议/, count: 0 }
-    end
+    assert_select ".ai-diagnosis-event-filter--advice", count: 0
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags--advice", count: 0
+    assert_select ".operator-sku-row .sku-ai-diagnosis-event-tags", text: "-"
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
-    assert_select ".operator-sku-row .code-text.sub", { text: other_sku.sku_code, count: 0 }
+    assert_select ".operator-sku-row .code-text.sub", text: other_sku.sku_code
+    assert_select ".operator-sku-row .code-text.sub", text: warning_sku.sku_code
+  end
+
+  test "index filters only latest planner tags and excludes deprecated diagnosis advice" do
+    other_sku = Ec::Sku.create!(sku_code: "OPS-PLAN-OTHER-#{@token}", product_name: "Other planner SKU")
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
+    event = diagnosis.events.create!(event_type: "stock_risk", severity: "critical", scope: "advise", message: "Check stock", is_latest: true)
+    active_plan = @sku.sku_operation_plans.create!(target: "advertising", operation: "maintain", referer: [ event.id ],
+      message: "Keep ads", retain_until: 26.5.hours.from_now)
+    @sku.sku_operation_plans.create!(target: "advertising", operation: "maintain", referer: [ "legacy_risk" ],
+      message: "Already handled", status: "done")
+    @sku.sku_operation_plans.create!(target: "advertising", operation: "maintain", referer: [ "expired_risk" ],
+      message: "Expired plan", retain_until: 1.hour.ago)
+    @sku.sku_operation_plans.create!(target: "price", operation: "close", referer: [ "old_risk" ],
+      message: "Historical plan", is_latest: false)
+    other_plan = other_sku.sku_operation_plans.create!(target: "advertising", operation: "maintain", referer: [ event.id ],
+      message: "Other SKU plan")
+
+    with_empty_metrics do
+      get operator_skus_path, params: { q: @token }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".ai-diagnosis-event-filter--advice" do
+      assert_select "a[href*='ai_advice_type=planner%3Aadvertising%3Amaintain']", text: /广告 · 维持.*2/
+      assert_select "a", { text: /Stock risk/, count: 0 }
+      assert_select "a", { text: /价格 · 关闭/, count: 0 }
+    end
+    assert_select ".operator-sku-row" do
+      assert_select ".sku-ai-diagnosis-event-tags--advice .ai-diagnosis-event-tag--advice", { text: "Stock risk", count: 0 }
+      assert_select "button.sku-operation-plan-tag--active[aria-controls^='operator-sku-']", text: /广告 · 维持.*h/
+      assert_select "button.sku-operation-plan-tag--active.sku-operation-plan-tag--expired", text: /广告 · 维持.*已超期/
+      assert_select "button.sku-operation-plan-tag--done", text: /广告 · 维持.*已完成/
+      assert_select "button.sku-operation-plan-tag--active", { text: /价格 · 关闭/, count: 0 }
+    end
+    other_row = css_select(".operator-sku-row").find { |row| row.text.include?(other_sku.sku_code) }
+    assert_equal 1, other_row.css(".sku-ai-diagnosis-event-tags--advice button.sku-operation-plan-tag--active").size
+    assert_select ".operator-sku-table-viewport dialog", count: 0
+    assert_select "dialog#operator-sku-#{@sku.id}-plan-#{active_plan.id}-dialog" do
+      assert_select ".sku-planner-dialog__message pre", text: "Keep ads"
+      assert_select ".sku-plan-referers__trigger[aria-controls='operator-sku-#{@sku.id}-plan-#{active_plan.id}-tag-referer-0-dialog']", text: "stock_risk"
+    end
+    assert_select "dialog#operator-sku-#{@sku.id}-plan-#{active_plan.id}-tag-referer-0-dialog .sku-planner-dialog__body pre", "Check stock"
+    assert_select "dialog#operator-sku-#{other_sku.id}-plan-#{other_plan.id}-dialog .sku-plan-referers span", "诊断事件不可用"
+    assert_select "dialog#operator-sku-#{other_sku.id}-plan-#{other_plan.id}-tag-referer-0-dialog", count: 0
+
+    sign_in @user
+    with_empty_metrics do
+      get operator_skus_path, params: { q: @token, ai_advice_type: "planner:advertising:maintain" }, headers: { "Accept" => "text/html" }
+    end
+    assert_response :success
+    assert_select ".ai-diagnosis-event-filter--advice .is-active[aria-pressed='true']", text: /广告 · 维持.*2/
+    assert_equal [ @sku.sku_code, other_sku.sku_code ].sort,
+      css_select(".operator-sku-row .code-text.sub").map(&:text).sort
+
+    sign_in @user
+    with_empty_metrics do
+      get operator_skus_path, params: { q: @token, ai_advice_type: "stock_risk" }, headers: { "Accept" => "text/html" }
+    end
+    assert_response :success
+    assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
+    assert_select ".operator-sku-row .code-text.sub", text: other_sku.sku_code
+    assert_select ".ai-diagnosis-event-filter--advice .is-active", count: 0
+
+    sign_in @user
+    with_empty_metrics do
+      get operator_skus_path, params: { q: @sku.sku_code }, headers: { "Accept" => "text/html" }
+    end
+    assert_select ".ai-diagnosis-event-filter--advice a[href*='planner%3Aadvertising%3Amaintain']", text: /广告 · 维持.*1/
   end
 
   test "index renders operator sku columns and puts link before sales funnel" do

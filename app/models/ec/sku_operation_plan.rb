@@ -46,6 +46,20 @@ module Ec
     scope :retained, -> { where("retain_until > ?", Time.current) }
     scope :latest, -> { where(is_latest: true) }
 
+    def self.referenced_events_by_sku_id(plans)
+      plan_list = Array(plans)
+      event_ids = plan_list.flat_map(&:referer).filter_map do |reference|
+        Integer(reference, exception: false) if reference.is_a?(String) || reference.is_a?(Integer)
+      end.select(&:positive?).uniq
+      return {} if event_ids.empty?
+
+      Ec::AIDiagnosisEvent.joins(:ai_diagnosis)
+        .where(id: event_ids, ec_ai_diagnosis: { sku_id: plan_list.map(&:sku_id) })
+        .includes(:ai_diagnosis)
+        .group_by { |event| event.ai_diagnosis.sku_id }
+        .transform_values { |events| events.index_by(&:id) }
+    end
+
     private
 
     def set_retain_until

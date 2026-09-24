@@ -55,7 +55,11 @@ class OperatorSkusController < ApplicationController
       @skus = table_sort_key.present? ? Kaminari.paginate_array(sorted).page(@skus.total_pages).per(PAGE_SIZE) : scope.page(@skus.total_pages).per(PAGE_SIZE)
     end
     @metrics_by_sku = metrics_for(@skus)
-    load_latest_active_ai_diagnosis_risk_events_for(@skus)
+    load_latest_active_ai_diagnosis_risk_events_for(@skus, include_advice: false)
+    @sku_operation_plans_by_sku_id = Ec::SkuOperationPlan.latest.where(sku_id: @skus.map(&:id))
+      .includes(operation_actions: [ :operated_by_user, :store ])
+      .order(created_at: :desc, id: :desc).group_by(&:sku_id)
+    @sku_plan_referer_events_by_sku_id = Ec::SkuOperationPlan.referenced_events_by_sku_id(@sku_operation_plans_by_sku_id.values.flatten)
   end
 
   private

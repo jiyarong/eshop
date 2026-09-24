@@ -3058,6 +3058,9 @@ zh:
     sku_marketing_states:
       actions:
         adjust: "调整 %{sku} 营销状态"
+      operation_record:
+        change: "手动调整营销状态：Grade %{grade_from} → %{grade_to}，Stage %{stage_from} → %{stage_to}"
+        reason: "调整原因：%{reason}"
       fields:
         changed_by: "调整人"
         effective_at: "生效时间"

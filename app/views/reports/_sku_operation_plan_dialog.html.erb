@@ -1,11 +1,11 @@
-<dialog id="sku-detail-plan-<%= plan.id %>-dialog"
+<dialog id="<%= dom_id_prefix %>-<%= plan.id %>-dialog"
         class="sku-planner-dialog sku-operation-plan-dialog"
         data-controller="operator-dialog"
         data-action="click->operator-dialog#closeOnBackdrop"
-        aria-labelledby="sku-detail-plan-<%= plan.id %>-title">
+        aria-labelledby="<%= dom_id_prefix %>-<%= plan.id %>-title">
   <div class="sku-planner-dialog__header">
     <div>
-      <h3 id="sku-detail-plan-<%= plan.id %>-title"><%= t("reports.sku_detail.planner.plan_title", id: plan.id) %></h3>
+      <h3 id="<%= dom_id_prefix %>-<%= plan.id %>-title"><%= t("reports.sku_detail.planner.plan_title", id: plan.id) %></h3>
       <p><%= sku.sku_code %></p>
     </div>
     <div class="sku-planner-dialog__actions">
@@ -22,7 +22,7 @@
       <div><dt><%= t("reports.sku_detail.planner.target") %></dt><dd><%= t("reports.sku_detail.planner.targets.#{plan.target}") %></dd></div>
       <div><dt><%= t("reports.sku_detail.planner.operation") %></dt><dd><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></dd></div>
       <div><dt><%= t("reports.sku_detail.planner.status") %></dt><dd><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></dd></div>
-      <div><dt><%= t("reports.sku_detail.planner.referer") %></dt><dd><%= render "reports/sku_operation_plan_referers", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-tag-referer" %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.referer") %></dt><dd><%= render "reports/sku_operation_plan_referers", plan: plan, events_by_id: events_by_id, dom_id_prefix: referer_dom_id_prefix %></dd></div>
       <div><dt><%= t("reports.sku_detail.fields.created_at") %></dt><dd><%= display_time(plan.created_at) %></dd></div>
     </dl>
     <section class="sku-operation-plan-dialog__section">
