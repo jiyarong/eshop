@@ -98,8 +98,24 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     agent.update!(system_prompt: Agent::SKU_PLANNER_PREVIOUS_PROMPT)
     assert_equal Agent::SKU_PLANNER_PROMPT, Agent.ensure_fixed!("sku_planner").system_prompt
 
+    agent.update!(system_prompt: Agent::SKU_PLANNER_V2_PROMPT)
+    assert_equal Agent::SKU_PLANNER_PROMPT, Agent.ensure_fixed!("sku_planner").system_prompt
+
     agent.update!(system_prompt: "自定义 SKU Planner 提示词")
     assert_equal "自定义 SKU Planner 提示词", Agent.ensure_fixed!("sku_planner").system_prompt
+  end
+
+  test "SKU Planner prompt uses the saved plan fields and enums" do
+    prompt = Agent::SKU_PLANNER_PROMPT
+
+    Ec::SkuOperationPlan.targets.each_key { |target| assert_includes prompt, "`#{target}`" }
+    Ec::SkuOperationPlan.operations.each_key { |operation| assert_includes prompt, "`#{operation}`" }
+    %w[scope scope_id referer priority message reason baseline constraints expected_effect].each do |field|
+      assert_includes prompt, "`#{field}`"
+    end
+    assert_includes prompt, "`replenishment` 针对整个 SKU"
+    assert_includes prompt, "分仓是使用现有库存"
+    assert_includes prompt, "不输出 Plan Set YAML"
   end
 
   test "custom agents are allowed" do

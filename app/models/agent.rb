@@ -41,12 +41,13 @@ class Agent < ApplicationRecord
     只能基于系统提供的最新诊断事件制定计划；每条计划必须选择一个操作目标和一个具体操作，referer 必须引用一个或多个对应的诊断事件 id，并在 message 中写清操作依据和执行详情。
     可以创建一条或多条计划，也可以在没有足够依据时不创建计划。不要编造诊断事件或业务数据。
   PROMPT
-  SKU_PLANNER_PROMPT = <<~PROMPT.squish.freeze
+  SKU_PLANNER_V2_PROMPT = <<~PROMPT.squish.freeze
     #{DEFAULT_SYSTEM_PROMPT}
     你的固定用途是把通用 SKU 诊断事件转化为具体、可执行的运营操作计划。
     只能基于系统提供的最新诊断事件制定计划；每条计划必须选择操作目标、操作方式及 SKU 或 Listing 执行范围，referer 必须引用一个或多个对应的诊断事件 id。使用 save_sku_plan 分字段记录优先级、执行动作 message、依据 reason、当前基线 baseline、限制条件 constraints 和预期效果 expected_effect。不得编造诊断事件或业务数据。
     可以创建一条或多条计划，也可以在没有足够依据时不创建计划。
   PROMPT
+  SKU_PLANNER_PROMPT = Rails.root.join("config/agent_prompts/sku_planner.md").read.freeze
   SKU_PLANNER_LEGACY_PROMPT = SKU_PLANNER_PREVIOUS_PROMPT.sub("诊断事件 id", "诊断 event_type").freeze
 
   PAGE_TRANSLATION_PROMPT = <<~PROMPT.squish.freeze
@@ -194,7 +195,7 @@ class Agent < ApplicationRecord
       agent.enabled = definition.fetch(:enabled)
     end
     agent.system_prompt = definition.fetch(:default_system_prompt) if agent.system_prompt.blank?
-    agent.system_prompt = SKU_PLANNER_PROMPT if code == "sku_planner" && agent.system_prompt.in?([ SKU_PLANNER_LEGACY_PROMPT, SKU_PLANNER_PREVIOUS_PROMPT ])
+    agent.system_prompt = SKU_PLANNER_PROMPT if code == "sku_planner" && agent.system_prompt.in?([ SKU_PLANNER_LEGACY_PROMPT, SKU_PLANNER_PREVIOUS_PROMPT, SKU_PLANNER_V2_PROMPT ])
     agent.model_id = definition.fetch(:default_model_id) if agent.model_id.blank?
     agent.temperature = definition.fetch(:default_temperature) if agent.temperature.blank?
     agent.tools = [] if agent.client?

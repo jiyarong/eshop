@@ -47,7 +47,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert existing.reload.is_latest?
   end
 
-  test "planner context excludes info events and explains all three severity levels" do
+  test "planner context excludes info events and treats severity as supporting evidence" do
     @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
     @diagnosis.events.create!(event_type: "urgent_stock", severity: "critical", message: "Immediate action")
     captured = nil
@@ -60,12 +60,9 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     events = JSON.parse(captured.fetch(:data_summary))
     assert_equal %w[stock_risk urgent_stock], events.map { |event| event.fetch("event_type") }
     assert_equal @diagnosis.events.where.not(severity: "info").order(:position, :id).pluck(:id), events.map { |event| event.fetch("id") }
-    assert_includes captured.fetch(:question), "事件 id"
-    assert_includes captured.fetch(:question), "info 是仅供了解"
-    assert_includes captured.fetch(:question), "warning 是需要关注"
-    assert_includes captured.fetch(:question), "critical 是需要优先处理"
-    assert_includes captured.fetch(:question), "warehouse_distribution、replenishment"
-    assert_includes captured.fetch(:question), "increase、decrease"
+    assert_includes captured.fetch(:question), "非 info 通用诊断事件"
+    assert_includes captured.fetch(:question), "warning 和 critical 表示诊断紧迫程度，仅供经营判断参考"
+    assert_includes captured.fetch(:question), "没有足够依据时不调用 save_sku_plan"
   end
 
   test "planner skips SKUs with only info events" do
