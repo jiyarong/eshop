@@ -1833,8 +1833,11 @@ ru:
           advertising: "Реклама"
           listing_attribute: "Атрибуты Listing"
           listing_image: "Изображения Listing"
+          warehouse_distribution: "Распределение по складам"
+          replenishment: "Пополнение запасов"
         operations:
           increase: "Увеличить"
+          decrease: "Уменьшить"
           open: "Включить"
           close: "Выключить"
           modify: "Изменить"

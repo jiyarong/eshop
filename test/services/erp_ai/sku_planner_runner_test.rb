@@ -64,6 +64,8 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_includes captured.fetch(:question), "info 是仅供了解"
     assert_includes captured.fetch(:question), "warning 是需要关注"
     assert_includes captured.fetch(:question), "critical 是需要优先处理"
+    assert_includes captured.fetch(:question), "warehouse_distribution、replenishment"
+    assert_includes captured.fetch(:question), "increase、decrease"
   end
 
   test "planner skips SKUs with only info events" do
@@ -109,6 +111,30 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_equal 1, plan.priority
     assert_equal "No price change", plan.constraints
     assert_equal "Keep price stable", result.dig(:result, :message)
+  end
+
+  test "planner saves warehouse distribution and replenishment plans with decrease" do
+    @user.roles << Role.find_by!(code: "manager")
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
+    schema = ErpAI::ToolRegistry.default_tools.find { |tool| tool[:name] == "save_sku_plan" }.fetch(:parameters)
+
+    assert_includes schema.dig(:properties, :target, :enum), "warehouse_distribution"
+    assert_includes schema.dig(:properties, :target, :enum), "replenishment"
+    assert_includes schema.dig(:properties, :operation, :enum), "decrease"
+
+    { "分仓" => "warehouse_distribution", "补货" => "replenishment" }.each do |target, expected_target|
+      result = executor.call(id: target, name: "save_sku_plan", arguments: {
+        sku_code: @sku.sku_code, target: target, operation: "降低",
+        referer: [ @diagnosis.events.first.id ], **plan_details
+      })
+
+      assert result.dig(:result, :success)
+      plan = @sku.sku_operation_plans.find(result.dig(:result, :plan_id))
+      assert_equal expected_target, plan.target
+      assert_equal "decrease", plan.operation
+      assert_equal expected_target, result.dig(:result, :target)
+      assert_equal "decrease", result.dig(:result, :operation)
+    end
   end
 
   test "planner saves a listing-specific plan and rejects invalid scope or detail types" do

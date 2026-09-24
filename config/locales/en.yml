@@ -1867,8 +1867,11 @@ en:
           advertising: "Advertising"
           listing_attribute: "Listing attributes"
           listing_image: "Listing images"
+          warehouse_distribution: "Warehouse distribution"
+          replenishment: "Replenishment"
         operations:
           increase: "Increase"
+          decrease: "Decrease"
           open: "Open"
           close: "Close"
           modify: "Modify"

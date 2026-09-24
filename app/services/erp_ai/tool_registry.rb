@@ -95,13 +95,13 @@ module ErpAI
             sku_code: { type: "string", description: "内部 SKU code" },
             target: {
               type: "string",
-              enum: %w[price advertising listing_attribute listing_image],
-              description: "操作目标：价格、广告、listing 属性或 listing 图"
+              enum: %w[price advertising listing_attribute listing_image warehouse_distribution replenishment],
+              description: "操作目标：价格、广告、listing 属性、listing 图、分仓或补货"
             },
             operation: {
               type: "string",
-              enum: %w[increase open close modify maintain],
-              description: "具体操作：增加、打开、关闭、修改或维持"
+              enum: %w[increase decrease open close modify maintain],
+              description: "具体操作：增加、降低、打开、关闭、修改或维持"
             },
             referer: {
               type: "array",

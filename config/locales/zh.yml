@@ -2069,8 +2069,11 @@ zh:
           advertising: "广告"
           listing_attribute: "Listing 属性"
           listing_image: "Listing 图片"
+          warehouse_distribution: "分仓"
+          replenishment: "补货"
         operations:
           increase: "增加"
+          decrease: "降低"
           open: "开启"
           close: "关闭"
           modify: "修改"

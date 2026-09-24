@@ -6,10 +6,13 @@ module Ec
       "价格" => "price",
       "广告" => "advertising",
       "listing属性" => "listing_attribute",
-      "listing图" => "listing_image"
+      "listing图" => "listing_image",
+      "分仓" => "warehouse_distribution",
+      "补货" => "replenishment"
     }.freeze
     OPERATION_ALIASES = {
       "增加" => "increase",
+      "降低" => "decrease",
       "打开" => "open",
       "关闭" => "close",
       "修改" => "modify",
@@ -25,10 +28,13 @@ module Ec
       price: "price",
       advertising: "advertising",
       listing_attribute: "listing_attribute",
-      listing_image: "listing_image"
+      listing_image: "listing_image",
+      warehouse_distribution: "warehouse_distribution",
+      replenishment: "replenishment"
     }, validate: true
     enum :operation, {
       increase: "increase",
+      decrease: "decrease",
       open: "open",
       close: "close",
       modify: "modify",
