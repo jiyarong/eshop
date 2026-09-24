@@ -2025,6 +2025,21 @@ table thead th {
   vertical-align: top;
 }
 
+.sku-planner-priority--high {
+  background: var(--erp-danger-bg);
+  color: var(--erp-danger-text);
+}
+
+.sku-planner-priority--medium {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.sku-planner-priority--low {
+  background: #eef1f6;
+  color: #475569;
+}
+
 .sku-planner-table__referer {
   max-width: 220px;
   overflow-wrap: anywhere;

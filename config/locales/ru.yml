@@ -1796,6 +1796,10 @@ ru:
           SKU: "SKU"
           LISTING: "Листинг"
         priority: "Приоритет"
+        priorities:
+          high: "Высокий · P%{priority}"
+          medium: "Средний · P%{priority}"
+          low: "Низкий · P%{priority}"
         reason: "Причина"
         baseline: "Исходное состояние"
         constraints: "Ограничения"

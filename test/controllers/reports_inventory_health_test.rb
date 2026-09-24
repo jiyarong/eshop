@@ -140,9 +140,11 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select ".sku-planner-day:first-child[open]" do
         assert_select "time[datetime='#{plan.plan_date.iso8601}']"
         assert_select ".sku-planner-day__count", "2 条计划"
+        assert_select "table.sku-planner-table thead th", "优先级"
         assert_select "table.sku-planner-table tbody tr", count: 2
         assert_select "tr.ai-health-table__linked-row[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, plan)}']" do
           assert_select "a.ai-health-table__row-link[href='#{report_sku_operation_plan_path(@sku.sku_code, plan)}'][data-turbo-frame='_top']", "价格"
+          assert_select ".sku-planner-priority--high", "高 · P1"
           assert_select ".sku-planner-table__conversation[href='#{ai_conversation_path(conversation)}'][data-turbo-frame='_top']", "查看 AI 会话"
           assert_select "button.sku-planner-table__preview[data-operator-dialog-id='sku-plan-#{plan.id}-message']", text: plan_message.squish.truncate(80)
           assert_select ".sku-planner-table__referer .sku-plan-referers__trigger", text: older_event.event_type
@@ -150,6 +152,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
           assert_select ".sku-planner-table__referer", text: /#{older_event.id}/, count: 0
         end
         assert_select "tr.ai-health-table__linked-row[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, second_plan)}'] a.ai-health-table__row-link[href='#{report_sku_operation_plan_path(@sku.sku_code, second_plan)}']", "广告"
+        assert_select "tr[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, second_plan)}'] td:nth-child(2)", "-"
         assert_select "button.sku-planner-table__preview[data-operator-dialog-id='sku-plan-#{second_plan.id}-message']", "Increase ads"
         assert_select ".table-viewport dialog", count: 0
         assert_select "dialog#sku-plan-#{plan.id}-message[data-controller='operator-dialog']" do
@@ -181,6 +184,20 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     end
     assert_redirected_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
     assert_equal "SKU Planner 任务已提交。", flash[:notice]
+  end
+
+  test "SKU Planner list labels lower priority ranks without losing the rank number" do
+    medium_plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain",
+      referer: [ "stock_risk" ], message: "Review stock", priority: 2)
+    low_plan = @sku.sku_operation_plans.create!(target: "advertising", operation: "maintain",
+      referer: [ "sales_risk" ], message: "Review ads", priority: 4)
+
+    get report_sku_path(@sku.sku_code), params: { tab: "ai_inventory_health" },
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "tr[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, medium_plan)}'] .sku-planner-priority--medium", "中 · P2"
+    assert_select "tr[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, low_plan)}'] .sku-planner-priority--low", "低 · P4"
   end
 
   test "SKU Planner detail shows the full message and conversation" do

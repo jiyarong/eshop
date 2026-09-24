@@ -350,6 +350,7 @@
                   <thead>
                     <tr>
                       <th><%= t("reports.sku_detail.planner.target") %></th>
+                      <th><%= t("reports.sku_detail.planner.priority") %></th>
                       <th><%= t("reports.sku_detail.planner.operation") %></th>
                       <th><%= t("reports.sku_detail.planner.referer") %></th>
                       <th><%= t("reports.sku_detail.planner.message") %></th>
@@ -368,6 +369,18 @@
                         <td>
                           <%= link_to t("reports.sku_detail.planner.targets.#{plan.target}"), plan_path,
                                       class: "ai-health-table__row-link", data: { turbo_frame: "_top" } %>
+                        </td>
+                        <td>
+                          <% if plan.priority.present? %>
+                            <% priority_level = case plan.priority
+                              when 1 then "high"
+                              when 2 then "medium"
+                              else "low"
+                              end %>
+                            <span class="status-pill sku-planner-priority--<%= priority_level %>"><%= t("reports.sku_detail.planner.priorities.#{priority_level}", priority: plan.priority) %></span>
+                          <% else %>
+                            <%= report_value(nil) %>
+                          <% end %>
                         </td>
                         <td><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></td>
                         <td class="sku-planner-table__referer"><%= render "reports/sku_operation_plan_referers", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-list-referer" %></td>

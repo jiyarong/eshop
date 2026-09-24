@@ -182,6 +182,66 @@ module Ec
       assert attribute_plan.reload.active?
     end
 
+    test "matches Ozon image fields without treating them as listing attributes" do
+      %i[primary_image images360 color_image].each do |field|
+        image_plan = create_plan(target: "listing_image", operation: "modify")
+        attribute_plan = create_plan(target: "listing_attribute", operation: "modify")
+        before = field == :images360 ? [ "old.jpg" ] : "old.jpg"
+        after = field == :images360 ? [ "new.jpg" ] : "new.jpg"
+
+        action = Ec::ListingChangeRecorder.record(
+          sku_product: @sku_product, operation_type: "listing_content",
+          before: { field => before }, after: { field => after }
+        )
+
+        assert_equal image_plan, action.plan
+        assert attribute_plan.reload.active?
+      end
+    end
+
+    test "does not complete a plan scoped to another listing" do
+      other_product = Ec::SkuProduct.create!(
+        sku: @sku, store: @store, product_id: "200#{@token.hex}", offer_id: "OTHER-#{@token}"
+      )
+      own_listing_plan = create_plan(target: "price", operation: "increase", scope: "LISTING", scope_id: @sku_product.id.to_s)
+      other_listing_plan = create_plan(target: "price", operation: "increase", scope: "LISTING", scope_id: other_product.id.to_s)
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }
+      )
+
+      assert_equal own_listing_plan, action.plan
+      assert other_listing_plan.reload.active?
+    ensure
+      other_product&.destroy!
+    end
+
+    test "matches a SKU scoped plan for a listing action" do
+      plan = create_plan(target: "listing_attribute", operation: "modify", scope: "SKU", scope_id: @sku.sku_code)
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_specification",
+        before: { width: 10 }, after: { width: 12 }
+      )
+
+      assert_equal plan, action.plan
+    end
+
+    test "does not infer an advertising close from an unknown status" do
+      plan = create_plan(target: "advertising", operation: "close")
+      action = Ec::OperationAction.create!(
+        operation_type: "sku_adv_on_off", operated_by_user: @admin, operated_at: Time.current,
+        sku_product: @sku_product, sku: @sku, store: @store,
+        diff_result: { "fields" => { "advertising_enabled" => { "from" => true, "to" => nil } } }
+      )
+
+      Ec::OperationActionPlanMatcher.call(action)
+
+      assert_nil action.reload.plan
+      assert plan.reload.active?
+    end
+
     test "links only one matching plan per synced action" do
       older = create_plan(target: "listing_attribute", operation: "modify")
       newer = create_plan(target: "listing_attribute", operation: "modify")

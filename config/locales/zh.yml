@@ -2032,6 +2032,10 @@ zh:
           SKU: "SKU"
           LISTING: "Listing"
         priority: "优先级"
+        priorities:
+          high: "高 · P%{priority}"
+          medium: "中 · P%{priority}"
+          low: "低 · P%{priority}"
         reason: "执行依据"
         baseline: "当前基线"
         constraints: "执行限制"

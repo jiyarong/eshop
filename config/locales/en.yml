@@ -1830,6 +1830,10 @@ en:
           SKU: "SKU"
           LISTING: "Listing"
         priority: "Priority"
+        priorities:
+          high: "High · P%{priority}"
+          medium: "Medium · P%{priority}"
+          low: "Low · P%{priority}"
         reason: "Reason"
         baseline: "Baseline"
         constraints: "Constraints"
