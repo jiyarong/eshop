@@ -8,6 +8,20 @@ module RawWb
       kgvp_supplier kgvp_supplier_express paid_storage_kgvp
     ].freeze
 
+    # Only failures while constructing or making the HTTP request justify
+    # trying another credential. Validation and persistence failures must
+    # surface immediately so they cannot cause duplicate full-table requests.
+    ACCOUNT_FAILURE_ERRORS = [
+      RawWb::WbClient::ApiError,
+      RawWb::WbClient::RetryableError,
+      JSON::ParserError,
+      IOError,
+      EOFError,
+      SocketError,
+      Timeout::Error,
+      SystemCallError
+    ].freeze
+
     class InvalidResponseError < StandardError; end
 
     def self.run(account_scope: default_account_scope, client_factory: nil, wait: false)
@@ -33,7 +47,7 @@ module RawWb
       accounts.each do |account|
         begin
           return sync_with_account(account)
-        rescue => e
+        rescue *ACCOUNT_FAILURE_ERRORS => e
           last_error = e
           Rails.logger.warn("[RawWb::CommissionTariffSync] account=#{account.id} failed: #{e.class} #{e.message}")
         end
@@ -111,7 +125,16 @@ module RawWb
 
       RATE_FIELDS.each do |field|
         value = row[field]
-        raise InvalidResponseError, "negative #{field} for subjectID=#{subject_id}" if value.present? && value.to_f.negative?
+        next if value.nil?
+
+        begin
+          percentage = BigDecimal(value.to_s)
+        rescue ArgumentError
+          raise InvalidResponseError, "invalid #{field} for subjectID=#{subject_id}"
+        end
+        unless percentage.finite? && !percentage.negative?
+          raise InvalidResponseError, "invalid #{field} for subjectID=#{subject_id}"
+        end
       end
 
       row

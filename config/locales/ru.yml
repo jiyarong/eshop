@@ -206,6 +206,7 @@ ru:
     mcp_debug: "MCP debug"
     gbrain: "База знаний gbrain"
     operation_logs: "История операций"
+    ozon_tariffs: "Тарифы Ozon"
   feedback:
     title: "Отправить предложение"
     issue_type: "Тип проблемы"
@@ -1012,6 +1013,48 @@ ru:
       wb: { sku_code: "SKU", product_name: "Товар", open_card: "Открытия карточки", add_to_cart: "В корзину", conv_to_cart: "Конверсия в корзину", cart_to_order: "Корзина в заказ", orders: "Заказы", orders_sum: "Сумма заказов", buyouts: "Выкупы", buyouts_sum: "Сумма выкупов", buyout_percent: "Процент выкупа", cancel_count: "Отмены", cancel_sum: "Сумма отмен", add_to_wishlist: "В избранное", stock_wb: "Остаток WB", stock_mp: "Остаток продавца" }
       ozon: { sku_code: "SKU", product_name: "Товар", revenue: "Заказано на сумму", total_drr: "Общая ДРР", position_category: "Позиция в поиске и каталоге", hits_view_search: "Показы в поиске и каталоге", hits_view_pdp: "Посещения карточки товара", search_to_card_conversion: "Конверсия из поиска и каталога в карточку", conv_tocart: "Конверсия из карточки в корзину", cart_to_order: "Конверсия из корзины в заказ", order_conversion: "Конверсия из показа в заказ", average_price: "Средняя цена", ordered_units: "Заказано товаров", delivered_units: "Доставлено товаров", total_ending_inventory: "Общий остаток на конец периода", store_ending_inventory: "Остаток магазина на конец периода", cancellations: "Отменено товаров", returns_count: "Возвращено товаров", hits_view: "Показы всего", session_view: "Посетители", hits_tocart: "В корзину", hits_tocart_search: "В корзину из поиска и каталога", hits_tocart_pdp: "В корзину из карточки" }
   reports:
+    ozon_tariffs:
+      routes:
+        title: "Тарифы логистики Ozon по маршрутам"
+        subtitle: "Официальные тарифы FBO/FBS по объёму, кластеру отправления и кластеру доставки"
+      defaults:
+        title: "Тарифы логистики Ozon по умолчанию"
+        subtitle: "Официальные справочные тарифы без данных о маршруте"
+      cross_dock:
+        title: "Тарифы кросс-докинга Ozon"
+        subtitle: "Тарифы за литр для палеты и коробки по зоне приёма и кластеру получателя"
+      tabs:
+        aria_label: "Тарифы Ozon"
+        routes: "Логистика по маршрутам"
+        defaults: "Логистика по умолчанию"
+        cross_dock: "Кросс-докинг"
+      filters:
+        snapshot: "Снимок тарифа"
+        volume_band: "Номер диапазона объёма"
+        volume_band_placeholder: "Все диапазоны объёма"
+        origin: "Зона отправления/приёма"
+        origin_placeholder: "Введите название"
+        destination: "Кластер доставки"
+        destination_placeholder: "Введите название"
+      actions:
+        filter: "Фильтр"
+        reset: "Сбросить"
+      fields:
+        volume_band: "Диапазон объёма"
+        origin: "Зона отправления/приёма"
+        destination: "Кластер доставки"
+        fbo: "FBO"
+        fbo_fresh_under_300: "FBO Fresh ≤300"
+        fbo_fresh_over_300: "FBO Fresh >300"
+        fbs_under_300: "FBS ≤300"
+        fbs_over_300: "FBS >300"
+        pallet_per_l: "Палета RUB/л"
+        box_per_l: "Коробка RUB/л"
+      pagination:
+        aria_label: "Пагинация тарифов Ozon"
+        summary: "%{from}–%{to} из %{total}"
+        page: "Страница %{page}/%{pages}"
+      empty: "Подходящие тарифы не найдены"
     capital_distribution:
       title: "Распределение капитала"
       filters:
@@ -1788,7 +1831,7 @@ ru:
         store_count: "Магазины"
       tabs:
         lifecycle: "Жизненный цикл"
-        profit_prediction: "Прогноз прибыли"
+        profit_prediction: "Расчёт цены"
         ads: "Реклама"
         ai_inventory_health: "AI-диагностика"
         aria_label: "Разделы SKU"
@@ -2073,16 +2116,65 @@ ru:
       title: "Продажи SKU"
     profit_prediction:
       title: "Прогноз прибыли"
+      copy_name: "%{name}, копия"
+      default_version_name: "Расчет прибыли %{date}"
       dimension_missing: "Нет данных о габаритах. Сначала заполните габариты SKU."
       empty_result: "Введите параметры, чтобы увидеть прогноз"
       calculation_failed: "Не удалось выполнить расчет. Проверьте обязательные параметры."
+      confirm_leave: "В расчете есть несохраненные изменения. Покинуть страницу?"
+      unsaved_version: "Новая несохраненная версия"
+      last_updated: "Последнее сохранение"
+      table_hint: "Перейдите в режим расчета для изменения параметров. Формулы обновляются автоматически, а данные записываются только после сохранения."
+      context_count: "Сценариев: %{count}"
+      filtered_context_count: "Показано: __VISIBLE__ / __TOTAL__ сценариев"
+      platform_tabs:
+        label: "Платформа"
+        all: "Все"
+        wb: "WB"
+        ozon: "Ozon"
       version_active: "Текущая версия: активна"
       no_version: "Версия не настроена"
-      actions: { history: "История", copy: "Копировать версию", new: "Новая версия", save: "Сохранить" }
+      actions:
+        history: "История"
+        copy: "Копировать версию"
+        new: "Новая версия"
+        save: "Сохранить"
+        enter_calculation: "Начать расчет"
+        cancel_calculation: "Отменить расчет"
+        save_calculation: "Сохранить расчет"
       status:
-        dirty: "Есть несохраненные изменения"
+        dirty: "Несохраненные изменения в сценариях: %{count}"
+        calculating: "Выполняется расчет"
+        measuring: "Расчет выполняется локально и еще не сохранен"
         saved: "Сохранено"
         save_failed: "Не удалось сохранить. Проверьте введенные данные."
+      version_statuses:
+        draft: "Черновик"
+        published: "Опубликована"
+        archived: "В архиве"
+      calculation_statuses:
+        pending: "Ожидает расчета"
+        valid: "Корректен"
+        incomplete: "Недостаточно параметров"
+      version_fields:
+        name: "Название версии"
+        effective_from: "Начало действия"
+        effective_to: "Окончание действия"
+      groups:
+        context: "Сценарий"
+        base_inputs: "Себестоимость и габариты"
+        commercial_inputs: "Цена и ставки"
+        logistics_inputs: "Логистика и прочие расходы"
+        results: "Результаты формул"
+      identity_fields:
+        platform: "Платформа"
+        market: "Рынок"
+        delivery_mode: "Схема"
+        warehouse_region: "Склад"
+        company_type: "Налоговый режим"
+      values:
+        unavailable: "-"
+        not_applicable: "-"
       results:
         revenue: "Выручка"
         cost: "Затраты"
@@ -2096,14 +2188,27 @@ ru:
           main: "Основной склад"
           region: "Региональный склад"
         company_types:
-          general: "Российское юрлицо 6%"
-          small: "Малый бизнес"
+          general: "ОСН"
+          small: "УСН"
       fields:
-        price_rub: "Цена продажи (RUB)"
-        rf_price_rub: "Цена продажи в России (RUB)"
+        purchase_price_cny: "Закупочная цена CNY"
+        freight_cny: "Входящая логистика CNY"
+        customs_misc_cny: "Таможенные расходы CNY"
+        duty_rate: "Ставка пошлины"
+        import_vat_rate: "Ставка импортного НДС"
+        length_cm: "Длина, см"
+        width_cm: "Ширина, см"
+        height_cm: "Высота, см"
+        price_rub: "Целевая цена продажи (RUB)"
+        target_margin: "Целевая маржа"
+        target_margin_placeholder: "Введите %"
+        rf_price_rub: "Базовая цена для расходов в России (RUB)"
         exchange_rate_rub_cny: "Курс (RUB/CNY)"
         logistics_coeff: "Коэффициент логистики"
+        wb_logistics_base_rub: "Базовый тариф логистики WB (RUB)"
+        wb_fixed_return_base_rub: "Базовый тариф фиксированного возврата WB (RUB)"
         return_rate: "Доля возвратов"
+        logistics_tax_rate: "Налоговая ставка логистики"
         fbo_delivery_cny: "Доставка на склад (CNY)"
         storage_cny: "Хранение (CNY)"
         commission_rate: "Ставка комиссии"
@@ -2118,6 +2223,23 @@ ru:
         warehouse_operation_rub: "Складская обработка (RUB)"
         cross_docking_cny: "Кросс-докинг (CNY)"
         sales_vat_rate: "Ставка НДС с продаж"
+      result_fields:
+        revenue_cny: "Выручка CNY"
+        goods_cost_cny: "Стоимость товара CNY"
+        import_vat_cny: "Импортный НДС CNY"
+        duty_cny: "Пошлина CNY"
+        logistics_cny: "Логистика CNY"
+        returns_cny: "Амортизация обратной логистики CNY"
+        storage_cost_cny: "Хранение CNY"
+        commission_cny: "Комиссия CNY"
+        acquiring_cny: "Эквайринг CNY"
+        advertising_cny: "Реклама CNY"
+        tax_cny: "Налог с продаж CNY"
+        other_cost_cny: "Прочие расходы CNY"
+        total_cost_cny: "Общие расходы CNY"
+        profit_cny: "Прибыль CNY"
+        margin: "Маржинальность"
+        calculation_status: "Статус расчета"
   erp:
     association_picker:
       create_company: "Создать компанию"

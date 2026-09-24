@@ -20,6 +20,7 @@ class ReportsController < ApplicationController
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
+  before_action -> { require_permission!(:manage_skus) }, only: %i[create_sku_profit_version update_sku_profit_version]
   before_action -> { require_permission!(:manage_skus) }, only: %i[
     create_sku_attachment
     edit_sku_attachment
@@ -39,7 +40,7 @@ class ReportsController < ApplicationController
   ]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
 
-  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit inventory supply_orders warehouses operation_actions ads search_terms ozon_chats competitor_data ai_inventory_health basic].freeze
+  SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit profit_prediction inventory supply_orders warehouses operation_actions ads search_terms ozon_chats competitor_data ai_inventory_health basic].freeze
   SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
@@ -302,6 +303,127 @@ class ReportsController < ApplicationController
       render partial: "reports/sku_detail_tab_frame",
              locals: { frame_id: @sku_detail_tab_frame_id, loaded: true }
     end
+  end
+
+  def sku_profit_versions
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    versions = sku.profit_versions.includes(:contexts).order(effective_from: :desc)
+    render json: versions.map { |version| version_payload(version) }
+  end
+
+  def sku_actual_logistics
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    render json: Ec::SkuActualLogisticsQuery.run(sku:, today: user_today)
+  end
+
+  def sku_actual_return_rate
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    platform = params[:platform].to_s.downcase
+    unless Ec::SkuActualReturnRateQuery::PLATFORMS.include?(platform)
+      return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
+    end
+
+    render json: Ec::SkuActualReturnRateQuery.run(
+      sku:,
+      platform:,
+      today: user_today,
+      time_zone: user_time_zone
+    )
+  end
+
+  def sku_actual_storage
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    platform = params[:platform].to_s.downcase
+    unless Ec::SkuActualStorageQuery::PLATFORMS.include?(platform)
+      return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
+    end
+
+    render json: Ec::SkuActualStorageQuery.run(sku:, platform:, today: user_today)
+  end
+
+  def sku_actual_selling_price
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    platform = params[:platform].to_s.downcase
+    market = params[:market].to_s.downcase
+    unless Ec::SkuActualSellingPriceQuery::PLATFORMS.include?(platform) && Ec::SkuActualSellingPriceQuery::MARKETS.include?(market)
+      return render json: { errors: ["unsupported_context"] }, status: :unprocessable_entity
+    end
+
+    render json: Ec::SkuActualSellingPriceQuery.run(
+      sku: sku,
+      platform: platform,
+      market: market,
+      today: user_today,
+      time_zone: user_time_zone
+    )
+  end
+
+  def sku_actual_advertising
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    platform = params[:platform].to_s.downcase
+    unless Ec::SkuActualAdvertisingQuery::PLATFORMS.include?(platform)
+      return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
+    end
+
+    render json: Ec::SkuActualAdvertisingQuery.run(sku:, platform:, today: user_today)
+  end
+
+  def sku_official_commission_rate
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    platform = params[:platform].to_s.downcase
+    delivery_mode = params[:delivery_mode].to_s.downcase
+    unless Ec::SkuOfficialCommissionRateQuery::SOURCE_FIELD_BY_PLATFORM_AND_MODE.key?([platform, delivery_mode])
+      return render json: { errors: ["unsupported_context"] }, status: :unprocessable_entity
+    end
+
+    render json: Ec::SkuOfficialCommissionRateQuery.run(sku:, platform:, delivery_mode:)
+  end
+
+  def preview_sku_profit
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    render json: Ec::SkuProfitCalculator.call(
+      sku: sku,
+      platform: params[:platform],
+      parameter_context: params.fetch(:parameter_context, {}).permit!.to_h,
+      inputs: permitted_profit_inputs
+    )
+  end
+
+  def create_sku_profit_version
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    version = sku.profit_versions.new(profit_version_params)
+    version.name = version.effective_from.to_s if version.name.blank?
+    assign_profit_contexts(version)
+    persist_profit_version!(version)
+    render json: version_payload(version), status: :created
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.to_hash }, status: :unprocessable_entity
+  rescue ActiveRecord::StatementInvalid => e
+    raise unless e.cause.is_a?(PG::ExclusionViolation)
+
+    render json: { errors: { effective_from: ["overlaps_published_version"] } }, status: :unprocessable_entity
+  end
+
+  def update_sku_profit_version
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    version = sku.profit_versions.includes(:contexts).find(params[:id])
+    if version.archived?
+      render json: { errors: { base: ["readonly"] } }, status: :unprocessable_entity
+      return
+    end
+
+    version.assign_attributes(profit_version_params)
+    assign_profit_contexts(version)
+    persist_profit_version!(version)
+    render json: version_payload(version)
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.to_hash }, status: :unprocessable_entity
+  rescue ActiveRecord::StaleObjectError
+    render json: { errors: { base: ["stale"] } }, status: :conflict
+  rescue ActiveRecord::StatementInvalid => e
+    raise unless e.cause.is_a?(PG::ExclusionViolation)
+
+    render json: { errors: { effective_from: ["overlaps_published_version"] } }, status: :unprocessable_entity
   end
 
   def sku_listing_diagnoses
@@ -885,6 +1007,24 @@ class ReportsController < ApplicationController
     @sku_ai_diagnosis_events = @ai_diagnosis_events_by_sku_id.fetch(@sku.id, [])
     load_sku_listing_diagnoses if @active_tab.in?(%w[basic ai_inventory_health])
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
+    if @active_tab == "profit_prediction"
+      @profit_versions = @sku.profit_versions.includes(:contexts).order(effective_from: :desc, id: :desc)
+      @profit_version = if params[:copy_version_id].present?
+        source = @profit_versions.find_by(id: params[:copy_version_id])
+        source&.build_copy(
+          effective_from: user_today,
+          name: I18n.t("reports.profit_prediction.copy_name", name: source.name)
+        )
+      elsif params[:new_profit_version].present?
+        build_standard_profit_version
+      elsif params[:version_id].present?
+        @profit_versions.find_by(id: params[:version_id])
+      else
+        @profit_versions.for_date(params[:effective_date].presence || user_today).first || @profit_versions.first
+      end
+      @profit_version ||= build_standard_profit_version
+      load_ozon_logistics_tariff_options
+    end
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     @prototype_media = @attachments.reverse.find do |attachment|
       attachment.prototype_media? &&
@@ -2080,5 +2220,124 @@ class ReportsController < ApplicationController
   def selected_sku_codes
     values = params[:sku_codes].presence || params[:sku_code].presence
     Array(values).map(&:presence).compact
+  end
+
+  def profit_version_params
+    params.fetch(:version, {}).permit(:name, :status, :effective_from, :effective_to, :note, :lock_version)
+  end
+
+  def build_standard_profit_version
+    version = @sku.profit_versions.new(
+      name: I18n.t("reports.profit_prediction.default_version_name", date: user_today),
+      status: "draft",
+      effective_from: user_today
+    )
+    Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: user_today)
+    version
+  end
+
+  def load_ozon_logistics_tariff_options
+    @ozon_logistics_snapshot = RawOzon::LogisticsTariffSnapshot.current_for(market_code: "ru")
+    scope = @ozon_logistics_snapshot&.logistics_tariffs
+    @ozon_logistics_origin_options = scope ? scope.distinct.order(:origin_cluster_name).pluck(:origin_cluster_name, :origin_cluster_key) : []
+    @ozon_logistics_destination_options = scope ? scope.distinct.order(:destination_cluster_name).pluck(:destination_cluster_name, :destination_cluster_key) : []
+
+    @ozon_cross_dock_snapshot = RawOzon::CrossDockTariffSnapshot.current_for(market_code: "ru")
+    cross_dock_scope = @ozon_cross_dock_snapshot&.cross_dock_tariffs
+    @ozon_cross_dock_supply_zone_options = cross_dock_scope ? cross_dock_scope.distinct.order(:supply_receiving_zone_name).pluck(:supply_receiving_zone_name, :supply_receiving_zone_key) : []
+    @ozon_cross_dock_destination_options = cross_dock_scope ? cross_dock_scope.distinct.order(:destination_cluster_name).pluck(:destination_cluster_name, :destination_cluster_key) : []
+  end
+
+  def permitted_profit_inputs(source = params.fetch(:inputs, {}))
+    source.permit(*Ec::SkuProfitVersionContext::INPUT_COLUMNS).to_h
+  end
+
+  def version_payload(version)
+    version.attributes.slice("id", "name", "status", "effective_from", "effective_to", "note", "lock_version", "created_at", "updated_at").merge(
+      "contexts" => Ec::SkuProfitStandardContexts.sort(version.contexts).map do |context|
+        context.attributes.slice(
+          "id", "platform", "market", "delivery_mode", "warehouse_region", "company_type",
+          *Ec::SkuProfitVersionContext::INPUT_COLUMNS,
+          *Ec::SkuProfitVersionContext::RESULT_COLUMNS
+        )
+      end
+    )
+  end
+
+  def assign_profit_contexts(version)
+    payloads = profit_context_payloads
+    if payloads.empty? && version.new_record?
+      Ec::SkuProfitStandardContexts.build_missing(
+        version,
+        sku: version.sku,
+        effective_on: version.effective_from || user_today
+      )
+      return
+    end
+
+    payloads.each do |payload|
+      attributes = payload.fetch(:attributes).to_h.stringify_keys
+      normalized_attributes = attributes.transform_values { |value| value.to_s.downcase.presence }
+      context = if payload[:id].present?
+        version.contexts.find { |candidate| candidate.id == payload[:id].to_i } || version.contexts.find(payload[:id])
+      else
+        version.contexts.find_or_initialize_by(normalized_attributes)
+      end
+      context.assign_attributes(attributes)
+      if context.new_record? && context.calculation_inputs.empty?
+        effective_on = version.effective_from || user_today
+        context.assign_input_values(
+          Ec::SkuProfitCalculator.initial_inputs(
+            sku: version.sku,
+            platform: context.platform,
+            parameter_context: attributes,
+            effective_on: effective_on
+          )
+        )
+      end
+      context.assign_input_values(payload[:inputs]) if payload[:inputs]
+    end
+    Ec::SkuProfitVersionPriceResolver.apply!(version)
+  end
+
+  def profit_context_payloads
+    raw_payloads = params[:contexts]
+    raw_payloads = raw_payloads.values if raw_payloads.is_a?(ActionController::Parameters)
+    raw_payloads = Array(raw_payloads) if raw_payloads.present?
+
+    if raw_payloads.blank? && (params[:context].present? || params[:inputs].present?)
+      raw_payloads = [{ "id" => params[:context_id], "context" => params[:context], "inputs" => params[:inputs] }]
+    end
+
+    Array(raw_payloads).map do |raw_payload|
+      payload = raw_payload.respond_to?(:to_unsafe_h) ? raw_payload.to_unsafe_h : raw_payload.to_h
+      payload = payload.stringify_keys
+      context_source = payload["context"].presence || payload.except("id", "inputs")
+      context_parameters = ActionController::Parameters.new(context_source || {})
+      input_parameters = payload.key?("inputs") ? ActionController::Parameters.new(payload["inputs"] || {}) : nil
+      {
+        id: payload["id"] || context_source&.[]("id"),
+        attributes: context_parameters.permit(:platform, :market, :delivery_mode, :warehouse_region, :company_type),
+        inputs: input_parameters && permitted_profit_inputs(input_parameters)
+      }
+    end
+  end
+
+  def persist_profit_version!(version)
+    version.transaction do
+      version.updated_at = Time.current if version.persisted?
+      valid = if version.published?
+        Ec::SkuProfitVersionValidator.call(version)
+      else
+        version.valid?.tap { Ec::SkuProfitVersionRecalculator.call(version) }
+      end
+      unless valid
+        invalid_record = version.contexts.find { |context| context.errors.any? } || version
+        raise ActiveRecord::RecordInvalid, invalid_record
+      end
+
+      version.save!
+      version.contexts.each { |context| context.save! if context.has_changes_to_save? }
+    end
   end
 end

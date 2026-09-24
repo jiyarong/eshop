@@ -1,11 +1,17 @@
 module ApplicationHelper
-  def table_viewport(max_height: nil, class_name: nil, sticky_header: false, **html_options, &block)
+  def table_viewport(max_height: nil, class_name: nil, sticky_header: false, sticky_columns: nil, **html_options, &block)
     classes = ["table-viewport", "table-scroll", class_name, html_options.delete(:class)].compact
     styles = [html_options.delete(:style)]
     styles << "--table-viewport-max-height: #{max_height}" if max_height.present?
     data = html_options.delete(:data).to_h.symbolize_keys
-    controllers = [data[:controller], ("sticky-table-header" if sticky_header)].compact.join(" ")
+    sticky_column_count = sticky_columns.to_i
+    sticky_table_enhanced = sticky_header || sticky_column_count.positive?
+    controllers = [data[:controller], ("sticky-table-header" if sticky_table_enhanced)].compact.join(" ")
     data[:controller] = controllers if controllers.present?
+    if sticky_table_enhanced
+      data[:sticky_table_header_floating_header_value] = sticky_header
+      data[:sticky_table_header_sticky_columns_value] = sticky_column_count if sticky_column_count.positive?
+    end
 
     content_tag(
       :div,

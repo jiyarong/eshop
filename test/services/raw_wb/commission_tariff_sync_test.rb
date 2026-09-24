@@ -182,6 +182,51 @@ class RawWb::CommissionTariffSyncTest < ActiveSupport::TestCase
     end
   end
 
+  test "does not fall back when the preferred response fails validation" do
+    primary = create_account("validation-primary")
+    backup = create_account("validation-backup")
+    invalid_client = FakeWbClient.new(response: { "report" => [ { "subjectName" => "missing id" } ] })
+    backup_client = FakeWbClient.new(response: official_report_payload)
+
+    begin
+      assert_raises(RawWb::CommissionTariffSync::InvalidResponseError) do
+        RawWb::CommissionTariffSync.new(
+          account_scope: RawWb::SellerAccount.where(id: [ primary.id, backup.id ]).order(:id),
+          client_factory: ->(account) { account.id == primary.id ? invalid_client : backup_client }
+        ).run
+      end
+
+      assert_equal 1, invalid_client.calls
+      assert_equal 0, backup_client.calls
+      assert_equal 1, RawWb::CommissionTariffSnapshot.where(source_account_id: primary.id, status: "failed").count
+    ensure
+      cleanup_account(primary)
+      cleanup_account(backup)
+    end
+  end
+
+  test "rejects non-numeric tariff values before persistence" do
+    account = create_account("invalid-rate")
+    client = FakeWbClient.new(response: {
+      "report" => [ { "subjectID" => 3319, "kgvpMarketplace" => "not-a-number" } ]
+    })
+
+    begin
+      assert_raises(RawWb::CommissionTariffSync::InvalidResponseError) do
+        RawWb::CommissionTariffSync.new(
+          account_scope: RawWb::SellerAccount.where(id: account.id),
+          client_factory: ->(_) { client }
+        ).run
+      end
+
+      assert_equal 0, RawWb::CommissionTariff.where(
+        snapshot_id: RawWb::CommissionTariffSnapshot.where(source_account_id: account.id).select(:id)
+      ).count
+    ensure
+      cleanup_account(account)
+    end
+  end
+
   test "does not query other accounts once the preferred account succeeds" do
     primary = create_account("no-fallback-primary")
     backup = create_account("no-fallback-backup")

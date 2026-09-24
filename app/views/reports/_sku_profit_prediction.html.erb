@@ -1,0 +1,698 @@
+<% profit_contexts = profit_prediction_contexts(@profit_version) %>
+<% profit_version_new = @profit_version.new_record? %>
+<% profit_version_readonly = @profit_version.persisted? && @profit_version.archived? %>
+<% save_url = profit_version_new ? report_sku_profit_versions_path(@sku.sku_code) : report_sku_profit_version_path(@sku.sku_code, @profit_version) %>
+<% warning_fields = %i[fbo_delivery_cny storage_cny acquiring_rate advertising_rate damage_rate misc_cny other_cny] %>
+<% profit_messages = {
+  calculating: t("reports.profit_prediction.status.calculating"),
+  calculation_failed: t("reports.profit_prediction.calculation_failed"),
+  dirty: t("reports.profit_prediction.status.dirty", count: "__COUNT__"),
+  context_count: t("reports.profit_prediction.context_count", count: "__COUNT__"),
+  filtered_context_count: t("reports.profit_prediction.filtered_context_count"),
+  measuring: t("reports.profit_prediction.status.measuring"),
+  saved: t("reports.profit_prediction.status.saved"),
+  save_failed: t("reports.profit_prediction.status.save_failed"),
+  confirm_leave: t("reports.profit_prediction.confirm_leave"),
+  statuses: {
+    valid: t("reports.profit_prediction.calculation_statuses.valid"),
+    incomplete: t("reports.profit_prediction.calculation_statuses.incomplete"),
+    pending: t("reports.profit_prediction.calculation_statuses.pending")
+  },
+  warnings: warning_fields.index_with do |field|
+    t("reports.profit_prediction.warnings.not_included", field: t("reports.profit_prediction.fields.#{field}"))
+  end.transform_keys { |field| "#{field}_not_included" }.merge(
+    "rf_price_fallback_to_market_price" => t("reports.profit_prediction.warnings.rf_price_fallback_to_market_price")
+  ),
+  process: {
+    incomplete: t("reports.profit_prediction.process.incomplete"),
+    incomplete_fields: t("reports.profit_prediction.process.incomplete_fields", fields: "__FIELDS__"),
+    missing_reference_price: t("reports.profit_prediction.process.missing_reference_price"),
+    target_margin_invalid: t("reports.profit_prediction.process.target_margin_invalid"),
+    target_margin: t("reports.profit_prediction.fields.target_margin"),
+    input_number: {
+      increment: t("reports.profit_prediction.process.input_number.increment"),
+      decrement: t("reports.profit_prediction.process.input_number.decrement")
+    },
+    cross_docking_not_applicable: t("reports.profit_prediction.process.cross_docking_not_applicable"),
+    by_price_label: t("reports.profit_prediction.process.by_price_label"),
+    by_revenue_formula: t(
+      "reports.profit_prediction.process.by_revenue_formula",
+      by_price: "__BY_PRICE__",
+      rf_price: "__RF_PRICE__",
+      exchange: "__EXCHANGE__"
+    ),
+    by_revenue_formula_fallback: t(
+      "reports.profit_prediction.process.by_revenue_formula_fallback",
+      by_price: "__BY_PRICE__",
+      rf_price: "__RF_PRICE__",
+      exchange: "__EXCHANGE__"
+    ),
+    sum_costs: t("reports.profit_prediction.process.sum_costs"),
+    formula_summary: {
+      total_cost: t("reports.profit_prediction.process.formula_summary.total_cost", items: "__ITEMS__", total: "__TOTAL__"),
+      cost_term: t("reports.profit_prediction.process.formula_summary.cost_term", label: "__LABEL__", value: "__VALUE__"),
+      profit: t("reports.profit_prediction.process.formula_summary.profit", revenue: "__REVENUE__", total_cost: "__TOTAL_COST__", profit: "__PROFIT__"),
+      margin: t("reports.profit_prediction.process.formula_summary.margin", profit: "__PROFIT__", revenue: "__REVENUE__", margin: "__MARGIN__")
+    },
+    sources: {
+      ozon_tariffs: t("reports.profit_prediction.sources.ozon_tariffs.action"),
+      ozon_tariff_feedback: {
+        no_average: t("reports.profit_prediction.sources.ozon_tariffs.no_average"),
+        no_selected_row: t("reports.profit_prediction.sources.ozon_tariffs.no_selected_row")
+      },
+      actual_logistics: {
+        action: t("reports.profit_prediction.sources.actual_logistics.action"),
+        loading: t("reports.profit_prediction.sources.actual_logistics.loading"),
+        empty: t("reports.profit_prediction.sources.actual_logistics.empty"),
+        load_failed: t("reports.profit_prediction.sources.actual_logistics.load_failed"),
+        outbound: t("reports.profit_prediction.sources.actual_logistics.outbound"),
+        return: t("reports.profit_prediction.sources.actual_logistics.return"),
+        apply: t("reports.profit_prediction.sources.actual_logistics.apply"),
+        meta: t("reports.profit_prediction.sources.actual_logistics.meta", from: "__FROM__", to: "__TO__", outbound_count: "__OUTBOUND_COUNT__", return_count: "__RETURN_COUNT__", data_through: "__DATA_THROUGH__")
+      },
+      actual_return_rate: {
+        action: t("reports.profit_prediction.sources.actual_return_rate.action"),
+        loading: t("reports.profit_prediction.sources.actual_return_rate.loading"),
+        empty: t("reports.profit_prediction.sources.actual_return_rate.empty"),
+        unusable: t("reports.profit_prediction.sources.actual_return_rate.unusable", rate: "__RATE__"),
+        load_failed: t("reports.profit_prediction.sources.actual_return_rate.load_failed"),
+        result: t("reports.profit_prediction.sources.actual_return_rate.result", rate: "__RATE__"),
+        apply: t("reports.profit_prediction.sources.actual_return_rate.apply"),
+        meta: t("reports.profit_prediction.sources.actual_return_rate.meta", orders: "__ORDERS__", returns: "__RETURNS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+      },
+      actual_selling_price: {
+        action: t("reports.profit_prediction.sources.actual_selling_price.action"),
+        loading: t("reports.profit_prediction.sources.actual_selling_price.loading"),
+        empty: t("reports.profit_prediction.sources.actual_selling_price.empty"),
+        missing_rate: t("reports.profit_prediction.sources.actual_selling_price.missing_rate"),
+        load_failed: t("reports.profit_prediction.sources.actual_selling_price.load_failed"),
+        result: t("reports.profit_prediction.sources.actual_selling_price.result", price: "__PRICE__"),
+        converted_source: t("reports.profit_prediction.sources.actual_selling_price.converted_source", source_price: "__SOURCE_PRICE__", source_currency: "__SOURCE_CURRENCY__", rub_price: "__RUB_PRICE__"),
+        apply: t("reports.profit_prediction.sources.actual_selling_price.apply"),
+        meta: t("reports.profit_prediction.sources.actual_selling_price.meta", items: "__ITEMS__", units: "__UNITS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+      },
+      actual_cross_dock: {
+        action: t("reports.profit_prediction.sources.actual_cross_dock.action"),
+        loading: t("reports.profit_prediction.sources.actual_cross_dock.loading"),
+        empty: t("reports.profit_prediction.sources.actual_cross_dock.empty"),
+        load_failed: t("reports.profit_prediction.sources.actual_cross_dock.load_failed"),
+        result: t("reports.profit_prediction.sources.actual_cross_dock.result", amount: "__AMOUNT__"),
+        apply: t("reports.profit_prediction.sources.actual_cross_dock.apply"),
+        meta: t("reports.profit_prediction.sources.actual_cross_dock.meta", count: "__COUNT__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+      },
+      actual_storage: {
+        action: t("reports.profit_prediction.sources.actual_storage.action"),
+        loading: t("reports.profit_prediction.sources.actual_storage.loading"),
+        empty: t("reports.profit_prediction.sources.actual_storage.empty"),
+        load_failed: t("reports.profit_prediction.sources.actual_storage.load_failed"),
+        result: t("reports.profit_prediction.sources.actual_storage.result", amount: "__AMOUNT__"),
+        apply: t("reports.profit_prediction.sources.actual_storage.apply"),
+        meta: t("reports.profit_prediction.sources.actual_storage.meta", total: "__TOTAL__", count: "__COUNT__", sales: "__SALES__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+      },
+      actual_advertising: {
+        action: t("reports.profit_prediction.sources.actual_advertising.action"),
+        loading: t("reports.profit_prediction.sources.actual_advertising.loading"),
+        empty: t("reports.profit_prediction.sources.actual_advertising.empty"),
+        load_failed: t("reports.profit_prediction.sources.actual_advertising.load_failed"),
+        result: t("reports.profit_prediction.sources.actual_advertising.result", rate: "__RATE__"),
+        apply: t("reports.profit_prediction.sources.actual_advertising.apply"),
+        meta: t("reports.profit_prediction.sources.actual_advertising.meta", advertising: "__ADVERTISING__", sales: "__SALES__", currency: "__CURRENCY__", covered: "__COVERED__", expected: "__EXPECTED__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__"),
+        ozon_attribution: t("reports.profit_prediction.sources.actual_advertising.ozon_attribution", coverage: "__COVERAGE__"),
+        wb_exact: t("reports.profit_prediction.sources.actual_advertising.wb_exact"),
+        wb_fallback: t("reports.profit_prediction.sources.actual_advertising.wb_fallback"),
+        currency_fallback: t("reports.profit_prediction.sources.actual_advertising.currency_fallback")
+      },
+      official_commission: {
+        action: t("reports.profit_prediction.sources.official_commission.action"),
+        loading: t("reports.profit_prediction.sources.official_commission.loading"),
+        empty: t("reports.profit_prediction.sources.official_commission.empty"),
+        load_failed: t("reports.profit_prediction.sources.official_commission.load_failed"),
+        result: t("reports.profit_prediction.sources.official_commission.result", rate: "__RATE__"),
+        result_with_products: t("reports.profit_prediction.sources.official_commission.result_with_products", rate: "__RATE__", count: "__COUNT__"),
+        apply: t("reports.profit_prediction.sources.official_commission.apply"),
+        meta: t("reports.profit_prediction.sources.official_commission.meta", resolved: "__RESOLVED__", total: "__TOTAL__", field: "__FIELD__", synced_at: "__SYNCED_AT__")
+      },
+      cross_dock_tariffs: {
+        action: t("reports.profit_prediction.sources.cross_dock_tariffs.action"),
+        loading: t("reports.profit_prediction.sources.cross_dock_tariffs.loading"),
+        empty: t("reports.profit_prediction.sources.cross_dock_tariffs.empty"),
+        load_failed: t("reports.profit_prediction.sources.cross_dock_tariffs.load_failed"),
+        missing_volume: t("reports.profit_prediction.sources.cross_dock_tariffs.missing_volume"),
+        use_amount: t("reports.profit_prediction.sources.cross_dock_tariffs.use_amount"),
+        use_pallet: t("reports.profit_prediction.sources.cross_dock_tariffs.use_pallet"),
+        use_box: t("reports.profit_prediction.sources.cross_dock_tariffs.use_box"),
+        page: t("reports.profit_prediction.sources.cross_dock_tariffs.page", current: "__CURRENT__", total: "__TOTAL__")
+      },
+      wb_logistics_tariffs: {
+        action: t("reports.profit_prediction.sources.wb_logistics_tariffs.action"),
+        title: t("reports.profit_prediction.sources.wb_logistics_tariffs.title"),
+        subtitle: t("reports.profit_prediction.sources.wb_logistics_tariffs.subtitle"),
+        delivery_mode: t("reports.profit_prediction.sources.wb_logistics_tariffs.delivery_mode"),
+        date: t("reports.profit_prediction.sources.wb_logistics_tariffs.date"),
+        warehouse: t("reports.profit_prediction.sources.wb_logistics_tariffs.warehouse"),
+        warehouse_placeholder: t("reports.profit_prediction.sources.wb_logistics_tariffs.warehouse_placeholder"),
+        geo: t("reports.profit_prediction.sources.wb_logistics_tariffs.geo"),
+        geo_placeholder: t("reports.profit_prediction.sources.wb_logistics_tariffs.geo_placeholder"),
+        apply_filters: t("reports.profit_prediction.sources.wb_logistics_tariffs.apply_filters"),
+        snapshot: t("reports.profit_prediction.sources.wb_logistics_tariffs.snapshot"),
+        matched: t("reports.profit_prediction.sources.wb_logistics_tariffs.matched"),
+        average: t("reports.profit_prediction.sources.wb_logistics_tariffs.average"),
+        average_base: t("reports.profit_prediction.sources.wb_logistics_tariffs.average_base"),
+        average_coeff: t("reports.profit_prediction.sources.wb_logistics_tariffs.average_coeff"),
+        average_liter: t("reports.profit_prediction.sources.wb_logistics_tariffs.average_liter"),
+        use_average: t("reports.profit_prediction.sources.wb_logistics_tariffs.use_average"),
+        warehouse_name: t("reports.profit_prediction.sources.wb_logistics_tariffs.warehouse_name"),
+        geo_name: t("reports.profit_prediction.sources.wb_logistics_tariffs.geo_name"),
+        base: t("reports.profit_prediction.sources.wb_logistics_tariffs.base"),
+        coefficient: t("reports.profit_prediction.sources.wb_logistics_tariffs.coefficient"),
+        liter: t("reports.profit_prediction.sources.wb_logistics_tariffs.liter"),
+        operation: t("reports.profit_prediction.sources.wb_logistics_tariffs.operation"),
+        use_rate: t("reports.profit_prediction.sources.wb_logistics_tariffs.use_rate"),
+        loading: t("reports.profit_prediction.sources.wb_logistics_tariffs.loading"),
+        empty: t("reports.profit_prediction.sources.wb_logistics_tariffs.empty"),
+        load_failed: t("reports.profit_prediction.sources.wb_logistics_tariffs.load_failed"),
+        snapshot_unavailable: t("reports.profit_prediction.sources.wb_logistics_tariffs.snapshot_unavailable"),
+        no_average: t("reports.profit_prediction.sources.wb_logistics_tariffs.no_average"),
+        no_selected_row: t("reports.profit_prediction.sources.wb_logistics_tariffs.no_selected_row"),
+        api_token_unavailable: t("reports.profit_prediction.sources.wb_logistics_tariffs.api_token_unavailable"),
+        previous: t("reports.profit_prediction.sources.wb_logistics_tariffs.previous"),
+        next: t("reports.profit_prediction.sources.wb_logistics_tariffs.next")
+      },
+      loading: t("reports.profit_prediction.sources.ozon_tariffs.loading"),
+      empty: t("reports.profit_prediction.sources.ozon_tariffs.empty"),
+      load_failed: t("reports.profit_prediction.sources.ozon_tariffs.load_failed"),
+      missing_volume: t("reports.profit_prediction.sources.ozon_tariffs.missing_volume"),
+      use_rate: t("reports.profit_prediction.sources.ozon_tariffs.use_rate"),
+      page: t("reports.profit_prediction.sources.ozon_tariffs.page", current: "__CURRENT__", total: "__TOTAL__")
+    },
+    steps: t("reports.profit_prediction.process.steps"),
+    units: t("reports.profit_prediction.process.units"),
+    parameter_labels: profit_prediction_parameter_labels
+  }
+} %>
+
+<section
+  class="profit-prediction-workbench <%= "is-calculating" unless profit_version_readonly %>"
+  data-controller="profit-prediction"
+  data-profit-prediction-url-value="<%= preview_report_sku_profit_path(@sku.sku_code) %>"
+  data-profit-prediction-tariff-url-value="<%= reports_ozon_logistics_tariffs_path(format: :json) %>"
+  data-profit-prediction-cross-dock-tariff-url-value="<%= reports_ozon_cross_dock_tariffs_path(format: :json) %>"
+  data-profit-prediction-wb-logistics-tariff-url-value="<%= reports_wb_logistics_tariffs_path(format: :json) %>"
+  data-profit-prediction-actual-logistics-url-value="<%= report_sku_actual_logistics_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-actual-return-rate-url-value="<%= report_sku_actual_return_rate_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-actual-storage-url-value="<%= report_sku_actual_storage_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-actual-selling-price-url-value="<%= report_sku_actual_selling_price_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-actual-advertising-url-value="<%= report_sku_actual_advertising_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-official-commission-url-value="<%= report_sku_official_commission_rate_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-messages-value="<%= json_escape(profit_messages.to_json) %>"
+  data-profit-prediction-new-record-value="<%= profit_version_new %>"
+  data-profit-prediction-status-value="<%= @profit_version.status %>"
+  data-profit-prediction-readonly-value="<%= profit_version_readonly %>"
+  data-save-url="<%= save_url %>"
+  data-save-method="<%= profit_version_new ? "POST" : "PATCH" %>"
+  data-lock-version="<%= @profit_version.lock_version %>"
+>
+  <header class="profit-prediction-toolbar">
+    <div class="profit-prediction-toolbar__main">
+      <div class="profit-prediction-toolbar__identity">
+        <h2 class="section-title"><%= t("reports.profit_prediction.title") %></h2>
+        <label class="profit-prediction-version-switcher">
+          <%= select_tag :profit_version_id,
+            options_for_select(
+              @profit_versions.map { |version| ["#{version.name} · #{t("reports.profit_prediction.version_statuses.#{version.status}")}", version.id] },
+              @profit_version.id
+            ),
+            include_blank: profit_version_new ? t("reports.profit_prediction.unsaved_version") : nil,
+            disabled: @profit_versions.empty?,
+            class: "input",
+            data: {
+              profit_prediction_target: "navigationControl",
+              action: "change->profit-prediction#changeVersion"
+            } %>
+        </label>
+        <div class="profit-prediction-toolbar__statuses">
+          <span class="profit-prediction-mode-status" data-profit-prediction-target="modeStatus" aria-live="polite">
+            <%= profit_version_new ? t("reports.profit_prediction.status.measuring") : t("reports.profit_prediction.status.saved") %>
+          </span>
+        </div>
+      </div>
+
+      <div class="profit-prediction-toolbar__actions">
+        <div class="profit-prediction-toolbar__version-actions">
+          <% if @profit_version.persisted? %>
+            <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", copy_version_id: @profit_version.id), class: "btn btn-ghost btn-sm" do %>
+              <i class="bi bi-copy" aria-hidden="true"></i>
+              <%= t("reports.profit_prediction.actions.copy") %>
+            <% end %>
+          <% end %>
+          <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", new_profit_version: 1), class: "btn btn-ghost btn-sm" do %>
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            <%= t("reports.profit_prediction.actions.new") %>
+          <% end %>
+        </div>
+        <div class="profit-prediction-toolbar__calculation-actions">
+          <% unless profit_version_readonly %>
+            <button type="button" class="btn btn-primary btn-sm" data-profit-prediction-target="saveButton" data-action="profit-prediction#save">
+              <i class="bi bi-floppy" aria-hidden="true"></i>
+              <%= t("reports.profit_prediction.actions.save_calculation") %>
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%= hidden_field_tag :profit_version_name, @profit_version.name,
+      data: { profit_prediction_target: "versionInput", version_field: "name" } %>
+    <%= hidden_field_tag :profit_version_effective_from, @profit_version.effective_from,
+      data: { profit_prediction_target: "versionInput", version_field: "effective_from" } %>
+    <%= hidden_field_tag :profit_version_effective_to, @profit_version.effective_to,
+      data: { profit_prediction_target: "versionInput", version_field: "effective_to" } %>
+  </header>
+
+  <% if @sku.dimension.blank? %>
+    <div class="profit-prediction-alert" role="alert">
+      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+      <%= t("reports.profit_prediction.dimension_missing") %>
+    </div>
+  <% end %>
+
+  <div class="profit-prediction-table-note">
+    <nav class="profit-prediction-platform-tabs" aria-label="<%= t("reports.profit_prediction.platform_tabs.label") %>">
+      <% [["", "all"], ["wb", "wb"], ["ozon", "ozon"]].each_with_index do |(value, key), index| %>
+        <button
+          type="button"
+          class="profit-prediction-platform-tab<%= " is-active" if index.zero? %>"
+          data-profit-prediction-target="platformFilter"
+          data-platform-value="<%= value %>"
+          aria-selected="<%= index.zero? %>"
+          role="tab"
+          data-action="click->profit-prediction#platformFilterChanged"
+        ><%= t("reports.profit_prediction.platform_tabs.#{key}") %></button>
+      <% end %>
+    </nav>
+    <span data-profit-prediction-target="contextCount"><%= t("reports.profit_prediction.context_count", count: profit_contexts.size) %></span>
+  </div>
+
+  <section class="table-list-card profit-prediction-table-card">
+    <%= table_viewport(
+      class_name: "table-list-viewport",
+      sticky_header: true,
+      sticky_columns: SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.size + 1
+    ) do %>
+      <table class="prod-tbl profit-prediction-table">
+        <thead>
+          <tr class="profit-prediction-table__groups">
+            <th colspan="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.size + 1 %>"><%= t("reports.profit_prediction.groups.context") %></th>
+            <% profit_prediction_table_groups.each do |group, columns| %>
+              <th colspan="<%= columns.size %>" data-platform-group="<%= group %>"><%= t("reports.profit_prediction.groups.#{group}") %></th>
+            <% end %>
+          </tr>
+          <tr>
+            <th class="profit-prediction-table__health-heading">
+              <span class="sr-only"><%= t("reports.profit_prediction.result_fields.calculation_status") %></span>
+            </th>
+            <% SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.each do |field| %>
+              <th class="profit-prediction-table__identity-heading profit-prediction-table__identity-heading--<%= field %>"><%= t("reports.profit_prediction.identity_fields.#{field}") %></th>
+            <% end %>
+            <% profit_prediction_table_groups.each do |_group, columns| %>
+              <% columns.each do |kind, field| %>
+                <th class="num" data-field="<%= field %>" data-platforms="<%= profit_prediction_column_platforms(field).join(" ") %>" data-platform-column-group="<%= _group %>">
+                  <%= t("reports.profit_prediction.#{kind == :result ? "result_fields" : "fields"}.#{field}") %>
+                </th>
+              <% end %>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% profit_contexts.each_with_index do |context, index| %>
+            <% row_key = context.id || "new-#{index}" %>
+            <tr
+              class="profit-prediction-row"
+              data-profit-prediction-target="row"
+              data-row-key="<%= row_key %>"
+              data-context-id="<%= context.id %>"
+              data-platform="<%= context.platform %>"
+              data-market="<%= context.market %>"
+              data-delivery-mode="<%= context.delivery_mode %>"
+              data-warehouse-region="<%= context.warehouse_region %>"
+              data-company-type="<%= context.company_type %>"
+              data-calculation-status="<%= context.calculation_status %>"
+              data-context-label="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.map { |field| profit_prediction_identity_value(context, field) }.join(" · ") %>"
+              data-action="click->profit-prediction#selectRow keydown->profit-prediction#selectRowWithKeyboard"
+              tabindex="0"
+              aria-selected="false"
+            >
+              <td
+                class="profit-prediction-table__health"
+                data-row-status
+                data-status="<%= context.calculation_status %>"
+                title="<%= t("reports.profit_prediction.calculation_statuses.#{context.calculation_status}") %>"
+              >
+                <span class="sr-only" data-row-status-label><%= t("reports.profit_prediction.calculation_statuses.#{context.calculation_status}") %></span>
+              </td>
+              <% SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.each do |field| %>
+                <td class="profit-prediction-table__identity profit-prediction-table__identity--<%= field %>"><%= profit_prediction_identity_value(context, field) %></td>
+              <% end %>
+              <% profit_prediction_table_groups.each do |_group, columns| %>
+                <% columns.each do |kind, field| %>
+                  <% column_platforms = profit_prediction_column_platforms(field) %>
+                  <% if kind == :input %>
+                    <td class="num profit-prediction-table__input-cell" data-platforms="<%= column_platforms.join(" ") %>" data-platform-column-group="<%= _group %>">
+                      <% if profit_prediction_input_applicable?(context, field) %>
+                        <% input_editable = profit_prediction_input_editable?(context, field) %>
+                        <% input_value = context.public_send(field) %>
+                        <%= number_field_tag "profit_context_#{index}_#{field}", profit_prediction_input_value(input_value, field),
+                          step: "any",
+                          disabled: profit_version_readonly || !input_editable,
+                          aria: { label: t("reports.profit_prediction.fields.#{field}") },
+                          class: "profit-prediction-cell-input",
+                          data: {
+                            profit_prediction_target: "input",
+                            field: field,
+                            editable: input_editable,
+                            source_value: profit_prediction_raw_value(input_value),
+                            action: "input->profit-prediction#inputChanged"
+                          } %>
+                      <% else %>
+                        <%= hidden_field_tag "profit_context_#{index}_#{field}", context.public_send(field),
+                          disabled: profit_version_readonly,
+                          data: { profit_prediction_target: "input", field: field, editable: false } %>
+                        <span class="profit-prediction-table__not-applicable"><%= profit_prediction_not_applicable_label(context, field) %></span>
+                      <% end %>
+                    </td>
+                  <% else %>
+                    <% result_value = context.public_send(field) %>
+                    <% result_class = if (field == :profit_cny || field == :margin) && result_value.present?
+                      result_value.to_d.negative? ? "is-negative" : "is-positive"
+                    end %>
+                    <td class="num profit-prediction-table__result <%= result_class %>" data-result-field="<%= field %>" data-platforms="<%= column_platforms.join(" ") %>" data-platform-column-group="<%= _group %>">
+                      <%= profit_prediction_result_value(context, field) %>
+                    </td>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </section>
+
+  <section class="profit-prediction-process" aria-labelledby="profit-prediction-process-title">
+    <header class="profit-prediction-process__header">
+      <nav
+        class="profit-prediction-process__scenario-tabs"
+        role="tablist"
+        aria-label="<%= t("reports.profit_prediction.process.scenario_tabs_label") %>"
+      >
+        <% profit_contexts.each_with_index do |context, index| %>
+          <% row_key = context.id || "new-#{index}" %>
+          <button
+            type="button"
+            class="profit-prediction-process__scenario-tab<%= " is-active" if index.zero? %>"
+            role="tab"
+            aria-selected="<%= index.zero? %>"
+            tabindex="<%= index.zero? ? 0 : -1 %>"
+            title="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.map { |field| profit_prediction_identity_value(context, field) }.join(" · ") %>"
+            data-profit-prediction-target="scenarioTab"
+            data-row-key="<%= row_key %>"
+            data-action="click->profit-prediction#selectScenarioTab keydown->profit-prediction#selectScenarioTabWithKeyboard"
+          >
+            <span class="profit-prediction-process__scenario-tab-primary">
+              <%= profit_prediction_identity_value(context, :platform) %>
+              <%= profit_prediction_identity_value(context, :market) %>
+            </span>
+            <span class="profit-prediction-process__scenario-tab-secondary">
+              <%= profit_prediction_identity_value(context, :delivery_mode) %>
+              &middot;
+              <%= profit_prediction_identity_value(context, :company_type) %>
+            </span>
+          </button>
+        <% end %>
+      </nav>
+      <div class="profit-prediction-process__header-content">
+        <h3 id="profit-prediction-process-title"><%= t("reports.profit_prediction.process.title") %></h3>
+        <p data-profit-prediction-target="detailTitle"></p>
+        <div class="profit-prediction-process__formula-summary">
+          <strong><%= t("reports.profit_prediction.process.formula_summary.label") %></strong>
+          <span data-profit-prediction-target="detailCostFormula"><%= t("reports.profit_prediction.process.formula_summary.total_cost", items: "-", total: "-") %></span>
+          <span data-profit-prediction-target="detailProfitFormula"><%= t("reports.profit_prediction.process.formula_summary.profit", revenue: "-", total_cost: "-", profit: "-") %></span>
+          <span data-profit-prediction-target="detailMarginFormula"><%= t("reports.profit_prediction.process.formula_summary.margin", profit: "-", revenue: "-", margin: "-") %></span>
+        </div>
+        <p class="profit-prediction-process__status" data-profit-prediction-target="detailStatus" role="status" aria-live="polite" hidden></p>
+        <div class="profit-prediction-process__summary" aria-label="<%= t("reports.profit_prediction.process.summary") %>">
+          <div class="profit-prediction-process__summary-item">
+            <span><%= t("reports.profit_prediction.fields.price_rub") %></span>
+            <strong data-profit-prediction-target="detailPrice">-</strong>
+          </div>
+          <div class="profit-prediction-process__summary-item">
+            <span><%= t("reports.profit_prediction.result_fields.total_cost_cny") %></span>
+            <strong data-profit-prediction-target="detailTotalCost">-</strong>
+          </div>
+          <div class="profit-prediction-process__summary-item">
+            <span><%= t("reports.profit_prediction.result_fields.profit_cny") %></span>
+            <strong data-profit-prediction-target="detailProfit">-</strong>
+          </div>
+          <div class="profit-prediction-process__summary-item">
+            <span><%= t("reports.profit_prediction.result_fields.margin") %></span>
+            <strong data-profit-prediction-target="detailMargin">-</strong>
+          </div>
+        </div>
+      </div>
+    </header>
+    <table class="profit-prediction-process__table">
+      <thead>
+        <tr>
+          <th><%= t("reports.profit_prediction.process.columns.item") %></th>
+          <th><%= t("reports.profit_prediction.process.columns.parameters") %></th>
+          <th><%= t("reports.profit_prediction.process.columns.source") %></th>
+          <th><%= t("reports.profit_prediction.process.columns.calculation") %></th>
+        </tr>
+      </thead>
+      <tbody data-profit-prediction-target="detailBody"></tbody>
+    </table>
+  </section>
+
+  <dialog
+    class="attachment-dialog profit-prediction-tariff-dialog"
+    data-profit-prediction-target="tariffDialog"
+    data-action="click->profit-prediction#closeTariffDialogOnBackdrop">
+    <section class="attachment-dialog__content profit-prediction-tariff-dialog__content" role="document" aria-labelledby="profit-prediction-tariff-title">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="profit-prediction-tariff-title"><%= t("reports.profit_prediction.sources.ozon_tariffs.title") %></h2>
+          <p class="sub"><%= t("reports.profit_prediction.sources.ozon_tariffs.subtitle") %></p>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="profit-prediction#closeTariffDialog">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__context">
+        <span><%= t("reports.profit_prediction.sources.ozon_tariffs.volume") %> <strong data-profit-prediction-target="tariffVolume">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.ozon_tariffs.volume_band") %> <strong data-profit-prediction-target="tariffVolumeBand">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.ozon_tariffs.snapshot") %> <strong data-profit-prediction-target="tariffSnapshot">-</strong></span>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__filters">
+        <%= render "shared/popover_multiselect_filter",
+          dom_id_prefix: "profit-prediction-ozon-origins",
+          param_name: "profit_prediction_ozon_origin_keys",
+          label: t("reports.profit_prediction.sources.ozon_tariffs.origin"),
+          all_label: t("reports.profit_prediction.sources.ozon_tariffs.select_origins"),
+          selected_values: [],
+          options: @ozon_logistics_origin_options || [],
+          field_class: "profit-prediction-tariff-filter" %>
+        <%= render "shared/popover_multiselect_filter",
+          dom_id_prefix: "profit-prediction-ozon-destinations",
+          param_name: "profit_prediction_ozon_destination_keys",
+          label: t("reports.profit_prediction.sources.ozon_tariffs.destination"),
+          all_label: t("reports.profit_prediction.sources.ozon_tariffs.select_destinations"),
+          selected_values: [],
+          options: @ozon_logistics_destination_options || [],
+          field_class: "profit-prediction-tariff-filter" %>
+        <button class="btn btn-primary" type="button" data-action="profit-prediction#applyTariffFilters">
+          <i class="bi bi-funnel" aria-hidden="true"></i>
+          <%= t("reports.profit_prediction.sources.ozon_tariffs.apply_filters") %>
+        </button>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__summary">
+        <span><%= t("reports.profit_prediction.sources.ozon_tariffs.matched_routes") %> <strong data-profit-prediction-target="tariffMatchedCount">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.ozon_tariffs.average") %> <strong data-profit-prediction-target="tariffAverage">-</strong></span>
+        <button class="btn btn-primary btn-sm" type="button" data-profit-prediction-target="tariffUseAverage" data-action="profit-prediction#useTariffAverage" disabled>
+          <%= t("reports.profit_prediction.sources.ozon_tariffs.use_average") %>
+        </button>
+        <span class="profit-prediction-tariff-dialog__action-message" data-profit-prediction-target="tariffActionMessage" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__table">
+        <table class="prod-tbl">
+          <thead><tr>
+            <th><%= t("reports.profit_prediction.sources.ozon_tariffs.origin") %></th>
+            <th><%= t("reports.profit_prediction.sources.ozon_tariffs.destination") %></th>
+            <th class="numeric"><%= t("reports.profit_prediction.sources.ozon_tariffs.fbo_rate") %></th>
+            <th><span class="sr-only"><%= t("reports.profit_prediction.sources.ozon_tariffs.operation") %></span></th>
+          </tr></thead>
+          <tbody data-profit-prediction-target="tariffBody"></tbody>
+        </table>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__pagination">
+        <button class="icon-button" type="button" data-profit-prediction-target="tariffPrevious" data-action="profit-prediction#previousTariffPage" aria-label="<%= t("reports.profit_prediction.sources.ozon_tariffs.previous") %>">
+          <i class="bi bi-chevron-left" aria-hidden="true"></i>
+        </button>
+        <span data-profit-prediction-target="tariffPage">-</span>
+        <button class="icon-button" type="button" data-profit-prediction-target="tariffNext" data-action="profit-prediction#nextTariffPage" aria-label="<%= t("reports.profit_prediction.sources.ozon_tariffs.next") %>">
+          <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog
+    class="attachment-dialog profit-prediction-tariff-dialog"
+    data-profit-prediction-target="crossDockDialog"
+    data-action="click->profit-prediction#closeCrossDockDialogOnBackdrop">
+    <section class="attachment-dialog__content profit-prediction-tariff-dialog__content" role="document" aria-labelledby="profit-prediction-cross-dock-title">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="profit-prediction-cross-dock-title"><%= t("reports.profit_prediction.sources.cross_dock_tariffs.title") %></h2>
+          <p class="sub"><%= t("reports.profit_prediction.sources.cross_dock_tariffs.subtitle") %></p>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="profit-prediction#closeCrossDockDialog">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__context">
+        <span><%= t("reports.profit_prediction.sources.cross_dock_tariffs.volume") %> <strong data-profit-prediction-target="crossDockVolume">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.cross_dock_tariffs.snapshot") %> <strong data-profit-prediction-target="crossDockSnapshot">-</strong></span>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__filters">
+        <%= render "shared/popover_multiselect_filter",
+          dom_id_prefix: "profit-prediction-cross-dock-supply-zones",
+          param_name: "profit_prediction_cross_dock_supply_zone_keys",
+          label: t("reports.profit_prediction.sources.cross_dock_tariffs.supply_zone"),
+          all_label: t("reports.profit_prediction.sources.cross_dock_tariffs.select_supply_zones"),
+          selected_values: [],
+          options: @ozon_cross_dock_supply_zone_options || [],
+          field_class: "profit-prediction-tariff-filter" %>
+        <%= render "shared/popover_multiselect_filter",
+          dom_id_prefix: "profit-prediction-cross-dock-destinations",
+          param_name: "profit_prediction_cross_dock_destination_keys",
+          label: t("reports.profit_prediction.sources.cross_dock_tariffs.destination"),
+          all_label: t("reports.profit_prediction.sources.cross_dock_tariffs.select_destinations"),
+          selected_values: [],
+          options: @ozon_cross_dock_destination_options || [],
+          field_class: "profit-prediction-tariff-filter" %>
+        <button class="btn btn-primary" type="button" data-action="profit-prediction#applyCrossDockFilters">
+          <i class="bi bi-funnel" aria-hidden="true"></i>
+          <%= t("reports.profit_prediction.sources.cross_dock_tariffs.apply_filters") %>
+        </button>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__summary profit-prediction-cross-dock-dialog__summary">
+        <span><%= t("reports.profit_prediction.sources.cross_dock_tariffs.matched_routes") %> <strong data-profit-prediction-target="crossDockMatchedCount">-</strong></span>
+        <div class="profit-prediction-cross-dock-dialog__summary-option">
+          <span><%= t("reports.profit_prediction.sources.cross_dock_tariffs.average_pallet") %> <strong data-profit-prediction-target="crossDockAveragePallet">-</strong></span>
+          <button class="btn btn-primary btn-sm" type="button" data-profit-prediction-target="crossDockUseAveragePallet" data-action="profit-prediction#useCrossDockAveragePallet" disabled>
+            <%= t("reports.profit_prediction.sources.cross_dock_tariffs.use_average_pallet") %>
+          </button>
+        </div>
+        <div class="profit-prediction-cross-dock-dialog__summary-option">
+          <span><%= t("reports.profit_prediction.sources.cross_dock_tariffs.average_box") %> <strong data-profit-prediction-target="crossDockAverageBox">-</strong></span>
+          <button class="btn btn-primary btn-sm" type="button" data-profit-prediction-target="crossDockUseAverageBox" data-action="profit-prediction#useCrossDockAverageBox" disabled>
+            <%= t("reports.profit_prediction.sources.cross_dock_tariffs.use_average_box") %>
+          </button>
+        </div>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__table">
+        <table class="prod-tbl profit-prediction-cross-dock-dialog__table-content">
+          <thead><tr>
+            <th><%= t("reports.profit_prediction.sources.cross_dock_tariffs.supply_zone") %></th>
+            <th><%= t("reports.profit_prediction.sources.cross_dock_tariffs.destination") %></th>
+            <th class="numeric"><%= t("reports.profit_prediction.sources.cross_dock_tariffs.pallet") %></th>
+            <th class="numeric"><%= t("reports.profit_prediction.sources.cross_dock_tariffs.box") %></th>
+            <th><span class="sr-only"><%= t("reports.profit_prediction.sources.cross_dock_tariffs.operation") %></span></th>
+          </tr></thead>
+          <tbody data-profit-prediction-target="crossDockBody"></tbody>
+        </table>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__pagination">
+        <button class="icon-button" type="button" data-profit-prediction-target="crossDockPrevious" data-action="profit-prediction#previousCrossDockPage" aria-label="<%= t("reports.profit_prediction.sources.cross_dock_tariffs.previous") %>">
+          <i class="bi bi-chevron-left" aria-hidden="true"></i>
+        </button>
+        <span data-profit-prediction-target="crossDockPage">-</span>
+        <button class="icon-button" type="button" data-profit-prediction-target="crossDockNext" data-action="profit-prediction#nextCrossDockPage" aria-label="<%= t("reports.profit_prediction.sources.cross_dock_tariffs.next") %>">
+          <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog
+    class="attachment-dialog profit-prediction-tariff-dialog"
+    data-profit-prediction-target="wbLogisticsDialog"
+    data-action="click->profit-prediction#closeWbLogisticsDialogOnBackdrop">
+    <section class="attachment-dialog__content profit-prediction-tariff-dialog__content" role="document" aria-labelledby="profit-prediction-wb-logistics-title">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="profit-prediction-wb-logistics-title"><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.title") %></h2>
+          <p class="sub"><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.subtitle") %></p>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="profit-prediction#closeWbLogisticsDialog">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__context">
+        <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.delivery_mode") %> <strong data-profit-prediction-target="wbLogisticsMode">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.snapshot") %> <strong data-profit-prediction-target="wbLogisticsSnapshot">-</strong></span>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__filters profit-prediction-wb-logistics-dialog__filters">
+        <label>
+          <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.warehouse") %></span>
+          <input class="input" type="search" data-profit-prediction-target="wbLogisticsWarehouse" placeholder="<%= t("reports.profit_prediction.sources.wb_logistics_tariffs.warehouse_placeholder") %>">
+        </label>
+        <label>
+          <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.geo") %></span>
+          <input class="input" type="search" data-profit-prediction-target="wbLogisticsGeo" placeholder="<%= t("reports.profit_prediction.sources.wb_logistics_tariffs.geo_placeholder") %>">
+        </label>
+        <button class="btn btn-primary" type="button" data-action="profit-prediction#applyWbLogisticsFilters">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <%= t("reports.profit_prediction.sources.wb_logistics_tariffs.apply_filters") %>
+        </button>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__summary profit-prediction-wb-logistics-dialog__summary">
+        <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.matched") %> <strong data-profit-prediction-target="wbLogisticsMatched">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.average_base") %> <strong data-profit-prediction-target="wbLogisticsAverageBase">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.average_coeff") %> <strong data-profit-prediction-target="wbLogisticsAverageCoeff">-</strong></span>
+        <span><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.average_liter") %> <strong data-profit-prediction-target="wbLogisticsAverageLiter">-</strong></span>
+        <button class="btn btn-primary btn-sm" type="button" data-profit-prediction-target="wbLogisticsUseAverage" data-action="profit-prediction#useWbLogisticsAverage" disabled>
+          <%= t("reports.profit_prediction.sources.wb_logistics_tariffs.use_average") %>
+        </button>
+        <span class="profit-prediction-tariff-dialog__action-message" data-profit-prediction-target="wbLogisticsActionMessage" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="profit-prediction-tariff-dialog__table">
+        <table class="prod-tbl">
+          <thead><tr>
+            <th><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.warehouse_name") %></th>
+            <th><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.geo_name") %></th>
+            <th class="numeric"><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.base") %></th>
+            <th class="numeric"><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.coefficient") %></th>
+            <th class="numeric"><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.liter") %></th>
+            <th><span class="sr-only"><%= t("reports.profit_prediction.sources.wb_logistics_tariffs.operation") %></span></th>
+          </tr></thead>
+          <tbody data-profit-prediction-target="wbLogisticsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </dialog>
+</section>

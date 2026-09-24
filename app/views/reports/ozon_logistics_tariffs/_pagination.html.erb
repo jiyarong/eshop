@@ -1,0 +1,18 @@
+<% query_params = request.query_parameters.symbolize_keys.except(:page) %>
+<% if rows.total_pages > 1 %>
+  <div class="inventory-pagination-bar">
+    <div class="pagination-meta">
+      <div class="inventory-pagination-bar__summary"><%= t("reports.ozon_tariffs.pagination.summary", from: rows.offset_value + 1, to: [rows.offset_value + rows.length, rows.total_count].min, total: rows.total_count) %></div>
+      <span class="pagination-chip"><%= t("reports.ozon_tariffs.pagination.page", page: rows.current_page, pages: rows.total_pages) %></span>
+    </div>
+    <div class="pagination-shell">
+      <nav class="pagination-nav" aria-label="<%= t('reports.ozon_tariffs.pagination.aria_label') %>">
+        <% if rows.first_page? %><span class="pg-btn pg-btn-nav" aria-disabled="true">‹</span><% else %><%= link_to "‹", url_for(query_params.merge(page: rows.current_page - 1)), class: "pg-btn pg-btn-nav" %><% end %>
+        <% [1, rows.current_page - 1, rows.current_page, rows.current_page + 1, rows.total_pages].uniq.select { |page| page.between?(1, rows.total_pages) }.sort.each do |page| %>
+          <% if page == rows.current_page %><span class="pg-btn on"><%= page %></span><% else %><%= link_to page, url_for(query_params.merge(page: page)), class: "pg-btn" %><% end %>
+        <% end %>
+        <% if rows.last_page? %><span class="pg-btn pg-btn-nav" aria-disabled="true">›</span><% else %><%= link_to "›", url_for(query_params.merge(page: rows.current_page + 1)), class: "pg-btn pg-btn-nav" %><% end %>
+      </nav>
+    </div>
+  </div>
+<% end %>

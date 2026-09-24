@@ -20,11 +20,53 @@ export function findVerticalScrollContainer(element, styleFor = (node) => getCom
   return fallback;
 }
 
+export function stickyColumnPlacements(rows, stickyColumnCount) {
+  const count = Math.max(0, Number(stickyColumnCount) || 0);
+  if (count === 0) return [];
+
+  const occupiedUntilRow = [];
+  const placements = [];
+
+  Array.from(rows).forEach((row, rowIndex) => {
+    let columnIndex = 0;
+
+    Array.from(row.cells || []).forEach((cell) => {
+      const columnSpan = Math.max(1, Number(cell.colSpan) || 1);
+      const rowSpan = Math.max(1, Number(cell.rowSpan) || 1);
+
+      while (Array.from({ length: columnSpan }, (_value, offset) => columnIndex + offset)
+        .some((index) => (occupiedUntilRow[index] || 0) > rowIndex)) {
+        columnIndex += 1;
+      }
+
+      const start = columnIndex;
+      const end = start + columnSpan;
+      if (end <= count) placements.push({ cell, start, end });
+
+      if (rowSpan > 1) {
+        for (let index = start; index < end; index += 1) {
+          occupiedUntilRow[index] = Math.max(occupiedUntilRow[index] || 0, rowIndex + rowSpan);
+        }
+      }
+      columnIndex = end;
+    });
+  });
+
+  return placements;
+}
+
 export default class extends Controller {
+  static values = {
+    floatingHeader: Boolean,
+    stickyColumns: Number,
+  };
+
   connect() {
     this.table = this.element.querySelector(":scope > table");
     this.thead = this.table?.tHead;
     if (!this.thead) return;
+
+    this.floatingHeaderEnabled = !this.hasFloatingHeaderValue || this.floatingHeaderValue;
 
     this.boundSchedulePosition = () => this.schedulePosition();
     this.boundMeasure = () => this.measure();
@@ -34,7 +76,7 @@ export default class extends Controller {
     this.scrollContainer = findVerticalScrollContainer(this.element);
 
     this.createHorizontalScrollbar();
-    this.createFloatingHeader();
+    if (this.floatingHeaderEnabled) this.createFloatingHeader();
     this.resizeObserver = new ResizeObserver(this.boundMeasure);
     this.resizeObserver.observe(this.element);
     this.resizeObserver.observe(this.table);
@@ -96,6 +138,7 @@ export default class extends Controller {
   }
 
   destroyEnhancements() {
+    this.clearStickyColumns(this.table);
     this.destroyFloatingHeader();
     this.horizontalScrollbar?.remove();
     this.horizontalScrollbar = null;
@@ -103,27 +146,59 @@ export default class extends Controller {
   }
 
   measure() {
-    if (!this.floatingHeader?.isConnected) return;
+    if (!this.table?.isConnected || !this.horizontalScrollbarSpacer) return;
 
     const tableWidth = this.table.getBoundingClientRect().width;
     this.horizontalScrollbarSpacer.style.width = `${tableWidth}px`;
     this.horizontalScrollbar.hidden = tableWidth <= this.element.clientWidth + 1;
-    this.floatingTable.style.width = `${tableWidth}px`;
-    this.floatingTable.style.minWidth = `${tableWidth}px`;
 
-    const sourceCells = this.thead.querySelectorAll("th, td");
-    const floatingCells = this.floatingThead.querySelectorAll("th, td");
-    sourceCells.forEach((cell, index) => {
-      const width = cell.getBoundingClientRect().width;
-      if (floatingCells[index]) {
-        floatingCells[index].style.width = `${width}px`;
-        floatingCells[index].style.minWidth = `${width}px`;
-        floatingCells[index].style.maxWidth = `${width}px`;
-      }
-    });
+    if (this.floatingHeader?.isConnected) {
+      this.floatingTable.style.width = `${tableWidth}px`;
+      this.floatingTable.style.minWidth = `${tableWidth}px`;
+
+      const sourceCells = this.thead.querySelectorAll("th, td");
+      const floatingCells = this.floatingThead.querySelectorAll("th, td");
+      sourceCells.forEach((cell, index) => {
+        const width = cell.getBoundingClientRect().width;
+        if (floatingCells[index]) {
+          floatingCells[index].style.width = `${width}px`;
+          floatingCells[index].style.minWidth = `${width}px`;
+          floatingCells[index].style.maxWidth = `${width}px`;
+        }
+      });
+    }
+
+    this.applyStickyColumns(this.table);
+    if (this.floatingTable) this.applyStickyColumns(this.floatingTable);
 
     this.headerHeight = this.thead.getBoundingClientRect().height;
     this.schedulePosition();
+  }
+
+  applyStickyColumns(table) {
+    const count = this.hasStickyColumnsValue ? this.stickyColumnsValue : 0;
+    this.clearStickyColumns(table);
+    if (count <= 0) return;
+
+    const tableLeft = table.getBoundingClientRect().left;
+    const sections = [table.tHead, ...Array.from(table.tBodies), table.tFoot].filter(Boolean);
+    sections.forEach((section) => {
+      stickyColumnPlacements(section.rows, count).forEach(({ cell, end }) => {
+        const left = cell.getBoundingClientRect().left - tableLeft;
+        cell.classList.add("table-sticky-column");
+        cell.classList.toggle("table-sticky-column--edge", end === count);
+        cell.style.setProperty("--table-sticky-column-left", `${left}px`);
+      });
+    });
+  }
+
+  clearStickyColumns(table) {
+    if (!table) return;
+
+    table.querySelectorAll(".table-sticky-column").forEach((cell) => {
+      cell.classList.remove("table-sticky-column", "table-sticky-column--edge");
+      cell.style.removeProperty("--table-sticky-column-left");
+    });
   }
 
   syncHorizontalScroll(source, destination) {
@@ -159,6 +234,7 @@ export default class extends Controller {
     this.floatingHeader.style.top = `${top}px`;
     this.floatingHeader.style.left = `${Math.max(0, viewportRect.left)}px`;
     this.floatingHeader.style.width = `${Math.min(viewportRect.width, window.innerWidth - Math.max(0, viewportRect.left))}px`;
+    this.floatingHeader.style.setProperty("--table-sticky-scroll-offset", `${this.element.scrollLeft}px`);
     this.floatingTable.style.transform = `translateX(${-this.element.scrollLeft}px)`;
   }
 

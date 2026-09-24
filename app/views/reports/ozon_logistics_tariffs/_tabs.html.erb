@@ -1,0 +1,13 @@
+<nav class="ozon-ads-tabs" aria-label="<%= t('reports.ozon_tariffs.tabs.aria_label') %>">
+  <% tabs = [
+    [:routes, reports_ozon_logistics_tariffs_path, 'routes'],
+    [:defaults, reports_ozon_logistics_tariff_defaults_path, 'defaults'],
+    [:cross_dock, reports_ozon_cross_dock_tariffs_path, 'cross_dock']
+  ] %>
+  <% tabs.each do |kind, path, key| %>
+    <%= link_to t("reports.ozon_tariffs.tabs.#{key}"),
+                path,
+                class: "ozon-ads-tabs__link#{' is-active' if @page_kind == kind}",
+                aria: (@page_kind == kind ? { current: "page" } : {}) %>
+  <% end %>
+</nav>

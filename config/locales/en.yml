@@ -235,6 +235,7 @@ en:
     mcp_debug: "MCP Debug"
     gbrain: "gbrain Knowledge Base"
     operation_logs: "Operation History"
+    ozon_tariffs: "Ozon Tariffs"
   feedback:
     title: "Submit Change Feedback"
     issue_type: "Issue Type"
@@ -1041,6 +1042,48 @@ en:
       wb: { sku_code: "SKU", product_name: "Product", open_card: "Product card opens", add_to_cart: "Added to cart", conv_to_cart: "Cart conversion", cart_to_order: "Cart to order", orders: "Orders", orders_sum: "Order amount", buyouts: "Buyouts", buyouts_sum: "Buyout amount", buyout_percent: "Buyout rate", cancel_count: "Cancellations", cancel_sum: "Cancellation amount", add_to_wishlist: "Wishlists", stock_wb: "WB stock", stock_mp: "Seller stock" }
       ozon: { sku_code: "SKU", product_name: "Product", revenue: "Order amount", total_drr: "Total DRR", position_category: "Average search rank", hits_view_search: "Search and catalog views", hits_view_pdp: "Product card visits", search_to_card_conversion: "Search and catalog to card conversion", conv_tocart: "Card-to-cart conversion", cart_to_order: "Product card cart-to-order conversion", order_conversion: "View-to-order conversion", average_price: "Average price", ordered_units: "Ordered units", delivered_units: "Delivered units", total_ending_inventory: "Total ending inventory", store_ending_inventory: "Store ending inventory", cancellations: "Cancellations (by order date)", returns_count: "Returns (by order date)", hits_view: "Views", session_view: "Visitors", hits_tocart: "Added to cart", hits_tocart_search: "Search and catalog cart adds", hits_tocart_pdp: "Product card cart adds" }
   reports:
+    ozon_tariffs:
+      routes:
+        title: "Ozon Logistics Route Tariffs"
+        subtitle: "Official FBO/FBS tariffs by volume band, origin cluster, and destination cluster"
+      defaults:
+        title: "Ozon Default Logistics Tariffs"
+        subtitle: "Official default reference tariffs when route details are unavailable"
+      cross_dock:
+        title: "Ozon Cross-dock Tariffs"
+        subtitle: "Per-liter pallet and box tariffs by receiving zone and destination cluster"
+      tabs:
+        aria_label: "Ozon tariff tables"
+        routes: "Route logistics"
+        defaults: "Default logistics"
+        cross_dock: "Cross-dock"
+      filters:
+        snapshot: "Tariff snapshot"
+        volume_band: "Volume band number"
+        volume_band_placeholder: "All volume bands"
+        origin: "Origin/receiving zone"
+        origin_placeholder: "Search name"
+        destination: "Destination cluster"
+        destination_placeholder: "Search name"
+      actions:
+        filter: "Filter"
+        reset: "Reset"
+      fields:
+        volume_band: "Volume band"
+        origin: "Origin/receiving zone"
+        destination: "Destination cluster"
+        fbo: "FBO"
+        fbo_fresh_under_300: "FBO Fresh ≤300"
+        fbo_fresh_over_300: "FBO Fresh >300"
+        fbs_under_300: "FBS ≤300"
+        fbs_over_300: "FBS >300"
+        pallet_per_l: "Pallet RUB/L"
+        box_per_l: "Box RUB/L"
+      pagination:
+        aria_label: "Ozon tariff table pagination"
+        summary: "%{from}–%{to} of %{total}"
+        page: "Page %{page}/%{pages}"
+      empty: "No matching tariffs"
     capital_distribution:
       title: "Capital Distribution"
       filters:
@@ -1837,7 +1880,7 @@ en:
         store_count: "Stores"
       tabs:
         lifecycle: "Lifecycle"
-        profit_prediction: "Profit forecast"
+        profit_prediction: "Pricing calculator"
         ads: "Advertising"
         ai_inventory_health: "AI diagnosis"
         aria_label: "SKU detail sections"
@@ -2122,16 +2165,65 @@ en:
       title: "SKU Sales"
     profit_prediction:
       title: "Profit forecast"
+      copy_name: "%{name} copy"
+      default_version_name: "%{date} profit forecast"
       dimension_missing: "Dimension data is missing. Complete the SKU dimensions first."
       empty_result: "Enter parameters to view the forecast"
       calculation_failed: "Calculation failed. Check the required parameters."
+      confirm_leave: "This calculation has unsaved changes. Leave anyway?"
+      unsaved_version: "Unsaved new version"
+      last_updated: "Last saved"
+      table_hint: "Enter calculation mode to edit inputs. Formula columns update automatically and are written only when you save the calculation."
+      context_count: "%{count} scenarios"
+      filtered_context_count: "Showing __VISIBLE__ / __TOTAL__ scenarios"
+      platform_tabs:
+        label: "Platform"
+        all: "All"
+        wb: "WB"
+        ozon: "Ozon"
       version_active: "Current version: active"
       no_version: "No version configured"
-      actions: { history: "History", copy: "Copy version", new: "New version", save: "Save" }
+      actions:
+        history: "History"
+        copy: "Copy version"
+        new: "New version"
+        save: "Save"
+        enter_calculation: "Enter calculation"
+        cancel_calculation: "Cancel calculation"
+        save_calculation: "Save calculation"
       status:
-        dirty: "Unsaved changes"
+        dirty: "%{count} scenarios have unsaved changes"
+        calculating: "Calculating"
+        measuring: "Calculating locally, not yet saved"
         saved: "Saved"
         save_failed: "Save failed. Check the inputs."
+      version_statuses:
+        draft: "Draft"
+        published: "Published"
+        archived: "Archived"
+      calculation_statuses:
+        pending: "Pending"
+        valid: "Valid"
+        incomplete: "Incomplete"
+      version_fields:
+        name: "Version name"
+        effective_from: "Effective from"
+        effective_to: "Effective to"
+      groups:
+        context: "Scenario"
+        base_inputs: "Product cost and dimensions"
+        commercial_inputs: "Price and rates"
+        logistics_inputs: "Logistics and other costs"
+        results: "Formula results"
+      identity_fields:
+        platform: "Platform"
+        market: "Market"
+        delivery_mode: "Fulfillment"
+        warehouse_region: "Warehouse"
+        company_type: "Tax regime"
+      values:
+        unavailable: "-"
+        not_applicable: "-"
       results:
         revenue: "Revenue"
         cost: "Cost"
@@ -2145,14 +2237,27 @@ en:
           main: "Main warehouse"
           region: "Regional warehouse"
         company_types:
-          general: "Russian entity 6%"
-          small: "Small business"
+          general: "General"
+          small: "Small"
       fields:
-        price_rub: "Sale price (RUB)"
-        rf_price_rub: "Russia sale price (RUB)"
+        purchase_price_cny: "Purchase CNY"
+        freight_cny: "Inbound freight CNY"
+        customs_misc_cny: "Customs misc. CNY"
+        duty_rate: "Duty rate"
+        import_vat_rate: "Import VAT rate"
+        length_cm: "Length cm"
+        width_cm: "Width cm"
+        height_cm: "Height cm"
+        price_rub: "Target sale price (RUB)"
+        target_margin: "Target margin"
+        target_margin_placeholder: "Enter %"
+        rf_price_rub: "Russia fee base price (RUB)"
         exchange_rate_rub_cny: "Exchange rate (RUB/CNY)"
         logistics_coeff: "Logistics coefficient"
+        wb_logistics_base_rub: "WB base logistics fee (RUB)"
+        wb_fixed_return_base_rub: "WB fixed return fee base (RUB)"
         return_rate: "Return rate"
+        logistics_tax_rate: "Logistics tax rate"
         fbo_delivery_cny: "Warehouse delivery (CNY)"
         storage_cny: "Storage (CNY)"
         commission_rate: "Commission rate"
@@ -2167,6 +2272,23 @@ en:
         warehouse_operation_rub: "Warehouse operation (RUB)"
         cross_docking_cny: "Cross-docking (CNY)"
         sales_vat_rate: "Sales VAT rate"
+      result_fields:
+        revenue_cny: "Revenue CNY"
+        goods_cost_cny: "Goods cost CNY"
+        import_vat_cny: "Import VAT CNY"
+        duty_cny: "Duty CNY"
+        logistics_cny: "Logistics CNY"
+        returns_cny: "Amortized return logistics CNY"
+        storage_cost_cny: "Storage CNY"
+        commission_cny: "Commission CNY"
+        acquiring_cny: "Acquiring CNY"
+        advertising_cny: "Advertising CNY"
+        tax_cny: "Sales tax CNY"
+        other_cost_cny: "Other cost CNY"
+        total_cost_cny: "Total cost CNY"
+        profit_cny: "Profit CNY"
+        margin: "Margin"
+        calculation_status: "Status"
   erp:
     association_picker:
       create_company: "Create company"

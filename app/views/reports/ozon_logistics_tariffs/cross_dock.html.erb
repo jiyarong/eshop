@@ -1,0 +1,14 @@
+<% content_for :title, t("reports.ozon_tariffs.cross_dock.title") %>
+<div class="product-management sku-management">
+  <div class="page-h"><div><h1><%= t("reports.ozon_tariffs.cross_dock.title") %></h1><p class="sub"><%= t("reports.ozon_tariffs.cross_dock.subtitle") %></p></div></div>
+  <%= render "reports/ozon_logistics_tariffs/tabs" %>
+  <%= render "reports/ozon_logistics_tariffs/filters" %>
+  <section class="card product-list-card table-list-card">
+    <%= render "reports/ozon_logistics_tariffs/pagination", rows: @rows %>
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="prod-tbl"><thead><tr><th><%= t("reports.ozon_tariffs.fields.origin") %></th><th><%= t("reports.ozon_tariffs.fields.destination") %></th><th class="numeric"><%= t("reports.ozon_tariffs.fields.pallet_per_l") %></th><th class="numeric"><%= t("reports.ozon_tariffs.fields.box_per_l") %></th></tr></thead><tbody>
+        <% if @rows.any? %><% @rows.each do |row| %><tr><td><%= row.supply_receiving_zone_name %></td><td><%= row.destination_cluster_name %></td><td class="numeric"><%= number_with_precision(row.pallet_rub_per_l, precision: 2) %></td><td class="numeric"><%= number_with_precision(row.box_rub_per_l, precision: 2) %></td></tr><% end %><% else %><tr><td colspan="4" class="empty-state"><%= t("reports.ozon_tariffs.empty") %></td></tr><% end %>
+      </tbody></table>
+    <% end %>
+  </section>
+</div>

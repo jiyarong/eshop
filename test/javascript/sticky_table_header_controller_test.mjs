@@ -11,7 +11,7 @@ const bundle = await build({
   write: false,
 });
 
-const [{ findVerticalScrollContainer, shouldFloatHeader }] = await Promise.all(
+const [{ findVerticalScrollContainer, shouldFloatHeader, stickyColumnPlacements }] = await Promise.all(
   bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)),
 );
 
@@ -45,4 +45,34 @@ test("falls back to the window when no ancestor scrolls vertically", () => {
   const table = { parentElement: parent };
 
   assert.equal(findVerticalScrollContainer(table, () => ({ overflowY: "auto" }), "window"), "window");
+});
+
+test("selects the first logical columns across grouped and detail header rows", () => {
+  const groupedSticky = { colSpan: 3, rowSpan: 1 };
+  const groupedScrolling = { colSpan: 4, rowSpan: 1 };
+  const detailCells = Array.from({ length: 7 }, () => ({ colSpan: 1, rowSpan: 1 }));
+  const rows = [
+    { cells: [groupedSticky, groupedScrolling] },
+    { cells: detailCells },
+  ];
+
+  const placements = stickyColumnPlacements(rows, 3);
+
+  assert.deepEqual(placements.map(({ cell }) => cell), [groupedSticky, ...detailCells.slice(0, 3)]);
+  assert.deepEqual(placements.map(({ start, end }) => [start, end]), [[0, 3], [0, 1], [1, 2], [2, 3]]);
+});
+
+test("accounts for row-spanning cells when locating sticky columns", () => {
+  const rowSpanning = { colSpan: 1, rowSpan: 2 };
+  const firstRowSecond = { colSpan: 1, rowSpan: 1 };
+  const secondRowSecond = { colSpan: 1, rowSpan: 1 };
+  const rows = [
+    { cells: [rowSpanning, firstRowSecond] },
+    { cells: [secondRowSecond] },
+  ];
+
+  const placements = stickyColumnPlacements(rows, 2);
+
+  assert.deepEqual(placements.map(({ cell }) => cell), [rowSpanning, firstRowSecond, secondRowSecond]);
+  assert.equal(placements.at(-1).start, 1);
 });

@@ -172,6 +172,58 @@ module Ec
         ozon_warehouse_op_rub
         ozon_fbs_delivery_rub
       ],
+      "Ec::SkuProfitVersion" => %w[
+        sku_id
+        name
+        status
+        effective_from
+        effective_to
+        note
+      ],
+      "Ec::SkuProfitVersionContext" => %w[
+        sku_profit_version_id
+        platform
+        market
+        delivery_mode
+        warehouse_region
+        company_type
+        purchase_price_cny
+        freight_cny
+        customs_misc_cny
+        duty_rate
+        import_vat_rate
+        length_cm
+        width_cm
+        height_cm
+        price_rub
+        rf_price_rub
+        exchange_rate_rub_cny
+        commission_rate
+        acquiring_rate
+        advertising_rate
+        tax_rate
+        sales_vat_rate
+        logistics_coeff
+        return_rate
+        logistics_tax_rate
+        wb_logistics_base_rub
+        wb_logistics_liter_rub
+        wb_fixed_return_base_rub
+        wb_logistics_override_cny
+        fbo_delivery_cny
+        storage_cny
+        damage_rate
+        misc_cny
+        other_cny
+        outbound_logistics_rub
+        return_logistics_rub
+        warehouse_operation_rub
+        cross_docking_cny
+        return_amortization_factor_override
+        ozon_warehouse_rate
+        ozon_import_vat_cost_rate
+        advertising_fixed_rub
+      ],
       "Ec::SkuProduct" => %w[
         sku_code
         store_id

@@ -22,6 +22,19 @@ class ApplicationHelperTest < ActionView::TestCase
     viewport = Nokogiri::HTML.fragment(markup).at_css(".table-viewport")
 
     assert_equal "existing sticky-table-header", viewport["data-controller"]
+    assert_equal "true", viewport["data-sticky-table-header-floating-header-value"]
+  end
+
+  test "table viewport exposes a reusable sticky column count" do
+    markup = table_viewport(sticky_columns: 3) do
+      tag.table(tag.thead(tag.tr(tag.th("Order"))))
+    end
+
+    viewport = Nokogiri::HTML.fragment(markup).at_css(".table-viewport")
+
+    assert_equal "sticky-table-header", viewport["data-controller"]
+    assert_equal "false", viewport["data-sticky-table-header-floating-header-value"]
+    assert_equal "3", viewport["data-sticky-table-header-sticky-columns-value"]
   end
 
   test "display_time renders values in current user profile time zone" do

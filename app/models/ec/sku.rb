@@ -25,6 +25,7 @@ module Ec
     has_many :developers, through: :developer_assignments, source: :user
     has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
     has_many :predicted_costs,   class_name: 'Ec::SkuPredictedCost',    foreign_key: :sku_code, primary_key: :sku_code
+    has_many :profit_versions, class_name: "Ec::SkuProfitVersion", dependent: :destroy
     has_many :inventory_levels,  class_name: 'Ec::SkuInventoryLevel',   foreign_key: :sku_code, primary_key: :sku_code
     has_many :operation_actions, class_name: "Ec::OperationAction", foreign_key: :ec_sku_id
     has_many :ai_diagnoses, class_name: "Ec::AIDiagnosis", foreign_key: :sku_id, dependent: :destroy

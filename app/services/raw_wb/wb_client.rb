@@ -69,6 +69,24 @@ module RawWb
       end
     end
 
+    def put(service, path, body = {}, params = {})
+      uri = URI("#{BASE_URLS.fetch(service)}#{path}")
+      uri.query = URI.encode_www_form(params.compact) unless params.empty?
+
+      with_retry(context: "PUT #{path}") do
+        req = Net::HTTP::Put.new(uri)
+        req['Authorization'] = @api_token
+        req['Content-Type']  = 'application/json'
+        req.body = body.to_json
+
+        resp = Net::HTTP.start(uri.host, uri.port,
+                               use_ssl: true,
+                               open_timeout: OPEN_TIMEOUT,
+                               read_timeout: READ_TIMEOUT) { |h| h.request(req) }
+        handle_response(resp, path)
+      end
+    end
+
     private
 
     def with_retry(context:)

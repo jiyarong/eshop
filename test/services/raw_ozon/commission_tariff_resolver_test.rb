@@ -65,6 +65,23 @@ class RawOzon::CommissionTariffResolverTest < ActiveSupport::TestCase
     assert_equal :missing_commission_rate, error.code
   end
 
+  test "rejects negative and non-numeric commission rates" do
+    resolver = RawOzon::CommissionTariffResolver.new
+
+    create_price(commissions: { "sales_percent_fbo" => -1 })
+    error = assert_raises(RawOzon::CommissionTariffResolver::ResolutionError) do
+      resolver.rate_for(account_id: @account.id, ozon_product_id: @product_id, delivery_mode: "fbo")
+    end
+    assert_equal :invalid_commission_rate, error.code
+
+    RawOzon::ProductPrice.where(account_id: @account.id, ozon_product_id: @product_id).delete_all
+    create_price(commissions: { "sales_percent_fbo" => "not-a-number" })
+    error = assert_raises(RawOzon::CommissionTariffResolver::ResolutionError) do
+      resolver.rate_for(account_id: @account.id, ozon_product_id: @product_id, delivery_mode: "fbo")
+    end
+    assert_equal :invalid_commission_rate, error.code
+  end
+
   test "raises unsupported_delivery_mode for an unmapped mode" do
     create_price(commissions: { "sales_percent_fbo" => 51 })
     resolver = RawOzon::CommissionTariffResolver.new

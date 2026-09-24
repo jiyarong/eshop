@@ -3,6 +3,8 @@
     <%= render "reports/sku_lifecycle", lifecycle: @sku_lifecycle %>
   <% elsif @active_tab == "profit" %>
     <%= render "reports/sku_profit_analysis" %>
+  <% elsif @active_tab == "profit_prediction" %>
+    <%= render "reports/sku_profit_prediction" %>
   <% elsif @active_tab == "sales_funnel" %>
     <%= render "reports/sku_funnel_analysis" %>
   <% elsif @active_tab == "supply_orders" %>

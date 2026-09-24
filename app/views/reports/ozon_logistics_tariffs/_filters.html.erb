@@ -1,0 +1,30 @@
+<section class="card product-filter-card ozon-tariff-filters">
+  <%= form_with url: request.path, method: :get, local: true, class: "product-filter-form" do |form| %>
+    <% if params[:locale].present? %><%= hidden_field_tag :locale, params[:locale] %><% end %>
+    <div class="field">
+      <%= form.label :snapshot_id, t("reports.ozon_tariffs.filters.snapshot") %>
+      <%= form.select :snapshot_id,
+                      @snapshots.map { |snapshot| ["#{snapshot.effective_from.iso8601} · #{snapshot.source_file_name}", snapshot.id] },
+                      { selected: @snapshot&.id, include_blank: false } %>
+    </div>
+    <% if @page_kind == :routes || @page_kind == :defaults %>
+      <div class="field">
+        <%= form.label :volume_band, t("reports.ozon_tariffs.filters.volume_band") %>
+        <% volume_bands = @snapshot ? @snapshot.default_logistics_tariffs.order(:volume_band_order).map { |band| ["#{band.volume_band_order} · #{band.volume_band_label}", band.volume_band_order] } : [] %>
+        <%= form.select :volume_band, options_for_select(volume_bands, @volume_band), { include_blank: t("reports.ozon_tariffs.filters.volume_band_placeholder") } %>
+      </div>
+    <% end %>
+    <% if @page_kind == :routes || @page_kind == :cross_dock %>
+      <div class="field">
+        <%= form.label :origin, t("reports.ozon_tariffs.filters.origin") %>
+        <%= form.search_field :origin, value: @origin_query, placeholder: t("reports.ozon_tariffs.filters.origin_placeholder") %>
+      </div>
+      <div class="field">
+        <%= form.label :destination, t("reports.ozon_tariffs.filters.destination") %>
+        <%= form.search_field :destination, value: @destination_query, placeholder: t("reports.ozon_tariffs.filters.destination_placeholder") %>
+      </div>
+    <% end %>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i><%= t("reports.ozon_tariffs.actions.filter") %></button>
+    <%= link_to request.path, class: "btn btn-outline" do %><i class="bi bi-x-lg" aria-hidden="true"></i><%= t("reports.ozon_tariffs.actions.reset") %><% end %>
+  <% end %>
+</section>

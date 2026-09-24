@@ -93,6 +93,10 @@ production:
     command: "RawWb::CommissionTariffSync.run"
     schedule: every month on the 1st at 4:30 in Asia/Shanghai
 
+  wb_logistics_tariff_sync:
+    command: "RawWb::LogisticsTariffSync.run"
+    schedule: every month on the 1st at 4:45 in Asia/Shanghai
+
   wb_warehouse_region_sync:
     command: "RawWb::WarehouseRegionSync.run"
     schedule: every day at 5:30 in Asia/Shanghai

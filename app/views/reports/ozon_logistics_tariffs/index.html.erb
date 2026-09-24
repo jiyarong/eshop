@@ -1,0 +1,19 @@
+<% content_for :title, t("reports.ozon_tariffs.routes.title") %>
+<div class="product-management sku-management">
+  <div class="page-h"><div><h1><%= t("reports.ozon_tariffs.routes.title") %></h1><p class="sub"><%= t("reports.ozon_tariffs.routes.subtitle") %></p></div></div>
+  <%= render "reports/ozon_logistics_tariffs/tabs" %>
+  <%= render "reports/ozon_logistics_tariffs/filters" %>
+  <section class="card product-list-card table-list-card">
+    <%= render "reports/ozon_logistics_tariffs/pagination", rows: @rows %>
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="prod-tbl">
+        <thead><tr><th><%= t("reports.ozon_tariffs.fields.volume_band") %></th><th><%= t("reports.ozon_tariffs.fields.origin") %></th><th><%= t("reports.ozon_tariffs.fields.destination") %></th><th class="numeric"><%= t("reports.ozon_tariffs.fields.fbo") %></th><th class="numeric"><%= t("reports.ozon_tariffs.fields.fbo_fresh_under_300") %></th><th class="numeric"><%= t("reports.ozon_tariffs.fields.fbo_fresh_over_300") %></th><th class="numeric"><%= t("reports.ozon_tariffs.fields.fbs_under_300") %></th><th class="numeric"><%= t("reports.ozon_tariffs.fields.fbs_over_300") %></th></tr></thead>
+        <tbody>
+          <% if @rows.any? %>
+            <% @rows.each do |row| %><tr><td><%= row.volume_band_label %></td><td><%= row.origin_cluster_name %></td><td><%= row.destination_cluster_name %></td><td class="numeric"><%= number_with_precision(row.fbo_rub, precision: 2) %></td><td class="numeric"><%= number_with_precision(row.fbo_fresh_under_300_rub, precision: 2) %></td><td class="numeric"><%= number_with_precision(row.fbo_fresh_over_300_rub, precision: 2) %></td><td class="numeric"><%= number_with_precision(row.fbs_under_300_rub, precision: 2) %></td><td class="numeric"><%= number_with_precision(row.fbs_over_300_rub, precision: 2) %></td></tr><% end %>
+          <% else %><tr><td colspan="8" class="empty-state"><%= t("reports.ozon_tariffs.empty") %></td></tr><% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </section>
+</div>

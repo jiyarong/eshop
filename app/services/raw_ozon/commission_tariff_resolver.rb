@@ -28,7 +28,12 @@ module RawOzon
       value = commissions[field]
       raise ResolutionError.new(:missing_commission_rate) if value.nil?
 
-      BigDecimal(value.to_s) / BigDecimal(100)
+      percentage = BigDecimal(value.to_s)
+      raise ResolutionError.new(:invalid_commission_rate) unless percentage.finite? && !percentage.negative?
+
+      percentage / BigDecimal(100)
+    rescue ArgumentError
+      raise ResolutionError.new(:invalid_commission_rate)
     end
   end
 end
