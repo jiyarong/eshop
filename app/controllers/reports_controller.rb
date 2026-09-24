@@ -33,6 +33,7 @@ class ReportsController < ApplicationController
     destroy_sku_attachment
     destroy_sku_inventory_health_result
     ignore_sku_ai_diagnosis_event
+    ignore_sku_operation_plan
     new_sku_general_diagnosis
     create_sku_general_diagnosis
     create_sku_planner
@@ -147,6 +148,15 @@ class ReportsController < ApplicationController
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     @plan = @sku.sku_operation_plans.includes(:conversation).find(params[:plan_id])
     @sku_plan_referer_events = Ec::SkuOperationPlan.referenced_events_by_sku_id([ @plan ]).fetch(@sku.id, {})
+  end
+
+  def ignore_sku_operation_plan
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    plan = sku.sku_operation_plans.find(params[:plan_id])
+    plan.ignored! if plan.active?
+
+    redirect_back_or_to report_sku_operation_plan_path(sku.sku_code, plan, locale: params[:locale].presence),
+                        notice: t("reports.sku_detail.planner.ignored"), status: :see_other
   end
 
   def new_sku_general_diagnosis

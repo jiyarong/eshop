@@ -9,6 +9,11 @@
       <p><%= sku.sku_code %></p>
     </div>
     <div class="sku-planner-dialog__actions">
+      <% if can?(:manage_skus) && plan.active? %>
+        <%= button_to t("reports.sku_detail.planner.ignore"), ignore_report_sku_operation_plan_path(sku.sku_code, plan, locale: params[:locale].presence),
+                      method: :patch, class: "button button-secondary",
+                      form: { data: { turbo_confirm: t("reports.sku_detail.planner.ignore_confirm") } } %>
+      <% end %>
       <%= link_to t("reports.sku_detail.planner.view_details"), report_sku_operation_plan_path(sku.sku_code, plan, locale: params[:locale].presence),
                   class: "button button-secondary", target: "_blank", rel: "noopener noreferrer", data: { turbo: false } %>
       <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="operator-dialog#close">

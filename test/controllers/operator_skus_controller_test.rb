@@ -264,6 +264,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".operator-sku-table-viewport dialog", count: 0
     assert_select "dialog#operator-sku-#{@sku.id}-plan-#{active_plan.id}-dialog" do
       assert_select ".sku-planner-dialog__message pre", text: "Keep ads"
+      assert_select "form[action='#{ignore_report_sku_operation_plan_path(@sku.sku_code, active_plan)}'] button", "忽略计划"
       assert_select ".sku-plan-referers__trigger[aria-controls='operator-sku-#{@sku.id}-plan-#{active_plan.id}-tag-referer-0-dialog']", text: "stock_risk"
     end
     assert_select "dialog#operator-sku-#{@sku.id}-plan-#{active_plan.id}-tag-referer-0-dialog .sku-planner-dialog__body pre", "Check stock"

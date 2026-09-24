@@ -141,14 +141,15 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
         assert_select "time[datetime='#{plan.plan_date.iso8601}']"
         assert_select ".sku-planner-day__count", "2 条计划"
         assert_select "table.sku-planner-table tbody tr", count: 2
-        assert_select "tr.ai-health-table__linked-row[data-table-row-link-url-value='#{ai_conversation_path(conversation)}']" do
-          assert_select "a.ai-health-table__row-link[href='#{ai_conversation_path(conversation)}'][data-turbo-frame='_top']", "价格"
+        assert_select "tr.ai-health-table__linked-row[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, plan)}']" do
+          assert_select "a.ai-health-table__row-link[href='#{report_sku_operation_plan_path(@sku.sku_code, plan)}'][data-turbo-frame='_top']", "价格"
           assert_select ".sku-planner-table__conversation[href='#{ai_conversation_path(conversation)}'][data-turbo-frame='_top']", "查看 AI 会话"
           assert_select "button.sku-planner-table__preview[data-operator-dialog-id='sku-plan-#{plan.id}-message']", text: plan_message.squish.truncate(80)
           assert_select ".sku-planner-table__referer .sku-plan-referers__trigger", text: older_event.event_type
           assert_select ".sku-planner-table__referer .sku-plan-referers__trigger", text: latest_event.event_type
           assert_select ".sku-planner-table__referer", text: /#{older_event.id}/, count: 0
         end
+        assert_select "tr.ai-health-table__linked-row[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, second_plan)}'] a.ai-health-table__row-link[href='#{report_sku_operation_plan_path(@sku.sku_code, second_plan)}']", "广告"
         assert_select "button.sku-planner-table__preview[data-operator-dialog-id='sku-plan-#{second_plan.id}-message']", "Increase ads"
         assert_select ".table-viewport dialog", count: 0
         assert_select "dialog#sku-plan-#{plan.id}-message[data-controller='operator-dialog']" do
@@ -164,12 +165,14 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select ".sku-planner-day:last-child:not([open])" do
         assert_select "time[datetime='#{old_plan.plan_date.iso8601}']"
         assert_select "table.sku-planner-table tbody tr", count: 1
+        assert_select "tr.ai-health-table__linked-row[data-table-row-link-url-value='#{report_sku_operation_plan_path(@sku.sku_code, old_plan)}'] a.ai-health-table__row-link[href='#{report_sku_operation_plan_path(@sku.sku_code, old_plan)}']", "Listing 图片"
         assert_select ".sku-planner-table__conversation", count: 0
         assert_select "dialog#sku-plan-#{old_plan.id}-message a[href='#{report_sku_operation_plan_path(@sku.sku_code, old_plan)}']", "查看计划详情"
       end
     end
 
     assert_select "dialog#sku-detail-plan-#{plan.id}-dialog .sku-plan-referers__trigger[aria-controls='sku-plan-#{plan.id}-tag-referer-0-dialog']", older_event.event_type
+    assert_select "dialog#sku-detail-plan-#{plan.id}-dialog form[action='#{ignore_report_sku_operation_plan_path(@sku.sku_code, plan)}'][method='post'] button", "忽略计划"
     assert_select "dialog#sku-plan-#{plan.id}-tag-referer-0-dialog .sku-planner-dialog__body pre", older_event.message
 
     sign_in @user
@@ -197,6 +200,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select ".sku-plan-detail__facts time[datetime='#{plan.plan_date.iso8601}']"
       assert_select ".sku-plan-detail__references .sku-plan-referers__trigger[aria-controls='sku-plan-#{plan.id}-detail-referer-0-dialog']", @older_result.events.first.event_type
       assert_select "a[href='#{ai_conversation_path(conversation)}']", "查看 AI 会话"
+      assert_select "form[action='#{ignore_report_sku_operation_plan_path(@sku.sku_code, plan)}'][method='post'] button", "忽略计划"
       assert_select "a[href=?]", report_sku_path(@sku.sku_code, tab: "ai_inventory_health"), text: "返回 AI 诊断"
       assert_select ".sku-plan-detail__body[data-controller='markdown'] pre[data-markdown-target='source']", text: /Check the main image/
       assert_select ".sku-plan-detail__facts dt", "执行范围"
@@ -206,6 +210,62 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
       assert_select ".sku-operation-plan-dialog__section", text: /Keep other listings unchanged/
     end
     assert_select "dialog#sku-plan-#{plan.id}-detail-referer-0-dialog .sku-planner-dialog__body pre", @older_result.events.first.message
+  end
+
+  test "ignoring an active SKU Planner plan updates its status and returns to the requesting page" do
+    plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain",
+      referer: [ "stock_risk" ], message: "Keep price stable")
+    source = report_sku_path(@sku.sku_code, tab: "ai_inventory_health")
+
+    patch ignore_report_sku_operation_plan_path(@sku.sku_code, plan), headers: { "Referer" => source }
+
+    assert_redirected_to source
+    assert_equal "运营计划已忽略", flash[:notice]
+    assert plan.reload.ignored?
+    assert_not_nil plan.completed_at
+
+    sign_in @user
+    get report_sku_operation_plan_path(@sku.sku_code, plan), headers: { "Accept" => "text/html" }
+    assert_select ".sku-plan-detail__facts", text: /已忽略/
+    assert_select ".sku-plan-detail__actions form[action='#{ignore_report_sku_operation_plan_path(@sku.sku_code, plan)}']", count: 0
+    sign_in @user
+    get source, headers: { "Accept" => "text/html" }
+    assert_select "dialog#sku-detail-plan-#{plan.id}-dialog form[action='#{ignore_report_sku_operation_plan_path(@sku.sku_code, plan)}']", count: 0
+  end
+
+  test "ignoring a SKU Planner plan cannot change a completed plan or a plan belonging to another SKU" do
+    plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain",
+      referer: [ "stock_risk" ], message: "Keep price stable", status: "done")
+    completed_at = plan.completed_at
+    other_sku = Ec::Sku.create!(sku_code: "OTHER-PLAN-IGNORE-#{@token.upcase}", product_name: "Other product")
+
+    patch ignore_report_sku_operation_plan_path(other_sku.sku_code, plan)
+    assert_response :not_found
+
+    sign_in @user
+    patch ignore_report_sku_operation_plan_path(@sku.sku_code, plan)
+    assert_redirected_to report_sku_operation_plan_path(@sku.sku_code, plan)
+    assert plan.reload.done?
+    assert_equal completed_at, plan.completed_at
+  ensure
+    Ec::Sku.with_deleted.where(id: other_sku&.id).delete_all
+  end
+
+  test "ignoring a SKU Planner plan requires SKU management permission" do
+    plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain",
+      referer: [ "stock_risk" ], message: "Keep price stable")
+    viewer = create_user_with_roles("reports-plan-viewer-#{@token}@example.com", "operator")
+    sign_in viewer
+
+    get report_sku_operation_plan_path(@sku.sku_code, plan), headers: { "Accept" => "text/html" }
+    assert_select ".sku-plan-detail__actions form[action='#{ignore_report_sku_operation_plan_path(@sku.sku_code, plan)}']", count: 0
+    sign_in viewer
+    patch ignore_report_sku_operation_plan_path(@sku.sku_code, plan)
+    assert_response :forbidden
+    assert plan.reload.active?
+  ensure
+    UserRole.where(user_id: viewer&.id).delete_all
+    User.where(id: viewer&.id).delete_all
   end
 
   test "SKU Planner hides references to missing or other SKU diagnosis events" do

@@ -360,19 +360,14 @@
                   <tbody>
                     <% plans.each do |plan| %>
                       <% conversation_path = plan.conversation ? ai_conversation_path(plan.conversation, locale: params[:locale].presence) : nil %>
-                      <tr class="<%= class_names("ai-health-table__linked-row": conversation_path) %>"
-                          <% if conversation_path %>
-                            data-controller="table-row-link"
-                            data-action="click->table-row-link#visit"
-                            data-table-row-link-url-value="<%= conversation_path %>"
-                          <% end %>>
+                      <% plan_path = report_sku_operation_plan_path(@sku.sku_code, plan, locale: params[:locale].presence) %>
+                      <tr class="ai-health-table__linked-row"
+                          data-controller="table-row-link"
+                          data-action="click->table-row-link#visit"
+                          data-table-row-link-url-value="<%= plan_path %>">
                         <td>
-                          <% if conversation_path %>
-                            <%= link_to t("reports.sku_detail.planner.targets.#{plan.target}"), conversation_path,
-                                        class: "ai-health-table__row-link", data: { turbo_frame: "_top" } %>
-                          <% else %>
-                            <%= t("reports.sku_detail.planner.targets.#{plan.target}") %>
-                          <% end %>
+                          <%= link_to t("reports.sku_detail.planner.targets.#{plan.target}"), plan_path,
+                                      class: "ai-health-table__row-link", data: { turbo_frame: "_top" } %>
                         </td>
                         <td><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></td>
                         <td class="sku-planner-table__referer"><%= render "reports/sku_operation_plan_referers", plan: plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{plan.id}-list-referer" %></td>
