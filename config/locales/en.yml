@@ -44,7 +44,10 @@ en:
       copied: "Original copied"
       copy_original: "Copy original"
       context:
+        business_context: "Business context"
+        current_system_prompt: "Current Agent system prompt (historical version unavailable)"
         empty: "This conversation has no additional context."
+        system_prompt: "Agent system prompt for this conversation"
         title: "Agent context"
       composer:
         attach_images: "Add images"

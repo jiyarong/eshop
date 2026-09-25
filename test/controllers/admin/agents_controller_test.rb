@@ -147,6 +147,23 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ @skill ], @agent.skills.to_a
   end
 
+  test "saved SKU Planner prompt remains in the database after the admin page seeds agents" do
+    planner_existed = Agent.exists?(code: "sku_planner")
+    planner = Agent.ensure_fixed!("sku_planner")
+    original_prompt = planner.system_prompt
+    sign_in @admin
+
+    patch "/admin/agents/sku_planner", params: { agent: { system_prompt: "后台保存的 Planner 提示词" } }
+    assert_redirected_to "/admin/agents"
+    Agent.seed_fixed!
+
+    assert_equal "后台保存的 Planner 提示词", planner.reload.system_prompt
+  ensure
+    if planner&.persisted?
+      planner_existed ? planner.update_columns(system_prompt: original_prompt) : Agent.where(id: planner.id).delete_all
+    end
+  end
+
   test "super admin can configure tools for a web agent" do
     sign_in @admin
 

@@ -199,6 +199,19 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_equal "请给出库存建议", conversation.messages.order(:created_at, :id).first.content
     assert_match "库存存在缺口", conversation.messages.order(:created_at, :id).last.content
     assert_equal({ "total_tokens" => 42 }, conversation.messages.order(:created_at, :id).last.usage)
+    assert_equal client.request.fetch(:system_prompt), conversation.context.fetch("system_prompt")
+  end
+
+  test "continues with the system prompt saved when the conversation started" do
+    client = FakeClient.new
+    conversation = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client,
+      system_prompt: "本次会话提示词").ask(question: "分析库存")
+    @agent.update!(system_prompt: "后来修改的提示词")
+
+    ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client).reply(conversation: conversation)
+
+    assert_equal "本次会话提示词", conversation.context.fetch("system_prompt")
+    assert_equal "本次会话提示词", client.request.fetch(:system_prompt)
   end
 
   test "attaches images supplied with the initial question and sends them to the model" do

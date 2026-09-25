@@ -25,7 +25,7 @@ module ErpAI
         business_object_type: business_object_type,
         business_object_id: business_object_id,
         time_range: time_range || {},
-        context: { "data_summary" => data_summary }.compact
+        context: { "data_summary" => data_summary, "system_prompt" => system_prompt || agent.system_prompt }.compact
       )
       message = conversation.messages.new(role: "user", content: question)
       message.images.attach(images) if images.present?
@@ -116,7 +116,7 @@ module ErpAI
         model: agent.model_id,
         temperature: agent.temperature.to_f,
         thinking_enabled: agent.thinking_enabled?,
-        system_prompt: system_prompt || agent.system_prompt,
+        system_prompt: conversation.context["system_prompt"].presence || system_prompt || agent.system_prompt,
         context: build_context(conversation, data_summary),
         messages: messages.with_attached_images.map { |message| serialize_message(message) },
         tools: selected_tools

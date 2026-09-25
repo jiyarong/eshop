@@ -106,6 +106,8 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "details.ai-conversation-context:not([open])"
     assert_select ".ai-conversation-context__summary", text: /Agent 上下文/
     assert_select ".ai-conversation-context__source", text: /SKU context/
+    assert_select ".ai-conversation-context__source", text: /当前 Agent 系统提示词（此会话未保存历史版本）/
+    assert_select ".ai-conversation-context__source", text: /#{Regexp.escape(@agent.system_prompt.first(40))}/
     assert_select ".ai-conversation-context__source", text: /response_status/, count: 0
     assert_select "details.ai-conversation-context[data-controller='clipboard']" do
       assert_select "button.ai-conversation-copy[data-action='clipboard#copy'][aria-label='复制原文']", count: 1
@@ -137,6 +139,19 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", edit_admin_agent_path(@agent.code), count: 0
     assert_select "a.button[href='/'][data-controller='history-navigation'][data-action='history-navigation#back']",
                   text: "返回"
+  end
+
+  test "shows the saved system prompt instead of the agent's current prompt" do
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user, context: { "system_prompt" => "会话时的提示词" })
+    @agent.update!(system_prompt: "当前提示词")
+
+    get "/ai/conversations/#{conversation.id}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-conversation-context__source", text: /本次会话的 Agent 系统提示词/
+    assert_select ".ai-conversation-context__source", text: /会话时的提示词/
+    assert_select ".ai-conversation-context__source", text: /当前提示词/, count: 0
   end
 
   test "opens the agent editor in a new tab for admins" do
@@ -223,17 +238,17 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action='replace'][target='conversation_composer']"
   end
 
-  test "does not allow posting to another user's conversation" do
+  test "allows posting to another user's shared conversation" do
     other_user = create_user_with_roles("ai-message-other-#{@token}@example.com", "manager")
     conversation = @agent.conversations.create!(user: other_user)
     sign_in @user
 
     post "/ai/conversations/#{conversation.id}/messages",
-         params: { message: { content: "越权消息" } },
+         params: { message: { content: "继续分析" } },
          headers: { "Accept" => Mime[:turbo_stream].to_s }
 
-    assert_response :not_found
-    assert_empty conversation.messages.reload
+    assert_response :accepted
+    assert_equal "继续分析", conversation.messages.reload.last.content
   ensure
     Message.where(conversation: Conversation.where(user: other_user)).delete_all if other_user
     Conversation.where(user: other_user).delete_all if other_user
@@ -241,15 +256,16 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     User.where(id: other_user&.id).delete_all if other_user
   end
 
-  test "does not expose another user's unlinked conversation" do
+  test "allows viewing another user's shared conversation" do
     other_user = create_user_with_roles("ai-controller-other-#{@token}@example.com", "manager")
     conversation = @agent.conversations.create!(user: other_user)
-    conversation.messages.create!(role: "user", content: "私有请求")
+    conversation.messages.create!(role: "user", content: "共享请求")
     sign_in @user
 
     get "/ai/conversations/#{conversation.id}", headers: { "Accept" => "text/html" }
 
-    assert_response :not_found
+    assert_response :success
+    assert_select ".ai-conversation-message--user", text: /共享请求/
   ensure
     Message.where(conversation: Conversation.where(user: other_user)).delete_all if other_user
     Conversation.where(user: other_user).delete_all if other_user

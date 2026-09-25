@@ -41,7 +41,10 @@ zh:
       copied: "已复制原文"
       copy_original: "复制原文"
       context:
+        business_context: "业务上下文"
+        current_system_prompt: "当前 Agent 系统提示词（此会话未保存历史版本）"
         empty: "本次会话没有额外上下文。"
+        system_prompt: "本次会话的 Agent 系统提示词"
         title: "Agent 上下文"
       composer:
         attach_images: "添加图片"

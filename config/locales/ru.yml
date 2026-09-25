@@ -15,7 +15,10 @@ ru:
       copied: "Исходный текст скопирован"
       copy_original: "Копировать исходный текст"
       context:
+        business_context: "Бизнес-контекст"
+        current_system_prompt: "Текущий системный промпт Agent (историческая версия недоступна)"
         empty: "В этом диалоге нет дополнительного контекста."
+        system_prompt: "Системный промпт Agent для этого диалога"
         title: "Контекст Agent"
       composer:
         attach_images: "Добавить изображения"

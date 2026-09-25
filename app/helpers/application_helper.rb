@@ -342,12 +342,21 @@ module ApplicationHelper
     ].join("\n\n")
   end
 
-  def ai_conversation_context_markdown(context)
+  def ai_conversation_context_markdown(context, fallback_system_prompt: nil)
     agent_context = context.to_h.except("response_status")
-    return t("ai.conversations.context.empty") if agent_context.blank?
-    return agent_context["data_summary"] if agent_context.keys == [ "data_summary" ]
+    saved_system_prompt = agent_context.delete("system_prompt")
+    context_markdown = if agent_context.blank?
+      t("ai.conversations.context.empty")
+    elsif agent_context.keys == [ "data_summary" ]
+      agent_context["data_summary"]
+    else
+      markdown_json_block(agent_context)
+    end
+    prompt = saved_system_prompt.presence || fallback_system_prompt
+    return context_markdown if prompt.blank?
 
-    markdown_json_block(agent_context)
+    prompt_label = saved_system_prompt.present? ? "system_prompt" : "current_system_prompt"
+    [ "## #{t("ai.conversations.context.#{prompt_label}")}", prompt, "## #{t('ai.conversations.context.business_context')}", context_markdown ].join("\n\n")
   end
 
   def ai_conversation_role_label(role)

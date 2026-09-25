@@ -65,7 +65,7 @@
     </span>
   </summary>
   <div class="ai-conversation-context__body" data-controller="markdown">
-    <pre class="code-viewer ai-conversation-context__source" data-markdown-target="source" data-clipboard-target="source"><%= ai_conversation_context_markdown(@conversation.context) %></pre>
+    <pre class="code-viewer ai-conversation-context__source" data-markdown-target="source" data-clipboard-target="source"><%= ai_conversation_context_markdown(@conversation.context, fallback_system_prompt: @conversation.agent.system_prompt) %></pre>
     <article class="gbrain-markdown" data-markdown-target="output" hidden></article>
   </div>
 </details>

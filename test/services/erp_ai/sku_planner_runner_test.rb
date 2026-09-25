@@ -65,6 +65,26 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_includes captured.fetch(:question), "没有足够依据时不调用 save_sku_plan"
   end
 
+  test "planner sends the saved database prompt to the model" do
+    agent = Agent.ensure_fixed!("sku_planner")
+    original_prompt = agent.system_prompt
+    agent.update!(system_prompt: "数据库中的 SKU Planner 提示词")
+    request = nil
+    client = Object.new
+    client.define_singleton_method(:complete) do |value|
+      request = value
+      { content: "本周期不生成计划", tool_calls: [] }
+    end
+
+    conversation = ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, client: client).run.first
+
+    assert_equal "数据库中的 SKU Planner 提示词", request.fetch(:system_prompt)
+    assert_equal "数据库中的 SKU Planner 提示词", conversation.context.fetch("system_prompt")
+    assert_equal "数据库中的 SKU Planner 提示词", agent.reload.system_prompt
+  ensure
+    agent&.update_columns(system_prompt: original_prompt) if @agent_existed
+  end
+
   test "planner skips SKUs with only info events" do
     @diagnosis.events.delete_all
     @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
