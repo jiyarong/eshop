@@ -575,6 +575,7 @@ en:
       edit:
         title: "Edit AI Agent"
       empty_skills: "No skills yet. Create a skill first."
+      external_tool: "Enabled by system configuration"
       errors:
         invalid_tools: "include unregistered tools: %{tools}"
         skills_unavailable_for_web: "are only available to client agents"
@@ -619,6 +620,9 @@ en:
         disabled: "Disabled"
         enabled: "Enabled"
       tools:
+        web_search:
+          description: "Search the public web with Tavily for current external information."
+          name: "Web search"
         erp_ai_request:
           description: "Call an internal /ai endpoint as the current user without an API key."
           name: "ERP AI endpoint request"

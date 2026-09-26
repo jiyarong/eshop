@@ -27,8 +27,9 @@ module ErpAI
 
       def build_clients
         configs.to_h do |config|
-          client_config = config.except(:tools)
-          [config.fetch(:name), client_class.new(**client_config)]
+          client_config = config.except(:tools, :type)
+          klass = config[:type] == "tavily" ? TavilyClient : client_class
+          [config.fetch(:name), klass.new(**client_config)]
         end
       end
 
@@ -58,9 +59,23 @@ module ErpAI
         return nil unless entry.is_a?(Hash)
 
         name = entry["name"].to_s
+        type = entry["type"].to_s.presence || "http"
         endpoint = entry["endpoint"].to_s
         return nil unless name.match?(NAME_PATTERN)
-        return nil if endpoint.blank?
+        return nil if endpoint.blank? && type != "tavily"
+
+        if type == "tavily"
+          api_keys = normalized_api_keys(entry["api_keys"] || entry["api_key"])
+          return nil if api_keys.empty?
+
+          return {
+            name: name,
+            type: type,
+            endpoint: endpoint.presence || TavilyClient::DEFAULT_ENDPOINT,
+            api_keys: api_keys,
+            tools: normalized_tools(entry["tools"])
+          }
+        end
 
         {
           name: name,
@@ -69,6 +84,10 @@ module ErpAI
           protocol_version: entry["protocol_version"].presence || DEFAULT_PROTOCOL_VERSION,
           tools: normalized_tools(entry["tools"])
         }
+      end
+
+      def normalized_api_keys(keys)
+        Array(keys).flat_map { |key| key.to_s.split(/[\s,]+/) }.map(&:strip).reject(&:blank?).uniq
       end
 
       def environment_config(parsed)

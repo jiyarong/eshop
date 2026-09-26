@@ -87,6 +87,34 @@ class ErpAI::Mcp::ServerRegistryTest < ActiveSupport::TestCase
     assert_nil filters.fetch("docs")
   end
 
+  test "builds a Tavily client from API keys and omits it when keys are blank" do
+    write_config(<<~YAML)
+      test:
+        - name: search
+          type: tavily
+          api_keys: "key-one, key-two"
+          tools:
+            - web_search
+    YAML
+
+    client = ErpAI::Mcp::ServerRegistry.new(config_path: @config_file.path).clients.fetch("search")
+
+    assert_instance_of ErpAI::Mcp::TavilyClient, client
+    assert_equal "https://api.tavily.com/search", client.endpoint
+    assert_equal "web_search", client.list_tools.first.fetch("name")
+  end
+
+  test "does not register Tavily when no API key is configured" do
+    write_config(<<~YAML)
+      test:
+        - name: search
+          type: tavily
+          api_keys: ""
+    YAML
+
+    assert_empty ErpAI::Mcp::ServerRegistry.new(config_path: @config_file.path).clients
+  end
+
   private
 
   def registry

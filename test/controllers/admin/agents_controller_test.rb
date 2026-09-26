@@ -114,6 +114,28 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-form-actions button[type='submit']"
   end
 
+  test "super admin can see the configured Tavily web search tool" do
+    sign_in @admin
+    tavily_client = ErpAI::Mcp::TavilyClient.new(name: "search", api_keys: [ "test-key" ])
+    registry = Struct.new(:clients, :tool_filters).new(
+      { "search" => tavily_client },
+      { "search" => [ "web_search" ] }
+    )
+
+    original_registry_new = ErpAI::Mcp::ServerRegistry.method(:new)
+    ErpAI::Mcp::ServerRegistry.define_singleton_method(:new) { registry }
+    begin
+      get "/admin/agents/sku_replenishment_advisor/edit", headers: { "Accept" => "text/html" }
+    ensure
+      ErpAI::Mcp::ServerRegistry.define_singleton_method(:new, original_registry_new)
+    end
+
+    assert_response :success
+    assert_select "input#agent_tools_search__web_search[disabled][checked]"
+    assert_select "input#agent_tools_search__web_search[name='agent[tools][]']", count: 0
+    assert_select "strong", text: "网页搜索"
+  end
+
   test "super admin can render a new agent form" do
     sign_in @admin
 

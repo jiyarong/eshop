@@ -11,3 +11,10 @@
     - list_pages
     - traverse_graph
     - think
+
+- name: search
+  type: tavily
+  endpoint: https://api.tavily.com/search
+  api_keys: <%= (ENV["TAVILY_API_KEYS"].presence || ENV["TAVILY_API_KEY"]).to_json %>
+  tools:
+    - web_search

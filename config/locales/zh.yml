@@ -553,6 +553,7 @@ zh:
       edit:
         title: "编辑 AI Agent"
       empty_skills: "暂无 Skill，请先创建 Skill。"
+      external_tool: "由系统配置自动启用"
       errors:
         invalid_tools: "包含未注册工具：%{tools}"
         skills_unavailable_for_web: "仅 Client Agent 可以使用 Skill"
@@ -597,6 +598,9 @@ zh:
         disabled: "停用"
         enabled: "启用"
       tools:
+        web_search:
+          description: "通过 Tavily 搜索公开网页，获取实时外部信息。"
+          name: "网页搜索"
         erp_ai_request:
           description: "使用当前用户身份调用应用内的 /ai 接口，无需 API Key。"
           name: "ERP AI 接口请求"
