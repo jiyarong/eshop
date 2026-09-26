@@ -73,6 +73,89 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_match "库存数据不足", body.fetch("assistant_message").fetch("content")
   end
 
+  test "lists only the current user's conversations and available web agents" do
+    other_user = create_user_with_roles("ai-list-other-#{@token}@example.com", "manager")
+    own_conversation = @agent.conversations.create!(user: @user)
+    own_conversation.messages.create!(role: "user", content: "分析本人的库存")
+    other_conversation = @agent.conversations.create!(user: other_user)
+    other_conversation.messages.create!(role: "user", content: "其他人的对话")
+    sign_in @user
+
+    get ai_conversations_path, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a.erp-nav__link[href=?][aria-current='page']", ai_conversations_path
+    assert_select "select[name='agent_code'] option[value=?]", @agent.code
+    assert_select "a.ai-conversation-index__item[href=?]", ai_conversation_path(own_conversation), text: /分析本人的库存/
+    assert_select "a.ai-conversation-index__item[href=?]", ai_conversation_path(other_conversation), count: 0
+  ensure
+    other_conversation&.messages&.delete_all
+    other_conversation&.delete
+    UserRole.where(user: other_user).delete_all if other_user
+    User.where(id: other_user&.id).delete_all if other_user
+  end
+
+  test "starts an empty conversation with the selected web agent" do
+    sign_in @user
+
+    assert_difference "Conversation.where(user: @user).count", 1 do
+      assert_no_enqueued_jobs only: ConversationReplyJob do
+        post ai_conversations_path, params: { agent_code: @agent.code }, headers: { "Accept" => "text/html" }
+      end
+    end
+
+    conversation = Conversation.where(user: @user).order(:id).last
+    assert_redirected_to ai_conversation_path(conversation)
+    assert_equal @agent, conversation.agent
+    assert_empty conversation.messages
+  end
+
+  test "rejects a disabled agent for a new web conversation" do
+    @agent.update!(enabled: false)
+    sign_in @user
+
+    assert_no_difference "Conversation.count" do
+      post ai_conversations_path, params: { agent_code: @agent.code }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :not_found
+  end
+
+  test "allows a custom web agent but excludes client agents" do
+    web_agent = Agent.create!(
+      code: "web_chat_#{@token}", name: "自定义 Web Agent",
+      system_prompt: Agent::GENERAL_AGENT_PROMPT, model_id: "test-model",
+      temperature: 0.3, tools: [], enabled: true
+    )
+    client_agent = Agent.create!(
+      code: "client_chat_#{@token}", name: "客户端 Agent",
+      system_prompt: Agent::GENERAL_AGENT_PROMPT, model_id: "test-model",
+      temperature: 0.3, tools: [], agent_type: :client, enabled: true
+    )
+    sign_in @user
+
+    get ai_conversations_path, headers: { "Accept" => "text/html" }
+    assert_select "select[name='agent_code'] option[value=?]", web_agent.code
+    assert_select "select[name='agent_code'] option[value=?]", client_agent.code, count: 0
+
+    sign_in @user
+    post ai_conversations_path, params: { agent_code: web_agent.code }, headers: { "Accept" => "text/html" }
+    assert_response :redirect
+    assert_match %r{/ai/conversations/\d+\z}, response.location
+    assert_equal 1, Conversation.where(agent: web_agent, user: @user).count
+    assert_redirected_to ai_conversation_path(Conversation.find_by!(agent: web_agent, user: @user))
+
+    sign_in @user
+    assert_no_difference "Conversation.count" do
+      post ai_conversations_path, params: { agent_code: client_agent.code }, headers: { "Accept" => "text/html" }
+    end
+    assert_response :not_found
+  ensure
+    Conversation.where(agent: web_agent).delete_all if web_agent
+    web_agent&.destroy!
+    client_agent&.destroy!
+  end
+
   test "renders the conversation as markdown and includes tool results" do
     sign_in @user
     conversation = @agent.conversations.create!(

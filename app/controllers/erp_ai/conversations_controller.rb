@@ -1,10 +1,24 @@
 module ErpAI
   class ConversationsController < ApplicationController
+    PAGE_SIZE = 30
     before_action :authenticate_user!
     before_action -> { require_permission!(:view_reports) }
 
+    def index
+      @agents = Agent.available_for_conversation.order(:name)
+      @conversations = current_user.conversations.includes(:agent).order(created_at: :desc, id: :desc).page(params[:page]).per(PAGE_SIZE)
+      @first_messages = Message.where(conversation_id: @conversations.map(&:id), role: "user")
+        .order(:created_at, :id).group_by(&:conversation_id).transform_values(&:first)
+    end
+
     def create
-      if conversation_params[:agent_code].in?(%w[sku_diagnosis sku_planner])
+      if request.format.html?
+        agent = Agent.available_for_conversation.find_by!(code: params[:agent_code])
+        conversation = agent.conversations.create!(user: current_user)
+        return redirect_to ai_conversation_path(conversation)
+      end
+
+      if conversation_params[:agent_code].in?(Agent::SCHEDULED_ONLY_CODES)
         return render json: { error: "#{conversation_params[:agent_code]} is scheduled-only" }, status: :unprocessable_entity
       end
 

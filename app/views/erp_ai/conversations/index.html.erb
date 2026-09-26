@@ -1,0 +1,59 @@
+<% content_for :title, t("ai.conversations.index.title") %>
+<% content_for :page_heading, t("ai.conversations.index.title") %>
+
+<div class="ai-conversation-index">
+  <div class="page-heading-row">
+    <h1 class="page-title"><%= t("ai.conversations.index.title") %></h1>
+  </div>
+
+  <section class="ai-conversation-index__new" aria-labelledby="new-conversation-title">
+    <h2 id="new-conversation-title"><%= t("ai.conversations.index.new_title") %></h2>
+    <% if @agents.any? %>
+      <%= form_with url: ai_conversations_path, method: :post, class: "ai-conversation-index__form", data: { turbo: false } do |form| %>
+        <%= form.label :agent_code, t("ai.conversations.index.agent_label") %>
+        <%= form.select :agent_code, options_from_collection_for_select(@agents, :code, :name, @agents.find { |agent| agent.code == "business_analysis" }&.code), {}, class: "ai-conversation-index__select" %>
+        <%= form.button class: "button" do %>
+          <i class="bi bi-plus-lg" aria-hidden="true"></i>
+          <%= t("ai.conversations.index.start") %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <p class="ai-conversation-index__empty"><%= t("ai.conversations.index.no_agents") %></p>
+    <% end %>
+  </section>
+
+  <section aria-labelledby="conversation-list-title">
+    <h2 id="conversation-list-title" class="ai-conversation-index__list-title"><%= t("ai.conversations.index.history") %></h2>
+    <% if @conversations.any? %>
+      <div class="ai-conversation-index__list">
+        <% @conversations.each do |conversation| %>
+          <%= link_to ai_conversation_path(conversation), class: "ai-conversation-index__item" do %>
+            <span class="ai-conversation-index__item-main">
+              <strong><%= @first_messages[conversation.id]&.content.presence&.truncate(100) || t("ai.conversations.index.untitled", id: conversation.id) %></strong>
+              <span><%= conversation.agent.name %></span>
+            </span>
+            <time datetime="<%= conversation.created_at.iso8601 %>"><%= display_time(conversation.created_at) %></time>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="ai-conversation-index__pagination">
+        <% if @conversations.prev_page %>
+          <%= link_to ai_conversations_path(page: @conversations.prev_page), class: "button button-secondary" do %>
+            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            <%= t("ai.conversations.index.previous") %>
+          <% end %>
+        <% end %>
+        <span><%= t("ai.conversations.index.page", current: @conversations.current_page, total: @conversations.total_pages) %></span>
+        <% if @conversations.next_page %>
+          <%= link_to ai_conversations_path(page: @conversations.next_page), class: "button button-secondary" do %>
+            <%= t("ai.conversations.index.next") %>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="ai-conversation-index__empty"><%= t("ai.conversations.index.empty") %></p>
+    <% end %>
+  </section>
+</div>

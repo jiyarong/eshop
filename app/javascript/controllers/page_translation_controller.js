@@ -11,7 +11,7 @@ export function collectTextNodes(root) {
 
   walkTextNodes(root, (node) => {
     const text = node.textContent.trim();
-    if (!text) return;
+    if (!text || /^[\p{N}\p{P}\p{S}\s]+$/u.test(text) || /^(?:FBS|FBO)\s+\p{N}+$/iu.test(text)) return;
 
     entries.push({
       id: `t${entries.length}`,
@@ -76,20 +76,33 @@ export function restoreOriginalText(entries) {
 }
 
 export function parseTranslationContent(content, context = {}) {
+  const trimmedContent = typeof content === "string" ? content.trim() : "";
+  const fencedContent = trimmedContent.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const jsonContent = fencedContent ? fencedContent[1] : trimmedContent;
   let parsedContent;
 
   try {
-    parsedContent = JSON.parse(content);
+    parsedContent = JSON.parse(jsonContent);
   } catch (error) {
-    throw translationJsonParseError(error, content, context);
+    if (!jsonContent.startsWith("[") || !jsonContent.endsWith("]}")) {
+      throw translationJsonParseError(error, trimmedContent, context);
+    }
+
+    try {
+      parsedContent = JSON.parse(jsonContent.slice(0, -1));
+    } catch {
+      throw translationJsonParseError(error, trimmedContent, context);
+    }
   }
 
   const translations = Array.isArray(parsedContent) ? parsedContent : parsedContent?.translations;
-  if (!Array.isArray(translations)) throw new Error("Translation content must be an array");
+  if (!Array.isArray(translations)) {
+    throw translationJsonParseError(new Error("Translation content must be an array"), trimmedContent, context);
+  }
 
   translations.forEach((translation) => {
-    if (typeof translation.id !== "string" || typeof translation.text !== "string") {
-      throw new Error("Translation items must include string id and text");
+    if (typeof translation?.id !== "string" || typeof translation.text !== "string") {
+      throw translationJsonParseError(new Error("Translation items must include string id and text"), trimmedContent, context);
     }
   });
 
@@ -248,9 +261,12 @@ export default class extends Controller {
   }
 
   async translate() {
+    if (this.entries.length > 0) restoreOriginalText(this.entries);
+    this.translations = [];
     this.entries = collectTextNodes(document.querySelector(".page"));
     if (this.entries.length === 0) return;
 
+    this.setMode("original");
     this.setBusy(true);
     this.setState("loading");
     this.setStatus(this.translateButtonTarget.dataset.loadingLabel);
@@ -269,6 +285,7 @@ export default class extends Controller {
       }
 
       this.translations = translations;
+      applyTranslations(this.entries, translations);
       this.setMode("translation");
       this.setState("done");
       this.setStatus(this.translateButtonTarget.dataset.doneLabel);
@@ -296,33 +313,39 @@ export default class extends Controller {
     return requestTranslationsInBatches(
       entries,
       (batch) => this.requestTranslationBatch(batch),
-      (batchTranslations) => applyTranslations(entries, batchTranslations),
     );
   }
 
   async requestTranslationBatch(batch) {
-    const response = await fetch("/ai/conversations.json", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content,
-      },
-      body: JSON.stringify({
-        agent_code: "page_translation",
-        module_name: "page_translation",
-        business_object_type: "Page",
-        business_object_id: window.location.pathname,
-        question: this.translationQuestion(batch.entries, batch),
-      }),
-    });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch("/ai/conversations.json", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content,
+        },
+        body: JSON.stringify({
+          agent_code: "page_translation",
+          module_name: "page_translation",
+          business_object_type: "Page",
+          business_object_id: window.location.pathname,
+          question: this.translationQuestion(batch.entries, batch),
+        }),
+      });
 
-    if (!response.ok) throw new Error("Translation request failed");
+      if (!response.ok) throw new Error("Translation request failed");
 
-    const payload = await response.json();
-    return parseTranslationContent(payload.assistant_message.content, {
-      batchIndex: batch.index,
-      batchCount: batch.count,
-    });
+      const payload = await response.json();
+      try {
+        return parseTranslationContent(payload.assistant_message?.content, {
+          batchIndex: batch.index,
+          batchCount: batch.count,
+          attempt: attempt + 1,
+        });
+      } catch (error) {
+        if (error?.name !== "TranslationJsonParseError" || attempt === 1) throw error;
+      }
+    }
   }
 
   translationQuestion(entries, batch = null) {

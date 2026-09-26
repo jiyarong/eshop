@@ -37,7 +37,20 @@ zh:
     load_failed: "获取下载地址失败，请稍后重试"
   ai:
     conversations:
+      back_to_list: "返回我的对话"
       back_to_diagnosis: "返回 AI 诊断"
+      index:
+        title: "AI对话"
+        new_title: "新对话"
+        agent_label: "选择 Web Agent"
+        start: "开启新对话"
+        no_agents: "暂无可用的 Web Agent"
+        history: "我的对话"
+        untitled: "新对话 #%{id}"
+        empty: "暂无对话"
+        previous: "上一页"
+        next: "下一页"
+        page: "第 %{current} / %{total} 页"
       copied: "已复制原文"
       copy_original: "复制原文"
       context:
@@ -170,6 +183,7 @@ zh:
       confirmation: "与%{attribute}不一致"
       too_short: "过短，至少需要 %{count} 个字符"
   navigation:
+    ai_conversations: "AI对话"
     sections:
       dashboard: "经营看板"
       draft: "Draft & Testing"
@@ -531,6 +545,7 @@ zh:
     agents:
       actions:
         new: "新增 Agent"
+        start_conversation: "开始会话"
       agent_types:
         client: "Client Agent"
         web: "Web Agent"

@@ -9,7 +9,11 @@
       <time datetime="<%= @conversation.created_at.iso8601 %>"><%= display_time(@conversation.created_at) %></time>
     </p>
   </div>
-  <div class="ai-conversation-heading__actions hidden">
+  <div class="ai-conversation-heading__actions">
+    <%= link_to ai_conversations_path, class: "button button-secondary" do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <%= t("ai.conversations.back_to_list") %>
+    <% end %>
     <% if can?(:manage_users) %>
       <%= link_to edit_admin_agent_path(@conversation.agent.code),
                   class: "button button-secondary",

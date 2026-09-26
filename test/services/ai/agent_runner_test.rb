@@ -306,6 +306,21 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_not_includes tool_names, "search__fetch_page"
   end
 
+  test "page translation does not expose MCP tools" do
+    client = FakeClient.new
+    @agent.define_singleton_method(:code) { "page_translation" }
+    @agent.define_singleton_method(:tools) { [] }
+
+    ErpAI::AgentRunner.new(
+      agent: @agent,
+      user: @user,
+      client: client,
+      server_registry: FakeServerRegistry.new
+    ).ask(question: '{"target_locale":"en","items":[{"id":"m0","text":"库存"}]}')
+
+    assert_empty client.request.fetch(:tools)
+  end
+
   test "stores final assistant message when max tool rounds is reached" do
     client = AlwaysToolClient.new
 

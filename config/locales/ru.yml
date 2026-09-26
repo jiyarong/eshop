@@ -11,6 +11,19 @@ ru:
     sign_out: "Выйти"
   ai:
     conversations:
+      back_to_list: "К моим диалогам"
+      index:
+        title: "AI-диалоги"
+        new_title: "Новый диалог"
+        agent_label: "Веб-агент"
+        start: "Начать диалог"
+        no_agents: "Нет доступных веб-агентов"
+        history: "Мои диалоги"
+        untitled: "Новый диалог #%{id}"
+        empty: "Диалогов пока нет"
+        previous: "Назад"
+        next: "Вперёд"
+        page: "Страница %{current} из %{total}"
       back_to_diagnosis: "Вернуться к AI-диагностике"
       copied: "Исходный текст скопирован"
       copy_original: "Копировать исходный текст"
@@ -163,6 +176,7 @@ ru:
             ended_at:
               before_effective_at: "не может быть раньше начала действия"
   navigation:
+    ai_conversations: "AI-диалоги"
     sections:
       dashboard: "Панель"
       draft: "Draft & Testing"
@@ -524,6 +538,7 @@ ru:
     agents:
       actions:
         new: "Добавить Agent"
+        start_conversation: "Начать диалог"
       agent_types:
         client: "Client Agent"
         web: "Web Agent"

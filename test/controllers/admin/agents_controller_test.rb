@@ -58,8 +58,23 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", text: "Agent 类型"
     assert_select "td", text: "Web Agent"
     assert_select "a.ai-row-action[href=?]", "/admin/agents/sku_replenishment_advisor/edit"
+    assert_select "form[action=?] input[name='agent_code'][value='sku_replenishment_advisor']", ai_conversations_path
+    nav_paths = css_select(".erp-nav__link").map { |link| link["href"] }
+    assert_equal nav_paths.index(admin_agents_path) + 1, nav_paths.index(ai_conversations_path)
     assert_select ".ai-table-panel.table-list-card > .table-viewport.table-list-viewport[data-controller~='sticky-table-header'] > table.ai-agent-table",
       count: 1
+  end
+
+  test "unavailable agents cannot start a conversation from the list" do
+    @agent.update!(enabled: false)
+    sign_in @admin
+
+    get admin_agents_path, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input[name='agent_code'][value='sku_replenishment_advisor']", count: 0
+    assert_select "input[name='agent_code'][value='sku_diagnosis']", count: 0
+    assert_select "input[name='agent_code'][value='sku_planner']", count: 0
   end
 
   test "non admin cannot manage agents" do

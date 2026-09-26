@@ -40,6 +40,19 @@ en:
     sign_out: "Sign out"
   ai:
     conversations:
+      back_to_list: "Back to my conversations"
+      index:
+        title: "AI Conversations"
+        new_title: "New conversation"
+        agent_label: "Web agent"
+        start: "Start conversation"
+        no_agents: "No web agents are available"
+        history: "My conversations"
+        untitled: "New conversation #%{id}"
+        empty: "No conversations yet"
+        previous: "Previous"
+        next: "Next"
+        page: "Page %{current} of %{total}"
       back_to_diagnosis: "Back to AI diagnosis"
       copied: "Original copied"
       copy_original: "Copy original"
@@ -88,7 +101,7 @@ en:
       en: "English"
       ru: "Русский"
   page_translation:
-    title: "AI Translate"
+    title: "Translate page"
     translate: "Start translation"
     original: "Show original"
     translation: "Show translation"
@@ -192,6 +205,7 @@ en:
             ended_at:
               before_effective_at: "cannot be before the effective time"
   navigation:
+    ai_conversations: "AI Conversations"
     sections:
       dashboard: "Dashboard"
       draft: "Draft & Testing"
@@ -553,6 +567,7 @@ en:
     agents:
       actions:
         new: "New Agent"
+        start_conversation: "Start conversation"
       agent_types:
         client: "Client Agent"
         web: "Web Agent"

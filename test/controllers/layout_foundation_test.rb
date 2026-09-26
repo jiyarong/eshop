@@ -72,7 +72,14 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".locale-switcher__item[aria-current='page']", text: "中文"
     assert_select "a.locale-switcher__item[href*='locale=en']", text: "English"
     assert_select "a.locale-switcher__item[href*='locale=ru']", text: "Русский"
-    assert_select ".page-translation-controls", 0
+    assert_select ".page-translation-controls[data-controller='page-translation'][data-page-translation-target-locale-value='zh'][data-page-translation-ignore]"
+    assert_select ".page-translation-controls summary[data-page-translation-target='summary']"
+    assert_select ".page-translation-controls__title", text: "AI 翻译"
+    assert_select ".page-translation-controls__summary-status[data-idle-label='未翻译'][data-json-error-label='翻译结果格式异常'][data-no-change-label='翻译无变化']", text: "未翻译"
+    assert_select "button[data-page-translation-target='translateButton'][data-action='page-translation#translate'][data-json-error-label='翻译结果格式异常'][data-no-change-label='翻译无变化']", text: "开始翻译"
+    assert_select "button[data-page-translation-target='originalButton'][data-action='page-translation#showOriginal'][disabled]", text: "查看原文"
+    assert_select "button[data-page-translation-target='translationButton'][data-action='page-translation#showTranslation'][disabled]", text: "查看译文"
+    assert_select ".page-translation-controls__status[data-page-translation-target='status']"
     assert_select ".yclaw-download[data-controller='yclaw-download'][data-action='toggle->yclaw-download#load']"
     assert_select ".yclaw-download summary", text: "下载 YClaw"
     assert_select ".yclaw-download[data-yclaw-download-windows-manifest-url-value='https://static.foresight-soft.com/eshop-ai/latest.yml']"
@@ -129,6 +136,8 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_select ".erp-nav__label", text: "Draft & Testing"
     assert_select ".locale-switcher .topbar-dropdown__value", text: "RU"
     assert_select ".locale-switcher__item[aria-current='page']", text: "Русский"
+    assert_select ".page-translation-controls[data-page-translation-target-locale-value='ru']"
+    assert_select ".page-translation-controls__title", text: "AI перевод"
     assert_match(/locale=/, response.headers["Set-Cookie"])
   end
 

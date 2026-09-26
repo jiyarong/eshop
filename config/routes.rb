@@ -119,7 +119,7 @@ Rails.application.routes.draw do
   resources :feedback_tasks, only: [:create]
 
   namespace :ai, module: :erp_ai do
-    resources :conversations, only: [:create, :show] do
+    resources :conversations, only: [:index, :create, :show] do
       resources :messages, only: :create, controller: "conversation_messages"
     end
     get "skus/genernal_inventory" => "skus#genernal_inventory"

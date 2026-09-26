@@ -180,7 +180,7 @@ module ErpAI
     end
 
     def mcp_tools
-      return [] if agent.code.in?(%w[sku_diagnosis sku_planner])
+      return [] if agent.code.in?(%w[sku_diagnosis sku_planner page_translation])
 
       mcp_clients.flat_map do |server_name, mcp_client|
         ErpAI::Mcp::ToolAdapter.adapt(server_name: server_name, tools: filtered_mcp_tools(server_name, mcp_client.list_tools))

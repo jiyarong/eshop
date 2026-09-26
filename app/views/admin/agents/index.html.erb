@@ -65,6 +65,15 @@
             </td>
             <td><%= display_time(agent.updated_at) %></td>
             <td>
+              <% if agent.available_for_conversation? %>
+                <%= button_to ai_conversations_path,
+                              params: { agent_code: agent.code },
+                              class: "ai-row-action",
+                              form: { data: { turbo: false } } do %>
+                  <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                  <span><%= t("admin.agents.actions.start_conversation") %></span>
+                <% end %>
+              <% end %>
               <%= link_to edit_admin_agent_path(agent.code), class: "ai-row-action" do %>
                 <i class="bi bi-pencil" aria-hidden="true"></i>
                 <span><%= t("common.actions.edit") %></span>

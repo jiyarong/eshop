@@ -24,6 +24,7 @@ const [
     summarizeTranslationResult,
     translationQuestionPayload,
     translationStateLabel,
+    default: PageTranslationController,
   },
 ] = await Promise.all(bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)));
 
@@ -78,6 +79,20 @@ test("collectTextNodes collects visible page text and skips form or hidden conte
     { id: "t0", text: "库存报表" },
     { id: "t1", text: "总库存 10 件" },
   ]);
+});
+
+test("collectTextNodes skips numeric symbols and fulfillment counts without skipping text", () => {
+  const page = createElement("main");
+  const skippedTexts = [
+    "123", " -1,234.56% ", "2026-09-26 10:30", "（１２３）", "，。！？…", "—",
+    "$100", "↓ 565.77%", "¥36,759.02", "↑ 8.33%", "FBS 25", "FBO 33",
+  ];
+  const retainedTexts = ["库存 123", "SKU-123", "Москва 2026", "FBS 库存 25", "FBO orders 33"];
+
+  [...skippedTexts, ...retainedTexts].forEach((text) => append(page, createTextNode(text)));
+
+  assert.deepEqual(collectTextNodes(page).map(({ id, text }) => ({ id, text })),
+    retainedTexts.map((text, index) => ({ id: `t${index}`, text })));
 });
 
 test("applyTranslations and restoreOriginalText switch between translated and original text", () => {
@@ -206,6 +221,69 @@ test("parseTranslationContent accepts wrapped translation responses", () => {
     parseTranslationContent('{"translations":[{"id":"t0","text":"Inventory"}]}'),
     [{ id: "t0", text: "Inventory" }],
   );
+});
+
+test("parseTranslationContent accepts fenced JSON and one stray closing brace", () => {
+  assert.deepEqual(
+    parseTranslationContent('```json\n[{"id":"m1","text":"Inventory"}]\n```'),
+    [{ id: "m1", text: "Inventory" }],
+  );
+  assert.deepEqual(
+    parseTranslationContent('[{"id":"m1","text":"Inventory"}]}'),
+    [{ id: "m1", text: "Inventory" }],
+  );
+});
+
+test("requestTranslationBatch retries an invalid model response once", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalDocument = globalThis.document;
+  const originalWindow = globalThis.window;
+  let calls = 0;
+
+  globalThis.document = { querySelector: () => ({ content: "csrf-token" }) };
+  globalThis.window = { location: { pathname: "/reports/inventory" } };
+  globalThis.fetch = async () => {
+    calls += 1;
+    return {
+      ok: true,
+      json: async () => ({
+        assistant_message: {
+          content: calls === 1 ? '[{"id" => "m1", "text" => "Inventory"}]' : '[{"id":"m1","text":"Inventory"}]',
+        },
+      }),
+    };
+  };
+
+  try {
+    const translations = await PageTranslationController.prototype.requestTranslationBatch.call(
+      { targetLocaleValue: "en", translationQuestion: () => "question" },
+      { entries: [{ id: "m1", text: "库存" }], index: 1, count: 1 },
+    );
+
+    assert.deepEqual(translations, [{ id: "m1", text: "Inventory" }]);
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.document = originalDocument;
+    globalThis.window = originalWindow;
+  }
+});
+
+test("requestTranslations keeps the page unchanged when a later batch fails", async () => {
+  const entries = Array.from({ length: 81 }, (_, index) => ({
+    id: `t${index}`,
+    text: `Text ${index}`,
+    node: createTextNode(`Text ${index}`),
+  }));
+  const controller = {
+    requestTranslationBatch: async (batch) => {
+      if (batch.index === 1) return [{ id: "m0", text: "Translated" }];
+      throw new Error("Translation request failed");
+    },
+  };
+
+  await assert.rejects(PageTranslationController.prototype.requestTranslations.call(controller, entries));
+  assert.equal(entries[0].node.textContent, "Text 0");
 });
 
 test("parseTranslationContent adds diagnostics when JSON is invalid", () => {
