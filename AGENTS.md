@@ -34,7 +34,7 @@
   - `apply_responsible_user_filters_to_sku_records(scope)`：过滤含 `sku_code` 的其他记录。
 - partial 默认同时输出 `developer_id`、`operator_id` 两个单选筛选项；只需要一种角色时传 `filter_keys: %w[developer]` 或 `filter_keys: %w[operator]`。同时传页面唯一的 `dom_id_prefix`；`field_class` 可用于适配所在表单布局。
 - 编辑表单里的单个负责人选择统一使用 `app/views/shared/_responsible_user_single_select.html.erb`，不要拿筛选 partial 代替。必须传 `component_id`、`param_name`、`label`、`placeholder`、`selected_id`、`options`，需要区分清空按钮文案时传 `clear_label`。`/erp/skus` 的开发人员、运营人员编辑弹窗是参考实现。
-- 负责人业务归属保持现有模型语义：开发人员来自 `Ec::SkuDeveloperAssignment`；运营人员来自平台商品的 `Ec::SkuProductOperator` operator 角色。不要仅凭页面参数自行发明另一套关联规则。
+- 负责人业务归属保持现有模型语义：开发人员来自 `Ec::SkuDeveloperAssignment`；运营人员来自 SKU 级 `Ec::SkuOperatorAssignment`，每个 SKU 最多一人，无需上架平台商品。旧 `Ec::SkuProductOperator` 保留历史数据供未来 Listing 级需求使用，当前筛选、权限与报表不得读取它。
 
 ### SKU、SPU 选择器
 

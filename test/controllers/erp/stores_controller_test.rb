@@ -273,7 +273,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     developer = create_user_with_roles("store-show-developer-#{@token.downcase}@example.com", "operator")
     operator.update!(name: "运营 #{@token}")
     developer.update!(name: "开发 #{@token}")
-    product.operators = [operator]
+    Ec::SkuOperatorAssignment.create!(sku: sku, user: operator)
     sku.developers = [developer]
 
     get "/erp/stores/#{@store.id}", headers: { "Accept" => "text/html" }
@@ -298,24 +298,22 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "2026-06-16 19:30"
     assert_no_match "已绑定平台商品 #{token_suffix}", response.body
     assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: developer.name
-    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{product.id}", text: operator.name
-    assert_select ".operator-list button[type='button'][data-action=?][data-operator-dialog-id=?]", "click->operator-dialog#open", "operator-dialog-#{unassigned_product.id}", text: "未绑定"
+    assert_select ".operator-list a[href*='/erp/skus/#{sku.id}/operator/edit']", text: operator.name, count: 2
     assert_select "form[action=?][method=?]", "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", "post"
     assert_select "dialog#operator-dialog-#{product.id}.operator-assignment-dialog" do
-      assert_select "h3", "绑定职责人员"
+      assert_select "h3", "绑定开发人员"
       assert_select "select[multiple='multiple'][name='developer_ids[]']" do
         assert_select "option[selected='selected'][value=?]", developer.id.to_s, text: developer.name
       end
-      assert_select "select[multiple='multiple'][name='operator_ids[]']" do
-        assert_select "option[selected='selected'][value=?]", operator.id.to_s, text: operator.name
-      end
-      assert_select "button[type='submit']", "保存职责人员"
+      assert_select "select[multiple='multiple'][name='operator_ids[]']", count: 0
+      assert_select "button[type='submit']", "保存开发人员"
     end
     assert_select "td > button[type='button']", text: "绑定运营人员", count: 0
     assert_select "input[type=?][name=?]", "checkbox", "developer_ids[]", count: 0
     assert_select "input[type=?][name=?]", "checkbox", "operator_ids[]", count: 0
   ensure
     Ec::SkuDeveloperAssignment.where(sku_code: sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuOperatorAssignment.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
     RawOzon::Product.where(account_id: raw_account&.id).delete_all if raw_account
@@ -353,7 +351,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     User.where("email LIKE ?", "store-readonly-#{@token.downcase}%").delete_all
   end
 
-  test "update operators replaces assigned user set" do
+  test "store product responsibility update only changes developers" do
     sku = Ec::Sku.create!(
       sku_code: "STORE-UPD-#{token_suffix}",
       product_name: "更新运营 SKU #{token_suffix}",
@@ -372,6 +370,7 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     inactive_operator = create_user_with_roles("store-inactive-operator-#{@token.downcase}@example.com", "operator")
     inactive_operator.update!(active: false)
     product.operators = [old_operator]
+    Ec::SkuOperatorAssignment.create!(sku: sku, user: old_operator)
     sku.developers = [old_developer]
 
     patch "/erp/stores/#{@store.id}/sku_products/#{product.id}/operators", params: {
@@ -380,15 +379,17 @@ class Erp::StoresControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_redirected_to "/erp/stores/#{@store.id}"
-    assert_equal [new_operator.id], product.reload.operator_ids
+    assert_equal [old_operator.id], product.reload.operator_ids
+    assert_equal old_operator.id, sku.reload.operator_assignment.user_id
     assert_equal [new_developer.id], product.developer_ids
     assert_equal(
-      { new_operator.id => "operator" },
+      { old_operator.id => "operator" },
       product.operator_assignments.pluck(:user_id, :role).to_h
     )
     assert_equal [new_developer.id], sku.reload.developer_ids
   ensure
     Ec::SkuDeveloperAssignment.where(sku_code: sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuOperatorAssignment.where(sku_code: sku&.sku_code).delete_all
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku&.sku_code }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(sku_code: sku&.sku_code).delete_all
     Ec::Sku.with_deleted.where(id: sku&.id).delete_all if sku

@@ -109,11 +109,13 @@ module SupplyOrderReports
     def product_mapping(platform, account_id, platform_column)
       stores = Ec::Store.where(platform: platform, is_active: true)
       stores = platform == "wb" ? stores.where(wb_raw_account_id: account_id) : stores.where(ozon_raw_account_id: account_id)
-      Ec::SkuProduct.includes(:sku, :operator_role_assignments).where(platform: platform, store_id: stores.select(:id)).where.not(platform_column => nil).each_with_object({}) do |product, result|
+      products = Ec::SkuProduct.where(platform: platform, store_id: stores.select(:id)).where.not(platform_column => nil).to_a
+      operator_ids_by_sku = Ec::SkuOperatorAssignment.where(sku_code: products.map(&:sku_code)).pluck(:sku_code, :user_id).to_h
+      products.each_with_object({}) do |product, result|
         result[product.public_send(platform_column).to_s] = {
           sku_code: product.sku_code,
           product_name: product_name(product),
-          operator_ids: product.operator_role_assignments.map(&:user_id)
+          operator_ids: Array(operator_ids_by_sku[product.sku_code])
         }
       end
     end

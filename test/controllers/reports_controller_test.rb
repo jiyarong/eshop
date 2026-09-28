@@ -271,6 +271,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all
     Ec::Order.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all
     Ec::SkuDeveloperAssignment.where(sku_code: [@sku&.sku_code, @second_sku&.sku_code]).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuOperatorAssignment.where(sku_code: [@sku&.sku_code, @second_sku&.sku_code]).delete_all
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all if defined?(Ec::SkuProductOperator)
     Ec::SkuProduct.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all if defined?(Ec::SkuProduct)
     RawOzon::Product.where(account_id: @sales_ozon_account&.id).delete_all
@@ -2876,6 +2877,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
     Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
     Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: operator)
     Ec::SkuCost.create!(
       sku_code: @second_sku.sku_code,
       purchase_price_cny: 20,

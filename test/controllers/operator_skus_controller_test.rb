@@ -130,8 +130,8 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       platform_sku_id: "OPS-FILTER-PS-B-#{@token}",
       product_name: "运营筛选商品 B #{@token}"
     )
-    Ec::SkuProductOperator.create!(sku_product: sku_product_a, user: operator_a)
-    Ec::SkuProductOperator.create!(sku_product: sku_product_b, user: operator_b)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: operator_a)
+    Ec::SkuOperatorAssignment.create!(sku: other_sku, user: operator_b)
 
     diagnosis_a = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     diagnosis_a.events.create!(
@@ -162,6 +162,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
   ensure
     Ec::AIDiagnosis.where(sku_id: [ @sku.id, other_sku&.id ].compact).destroy_all
     Ec::SkuProductOperator.where(sku_product_id: [ sku_product_a&.id, sku_product_b&.id ].compact).delete_all if defined?(Ec::SkuProductOperator)
+    Ec::SkuOperatorAssignment.where(sku_code: [@sku&.sku_code, other_sku&.sku_code]).delete_all
     sku_product_a&.destroy
     sku_product_b&.destroy
     store&.destroy

@@ -3234,9 +3234,11 @@ zh:
       actions:
         add_store: "新增店铺"
         bind_responsible_users: "绑定职责人员"
+        bind_developers: "绑定开发人员"
         bind_operators: "绑定运营人员"
         edit_store: "编辑店铺"
         save_responsible_users: "保存职责人员"
+        save_developers: "保存开发人员"
         save_operators: "保存运营人员"
       company_types:
         general: "普通"

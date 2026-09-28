@@ -27,6 +27,7 @@ module Ec
       Ec::OperationAction.where(ec_sku_product_id: @sku_product&.id).delete_all
       Ec::SkuOperationPlan.where(sku_id: @sku&.id).delete_all
       Ec::SkuProductOperator.where(sku_product_id: @sku_product&.id).delete_all
+      Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
       Ec::SkuProduct.where(id: @sku_product&.id).delete_all
       Ec::Store.where(id: @store&.id).delete_all
       Ec::Sku.where(id: @sku&.id).delete_all
@@ -34,8 +35,8 @@ module Ec
       User.where(id: [@admin&.id, @operator&.id].compact).delete_all
     end
 
-    test "records field and image diffs for the first assigned operator" do
-      Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @operator)
+    test "records field and image diffs for the sku operator" do
+      Ec::SkuOperatorAssignment.create!(sku: @sku, user: @operator)
 
       action = Ec::ListingChangeRecorder.record(
         sku_product: @sku_product,

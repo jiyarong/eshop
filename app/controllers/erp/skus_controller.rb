@@ -27,7 +27,7 @@ module Erp
         :batches,
         :current_marketing_state,
         :developers,
-        sku_products: :operators
+        :operator
       ).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"

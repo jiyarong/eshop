@@ -71,6 +71,7 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::Sku", record_id: sku_scope.select(:id)).delete_all if defined?(Ec::OperationLog)
     Ec::SkuDeveloperAssignment.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuOperatorAssignment.where(sku_code: sku_codes).delete_all
     if defined?(Ec::SkuProductOperator)
       Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku_codes }).delete_all
     end
@@ -226,7 +227,7 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-pagination-bar form[action='/erp/spus'] input[name='category_ids[]'][value='#{@platform_category_child.id}']"
   end
 
-  test "index displays nested sku developers and multiple product operators" do
+  test "index displays nested sku developers and sku operator" do
     developer = User.create!(
       email: "erp-spus-#{@token.downcase}-display-developer@example.com",
       password: "password123",
@@ -259,6 +260,7 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
       product_name: "SPU 展示平台商品 #{@token}"
     )
     Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: operator_a)
     Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_a)
     Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_b)
 
@@ -268,7 +270,7 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sub-tbl tr.sku-row", 1 do
       assert_select ".code-text.sub", text: @sku.sku_code
       assert_select ".sku-developers", text: developer.name
-      assert_select ".sku-operators", text: "#{operator_a.name}, #{operator_b.name}"
+      assert_select ".sku-operators", text: operator_a.name
     end
   ensure
     Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
@@ -433,6 +435,7 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
       product_name: "SPU 筛选平台商品 #{@token}"
     )
     Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: operator)
 
     get "/erp/spus", params: { operator_id: operator.id }, headers: { "Accept" => "text/html" }
 

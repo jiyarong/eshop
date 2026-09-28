@@ -48,8 +48,8 @@ module Mcp
       @diagnosis_rule = Ec::SkuDiagnosisRule.create!(
         name: "MCP 诊断规则 #{@token}", prompt: "检查库存", configuration: { "context_keys" => [ "inventory" ] }
       )
-      Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @user)
-      Ec::SkuProductOperator.create!(sku_product: @ozon_sku_product, user: @user)
+      Ec::SkuOperatorAssignment.create!(sku: @sku, user: @user)
+      Ec::SkuOperatorAssignment.create!(sku: @ozon_sku, user: @user)
       Ec::SkuDeveloperAssignment.create!(sku: @other_sku, user: @user)
     end
 
@@ -62,6 +62,7 @@ module Mcp
       Ec::Order.where(store_id: store_ids).delete_all
       Ec::SkuDeveloperAssignment.where(user_id: [@user&.id, @other_user&.id]).delete_all
       Ec::SkuProductOperator.where(user_id: [@user&.id, @other_user&.id]).delete_all
+      Ec::SkuOperatorAssignment.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
       Ec::SkuProduct.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
       Ec::SkuDiagnosisRule.where(id: @diagnosis_rule&.id).delete_all
       Ec::Sku.with_deleted.where(sku_code: [@sku&.sku_code, @ozon_sku&.sku_code, @other_sku&.sku_code]).delete_all
@@ -77,6 +78,19 @@ module Mcp
       assert_equal [@sku.sku_code], items.map { |item| item.fetch(:sku_code) }
       assert_equal @store.store_name, items.first.fetch(:stores).first.fetch(:store_name)
       assert_equal "平台商品 #{@token}", items.first.fetch(:stores).first.fetch(:product_name)
+    end
+
+    test "sku operator can access an sku before it has a listing" do
+      unlisted_sku = Ec::Sku.create!(sku_code: "MCP-UNLISTED-#{@token}", product_name: "Unlisted SKU")
+      Ec::SkuOperatorAssignment.create!(sku: unlisted_sku, user: @user)
+
+      result = ToolExecutor.new(current_user: @user).call("sku_profile", { "sku_code" => unlisted_sku.sku_code })
+
+      assert_equal unlisted_sku.sku_code, result.fetch(:sku_code)
+      assert_empty result.fetch(:bindings)
+    ensure
+      Ec::SkuOperatorAssignment.where(sku_code: unlisted_sku&.sku_code).delete_all
+      Ec::Sku.with_deleted.where(id: unlisted_sku&.id).delete_all
     end
 
     test "operation_context returns the current user data boundary" do

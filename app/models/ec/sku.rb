@@ -23,6 +23,8 @@ module Ec
     has_many :sku_products,      class_name: 'Ec::SkuProduct',          foreign_key: :sku_code, primary_key: :sku_code, dependent: :destroy
     has_many :developer_assignments, class_name: "Ec::SkuDeveloperAssignment", foreign_key: :sku_code, primary_key: :sku_code, dependent: :destroy
     has_many :developers, through: :developer_assignments, source: :user
+    has_one :operator_assignment, class_name: "Ec::SkuOperatorAssignment", foreign_key: :sku_code, primary_key: :sku_code, dependent: :destroy
+    has_one :operator, through: :operator_assignment, source: :user
     has_many :batches,           class_name: 'Ec::SkuBatch',            foreign_key: :sku_code, primary_key: :sku_code
     has_many :predicted_costs,   class_name: 'Ec::SkuPredictedCost',    foreign_key: :sku_code, primary_key: :sku_code
     has_many :profit_versions, class_name: "Ec::SkuProfitVersion", dependent: :destroy

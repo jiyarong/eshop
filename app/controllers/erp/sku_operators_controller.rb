@@ -7,32 +7,17 @@ module Erp
     before_action :load_operator_options, only: [:edit, :update]
 
     def edit
-      @operator_assignment_available = @sku.sku_products.exists?
-      @selected_operator_id = @sku.sku_products.flat_map(&:operator_ids).first
+      @selected_operator_id = @sku.operator_assignment&.user_id
       render_modal_or_page(:edit, :edit)
     end
 
     def update
-      unless @sku.sku_products.exists?
-        redirect_to safe_return_to(erp_skus_path(current_locale_params)), alert: t("erp.skus.messages.operator_requires_product_binding")
-        return
-      end
-
       selected_user_id = operator_user_id_param
-      product_ids = @sku.sku_products.select(:id)
-      operator_role = Ec::SkuProductOperator.roles.fetch("operator")
-
-      Ec::SkuProductOperator.transaction do
-        assignments = Ec::SkuProductOperator.where(sku_product_id: product_ids, role: operator_role)
-        selected_user_id.present? ? assignments.where.not(user_id: selected_user_id).delete_all : assignments.delete_all
-
-        if selected_user_id.present?
-          @sku.sku_products.find_each do |product|
-            assignment = product.operator_role_assignments.find_or_initialize_by(user_id: selected_user_id)
-            assignment.role = operator_role
-            assignment.save! if assignment.new_record? || assignment.changed?
-          end
-        end
+      if selected_user_id.present?
+        assignment = @sku.operator_assignment || @sku.build_operator_assignment
+        assignment.update!(user_id: selected_user_id)
+      else
+        @sku.operator_assignment&.destroy!
       end
 
       redirect_to safe_return_to(erp_skus_path(current_locale_params)), notice: t("erp.skus.messages.operator_saved")

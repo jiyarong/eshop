@@ -10,20 +10,15 @@ module Mcp
       scope = Ec::SkuProduct.includes(:sku, :store).joins(:sku, :store)
       return scope if global_user?
 
-      scope.joins(:operator_assignments).where(
-        ec_sku_product_operators: {
-          user_id: user.id,
-          role: Ec::SkuProductOperator.roles.fetch("operator")
-        }
-      )
+      scope.where(sku_code: Ec::SkuOperatorAssignment.where(user_id: user.id).select(:sku_code))
     end
 
     def sku_codes
-      sku_products.distinct.pluck(:sku_code)
+      skus.pluck(:sku_code)
     end
 
     def sku_count
-      sku_products.distinct.count(:sku_code)
+      skus.count
     end
 
     def global_user?
@@ -33,5 +28,10 @@ module Mcp
     private
 
     attr_reader :user
+
+    def skus
+      scope = Ec::Sku.all
+      global_user? ? scope : scope.where(sku_code: Ec::SkuOperatorAssignment.where(user_id: user.id).select(:sku_code))
+    end
   end
 end

@@ -8,7 +8,7 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     @sku = Ec::Sku.create!(sku_code: "WBW-#{@token}", product_name: "WB warehouse product #{@token}")
     @product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: (700_000_000 + rand(10_000)).to_s, offer_id: "OFFER-#{@token}")
     @operator = User.create!(email: "wb-warehouse-operator-#{@token.downcase}@example.com", password: "password123", active: true)
-    Ec::SkuProductOperator.create!(sku_product: @product, user: @operator)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: @operator)
     @region = RawWb::WarehouseRegion.create!(
       account: @account,
       warehouse_id: 600_000_000 + rand(10_000),
@@ -73,6 +73,7 @@ class Ec::WbWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     RawWb::WarehouseNameMapping.where(account_id: @account&.id).delete_all
     RawWb::WarehouseRegion.where(account_id: @account&.id).delete_all
     Ec::SkuProductOperator.where(user_id: @operator&.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
     Ec::SkuProduct.where(store_id: @store&.id).delete_all
     Ec::Store.where(id: @store&.id).delete_all
     Ec::Sku.with_deleted.where(sku_code: @sku&.sku_code).delete_all

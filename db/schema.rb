@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_28_045718) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -757,6 +757,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
     t.check_constraint "ended_at IS NULL OR ended_at >= effective_at", name: "ec_sku_marketing_states_period_check"
     t.check_constraint "grade::text = ANY (ARRAY['S'::character varying::text, 'A'::character varying::text, 'B'::character varying::text, 'C'::character varying::text])", name: "ec_sku_marketing_states_grade_check"
     t.check_constraint "stage::text = ANY (ARRAY['new'::character varying::text, 'grw'::character varying::text, 'mat'::character varying::text, 'clr'::character varying::text])", name: "ec_sku_marketing_states_stage_check"
+  end
+
+  create_table "ec_sku_operator_assignments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "sku_code", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["sku_code"], name: "index_ec_sku_operator_assignments_on_sku_code", unique: true
+    t.index ["user_id"], name: "index_ec_sku_operator_assignments_on_user_id"
   end
 
   create_table "ec_sku_platform_costs", force: :cascade do |t|
@@ -3417,6 +3426,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_103530) do
   add_foreign_key "ec_sku_lifecycle_events", "ec_skus", column: "sku_id"
   add_foreign_key "ec_sku_marketing_states", "ec_skus", column: "sku_id", on_delete: :cascade
   add_foreign_key "ec_sku_marketing_states", "users", column: "changed_by_id", on_delete: :nullify
+  add_foreign_key "ec_sku_operator_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_sku_operator_assignments", "users"
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code", name: "fk_rails_ec_sku_predicted_costs_sku_code"
   add_foreign_key "ec_sku_product_operators", "ec_sku_products", column: "sku_product_id"

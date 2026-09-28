@@ -154,7 +154,7 @@ module ApplicationHelper
   end
 
   def sku_operator_names(sku)
-    user_display_names(sku.sku_products.flat_map(&:operators))
+    sku.operator&.display_name
   end
 
   def operator_sku_metric_value(value, type: :number)

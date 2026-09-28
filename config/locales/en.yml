@@ -3022,9 +3022,11 @@ en:
       actions:
         add_store: "Add store"
         bind_responsible_users: "Assign responsible users"
+        bind_developers: "Assign developers"
         bind_operators: "Assign operators"
         edit_store: "Edit store"
         save_responsible_users: "Save responsible users"
+        save_developers: "Save developers"
         save_operators: "Save operators"
       company_types:
         general: "General"

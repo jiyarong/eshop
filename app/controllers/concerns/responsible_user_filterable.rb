@@ -58,12 +58,6 @@ module ResponsibleUserFilterable
   end
 
   def operator_filter_sku_codes
-    Ec::SkuProduct
-      .joins(:operator_role_assignments)
-      .where(ec_sku_product_operators: {
-        user_id: @operator_id,
-        role: Ec::SkuProductOperator.roles.fetch("operator")
-      })
-      .select(:sku_code)
+    Ec::SkuOperatorAssignment.where(user_id: @operator_id).select(:sku_code)
   end
 end

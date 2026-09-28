@@ -23,7 +23,7 @@ class OperatorSkusController < ApplicationController
       :master_sku,
       :current_marketing_state,
       :developers,
-      sku_products: :operators
+      :operator
     ).order(:sku_code)
     scope = apply_master_sku_category_filter_to_skus(scope)
     scope = apply_spu_sku_filter_to_skus(scope)

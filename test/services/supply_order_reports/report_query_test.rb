@@ -16,7 +16,7 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: @ozon_store, product_id: "O-#{@token}", platform_sku_id: "#{@token.hex % 1_000_000 + 1_000_000}")
     @operator = User.create!(email: "supply-operator-#{@token.downcase}@example.com", password: "password123", name: "Supply Operator #{@token}")
     @wb_product = Ec::SkuProduct.find_by!(store: @wb_store)
-    Ec::SkuProductOperator.create!(sku_product: @wb_product, user: @operator, role: "operator")
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: @operator)
   end
 
   teardown do
@@ -25,6 +25,7 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     RawOzon::SupplyOrderItem.where(supply_order_id: RawOzon::SupplyOrder.where(account_id: @ozon_account.id)).delete_all
     RawOzon::SupplyOrder.where(account_id: @ozon_account.id).delete_all
     Ec::SkuProductOperator.where(user_id: @operator.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: @sku.sku_code).delete_all
     Ec::SkuProduct.where(store_id: [@wb_store.id, @ozon_store.id]).delete_all
     Ec::Store.where(id: [@wb_store.id, @ozon_store.id]).delete_all
     Ec::Sku.with_deleted.where(id: @sku.id).delete_all
@@ -70,7 +71,7 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     assert_equal [{ status: 4, count: 1 }], filtered[:status_summary]
   end
 
-  test "filters by the operator binding scoped to the selected store product" do
+  test "filters by the sku operator across stores" do
     product_id = @wb_product.product_id.to_i
     supply = RawWb::Supply.create!(account: @wb_account, wb_supply_id: "WB-OP-#{@token}", preorder_id: 42345, status_id: 4, supply_created_at: Time.current, synced_at: Time.current)
     RawWb::SupplyItem.create!(account: @wb_account, wb_supply_id: supply.wb_supply_id, nm_id: product_id, quantity: 2, accepted_qty: 0, synced_at: Time.current)

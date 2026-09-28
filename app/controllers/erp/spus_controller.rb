@@ -20,7 +20,7 @@ module Erp
           :batches,
           :current_marketing_state,
           :developers,
-          { sku_products: :operators }
+          :operator
         ]
       ).order(:master_sku_code)
       scope = scope.where(is_active: true) if @status == "active"
@@ -59,7 +59,7 @@ module Erp
     def orphan_sku_scope
       return Ec::Sku.none if @category_ids.any?
 
-      scope = Ec::Sku.includes(:sku_category, :batches, :current_marketing_state, :developers, sku_products: :operators).where(master_sku_id: nil).order(:sku_code)
+      scope = Ec::Sku.includes(:sku_category, :batches, :current_marketing_state, :developers, :operator).where(master_sku_id: nil).order(:sku_code)
       scope = scope.where(is_active: true) if @status == "active"
       scope = scope.where(is_active: false) if @status == "inactive"
       scope = apply_responsible_user_filters_to_skus(scope)

@@ -9,7 +9,7 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     @product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "PROD-A-#{@token}", platform_sku_id: "SKU-A-#{@token}", offer_id: "OFFER-A-#{@token}")
     @other_product = Ec::SkuProduct.create!(sku: @sku, store: @other_store, product_id: "PROD-B-#{@token}", platform_sku_id: "SKU-B-#{@token}", offer_id: "OFFER-B-#{@token}")
     @operator = User.create!(email: "ozon-warehouse-operator-#{@token.downcase}@example.com", password: "password123", active: true)
-    Ec::SkuProductOperator.create!(sku_product: @product, user: @operator)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: @operator)
 
     create_sale(@store, @product.platform_sku_id, "Москва", 28)
     create_sale(@other_store, @other_product.platform_sku_id, "Казань", 280)
@@ -26,6 +26,7 @@ class Ec::OzonWarehouseRecommendationQueryTest < ActiveSupport::TestCase
     Ec::Order.where(store_id: store_ids).delete_all
     Ec::SkuInventoryLevel.where(store_id: store_ids).delete_all
     Ec::SkuProductOperator.where(user_id: @operator&.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
     Ec::SkuProduct.where(store_id: store_ids).delete_all
     Ec::Store.where(id: store_ids).delete_all
     Ec::Sku.with_deleted.where(sku_code: @sku&.sku_code).delete_all

@@ -72,6 +72,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuMarketingState.where(id: marketing_state_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::Sku", record_id: sku_scope.select(:id)).delete_all if defined?(Ec::OperationLog)
     Ec::SkuDeveloperAssignment.where(sku_code: sku_codes).delete_all if defined?(Ec::SkuDeveloperAssignment)
+    Ec::SkuOperatorAssignment.where(sku_code: sku_codes).delete_all
     if defined?(Ec::SkuProductOperator)
       Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { sku_code: sku_codes }).delete_all
     end
@@ -308,7 +309,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
       product_name: "SKU 筛选平台商品 #{@token}"
     )
     Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
-    Ec::SkuProductOperator.create!(sku_product: sku_product, user: @current_user)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: @current_user)
 
     get "/erp/skus", params: { developer_id: developer.id, operator_id: @current_user.id }, headers: { "Accept" => "text/html" }
 
@@ -328,7 +329,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     store&.destroy
   end
 
-  test "index displays sku developers and multiple product operators" do
+  test "index displays the sku operator instead of legacy listing operators" do
     developer = User.create!(
       email: "erp-skus-#{@token.downcase}-display-developer@example.com",
       password: "password123",
@@ -361,6 +362,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
       product_name: "SKU 展示平台商品 #{@token}"
     )
     Ec::SkuDeveloperAssignment.create!(sku: @sku, user: developer)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: operator_a)
     Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_a)
     Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator_b)
 
@@ -370,8 +372,11 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".prod-tbl tr.sku-row.master", 1 do
       assert_select ".code-text.sub", text: @sku.sku_code
       assert_select ".sku-developers", text: developer.name
-      assert_select ".sku-operators", text: "#{operator_a.name}, #{operator_b.name}"
+      assert_select ".sku-operators", text: operator_a.name
     end
+
+    get "/erp/skus", params: { operator_id: operator_b.id }, headers: { "Accept" => "text/html" }
+    assert_select ".prod-tbl tr.sku-row.master .code-text.sub", { text: @sku.sku_code, count: 0 }
   ensure
     Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code).delete_all if defined?(Ec::SkuDeveloperAssignment)
     Ec::SkuProductOperator.where(sku_product_id: sku_product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(sku_product)
@@ -650,7 +655,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
       platform_sku_id: "SKU-OP-MODAL-PS-#{@token}",
       product_name: "SKU 运营弹框商品 #{@token}"
     )
-    Ec::SkuProductOperator.create!(sku_product: sku_product, user: operator)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: operator)
 
     get "/erp/skus/#{@sku.id}/operator/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
 
@@ -671,19 +676,17 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     store&.destroy
   end
 
-  test "modal edit asks to bind products before assigning operator when sku has none" do
+  test "modal edit allows assigning operator without a listing" do
     get "/erp/skus/#{@sku.id}/operator/edit", headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
 
     assert_response :success
     assert_select "turbo-frame#erp_modal"
     assert_select ".erp-modal"
     assert_select "h2", "编辑运营人员"
-    assert_select ".form-hint", text: "请先为这个 SKU 绑定平台商品，再设置运营人员。"
-    assert_select "a.btn[href='#{erp_sku_sku_products_path(@sku)}'][data-turbo-frame='_top']", text: "平台商品绑定"
-    assert_select "form[action='#{erp_sku_operator_path(@sku, return_to: nil)}']", count: 0
+    assert_select "form[action='#{erp_sku_operator_path(@sku, return_to: nil)}']", count: 1
   end
 
-  test "update operator assignment alerts when sku has no products" do
+  test "update operator assignment works when sku has no products" do
     operator = User.create!(
       email: "erp-skus-#{@token.downcase}-missing-product-operator@example.com",
       password: "password123",
@@ -697,10 +700,10 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_redirected_to "/erp/skus?q=#{@sku.sku_code}"
-    assert_equal "请先为这个 SKU 绑定平台商品，再设置运营人员。", flash[:alert]
+    assert_equal operator.id, @sku.reload.operator_assignment.user_id
   end
 
-  test "update operator assignment keeps selected user on every sku product" do
+  test "update operator assignment replaces sku owner without changing legacy listing data" do
     old_operator = User.create!(
       email: "erp-skus-#{@token.downcase}-old-operator@example.com",
       password: "password123",
@@ -755,8 +758,9 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_redirected_to "/erp/skus?q=#{@sku.sku_code}"
-    assert_equal [new_operator.id], product_a.reload.operator_ids
-    assert_equal [new_operator.id], product_b.reload.operator_ids
+    assert_equal new_operator.id, @sku.reload.operator_assignment.user_id
+    assert_equal [old_operator.id, extra_operator.id].sort, product_a.reload.operator_ids.sort
+    assert_equal [old_operator.id], product_b.reload.operator_ids
   ensure
     Ec::SkuProductOperator.where(sku_product_id: [product_a&.id, product_b&.id].compact).delete_all if defined?(Ec::SkuProductOperator)
     product_a&.destroy
@@ -765,7 +769,7 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
     store_b&.destroy
   end
 
-  test "update operator assignment clears every sku product when blank" do
+  test "update operator assignment clears sku owner without changing legacy listing data" do
     operator = User.create!(
       email: "erp-skus-#{@token.downcase}-clear-operator@example.com",
       password: "password123",
@@ -786,11 +790,13 @@ class Erp::SkusControllerTest < ActionDispatch::IntegrationTest
       product_name: "SKU 清空运营商品 #{@token}"
     )
     Ec::SkuProductOperator.create!(sku_product: product, user: operator)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: operator)
 
     patch "/erp/skus/#{@sku.id}/operator", params: { operator_user_id: "" }
 
     assert_redirected_to "/erp/skus"
-    assert_empty product.reload.operator_ids
+    assert_nil @sku.reload.operator_assignment
+    assert_equal [operator.id], product.reload.operator_ids
   ensure
     Ec::SkuProductOperator.where(sku_product_id: product&.id).delete_all if defined?(Ec::SkuProductOperator) && defined?(product)
     product&.destroy

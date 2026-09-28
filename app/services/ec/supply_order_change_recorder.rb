@@ -38,7 +38,7 @@ module Ec
 
         store_ids = Ec::Store.where(platform: "ozon", ozon_raw_account_id: account.id).select(:id)
         Ec::SkuProduct
-          .includes(:sku, :store, operator_role_assignments: :user)
+          .includes({ sku: :operator }, :store)
           .where(store_id: store_ids, platform: "ozon", platform_sku_id: platform_sku_ids)
           .order(:id)
           .each_with_object({}) do |sku_product, result|

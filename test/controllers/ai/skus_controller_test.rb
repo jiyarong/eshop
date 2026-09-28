@@ -57,11 +57,12 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
       product_id: "AI-SKU-PRODUCT-#{@token.upcase}",
       platform_sku_id: "AI-SKU-PLATFORM-#{@token.upcase}"
     )
-    Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @operator)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: @operator)
   end
 
   teardown do
     Ec::SkuProductOperator.where(sku_product_id: @sku_product&.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
     Ec::SkuProduct.where(id: @sku_product&.id).delete_all
     Ec::Store.where(id: @store&.id).delete_all
     Ec::SkuMarketingState.where(sku_id: @sku&.id).delete_all

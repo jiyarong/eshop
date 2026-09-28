@@ -61,7 +61,7 @@ module ErpAI
         :dimension,
         :current_marketing_state,
         :developers,
-        sku_products: :operators
+        :operator
       ).find_by!(sku_code: params.require(:sku).to_s.strip.upcase)
       marketing_state = sku.current_marketing_state
 
@@ -74,7 +74,7 @@ module ErpAI
           marketing_strategy: marketing_strategy(marketing_state),
           marketing_state_history: marketing_state_history(sku),
           developers: display_names(sku.developers),
-          operators: display_names(sku.sku_products.flat_map(&:operators)),
+          operators: display_names(Array(sku.operator)),
           category: [sku.primary_ec_category&.localized_name, sku.secondary_ec_category&.localized_name].compact.join(" > "),
           spu: sku.master_sku&.master_sku_code,
           **unit_dimensions(sku.dimension)

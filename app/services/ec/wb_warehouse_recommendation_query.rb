@@ -48,7 +48,7 @@ module Ec
         .includes(:sku)
         .where(store_id: store.id, platform: "wb")
         .order(:sku_code, :id)
-      scope = scope.where(id: operator_sku_product_ids) if operator_id.present?
+      scope = scope.where(sku_code: operator_sku_codes) if operator_id.present?
       scope = scope.where(sku_code: sku_codes) unless sku_codes.nil?
       return scope if query.blank?
 
@@ -59,10 +59,8 @@ module Ec
       )
     end
 
-    def operator_sku_product_ids
-      Ec::SkuProductOperator
-        .where(user_id: operator_id, role: Ec::SkuProductOperator.roles.fetch("operator"))
-        .select(:sku_product_id)
+    def operator_sku_codes
+      Ec::SkuOperatorAssignment.where(user_id: operator_id).select(:sku_code)
     end
 
     def sales_by_sku_and_warehouse(products)

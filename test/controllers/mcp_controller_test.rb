@@ -14,7 +14,7 @@ class McpControllerTest < ActionDispatch::IntegrationTest
       platform_sku_id: "MCP-CTRL-PS-#{@token}",
       product_name: "MCP 控制器平台商品 #{@token}"
     )
-    Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @user)
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: @user)
   end
 
   teardown do
@@ -22,6 +22,7 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     Ec::OrderFulfillment.joins(:order).where(ec_orders: { store_id: @store&.id }).delete_all
     Ec::Order.where(store_id: @store&.id).delete_all
     Ec::SkuProductOperator.where(user_id: @user&.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
     Ec::SkuProduct.where(id: @sku_product&.id).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     Ec::Store.where(id: @store&.id).delete_all

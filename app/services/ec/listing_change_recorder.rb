@@ -90,7 +90,7 @@ module Ec
       end
 
       def attributed_user(sku_product)
-        operator = sku_product.operator_role_assignments.order(:id).first&.user
+        operator = sku_product.sku&.operator
         return [operator, "assigned_operator"] if operator
 
         admin = User.where(active: true)
