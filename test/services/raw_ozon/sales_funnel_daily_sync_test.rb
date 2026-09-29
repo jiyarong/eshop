@@ -114,7 +114,125 @@ class RawOzonSalesFunnelDailySyncTest < ActiveSupport::TestCase
     RawOzon::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "sync_range stores basic metrics when supplemental metrics are unavailable" do
+    account = create_account("basic-only")
+    client = FakeOzonClient.new([response(revenue: 500, ordered_units: 5), deprecated_metrics_error])
+
+    result = RawOzon::SalesFunnelDailySync.new(account, client: client, rate_limit_sleep: 0)
+      .sync_range(from_date: Date.new(2026, 7, 13), to_date: Date.new(2026, 7, 13))
+
+    assert_equal false, result[:skipped]
+    assert_equal 1, result[:ok]
+    assert_equal false, result[:supplemental]
+    assert_match "deprecated metrics", result[:supplemental_error]
+    row = RawOzon::SalesFunnelDaily.find_by!(account_id: account.id, stat_date: Date.new(2026, 7, 13))
+    assert_equal 42_403, row.hits_view
+    assert_equal 5, row.ordered_units
+    assert_nil row.delivered_units
+    assert_nil row.position_category
+    assert_nil row.conv_tocart_search
+  ensure
+    cleanup(account)
+  end
+
+  test "sync_range probes supplemental metrics only once per run after they are unavailable" do
+    account = create_account("probe-once")
+    client = FakeOzonClient.new([
+      response(revenue: 100, ordered_units: 1), deprecated_metrics_error,
+      response(revenue: 200, ordered_units: 2)
+    ])
+
+    result = RawOzon::SalesFunnelDailySync.new(account, client: client, rate_limit_sleep: 0)
+      .sync_range(from_date: Date.new(2026, 7, 13), to_date: Date.new(2026, 7, 14))
+
+    assert_equal 2, result[:ok]
+    assert_equal [
+      RawOzon::SalesFunnelDailySync::METRICS,
+      RawOzon::SalesFunnelDailySync::SUPPLEMENTAL_METRICS,
+      RawOzon::SalesFunnelDailySync::METRICS
+    ], client.requests.map { |_, body| body[:metrics] }
+  ensure
+    cleanup(account)
+  end
+
+  test "a later run picks up supplemental metrics once the store gains access" do
+    account = create_account("gains-access")
+    date = Date.new(2026, 7, 13)
+    RawOzon::SalesFunnelDailySync.new(account, client: FakeOzonClient.new([response(revenue: 100, ordered_units: 1), deprecated_metrics_error]), rate_limit_sleep: 0)
+      .sync_range(from_date: date, to_date: date)
+
+    result = RawOzon::SalesFunnelDailySync.new(account, client: FakeOzonClient.new([response(revenue: 100, ordered_units: 1), supplemental_response]), rate_limit_sleep: 0)
+      .sync_range(from_date: date, to_date: date)
+
+    assert_equal true, result[:supplemental]
+    row = RawOzon::SalesFunnelDaily.find_by!(account_id: account.id, stat_date: date)
+    assert_equal 28, row.delivered_units
+    assert_equal 7.25, row.position_category.to_f
+  ensure
+    cleanup(account)
+  end
+
+  test "keeps stored supplemental values when a run cannot fetch them" do
+    account = create_account("keep-supplemental")
+    date = Date.new(2026, 7, 13)
+    RawOzon::SalesFunnelDailySync.new(account, client: FakeOzonClient.new([response(revenue: 100, ordered_units: 1), supplemental_response]), rate_limit_sleep: 0)
+      .sync_range(from_date: date, to_date: date)
+
+    RawOzon::SalesFunnelDailySync.new(account, client: FakeOzonClient.new([response(revenue: 300, ordered_units: 3), deprecated_metrics_error]), rate_limit_sleep: 0)
+      .sync_range(from_date: date, to_date: date)
+
+    row = RawOzon::SalesFunnelDaily.find_by!(account_id: account.id, stat_date: date)
+    assert_equal 3, row.ordered_units
+    assert_equal 28, row.delivered_units
+    assert_equal 7.25, row.position_category.to_f
+  ensure
+    cleanup(account)
+  end
+
+  test "a day with no basic rows is not mistaken for a skipped store" do
+    account = create_account("empty-day")
+    client = FakeOzonClient.new([empty_response, deprecated_metrics_error, response(revenue: 100, ordered_units: 1)])
+
+    result = RawOzon::SalesFunnelDailySync.new(account, client: client, rate_limit_sleep: 0)
+      .sync_range(from_date: Date.new(2026, 7, 13), to_date: Date.new(2026, 7, 14))
+
+    assert_equal false, result[:skipped]
+    assert_equal 1, result[:ok]
+    assert_equal false, result[:supplemental]
+  ensure
+    cleanup(account)
+  end
+
+  test "transient errors on supplemental metrics still fail the run" do
+    account = create_account("supplemental-transient")
+    client = FakeOzonClient.new([
+      response(revenue: 100, ordered_units: 1),
+      RawOzon::OzonClient::RetryableError.new("429 rate-limited on /v1/analytics/data")
+    ])
+
+    assert_raises(RawOzon::OzonClient::RetryableError) do
+      RawOzon::SalesFunnelDailySync.new(account, client: client, rate_limit_sleep: 0)
+        .sync_range(from_date: Date.new(2026, 7, 13), to_date: Date.new(2026, 7, 13))
+    end
+  ensure
+    cleanup(account)
+  end
+
   private
+
+  def create_account(label)
+    token = SecureRandom.hex(6)
+    RawOzon::SellerAccount.create!(client_id: "ozon-funnel-daily-#{label}-#{token}", api_key: "token-#{token}", company_type: "small")
+  end
+
+  def cleanup(account)
+    RawOzon::SalesFunnelDaily.where(account_id: account&.id).delete_all
+    RawOzon::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  def deprecated_metrics_error
+    RawOzon::OzonClient::ApiError.new('400 on /v1/analytics/data: {"code":3,"message":"deprecated metrics used"}')
+  end
 
   def empty_response
     { "result" => { "data" => [], "totals" => [] }, "timestamp" => "2026-07-16 06:56:02" }

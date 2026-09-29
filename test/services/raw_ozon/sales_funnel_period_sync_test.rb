@@ -39,7 +39,7 @@ class RawOzonSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
       period_end: Date.new(2026, 7, 12)
     )
 
-    assert_equal({ ok: 1, fetched: 1, skipped: false }, result)
+    assert_equal({ ok: 1, fetched: 1, skipped: false, supplemental: true }, result)
     assert_equal "/v1/analytics/data", client.requests.first[0]
 
     body = client.requests.first[1]
@@ -154,7 +154,61 @@ class RawOzonSalesFunnelPeriodSyncTest < ActiveSupport::TestCase
     RawOzon::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "sync_period stores basic metrics when supplemental metrics are unavailable" do
+    account = create_account("basic-only")
+    client = FakeOzonClient.new([response(revenue: 500, ordered_units: 5), deprecated_metrics_error])
+
+    result = RawOzon::SalesFunnelPeriodSync.new(account, client: client, rate_limit_sleep: 0)
+      .sync_period(period_start: Date.new(2026, 7, 6), period_end: Date.new(2026, 7, 12))
+
+    assert_equal false, result[:skipped]
+    assert_equal 1, result[:ok]
+    assert_equal false, result[:supplemental]
+    assert_match "deprecated metrics", result[:supplemental_error]
+    row = RawOzon::SalesFunnelPeriod.find_by!(account_id: account.id, sku: 3_583_393_926)
+    assert_equal 5, row.ordered_units
+    assert_nil row.delivered_units
+    assert_nil row.position_category
+  ensure
+    cleanup(account)
+  end
+
+  test "a later period run picks up supplemental metrics and keeps them if later unavailable" do
+    account = create_account("gains-access")
+    week = { period_start: Date.new(2026, 7, 6), period_end: Date.new(2026, 7, 12) }
+    RawOzon::SalesFunnelPeriodSync.new(account, client: FakeOzonClient.new([response(revenue: 100, ordered_units: 1), deprecated_metrics_error]), rate_limit_sleep: 0)
+      .sync_period(**week)
+    RawOzon::SalesFunnelPeriodSync.new(account, client: FakeOzonClient.new([response(revenue: 100, ordered_units: 1), supplemental_response]), rate_limit_sleep: 0)
+      .sync_period(**week)
+    row = RawOzon::SalesFunnelPeriod.find_by!(account_id: account.id, sku: 3_583_393_926)
+    assert_equal 28, row.delivered_units
+
+    RawOzon::SalesFunnelPeriodSync.new(account, client: FakeOzonClient.new([response(revenue: 300, ordered_units: 3), deprecated_metrics_error]), rate_limit_sleep: 0)
+      .sync_period(**week)
+
+    row.reload
+    assert_equal 3, row.ordered_units
+    assert_equal 28, row.delivered_units
+    assert_equal 7.25, row.position_category.to_f
+  ensure
+    cleanup(account)
+  end
+
   private
+
+  def create_account(label)
+    token = SecureRandom.hex(6)
+    RawOzon::SellerAccount.create!(client_id: "ozon-funnel-period-#{label}-#{token}", api_key: "token-#{token}", company_type: "small")
+  end
+
+  def cleanup(account)
+    RawOzon::SalesFunnelPeriod.where(account_id: account&.id).delete_all
+    RawOzon::SellerAccount.where(id: account&.id).delete_all
+  end
+
+  def deprecated_metrics_error
+    RawOzon::OzonClient::ApiError.new('400 on /v1/analytics/data: {"code":3,"message":"deprecated metrics used"}')
+  end
 
   def empty_response
     { "result" => { "data" => [], "totals" => [] }, "timestamp" => "2026-07-16 06:56:02" }
