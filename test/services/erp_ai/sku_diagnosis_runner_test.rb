@@ -183,6 +183,37 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, original_run) if original_run
   end
 
+  test "defers simple context to the sub-rule when the saved agent prompt requests full context" do
+    agent = Agent.ensure_fixed!("sku_diagnosis")
+    original_prompt = agent.system_prompt
+    agent.update!(system_prompt: "诊断上下文必须包含完整信息，为 Planner 提供充分信息。")
+    @daily.update!(
+      prompt: "诊断广告空转。simple_context 只写广告花费和订单证据，使用单行文本，不包含库存分布。",
+      configuration: { "context_keys" => %w[advertise_per_week inventory] }
+    )
+    client = SavingClient.new
+
+    diagnosis_runner(date: Date.new(2026, 9, 15), client: client, rule_ids: [ @daily.id ]).run
+
+    assert_equal 2, client.requests.size
+    client.requests.each do |request|
+      system_prompt = request.fetch(:system_prompt)
+      assert_includes system_prompt, agent.system_prompt
+      assert_includes system_prompt, "发生冲突时以当前子规则 Prompt 为准"
+      assert_includes system_prompt, "最小相关证据"
+      assert_includes request.fetch(:messages).first.fetch(:content), @daily.prompt
+      assert_includes request.fetch(:context), "Snapshot inventory"
+      assert_not_includes request.fetch(:messages).first.fetch(:content), "simple_context 写相关诊断依据的上下文（使用 Markdown 格式）"
+      assert_includes request.dig(:tools, 0, :parameters, :properties, :simple_context, :description), "当前子规则 Prompt"
+    end
+
+    conversation = Conversation.where(user: @user).sole
+    assert_equal client.requests.first.fetch(:system_prompt), conversation.context.fetch("system_prompt")
+    assert_equal "诊断上下文必须包含完整信息，为 Planner 提供充分信息。", agent.reload.system_prompt
+  ensure
+    agent&.update_columns(system_prompt: original_prompt) if @agent_existed && original_prompt
+  end
+
   test "uses the canonical context description when an older snapshot has none" do
     snapshot = @snapshot_fetcher.fetch(@sku.sku_code, snapshot_date: Date.new(2026, 9, 15))
     snapshot.fetch("categories").fetch("base").delete("description")

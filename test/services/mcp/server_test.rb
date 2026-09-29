@@ -99,6 +99,21 @@ class Mcp::ServerTest < ActiveSupport::TestCase
     assert_empty tool_names.grep(/\Agbrain__/)
   end
 
+  test "delegates simple context requirements to the diagnosis agent in both tool definitions" do
+    tools = @server.call(rpc_request("tools/list")).fetch(:result).fetch(:tools)
+    mcp_schema = tools.find { |tool| tool[:name] == "save_sku_event" }.fetch(:inputSchema)
+    erp_schema = ErpAI::ToolRegistry.default_tools.find { |tool| tool[:name] == "save_sku_event" }.fetch(:parameters)
+
+    [ mcp_schema, erp_schema ].each do |schema|
+      field = schema.fetch(:properties).fetch(:simple_context)
+      assert_equal "string", field.fetch(:type)
+      assert_includes schema.fetch(:required), "simple_context"
+      assert_includes field.fetch(:description), "诊断 Agent 自行决定"
+      assert_includes field.fetch(:description), "当前子规则 Prompt"
+      assert_not_includes field.fetch(:description), "使用 Markdown 格式"
+    end
+  end
+
   test "routes precise search through query with cheap hybrid defaults" do
     travel_to Time.zone.local(2026, 7, 20, 12) do
       response = @server.call(rpc_request(

@@ -105,7 +105,7 @@ module Mcp
             event_type: string_schema("诊断事件类型"),
             severity: string_schema("事件严重级别"),
             message: string_schema("诊断结果和依据"),
-            simple_context: string_schema("相关诊断依据的上下文，使用 Markdown 格式")
+            simple_context: string_schema("诊断上下文，由当前诊断 Agent 自行决定内容范围、格式和详略；当前子规则 Prompt 的具体要求优先于上层通用要求。未明确要求时只保留支撑当前诊断结论的最小相关证据。")
           },
           required: %w[sku_code sub_agent_id event_type severity message simple_context]
         )

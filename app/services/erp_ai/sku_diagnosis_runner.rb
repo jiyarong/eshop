@@ -7,6 +7,10 @@ module ErpAI
     SUMMARY_CONTEXT_KEYS = %w[base lifecycle sales_funnel inventory].freeze
     SUMMARY_CONTEXT_WEEKS = 4
     ADVICE_EVENT_SCOPE = "advise".freeze
+    SIMPLE_CONTEXT_SYSTEM_PROMPT = <<~PROMPT.strip.freeze
+      simple_context 的内容范围、格式和详略由当前诊断 Agent 自行决定。当前子规则 Prompt 对 simple_context 的要求优先于通用 Agent Prompt、调用提示词和工具字段说明；发生冲突时以当前子规则 Prompt 为准。
+      子规则未明确要求时，只保留支撑当前诊断结论的最小相关证据。提供的上下文只是可用数据范围，不代表输出清单；不得为了信息完整或为 Planner 提供充分信息补充无关维度。
+    PROMPT
     ADVICE_SYSTEM_PROMPT = <<~PROMPT.strip.freeze
       你是电商运营建议生成器。请基于当前 SKU 近四周各子规则的诊断结果，提炼需要运营执行的具体动作。不要修改、忽略或评价任何已有诊断事件；只通过 create_sku_advise 创建新的建议事件。建议要能直接交给运营执行，使用电商业务人员熟悉的表达，不能编造上下文中没有的数据。
     PROMPT
@@ -156,12 +160,13 @@ module ErpAI
         #{rule.prompt}
         #{listing_image_instruction}
 
-        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，simple_context 写相关诊断依据的上下文（使用 Markdown 格式）；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
+        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，simple_context 按当前子规则 Prompt 的要求填写；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
       PROMPT
       conversation = ErpAI::AgentRunner.new(
         agent: agent, user: user, client: client,
         tool_executor: ScopedToolExecutor.new(user: user, date: as_of_date, sku: sku, rule: rule),
-        tool_names: [ "save_sku_event" ]
+        tool_names: [ "save_sku_event" ],
+        system_prompt: [ agent.system_prompt, SIMPLE_CONTEXT_SYSTEM_PROMPT ].join("\n\n")
       ).ask(
         question: question,
         module_name: "sku_diagnosis",
