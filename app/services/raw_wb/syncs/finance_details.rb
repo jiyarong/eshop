@@ -2,6 +2,15 @@ module RawWb
   module Syncs
     module FinanceDetails
       CHUNK_RETRY_LIMIT = 3
+      # 按天、小页拉取：跨境链路丢包时，大响应（整周 10 万行上限）常在传输中途被断开；
+      # 单日 + 1000 行一页让每个请求足够短，失败时只重试当前页，已写入的页不受影响。
+      FINANCE_PAGE_SIZE = 1_000
+      NETWORK_RETRY_LIMIT = 10
+      NETWORK_RETRY_WAIT = 10
+      NETWORK_ERRORS = [
+        Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError,
+        Errno::ECONNRESET, Errno::ETIMEDOUT, EOFError
+      ].freeze
 
       # POST /api/finance/v1/sales-reports/detailed
       # Body: { dateFrom, dateTo, limit, rrdid }
@@ -9,14 +18,14 @@ module RawWb
       def sync_finance_details
         total = 0
 
-        date_chunks(chunk_days: 7).reverse_each do |from_date, to_date|
+        date_chunks(chunk_days: 1).reverse_each do |from_date, to_date|
           rrdid = 0
 
           loop do
             body = {
               dateFrom: from_date.iso8601,
               dateTo:   to_date.iso8601,
-              limit:    100_000,
+              limit:    FINANCE_PAGE_SIZE,
               rrdid:    rrdid,
             }
             resp  = fetch_finance_details(body)
@@ -37,7 +46,7 @@ module RawWb
 
             total += rows.size
             rrdid = items.last['rrdId'].to_i
-            break if items.size < 100_000
+            break if items.size < FINANCE_PAGE_SIZE
             sleep 2
           end
         end
@@ -49,6 +58,7 @@ module RawWb
 
       def fetch_finance_details(body)
         retries = 0
+        network_retries = 0
 
         begin
           @client.post(:finance, '/api/finance/v1/sales-reports/detailed', body)
@@ -60,6 +70,14 @@ module RawWb
           log "  finance chunk #{body[:dateFrom]}..#{body[:dateTo]} rate-limited; " \
               "retry #{retries}/#{CHUNK_RETRY_LIMIT} in #{wait}s", level: :warn
           sleep wait
+          retry
+        rescue *NETWORK_ERRORS => e
+          network_retries += 1
+          raise if network_retries > NETWORK_RETRY_LIMIT
+
+          log "  finance page #{body[:dateFrom]} rrdid=#{body[:rrdid]} #{e.class}; " \
+              "retry #{network_retries}/#{NETWORK_RETRY_LIMIT} in #{NETWORK_RETRY_WAIT}s", level: :warn
+          sleep NETWORK_RETRY_WAIT
           retry
         end
       end
