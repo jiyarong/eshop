@@ -94,6 +94,14 @@ module ErpAI
       end
     end
 
+    def self.batch_sku_codes(as_of_date: nil)
+      new(as_of_date: as_of_date).batch_sku_codes
+    end
+
+    def batch_sku_codes
+      batch_candidate_skus.map(&:sku_code)
+    end
+
     private
 
     attr_reader :as_of_date, :sku_code, :rule_ids, :summary, :force, :client, :snapshot_fetcher, :listing_context,
