@@ -161,14 +161,14 @@ class ReportsController < ApplicationController
 
   def new_sku_general_diagnosis
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @sku_diagnosis_rules = Ec::SkuDiagnosisRule.order(:id)
+    @sku_diagnosis_rules = Ec::SkuDiagnosisRule.where(enabled: true).order(:id)
     render :new_sku_general_diagnosis_modal
   end
 
   def create_sku_general_diagnosis
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     rule_ids = Array(params[:sku_diagnosis_rule_ids]).filter_map { |id| Integer(id, exception: false) }.uniq
-    selected_rule_ids = Ec::SkuDiagnosisRule.where(id: rule_ids).order(:id).ids
+    selected_rule_ids = Ec::SkuDiagnosisRule.where(id: rule_ids, enabled: true).order(:id).ids
 
     if selected_rule_ids.empty?
       redirect_to report_sku_path(@sku.sku_code, tab: "ai_inventory_health", locale: params[:locale].presence),

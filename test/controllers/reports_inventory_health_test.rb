@@ -433,7 +433,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     assert_select "h2", "手动通用诊断"
     assert_select "form[action='#{report_sku_general_diagnoses_path(@sku.sku_code)}']" do
       assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{first_rule.id}']"
-      assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{second_rule.id}']"
+      assert_select "input[type='checkbox'][name='sku_diagnosis_rule_ids[]'][value='#{second_rule.id}']", count: 0
       assert_select "input[name='include_summary']", count: 0
       assert_select "input[type='submit'][value='开始诊断'][data-turbo-submits-with='正在提交...']"
     end
@@ -441,7 +441,7 @@ class ReportsInventoryHealthTest < ActionDispatch::IntegrationTest
     sign_in @user
     assert_enqueued_with(
       job: AITasks::SkuDiagnosisJob,
-      args: [ { sku_code: @sku.sku_code, rule_ids: [ first_rule.id, second_rule.id ] } ]
+      args: [ { sku_code: @sku.sku_code, rule_ids: [ first_rule.id ] } ]
     ) do
       post report_sku_general_diagnoses_path(@sku.sku_code),
         params: { sku_diagnosis_rule_ids: [ second_rule.id, "invalid", first_rule.id ] }
