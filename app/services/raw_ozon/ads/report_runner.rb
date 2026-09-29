@@ -40,6 +40,16 @@ module RawOzon
           # Keep the UUID resumable. A local timeout does not cancel the report in Ozon.
           report_run&.update_columns(state: "processing", error_message: error.message.to_s.truncate(1_000))
           raise
+        rescue *RawOzon::PerformanceClient::NETWORK_ERRORS => error
+          # A dropped connection does not cancel a submitted report either; resume its UUID on retry
+          # instead of submitting again and waiting for the single report slot.
+          if report_run&.external_uuid.present?
+            report_run.update_columns(state: "processing", error_message: error.message.to_s.truncate(1_000))
+          else
+            report_run&.update_columns(state: "failed", error_message: error.message.to_s.truncate(1_000),
+              completed_at: Time.current)
+          end
+          raise
         rescue => error
           report_run&.update_columns(state: "failed", error_message: error.message.to_s.truncate(1_000),
             completed_at: Time.current)

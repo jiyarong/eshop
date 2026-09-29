@@ -8,6 +8,11 @@ module RawOzon
     MAX_RETRIES  = 5
     OPEN_TIMEOUT = 10
     READ_TIMEOUT = 30
+    # 跨境链路丢包时常见的传输层错误；调用方可按请求粒度重试，与 429/5xx 的 RetryableError 分开处理。
+    NETWORK_ERRORS = [
+      Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError,
+      Errno::ECONNRESET, Errno::ETIMEDOUT, EOFError
+    ].freeze
 
     class RetryableError < StandardError
       attr_reader :retry_after

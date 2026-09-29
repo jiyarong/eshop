@@ -40,6 +40,7 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
 
   teardown do
     RawOzon::SyncTask.where(account_id: @account.id).delete_all
+    RawOzon::PerformanceSkuSpend.where(account_id: @account.id).delete_all
     RawOzon::AdDailyStat.where(account_id: @account.id).delete_all
     RawOzon::AdUnit.where(account_id: @account.id).delete_all
     @account.destroy!
@@ -101,6 +102,56 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
     assert_equal 1, calls
   end
 
+  test "retries only the failed ppc batch after a network error" do
+    11.times do |index|
+      create_ad_unit("running-#{index}", state: "CAMPAIGN_STATE_RUNNING", from_date: @date)
+    end
+    requested = []
+    report_json = method(:ppc_report_json)
+    runner = Object.new
+    runner.define_singleton_method(:run) do |request_body:, **|
+      requested << request_body[:campaigns]
+      case requested.size
+      when 1 then report_json.call("3001" => 10)
+      when 2 then raise Net::OpenTimeout
+      when 3 then raise OpenSSL::SSL::SSLError, "SSL_read: unexpected eof while reading"
+      else report_json.call("3002" => 20)
+      end
+    end
+    sync = RawOzon::PerformanceSync.new(@account, from_date: @date, to_date: @date, client: Object.new)
+    sync.instance_variable_set(:@report_runner, runner)
+    sync.define_singleton_method(:sleep) { |_seconds| }
+
+    assert_equal 2, sync.sync_performance_ppc_sku_spends
+    assert_equal 4, requested.size
+    assert_equal [requested[1]] * 3, requested[1..]
+    refute_equal requested[0], requested[1]
+    spends = RawOzon::PerformanceSkuSpend.where(account_id: @account.id, ad_type: "ppc").pluck(:ozon_sku_id, :spend)
+    assert_equal({ 3001 => 10, 3002 => 20 }, spends.to_h.transform_values(&:to_i))
+  end
+
+  test "writes no ppc spends when a batch keeps failing on the network" do
+    11.times do |index|
+      create_ad_unit("running-#{index}", state: "CAMPAIGN_STATE_RUNNING", from_date: @date)
+    end
+    calls = 0
+    report_json = method(:ppc_report_json)
+    runner = Object.new
+    runner.define_singleton_method(:run) do |**|
+      calls += 1
+      raise Errno::ECONNRESET if calls > 1
+
+      report_json.call("3001" => 10)
+    end
+    sync = RawOzon::PerformanceSync.new(@account, from_date: @date, to_date: @date, client: Object.new)
+    sync.instance_variable_set(:@report_runner, runner)
+    sync.define_singleton_method(:sleep) { |_seconds| }
+
+    assert_raises(Errno::ECONNRESET) { sync.sync_performance_ppc_sku_spends }
+    assert_equal 1 + RawOzon::Syncs::PerformancePpcSkuSpends::PPC_BATCH_RETRY_LIMIT + 1, calls
+    assert_not RawOzon::PerformanceSkuSpend.where(account_id: @account.id).exists?
+  end
+
   test "pauses remaining account steps after a report slot timeout" do
     sync = RawOzon::PerformanceSync.new(@account, from_date: @date, to_date: @date, client: Object.new)
     calls = []
@@ -119,6 +170,17 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
   end
 
   private
+
+  def ppc_report_json(spend_by_sku)
+    {
+      "campaign-x" => {
+        "report" => {
+          "rows" => spend_by_sku.map { |sku, spend| { "sku" => sku, "moneySpent" => spend.to_s } },
+          "totals" => { "moneySpent" => spend_by_sku.values.sum.to_s }
+        }
+      }
+    }.to_json
+  end
 
   def create_ad_unit(external_id, state:, from_date:)
     RawOzon::AdUnit.create!(
