@@ -34,6 +34,7 @@ module Ec
     before_validation :normalize_codes
     before_validation :assign_generated_batch_code, on: :create
     before_validation :fill_received_quantity_when_arrived
+    after_create_commit :record_operation_action
 
     def costing_quantity
       received_quantity.positive? ? received_quantity : purchased_quantity
@@ -113,6 +114,10 @@ module Ec
 
     def batch_code_month
       purchase_date || Date.current
+    end
+
+    def record_operation_action
+      Ec::SkuBatchActionRecorder.record(self)
     end
   end
 end

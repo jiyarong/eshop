@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SKU Plan / Evaluation 体系实施方案</title>
+  <style>
+    :root {
+      --ink: #16212b;
+      --muted: #5d6b76;
+      --line: #d9e1e6;
+      --paper: #ffffff;
+      --canvas: #eef2f3;
+      --navy: #17324d;
+      --teal: #087f8c;
+      --gold: #c78a26;
+      --red: #a9473f;
+      --green: #21765b;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    a { color: var(--teal); }
+    code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .page { max-width: 1180px; margin: 0 auto; background: var(--paper); min-height: 100vh; }
+    .hero { padding: 72px 76px 58px; color: #fff; background: var(--navy); }
+    .eyebrow { margin: 0 0 14px; color: #a9d9dc; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    h1, h2, h3 { line-height: 1.25; margin: 0; }
+    h1 { max-width: 850px; font-size: clamp(34px, 5vw, 58px); letter-spacing: -.03em; }
+    .hero p { max-width: 790px; margin: 22px 0 0; color: #d6e2e8; font-size: 19px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 30px; color: #b7c9d2; font-size: 14px; }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 76px; border-bottom: 1px solid var(--line); background: #f7f9fa; }
+    .toc a { padding: 4px 10px; color: var(--navy); border: 1px solid var(--line); border-radius: 3px; font-size: 13px; text-decoration: none; }
+    main { padding: 0 76px 72px; }
+    section { padding-top: 52px; }
+    h2 { padding-bottom: 12px; border-bottom: 2px solid var(--navy); font-size: 27px; }
+    h3 { margin: 26px 0 10px; color: var(--navy); font-size: 19px; }
+    p { margin: 12px 0; }
+    .lead { color: var(--muted); font-size: 18px; }
+    .callout { margin: 22px 0; padding: 18px 20px; border-left: 4px solid var(--teal); background: #edf7f7; }
+    .callout strong { color: var(--navy); }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 22px 0; }
+    .metric { padding: 20px; border: 1px solid var(--line); border-top: 4px solid var(--teal); background: #fbfcfc; }
+    .metric b { display: block; color: var(--navy); font-size: 23px; }
+    .metric span { color: var(--muted); font-size: 14px; }
+    .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; align-items: stretch; margin: 24px 0; }
+    .flow-step { position: relative; padding: 16px 10px; color: #fff; background: var(--navy); text-align: center; font-size: 14px; }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -12px; top: 50%; z-index: 2; color: var(--gold); font-size: 22px; transform: translateY(-50%); }
+    .state-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 18px 0; }
+    .state { padding: 8px 13px; border: 1px solid var(--line); border-radius: 3px; background: #f8fafb; font: 13px "SFMono-Regular", Consolas, monospace; }
+    .state.active { color: var(--teal); border-color: #8ccacd; background: #edf8f8; }
+    .arrow { color: var(--gold); font-size: 20px; }
+    table { width: 100%; margin: 18px 0; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 11px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #fff; background: var(--navy); font-weight: 650; }
+    tr:nth-child(even) td { background: #f8fafb; }
+    pre { overflow-x: auto; margin: 18px 0; padding: 18px; color: #dfecef; background: #17262f; font-size: 13px; line-height: 1.6; }
+    ul, ol { padding-left: 24px; }
+    li { margin: 7px 0; }
+    .phase { display: grid; grid-template-columns: 112px 1fr; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .phase-num { color: var(--teal); font: 700 14px/1.3 "SFMono-Regular", Consolas, monospace; }
+    .phase h3 { margin: 0 0 7px; }
+    .check { color: var(--green); font-weight: 650; }
+    .risk { color: var(--red); font-weight: 650; }
+    footer { padding: 22px 76px; color: var(--muted); border-top: 1px solid var(--line); font-size: 13px; }
+    @media (max-width: 820px) {
+      .hero, main { padding-left: 24px; padding-right: 24px; }
+      .toc, footer { padding-left: 24px; padding-right: 24px; }
+      .grid { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr 1fr; }
+      .flow-step:not(:last-child)::after { display: none; }
+      .phase { grid-template-columns: 1fr; gap: 4px; }
+    }
+    @media print {
+      body { background: #fff; }
+      .page { max-width: none; }
+      .toc { display: none; }
+      .hero { padding: 42px 48px; }
+      main { padding: 0 48px 40px; }
+      section { break-inside: avoid; }
+      footer { padding-left: 48px; padding-right: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <p class="eyebrow">Technical Proposal / 2026-09</p>
+      <h1>SKU 多规则诊断与 Planner：Plan / Evaluation 体系</h1>
+      <p>把每周生成的经营计划、运营动作、经营结果和下一周期决策连接成可追踪、可复盘、可持续学习的闭环。</p>
+      <div class="hero-meta"><span>汇报对象：技术总监</span><span>范围：Rails + ActiveJob + ERP AI</span><span>周期：周一至周日</span></div>
+    </header>
+
+    <nav class="toc" aria-label="目录">
+      <a href="#summary">摘要</a>
+      <a href="#current">现状</a>
+      <a href="#lifecycle">生命周期</a>
+      <a href="#model">数据模型</a>
+      <a href="#evaluation">Evaluation</a>
+      <a href="#context">历史 Context</a>
+      <a href="#pipeline">流水线</a>
+      <a href="#delivery">实施与验收</a>
+    </nav>
+
+    <main>
+      <section id="summary">
+        <h2>汇报摘要</h2>
+        <p class="lead">目标是形成“Diagnosis → Plan → Action → Evaluation → 下一周期 Planner”的周度闭环。</p>
+        <div class="grid">
+          <div class="metric"><b>1 个周期</b><span>每个 SKU 每个自然周一个 Planning Cycle</span></div>
+          <div class="metric"><b>3 个状态维度</b><span>生命周期、执行情况、效果评估分别管理</span></div>
+          <div class="metric"><b>4 周默认历史</b><span>近期完整历史 + 长期异常摘要</span></div>
+        </div>
+        <div class="callout"><strong>推荐决策：</strong>Evaluation 单独建表；Plan 增加自然周字段；用周期级 Job 串联评估、诊断和 Planner；<code>is_latest</code> 只保留为页面展示指针。</div>
+      </section>
+
+      <section id="current">
+        <h2>现状与缺口</h2>
+        <ul>
+          <li>Plan 已有关联 Action、执行状态和当前计划标记。</li>
+          <li>已有 action 效果诊断可以计算逐周利润、库存和漏斗变化。</li>
+          <li>Plan 当前只有生成日期，没有明确的计划执行周期。</li>
+          <li>动作匹配依赖 <code>latest.active.retained</code>，旧计划可能无法接收晚到动作。</li>
+          <li>Planner 当前只拿最新诊断事件，历史 Evaluation 尚未进入实际输入。</li>
+          <li>现有 recurring 配置中 Planner 处于停用状态，需先完成流水线和幂等改造。</li>
+        </ul>
+      </section>
+
+      <section id="lifecycle">
+        <h2>生命周期设计</h2>
+        <h3>Planning Cycle</h3>
+        <div class="state-line"><span class="state">pending</span><span class="arrow">→</span><span class="state">generating</span><span class="arrow">→</span><span class="state active">active</span><span class="arrow">→</span><span class="state">closed</span><span class="arrow">→</span><span class="state">evaluated</span></div>
+        <p><code>failed</code> 可以从生成或评估阶段进入，支持安全重试。每个 SKU 每个自然周只保留一个当前 revision。</p>
+        <h3>Plan 条目</h3>
+        <table>
+          <thead><tr><th>维度</th><th>状态</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>生命周期</td><td><code>active / cancelled / expired</code></td><td>计划是否仍具有业务效力</td></tr>
+            <tr><td>执行情况</td><td><code>not_started / partial / executed / not_applicable</code></td><td>运营动作是否已经发生</td></tr>
+            <tr><td>评估情况</td><td><code>pending / insufficient_data / evaluated / failed</code></td><td>是否已经完成效果判断</td></tr>
+          </tbody>
+        </table>
+        <div class="callout"><strong>关键原则：</strong><code>executed</code> 不等于 <code>evaluated</code>。动作完成后仍需等待完整观察窗口。</div>
+        <h3>周期窗口</h3>
+        <pre>period_start       # 周一
+period_end         # 周日
+execution_deadline # 周日 + 1~3 天宽限期</pre>
+      </section>
+
+      <section id="model">
+        <h2>数据模型</h2>
+        <h3>Plan 表扩展</h3>
+        <pre>ec_ai_sku_operation_plans
+  planning_period_start :date
+  planning_period_end   :date
+  execution_deadline    :date
+  execution_status      :string
+  evaluation_status     :string</pre>
+        <p>保留 <code>plan_date</code> 作为生成日期，保留 <code>is_latest</code> 作为页面辅助指针。</p>
+        <h3>Evaluation 表</h3>
+        <pre>ec_ai_sku_operation_plan_evaluations
+  plan_id
+  observation_from / observation_to
+  execution_status
+  effectiveness / confidence
+  summary
+  metrics / evidence / action_ids
+  conversation_id / evaluator_version
+  status / evaluated_at</pre>
+        <p>使用 <code>unique(plan_id, observation_to)</code> 支持下一周初评和后续延迟复评。</p>
+        <h3>长期演进：Planning Cycle 父表</h3>
+        <p>第一版可以只给 Plan 增加周期字段。后续需要重跑版本、审批或计划集合级审计时，再增加 <code>ec_sku_planning_cycles</code>。</p>
+      </section>
+
+      <section id="evaluation">
+        <h2>Evaluation 方案</h2>
+        <ol>
+          <li>查询上一自然周的所有 Plan，不使用 <code>is_latest</code>。</li>
+          <li>读取关联的 <code>OperationAction</code>，判断执行、部分执行或未执行。</li>
+          <li>复用逐周指标查询，采集利润、销量、库存、广告和销售漏斗。</li>
+          <li>先计算确定性指标，再由专用 Evaluation Agent 解释效果。</li>
+          <li>持久化原始指标、动作证据、AI 结论、置信度和版本。</li>
+        </ol>
+        <table>
+          <thead><tr><th>执行情况</th><th>效果</th><th>处理方式</th></tr></thead>
+          <tbody>
+            <tr><td><code>executed</code></td><td>positive / negative / mixed</td><td>保存前后指标和 AI 解释</td></tr>
+            <tr><td><code>partial</code></td><td>任意</td><td>明确实际执行范围和未执行部分</td></tr>
+            <tr><td><code>not_started</code></td><td>不判定负面</td><td>记录未执行原因或等待补充数据</td></tr>
+            <tr><td>数据不足</td><td><code>inconclusive</code></td><td>允许后续观察窗口重新评估</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="context">
+        <h2>Planner 历史 Context</h2>
+        <p>Planner 输入分成当前事实和历史经验两部分。当前 Diagnosis 负责本周期决策，历史 Evaluation 负责提醒过去的效果、副作用和重复失败。</p>
+        <pre>{
+  "cycle": {"start": "2026-09-28", "end": "2026-10-04"},
+  "prior_plans": [
+    {
+      "plan_id": 123,
+      "target": "advertising",
+      "operation": "decrease",
+      "execution_status": "executed",
+      "effectiveness": "negative",
+      "confidence": "medium",
+      "summary": "..."
+    }
+  ]
+}</pre>
+        <ul>
+          <li>默认传最近 4 个周期。</li>
+          <li>8~12 周内的负面、不确定、未执行和重复计划额外保留。</li>
+          <li>Conversation Context 保存历史 Plan ID、周期和 Context 版本。</li>
+          <li>完整历史保留在业务表中，输入模型时进行压缩和限长。</li>
+        </ul>
+      </section>
+
+      <section id="pipeline">
+        <h2>周度流水线</h2>
+        <div class="flow">
+          <div class="flow-step">数据同步完成</div>
+          <div class="flow-step">评估上一周期 Plan</div>
+          <div class="flow-step">执行本周期 Diagnosis</div>
+          <div class="flow-step">构建历史 Context</div>
+          <div class="flow-step">生成本周期 Plan</div>
+          <div class="flow-step">执行并记录 Action</div>
+        </div>
+        <p>使用按 SKU、按周期幂等的 Pipeline Job。Planner 必须等待当前周期所有规则完成，不能只依赖两个相邻 cron 时间。</p>
+      </section>
+
+      <section id="delivery">
+        <h2>实施分期与验收</h2>
+        <div class="phase"><div class="phase-num">PHASE 01</div><div><h3>周期与数据结构</h3><p>增加自然周字段，创建 Evaluation 表，回填旧数据，补齐时区和周期边界测试。</p><p class="check">验收：每个 Plan 都能回答“属于哪周、何时执行、是否等待评估”。</p></div></div>
+        <div class="phase"><div class="phase-num">PHASE 02</div><div><h3>执行归属与 Evaluation</h3><p>调整历史 Plan 动作匹配，抽取逐周指标逻辑，实现 Evaluation Runner 和幂等写入。</p><p class="check">验收：下一周每条上一周期 Plan 都有执行状态；已执行计划有指标和效果结论。</p></div></div>
+        <div class="phase"><div class="phase-num">PHASE 03</div><div><h3>Planner 历史 Context</h3><p>实现 Context Builder，接入近期完整历史和长期异常摘要，保存输入版本。</p><p class="check">验收：Planner 能区分有效、无效、未执行和数据不足。</p></div></div>
+        <div class="phase"><div class="phase-num">PHASE 04</div><div><h3>周度编排与灰度</h3><p>统一串联 Evaluation、Diagnosis、Planner，增加周期锁、失败重试和灰度开关。</p><p class="check">验收：连续运行 4 周不重复生成周期、不丢失历史，失败可安全重试。</p></div></div>
+        <div class="phase"><div class="phase-num">PHASE 05</div><div><h3>运营页面闭环</h3><p>在 Plan 详情页展示执行状态、评估状态、指标和结论，并补齐 I18n 文案。</p><p class="check">验收：运营可以从 Plan 看到计划、动作、结果和下一步建议。</p></div></div>
+        <h3>重点风险</h3>
+        <table>
+          <thead><tr><th>风险</th><th>控制措施</th></tr></thead>
+          <tbody>
+            <tr><td class="risk">新周期覆盖旧周期</td><td>使用周期字段和 revision，禁止删除历史 Plan。</td></tr>
+            <tr><td class="risk">动作未关联计划</td><td>扩展 Matcher；无法自动判断时提供人工关联。</td></tr>
+            <tr><td class="risk">数据尚未稳定</td><td>以数据覆盖率和自然周结束作为评估门槛。</td></tr>
+            <tr><td class="risk">AI 误判因果</td><td>保存原始指标、同期动作、数据缺口和置信度。</td></tr>
+            <tr><td class="risk">Planner 早于 Diagnosis</td><td>使用 Pipeline Job 或周期完成状态。</td></tr>
+          </tbody>
+        </table>
+        <div class="callout"><strong>首期建议：</strong>先落地周期字段、独立 Evaluation 表、下一周初评和最近 4 周 Context；Planning Cycle 父表、延迟复评和结构化成功指标作为后续增强。</div>
+      </section>
+    </main>
+    <footer>SKU Plan / Evaluation 体系实施方案 · 2026-09 · 文档与 HTML 汇报稿由项目工作区生成</footer>
+  </div>
+</body>
+</html>

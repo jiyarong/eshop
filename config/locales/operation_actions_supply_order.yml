@@ -5,6 +5,8 @@ en:
         supply_order: "Supply order"
       diff_fields:
         supply_order_status: "Supply order status"
+        batch_code: "Batch code"
+        purchased_quantity: "Purchased quantity"
 
 ru:
   erp:
@@ -13,6 +15,8 @@ ru:
         supply_order: "Поставка"
       diff_fields:
         supply_order_status: "Статус поставки"
+        batch_code: "Номер партии"
+        purchased_quantity: "Количество закупки"
 
 zh:
   erp:
@@ -21,3 +25,5 @@ zh:
         supply_order: "送仓单"
       diff_fields:
         supply_order_status: "送仓单状态"
+        batch_code: "批次号"
+        purchased_quantity: "采购数量"

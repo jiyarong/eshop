@@ -40,6 +40,11 @@ module Ec
         operations = [ "modify" ]
         operations << "increase" if increased?(budget_change)
         operations.map { |operation| [ "advertising", operation ] }
+      when "supply_order"
+        quantity_change = fields["purchased_quantity"]
+        return [] unless quantity_change && increased?(quantity_change)
+
+        [ [ "replenishment", "increase" ] ]
       when "listing_content", "listing_specification"
         targets = []
         targets << [ "listing_image", "modify" ] if fields.keys.intersect?(IMAGE_FIELDS)
