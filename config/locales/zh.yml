@@ -554,6 +554,7 @@ zh:
         title: "编辑 AI Agent"
       empty_skills: "暂无 Skill，请先创建 Skill。"
       external_tool: "由系统配置自动启用"
+      external_tool_unavailable: "尚未配置 Tavily API Key"
       errors:
         invalid_tools: "包含未注册工具：%{tools}"
         skills_unavailable_for_web: "仅 Client Agent 可以使用 Skill"

@@ -95,15 +95,12 @@ module Admin
     def configured_external_tools
       registry = ErpAI::Mcp::ServerRegistry.new
       client = registry.clients["search"]
-      return [] unless client.is_a?(ErpAI::Mcp::TavilyClient)
+      available = client.is_a?(ErpAI::Mcp::TavilyClient) &&
+        client.list_tools.any? { |tool| (tool["name"] || tool[:name]).to_s == "web_search" }
 
-      allowed_tools = registry.tool_filters["search"]
-      return [] if allowed_tools.present? && !allowed_tools.include?("web_search")
-      return [] unless client.list_tools.any? { |tool| (tool["name"] || tool[:name]).to_s == "web_search" }
-
-      [ { name: "search__web_search", i18n_key: "web_search", external: true } ]
+      [ { name: "search__web_search", i18n_key: "web_search", external: true, external_available: available } ]
     rescue StandardError
-      []
+      [ { name: "search__web_search", i18n_key: "web_search", external: true, external_available: false } ]
     end
   end
 end
