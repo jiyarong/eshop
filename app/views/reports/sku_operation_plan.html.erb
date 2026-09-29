@@ -9,6 +9,10 @@
       <p class="sku-plan-detail__product"><%= report_value(@sku.product_name) %></p>
     </div>
     <div class="sku-plan-detail__actions">
+      <% if can?(:manage_skus) && @plan.evaluation_status.in?(%w[pending insufficient_data failed]) %>
+        <%= button_to t("reports.sku_detail.planner.evaluate_again"), evaluate_report_sku_operation_plan_path(@sku.sku_code, @plan, locale: params[:locale].presence),
+                      method: :post, class: "button button-secondary" %>
+      <% end %>
       <% if can?(:manage_skus) && @plan.active? %>
         <%= button_to t("reports.sku_detail.planner.ignore"), ignore_report_sku_operation_plan_path(@sku.sku_code, @plan, locale: params[:locale].presence),
                       method: :patch, class: "button button-secondary",
@@ -77,6 +81,74 @@
       <h2 id="sku-plan-evaluation-title" class="section-title"><%= t("reports.sku_detail.planner.evaluation") %></h2>
       <p><%= t("reports.sku_detail.planner.evaluation_meta", effectiveness: t("reports.sku_detail.planner.effectivenesses.#{evaluation.effectiveness}"), confidence: t("reports.sku_detail.planner.confidences.#{evaluation.confidence}")) %></p>
       <p><%= evaluation.summary %></p>
+    </section>
+  <% end %>
+
+  <% if @plan.evaluations.size > 1 %>
+    <section class="sku-plan-detail__message" aria-labelledby="sku-plan-evaluation-history-title">
+      <h2 id="sku-plan-evaluation-history-title" class="section-title"><%= t("reports.sku_detail.planner.evaluation_history") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th><%= t("reports.sku_detail.planner.observation_period") %></th><th><%= t("reports.sku_detail.planner.evaluation_status") %></th><th><%= t("reports.sku_detail.planner.effectiveness") %></th><th><%= t("reports.sku_detail.planner.confidence") %></th><th><%= t("reports.sku_detail.planner.evaluated_at") %></th></tr></thead>
+          <tbody>
+            <% @plan.evaluations.latest_first.each do |item| %>
+              <tr>
+                <td><%= item.observation_from.iso8601 %> - <%= item.observation_to.iso8601 %></td>
+                <td><%= t("reports.sku_detail.planner.evaluation_run_statuses.#{item.status}") %></td>
+                <td><%= item.effectiveness.present? ? t("reports.sku_detail.planner.effectivenesses.#{item.effectiveness}") : report_value(nil) %></td>
+                <td><%= item.confidence.present? ? t("reports.sku_detail.planner.confidences.#{item.confidence}") : report_value(nil) %></td>
+                <td><%= display_time(item.evaluated_at) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @cycle_history_revisions.size > 1 %>
+    <section class="sku-plan-detail__message" aria-labelledby="sku-plan-cycle-history-title">
+      <h2 id="sku-plan-cycle-history-title" class="section-title"><%= t("reports.sku_detail.planner.cycle_history") %></h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.planner.cycle_revision") %></th>
+              <th><%= t("reports.sku_detail.planner.cycle_status") %></th>
+              <th><%= t("reports.sku_detail.planner.plan_title_label") %></th>
+              <th><%= t("reports.sku_detail.planner.target") %></th>
+              <th><%= t("reports.sku_detail.planner.operation") %></th>
+              <th><%= t("reports.sku_detail.planner.execution_status") %></th>
+              <th><%= t("reports.sku_detail.planner.evaluation_status") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @cycle_history.each do |item| %>
+              <tr>
+                <td>
+                  <% if item.planning_cycle %>
+                    <%= t("reports.sku_detail.planner.cycle_revision_value", revision: item.planning_cycle.revision) %>
+                  <% else %>
+                    <%= report_value(nil) %>
+                  <% end %>
+                </td>
+                <td>
+                  <% if item.planning_cycle %>
+                    <%= t("reports.sku_detail.planner.cycle_statuses.#{item.planning_cycle.status}") %>
+                  <% else %>
+                    <%= report_value(nil) %>
+                  <% end %>
+                </td>
+                <td><%= link_to t("reports.sku_detail.planner.plan_title", id: item.id), report_sku_operation_plan_path(@sku.sku_code, item, locale: params[:locale].presence) %></td>
+                <td><%= t("reports.sku_detail.planner.targets.#{item.target}") %></td>
+                <td><%= t("reports.sku_detail.planner.operations.#{item.operation}") %></td>
+                <td><%= t("reports.sku_detail.planner.execution_statuses.#{item.execution_status}") %></td>
+                <td><%= t("reports.sku_detail.planner.evaluation_statuses.#{item.evaluation_status}") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
     </section>
   <% end %>
 

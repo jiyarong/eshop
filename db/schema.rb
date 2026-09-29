@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_082450) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_085249) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -167,6 +167,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_082450) do
     t.text "message", null: false
     t.string "operation", null: false
     t.date "plan_date", null: false
+    t.bigint "planning_cycle_id"
     t.date "planning_period_end", null: false
     t.date "planning_period_start", null: false
     t.integer "priority"
@@ -180,6 +181,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_082450) do
     t.string "target", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_ec_ai_sku_operation_plans_on_conversation_id"
+    t.index ["planning_cycle_id"], name: "index_ec_ai_sku_operation_plans_on_planning_cycle_id"
     t.index ["planning_period_start", "planning_period_end"], name: "idx_sku_operation_plans_on_period"
     t.index ["retain_until"], name: "index_ec_ai_sku_operation_plans_on_retain_until"
     t.index ["sku_id", "plan_date"], name: "index_ec_ai_sku_operation_plans_on_sku_id_and_plan_date"
@@ -797,6 +799,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_082450) do
     t.bigint "user_id", null: false
     t.index ["sku_code"], name: "index_ec_sku_operator_assignments_on_sku_code", unique: true
     t.index ["user_id"], name: "index_ec_sku_operator_assignments_on_user_id"
+  end
+
+  create_table "ec_sku_planning_cycles", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.string "context_version"
+    t.datetime "created_at", null: false
+    t.jsonb "diagnosis_event_ids", default: [], null: false
+    t.text "error_message"
+    t.boolean "is_current", default: true, null: false
+    t.date "period_end", null: false
+    t.date "period_start", null: false
+    t.bigint "planner_conversation_id"
+    t.integer "revision", default: 1, null: false
+    t.bigint "sku_id", null: false
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period_start", "period_end"], name: "idx_sku_planning_cycles_on_period"
+    t.index ["planner_conversation_id"], name: "index_ec_sku_planning_cycles_on_planner_conversation_id"
+    t.index ["sku_id", "period_start", "revision"], name: "idx_sku_planning_cycles_on_sku_period_revision", unique: true
+    t.index ["sku_id", "period_start"], name: "idx_current_sku_planning_cycle", unique: true, where: "is_current"
+    t.index ["sku_id"], name: "index_ec_sku_planning_cycles_on_sku_id"
   end
 
   create_table "ec_sku_platform_costs", force: :cascade do |t|
@@ -3404,6 +3428,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_082450) do
   add_foreign_key "ec_ai_sku_operation_plan_evaluations", "conversations"
   add_foreign_key "ec_ai_sku_operation_plan_evaluations", "ec_ai_sku_operation_plans", column: "plan_id"
   add_foreign_key "ec_ai_sku_operation_plans", "conversations"
+  add_foreign_key "ec_ai_sku_operation_plans", "ec_sku_planning_cycles", column: "planning_cycle_id"
   add_foreign_key "ec_ai_sku_operation_plans", "ec_skus", column: "sku_id"
   add_foreign_key "ec_ai_suggestions", "conversations"
   add_foreign_key "ec_ai_suggestions", "users", column: "submitted_by_id"
@@ -3459,6 +3484,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_082450) do
   add_foreign_key "ec_sku_marketing_states", "users", column: "changed_by_id", on_delete: :nullify
   add_foreign_key "ec_sku_operator_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_operator_assignments", "users"
+  add_foreign_key "ec_sku_planning_cycles", "conversations", column: "planner_conversation_id", on_delete: :nullify
+  add_foreign_key "ec_sku_planning_cycles", "ec_skus", column: "sku_id", on_delete: :cascade
   add_foreign_key "ec_sku_platform_costs", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_sku_predicted_costs", "ec_skus", column: "sku_code", primary_key: "sku_code", name: "fk_rails_ec_sku_predicted_costs_sku_code"
   add_foreign_key "ec_sku_product_operators", "ec_sku_products", column: "sku_product_id"

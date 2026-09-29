@@ -77,6 +77,7 @@ module ErpAI
         name: name,
         result: ::Mcp::ToolExecutor.new(
           current_user: current_user,
+          event_date: @event_date,
           conversation_id: @conversation_id
         ).call(name, (arguments || {}).stringify_keys)
       }

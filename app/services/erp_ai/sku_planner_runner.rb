@@ -3,9 +3,9 @@ module ErpAI
     AGENT_CODE = "sku_planner".freeze
 
     class ScopedToolExecutor
-      def initialize(user:, sku:)
+      def initialize(user:, sku:, plan_date: nil)
         @sku = sku
-        @executor = ErpAI::ToolExecutor.new(mcp_clients: {}, current_user: user)
+        @executor = ErpAI::ToolExecutor.new(mcp_clients: {}, current_user: user, event_date: plan_date)
       end
 
       def conversation_id=(conversation_id)
@@ -25,20 +25,23 @@ module ErpAI
       end
     end
 
-    def self.run(sku_code: nil, user: nil, client: DefaultClient.new, context_builder: ErpAI::SkuPlannerContextBuilder)
-      new(sku_code: sku_code, user: user, client: client, context_builder: context_builder).run
+    def self.run(sku_code: nil, user: nil, client: DefaultClient.new, context_builder: ErpAI::SkuPlannerContextBuilder, as_of_date: nil, period_start: nil, rerun: true)
+      new(sku_code: sku_code, user: user, client: client, context_builder: context_builder, as_of_date: as_of_date, period_start: period_start, rerun: rerun).run
     end
 
-    def initialize(sku_code: nil, user: nil, client: DefaultClient.new, runner_factory: nil, context_builder: ErpAI::SkuPlannerContextBuilder)
+    def initialize(sku_code: nil, user: nil, client: DefaultClient.new, runner_factory: nil, context_builder: ErpAI::SkuPlannerContextBuilder, as_of_date: nil, period_start: nil, rerun: true)
       @sku_code = sku_code
       @user = user
       @context_builder = context_builder
-      @runner_factory = runner_factory || ->(agent:, user:, sku:) {
+      @as_of_date = as_of_date&.to_date
+      @period_start = period_start&.to_date&.beginning_of_week(:monday)
+      @rerun = rerun
+      @runner_factory = runner_factory || ->(agent:, user:, sku:, plan_date:) {
         ErpAI::AgentRunner.new(
           agent: agent,
           user: user,
           client: client,
-          tool_executor: ScopedToolExecutor.new(user: user, sku: sku),
+          tool_executor: ScopedToolExecutor.new(user: user, sku: sku, plan_date: plan_date),
           tool_names: [ "save_sku_plan" ]
         )
       }
@@ -75,8 +78,8 @@ module ErpAI
       events = latest_events_for(sku)
       return if events.empty?
 
-      plan_date = Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date
-      planning_period_start = Ec::SkuOperationPlan.period_for(plan_date)
+      plan_date = planner_date
+      planning_period_start = @period_start || Ec::SkuOperationPlan.period_for(plan_date)
       historical_context = context_builder.call(sku: sku, period_start: planning_period_start)
       data_summary = events.map do |event|
         {
@@ -105,16 +108,33 @@ module ErpAI
 
       sku.with_lock do
         plans = sku.sku_operation_plans
-        plans.where(plan_date: plan_date).delete_all
+        existing_cycle = Ec::SkuPlanningCycle.current_for(sku: sku, period_start: planning_period_start)
+        # Legacy plans predate PlanningCycle. Remove only those on the first
+        # migrated run; subsequent runs retain every prior revision.
+        plans.where(plan_date: plan_date, planning_cycle_id: nil).delete_all if existing_cycle.nil?
+        planning_cycle = Ec::SkuPlanningCycleLock.acquire(
+          sku: sku,
+          period_start: planning_period_start,
+          rerun: @rerun && existing_cycle.present?,
+          status: "generating",
+          diagnosis_event_ids: events.map(&:id),
+          context_version: historical_context.fetch(:context_version)
+        )
+        existing_plan_ids = plans.pluck(:id)
 
-        conversation = @runner_factory.call(agent: agent, user: user, sku: sku).ask(
+        conversation = @runner_factory.call(agent: agent, user: user, sku: sku, plan_date: plan_date).ask(
           question: question,
           module_name: "sku_planner",
           business_object_type: "Ec::Sku",
           business_object_id: sku.id.to_s,
           data_summary: data_summary
         )
-        plans.where.not(plan_date: plan_date).latest.update_all(is_latest: false)
+        generated_plan_ids = plans.where(plan_date: plan_date).where.not(id: existing_plan_ids).pluck(:id)
+        plans.where(id: generated_plan_ids).update_all(planning_cycle_id: planning_cycle.id)
+        planning_cycle.update!(status: "active", planner_conversation: conversation)
+        plans.where(planning_cycle_id: nil).or(
+          plans.where.not(planning_cycle_id: planning_cycle.id)
+        ).latest.update_all(is_latest: false)
         if conversation.respond_to?(:context) && conversation.respond_to?(:update!)
           conversation.update!(context: conversation.context.merge(
             "history_plan_ids" => historical_context.fetch(:history_plan_ids),
@@ -145,6 +165,10 @@ module ErpAI
     end
 
     attr_reader :context_builder
+
+    def planner_date
+      @as_of_date || Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date
+    end
 
     def execution_user
       User.joins(:roles).where(active: true, roles: { code: "super_admin" }).first || raise("No super admin available for SKU planner")

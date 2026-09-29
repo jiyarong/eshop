@@ -5,14 +5,16 @@ module Ec
     EFFECTIVENESS_VALUES = %w[positive negative mixed inconclusive].freeze
     CONFIDENCE_VALUES = %w[high medium low].freeze
 
-    def self.run(as_of_date: nil, period_start: nil, sku_code: nil, metrics_provider: nil, evaluator: nil, client: nil, user: nil)
+    def self.run(as_of_date: nil, period_start: nil, plan_id: nil, sku_code: nil, metrics_provider: nil, evaluator: nil, client: nil, agent: nil, user: nil)
       new(
         as_of_date: as_of_date,
         period_start: period_start,
+        plan_id: plan_id,
         sku_code: sku_code,
         metrics_provider: metrics_provider,
         evaluator: evaluator,
         client: client,
+        agent: agent,
         user: user
       ).run
     end
@@ -20,22 +22,26 @@ module Ec
     def initialize(
       as_of_date: nil,
       period_start: nil,
+      plan_id: nil,
       sku_code: nil,
       metrics_provider: nil,
       metrics_query_class: Ec::SkuOperationActionMetricsQuery,
       evaluator: nil,
       client: nil,
+      agent: nil,
       evaluator_version: EVALUATOR_VERSION,
       user: nil
     )
       @time_zone = Time.find_zone!(TIME_ZONE)
       @as_of_date = (as_of_date || Time.current.in_time_zone(@time_zone).to_date).to_date
       @period_start = period_start&.to_date&.beginning_of_week(:monday)
+      @plan_id = plan_id
       @sku_code = sku_code
       @metrics_provider = metrics_provider
       @metrics_query_class = metrics_query_class
       @evaluator = evaluator
       @client = client
+      @agent = agent
       @evaluator_version = evaluator_version
       @user = user
     end
@@ -54,22 +60,39 @@ module Ec
 
     private
 
-    attr_reader :as_of_date, :period_start, :sku_code, :metrics_provider, :metrics_query_class, :evaluator, :client,
+    attr_reader :as_of_date, :period_start, :plan_id, :sku_code, :metrics_provider, :metrics_query_class, :evaluator, :client, :agent,
       :evaluator_version, :time_zone, :user
 
     def plans
       scope = SkuOperationPlan.where(planning_period_start: previous_period_start)
+      scope = scope.where(id: plan_id) if plan_id.present?
       scope = scope.where(sku_id: Sku.where(sku_code: sku_code)) if sku_code.present?
       scope.includes(:operation_actions, :evaluations).order(:sku_id, :id)
     end
 
     def evaluate_plan(plan)
+      mark_running(plan)
       actions = observed_actions(plan)
       metrics = metrics_for(plan)
       execution_status = execution_status_for(plan, actions)
       result = result_for(plan, actions, metrics, execution_status)
       evaluation = persist_evaluation(plan, actions, metrics, execution_status, result)
       evaluation
+    end
+
+    def mark_running(plan)
+      evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to)
+      evaluation.assign_attributes(
+        observation_from: plan.planning_period_start,
+        status: "running",
+        execution_status: plan.execution_status,
+        effectiveness: "inconclusive",
+        confidence: "low",
+        summary: I18n.t("erp.sku_operation_plan_evaluation.summary.pending", default: "评估正在处理中。"),
+        evaluator_version: evaluator_version,
+        evaluated_at: nil
+      )
+      evaluation.save!
     end
 
     def observed_actions(plan)
@@ -171,21 +194,46 @@ module Ec
     end
 
     def evaluate_with_client(context)
+      system_prompt = agent&.system_prompt.presence || I18n.t(
+        "erp.sku_operation_plan_evaluation.system_prompt",
+        default: "请基于计划、动作证据和原始指标保守判断计划效果，只返回 JSON：effectiveness、confidence、summary。未执行动作不得判为负面。"
+      )
+      request_context = context.deep_stringify_keys.to_json
+      conversation = build_evaluation_conversation(request_context, system_prompt, context.fetch(:plan))
       response = client.complete({
-        model: "sku_plan_evaluation",
-        temperature: 0.1,
+        model: agent&.model_id.presence || "sku_plan_evaluation",
+        temperature: agent&.temperature || 0.1,
         thinking_enabled: false,
-        system_prompt: I18n.t(
-          "erp.sku_operation_plan_evaluation.system_prompt",
-          default: "请基于计划、动作证据和原始指标保守判断计划效果，只返回 JSON：effectiveness、confidence、summary。未执行动作不得判为负面。"
-        ),
+        system_prompt: system_prompt,
         context: "",
-        messages: [ { role: "user", content: context.deep_stringify_keys.to_json } ],
+        messages: [ { role: "user", content: request_context } ],
         tools: []
       })
       payload = response[:content] || response["content"]
+      assistant_content = payload.is_a?(Hash) ? payload.to_json : payload.to_s
+      conversation&.messages&.create!(role: "assistant", content: assistant_content)
       payload = parse_json_content(payload) unless payload.is_a?(Hash)
+      payload = payload.merge("conversation_id" => conversation.id) if conversation
       payload
+    end
+
+    def build_evaluation_conversation(request_context, system_prompt, plan)
+      return unless agent && evaluation_user
+
+      conversation = agent.conversations.create!(
+        user: evaluation_user,
+        module_name: "sku_plan_evaluation",
+        business_object_type: "Ec::SkuOperationPlan",
+        business_object_id: plan.id.to_s,
+        time_range: { "from" => plan.planning_period_start.iso8601, "to" => observation_to.iso8601 },
+        context: { "system_prompt" => system_prompt, "data_summary" => request_context }
+      )
+      conversation.messages.create!(role: "user", content: request_context)
+      conversation
+    end
+
+    def evaluation_user
+      user || User.joins(:roles).where(active: true, roles: { code: "super_admin" }).first
     end
 
     def parse_json_content(content)
@@ -284,7 +332,21 @@ module Ec
       }
       plan_attributes[:lifecycle_status] = "expired" if as_of_date > plan.execution_deadline && plan.lifecycle_status == "active"
       plan.update!(plan_attributes)
+      sync_planning_cycle_status(plan)
       evaluation
+    end
+
+    def sync_planning_cycle_status(plan)
+      cycle = plan.planning_cycle
+      return unless cycle
+
+      all_evaluated = cycle.operation_plans.exists? &&
+        cycle.operation_plans.where.not(evaluation_status: %w[evaluated insufficient_data failed]).none?
+      if all_evaluated
+        cycle.update!(status: "evaluated", completed_at: Time.current, error_message: nil)
+      elsif as_of_date > plan.execution_deadline && cycle.status == "active"
+        cycle.update!(status: "closed")
+      end
     end
 
     def mark_failed(plan)
@@ -301,6 +363,9 @@ module Ec
       )
       evaluation.save!
       plan.update_columns(evaluation_status: "failed")
+      if (cycle = plan.planning_cycle)
+        cycle.update!(status: "failed", error_message: evaluation.summary)
+      end
       evaluation
     rescue StandardError => error
       Rails.logger.error("[Ec::SkuOperationPlanEvaluationRunner] failed to persist failure: #{error.message}")

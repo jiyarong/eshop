@@ -22,6 +22,7 @@ module Ec
     }.freeze
 
     belongs_to :sku, class_name: "Ec::Sku"
+    belongs_to :planning_cycle, class_name: "Ec::SkuPlanningCycle", optional: true
     belongs_to :conversation, optional: true
     has_many :operation_actions, class_name: "Ec::OperationAction", foreign_key: :plan_id, dependent: :nullify
     has_many :evaluations, class_name: "Ec::SkuOperationPlanEvaluation", foreign_key: :plan_id, dependent: :destroy

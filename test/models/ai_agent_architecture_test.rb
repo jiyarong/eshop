@@ -42,7 +42,8 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
       "general_agent",
       "gbrain_page_classifier",
       "sku_diagnosis",
-      "sku_planner"
+      "sku_planner",
+      "sku_plan_evaluation"
     ], Agent::DEFINITIONS.keys
 
     assert_equal "SKU 补货建议助手", Agent::DEFINITIONS.fetch("sku_replenishment_advisor").fetch(:name)
@@ -70,6 +71,8 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_equal [ "save_sku_event" ], Agent::DEFINITIONS.fetch("sku_diagnosis").fetch(:tools)
     assert_equal [ "save_sku_plan" ], Agent::DEFINITIONS.fetch("sku_planner").fetch(:tools)
     assert_equal "SKU Planner", Agent::DEFINITIONS.fetch("sku_planner").fetch(:name)
+    assert_equal [], Agent::DEFINITIONS.fetch("sku_plan_evaluation").fetch(:tools)
+    assert_includes Agent::DEFINITIONS.fetch("sku_plan_evaluation").fetch(:default_system_prompt), "inconclusive"
   end
 
   test "seeds all fixed agents without overwriting tunable fields" do

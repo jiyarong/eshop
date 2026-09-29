@@ -282,6 +282,7 @@ module Mcp
       return { error: "plan details must be non-empty strings" } unless details.values.all? { |value| value.is_a?(String) && value.strip.present? }
 
       plan = sku.sku_operation_plans.create!(
+        **(@event_date ? { plan_date: @event_date } : {}),
         target: target,
         operation: operation,
         referer: referer,

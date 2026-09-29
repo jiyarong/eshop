@@ -21,7 +21,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     User.where(id: @user.id).delete_all
   end
 
-  test "same-day rerun replaces plans and makes previous days non-latest" do
+  test "same-day rerun preserves the previous revision and makes it non-latest" do
     today = Time.current.in_time_zone("Asia/Shanghai").to_date
     previous = create_plan("Previous", plan_date: today - 1.day)
     replaced = create_plan("Replaced", created_at: 1.day.ago, plan_date: today)
@@ -33,7 +33,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
 
     run_with_plan("Second")
     assert_equal [ "Second" ], @sku.sku_operation_plans.latest.pluck(:message)
-    assert_equal 2, @sku.sku_operation_plans.count
+    assert_equal 3, @sku.sku_operation_plans.count
   end
 
   test "failed run restores deleted plans and discards partially generated plans" do
@@ -128,6 +128,21 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_equal 1, plan.priority
     assert_equal "No price change", plan.constraints
     assert_equal "Keep price stable", result.dig(:result, :message)
+  end
+
+  test "planner executor preserves the requested planning date" do
+    @user.roles << Role.find_by!(code: "manager")
+    plan_date = Date.new(2026, 9, 28)
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku, plan_date: plan_date)
+
+    result = executor.call(id: "backfill", name: "save_sku_plan", arguments: {
+      sku_code: @sku.sku_code, target: "price", operation: "maintain",
+      referer: [ @diagnosis.events.first.id ], **plan_details
+    })
+
+    plan = @sku.sku_operation_plans.find(result.dig(:result, :plan_id))
+    assert_equal plan_date, plan.plan_date
+    assert_equal plan_date.beginning_of_week(:monday), plan.planning_period_start
   end
 
   test "planner saves warehouse distribution and replenishment plans with decrease" do

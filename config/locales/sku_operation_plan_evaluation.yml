@@ -9,6 +9,7 @@ zh:
         deterministic_positive: "观察窗口内核心指标高于执行前基线。"
         deterministic_negative: "观察窗口内核心指标低于执行前基线。"
         failed: "计划效果评估失败，等待重试。"
+        pending: "计划效果评估正在处理中。"
 en:
   erp:
     sku_operation_plan_evaluation:
@@ -20,6 +21,7 @@ en:
         deterministic_positive: "The core metric in the observation window is above the pre-execution baseline."
         deterministic_negative: "The core metric in the observation window is below the pre-execution baseline."
         failed: "Plan evaluation failed and is waiting for retry."
+        pending: "Plan effect evaluation is in progress."
 ru:
   erp:
     sku_operation_plan_evaluation:
@@ -31,3 +33,4 @@ ru:
         deterministic_positive: "Ключевой показатель в период наблюдения выше базового уровня до выполнения."
         deterministic_negative: "Ключевой показатель в период наблюдения ниже базового уровня до выполнения."
         failed: "Оценка плана завершилась ошибкой и ожидает повторной попытки."
+        pending: "Оценка эффекта плана выполняется."

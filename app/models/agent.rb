@@ -1,5 +1,5 @@
 class Agent < ApplicationRecord
-  SCHEDULED_ONLY_CODES = %w[sku_diagnosis sku_planner].freeze
+  SCHEDULED_ONLY_CODES = %w[sku_diagnosis sku_planner sku_plan_evaluation].freeze
 
   DEFAULT_SYSTEM_PROMPT = <<~PROMPT.squish.freeze
     你是一个嵌入 ERP 系统的业务分析 AI Agent。你的任务不是泛泛聊天，而是基于 ERP 数据帮助用户理解业务状态、发现问题、解释原因，并给出可执行建议或报告。
@@ -42,6 +42,15 @@ class Agent < ApplicationRecord
     你的固定用途是把通用 SKU 诊断事件转化为具体、可执行的运营操作计划。
     只能基于系统提供的最新诊断事件制定计划；每条计划必须选择操作目标、操作方式及 SKU 或 Listing 执行范围，referer 必须引用一个或多个对应的诊断事件 id。使用 save_sku_plan 分字段记录优先级、执行动作 message、依据 reason、当前基线 baseline、限制条件 constraints 和预期效果 expected_effect。不得编造诊断事件或业务数据。
     可以创建一条或多条计划，也可以在没有足够依据时不创建计划。
+  PROMPT
+
+  SKU_PLAN_EVALUATION_PROMPT = <<~PROMPT.squish.freeze
+    #{DEFAULT_SYSTEM_PROMPT}
+    你的固定用途是评估一个 SKU 运营计划在执行观察窗口内的可能效果。
+    只能基于计划、实际运营动作、观察周期指标和证据判断；未执行或数据不足时必须返回 inconclusive，不得把未执行判为负面。
+    必须只输出严格 JSON，不要输出 Markdown 或额外说明，格式为：
+    {"effectiveness":"positive|negative|mixed|inconclusive","confidence":"high|medium|low","summary":"简短、保守的结论"}
+    不要把相关性表述为确定因果；如果有同期其他动作、数据覆盖不足或观察窗口太短，降低置信度并在 summary 中说明。
   PROMPT
 
   PAGE_TRANSLATION_PROMPT = <<~PROMPT.squish.freeze
@@ -150,6 +159,14 @@ class Agent < ApplicationRecord
       tools: [ "save_sku_plan" ],
       enabled: true,
       default_system_prompt: SKU_PLANNER_DEFAULT_PROMPT,
+      default_model_id: "deepseek-v4-flash",
+      default_temperature: 0.1
+    },
+    "sku_plan_evaluation" => {
+      name: "SKU Plan Evaluation",
+      tools: [],
+      enabled: true,
+      default_system_prompt: SKU_PLAN_EVALUATION_PROMPT,
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.1
     }

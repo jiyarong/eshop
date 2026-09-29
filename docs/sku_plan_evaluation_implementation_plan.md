@@ -323,3 +323,105 @@ context_version
 5. 用统一周度 Job 串联 Evaluation、Diagnosis、Planner。
 
 Planning Cycle 父表、延迟复评和结构化 `success_metrics` 可以作为第二阶段增强，避免第一版引入过多抽象。
+
+## 11. 未完成项执行计划提示词
+
+以下提示词用于交给新的 Agent 执行剩余工作。它以当前代码和本计划为基础，不要重复实现已经存在的 Plan、Evaluation、Planning Cycle、历史 Context 或页面功能。
+
+```text
+你负责完成本仓库 SKU Diagnosis -> Plan -> Action -> Evaluation 闭环的剩余工作。
+
+先阅读并遵守：
+- 根目录 AGENTS.md；
+- docs/sku_plan_evaluation_implementation_plan.md；
+- 当前工作区已有修改，不得回滚或覆盖其他 Agent 的改动。
+
+## 业务时间约束
+
+- 所有日期和周期使用 Asia/Shanghai。
+- 重要利润数据在每周一 18:00 后才稳定可用。
+- 自动 Diagnosis、Evaluation、Planner 必须统一在每周二凌晨执行；目标触发时间为周二 03:30 Asia/Shanghai。
+- 周二 Pipeline 处理的当前日期是周二：先评估上一自然周，再运行当前周期 Diagnosis，确认规则完成后生成当前周期 Planner Plan。
+- 不允许继续使用周一 07:00 触发闭环，也不允许让自动评估早于上一计划的 execution_deadline。
+
+## 先确认现状
+
+检查以下实现，不要重复造轮子：
+- ErpAI::SkuDiagnosisRunner
+- ErpAI::SkuPlannerRunner
+- Ec::SkuOperationPlan
+- Ec::SkuPlanningCycle 与 Ec::SkuPlanningCycleLock
+- Ec::SkuOperationPlanEvaluationRunner
+- AITasks::SkuPlanningPipelineJob
+- Ec::OperationActionPlanMatcher
+- ErpAI::SkuPlannerContextBuilder
+- config/recurring.yml
+
+## 必须完成的改动
+
+### 1. 统一自动调度
+
+- 将 sku_planning_pipeline 调整为每周二 03:30 Asia/Shanghai。
+- 选择唯一的自动编排入口：Pipeline 内部已经同步执行 Evaluation、Diagnosis、Diagnosis gate、Planner，因此不要再用独立 recurring 任务重复执行同一批 Diagnosis。保留 SkuDiagnosisJob 供页面和人工调用；如保留自动入口，必须证明不会与 Pipeline 重复写入。
+- 不为 SkuPlannerJob 或 SkuOperationPlanEvaluationJob 增加并行 recurring；它们分别保留为人工 Planner 和人工重新评估入口。
+- 更新所有 schedule 测试，明确验证周二 03:30、没有周一旧入口、没有库存健康/动作效果/等级巡检的隐式 recurring。
+
+### 2. 加入数据就绪保护
+
+- Pipeline 在 Evaluation 前检查上一周利润报表及其依赖数据已经达到可用条件；数据不足时使用 Active Job 有限重试或明确的等待状态，不得直接把缺数写成 negative。
+- 不要只依赖两个 cron 的先后顺序。将数据就绪判断写成可测试的服务或明确的查询条件，并记录失败原因。
+- 检查周一 18:00 之后的利润数据同步与报表刷新是否已经完成；如果仍可能晚到，调整重试窗口或把触发时间延后，但最终必须保持在周二凌晨执行。
+
+### 3. 让自动 Evaluation 真正调用 Evaluation Agent
+
+- Pipeline 调用 Ec::SkuOperationPlanEvaluationRunner 时必须传入 Agent.ensure_fixed!("sku_plan_evaluation") 和 ErpAI::DefaultClient.new。
+- 保留当前规则：没有动作时执行状态为 not_started/not_applicable，效果为 inconclusive，不调用 AI 让模型猜测负面效果。
+- 有动作时保存 Evaluation Conversation、原始 metrics、evidence、action_ids、evaluator_version、confidence 和 effectiveness。
+- 保持按 plan_id + observation_to 幂等，失败可重试并保留 failed 记录。
+
+### 4. 修正执行截止日和观察窗口
+
+- 周二自动评估时，上一周期的 execution_deadline 已经过去，必须能看到截止日前发生的全部 OperationAction。
+- 核对 metrics 的 to_date、observation_to 和 execution_deadline 的关系；如果动作宽限期属于评估范围，指标观察窗口也要覆盖同一业务范围，不能出现动作算入评估但指标停在周日的矛盾。
+- 完成评估后正确推进 Plan 的 lifecycle_status、evaluation_status 和 Planning Cycle 状态；历史周期不能因为 is_latest 变化而丢失或继续被错误匹配。
+
+### 5. 补齐 Action 归属
+
+- 在不发明新 operation_type 的前提下，检查现有动作记录器实际记录的分仓、入库、补货事件。
+- 为 warehouse_distribution 增加正确的目标/操作匹配，或明确现有动作类型无法表达该计划并补齐最小必要的记录字段。
+- 添加历史周期、Listing scope、SKU scope、截止日和宽限期的 Matcher 测试。
+
+### 6. 修复 Diagnosis 周期语义
+
+- 周二 Pipeline 必须执行当天适用的 daily 和 weekly Diagnosis Rule。
+- Diagnosis gate 必须检查所有启用且适用于 SKU 的规则，不能因为 gate 与 Runner 使用了错误日期而漏掉 weekly 规则。
+- 保持 manual 规则只在明确传入 rule_ids 时执行。
+
+## 验收标准
+
+1. config/recurring.yml 只有一个周二 03:30 的闭环自动入口；周一 07:00 不再触发。
+2. 以周二日期运行 Pipeline 时，调用顺序严格为 Evaluation -> Diagnosis -> completion gate -> Planner。
+3. 自动 Evaluation 在有动作时创建 sku_plan_evaluation Conversation；无动作时为 inconclusive。
+4. 上一周期 execution_deadline 之前和宽限期内的动作都能正确归属并进入 Evaluation evidence。
+5. weekly Diagnosis Rule 在周二自动执行，Planner 只有在全部适用规则完成后才能运行。
+6. warehouse_distribution、replenishment、price、advertising、listing_attribute、listing_image 的已支持动作都有归属测试；无法自动归属的类型必须明确记录为未匹配。
+7. 连续运行同一周期两次不会重复创建当前 revision 或重复 Evaluation 行；人工 rerun 才创建新 revision。
+8. 所有新增展示文案继续使用 Rails I18n。
+
+## 验证命令
+
+执行 Rails 命令前初始化 rbenv：
+
+    eval "$(/opt/homebrew/bin/rbenv init - zsh)"
+
+至少运行：
+
+    bin/rails zeitwerk:check
+    bin/rails test test/jobs/ai_tasks/sku_planning_pipeline_job_test.rb test/jobs/ai_tasks/sku_operation_plan_evaluation_job_test.rb
+    bin/rails test test/services/ec/sku_operation_plan_evaluation_runner_test.rb test/services/ec/sku_planning_cycle_lock_test.rb
+    bin/rails test test/services/ec/listing_change_recorder_test.rb test/services/ec/sku_batch_action_recorder_test.rb
+    bin/rails test test/services/erp_ai/sku_diagnosis_runner_test.rb test/services/erp_ai/sku_planner_runner_test.rb test/services/erp_ai/sku_planner_context_builder_test.rb
+    git diff --check
+
+最终报告必须列出：实际自动执行时间、数据就绪判断、Evaluation Agent 是否被自动调用、未匹配动作类型、测试结果和仍存在的风险。
+```

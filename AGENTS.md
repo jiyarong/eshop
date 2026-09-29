@@ -112,6 +112,61 @@
   - `Ec::OperationTaskGenerator`
   - 以上整套旧库存快照/汇总机制已从项目移除，不应再作为当前实现参考
 
+## SKU Diagnosis -> Plan -> Action -> Evaluation 闭环
+
+SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是一个计划周期。日期计算、事件归属、动作匹配和评估观察窗口必须使用同一时区；不要用服务器本地时区或 `plan_date` 代替执行周期。
+
+### Diagnosis
+
+- 诊断入口是 `ErpAI::SkuDiagnosisRunner`（任务：`AITasks::SkuDiagnosisJob`）。它按启用且适用于当前 SKU 的 `Ec::SkuDiagnosisRule` 运行，并通过 `save_sku_event` 保存每条规则的最新诊断事件。
+- 诊断事件的 `severity` 只能使用 `info`、`warning`、`critical`。`info` 事件是信息记录，不得作为 Planner 的计划依据；Planner 只读取当前 SKU 最新的非 `info` 通用诊断事件。
+- 建议动作事件使用 `scope: advise`，属于诊断输出，不要把它当作已执行的运营动作，也不要让 Planner 通过旧建议事件推断动作已完成。
+- 事件必须绑定当前 SKU、规则 `sub_agent_id` 和生成会话；保存或更新事件时保持“同一 SKU、同一规则的最新事件”语义。
+
+### Plan
+
+- 计划入口是 `ErpAI::SkuPlannerRunner`，计划通过 `save_sku_plan` 创建到 `Ec::SkuOperationPlan`。
+- Plan 的 `referer` 必须引用当前 SKU 最新的非 `info` Diagnosis event ID；不得引用其他 SKU、旧版本或没有诊断依据的事件。`scope` 只能是 `SKU` 或 `LISTING`，`LISTING` 的 `scope_id` 必须属于当前 SKU。
+- 计划周期使用 `planning_period_start`、`planning_period_end` 和 `execution_deadline`：周期从周一开始，到周日结束，默认执行截止日为周日后 2 天。`plan_date` 仅表示生成日期，`retain_until` 只用于兼容动作匹配的保留时间。
+- Plan 的状态分开表达不同含义：
+  - `lifecycle_status`: `active`、`cancelled`、`expired`；
+  - `execution_status`: `not_started`、`partial`、`executed`、`not_applicable`；
+  - `evaluation_status`: `pending`、`insufficient_data`、`evaluated`、`failed`。
+  旧 `status=done/ignored` 只作为兼容字段同步到执行或生命周期状态，不要用一个状态字段推断整个计划生命周期。
+- `is_latest` 只是当前页面展示指针，不能用来决定历史计划是否仍能接收动作、是否需要评估或是否已经结束。
+- Planner 的历史 Context 默认读取最近 4 个已结束周期，最多保留 24 条计划；最近 12 个周期中效果为 `negative`/`inconclusive`、未执行/部分执行、没有动作或重复方向的异常计划需要额外保留。历史结果用于调整判断，不得机械复制上一周期计划。
+
+### Planning Cycle 与流水线
+
+- `Ec::SkuPlanningCycle` 表示一个 SKU 在一个自然周的计划集合，状态为 `pending -> generating -> active -> closed -> evaluated`，失败时为 `failed`。同一 SKU、同一周期通过 `revision` 和 `is_current` 管理重跑历史。
+- 任务重试或从某个阶段恢复时复用当前周期 revision；只有明确的人工 Planner 重跑才创建新 revision。不要删除旧 revision 或覆盖其 Plan / Evaluation 历史。
+- 周度编排任务是 `AITasks::SkuPlanningPipelineJob`，生产入口在 `config/recurring.yml` 的每周一 07:00（Asia/Shanghai）：
+  1. 评估上一完整自然周的 Plan；
+  2. 运行当前周期 Diagnosis；
+  3. 确认每个适用且启用的诊断规则都已生成当前最新事件；
+  4. 运行当前周期 Planner。
+  阶段失败应按现有有限重试机制恢复，不得在 Planner 诊断未完成时生成计划。
+
+### Action
+
+- 运营动作通过 `Ec::OperationAction` 的 `plan_id` 归属 Plan。创建或记录 Listing、广告、价格、补货等动作时，统一调用 `Ec::OperationActionPlanMatcher` 自动匹配。
+- 匹配条件包括 SKU、目标/操作类型、`SKU` 或 `LISTING` 范围、动作发生时间、计划创建时间、`lifecycle_status=active`，以及 `planning_period_start <= action_date <= execution_deadline`。历史周期 Plan 在截止日（含宽限期）内仍可匹配；不要只查询 `latest`、`retained` 或当前周期计划。
+- 匹配成功后将 `operation_actions.plan_id` 写回，并把计划执行状态更新为 `executed`；取消的 Plan 不得继续接收动作。
+
+### Evaluation
+
+- 评估入口是 `Ec::SkuOperationPlanEvaluationRunner`，异步任务为 `AITasks::SkuOperationPlanEvaluationJob`。默认评估当前日期之前的上一完整自然周，不通过 `is_latest` 选择计划；单个计划可传 `plan_id` 或 `sku_code` 重评。
+- 评估观察窗口覆盖计划周期起点至 `execution_deadline`，动作证据来自该窗口内已绑定的 `OperationAction`；指标查询默认从计划周期前 4 周开始，直到观察结束日。
+- 评估先记录执行证据和确定性指标，再按配置使用 Evaluation Agent；没有可用 AI 结果时可复用已有运营动作效果诊断或确定性指标结果。效果值只能是 `positive`、`negative`、`mixed`、`inconclusive`，置信度只能是 `high`、`medium`、`low`。
+- 没有动作时执行状态为 `not_started`（取消计划为 `not_applicable`），效果必须为 `inconclusive`，不得把未执行误判为 `negative`。指标不可用或证据不足时，Plan 使用 `evaluation_status=insufficient_data`。
+- `Ec::SkuOperationPlanEvaluation` 按 `plan_id + observation_to` 幂等写入，保留原始 `metrics`、动作证据、`action_ids`、会话 ID、评估版本和 `evaluated_at`。评估过程状态使用 `pending`、`running`、`succeeded`、`failed`；失败允许重试并保留失败记录。
+
+### 页面与入口
+
+- SKU 工作台和详情页的 AI 诊断/Planner 区域位于 `/reports/skus`、`/reports/skus/:sku_code`；计划详情位于 `/reports/skus/:sku_code/plans/:plan_id`。
+- 计划详情页的“重新评估”入口为 `POST /reports/skus/:sku_code/plans/:plan_id/evaluate`，操作使用异步 Evaluation Job；计划详情同时展示评估历史和同周期 revision 历史。
+- 所有新增页面、按钮、状态和错误文案必须通过 Rails I18n 管理；Controller、ERB、helper 和 Stimulus 中不要新增硬编码展示文本。
+
 ## 通用日快照机制
 
 - 通用快照表为 `ec_snapshots`，模型为 `Ec::Snapshot`。
