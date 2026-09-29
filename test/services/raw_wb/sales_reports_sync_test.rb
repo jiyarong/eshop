@@ -87,4 +87,92 @@ class RawWb::SalesReportsSyncTest < ActiveSupport::TestCase
     assert_equal 835_651_868, detail.wb_report_id
     assert_equal Date.current, detail.rr_dt
   end
+
+  test "requests finance details one day at a time with small pages" do
+    bodies = []
+    item = method(:finance_item)
+    client = Object.new
+    client.define_singleton_method(:post) do |_service, _path, body|
+      bodies << body
+      [item.call(900_000 + bodies.size)]
+    end
+    stub_finance_client(client, from: Date.current - 2)
+
+    assert_equal 3, @sync.send(:sync_finance_details)
+    assert_equal 3, bodies.size
+    bodies.each do |body|
+      assert_equal body[:dateFrom], body[:dateTo]
+      assert_equal RawWb::Syncs::FinanceDetails::FINANCE_PAGE_SIZE, body[:limit]
+    end
+    assert_equal [Date.current, Date.current - 1, Date.current - 2].map(&:iso8601), bodies.map { |b| b[:dateFrom] }
+  end
+
+  test "pages within a day by rrdid until a short page" do
+    page_size = RawWb::Syncs::FinanceDetails::FINANCE_PAGE_SIZE
+    full_page = (1..page_size).map { |i| finance_item(100_000 + i) }
+    bodies = []
+    last_page = [finance_item(200_000)]
+    client = Object.new
+    client.define_singleton_method(:post) do |_service, _path, body|
+      bodies << body
+      bodies.size == 1 ? full_page : last_page
+    end
+    stub_finance_client(client, from: Date.current)
+
+    assert_equal page_size + 1, @sync.send(:sync_finance_details)
+    assert_equal [0, 100_000 + page_size], bodies.map { |b| b[:rrdid] }
+  end
+
+  test "retries only the current page after a network error" do
+    page_size = RawWb::Syncs::FinanceDetails::FINANCE_PAGE_SIZE
+    full_page = (1..page_size).map { |i| finance_item(300_000 + i) }
+    bodies = []
+    last_page = [finance_item(400_000)]
+    client = Object.new
+    client.define_singleton_method(:post) do |_service, _path, body|
+      bodies << body
+      case bodies.size
+      when 1 then full_page
+      when 2 then raise Net::OpenTimeout
+      when 3 then raise OpenSSL::SSL::SSLError, "SSL_read: unexpected eof while reading"
+      else last_page
+      end
+    end
+    stub_finance_client(client, from: Date.current)
+
+    assert_equal page_size + 1, @sync.send(:sync_finance_details)
+    assert_equal [0, 300_000 + page_size, 300_000 + page_size, 300_000 + page_size], bodies.map { |b| b[:rrdid] }
+  end
+
+  test "raises after exhausting network retries so the step is marked failed" do
+    calls = 0
+    client = Object.new
+    client.define_singleton_method(:post) do |*_args|
+      calls += 1
+      raise Errno::ECONNRESET
+    end
+    stub_finance_client(client, from: Date.current)
+
+    assert_raises(Errno::ECONNRESET) { @sync.send(:sync_finance_details) }
+    assert_equal RawWb::Syncs::FinanceDetails::NETWORK_RETRY_LIMIT + 1, calls
+  end
+
+  private
+
+  def stub_finance_client(client, from:)
+    @sync.instance_variable_set(:@client, client)
+    @sync.instance_variable_set(:@from, from)
+    @sync.define_singleton_method(:sleep) { |_seconds| }
+  end
+
+  def finance_item(rrdid)
+    {
+      "rrdId" => rrdid,
+      "reportId" => 835_651_868,
+      "nmId" => 123_456,
+      "sellerOperName" => "Продажа",
+      "forPay" => "1.00",
+      "rrDate" => Date.current.iso8601
+    }
+  end
 end
