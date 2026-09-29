@@ -1,5 +1,7 @@
 module ErpAI
   class SkuDiagnosisRunner
+    class Failure < StandardError; end
+
     AGENT_CODE = "sku_diagnosis".freeze
     TIME_ZONE = "Asia/Shanghai".freeze
     SUMMARY_MIN_LATEST_EVENT_COUNT = 5
@@ -89,13 +91,15 @@ module ErpAI
       else
         batch_candidate_skus
       end
+      failures = []
       skus.each do |sku|
         rules.each do |rule|
           next if rule_ids.nil? && !rule.applies_to_sku?(sku)
 
-          run_rule(agent, user, sku, rule)
+          failures << [ sku, rule ] unless run_rule(agent, user, sku, rule)
         end
       end
+      raise Failure, failures.map { |sku, rule| "#{sku.sku_code}/#{rule.id}" }.join(", ") if failures.any?
     end
 
     def self.batch_sku_codes(as_of_date: nil)
