@@ -90,6 +90,45 @@ class RawOzonAdsReportRunnerTest < ActiveSupport::TestCase
     assert_nil report.completed_at
   end
 
+  test "keeps a submitted report resumable after a network error" do
+    client = FakeClient.new
+    client.define_singleton_method(:get) do |path, params = {}|
+      raise Net::ReadTimeout if path == "/api/client/statistics/report-1"
+
+      super(path, params)
+    end
+    runner = RawOzon::Ads::ReportRunner.new(account: @account, client: client, poll_interval: 0, poll_timeout: 1)
+    args = { report_type: "performance_ppc_sku_spends", endpoint: "/api/client/statistics/json",
+      period_from: Date.new(2026, 7, 22), period_to: Date.new(2026, 7, 22),
+      request_body: { campaigns: ["101"], dateFrom: "2026-07-22", dateTo: "2026-07-22" } }
+
+    assert_raises(Net::ReadTimeout) { runner.run(**args) { { "UUID" => "report-1" } } }
+
+    report = RawOzon::AdReportRun.last
+    assert_equal "processing", report.state
+    assert_equal "report-1", report.external_uuid
+
+    retry_runner = RawOzon::Ads::ReportRunner.new(account: @account, client: FakeClient.new,
+      poll_interval: 0, poll_timeout: 1)
+    body = retry_runner.run(**args) { flunk "must resume the submitted report" }
+
+    assert_match "SKU", body
+    assert_equal 1, RawOzon::AdReportRun.where(account: @account).count
+    assert_equal "completed", report.reload.state
+  end
+
+  test "marks the run failed when a network error happens before Ozon returns a UUID" do
+    runner = RawOzon::Ads::ReportRunner.new(account: @account, client: FakeClient.new, poll_interval: 0, poll_timeout: 1)
+
+    assert_raises(Errno::ECONNRESET) do
+      runner.run(report_type: "performance_ppc_sku_spends", endpoint: "/api/client/statistics/json",
+        period_from: Date.new(2026, 7, 22), period_to: Date.new(2026, 7, 22),
+        request_body: { campaigns: ["101"] }) { raise Errno::ECONNRESET }
+    end
+
+    assert_equal "failed", RawOzon::AdReportRun.last.state
+  end
+
   test "adopts a matching active ppc report from Ozon" do
     request = { campaigns: %w[101 102], dateFrom: "2026-07-22", dateTo: "2026-07-23" }
     external = [{ "meta" => { "UUID" => "report-1", "state" => "IN_PROGRESS", "request" => {

@@ -3,6 +3,9 @@ module RawOzon
     module PerformancePpcSkuSpends
       ARCHIVED_STATE = "CAMPAIGN_STATE_ARCHIVED"
       ARCHIVED_CAMPAIGN_LOOKBACK_MONTHS = 4
+      # 网络错误只重试当前批次；已完成批次的花费保留在内存中，全部批次成功后才写库。
+      PPC_BATCH_RETRY_LIMIT = 10
+      PPC_BATCH_RETRY_WAIT = 15
 
       # POST /api/client/statistics/json（异步，每批 ≤10 campaigns）
       # 用 totals.moneySpent 对 per-SKU rows 归一化，消除日舍入误差。
@@ -20,6 +23,7 @@ module RawOzon
         sku_spends = Hash.new(0.0)
         batches.each_with_index do |batch, idx|
           log "  PPC batch #{idx + 1}/#{batches.size} 提交..."
+          network_retries = 0
           begin
             request = {
               campaigns: batch,
@@ -33,6 +37,14 @@ module RawOzon
               @perf_client.post('/api/client/statistics/json', request)
             end
             accumulate_ppc_spends(JSON.parse(raw), sku_spends) if raw
+          rescue *PerformanceClient::NETWORK_ERRORS => e
+            network_retries += 1
+            raise if network_retries > PPC_BATCH_RETRY_LIMIT
+
+            log "  PPC batch #{idx + 1}/#{batches.size} #{e.class}; " \
+                "retry #{network_retries}/#{PPC_BATCH_RETRY_LIMIT} in #{PPC_BATCH_RETRY_WAIT}s", level: :warn
+            sleep PPC_BATCH_RETRY_WAIT
+            retry
           rescue RawOzon::Ads::ReportRunner::PollTimeout, PerformanceClient::RetryableError => e
             log "  PPC batch #{idx + 1}/#{batches.size} 暂停: #{e.message}", level: :warn
             raise
