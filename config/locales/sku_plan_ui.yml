@@ -1,0 +1,93 @@
+zh:
+  reports:
+    sku_detail:
+      planner:
+        planning_period: "计划周期"
+        execution_deadline: "执行截止"
+        execution_status: "执行状态"
+        evaluation_status: "评估状态"
+        evaluation: "效果评估"
+        effectiveness: "效果"
+        confidence: "置信度"
+        evaluation_meta: "效果：%{effectiveness} · 置信度：%{confidence}"
+        execution_statuses:
+          not_started: "未开始"
+          partial: "部分执行"
+          executed: "已执行"
+          not_applicable: "不适用"
+        evaluation_statuses:
+          pending: "待评估"
+          insufficient_data: "数据不足"
+          evaluated: "已评估"
+          failed: "评估失败"
+        effectivenesses:
+          positive: "可能有效"
+          negative: "可能不利"
+          mixed: "影响混合"
+          inconclusive: "无法判断"
+        confidences:
+          high: "高"
+          medium: "中"
+          low: "低"
+en:
+  reports:
+    sku_detail:
+      planner:
+        planning_period: "Planning period"
+        execution_deadline: "Execution deadline"
+        execution_status: "Execution status"
+        evaluation_status: "Evaluation status"
+        evaluation: "Effect evaluation"
+        effectiveness: "Effect"
+        confidence: "Confidence"
+        evaluation_meta: "Effect: %{effectiveness} · Confidence: %{confidence}"
+        execution_statuses:
+          not_started: "Not started"
+          partial: "Partially executed"
+          executed: "Executed"
+          not_applicable: "Not applicable"
+        evaluation_statuses:
+          pending: "Pending"
+          insufficient_data: "Insufficient data"
+          evaluated: "Evaluated"
+          failed: "Evaluation failed"
+        effectivenesses:
+          positive: "Possibly effective"
+          negative: "Possibly negative"
+          mixed: "Mixed impact"
+          inconclusive: "Inconclusive"
+        confidences:
+          high: "High"
+          medium: "Medium"
+          low: "Low"
+ru:
+  reports:
+    sku_detail:
+      planner:
+        planning_period: "Период плана"
+        execution_deadline: "Срок выполнения"
+        execution_status: "Статус выполнения"
+        evaluation_status: "Статус оценки"
+        evaluation: "Оценка эффекта"
+        effectiveness: "Эффект"
+        confidence: "Уверенность"
+        evaluation_meta: "Эффект: %{effectiveness} · Уверенность: %{confidence}"
+        execution_statuses:
+          not_started: "Не начат"
+          partial: "Выполнен частично"
+          executed: "Выполнен"
+          not_applicable: "Не применимо"
+        evaluation_statuses:
+          pending: "Ожидает оценки"
+          insufficient_data: "Недостаточно данных"
+          evaluated: "Оценён"
+          failed: "Ошибка оценки"
+        effectivenesses:
+          positive: "Возможный положительный эффект"
+          negative: "Возможный негативный эффект"
+          mixed: "Смешанный эффект"
+          inconclusive: "Недостаточно данных"
+        confidences:
+          high: "Высокая"
+          medium: "Средняя"
+          low: "Низкая"

@@ -27,9 +27,20 @@
       <div><dt><%= t("reports.sku_detail.planner.target") %></dt><dd><%= t("reports.sku_detail.planner.targets.#{plan.target}") %></dd></div>
       <div><dt><%= t("reports.sku_detail.planner.operation") %></dt><dd><%= t("reports.sku_detail.planner.operations.#{plan.operation}") %></dd></div>
       <div><dt><%= t("reports.sku_detail.planner.status") %></dt><dd><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.planning_period") %></dt><dd><%= plan.period_start.iso8601 %> - <%= plan.period_end.iso8601 %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.execution_deadline") %></dt><dd><%= plan.execution_deadline.iso8601 %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.execution_status") %></dt><dd><%= t("reports.sku_detail.planner.execution_statuses.#{plan.execution_status}") %></dd></div>
+      <div><dt><%= t("reports.sku_detail.planner.evaluation_status") %></dt><dd><%= t("reports.sku_detail.planner.evaluation_statuses.#{plan.evaluation_status}") %></dd></div>
       <div><dt><%= t("reports.sku_detail.planner.referer") %></dt><dd><%= render "reports/sku_operation_plan_referers", plan: plan, events_by_id: events_by_id, dom_id_prefix: referer_dom_id_prefix %></dd></div>
       <div><dt><%= t("reports.sku_detail.fields.created_at") %></dt><dd><%= display_time(plan.created_at) %></dd></div>
     </dl>
+    <% if (evaluation = plan.latest_evaluation) %>
+      <section class="sku-operation-plan-dialog__section">
+        <h4 class="section-title"><%= t("reports.sku_detail.planner.evaluation") %></h4>
+        <p><%= t("reports.sku_detail.planner.evaluation_meta", effectiveness: t("reports.sku_detail.planner.effectivenesses.#{evaluation.effectiveness}"), confidence: t("reports.sku_detail.planner.confidences.#{evaluation.confidence}")) %></p>
+        <p><%= evaluation.summary %></p>
+      </section>
+    <% end %>
     <section class="sku-operation-plan-dialog__section">
       <h4 class="section-title"><%= t("reports.sku_detail.planner.message") %></h4>
       <div class="sku-planner-dialog__message" data-controller="markdown">

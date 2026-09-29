@@ -7,6 +7,7 @@ class Conversation < ApplicationRecord
   has_many :ai_diagnosis_events, class_name: "Ec::AIDiagnosisEvent", dependent: :nullify
   has_many :ai_suggestions, class_name: "Ec::AISuggestion", dependent: :nullify
   has_many :sku_operation_plans, class_name: "Ec::SkuOperationPlan", dependent: :nullify
+  has_many :sku_operation_plan_evaluations, class_name: "Ec::SkuOperationPlanEvaluation", dependent: :nullify
 
   validates :agent, :user, presence: true
 

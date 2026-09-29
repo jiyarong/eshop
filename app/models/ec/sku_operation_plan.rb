@@ -1,6 +1,8 @@
 module Ec
   class SkuOperationPlan < ApplicationRecord
     self.table_name = "ec_ai_sku_operation_plans"
+    TIME_ZONE = "Asia/Shanghai".freeze
+    EXECUTION_GRACE_DAYS = 2
 
     TARGET_ALIASES = {
       "价格" => "price",
@@ -22,8 +24,12 @@ module Ec
     belongs_to :sku, class_name: "Ec::Sku"
     belongs_to :conversation, optional: true
     has_many :operation_actions, class_name: "Ec::OperationAction", foreign_key: :plan_id, dependent: :nullify
+    has_many :evaluations, class_name: "Ec::SkuOperationPlanEvaluation", foreign_key: :plan_id, dependent: :destroy
 
     enum :status, { active: "active", done: "done", ignored: "ignored" }, validate: true
+    enum :lifecycle_status, { active: "active", cancelled: "cancelled", expired: "expired" }, prefix: true, validate: true
+    enum :execution_status, { not_started: "not_started", partial: "partial", executed: "executed", not_applicable: "not_applicable" }, prefix: true, validate: true
+    enum :evaluation_status, { pending: "pending", insufficient_data: "insufficient_data", evaluated: "evaluated", failed: "failed" }, prefix: true, validate: true
     enum :target, {
       price: "price",
       advertising: "advertising",
@@ -41,16 +47,56 @@ module Ec
       maintain: "maintain"
     }, validate: true
 
-    before_validation :set_retain_until, on: :create
     before_validation :set_plan_date, on: :create
+    before_validation :set_planning_period, on: :create
+    before_validation :set_execution_deadline, on: :create
+    before_validation :set_retain_until, on: :create
     before_validation :set_completed_at
     before_validation :normalize_plan_values
+    before_validation :sync_status_dimensions
 
-    validates :message, :retain_until, :plan_date, presence: true
+    validates :message, :retain_until, :plan_date, :planning_period_start, :planning_period_end, :execution_deadline, presence: true
     validate :referer_must_be_present
 
     scope :retained, -> { where("retain_until > ?", Time.current) }
     scope :latest, -> { where(is_latest: true) }
+    scope :for_period, ->(period_start) { where(planning_period_start: period_start) }
+    scope :before_period, ->(period_start) { where("planning_period_start < ?", period_start) }
+
+    def self.period_for(date)
+      date.to_date.beginning_of_week(:monday)
+    end
+
+    def self.period_end_for(date)
+      period_for(date) + 6.days
+    end
+
+    def self.execution_deadline_for(date)
+      period_end_for(date) + EXECUTION_GRACE_DAYS.days
+    end
+
+    def cycle
+      planning_period_start..planning_period_end
+    end
+
+    def period_start
+      planning_period_start
+    end
+
+    def period_end
+      planning_period_end
+    end
+
+    def latest_evaluation
+      return evaluations.max_by { |evaluation| [ evaluation.observation_to, evaluation.id ] } if evaluations.loaded?
+
+      evaluations.order(observation_to: :desc, id: :desc).first
+    end
+
+    def action_matchable_at?(time)
+      date = time.in_time_zone(TIME_ZONE).to_date
+      lifecycle_status == "active" && planning_period_start <= date && execution_deadline >= date
+    end
 
     def self.referenced_events_by_sku_id(plans)
       plan_list = Array(plans)
@@ -69,16 +115,38 @@ module Ec
     private
 
     def set_retain_until
-      self.retain_until ||= 48.hours.from_now
+      return if retain_until.present?
+
+      zone = Time.find_zone!(TIME_ZONE)
+      self.retain_until = zone.local(
+        execution_deadline.year,
+        execution_deadline.month,
+        execution_deadline.day
+      ).end_of_day
     end
 
     def set_plan_date
-      self.plan_date ||= Time.current.in_time_zone("Asia/Shanghai").to_date
+      self.plan_date ||= Time.current.in_time_zone(TIME_ZONE).to_date
+    end
+
+    def set_planning_period
+      self.planning_period_start ||= self.class.period_for(plan_date)
+      self.planning_period_end ||= planning_period_start + 6.days
+    end
+
+    def set_execution_deadline
+      self.execution_deadline ||= planning_period_end + EXECUTION_GRACE_DAYS.days
     end
 
     def normalize_plan_values
       self.target = TARGET_ALIASES.fetch(target.to_s, target) if target.present?
       self.operation = OPERATION_ALIASES.fetch(operation.to_s, operation) if operation.present?
+    end
+
+    def sync_status_dimensions
+      self.lifecycle_status = "cancelled" if status.to_s == "ignored"
+      self.execution_status = "executed" if status.to_s == "done"
+      self.execution_status = "not_applicable" if lifecycle_status.to_s == "cancelled"
     end
 
     def set_completed_at

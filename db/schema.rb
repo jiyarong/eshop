@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_28_045718) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_082450) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -129,17 +129,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_28_045718) do
     t.index ["sub_agent_id", "ai_diagnosis_id"], name: "idx_ai_diagnosis_events_latest_sub_agent", where: "(is_latest AND (sub_agent_id IS NOT NULL))"
   end
 
+  create_table "ec_ai_sku_operation_plan_evaluations", force: :cascade do |t|
+    t.jsonb "action_ids", default: [], null: false
+    t.string "confidence"
+    t.bigint "conversation_id"
+    t.datetime "created_at", null: false
+    t.string "effectiveness"
+    t.datetime "evaluated_at"
+    t.string "evaluator_version"
+    t.jsonb "evidence", default: {}, null: false
+    t.string "execution_status"
+    t.jsonb "metrics", default: {}, null: false
+    t.date "observation_from", null: false
+    t.date "observation_to", null: false
+    t.bigint "plan_id", null: false
+    t.string "status", default: "succeeded", null: false
+    t.text "summary"
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id"], name: "index_ec_ai_sku_operation_plan_evaluations_on_conversation_id"
+    t.index ["plan_id", "observation_to"], name: "idx_plan_evaluations_on_plan_and_observation_to", unique: true
+    t.index ["plan_id"], name: "index_ec_ai_sku_operation_plan_evaluations_on_plan_id"
+    t.index ["status", "observation_to"], name: "idx_plan_evaluations_on_status_and_observation_to"
+  end
+
   create_table "ec_ai_sku_operation_plans", force: :cascade do |t|
     t.text "baseline"
     t.datetime "completed_at"
     t.text "constraints"
     t.bigint "conversation_id"
     t.datetime "created_at", null: false
+    t.string "evaluation_status", default: "pending", null: false
+    t.date "execution_deadline", null: false
+    t.string "execution_status", default: "not_started", null: false
     t.text "expected_effect"
     t.boolean "is_latest", default: true, null: false
+    t.string "lifecycle_status", default: "active", null: false
     t.text "message", null: false
     t.string "operation", null: false
     t.date "plan_date", null: false
+    t.date "planning_period_end", null: false
+    t.date "planning_period_start", null: false
     t.integer "priority"
     t.text "reason"
     t.jsonb "referer", default: [], null: false
@@ -151,8 +180,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_28_045718) do
     t.string "target", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_ec_ai_sku_operation_plans_on_conversation_id"
+    t.index ["planning_period_start", "planning_period_end"], name: "idx_sku_operation_plans_on_period"
     t.index ["retain_until"], name: "index_ec_ai_sku_operation_plans_on_retain_until"
     t.index ["sku_id", "plan_date"], name: "index_ec_ai_sku_operation_plans_on_sku_id_and_plan_date"
+    t.index ["sku_id", "planning_period_start"], name: "idx_sku_operation_plans_on_sku_and_period"
     t.index ["sku_id", "status"], name: "index_ec_ai_sku_operation_plans_on_sku_id_and_status"
     t.index ["sku_id"], name: "index_ec_ai_sku_operation_plans_on_sku_id"
   end
@@ -903,7 +934,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_28_045718) do
     t.decimal "wb_logistics_liter_rub", precision: 20, scale: 8
     t.decimal "wb_logistics_override_cny", precision: 20, scale: 8
     t.decimal "width_cm", precision: 12, scale: 4
-    t.index ["sku_profit_version_id", "platform", "market", "delivery_mode", "warehouse_region", "company_type"], name: "idx_sku_profit_contexts_unique", unique: true, nulls_not_distinct: true
     t.index ["sku_profit_version_id"], name: "index_ec_sku_profit_version_contexts_on_sku_profit_version_id"
   end
 
@@ -3231,7 +3261,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_28_045718) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
@@ -3372,6 +3401,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_28_045718) do
   add_foreign_key "ec_ai_diagnosis", "users", column: "submitted_by_id"
   add_foreign_key "ec_ai_diagnosis_events", "conversations"
   add_foreign_key "ec_ai_diagnosis_events", "ec_ai_diagnosis", column: "ai_diagnosis_id"
+  add_foreign_key "ec_ai_sku_operation_plan_evaluations", "conversations"
+  add_foreign_key "ec_ai_sku_operation_plan_evaluations", "ec_ai_sku_operation_plans", column: "plan_id"
   add_foreign_key "ec_ai_sku_operation_plans", "conversations"
   add_foreign_key "ec_ai_sku_operation_plans", "ec_skus", column: "sku_id"
   add_foreign_key "ec_ai_suggestions", "conversations"

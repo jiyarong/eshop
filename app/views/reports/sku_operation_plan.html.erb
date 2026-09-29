@@ -45,6 +45,22 @@
       <dd><span class="status-pill <%= @plan.active? ? 'is-active' : 'is-muted' %>"><%= t("reports.sku_detail.planner.statuses.#{@plan.status}") %></span></dd>
     </div>
     <div>
+      <dt><%= t("reports.sku_detail.planner.planning_period") %></dt>
+      <dd><%= @plan.period_start.iso8601 %> - <%= @plan.period_end.iso8601 %></dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.planner.execution_deadline") %></dt>
+      <dd><%= @plan.execution_deadline.iso8601 %></dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.planner.execution_status") %></dt>
+      <dd><%= t("reports.sku_detail.planner.execution_statuses.#{@plan.execution_status}") %></dd>
+    </div>
+    <div>
+      <dt><%= t("reports.sku_detail.planner.evaluation_status") %></dt>
+      <dd><%= t("reports.sku_detail.planner.evaluation_statuses.#{@plan.evaluation_status}") %></dd>
+    </div>
+    <div>
       <dt><%= t("reports.sku_detail.planner.referer") %></dt>
       <dd class="sku-plan-detail__references">
         <%= render "reports/sku_operation_plan_referers", plan: @plan, events_by_id: @sku_plan_referer_events, dom_id_prefix: "sku-plan-#{@plan.id}-detail-referer" %>
@@ -55,6 +71,14 @@
       <dd><time datetime="<%= @plan.created_at.iso8601 %>"><%= display_time(@plan.created_at) %></time></dd>
     </div>
   </dl>
+
+  <% if (evaluation = @plan.latest_evaluation) %>
+    <section class="sku-plan-detail__message" aria-labelledby="sku-plan-evaluation-title">
+      <h2 id="sku-plan-evaluation-title" class="section-title"><%= t("reports.sku_detail.planner.evaluation") %></h2>
+      <p><%= t("reports.sku_detail.planner.evaluation_meta", effectiveness: t("reports.sku_detail.planner.effectivenesses.#{evaluation.effectiveness}"), confidence: t("reports.sku_detail.planner.confidences.#{evaluation.confidence}")) %></p>
+      <p><%= evaluation.summary %></p>
+    </section>
+  <% end %>
 
   <section class="sku-plan-detail__message" aria-labelledby="sku-plan-message-title">
     <h2 id="sku-plan-message-title" class="section-title"><%= t("reports.sku_detail.planner.message") %></h2>

@@ -7,15 +7,19 @@ module Ec
       return if matches.empty?
 
       action.sku.with_lock do
-        plan = action.sku.sku_operation_plans.latest.active.retained
+        action_date = action.operated_at.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date
+        plan = action.sku.sku_operation_plans.active
+          .where(lifecycle_status: "active")
+          .where("planning_period_start <= ? AND execution_deadline >= ?", action_date, action_date)
+          .where("retain_until > ?", Time.current)
           .where("created_at <= ?", action.operated_at)
-          .order(created_at: :desc, id: :desc)
+          .order(is_latest: :desc, created_at: :desc, id: :desc)
           .find do |candidate|
             matches.include?([candidate.target, candidate.operation]) && scope_matches?(candidate, action)
           end
         next unless plan
 
-        plan.update!(status: :done, completed_at: action.operated_at)
+        plan.update!(status: :done, execution_status: :executed, completed_at: action.operated_at)
         action.update!(plan: plan)
       end
     end

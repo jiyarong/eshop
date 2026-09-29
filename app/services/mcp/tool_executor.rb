@@ -308,6 +308,12 @@ module Mcp
         constraints: plan.constraints,
         expected_effect: plan.expected_effect,
         status: plan.status,
+        lifecycle_status: plan.lifecycle_status,
+        execution_status: plan.execution_status,
+        evaluation_status: plan.evaluation_status,
+        planning_period_start: plan.planning_period_start.iso8601,
+        planning_period_end: plan.planning_period_end.iso8601,
+        execution_deadline: plan.execution_deadline.iso8601,
         retain_until: plan.retain_until.iso8601
       }
     end

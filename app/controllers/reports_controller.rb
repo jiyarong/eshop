@@ -146,7 +146,7 @@ class ReportsController < ApplicationController
 
   def sku_operation_plan
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    @plan = @sku.sku_operation_plans.includes(:conversation).find(params[:plan_id])
+    @plan = @sku.sku_operation_plans.includes(:conversation, :evaluations).find(params[:plan_id])
     @sku_plan_referer_events = Ec::SkuOperationPlan.referenced_events_by_sku_id([ @plan ]).fetch(@sku.id, {})
   end
 
@@ -1029,7 +1029,7 @@ class ReportsController < ApplicationController
     @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
     load_latest_active_ai_diagnosis_risk_events_for([@sku])
     @sku_ai_diagnosis_events = @ai_diagnosis_events_by_sku_id.fetch(@sku.id, []).select { |event| event.sub_agent_id.present? }
-    @sku_operation_plan_tags = @sku.sku_operation_plans.latest.includes(operation_actions: [ :operated_by_user, :store ])
+    @sku_operation_plan_tags = @sku.sku_operation_plans.latest.includes(:evaluations, operation_actions: [ :operated_by_user, :store ])
       .order(created_at: :desc, id: :desc)
     load_sku_listing_diagnoses if @active_tab.in?(%w[basic ai_inventory_health])
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
@@ -1060,7 +1060,7 @@ class ReportsController < ApplicationController
     end
     if @active_tab == "ai_inventory_health"
       plan_dates = @sku.sku_operation_plans.select(:plan_date).distinct.order(plan_date: :desc).limit(5)
-      @sku_operation_plans_by_date = @sku.sku_operation_plans.where(plan_date: plan_dates).includes(:conversation)
+      @sku_operation_plans_by_date = @sku.sku_operation_plans.where(plan_date: plan_dates).includes(:conversation, :evaluations)
         .order(plan_date: :desc, created_at: :desc, id: :desc).group_by(&:plan_date)
       @general_diagnosis_results = @sku.ai_diagnoses
         .where(type: Ec::GeneralDiagnosis.sti_name)

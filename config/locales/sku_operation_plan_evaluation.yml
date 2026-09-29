@@ -1,0 +1,33 @@
+zh:
+  erp:
+    sku_operation_plan_evaluation:
+      summary:
+        not_started: "计划执行窗口内未发现已关联的运营动作。"
+        not_applicable: "该计划已取消，不适用本次效果评估。"
+        insufficient_data: "已发现运营动作，但当前数据不足以判断计划效果。"
+        from_action_diagnosis: "已复用运营动作效果诊断结果。"
+        deterministic_positive: "观察窗口内核心指标高于执行前基线。"
+        deterministic_negative: "观察窗口内核心指标低于执行前基线。"
+        failed: "计划效果评估失败，等待重试。"
+en:
+  erp:
+    sku_operation_plan_evaluation:
+      summary:
+        not_started: "No linked operation action was found during the execution window."
+        not_applicable: "The plan was cancelled and is not applicable to this evaluation."
+        insufficient_data: "Operation actions were found, but the available data is insufficient to judge the plan effect."
+        from_action_diagnosis: "The existing operation action effect diagnosis was reused."
+        deterministic_positive: "The core metric in the observation window is above the pre-execution baseline."
+        deterministic_negative: "The core metric in the observation window is below the pre-execution baseline."
+        failed: "Plan evaluation failed and is waiting for retry."
+ru:
+  erp:
+    sku_operation_plan_evaluation:
+      summary:
+        not_started: "В период выполнения связанное операционное действие не найдено."
+        not_applicable: "План отменён и не подлежит этой оценке."
+        insufficient_data: "Операционные действия найдены, но данных недостаточно для оценки результата плана."
+        from_action_diagnosis: "Использован существующий диагноз эффекта операционного действия."
+        deterministic_positive: "Ключевой показатель в период наблюдения выше базового уровня до выполнения."
+        deterministic_negative: "Ключевой показатель в период наблюдения ниже базового уровня до выполнения."
+        failed: "Оценка плана завершилась ошибкой и ожидает повторной попытки."

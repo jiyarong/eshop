@@ -25,13 +25,14 @@ module ErpAI
       end
     end
 
-    def self.run(sku_code: nil, user: nil, client: DefaultClient.new)
-      new(sku_code: sku_code, user: user, client: client).run
+    def self.run(sku_code: nil, user: nil, client: DefaultClient.new, context_builder: ErpAI::SkuPlannerContextBuilder)
+      new(sku_code: sku_code, user: user, client: client, context_builder: context_builder).run
     end
 
-    def initialize(sku_code: nil, user: nil, client: DefaultClient.new, runner_factory: nil)
+    def initialize(sku_code: nil, user: nil, client: DefaultClient.new, runner_factory: nil, context_builder: ErpAI::SkuPlannerContextBuilder)
       @sku_code = sku_code
       @user = user
+      @context_builder = context_builder
       @runner_factory = runner_factory || ->(agent:, user:, sku:) {
         ErpAI::AgentRunner.new(
           agent: agent,
@@ -74,6 +75,9 @@ module ErpAI
       events = latest_events_for(sku)
       return if events.empty?
 
+      plan_date = Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date
+      planning_period_start = Ec::SkuOperationPlan.period_for(plan_date)
+      historical_context = context_builder.call(sku: sku, period_start: planning_period_start)
       data_summary = events.map do |event|
         {
           id: event.id,
@@ -90,14 +94,16 @@ module ErpAI
       end
       question = <<~PROMPT
         当前 SKU：#{sku.sku_code}
+        当前计划周期：#{planning_period_start.iso8601} 至 #{(planning_period_start + 6.days).iso8601}
         可用 Listing（scope_id 使用内部 id）：#{listings.to_json}
 
         下方是该 SKU 最新的非 info 通用诊断事件。info 事件已排除；warning 和 critical 表示诊断紧迫程度，仅供经营判断参考。
+        以下是最近周期的历史 Plan / Evaluation Context。历史记录只用于识别已验证、无效、未执行或数据不足的方向，不得机械复制上一周期计划：
+        #{historical_context.to_json}
         根据这些事件制定本周期值得执行的运营计划。只使用上方列出的 Listing 内部 id；没有足够依据时不调用 save_sku_plan。
       PROMPT
 
       sku.with_lock do
-        plan_date = Time.current.in_time_zone("Asia/Shanghai").to_date
         plans = sku.sku_operation_plans
         plans.where(plan_date: plan_date).delete_all
 
@@ -109,6 +115,19 @@ module ErpAI
           data_summary: data_summary
         )
         plans.where.not(plan_date: plan_date).latest.update_all(is_latest: false)
+        if conversation.respond_to?(:context) && conversation.respond_to?(:update!)
+          conversation.update!(context: conversation.context.merge(
+            "history_plan_ids" => historical_context.fetch(:history_plan_ids),
+            "context_version" => historical_context.fetch(:context_version),
+            "planning_period_start" => planning_period_start.iso8601,
+            "planning_period_end" => (planning_period_start + 6.days).iso8601,
+            "input_summary" => {
+              "diagnosis_event_ids" => events.map(&:id),
+              "history_plan_ids" => historical_context.fetch(:history_plan_ids),
+              "cycle" => historical_context.fetch(:cycle)
+            }
+          ))
+        end
         conversation
       end
     end
@@ -124,6 +143,8 @@ module ErpAI
         .order(:position, :id)
         .to_a
     end
+
+    attr_reader :context_builder
 
     def execution_user
       User.joins(:roles).where(active: true, roles: { code: "super_admin" }).first || raise("No super admin available for SKU planner")

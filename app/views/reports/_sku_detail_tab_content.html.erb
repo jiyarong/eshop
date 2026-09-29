@@ -355,6 +355,8 @@
                       <th><%= t("reports.sku_detail.planner.referer") %></th>
                       <th><%= t("reports.sku_detail.planner.message") %></th>
                       <th><%= t("reports.sku_detail.planner.status") %></th>
+                      <th><%= t("reports.sku_detail.planner.execution_status") %></th>
+                      <th><%= t("reports.sku_detail.planner.evaluation_status") %></th>
                       <th><%= t("reports.sku_detail.planner.conversation") %></th>
                     </tr>
                   </thead>
@@ -395,6 +397,8 @@
                           </button>
                         </td>
                         <td><span class="status-pill <%= plan.active? ? 'is-active' : 'is-muted' %>"><%= t("reports.sku_detail.planner.statuses.#{plan.status}") %></span></td>
+                        <td><%= t("reports.sku_detail.planner.execution_statuses.#{plan.execution_status}") %></td>
+                        <td><%= t("reports.sku_detail.planner.evaluation_statuses.#{plan.evaluation_status}") %></td>
                         <td>
                           <% if conversation_path %>
                             <%= link_to conversation_path,
