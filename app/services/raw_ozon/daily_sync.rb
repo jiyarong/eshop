@@ -3,6 +3,8 @@ module RawOzon
   class DailySync < BaseSync
     DEFAULT_DAYS = 2
 
+    # sync_finance_transactions 已移除：Ozon 于 2026-09-08 停用 /v3/finance/transaction/list，
+    # 财务数据改由 sync_finance_accrual_by_day（/v1/finance/accrual/by-day）提供。
     STEPS = %i[
       sync_postings_fbs
       sync_postings_fbo
@@ -13,7 +15,6 @@ module RawOzon
       sync_category_attributes
       sync_product_attributes
       sync_product_stocks
-      sync_finance_transactions
       sync_finance_accrual_by_day
       sync_posting_destinations
       sync_supply_orders
