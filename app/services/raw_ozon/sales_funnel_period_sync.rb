@@ -19,12 +19,15 @@ module RawOzon
       returns
       cancellations
     ].freeze
+    # 补充指标只对开通 Premium 的店铺开放；未开通时 Ozon 返回 400 "deprecated metrics used"。
+    # 拿不到时仍写入基础指标，且不覆盖已有补充值；每次运行都会重新尝试，店铺开通后自动恢复。
     SUPPLEMENTAL_METRICS = %w[
       conv_tocart_search
       conv_tocart_pdp
       delivered_units
       position_category
     ].freeze
+    SUPPLEMENTAL_COLUMNS = %i[conv_tocart_search conv_tocart_pdp delivered_units position_category].freeze
 
     def self.run_current_week
       today = Date.current
@@ -68,12 +71,14 @@ module RawOzon
       raise ArgumentError, "selected_period_end must be on or before period_end" if selected_period_end > period_end
 
       synced_at = Time.current
-      metric_rows = fetch_metric_rows(period_start, selected_period_end)
+      @supplemental_error = nil
+      metric_rows, supplemental_fetched = fetch_metric_rows(period_start, selected_period_end)
       rows = metric_rows.values.filter_map do |entry|
         build_row(entry, period_start: period_start, period_end: period_end, synced_at: synced_at)
       end
-      upsert_rows(rows) if rows.any?
-      { ok: rows.size, fetched: rows.size, skipped: false }
+      upsert_rows(rows, include_supplemental: supplemental_fetched) if rows.any?
+      { ok: rows.size, fetched: rows.size, skipped: false,
+        supplemental: supplemental_fetched, supplemental_error: @supplemental_error }.compact
     rescue OzonClient::ApiError => e
       return skipped_result(e) if skippable_api_error?(e)
 
@@ -83,18 +88,34 @@ module RawOzon
     private
 
     def fetch_metric_rows(period_start, selected_period_end)
-      [METRICS, SUPPLEMENTAL_METRICS].each_with_index.with_object({}) do |(metrics, metric_index), rows_by_sku|
-        sleep @rate_limit_sleep if metric_index.positive?
-        offset = 0
-        loop do
-          response = @client.post(API_PATH, request_body(period_start, selected_period_end, offset, metrics))
-          data = Array(response.dig("result", "data"))
-          merge_metric_rows(rows_by_sku, data, metrics)
-          break if data.size < LIMIT
+      rows_by_sku = {}
+      fetch_metric_set(period_start, selected_period_end, METRICS, rows_by_sku)
+      sleep @rate_limit_sleep
+      [rows_by_sku, fetch_supplemental_metrics(period_start, selected_period_end, rows_by_sku)]
+    end
 
-          offset += LIMIT
-          sleep @rate_limit_sleep
-        end
+    def fetch_supplemental_metrics(period_start, selected_period_end, rows_by_sku)
+      fetch_metric_set(period_start, selected_period_end, SUPPLEMENTAL_METRICS, rows_by_sku)
+      true
+    rescue OzonClient::ApiError => e
+      raise unless skippable_api_error?(e)
+
+      @supplemental_error = e.message
+      Rails.logger.warn("[SalesFunnelPeriodSync] account=#{@account.id} supplemental metrics unavailable, " \
+        "storing basic metrics only: #{e.message.to_s.truncate(200)}")
+      false
+    end
+
+    def fetch_metric_set(period_start, selected_period_end, metrics, rows_by_sku)
+      offset = 0
+      loop do
+        response = @client.post(API_PATH, request_body(period_start, selected_period_end, offset, metrics))
+        data = Array(response.dig("result", "data"))
+        merge_metric_rows(rows_by_sku, data, metrics)
+        break if data.size < LIMIT
+
+        offset += LIMIT
+        sleep @rate_limit_sleep
       end
     end
 
@@ -148,7 +169,7 @@ module RawOzon
         conv_tocart_search: optional_decimal(metrics["conv_tocart_search"]),
         conv_tocart_pdp: optional_decimal(metrics["conv_tocart_pdp"]),
         ordered_units: integer(metrics["ordered_units"]),
-        delivered_units: integer(metrics["delivered_units"]),
+        delivered_units: optional_integer(metrics["delivered_units"]),
         revenue: decimal(metrics["revenue"]),
         returns_count: integer(metrics["returns"]),
         cancellations: integer(metrics["cancellations"]),
@@ -160,11 +181,11 @@ module RawOzon
       }
     end
 
-    def upsert_rows(rows)
+    def upsert_rows(rows, include_supplemental:)
       RawOzon::SalesFunnelPeriod.upsert_all(
         rows,
         unique_by: :idx_raw_ozon_sales_funnel_period_unique,
-        update_only: update_columns
+        update_only: include_supplemental ? update_columns : update_columns - SUPPLEMENTAL_COLUMNS
       )
     end
 
@@ -195,6 +216,10 @@ module RawOzon
 
     def integer(value)
       value.to_i
+    end
+
+    def optional_integer(value)
+      value.to_i unless value.nil?
     end
 
     def decimal(value)
