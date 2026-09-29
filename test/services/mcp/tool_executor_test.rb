@@ -144,6 +144,30 @@ module Mcp
       assert second.fetch(:is_latest)
     end
 
+    test "save_sku_event keeps the event creation time separate from a historical event date" do
+      executor = ToolExecutor.new(current_user: @user, event_date: Date.new(2026, 9, 15))
+      arguments = {
+        "sku_code" => @sku.sku_code,
+        "sub_agent_id" => 7,
+        "event_type" => "stock_risk",
+        "severity" => "warning",
+        "message" => "第一次诊断",
+        "simple_context" => "### 依据\n- 第一次"
+      }
+      first_time = Time.iso8601("2026-09-29T10:00:00+08:00")
+      second_time = Time.iso8601("2026-09-29T10:05:00+08:00")
+
+      first = travel_to(first_time) { executor.call("save_sku_event", arguments) }
+      second = travel_to(second_time) do
+        executor.call("save_sku_event", arguments.merge("message" => "第二次诊断"))
+      end
+
+      assert_equal first.fetch(:event_id), second.fetch(:event_id)
+      event = Ec::AIDiagnosisEvent.find(second.fetch(:event_id))
+      assert_equal second_time, event.created_at
+      assert_equal "第二次诊断", event.message
+    end
+
     test "save_sku_event accepts a nil sub-agent for the joint summary" do
       result = ToolExecutor.new(current_user: @user).call("save_sku_event", {
         "sku_code" => @sku.sku_code,
@@ -170,9 +194,14 @@ module Mcp
         "message" => "近四周销量上升且库存偏低；本周补充库存，补货后观察缺货率。",
         "scope" => "profit"
       }
+      created_at = Time.iso8601("2026-09-29T10:00:00+08:00")
 
-      first = executor.call("create_sku_advise", arguments)
-      second = executor.call("create_sku_advise", arguments.merge("event_type" => "优化主图"))
+      first, second = travel_to(created_at) do
+        [
+          executor.call("create_sku_advise", arguments),
+          executor.call("create_sku_advise", arguments.merge("event_type" => "优化主图"))
+        ]
+      end
 
       assert first.fetch(:success)
       assert second.fetch(:success)
@@ -184,6 +213,7 @@ module Mcp
       assert_nil events.first.advise
       assert_nil events.first.sub_agent_id
       assert_equal [ true, true ], events.map(&:is_latest)
+      assert_equal [ created_at, created_at ], events.map(&:created_at)
       assert second.fetch(:is_latest)
     end
 

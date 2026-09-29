@@ -129,7 +129,6 @@ module Mcp
         diagnosis.with_lock do
           event = diagnosis.events
             .where(sub_agent_id: sub_agent_id)
-            .where(created_at: day_start...day_end)
             .order(id: :desc)
             .first
 
@@ -139,14 +138,15 @@ module Mcp
             severity: severity,
             message: message,
             simple_context: simple_context,
-            position: 0
+            position: 0,
+            created_at: Time.current
           }
           attributes[:conversation_id] = @conversation_id if @conversation_id.present?
 
           if event
             event.update!(attributes)
           else
-            event = diagnosis.events.create!(attributes.merge(@event_date ? { created_at: day_start + 3.hours } : {}))
+            event = diagnosis.events.create!(attributes)
           end
 
           event.reload
@@ -214,7 +214,7 @@ module Mcp
           position: 0
         }
         attributes[:conversation_id] = @conversation_id if @conversation_id.present?
-        event = diagnosis.events.create!(attributes.merge(@event_date ? { created_at: day_start + 3.hours } : {}))
+        event = diagnosis.events.create!(attributes)
       end
 
       {

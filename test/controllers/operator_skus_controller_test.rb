@@ -32,7 +32,8 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       is_latest: true,
       message: "Risk details #{@token}",
       scope: "inventory",
-      details: { "available" => 3 }
+      details: { "available" => 3 },
+      created_at: Time.iso8601("2026-08-01T12:34:00+08:00")
     )
     diagnosis.events.create!(
       event_type: "grade_weekly_profit_drop",
@@ -81,6 +82,8 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
             assert_select "article.gbrain-markdown[data-markdown-target='output'][hidden]", count: 1
           end
           assert_select ".sku-ai-diagnosis-event-popover__meta", text: /诊断范围：inventory/
+          assert_select ".sku-ai-diagnosis-event-popover__event > .sku-ai-diagnosis-event-popover__meta:last-child",
+            text: "诊断时间：2026-08-01 12:34"
           assert_select "code", text: /\"available\": 3/
         end
       end
