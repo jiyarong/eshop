@@ -100,6 +100,9 @@ class ReportsController < ApplicationController
       book_batch_page: params[:book_batch_page],
       return_page: params[:return_page],
       return_restockable: params[:return_restockable],
+      physical_supply_page: inventory_physical_supply_page,
+      physical_return_filters: inventory_physical_return_filters,
+      physical_return_page: inventory_physical_return_page,
       date_to: user_today,
       time_zone: user_time_zone
     ).call
@@ -1368,7 +1371,11 @@ class ReportsController < ApplicationController
     event_types_by_sku_id = load_latest_active_ai_diagnosis_risk_event_types_for(skus)
 
     rows = skus.map do |sku|
-      fetch_inventory_row(sku, metrics: metrics_by_sku[sku.sku_code] || {}).merge(
+      fetch_inventory_row(
+        sku,
+        metrics: metrics_by_sku[sku.sku_code] || {},
+        include_expected_physical_stock: true
+      ).merge(
         strict_forecast_daily_sales: strict_forecasts.dig(sku, :forecast_daily_sales),
         ai_diagnosis_event_types: event_types_by_sku_id.fetch(sku.id, []),
         ai_diagnosis_events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, [])
@@ -1524,8 +1531,11 @@ class ReportsController < ApplicationController
     min_matches && max_matches
   end
 
-  def fetch_inventory_row(sku, metrics: {})
-    raw_row = Ec::InventoryPageRowQuery.new(sku).call
+  def fetch_inventory_row(sku, metrics: {}, include_expected_physical_stock: false)
+    raw_row = Ec::InventoryPageRowQuery.new(
+      sku,
+      include_expected_physical_stock: include_expected_physical_stock
+    ).call
 
     Ec::InventoryReportRowMetricsBuilder.call(
       raw_row,
@@ -1541,6 +1551,9 @@ class ReportsController < ApplicationController
       book_batch_page: params[:book_batch_page],
       return_page: params[:return_page],
       return_restockable: params[:return_restockable],
+      physical_supply_page: inventory_physical_supply_page,
+      physical_return_filters: inventory_physical_return_filters,
+      physical_return_page: inventory_physical_return_page,
       date_to: user_today,
       time_zone: user_time_zone
     ).call
@@ -1565,6 +1578,27 @@ class ReportsController < ApplicationController
     @store_inventory_trend_groups = @inventory_trend.fetch(:store_trends).map do |store_trend|
       store_trend.merge(chart_option: build_store_inventory_trend_chart_option(store_trend[:days]))
     end
+  end
+
+  def inventory_physical_return_filters
+    {
+      q: params[:stocktake_return_q],
+      platform: params[:stocktake_return_platform],
+      location: params[:stocktake_return_location],
+      physical_impact: params[:stocktake_return_physical_impact]
+    }
+  end
+
+  def inventory_physical_return_page
+    return params[:jump_page].presence || params[:stocktake_return_page] if params[:stocktake_section] == "returns"
+
+    params[:stocktake_return_page]
+  end
+
+  def inventory_physical_supply_page
+    return params[:jump_page].presence || params[:stocktake_supply_page] if params[:stocktake_section] == "pending_supplies"
+
+    params[:stocktake_supply_page]
   end
 
   def build_inventory_trend_chart_option(trend)

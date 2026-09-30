@@ -380,6 +380,7 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
       assert_select "option[value='normal'][selected='selected']", "普通批次"
       assert_select "option[value='wb_fbw_offset']", "WB FBW 补正"
       assert_select "option[value='untrackable_defective']", "不可追踪残次"
+      assert_select "option[value='physical_stocktake_adjustment']", "物理盘库矫正"
       assert_select "option[value='other']", "其他"
     end
     assert_select "[data-sku-batch-form-target='defectOffsetNote'][hidden] input[name='ec_sku_batch[defect_offset_note]']"
@@ -397,6 +398,59 @@ class Erp::SkuBatchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='master_sku_ids[]']", count: 0
     assert_select "input[name='ec_sku_batch[purchase_date]']"
     assert_select "input[name='return_to'][value='/erp/skus?status=active']"
+  end
+
+  test "physical stocktake flow preselects sku type and received status" do
+    get erp_new_sku_batch_path,
+      params: {
+        sku_code: @sku.sku_code,
+        batch_type: "physical_stocktake_adjustment",
+        status: "received",
+        return_to: "/reports/inventory/#{@sku.sku_code}?detail_tab=physical_stocktake"
+      },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "input[type='radio'][name='ec_sku_batch[sku_code]'][value=?][checked='checked']", @sku.sku_code
+    assert_select "select[name='ec_sku_batch[batch_type]'] option[value='physical_stocktake_adjustment'][selected='selected']",
+      "物理盘库矫正"
+    assert_select "select[name='ec_sku_batch[status]'] option[value='received'][selected='selected']", "已到货"
+  end
+
+  test "physical stocktake adjustment modal lists only matching sku adjustments" do
+    adjustment = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "PHYSICAL-LIST-#{@token}",
+      status: "received",
+      batch_type: :physical_stocktake_adjustment,
+      purchased_quantity: -6,
+      received_quantity: -6,
+      defect_offset_note: "盘亏",
+      purchase_unit_price_cny: 0
+    )
+
+    get physical_stocktake_adjustments_erp_sku_batches_path,
+      params: { sku_code: @sku.sku_code },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select "#physical-stocktake-adjustments-modal-title", "物理盘库矫正记录"
+    assert_select ".physical-stocktake-adjustments-modal__summary strong", "-6"
+    assert_select ".physical-stocktake-adjustments-table tbody tr", count: 1
+    assert_select ".physical-stocktake-adjustments-table td", text: adjustment.batch_code
+    assert_select ".physical-stocktake-adjustments-table td", text: "盘亏"
+    assert_select "a[href*='/erp/sku_batches/#{adjustment.id}'][data-turbo-method='delete'][data-turbo-frame='erp_modal']", count: 1
+    assert_select ".physical-stocktake-adjustments-table td", text: @batch.batch_code, count: 0
+
+    modal_path = physical_stocktake_adjustments_erp_sku_batches_path(sku_code: @sku.sku_code)
+    sign_in @current_user
+    delete erp_sku_batch_path(adjustment),
+      params: { return_to: modal_path },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_redirected_to modal_path
+    assert_not Ec::SkuBatch.exists?(adjustment.id)
   end
 
   test "modal edit renders batch form" do

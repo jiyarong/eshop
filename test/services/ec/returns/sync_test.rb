@@ -43,6 +43,18 @@ module Ec
         assert_equal @ozon_return, normalized.source_links.sole.source
       end
 
+      test "marks Ozon returns received by seller as restockable seller inventory" do
+        @ozon_return.update!(raw_json: { "visual" => { "status" => { "sys_name" => "ReceivedBySeller" } } })
+
+        Ec::Returns::Sync.call(raw_records: [ @ozon_return ])
+        normalized = Ec::Return.find_by!(store: @ozon_store, return_key: @ozon_return.return_id.to_s)
+
+        assert_equal "received_by_seller", normalized.process_status
+        assert_equal "seller_warehouse", normalized.inventory_location
+        assert normalized.items.sole.restockable
+        assert_equal 2, @ozon_sku.inventory_overview.dig(:summary, :return_quantity)
+      end
+
       test "normalizes WB pickup state and cancellation return" do
         result = Ec::Returns::Sync.call(raw_records: [ @wb_return ])
         normalized = Ec::Return.find_by!(store: @wb_store, return_key: @wb_return.shk_id.to_s)
@@ -91,17 +103,18 @@ module Ec
         other_account&.delete
       end
 
-      test "repeated sync is idempotent and preserves restockable" do
+      test "repeated Ozon sync resets restockable when status is no longer eligible" do
         Ec::Returns::Sync.call(raw_records: [ @ozon_return ])
         normalized = Ec::Return.find_by!(store: @ozon_store, return_key: @ozon_return.return_id.to_s)
-        normalized.items.sole.update!(restockable: true)
+
+        assert normalized.items.sole.restockable
 
         @ozon_return.update!(raw_json: { "visual" => { "status" => "MovingToSeller" } })
         Ec::Returns::Sync.call(raw_records: RawOzon::Return.where(id: @ozon_return.id))
 
         assert_equal 1, Ec::Return.where(store: @ozon_store, return_key: @ozon_return.return_id.to_s).count
         assert_equal 1, normalized.items.reload.count
-        assert normalized.items.sole.restockable
+        assert_not normalized.items.sole.restockable
         assert_equal "moving_to_seller", normalized.reload.process_status
       end
 

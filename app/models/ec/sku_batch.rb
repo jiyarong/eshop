@@ -16,7 +16,8 @@ module Ec
       normal: 1,
       wb_fbw_offset: 2,
       untrackable_defective: 3,
-      other: 4
+      other: 4,
+      physical_stocktake_adjustment: 5
     }, validate: true
 
     belongs_to :sku, class_name: "Ec::Sku", foreign_key: :sku_code, primary_key: :sku_code

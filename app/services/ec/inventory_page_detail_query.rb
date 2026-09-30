@@ -3,29 +3,33 @@ module Ec
     INCOMING_STATUSES = %w[draft ordered in_transit].freeze
     BOOK_STATUSES = %w[received closed].freeze
     BOOK_BATCH_PAGE_SIZE = 10
-    ORDER_STATUS_COLUMNS = %w[pending processing shipping signed].freeze
     PLATFORM_BUCKETS = [
       { key: "ozon_fbo", platform: "ozon", fulfillment_type: "fbo" },
       { key: "ozon_inbound", platform: "ozon", fulfillment_type: "inbound" },
       { key: "wb_fbo", platform: "wb", fulfillment_type: "fbw" },
       { key: "wb_inbound", platform: "wb", fulfillment_type: "inbound" }
     ].freeze
-    def initialize(sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to: nil, time_zone: nil)
+    def initialize(sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil,
+      physical_supply_page: nil, physical_return_filters: nil, physical_return_page: nil, date_to: nil, time_zone: nil)
       @sku = sku
-      @detail_tab = detail_tab.presence_in(%w[overview incoming book platform returns history]) || "overview"
+      @detail_tab = detail_tab.presence_in(%w[overview physical_stocktake incoming book platform returns history]) || "overview"
       @requested_book_batch_page = [book_batch_page.to_i, 1].max
       @return_page = return_page
       @return_restockable = return_restockable
+      @physical_supply_page = physical_supply_page
+      @physical_return_filters = physical_return_filters
+      @physical_return_page = physical_return_page
       @date_to = date_to || Time.current.to_date
       @time_zone = time_zone || Time.zone
     end
 
     def call
-      overview = @sku.inventory_overview
+      overview = @overview = @sku.inventory_overview
       book_batches = book_batches_scope
       pagination = book_batch_pagination(book_batches.count)
       velocity_metrics = inventory_velocity_metrics(overview[:summary])
       strict_forecast = strict_forecast_metrics(overview[:summary])
+      book_sales_distribution = Ec::InventoryOrderSalesDistributionQuery.new(@sku).call
 
       {
         sku_code: @sku.sku_code,
@@ -44,7 +48,8 @@ module Ec
         book_batches: paginate_book_batches(book_batches, pagination[:page]),
         book_batch_pagination: pagination,
         book_mini_stats: book_mini_stats(overview[:summary]),
-        book_sales_distribution: book_sales_distribution(overview[:store_rows]),
+        book_sales_distribution: book_sales_distribution,
+        physical_reconciliation: physical_reconciliation(overview, book_sales_distribution),
         return_distribution: return_distribution(overview[:store_rows]),
         return_summary: @detail_tab == "returns" ? return_summary : nil,
         book_formula: book_formula(overview[:summary]),
@@ -60,36 +65,42 @@ module Ec
 
     private
 
+    def physical_reconciliation(overview, order_distribution)
+      return unless @detail_tab.in?(%w[overview physical_stocktake])
+
+      Ec::InventoryPhysicalReconciliationQuery.new(
+        @sku,
+        overview: overview,
+        order_distribution: order_distribution,
+        supply_page: @physical_supply_page,
+        return_filters: @physical_return_filters,
+        return_page: @physical_return_page
+      ).call
+    end
+
     def return_summary
       scope = Ec::SkuReturnItemsQuery.scope_for(@sku)
       ozon_restockable = scope.where(platform: "ozon", restockable: true).sum(:quantity).to_i
-      ozon_in_transit = ozon_removal_in_transit_quantity
+      ozon_seller_received_removals = overview_seller_received_removal_quantity
       wb_scope = Ec::SkuReturnItemsQuery.scope_for_linked_orders(@sku).where(platform: "wb")
 
       {
-        ozon_returned_total: ozon_restockable,
-        ozon_fbs_in_transit: ozon_in_transit,
-        ozon_restocked_fbo: ozon_restockable - ozon_in_transit,
+        ozon_restockable_returns: ozon_restockable,
+        ozon_seller_received_removals: ozon_seller_received_removals,
         wb_returned_total: wb_scope.sum(:quantity).to_i,
         wb_accepted_total: wb_scope.where(ec_returns: { process_status: "completed" }).sum(:quantity).to_i,
         wb_fbs_in_transit: wb_scope.where.not(ec_returns: { process_status: "completed" }).sum(:quantity).to_i
       }
     end
 
-    def ozon_removal_in_transit_quantity
-      @sku.sku_products.includes(:store).where(platform: "ozon").group_by do |product|
-        product.store.ozon_raw_account_id
-      end.sum do |account_id, products|
-        RawOzon::RemovalItem
-          .deducting_return_inventory
-          .where(account_id: account_id, sku: products.map(&:platform_sku_id).compact)
-          .sum(:quantity)
-      end.to_i
+    def overview_seller_received_removal_quantity
+      @overview.dig(:summary, :ozon_seller_received_removal_quantity).to_i
     end
 
     def incoming_batches
       @incoming_batches ||= @sku.batches
         .where(status: INCOMING_STATUSES)
+        .where.not(batch_type: :physical_stocktake_adjustment)
         .order(Arel.sql(incoming_status_order_sql), :expected_arrival_on, :batch_code)
         .map do |batch|
           {
@@ -111,7 +122,10 @@ module Ec
     end
 
     def book_batches_scope
-      @sku.batches.where(status: BOOK_STATUSES).order(received_on: :desc, batch_code: :desc)
+      @sku.batches
+        .where(status: BOOK_STATUSES)
+        .where.not(batch_type: :physical_stocktake_adjustment)
+        .order(received_on: :desc, batch_code: :desc)
     end
 
     def paginate_book_batches(scope, page)
@@ -170,38 +184,24 @@ module Ec
       ]
     end
 
-    def book_sales_distribution(store_rows)
-      rows = store_rows.select { |row| row[:platform].in?(%w[wb ozon]) }.map do |row|
-        {
-          store_label: "#{platform_label(row[:platform])} * #{row[:store_name]}",
-          counts: ORDER_STATUS_COLUMNS.index_with { |column| row.dig(:order_status_counts, column).to_i }
-        }
-      end.select { |row| row[:counts].values.sum(&:to_i).positive? }
-
-      summary_row = distribution_summary_row(rows)
-
-      {
-        columns: ORDER_STATUS_COLUMNS,
-        rows: rows,
-        summary_row: summary_row[:counts].values.sum(&:to_i).positive? ? summary_row : nil
-      }
-    end
-
     def return_distribution(store_rows)
       rows = store_rows.select { |row| row[:platform].in?(%w[wb ozon]) }.map do |row|
         {
           store_label: "#{platform_label(row[:platform])} * #{row[:store_name]}",
-          return_count: row[:return_quantity].to_i
+          return_count: row[:return_quantity].to_i,
+          seller_received_removal_count: row[:ozon_seller_received_removal_quantity].to_i
         }
-      end.select { |row| row[:return_count].positive? }
+      end.select { |row| row[:return_count].positive? || row[:seller_received_removal_count].positive? }
 
       summary_return_count = rows.sum { |row| row[:return_count].to_i }
+      summary_seller_received_removal_count = rows.sum { |row| row[:seller_received_removal_count].to_i }
 
       {
         rows: rows,
-        summary_row: summary_return_count.positive? ? {
+        summary_row: (summary_return_count + summary_seller_received_removal_count).positive? ? {
           store_label_key: "summary",
-          return_count: summary_return_count
+          return_count: summary_return_count,
+          seller_received_removal_count: summary_seller_received_removal_count
         } : nil
       }
     end
@@ -346,17 +346,6 @@ module Ec
       row[key] || row[key.to_s]
     end
 
-    def distribution_summary_row(rows)
-      counts = ORDER_STATUS_COLUMNS.index_with do |column_key|
-        rows.sum { |row| row.dig(:counts, column_key).to_i }
-      end
-
-      {
-        store_label_key: "summary",
-        counts: counts
-      }
-    end
-
     def sales_quantity_for(platform)
       @sales_quantity_by_platform ||= @sku.inventory_overview[:store_rows]
         .group_by { |row| row[:platform].to_s }
@@ -376,7 +365,7 @@ module Ec
     def adjustment_quantities
       @adjustment_quantities ||= @sku.batches
         .where(status: BOOK_STATUSES)
-        .where.not(batch_type: :normal)
+        .where.not(batch_type: %i[normal physical_stocktake_adjustment])
         .group(:batch_type)
         .sum(:received_quantity)
         .transform_values(&:to_i)

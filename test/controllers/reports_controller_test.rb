@@ -278,6 +278,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     RawOzon::SalesFunnelDaily.where(account_id: @sales_ozon_account&.id).delete_all
     RawWb::SalesFunnelDaily.where(account_id: @sales_wb_account&.id).delete_all
     RawOzon::Return.where(account_id: @sales_ozon_account&.id).delete_all
+    RawOzon::SupplyOrderItem.where(
+      supply_order_id: RawOzon::SupplyOrder.where(account_id: @sales_ozon_account&.id)
+    ).delete_all
     RawOzon::SupplyOrder.where(account_id: @sales_ozon_account&.id).delete_all
     RawWb::GoodsReturn.where(account_id: @wb_sales_store&.wb_raw_account_id).delete_all
     @sales_ozon_account&.destroy
@@ -613,7 +616,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
-    fake_query_factory = lambda do |sku|
+    fake_query_factory = lambda do |sku, include_expected_physical_stock: false|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -627,7 +630,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             available_stock: 0,
             daily_sales_velocity: nil,
             turnover_days: nil,
-            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
+            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00"),
+            expected_physical_stock: (9 if include_expected_physical_stock)
           }
         end
       end
@@ -686,7 +690,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
-    fake_query_factory = lambda do |sku|
+    fake_query_factory = lambda do |sku, include_expected_physical_stock: false|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -700,7 +704,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             available_stock: 0,
             daily_sales_velocity: nil,
             turnover_days: nil,
-            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00")
+            cache_updated_at: Time.zone.parse("2026-06-22 10:00:00"),
+            expected_physical_stock: (9 if include_expected_physical_stock)
           }
         end
       end
@@ -744,7 +749,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
   test "inventory report uses inventory page row query for each filtered sku" do
     calls = []
-    fake_query_factory = lambda do |sku|
+    fake_query_factory = lambda do |sku, include_expected_physical_stock: false|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           calls << sku.sku_code
@@ -757,6 +762,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
             platform_inbound_stock: 2,
             platform_stock: 6,
             available_stock: 7,
+            expected_physical_stock: (9 if include_expected_physical_stock),
             pkg_length_cm: BigDecimal("10"),
             pkg_width_cm: BigDecimal("20"),
             pkg_height_cm: BigDecimal("30"),
@@ -803,6 +809,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", I18n.t("reports.inventory.fields.platform_inbound")
     assert_select "th", I18n.t("reports.inventory.fields.platform_stock")
     assert_select "th", I18n.t("reports.inventory.fields.overseas_available_stock")
+    assert_select "th", I18n.t("reports.inventory.fields.expected_physical_stock")
     assert_select "tbody tr.inventory-list-table__row td:nth-child(1) .inventory-list-table__subline", "10 × 20 × 30 cm"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(3) .inventory-list-table__subline", "0.0720 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(4) .inventory-list-table__subline", "0.0840 m³"
@@ -811,12 +818,13 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr.inventory-list-table__row td:nth-child(6) > div:first-child", "6"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(6) .inventory-list-table__subline", "0.0360 m³"
     assert_select "tbody tr.inventory-list-table__row td:nth-child(7) .inventory-list-table__subline", "0.0420 m³"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(8)", "1.23"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(8).inventory-list-table__metric--danger", "9"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "1.23"
     assert_select "th", I18n.t("reports.inventory.fields.strict_forecast_daily_sales")
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(9)", "0.00"
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(10)", "11.38"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(10)", "0.00"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(11)", "11.38"
     assert_select "th", I18n.t("reports.inventory.fields.turnover_days_with_procurement")
-    assert_select "tbody tr.inventory-list-table__row td:nth-child(11)", "21.14"
+    assert_select "tbody tr.inventory-list-table__row td:nth-child(12)", "21.14"
     drawer_path = report_sku_path(@sku_code, tab: "inventory")
     assert_select "a[href=?][data-turbo-frame=?]", drawer_path, "sku_detail_drawer", count: 2
     assert_select "a[href=?][data-turbo-frame=?].inventory-list-table__detail-link", drawer_path, "sku_detail_drawer"
@@ -825,7 +833,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
   test "inventory detail non turbo request renders standalone inventory detail page" do
     query_calls = []
-    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to:, time_zone:|
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, physical_supply_page: nil, physical_return_filters: nil, physical_return_page: nil, date_to:, time_zone:|
       query_calls << [sku.sku_code, detail_tab, book_batch_page, date_to, time_zone.name]
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
@@ -866,7 +874,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
   test "inventory detail turbo frame request renders drawer content" do
     query_calls = []
-    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to:, time_zone:|
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, physical_supply_page: nil, physical_return_filters: nil, physical_return_page: nil, date_to:, time_zone:|
       query_calls << [sku.sku_code, detail_tab, book_batch_page, date_to, time_zone.name]
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
@@ -900,17 +908,19 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
               { key: "ozon_net_sales", value: 4, unit_key: "quantity" }
             ],
             book_sales_distribution: {
-              columns: %w[pending processing shipping signed],
               rows: [
-                { store_label: "Ozon * 店铺1", counts: { "pending" => 1, "processing" => 2, "shipping" => 0, "signed" => 3 } }
+                { store_label: "OZON * 店铺1", fulfillment_type: "fbs", status_key: "awaiting_preparation",
+                  evidence_label: nil, source_status_label: "Ozon：待备货；节点：货件已创建",
+                  source_status_codes: "awaiting_packaging / posting_created", needs_status_repair: false,
+                  stocktake_relevant: true, quantity: 2 }
               ],
-              summary_row: { store_label_key: "summary", counts: { "pending" => 1, "processing" => 2, "shipping" => 0, "signed" => 3 } }
+              summary_row: { store_label_key: "summary", quantity: 2 }
             },
             return_distribution: {
               rows: [
-                { store_label: "Ozon * 店铺1", return_count: 1 }
+                { store_label: "Ozon * 店铺1", return_count: 1, seller_received_removal_count: 2 }
               ],
-              summary_row: { store_label_key: "summary", return_count: 1 }
+              summary_row: { store_label_key: "summary", return_count: 1, seller_received_removal_count: 2 }
             },
             book_formula: {
               items: [
@@ -970,7 +980,15 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-book-batch-table th", I18n.t("reports.inventory.fields.received_on")
     assert_select ".inventory-book-batch-table td", "2026-06-20"
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.sales_distribution")
+    assert_select ".inventory-sales-distribution-table__stocktake-note", I18n.t("reports.inventory.drawer.sales_distribution_stocktake_note")
+    assert_select ".inventory-sales-distribution-table tbody tr.inventory-sales-distribution-table__stocktake", count: 1
+    assert_select ".inventory-sales-distribution-table tbody tr:first-child td:nth-child(2)", "FBS"
+    assert_select ".inventory-sales-distribution-table tbody tr:first-child td:nth-child(3)", I18n.t("reports.inventory.drawer.sales_distribution.stages.awaiting_preparation")
+    assert_select ".inventory-sales-distribution-table tbody tr:first-child td:nth-child(4)", "Ozon：待备货；节点：货件已创建"
+    assert_select ".inventory-sales-distribution-table .inventory-distribution-table__summary td:last-child", "2"
     assert_select "h4", I18n.t("reports.inventory.drawer.sections.return_distribution")
+    assert_select ".inventory-distribution-table--narrow th", I18n.t("reports.inventory.drawer.labels.seller_received_removal_count")
+    assert_select ".inventory-distribution-table--narrow tbody tr:first-child td:last-child", "2"
     assert_select ".inventory-formula__title", I18n.t("reports.inventory.drawer.sections.formula")
 
     sign_in @current_user
@@ -986,7 +1004,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "inventory detail platform tab uses fbo fbw stock in platform formula" do
-    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, date_to:, time_zone:|
+    fake_query_factory = lambda do |sku, detail_tab:, book_batch_page:, return_page: nil, return_restockable: nil, physical_supply_page: nil, physical_return_filters: nil, physical_return_page: nil, date_to:, time_zone:|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -2491,18 +2509,27 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-metric-card__label", "采购中库存"
     assert_select ".inventory-metric-card__label", "账面可用库存"
     assert_select ".inventory-metric-card__label", "平台在库"
-    assert_select ".inventory-metric-card__label", "FBS总库存"
+    assert_select ".inventory-overview-content > .inventory-section:first-child > .inventory-metric-grid > .inventory-metric-card:nth-child(4) .inventory-metric-card__label", "FBS总库存"
+    assert_select ".inventory-overview-content > .inventory-section:first-child > .inventory-metric-grid > .inventory-metric-card:nth-child(5) .inventory-metric-card__label", "盘库应见库存"
+    assert_select ".inventory-metric-card--link[href*='detail_tab=physical_stocktake'][data-turbo-frame='inventory_drawer_content']", count: 1 do
+      assert_select ".inventory-metric-card__label", "盘库应见库存"
+    end
+    assert_select ".inventory-metric-card--link.inventory-metric-card--danger", count: 1
+    assert_select ".inventory-detail-tabs__link", text: "物理盘库"
     assert_select ".inventory-detail-tabs__link", text: "采购中库存"
     assert_select ".inventory-detail-tabs__link", text: "账面可用库存"
     assert_select ".inventory-detail-tabs__link", text: "平台在库"
     assert_select ".inventory-detail-tabs__link", text: "概览"
     assert_select ".inventory-detail-tabs__link", text: "历史趋势", count: 0
+    assert_select ".inventory-detail-tabs__link", text: "退货", count: 0
     assert_select ".inventory-detail-tabs__link[aria-current='page']", text: "概览"
     assert_select ".inventory-detail-tabs__link[data-turbo-frame='inventory_drawer_content']", count: 5
+    assert_equal %w[概览 物理盘库 采购中库存 账面可用库存 平台在库], css_select(".inventory-detail-tabs__link").map { |link| link.text.strip }
     assert_select ".inventory-overview-content", count: 1
     assert_select ".inventory-overview-content > .inventory-section", count: 3
     assert_select ".inventory-overview-content > .sku-inventory-trend", count: 1
-    assert_select ".inventory-overview-content .table-viewport.table-scroll--horizontal[data-controller~='sticky-table-header']", count: 1
+    assert_select ".inventory-overview-content .table-viewport.table-scroll--horizontal[data-controller~='sticky-table-header']", minimum: 1
+    assert_select ".inventory-physical-reconciliation", count: 0
     assert_select ".sku-inventory-trend", count: 1
     assert_select ".sku-inventory-trend [data-controller='echarts']", count: 2
     assert_select ".sku-inventory-store-trend", count: 1
@@ -2511,6 +2538,237 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   ensure
     inventory_snapshot&.destroy
     Ec::SkuBatch.where(batch_code: "INV-#{@sku_code}").delete_all
+  end
+
+  test "sku detail renders physical stocktake as a separate inventory tab" do
+    sku_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @sales_store)
+    Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "STOCKTAKE-ADJUSTMENT-#{@sku_code}",
+      status: "received",
+      batch_type: :physical_stocktake_adjustment,
+      purchased_quantity: -2,
+      received_quantity: -2,
+      defect_offset_note: "测试盘亏",
+      purchase_unit_price_cny: 0
+    )
+    stocktake_return = Ec::Return.create!(
+      platform: "ozon",
+      store: @sales_store,
+      order: @return_order,
+      return_key: "STOCKTAKE-RETURN-#{@sku_code}",
+      external_return_id: "STOCKTAKE-RETURN-#{@sku_code}",
+      external_order_number: @return_order.external_order_number,
+      return_type: "customer_return",
+      process_status: "received_by_seller",
+      inventory_location: "seller_warehouse",
+      source_status: "ReceivedBySeller",
+      source_substatus: "Товар не работает / брак",
+      requested_at: Time.zone.parse("2026-08-05 10:00:00")
+    )
+    stocktake_return.items.create!(
+      platform: "ozon",
+      store: @sales_store,
+      sku_product: sku_product,
+      item_key: "STOCKTAKE-RETURN-ITEM-#{@sku_code}",
+      quantity: 2,
+      restockable: true
+    )
+    10.times do |index|
+      stocktake_return.items.create!(
+        platform: "ozon",
+        store: @sales_store,
+        sku_product: sku_product,
+        item_key: "STOCKTAKE-RETURN-ITEM-#{index}-#{@sku_code}",
+        quantity: 1,
+        restockable: true
+      )
+    end
+
+    get report_inventory_detail_path(@sku.sku_code),
+      params: { detail_tab: "physical_stocktake" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-detail-tabs__link[aria-current='page']", text: "物理盘库"
+    assert_select ".inventory-detail-tabs__link", text: "退货", count: 0
+    assert_select ".inventory-physical-reconciliation", count: 1
+    assert_select ".inventory-physical-reconciliation .inventory-metric-card__label", text: "盘库应见库存"
+    assert_select ".inventory-physical-reconciliation .inventory-metric-card--danger .inventory-metric-card__label", text: "盘库应见库存"
+    assert_select ".inventory-physical-reconciliation__adjustment-action[data-turbo-frame='erp_modal']", text: /盘库矫正/
+    assert_select ".inventory-metric-card--warning[href*='physical_stocktake_adjustments'][data-turbo-frame='erp_modal']" do
+      assert_select ".inventory-metric-card__label", "物理盘库矫正"
+      assert_select ".inventory-metric-card__value", "-2"
+    end
+    assert_select ".inventory-physical-reconciliation__formula", text: /物理盘库矫正 -2/
+    assert_select ".inventory-physical-reconciliation__tab[data-turbo-frame='inventory_drawer_content']", count: 4
+    assert_select ".inventory-physical-reconciliation__tab[aria-current='page']", text: "FBS订单流转"
+    assert_select ".inventory-physical-reconciliation__group", count: 1
+    assert_select ".inventory-physical-reconciliation__group[data-stocktake-section='fbs_orders']", count: 1
+    assert_select ".inventory-physical-reconciliation__table tfoot .inventory-distribution-table__summary", count: 1 do
+      assert_select "td:first-child", text: "汇总"
+    end
+    assert_select ".inventory-overview-content", count: 0
+
+    sign_in @current_user
+    get report_inventory_detail_path(@sku.sku_code),
+      params: {
+        detail_tab: "physical_stocktake",
+        stocktake_section: "returns",
+        stocktake_return_q: "STOCKTAKE-RETURN",
+        stocktake_return_platform: "ozon",
+        stocktake_return_location: "seller_warehouse",
+        stocktake_return_physical_impact: "included"
+      },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-physical-reconciliation__tab[aria-current='page']", text: "退货流转"
+    assert_select ".inventory-physical-reconciliation__group", count: 1
+    assert_select ".inventory-physical-reconciliation__group[data-stocktake-section='returns']", count: 1
+    assert_select ".inventory-physical-reconciliation__group[data-stocktake-section='fbs_orders']", count: 0
+    assert_select "form.inventory-physical-return-filters[data-turbo-frame='inventory_drawer_content']", count: 1
+    assert_select "form.inventory-physical-return-filters input[name='stocktake_return_q'][value='STOCKTAKE-RETURN']", count: 1
+    assert_select "select[name='stocktake_return_platform'] option[value='ozon'][selected]", count: 1
+    assert_select "select[name='stocktake_return_location'] option[value='seller_warehouse'][selected]", count: 1
+    assert_select "select[name='stocktake_return_restockable']", count: 0
+    assert_select "select[name='stocktake_return_physical_impact'] option[value='included'][selected]", count: 1
+    assert_select ".inventory-physical-reconciliation__return-table tbody tr", count: 10
+    assert_select ".inventory-physical-reconciliation__return-table td", text: "STOCKTAKE-RETURN-#{@sku_code}"
+    assert_select ".inventory-physical-reconciliation__return-table td", text: "商品故障或残次"
+    assert_select ".inventory-physical-reconciliation__return-table .inventory-reconciliation-badge--included", text: "已计入物理库存"
+    assert_select ".inventory-pagination-bar + .table-viewport", count: 1
+    assert_select ".inventory-pagination-bar .pagination-nav .pg-btn", minimum: 3
+    assert_select ".inventory-pagination-bar a[href*='stocktake_return_page=2'][data-turbo-frame='inventory_drawer_content']", minimum: 1
+    assert_select ".inventory-pagination-bar form.pagination-jump[data-turbo-frame='inventory_drawer_content']", count: 1
+
+    sign_in @current_user
+    get report_inventory_detail_path(@sku.sku_code),
+      params: {
+        detail_tab: "physical_stocktake",
+        stocktake_section: "returns",
+        stocktake_return_q: "STOCKTAKE-RETURN",
+        stocktake_return_platform: "ozon",
+        stocktake_return_location: "seller_warehouse",
+        stocktake_return_physical_impact: "included",
+        jump_page: "2"
+      },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-physical-reconciliation__return-table tbody tr", count: 1
+    assert_select ".inventory-pagination-bar .pagination-chip", text: "第 2/2 页"
+
+    RawOzon::RemovalItem.create!(
+      account: @sales_ozon_account,
+      source_type: "stock",
+      row_key: "STOCKTAKE-REMOVAL-#{@sku_code}",
+      return_id: "STOCKTAKE-REMOVAL-#{@sku_code}",
+      sku: sku_product.platform_sku_id,
+      quantity: 3,
+      return_state: RawOzon::RemovalItem::COMPLETED_STATE,
+      box_state: RawOzon::RemovalItem::RECEIVED_BOX_STATE,
+      stock_type: "saleable",
+      synced_at: Time.current,
+      raw_json: {}
+    )
+    wb_product = Ec::SkuProduct.find_by!(sku_code: @sku.sku_code, store: @wb_sales_store)
+    wb_raw_return = RawWb::GoodsReturn.create!(
+      account_id: @wb_sales_store.wb_raw_account_id,
+      shk_id: 88_000_000_000 + @sku.id,
+      nm_id: wb_product.product_id.to_i,
+      status: "Выдано",
+      return_type: "Возврат брака",
+      completed_dt: Time.current,
+      is_status_active: 0,
+      synced_at: Time.current
+    )
+    wb_return = Ec::Return.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      return_key: "STOCKTAKE-WB-REMOVAL-#{@sku_code}",
+      external_return_id: wb_raw_return.shk_id.to_s,
+      return_type: "customer_return",
+      process_status: "completed",
+      inventory_location: "seller_warehouse",
+      source_status: "Выдано",
+      returned_to_seller_at: wb_raw_return.completed_dt,
+      requested_at: wb_raw_return.completed_dt
+    )
+    wb_return_item = wb_return.items.create!(
+      platform: "wb",
+      store: @wb_sales_store,
+      sku_product: wb_product,
+      item_key: wb_raw_return.shk_id.to_s,
+      quantity: 1,
+      restockable: true
+    )
+    Ec::ReturnSourceLink.create!(
+      return: wb_return,
+      item: wb_return_item,
+      platform: "wb",
+      source_type: "RawWb::GoodsReturn",
+      source_id: wb_raw_return.id,
+      source_key: wb_raw_return.shk_id.to_s,
+      synced_at: Time.current
+    )
+
+    sign_in @current_user
+    get report_inventory_detail_path(@sku.sku_code),
+      params: { detail_tab: "physical_stocktake", stocktake_section: "removals" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-physical-reconciliation__tab[aria-current='page']", text: "平台移出与无订单残次流转"
+    assert_select ".inventory-physical-reconciliation__metrics .inventory-metric-card__label", text: "Ozon移出已收"
+    assert_select ".inventory-physical-reconciliation__metrics .inventory-metric-card__value", text: "3"
+    assert_select ".inventory-physical-reconciliation__formula", text: /Ozon移出已收 3/
+    assert_select ".inventory-physical-reconciliation__table tbody tr", count: 2
+    assert_select ".inventory-reconciliation-badge--included", text: "直接计入物理库存", count: 1
+    assert_select ".inventory-reconciliation-badge--included", text: "已通过退货计入", count: 1
+
+    11.times do |index|
+      supply_order = RawOzon::SupplyOrder.create!(
+        account: @sales_ozon_account,
+        supply_order_id: "STOCKTAKE-SUPPLY-#{index}-#{@sku_code}",
+        status: "READY_TO_SUPPLY",
+        synced_at: Time.current,
+        raw_json: {}
+      )
+      supply_order.supply_order_items.create!(
+        ozon_supply_id: 70_000_000 + @sku.id * 100 + index,
+        bundle_id: "STOCKTAKE-BUNDLE-#{index}-#{@sku_code}",
+        state: "READY_TO_SUPPLY",
+        platform_sku_id: sku_product.platform_sku_id.to_i,
+        quantity: 1,
+        synced_at: Time.current
+      )
+    end
+
+    sign_in @current_user
+    get report_inventory_detail_path(@sku.sku_code),
+      params: { detail_tab: "physical_stocktake", stocktake_section: "pending_supplies" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-physical-reconciliation__group[data-stocktake-section='pending_supplies']", count: 1
+    assert_select ".inventory-physical-reconciliation__table tbody tr", count: 10
+    assert_select ".inventory-pagination-bar + .table-viewport", count: 1
+    assert_select ".inventory-pagination-bar a[href*='stocktake_supply_page=2'][data-turbo-frame='inventory_drawer_content']", minimum: 1
+    assert_select ".inventory-pagination-bar form.pagination-jump[data-turbo-frame='inventory_drawer_content']", count: 1
+
+    sign_in @current_user
+    get report_inventory_detail_path(@sku.sku_code),
+      params: {
+        detail_tab: "physical_stocktake",
+        stocktake_section: "pending_supplies",
+        jump_page: "2"
+      },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select ".inventory-physical-reconciliation__table tbody tr", count: 1
+    assert_select ".inventory-pagination-bar .pagination-chip", text: "第 2/2 页"
   end
 
   test "sku detail inventory overview counts order items linked by sku product ids" do
@@ -2547,7 +2805,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     get "/reports/skus/#{@sku.sku_code}", params: { tab: "inventory", detail_tab: "book" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_match(/销量统计 Ozon 店 #{@sku_code}.*?<td>11<\/td>/m, response.body)
+    assert_select ".inventory-mini-card", text: /OZON销量\s*12/
   ensure
     other_order&.items&.delete_all
     other_order&.destroy
@@ -2665,7 +2923,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "td", text: /销量统计 Ozon 店 #{@sku_code}/
     assert_select "td", text: /销量统计 WB 店 #{@sku_code}/
-    assert_select "h4", "可售退货分布"
+    assert_select "h4", I18n.t("reports.inventory.drawer.sections.return_distribution")
     assert_select ".inventory-distribution-table--narrow tbody tr", count: 0
   end
 
@@ -2689,7 +2947,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
 
     assert_response :success
-    assert_select ".inventory-detail-tabs a[href*='detail_tab=returns']", count: 1
+    assert_select ".inventory-detail-tabs a[href*='detail_tab=returns']", count: 0
     assert_select ".inventory-detail-panel__head h4", text: /退货汇总/
     assert_select "input[name='return_item_ids[]']", count: 0
 
@@ -2701,7 +2959,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert return_item.reload.restockable
     assert_equal before_stock + 1, @sku.inventory_overview.dig(:summary, :book_stock)
-    assert_select ".inventory-metric-card:nth-child(2) .inventory-metric-card__value", text: (before_stock + 1).to_s
+    assert_select ".inventory-detail-panel__head h4", text: /退货汇总/
     assert_select ".inventory-return-update-notice", count: 0
   end
 

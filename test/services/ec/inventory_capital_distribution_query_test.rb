@@ -140,7 +140,7 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
     assert_equal 0, summary[:missing_cost_quantity]
   end
 
-  test "uses restockable returns and Ozon removals when calculating sold quantity" do
+  test "uses restockable returns and ignores Ozon removals when calculating sold quantity" do
     Ec::SkuCost.create!(
       sku_code: @sku.sku_code,
       effective_on: Date.new(2026, 1, 1),
@@ -204,13 +204,25 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
       raw_json: {},
       synced_at: Time.current
     )
+    RawOzon::RemovalItem.create!(
+      account: @account,
+      source_type: "stock",
+      row_key: "capital-removal-received-#{@token}",
+      return_id: "capital-removal-received-#{@token}",
+      sku: @sku_product.platform_sku_id,
+      quantity: 1,
+      return_state: "Завершено",
+      box_state: "Получена",
+      raw_json: {},
+      synced_at: Time.current
+    )
 
     result = Ec::InventoryCapitalDistributionQuery.new(skus: [@sku]).call
     row = result.fetch(:batch_rows).find { |item| item[:batch_code] == batch.batch_code }
 
-    assert_equal 5, row[:sold_quantity]
-    assert_equal 0, row[:book_stock_quantity]
-    assert_equal BigDecimal("50.0"), row[:sold_amount_cny]
+    assert_equal 4, row[:sold_quantity]
+    assert_equal 1, row[:book_stock_quantity]
+    assert_equal BigDecimal("40.0"), row[:sold_amount_cny]
     assert_nil result.fetch(:batch_rows).find { |item| item[:row_type] == "unmatched_sold" }
   end
 

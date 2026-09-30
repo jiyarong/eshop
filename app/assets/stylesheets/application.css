@@ -1852,6 +1852,11 @@ table thead th {
   color: var(--erp-brand);
 }
 
+.inventory-list-table__metric--danger {
+  color: var(--erp-danger-text);
+  font-weight: 750;
+}
+
 .inventory-list-table__time {
   color: var(--erp-muted);
   font-size: 12px;
@@ -3892,6 +3897,32 @@ table thead th {
   color: #b54708;
 }
 
+.inventory-metric-card--danger .inventory-metric-card__label {
+  background: var(--erp-danger-bg);
+  color: var(--erp-danger-text);
+}
+
+.inventory-metric-card--danger .inventory-metric-card__value {
+  color: var(--erp-danger-text);
+}
+
+.inventory-metric-card--link {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.inventory-metric-card--link:hover {
+  border-color: #84adff;
+  box-shadow: 0 2px 8px rgb(23 92 211 / 14%);
+  transform: translateY(-1px);
+}
+
+.inventory-metric-card--link:focus-visible {
+  outline: 2px solid #175cd3;
+  outline-offset: 2px;
+}
+
 .inventory-detail-shell {
   min-height: 0;
   display: grid;
@@ -4124,6 +4155,40 @@ table thead th {
   font-weight: 700;
 }
 
+.inventory-sales-distribution-table td:nth-child(2),
+.inventory-sales-distribution-table td:nth-child(3),
+.inventory-sales-distribution-table td:nth-child(4),
+.inventory-sales-distribution-table th:nth-child(2),
+.inventory-sales-distribution-table th:nth-child(3),
+.inventory-sales-distribution-table th:nth-child(4) {
+  text-align: left;
+}
+
+.inventory-sales-distribution-table__source,
+.inventory-sales-distribution-table__repair {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.inventory-sales-distribution-table__repair {
+  color: #a34d00;
+  font-weight: 700;
+}
+
+.inventory-sales-distribution-table__stocktake-note {
+  color: var(--erp-warning, #b45309);
+  font-weight: 700;
+}
+
+.inventory-sales-distribution-table__stocktake td,
+.inventory-sales-distribution-table__stocktake .inventory-sales-distribution-table__source,
+.inventory-sales-distribution-table__stocktake .inventory-sales-distribution-table__repair {
+  color: var(--erp-warning, #b45309);
+}
+
 .inventory-distribution-table--narrow {
   min-width: 520px;
 }
@@ -4242,6 +4307,131 @@ table thead th {
 
 .inventory-formula__line strong {
   color: #175cd3;
+}
+
+.inventory-physical-reconciliation {
+  padding: 20px 0;
+  border-top: 1px solid var(--erp-border);
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.inventory-physical-reconciliation__metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.inventory-physical-reconciliation__formula {
+  padding: 12px 14px;
+  border: 1px solid #dbe6f5;
+  border-radius: 6px;
+  background: #f7f9fc;
+}
+
+.inventory-physical-reconciliation__group {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.42);
+}
+
+.inventory-physical-reconciliation__group .muted,
+.inventory-physical-reconciliation .inventory-section__header .muted {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.inventory-physical-reconciliation__adjustment-action {
+  flex: 0 0 auto;
+}
+
+.physical-stocktake-adjustments-modal {
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.physical-stocktake-adjustments-modal__summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--erp-warning-line, #fedf89);
+  border-radius: 8px;
+  background: var(--erp-warning-bg, #fffaeb);
+  color: var(--erp-warning-text, #b54708);
+  font-weight: 700;
+}
+
+.physical-stocktake-adjustments-modal__summary strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .inventory-physical-reconciliation > .inventory-section__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.inventory-physical-return-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+  gap: 10px;
+  padding: 4px 0 6px;
+}
+
+.inventory-physical-return-filters__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inventory-physical-reconciliation__return-table {
+  min-width: 1180px;
+}
+
+.inventory-physical-reconciliation__table {
+  min-width: 860px;
+}
+
+.inventory-physical-reconciliation__table td:nth-child(2),
+.inventory-physical-reconciliation__table td:nth-child(3),
+.inventory-physical-reconciliation__table td:nth-child(4),
+.inventory-physical-reconciliation__table td:nth-child(5),
+.inventory-physical-reconciliation__table th:nth-child(2),
+.inventory-physical-reconciliation__table th:nth-child(3),
+.inventory-physical-reconciliation__table th:nth-child(4),
+.inventory-physical-reconciliation__table th:nth-child(5) {
+  text-align: left;
+}
+
+.inventory-reconciliation-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.inventory-reconciliation-badge--included {
+  color: #12633f;
+  background: #e8f6ef;
+}
+
+.inventory-reconciliation-badge--excluded {
+  color: #9a4d00;
+  background: #fff3dd;
+}
+
+.inventory-reconciliation-badge--neutral {
+  color: var(--erp-muted);
+  background: #eef2f7;
 }
 
 .definition-list {
@@ -4787,7 +4977,7 @@ pre {
 .erp-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1002;
+  z-index: 1100;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -4825,6 +5015,7 @@ pre {
 
 
 .inventory-drawer-backdrop {
+  z-index: 1000;
   align-items: stretch;
   justify-content: flex-end;
   padding: 0;

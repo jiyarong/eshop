@@ -314,7 +314,7 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
     Ec::Sku.with_deleted.where(sku_code: sku&.sku_code).delete_all
   end
 
-  test "uses real order status buckets in book sales distribution" do
+  test "keeps orders without fulfillment in the book sales distribution" do
     token = SecureRandom.hex(4).upcase
     sku = Ec::Sku.create!(sku_code: "DETAIL-STATUS-#{token}", product_name: "状态分布测试商品")
 
@@ -388,13 +388,13 @@ class Ec::InventoryPageDetailQueryTest < ActiveSupport::TestCase
     )
 
     payload = Ec::InventoryPageDetailQuery.new(sku, detail_tab: "book", book_batch_page: 1).call
-    row = payload.dig(:book_sales_distribution, :rows)&.first
+    rows = payload.dig(:book_sales_distribution, :rows)
 
-    assert_equal "WB * WB 状态店 #{token}", row[:store_label]
-    assert_equal 0, row.dig(:counts, "pending")
-    assert_equal 2, row.dig(:counts, "processing")
-    assert_equal 0, row.dig(:counts, "shipping")
-    assert_equal 5, row.dig(:counts, "signed")
+    assert_equal 2, rows.size
+    assert_equal "WB * WB 状态店 #{token}", rows.first[:store_label]
+    assert_equal "unknown", rows.first[:fulfillment_type]
+    assert_equal({ "processing_unconfirmed" => 2, "sold_confirmed" => 5 }, rows.to_h { |row| [row[:status_key], row[:quantity]] })
+    assert_equal 7, payload.dig(:book_sales_distribution, :summary_row, :quantity)
   ensure
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: wb_store&.id }).delete_all
     Ec::OrderFulfillment.where(store_id: wb_store&.id).delete_all

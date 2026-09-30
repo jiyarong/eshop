@@ -37,7 +37,7 @@ class RawOzonRemovalItemsSyncTest < ActiveSupport::TestCase
     assert_equal 2, RawOzon::RemovalItem.where(account: account).count
     assert_equal 3, RawOzon::RemovalItem.find_by!(account: account, return_id: "100").quantity
     assert_equal 3, RawOzon::RemovalItem.find_by!(account: account, return_id: "100").raw_json["_source_row_count"]
-    assert_equal 3, RawOzon::RemovalItem.where(account: account).deducting_return_inventory.sum(:quantity)
+    assert_equal 1, RawOzon::RemovalItem.where(account: account).seller_received.sum(:quantity)
     assert_equal ["/v1/removal/from-stock/list", "/v1/removal/from-supply/list"] * 2,
       client.requests.map(&:first)
   ensure

@@ -1,6 +1,7 @@
 <% if turbo_frame_request? %>
   <%= render "reports/inventory_drawer", inventory_detail: @inventory_detail, sku: @sku %>
 <% else %>
+  <%= turbo_frame_tag "erp_modal" if @inventory_detail[:active_detail_tab] == "physical_stocktake" %>
   <% content_for :page_heading, t("reports.inventory.title") %>
 
   <div class="resource-header">
