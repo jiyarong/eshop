@@ -622,6 +622,24 @@ ru:
         web_search:
           description: "Поиск актуальной внешней информации в интернете через Tavily."
           name: "Поиск в интернете"
+        gbrain_query:
+          description: "Запрос структурированных данных GBrain. Загружается только при выборе."
+          name: "Запрос данных GBrain"
+        gbrain_search:
+          description: "Поиск документов GBrain. Загружается только при выборе."
+          name: "Поиск документов GBrain"
+        gbrain_get_page:
+          description: "Чтение указанной страницы GBrain. Загружается только при выборе."
+          name: "Чтение страницы GBrain"
+        gbrain_list_pages:
+          description: "Список страниц GBrain. Загружается только при выборе."
+          name: "Список страниц GBrain"
+        gbrain_traverse_graph:
+          description: "Обход связей между страницами GBrain. Загружается только при выборе."
+          name: "Обход связей GBrain"
+        gbrain_think:
+          description: "Анализ знаний с помощью GBrain. Загружается только при выборе."
+          name: "Анализ знаний GBrain"
         erp_ai_request:
           description: "Вызывает внутренний endpoint /ai от имени текущего пользователя без API-ключа."
           name: "Запрос к ERP AI endpoint"

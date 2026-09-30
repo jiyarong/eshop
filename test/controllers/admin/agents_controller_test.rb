@@ -355,6 +355,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to admin_agents_path
     assert_equal %w[get_sku_context gbrain__query gbrain__search], @agent.reload.tools
 
+    sign_in @admin
     get edit_admin_agent_path(@agent.code), headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -362,6 +363,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input#agent_tools_gbrain__search[checked]:not([disabled])"
     assert_select "input#agent_tools_gbrain__think:not([checked]):not([disabled])"
 
+    sign_in @admin
     patch admin_agent_path(@agent.code), params: { agent: { tools: [ "" ] } }
 
     assert_redirected_to admin_agents_path

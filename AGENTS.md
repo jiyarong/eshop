@@ -72,6 +72,11 @@
 - 可搜索关联记录选择：`app/views/shared/_association_picker.html.erb` + `association_picker_controller.js`。搜索接口返回 `[{ id:, label: }]` JSON；如支持弹窗新建，页面还需提供 `association_create_modal` Turbo Frame，并按现有 `association-picker:selected` 事件协议回填。
 - Turbo 侧边抽屉外壳：`app/views/shared/_overlay_drawer.html.erb`，配合 `modal_controller.js`。传 `frame_id`、`title_id`、`title`、`body`，按需传 `subtitle`、`eyebrow`、`header_actions`、`close_path`、`drawer_width`；业务内容保留在调用方 partial，不要复制抽屉遮罩、标题栏和关闭逻辑。
 
+## AI Agent 工具选择
+
+- GBrain 工具默认不加载；用户在 Agent 编辑页的工具列表中逐项勾选，选择保存在 `Agent#tools` 的 `gbrain__*` 名称中。未选择时不得请求 GBrain 的工具定义，也不得执行其工具。
+- GBrain 工具必须同时满足 Agent 选择和 `config/mcp_servers.yml` 的服务端白名单；网页搜索仍按系统配置自动启用。可选 GBrain 工具由 `ErpAI::ToolRegistry.optional_mcp_tools` 提供，不应加入内置 Agent 的默认工具集合。
+
 ## 当前报表现状
 
 - 报表导航当前包含：

@@ -100,6 +100,7 @@ module Admin
         @tools = @tools.select { |tool| tool.fetch(:name) == "save_sku_plan" }
       else
         @tools = @tools.reject { |tool| tool.fetch(:name) == "save_sku_plan" }
+        @tools += ErpAI::ToolRegistry.optional_mcp_tools unless @agent&.code == "page_translation"
       end
       @tools += configured_external_tools
     end

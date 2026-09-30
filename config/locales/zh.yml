@@ -629,6 +629,24 @@ zh:
         web_search:
           description: "通过 Tavily 搜索公开网页，获取实时外部信息。"
           name: "网页搜索"
+        gbrain_query:
+          description: "查询 GBrain 知识库中的结构化数据；仅勾选后加载。"
+          name: "GBrain 数据查询"
+        gbrain_search:
+          description: "搜索 GBrain 知识库中的相关文档；仅勾选后加载。"
+          name: "GBrain 文档搜索"
+        gbrain_get_page:
+          description: "读取 GBrain 知识库中的指定页面；仅勾选后加载。"
+          name: "GBrain 页面读取"
+        gbrain_list_pages:
+          description: "列出 GBrain 知识库中的页面；仅勾选后加载。"
+          name: "GBrain 页面列表"
+        gbrain_traverse_graph:
+          description: "遍历 GBrain 知识库中的页面关联；仅勾选后加载。"
+          name: "GBrain 关联遍历"
+        gbrain_think:
+          description: "基于 GBrain 知识库进行推理分析；仅勾选后加载。"
+          name: "GBrain 知识推理"
         erp_ai_request:
           description: "使用当前用户身份调用应用内的 /ai 接口，无需 API Key。"
           name: "ERP AI 接口请求"

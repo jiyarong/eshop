@@ -651,6 +651,24 @@ en:
         web_search:
           description: "Search the public web with Tavily for current external information."
           name: "Web search"
+        gbrain_query:
+          description: "Query structured data in GBrain. Loaded only when selected."
+          name: "GBrain data query"
+        gbrain_search:
+          description: "Search relevant documents in GBrain. Loaded only when selected."
+          name: "GBrain document search"
+        gbrain_get_page:
+          description: "Read a specific GBrain page. Loaded only when selected."
+          name: "GBrain page retrieval"
+        gbrain_list_pages:
+          description: "List pages in GBrain. Loaded only when selected."
+          name: "GBrain page listing"
+        gbrain_traverse_graph:
+          description: "Traverse page relationships in GBrain. Loaded only when selected."
+          name: "GBrain graph traversal"
+        gbrain_think:
+          description: "Analyze knowledge with GBrain reasoning. Loaded only when selected."
+          name: "GBrain reasoning"
         erp_ai_request:
           description: "Call an internal /ai endpoint as the current user without an API key."
           name: "ERP AI endpoint request"

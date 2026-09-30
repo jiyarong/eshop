@@ -241,7 +241,8 @@ class Agent < ApplicationRecord
   private
 
   def tools_are_registered
-    invalid_tools = Array(tools) - ErpAI::ToolRegistry.default_tools.map { |tool| tool.fetch(:name) }
+    registered_tools = ErpAI::ToolRegistry.default_tools + ErpAI::ToolRegistry.optional_mcp_tools
+    invalid_tools = Array(tools) - registered_tools.map { |tool| tool.fetch(:name) }
     invalid_tools << "save_sku_event" if code != "sku_diagnosis" && Array(tools).include?("save_sku_event")
     invalid_tools << "save_sku_plan" if code != "sku_planner" && Array(tools).include?("save_sku_plan")
     return if invalid_tools.empty?

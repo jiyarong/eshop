@@ -104,7 +104,7 @@ module ErpAI
 
     def allowed_mcp_tool?(parsed)
       allowed_tools = mcp_tool_filters[parsed.fetch(:server_name)]
-      allowed_tools.blank? || allowed_tools.include?(parsed.fetch(:tool_name))
+      allowed_tools.nil? || allowed_tools.include?(parsed.fetch(:tool_name))
     end
 
     def error_result(id, name, code, message)

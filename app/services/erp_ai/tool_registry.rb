@@ -1,5 +1,9 @@
 module ErpAI
   class ToolRegistry
+    OPTIONAL_MCP_TOOLS = %w[query search get_page list_pages traverse_graph think].map do |name|
+      { name: "gbrain__#{name}", i18n_key: "gbrain_#{name}" }
+    end.freeze
+
     JOINT_DIAGNOSIS_TOOL_DEFINITIONS = [
       {
         name: "create_sku_advise",
@@ -143,6 +147,10 @@ module ErpAI
 
     def self.default_tools
       TOOL_DEFINITIONS
+    end
+
+    def self.optional_mcp_tools
+      OPTIONAL_MCP_TOOLS
     end
 
     def self.joint_diagnosis_tools
