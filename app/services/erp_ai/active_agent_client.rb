@@ -34,6 +34,7 @@ module ErpAI
         model: request.fetch(:model),
         temperature: request.fetch(:temperature),
         thinking_enabled: request.fetch(:thinking_enabled),
+        thinking_level: request[:thinking_level],
         system_prompt: request.fetch(:system_prompt),
         context: request.fetch(:context),
         messages: request.fetch(:messages),

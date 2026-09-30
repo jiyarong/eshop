@@ -110,6 +110,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     @manual = Ec::SkuDiagnosisRule.create!(name: "Manual #{@token}", prompt: "Check manually", frequency: "manual", configuration: { "context_keys" => [ "base" ] })
     @additional_rules = []
     @agent_existed = Agent.exists?(code: "sku_diagnosis")
+    @agent_settings = Agent.find_by(code: "sku_diagnosis")&.attributes&.slice("model_id", "thinking_enabled", "thinking_level")
     @snapshot_fetcher = FakeSnapshotFetcher.new
   end
 
@@ -121,16 +122,22 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     Ec::SkuDiagnosisRule.where(id: [ @daily&.id, @weekly&.id, @manual&.id ]).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
     Agent.where(code: "sku_diagnosis").delete_all unless @agent_existed
+    Agent.find_by!(code: "sku_diagnosis").update!(@agent_settings) if @agent_existed
     UserRole.where(user_id: @user&.id).delete_all
     User.where(id: @user&.id).delete_all
   end
 
   test "runs daily rule with selected context and saves on the scheduled Shanghai date" do
+    Agent.ensure_fixed!("sku_diagnosis").update!(model_id: "deepseek-v4-flash", thinking_enabled: true, thinking_level: "max")
     client = SavingClient.new
     date = Date.new(2026, 9, 14)
     diagnosis_runner(date: date, client: client).run
 
     assert_equal 2, client.requests.size
+    client.requests.each do |request|
+      assert_equal true, request.fetch(:thinking_enabled)
+      assert_equal "max", request.fetch(:thinking_level)
+    end
     request = client.requests.first
     assert_equal ["save_sku_event"], request.fetch(:tools).map { |tool| tool.fetch(:name) }
     summary = request.fetch(:context).split("已查询到的业务数据摘要：", 2).last

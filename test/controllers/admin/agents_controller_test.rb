@@ -15,6 +15,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
       model_id: definition.fetch(:default_model_id),
       temperature: definition.fetch(:default_temperature),
       thinking_enabled: false,
+      thinking_level: "",
       agent_type: :web,
       enabled: true,
       recommended_prompts: []
@@ -211,6 +212,9 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='agent[model_id]'][value=?]", @agent.model_id
     assert_select "input[name='agent[temperature]'][value=?]", @agent.temperature.to_s
     assert_select "input[name='agent[thinking_enabled]'][type='checkbox']"
+    assert_select "select[name='agent[thinking_level]']"
+    assert_select "#agent_thinking_level", count: 1
+    assert_select "form[data-agent-form-thinking-profiles-value]"
     assert_select "textarea[name='agent[system_prompt]']"
     assert_select "input[name='agent[name]'][value=?]", @agent.name
     assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
@@ -284,6 +288,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
         temperature: "0.45",
         agent_type: "client",
         thinking_enabled: "1",
+        thinking_level: "",
         recommended_prompts_text: "问题一\n\n问题二",
         skill_ids: [ @skill.id ]
       }
@@ -302,6 +307,71 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert @agent.thinking_enabled?
     assert_equal [ "问题一", "问题二" ], @agent.recommended_prompts
     assert_equal [ @skill ], @agent.skills.to_a
+  end
+
+  test "saves supported GPT and DeepSeek thinking levels" do
+    { "deepseek-v4-flash" => "max", "gpt-5.2" => "xhigh", "gpt-5" => "minimal" }.each do |model, level|
+      sign_in @admin
+      patch admin_agent_path(@agent.code), params: {
+        agent: { model_id: model, thinking_enabled: "1", thinking_level: level }
+      }
+
+      assert_redirected_to admin_agents_path
+      assert_equal model, @agent.reload.model_id
+      assert_equal level, @agent.thinking_level
+      assert @agent.thinking_enabled?
+    end
+  end
+
+  test "multipart form saves the selected thinking level and restores it on the edit page" do
+    sign_in @admin
+    boundary = "agent-thinking-#{@token}"
+    fields = [
+      [ "agent[model_id]", "gpt-6-sol" ],
+      [ "agent[thinking_enabled]", "1" ],
+      [ "agent[thinking_level]", "" ],
+      [ "agent[thinking_level]", "high" ]
+    ]
+    body = fields.map do |name, value|
+      "--#{boundary}\r\nContent-Disposition: form-data; name=\"#{name}\"\r\n\r\n#{value}\r\n"
+    end.join + "--#{boundary}--\r\n"
+
+    patch admin_agent_path(@agent.code), params: body,
+      headers: { "CONTENT_TYPE" => "multipart/form-data; boundary=#{boundary}", "Accept" => "text/html" }
+
+    assert_redirected_to admin_agents_path
+    assert_equal "high", @agent.reload.thinking_level
+    Agent.seed_fixed!
+    assert_equal "high", @agent.reload.thinking_level
+
+    sign_in @admin
+    get edit_admin_agent_path(@agent.code), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "select[name='agent[thinking_level]'] option[value='high'][selected]"
+    assert_select "input[type='hidden'][name='agent[thinking_level]'][value='high']"
+  end
+
+  test "rejects thinking levels unsupported by the selected model" do
+    sign_in @admin
+
+    patch admin_agent_path(@agent.code), params: {
+      agent: { model_id: "deepseek-v4-flash", thinking_enabled: "1", thinking_level: "xhigh" }
+    }
+
+    assert_response :unprocessable_entity
+    assert_equal "", @agent.reload.thinking_level
+  end
+
+  test "keeps configured thinking level when thinking is disabled" do
+    sign_in @admin
+    @agent.update!(model_id: "deepseek-v4-flash", thinking_enabled: true, thinking_level: "max")
+
+    patch admin_agent_path(@agent.code), params: { agent: { thinking_enabled: "0", thinking_level: "max" } }
+
+    assert_redirected_to admin_agents_path
+    assert_not @agent.reload.thinking_enabled?
+    assert_equal "max", @agent.thinking_level
   end
 
   test "saved SKU Planner prompt remains in the database after the admin page seeds agents" do

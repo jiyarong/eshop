@@ -254,7 +254,8 @@ module Ec
       response = client.complete({
         model: agent&.model_id.presence || "sku_plan_evaluation",
         temperature: agent&.temperature || 0.1,
-        thinking_enabled: false,
+        thinking_enabled: agent&.thinking_enabled? || false,
+        thinking_level: agent&.thinking_level,
         system_prompt: system_prompt,
         context: "",
         messages: [ { role: "user", content: request_context } ],

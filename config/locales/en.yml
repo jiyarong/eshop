@@ -602,6 +602,7 @@ en:
         system_prompt: "Prompt"
         temperature: "Temperature"
         thinking_enabled: "Enable Thinking"
+        thinking_level: "Thinking Level"
         tools: "Tools"
         updated_at: "Updated at"
       index:
@@ -612,6 +613,15 @@ en:
           web: "Runs in the web application, with configurable server tools and no Skills"
         enabled: "Disabled agents are omitted from the API"
         thinking: "Allow the model to use reasoning mode"
+        thinking_level: "Options depend on the model. Default: Medium for GPT, model default for DeepSeek. GPT models without reasoning-off use their lowest level when disabled."
+      thinking_levels:
+        default: "Default"
+        minimal: "Minimal"
+        low: "Low"
+        medium: "Medium"
+        high: "High"
+        xhigh: "XHigh"
+        max: "Max"
       new:
         title: "New AI Agent"
       notices:

@@ -62,6 +62,7 @@ module Admin
         :temperature,
         :agent_type,
         :thinking_enabled,
+        :thinking_level,
         :enabled,
         :avatar,
         tools: [],

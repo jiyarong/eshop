@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_111007) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_044734) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -65,6 +65,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_111007) do
     t.text "system_prompt", null: false
     t.decimal "temperature", precision: 3, scale: 2, default: "0.3", null: false
     t.boolean "thinking_enabled", default: false, null: false
+    t.string "thinking_level", default: "", null: false
     t.jsonb "tools", default: [], null: false
     t.datetime "updated_at", null: false
     t.index ["agent_type"], name: "index_agents_on_agent_type"

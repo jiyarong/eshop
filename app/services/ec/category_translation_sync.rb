@@ -43,11 +43,12 @@ module Ec
     end
 
     def complete(categories)
-      definition = Agent.definition_for!("page_translation")
+      agent = Agent.ensure_fixed!("page_translation")
       client.complete(
-        model: definition.fetch(:default_model_id),
-        temperature: definition.fetch(:default_temperature),
-        thinking_enabled: false,
+        model: agent.model_id,
+        temperature: agent.temperature.to_f,
+        thinking_enabled: agent.thinking_enabled?,
+        thinking_level: agent.thinking_level,
         system_prompt: SYSTEM_PROMPT,
         context: "",
         messages: [

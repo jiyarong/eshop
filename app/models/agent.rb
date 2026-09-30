@@ -196,6 +196,7 @@ class Agent < ApplicationRecord
     format: { with: /\A[a-z0-9]+(?:[_-][a-z0-9]+)*\z/ },
     length: { maximum: 64 }
   validates :temperature, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
+  validates :thinking_level, inclusion: { in: ->(agent) { ErpAI::ThinkingSettings.levels_for(agent.model_id) } }, allow_blank: true
   validate :tools_are_registered
   validate :client_agent_has_no_tools
   validate :web_agent_has_no_skills

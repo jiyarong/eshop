@@ -43,10 +43,17 @@ class Ec::CategoryTranslationSyncTest < ActiveSupport::TestCase
 
   setup do
     @token = SecureRandom.hex(6)
+    @agent_existed = Agent.exists?(code: "page_translation")
+    @agent_settings = Agent.find_by(code: "page_translation")&.attributes&.slice("model_id", "thinking_enabled", "thinking_level")
   end
 
   teardown do
     Ec::Category.where(source: "test").where("source_id LIKE ?", "category-#{@token}%").delete_all if defined?(Ec::Category)
+    if @agent_existed
+      Agent.find_by!(code: "page_translation").update!(@agent_settings)
+    else
+      Agent.where(code: "page_translation").delete_all
+    end
   end
 
   test "fills missing category translations from AI JSON" do
@@ -73,6 +80,18 @@ class Ec::CategoryTranslationSyncTest < ActiveSupport::TestCase
     assert_equal Agent.definition_for!("page_translation").fetch(:default_model_id), request.fetch(:model)
     assert_equal [], request.fetch(:tools)
     assert_includes request.fetch(:messages).first.fetch(:content), "Электроника"
+  end
+
+  test "uses saved agent thinking settings for background category translations" do
+    Agent.ensure_fixed!("page_translation").update!(model_id: "gpt-5.2", thinking_enabled: true, thinking_level: "xhigh")
+    category = Ec::Category.create!(source: "test", source_type: "category", source_id: source_id, origin_name: "Обувь", origin_language: "ru")
+    client = FakeClient.new({ name_cn: "鞋", name_en: "Shoes", name_ru: "Обувь" }.to_json)
+
+    Ec::CategoryTranslationSync.new(client: client).call([ category ])
+
+    assert_equal "gpt-5.2", client.requests.sole.fetch(:model)
+    assert_equal true, client.requests.sole.fetch(:thinking_enabled)
+    assert_equal "xhigh", client.requests.sole.fetch(:thinking_level)
   end
 
   test "stores translation error when AI response is not JSON" do

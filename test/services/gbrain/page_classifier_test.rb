@@ -23,8 +23,11 @@ class Gbrain::PageClassifierTest < ActiveSupport::TestCase
     @agent = OpenStruct.new(
       model_id: "deepseek-v4-flash",
       temperature: 0.1,
+      thinking_enabled: false,
+      thinking_level: "",
       system_prompt: "Return strict JSON"
     )
+    @agent.define_singleton_method(:thinking_enabled?) { thinking_enabled }
   end
 
   test "classifies content with the fixed DeepSeek model and preserves normalized metadata" do
@@ -35,6 +38,7 @@ class Gbrain::PageClassifierTest < ActiveSupport::TestCase
 
     assert_equal "deepseek-v4-flash", client.request.fetch(:model)
     assert_equal false, client.request.fetch(:thinking_enabled)
+    assert_equal "", client.request.fetch(:thinking_level)
     assert_equal [], client.request.fetch(:tools)
     assert_equal [ { role: "user", content: "原始运营资料" } ], client.request.fetch(:messages)
     assert_equal "2026-07-18", result.fetch("reviewed_at")
@@ -42,6 +46,17 @@ class Gbrain::PageClassifierTest < ActiveSupport::TestCase
     assert_equal [ "platform/ozon", "country/ru" ], result.fetch("tags")
     assert_equal "运营资料结论", result.fetch("summary")
     assert_not result.key?("content")
+  end
+
+  test "uses configured thinking for background page classification" do
+    @agent.thinking_enabled = true
+    @agent.thinking_level = "max"
+    client = FakeClient.new(content: JSON.generate(valid_payload))
+
+    Gbrain::PageClassifier.new(client: client, agent: @agent).classify("原始运营资料")
+
+    assert_equal true, client.request.fetch(:thinking_enabled)
+    assert_equal "max", client.request.fetch(:thinking_level)
   end
 
   test "accepts a JSON response wrapped in a code fence" do

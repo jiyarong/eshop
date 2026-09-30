@@ -53,7 +53,8 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
       context: "ERP 上下文",
       messages: [{ role: "user", content: "分析库存" }],
       tools: [{ name: "query_inventory_data" }],
-      thinking_enabled: true
+      thinking_enabled: true,
+      thinking_level: "high"
     )
 
     params = FakeAgent.last_generation.params
@@ -66,6 +67,7 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal [{ name: "query_inventory_data" }], params.fetch(:available_tools)
     assert_not params.key?(:tools)
     assert_equal true, params.fetch(:thinking_enabled)
+    assert_equal "high", params.fetch(:thinking_level)
     assert_equal "分析完成", result.fetch(:content)
     assert_equal [], result.fetch(:tool_calls)
     assert_equal({ "total_tokens" => 18 }, result.fetch(:usage))

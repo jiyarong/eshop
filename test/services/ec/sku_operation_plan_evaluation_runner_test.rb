@@ -8,6 +8,7 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     @store = Ec::Store.create!(platform: "wb", store_name: "Evaluation #{@token}", company_type: "small")
     @product = @sku.sku_products.create!(store: @store, product_id: @token)
     @agent_existed = Agent.exists?(code: "sku_plan_evaluation")
+    @agent_settings = Agent.find_by(code: "sku_plan_evaluation")&.attributes&.slice("model_id", "thinking_enabled", "thinking_level")
     @period_start = Date.new(2026, 9, 21)
     @plan = @sku.sku_operation_plans.create!(
       plan_date: @period_start,
@@ -29,6 +30,7 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     Message.where(conversation: Conversation.where(user: @user)).delete_all
     Conversation.where(user: @user).delete_all
     Agent.where(code: "sku_plan_evaluation").delete_all unless @agent_existed
+    Agent.find_by!(code: "sku_plan_evaluation").update!(@agent_settings) if @agent_existed
     @product.delete
     @store.delete
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
@@ -99,10 +101,14 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
       requests << request
       { content: { effectiveness: "positive", confidence: "medium", summary: "Profit increased with limited evidence." } }
     end
-    arguments = evaluation_arguments.merge(client: client, agent: Agent.ensure_fixed!("sku_plan_evaluation"))
+    agent = Agent.ensure_fixed!("sku_plan_evaluation")
+    agent.update!(model_id: "deepseek-v4-flash", thinking_enabled: true, thinking_level: "max")
+    arguments = evaluation_arguments.merge(client: client, agent: agent)
 
     evaluation = Ec::SkuOperationPlanEvaluationRunner.run(**arguments).sole
     assert_equal "succeeded", evaluation.status
+    assert_equal true, requests.sole.fetch(:thinking_enabled)
+    assert_equal "max", requests.sole.fetch(:thinking_level)
     assert_equal [action.id], evaluation.action_ids
     assert_equal action.id, evaluation.evidence.fetch("actions").sole.fetch("id")
     assert_equal metrics.deep_stringify_keys, evaluation.metrics

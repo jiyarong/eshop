@@ -412,6 +412,7 @@ module AITasks
         model: agent.model_id,
         temperature: agent.temperature.to_f,
         thinking_enabled: agent.thinking_enabled?,
+        thinking_level: agent.thinking_level,
         system_prompt: [
           agent.system_prompt,
           "当前输入结构：#{INPUT_STRUCTURE_PROMPT}",

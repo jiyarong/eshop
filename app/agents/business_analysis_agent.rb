@@ -25,26 +25,29 @@ class BusinessAnalysisAgent < ActiveAgent::Base
       temperature: params.fetch(:temperature),
       stream: params[:stream_callback].present?
     }
+    reasoning_effort = ErpAI::ThinkingSettings.reasoning_effort(
+      model: options[:model], enabled: params.fetch(:thinking_enabled), level: params[:thinking_level]
+    )
+    extra_body = {}
+    extra_body[:reasoning_effort] = reasoning_effort if reasoning_effort.present?
     if params.fetch(:available_tools, []).present?
       options[:response_format] = { type: "json_object" }
-      options[:max_tokens] = TOOL_RESPONSE_MAX_TOKENS
+      if ErpAI::ThinkingSettings.gpt_reasoning_model?(options[:model])
+        options[:max_completion_tokens] = TOOL_RESPONSE_MAX_TOKENS
+      else
+        options[:max_tokens] = TOOL_RESPONSE_MAX_TOKENS
+      end
     end
-    if deepseek_model?(options[:model])
-      options[:request_options] = {
-        extra_body: {
-          thinking: { type: params.fetch(:thinking_enabled) ? "enabled" : "disabled" }
-        }
-      }
+    if ErpAI::ThinkingSettings.deepseek_model?(options[:model])
+      extra_body[:thinking] = { type: params.fetch(:thinking_enabled) ? "enabled" : "disabled" }
     end
+    options.delete(:temperature) if ErpAI::ThinkingSettings.gpt_reasoning_model?(options[:model]) && reasoning_effort != "none"
+    options[:request_options] = { extra_body: extra_body } if extra_body.present?
 
     prompt(*messages, **options)
   end
 
   private
-
-  def deepseek_model?(model)
-    model.to_s.start_with?("deepseek")
-  end
 
   def tool_instruction
     tools = params.fetch(:available_tools, [])

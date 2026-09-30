@@ -116,6 +116,7 @@ module ErpAI
         model: agent.model_id,
         temperature: agent.temperature.to_f,
         thinking_enabled: agent.thinking_enabled?,
+        thinking_level: agent.thinking_level,
         system_prompt: conversation.context["system_prompt"].presence || system_prompt || agent.system_prompt,
         context: build_context(conversation, data_summary),
         messages: messages.with_attached_images.map { |message| serialize_message(message) },

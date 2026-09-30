@@ -2,7 +2,10 @@
   url: agent.persisted? ? admin_agent_path(agent.code) : admin_agents_path,
   method: agent.persisted? ? :patch : :post,
   multipart: true,
-  data: { controller: "agent-form" },
+  data: {
+    controller: "agent-form",
+    agent_form_thinking_profiles_value: ErpAI::ThinkingSettings::MODEL_PROFILES.to_json
+  },
   class: "ai-agent-form" do |form| %>
   <% if agent.errors.any? %>
     <div class="error-box ai-form-errors" role="alert">
@@ -66,15 +69,25 @@
         <div class="ai-form-grid ai-form-grid--model">
           <div class="field">
             <%= form.label :model_id, t("admin.agents.fields.model_id") %>
-            <%= form.text_field :model_id, required: true, class: "code-input" %>
+            <%= form.text_field :model_id, required: true, class: "code-input",
+              data: { agent_form_target: "modelInput", action: "input->agent-form#syncThinking" } %>
           </div>
           <div class="field">
             <%= form.label :temperature, t("admin.agents.fields.temperature") %>
             <%= form.number_field :temperature, min: 0, max: 1, step: 0.01, required: true %>
           </div>
+          <div class="field">
+            <%= form.label :thinking_level, t("admin.agents.fields.thinking_level") %>
+            <%= form.hidden_field :thinking_level, id: nil, data: { agent_form_target: "thinkingLevelValue" } %>
+            <%= form.select :thinking_level,
+              [[t("admin.agents.thinking_levels.default"), ""]] + %w[minimal low medium high xhigh max].map { |level| [t("admin.agents.thinking_levels.#{level}"), level] },
+              {}, id: "agent_thinking_level", data: { agent_form_target: "thinkingLevel", action: "change->agent-form#syncThinking" }, aria: { describedby: "agent_thinking_level_hint" } %>
+            <small id="agent_thinking_level_hint"><%= t("admin.agents.hints.thinking_level") %></small>
+          </div>
           <div class="ai-toggle-grid">
             <label class="checkbox-option ai-toggle-option">
-              <%= form.check_box :thinking_enabled %>
+              <%= form.check_box :thinking_enabled,
+                data: { agent_form_target: "thinkingEnabled", action: "change->agent-form#syncThinking" } %>
               <span>
                 <strong><%= t("admin.agents.fields.thinking_enabled") %></strong>
                 <small><%= t("admin.agents.hints.thinking") %></small>

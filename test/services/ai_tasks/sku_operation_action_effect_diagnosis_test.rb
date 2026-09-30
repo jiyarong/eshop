@@ -119,6 +119,7 @@ class AITasks::SkuOperationActionEffectDiagnosisTest < ActiveSupport::TestCase
     stub_weekly_profit_reports
     @client = FakeClient.new
     @agent_existed = Agent.exists?(code: AITasks::SkuOperationActionEffectDiagnosis::AGENT_CODE)
+    @agent_settings = Agent.find_by(code: AITasks::SkuOperationActionEffectDiagnosis::AGENT_CODE)&.attributes&.slice("model_id", "thinking_enabled", "thinking_level")
   end
 
   teardown do
@@ -134,10 +135,12 @@ class AITasks::SkuOperationActionEffectDiagnosisTest < ActiveSupport::TestCase
     RawWb::SellerAccount.where(id: @account&.id).delete_all
     WeeklyProfitReports::ReportQueryRunner.define_singleton_method(:run, @original_profit_report_run)
     Agent.where(code: AITasks::SkuOperationActionEffectDiagnosis::AGENT_CODE).delete_all unless @agent_existed
+    Agent.find_by!(code: AITasks::SkuOperationActionEffectDiagnosis::AGENT_CODE).update!(@agent_settings) if @agent_existed
     User.where(id: @user&.id).delete_all
   end
 
   test "diagnoses actions using an ordered action timeline and independent weekly metric series" do
+    Agent.ensure_fixed!(AITasks::SkuOperationActionEffectDiagnosis::AGENT_CODE).update!(model_id: "gpt-5.2", thinking_enabled: true, thinking_level: "xhigh")
     assert_difference "Ec::OperationActionDiagnosis.count", 1 do
       AITasks::SkuOperationActionEffectDiagnosis.run(
         as_of_date: @as_of_date,
@@ -147,6 +150,8 @@ class AITasks::SkuOperationActionEffectDiagnosisTest < ActiveSupport::TestCase
     end
 
     diagnosis = Ec::OperationActionDiagnosis.find_by!(sku: @sku)
+    assert_equal true, @client.requests.sole.fetch(:thinking_enabled)
+    assert_equal "xhigh", @client.requests.sole.fetch(:thinking_level)
     assert_equal "OperationActionDiagnosis", diagnosis[:type]
     assert_equal "operation_action_effect", diagnosis.data.fetch("diagnosis_kind")
     assert_equal "2026-08-02", diagnosis.data.fetch("analysis_cutoff_date")

@@ -580,6 +580,7 @@ zh:
         system_prompt: "提示词"
         temperature: "Temperature"
         thinking_enabled: "启用 Thinking"
+        thinking_level: "Thinking Level（推理强度）"
         tools: "工具"
         updated_at: "更新时间"
       index:
@@ -590,6 +591,15 @@ zh:
           web: "在 Web 端运行，可配置服务端工具，不使用 Skill"
         enabled: "停用后不再通过 API 提供"
         thinking: "允许模型使用推理模式"
+        thinking_level: "选项随模型变化。默认：GPT 使用 Medium，DeepSeek 使用模型默认；关闭时，不支持关闭推理的 GPT 使用最低级别。"
+      thinking_levels:
+        default: "默认"
+        minimal: "Minimal（最少）"
+        low: "Low（低）"
+        medium: "Medium（中）"
+        high: "High（高）"
+        xhigh: "XHigh（超高）"
+        max: "Max（最高）"
       new:
         title: "新增 AI Agent"
       notices:

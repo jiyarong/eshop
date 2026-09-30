@@ -24,11 +24,36 @@ export function syncToolAvailability({ agentType, toolPanel, toolInputs }) {
   });
 }
 
+export function syncThinkingAvailability({ model, enabled, select, profiles }) {
+  const profile = profiles.find((candidate) => new RegExp(candidate.pattern).test(model));
+  const levels = profile?.levels || [];
+
+  Array.from(select.options).forEach((option) => {
+    const supported = option.value === "" || levels.includes(option.value);
+    option.hidden = !supported;
+    option.disabled = !supported;
+  });
+  if (!levels.includes(select.value)) select.value = "";
+  select.disabled = !enabled || levels.length === 0;
+}
+
 export default class extends Controller {
-  static targets = ["typeInput", "skillPanel", "skillInput", "toolPanel", "toolInput"];
+  static targets = ["typeInput", "skillPanel", "skillInput", "toolPanel", "toolInput", "modelInput", "thinkingEnabled", "thinkingLevel", "thinkingLevelValue"];
+  static values = { thinkingProfiles: Array };
 
   connect() {
     this.syncCapabilities();
+    this.syncThinking();
+  }
+
+  syncThinking() {
+    syncThinkingAvailability({
+      model: this.modelInputTarget.value,
+      enabled: this.thinkingEnabledTarget.checked,
+      select: this.thinkingLevelTarget,
+      profiles: this.thinkingProfilesValue,
+    });
+    this.thinkingLevelValueTarget.value = this.thinkingLevelTarget.value;
   }
 
   syncCapabilities() {

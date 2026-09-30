@@ -573,6 +573,7 @@ ru:
         system_prompt: "Промпт"
         temperature: "Temperature"
         thinking_enabled: "Включить Thinking"
+        thinking_level: "Thinking Level (уровень рассуждения)"
         tools: "Инструменты"
         updated_at: "Обновлено"
       index:
@@ -583,6 +584,15 @@ ru:
           web: "Работает в веб-приложении, использует настраиваемые серверные инструменты без Skills"
         enabled: "Отключенные агенты не доступны через API"
         thinking: "Разрешить модели использовать режим рассуждения"
+        thinking_level: "Варианты зависят от модели. По умолчанию: Medium для GPT, настройка модели для DeepSeek. Если GPT не поддерживает отключение рассуждений, используется минимальный уровень."
+      thinking_levels:
+        default: "По умолчанию"
+        minimal: "Minimal (минимальный)"
+        low: "Low (низкий)"
+        medium: "Medium (средний)"
+        high: "High (высокий)"
+        xhigh: "XHigh (очень высокий)"
+        max: "Max (максимальный)"
       new:
         title: "Новый AI Agent"
       notices:

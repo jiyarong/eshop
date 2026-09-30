@@ -239,6 +239,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   end
 
   test "injects ERP context and query-only tools into LLM request" do
+    @agent.update!(model_id: "gpt-5.2", thinking_level: "xhigh")
     client = FakeClient.new
 
     I18n.with_locale(:ru) do
@@ -251,9 +252,10 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     end
 
     request = client.request
-    assert_equal "fake-model", request.fetch(:model)
+    assert_equal "gpt-5.2", request.fetch(:model)
     assert_equal 0.3, request.fetch(:temperature)
     assert_equal true, request.fetch(:thinking_enabled)
+    assert_equal "xhigh", request.fetch(:thinking_level)
     assert_includes request.fetch(:system_prompt), "嵌入 ERP 系统的业务分析 AI Agent"
     assert_includes request.fetch(:context), "当前用户界面语言：ru"
     assert_includes request.fetch(:context), "当前 ERP 模块：inventory"

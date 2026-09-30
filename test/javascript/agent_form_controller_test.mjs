@@ -11,7 +11,7 @@ const bundle = await build({
   write: false,
 });
 
-const [{ syncSkillAvailability, syncToolAvailability }] = await Promise.all(
+const [{ syncSkillAvailability, syncToolAvailability, syncThinkingAvailability }] = await Promise.all(
   bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)),
 );
 
@@ -89,4 +89,54 @@ test("web agents enable tool selections", () => {
   assert.equal(toolPanel.getAttribute("aria-disabled"), "false");
   assert.equal(toolPanel.hidden, false);
   assert.equal(toolInputs[0].disabled, false);
+});
+
+function buildThinkingSelect(value) {
+  return {
+    value,
+    options: ["", "minimal", "low", "medium", "high", "xhigh", "max"].map((level) => ({ value: level })),
+  };
+}
+
+const thinkingProfiles = [
+  { pattern: "^deepseek-v4-", levels: ["low", "high", "max"] },
+  { pattern: "^gpt-5\\.[2-5](?:-|$)", levels: ["low", "medium", "high", "xhigh"] },
+];
+
+test("DeepSeek hides GPT-only levels and preserves supported selections", () => {
+  const select = buildThinkingSelect("max");
+  syncThinkingAvailability({ model: "deepseek-v4-flash", enabled: true, select, profiles: thinkingProfiles });
+
+  assert.equal(select.value, "max");
+  assert.equal(select.disabled, false);
+  assert.deepEqual(select.options.filter((option) => !option.hidden).map((option) => option.value), ["", "low", "high", "max"]);
+  assert.equal(select.options.find((option) => option.value === "medium").disabled, true);
+});
+
+test("changing models clears unsupported thinking levels", () => {
+  const select = buildThinkingSelect("max");
+  syncThinkingAvailability({ model: "gpt-5.2", enabled: true, select, profiles: thinkingProfiles });
+
+  assert.equal(select.value, "");
+  assert.deepEqual(select.options.filter((option) => !option.hidden).map((option) => option.value), ["", "low", "medium", "high", "xhigh"]);
+});
+
+test("disabling thinking retains the level for later re-enabling", () => {
+  const select = buildThinkingSelect("xhigh");
+  syncThinkingAvailability({ model: "gpt-5.2", enabled: false, select, profiles: thinkingProfiles });
+
+  assert.equal(select.disabled, true);
+  assert.equal(select.value, "xhigh");
+  syncThinkingAvailability({ model: "gpt-5.2", enabled: true, select, profiles: thinkingProfiles });
+  assert.equal(select.disabled, false);
+  assert.equal(select.value, "xhigh");
+});
+
+test("models without supported reasoning levels disable and clear the selector", () => {
+  const select = buildThinkingSelect("high");
+  syncThinkingAvailability({ model: "gpt-4.1", enabled: true, select, profiles: thinkingProfiles });
+
+  assert.equal(select.disabled, true);
+  assert.equal(select.value, "");
+  assert.deepEqual(select.options.filter((option) => !option.hidden).map((option) => option.value), [""]);
 });
