@@ -109,6 +109,13 @@ class LayoutFoundationTest < ActionDispatch::IntegrationTest
     assert_match(/\.hd-inner\s*\{[^}]*width:\s*100%/m, css)
   end
 
+  test "topbar stays above modal backdrops for page translation controls" do
+    css = Rails.root.join("app/assets/stylesheets/application.css").read
+
+    assert_match(/\.erp-topbar\s*\{[^}]*z-index:\s*1201/m, css)
+    assert_match(/\.erp-modal-backdrop\s*\{[^}]*z-index:\s*1100/m, css)
+  end
+
   test "javascript entry does not emit competing application css build" do
     js = Rails.root.join("app/javascript/application.js").read
     css = Rails.root.join("app/assets/stylesheets/application.css").read

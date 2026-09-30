@@ -12,7 +12,7 @@ module ErpAI
     end
 
     def create
-      agent = Agent.available_for_conversation.find_by!(code: params[:agent_code])
+      agent = Agent.find_by!(code: params[:agent_code])
 
       if request.format.html?
         conversation = agent.conversations.create!(user: current_user)
