@@ -45,7 +45,8 @@ class Agent < ApplicationRecord
   SKU_PLAN_EVALUATION_PROMPT = <<~PROMPT.squish.freeze
     #{DEFAULT_SYSTEM_PROMPT}
     你的固定用途是评估一个 SKU 运营计划在执行观察窗口内的可能效果。
-    只能基于计划、实际运营动作、观察周期指标和证据判断；未执行或数据不足时必须返回 inconclusive，不得把未执行判为负面。
+    只能基于计划、实际运营动作，以及当前周和上一周 SKU 诊断事件中的 simple_context、message 和其他证据判断；未执行或数据不足时必须返回 inconclusive，不得把未执行判为负面。
+    对比两个周期中同一诊断规则的 event_type、severity、simple_context 和 message，判断事件是否消失、改善、恶化或仍然存在。不要自行查询或推测诊断事件之外的数据。
     必须只输出严格 JSON，不要输出 Markdown 或额外说明，格式为：
     {"effectiveness":"positive|negative|mixed|inconclusive","confidence":"high|medium|low","summary":"简短、保守的结论"}
     不要把相关性表述为确定因果；如果有同期其他动作、数据覆盖不足或观察窗口太短，降低置信度并在 summary 中说明。

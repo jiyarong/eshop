@@ -10,6 +10,7 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     @agent_existed = Agent.exists?(code: "sku_plan_evaluation")
     @agent_settings = Agent.find_by(code: "sku_plan_evaluation")&.attributes&.slice("model_id", "thinking_enabled", "thinking_level")
     @period_start = Date.new(2026, 9, 21)
+    @diagnosis_rules = []
     @plan = @sku.sku_operation_plans.create!(
       plan_date: @period_start,
       planning_period_start: @period_start,
@@ -27,6 +28,8 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     Ec::OperationAction.where(ec_sku_id: @sku.id).delete_all
     @sku&.sku_operation_plans&.delete_all
     @sku.planning_cycles.delete_all
+    Ec::AIDiagnosis.where(sku_id: @sku&.id).destroy_all
+    Ec::SkuDiagnosisRule.where(id: @diagnosis_rules.map(&:id)).delete_all
     Message.where(conversation: Conversation.where(user: @user)).delete_all
     Conversation.where(user: @user).delete_all
     Agent.where(code: "sku_plan_evaluation").delete_all unless @agent_existed
@@ -125,6 +128,72 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     Ec::SkuOperationPlanEvaluationRunner.run(**arguments)
     assert_equal 1, requests.size
     assert_equal 1, @plan.evaluations.count
+  end
+
+  test "passes current and previous week diagnosis context without refetching metrics" do
+    rule = Ec::SkuDiagnosisRule.create!(name: "Evaluation rule #{@token}", prompt: "Check the event")
+    @diagnosis_rules << rule
+    previous_diagnosis = Ec::GeneralDiagnosis.create!(
+      sku: @sku, submitted_by: @user, data: {}, created_at: @period_start + 1.day
+    )
+    previous_diagnosis.events.create!(
+      sub_agent: rule, event_type: "stock_risk", severity: "warning",
+      simple_context: "previous evidence", message: "Previous stock risk",
+      created_at: @period_start + 1.day
+    )
+    current_start = @period_start + 1.week
+    current_diagnosis = Ec::GeneralDiagnosis.create!(
+      sku: @sku, submitted_by: @user, data: {}, created_at: current_start + 1.day
+    )
+    current_diagnosis.events.create!(
+      sub_agent: rule, event_type: "stock_risk", severity: "info",
+      simple_context: "current evidence", message: "Stock risk improved",
+      created_at: current_start + 1.day
+    )
+    current_diagnosis.events.create!(
+      event_type: "old_advice", severity: "critical", scope: "advise",
+      simple_context: "should be excluded", message: "Advice"
+    )
+    create_action(on: @period_start + 7.days)
+
+    requests = []
+    client = Object.new
+    client.define_singleton_method(:complete) do |request|
+      requests << request
+      { content: { effectiveness: "positive", confidence: "medium", summary: "The diagnosis improved." } }
+    end
+    metrics_query = Class.new do
+      class << self
+        attr_accessor :calls
+      end
+
+      def initialize(*)
+        self.class.calls += 1
+      end
+
+      def call
+        {}
+      end
+    end
+    metrics_query.calls = 0
+    agent = Agent.ensure_fixed!("sku_plan_evaluation")
+
+    evaluation = Ec::SkuOperationPlanEvaluationRunner.new(
+      **evaluation_arguments.except(:metrics_provider).merge(client: client, agent: agent, metrics_query_class: metrics_query)
+    ).run.sole
+
+    payload = JSON.parse(requests.sole.fetch(:messages).sole.fetch(:content))
+    diagnosis_context = payload.fetch("diagnosis_context")
+    assert_equal current_start.iso8601, diagnosis_context.fetch("current_week").fetch("from")
+    assert_equal @period_start.iso8601, diagnosis_context.fetch("previous_week").fetch("from")
+    assert_equal "previous evidence", diagnosis_context.dig("previous_week", "events", 0, "simple_context")
+    assert_equal "Previous stock risk", diagnosis_context.dig("previous_week", "events", 0, "message")
+    assert_equal "current evidence", diagnosis_context.dig("current_week", "events", 0, "simple_context")
+    assert_equal "Stock risk improved", diagnosis_context.dig("current_week", "events", 0, "message")
+    assert_equal 1, diagnosis_context.fetch("current_week").fetch("events").size
+    assert_equal 0, metrics_query.calls
+    assert_equal({}, evaluation.metrics)
+    assert_equal diagnosis_context.deep_stringify_keys, evaluation.evidence.fetch("diagnosis_context")
   end
 
   test "retains metrics, action evidence and conversation on AI failure and retries the same row" do

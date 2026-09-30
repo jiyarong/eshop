@@ -4,6 +4,7 @@ module Ec
     EVALUATOR_VERSION = "sku_plan_evaluation_v2".freeze
     EFFECTIVENESS_VALUES = %w[positive negative mixed inconclusive].freeze
     CONFIDENCE_VALUES = %w[high medium low].freeze
+    DIAGNOSIS_CONTEXT_PROMPT = "仅使用输入中的当前周和上一周 SKU 诊断事件 simple_context、message 及事件字段进行周期对比；不要重新查询或推测诊断事件之外的数据。".freeze
 
     def self.pending?(as_of_date:, sku_code: nil)
       new(as_of_date: as_of_date, sku_code: sku_code).pending?
@@ -106,14 +107,16 @@ module Ec
 
       mark_running(plan)
       actions = observed_actions(plan)
-      metrics = metrics_for(plan)
+      diagnosis_context = diagnosis_context_for(plan)
+      metrics = metrics_for(plan, diagnosis_context)
       execution_status = execution_status_for(plan, actions)
       plan.evaluations.find_by!(observation_to: observation_to(plan)).update!(
-        execution_status: execution_status, metrics: metrics, evidence: evidence_for(plan, actions, metrics),
+        execution_status: execution_status, metrics: metrics,
+        evidence: evidence_for(plan, actions, metrics, diagnosis_context),
         action_ids: actions.map(&:id), conversation_id: nil
       )
-      result = result_for(plan, actions, metrics, execution_status)
-      evaluation = persist_evaluation(plan, actions, metrics, execution_status, result)
+      result = result_for(plan, actions, metrics, diagnosis_context, execution_status)
+      evaluation = persist_evaluation(plan, actions, metrics, diagnosis_context, execution_status, result)
       evaluation
     end
 
@@ -146,7 +149,7 @@ module Ec
       "executed"
     end
 
-    def metrics_for(plan)
+    def metrics_for(plan, diagnosis_context = nil)
       if metrics_provider
         arguments = {
           plan: plan,
@@ -155,6 +158,8 @@ module Ec
         }
         return metrics_provider.arity == 1 ? (metrics_provider.call(arguments) || {}) : (metrics_provider.call(**arguments) || {})
       end
+
+      return {} if diagnosis_context && diagnosis_context_has_events?(diagnosis_context)
 
       metrics_query_class.new(
         sku: plan.sku,
@@ -171,11 +176,12 @@ module Ec
       {}
     end
 
-    def result_for(plan, actions, metrics, execution_status)
+    def result_for(plan, actions, metrics, diagnosis_context, execution_status)
       context = {
         plan: plan,
         actions: actions,
         metrics: metrics,
+        diagnosis_context: diagnosis_context,
         execution_status: execution_status,
         observation_from: plan.planning_period_start,
         observation_to: observation_to(plan)
@@ -190,7 +196,7 @@ module Ec
         }
       end
 
-      unless metrics_available?(metrics)
+      unless evidence_available?(metrics, diagnosis_context)
         return { effectiveness: "inconclusive", confidence: "low",
           summary: I18n.t("erp.sku_operation_plan_evaluation.summary.insufficient_data") }
       end
@@ -237,10 +243,11 @@ module Ec
     end
 
     def evaluate_with_client(context)
-      system_prompt = agent&.system_prompt.presence || I18n.t(
+      base_system_prompt = agent&.system_prompt.presence || I18n.t(
         "erp.sku_operation_plan_evaluation.system_prompt",
-        default: "请基于计划、动作证据和原始指标保守判断计划效果，只返回 JSON：effectiveness、confidence、summary。未执行动作不得判为负面。"
+        default: "请基于计划、实际动作，以及当前周和上一周 SKU 诊断事件中的 simple_context、message 和其他证据保守判断计划效果，只返回 JSON：effectiveness、confidence、summary。未执行动作不得判为负面。不要重新查询诊断相关数据。"
       )
+      system_prompt = [ base_system_prompt, DIAGNOSIS_CONTEXT_PROMPT ].join("\n\n")
       plan = context.fetch(:plan)
       request_context = context.except(:plan, :actions).merge(
         plan: plan.as_json,
@@ -267,6 +274,59 @@ module Ec
       payload = parse_json_content(payload) unless payload.is_a?(Hash)
       payload = payload.merge("conversation_id" => conversation.id) if conversation
       payload
+    end
+
+    def diagnosis_context_for(plan)
+      current_start = plan.planning_period_start + 1.week
+      previous_start = current_start - 1.week
+      current_end = [ as_of_date, current_start + 6.days ].min
+      {
+        context_version: "sku_diagnosis_v1",
+        current_week: diagnosis_context_period(plan.sku_id, current_start, current_end),
+        previous_week: diagnosis_context_period(plan.sku_id, previous_start, current_start - 1.day)
+      }
+    end
+
+    def diagnosis_context_period(sku_id, from_date, to_date)
+      {
+        from: from_date.iso8601,
+        to: to_date.iso8601,
+        events: diagnosis_events_for(sku_id, from_date, to_date).map do |event|
+          {
+            id: event.id,
+            diagnosis_id: event.ai_diagnosis_id,
+            sub_agent_id: event.sub_agent_id,
+            rule_name: event.sub_agent&.name,
+            event_type: event.event_type,
+            severity: event.severity,
+            status: event.status,
+            simple_context: event.simple_context,
+            message: event.message
+          }
+        end
+      }
+    end
+
+    def diagnosis_events_for(sku_id, from_date, to_date)
+      from = time_for_date(from_date).beginning_of_day
+      to = time_for_date(to_date + 1.day).beginning_of_day
+      events = AIDiagnosisEvent
+        .joins(:ai_diagnosis)
+        .where(
+          ec_ai_diagnosis: {
+            sku_id: sku_id,
+            type: GeneralDiagnosis.sti_name,
+            created_at: from...to
+          }
+        )
+        .where.not(sub_agent_id: nil)
+        .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope != ?", "advise")
+        .includes(:sub_agent)
+        .order("ec_ai_diagnosis.created_at DESC", created_at: :desc, id: :desc)
+
+      events.each_with_object({}) do |event, selected|
+        selected[event.sub_agent_id] ||= event
+      end.values.sort_by { |event| [ event.sub_agent_id, event.position, event.id ] }
     end
 
     def build_evaluation_conversation(request_context, system_prompt, plan)
@@ -355,7 +415,7 @@ module Ec
       }
     end
 
-    def persist_evaluation(plan, actions, metrics, execution_status, result)
+    def persist_evaluation(plan, actions, metrics, diagnosis_context, execution_status, result)
       evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to(plan))
       evaluation.assign_attributes(
         observation_from: plan.planning_period_start,
@@ -364,7 +424,7 @@ module Ec
         confidence: result.fetch(:confidence),
         summary: result.fetch(:summary),
         metrics: metrics,
-        evidence: evidence_for(plan, actions, metrics),
+        evidence: evidence_for(plan, actions, metrics, diagnosis_context),
         action_ids: actions.map(&:id),
         conversation_id: result[:conversation_id],
         evaluator_version: evaluator_version,
@@ -373,7 +433,7 @@ module Ec
       )
       plan_attributes = {
         execution_status: execution_status,
-        evaluation_status: metrics_available?(metrics) || actions.empty? ? "evaluated" : "insufficient_data"
+        evaluation_status: evidence_available?(metrics, diagnosis_context) || actions.empty? ? "evaluated" : "insufficient_data"
       }
       plan_attributes[:status] = execution_status == "executed" ? "done" : "active" unless execution_status == "not_applicable"
       plan_attributes[:lifecycle_status] = "expired" if as_of_date > plan.execution_deadline && plan.lifecycle_status == "active"
@@ -385,13 +445,14 @@ module Ec
       evaluation
     end
 
-    def evidence_for(plan, actions, metrics)
+    def evidence_for(plan, actions, metrics, diagnosis_context)
       {
         planning_period_start: plan.planning_period_start.iso8601,
         planning_period_end: plan.planning_period_end.iso8601,
         execution_deadline: plan.execution_deadline.iso8601,
         action_count: actions.size,
-        data_available: metrics_available?(metrics),
+        data_available: evidence_available?(metrics, diagnosis_context),
+        diagnosis_context: diagnosis_context,
         observation_to: observation_to(plan).iso8601,
         actions: actions.map { |action| action.as_json(only: %i[id operation_type operated_at diff_result ec_sku_product_id]) }
       }
@@ -451,6 +512,16 @@ module Ec
       return true if profit.nil?
 
       profit.values.any? { |row| row.present? && (row[:after_tax_profit] || row["after_tax_profit"]).is_a?(Numeric) }
+    end
+
+    def evidence_available?(metrics, diagnosis_context)
+      metrics_available?(metrics) || diagnosis_context.fetch(:current_week).fetch(:events).present? ||
+        diagnosis_context.fetch(:previous_week).fetch(:events).present?
+    end
+
+    def diagnosis_context_has_events?(diagnosis_context)
+      diagnosis_context.fetch(:current_week).fetch(:events).present? ||
+        diagnosis_context.fetch(:previous_week).fetch(:events).present?
     end
 
     def time_for_date(date)
