@@ -114,6 +114,26 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_equal 125, usage.fetch(:total_tokens)
   end
 
+  test "promotes cached tokens from the OpenAI usage details" do
+    FakeGeneration.response = OpenStruct.new(
+      message: OpenStruct.new(content: "分析完成"),
+      usage: OpenAI::Models::CompletionUsage.new(
+        prompt_tokens: 100,
+        completion_tokens: 25,
+        total_tokens: 125,
+        prompt_tokens_details: { cached_tokens: 80 }
+      )
+    )
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model", temperature: 0.2, system_prompt: "系统提示词",
+      context: "ERP 上下文", messages: [ { role: "user", content: "分析库存" } ],
+      tools: [], thinking_enabled: false
+    )
+
+    assert_equal 80, result.fetch(:usage).fetch(:cached_tokens)
+  end
+
   test "ignores streaming usage chunks with no choices" do
     stream_events = []
     provider = ActiveAgent::Providers::OpenAI::ChatProvider.new(

@@ -107,7 +107,20 @@ module ErpAI
     end
 
     def extract_usage(response)
-      value_from(response, :usage).to_h
+      usage = value_from(response, :usage)
+      usage = usage.deep_to_h if usage.respond_to?(:deep_to_h)
+      usage = usage.to_h if !usage.is_a?(Hash) && usage.respond_to?(:to_h)
+      return {} unless usage.is_a?(Hash)
+
+      normalized_usage = usage.deep_symbolize_keys
+      cached_tokens = normalized_usage[:cached_tokens] || normalized_usage[:prompt_cache_hit_tokens] ||
+        normalized_usage[:cache_read_input_tokens] ||
+        normalized_usage.dig(:prompt_tokens_details, :cached_tokens) ||
+        normalized_usage.dig(:input_tokens_details, :cached_tokens) ||
+        normalized_usage.dig(:provider_details, :prompt_tokens_details, :cached_tokens) ||
+        normalized_usage.dig(:provider_details, :input_tokens_details, :cached_tokens)
+      usage[usage.key?("cached_tokens") ? "cached_tokens" : :cached_tokens] = cached_tokens unless cached_tokens.nil?
+      usage
     end
 
     def extract_tool_calls(response)
