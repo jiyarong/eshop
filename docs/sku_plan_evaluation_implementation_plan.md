@@ -326,6 +326,8 @@ Planning Cycle 父表、延迟复评和结构化 `success_metrics` 可以作为�
 
 ## 11. 未完成项执行计划提示词
 
+执行状态见第 12 节；下方保留原始验收要求，继续执行时先核对已完成记录。
+
 以下提示词用于交给新的 Agent 执行剩余工作。它以当前代码和本计划为基础，不要重复实现已经存在的 Plan、Evaluation、Planning Cycle、历史 Context 或页面功能。
 
 ```text
@@ -425,3 +427,42 @@ Planning Cycle 父表、延迟复评和结构化 `success_metrics` 可以作为�
 
 最终报告必须列出：实际自动执行时间、数据就绪判断、Evaluation Agent 是否被自动调用、未匹配动作类型、测试结果和仍存在的风险。
 ```
+
+## 12. 本次实施记录（2026-09-29）
+
+### 已完成
+
+- 唯一自动入口为周二 03:30 Asia/Shanghai 的 Pipeline；独立 Diagnosis recurring 已移除，人工 Diagnosis、Planner、Evaluation Job 保留。
+- 利润源刷新调整到周一 18:00 后：Ozon Performance 18:00、WB 18:10、Ozon accrual 18:30；Google Sheets 报表导出为 20:00。页面报表直接查询本地数据，Pipeline 不依赖导出成功或相邻 cron 的顺序。
+- 数据就绪服务核对精确本地周汇率、各活跃店铺的同步完成记录、成功步骤与上一周至周一的日期覆盖。Ozon 配置 Performance 凭据时同时要求广告同步完成；WB 已有销售而尚无周结算报表时等待。零活动的成功响应允许通过。未就绪记录具体原因，并每 30 分钟重试，最多 5 次。
+- WB SyncTask 新增 results，WB / Ozon / Performance 同步保存覆盖区间和完成时间；已修正仓储下载重试耗尽、Ozon 冲正补全和分仓 API 失败被吞掉后误报成功的问题。
+- Pipeline 自动传入固定 Evaluation Agent 和 DefaultClient。有动作且利润可用时保存 Conversation、原始指标、动作证据、同期其他动作、效果与置信度；AI 失败保留输入与 Conversation，并在同一 Evaluation 行上重试。无动作或缺少利润时保持 inconclusive。
+- 新计划默认宽限期为 1 天，截止周一结束；历史截止日保留，不做缩短截止日的数据迁移。自动评估只选择截止日已过去的计划，并补跑更早仍未完成完整窗口的计划。
+- 动作、日库存、漏斗和观察范围利润查询均覆盖 observation_to；人工提前评估截止到上海时区上一完整日，完成后仍会在截止日后自动补评。尚无完整日时人工页面不入队。
+- Matcher 支持价格/广告预算的增加与降低、广告开关、Listing 属性/图片修改、采购数量增加和有正 SKU 数量的已知发运状态及入库量增加。历史非 latest、SKU/Listing 范围、计划创建时点和宽限期边界均已补测试。
+- 周二 Diagnosis 同时执行 daily 与 weekly；gate 核对当前周期与本次运行产生的最新规则事件，排除 advise，修复 Array 与 Set 运算错误；manual 仍需显式 rule_ids。
+- 自动 Planner 同周期重试复用当前 revision，已完成周期不重复生成；人工 rerun 创建新 revision，旧 Plan / Conversation 保留。历史回填 Diagnosis 不会仅因生成时间较晚而成为最新事件。
+- Planner 的共同入口 `SkuPlannerRunner` 在读取历史 Context 前自动执行到期历史计划的 Evaluation，人工入口与直接调用同样生效。没有待评估历史时直接规划，已成功完成完整窗口的评估不重复执行；数据未就绪或 Evaluation 失败时暂停 Planner，人工 Job 有限重试。新生成计划须待执行窗口结束后再评估。
+
+### 明确不自动匹配
+
+- manual_note、未知或取消的发运状态、无正数量的发运事件；
+- 入库数量减少/到货消减，不能据此推断计划主动降低分仓；
+- replenishment / warehouse_distribution 的 decrease、无实际字段变更的 maintain。
+
+这些动作或计划缺乏确定的执行语义，保留未匹配状态，不增加新 operation_type，也不把建议事件当成运营执行。
+
+### 部署与后续验收
+
+- 新迁移 `20260929111007_add_results_to_raw_wb_sync_tasks.rb` 需在部署环境执行；本次仅迁移测试数据库。
+- WB 观察窗延伸到周一，但利润源仍按已发布结算报表归集；指标中记录 published_settlement_reports 与 provisional_profit_from，周一完整日利润尚不能确认。Ozon 使用 daily_accruals。
+- 平台成功返回空数据但稍后补发、WB 仓储 T+2/T+3 修订仍是外部数据风险；源完成记录和已有销售核对不能证明所有平台数据永不修订。
+- 生产需先以单 SKU 灰度确认真实 Agent 调用与源数据可用性，再完成连续 4 周验收。本地测试不等于真实平台同步、外部 AI 或四周生产验证。
+
+### 验证结果
+
+- Planner 前置历史评估补充验证（人工 Job、周度 Pipeline、Planner、历史 Context、Evaluation、数据就绪和周期锁）：50 runs / 227 assertions，0 failures / 0 errors，覆盖评估结果先进入 Planner Context、成功结果不重复评估、开放执行窗口跳过、评估失败阻止生成及后台重试。
+- 闭环 Job、Evaluation、数据就绪、周期锁、指标查询、Matcher、Diagnosis、Planner、历史 Context、调度及 WB/Ozon 同步相关测试：120 runs / 584 assertions，0 failures / 0 errors。
+- 新增人工重新评估入口测试：2 runs / 9 assertions，0 failures / 0 errors。名称过滤使用 `-i '/plan_reevaluation/'`。
+- `bin/rails zeitwerk:check`、Ruby 语法检查、`git diff --check` 均通过；Rails 验证使用 `SKIP_JS_BUILD=1`。
+- 完整 `test/controllers/reports_controller_test.rb`：83 runs / 1092 assertions，17 failures / 0 errors；失败集中在其他报表页面的标签、抽屉、利润趋势及登录重定向断言，新增两个重新评估测试通过。整文件尚未全绿，本次未扩展修改这些页面。

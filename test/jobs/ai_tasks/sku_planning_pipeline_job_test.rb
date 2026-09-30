@@ -1,6 +1,15 @@
 require "test_helper"
 
 class AITasks::SkuPlanningPipelineJobTest < ActiveJob::TestCase
+  setup do
+    @original_readiness = Ec::SkuPlanningDataReadiness.method(:check!)
+    Ec::SkuPlanningDataReadiness.define_singleton_method(:check!) { |**| true }
+  end
+
+  teardown do
+    Ec::SkuPlanningDataReadiness.define_singleton_method(:check!, @original_readiness)
+  end
+
   test "runs evaluation, diagnosis, then planner only after the diagnosis gate" do
     calls = []
     with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**args) { calls << [ :evaluation, args ] }) do
@@ -10,16 +19,19 @@ class AITasks::SkuPlanningPipelineJobTest < ActiveJob::TestCase
           true
         }) do
           with_stubbed_singleton_method(ErpAI::SkuPlannerRunner, :run, ->(**args) { calls << [ :planner, args ] }) do
-            AITasks::SkuPlanningPipelineJob.perform_now(as_of_date: Date.new(2026, 9, 28), sku_code: "SKU-ONE")
+            AITasks::SkuPlanningPipelineJob.perform_now(as_of_date: Date.new(2026, 9, 29), sku_code: "SKU-ONE")
           end
         end
       end
     end
 
     assert_equal [ :evaluation, :diagnosis, :gate, :planner ], calls.map(&:first)
-    assert_equal({ as_of_date: Date.new(2026, 9, 28), sku_code: "SKU-ONE" }, calls[0].last)
-    assert_equal({ as_of_date: Date.new(2026, 9, 28), sku_code: "SKU-ONE" }, calls[1].last)
-    assert_equal({ sku_code: "SKU-ONE", as_of_date: Date.new(2026, 9, 28), rerun: false }, calls[3].last)
+    assert_equal({ as_of_date: Date.new(2026, 9, 29), sku_code: "SKU-ONE" }, calls[0].last.slice(:as_of_date, :sku_code))
+    assert_instance_of ErpAI::DefaultClient, calls[0].last.fetch(:client)
+    assert_instance_of Agent, calls[0].last.fetch(:agent)
+    assert_equal "sku_plan_evaluation", calls[0].last.fetch(:agent).code
+    assert_equal({ as_of_date: Date.new(2026, 9, 29), sku_code: "SKU-ONE" }, calls[1].last)
+    assert_equal({ sku_code: "SKU-ONE", as_of_date: Date.new(2026, 9, 29), rerun: false }, calls[3].last)
   end
 
   test "can resume at planner without rerunning earlier stages" do
@@ -59,6 +71,57 @@ class AITasks::SkuPlanningPipelineJobTest < ActiveJob::TestCase
     end
 
     assert_not planner_called
+  end
+
+  test "waits and retries before invoking any stage when data is not ready" do
+    Ec::SkuPlanningDataReadiness.define_singleton_method(:check!) { |**| raise Ec::SkuPlanningDataReadiness::NotReady, "WB source incomplete" }
+    with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { flunk "Evaluation must wait" }) do
+      assert_enqueued_with(job: AITasks::SkuPlanningPipelineJob, args: [{ sku_code: "WAIT" }]) do
+        AITasks::SkuPlanningPipelineJob.perform_now(sku_code: "WAIT")
+      end
+    end
+  end
+
+  test "failed evaluation prevents diagnosis and planner and schedules a retry" do
+    failed = Struct.new(:status).new("failed")
+    with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { [failed] }) do
+      with_stubbed_singleton_method(ErpAI::SkuDiagnosisRunner, :run, ->(**) { flunk "Diagnosis must wait for Evaluation" }) do
+        assert_enqueued_with(job: AITasks::SkuPlanningPipelineJob) do
+          AITasks::SkuPlanningPipelineJob.perform_now(sku_code: "FAILED")
+        end
+      end
+    end
+  end
+
+  test "Tuesday gate requires fresh daily and weekly events and excludes advice and manual rules" do
+    token = SecureRandom.hex(5)
+    sku = Ec::Sku.create!(sku_code: "GATE-#{token}", product_name: "Gate")
+    user = User.create!(email: "gate-#{token}@example.com", password: "password123")
+    rules = %w[daily weekly manual].map do |frequency|
+      Ec::SkuDiagnosisRule.create!(name: "Gate #{token} #{frequency}", prompt: "Evaluate", enabled: true, frequency: frequency)
+    end
+    enabled_for = Ec::SkuDiagnosisRule.method(:enabled_for)
+    zone = Time.find_zone!("Asia/Shanghai")
+    started_at = zone.local(2026, 9, 29, 3, 30)
+    gate = -> { AITasks::SkuPlanningPipelineJob.diagnosis_complete?(as_of_date: Date.new(2026, 9, 29), sku_code: sku.sku_code, started_at: started_at) }
+    with_stubbed_singleton_method(Ec::SkuDiagnosisRule, :enabled_for, ->(date) { enabled_for.call(date).where(id: rules.map(&:id)) }) do
+      stale = Ec::GeneralDiagnosis.create!(sku: sku, submitted_by: user, created_at: started_at - 1.week)
+      stale.events.create!(sub_agent: rules[1], event_type: "weekly", severity: "warning", message: "Old", created_at: started_at)
+      diagnosis = Ec::GeneralDiagnosis.create!(sku: sku, submitted_by: user, created_at: started_at)
+      diagnosis.events.create!(sub_agent: rules[0], event_type: "daily", severity: "info", message: "Daily", created_at: started_at)
+      assert_not gate.call
+      advice = diagnosis.events.create!(sub_agent: rules[1], scope: "advise", event_type: "weekly", severity: "warning", message: "Advice", created_at: started_at)
+      assert_not gate.call
+      advice.destroy!
+      diagnosis.events.create!(sub_agent: rules[1], event_type: "weekly", severity: "warning", message: "Weekly", created_at: started_at)
+      assert gate.call
+      assert_not AITasks::SkuPlanningPipelineJob.diagnosis_complete?(as_of_date: Date.new(2026, 9, 29), sku_code: sku.sku_code, started_at: started_at + 1.minute)
+    end
+  ensure
+    sku&.ai_diagnoses&.destroy_all
+    rules&.each(&:destroy!)
+    sku&.delete
+    user&.delete
   end
 
   private

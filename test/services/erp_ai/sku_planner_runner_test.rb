@@ -6,16 +6,23 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     @sku = Ec::Sku.create!(sku_code: "PLANNER-#{@token}", product_name: "Planner test")
     @user = User.create!(email: "planner-#{@token.downcase}@example.com", password: "password123")
     @agent_existed = Agent.exists?(code: "sku_planner")
+    @evaluation_agent_existed = Agent.exists?(code: "sku_plan_evaluation")
     @diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
     @diagnosis.events.create!(event_type: "stock_risk", severity: "warning", message: "Stock is low")
   end
 
   teardown do
+    Ec::OperationAction.where(ec_sku_id: @sku.id).delete_all
+    Ec::SkuOperationPlanEvaluation.where(plan_id: @sku.sku_operation_plans.select(:id)).delete_all
     @sku.sku_operation_plans.delete_all
+    @sku.planning_cycles.delete_all
     @sku.ai_diagnoses.destroy_all
     Message.where(conversation: Conversation.where(user: @user)).delete_all
     Conversation.where(user: @user).delete_all
     Agent.where(code: "sku_planner").delete_all unless @agent_existed
+    Agent.where(code: "sku_plan_evaluation").delete_all unless @evaluation_agent_existed
+    @sku.sku_products.delete_all
+    @evaluation_store&.delete
     Ec::Sku.with_deleted.where(id: @sku.id).delete_all
     UserRole.where(user_id: @user.id).delete_all
     User.where(id: @user.id).delete_all
@@ -27,13 +34,13 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     replaced = create_plan("Replaced", created_at: 1.day.ago, plan_date: today)
 
     run_with_plan("First")
-    assert_not Ec::SkuOperationPlan.exists?(replaced.id)
+    assert Ec::SkuOperationPlan.exists?(replaced.id)
     assert_equal [ "First" ], @sku.sku_operation_plans.latest.pluck(:message)
     assert_not previous.reload.is_latest?
 
     run_with_plan("Second")
     assert_equal [ "Second" ], @sku.sku_operation_plans.latest.pluck(:message)
-    assert_equal 3, @sku.sku_operation_plans.count
+    assert_equal 4, @sku.sku_operation_plans.count
   end
 
   test "failed run restores deleted plans and discards partially generated plans" do
@@ -52,7 +59,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     @diagnosis.events.create!(event_type: "urgent_stock", severity: "critical", message: "Immediate action")
     captured = nil
     fake_runner = Object.new
-    fake_runner.define_singleton_method(:ask) { |**args| captured = args }
+    fake_runner.define_singleton_method(:ask) { |**args| captured = args; nil }
 
     ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user,
       runner_factory: ->(**_args) { fake_runner }).run
@@ -95,6 +102,116 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
 
     assert_empty result
     assert existing.reload.is_latest?
+  end
+
+  test "automatic retry reuses the cycle and manual rerun creates a new revision" do
+    client = Object.new
+    calls = 0
+    client.define_singleton_method(:complete) { |**| calls += 1; { content: "No plan needed", tool_calls: [] } }
+    client.define_singleton_method(:complete) { |_| calls += 1; { content: "No plan needed", tool_calls: [] } }
+    arguments = { sku_code: @sku.sku_code, user: @user, client: client, as_of_date: Date.new(2026, 9, 29) }
+
+    first = ErpAI::SkuPlannerRunner.run(**arguments, rerun: false).sole
+    second = ErpAI::SkuPlannerRunner.run(**arguments, rerun: false).sole
+    assert_equal first.id, second.id
+    assert_equal 1, calls
+    assert_equal [1], @sku.planning_cycles.pluck(:revision)
+
+    ErpAI::SkuPlannerRunner.run(**arguments, rerun: true)
+    assert_equal 2, calls
+    assert_equal [1, 2], @sku.planning_cycles.order(:revision).pluck(:revision)
+  end
+
+  test "automatic planner failure is retryable without leaving partial plans" do
+    failed_runner = Object.new
+    failed_runner.define_singleton_method(:ask) { |**| raise "model unavailable" }
+    assert_raises(ErpAI::SkuPlannerRunner::Failure) do
+      ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, rerun: false,
+        runner_factory: ->(**) { failed_runner }).run
+    end
+    assert_empty @sku.planning_cycles
+    assert_empty @sku.sku_operation_plans
+  end
+
+  test "direct planner evaluates history before building context and does not repeat successful evaluation" do
+    previous = historical_plan
+    @evaluation_store = Ec::Store.create!(platform: "wb", store_name: "Planner evaluation #{@token}", company_type: "small")
+    product = @sku.sku_products.create!(store: @evaluation_store, product_id: @token)
+    Ec::OperationAction.create!(sku: @sku, sku_product: product, store: @evaluation_store,
+      operated_by_user: @user, plan: previous, operated_at: Time.utc(2026, 9, 28, 12),
+      operation_type: "listing_pricing", diff_result: { fields: { price: { from: 100, to: 120 } } })
+    calls = []
+    client = Object.new
+    test_case = self
+    client.define_singleton_method(:complete) do |request|
+      if request.fetch(:tools).empty?
+        calls << :evaluation
+        { content: { effectiveness: "positive", confidence: "medium", summary: "Profit improved" } }
+      else
+        calls << :planner
+        test_case.assert_equal "positive", previous.reload.latest_evaluation.effectiveness
+        test_case.assert_includes request.fetch(:messages).last.fetch(:content), '"effectiveness":"positive"'
+        { content: "No new plan needed", tool_calls: [] }
+      end
+    end
+    metrics_query = Object.new
+    metrics_query.define_singleton_method(:call) { { before: { after_tax_profit: 10 }, after: { after_tax_profit: 12 } } }
+    arguments = { sku_code: @sku.sku_code, user: @user, client: client, as_of_date: Date.new(2026, 9, 29) }
+
+    with_stubbed_singleton_method(Ec::SkuPlanningDataReadiness, :check!, ->(**) { calls << :readiness }) do
+      with_stubbed_singleton_method(Ec::SkuOperationActionMetricsQuery, :new, ->(**) { metrics_query }) do
+        conversation = ErpAI::SkuPlannerRunner.run(**arguments).sole
+        assert_equal [previous.id], conversation.context.fetch("history_plan_ids")
+        ErpAI::SkuPlannerRunner.run(**arguments)
+      end
+    end
+
+    assert_equal [:readiness, :evaluation, :planner, :planner], calls
+    assert_equal 1, previous.evaluations.count
+    assert_equal "sku_plan_evaluation", previous.latest_evaluation.conversation.module_name
+  end
+
+  test "evaluation failure prevents creating a new planning revision" do
+    previous = historical_plan
+    failed = Struct.new(:status).new("failed")
+    with_stubbed_singleton_method(Ec::SkuPlanningDataReadiness, :check!, ->(**) { true }) do
+      with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { [failed] }) do
+        assert_raises(ErpAI::SkuPlannerRunner::EvaluationFailed) do
+          ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, as_of_date: Date.new(2026, 9, 29),
+            runner_factory: ->(**) { flunk "Planner must wait for evaluation" }).run
+        end
+      end
+    end
+    assert_empty @sku.planning_cycles
+    assert previous.reload.is_latest?
+  end
+
+  test "planner waits for evaluation data readiness" do
+    historical_plan
+    with_stubbed_singleton_method(Ec::SkuPlanningDataReadiness, :check!, ->(**) { raise Ec::SkuPlanningDataReadiness::NotReady, "source incomplete" }) do
+      with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { flunk "Evaluation must wait" }) do
+        assert_raises(Ec::SkuPlanningDataReadiness::NotReady) do
+          ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, as_of_date: Date.new(2026, 9, 29),
+            runner_factory: ->(**) { flunk "Planner must wait" }).run
+        end
+      end
+    end
+    assert_empty @sku.planning_cycles
+  end
+
+  test "planner skips evaluation while the historical execution window is still open" do
+    previous = historical_plan
+    previous.update!(execution_deadline: Date.new(2026, 9, 29))
+    runner = Object.new
+    runner.define_singleton_method(:ask) { |**| nil }
+    with_stubbed_singleton_method(Ec::SkuPlanningDataReadiness, :check!, ->(**) { flunk "No evaluation is due" }) do
+      with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { flunk "Deadline is still open" }) do
+        ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, as_of_date: Date.new(2026, 9, 29),
+          runner_factory: ->(**) { runner }).run
+      end
+    end
+    assert_empty previous.evaluations
+    assert_equal 1, @sku.planning_cycles.count
   end
 
   test "plan date uses Shanghai calendar day" do
@@ -248,6 +365,18 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
 
   private
 
+  def historical_plan
+    create_plan("Previous week", plan_date: Date.new(2026, 9, 21), created_at: Time.utc(2026, 9, 21))
+  end
+
+  def with_stubbed_singleton_method(object, method_name, replacement)
+    original = object.method(method_name)
+    object.define_singleton_method(method_name, replacement)
+    yield
+  ensure
+    object.define_singleton_method(method_name, original)
+  end
+
   def plan_details
     { scope: "SKU", scope_id: @sku.sku_code, priority: 1, message: "Keep price stable",
       reason: "Low stock", baseline: "Current price unchanged", constraints: "No price change",
@@ -260,10 +389,12 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   end
 
   def run_with_plan(message, fail_after_save: false)
+    conversation = Agent.ensure_fixed!("sku_planner").conversations.create!(user: @user, module_name: "sku_planner")
     fake_runner = Object.new
     fake_runner.define_singleton_method(:ask) do |**_args|
       create_plan(message)
       raise "planner failed" if fail_after_save
+      conversation
     end
     # The fake runner writes through the same table as the planner tool.
     fake_runner.define_singleton_method(:create_plan) { |value| @sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: [ "stock_risk" ], message: value) }

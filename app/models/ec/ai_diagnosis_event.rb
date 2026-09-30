@@ -30,7 +30,7 @@ module Ec
             sub_agent_id: sub_agent_id,
             ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name }
           )
-        latest_event_id = events.order(created_at: :desc, id: :desc).pick(:id)
+        latest_event_id = events.order("ec_ai_diagnosis.created_at DESC", created_at: :desc, id: :desc).pick(:id)
 
         events.where.not(id: latest_event_id).update_all(is_latest: false)
         events.where(id: latest_event_id).update_all(is_latest: true)

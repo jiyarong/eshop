@@ -126,8 +126,9 @@ SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是�
 ### Plan
 
 - 计划入口是 `ErpAI::SkuPlannerRunner`，计划通过 `save_sku_plan` 创建到 `Ec::SkuOperationPlan`。
+- `SkuPlannerRunner` 在构建历史 Context 前自动评估已过执行截止日、尚未完成完整观察窗口评估的历史计划，页面人工 Planner 与直接调用均适用。没有待评估历史时跳过；存在待评估历史时先检查数据就绪，评估失败或数据未就绪不得生成新 revision。人工 Planner Job 对这两类失败有限重试；周度流水线已完成的评估通过同一幂等查询跳过，不重复调用 Evaluation Agent。
 - Plan 的 `referer` 必须引用当前 SKU 最新的非 `info` Diagnosis event ID；不得引用其他 SKU、旧版本或没有诊断依据的事件。`scope` 只能是 `SKU` 或 `LISTING`，`LISTING` 的 `scope_id` 必须属于当前 SKU。
-- 计划周期使用 `planning_period_start`、`planning_period_end` 和 `execution_deadline`：周期从周一开始，到周日结束，默认执行截止日为周日后 2 天。`plan_date` 仅表示生成日期，`retain_until` 只用于兼容动作匹配的保留时间。
+- 计划周期使用 `planning_period_start`、`planning_period_end` 和 `execution_deadline`：周期从周一开始，到周日结束，新计划默认执行截止日为周日后 1 天（周一结束），供周二凌晨评估。历史或明确指定的截止日保持原值，尚未结束的计划延后评估。`plan_date` 仅表示生成日期，`retain_until` 只用于兼容动作匹配的保留时间。
 - Plan 的状态分开表达不同含义：
   - `lifecycle_status`: `active`、`cancelled`、`expired`；
   - `execution_status`: `not_started`、`partial`、`executed`、`not_applicable`；
@@ -140,11 +141,12 @@ SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是�
 
 - `Ec::SkuPlanningCycle` 表示一个 SKU 在一个自然周的计划集合，状态为 `pending -> generating -> active -> closed -> evaluated`，失败时为 `failed`。同一 SKU、同一周期通过 `revision` 和 `is_current` 管理重跑历史。
 - 任务重试或从某个阶段恢复时复用当前周期 revision；只有明确的人工 Planner 重跑才创建新 revision。不要删除旧 revision 或覆盖其 Plan / Evaluation 历史。
-- 周度编排任务是 `AITasks::SkuPlanningPipelineJob`，生产入口在 `config/recurring.yml` 的每周一 07:00（Asia/Shanghai）：
-  1. 评估上一完整自然周的 Plan；
-  2. 运行当前周期 Diagnosis；
-  3. 确认每个适用且启用的诊断规则都已生成当前最新事件；
-  4. 运行当前周期 Planner。
+- 周度编排任务是 `AITasks::SkuPlanningPipelineJob`，唯一自动闭环入口在 `config/recurring.yml` 的每周二 03:30（Asia/Shanghai）：
+  1. `Ec::SkuPlanningDataReadiness` 核对周一 18:00 后的源同步完成、日期覆盖、精确本地周汇率和利润报表可查询性；未就绪每 30 分钟重试，共 5 次；
+  2. 使用 `sku_plan_evaluation` Agent 评估上一完整自然周及更早尚待完成观察窗口的 Plan；
+  3. 运行当前周期当天适用的 daily 和 weekly Diagnosis；
+  4. 确认每个适用且启用的诊断规则都已生成当前最新事件；
+  5. 运行当前周期 Planner。
   阶段失败应按现有有限重试机制恢复，不得在 Planner 诊断未完成时生成计划。
 
 ### Action
@@ -155,8 +157,9 @@ SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是�
 
 ### Evaluation
 
-- 评估入口是 `Ec::SkuOperationPlanEvaluationRunner`，异步任务为 `AITasks::SkuOperationPlanEvaluationJob`。默认评估当前日期之前的上一完整自然周，不通过 `is_latest` 选择计划；单个计划可传 `plan_id` 或 `sku_code` 重评。
+- 评估入口是 `Ec::SkuOperationPlanEvaluationRunner`，异步任务为 `AITasks::SkuOperationPlanEvaluationJob`。自动评估上一自然周及更早未完成完整窗口评估、且 `execution_deadline < as_of_date` 的计划，不通过 `is_latest` 选择；单个计划可传 `plan_id` 重评，`sku_code` 可限定批次。成功的完整窗口评估不会重复调用 AI，人工 Job 使用 `force: true`。
 - 评估观察窗口覆盖计划周期起点至 `execution_deadline`，动作证据来自该窗口内已绑定的 `OperationAction`；指标查询默认从计划周期前 4 周开始，直到观察结束日。
+- 人工提前评估只观察到上海时区的上一完整日，动作和指标采用同一截止日；尚无完整观察日时页面不入队。提前评估不会阻止截止日后自动补齐完整窗口。宽限期包含日库存、漏斗及整个观察范围的利润查询；WB 利润以已发布结算报表为准，当前未结算周的利润仍属暂定数据，不能解释为完整日利润。
 - 评估先记录执行证据和确定性指标，再按配置使用 Evaluation Agent；没有可用 AI 结果时可复用已有运营动作效果诊断或确定性指标结果。效果值只能是 `positive`、`negative`、`mixed`、`inconclusive`，置信度只能是 `high`、`medium`、`low`。
 - 没有动作时执行状态为 `not_started`（取消计划为 `not_applicable`），效果必须为 `inconclusive`，不得把未执行误判为 `negative`。指标不可用或证据不足时，Plan 使用 `evaluation_status=insufficient_data`。
 - `Ec::SkuOperationPlanEvaluation` 按 `plan_id + observation_to` 幂等写入，保留原始 `metrics`、动作证据、`action_ids`、会话 ID、评估版本和 `evaluated_at`。评估过程状态使用 `pending`、`running`、`succeeded`、`failed`；失败允许重试并保留失败记录。

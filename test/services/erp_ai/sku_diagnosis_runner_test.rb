@@ -127,7 +127,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
   test "runs daily rule with selected context and saves on the scheduled Shanghai date" do
     client = SavingClient.new
-    date = Date.new(2026, 9, 15)
+    date = Date.new(2026, 9, 14)
     diagnosis_runner(date: date, client: client).run
 
     assert_equal 2, client.requests.size
@@ -135,7 +135,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal ["save_sku_event"], request.fetch(:tools).map { |tool| tool.fetch(:name) }
     summary = request.fetch(:context).split("已查询到的业务数据摘要：", 2).last
     assert_includes summary, "SKU：#{@sku.sku_code}"
-    assert_includes summary, "数据周期：2026-09-07 至 2026-09-13；快照日期：2026-09-15"
+    assert_includes summary, "数据周期：2026-09-07 至 2026-09-13；快照日期：2026-09-14"
     assert_includes summary, "**Snapshot base**\n\nDescription base\n\n# Snapshot base"
     assert_not_includes summary, '"categories"'
     assert_not_includes summary, "Snapshot lifecycle"
@@ -149,7 +149,8 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_equal ["stock_risk", "Stock issue: sales increased"], [event.event_type, event.message]
     assert_nil event.advise
     assert_not_includes request.fetch(:messages).first.fetch(:content), "advise"
-    assert_equal date, event.created_at.in_time_zone("Asia/Shanghai").to_date
+    assert_equal date, event.ai_diagnosis.created_at.in_time_zone("Asia/Shanghai").to_date
+    assert_equal Time.current.in_time_zone("Asia/Shanghai").to_date, event.created_at.in_time_zone("Asia/Shanghai").to_date
   end
 
   test "batch diagnosis only runs for SKUs present in the previous weekly profit report" do
@@ -164,7 +165,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
     client = SavingClient.new
     ErpAI::SkuDiagnosisRunner.new(
-      as_of_date: Date.new(2026, 9, 15),
+      as_of_date: Date.new(2026, 9, 14),
       client: client,
       user: @user,
       snapshot_fetcher: @snapshot_fetcher
@@ -225,9 +226,9 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     assert_includes section, "# Snapshot base"
   end
 
-  test "runs weekly rules only on monday" do
+  test "runs weekly rules on Tuesday with daily rules" do
     client = SavingClient.new
-    diagnosis_runner(date: Date.new(2026, 9, 14), client: client).run
+    diagnosis_runner(date: Date.new(2026, 9, 15), client: client).run
 
     assert_equal 4, client.requests.size
     assert_equal [@daily.id, @weekly.id].sort, Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
@@ -269,13 +270,13 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
   test "manual frequency runs only when explicitly selected" do
     automatic_client = SavingClient.new
-    diagnosis_runner(date: Date.new(2026, 9, 14), client: automatic_client).run
+    diagnosis_runner(date: Date.new(2026, 9, 15), client: automatic_client).run
 
     assert_equal [ @daily.id, @weekly.id ].sort,
       Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
 
     ErpAI::SkuDiagnosisRunner.new(
-      as_of_date: Date.new(2026, 9, 14),
+      as_of_date: Date.new(2026, 9, 15),
       sku_code: @sku.sku_code,
       rule_ids: [ @manual.id ],
       client: SavingClient.new,
@@ -296,8 +297,8 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
     scheduled_client = SavingClient.new
     diagnosis_runner(date: Date.new(2026, 9, 15), client: scheduled_client).run
-    assert_empty scheduled_client.requests
-    assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
+    assert_equal 2, scheduled_client.requests.size
+    assert_equal [ @weekly.id ], Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id)
 
     manual_client = SavingClient.new
     ErpAI::SkuDiagnosisRunner.new(
@@ -310,7 +311,8 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     ).run
 
     assert_equal 2, manual_client.requests.size
-    assert_equal [@daily.id], Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id)
+    assert_equal [ @weekly.id, @daily.id ].sort,
+      Ec::GeneralDiagnosis.find_by!(sku: @sku).events.pluck(:sub_agent_id).sort
   end
 
   test "loads listing content for rules that select it" do
@@ -369,7 +371,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     client = SavingClient.new
 
     ErpAI::SkuDiagnosisRunner.new(
-      as_of_date: Date.new(2026, 9, 15),
+      as_of_date: Date.new(2026, 9, 14),
       sku_code: @sku.sku_code,
       client: client,
       user: @user,
@@ -431,7 +433,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     client = SavingClient.new
 
     ErpAI::SkuDiagnosisRunner.new(
-      as_of_date: Date.new(2026, 9, 15),
+      as_of_date: Date.new(2026, 9, 14),
       sku_code: @sku.sku_code,
       client: client,
       user: @user,
@@ -451,7 +453,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
   test "rerunning the same date overwrites the rule event" do
     client = SavingClient.new
-    runner = diagnosis_runner(date: Date.new(2026, 9, 15), client: client)
+    runner = diagnosis_runner(date: Date.new(2026, 9, 14), client: client)
     runner.run
     first_event_id = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole.id
     first_conversation_id = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole.conversation_id
@@ -664,7 +666,9 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
     diagnosis_runner(date: Date.new(2026, 9, 14), client: SavingClient.new).run
 
     assert_equal latest.id, Ec::GeneralDiagnosis.find_by!(sku: @sku, is_latest: true).id
-    assert_equal latest_event.id, Ec::AIDiagnosisEvent.latest.find_by!(sub_agent_id: @daily.id).id
+    assert_equal latest_event.id,
+      Ec::AIDiagnosisEvent.latest.joins(:ai_diagnosis)
+        .where(sub_agent_id: @daily.id, ec_ai_diagnosis: { sku_id: @sku.id }).find_by!(sub_agent_id: @daily.id).id
   end
 
   test "new rules persist all contexts and reject unsupported ones" do

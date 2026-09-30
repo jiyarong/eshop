@@ -31,12 +31,13 @@ module Ec
         password: "password123",
         password_confirmation: "password123"
       )
-      Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @operator)
+      Ec::SkuOperatorAssignment.create!(sku: @sku, user: @operator)
     end
 
     teardown do
       Ec::OperationAction.where(ec_sku_product_id: @sku_product&.id).delete_all
-      Ec::SkuProductOperator.where(sku_product_id: @sku_product&.id).delete_all
+      Ec::SkuOperationPlan.where(sku_id: @sku&.id).delete_all
+      Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
       Ec::SkuProduct.where(id: @sku_product&.id).delete_all
       Ec::Sku.where(id: @sku&.id).delete_all
       Ec::Store.where(id: @store&.id).delete_all
@@ -46,6 +47,9 @@ module Ec
 
     test "records an Ozon supply order status change for each bound SKU" do
       state_updated_at = "2026-08-04T07:23:58Z"
+      plan = @sku.sku_operation_plans.create!(target: "warehouse_distribution", operation: "increase",
+        scope: "LISTING", scope_id: @sku_product.id.to_s, plan_date: Date.new(2026, 8, 3),
+        created_at: Time.utc(2026, 8, 3), referer: ["risk"], message: "Ship inventory")
       row = {
         account_id: @account.id,
         supply_order_id: "119923443",
@@ -69,6 +73,7 @@ module Ec
 
       action = Ec::OperationAction.order(:id).last
       assert_equal "supply_order", action.operation_type
+      assert_equal plan, action.plan
       assert_equal @operator, action.operated_by_user
       assert_equal Time.zone.parse(state_updated_at), action.operated_at
       assert_equal({ "from" => "IN_TRANSIT", "to" => "ACCEPTANCE_AT_STORAGE_WAREHOUSE" },

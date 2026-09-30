@@ -184,13 +184,9 @@ production:
     command: "Ec::SkuInventorySnapshotSync.run"
     schedule: every hour
 
-  sku_diagnosis:
-    command: "AITasks::SkuDiagnosisJob.perform_later"
-    schedule: every day at 03:30 in Asia/Shanghai
-
   sku_planning_pipeline:
     command: "AITasks::SkuPlanningPipelineJob.perform_later"
-    schedule: every monday at 07:00 in Asia/Shanghai
+    schedule: every tuesday at 03:30 in Asia/Shanghai
 
   daily_snapshot:
     command: "Ec::SnapshotRunner.run(snapshot_date: Ec::Snapshot.current_date - 1)"
@@ -216,7 +212,7 @@ production:
 
   weekly_profit_report:
     command: "GoogleSheets::WeeklyProfitReportRunner.run"
-    schedule: every monday at 17:00 in Asia/Shanghai
+    schedule: every monday at 20:00 in Asia/Shanghai
 
   # Sync W-2 and W-1 Ozon ad performance with natural-week boundaries.
   ozon_performance_weekly_sync:
@@ -225,7 +221,7 @@ production:
       w2_from = w1_from - 1.week
       RawOzon::PerformanceSync.run(from_date: w2_from, to_date: w2_from + 6)
       RawOzon::PerformanceSync.run(from_date: w1_from, to_date: w1_from + 6)
-    schedule: every monday at 13:00 in Asia/Shanghai
+    schedule: every monday at 18:00 in Asia/Shanghai
 
   # T+1 settlement catchup for current-week Ozon ad data.
   ozon_performance_midweek_sync:
@@ -254,13 +250,13 @@ production:
 
   # Pre-report sync for core WB profit attribution sources.
   wb_profit_sources_prereport_sync:
-    command: "RawWb::WeeklySync.run(days: 8, sync_keys: [:sync_ad_campaigns, :sync_sales_reports, :sync_finance_details, :sync_paid_storage, :sync_ad_settled_fees])"
-    schedule: every monday at 16:10 in Asia/Shanghai
+    command: "RawWb::WeeklySync.run(days: 8, sync_keys: [:sync_ad_campaigns, :sync_ad_stats, :sync_sales_reports, :sync_finance_details, :sync_paid_storage, :sync_ad_settled_fees])"
+    schedule: every monday at 18:10 in Asia/Shanghai
 
   # Refresh W-2 and W-1 Ozon accrual_by_day before weekly report generation.
   ozon_accrual_prereport_sync:
     command: "RawOzon::DailySync.run(days: 15, sync_keys: [:sync_finance_accrual_by_day])"
-    schedule: every monday at 13:30 in Asia/Shanghai
+    schedule: every monday at 18:30 in Asia/Shanghai
 
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"

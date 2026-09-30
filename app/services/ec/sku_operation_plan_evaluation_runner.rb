@@ -1,11 +1,15 @@
 module Ec
   class SkuOperationPlanEvaluationRunner
     TIME_ZONE = "Asia/Shanghai".freeze
-    EVALUATOR_VERSION = "deterministic_v1".freeze
+    EVALUATOR_VERSION = "sku_plan_evaluation_v2".freeze
     EFFECTIVENESS_VALUES = %w[positive negative mixed inconclusive].freeze
     CONFIDENCE_VALUES = %w[high medium low].freeze
 
-    def self.run(as_of_date: nil, period_start: nil, plan_id: nil, sku_code: nil, metrics_provider: nil, evaluator: nil, client: nil, agent: nil, user: nil)
+    def self.pending?(as_of_date:, sku_code: nil)
+      new(as_of_date: as_of_date, sku_code: sku_code).pending?
+    end
+
+    def self.run(as_of_date: nil, period_start: nil, plan_id: nil, sku_code: nil, metrics_provider: nil, evaluator: nil, client: nil, agent: nil, user: nil, force: false)
       new(
         as_of_date: as_of_date,
         period_start: period_start,
@@ -15,7 +19,8 @@ module Ec
         evaluator: evaluator,
         client: client,
         agent: agent,
-        user: user
+        user: user,
+        force: force
       ).run
     end
 
@@ -30,7 +35,8 @@ module Ec
       client: nil,
       agent: nil,
       evaluator_version: EVALUATOR_VERSION,
-      user: nil
+      user: nil,
+      force: false
     )
       @time_zone = Time.find_zone!(TIME_ZONE)
       @as_of_date = (as_of_date || Time.current.in_time_zone(@time_zone).to_date).to_date
@@ -44,6 +50,11 @@ module Ec
       @agent = agent
       @evaluator_version = evaluator_version
       @user = user
+      @force = force
+    end
+
+    def pending?
+      plans.exists?
     end
 
     def run
@@ -54,7 +65,6 @@ module Ec
           "[Ec::SkuOperationPlanEvaluationRunner] plan #{plan.id}: #{error.class}: #{error.message}"
         )
         mark_failed(plan)
-        nil
       end
     end
 
@@ -64,24 +74,43 @@ module Ec
       :evaluator_version, :time_zone, :user
 
     def plans
-      scope = SkuOperationPlan.where(planning_period_start: previous_period_start)
+      scope = if plan_id.present?
+        SkuOperationPlan.all
+      elsif period_start.present?
+        SkuOperationPlan.where(planning_period_start: previous_period_start)
+      else
+        SkuOperationPlan.where("planning_period_start <= ?", previous_period_start)
+      end
+      scope = scope.where("execution_deadline < ?", as_of_date) if plan_id.blank?
+      if plan_id.blank? && !@force
+        completed = SkuOperationPlanEvaluation.successful.joins(:plan)
+          .where("observation_to >= ec_ai_sku_operation_plans.execution_deadline").select(:plan_id)
+        scope = scope.where.not(id: completed)
+      end
       scope = scope.where(id: plan_id) if plan_id.present?
       scope = scope.where(sku_id: Sku.where(sku_code: sku_code)) if sku_code.present?
       scope.includes(:operation_actions, :evaluations).order(:sku_id, :id)
     end
 
     def evaluate_plan(plan)
+      existing = plan.evaluations.find_by(observation_to: observation_to(plan))
+      return existing if existing&.status == "succeeded" && !@force
+
       mark_running(plan)
       actions = observed_actions(plan)
       metrics = metrics_for(plan)
       execution_status = execution_status_for(plan, actions)
+      plan.evaluations.find_by!(observation_to: observation_to(plan)).update!(
+        execution_status: execution_status, metrics: metrics, evidence: evidence_for(plan, actions, metrics),
+        action_ids: actions.map(&:id), conversation_id: nil
+      )
       result = result_for(plan, actions, metrics, execution_status)
       evaluation = persist_evaluation(plan, actions, metrics, execution_status, result)
       evaluation
     end
 
     def mark_running(plan)
-      evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to)
+      evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to(plan))
       evaluation.assign_attributes(
         observation_from: plan.planning_period_start,
         status: "running",
@@ -97,7 +126,7 @@ module Ec
 
     def observed_actions(plan)
       from = time_for_date(plan.planning_period_start).beginning_of_day
-      to = time_for_date(plan.execution_deadline).end_of_day
+      to = time_for_date(observation_to(plan)).end_of_day
       plan.operation_actions.where(operated_at: from..to).order(:operated_at, :id).to_a
     end
 
@@ -114,7 +143,7 @@ module Ec
         arguments = {
           plan: plan,
           from_date: plan.planning_period_start - 4.weeks,
-          to_date: observation_to
+          to_date: observation_to(plan)
         }
         return metrics_provider.arity == 1 ? (metrics_provider.call(arguments) || {}) : (metrics_provider.call(**arguments) || {})
       end
@@ -122,7 +151,8 @@ module Ec
       metrics_query_class.new(
         sku: plan.sku,
         from_date: plan.planning_period_start - 4.weeks,
-        to_date: observation_to,
+        to_date: observation_to(plan),
+        observation_from: plan.planning_period_start,
         time_zone: time_zone
       ).call
     rescue StandardError => error
@@ -140,7 +170,7 @@ module Ec
         metrics: metrics,
         execution_status: execution_status,
         observation_from: plan.planning_period_start,
-        observation_to: observation_to
+        observation_to: observation_to(plan)
       }
       if execution_status.in?(%w[not_started not_applicable])
         return {
@@ -150,6 +180,11 @@ module Ec
             I18n.t("erp.sku_operation_plan_evaluation.summary.not_started") :
             I18n.t("erp.sku_operation_plan_evaluation.summary.not_applicable")
         }
+      end
+
+      unless metrics_available?(metrics)
+        return { effectiveness: "inconclusive", confidence: "low",
+          summary: I18n.t("erp.sku_operation_plan_evaluation.summary.insufficient_data") }
       end
 
       if evaluator
@@ -198,8 +233,16 @@ module Ec
         "erp.sku_operation_plan_evaluation.system_prompt",
         default: "请基于计划、动作证据和原始指标保守判断计划效果，只返回 JSON：effectiveness、confidence、summary。未执行动作不得判为负面。"
       )
-      request_context = context.deep_stringify_keys.to_json
+      plan = context.fetch(:plan)
+      request_context = context.except(:plan, :actions).merge(
+        plan: plan.as_json,
+        actions: context.fetch(:actions).map(&:as_json),
+        concurrent_actions: plan.sku.operation_actions
+          .where(operated_at: time_for_date(plan.planning_period_start)..time_for_date(observation_to(plan)).end_of_day)
+          .where.not(id: context.fetch(:actions).map(&:id)).order(:operated_at, :id).map(&:as_json)
+      ).to_json
       conversation = build_evaluation_conversation(request_context, system_prompt, context.fetch(:plan))
+      plan.evaluations.find_by!(observation_to: observation_to(plan)).update!(conversation: conversation) if conversation
       response = client.complete({
         model: agent&.model_id.presence || "sku_plan_evaluation",
         temperature: agent&.temperature || 0.1,
@@ -218,14 +261,15 @@ module Ec
     end
 
     def build_evaluation_conversation(request_context, system_prompt, plan)
-      return unless agent && evaluation_user
+      return unless agent
+      raise "No execution user available for SKU plan evaluation" unless evaluation_user
 
       conversation = agent.conversations.create!(
         user: evaluation_user,
         module_name: "sku_plan_evaluation",
         business_object_type: "Ec::SkuOperationPlan",
         business_object_id: plan.id.to_s,
-        time_range: { "from" => plan.planning_period_start.iso8601, "to" => observation_to.iso8601 },
+        time_range: { "from" => plan.planning_period_start.iso8601, "to" => observation_to(plan).iso8601 },
         context: { "system_prompt" => system_prompt, "data_summary" => request_context }
       )
       conversation.messages.create!(role: "user", content: request_context)
@@ -303,7 +347,7 @@ module Ec
     end
 
     def persist_evaluation(plan, actions, metrics, execution_status, result)
-      evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to)
+      evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to(plan))
       evaluation.assign_attributes(
         observation_from: plan.planning_period_start,
         execution_status: execution_status,
@@ -311,37 +355,47 @@ module Ec
         confidence: result.fetch(:confidence),
         summary: result.fetch(:summary),
         metrics: metrics,
-        evidence: {
-          planning_period_start: plan.planning_period_start.iso8601,
-          planning_period_end: plan.planning_period_end.iso8601,
-          execution_deadline: plan.execution_deadline.iso8601,
-          action_count: actions.size,
-          data_available: metrics.present?
-        },
+        evidence: evidence_for(plan, actions, metrics),
         action_ids: actions.map(&:id),
         conversation_id: result[:conversation_id],
         evaluator_version: evaluator_version,
         status: "succeeded",
         evaluated_at: Time.current
       )
-      evaluation.save!
-
       plan_attributes = {
         execution_status: execution_status,
-        evaluation_status: metrics.present? || actions.empty? ? "evaluated" : "insufficient_data"
+        evaluation_status: metrics_available?(metrics) || actions.empty? ? "evaluated" : "insufficient_data"
       }
+      plan_attributes[:status] = execution_status == "executed" ? "done" : "active" unless execution_status == "not_applicable"
       plan_attributes[:lifecycle_status] = "expired" if as_of_date > plan.execution_deadline && plan.lifecycle_status == "active"
-      plan.update!(plan_attributes)
-      sync_planning_cycle_status(plan)
+      SkuOperationPlanEvaluation.transaction do
+        evaluation.save!
+        plan.update!(plan_attributes)
+        sync_planning_cycle_status(plan)
+      end
       evaluation
+    end
+
+    def evidence_for(plan, actions, metrics)
+      {
+        planning_period_start: plan.planning_period_start.iso8601,
+        planning_period_end: plan.planning_period_end.iso8601,
+        execution_deadline: plan.execution_deadline.iso8601,
+        action_count: actions.size,
+        data_available: metrics_available?(metrics),
+        observation_to: observation_to(plan).iso8601,
+        actions: actions.map { |action| action.as_json(only: %i[id operation_type operated_at diff_result ec_sku_product_id]) }
+      }
     end
 
     def sync_planning_cycle_status(plan)
       cycle = plan.planning_cycle
       return unless cycle
 
+      return if cycle.operation_plans.where(evaluation_status: "failed").exists?
+
       all_evaluated = cycle.operation_plans.exists? &&
-        cycle.operation_plans.where.not(evaluation_status: %w[evaluated insufficient_data failed]).none?
+        cycle.operation_plans.where.not(evaluation_status: %w[evaluated insufficient_data]).none?
       if all_evaluated
         cycle.update!(status: "evaluated", completed_at: Time.current, error_message: nil)
       elsif as_of_date > plan.execution_deadline && cycle.status == "active"
@@ -350,10 +404,10 @@ module Ec
     end
 
     def mark_failed(plan)
-      evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to)
+      evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to(plan))
       evaluation.assign_attributes(
         observation_from: plan.planning_period_start,
-        execution_status: plan.execution_status,
+        execution_status: evaluation.execution_status.presence || plan.execution_status,
         effectiveness: "inconclusive",
         confidence: "low",
         summary: I18n.t("erp.sku_operation_plan_evaluation.summary.failed", default: "计划效果评估失败，等待重试。"),
@@ -369,15 +423,25 @@ module Ec
       evaluation
     rescue StandardError => error
       Rails.logger.error("[Ec::SkuOperationPlanEvaluationRunner] failed to persist failure: #{error.message}")
-      nil
+      raise
     end
 
     def previous_period_start
       @previous_period_start ||= period_start || (as_of_date.beginning_of_week(:monday) - 1.week)
     end
 
-    def observation_to
-      previous_period_start + 6.days
+    def observation_to(plan)
+      [plan.execution_deadline, as_of_date - 1.day].min
+    end
+
+    def metrics_available?(metrics)
+      return false if metrics.blank?
+
+      profit = metrics[:observation_profit_by_store] || metrics["observation_profit_by_store"] ||
+        metrics[:weekly_profit_by_week_and_store] || metrics["weekly_profit_by_week_and_store"]
+      return true if profit.nil?
+
+      profit.values.any? { |row| row.present? && (row[:after_tax_profit] || row["after_tax_profit"]).is_a?(Numeric) }
     end
 
     def time_for_date(date)

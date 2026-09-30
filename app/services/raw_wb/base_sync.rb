@@ -109,6 +109,10 @@ module RawWb
         self.class::STEPS
       end
 
+      task = RawWb::SyncTask.create!(
+        account: @account, task_type: self.class.name.demodulize.underscore,
+        status: "running"
+      )
       log "Starting #{self.class.name} for account ##{@account.id} (#{@account.name}), from=#{@from}, steps=#{steps_to_run.size}"
       steps_to_run.each do |step|
         begin
@@ -127,6 +131,8 @@ module RawWb
         end
       end
       log "Done. #{@results.count { |_, v| v[:ok] }} ok, #{@results.count { |_, v| v[:error] }} failed."
+      task.update!(status: @results.values.any? { |result| result[:error] } ? "partial" : "done",
+        results: @results.merge(period: { from_date: @from, to_date: Date.current }), completed_at: Time.current)
       @results
     end
 

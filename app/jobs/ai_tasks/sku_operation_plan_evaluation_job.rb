@@ -13,7 +13,8 @@ module AITasks
         plan_id: plan_id,
         sku_code: sku_code,
         client: ErpAI::DefaultClient.new,
-        agent: agent
+        agent: agent,
+        force: true
       )
       raise EvaluationFailed, "SKU plan evaluation failed" if Array(evaluations).any? { |evaluation| evaluation.respond_to?(:status) && evaluation.status == "failed" }
     end

@@ -87,7 +87,8 @@ module RawOzon
       err_count = @results.count { |_, v| v[:error] }
       log "Done. #{ok_count} ok, #{err_count} failed."
 
-      task.update!(status: err_count.zero? ? 'done' : 'partial', results: @results, finished_at: Time.current)
+      task.update!(status: err_count.zero? ? 'done' : 'partial',
+        results: @results.merge(period: { from_date: @from.to_date, to_date: Date.current }), finished_at: Time.current)
       @results
     end
 

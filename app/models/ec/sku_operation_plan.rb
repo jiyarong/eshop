@@ -2,7 +2,7 @@ module Ec
   class SkuOperationPlan < ApplicationRecord
     self.table_name = "ec_ai_sku_operation_plans"
     TIME_ZONE = "Asia/Shanghai".freeze
-    EXECUTION_GRACE_DAYS = 2
+    EXECUTION_GRACE_DAYS = 1
 
     TARGET_ALIASES = {
       "价格" => "price",

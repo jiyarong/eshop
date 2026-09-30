@@ -38,6 +38,8 @@ module Ec
       from_date:,
       to_date:,
       time_zone:,
+      observation_from: nil,
+      observation_profit_query: Ec::WeeklyProfitReportQuery,
       profit_report_runner: WeeklyProfitReports::ReportQueryRunner.method(:run)
     )
       @sku = sku
@@ -45,15 +47,34 @@ module Ec
       @to_date = to_date.to_date
       @time_zone = time_zone
       @profit_report_runner = profit_report_runner
+      @observation_from = observation_from&.to_date
+      @observation_profit_query = observation_profit_query
     end
 
     def call
-      {
+      result = {
         stores: report_stores.index_with { |store| store_metadata(store) }.transform_keys(&:id),
         weekly_profit_by_week_and_store: weekly_profit_by_week_and_store,
         inventory_snapshots_by_week: inventory_snapshots_by_week,
         funnel_by_day_and_platform: funnel_by_day_and_platform
       }
+      if @observation_from
+        result[:observation_period] = {
+          from: @observation_from.iso8601, to: to_date.iso8601,
+          provisional_profit_from: to_date.beginning_of_week(:monday).iso8601,
+          wb_profit_basis: "published_settlement_reports",
+          ozon_profit_basis: "daily_accruals"
+        }
+        result[:observation_profit_by_store] = report_stores.index_with do |store|
+          report = @observation_profit_query.run(store_ref: store_ref(store), from_date: @observation_from,
+            to_date: to_date, sku_codes: [sku.sku_code], include_comparison: false)
+          store.wb? ? normalize_wb_profit(report.fetch(:rows)) : normalize_ozon_profit(report.fetch(:rows))
+        end.transform_keys(&:id)
+        result[:inventory_snapshots_by_day] = Ec::Snapshot.of_type(Ec::InventorySnapshot.snapshot_type)
+          .for_sku(sku).between(@observation_from, to_date).order(:snapshot_date, :id)
+          .index_with { |snapshot| normalize_inventory_snapshot(snapshot) }.transform_keys { |snapshot| snapshot.snapshot_date.iso8601 }
+      end
+      result
     end
 
     private

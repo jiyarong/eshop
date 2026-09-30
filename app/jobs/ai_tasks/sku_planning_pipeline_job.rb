@@ -8,18 +8,28 @@ module AITasks
     retry_on ErpAI::SkuDiagnosisRunner::Failure, wait: 5.minutes, attempts: 3
     retry_on DiagnosisIncomplete, wait: 5.minutes, attempts: 3
     retry_on EvaluationFailed, wait: 5.minutes, attempts: 3
+    retry_on ErpAI::SkuPlannerRunner::Failure, wait: 5.minutes, attempts: 3
+    retry_on ErpAI::SkuPlannerRunner::EvaluationFailed, wait: 5.minutes, attempts: 3
+    retry_on Ec::SkuPlanningDataReadiness::NotReady, wait: 30.minutes, attempts: 5
 
     STAGES = %w[evaluation diagnosis planner].freeze
 
     # The default invocation runs all stages synchronously. A retry can start
     # at a later stage when an earlier stage has already completed.
     def perform(as_of_date: nil, sku_code: nil, stage: nil)
-      date = as_of_date.presence || Time.current.in_time_zone(ErpAI::SkuDiagnosisRunner::TIME_ZONE).to_date
+      date = (as_of_date.presence || Time.current.in_time_zone(ErpAI::SkuDiagnosisRunner::TIME_ZONE).to_date).to_date
       stages = stages_from(stage)
       started_at = Time.current
 
       if stages.include?("evaluation")
-        evaluations = Ec::SkuOperationPlanEvaluationRunner.run(as_of_date: date, sku_code: sku_code)
+        Ec::SkuPlanningDataReadiness.check!(as_of_date: date, sku_code: sku_code)
+
+        evaluations = Ec::SkuOperationPlanEvaluationRunner.run(
+          as_of_date: date,
+          sku_code: sku_code,
+          client: ErpAI::DefaultClient.new,
+          agent: Agent.ensure_fixed!("sku_plan_evaluation")
+        )
         if Array(evaluations).any? { |evaluation| evaluation.respond_to?(:status) && evaluation.status == "failed" }
           raise EvaluationFailed, "SKU plan evaluation failed"
         end
@@ -58,6 +68,12 @@ module AITasks
             is_latest: true,
             ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name, sku_id: skus.map(&:id) }
           )
+        zone = Time.find_zone!(ErpAI::SkuDiagnosisRunner::TIME_ZONE)
+        period_start = date.beginning_of_week(:monday)
+        from = zone.local(period_start.year, period_start.month, period_start.day)
+        to = zone.local(date.year, date.month, date.day) + 1.day
+        events = events.where(ec_ai_diagnosis: { created_at: from...to })
+          .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope != ?", "advise")
         events = events.where("ec_ai_diagnosis_events.created_at >= ?", started_at) if started_at
         event_rule_ids_by_sku = events.pluck("ec_ai_diagnosis.sku_id", :sub_agent_id)
           .group_by(&:first)
@@ -65,7 +81,8 @@ module AITasks
 
         skus.all? do |sku|
           required_rule_ids = rules.filter_map { |rule| rule.id if rule.applies_to_sku?(sku) }
-          required_rule_ids.empty? || (required_rule_ids - event_rule_ids_by_sku.fetch(sku.id, Set.new)).empty?
+          completed_rule_ids = event_rule_ids_by_sku.fetch(sku.id, Set.new)
+          required_rule_ids.all? { |rule_id| completed_rule_ids.include?(rule_id) }
         end
       end
 

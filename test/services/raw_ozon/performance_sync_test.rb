@@ -39,6 +39,7 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
   end
 
   teardown do
+    RawOzon::SyncTask.where(account_id: @account.id).delete_all
     RawOzon::AdDailyStat.where(account_id: @account.id).delete_all
     RawOzon::AdUnit.where(account_id: @account.id).delete_all
     @account.destroy!
@@ -51,6 +52,11 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
 
     assert_equal({ ok: 1 }, result[:sync_ad_units])
     assert_equal({ ok: 1 }, result[:sync_ad_daily_stats])
+    task = RawOzon::SyncTask.where(account_id: @account.id).sole
+    assert_equal "performance", task.sync_type
+    assert_equal "done", task.status
+    assert_equal @date.iso8601, task.results.dig("period", "to_date")
+    assert task.finished_at.present?
 
     unit = RawOzon::AdUnit.find_by!(account_id: @account.id, external_id: "campaign-1")
     assert_equal 2_000, unit.weekly_budget.to_i
@@ -109,6 +115,7 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
     assert_equal [:units], calls
     assert_equal({ error: "occupied" }, result[:sync_ad_units])
     assert_nil result[:sync_ad_daily_stats]
+    assert_equal "partial", RawOzon::SyncTask.where(account_id: @account.id).sole.status
   end
 
   private

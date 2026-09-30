@@ -255,9 +255,12 @@ module Ec
       assert older.reload.active?
     end
 
-    test "does not link an expired or already completed plan" do
-      expired = create_plan(target: "price", operation: "increase", retain_until: 1.minute.ago)
-      completed = create_plan(target: "price", operation: "increase", status: "done")
+    test "does not link an expired or cancelled plan" do
+      expired = create_plan(
+        target: "price", operation: "increase", plan_date: Date.current - 2.weeks,
+        created_at: 2.weeks.ago, retain_until: 1.minute.ago
+      )
+      completed = create_plan(target: "price", operation: "increase", status: "ignored")
       action = Ec::ListingChangeRecorder.record(
         sku_product: @sku_product, operation_type: "listing_pricing",
         before: { price: 100 }, after: { price: 120 }
@@ -265,7 +268,94 @@ module Ec
 
       assert_nil action.plan
       assert expired.reload.active?
-      assert completed.reload.done?
+      assert completed.reload.ignored?
+    end
+
+    test "links a historical action even after the current retain window" do
+      period_start = Date.new(2026, 9, 14)
+      operated_at = Time.find_zone!(Ec::SkuOperationPlan::TIME_ZONE).local(2026, 9, 16, 12)
+      plan = create_plan(
+        target: "price", operation: "increase", plan_date: period_start,
+        created_at: operated_at - 1.day,
+        retain_until: operated_at - 1.minute
+      )
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }, operated_at: operated_at
+      )
+
+      assert_equal plan, action.plan
+    end
+
+    test "matches inbound inventory changes to warehouse distribution plans" do
+      plan = create_plan(target: "warehouse_distribution", operation: "increase")
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "sku_inbound_change",
+        before: { platform_inbound_quantity: 2 }, after: { platform_inbound_quantity: 8 }
+      )
+
+      assert_equal plan, action.plan
+    end
+
+    test "matches price and advertising budget decreases" do
+      [["price", "listing_pricing", "price"], ["advertising", "sku_adv_budget", "daily_budget"]].each do |target, type, field|
+        plan = create_plan(target: target, operation: "decrease")
+        action = Ec::ListingChangeRecorder.record(sku_product: @sku_product, operation_type: type,
+          before: { field => 100 }, after: { field => 80 })
+        assert_equal plan, action.plan
+      end
+    end
+
+    test "matches all supported shipment statuses to warehouse distribution" do
+      plan = create_plan(target: "warehouse_distribution", operation: "modify")
+      %w[planned unloading_allowed accepting accepted unloaded_at_gate READY_TO_SUPPLY
+        ACCEPTED_AT_SUPPLY_WAREHOUSE IN_TRANSIT ACCEPTANCE_AT_STORAGE_WAREHOUSE COMPLETED].each do |status|
+        action = Ec::OperationAction.create!(sku: @sku, sku_product: @sku_product, store: @store,
+          operated_by_user: @admin, operation_type: "supply_order", operated_at: Time.current,
+          diff_result: { fields: { supply_order_status: { from: "new", to: status } }, supply_order: { sku_quantity: 10 } })
+        Ec::OperationActionPlanMatcher.call(action)
+        assert_equal plan, action.reload.plan, status
+      end
+      assert_equal 10, plan.operation_actions.count
+    end
+
+    test "leaves cancellation inbound decreases manual notes and maintain plans unmatched" do
+      create_plan(target: "warehouse_distribution", operation: "increase")
+      create_plan(target: "price", operation: "maintain")
+      [
+        ["supply_order", { fields: { supply_order_status: { from: "READY_TO_SUPPLY", to: "CANCELLED" } }, supply_order: { sku_quantity: 10 } }],
+        ["sku_inbound_change", { fields: { quantity: { from: 10, to: 0 } } }],
+        ["manual_note", { note: "Discussion only" }],
+        ["listing_pricing", { fields: { price: { from: 100, to: 100 } } }]
+      ].each do |type, diff|
+        action = Ec::OperationAction.create!(sku: @sku, sku_product: @sku_product, store: @store,
+          operated_by_user: @admin, operation_type: type, operated_at: Time.current, diff_result: diff)
+        Ec::OperationActionPlanMatcher.call(action)
+        assert_nil action.reload.plan_id, type
+      end
+    end
+
+    test "matches a non-latest historical plan until the Shanghai deadline inclusive" do
+      zone = Time.find_zone!(Ec::SkuOperationPlan::TIME_ZONE)
+      period_start = Date.new(2026, 9, 21)
+      plan = create_plan(target: "price", operation: "increase", plan_date: period_start,
+        created_at: zone.local(2026, 9, 22), is_latest: false)
+      before = Ec::ListingChangeRecorder.record(sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }, operated_at: zone.local(2026, 9, 21, 12))
+      assert_nil before.plan
+      within = Ec::ListingChangeRecorder.record(sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }, operated_at: zone.local(2026, 9, 28, 23, 59, 59))
+      assert_equal plan, within.plan
+      late = Ec::ListingChangeRecorder.record(sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 120 }, after: { price: 130 }, operated_at: zone.local(2026, 9, 29))
+      assert_nil late.plan
+      replacement = create_plan(target: "price", operation: "increase", plan_date: period_start,
+        created_at: zone.local(2026, 9, 22), is_latest: true)
+      Ec::OperationActionPlanMatcher.call(within)
+      assert_equal plan, within.reload.plan
+      assert_equal "not_started", replacement.reload.execution_status
     end
 
     test "removing a regenerated plan leaves its operation action intact" do

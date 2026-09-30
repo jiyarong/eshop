@@ -13,6 +13,7 @@ class RawWb::SalesReportsSyncTest < ActiveSupport::TestCase
   end
 
   teardown do
+    RawWb::SyncTask.where(account_id: @account.id).delete_all
     RawWb::FinanceDetail.where(account_id: @account.id).delete_all
     RawWb::SalesReport.where(account_id: @account.id).destroy_all
     @account.destroy
@@ -86,5 +87,28 @@ class RawWb::SalesReportsSyncTest < ActiveSupport::TestCase
     detail = RawWb::FinanceDetail.find_by!(account_id: @account.id, rrdid: 987_654)
     assert_equal 835_651_868, detail.wb_report_id
     assert_equal Date.current, detail.rr_dt
+  end
+
+  test "persists completed source coverage and records failed steps" do
+    @sync.define_singleton_method(:sleep) { |_| }
+    @sync.define_singleton_method(:sync_sales_reports) { 0 }
+    @sync.define_singleton_method(:sync_finance_details) { raise "late finance report" }
+    result = @sync.run(sync_keys: %i[sync_sales_reports sync_finance_details])
+    task = RawWb::SyncTask.where(account_id: @account.id).sole
+    assert_equal "partial", task.status
+    assert_equal "weekly_sync", task.task_type
+    assert_equal 0, task.results.dig("sync_sales_reports", "ok")
+    assert_equal "late finance report", task.results.dig("sync_finance_details", "error")
+    assert_equal Date.current.iso8601, task.results.dig("period", "to_date")
+    assert task.completed_at.present?
+    assert_equal({ error: "late finance report" }, result[:sync_finance_details])
+  end
+
+  test "does not treat exhausted storage download retries as a successful empty report" do
+    client = Object.new
+    client.define_singleton_method(:get) { |*| raise RawWb::WbClient::RetryableError.new("limited", retry_after: 1) }
+    @sync.instance_variable_set(:@client, client)
+    @sync.define_singleton_method(:sleep) { |_| }
+    assert_raises(RawWb::WbClient::RetryableError) { @sync.send(:download_and_store_paid_storage, "task") }
   end
 end

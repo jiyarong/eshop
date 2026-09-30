@@ -168,7 +168,12 @@ class ReportsController < ApplicationController
   def evaluate_sku_operation_plan
     sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     plan = sku.sku_operation_plans.find(params[:plan_id])
-    observation_to = plan.period_end
+    observation_to = [plan.execution_deadline, Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date - 1.day].min
+    if observation_to < plan.period_start
+      redirect_to report_sku_operation_plan_path(sku.sku_code, plan, locale: params[:locale].presence),
+        alert: t("erp.sku_operation_plan_evaluation.summary.insufficient_data"), status: :see_other
+      return
+    end
     evaluation = plan.evaluations.find_or_initialize_by(observation_to: observation_to)
     evaluation.assign_attributes(
       observation_from: plan.period_start,
@@ -183,7 +188,7 @@ class ReportsController < ApplicationController
     evaluation.save!
     plan.update!(evaluation_status: "pending")
     AITasks::SkuOperationPlanEvaluationJob.perform_later(
-      as_of_date: user_today,
+      as_of_date: Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date,
       period_start: plan.period_start,
       plan_id: plan.id,
       sku_code: sku.sku_code

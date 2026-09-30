@@ -1929,6 +1929,33 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     diagnosis_rule&.destroy
   end
 
+  test "plan reevaluation uses Shanghai day and includes the complete grace day" do
+    @current_user.update!(time_zone: "UTC")
+    plan = @sku.sku_operation_plans.create!(plan_date: Date.new(2026, 9, 21), target: "price",
+      operation: "maintain", referer: ["risk"], message: "Keep price")
+    travel_to Time.utc(2026, 9, 28, 19, 30) do
+      assert_enqueued_with(job: AITasks::SkuOperationPlanEvaluationJob,
+        args: [{ as_of_date: Date.new(2026, 9, 29), period_start: Date.new(2026, 9, 21), plan_id: plan.id, sku_code: @sku.sku_code }]) do
+        post evaluate_report_sku_operation_plan_path(@sku.sku_code, plan)
+      end
+      assert_response :see_other
+      assert_equal Date.new(2026, 9, 28), plan.evaluations.sole.observation_to
+    end
+  ensure
+    plan&.evaluations&.delete_all
+  end
+
+  test "plan reevaluation waits for a complete observation day" do
+    travel_to Time.utc(2026, 9, 28, 4) do
+      plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: ["risk"], message: "Keep price")
+      assert_no_enqueued_jobs do
+        post evaluate_report_sku_operation_plan_path(@sku.sku_code, plan)
+      end
+      assert_response :see_other
+      assert_empty plan.evaluations
+    end
+  end
+
   test "sku detail advice tags show latest plan status and expiry" do
     diagnosis = nil
     linked_action = nil

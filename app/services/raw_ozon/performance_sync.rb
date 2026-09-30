@@ -57,6 +57,7 @@ module RawOzon
         STEPS
       end
 
+      task = RawOzon::SyncTask.create!(account: @account, sync_type: "performance", status: "running", started_at: Time.current)
       log "Starting PerformanceSync for account ##{@account.id} (#{@account.client_id}), from=#{@from.to_date}"
 
       steps_to_run.each do |step|
@@ -86,6 +87,8 @@ module RawOzon
       ok_count  = @results.count { |_, v| v[:ok] }
       err_count = @results.count { |_, v| v[:error] }
       log "Done. #{ok_count} ok, #{err_count} failed."
+      task.update!(status: err_count.zero? ? "done" : "partial",
+        results: @results.merge(period: { from_date: @from.to_date, to_date: @to }), finished_at: Time.current)
       @results
     end
 

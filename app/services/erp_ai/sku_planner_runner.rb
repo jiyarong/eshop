@@ -1,5 +1,7 @@
 module ErpAI
   class SkuPlannerRunner
+    class Failure < StandardError; end
+    class EvaluationFailed < StandardError; end
     AGENT_CODE = "sku_planner".freeze
 
     class ScopedToolExecutor
@@ -32,6 +34,7 @@ module ErpAI
     def initialize(sku_code: nil, user: nil, client: DefaultClient.new, runner_factory: nil, context_builder: ErpAI::SkuPlannerContextBuilder, as_of_date: nil, period_start: nil, rerun: true)
       @sku_code = sku_code
       @user = user
+      @client = client
       @context_builder = context_builder
       @as_of_date = as_of_date&.to_date
       @period_start = period_start&.to_date&.beginning_of_week(:monday)
@@ -52,16 +55,38 @@ module ErpAI
       return [] unless agent.enabled?
 
       user = @user || execution_user
+      @as_of_date ||= Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date
+      evaluate_history(user)
       skus = diagnosis_skus
-      skus.filter_map do |sku|
+      failures = []
+      results = skus.filter_map do |sku|
         run_sku(agent, user, sku)
       rescue StandardError => e
         Rails.logger.error("SKU planner failed for #{sku.sku_code}: #{e.class}: #{e.message}")
+        failures << sku.sku_code
         nil
       end
+      raise Failure, failures.join(", ") if !@rerun && failures.any?
+
+      results
     end
 
     private
+
+    def evaluate_history(user)
+      date = planner_date
+      return unless Ec::SkuOperationPlanEvaluationRunner.pending?(as_of_date: date, sku_code: @sku_code)
+
+      Ec::SkuPlanningDataReadiness.check!(as_of_date: date, sku_code: @sku_code)
+      evaluations = Ec::SkuOperationPlanEvaluationRunner.run(
+        as_of_date: date,
+        sku_code: @sku_code,
+        client: @client,
+        agent: Agent.ensure_fixed!("sku_plan_evaluation"),
+        user: user
+      )
+      raise EvaluationFailed, "SKU plan evaluation failed before Planner" if evaluations.any? { |evaluation| evaluation.status == "failed" }
+    end
 
     def diagnosis_skus
       scope = Ec::Sku
@@ -109,9 +134,7 @@ module ErpAI
       sku.with_lock do
         plans = sku.sku_operation_plans
         existing_cycle = Ec::SkuPlanningCycle.current_for(sku: sku, period_start: planning_period_start)
-        # Legacy plans predate PlanningCycle. Remove only those on the first
-        # migrated run; subsequent runs retain every prior revision.
-        plans.where(plan_date: plan_date, planning_cycle_id: nil).delete_all if existing_cycle.nil?
+        return existing_cycle.planner_conversation if !@rerun && existing_cycle&.status.in?(%w[active closed evaluated])
         planning_cycle = Ec::SkuPlanningCycleLock.acquire(
           sku: sku,
           period_start: planning_period_start,
@@ -158,6 +181,8 @@ module ErpAI
         .where(
           ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name, is_latest: true }
         )
+        .where("ec_ai_diagnosis_events.is_latest = TRUE OR ec_ai_diagnosis_events.sub_agent_id IS NULL")
+        .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope != ?", "advise")
         .where.not(severity: "info")
         .includes(:sub_agent)
         .order(:position, :id)

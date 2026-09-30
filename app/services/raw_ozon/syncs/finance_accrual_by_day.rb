@@ -104,6 +104,7 @@ module RawOzon
           sleep 0.5
         rescue OzonClient::ApiError => e
           log "  Reversal enrichment batch error: #{e.message}", level: :warn
+          raise
         end
 
         RawOzon::AccrualByDay.insert_all(new_rows) if new_rows.any?
@@ -276,6 +277,7 @@ module RawOzon
           sleep 0.5
         rescue OzonClient::ApiError => e
           log "  CrossDock backfill error for #{supply_number}: #{e.message}", level: :warn
+          raise
         end
 
         log "  CrossDock backfill: #{resolved}/#{pending.size} supply orders resolved" if resolved > 0

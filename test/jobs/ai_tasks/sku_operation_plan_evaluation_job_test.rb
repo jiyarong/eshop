@@ -20,6 +20,8 @@ class AITasks::SkuOperationPlanEvaluationJobTest < ActiveJob::TestCase
     assert_equal 42, calls.sole[:plan_id]
     assert_equal "SKU-42", calls.sole[:sku_code]
     assert_instance_of ErpAI::DefaultClient, calls.sole[:client]
+    assert_equal "sku_plan_evaluation", calls.sole.fetch(:agent).code
+    assert calls.sole.fetch(:force)
   ensure
     Ec::SkuOperationPlanEvaluationRunner.define_singleton_method(:run, original_run) if original_run
   end

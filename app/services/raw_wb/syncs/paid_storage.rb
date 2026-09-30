@@ -49,6 +49,7 @@ module RawWb
             resp = @client.get(:seller_analytics, "/api/v1/paid_storage/tasks/#{task_id}/download")
             break
           rescue RawWb::WbClient::RetryableError
+            raise if i == 9
             wait = 60 * (i + 1)  # 60s, 120s, 180s ...
             log "  ⏳ paid_storage download rate-limited, waiting #{wait}s...", level: :warn
             sleep wait

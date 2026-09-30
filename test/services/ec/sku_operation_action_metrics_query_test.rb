@@ -223,4 +223,26 @@ class Ec::SkuOperationActionMetricsQueryTest < ActiveSupport::TestCase
     assert_nil result.dig(:weekly_profit_by_week_and_store, [ week_start, @store.id ])
     assert_not result.key?(:sales_by_day_and_platform)
   end
+
+  test "evaluation observations include grace-day profit query inventory and funnel" do
+    start = Date.new(2026, 9, 21)
+    monday = start + 7.days
+    RawWb::SalesFunnelDaily.create!(account: @account, stat_date: monday, nm_id: @product.product_id, orders: 3, synced_at: Time.current)
+    Ec::Snapshot.create!(snapshot_type: Ec::InventorySnapshot.snapshot_type, snapshot_date: monday,
+      sku: @sku, content: { overview: { platform_stock: 20 } })
+    requests = []
+    observation_query = Object.new
+    observation_query.define_singleton_method(:run) { |**arguments| requests << arguments; { rows: [{ after_tax: 12 }] } }
+    result = Ec::SkuOperationActionMetricsQuery.new(sku: @sku, from_date: start - 4.weeks,
+      to_date: monday, observation_from: start, time_zone: @time_zone,
+      profit_report_runner: ->(**) { { rows: [] } }, observation_profit_query: observation_query).call
+
+    assert_equal start, requests.sole.fetch(:from_date)
+    assert_equal monday, requests.sole.fetch(:to_date)
+    assert_equal 12, result.dig(:observation_profit_by_store, @store.id, :after_tax_profit)
+    assert_equal monday.iso8601, result.dig(:observation_period, :to)
+    assert_equal 20, result.dig(:inventory_snapshots_by_day, monday.iso8601, :sku, :platform_stock)
+    assert_equal 3, result.dig(:funnel_by_day_and_platform, [monday, "wb"], :funnel_orders).to_i
+    assert result.fetch(:weekly_profit_by_week_and_store).keys.all? { |date, _| date <= start }
+  end
 end

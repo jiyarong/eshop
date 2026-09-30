@@ -42,6 +42,7 @@ class RawOzon::CrossdockVolumeAllocationTest < ActiveSupport::TestCase
   end
 
   teardown do
+    RawOzon::AccrualByDay.where(account_id: @account.id).delete_all
     sku_codes = Array(@records).map(&:sku_code)
     Ec::SkuDimension.where(sku_code: sku_codes).delete_all
     Ec::SkuProduct.where(store_id: @store&.id).delete_all
@@ -71,6 +72,13 @@ class RawOzon::CrossdockVolumeAllocationTest < ActiveSupport::TestCase
     weights = @harness.allocation_weights("2001" => 3, "2002" => 1)
 
     assert_equal({ "2001" => BigDecimal("3"), "2002" => BigDecimal("1") }, weights)
+  end
+
+  test "crossdock API failures propagate so source completion cannot be reported as successful" do
+    RawOzon::AccrualByDay.create!(account: @account, accrual_date: Date.current, type_id: 12,
+      amount: -10, accrued_category: "NON_ITEM", posting_number: "SUPPLY-#{@token}", synced_at: Time.current)
+    @harness.define_singleton_method(:resolve_crossdock_bundle) { |_| raise RawOzon::OzonClient::ApiError, "unavailable" }
+    assert_raises(RawOzon::OzonClient::ApiError) { @harness.send(:resolve_and_backfill_crossdock_skus) }
   end
 
   private

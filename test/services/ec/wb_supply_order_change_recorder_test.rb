@@ -29,7 +29,7 @@ module Ec
         password: "password123",
         password_confirmation: "password123"
       )
-      Ec::SkuProductOperator.create!(sku_product: @sku_product, user: @operator)
+      Ec::SkuOperatorAssignment.create!(sku: @sku, user: @operator)
       RawWb::SupplyItem.create!(
         account: @account,
         wb_supply_id: "400001",
@@ -42,9 +42,10 @@ module Ec
 
     teardown do
       Ec::OperationAction.where(ec_sku_product_id: @sku_product&.id).delete_all
+      Ec::SkuOperationPlan.where(sku_id: @sku&.id).delete_all
       RawWb::SupplyItem.where(account_id: @account&.id).delete_all
       RawWb::Supply.where(account_id: @account&.id).delete_all
-      Ec::SkuProductOperator.where(sku_product_id: @sku_product&.id).delete_all
+      Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
       Ec::SkuProduct.where(id: @sku_product&.id).delete_all
       Ec::Sku.where(id: @sku&.id).delete_all
       Ec::Store.where(id: @store&.id).delete_all
@@ -54,6 +55,9 @@ module Ec
 
     test "records a WB supply status change with supply and item details" do
       updated_at = "2026-08-04T08:23:58Z"
+      plan = @sku.sku_operation_plans.create!(target: "warehouse_distribution", operation: "modify",
+        scope: "LISTING", scope_id: @sku_product.id.to_s, plan_date: Date.new(2026, 8, 3),
+        created_at: Time.utc(2026, 8, 3), referer: ["risk"], message: "Ship inventory")
       supply = {
         "supplyID" => 400001,
         "preorderID" => 500001,
@@ -75,6 +79,7 @@ module Ec
 
       action = Ec::OperationAction.order(:id).last
       assert_equal "supply_order", action.operation_type
+      assert_equal plan, action.plan
       assert_equal @operator, action.operated_by_user
       assert_equal Time.zone.parse(updated_at), action.operated_at
       assert_equal({ "from" => "accepting", "to" => "accepted" },
