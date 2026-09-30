@@ -102,18 +102,6 @@ module Admin
         @tools = @tools.reject { |tool| tool.fetch(:name) == "save_sku_plan" }
         @tools += ErpAI::ToolRegistry.optional_mcp_tools unless @agent&.code == "page_translation"
       end
-      @tools += configured_external_tools
-    end
-
-    def configured_external_tools
-      registry = ErpAI::Mcp::ServerRegistry.new
-      client = registry.clients["search"]
-      available = client.is_a?(ErpAI::Mcp::TavilyClient) &&
-        client.list_tools.any? { |tool| (tool["name"] || tool[:name]).to_s == "web_search" }
-
-      [ { name: "search__web_search", i18n_key: "web_search", external: true, external_available: available } ]
-    rescue StandardError
-      [ { name: "search__web_search", i18n_key: "web_search", external: true, external_available: false } ]
     end
   end
 end

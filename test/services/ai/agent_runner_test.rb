@@ -123,7 +123,14 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   end
 
   class FakeMcpClient
+    attr_reader :list_calls
+
+    def initialize
+      @list_calls = 0
+    end
+
     def list_tools
+      @list_calls += 1
       [
         {
           "name" => "web_search",
@@ -296,6 +303,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   end
 
   test "executes MCP tool calls and asks model again with tool result" do
+    @agent.update!(tools: [ "search__web_search" ])
     client = ToolLoopClient.new
 
     conversation = ErpAI::AgentRunner.new(
@@ -322,6 +330,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   end
 
   test "only exposes MCP tools allowed by server config" do
+    @agent.update!(tools: [ "search__web_search" ])
     client = FakeClient.new
 
     ErpAI::AgentRunner.new(
@@ -351,11 +360,12 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_empty client.request.fetch(:tools)
   end
 
-  test "does not load GBrain tools unless selected while retaining web search" do
+  test "does not load or execute GBrain and web search tools unless selected" do
     client = FakeClient.new
     gbrain_client = FakeGbrainClient.new
+    search_client = FakeMcpClient.new
     registry = Struct.new(:clients, :tool_filters).new(
-      { "gbrain" => gbrain_client, "search" => FakeMcpClient.new },
+      { "gbrain" => gbrain_client, "search" => search_client },
       { "gbrain" => %w[query search], "search" => [ "web_search" ] }
     )
     runner = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry)
@@ -363,12 +373,87 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     runner.ask(question: "测试")
 
     names = client.request.fetch(:tools).map { |tool| tool.fetch(:name) }
-    assert_includes names, "search__web_search"
+    assert_empty names.grep(/\Asearch__/)
     assert_empty names.grep(/\Agbrain__/)
     assert_equal 0, gbrain_client.list_calls
+    assert_equal 0, search_client.list_calls
     result = runner.send(:current_tool_executor).call(id: "call_1", name: "gbrain__query", arguments: {})
     assert_equal "unknown_mcp_server", result.dig(:error, :code)
+    result = runner.send(:current_tool_executor).call(id: "call_2", name: "search__web_search", arguments: {})
+    assert_equal "unknown_mcp_server", result.dig(:error, :code)
     assert_empty gbrain_client.called_tools
+  end
+
+  test "web search selection respects the server allowlist" do
+    @agent.update!(tools: [ "search__web_search" ])
+    client = FakeClient.new
+    registry = Struct.new(:clients, :tool_filters).new(
+      { "search" => FakeMcpClient.new }, { "search" => [ "fetch_page" ] }
+    )
+    runner = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry)
+
+    runner.ask(question: "搜索网页")
+
+    assert_empty client.request.fetch(:tools)
+    executor = runner.send(:current_tool_executor)
+    %w[web_search fetch_page].each do |name|
+      result = executor.call(id: "call_1", name: "search__#{name}", arguments: {})
+      assert_equal "mcp_tool_not_allowed", result.dig(:error, :code)
+    end
+  end
+
+  test "web search selection works without a server allowlist and can be cleared" do
+    @agent.update!(tools: [ "search__web_search" ])
+    client = FakeClient.new
+    search_client = FakeMcpClient.new
+    registry = Struct.new(:clients, :tool_filters).new({ "search" => search_client }, {})
+    runner = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry)
+
+    runner.ask(question: "搜索网页")
+
+    assert_equal [ "search__web_search" ], client.request.fetch(:tools).map { |tool| tool.fetch(:name) }
+    executor = runner.send(:current_tool_executor)
+    assert_equal "web_search", executor.call(id: "call_1", name: "search__web_search", arguments: {}).dig(:result, "tool_name")
+    assert_equal "mcp_tool_not_allowed", executor.call(id: "call_2", name: "search__fetch_page", arguments: {}).dig(:error, :code)
+
+    @agent.update!(tools: [])
+    runner = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry)
+    runner.ask(question: "测试")
+
+    assert_empty client.request.fetch(:tools)
+    assert_equal 1, search_client.list_calls
+    result = runner.send(:current_tool_executor).call(id: "call_3", name: "search__web_search", arguments: {})
+    assert_equal "unknown_mcp_server", result.dig(:error, :code)
+  end
+
+  test "web search selection respects runner tool overrides" do
+    @agent.update!(tools: [ "search__web_search" ])
+    client = FakeClient.new
+    search_client = FakeMcpClient.new
+    registry = Struct.new(:clients, :tool_filters).new({ "search" => search_client }, {})
+    runner = ErpAI::AgentRunner.new(
+      agent: @agent, user: @user, client: client, server_registry: registry, tool_names: []
+    )
+
+    runner.ask(question: "测试")
+
+    assert_empty client.request.fetch(:tools)
+    assert_equal 0, search_client.list_calls
+    result = runner.send(:current_tool_executor).call(id: "call_1", name: "search__web_search", arguments: {})
+    assert_equal "unknown_mcp_server", result.dig(:error, :code)
+  end
+
+  test "selected web search is unavailable without a configured server" do
+    @agent.update!(tools: [ "search__web_search" ])
+    client = FakeClient.new
+    registry = Struct.new(:clients, :tool_filters).new({}, {})
+    runner = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry)
+
+    runner.ask(question: "搜索网页")
+
+    assert_empty client.request.fetch(:tools)
+    result = runner.send(:current_tool_executor).call(id: "call_1", name: "search__web_search", arguments: {})
+    assert_equal "unknown_mcp_server", result.dig(:error, :code)
   end
 
   test "loads and executes only selected GBrain tools allowed by server config" do
@@ -428,6 +513,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   end
 
   test "stores final assistant message when max tool rounds is reached" do
+    @agent.update!(tools: [ "search__web_search" ])
     client = AlwaysToolClient.new
 
     conversation = ErpAI::AgentRunner.new(
@@ -458,6 +544,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   end
 
   test "continues an existing conversation and streams only final content" do
+    @agent.update!(tools: [ "search__web_search" ])
     conversation = @agent.conversations.create!(user: @user)
     conversation.messages.create!(role: "user", content: "先分析 SKU-1")
     conversation.messages.create!(role: "assistant", content: "请告诉我需要查询什么")
@@ -506,6 +593,7 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
   end
 
   test "preserves the tool call and appends an error when tool execution fails" do
+    @agent.update!(tools: [ "search__web_search" ])
     conversation = @agent.conversations.create!(user: @user)
     conversation.messages.create!(role: "user", content: "查询库存")
     broadcaster = FakeBroadcaster.new

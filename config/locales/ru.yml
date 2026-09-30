@@ -559,8 +559,6 @@ ru:
       filters:
         all_statuses: "Все статусы"
         all_types: "Все типы"
-      external_tool: "Включается системной конфигурацией"
-      external_tool_unavailable: "API-ключ Tavily не настроен"
       errors:
         invalid_tools: "содержат незарегистрированные инструменты: %{tools}"
         skills_unavailable_for_web: "доступны только для Client Agent"

@@ -566,8 +566,6 @@ zh:
       filters:
         all_statuses: "全部状态"
         all_types: "全部类型"
-      external_tool: "由系统配置自动启用"
-      external_tool_unavailable: "尚未配置 Tavily API Key"
       errors:
         invalid_tools: "包含未注册工具：%{tools}"
         skills_unavailable_for_web: "仅 Client Agent 可以使用 Skill"

@@ -1,8 +1,10 @@
 module ErpAI
   class ToolRegistry
-    OPTIONAL_MCP_TOOLS = %w[query search get_page list_pages traverse_graph think].map do |name|
-      { name: "gbrain__#{name}", i18n_key: "gbrain_#{name}" }
-    end.freeze
+    OPTIONAL_MCP_TOOLS = (
+      %w[query search get_page list_pages traverse_graph think].map do |name|
+        { name: "gbrain__#{name}", i18n_key: "gbrain_#{name}" }
+      end + [ { name: "search__web_search", i18n_key: "web_search" } ]
+    ).freeze
 
     JOINT_DIAGNOSIS_TOOL_DEFINITIONS = [
       {

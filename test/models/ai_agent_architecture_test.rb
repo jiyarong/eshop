@@ -50,6 +50,20 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_includes agent.errors[:tools], I18n.t("admin.agents.errors.tools_unavailable_for_client")
   end
 
+  test "web search is selectable but not enabled by default" do
+    agent = Agent.ensure_fixed!("business_analysis")
+    assert_not_includes agent.tools, "search__web_search"
+    assert_not_includes ErpAI::ToolRegistry.default_tool_names, "search__web_search"
+    assert_includes ErpAI::ToolRegistry.optional_mcp_tools.map { |tool| tool.fetch(:name) }, "search__web_search"
+
+    agent.tools = [ "search__web_search" ]
+    assert agent.valid?, agent.errors.full_messages.join(", ")
+
+    agent.agent_type = :client
+    assert_not agent.valid?
+    assert_includes agent.errors[:tools], I18n.t("admin.agents.errors.tools_unavailable_for_client")
+  end
+
   test "fixed definitions include scenario-specific agents" do
     assert_equal [
       "business_analysis",

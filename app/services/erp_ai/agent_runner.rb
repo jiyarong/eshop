@@ -192,21 +192,23 @@ module ErpAI
 
     def mcp_clients
       @mcp_clients ||= server_registry.clients.reject do |server_name, _client|
-        server_name == "gbrain" && selected_gbrain_tool_names.empty?
+        server_name.in?(%w[gbrain search]) && selected_mcp_tool_names(server_name).empty?
       end
     end
 
     def mcp_tool_filters
       @mcp_tool_filters ||= begin
         filters = server_registry.respond_to?(:tool_filters) ? server_registry.tool_filters : {}
-        gbrain_tools = selected_gbrain_tool_names
-        gbrain_tools &= filters["gbrain"] if filters["gbrain"].present?
-        filters.merge("gbrain" => gbrain_tools)
+        %w[gbrain search].each_with_object(filters.dup) do |server_name, selected_filters|
+          selected_names = selected_mcp_tool_names(server_name)
+          selected_names &= filters[server_name] if filters[server_name].present?
+          selected_filters[server_name] = selected_names
+        end
       end
     end
 
-    def selected_gbrain_tool_names
-      Array(tool_names || agent.tools).grep(/\Agbrain__/).map { |name| name.delete_prefix("gbrain__") }
+    def selected_mcp_tool_names(server_name)
+      Array(tool_names || agent.tools).grep(/\A#{server_name}__/).map { |name| name.delete_prefix("#{server_name}__") }
     end
 
     def filtered_mcp_tools(server_name, tools)

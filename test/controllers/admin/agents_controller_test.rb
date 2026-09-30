@@ -17,6 +17,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
       thinking_enabled: false,
       thinking_level: "",
       agent_type: :web,
+      tools: definition.fetch(:tools),
       enabled: true,
       recommended_prompts: []
     )
@@ -290,14 +291,14 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[data-controller='agent-form']"
     assert_select "section[data-agent-form-target='toolPanel']"
     assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
-      count: ErpAI::ToolRegistry.default_tools.size - 1 + 6
+      count: ErpAI::ToolRegistry.default_tools.size - 1 + ErpAI::ToolRegistry.optional_mcp_tools.size
     assert_select "input[data-agent-form-target='toolInput'][value='erp_ai_request']"
     assert_select "input#agent_tools_get_sku_context:not([checked])"
     %w[query search get_page list_pages traverse_graph think].each do |name|
       assert_select "input#agent_tools_gbrain__#{name}[name='agent[tools][]']:not([checked]):not([disabled])"
     end
     assert_select "strong", text: "SKU 上下文"
-    assert_select "input#agent_tools_search__web_search[disabled]:not([checked])"
+    assert_select "input#agent_tools_search__web_search[name='agent[tools][]']:not([disabled]):not([checked])"
     assert_select "section[data-agent-form-target='skillPanel']"
     assert_select "input[data-agent-form-target='skillInput'][value=?]", @skill.id.to_s
     assert_select "textarea[name='agent[recommended_prompts_text]']"
@@ -308,26 +309,38 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-form-actions button[type='submit']"
   end
 
-  test "super admin can see the configured Tavily web search tool" do
+  test "super admin can select and clear web search" do
     sign_in @admin
-    tavily_client = ErpAI::Mcp::TavilyClient.new(name: "search", api_keys: [ "test-key" ])
-    registry = Struct.new(:clients, :tool_filters).new(
-      { "search" => tavily_client },
-      { "search" => [ "web_search" ] }
-    )
 
-    original_registry_new = ErpAI::Mcp::ServerRegistry.method(:new)
-    ErpAI::Mcp::ServerRegistry.define_singleton_method(:new) { registry }
-    begin
-      get "/admin/agents/sku_replenishment_advisor/edit", headers: { "Accept" => "text/html" }
-    ensure
-      ErpAI::Mcp::ServerRegistry.define_singleton_method(:new, original_registry_new)
-    end
+    get edit_admin_agent_path(@agent.code), headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "input#agent_tools_search__web_search[disabled][checked]"
-    assert_select "input#agent_tools_search__web_search[name='agent[tools][]']", count: 0
+    assert_select "input#agent_tools_search__web_search[name='agent[tools][]'][value='search__web_search']:not([checked]):not([disabled])"
     assert_select "strong", text: "网页搜索"
+
+    sign_in @admin
+    patch admin_agent_path(@agent.code), params: { agent: { tools: [ "search__web_search" ] } }
+
+    assert_redirected_to admin_agents_path
+    assert_equal [ "search__web_search" ], @agent.reload.tools
+
+    sign_in @admin
+    get edit_admin_agent_path(@agent.code), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input#agent_tools_search__web_search[checked]:not([disabled])"
+
+    sign_in @admin
+    patch admin_agent_path(@agent.code), params: { agent: { tools: [ "" ] } }
+
+    assert_redirected_to admin_agents_path
+    assert_empty @agent.reload.tools
+
+    sign_in @admin
+    get edit_admin_agent_path(@agent.code), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input#agent_tools_search__web_search:not([checked]):not([disabled])"
   end
 
   test "super admin can render a new agent form" do
@@ -340,8 +353,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='agent[code]']"
     assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
     assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
-      count: ErpAI::ToolRegistry.default_tools.size - 1 + 6
-    assert_select "input#agent_tools_search__web_search[disabled]"
+      count: ErpAI::ToolRegistry.default_tools.size - 1 + ErpAI::ToolRegistry.optional_mcp_tools.size
+    assert_select "input#agent_tools_search__web_search[name='agent[tools][]']:not([disabled]):not([checked])"
     assert_select "input[name='agent[skill_ids][]'][value=?]", @skill.id.to_s
   end
 

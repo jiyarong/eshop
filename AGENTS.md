@@ -74,8 +74,8 @@
 
 ## AI Agent 工具选择
 
-- GBrain 工具默认不加载；用户在 Agent 编辑页的工具列表中逐项勾选，选择保存在 `Agent#tools` 的 `gbrain__*` 名称中。未选择时不得请求 GBrain 的工具定义，也不得执行其工具。
-- GBrain 工具必须同时满足 Agent 选择和 `config/mcp_servers.yml` 的服务端白名单；网页搜索仍按系统配置自动启用。可选 GBrain 工具由 `ErpAI::ToolRegistry.optional_mcp_tools` 提供，不应加入内置 Agent 的默认工具集合。
+- GBrain 和网页搜索工具默认不加载；用户在 Agent 编辑页的工具列表中逐项勾选，选择保存在 `Agent#tools` 的 `gbrain__*` 或 `search__web_search` 名称中。未选择时不得请求对应工具的定义，也不得执行其工具。
+- GBrain 和网页搜索工具必须同时满足 Agent 选择和 `config/mcp_servers.yml` 的服务端白名单；网页搜索还需配置 Tavily API Key。可选工具由 `ErpAI::ToolRegistry.optional_mcp_tools` 提供，不应加入内置 Agent 的默认工具集合。
 
 ## 当前报表现状
 

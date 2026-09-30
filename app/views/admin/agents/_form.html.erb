@@ -133,17 +133,13 @@
         <div class="ai-skill-options">
           <% tools.each do |tool| %>
             <% tool_name = tool.fetch(:name) %>
-            <% external_tool = tool[:external] %>
-            <% external_available = tool.fetch(:external_available, true) %>
-            <label class="checkbox-option ai-skill-option<%= " ai-skill-option--external" if external_tool %>">
+            <label class="checkbox-option ai-skill-option">
               <%= check_box_tag(
-                external_tool ? "agent_tool_preview[#{tool_name}]" : "agent[tools][]",
-                external_tool ? "1" : tool_name,
-                external_tool && external_available || agent.tools.include?(tool_name),
+                "agent[tools][]",
+                tool_name,
+                agent.tools.include?(tool_name),
                 id: "agent_tools_#{tool_name}",
-                disabled: external_tool,
-                title: external_tool ? t("admin.agents.#{external_available ? "external_tool" : "external_tool_unavailable"}") : nil,
-                data: external_tool ? {} : { agent_form_target: "toolInput" }
+                data: { agent_form_target: "toolInput" }
               ) %>
               <span>
                 <% i18n_key = tool.fetch(:i18n_key, tool_name) %>
