@@ -163,6 +163,27 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     end
   end
 
+  class FakeGbrainClient < FakeMcpClient
+    attr_reader :list_calls, :called_tools
+
+    def initialize
+      @list_calls = 0
+      @called_tools = []
+    end
+
+    def list_tools
+      @list_calls += 1
+      %w[query search get_page list_pages traverse_graph think].map do |name|
+        { "name" => name, "description" => name, "inputSchema" => { "type" => "object" } }
+      end
+    end
+
+    def call_tool(tool_name, arguments)
+      @called_tools << tool_name
+      super
+    end
+  end
+
   setup do
     @token = SecureRandom.hex(4)
     @user = User.create!(
@@ -328,6 +349,82 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     ).ask(question: '{"target_locale":"en","items":[{"id":"m0","text":"库存"}]}')
 
     assert_empty client.request.fetch(:tools)
+  end
+
+  test "does not load GBrain tools unless selected while retaining web search" do
+    client = FakeClient.new
+    gbrain_client = FakeGbrainClient.new
+    registry = Struct.new(:clients, :tool_filters).new(
+      { "gbrain" => gbrain_client, "search" => FakeMcpClient.new },
+      { "gbrain" => %w[query search], "search" => [ "web_search" ] }
+    )
+    runner = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry)
+
+    runner.ask(question: "测试")
+
+    names = client.request.fetch(:tools).map { |tool| tool.fetch(:name) }
+    assert_includes names, "search__web_search"
+    assert_empty names.grep(/\Agbrain__/)
+    assert_equal 0, gbrain_client.list_calls
+    result = runner.send(:current_tool_executor).call(id: "call_1", name: "gbrain__query", arguments: {})
+    assert_equal "unknown_mcp_server", result.dig(:error, :code)
+    assert_empty gbrain_client.called_tools
+  end
+
+  test "loads and executes only selected GBrain tools allowed by server config" do
+    @agent.update!(tools: [ "get_sku_context", "gbrain__search", "gbrain__get_page", "gbrain__think" ])
+    client = FakeClient.new
+    gbrain_client = FakeGbrainClient.new
+    registry = Struct.new(:clients, :tool_filters).new(
+      { "gbrain" => gbrain_client }, { "gbrain" => %w[query search get_page] }
+    )
+    runner = ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry)
+
+    runner.ask(question: "搜索知识库")
+
+    assert_equal %w[get_sku_context gbrain__search gbrain__get_page],
+      client.request.fetch(:tools).map { |tool| tool.fetch(:name) }
+    executor = runner.send(:current_tool_executor)
+    assert_equal "search", executor.call(id: "call_1", name: "gbrain__search", arguments: {}).dig(:result, "tool_name")
+    %w[query think].each do |name|
+      result = executor.call(id: "call_2", name: "gbrain__#{name}", arguments: {})
+      assert_equal "mcp_tool_not_allowed", result.dig(:error, :code)
+    end
+    assert_equal [ "search" ], gbrain_client.called_tools
+  end
+
+  test "GBrain selection respects runner tool overrides and an empty server intersection" do
+    @agent.update!(tools: [ "gbrain__query" ])
+    client = FakeClient.new
+    gbrain_client = FakeGbrainClient.new
+    registry = Struct.new(:clients, :tool_filters).new(
+      { "gbrain" => gbrain_client }, { "gbrain" => [ "query" ] }
+    )
+    runner = ErpAI::AgentRunner.new(
+      agent: @agent, user: @user, client: client, server_registry: registry, tool_names: [ "gbrain__search" ]
+    )
+
+    runner.ask(question: "测试")
+
+    assert_empty client.request.fetch(:tools)
+    result = runner.send(:current_tool_executor).call(id: "call_1", name: "gbrain__search", arguments: {})
+    assert_equal "mcp_tool_not_allowed", result.dig(:error, :code)
+    assert_empty gbrain_client.called_tools
+  end
+
+  test "GBrain selection works without a server allowlist and can be cleared" do
+    @agent.update!(tools: [ "gbrain__search" ])
+    client = FakeClient.new
+    gbrain_client = FakeGbrainClient.new
+    registry = Struct.new(:clients, :tool_filters).new({ "gbrain" => gbrain_client }, {})
+
+    ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry).ask(question: "测试")
+    assert_equal [ "gbrain__search" ], client.request.fetch(:tools).map { |tool| tool.fetch(:name) }
+
+    @agent.update!(tools: [])
+    ErpAI::AgentRunner.new(agent: @agent, user: @user, client: client, server_registry: registry).ask(question: "测试")
+    assert_empty client.request.fetch(:tools)
+    assert_equal 1, gbrain_client.list_calls
   end
 
   test "stores final assistant message when max tool rounds is reached" do

@@ -33,6 +33,23 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert_not_includes agent.tools, "export_word"
   end
 
+  test "GBrain tools are selectable but not enabled by default" do
+    agent = Agent.ensure_fixed!("business_analysis")
+    assert_empty agent.tools.grep(/\Agbrain__/)
+
+    agent.tools = %w[gbrain__query gbrain__search gbrain__get_page gbrain__list_pages gbrain__traverse_graph gbrain__think]
+    assert agent.valid?, agent.errors.full_messages.join(", ")
+
+    agent.tools = [ "gbrain__unknown" ]
+    assert_not agent.valid?
+    assert_includes agent.errors[:tools], I18n.t("admin.agents.errors.invalid_tools", tools: "gbrain__unknown")
+
+    agent.tools = [ "gbrain__search" ]
+    agent.agent_type = :client
+    assert_not agent.valid?
+    assert_includes agent.errors[:tools], I18n.t("admin.agents.errors.tools_unavailable_for_client")
+  end
+
   test "fixed definitions include scenario-specific agents" do
     assert_equal [
       "business_analysis",

@@ -290,9 +290,12 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[data-controller='agent-form']"
     assert_select "section[data-agent-form-target='toolPanel']"
     assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
-      count: ErpAI::ToolRegistry.default_tools.size - 1
+      count: ErpAI::ToolRegistry.default_tools.size - 1 + 6
     assert_select "input[data-agent-form-target='toolInput'][value='erp_ai_request']"
     assert_select "input#agent_tools_get_sku_context:not([checked])"
+    %w[query search get_page list_pages traverse_graph think].each do |name|
+      assert_select "input#agent_tools_gbrain__#{name}[name='agent[tools][]']:not([checked]):not([disabled])"
+    end
     assert_select "strong", text: "SKU 上下文"
     assert_select "input#agent_tools_search__web_search[disabled]:not([checked])"
     assert_select "section[data-agent-form-target='skillPanel']"
@@ -337,9 +340,32 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='agent[code]']"
     assert_select "input[name='agent[agent_type]'][type='radio'][value='web'][checked]"
     assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
-      count: ErpAI::ToolRegistry.default_tools.size - 1
+      count: ErpAI::ToolRegistry.default_tools.size - 1 + 6
     assert_select "input#agent_tools_search__web_search[disabled]"
     assert_select "input[name='agent[skill_ids][]'][value=?]", @skill.id.to_s
+  end
+
+  test "super admin can select and clear individual GBrain tools" do
+    sign_in @admin
+
+    patch admin_agent_path(@agent.code), params: {
+      agent: { tools: [ "get_sku_context", "gbrain__query", "gbrain__search" ] }
+    }
+
+    assert_redirected_to admin_agents_path
+    assert_equal %w[get_sku_context gbrain__query gbrain__search], @agent.reload.tools
+
+    get edit_admin_agent_path(@agent.code), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "input#agent_tools_gbrain__query[checked]:not([disabled])"
+    assert_select "input#agent_tools_gbrain__search[checked]:not([disabled])"
+    assert_select "input#agent_tools_gbrain__think:not([checked]):not([disabled])"
+
+    patch admin_agent_path(@agent.code), params: { agent: { tools: [ "" ] } }
+
+    assert_redirected_to admin_agents_path
+    assert_empty @agent.reload.tools
   end
 
   test "super admin can update agent profile prompts and skills" do
