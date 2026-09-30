@@ -572,9 +572,15 @@ en:
         client: "Client Agent"
         web: "Web Agent"
       avatar_alt: "%{name} avatar"
+      origins:
+        built_in: "Built-in"
+        custom: "Custom"
       edit:
         title: "Edit AI Agent"
       empty_skills: "No skills yet. Create a skill first."
+      filters:
+        all_statuses: "All statuses"
+        all_types: "All types"
       external_tool: "Enabled by system configuration"
       external_tool_unavailable: "Tavily API key is not configured"
       errors:

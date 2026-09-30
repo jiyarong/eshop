@@ -543,9 +543,15 @@ ru:
         client: "Client Agent"
         web: "Web Agent"
       avatar_alt: "Аватар %{name}"
+      origins:
+        built_in: "Системный"
+        custom: "Пользовательский"
       edit:
         title: "Редактировать AI Agent"
       empty_skills: "Skills пока нет. Сначала создайте Skill."
+      filters:
+        all_statuses: "Все статусы"
+        all_types: "Все типы"
       external_tool: "Включается системной конфигурацией"
       external_tool_unavailable: "API-ключ Tavily не настроен"
       errors:

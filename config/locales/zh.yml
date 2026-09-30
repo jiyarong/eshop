@@ -550,9 +550,15 @@ zh:
         client: "Client Agent"
         web: "Web Agent"
       avatar_alt: "%{name} 的头像"
+      origins:
+        built_in: "系统内置"
+        custom: "自定义"
       edit:
         title: "编辑 AI Agent"
       empty_skills: "暂无 Skill，请先创建 Skill。"
+      filters:
+        all_statuses: "全部状态"
+        all_types: "全部类型"
       external_tool: "由系统配置自动启用"
       external_tool_unavailable: "尚未配置 Tavily API Key"
       errors:

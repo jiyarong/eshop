@@ -5,7 +5,11 @@ module Admin
     before_action :load_capabilities, only: [ :new, :create, :edit, :update ]
 
     def index
-      @agents = Agent.includes(:skills).order(:code)
+      @status = params[:status].presence_in(%w[enabled disabled])
+      @agent_type = params[:agent_type].presence_in(Agent.agent_types.keys)
+      @agents = Agent.order(:code)
+      @agents = @agents.where(enabled: @status == "enabled") if @status.present?
+      @agents = @agents.where(agent_type: @agent_type) if @agent_type.present?
     end
 
     def edit

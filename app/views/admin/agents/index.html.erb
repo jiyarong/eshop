@@ -11,6 +11,27 @@
 
 <%= render "admin/shared/ai_navigation", section: :agents %>
 
+<section class="panel ai-agent-filters">
+  <div class="ai-agent-filters__group" role="group" aria-labelledby="agent-status-filter-label">
+    <span id="agent-status-filter-label" class="ai-agent-filters__label"><%= t("admin.agents.fields.status") %></span>
+    <% [ nil, "enabled", "disabled" ].each do |status| %>
+      <%= link_to status ? t("admin.agents.statuses.#{status}") : t("admin.agents.filters.all_statuses"),
+                  admin_agents_path(status: status, agent_type: @agent_type),
+                  class: class_names("ai-tag ai-agent-filters__option", "is-active": @status == status),
+                  aria: { current: (@status == status ? "true" : nil) } %>
+    <% end %>
+  </div>
+  <div class="ai-agent-filters__group" role="group" aria-labelledby="agent-type-filter-label">
+    <span id="agent-type-filter-label" class="ai-agent-filters__label"><%= t("admin.agents.fields.agent_type") %></span>
+    <% [ nil, *Agent.agent_types.keys ].each do |agent_type| %>
+      <%= link_to agent_type ? t("admin.agents.agent_types.#{agent_type}") : t("admin.agents.filters.all_types"),
+                  admin_agents_path(status: @status, agent_type: agent_type),
+                  class: class_names("ai-tag ai-agent-filters__option", "is-active": @agent_type == agent_type),
+                  aria: { current: (@agent_type == agent_type ? "true" : nil) } %>
+    <% end %>
+  </div>
+</section>
+
 <section class="panel ai-table-panel table-list-card">
   <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
     <table class="ai-admin-table ai-agent-table">
@@ -19,7 +40,6 @@
           <th><%= t("admin.agents.fields.name") %></th>
           <th><%= t("admin.agents.fields.agent_type") %></th>
           <th><%= t("admin.agents.fields.model_id") %></th>
-          <th><%= t("admin.agents.fields.skills") %></th>
           <th><%= t("admin.agents.fields.status") %></th>
           <th><%= t("admin.agents.fields.updated_at") %></th>
           <th><%= t("admin.agents.fields.actions") %></th>
@@ -36,7 +56,11 @@
                   <span class="ai-agent-avatar ai-agent-avatar--fallback" aria-hidden="true"><%= agent.name.to_s.first&.upcase %></span>
                 <% end %>
                 <div class="ai-agent-identity__copy">
-                  <strong><%= agent.name %></strong>
+                  <div class="ai-agent-identity__name">
+                    <strong><%= agent.name %></strong>
+                    <% origin = Agent::DEFINITIONS.key?(agent.code) ? "built_in" : "custom" %>
+                    <span class="ai-tag ai-agent-origin--<%= origin.dasherize %>"><%= t("admin.agents.origins.#{origin}") %></span>
+                  </div>
                   <code><%= agent.code %></code>
                   <% if agent.description.present? %>
                     <span><%= agent.description %></span>
@@ -46,17 +70,6 @@
             </td>
             <td><%= t("admin.agents.agent_types.#{agent.agent_type}") %></td>
             <td><code class="ai-model-code"><%= agent.model_id %></code></td>
-            <td>
-              <div class="ai-tag-list">
-                <% if agent.skills.any? %>
-                  <% agent.skills.sort_by(&:name).each do |skill| %>
-                    <span class="ai-tag"><%= skill.name %></span>
-                  <% end %>
-                <% else %>
-                  <span class="ai-empty-value"><%= t("common.empty_value") %></span>
-                <% end %>
-              </div>
-            </td>
             <td>
               <span class="status-pill <%= agent.enabled? ? "is-active" : "is-muted" %>">
                 <span class="status-pill__dot" aria-hidden="true"></span>

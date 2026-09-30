@@ -37,6 +37,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     Message.where(conversation: Conversation.joins(:user).where(users: { email: [ @admin.email, @viewer.email ] })).delete_all if defined?(Message)
     Conversation.joins(:user).where(users: { email: [ @admin.email, @viewer.email ] }).delete_all if defined?(Conversation)
     AgentSkill.where(skill_id: @skill.id).delete_all
+    Array(@filter_agents).each(&:destroy!)
     Agent.where(code: "custom_agent_#{@token}").delete_all
     @agent.avatar.purge if @agent.avatar.attached?
     @skill.archive.purge if @skill.archive.attached?
@@ -56,6 +57,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".ai-agent-identity code", "sku_replenishment_advisor"
     assert_select ".ai-agent-identity strong", "SKU 补货建议助手"
     assert_select "th", text: "Agent 类型"
+    assert_select ".ai-agent-table th", count: 6
+    assert_select "th", text: I18n.t("admin.agents.fields.skills"), count: 0
     assert_select "td", text: "Web Agent"
     assert_select "a.ai-row-action[href=?]", "/admin/agents/sku_replenishment_advisor/edit"
     assert_select "form[action=?] input[name='agent_code'][value='sku_replenishment_advisor']", ai_conversations_path
@@ -63,6 +66,119 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal nav_paths.index(admin_agents_path) + 1, nav_paths.index(ai_conversations_path)
     assert_select ".ai-table-panel.table-list-card > .table-viewport.table-list-viewport[data-controller~='sticky-table-header'] > table.ai-agent-table",
       count: 1
+  end
+
+  test "agent list distinguishes built-in and custom agents by code" do
+    create_filter_agents
+    @filter_agents.first.update!(name: @agent.name)
+    sign_in @admin
+
+    get admin_agents_path, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-agent-identity" do |identities|
+      identities.each do |identity|
+        origin = Agent::DEFINITIONS.key?(identity.at_css("code").text) ? "built_in" : "custom"
+        assert_select identity, ".ai-agent-identity__name .ai-tag.ai-agent-origin--#{origin.dasherize}",
+          text: I18n.t("admin.agents.origins.#{origin}"), count: 1
+      end
+    end
+    assert_select ".ai-agent-identity strong", text: @agent.name, count: 2
+  end
+
+  test "agent list hides assigned skills without removing them" do
+    @agent.update!(agent_type: :client, tools: [])
+    @agent.skills << @skill
+    sign_in @admin
+
+    get admin_agents_path, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-agent-identity code", @agent.code
+    assert_select ".ai-agent-table td", text: @skill.name, count: 0
+    assert_equal [ @skill.id ], @agent.skill_ids
+  end
+
+  test "agent list filters by either status" do
+    create_filter_agents
+
+    %w[enabled disabled].each do |status|
+      sign_in @admin
+      get admin_agents_path(status: status), headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      displayed_codes = css_select(".ai-agent-identity code").map(&:text)
+      expected_agents = @filter_agents.select { |agent| agent.enabled? == (status == "enabled") }
+      assert_equal expected_agents.map(&:code).sort, (displayed_codes & @filter_agents.map(&:code)).sort
+      assert_select ".ai-agent-table tbody tr td:nth-child(4)",
+        text: I18n.t("admin.agents.statuses.#{status}"), count: displayed_codes.size
+      assert_select "#agent-status-filter-label ~ a.is-active[aria-current='true']",
+        text: I18n.t("admin.agents.statuses.#{status}"), count: 1
+    end
+  end
+
+  test "agent list filters by either type" do
+    create_filter_agents
+
+    Agent.agent_types.keys.each do |agent_type|
+      sign_in @admin
+      get admin_agents_path(agent_type: agent_type), headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      displayed_codes = css_select(".ai-agent-identity code").map(&:text)
+      expected_agents = @filter_agents.select { |agent| agent.agent_type == agent_type }
+      assert_equal expected_agents.map(&:code).sort, (displayed_codes & @filter_agents.map(&:code)).sort
+      assert_select ".ai-agent-table tbody tr td:nth-child(2)",
+        text: I18n.t("admin.agents.agent_types.#{agent_type}"), count: displayed_codes.size
+      assert_select "#agent-type-filter-label ~ a.is-active[aria-current='true']",
+        text: I18n.t("admin.agents.agent_types.#{agent_type}"), count: 1
+    end
+  end
+
+  test "agent filter labels combine filters and clear each independently" do
+    create_filter_agents
+    sign_in @admin
+
+    get admin_agents_path(status: "disabled", agent_type: "client"), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    displayed_codes = css_select(".ai-agent-identity code").map(&:text)
+    expected_agent = @filter_agents.find { |agent| agent.client? && !agent.enabled? }
+    assert_equal [ expected_agent.code ], displayed_codes & @filter_agents.map(&:code)
+    assert_select ".ai-agent-filters select, .ai-agent-filters input[type='submit']", count: 0
+    assert_select "#agent-status-filter-label ~ a[href=?]", admin_agents_path(status: "enabled", agent_type: "client")
+    assert_select "#agent-type-filter-label ~ a[href=?]", admin_agents_path(status: "disabled", agent_type: "web")
+
+    status_reset = css_select("#agent-status-filter-label ~ a").first["href"]
+    type_reset = css_select("#agent-type-filter-label ~ a").first["href"]
+    assert_equal admin_agents_path(agent_type: "client"), status_reset
+    assert_equal admin_agents_path(status: "disabled"), type_reset
+
+    sign_in @admin
+    get status_reset, headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".ai-agent-identity code", @filter_agents.find { |agent| agent.client? && agent.enabled? }.code
+    assert_select "#agent-status-filter-label ~ a.is-active[aria-current='true']", I18n.t("admin.agents.filters.all_statuses")
+
+    sign_in @admin
+    get type_reset, headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".ai-agent-identity code", @filter_agents.find { |agent| agent.web? && !agent.enabled? }.code
+    assert_select "#agent-type-filter-label ~ a.is-active[aria-current='true']", I18n.t("admin.agents.filters.all_types")
+  end
+
+  test "agent list ignores unsupported filter values" do
+    create_filter_agents
+    sign_in @admin
+
+    get admin_agents_path(status: "unknown", agent_type: "unknown"), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    @filter_agents.each do |agent|
+      assert_select ".ai-agent-identity code", agent.code
+    end
+    assert_select "#agent-status-filter-label ~ a.is-active[aria-current='true']", I18n.t("admin.agents.filters.all_statuses")
+    assert_select "#agent-type-filter-label ~ a.is-active[aria-current='true']", I18n.t("admin.agents.filters.all_types")
   end
 
   test "unavailable agents cannot start a conversation from the list" do
@@ -337,6 +453,24 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
 
 
   private
+
+  def create_filter_agents
+    @filter_agents = []
+    Agent.agent_types.keys.each do |agent_type|
+      [ true, false ].each do |enabled|
+        @filter_agents << Agent.create!(
+          code: "filter_#{agent_type}_#{enabled}_#{@token}",
+          name: "Filter #{agent_type} #{enabled}",
+          agent_type: agent_type,
+          enabled: enabled,
+          system_prompt: "Filter test prompt",
+          model_id: "deepseek-chat",
+          temperature: 0.3,
+          tools: []
+        )
+      end
+    end
+  end
 
   def skill_md
     <<~MARKDOWN
