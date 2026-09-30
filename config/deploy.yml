@@ -54,6 +54,7 @@ env:
     DB_HOST: eshop_manage-postgres
     REDIS_URL: redis://eshop_manage-redis:6379/0
     PORT: 3000
+    RAILS_MAX_THREADS: 8
 
     # Set number of processes dedicated to Solid Queue (default: 1)
     JOB_CONCURRENCY: 4
