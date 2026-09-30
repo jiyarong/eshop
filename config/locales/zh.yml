@@ -605,6 +605,9 @@ zh:
         disabled: "停用"
         enabled: "启用"
       tools:
+        get_sku_context:
+          description: "按需获取单个 SKU 指定模块的字段说明和 Markdown，上下文不会全量加载。"
+          name: "SKU 上下文"
         web_search:
           description: "通过 Tavily 搜索公开网页，获取实时外部信息。"
           name: "网页搜索"

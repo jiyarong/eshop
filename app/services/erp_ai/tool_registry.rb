@@ -40,6 +40,23 @@ module ErpAI
         description: "查询订单、客户、商品、供应商或仓库等业务对象详情。"
       },
       {
+        name: "get_sku_context",
+        description: "按需获取单个 SKU 的一个经营上下文模块。只返回该模块的字段说明和 Markdown，不要一次获取全部模块。",
+        parameters: {
+          type: "object",
+          properties: {
+            sku_code: { type: "string", description: "内部 SKU code" },
+            module: {
+              type: "string",
+              enum: ErpAI::SkuContextTool::SECTION_PATHS.keys,
+              description: "要获取的上下文模块"
+            }
+          },
+          required: %w[sku_code module],
+          additionalProperties: false
+        }
+      },
+      {
         name: "erp_ai_request",
         description: "调用当前应用内指定路径对应的 ErpAI Controller。仅允许 app-relative /ai/... URL，不允许外部 host。",
         parameters: {
@@ -133,7 +150,7 @@ module ErpAI
     end
 
     def self.default_tool_names
-      TOOL_DEFINITIONS.map { |tool| tool.fetch(:name) } - %w[save_sku_event save_sku_plan]
+      TOOL_DEFINITIONS.map { |tool| tool.fetch(:name) } - %w[get_sku_context save_sku_event save_sku_plan]
     end
   end
 end

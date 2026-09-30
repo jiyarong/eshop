@@ -627,6 +627,9 @@ en:
         disabled: "Disabled"
         enabled: "Enabled"
       tools:
+        get_sku_context:
+          description: "Fetch the field description and Markdown for one SKU context module on demand without loading the full context."
+          name: "SKU context"
         web_search:
           description: "Search the public web with Tavily for current external information."
           name: "Web search"

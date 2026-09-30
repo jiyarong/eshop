@@ -16,6 +16,7 @@ module ErpAI
       return create_sku_advise_result(id, name, arguments) if name == "create_sku_advise"
       return update_sku_diagnosis_event_result(id, name, arguments) if name == "update_sku_diagnosis_event"
       return erp_ai_request_result(id, name, arguments) if name == "erp_ai_request"
+      return get_sku_context_result(id, name, arguments) if name == "get_sku_context"
 
       parsed = ErpAI::Mcp::ToolAdapter.parse_model_tool_name(name)
       return error_result(id, name, "unknown_tool", "Unknown tool: #{name}") if parsed.nil?
@@ -44,6 +45,14 @@ module ErpAI
         tool_call_id: id,
         name: name,
         result: ::Mcp::ErpAIRequest.new(current_user: current_user).call(arguments || {})
+      }
+    end
+
+    def get_sku_context_result(id, name, arguments)
+      {
+        tool_call_id: id,
+        name: name,
+        result: ErpAI::SkuContextTool.new(current_user: current_user).call((arguments || {}).stringify_keys)
       }
     end
 

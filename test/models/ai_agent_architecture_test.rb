@@ -26,6 +26,8 @@ class AiAgentArchitectureTest < ActiveSupport::TestCase
     assert agent.web?
     assert_includes agent.tools, "query_inventory_data"
     assert_includes agent.tools, "erp_ai_request"
+    assert_not_includes agent.tools, "get_sku_context"
+    assert_includes ErpAI::ToolRegistry.default_tools.map { |tool| tool.fetch(:name) }, "get_sku_context"
     assert_not_includes agent.tools, "router"
     assert_not_includes agent.tools, "export_pdf"
     assert_not_includes agent.tools, "export_word"

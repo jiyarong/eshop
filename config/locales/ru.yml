@@ -598,6 +598,9 @@ ru:
         disabled: "Отключен"
         enabled: "Включен"
       tools:
+        get_sku_context:
+          description: "По запросу получает описание полей и Markdown выбранного раздела контекста SKU без загрузки всего контекста."
+          name: "Контекст SKU"
         web_search:
           description: "Поиск актуальной внешней информации в интернете через Tavily."
           name: "Поиск в интернете"

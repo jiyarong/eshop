@@ -220,6 +220,8 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[data-agent-form-target='toolInput'][name='agent[tools][]']",
       count: ErpAI::ToolRegistry.default_tools.size - 1
     assert_select "input[data-agent-form-target='toolInput'][value='erp_ai_request']"
+    assert_select "input#agent_tools_get_sku_context:not([checked])"
+    assert_select "strong", text: "SKU 上下文"
     assert_select "input#agent_tools_search__web_search[disabled]:not([checked])"
     assert_select "section[data-agent-form-target='skillPanel']"
     assert_select "input[data-agent-form-target='skillInput'][value=?]", @skill.id.to_s

@@ -45,6 +45,30 @@ class ErpAI::ToolExecutorTest < ActiveSupport::TestCase
     assert_equal({ "value" => 1 }, result.dig(:result, :body, "rows").first)
   end
 
+  test "dispatches SKU context requests and returns only description and markdown" do
+    user = User.create!(email: "sku-context-tool-#{SecureRandom.hex(4)}@example.com", password: "password123", password_confirmation: "password123")
+    sku = Ec::Sku.create!(sku_code: "SKU-1-#{SecureRandom.hex(4)}")
+    user.roles << Role.find_by!(code: "super_admin")
+
+    result = ErpAI::ToolExecutor.new(mcp_clients: {}, current_user: user).call(
+      id: "call_context",
+      name: "get_sku_context",
+      arguments: { "sku_code" => sku.sku_code, "module" => "base" }
+    )
+
+    assert_equal "call_context", result.fetch(:tool_call_id)
+    assert_equal "get_sku_context", result.fetch(:name)
+    assert_equal sku.sku_code, result.dig(:result, :sku_code)
+    assert_equal "base", result.dig(:result, :module)
+    assert result.dig(:result, :description).present?
+    assert_includes result.dig(:result, :markdown), "## base"
+    assert_nil result.dig(:result, :raw_json)
+  ensure
+    Ec::Sku.where(id: sku&.id).delete_all
+    UserRole.where(user_id: user&.id).delete_all
+    User.where(id: user&.id).delete_all
+  end
+
   test "returns structured error for unknown tool names" do
     executor = ErpAI::ToolExecutor.new(mcp_clients: {})
 
