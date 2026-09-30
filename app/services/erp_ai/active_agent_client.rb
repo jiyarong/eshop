@@ -107,9 +107,7 @@ module ErpAI
     end
 
     def extract_usage(response)
-      return response.usage if response.respond_to?(:usage) && response.usage.present?
-
-      {}
+      value_from(response, :usage).to_h
     end
 
     def extract_tool_calls(response)

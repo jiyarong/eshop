@@ -1,6 +1,4 @@
 class Agent < ApplicationRecord
-  SCHEDULED_ONLY_CODES = %w[sku_diagnosis sku_planner sku_plan_evaluation].freeze
-
   DEFAULT_SYSTEM_PROMPT = <<~PROMPT.squish.freeze
     你是一个嵌入 ERP 系统的业务分析 AI Agent。你的任务不是泛泛聊天，而是基于 ERP 数据帮助用户理解业务状态、发现问题、解释原因，并给出可执行建议或报告。
     你必须只基于系统提供的数据、工具查询结果和用户明确描述的信息进行分析；如果数据不足，必须明确说明缺少哪些数据，不要编造事实。
@@ -180,10 +178,19 @@ class Agent < ApplicationRecord
   enum :agent_type, { web: "web", client: "client" }, default: :web, validate: true
 
   scope :enabled, -> { where(enabled: true) }
-  scope :available_for_conversation, -> { enabled.web.where.not(code: SCHEDULED_ONLY_CODES) }
+  scope :custom, -> { where.not(code: DEFINITIONS.keys) }
+  scope :available_for_conversation, -> { enabled.web.custom }
+
+  def built_in?
+    DEFINITIONS.key?(code)
+  end
 
   def available_for_conversation?
-    enabled? && web? && !code.in?(SCHEDULED_ONLY_CODES)
+    enabled? && web? && !built_in?
+  end
+
+  def deletable?
+    web? && !built_in?
   end
 
   def recommended_prompts_text

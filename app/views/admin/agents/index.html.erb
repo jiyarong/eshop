@@ -58,7 +58,7 @@
                 <div class="ai-agent-identity__copy">
                   <div class="ai-agent-identity__name">
                     <strong><%= agent.name %></strong>
-                    <% origin = Agent::DEFINITIONS.key?(agent.code) ? "built_in" : "custom" %>
+                    <% origin = agent.built_in? ? "built_in" : "custom" %>
                     <span class="ai-tag ai-agent-origin--<%= origin.dasherize %>"><%= t("admin.agents.origins.#{origin}") %></span>
                   </div>
                   <code><%= agent.code %></code>
@@ -90,6 +90,15 @@
               <%= link_to edit_admin_agent_path(agent.code), class: "ai-row-action" do %>
                 <i class="bi bi-pencil" aria-hidden="true"></i>
                 <span><%= t("common.actions.edit") %></span>
+              <% end %>
+              <% if agent.deletable? %>
+                <%= button_to admin_agent_path(agent.code),
+                              method: :delete,
+                              class: "ai-row-action",
+                              form: { data: { turbo_confirm: t("admin.agents.actions.delete_confirm", name: agent.name) } } do %>
+                  <i class="bi bi-trash" aria-hidden="true"></i>
+                  <span><%= t("common.actions.delete") %></span>
+                <% end %>
               <% end %>
             </td>
           </tr>

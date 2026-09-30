@@ -21,6 +21,7 @@ module ErpAI
       ConversationReplyJob.perform_later(@conversation.id, @message.id, locale: I18n.locale.to_s)
 
       render turbo_stream: [
+        turbo_stream.remove("conversation_token_usage"),
         turbo_stream.append(
           "conversation_messages",
           partial: "erp_ai/conversations/message",
@@ -44,6 +45,7 @@ module ErpAI
 
     def load_conversation
       @conversation = Conversation.find(params[:conversation_id])
+      raise ActiveRecord::RecordNotFound unless @conversation.agent.available_for_conversation?
     end
 
     def message_params

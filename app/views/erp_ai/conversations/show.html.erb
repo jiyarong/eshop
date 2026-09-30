@@ -84,8 +84,10 @@
     <%= render "erp_ai/conversations/messages", messages: @messages %>
   </div>
 
-  <%= render "erp_ai/conversations/composer",
-             conversation: @conversation,
-             message: @message,
-             busy: @conversation.responding? %>
+  <% if @conversation.agent.available_for_conversation? %>
+    <%= render "erp_ai/conversations/composer",
+               conversation: @conversation,
+               message: @message,
+               busy: @conversation.responding? %>
+  <% end %>
 </section>

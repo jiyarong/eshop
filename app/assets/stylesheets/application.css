@@ -3060,6 +3060,21 @@ table thead th {
   padding: 0;
 }
 
+.ai-conversation-message__usage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--erp-border);
+  color: var(--erp-muted);
+  font-size: 12px;
+}
+
+.ai-conversation-message__usage-value {
+  font-variant-numeric: tabular-nums;
+}
+
 .ai-conversation-message__body.is-streaming::after {
   display: inline-block;
   width: 7px;

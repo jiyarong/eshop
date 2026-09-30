@@ -91,6 +91,12 @@ en:
       tool_call: "Tool call"
       tool_exchange: "Tool call record"
       tool_result: "Tool call result"
+      token_usage:
+        title: "Token usage"
+        input_tokens: "Input"
+        output_tokens: "Output"
+        cached_tokens: "Cache hits"
+        total_tokens: "Total tokens"
   locale:
     switcher_label: "Language"
     zh: "中"
@@ -568,6 +574,7 @@ en:
       actions:
         new: "New Agent"
         start_conversation: "Start conversation"
+        delete_confirm: "Delete Agent %{name} and all its conversations?"
       agent_types:
         client: "Client Agent"
         web: "Web Agent"
@@ -627,6 +634,7 @@ en:
       notices:
         created: "AI Agent created."
         updated: "AI Agent updated."
+        deleted: "AI Agent and its conversations deleted."
       placeholders:
         recommended_prompts: "One prompt per line"
       sections:

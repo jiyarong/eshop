@@ -92,6 +92,28 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     assert_same callback, FakeAgent.last_generation.params.fetch(:stream_callback)
   end
 
+  test "serializes active agent usage objects into a plain hash" do
+    FakeGeneration.response = OpenStruct.new(
+      message: OpenStruct.new(content: "分析完成"),
+      usage: ActiveAgent::Providers::Common::Usage.new(
+        input_tokens: 100, output_tokens: 25, cached_tokens: 80, total_tokens: 125
+      )
+    )
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model", temperature: 0.2, system_prompt: "系统提示词",
+      context: "ERP 上下文", messages: [ { role: "user", content: "分析库存" } ],
+      tools: [], thinking_enabled: false
+    )
+
+    usage = result.fetch(:usage)
+    assert_kind_of Hash, usage
+    assert_equal 100, usage.fetch(:input_tokens)
+    assert_equal 25, usage.fetch(:output_tokens)
+    assert_equal 80, usage.fetch(:cached_tokens)
+    assert_equal 125, usage.fetch(:total_tokens)
+  end
+
   test "ignores streaming usage chunks with no choices" do
     stream_events = []
     provider = ActiveAgent::Providers::OpenAI::ChatProvider.new(
@@ -105,6 +127,25 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     provider.send(:process_stream_chunk, event)
 
     assert_equal [:open], stream_events
+  end
+
+  test "retains token and cache usage from the final streaming chunk" do
+    provider = ActiveAgent::Providers::OpenAI::ChatProvider.new(
+      service: "OpenAI", access_token: "test-token", stream_broadcaster: ->(_message, _delta, _event) { }
+    )
+    chunk = Struct.new(:choices, :usage).new([], {
+      prompt_tokens: 100, completion_tokens: 25,
+      prompt_tokens_details: { cached_tokens: 80 }, total_tokens: 125
+    })
+    event = Struct.new(:type, :chunk).new(:chunk, chunk)
+
+    provider.send(:process_stream_chunk, event)
+
+    usage = provider.usage_stack.last
+    assert_equal 100, usage.input_tokens
+    assert_equal 25, usage.output_tokens
+    assert_equal 80, usage.cached_tokens
+    assert_equal 125, usage.total_tokens
   end
 
   test "normalizes provider tool calls exposed on response message" do

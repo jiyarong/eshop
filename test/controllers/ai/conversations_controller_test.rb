@@ -16,7 +16,13 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     clear_enqueued_jobs
     @token = SecureRandom.hex(4)
     @user = create_user_with_roles("ai-controller-#{@token}@example.com", "manager")
-    @agent = Agent.ensure_fixed!("business_analysis")
+    @system_agent_existed = Agent.exists?(code: "business_analysis")
+    @system_agent = Agent.ensure_fixed!("business_analysis")
+    @agent = Agent.create!(
+      code: "conversation_agent_#{@token}", name: "Custom conversation agent",
+      system_prompt: Agent::GENERAL_AGENT_PROMPT, model_id: "test-model",
+      temperature: 0.3, tools: [], enabled: true, agent_type: :web
+    )
     @old_default_client = ErpAI::DefaultClient.default_client
     ErpAI::DefaultClient.default_client = FakeClient.new
   end
@@ -28,6 +34,7 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     Message.where(conversation: Conversation.where(user: @user)).delete_all if defined?(Message)
     Conversation.where(user: @user).delete_all if defined?(Conversation)
     Agent.where(id: @agent.id).delete_all if defined?(Agent) && @agent&.id
+    Agent.where(id: @system_agent.id).delete_all unless @system_agent_existed
     UserRole.where(user: @user).delete_all
     User.where(id: @user.id).delete_all
     clear_enqueued_jobs
@@ -43,7 +50,7 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
 
     post "/ai/conversations.json", params: {
-      agent_code: "business_analysis",
+      agent_code: @agent.code,
       question: "请分析库存风险",
       module_name: "inventory",
       business_object_type: "Ec::Sku",
@@ -59,11 +66,11 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal({ "total_tokens" => 12 }, body.fetch("assistant_message").fetch("usage"))
   end
 
-  test "creates general agent conversation with only question" do
+  test "creates custom web agent conversation with only question" do
     sign_in @user
 
     post "/ai/conversations.json", params: {
-      agent_code: "general_agent",
+      agent_code: @agent.code,
       question: "帮我总结外部资料"
     }
 
@@ -86,6 +93,7 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "a.erp-nav__link[href=?][aria-current='page']", ai_conversations_path
     assert_select "select[name='agent_code'] option[value=?]", @agent.code
+    assert_select "select[name='agent_code'] option[value=?]", @system_agent.code, count: 0
     assert_select "a.ai-conversation-index__item[href=?]", ai_conversation_path(own_conversation), text: /分析本人的库存/
     assert_select "a.ai-conversation-index__item[href=?]", ai_conversation_path(other_conversation), count: 0
   ensure
@@ -118,6 +126,55 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
       post ai_conversations_path, params: { agent_code: @agent.code }, headers: { "Accept" => "text/html" }
     end
 
+    assert_response :not_found
+  end
+
+  test "rejects built-in agents for both HTML and JSON conversation creation" do
+    sign_in @user
+
+    [ "text/html", "application/json" ].each do |format|
+      sign_in @user
+      assert_no_difference "Conversation.count" do
+        post ai_conversations_path,
+             params: { agent_code: @system_agent.code, question: "分析库存" },
+             headers: { "Accept" => format }
+      end
+      assert_response :not_found
+    end
+  end
+
+  test "JSON conversation creation requires an available custom web agent" do
+    sign_in @user
+
+    [ { enabled: false }, { enabled: true, agent_type: :client } ].each do |attributes|
+      @agent.update!(attributes)
+      sign_in @user
+      assert_no_difference "Conversation.count" do
+        post "/ai/conversations.json", params: { agent_code: @agent.code, question: "分析库存" }
+      end
+      assert_response :not_found
+    end
+  end
+
+  test "built-in agent conversations remain readable but cannot receive follow-ups" do
+    sign_in @user
+    conversation = @system_agent.conversations.create!(user: @user)
+    conversation.messages.create!(role: "assistant", content: "系统分析结果")
+
+    get ai_conversation_path(conversation), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".ai-conversation-message--assistant", text: /系统分析结果/
+    assert_select "form[action=?]", ai_conversation_messages_path(conversation), count: 0
+
+    sign_in @user
+    assert_no_difference "Message.count" do
+      assert_no_enqueued_jobs only: ConversationReplyJob do
+        post ai_conversation_messages_path(conversation),
+             params: { message: { content: "继续分析" } },
+             headers: { "Accept" => Mime[:turbo_stream].to_s }
+      end
+    end
     assert_response :not_found
   end
 
@@ -224,6 +281,53 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
                   text: "返回"
   end
 
+  test "shows token usage only on the last message" do
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user)
+    earlier_reply = conversation.messages.create!(role: "assistant", content: "Earlier reply", usage: { total_tokens: 10 })
+    conversation.messages.create!(role: "user", content: "Follow-up")
+    reply = conversation.messages.create!(role: "assistant", content: "Final reply", usage: {
+      input_tokens: 1_000, output_tokens: 250, cached_tokens: 800, total_tokens: 1_250
+    })
+
+    get ai_conversation_path(conversation), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "#message_#{earlier_reply.id} .ai-conversation-message__usage", count: 0
+    assert_select "#message_#{reply.id} #conversation_token_usage", count: 1 do
+      assert_select "[data-token-metric='input_tokens']", text: /1,000/
+      assert_select "[data-token-metric='output_tokens']", text: /250/
+      assert_select "[data-token-metric='cached_tokens']", text: /800/
+      assert_select "[data-token-metric='total_tokens']", text: /1,250/
+    end
+  end
+
+  test "shows unavailable token metrics as missing instead of zero" do
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user)
+    conversation.messages.create!(role: "assistant", content: "Legacy reply", usage: { total_tokens: 12 })
+
+    get ai_conversation_path(conversation), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    %w[input_tokens output_tokens cached_tokens].each do |metric|
+      assert_select "#conversation_token_usage [data-token-metric='#{metric}'] .ai-conversation-message__usage-value", text: "-"
+    end
+    assert_select "#conversation_token_usage [data-token-metric='total_tokens']", text: /12/
+  end
+
+  test "does not show token usage when the last message is a user request" do
+    sign_in @user
+    conversation = @agent.conversations.create!(user: @user)
+    conversation.messages.create!(role: "assistant", content: "Earlier reply", usage: { total_tokens: 12 })
+    conversation.messages.create!(role: "user", content: "Waiting for reply")
+
+    get ai_conversation_path(conversation), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "#conversation_token_usage", count: 0
+  end
+
   test "shows the saved system prompt instead of the agent's current prompt" do
     sign_in @user
     conversation = @agent.conversations.create!(user: @user, context: { "system_prompt" => "会话时的提示词" })
@@ -275,6 +379,7 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "继续分析销量", conversation.messages.order(:created_at, :id).last.content
     assert_equal "user", conversation.messages.order(:created_at, :id).last.role
     assert_select "turbo-stream[action='append'][target='conversation_messages']"
+    assert_select "turbo-stream[action='remove'][target='conversation_token_usage']"
     assert_select "turbo-stream[action='replace'][target='conversation_composer']"
   end
 

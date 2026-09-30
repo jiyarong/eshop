@@ -1,4 +1,5 @@
 <% tool_calls = ai_conversation_tool_calls(message) %>
+<% token_usage = local_assigns[:show_usage] ? message.token_usage : {} %>
 <% tool_response = message.role == "tool" %>
 <% message_parts = tool_calls.any? ? tool_calls : [nil] %>
 <% message_parts.each_with_index do |tool_call, index| %>
@@ -60,5 +61,19 @@
                body_id: "#{part_id}_body",
                content: tool_request ? ai_conversation_tool_call_markdown(tool_call, include_tool_label: false) : ai_conversation_message_markdown(message, include_tool_label: !tool_response),
                streaming: false %>
+
+    <% if copyable_reply && token_usage.present? %>
+      <footer id="conversation_token_usage"
+              class="ai-conversation-message__usage"
+              aria-label="<%= t("ai.conversations.token_usage.title") %>">
+        <span><%= t("ai.conversations.token_usage.title") %></span>
+        <% %w[input_tokens output_tokens cached_tokens total_tokens].each do |metric| %>
+          <span data-token-metric="<%= metric %>">
+            <%= t("ai.conversations.token_usage.#{metric}") %>:
+            <span class="ai-conversation-message__usage-value"><%= token_usage[metric].nil? ? t("common.empty_value") : number_with_delimiter(token_usage[metric]) %></span>
+          </span>
+        <% end %>
+      </footer>
+    <% end %>
   </article>
 <% end %>

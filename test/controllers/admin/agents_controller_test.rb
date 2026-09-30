@@ -38,7 +38,7 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     Message.where(conversation: Conversation.joins(:user).where(users: { email: [ @admin.email, @viewer.email ] })).delete_all if defined?(Message)
     Conversation.joins(:user).where(users: { email: [ @admin.email, @viewer.email ] }).delete_all if defined?(Conversation)
     AgentSkill.where(skill_id: @skill.id).delete_all
-    Array(@filter_agents).each(&:destroy!)
+    Array(@filter_agents).each { |agent| Agent.find_by(id: agent.id)&.destroy! }
     Agent.where(code: "custom_agent_#{@token}").delete_all
     @agent.avatar.purge if @agent.avatar.attached?
     @skill.archive.purge if @skill.archive.attached?
@@ -62,7 +62,10 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", text: I18n.t("admin.agents.fields.skills"), count: 0
     assert_select "td", text: "Web Agent"
     assert_select "a.ai-row-action[href=?]", "/admin/agents/sku_replenishment_advisor/edit"
-    assert_select "form[action=?] input[name='agent_code'][value='sku_replenishment_advisor']", ai_conversations_path
+    Agent::DEFINITIONS.each_key do |code|
+      assert_select "form[action=?] input[name='agent_code'][value=?]", ai_conversations_path, code, count: 0
+      assert_select "form[action=?] input[name='_method'][value='delete']", admin_agent_path(code), count: 0
+    end
     nav_paths = css_select(".erp-nav__link").map { |link| link["href"] }
     assert_equal nav_paths.index(admin_agents_path) + 1, nav_paths.index(ai_conversations_path)
     assert_select ".ai-table-panel.table-list-card > .table-viewport.table-list-viewport[data-controller~='sticky-table-header'] > table.ai-agent-table",
@@ -200,6 +203,71 @@ class Admin::AgentsControllerTest < ActionDispatch::IntegrationTest
     get "/admin/agents", headers: { "Accept" => "text/html" }
 
     assert_response :forbidden
+  end
+
+  test "only enabled custom web agents have conversation actions and custom web agents have delete actions" do
+    create_filter_agents
+    sign_in @admin
+
+    get admin_agents_path, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    @filter_agents.each do |agent|
+      assert_select "form[action=?] input[name='agent_code'][value=?]",
+        ai_conversations_path, agent.code, count: agent.web? && agent.enabled? ? 1 : 0
+      assert_select "form[action=?] input[name='_method'][value='delete']",
+        admin_agent_path(agent.code), count: agent.web? ? 1 : 0
+      if agent.web?
+        assert_select "form[action=?][data-turbo-confirm=?]", admin_agent_path(agent.code),
+          I18n.t("admin.agents.actions.delete_confirm", name: agent.name)
+      end
+    end
+  end
+
+  test "super admin can delete enabled and disabled custom web agents and their conversations" do
+    create_filter_agents
+    sign_in @admin
+
+    @filter_agents.select(&:web?).each do |agent|
+      sign_in @admin
+      conversation = agent.conversations.create!(user: @admin)
+      message = conversation.messages.create!(role: "user", content: "Test deletion")
+
+      delete admin_agent_path(agent.code)
+
+      assert_redirected_to admin_agents_path
+      assert_equal I18n.t("admin.agents.notices.deleted"), flash[:notice]
+      assert_not Agent.exists?(agent.id)
+      assert_not Conversation.exists?(conversation.id)
+      assert_not Message.exists?(message.id)
+    end
+  end
+
+  test "built-in and custom client agents cannot be deleted" do
+    create_filter_agents
+    sign_in @admin
+
+    ([ @agent ] + @filter_agents.select(&:client?)).each do |agent|
+      sign_in @admin
+      assert_no_difference "Agent.count" do
+        delete admin_agent_path(agent.code)
+      end
+      assert_response :not_found
+      assert Agent.exists?(agent.id)
+    end
+  end
+
+  test "non admin cannot delete a custom web agent" do
+    create_filter_agents
+    sign_in @viewer
+    agent = @filter_agents.find(&:web?)
+
+    assert_no_difference "Agent.count" do
+      delete admin_agent_path(agent.code)
+    end
+
+    assert_response :forbidden
+    assert Agent.exists?(agent.id)
   end
 
   test "super admin can render the complete edit form" do

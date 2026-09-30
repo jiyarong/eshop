@@ -8,7 +8,10 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
       @request = request
       {
         content: "## 结论摘要\n库存存在缺口，需要补充确认近期销量。",
-        usage: { "total_tokens" => 42 }
+        usage: {
+          "prompt_tokens" => 30, "completion_tokens" => 12,
+          "prompt_tokens_details" => { "cached_tokens" => 10 }, "total_tokens" => 42
+        }
       }
     end
   end
@@ -198,7 +201,11 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_equal ["user", "assistant"], conversation.messages.order(:created_at, :id).pluck(:role)
     assert_equal "请给出库存建议", conversation.messages.order(:created_at, :id).first.content
     assert_match "库存存在缺口", conversation.messages.order(:created_at, :id).last.content
-    assert_equal({ "total_tokens" => 42 }, conversation.messages.order(:created_at, :id).last.usage)
+    usage = conversation.messages.order(:created_at, :id).last.reload.usage
+    assert_equal({ "input_tokens" => 30, "output_tokens" => 12, "cached_tokens" => 10, "total_tokens" => 42 },
+      usage.slice("input_tokens", "output_tokens", "cached_tokens", "total_tokens"))
+    assert_equal 30, usage.fetch("prompt_tokens")
+    assert_equal({ "cached_tokens" => 10 }, usage.fetch("prompt_tokens_details"))
     assert_equal client.request.fetch(:system_prompt), conversation.context.fetch("system_prompt")
   end
 

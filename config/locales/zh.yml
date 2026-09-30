@@ -88,6 +88,12 @@ zh:
       tool_call: "工具调用"
       tool_exchange: "工具调用记录"
       tool_result: "工具调用结果"
+      token_usage:
+        title: "Token 使用情况"
+        input_tokens: "输入"
+        output_tokens: "输出"
+        cached_tokens: "缓存命中"
+        total_tokens: "总消耗"
   category_selector:
     cancel: "取消"
     child_label: "二级类目"
@@ -546,6 +552,7 @@ zh:
       actions:
         new: "新增 Agent"
         start_conversation: "开始会话"
+        delete_confirm: "确认删除 Agent %{name} 及其全部对话？"
       agent_types:
         client: "Client Agent"
         web: "Web Agent"
@@ -605,6 +612,7 @@ zh:
       notices:
         created: "AI Agent 已创建。"
         updated: "AI Agent 已更新。"
+        deleted: "AI Agent 及其对话已删除。"
       placeholders:
         recommended_prompts: "每行一个预设问题"
       sections:

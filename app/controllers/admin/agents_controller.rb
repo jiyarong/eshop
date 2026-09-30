@@ -1,7 +1,7 @@
 module Admin
   class AgentsController < BaseController
     before_action :seed_fixed_agents
-    before_action :set_agent, only: [ :edit, :update ]
+    before_action :set_agent, only: [ :edit, :update, :destroy ]
     before_action :load_capabilities, only: [ :new, :create, :edit, :update ]
 
     def index
@@ -41,6 +41,13 @@ module Admin
       else
         render :edit, status: :unprocessable_entity
       end
+    end
+
+    def destroy
+      raise ActiveRecord::RecordNotFound unless @agent.deletable?
+
+      @agent.destroy!
+      redirect_to admin_agents_path, notice: t("admin.agents.notices.deleted")
     end
 
     private

@@ -62,6 +62,12 @@ ru:
       tool_call: "Вызов инструмента"
       tool_exchange: "Запись вызова инструмента"
       tool_result: "Результат вызова инструмента"
+      token_usage:
+        title: "Использование токенов"
+        input_tokens: "Вход"
+        output_tokens: "Выход"
+        cached_tokens: "Из кеша"
+        total_tokens: "Всего токенов"
   locale:
     switcher_label: "Язык"
     zh: "中"
@@ -539,6 +545,7 @@ ru:
       actions:
         new: "Добавить Agent"
         start_conversation: "Начать диалог"
+        delete_confirm: "Удалить Agent %{name} и все его диалоги?"
       agent_types:
         client: "Client Agent"
         web: "Web Agent"
@@ -598,6 +605,7 @@ ru:
       notices:
         created: "AI Agent создан."
         updated: "AI Agent обновлен."
+        deleted: "AI Agent и его диалоги удалены."
       placeholders:
         recommended_prompts: "Один вопрос на строку"
       sections:

@@ -12,17 +12,13 @@ module ErpAI
     end
 
     def create
+      agent = Agent.available_for_conversation.find_by!(code: params[:agent_code])
+
       if request.format.html?
-        agent = Agent.available_for_conversation.find_by!(code: params[:agent_code])
         conversation = agent.conversations.create!(user: current_user)
         return redirect_to ai_conversation_path(conversation)
       end
 
-      if conversation_params[:agent_code].in?(Agent::SCHEDULED_ONLY_CODES)
-        return render json: { error: "#{conversation_params[:agent_code]} is scheduled-only" }, status: :unprocessable_entity
-      end
-
-      agent = Agent.ensure_fixed!(conversation_params[:agent_code].presence || "business_analysis")
       conversation = ErpAI::AgentRunner.new(agent: agent, user: current_user).ask(
         question: conversation_params.fetch(:question),
         module_name: conversation_params[:module_name],

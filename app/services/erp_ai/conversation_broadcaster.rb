@@ -7,6 +7,7 @@ module ErpAI
     end
 
     def append_message(message)
+      Turbo::StreamsChannel.broadcast_remove_to(conversation, target: "conversation_token_usage")
       Turbo::StreamsChannel.broadcast_append_to(
         conversation,
         target: "conversation_messages",
@@ -60,6 +61,7 @@ module ErpAI
       time_zone = User.profile_time_zone(conversation.user.time_zone)
       {
         message: message,
+        show_usage: true,
         displayed_at: message.created_at.in_time_zone(time_zone).strftime("%Y-%m-%d %H:%M")
       }
     end

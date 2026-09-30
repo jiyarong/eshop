@@ -5,7 +5,10 @@ class ConversationReplyJobTest < ActiveJob::TestCase
     def complete(_request)
       yield '{"content":"后台' if block_given?
       yield '回复完成"}' if block_given?
-      { content: "后台回复完成", tool_calls: [], usage: { "total_tokens" => 8 } }
+      {
+        content: "后台回复完成", tool_calls: [],
+        usage: { "input_tokens" => 6, "output_tokens" => 2, "cached_tokens" => 4, "total_tokens" => 8 }
+      }
     end
   end
 
@@ -46,7 +49,7 @@ class ConversationReplyJobTest < ActiveJob::TestCase
     assistant = @conversation.messages.order(:created_at, :id).last
     assert_equal "assistant", assistant.role
     assert_equal "后台回复完成", assistant.content
-    assert_equal({ "total_tokens" => 8 }, assistant.usage)
+    assert_equal({ "input_tokens" => 6, "output_tokens" => 2, "cached_tokens" => 4, "total_tokens" => 8 }, assistant.reload.usage)
   end
 
   test "marks the conversation failed and leaves a visible error message" do
@@ -59,5 +62,31 @@ class ConversationReplyJobTest < ActiveJob::TestCase
     assert_equal "failed", @conversation.reload.response_status
     assert_equal I18n.t("ai.conversations.errors.response_failed", locale: :zh),
                  @conversation.messages.order(:created_at, :id).last.content
+  end
+
+  test "broadcasts the persisted token usage with the final streamed reply" do
+    ErpAI::DefaultClient.default_client = StreamingClient.new
+    replacements = []
+    removals = []
+    original_replace = Turbo::StreamsChannel.method(:broadcast_replace_to)
+    original_remove = Turbo::StreamsChannel.method(:broadcast_remove_to)
+    Turbo::StreamsChannel.define_singleton_method(:broadcast_replace_to) { |_conversation, **options| replacements << options }
+    Turbo::StreamsChannel.define_singleton_method(:broadcast_remove_to) { |_conversation, **options| removals << options }
+
+    ConversationReplyJob.perform_now(@conversation.id, @user_message.id, locale: "zh")
+
+    reply = @conversation.messages.order(:created_at, :id).last
+    broadcast = replacements.find { |options| options[:target] == "message_#{reply.id}" }
+    assert broadcast
+    assert_equal true, broadcast.fetch(:locals).fetch(:show_usage)
+    assert removals.any? { |options| options[:target] == "conversation_token_usage" }
+
+    markup = ApplicationController.render(partial: broadcast.fetch(:partial), locals: broadcast.fetch(:locals))
+    fragment = Nokogiri::HTML.fragment(markup)
+    assert_equal "8", fragment.at_css("#conversation_token_usage [data-token-metric='total_tokens'] .ai-conversation-message__usage-value").text
+    assert_equal "4", fragment.at_css("#conversation_token_usage [data-token-metric='cached_tokens'] .ai-conversation-message__usage-value").text
+  ensure
+    Turbo::StreamsChannel.define_singleton_method(:broadcast_replace_to, original_replace) if original_replace
+    Turbo::StreamsChannel.define_singleton_method(:broadcast_remove_to, original_remove) if original_remove
   end
 end

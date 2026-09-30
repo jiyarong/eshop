@@ -166,7 +166,7 @@ Rails.application.routes.draw do
     get "users/new" => "users#new", as: :new_user
     get "users/:id/edit" => "users#edit", as: :edit_user
     post "agents/:id" => "agents#update"
-    resources :agents, only: [:index, :new, :create, :edit, :update], param: :id
+    resources :agents, only: [:index, :new, :create, :edit, :update, :destroy], param: :id
     resources :sku_diagnosis_rules, only: [:index, :new, :create, :show, :edit, :update, :destroy]
     resources :skills, only: [:index, :new, :create, :show, :edit, :update] do
       get :download, on: :member
