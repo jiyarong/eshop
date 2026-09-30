@@ -13,10 +13,15 @@ module AITasks
 
     STAGES = %w[evaluation diagnosis planner].freeze
 
-    # The default invocation runs all stages synchronously. A retry can start
-    # at a later stage when an earlier stage has already completed.
+    # A batch invocation dispatches one per-SKU stage chain. A direct SKU
+    # invocation runs its stages synchronously, and can resume at a later stage.
     def perform(as_of_date: nil, sku_code: nil, stage: nil)
       date = (as_of_date.presence || Time.current.in_time_zone(ErpAI::SkuDiagnosisRunner::TIME_ZONE).to_date).to_date
+      if sku_code.blank? && stage.blank?
+        enqueue_sku_pipelines(as_of_date: date)
+        return
+      end
+
       stages = stages_from(stage)
       started_at = Time.current
 
@@ -96,6 +101,25 @@ module AITasks
     end
 
     private
+
+    def enqueue_sku_pipelines(as_of_date:)
+      diagnosis_sku_codes = ErpAI::SkuDiagnosisRunner.batch_sku_codes(as_of_date: as_of_date)
+      diagnosis_sku_code_set = diagnosis_sku_codes.to_set
+      evaluation_sku_codes = Ec::SkuOperationPlanEvaluationRunner.sku_codes(
+        as_of_date: as_of_date,
+        force: false
+      )
+
+      (diagnosis_sku_codes + evaluation_sku_codes).uniq.each do |sku_code|
+        AITasks::SkuOperationPlanEvaluationJob.perform_later(
+          as_of_date: as_of_date,
+          sku_code: sku_code,
+          force: false,
+          pipeline: true,
+          continue_to_diagnosis: diagnosis_sku_code_set.include?(sku_code)
+        )
+      end
+    end
 
     def stages_from(stage)
       self.class.send(:stages_from, stage)

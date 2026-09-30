@@ -9,6 +9,10 @@ module Ec
       new(as_of_date: as_of_date, sku_code: sku_code).pending?
     end
 
+    def self.sku_codes(as_of_date: nil, period_start: nil, force: false)
+      new(as_of_date: as_of_date, period_start: period_start, force: force).sku_codes
+    end
+
     def self.run(as_of_date: nil, period_start: nil, plan_id: nil, sku_code: nil, metrics_provider: nil, evaluator: nil, client: nil, agent: nil, user: nil, force: false)
       new(
         as_of_date: as_of_date,
@@ -55,6 +59,10 @@ module Ec
 
     def pending?
       plans.exists?
+    end
+
+    def sku_codes
+      plans.joins(:sku).reorder("ec_skus.sku_code").distinct.pluck("ec_skus.sku_code")
     end
 
     def run

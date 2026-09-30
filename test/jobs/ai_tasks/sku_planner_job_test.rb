@@ -25,6 +25,27 @@ class AITasks::SkuPlannerJobTest < ActiveJob::TestCase
     assert_equal({ sku_code: "SKU-ONE" }, arguments)
   end
 
+  test "enqueues one job per diagnosis sku for a batch" do
+    date = Date.new(2026, 9, 29)
+    requested_date = nil
+    original_batch_sku_codes = ErpAI::SkuDiagnosisRunner.method(:batch_sku_codes)
+    ErpAI::SkuDiagnosisRunner.define_singleton_method(:batch_sku_codes) do |as_of_date:|
+      requested_date = as_of_date
+      [ "SKU-ONE", "SKU-TWO" ]
+    end
+
+    assert_enqueued_jobs 2, only: AITasks::SkuPlannerJob do
+      AITasks::SkuPlannerJob.perform_now(as_of_date: date)
+    end
+    assert_equal date, requested_date
+  ensure
+    ErpAI::SkuDiagnosisRunner.define_singleton_method(:batch_sku_codes, original_batch_sku_codes) if original_batch_sku_codes
+  end
+
+  test "limits concurrent planners to six" do
+    assert_equal 6, AITasks::SkuPlannerJob.concurrency_limit
+  end
+
   private
 
   def with_planner(replacement)

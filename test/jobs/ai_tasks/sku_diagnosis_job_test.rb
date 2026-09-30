@@ -38,8 +38,22 @@ class AITasks::SkuDiagnosisJobTest < ActiveJob::TestCase
     end
   end
 
-  test "limits concurrent diagnoses to four" do
-    assert_equal 4, AITasks::SkuDiagnosisJob.concurrency_limit
+  test "limits concurrent diagnoses to six" do
+    assert_equal 6, AITasks::SkuDiagnosisJob.concurrency_limit
+  end
+
+  test "enqueues the planner after a pipeline diagnosis succeeds" do
+    date = Date.new(2026, 9, 29)
+    with_stubbed_runner(->(**) { nil }) do
+      assert_enqueued_jobs 1, only: AITasks::SkuPlannerJob do
+        AITasks::SkuDiagnosisJob.perform_now(as_of_date: date, sku_code: "SKU-ONE", pipeline: true)
+      end
+    end
+    arguments = ActiveJob::Arguments.deserialize(enqueued_jobs.last.fetch(:args)).first
+    assert_equal date, arguments.fetch(:as_of_date)
+    assert_equal "SKU-ONE", arguments.fetch(:sku_code)
+    assert arguments.fetch(:pipeline)
+    assert_predicate arguments.fetch(:diagnosis_started_at), :present?
   end
 
   test "uses the daily checkpoint for the parameterless batch" do

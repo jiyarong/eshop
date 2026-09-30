@@ -34,6 +34,43 @@ class AITasks::SkuPlanningPipelineJobTest < ActiveJob::TestCase
     assert_equal({ sku_code: "SKU-ONE", as_of_date: Date.new(2026, 9, 29), rerun: false }, calls[3].last)
   end
 
+  test "fans out the automatic pipeline by sku and preserves per-sku diagnosis chaining" do
+    date = Date.new(2026, 9, 29)
+    diagnosis_codes = [ "SKU-DIAGNOSIS", "SKU-BOTH" ]
+    evaluation_codes = [ "SKU-EVALUATION", "SKU-BOTH" ]
+    requested_diagnosis_date = nil
+    requested_evaluation_arguments = nil
+    with_stubbed_singleton_method(ErpAI::SkuDiagnosisRunner, :batch_sku_codes, ->(as_of_date:) {
+      requested_diagnosis_date = as_of_date
+      diagnosis_codes
+    }) do
+      with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :sku_codes, ->(**args) {
+        requested_evaluation_arguments = args
+        evaluation_codes
+      }) do
+        assert_enqueued_jobs 3, only: AITasks::SkuOperationPlanEvaluationJob do
+          AITasks::SkuPlanningPipelineJob.perform_now(as_of_date: date)
+        end
+      end
+    end
+
+    assert_equal date, requested_diagnosis_date
+    assert_equal date, requested_evaluation_arguments.fetch(:as_of_date)
+    assert_equal false, requested_evaluation_arguments.fetch(:force)
+    assert_enqueued_with(
+      job: AITasks::SkuOperationPlanEvaluationJob,
+      args: [ { as_of_date: date, sku_code: "SKU-DIAGNOSIS", force: false, pipeline: true, continue_to_diagnosis: true } ]
+    )
+    assert_enqueued_with(
+      job: AITasks::SkuOperationPlanEvaluationJob,
+      args: [ { as_of_date: date, sku_code: "SKU-BOTH", force: false, pipeline: true, continue_to_diagnosis: true } ]
+    )
+    assert_enqueued_with(
+      job: AITasks::SkuOperationPlanEvaluationJob,
+      args: [ { as_of_date: date, sku_code: "SKU-EVALUATION", force: false, pipeline: true, continue_to_diagnosis: false } ]
+    )
+  end
+
   test "can resume at planner without rerunning earlier stages" do
     calls = []
     with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { calls << :evaluation }) do
