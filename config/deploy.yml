@@ -49,6 +49,7 @@ env:
     - ESHOP_SUB2AI_PASSWORD
     - ESHOP_SUB2AI_USER
     - GBRAIN_BEARER_TOKEN
+    - TAVILY_API_KEY
   clear:
     KAMAL_CONTAINER: true
     DB_HOST: eshop_manage-postgres
