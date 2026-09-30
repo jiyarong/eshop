@@ -10,7 +10,6 @@ module AITasks
     retry_on EvaluationFailed, wait: 5.minutes, attempts: 3
     retry_on ErpAI::SkuPlannerRunner::Failure, wait: 5.minutes, attempts: 3
     retry_on ErpAI::SkuPlannerRunner::EvaluationFailed, wait: 5.minutes, attempts: 3
-    retry_on Ec::SkuPlanningDataReadiness::NotReady, wait: 30.minutes, attempts: 5
 
     STAGES = %w[evaluation diagnosis planner].freeze
 
@@ -22,8 +21,6 @@ module AITasks
       started_at = Time.current
 
       if stages.include?("evaluation")
-        Ec::SkuPlanningDataReadiness.check!(as_of_date: date, sku_code: sku_code)
-
         evaluations = Ec::SkuOperationPlanEvaluationRunner.run(
           as_of_date: date,
           sku_code: sku_code,

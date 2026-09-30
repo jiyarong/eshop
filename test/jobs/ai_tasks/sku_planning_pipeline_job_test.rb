@@ -73,13 +73,22 @@ class AITasks::SkuPlanningPipelineJobTest < ActiveJob::TestCase
     assert_not planner_called
   end
 
-  test "waits and retries before invoking any stage when data is not ready" do
-    Ec::SkuPlanningDataReadiness.define_singleton_method(:check!) { |**| raise Ec::SkuPlanningDataReadiness::NotReady, "WB source incomplete" }
-    with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { flunk "Evaluation must wait" }) do
-      assert_enqueued_with(job: AITasks::SkuPlanningPipelineJob, args: [{ sku_code: "WAIT" }]) do
-        AITasks::SkuPlanningPipelineJob.perform_now(sku_code: "WAIT")
+  test "does not block the pipeline on data readiness" do
+    Ec::SkuPlanningDataReadiness.define_singleton_method(:check!) do |**|
+      raise Ec::SkuPlanningDataReadiness::NotReady, "source incomplete"
+    end
+    calls = []
+    with_stubbed_singleton_method(Ec::SkuOperationPlanEvaluationRunner, :run, ->(**) { calls << :evaluation }) do
+      with_stubbed_singleton_method(ErpAI::SkuDiagnosisRunner, :run, ->(**) { calls << :diagnosis }) do
+        with_stubbed_singleton_method(AITasks::SkuPlanningPipelineJob, :diagnosis_complete?, ->(**) { true }) do
+          with_stubbed_singleton_method(ErpAI::SkuPlannerRunner, :run, ->(**) { calls << :planner }) do
+            AITasks::SkuPlanningPipelineJob.perform_now(sku_code: "WAIT")
+          end
+        end
       end
     end
+
+    assert_equal [ :evaluation, :diagnosis, :planner ], calls
   end
 
   test "failed evaluation prevents diagnosis and planner and schedules a retry" do
