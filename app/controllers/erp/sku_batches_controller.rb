@@ -25,7 +25,8 @@ module Erp
     }.freeze
 
     before_action :set_batch, only: [:show, :edit, :update, :destroy]
-    before_action -> { require_any_permission!(:manage_purchases, :manage_inventory) }, only: [:new, :create, :edit, :update, :destroy]
+    before_action -> { require_any_permission!(:manage_purchases, :manage_inventory) },
+      only: %i[new create edit update destroy physical_stocktake_adjustments]
 
     def index
       @q = params[:q].to_s.strip
@@ -71,10 +72,31 @@ module Erp
     end
 
     def new
-      @batch = Ec::SkuBatch.new(status: "draft", batch_type: :normal)
+      @batch = Ec::SkuBatch.new(
+        status: params[:status].presence_in(Ec::SkuBatch::STATUSES) || "draft",
+        batch_type: params[:batch_type].presence_in(Ec::SkuBatch.batch_types.keys) || :normal
+      )
       @batch.sku_code = params[:sku_code] if params[:sku_code].present?
       load_sku_options
       render_modal_or_page(:new, :new_modal)
+    end
+
+    def physical_stocktake_adjustments
+      @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+      scope = @sku.batches.where(batch_type: :physical_stocktake_adjustment)
+      @adjustment_quantity = scope
+        .where(status: Ec::InventoryPhysicalReconciliationQuery::EFFECTIVE_ADJUSTMENT_STATUSES)
+        .sum(:received_quantity)
+        .to_i
+      @adjustments = paginated_physical_stocktake_adjustments(scope)
+      @adjustment_report = {
+        pagination: {
+          page: @adjustments.current_page,
+          per_page: @adjustments.limit_value,
+          total_count: @adjustments.total_count,
+          total_pages: @adjustments.total_pages
+        }
+      }
     end
 
     def edit
@@ -179,6 +201,25 @@ module Erp
     def batch_page_param
       requested_page = params[:jump_page].presence || params[:page].presence
       current_page = params[:current_page].presence || params[:page].presence
+
+      page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
+      page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)
+      page = 1 if page.to_i <= 0
+      page
+    end
+
+    def paginated_physical_stocktake_adjustments(scope)
+      current_page = physical_stocktake_adjustment_page_param
+      adjustments = scope.order(created_at: :desc, id: :desc).page(current_page).per(BATCH_PAGE_SIZE)
+      if adjustments.total_pages.positive? && current_page > adjustments.total_pages
+        adjustments = scope.order(created_at: :desc, id: :desc).page(adjustments.total_pages).per(BATCH_PAGE_SIZE)
+      end
+      adjustments
+    end
+
+    def physical_stocktake_adjustment_page_param
+      requested_page = params[:jump_page].presence || params[:adjustment_page].presence
+      current_page = params[:current_page].presence || params[:adjustment_page].presence
 
       page = requested_page.to_i if requested_page.to_s.match?(/\A\d+\z/)
       page ||= current_page.to_i if current_page.to_s.match?(/\A\d+\z/)

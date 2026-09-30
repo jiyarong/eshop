@@ -1,0 +1,75 @@
+<%= turbo_frame_tag "erp_modal" do %>
+  <div class="erp-modal-backdrop" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <section class="erp-modal erp-modal--wide physical-stocktake-adjustments-modal"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="physical-stocktake-adjustments-modal-title">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="physical-stocktake-adjustments-modal-title"><%= t("erp.sku_batches.physical_stocktake_adjustments.title") %></h2>
+          <p class="erp-modal__subtitle"><%= @sku.sku_code %></p>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="physical-stocktake-adjustments-modal__summary">
+        <span><%= t("erp.sku_batches.physical_stocktake_adjustments.effective_quantity") %></span>
+        <strong><%= @adjustment_quantity %></strong>
+      </div>
+
+      <% if @adjustment_report.dig(:pagination, :total_pages).to_i > 1 %>
+        <%= render "reports/supply_orders/pagination",
+                   report: @adjustment_report,
+                   page_param: :adjustment_page,
+                   turbo_frame: "erp_modal",
+                   path_builder: ->(query) { physical_stocktake_adjustments_erp_sku_batches_path(query.merge(sku_code: @sku.sku_code, locale: params[:locale].presence)) } %>
+      <% end %>
+
+      <%= table_viewport(class_name: "table-scroll--contained", max_height: "50vh") do %>
+        <table class="inventory-detail-table physical-stocktake-adjustments-table">
+          <thead>
+            <tr>
+              <th><%= t("erp.sku_batches.fields.batch_code") %></th>
+              <th><%= t("erp.common.status") %></th>
+              <th><%= t("erp.sku_batches.physical_stocktake_adjustments.adjusted_on") %></th>
+              <th><%= t("erp.sku_batches.physical_stocktake_adjustments.quantity") %></th>
+              <th><%= t("erp.sku_batches.fields.defect_offset_note") %></th>
+              <th><%= t("erp.sku_batches.physical_stocktake_adjustments.actions") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @adjustments.any? %>
+              <% @adjustments.each do |batch| %>
+                <% modal_path = physical_stocktake_adjustments_erp_sku_batches_path(sku_code: @sku.sku_code, locale: params[:locale].presence) %>
+                <tr>
+                  <td><%= batch.batch_code %></td>
+                  <td><%= t("erp.sku_batches.statuses.#{batch.status}") %></td>
+                  <td><%= batch.received_on.present? ? I18n.l(batch.received_on, format: "%Y-%m-%d") : display_time(batch.created_at) %></td>
+                  <td class="numeric <%= "metric-negative" if batch.received_quantity.to_i.negative? %>"><%= batch.received_quantity.to_i %></td>
+                  <td><%= erp_value(batch.defect_offset_note) %></td>
+                  <td>
+                    <%= link_to erp_sku_batch_path(batch, return_to: modal_path, locale: params[:locale].presence),
+                                class: "ico-btn",
+                                title: t("erp.sku_batches.actions.delete_batch"),
+                                aria: { label: t("erp.sku_batches.actions.delete_batch") },
+                                data: {
+                                  turbo_method: :delete,
+                                  turbo_confirm: t("erp.sku_batches.actions.confirm_delete_batch"),
+                                  turbo_frame: "erp_modal"
+                                } do %>
+                      <i class="bi bi-trash" aria-hidden="true"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr><td colspan="6" class="empty-state"><%= t("erp.sku_batches.physical_stocktake_adjustments.empty") %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+  </div>
+<% end %>

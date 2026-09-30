@@ -230,7 +230,9 @@ Rails.application.routes.draw do
     end
     resources :sku_costs, only: [:index, :new, :create, :edit, :update], param: :sku_code
     resources :sku_dimensions, only: [:index, :edit, :update], param: :sku_code
-    resources :sku_batches
+    resources :sku_batches do
+      get :physical_stocktake_adjustments, on: :collection
+    end
     resources :companies, only: [] do
       get :search, on: :collection
     end

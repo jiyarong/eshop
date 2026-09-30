@@ -54,6 +54,7 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: @store.id }).delete_all
     Ec::Order.where(store_id: @store.id).delete_all
     RawOzon::Return.where(account_id: @account.id).delete_all
+    RawOzon::RemovalItem.where(account_id: @account.id).delete_all
     Ec::SkuBatch.where(sku_code: [ @sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code ]).delete_all
     Ec::SkuProduct.where(sku_code: [ @sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code ]).delete_all
     Ec::Store.where(id: @store.id).delete_all
@@ -93,6 +94,18 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
       raw_json: {},
       return_date: Time.zone.parse("2026-07-02 09:00:00"),
       synced_at: Time.zone.parse("2026-07-02 10:00:00")
+    )
+    create_removal(
+      @sku_a,
+      "TURN-REMOVAL-RECEIVED-#{@token}",
+      2,
+      synced_at: Time.zone.parse("2026-06-30 11:00:00")
+    )
+    create_removal(
+      @sku_a,
+      "TURN-REMOVAL-FUTURE-#{@token}",
+      5,
+      synced_at: Time.zone.parse("2026-07-02 11:00:00")
     )
 
     metrics = Ec::InventoryTurnoverMetricsQuery.new(
@@ -171,6 +184,21 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
       commission_amount: 10,
       discount_amount: 0,
       currency_code: "BYN"
+    )
+  end
+
+  def create_removal(sku, return_id, quantity, synced_at:)
+    RawOzon::RemovalItem.create!(
+      account: @account,
+      source_type: "stock",
+      row_key: return_id,
+      return_id: return_id,
+      sku: sku.sku_products.find_by!(store: @store).platform_sku_id,
+      quantity: quantity,
+      return_state: "Завершено",
+      box_state: "Получена",
+      raw_json: {},
+      synced_at: synced_at
     )
   end
 

@@ -67,7 +67,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       purchase_unit_price_cny: 1
     )
 
-    wb_fbw_order = Ec::Order.create!(
+    @wb_fbw_order = Ec::Order.create!(
       platform: "wb",
       store: @wb_store,
       external_order_id: "WB-FBW-#{@token}",
@@ -77,7 +77,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       ordered_at: Time.zone.parse("2026-06-10 10:00:00"),
       synced_at: Time.zone.parse("2026-06-10 10:05:00")
     )
-    wb_fbw_fulfillment = wb_fbw_order.fulfillments.create!(
+    @wb_fbw_fulfillment = @wb_fbw_order.fulfillments.create!(
       platform: "wb",
       store: @wb_store,
       external_fulfillment_id: "WB-FBW-F-#{@token}",
@@ -85,8 +85,8 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       fulfillment_type: "fbw",
       status: "delivered"
     )
-    wb_fbw_order.items.create!(
-      fulfillment: wb_fbw_fulfillment,
+    @wb_fbw_order_item = @wb_fbw_order.items.create!(
+      fulfillment: @wb_fbw_fulfillment,
       platform: "wb",
       store: @wb_store,
       external_item_id: "WB-FBW-I-#{@token}",
@@ -275,8 +275,9 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     RawWb::SupplyItem.where(account_id: @wb_account.id).delete_all
     RawOzon::Return.where(account_id: @ozon_account.id).delete_all
     RawWb::GoodsReturn.where(account_id: @wb_account.id).delete_all
-    Ec::ReturnItem.where(return_id: [@wb_return&.id, @ozon_return&.id].compact).delete_all
-    Ec::Return.where(id: [@wb_return&.id, @ozon_return&.id].compact).delete_all
+    return_ids = Ec::Return.where(store_id: [@wb_store.id, @ozon_store.id]).pluck(:id)
+    Ec::ReturnItem.where(return_id: return_ids).delete_all
+    Ec::Return.where(id: return_ids).delete_all
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@wb_store.id, @ozon_store.id] }).delete_all
     Ec::OrderFulfillment.where(store_id: [@wb_store.id, @ozon_store.id]).delete_all
     Ec::Order.where(store_id: [@wb_store.id, @ozon_store.id]).delete_all
@@ -297,6 +298,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 26, summary[:received_quantity]
     assert_equal 21, summary[:sales_quantity]
     assert_equal 3, summary[:return_quantity]
+    assert_equal 0, summary[:ozon_seller_received_removal_quantity]
     assert_equal 200, summary[:supply_quantity]
     assert_equal 15, summary[:platform_stock]
     assert_equal 2, summary[:platform_inbound_stock]
@@ -325,17 +327,32 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 7, @sku.inventory_overview.dig(:summary, :book_stock)
   end
 
-  test "deducts only active Ozon removal states from restockable returns" do
+  test "reports seller-received Ozon removals without changing book stock" do
     create_ozon_removal_item(return_id: "REMOVAL-PREPARING-#{@token}", state: "Собирается на складе", quantity: 1)
-    create_ozon_removal_item(return_id: "REMOVAL-COMPLETED-#{@token}", state: "Завершено", quantity: 8)
-    create_ozon_removal_item(return_id: "REMOVAL-CREATING-#{@token}", state: "Создаётся", quantity: 4)
+    create_ozon_removal_item(return_id: "REMOVAL-RECEIVED-#{@token}", state: "Завершено", box_state: "Получена", quantity: 8)
+    create_ozon_removal_item(
+      return_id: "REMOVAL-GIVEN-OUT-#{@token}",
+      state: "Завершено",
+      given_out_date: Time.current,
+      quantity: 3
+    )
+    create_ozon_removal_item(return_id: "REMOVAL-DESTROYED-#{@token}", state: "Завершено", box_state: "Утилизирована", quantity: 4)
+    create_ozon_removal_item(return_id: "REMOVAL-COMPLETED-UNKNOWN-#{@token}", state: "Завершено", quantity: 2)
+    create_ozon_removal_item(
+      return_id: "REMOVAL-IN-TRANSIT-GIVEN-OUT-#{@token}",
+      state: "В пути",
+      given_out_date: Time.current,
+      quantity: 5
+    )
 
     overview = @sku.inventory_overview
     ozon_row = overview[:store_rows].find { |row| row[:platform] == "ozon" }
 
-    assert_equal 1, ozon_row[:return_quantity]
-    assert_equal 2, overview.dig(:summary, :return_quantity)
-    assert_equal 7, overview.dig(:summary, :book_stock)
+    assert_equal 2, ozon_row[:return_quantity]
+    assert_equal 11, ozon_row[:ozon_seller_received_removal_quantity]
+    assert_equal 3, overview.dig(:summary, :return_quantity)
+    assert_equal 11, overview.dig(:summary, :ozon_seller_received_removal_quantity)
+    assert_equal 8, overview.dig(:summary, :book_stock)
   end
 
   test "batch overview matches detail overview inventory values" do
@@ -390,20 +407,24 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       order_item: cancelled_wb_order_item, item_key: "WB-CANCELLED-RETURN-ITEM-#{@token}",
       product_id: @wb_sku_product.product_id, quantity: 4, restockable: true
     )
-    stock_before_summary = @sku.inventory_overview.dig(:summary, :return_quantity)
-    create_ozon_removal_item(return_id: "REMOVAL-SUMMARY-#{@token}", state: "В пути", quantity: 1)
+    stock_before_summary = @sku.inventory_overview.dig(:summary, :book_stock)
+    create_ozon_removal_item(
+      return_id: "REMOVAL-SUMMARY-#{@token}",
+      state: "Завершено",
+      box_state: "Получена",
+      quantity: 1
+    )
 
     summary = Ec::InventoryPageDetailQuery.new(
       @sku, detail_tab: "returns", book_batch_page: 1
     ).call[:return_summary]
 
-    assert_equal 2, summary[:ozon_returned_total]
-    assert_equal 1, summary[:ozon_fbs_in_transit]
-    assert_equal 1, summary[:ozon_restocked_fbo]
+    assert_equal 2, summary[:ozon_restockable_returns]
+    assert_equal 1, summary[:ozon_seller_received_removals]
     assert_equal 7, summary[:wb_returned_total]
     assert_equal 5, summary[:wb_accepted_total]
     assert_equal 2, summary[:wb_fbs_in_transit]
-    assert_equal stock_before_summary - 1, @sku.inventory_overview.dig(:summary, :return_quantity)
+    assert_equal stock_before_summary, @sku.inventory_overview.dig(:summary, :book_stock)
   ensure
     Ec::ReturnItem.where(return_id: wb_in_transit_return&.id).delete_all
     wb_in_transit_return&.delete
@@ -413,7 +434,33 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     cancelled_wb_order&.delete
   end
 
-  test "continues deducting returned orders before adding restockable quantity" do
+  test "does not deduct returned WB FBW orders or add their return items" do
+    @wb_fbw_order.update!(order_status: "returned")
+    fbw_return = Ec::Return.create!(
+      platform: "wb", store: @wb_store, order: @wb_fbw_order,
+      return_key: "WB-FBW-RETURN-#{@token}", return_type: "customer_return"
+    )
+    fbw_return.items.create!(
+      platform: "wb", store: @wb_store, sku_product: @wb_sku_product,
+      order_item: @wb_fbw_order_item, item_key: "WB-FBW-RETURN-ITEM-#{@token}",
+      product_id: @wb_sku_product.product_id, quantity: 5, restockable: true
+    )
+
+    summary = @sku.inventory_overview[:summary]
+    batch_summary = Ec::SkuInventoryOverviewBatchQuery.new(skus: [@sku]).call.fetch(@sku.sku_code)
+
+    assert_equal 16, summary[:sales_quantity]
+    assert_equal 3, summary[:return_quantity]
+    assert_equal 13, summary[:book_stock]
+    assert_equal 13, batch_summary[:book_stock]
+
+    @wb_fbw_fulfillment.update!(fulfillment_type: "fbo")
+
+    assert_equal 16, @sku.inventory_overview.dig(:summary, :sales_quantity)
+  end
+
+  test "continues deducting returned WB FBS and Ozon orders" do
+    @wb_fbs_order.update!(order_status: "returned")
     @ozon_order.update!(order_status: "returned")
 
     summary = @sku.inventory_overview[:summary]
@@ -423,7 +470,22 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 8, summary[:book_stock]
   end
 
-  def create_ozon_removal_item(return_id:, state:, quantity:)
+  test "continues deducting returned WB orders with unknown fulfillment" do
+    order = Ec::Order.create!(
+      platform: "wb", store: @wb_store,
+      order_key: "WB-UNKNOWN-RETURNED-#{@token}",
+      order_status: "returned"
+    )
+    order.items.create!(
+      platform: "wb", store: @wb_store,
+      platform_sku_id: @wb_sku_product.product_id,
+      quantity: 2
+    )
+
+    assert_equal 23, @sku.inventory_overview.dig(:summary, :sales_quantity)
+  end
+
+  def create_ozon_removal_item(return_id:, state:, quantity:, box_state: nil, given_out_date: nil)
     RawOzon::RemovalItem.create!(
       account: @ozon_account,
       source_type: "stock",
@@ -432,6 +494,8 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       sku: @ozon_sku_product.platform_sku_id,
       quantity: quantity,
       return_state: state,
+      box_state: box_state,
+      given_out_date: given_out_date,
       raw_json: {},
       synced_at: Time.current
     )

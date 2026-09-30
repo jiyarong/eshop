@@ -2,17 +2,19 @@ module Ec
   class InventoryPageRowQuery
     INCOMING_STATUSES = %w[draft ordered in_transit].freeze
 
-    def initialize(sku, metrics: nil)
+    def initialize(sku, metrics: nil, include_expected_physical_stock: false)
       @sku = sku
       @metrics = metrics || {}
+      @include_expected_physical_stock = include_expected_physical_stock
     end
 
     def call
-      summary = @sku.inventory_overview[:summary]
+      overview = @sku.inventory_overview
+      summary = overview[:summary]
       cost = @sku.cost
       dimension = @sku.dimension
 
-      {
+      row = {
         sku_code: @sku.sku_code,
         product_name: @sku.product_name,
         product_name_ru: @sku.product_name_ru,
@@ -31,6 +33,8 @@ module Ec
         turnover_days: @metrics[:turnover_days],
         turnover_days_with_procurement: @metrics[:turnover_days_with_procurement]
       }
+      row[:expected_physical_stock] = expected_physical_stock(overview) if @include_expected_physical_stock
+      row
     end
 
     private
@@ -48,6 +52,15 @@ module Ec
 
     def current_marketing_state
       @current_marketing_state ||= @sku.current_marketing_state
+    end
+
+    def expected_physical_stock(overview)
+      order_distribution = Ec::InventoryOrderSalesDistributionQuery.new(@sku).call
+      Ec::InventoryPhysicalReconciliationQuery.new(
+        @sku,
+        overview: overview,
+        order_distribution: order_distribution
+      ).expected_physical_stock
     end
 
     def procurement_batches

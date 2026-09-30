@@ -41,6 +41,7 @@ module Ec
     def received_quantities_by_sku
       Ec::SkuBatch
         .where(sku_code: @sku_codes, status: %w[received closed])
+        .where.not(batch_type: :physical_stocktake_adjustment)
         .where(
           "ec_sku_batches.received_on <= :date OR " \
           "(ec_sku_batches.received_on IS NULL AND ec_sku_batches.created_at <= :cutoff)",
@@ -70,10 +71,9 @@ module Ec
 
     def sales_quantities_by_sku
       Ec::OrderItem
-        .joins(:order)
+        .deductible_from_book_inventory
         .joins(order_item_sku_product_join_sql)
         .where(ec_sku_products: { sku_code: @sku_codes })
-        .where.not(ec_orders: { order_status: "cancelled" })
         .where(ec_orders: { ordered_at: ..cutoff_time })
         .group("ec_sku_products.sku_code")
         .sum(:quantity)
@@ -83,9 +83,9 @@ module Ec
 
     def returned_quantities_by_sku
       Ec::ReturnItem
-        .joins(:sku_product, return: :order)
-        .where(ec_sku_products: { sku_code: @sku_codes }, restockable: true)
-        .where.not(ec_orders: { order_status: "cancelled" })
+        .restockable_for_book_inventory
+        .joins(:sku_product)
+        .where(ec_sku_products: { sku_code: @sku_codes })
         .group("ec_sku_products.sku_code")
         .sum(:quantity)
         .transform_keys(&:to_s)

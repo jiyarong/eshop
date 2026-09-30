@@ -1,5 +1,7 @@
 <h1 class="page-title"><%= t("reports.inventory.title") %></h1>
 
+<%= turbo_frame_tag "erp_modal" %>
+
 <div class="report-stack">
   <section class="panel">
     <form action="/reports/inventory" method="get" class="report-form">
@@ -130,6 +132,7 @@
             <th><%= t("reports.inventory.fields.platform_inbound") %></th>
             <th><%= t("reports.inventory.fields.platform_stock") %></th>
             <th><%= t("reports.inventory.fields.overseas_available_stock") %></th>
+            <th><%= t("reports.inventory.fields.expected_physical_stock") %></th>
             <th><%= t("reports.inventory.fields.daily_sales_velocity") %></th>
             <th><%= t("reports.inventory.fields.strict_forecast_daily_sales") %></th>
             <th><%= t("reports.inventory.fields.turnover_days") %></th>
@@ -142,6 +145,7 @@
           <% if @inventory_rows.any? %>
             <% @inventory_rows.each do |row| %>
               <% available_stock = row[:available_stock].to_i %>
+              <% expected_physical_stock = row[:expected_physical_stock].to_i %>
               <% book_stock = row[:book_stock].to_i %>
               <% platform_inbound_stock = row[:platform_inbound_stock].to_i %>
               <% platform_stock = row[:platform_stock].to_i %>
@@ -215,6 +219,9 @@
                     <div class="inventory-list-table__subline"><%= available_volume_text %></div>
                   <% end %>
                 </td>
+                <td class="numeric inventory-list-table__metric inventory-list-table__metric--danger">
+                  <%= expected_physical_stock %>
+                </td>
                 <td class="numeric inventory-list-table__metric"><%= daily_sales_velocity.present? ? format("%.2f", daily_sales_velocity.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= strict_forecast_daily_sales.present? ? format("%.2f", strict_forecast_daily_sales.to_d) : "-" %></td>
                 <td class="numeric inventory-list-table__metric"><%= turnover_days.present? ? format("%.2f", turnover_days.to_d) : "-" %></td>
@@ -237,7 +244,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="12" class="empty-state"><%= t("reports.inventory.empty") %></td>
+              <td colspan="14" class="empty-state"><%= t("reports.inventory.empty") %></td>
             </tr>
           <% end %>
         </tbody>

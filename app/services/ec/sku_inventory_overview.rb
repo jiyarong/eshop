@@ -20,6 +20,7 @@ module Ec
     def summary(store_rows, latest_levels)
       sold = store_rows.sum { |row| row[:sales_quantity] }
       returned = store_rows.sum { |row| row[:return_quantity] }
+      seller_received_removals = store_rows.sum { |row| row[:ozon_seller_received_removal_quantity] }
       supply = store_rows.sum { |row| row[:supply_quantity] }
       platform_stock = latest_levels.sum(&:quantity)
       platform_inbound_stock = latest_levels
@@ -38,6 +39,7 @@ module Ec
         received_quantity: received,
         sales_quantity: sold,
         return_quantity: returned,
+        ozon_seller_received_removal_quantity: seller_received_removals,
         supply_quantity: supply,
         platform_stock: platform_stock,
         platform_inbound_stock: platform_inbound_stock,
@@ -55,7 +57,7 @@ module Ec
           .sum(:received_quantity)
 
         purchase_quantity = rows.fetch("normal", 0).to_i
-        adjustment_quantity = rows.except("normal").values.sum(&:to_i)
+        adjustment_quantity = rows.except("normal", "physical_stocktake_adjustment").values.sum(&:to_i)
 
         {
           purchase_quantity: purchase_quantity,
@@ -69,6 +71,7 @@ module Ec
       store_keys = (
         order_rows.keys +
         return_rows.keys +
+        ozon_seller_received_removal_rows.keys +
         wb_supply_rows.keys +
         ozon_supply_rows.keys +
         latest_levels.map { |level| key_for(level.platform, level.store_id, level.store_name, level.account_id) }
@@ -87,6 +90,7 @@ module Ec
           sales_quantity: orders[:sales_quantity].to_i,
           order_status_counts: empty_order_status_counts.merge(orders[:order_status_counts] || {}),
           return_quantity: return_rows[key].to_i,
+          ozon_seller_received_removal_quantity: ozon_seller_received_removal_rows[key].to_i,
           supply_quantity: supply_quantity_for(platform, key),
           platform_stock: levels.sum(&:quantity),
           latest_synced_at: levels.map(&:synced_at).compact.max
@@ -99,10 +103,10 @@ module Ec
         rows = Hash.new { |hash, key| hash[key] = { sales_quantity: 0, order_status_counts: empty_order_status_counts } }
 
         Ec::OrderItem
-          .joins(:order, :store)
+          .deductible_from_book_inventory
+          .joins(:store)
           .joins(order_item_sku_product_join_sql)
           .where(ec_sku_products: { sku_code: @sku.sku_code })
-          .where.not(ec_orders: { order_status: "cancelled" })
           .select(
             "ec_order_items.platform",
             "ec_order_items.store_id",
@@ -143,7 +147,7 @@ module Ec
         rows = Hash.new(0)
 
         Ec::SkuReturnItemsQuery.scope_for(@sku)
-          .where(restockable: true)
+          .restockable_for_book_inventory
           .joins(:store)
           .select(
             "ec_return_items.platform",
@@ -161,25 +165,22 @@ module Ec
           )
           .each do |row|
             key = key_for(row.platform, row.store_id, row.store_name, row.account_id)
-            rows[key] = row.return_quantity.to_i - ozon_removal_quantity_for(key)
+            rows[key] = row.return_quantity.to_i
           end
 
         rows
       end
     end
 
-    def ozon_removal_quantity_for(key)
-      platform, _store_id, _store_name, account_id = key
-      return 0 unless platform == "ozon" && account_id.present?
-
-      ozon_removal_rows[account_id.to_i].to_i
-    end
-
-    def ozon_removal_rows
-      @ozon_removal_rows ||= begin
+    def ozon_seller_received_removal_rows
+      @ozon_seller_received_removal_rows ||= begin
         sku_products_by_account.each_with_object({}) do |(account_id, products), rows|
-          rows[account_id.to_i] = RawOzon::RemovalItem
-            .deducting_return_inventory
+          next if account_id.blank?
+
+          store = products.first.store
+          key = key_for("ozon", store.id, store.store_name, account_id)
+          rows[key] = RawOzon::RemovalItem
+            .seller_received
             .where(account_id: account_id, sku: products.map(&:platform_sku_id).compact)
             .sum(:quantity)
         end

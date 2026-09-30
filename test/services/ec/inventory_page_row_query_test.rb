@@ -65,7 +65,7 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
       effective_at: Time.current
     )
 
-    row = Ec::InventoryPageRowQuery.new(sku).call
+    row = Ec::InventoryPageRowQuery.new(sku, include_expected_physical_stock: true).call
     summary = sku.inventory_overview[:summary]
 
     assert_equal 14, row[:incoming_quantity]
@@ -77,6 +77,7 @@ class Ec::InventoryPageRowQueryTest < ActiveSupport::TestCase
     assert_equal summary[:platform_inbound_stock], row[:platform_inbound_stock]
     assert_equal summary[:fbo_fbw_stock], row[:platform_stock]
     assert_equal summary[:available_stock], row[:available_stock]
+    assert_equal summary[:received_quantity], row[:expected_physical_stock]
     assert_equal BigDecimal("10"), row[:pkg_length_cm]
     assert_equal BigDecimal("20"), row[:pkg_width_cm]
     assert_equal BigDecimal("30"), row[:pkg_height_cm]

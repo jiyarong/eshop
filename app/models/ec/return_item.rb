@@ -12,5 +12,21 @@ module Ec
     validates :quantity, numericality: { only_integer: true, greater_than: 0 }
 
     scope :restockable, -> { where(restockable: true) }
+    scope :restockable_for_book_inventory, -> {
+      joins(return: :order)
+        .where(restockable: true)
+        .where.not(ec_orders: { order_status: "cancelled" })
+        .where(
+          <<~SQL.squish
+            ec_return_items.platform <> 'wb'
+            OR EXISTS (
+              SELECT 1
+              FROM ec_order_fulfillments
+              WHERE ec_order_fulfillments.order_id = ec_orders.id
+                AND ec_order_fulfillments.fulfillment_type = 'fbs'
+            )
+          SQL
+        )
+    }
   end
 end

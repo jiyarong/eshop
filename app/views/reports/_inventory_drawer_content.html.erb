@@ -2,7 +2,7 @@
   <% active_tab = inventory_detail[:active_detail_tab].presence || "overview" %>
   <section class="inventory-section inventory-detail-shell">
     <nav class="erp-tabs erp-tabs--underline inventory-detail-tabs" aria-label="<%= t("reports.inventory.title") %>">
-      <% %w[overview incoming book platform returns].each do |tab| %>
+      <% %w[overview physical_stocktake incoming book platform].each do |tab| %>
         <% label = t("reports.inventory.drawer.tabs.#{tab}") %>
         <% path = report_inventory_detail_path(sku.sku_code, detail_tab: tab, book_batch_page: (tab == "book" ? 1 : nil)) %>
         <%= link_to label, path,
@@ -39,6 +39,12 @@
         <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.overseas_available_stock") %></span>
         <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:summary, :available_stock).to_i %></strong>
       </div>
+      <%= link_to report_inventory_detail_path(sku.sku_code, detail_tab: "physical_stocktake"),
+                  class: "inventory-metric-card inventory-metric-card--danger inventory-metric-card--compact inventory-metric-card--link",
+                  data: { turbo_frame: "inventory_drawer_content" } do %>
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.physical_stocktake.metrics.expected_physical_stock") %></span>
+        <strong class="inventory-metric-card__value"><%= inventory_detail.dig(:physical_reconciliation, :summary, :expected_physical_stock).to_i %></strong>
+      <% end %>
       <div class="inventory-metric-card inventory-metric-card--compact">
         <span class="inventory-metric-card__label"><%= t("reports.inventory.fields.daily_sales_velocity") %></span>
         <% explanation = inventory_detail[:forecast_explanation] || {} %>
@@ -94,6 +100,12 @@
 
   <section class="inventory-section inventory-detail-shell">
     <div class="inventory-detail-body">
+      <% if active_tab == "physical_stocktake" %>
+        <%= render "reports/inventory_physical_reconciliation",
+                   reconciliation: inventory_detail[:physical_reconciliation] || {},
+                   sku: sku,
+                   active_section: params[:stocktake_section] %>
+      <% end %>
       <% if active_tab == "history" %>
         <%= render "reports/sku_inventory_trend", sku: sku, trend: (@inventory_trend || { weeks: [], operation_events: [] }), chart_option: (@inventory_trend_chart_option || {}), store_trend_groups: (@store_inventory_trend_groups || []), show_table: true, detail_tab: "history" %>
       <% end %>
@@ -220,31 +232,45 @@
           <div class="inventory-detail-panel__head">
             <h4><%= t("reports.inventory.drawer.sections.sales_distribution") %></h4>
           </div>
+          <p class="muted">
+            <%= t("reports.inventory.drawer.sales_distribution_note") %>
+            <span class="inventory-sales-distribution-table__stocktake-note"><%= t("reports.inventory.drawer.sales_distribution_stocktake_note") %></span>
+          </p>
           <%= table_viewport(sticky_header: true, class_name: "table-scroll--horizontal") do %>
-            <table class="inventory-distribution-table">
+            <table class="inventory-distribution-table inventory-sales-distribution-table">
               <thead>
                 <tr>
                   <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
-                  <% inventory_detail.dig(:book_sales_distribution, :columns).to_a.each do |column| %>
-                    <th><%= t("reports.inventory.drawer.distribution_columns.#{column}") %></th>
-                  <% end %>
+                  <th><%= t("reports.inventory.drawer.sales_distribution.fulfillment_type") %></th>
+                  <th><%= t("reports.inventory.drawer.sales_distribution.order_stage") %></th>
+                  <th><%= t("reports.inventory.drawer.sales_distribution.source_status") %></th>
+                  <th><%= t("reports.inventory.drawer.sales_distribution.quantity") %></th>
                 </tr>
               </thead>
               <tbody>
                 <% inventory_detail.dig(:book_sales_distribution, :rows).to_a.each do |row| %>
-                  <tr>
+                  <tr class="<%= "inventory-sales-distribution-table__stocktake" if row[:stocktake_relevant] %>">
                     <td><%= row[:store_label] %></td>
-                    <% inventory_detail.dig(:book_sales_distribution, :columns).to_a.each do |column_key| %>
-                      <td><%= row.dig(:counts, column_key).to_i %></td>
-                    <% end %>
+                    <td><%= t("reports.inventory.drawer.sales_distribution.fulfillment_types.#{row[:fulfillment_type]}") %></td>
+                    <td>
+                      <span><%= t("reports.inventory.drawer.sales_distribution.stages.#{row[:status_key]}") %></span>
+                      <% if row[:needs_status_repair] %>
+                        <span class="inventory-sales-distribution-table__repair"><%= t("reports.inventory.drawer.sales_distribution.status_repair_needed") %></span>
+                      <% end %>
+                    </td>
+                    <td title="<%= row[:source_status_codes].presence %>">
+                      <span><%= row[:evidence_label].presence || row[:source_status_label].presence || t("reports.inventory.drawer.sales_distribution.no_status_evidence") %></span>
+                      <% if row[:evidence_label].present? && row[:source_status_label].present? %>
+                        <span class="inventory-sales-distribution-table__source"><%= row[:source_status_label] %></span>
+                      <% end %>
+                    </td>
+                    <td><%= row[:quantity].to_i %></td>
                   </tr>
                 <% end %>
                 <% if (summary_row = inventory_detail.dig(:book_sales_distribution, :summary_row)).present? %>
                   <tr class="inventory-distribution-table__summary">
-                    <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
-                    <% inventory_detail.dig(:book_sales_distribution, :columns).to_a.each do |column_key| %>
-                      <td><%= summary_row.dig(:counts, column_key).to_i %></td>
-                    <% end %>
+                    <td colspan="4"><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
+                    <td><%= summary_row[:quantity].to_i %></td>
                   </tr>
                 <% end %>
               </tbody>
@@ -260,6 +286,7 @@
                 <tr>
                   <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
                   <th><%= t("reports.inventory.drawer.labels.return_count") %></th>
+                  <th><%= t("reports.inventory.drawer.labels.seller_received_removal_count") %></th>
                 </tr>
               </thead>
               <tbody>
@@ -267,12 +294,14 @@
                   <tr>
                     <td><%= row[:store_label] %></td>
                     <td><%= row[:return_count].to_i %></td>
+                    <td><%= row[:seller_received_removal_count].to_i %></td>
                   </tr>
                 <% end %>
                 <% if (summary_row = inventory_detail.dig(:return_distribution, :summary_row)).present? %>
                   <tr class="inventory-distribution-table__summary">
                     <td><%= t("reports.inventory.drawer.labels.#{summary_row[:store_label_key]}") %></td>
                     <td><%= summary_row[:return_count].to_i %></td>
+                    <td><%= summary_row[:seller_received_removal_count].to_i %></td>
                   </tr>
                 <% end %>
               </tbody>
@@ -372,7 +401,7 @@
             <h4><%= t("reports.inventory.drawer.sections.return_summary") %></h4>
           </div>
           <div class="inventory-mini-grid inventory-mini-grid--platform">
-            <% %i[ozon_returned_total ozon_fbs_in_transit ozon_restocked_fbo wb_returned_total wb_accepted_total wb_fbs_in_transit].each do |metric| %>
+            <% %i[ozon_restockable_returns ozon_seller_received_removals wb_returned_total wb_accepted_total wb_fbs_in_transit].each do |metric| %>
               <div class="inventory-mini-card">
                 <span><%= t("reports.inventory.drawer.returns.summary.#{metric}") %></span>
                 <strong>

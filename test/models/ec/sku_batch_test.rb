@@ -235,6 +235,20 @@ class Ec::SkuBatchTest < ActiveSupport::TestCase
     assert_predicate batch, :wb_fbw_offset?
   end
 
+  test "supports physical stocktake adjustment batches" do
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "PHYSICAL-OFFSET-#{@token}",
+      status: "received",
+      batch_type: :physical_stocktake_adjustment,
+      purchased_quantity: -3,
+      received_quantity: -3,
+      purchase_unit_price_cny: 0
+    )
+
+    assert_predicate batch, :physical_stocktake_adjustment?
+  end
+
   test "rejects invalid batch type values" do
     batch = Ec::SkuBatch.new(
       sku_code: @sku.sku_code,

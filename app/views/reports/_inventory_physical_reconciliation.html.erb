@@ -1,0 +1,310 @@
+<% summary = reconciliation[:summary] || {} %>
+<% stocktake_sections = %w[fbs_orders pending_supplies returns removals] %>
+<% active_section = active_section.to_s.presence_in(stocktake_sections) || stocktake_sections.first %>
+<% can_manage_adjustments = can?(:manage_purchases) || can?(:manage_inventory) %>
+<section class="inventory-section inventory-physical-reconciliation">
+  <div class="inventory-section__header">
+    <div>
+      <h3 class="section-title"><%= t("reports.inventory.drawer.physical_stocktake.title") %></h3>
+      <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.description") %></p>
+    </div>
+    <% if can_manage_adjustments %>
+      <%= link_to erp_new_sku_batch_path(
+                    sku_code: sku.sku_code,
+                    batch_type: "physical_stocktake_adjustment",
+                    status: "received",
+                    return_to: request.fullpath,
+                    locale: params[:locale].presence
+                  ),
+                  class: "button inventory-physical-reconciliation__adjustment-action",
+                  data: { turbo_frame: "erp_modal" } do %>
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        <span><%= t("reports.inventory.drawer.physical_stocktake.actions.new_adjustment") %></span>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="inventory-metric-grid inventory-physical-reconciliation__metrics">
+    <% %i[expected_physical_stock received_quantity physical_stocktake_adjustment_quantity fbs_departed_quantity platform_supply_departed_quantity seller_received_return_quantity ozon_seller_received_removal_quantity].each do |metric| %>
+      <% card_content = capture do %>
+        <span class="inventory-metric-card__label"><%= t("reports.inventory.drawer.physical_stocktake.metrics.#{metric}") %></span>
+        <strong class="inventory-metric-card__value"><%= summary[metric].to_i %></strong>
+      <% end %>
+      <% if metric == :physical_stocktake_adjustment_quantity && can_manage_adjustments %>
+        <%= link_to physical_stocktake_adjustments_erp_sku_batches_path(sku_code: sku.sku_code, locale: params[:locale].presence),
+                    class: "inventory-metric-card inventory-metric-card--warning inventory-metric-card--compact inventory-metric-card--link",
+                    data: { turbo_frame: "erp_modal" } do %>
+          <%= card_content %>
+        <% end %>
+      <% else %>
+        <div class="inventory-metric-card inventory-metric-card--compact <%= "inventory-metric-card--danger" if metric == :expected_physical_stock %>">
+          <%= card_content %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="inventory-formula inventory-physical-reconciliation__formula">
+    <h4 class="inventory-formula__title"><%= t("reports.inventory.drawer.physical_stocktake.formula.title") %></h4>
+    <p class="inventory-formula__description"><%= t("reports.inventory.drawer.physical_stocktake.formula.description") %></p>
+    <div class="inventory-formula__line">
+      <% reconciliation.fetch(:formula, []).each_with_index do |item, index| %>
+        <span><%= "#{index.zero? ? '' : " #{item[:operator]} "}#{t("reports.inventory.drawer.physical_stocktake.metrics.#{item[:key]}")} #{item[:value].to_i}" %></span>
+      <% end %>
+      <strong>= <%= summary[:expected_physical_stock].to_i %></strong>
+    </div>
+  </div>
+
+  <nav class="erp-tabs erp-tabs--underline inventory-physical-reconciliation__tabs"
+       aria-label="<%= t("reports.inventory.drawer.physical_stocktake.section_tabs_aria_label") %>">
+    <% stocktake_sections.each do |section| %>
+      <%= link_to t("reports.inventory.drawer.physical_stocktake.sections.#{section}"),
+                  report_inventory_detail_path(sku.sku_code, detail_tab: "physical_stocktake", stocktake_section: section),
+                  class: "erp-tabs__link inventory-physical-reconciliation__tab",
+                  aria: (active_section == section ? { current: "page" } : nil),
+                  data: { turbo_frame: "inventory_drawer_content" } %>
+    <% end %>
+  </nav>
+
+  <% if active_section == "fbs_orders" %>
+  <div class="inventory-physical-reconciliation__group" data-stocktake-section="fbs_orders">
+    <div class="inventory-detail-panel__head">
+      <h4><%= t("reports.inventory.drawer.physical_stocktake.sections.fbs_orders") %></h4>
+      <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.notes.fbs_orders") %></p>
+    </div>
+    <%= table_viewport(class_name: "table-scroll--horizontal") do %>
+      <table class="inventory-distribution-table inventory-physical-reconciliation__table">
+        <thead><tr>
+          <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
+          <th><%= t("reports.inventory.drawer.sales_distribution.order_stage") %></th>
+          <th><%= t("reports.inventory.drawer.sales_distribution.source_status") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.physical_impact") %></th>
+          <th><%= t("reports.inventory.drawer.sales_distribution.quantity") %></th>
+        </tr></thead>
+        <tbody>
+          <% reconciliation.fetch(:fbs_order_rows, []).each do |row| %>
+            <tr>
+              <td><%= row[:store_label] %></td>
+              <td><%= t("reports.inventory.drawer.sales_distribution.stages.#{row[:status_key]}") %></td>
+              <td><%= row[:source_status_label].presence || t("reports.inventory.drawer.sales_distribution.no_status_evidence") %></td>
+              <td><span class="inventory-reconciliation-badge inventory-reconciliation-badge--<%= row[:physical_deducted] ? "excluded" : "included" %>"><%= t("reports.inventory.drawer.physical_stocktake.values.#{row[:physical_deducted] ? "physical_deducted" : "physical_retained"}") %></span></td>
+              <td><%= row[:quantity].to_i %></td>
+            </tr>
+          <% end %>
+          <% if reconciliation.fetch(:fbs_order_rows, []).empty? %>
+            <tr><td colspan="5" class="empty-state"><%= t("reports.inventory.drawer.physical_stocktake.empty") %></td></tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="inventory-distribution-table__summary">
+            <td colspan="4"><%= t("reports.inventory.drawer.labels.summary") %></td>
+            <td><%= summary[:fbs_order_quantity].to_i %></td>
+          </tr>
+        </tfoot>
+      </table>
+    <% end %>
+  </div>
+  <% end %>
+
+  <% if active_section == "pending_supplies" %>
+  <div class="inventory-physical-reconciliation__group" data-stocktake-section="pending_supplies">
+    <div class="inventory-detail-panel__head">
+      <h4><%= t("reports.inventory.drawer.physical_stocktake.sections.pending_supplies") %></h4>
+      <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.notes.pending_supplies") %></p>
+    </div>
+    <% supply_pagination = reconciliation[:supply_pagination] || {} %>
+    <% if supply_pagination[:total_pages].to_i > 1 %>
+      <%= render "reports/supply_orders/pagination",
+                 report: { pagination: supply_pagination.merge(per_page: supply_pagination[:page_size]) },
+                 page_param: :stocktake_supply_page,
+                 turbo_frame: "inventory_drawer_content",
+                 path_builder: ->(query) {
+                   report_inventory_detail_path(
+                     sku.sku_code,
+                     query.merge(detail_tab: "physical_stocktake", stocktake_section: "pending_supplies")
+                   )
+                 } %>
+    <% end %>
+    <%= table_viewport(class_name: "table-scroll--horizontal") do %>
+      <table class="inventory-distribution-table inventory-physical-reconciliation__table">
+        <thead><tr>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.platform_store") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.reference") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.status") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.scheduled_at") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.declared_quantity") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.accepted_quantity") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.physical_impact") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.deducted_quantity") %></th>
+        </tr></thead>
+        <tbody>
+          <% reconciliation.fetch(:supply_rows, []).each do |row| %>
+            <tr>
+              <td><%= t("reports.inventory.drawer.sales_distribution.store_label", platform: row[:platform].to_s.upcase, store: row[:store_name]) %></td>
+              <td><%= report_value(row[:supply_id]) %></td>
+              <td><%= t("supply_order_reports.statuses.#{row[:platform]}.#{row[:status]}", default: report_value(row[:status])) %></td>
+              <td><%= display_time(row[:scheduled_at]) %></td>
+              <td><%= row[:declared_quantity].to_i %></td>
+              <td><%= row[:accepted_quantity].nil? ? "-" : row[:accepted_quantity].to_i %></td>
+              <td><span class="inventory-reconciliation-badge inventory-reconciliation-badge--<%= row[:physical_deducted] ? "excluded" : "included" %>"><%= t("reports.inventory.drawer.physical_stocktake.values.#{row[:physical_deducted] ? "physical_deducted" : "physical_retained"}") %></span></td>
+              <td><%= row[:deducted_quantity].to_i %></td>
+            </tr>
+          <% end %>
+          <% if reconciliation.fetch(:supply_rows, []).empty? %>
+            <tr><td colspan="8" class="empty-state"><%= t("reports.inventory.drawer.physical_stocktake.empty") %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+  <% end %>
+
+  <% if active_section == "returns" %>
+  <div class="inventory-physical-reconciliation__group" data-stocktake-section="returns">
+    <div class="inventory-detail-panel__head">
+      <h4><%= t("reports.inventory.drawer.physical_stocktake.sections.returns") %></h4>
+      <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.notes.returns") %></p>
+    </div>
+    <% return_filters = reconciliation[:return_filters] || {} %>
+    <% return_filter_options = reconciliation[:return_filter_options] || {} %>
+    <% return_pagination = reconciliation[:return_pagination] || {} %>
+    <%= form_with url: report_inventory_detail_path(sku.sku_code), method: :get,
+                  class: "report-form inventory-physical-return-filters",
+                  data: { turbo_frame: "inventory_drawer_content" } do |form| %>
+      <%= form.hidden_field :detail_tab, value: "physical_stocktake" %>
+      <%= form.hidden_field :stocktake_section, value: "returns" %>
+      <div class="field">
+        <%= form.label :stocktake_return_q, t("reports.inventory.drawer.physical_stocktake.return_filters.keyword") %>
+        <%= form.search_field :stocktake_return_q,
+                              value: return_filters[:q],
+                              placeholder: t("reports.inventory.drawer.physical_stocktake.return_filters.keyword_placeholder") %>
+      </div>
+      <div class="field">
+        <%= form.label :stocktake_return_platform, t("reports.inventory.drawer.physical_stocktake.return_filters.platform") %>
+        <%= form.select :stocktake_return_platform,
+                        options_for_select([
+                          [ t("reports.inventory.drawer.physical_stocktake.return_filters.all_platforms"), "" ],
+                          [ t("reports.inventory.drawer.sales_distribution.platforms.ozon"), "ozon" ],
+                          [ t("reports.inventory.drawer.sales_distribution.platforms.wb"), "wb" ]
+                        ], return_filters[:platform]) %>
+      </div>
+      <div class="field">
+        <%= form.label :stocktake_return_location, t("reports.inventory.drawer.physical_stocktake.return_filters.location") %>
+        <%= form.select :stocktake_return_location,
+                        options_for_select([
+                          [ t("reports.inventory.drawer.physical_stocktake.return_filters.all_locations"), "" ],
+                          *return_filter_options.fetch(:locations, []).map { |location|
+                            [ t("reports.inventory.drawer.physical_stocktake.locations.#{location}"), location ]
+                          }
+                        ], return_filters[:location]) %>
+      </div>
+      <div class="field">
+        <%= form.label :stocktake_return_physical_impact, t("reports.inventory.drawer.physical_stocktake.return_filters.physical_impact") %>
+        <%= form.select :stocktake_return_physical_impact,
+                        options_for_select([
+                          [ t("reports.inventory.drawer.physical_stocktake.return_filters.all_physical_impacts"), "" ],
+                          [ t("reports.inventory.drawer.physical_stocktake.values.physical_included"), "included" ],
+                          [ t("reports.inventory.drawer.physical_stocktake.values.physical_excluded"), "excluded" ]
+                        ], return_filters[:physical_impact]) %>
+      </div>
+      <div class="inventory-physical-return-filters__actions">
+        <%= form.submit t("reports.inventory.drawer.physical_stocktake.return_filters.apply"), class: "button" %>
+        <%= link_to t("reports.inventory.drawer.physical_stocktake.return_filters.reset"),
+                    report_inventory_detail_path(sku.sku_code, detail_tab: "physical_stocktake", stocktake_section: "returns"),
+                    class: "button button-secondary",
+                    data: { turbo_frame: "inventory_drawer_content" } %>
+      </div>
+    <% end %>
+    <% if return_pagination[:total_pages].to_i > 1 %>
+      <%= render "reports/supply_orders/pagination",
+                 report: { pagination: return_pagination.merge(per_page: return_pagination[:page_size]) },
+                 page_param: :stocktake_return_page,
+                 turbo_frame: "inventory_drawer_content",
+                 path_builder: ->(query) {
+                   report_inventory_detail_path(
+                     sku.sku_code,
+                     query.merge(detail_tab: "physical_stocktake", stocktake_section: "returns")
+                   )
+                 } %>
+    <% end %>
+    <%= table_viewport(class_name: "table-scroll--horizontal") do %>
+      <table class="inventory-distribution-table inventory-physical-reconciliation__table inventory-physical-reconciliation__return-table">
+        <thead><tr>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.returned_at") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.platform_store") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.return_id") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.order_number") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.return_reason") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.source_status") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.location") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.physical_impact") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.quantity") %></th>
+        </tr></thead>
+        <tbody>
+          <% reconciliation.fetch(:return_rows, []).each do |row| %>
+            <tr>
+              <td><%= display_time(row[:requested_at]) %></td>
+              <td><%= t("reports.inventory.drawer.sales_distribution.store_label", platform: row[:platform].to_s.upcase, store: row[:store_name]) %></td>
+              <td><%= report_value(row[:external_return_id]) %></td>
+              <td><%= report_value(row[:external_order_number]) %></td>
+              <td>
+                <% if row[:return_reason_key].present? %>
+                  <span title="<%= row[:return_reason] %>"><%= row[:return_reason_label] %></span>
+                <% else %>
+                  <%= report_value(row[:return_reason]) %>
+                <% end %>
+              </td>
+              <td><%= report_value(row[:source_status]) %></td>
+              <td><%= t("reports.inventory.drawer.physical_stocktake.locations.#{row[:inventory_location]}", default: report_value(row[:inventory_location])) %></td>
+              <td><span class="inventory-reconciliation-badge inventory-reconciliation-badge--<%= row[:physical_included] ? "included" : "excluded" %>"><%= t("reports.inventory.drawer.physical_stocktake.values.#{row[:physical_included] ? "physical_included" : "physical_excluded"}") %></span></td>
+              <td><%= row[:quantity].to_i %></td>
+            </tr>
+          <% end %>
+          <% if reconciliation.fetch(:return_rows, []).empty? %>
+            <tr><td colspan="9" class="empty-state"><%= t("reports.inventory.drawer.physical_stocktake.empty") %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+  <% end %>
+
+  <% if active_section == "removals" %>
+  <div class="inventory-physical-reconciliation__group" data-stocktake-section="removals">
+    <div class="inventory-detail-panel__head">
+      <h4><%= t("reports.inventory.drawer.physical_stocktake.sections.removals") %></h4>
+      <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.notes.removals") %></p>
+    </div>
+    <%= table_viewport(class_name: "table-scroll--horizontal") do %>
+      <table class="inventory-distribution-table inventory-physical-reconciliation__table">
+        <thead><tr>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.platform_store") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.movement") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.source_status") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.type") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.physical_impact") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.records") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.quantity") %></th>
+        </tr></thead>
+        <tbody>
+          <% reconciliation.fetch(:removal_rows, []).each do |row| %>
+            <tr>
+              <td><%= t("reports.inventory.drawer.sales_distribution.store_label", platform: row[:platform].to_s.upcase, store: row[:store_name]) %></td>
+              <td><%= t("reports.inventory.drawer.physical_stocktake.movements.#{row[:movement_key]}") %></td>
+              <td><%= [row[:source_status], row[:detail_status]].compact_blank.join(" / ").presence || "-" %></td>
+              <td><%= report_value(row[:return_type]) %></td>
+              <td><span class="inventory-reconciliation-badge inventory-reconciliation-badge--<%= row[:physical_impact_key] == "physical_excluded" ? "excluded" : "included" %>"><%= t("reports.inventory.drawer.physical_stocktake.values.#{row[:physical_impact_key]}") %></span></td>
+              <td><%= row[:record_count].to_i %></td>
+              <td><%= row[:quantity].to_i %></td>
+            </tr>
+          <% end %>
+          <% if reconciliation.fetch(:removal_rows, []).empty? %>
+            <tr><td colspan="7" class="empty-state"><%= t("reports.inventory.drawer.physical_stocktake.empty") %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+  <% end %>
+
+</section>

@@ -34,6 +34,7 @@ module Ec
       all_batches = Ec::SkuBatch
         .includes(:sku)
         .where(sku_code: sku_codes)
+        .where.not(batch_type: :physical_stocktake_adjustment)
         .where(status: INCOMING_STATUSES + BOOK_STATUSES)
         .order(:sku_code, :received_on, :purchase_date, :created_at, :id)
         .to_a
@@ -205,16 +206,15 @@ module Ec
 
     def net_sold_quantities
       @net_sold_quantities ||= sku_codes.index_with do |sku_code|
-        sales_quantities.fetch(sku_code, 0) - return_quantities.fetch(sku_code, 0) + ozon_removal_quantities.fetch(sku_code, 0)
+        sales_quantities.fetch(sku_code, 0) - return_quantities.fetch(sku_code, 0)
       end
     end
 
     def sales_quantities
       @sales_quantities ||= Ec::OrderItem
-        .joins(:order)
+        .deductible_from_book_inventory
         .joins(ORDER_ITEM_JOIN)
         .where(ec_sku_products: { sku_code: sku_codes })
-        .where.not(ec_orders: { order_status: "cancelled" })
         .group("ec_sku_products.sku_code")
         .sum(:quantity)
         .transform_keys(&:to_s)
@@ -223,37 +223,13 @@ module Ec
 
     def return_quantities
       @return_quantities ||= Ec::ReturnItem
-        .joins(:sku_product, return: :order)
-        .where(ec_sku_products: { sku_code: sku_codes }, restockable: true)
-        .where.not(ec_orders: { order_status: "cancelled" })
+        .restockable_for_book_inventory
+        .joins(:sku_product)
+        .where(ec_sku_products: { sku_code: sku_codes })
         .group("ec_sku_products.sku_code")
         .sum(:quantity)
         .transform_keys(&:to_s)
         .transform_values(&:to_i)
-    end
-
-    def ozon_removal_quantities
-      @ozon_removal_quantities ||= begin
-        products = Ec::SkuProduct.includes(:store).where(sku_code: sku_codes, platform: "ozon").to_a
-        sku_codes_by_key = products.group_by { |product| [product.store.ozon_raw_account_id, product.platform_sku_id.to_s] }
-          .transform_values { |rows| rows.map(&:sku_code).uniq }
-        account_ids = sku_codes_by_key.keys.map(&:first).compact.uniq
-        platform_sku_ids = sku_codes_by_key.keys.map(&:last).reject(&:blank?).uniq
-        if account_ids.empty? || platform_sku_ids.empty?
-          {}
-        else
-          result = Hash.new(0)
-          RawOzon::RemovalItem.deducting_return_inventory
-            .where(account_id: account_ids, sku: platform_sku_ids)
-            .pluck(:account_id, :sku, :quantity)
-            .each do |account_id, platform_sku_id, quantity|
-              sku_codes_by_key.fetch([account_id, platform_sku_id.to_s], []).each do |sku_code|
-                result[sku_code] += quantity.to_i
-              end
-            end
-          result
-        end
-      end
     end
 
     def skus_by_code

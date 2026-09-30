@@ -1,6 +1,8 @@
 module Ec
   module Returns
     class OzonNormalizer < BaseNormalizer
+      RESTOCKABLE_STATUSES = %w[ReturnedToOzon ReceivedBySeller].freeze
+
       STATUS_MAP = {
         "OnSellerApproval" => [ "requested", "customer" ],
         "WaitingShipment" => [ "approved", "customer" ],
@@ -8,6 +10,7 @@ module Ec
         "ReturnedToOzon" => [ "at_platform", "platform_return_warehouse" ],
         "MovingToSeller" => [ "moving_to_seller", "seller_return_transit" ],
         "ReadyForSeller" => [ "ready_for_seller_pickup", "platform_return_warehouse" ],
+        "ReceivedBySeller" => [ "received_by_seller", "seller_warehouse" ],
         "MoneyReturned" => [ "completed", "unknown" ],
         "PartialCompensationReturned" => [ "completed", "unknown" ]
       }.freeze
@@ -112,7 +115,7 @@ module Ec
 
       def item_attributes
         super.tap do |attributes|
-          attributes[:restockable] = true if source_status == "ReturnedToOzon"
+          attributes[:restockable] = source_status.in?(RESTOCKABLE_STATUSES)
         end
       end
 
