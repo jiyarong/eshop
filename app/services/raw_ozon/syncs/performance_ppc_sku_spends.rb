@@ -80,6 +80,8 @@ module RawOzon
 
       def ppc_campaign_ids
         scope = RawOzon::AdUnit.where(account_id: @account.id, unit_type: "cpc_campaign")
+        return overlapping_ppc_campaign_ids(scope) if @campaign_scope == :overlap
+
         cutoff = @to.advance(months: -ARCHIVED_CAMPAIGN_LOOKBACK_MONTHS)
 
         scope
@@ -88,6 +90,28 @@ module RawOzon
           .or(scope.where(state: ARCHIVED_STATE, from_date: nil))
           .or(scope.where(state: ARCHIVED_STATE, from_date: cutoff..))
           .pluck(:external_id)
+      end
+
+      # 回填历史周：Ozon 不返回 toDate（已归档活动也为空），因此用
+      #   fromDate <= 区间结束日 排除尚未创建的活动；
+      #   非运行中的活动再用 updatedAt >= 区间开始日 排除区间开始前就已停止的活动
+      #   （停止/归档会更新 updatedAt）。运行中的活动只要已创建就保留。
+      def overlapping_ppc_campaign_ids(scope)
+        period_from = @from.to_date
+        period_to   = @to
+
+        scope.where("from_date IS NULL OR from_date <= ?", period_to)
+             .select { |unit| ppc_campaign_active_in_period?(unit, period_from) }
+             .map(&:external_id)
+      end
+
+      def ppc_campaign_active_in_period?(unit, period_from)
+        return true if unit.state == "CAMPAIGN_STATE_RUNNING"
+
+        updated_at = Time.zone.parse(unit.raw_json&.dig("updatedAt").to_s)&.to_date
+        updated_at.nil? || updated_at >= period_from
+      rescue ArgumentError
+        true
       end
 
       def fetch_ppc_json(campaign_ids, period_from, period_to)

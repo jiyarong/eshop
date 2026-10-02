@@ -75,7 +75,7 @@ if platform == "ozon"
         next
       end
       say "ads week #{wf}..#{wt}"
-      RawOzon::PerformanceSync.new(account, from_date: wf, to_date: wt)
+      RawOzon::PerformanceSync.new(account, from_date: wf, to_date: wt, campaign_scope: :overlap)
         .run(sync_keys: %i[sync_performance_ppc_sku_spends sync_performance_promotion_sku_spends])
     end
   end

@@ -83,6 +83,28 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
     )
   end
 
+  test "overlap scope keeps only ppc campaigns that could have run in the period" do
+    period_from = Date.new(2025, 3, 3)
+    period_to = Date.new(2025, 3, 9)
+    create_ad_unit("started-later", state: "CAMPAIGN_STATE_RUNNING", from_date: period_to + 1)
+    create_ad_unit("running-old", state: "CAMPAIGN_STATE_RUNNING", from_date: period_from - 200)
+    create_ad_unit("archived-before-period", state: "CAMPAIGN_STATE_ARCHIVED", from_date: period_from - 90,
+      raw_json: { "updatedAt" => "2025-02-20T10:00:00Z" })
+    create_ad_unit("archived-in-period", state: "CAMPAIGN_STATE_ARCHIVED", from_date: period_from - 90,
+      raw_json: { "updatedAt" => "2025-03-05T10:00:00Z" })
+    create_ad_unit("inactive-after-period", state: "CAMPAIGN_STATE_INACTIVE", from_date: period_from - 10,
+      raw_json: { "updatedAt" => "2025-06-01T10:00:00Z" })
+    create_ad_unit("archived-without-updated-at", state: "CAMPAIGN_STATE_ARCHIVED", from_date: nil)
+
+    sync = RawOzon::PerformanceSync.new(@account, from_date: period_from, to_date: period_to,
+      client: Object.new, campaign_scope: :overlap)
+
+    assert_equal(
+      %w[archived-in-period archived-without-updated-at inactive-after-period running-old],
+      sync.send(:ppc_campaign_ids).sort
+    )
+  end
+
   test "stops later ppc batches when an asynchronous report remains processing" do
     11.times do |index|
       create_ad_unit("running-#{index}", state: "CAMPAIGN_STATE_RUNNING", from_date: @date)
@@ -182,13 +204,14 @@ class RawOzonPerformanceSyncTest < ActiveSupport::TestCase
     }.to_json
   end
 
-  def create_ad_unit(external_id, state:, from_date:)
+  def create_ad_unit(external_id, state:, from_date:, raw_json: {})
     RawOzon::AdUnit.create!(
       account: @account,
       external_id: external_id,
       unit_type: "cpc_campaign",
       state: state,
       from_date: from_date,
+      raw_json: raw_json,
       synced_at: Time.current
     )
   end

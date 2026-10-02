@@ -29,8 +29,11 @@ module RawOzon
       end
     end
 
-    def initialize(account, days: nil, from_date: nil, to_date: nil, client: nil)
+    # campaign_scope: :recent（默认）按“已归档活动 4 个月内启动”筛选，适合日常同步；
+    #   :overlap 按活动是否覆盖所拉取的区间筛选，回填历史周时使用。
+    def initialize(account, days: nil, from_date: nil, to_date: nil, client: nil, campaign_scope: :recent)
       @account = account
+      @campaign_scope = campaign_scope.to_sym
       if from_date
         @from = from_date.is_a?(Date) ? from_date.to_time : Date.parse(from_date.to_s).to_time
         @to   = to_date ? (to_date.is_a?(Date) ? to_date : Date.parse(to_date.to_s)) : Date.current
