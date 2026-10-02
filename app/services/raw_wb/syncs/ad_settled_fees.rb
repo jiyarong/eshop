@@ -55,11 +55,11 @@ module RawWb
 
       private
 
-      # 将 @from..Date.current 按自然周（周一~周日）切分
+      # 将 @from..@to（默认今天）按自然周（周一~周日）切分
       def natural_week_chunks
         chunks = []
         cursor = @from.beginning_of_week  # 周一
-        today  = Date.current
+        today  = sync_to_date
         while cursor <= today
           chunks << [cursor, [cursor.end_of_week, today].min]
           cursor += 7

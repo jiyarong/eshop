@@ -24,7 +24,7 @@ module RawOzon
         end
 
         # 全部日期写入后统一做退货冲正补全，再回填 CrossDock SKU
-        total += enrich_reversals_for_range(@from.to_date, Date.current, synced_at)
+        total += enrich_reversals_for_range(@from.to_date, sync_to_date, synced_at)
         resolve_and_backfill_crossdock_skus
         total
       end
@@ -113,10 +113,10 @@ module RawOzon
 
       private
 
-      # 遍历 [@from.to_date, Date.current] 内每一天，跳过未来日期
+      # 遍历 [@from.to_date, @to（默认今天）] 内每一天，跳过未来日期
       def each_day_in_range
         cursor = @from.to_date
-        today  = Date.current
+        today  = sync_to_date
         while cursor <= today
           yield cursor.to_s
           cursor = cursor + 1

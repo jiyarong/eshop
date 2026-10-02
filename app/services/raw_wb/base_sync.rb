@@ -91,11 +91,13 @@ module RawWb
       results
     end
 
-    def initialize(account, days:)
+    # to: 可选的同步结束日期，默认到今天；回填历史区间时用来限定范围。
+    def initialize(account, days:, to: nil)
       @account = account
       @days    = days
       @client  = WbClient.new(account.api_token)
       @from    = days.days.ago.to_date
+      @to      = to&.to_date
       @results = {}
     end
 
@@ -132,7 +134,7 @@ module RawWb
       end
       log "Done. #{@results.count { |_, v| v[:ok] }} ok, #{@results.count { |_, v| v[:error] }} failed."
       task.update!(status: @results.values.any? { |result| result[:error] } ? "partial" : "done",
-        results: @results.merge(period: { from_date: @from, to_date: Date.current }), completed_at: Time.current)
+        results: @results.merge(period: { from_date: @from, to_date: sync_to_date }), completed_at: Time.current)
       @results
     end
 
@@ -201,12 +203,16 @@ module RawWb
       ).id
     end
 
-    # Splits @from..Date.current into chunks of at most `chunk_days` days.
+    def sync_to_date
+      (@to || Date.current).to_date
+    end
+
+    # Splits @from..@to (default today) into chunks of at most `chunk_days` days.
     # Returns array of [from_date, to_date] pairs.
     def date_chunks(chunk_days: 31)
       chunks  = []
       cursor  = @from
-      today   = Date.current
+      today   = sync_to_date
       while cursor <= today
         chunk_end = [cursor + chunk_days - 1, today].min
         chunks << [cursor, chunk_end]

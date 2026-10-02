@@ -3,7 +3,7 @@ module RawWb
     module SalesReports
       # POST /api/finance/v1/sales-reports/list — finance-api (settlement reports list)
       def sync_sales_reports
-        body    = { dateFrom: @from.iso8601, dateTo: Date.current.iso8601 }
+        body    = { dateFrom: @from.iso8601, dateTo: sync_to_date.iso8601 }
         data    = @client.post(:finance, '/api/finance/v1/sales-reports/list', body)
         reports = Array(data.is_a?(Hash) ? data['reports'] || data['data'] || data : data)
         return 0 if reports.empty?
@@ -20,7 +20,7 @@ module RawWb
       # POST /api/finance/v1/sales-reports/detailed/{reportId} — line items per report
       def sync_sales_report_items
         reports = RawWb::SalesReport.where(account_id: @account.id)
-                                    .where('date_to >= ?', @from)
+                                    .where(date_to: @from..sync_to_date)
                                     .order(:date_from)
         return 0 if reports.none?
 

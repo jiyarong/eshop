@@ -39,11 +39,13 @@ module RawOzon
       results
     end
 
-    def initialize(account, days:)
+    # to: 可选的同步结束日期，默认到今天；回填历史区间时用来限定范围。
+    def initialize(account, days:, to: nil)
       @account = account
       @days    = days
       @client  = OzonClient.new(account.client_id, account.api_key)
       @from    = days.days.ago
+      @to      = to&.to_date
       @results = {}
     end
 
@@ -88,7 +90,7 @@ module RawOzon
       log "Done. #{ok_count} ok, #{err_count} failed."
 
       task.update!(status: err_count.zero? ? 'done' : 'partial',
-        results: @results.merge(period: { from_date: @from.to_date, to_date: Date.current }), finished_at: Time.current)
+        results: @results.merge(period: { from_date: @from.to_date, to_date: sync_to_date }), finished_at: Time.current)
       @results
     end
 
@@ -145,12 +147,16 @@ module RawOzon
       total
     end
 
-    # Splits @from..Date.current into chunks of at most `chunk_days` days.
+    def sync_to_date
+      (@to || Date.current).to_date
+    end
+
+    # Splits @from..@to (default today) into chunks of at most `chunk_days` days.
     # Returns array of [from_date, to_date] pairs.
     def date_chunks(chunk_days: 30)
       chunks = []
       cursor = @from.to_date
-      today  = Date.current
+      today  = sync_to_date
       while cursor <= today
         chunk_end = [cursor + chunk_days - 1, today].min
         chunks << [cursor, chunk_end]
@@ -159,13 +165,13 @@ module RawOzon
       chunks
     end
 
-    # Splits @from..Date.current into calendar-month chunks, capped at 30 days.
+    # Splits @from..@to (default today) into calendar-month chunks, capped at 30 days.
     # Stays within the same calendar month so APIs with "one month" limits don't reject.
     # 31-day months (e.g. March) produce two chunks: Mar 1–30, Mar 31–31.
     def month_chunks
       chunks = []
       cursor = @from.to_date
-      today  = Date.current
+      today  = sync_to_date
       while cursor <= today
         last_of_month = Date.new(cursor.year, cursor.month, -1)
         chunk_end = [last_of_month, cursor + 29, today].min
