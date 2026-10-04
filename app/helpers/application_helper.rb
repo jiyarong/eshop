@@ -88,7 +88,7 @@ module ApplicationHelper
   end
 
   def capital_distribution_total_amount(row)
-    amount_keys = %i[in_transit_amount_cny book_stock_amount_cny sold_amount_cny]
+    amount_keys = %i[in_transit_goods_cost_cny book_stock_goods_cost_cny book_stock_customs_tax_cost_cny]
     return nil if amount_keys.all? { |key| row[key].nil? }
 
     amount_keys.sum { |key| row[key].to_d }

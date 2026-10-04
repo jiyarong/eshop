@@ -2,24 +2,41 @@ module Ec
   class InventoryCapitalDistributionQuery
     INCOMING_STATUSES = %w[draft ordered in_transit].freeze
     BOOK_STATUSES = %w[received closed].freeze
-    ORDER_ITEM_JOIN = SalesFunnelReports::SkuFunnelAnalysisQuery::ORDER_ITEM_JOIN
-
     QUANTITY_KEYS = %i[in_transit_quantity book_stock_quantity sold_quantity].freeze
-    AMOUNT_KEYS = %i[in_transit_amount_cny book_stock_amount_cny sold_amount_cny].freeze
+    CAPITAL_AMOUNT_KEYS = %i[
+      in_transit_goods_cost_cny book_stock_goods_cost_cny book_stock_customs_tax_cost_cny
+    ].freeze
+    COMPATIBILITY_AMOUNT_KEYS = %i[in_transit_amount_cny book_stock_amount_cny].freeze
+    PROFIT_AMOUNT_KEYS = %i[
+      sales_revenue_cny sold_goods_cost_cny sold_customs_tax_cost_cny goods_cost_cny net_profit_cny
+    ].freeze
 
-    def initialize(skus:)
+    def initialize(skus:, from_date: Date.current.beginning_of_year, to_date: Date.current,
+      as_of_date: Date.current, profit_report: nil)
       @skus = skus.to_a
       @sku_codes = @skus.map { |sku| sku.sku_code.to_s.upcase }.uniq
+      @profit_report = profit_report || Ec::CapitalDistributionProfitQuery.new(
+        sku_codes: @sku_codes,
+        from_date: from_date,
+        to_date: to_date,
+        as_of_date: as_of_date
+      ).call
     end
 
     def call
       rows = batch_rows
+      sku_rows = aggregate_sku_rows(rows)
       {
-        summary: aggregate_rows(rows).merge(
+        summary: aggregate_sku_rows_summary(sku_rows).merge(
           sku_count: sku_rows_count(rows),
-          batch_count: rows.count { |row| row[:row_type] == "batch" }
+          batch_count: rows.count { |row| row[:row_type] == "batch" },
+          period_from: profit_report[:period_from],
+          period_to: profit_report[:period_to],
+          cutoff_date: profit_report[:cutoff_date],
+          unallocated_total_cny: profit_report.fetch(:unallocated_total_cny, BigDecimal("0")).to_d.round(2),
+          missing_week_starts: profit_report.fetch(:missing_week_starts, [])
         ),
-        sku_rows: aggregate_sku_rows(rows),
+        sku_rows: sku_rows,
         batch_rows: rows
       }
     end
@@ -40,10 +57,10 @@ module Ec
         .to_a
       costs_by_batch_id = load_costs_by_batch_id(all_batches)
 
-      all_batches
-        .group_by(&:sku_code)
-        .flat_map do |sku_code, batches|
-          build_rows_for_sku(sku_code, batches, costs_by_batch_id)
+      batches_by_sku = all_batches.group_by(&:sku_code)
+      sku_codes
+        .flat_map do |sku_code|
+          build_rows_for_sku(sku_code, batches_by_sku.fetch(sku_code, []), costs_by_batch_id)
         end
         .sort_by { |row| [row[:sku_code].to_s, row_order(row), row[:received_on] || row[:purchase_date] || Date.new(9999, 12, 31), row[:batch_code].to_s] }
     end
@@ -62,7 +79,7 @@ module Ec
         rows << build_batch_row(batch, costs_by_batch_id[batch.id], in_transit_quantity: quantity)
       end
 
-      remaining_sold_quantity = net_sold_quantities.fetch(sku_code, 0)
+      remaining_sold_quantity = settled_net_sales_quantities.fetch(sku_code, 0)
       normal_book_batches.sort_by { |batch| [batch.received_on || Date.new(9999, 12, 31), batch.purchase_date || Date.new(9999, 12, 31), batch.created_at, batch.id] }.each do |batch|
         quantity = batch.received_quantity.to_i
         sold_quantity = remaining_sold_quantity.positive? ? [quantity, remaining_sold_quantity].min : 0
@@ -91,7 +108,11 @@ module Ec
     end
 
     def build_batch_row(batch, cost, in_transit_quantity: 0, book_stock_quantity: 0, sold_quantity: 0)
-      unit_cost = cost&.goods_cost_cny
+      unit_goods_and_freight_cost = cost&.goods_and_freight_cost_cny
+      unit_customs_tax_cost = cost&.customs_tax_cost_cny
+      in_transit_goods_cost = amount_for(in_transit_quantity, unit_goods_and_freight_cost)
+      book_stock_goods_cost = amount_for(book_stock_quantity, unit_goods_and_freight_cost)
+      book_stock_customs_tax_cost = amount_for(book_stock_quantity, unit_customs_tax_cost)
       {
         row_type: "batch",
         sku_code: batch.sku_code,
@@ -103,14 +124,19 @@ module Ec
         received_on: batch.received_on,
         cost_date: cost_date_for(batch),
         cost_effective_on: cost&.effective_on,
-        unit_goods_cost_cny: unit_cost,
+        unit_goods_and_freight_cost_cny: unit_goods_and_freight_cost,
+        unit_customs_tax_cost_cny: unit_customs_tax_cost,
+        unit_goods_cost_cny: cost&.goods_cost_cny,
         in_transit_quantity: in_transit_quantity.to_i,
         book_stock_quantity: book_stock_quantity.to_i,
         sold_quantity: sold_quantity.to_i,
-        in_transit_amount_cny: amount_for(in_transit_quantity, unit_cost),
-        book_stock_amount_cny: amount_for(book_stock_quantity, unit_cost),
-        sold_amount_cny: amount_for(sold_quantity, unit_cost),
-        missing_cost: cost.blank?
+        in_transit_goods_cost_cny: in_transit_goods_cost,
+        book_stock_goods_cost_cny: book_stock_goods_cost,
+        book_stock_customs_tax_cost_cny: book_stock_customs_tax_cost,
+        in_transit_amount_cny: in_transit_goods_cost,
+        book_stock_amount_cny: sum_amounts(book_stock_goods_cost, book_stock_customs_tax_cost),
+        missing_cost: cost.blank?,
+        missing_freight: cost.present? && batch.status.in?(BOOK_STATUSES) && cost.freight_to_by_cny.nil?
       }
     end
 
@@ -127,14 +153,19 @@ module Ec
         received_on: nil,
         cost_date: nil,
         cost_effective_on: nil,
+        unit_goods_and_freight_cost_cny: nil,
+        unit_customs_tax_cost_cny: nil,
         unit_goods_cost_cny: nil,
         in_transit_quantity: 0,
         book_stock_quantity: 0,
         sold_quantity: quantity.to_i,
+        in_transit_goods_cost_cny: nil,
+        book_stock_goods_cost_cny: nil,
+        book_stock_customs_tax_cost_cny: nil,
         in_transit_amount_cny: nil,
         book_stock_amount_cny: nil,
-        sold_amount_cny: nil,
-        missing_cost: true
+        missing_cost: true,
+        missing_freight: false
       }
     end
 
@@ -143,30 +174,53 @@ module Ec
         .group_by { |row| row[:sku_code] }
         .map do |sku_code, sku_rows|
           sku = skus_by_code[sku_code]
-          aggregate_rows(sku_rows).merge(
+          aggregate_rows(sku_rows).merge(profit_metrics_for(sku_code)).merge(
             sku_code: sku_code,
             product_name: sku&.product_name || sku_rows.first[:product_name],
             batch_count: sku_rows.count { |row| row[:row_type] == "batch" }
           )
         end
-        .sort_by { |row| [-row[:sold_quantity].to_i, row[:sku_code].to_s] }
+        .sort_by { |row| [-row[:net_sales_quantity].to_i, row[:sku_code].to_s] }
     end
 
     def aggregate_rows(rows)
       quantity_totals = QUANTITY_KEYS.index_with do |key|
         rows.sum { |row| row[key].to_i }
       end
-      amount_totals = AMOUNT_KEYS.index_with do |key|
+      amount_totals = (CAPITAL_AMOUNT_KEYS + COMPATIBILITY_AMOUNT_KEYS).index_with do |key|
         rows.sum { |row| row[key].to_d }
       end
-      missing_cost_quantity = rows.select { |row| row[:missing_cost] }.sum do |row|
-        QUANTITY_KEYS.sum { |key| row[key].to_i.abs }
+      missing_cost_quantity = rows.sum do |row|
+        if row.key?(:missing_cost_quantity)
+          row[:missing_cost_quantity].to_i
+        elsif row[:missing_cost]
+          %i[in_transit_quantity book_stock_quantity].sum { |key| row[key].to_i.abs }
+        else
+          0
+        end
+      end
+      missing_freight_quantity = rows.sum do |row|
+        if row.key?(:missing_freight_quantity)
+          row[:missing_freight_quantity].to_i
+        elsif row[:missing_freight]
+          row[:book_stock_quantity].to_i.abs
+        else
+          0
+        end
       end
 
       quantity_totals.merge(amount_totals).merge(
-        total_quantity: QUANTITY_KEYS.sum { |key| quantity_totals[key].to_i },
-        total_amount_cny: AMOUNT_KEYS.sum { |key| amount_totals[key].to_d },
-        missing_cost_quantity: missing_cost_quantity
+        total_quantity: %i[in_transit_quantity book_stock_quantity].sum { |key| quantity_totals[key].to_i },
+        total_amount_cny: CAPITAL_AMOUNT_KEYS.sum { |key| amount_totals[key].to_d },
+        missing_cost_quantity: missing_cost_quantity,
+        missing_freight_quantity: missing_freight_quantity
+      )
+    end
+
+    def aggregate_sku_rows_summary(rows)
+      aggregate_rows(rows).merge(
+        net_sales_quantity: rows.sum { |row| row[:net_sales_quantity].to_i },
+        **PROFIT_AMOUNT_KEYS.index_with { |key| rows.sum { |row| row[key].to_d }.round(2) }
       )
     end
 
@@ -174,6 +228,12 @@ module Ec
       return nil if unit_cost.blank?
 
       (quantity.to_d * unit_cost.to_d).round(4)
+    end
+
+    def sum_amounts(*amounts)
+      return nil if amounts.all?(&:nil?)
+
+      amounts.sum(&:to_d).round(4)
     end
 
     def cost_date_for(batch)
@@ -204,33 +264,28 @@ module Ec
       end
     end
 
-    def net_sold_quantities
-      @net_sold_quantities ||= sku_codes.index_with do |sku_code|
-        sales_quantities.fetch(sku_code, 0) - return_quantities.fetch(sku_code, 0)
+    def settled_net_sales_quantities
+      @settled_net_sales_quantities ||= sku_codes.index_with do |sku_code|
+        [ profit_metrics_for(sku_code)[:net_sales_quantity].to_i, 0 ].max
       end
     end
 
-    def sales_quantities
-      @sales_quantities ||= Ec::OrderItem
-        .deductible_from_book_inventory
-        .joins(ORDER_ITEM_JOIN)
-        .where(ec_sku_products: { sku_code: sku_codes })
-        .group("ec_sku_products.sku_code")
-        .sum(:quantity)
-        .transform_keys(&:to_s)
-        .transform_values(&:to_i)
+    def profit_metrics_for(sku_code)
+      profit_report.fetch(:rows_by_sku, {}).fetch(sku_code, zero_profit_metrics)
     end
 
-    def return_quantities
-      @return_quantities ||= Ec::ReturnItem
-        .restockable_for_book_inventory
-        .joins(:sku_product)
-        .where(ec_sku_products: { sku_code: sku_codes })
-        .group("ec_sku_products.sku_code")
-        .sum(:quantity)
-        .transform_keys(&:to_s)
-        .transform_values(&:to_i)
+    def zero_profit_metrics
+      {
+        net_sales_quantity: 0,
+        sales_revenue_cny: BigDecimal("0"),
+        sold_goods_cost_cny: BigDecimal("0"),
+        sold_customs_tax_cost_cny: BigDecimal("0"),
+        goods_cost_cny: BigDecimal("0"),
+        net_profit_cny: BigDecimal("0")
+      }
     end
+
+    attr_reader :profit_report
 
     def skus_by_code
       @skus_by_code ||= @skus.index_by(&:sku_code)

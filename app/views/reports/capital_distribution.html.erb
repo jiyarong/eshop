@@ -6,6 +6,14 @@
       <% if params[:locale].present? %>
         <input type="hidden" name="locale" value="<%= params[:locale] %>">
       <% end %>
+      <div class="field field--time-range">
+        <label for="capital-distribution-time-range-trigger"><%= t("reports.capital_distribution.filters.financial_date_range") %></label>
+        <%= render "shared/time_range_selector",
+          id: "capital-distribution-time-range",
+          from_date: @capital_distribution_from_date,
+          to_date: @capital_distribution_to_date %>
+      </div>
+
       <div class="field">
         <label for="capital_distribution_sku"><%= t("reports.capital_distribution.filters.sku") %></label>
         <input id="capital_distribution_sku"
@@ -45,21 +53,21 @@
         dom_id_prefix: "capital-distribution-responsible-user-filter" %>
 
       <button class="button" type="submit"><%= t("reports.capital_distribution.filters.apply") %></button>
+      <button class="button button-secondary" type="submit" name="format" value="xlsx" data-turbo="false"><%= t("reports.capital_distribution.filters.export_xlsx") %></button>
       <% if capital_distribution_filters_active? %>
         <% reset_path = params[:locale].present? ? "/reports/capital_distribution?locale=#{ERB::Util.url_encode(params[:locale])}" : "/reports/capital_distribution" %>
         <%= link_to t("reports.capital_distribution.filters.reset"), reset_path, class: "button button-secondary" %>
       <% end %>
     </form>
-    <%= render "shared/ai_diagnosis_event_filter" %>
   </section>
 
   <section class="panel">
     <div class="summary-grid">
       <% [
-        [:in_transit, :in_transit_quantity, :in_transit_amount_cny],
-        [:book_stock, :book_stock_quantity, :book_stock_amount_cny],
-        [:sold, :sold_quantity, :sold_amount_cny],
-        [:total, :total_quantity, :total_amount_cny]
+        [:in_transit_goods, :in_transit_quantity, :in_transit_goods_cost_cny],
+        [:book_stock_goods, :book_stock_quantity, :book_stock_goods_cost_cny],
+        [:book_stock_customs_tax, :book_stock_quantity, :book_stock_customs_tax_cost_cny],
+        [:capital_occupied, :total_quantity, :total_amount_cny]
       ].each do |key, quantity_key, amount_key| %>
         <div class="weekly-profit-summary-card">
           <div class="summary-label"><%= t("reports.capital_distribution.summary.#{key}") %></div>
@@ -68,11 +76,51 @@
         </div>
       <% end %>
       <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.settled_sales") %></div>
+        <div class="summary-value"><%= capital_distribution_currency(@capital_distribution_summary[:sales_revenue_cny]) %></div>
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.net_sales_quantity", quantity: capital_distribution_quantity(@capital_distribution_summary[:net_sales_quantity])) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.sold_goods_cost") %></div>
+        <div class="summary-value"><%= capital_distribution_currency(@capital_distribution_summary[:sold_goods_cost_cny]) %></div>
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.settled_basis") %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.sold_customs_tax_cost") %></div>
+        <div class="summary-value"><%= capital_distribution_currency(@capital_distribution_summary[:sold_customs_tax_cost_cny]) %></div>
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.settled_basis") %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.settled_net_profit") %></div>
+        <div class="summary-value"><%= capital_distribution_currency(@capital_distribution_summary[:net_profit_cny]) %></div>
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.settled_basis") %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.unallocated_total") %></div>
+        <div class="summary-value"><%= capital_distribution_currency(@capital_distribution_summary[:unallocated_total_cny].to_d.abs) %></div>
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.unallocated_basis") %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
         <div class="summary-label"><%= t("reports.capital_distribution.summary.missing_cost") %></div>
         <div class="summary-value"><%= capital_distribution_quantity(@capital_distribution_summary[:missing_cost_quantity]) %></div>
         <div class="summary-label"><%= t("reports.capital_distribution.summary.sku_and_batch_counts", skus: @capital_distribution_summary[:sku_count], batches: @capital_distribution_summary[:batch_count]) %></div>
       </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.missing_freight") %></div>
+        <div class="summary-value"><%= capital_distribution_quantity(@capital_distribution_summary[:missing_freight_quantity]) %></div>
+        <div class="summary-label"><%= t("reports.capital_distribution.summary.cleared_freight_required") %></div>
+      </div>
     </div>
+    <p class="report-note">
+      <% if @capital_distribution_summary[:period_from].present? && @capital_distribution_summary[:period_to].present? %>
+        <%= t("reports.capital_distribution.summary.period", from: @capital_distribution_summary[:period_from], to: @capital_distribution_summary[:period_to]) %>
+      <% else %>
+        <%= t("reports.capital_distribution.summary.no_settled_data") %>
+      <% end %>
+      <% if @capital_distribution_summary[:missing_week_starts].present? %>
+        <%= t("reports.capital_distribution.summary.missing_weeks", count: @capital_distribution_summary[:missing_week_starts].size) %>
+      <% end %>
+    </p>
   </section>
 
   <% tab_query_params = request.query_parameters.symbolize_keys.except(:view, :page, :jump_page, :current_page) %>
@@ -94,12 +142,18 @@
               <th style="width: 36px"></th>
               <th><%= t("reports.capital_distribution.fields.sku") %></th>
               <th><%= t("reports.capital_distribution.fields.product_name") %></th>
-              <th class="numeric"><%= t("reports.capital_distribution.fields.in_transit") %></th>
-              <th class="numeric"><%= t("reports.capital_distribution.fields.book_stock") %></th>
-              <th class="numeric"><%= t("reports.capital_distribution.fields.sold") %></th>
-              <th class="numeric"><%= t("reports.capital_distribution.fields.total") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.in_transit_goods") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.book_stock_goods") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.book_stock_customs_tax") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.settled_net_sales") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.sales_revenue") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.sold_goods_cost") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.sold_customs_tax_cost") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.net_profit") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.capital_occupied") %></th>
               <th class="numeric"><%= t("reports.capital_distribution.fields.batch_count") %></th>
               <th class="numeric"><%= t("reports.capital_distribution.fields.missing_cost") %></th>
+              <th class="numeric"><%= t("reports.capital_distribution.fields.missing_freight") %></th>
             </tr>
           </thead>
           <tbody>
@@ -122,18 +176,32 @@
                   </td>
                   <td><%= sku_detail_drawer_link row[:sku_code], tab: "inventory", class: "inventory-list-table__sku-link" %></td>
                   <td class="inventory-list-table__name-cell"><%= report_value(row[:product_name]) %></td>
-                  <% [[:in_transit_quantity, :in_transit_amount_cny], [:book_stock_quantity, :book_stock_amount_cny], [:sold_quantity, :sold_amount_cny], [:total_quantity, :total_amount_cny]].each do |quantity_key, amount_key| %>
+                  <% [
+                    [:in_transit_quantity, :in_transit_goods_cost_cny],
+                    [:book_stock_quantity, :book_stock_goods_cost_cny],
+                    [:book_stock_quantity, :book_stock_customs_tax_cost_cny]
+                  ].each do |quantity_key, amount_key| %>
                     <td class="numeric">
                       <div><%= capital_distribution_currency(row[amount_key]) %></div>
                       <div class="inventory-list-table__subline"><%= t("reports.capital_distribution.labels.quantity", quantity: capital_distribution_quantity(row[quantity_key])) %></div>
                     </td>
                   <% end %>
+                  <td class="numeric"><%= capital_distribution_quantity(row[:net_sales_quantity]) %></td>
+                  <td class="numeric"><%= capital_distribution_currency(row[:sales_revenue_cny]) %></td>
+                  <td class="numeric"><%= capital_distribution_currency(row[:sold_goods_cost_cny]) %></td>
+                  <td class="numeric"><%= capital_distribution_currency(row[:sold_customs_tax_cost_cny]) %></td>
+                  <td class="numeric"><%= capital_distribution_currency(row[:net_profit_cny]) %></td>
+                  <td class="numeric">
+                    <div><%= capital_distribution_currency(row[:total_amount_cny]) %></div>
+                    <div class="inventory-list-table__subline"><%= t("reports.capital_distribution.labels.quantity", quantity: capital_distribution_quantity(row[:total_quantity])) %></div>
+                  </td>
                   <td class="numeric"><%= capital_distribution_quantity(row[:batch_count]) %></td>
                   <td class="numeric"><%= capital_distribution_quantity(row[:missing_cost_quantity]) %></td>
+                  <td class="numeric"><%= capital_distribution_quantity(row[:missing_freight_quantity]) %></td>
                 </tr>
                 <% if child_rows.any? %>
                   <tr class="batch-row" hidden>
-                    <td colspan="9">
+                    <td colspan="15">
                       <div class="batch-shell">
                         <div class="batch-h">
                           <div>
@@ -151,7 +219,7 @@
                 <% end %>
               <% end %>
             <% else %>
-              <tr><td colspan="9" class="empty-state"><%= t("reports.capital_distribution.empty") %></td></tr>
+              <tr><td colspan="15" class="empty-state"><%= t("reports.capital_distribution.empty") %></td></tr>
             <% end %>
           </tbody>
         </table>

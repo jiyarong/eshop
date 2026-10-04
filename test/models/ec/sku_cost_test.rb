@@ -45,4 +45,21 @@ class Ec::SkuCostTest < ActiveSupport::TestCase
     assert_not duplicate.valid?
     assert duplicate.errors[:sku_code].present?
   end
+
+  test "splits goods and freight from customs while preserving total goods cost" do
+    cost = Ec::SkuCost.create!(
+      sku_code: @sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
+      purchase_price_cny: 20,
+      freight_to_by_cny: 3,
+      customs_misc_cny: 2,
+      customs_duty_rate: BigDecimal("0.1"),
+      import_vat_rate: BigDecimal("0.2")
+    )
+
+    assert_equal BigDecimal("23.0"), cost.goods_and_freight_cost_cny
+    assert_equal BigDecimal("8.4"), cost.customs_tax_cost_cny
+    assert_equal BigDecimal("31.4"), cost.goods_cost_cny
+    assert_equal cost.goods_cost_cny, cost.goods_and_freight_cost_cny + cost.customs_tax_cost_cny
+  end
 end

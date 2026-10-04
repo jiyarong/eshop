@@ -1840,6 +1840,11 @@ table thead th {
   line-height: 1.4;
 }
 
+.capital-distribution-warning {
+  color: var(--erp-warning-text, #b54708);
+  font-weight: 700;
+}
+
 .inventory-list-table__metric {
   color: var(--erp-text);
 }

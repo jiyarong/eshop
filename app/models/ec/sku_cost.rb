@@ -50,9 +50,16 @@ module Ec
       ((purchase_price_cny + customs_duty_cny) * import_vat_rate).round(4)
     end
 
+    def goods_and_freight_cost_cny
+      [ purchase_price_cny, freight_to_by_cny ].sum(&:to_d).round(4)
+    end
+
+    def customs_tax_cost_cny
+      [ customs_duty_cny, import_vat_cny, customs_misc_cny ].sum(&:to_d).round(4)
+    end
+
     def goods_cost_cny
-      [ purchase_price_cny, freight_to_by_cny, customs_misc_cny,
-        customs_duty_cny, import_vat_cny ].sum(&:to_d).round(4)
+      (goods_and_freight_cost_cny + customs_tax_cost_cny).round(4)
     end
 
     def pkg_length_cm

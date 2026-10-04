@@ -45,7 +45,7 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
   end
 
-  test "allocates sold quantities FIFO and prices each batch with the effective SKU cost" do
+  test "allocates settled net sales FIFO and keeps financial results on the weekly profit basis" do
     Ec::SkuCost.create!(
       sku_code: @sku.sku_code,
       effective_on: Date.new(2026, 1, 1),
@@ -60,9 +60,9 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
       effective_on: Date.new(2026, 1, 2),
       purchase_price_cny: 20,
       freight_to_by_cny: 0,
-      customs_misc_cny: 0,
-      customs_duty_rate: 0,
-      import_vat_rate: 0
+      customs_misc_cny: 2,
+      customs_duty_rate: BigDecimal("0.1"),
+      import_vat_rate: BigDecimal("0.2")
     )
 
     first_batch = Ec::SkuBatch.create!(
@@ -98,49 +98,53 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
       purchase_unit_price_cny: 500
     )
 
-    order = Ec::Order.create!(
-      platform: "ozon",
-      store: @store,
-      order_key: "capital-order-#{@token}",
-      order_status: "delivered",
-      ordered_at: Time.zone.parse("2026-01-10 10:00:00")
-    )
-    Ec::OrderItem.create!(
-      order: order,
-      store: @store,
-      platform: "ozon",
-      platform_sku_id: @sku_product.platform_sku_id,
-      quantity: 5
-    )
-
-    result = Ec::InventoryCapitalDistributionQuery.new(skus: [@sku]).call
+    result = Ec::InventoryCapitalDistributionQuery.new(
+      skus: [@sku],
+      profit_report: profit_report(@sku.sku_code, net_sales_quantity: 5, sales_revenue_cny: 600,
+        sold_goods_cost_cny: 60, sold_customs_tax_cost_cny: 19, goods_cost_cny: 79, net_profit_cny: 120)
+    ).call
     rows = result.fetch(:batch_rows).index_by { |row| row[:batch_code] }
 
     assert_equal 3, rows.fetch(first_batch.batch_code)[:sold_quantity]
     assert_equal 0, rows.fetch(first_batch.batch_code)[:book_stock_quantity]
-    assert_equal BigDecimal("13.0"), rows.fetch(first_batch.batch_code)[:unit_goods_cost_cny]
-    assert_equal BigDecimal("39.0"), rows.fetch(first_batch.batch_code)[:sold_amount_cny]
+    assert_equal BigDecimal("12.0"), rows.fetch(first_batch.batch_code)[:unit_goods_and_freight_cost_cny]
+    assert_equal BigDecimal("1.0"), rows.fetch(first_batch.batch_code)[:unit_customs_tax_cost_cny]
 
     assert_equal 2, rows.fetch(second_batch.batch_code)[:sold_quantity]
     assert_equal 3, rows.fetch(second_batch.batch_code)[:book_stock_quantity]
-    assert_equal BigDecimal("20.0"), rows.fetch(second_batch.batch_code)[:unit_goods_cost_cny]
-    assert_equal BigDecimal("40.0"), rows.fetch(second_batch.batch_code)[:sold_amount_cny]
+    assert_equal BigDecimal("20.0"), rows.fetch(second_batch.batch_code)[:unit_goods_and_freight_cost_cny]
+    assert_equal BigDecimal("8.4"), rows.fetch(second_batch.batch_code)[:unit_customs_tax_cost_cny]
+    assert_equal BigDecimal("60.0"), rows.fetch(second_batch.batch_code)[:book_stock_goods_cost_cny]
+    assert_equal BigDecimal("25.2"), rows.fetch(second_batch.batch_code)[:book_stock_customs_tax_cost_cny]
+    assert_equal BigDecimal("85.2"), rows.fetch(second_batch.batch_code)[:book_stock_amount_cny]
 
     assert_equal 4, rows.fetch(incoming_batch.batch_code)[:in_transit_quantity]
     assert_equal BigDecimal("80.0"), rows.fetch(incoming_batch.batch_code)[:in_transit_amount_cny]
+    assert_equal BigDecimal("80.0"), rows.fetch(incoming_batch.batch_code)[:in_transit_goods_cost_cny]
 
     sku_row = result.fetch(:sku_rows).fetch(0)
     summary = result.fetch(:summary)
-    assert_equal sku_row.slice(:in_transit_quantity, :book_stock_quantity, :sold_quantity, :total_quantity),
-      summary.slice(:in_transit_quantity, :book_stock_quantity, :sold_quantity, :total_quantity)
+    assert_equal sku_row.slice(:in_transit_quantity, :book_stock_quantity, :net_sales_quantity, :total_quantity),
+      summary.slice(:in_transit_quantity, :book_stock_quantity, :net_sales_quantity, :total_quantity)
     assert_equal 4, summary[:in_transit_quantity]
     assert_equal 3, summary[:book_stock_quantity]
-    assert_equal 5, summary[:sold_quantity]
-    assert_equal BigDecimal("219.0"), summary[:total_amount_cny]
+    assert_equal 5, summary[:net_sales_quantity]
+    assert_equal BigDecimal("80.0"), summary[:in_transit_goods_cost_cny]
+    assert_equal BigDecimal("60.0"), summary[:book_stock_goods_cost_cny]
+    assert_equal BigDecimal("25.2"), summary[:book_stock_customs_tax_cost_cny]
+    assert_equal BigDecimal("165.2"), summary[:total_amount_cny]
+    assert_equal BigDecimal("600.0"), summary[:sales_revenue_cny]
+    assert_equal BigDecimal("60.0"), summary[:sold_goods_cost_cny]
+    assert_equal BigDecimal("19.0"), summary[:sold_customs_tax_cost_cny]
+    assert_equal BigDecimal("79.0"), summary[:goods_cost_cny]
+    assert_equal summary[:goods_cost_cny], summary[:sold_goods_cost_cny] + summary[:sold_customs_tax_cost_cny]
+    assert_equal BigDecimal("120.0"), summary[:net_profit_cny]
+    assert_equal BigDecimal("-8.25"), summary[:unallocated_total_cny]
     assert_equal 0, summary[:missing_cost_quantity]
+    assert_equal 0, summary[:missing_freight_quantity]
   end
 
-  test "uses restockable returns and ignores Ozon removals when calculating sold quantity" do
+  test "uses settled net sales instead of ERP orders and returns" do
     Ec::SkuCost.create!(
       sku_code: @sku.sku_code,
       effective_on: Date.new(2026, 1, 1),
@@ -217,13 +221,65 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
       synced_at: Time.current
     )
 
-    result = Ec::InventoryCapitalDistributionQuery.new(skus: [@sku]).call
+    result = Ec::InventoryCapitalDistributionQuery.new(
+      skus: [@sku],
+      profit_report: profit_report(@sku.sku_code, net_sales_quantity: 4)
+    ).call
     row = result.fetch(:batch_rows).find { |item| item[:batch_code] == batch.batch_code }
 
     assert_equal 4, row[:sold_quantity]
     assert_equal 1, row[:book_stock_quantity]
-    assert_equal BigDecimal("40.0"), row[:sold_amount_cny]
     assert_nil result.fetch(:batch_rows).find { |item| item[:row_type] == "unmatched_sold" }
+  end
+
+  test "flags cleared inventory whose effective cost has no freight" do
+    Ec::SkuCost.create!(
+      sku_code: @sku.sku_code,
+      effective_on: Date.new(2026, 1, 1),
+      purchase_price_cny: 10,
+      freight_to_by_cny: nil,
+      customs_misc_cny: 1,
+      customs_duty_rate: 0,
+      import_vat_rate: 0
+    )
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "CAPITAL-NO-FREIGHT-#{@token}",
+      batch_type: :normal,
+      status: :closed,
+      purchased_quantity: 4,
+      received_quantity: 4,
+      purchase_date: Date.new(2026, 1, 1),
+      received_on: Date.new(2026, 1, 2),
+      purchase_unit_price_cny: 10
+    )
+
+    result = Ec::InventoryCapitalDistributionQuery.new(
+      skus: [ @sku ],
+      profit_report: profit_report(@sku.sku_code, net_sales_quantity: 0)
+    ).call
+    row = result.fetch(:batch_rows).find { |item| item[:batch_code] == batch.batch_code }
+
+    assert row[:missing_freight]
+    assert_equal 4, result.dig(:summary, :missing_freight_quantity)
+  end
+
+  test "keeps settled sales without purchase batches as unmatched financial quantity" do
+    result = Ec::InventoryCapitalDistributionQuery.new(
+      skus: [ @sku ],
+      profit_report: profit_report(@sku.sku_code, net_sales_quantity: 3, sales_revenue_cny: 90,
+        goods_cost_cny: 30, net_profit_cny: 12)
+    ).call
+
+    unmatched_row = result.fetch(:batch_rows).sole
+    sku_row = result.fetch(:sku_rows).sole
+
+    assert_equal "unmatched_sold", unmatched_row[:row_type]
+    assert_equal 3, unmatched_row[:sold_quantity]
+    assert_equal 3, sku_row[:net_sales_quantity]
+    assert_equal BigDecimal("90"), sku_row[:sales_revenue_cny]
+    assert_equal 1, result.dig(:summary, :sku_count)
+    assert_equal 0, result.dig(:summary, :batch_count)
   end
 
   test "sorts SKU rows by sold quantity descending" do
@@ -232,7 +288,7 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
       sku_code: "CAPITAL-MORE-#{@token}",
       product_name: "资金分布高销量商品"
     )
-    more_sold_product = Ec::SkuProduct.create!(
+    Ec::SkuProduct.create!(
       sku: more_sold_sku,
       store: @store,
       product_id: "PRODUCT-MORE-#{@token}",
@@ -262,10 +318,12 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
       )
     end
 
-    create_order_for(@sku_product, quantity: 2, key_suffix: "less")
-    create_order_for(more_sold_product, quantity: 7, key_suffix: "more")
-
-    result = Ec::InventoryCapitalDistributionQuery.new(skus: [less_sold_sku, more_sold_sku]).call
+    report = profit_report(less_sold_sku.sku_code, net_sales_quantity: 2)
+    report[:rows_by_sku][more_sold_sku.sku_code] = profit_metrics(net_sales_quantity: 7)
+    result = Ec::InventoryCapitalDistributionQuery.new(
+      skus: [less_sold_sku, more_sold_sku],
+      profit_report: report
+    ).call
 
     assert_equal [more_sold_sku.sku_code, less_sold_sku.sku_code], result.fetch(:sku_rows).map { |row| row[:sku_code] }
   ensure
@@ -281,20 +339,27 @@ class Ec::InventoryCapitalDistributionQueryTest < ActiveSupport::TestCase
 
   private
 
-  def create_order_for(sku_product, quantity:, key_suffix:)
-    order = Ec::Order.create!(
-      platform: "ozon",
-      store: @store,
-      order_key: "capital-#{key_suffix}-order-#{@token}",
-      order_status: "delivered",
-      ordered_at: Time.zone.parse("2026-01-10 10:00:00")
-    )
-    Ec::OrderItem.create!(
-      order: order,
-      store: @store,
-      platform: "ozon",
-      platform_sku_id: sku_product.platform_sku_id,
-      quantity: quantity
-    )
+  def profit_report(sku_code, **metrics)
+    {
+      rows_by_sku: { sku_code => profit_metrics(**metrics) },
+      period_from: Date.new(2026, 1, 5),
+      period_to: Date.new(2026, 1, 11),
+      cutoff_date: Date.new(2026, 1, 11),
+      unallocated_total_cny: BigDecimal("-8.25"),
+      missing_week_starts: []
+    }
+  end
+
+  def profit_metrics(net_sales_quantity:, sales_revenue_cny: 0, sold_goods_cost_cny: nil,
+    sold_customs_tax_cost_cny: 0, goods_cost_cny: 0, net_profit_cny: 0)
+    sold_goods_cost_cny = goods_cost_cny if sold_goods_cost_cny.nil?
+    {
+      net_sales_quantity: net_sales_quantity,
+      sales_revenue_cny: BigDecimal(sales_revenue_cny.to_s),
+      sold_goods_cost_cny: BigDecimal(sold_goods_cost_cny.to_s),
+      sold_customs_tax_cost_cny: BigDecimal(sold_customs_tax_cost_cny.to_s),
+      goods_cost_cny: BigDecimal(goods_cost_cny.to_s),
+      net_profit_cny: BigDecimal(net_profit_cny.to_s)
+    }
   end
 end

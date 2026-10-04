@@ -328,18 +328,79 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", text: "资金分布"
     assert_select "a[href='/reports/capital_distribution']", text: "资金分布"
+    assert_select "label[for='capital-distribution-time-range-trigger']", text: "已售财务期间"
+    assert_select "button[name='format'][value='xlsx'][data-turbo='false']", text: "导出 XLSX"
+    assert_equal "capital-distribution-time-range-trigger",
+      css_select("form.report-form > .field").first.at_css("label")["for"]
+    today = Time.current.in_time_zone(@current_user.time_zone).to_date
+    assert_select "input[name='from_date'][value=?]", today.beginning_of_year.iso8601
+    assert_select "input[name='to_date'][value=?]", today.iso8601
+    assert_select ".ai-diagnosis-event-filter", count: 0
     assert_select "nav.erp-tabs a[aria-current='page']", text: "SKU 汇总"
     assert_select "button.product-tree-toggle[aria-expanded='false']", count: 1
     assert_select "tr.batch-row[hidden]", count: 1
     assert_select "tr.batch-row", text: /#{batch.batch_code}/
-    assert_select "tbody tr.sku-row td.numeric:nth-child(6)", text: /¥/
+    assert_select "tbody tr.sku-row td.numeric:nth-child(8)", text: /¥/
+    assert_select "th", text: "已结算销售额"
+    assert_select "th", text: "已售货物成本"
+    assert_select "th", text: "已售清关税费"
+    assert_select "th", text: "税后净利润"
+    assert_select ".summary-label", text: "当前资金占用"
+    assert_select ".summary-label", text: "未分摊进 SKU 的金额"
 
     sign_in @current_user
-    get "/reports/capital_distribution", params: { sku: @sku_code.downcase, view: "batch_detail" }, headers: { "Accept" => "text/html" }
+    get "/reports/capital_distribution",
+      params: { sku: @sku_code.downcase, view: "batch_detail", from_date: "2026-08-31", to_date: "2026-04-01" },
+      headers: { "Accept" => "text/html" }
 
     assert_response :success
+    assert_select "input[name='from_date'][value='2026-04-01']"
+    assert_select "input[name='to_date'][value='2026-08-31']"
     assert_select "nav.erp-tabs a[aria-current='page']", text: "批次明细"
     assert_select "td div", text: batch.batch_code
+  end
+
+  test "capital distribution exports xlsx using current filters" do
+    batch = Ec::SkuBatch.create!(
+      sku_code: @sku.sku_code,
+      batch_code: "REPORT-CAPITAL-EXPORT-#{@sku_code}",
+      batch_type: :normal,
+      status: :received,
+      purchased_quantity: 5,
+      received_quantity: 5,
+      purchase_date: Date.new(2026, 4, 1),
+      received_on: Date.new(2026, 4, 15)
+    )
+    export_class = Ec::CapitalDistributionXlsxExportService
+    original_call = export_class.method(:call)
+    export_mime_type = export_class::MIME_TYPE
+    captured_arguments = nil
+    export_class.define_singleton_method(:call) do |**arguments|
+      captured_arguments = arguments
+      {
+        filename: "capital-distribution-2026-04-01_to_2026-08-31.xlsx",
+        data: "xlsx-binary",
+        content_type: export_mime_type
+      }
+    end
+
+    get "/reports/capital_distribution", params: {
+      format: "xlsx",
+      sku: @sku_code.downcase,
+      from_date: "2026-08-31",
+      to_date: "2026-04-01"
+    }, headers: { "Accept" => Ec::CapitalDistributionXlsxExportService::MIME_TYPE }
+
+    assert_response :success
+    assert_equal Ec::CapitalDistributionXlsxExportService::MIME_TYPE, response.media_type
+    assert_equal "xlsx-binary", response.body
+    assert_match(/attachment;.*capital-distribution-2026-04-01_to_2026-08-31\.xlsx/, response.headers["Content-Disposition"])
+    assert_equal Date.new(2026, 4, 1), captured_arguments[:from_date]
+    assert_equal Date.new(2026, 8, 31), captured_arguments[:to_date]
+    assert_equal [@sku_code], captured_arguments[:sku_rows].map { |row| row[:sku_code] }
+    assert_includes captured_arguments[:batch_rows].map { |row| row[:batch_code] }, batch.batch_code
+  ensure
+    export_class.define_singleton_method(:call, original_call) if export_class && original_call
   end
 
   test "inventory report filters by responsible users" do

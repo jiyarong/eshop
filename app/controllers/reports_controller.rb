@@ -78,14 +78,35 @@ class ReportsController < ApplicationController
 
   def capital_distribution
     @sku_query = params[:sku].to_s.strip
+    @capital_distribution_from_date = parse_report_date(params[:from_date]) || user_today.beginning_of_year
+    @capital_distribution_to_date = parse_report_date(params[:to_date]) || user_today
+    if @capital_distribution_from_date > @capital_distribution_to_date
+      @capital_distribution_from_date, @capital_distribution_to_date = @capital_distribution_to_date, @capital_distribution_from_date
+    end
     load_master_sku_category_filter
     load_spu_sku_filter
     load_sku_marketing_state_filters
     load_responsible_user_filters
-    load_ai_diagnosis_event_filter
     @capital_distribution_view = params[:view].presence_in(CAPITAL_DISTRIBUTION_VIEWS) || "sku_summary"
 
-    report = Ec::InventoryCapitalDistributionQuery.new(skus: capital_distribution_skus_scope.order(:sku_code)).call
+    report = Ec::InventoryCapitalDistributionQuery.new(
+      skus: capital_distribution_skus_scope.order(:sku_code),
+      from_date: @capital_distribution_from_date,
+      to_date: @capital_distribution_to_date,
+      as_of_date: user_today
+    ).call
+    if request.format.xlsx?
+      export = Ec::CapitalDistributionXlsxExportService.call(
+        summary: report.fetch(:summary),
+        sku_rows: report.fetch(:sku_rows),
+        batch_rows: report.fetch(:batch_rows),
+        from_date: @capital_distribution_from_date,
+        to_date: @capital_distribution_to_date,
+        locale: I18n.locale
+      )
+      return send_data export[:data], filename: export[:filename], type: export[:content_type], disposition: :attachment
+    end
+
     @capital_distribution_summary = report.fetch(:summary)
     @capital_distribution_sku_rows = report.fetch(:sku_rows)
     @capital_distribution_batch_rows_by_sku = report.fetch(:batch_rows).group_by { |row| row[:sku_code] }
@@ -1454,7 +1475,6 @@ class ReportsController < ApplicationController
     scope = apply_spu_sku_filter_to_skus(scope)
     scope = apply_marketing_state_filters(scope)
     scope = apply_responsible_user_filters_to_skus(scope)
-    scope = apply_ai_diagnosis_event_filter_to_skus(scope)
     return scope if @sku_query.blank?
 
     scope.where("LOWER(ec_skus.sku_code) LIKE ?", inventory_sku_filter_pattern)
@@ -1505,7 +1525,7 @@ class ReportsController < ApplicationController
   end
 
   def capital_distribution_filters_active?
-    @sku_query.present? || responsible_user_filters_active? || spu_sku_filter_active? || sku_marketing_state_filters_active? || master_sku_category_filter_active? || ai_diagnosis_event_filter_active?
+    params[:from_date].present? || params[:to_date].present? || @sku_query.present? || responsible_user_filters_active? || spu_sku_filter_active? || sku_marketing_state_filters_active? || master_sku_category_filter_active?
   end
 
   def inventory_turnover_matches_all?(turnover_days:, turnover_days_with_procurement:)
