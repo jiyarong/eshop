@@ -8,6 +8,8 @@
 #   APPLY=1 bin/rails runner script/backfill_sku_costs_before_first_batch.rb
 
 class SkuCostsBeforeFirstBatchBackfill
+  INCOMING_STATUSES = Ec::InventoryCapitalDistributionQuery::INCOMING_STATUSES
+  BOOK_STATUSES = Ec::InventoryCapitalDistributionQuery::BOOK_STATUSES
   Result = Struct.new(:scanned, :backfilled, :covered, :missing_cost, keyword_init: true)
 
   def initialize(env: ENV, stdout: $stdout, sku_codes: nil)
@@ -17,18 +19,14 @@ class SkuCostsBeforeFirstBatchBackfill
   end
 
   def call
-    batch_scope = Ec::SkuBatch.where.not(batch_type: :physical_stocktake_adjustment)
-    batch_scope = batch_scope.where(sku_code: sku_codes) if sku_codes
-    first_batch_times = batch_scope
-      .group(:sku_code)
-      .minimum(:created_at)
-    result = Result.new(scanned: first_batch_times.size, backfilled: 0, covered: 0, missing_cost: 0)
+    first_batch_dates = first_report_batch_dates
+    result = Result.new(scanned: first_batch_dates.size, backfilled: 0, covered: 0, missing_cost: 0)
 
     stdout.puts "SKU costs before first batch backfill (#{dry_run ? 'dry run' : 'apply'})"
     stdout.puts "SKUs with business batches: #{result.scanned}"
 
-    first_batch_times.sort.each do |sku_code, first_batch_time|
-      process_sku(sku_code, first_batch_time.to_date, result)
+    first_batch_dates.sort.each do |sku_code, first_batch_on|
+      process_sku(sku_code, first_batch_on, result)
     end
 
     stdout.puts "Backfilled: #{result.backfilled}"
@@ -41,6 +39,21 @@ class SkuCostsBeforeFirstBatchBackfill
   private
 
   attr_reader :dry_run, :sku_codes, :stdout
+
+  def first_report_batch_dates
+    scope = Ec::SkuBatch
+      .where.not(batch_type: :physical_stocktake_adjustment)
+      .where(status: INCOMING_STATUSES + BOOK_STATUSES)
+    scope = scope.where(sku_code: sku_codes) if sku_codes
+
+    scope.pluck(:sku_code, :batch_type, :status, :purchase_date, :received_on, :created_at)
+      .each_with_object({}) do |(sku_code, batch_type, status, purchase_date, received_on, created_at), dates|
+        next if status.in?(INCOMING_STATUSES) && batch_type != "normal"
+
+        cost_date = purchase_date || received_on || created_at&.to_date || Date.current
+        dates[sku_code] = [ dates[sku_code], cost_date ].compact.min
+      end
+  end
 
   def process_sku(sku_code, first_batch_on, result)
     sku = Ec::Sku.find_by(sku_code: sku_code)

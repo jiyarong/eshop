@@ -34,9 +34,14 @@ class BackfillSkuCostsBeforeFirstBatchTest < ActiveSupport::TestCase
     assert_includes output.string, "target_effective_on=2026-08-17"
   end
 
-  test "apply duplicates the earliest cost one day before the first batch" do
+  test "apply duplicates the earliest cost one day before the first batch cost date" do
     sku = create_sku("COPY")
-    create_batch(sku, created_at: Time.utc(2026, 8, 18, 10))
+    create_batch(
+      sku,
+      purchase_date: Date.new(2026, 8, 18),
+      received_on: Date.new(2026, 8, 25),
+      created_at: Time.utc(2026, 9, 20, 10)
+    )
     source = create_cost(
       sku,
       effective_on: Date.new(2026, 9, 18),
@@ -56,6 +61,22 @@ class BackfillSkuCostsBeforeFirstBatchTest < ActiveSupport::TestCase
     assert_equal 1, result.backfilled
     assert_equal source.attributes.except("id", "effective_on", "created_at", "updated_at"),
       copied.attributes.except("id", "effective_on", "created_at", "updated_at")
+  end
+
+  test "uses received date before creation date when purchase date is missing" do
+    sku = create_sku("RECEIVED")
+    create_batch(
+      sku,
+      received_on: Date.new(2026, 8, 20),
+      created_at: Time.utc(2026, 9, 20, 10),
+      status: "received"
+    )
+    create_cost(sku, effective_on: Date.new(2026, 9, 1))
+
+    result = run_backfill(sku)
+
+    assert_equal 1, result.backfilled
+    assert Ec::SkuCost.exists?(sku_code: sku.sku_code, effective_on: Date.new(2026, 8, 19))
   end
 
   test "skips SKUs that already have an applicable cost or have no cost" do
@@ -115,13 +136,16 @@ class BackfillSkuCostsBeforeFirstBatchTest < ActiveSupport::TestCase
     Ec::Sku.create!(sku_code: sku_code)
   end
 
-  def create_batch(sku, created_at:, batch_type: :normal)
+  def create_batch(sku, created_at:, batch_type: :normal, status: "draft", purchase_date: nil, received_on: nil)
     Ec::SkuBatch.create!(
       sku_code: sku.sku_code,
       batch_code: "#{sku.sku_code}-#{SecureRandom.hex(3).upcase}",
       batch_type: batch_type,
+      status: status,
       purchased_quantity: 0,
       purchase_unit_price_cny: 0,
+      purchase_date: purchase_date,
+      received_on: received_on,
       created_at: created_at,
       updated_at: created_at
     )
