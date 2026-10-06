@@ -56,6 +56,18 @@ class AITasks::SkuDiagnosisJobTest < ActiveJob::TestCase
     assert_predicate arguments.fetch(:diagnosis_started_at), :present?
   end
 
+  test "failed pipeline diagnosis retries diagnosis without enqueueing planner" do
+    date = Date.new(2026, 9, 29)
+    with_stubbed_runner(->(**) { raise ErpAI::SkuDiagnosisRunner::Failure, "SKU-ONE/6" }) do
+      assert_no_enqueued_jobs only: AITasks::SkuPlannerJob do
+        assert_enqueued_with(job: AITasks::SkuDiagnosisJob,
+          args: [ { as_of_date: date, sku_code: "SKU-ONE", pipeline: true } ]) do
+          AITasks::SkuDiagnosisJob.perform_now(as_of_date: date, sku_code: "SKU-ONE", pipeline: true)
+        end
+      end
+    end
+  end
+
   test "uses the daily checkpoint for the parameterless batch" do
     date = Date.new(2026, 9, 29)
     redis = FakeRedis.new

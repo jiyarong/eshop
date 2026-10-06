@@ -2,13 +2,16 @@ require "test_helper"
 
 class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   setup do
+    travel_to Time.utc(2026, 9, 29, 4)
     @token = SecureRandom.hex(5).upcase
     @sku = Ec::Sku.create!(sku_code: "PLANNER-#{@token}", product_name: "Planner test")
     @user = User.create!(email: "planner-#{@token.downcase}@example.com", password: "password123")
     @agent_existed = Agent.exists?(code: "sku_planner")
     @evaluation_agent_existed = Agent.exists?(code: "sku_plan_evaluation")
+    @rules = []
+    @rule = create_rule(frequency: "weekly")
     @diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
-    @diagnosis.events.create!(event_type: "stock_risk", severity: "warning", message: "Stock is low")
+    @diagnosis.events.create!(sub_agent: @rule, event_type: "stock_risk", severity: "warning", message: "Stock is low")
   end
 
   teardown do
@@ -17,6 +20,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     @sku.sku_operation_plans.delete_all
     @sku.planning_cycles.delete_all
     @sku.ai_diagnoses.destroy_all
+    @rules.each(&:delete)
     Message.where(conversation: Conversation.where(user: @user)).delete_all
     Conversation.where(user: @user).delete_all
     Agent.where(code: "sku_planner").delete_all unless @agent_existed
@@ -26,6 +30,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     Ec::Sku.with_deleted.where(id: @sku.id).delete_all
     UserRole.where(user_id: @user.id).delete_all
     User.where(id: @user.id).delete_all
+    travel_back
   end
 
   test "same-day rerun preserves the previous revision and makes it non-latest" do
@@ -55,8 +60,8 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   end
 
   test "planner context excludes info events and treats severity as supporting evidence" do
-    @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
-    @diagnosis.events.create!(event_type: "urgent_stock", severity: "critical", message: "Immediate action")
+    @diagnosis.events.create!(sub_agent: create_rule, event_type: "routine_check", severity: "info", message: "No action needed")
+    @diagnosis.events.create!(sub_agent: create_rule, event_type: "urgent_stock", severity: "critical", message: "Immediate action")
     captured = nil
     fake_runner = Object.new
     fake_runner.define_singleton_method(:ask) { |**args| captured = args; nil }
@@ -70,6 +75,63 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_includes captured.fetch(:question), "非 info 通用诊断事件"
     assert_includes captured.fetch(:question), "warning 和 critical 表示诊断紧迫程度，仅供经营判断参考"
     assert_includes captured.fetch(:question), "没有足够依据时不调用 save_sku_plan"
+  end
+
+  test "planner uses current weekly and daily rule events across diagnosis dates and accepts their references" do
+    @user.roles << Role.find_by!(code: "manager")
+    weekly = @diagnosis.events.sole
+    weekly.update!(details: { quantity: 0 })
+    date = Date.new(2026, 9, 30)
+    daily_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user,
+      created_at: Time.find_zone!("Asia/Shanghai").local(2026, 9, 30, 3))
+    daily = daily_diagnosis.events.create!(sub_agent: create_rule, event_type: "sales_drop",
+      severity: "warning", message: "Sales fell", simple_context: "Current sales evidence")
+    daily_diagnosis.events.create!(event_type: "legacy_joint", severity: "critical", message: "Old joint diagnosis")
+    daily_diagnosis.events.create!(scope: "advise", event_type: "advice", severity: "critical", message: "Old advice")
+    stale_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user,
+      created_at: Time.find_zone!("Asia/Shanghai").local(2026, 9, 27, 23, 59))
+    stale = stale_diagnosis.events.create!(sub_agent: create_rule, event_type: "stale_risk", severity: "critical", message: "Previous week")
+    future_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user,
+      created_at: Time.find_zone!("Asia/Shanghai").local(2026, 10, 1))
+    future_diagnosis.events.create!(sub_agent: create_rule, event_type: "future_risk", severity: "critical", message: "Future")
+    captured = nil
+    fake_runner = Object.new
+    fake_runner.define_singleton_method(:ask) { |**args| captured = args; nil }
+
+    ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, as_of_date: date,
+      runner_factory: ->(**) { fake_runner }).run
+
+    events = JSON.parse(captured.fetch(:data_summary))
+    assert_equal [ weekly.id, daily.id ], events.map { |event| event.fetch("id") }
+    assert_includes events.first.fetch("simple_context"), weekly.message
+    assert_includes events.first.fetch("simple_context"), '"quantity":0'
+    assert_equal "Current sales evidence", events.last.fetch("simple_context")
+    assert_nil weekly.reload.simple_context
+    assert_not @diagnosis.reload.is_latest?
+    enabled_for = Ec::SkuDiagnosisRule.method(:enabled_for)
+    rule_ids = [ @rule.id, daily.sub_agent_id ]
+    with_stubbed_singleton_method(Ec::SkuDiagnosisRule, :enabled_for, ->(on) { enabled_for.call(on).where(id: rule_ids) }) do
+      assert AITasks::SkuPlanningPipelineJob.diagnosis_complete?(as_of_date: date, sku_code: @sku.sku_code)
+    end
+
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku, plan_date: date)
+    arguments = { sku_code: @sku.sku_code, target: "price", operation: "maintain", **plan_details }
+    result = executor.call(id: "save", name: "save_sku_plan", arguments: arguments.merge(referer: [ weekly.id, daily.id ]))
+    assert result.dig(:result, :success)
+    assert_raises(RuntimeError) do
+      executor.call(id: "stale", name: "save_sku_plan", arguments: arguments.merge(referer: [ stale.id ]))
+    end
+  end
+
+  test "planner skips legacy joint diagnoses without a rule" do
+    @diagnosis.events.delete_all
+    @diagnosis.events.create!(event_type: "legacy_joint", severity: "warning", message: "Old joint diagnosis")
+
+    result = ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user,
+      runner_factory: ->(**) { flunk "Legacy joint diagnosis must not generate a new plan" }).run
+
+    assert_empty result
+    assert_equal 1, @diagnosis.events.count
   end
 
   test "planner sends the saved database prompt to the model" do
@@ -94,7 +156,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
 
   test "planner skips SKUs with only info events" do
     @diagnosis.events.delete_all
-    @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
+    @diagnosis.events.create!(sub_agent: @rule, event_type: "routine_check", severity: "info", message: "No action needed")
     existing = create_plan("Existing")
 
     result = ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user,
@@ -250,6 +312,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   test "planner executor preserves the requested planning date" do
     @user.roles << Role.find_by!(code: "manager")
     plan_date = Date.new(2026, 9, 28)
+    @diagnosis.update!(created_at: Time.find_zone!("Asia/Shanghai").local(2026, 9, 28, 3))
     executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku, plan_date: plan_date)
 
     result = executor.call(id: "backfill", name: "save_sku_plan", arguments: {
@@ -323,11 +386,11 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     @user.roles << Role.find_by!(code: "manager")
     executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
     first_event = @diagnosis.events.first
-    same_type_event = @diagnosis.events.create!(event_type: first_event.event_type, severity: "critical", message: "Same type, different event")
-    info_event = @diagnosis.events.create!(event_type: "routine_check", severity: "info", message: "No action needed")
+    same_type_event = @diagnosis.events.create!(sub_agent: create_rule, event_type: first_event.event_type, severity: "critical", message: "Same type, different event")
+    info_event = @diagnosis.events.create!(sub_agent: create_rule, event_type: "routine_check", severity: "info", message: "No action needed")
     other_sku = Ec::Sku.create!(sku_code: "OTHER-PLANNER-#{@token}", product_name: "Other planner SKU")
     other_diagnosis = Ec::GeneralDiagnosis.create!(sku: other_sku, submitted_by: @user)
-    other_event = other_diagnosis.events.create!(event_type: first_event.event_type, severity: "warning", message: "Other SKU event")
+    other_event = other_diagnosis.events.create!(sub_agent: @rule, event_type: first_event.event_type, severity: "warning", message: "Other SKU event")
     args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", **plan_details }
 
     [ [ first_event.event_type ], [ info_event.id ], [ other_event.id ], [ first_event.id, other_event.id ], [ 0 ] ].each do |referer|
@@ -351,7 +414,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     @user.roles << Role.find_by!(code: "manager")
     stale_event = @diagnosis.events.first
     latest_diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user)
-    latest_event = latest_diagnosis.events.create!(event_type: stale_event.event_type, severity: "warning", message: "Latest risk")
+    latest_event = latest_diagnosis.events.create!(sub_agent: @rule, event_type: stale_event.event_type, severity: "warning", message: "Latest risk")
     executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku)
     args = { sku_code: @sku.sku_code, target: "price", operation: "maintain", **plan_details }
 
@@ -364,6 +427,12 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   end
 
   private
+
+  def create_rule(frequency: "daily")
+    rule = Ec::SkuDiagnosisRule.create!(name: "Planner #{@token} #{@rules.size}", prompt: "Check the SKU", frequency: frequency)
+    @rules << rule
+    rule
+  end
 
   def historical_plan
     create_plan("Previous week", plan_date: Date.new(2026, 9, 21), created_at: Time.utc(2026, 9, 21))

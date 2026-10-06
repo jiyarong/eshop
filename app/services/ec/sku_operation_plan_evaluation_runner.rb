@@ -300,7 +300,7 @@ module Ec
             event_type: event.event_type,
             severity: event.severity,
             status: event.status,
-            simple_context: event.simple_context,
+            simple_context: event.effective_simple_context,
             message: event.message
           }
         end

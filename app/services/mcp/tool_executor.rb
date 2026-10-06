@@ -249,11 +249,10 @@ module Mcp
       referer = references.map { |id| Integer(id, exception: false) if id.is_a?(Integer) || id.is_a?(String) }.uniq
       return { error: "referer must contain diagnosis event IDs" } unless referer.all? { |id| id&.positive? }
 
-      latest_event_ids = Ec::AIDiagnosisEvent
-        .joins(:ai_diagnosis)
-        .where(
-          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name, is_latest: true }
-        )
+      latest_event_ids = Ec::AIDiagnosisEvent.for_planning(
+        sku_ids: sku.id,
+        as_of_date: @event_date || Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date
+      )
         .where.not(severity: "info")
         .where(id: referer)
         .pluck(:id)

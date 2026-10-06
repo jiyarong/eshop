@@ -64,18 +64,7 @@ module AITasks
         rules = Ec::SkuDiagnosisRule.enabled_for(date).to_a
         return true if rules.empty?
 
-        events = Ec::AIDiagnosisEvent
-          .joins(:ai_diagnosis)
-          .where(
-            is_latest: true,
-            ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name, sku_id: skus.map(&:id) }
-          )
-        zone = Time.find_zone!(ErpAI::SkuDiagnosisRunner::TIME_ZONE)
-        period_start = date.beginning_of_week(:monday)
-        from = zone.local(period_start.year, period_start.month, period_start.day)
-        to = zone.local(date.year, date.month, date.day) + 1.day
-        events = events.where(ec_ai_diagnosis: { created_at: from...to })
-          .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope != ?", "advise")
+        events = Ec::AIDiagnosisEvent.for_planning(sku_ids: skus.map(&:id), as_of_date: date)
         events = events.where("ec_ai_diagnosis_events.created_at >= ?", started_at) if started_at
         event_rule_ids_by_sku = events.pluck("ec_ai_diagnosis.sku_id", :sub_agent_id)
           .group_by(&:first)

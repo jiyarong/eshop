@@ -17,6 +17,23 @@ module Ec
     after_create :refresh_latest_for_sub_agent
     after_destroy :refresh_latest_for_sub_agent
 
+    def self.for_planning(sku_ids:, as_of_date:)
+      date = as_of_date.to_date
+      period_start = date.beginning_of_week(:monday)
+      zone = Time.find_zone!(Ec::SkuOperationPlan::TIME_ZONE)
+      from = zone.local(period_start.year, period_start.month, period_start.day)
+      to = zone.local(date.year, date.month, date.day) + 1.day
+
+      latest.joins(:ai_diagnosis)
+        .where(ec_ai_diagnosis: { sku_id: sku_ids, type: Ec::GeneralDiagnosis.sti_name, created_at: from...to })
+        .where.not(sub_agent_id: nil)
+        .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope != ?", "advise")
+    end
+
+    def effective_simple_context
+      simple_context.presence || [ message, details.presence&.to_json ].compact.join("\n\n")
+    end
+
     private
 
     def refresh_latest_for_sub_agent

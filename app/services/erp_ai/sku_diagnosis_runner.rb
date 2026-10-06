@@ -10,6 +10,7 @@ module ErpAI
     SUMMARY_CONTEXT_WEEKS = 4
     ADVICE_EVENT_SCOPE = "advise".freeze
     SIMPLE_CONTEXT_SYSTEM_PROMPT = <<~PROMPT.strip.freeze
+      simple_context 必须为非空字符串，至少填写支撑当前结论的最小证据；没有可用数据时，明确写出缺失的数据及判断限制，不得传空字符串。
       simple_context 的内容范围、格式和详略由当前诊断 Agent 自行决定。当前子规则 Prompt 对 simple_context 的要求优先于通用 Agent Prompt、调用提示词和工具字段说明；发生冲突时以当前子规则 Prompt 为准。
       子规则未明确要求时，只保留支撑当前诊断结论的最小相关证据。提供的上下文只是可用数据范围，不代表输出清单；不得为了信息完整或为 Planner 提供充分信息补充无关维度。
     PROMPT
@@ -36,13 +37,19 @@ module ErpAI
           return { tool_call_id: id, name: name, error: { code: "invalid_scope" } }
         end
 
-        if name == "save_sku_event" && (
-          Integer(args["sub_agent_id"], exception: false) != @rule&.id ||
-          %w[event_type message simple_context].any? { |key| args[key].blank? } ||
-          !%w[info warning critical].include?(args["severity"]) ||
-          (@expected_event_type.present? && args["event_type"] != @expected_event_type)
-        )
-          return { tool_call_id: id, name: name, error: { code: "invalid_scope" } }
+        if name == "save_sku_event"
+          if Integer(args["sub_agent_id"], exception: false) != @rule&.id ||
+            (@expected_event_type.present? && args["event_type"] != @expected_event_type)
+            return { tool_call_id: id, name: name, error: { code: "invalid_scope" } }
+          end
+
+          invalid_fields = %w[event_type message simple_context].each_with_object({}) do |key, fields|
+            fields[key.to_sym] = "must be a non-empty string" unless args[key].is_a?(String) && args[key].present?
+          end
+          invalid_fields[:severity] = "must be info, warning or critical" unless %w[info warning critical].include?(args["severity"])
+          if invalid_fields.any?
+            return { tool_call_id: id, name: name, error: { code: "invalid_arguments", fields: invalid_fields } }
+          end
         end
 
         if name == "create_sku_advise"
@@ -164,7 +171,7 @@ module ErpAI
         #{rule.prompt}
         #{listing_image_instruction}
 
-        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，simple_context 按当前子规则 Prompt 的要求填写；severity 使用 info、warning 或 critical 之一。不要处理其他 SKU。
+        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，simple_context 按当前子规则 Prompt 的要求填写非空的最小证据；severity 使用 info、warning 或 critical 之一。工具返回字段校验错误时，请修正对应字段并再次调用，只有保存成功才算完成。不要处理其他 SKU。
       PROMPT
       conversation = ErpAI::AgentRunner.new(
         agent: agent, user: user, client: client,
@@ -193,6 +200,7 @@ module ErpAI
       conversation
     rescue StandardError => e
       Rails.logger.error("SKU diagnosis failed for #{sku.sku_code}/#{rule.id}: #{e.class}: #{e.message}")
+      nil
     end
 
     def run_summary(agent, user, sku)

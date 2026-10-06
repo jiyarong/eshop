@@ -107,7 +107,9 @@ class Mcp::ServerTest < ActiveSupport::TestCase
     [ mcp_schema, erp_schema ].each do |schema|
       field = schema.fetch(:properties).fetch(:simple_context)
       assert_equal "string", field.fetch(:type)
+      assert_equal 1, field.fetch(:minLength)
       assert_includes schema.fetch(:required), "simple_context"
+      assert_includes field.fetch(:description), "非空"
       assert_includes field.fetch(:description), "诊断 Agent 自行决定"
       assert_includes field.fetch(:description), "当前子规则 Prompt"
       assert_not_includes field.fetch(:description), "使用 Markdown 格式"

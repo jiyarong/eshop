@@ -136,9 +136,9 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     previous_diagnosis = Ec::GeneralDiagnosis.create!(
       sku: @sku, submitted_by: @user, data: {}, created_at: @period_start + 1.day
     )
-    previous_diagnosis.events.create!(
+    previous_event = previous_diagnosis.events.create!(
       sub_agent: rule, event_type: "stock_risk", severity: "warning",
-      simple_context: "previous evidence", message: "Previous stock risk",
+      message: "Previous stock risk", details: { quantity: 0 },
       created_at: @period_start + 1.day
     )
     current_start = @period_start + 1.week
@@ -186,7 +186,9 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     diagnosis_context = payload.fetch("diagnosis_context")
     assert_equal current_start.iso8601, diagnosis_context.fetch("current_week").fetch("from")
     assert_equal @period_start.iso8601, diagnosis_context.fetch("previous_week").fetch("from")
-    assert_equal "previous evidence", diagnosis_context.dig("previous_week", "events", 0, "simple_context")
+    assert_includes diagnosis_context.dig("previous_week", "events", 0, "simple_context"), "Previous stock risk"
+    assert_includes diagnosis_context.dig("previous_week", "events", 0, "simple_context"), '"quantity":0'
+    assert_nil previous_event.reload.simple_context
     assert_equal "Previous stock risk", diagnosis_context.dig("previous_week", "events", 0, "message")
     assert_equal "current evidence", diagnosis_context.dig("current_week", "events", 0, "simple_context")
     assert_equal "Stock risk improved", diagnosis_context.dig("current_week", "events", 0, "message")

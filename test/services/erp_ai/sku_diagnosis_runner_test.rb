@@ -13,6 +13,7 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
       return { content: "Saved", tool_calls: [] } if requests.size.even?
 
       question = request.fetch(:messages).first.fetch(:content)
+      question = question.find { |part| part.fetch(:type) == "text" }.fetch(:text) if question.is_a?(Array)
       sku_code = question[/当前 SKU：([^\n]+)/, 1]
       advice = question.include?("运营执行的建议操作")
       tool_call = if advice
@@ -638,6 +639,66 @@ class ErpAI::SkuDiagnosisRunnerTest < ActiveSupport::TestCase
 
     assert_equal "invalid_scope", result.dig(:error, :code)
     assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
+  end
+
+  test "empty simple context reports the invalid field" do
+    executor = ErpAI::SkuDiagnosisRunner::ScopedToolExecutor.new(user: @user, date: Date.new(2026, 9, 15), sku: @sku, rule: @daily)
+    arguments = {
+      sku_code: @sku.sku_code, sub_agent_id: @daily.id,
+      event_type: "stock_risk", severity: "info", message: "No adjustment needed"
+    }
+
+    [ nil, "", "   " ].each do |context|
+      result = executor.call(id: "invalid-context", name: "save_sku_event", arguments: arguments.merge(simple_context: context))
+      assert_equal "invalid_arguments", result.dig(:error, :code)
+      assert_equal "must be a non-empty string", result.dig(:error, :fields, :simple_context)
+    end
+    assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
+  end
+
+  test "an unsaved event fails diagnosis even when logging returns true" do
+    client = SavingClient.new
+    client.define_singleton_method(:complete) do |request|
+      response = super(request)
+      Array(response[:tool_calls]).each { |call| call[:arguments][:simple_context] = "" }
+      response
+    end
+    original_error = Rails.logger.method(:error)
+    Rails.logger.define_singleton_method(:error) { |_| true }
+
+    error = assert_raises(ErpAI::SkuDiagnosisRunner::Failure) do
+      diagnosis_runner(date: Date.new(2026, 9, 15), client: client, rule_ids: [ @daily.id ]).run
+    end
+    assert_includes error.message, "#{@sku.sku_code}/#{@daily.id}"
+    assert_not Ec::GeneralDiagnosis.exists?(sku: @sku)
+  ensure
+    Rails.logger.define_singleton_method(:error, original_error) if original_error
+  end
+
+  test "the model can correct empty evidence and save an info event in the same conversation" do
+    requests = []
+    sku_code = @sku.sku_code
+    rule_id = @daily.id
+    client = Object.new
+    client.define_singleton_method(:complete) do |request|
+      requests << request
+      next { content: "Saved", tool_calls: [] } if requests.size == 3
+
+      { content: nil, tool_calls: [ { id: "save-#{requests.size}", name: "save_sku_event", arguments: {
+        sku_code: sku_code, sub_agent_id: rule_id, event_type: "grade_unchanged", severity: "info",
+        message: "No adjustment needed", simple_context: requests.size == 1 ? "" : "Profit remains below the upgrade threshold"
+      } } ] }
+    end
+
+    diagnosis_runner(date: Date.new(2026, 9, 15), client: client, rule_ids: [ @daily.id ]).run
+
+    assert_equal 3, requests.size
+    assert_includes requests.first.fetch(:system_prompt), "simple_context 必须为非空字符串"
+    assert_includes requests[1].fetch(:messages).last.fetch(:content), "invalid_arguments"
+    assert_includes requests[1].fetch(:messages).last.fetch(:content), "simple_context"
+    event = Ec::GeneralDiagnosis.find_by!(sku: @sku).events.sole
+    assert_equal "info", event.severity
+    assert_equal "Profit remains below the upgrade threshold", event.simple_context
   end
 
   test "scoped joint tool rejects event updates" do

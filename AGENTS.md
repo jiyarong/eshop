@@ -127,6 +127,8 @@ SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是�
 - 诊断事件的 `severity` 只能使用 `info`、`warning`、`critical`。`info` 事件是信息记录，不得作为 Planner 的计划依据；Planner 只读取当前 SKU 最新的非 `info` 通用诊断事件。
 - 建议动作事件使用 `scope: advise`，属于诊断输出，不要把它当作已执行的运营动作，也不要让 Planner 通过旧建议事件推断动作已完成。
 - 事件必须绑定当前 SKU、规则 `sub_agent_id` 和生成会话；保存或更新事件时保持“同一 SKU、同一规则的最新事件”语义。
+- 新诊断的 `simple_context` 必须包含非空的最小证据；数据不足时记录缺失事实和判断限制。字段校验失败须明确返回字段错误，诊断未成功保存时必须返回失败并触发诊断任务重试，不得仅记录日志后进入 Planner。
+- 旧事件的 `simple_context` 可为空，Planner 和 Evaluation 通过 `Ec::AIDiagnosisEvent#effective_simple_context` 使用原有 `message/details` 作为证据，不回写或补造历史数据。完整性检查、Planner 输入与 Plan 引用校验统一复用 `.for_planning(sku_ids:, as_of_date:)`，按上海时区本周期的子规则 latest 事件查询，不依赖父诊断的 `is_latest`；旧 `sub_agent_id=nil` 联合诊断保留历史展示，不作为新计划依据。
 
 ### Plan
 

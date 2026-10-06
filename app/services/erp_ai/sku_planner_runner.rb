@@ -89,14 +89,11 @@ module ErpAI
     end
 
     def diagnosis_skus
-      scope = Ec::Sku
-        .joins(ai_diagnoses: :events)
-        .where(
-          ec_ai_diagnosis: { type: Ec::GeneralDiagnosis.sti_name, is_latest: true }
-        )
-        .distinct
+      scope = Ec::Sku.all
       scope = scope.where(sku_code: @sku_code) if @sku_code.present?
-      scope.order(:sku_code).to_a
+      events = Ec::AIDiagnosisEvent.for_planning(sku_ids: scope.select(:id), as_of_date: planner_date)
+        .where.not(severity: "info")
+      scope.where(id: events.select("ec_ai_diagnosis.sku_id")).order(:sku_code).to_a
     end
 
     def run_sku(agent, user, sku)
@@ -111,7 +108,7 @@ module ErpAI
           id: event.id,
           severity: event.severity,
           event_type: event.event_type,
-          simple_context: event.simple_context,
+          simple_context: event.effective_simple_context,
           details: event.details,
           message: event.message,
           rule_name: event.sub_agent&.name
@@ -125,7 +122,7 @@ module ErpAI
         当前计划周期：#{planning_period_start.iso8601} 至 #{(planning_period_start + 6.days).iso8601}
         可用 Listing（scope_id 使用内部 id）：#{listings.to_json}
 
-        下方是该 SKU 最新的非 info 通用诊断事件。info 事件已排除；warning 和 critical 表示诊断紧迫程度，仅供经营判断参考。
+        下方是该 SKU 本周期各子规则最新的非 info 通用诊断事件。info 事件已排除；warning 和 critical 表示诊断紧迫程度，仅供经营判断参考。旧事件缺少 simple_context 时，使用其已有 message 和 details 作为证据，不得据此补造数据。
         以下是最近周期的历史 Plan / Evaluation Context。历史记录只用于识别已验证、无效、未执行或数据不足的方向，不得机械复制上一周期计划：
         #{historical_context.to_json}
         根据这些事件制定本周期值得执行的运营计划。只使用上方列出的 Listing 内部 id；没有足够依据时不调用 save_sku_plan。
@@ -176,13 +173,7 @@ module ErpAI
     end
 
     def latest_events_for(sku)
-      Ec::AIDiagnosisEvent
-        .joins(:ai_diagnosis)
-        .where(
-          ec_ai_diagnosis: { sku_id: sku.id, type: Ec::GeneralDiagnosis.sti_name, is_latest: true }
-        )
-        .where("ec_ai_diagnosis_events.is_latest = TRUE OR ec_ai_diagnosis_events.sub_agent_id IS NULL")
-        .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope != ?", "advise")
+      Ec::AIDiagnosisEvent.for_planning(sku_ids: sku.id, as_of_date: planner_date)
         .where.not(severity: "info")
         .includes(:sub_agent)
         .order(:position, :id)
