@@ -1960,7 +1960,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-marketing-state" do
       assert_select ".marketing-grade--a", "A"
       assert_select ".marketing-stage--grw", "GRW"
-      assert_select ".sku-marketing-state__strategy", "加速成长"
+      assert_select ".sku-marketing-state__strategy", count: 0
+      assert_select "a.sku-marketing-state[title=?]", "加速成长"
       assert_select "a[href=?][data-turbo-frame='erp_modal']",
                     new_erp_sku_marketing_state_path(@sku, return_to: "/reports/skus/#{@sku.sku_code}")
     end

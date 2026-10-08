@@ -3568,6 +3568,7 @@ en:
       inventory: "Inventory"
       status: "Status"
       events: "Diagnosis tags"
+      events_and_advice: "Diagnosis tags / AI advice"
       weekly_finance: "Last week finance"
       weekly_orders: "Last week orders"
       sales_funnel: "Sales funnel"

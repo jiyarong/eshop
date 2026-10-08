@@ -3780,6 +3780,7 @@ zh:
       distribution: "分仓"
       status: "状态"
       events: "诊断标签"
+      events_and_advice: "诊断标签 / AI 建议"
       weekly_finance: "上周财报"
       weekly_orders: "上周订单"
       sales_funnel: "销售漏斗"

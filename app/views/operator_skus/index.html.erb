@@ -60,8 +60,7 @@
         <thead>
           <tr>
             <th><%= t("operator_skus.columns.sku") %></th>
-            <th><%= t("operator_skus.columns.events") %></th>
-            <th><%= t("erp.ai_diagnosis_event_filter.advice_label") %></th>
+            <th><%= t("operator_skus.columns.events_and_advice") %></th>
             <%= render "shared/sortable_table_header", label: t("operator_skus.columns.weekly_finance"), sort_key: "weekly_profit", class_name: "numeric" %>
             <th><%= t("operator_skus.columns.sales_funnel") %></th>
             <%= render "shared/sortable_table_header", label: t("operator_skus.columns.inventory"), sort_key: "book_stock", class_name: "numeric" %>
@@ -85,18 +84,27 @@
                 </div>
               </td>
               <td>
-                <%= render "shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-diagnosis", only: %i[risk warning] %>
-              </td>
-              <td>
-                <% if plans.any? %>
-                  <div class="sku-ai-diagnosis-event-tag-groups">
-                    <div class="sku-ai-diagnosis-event-tags sku-ai-diagnosis-event-tags--advice">
-                      <%= render "shared/sku_operation_plan_tags", plans: plans, dom_id_prefix: "operator-sku-#{sku.id}-plan" %>
-                    </div>
+                <% diagnosis_tags = render("shared/sku_ai_diagnosis_event_tags", events: @ai_diagnosis_events_by_sku_id.fetch(sku.id, []), dom_id_prefix: "operator-sku-#{sku.id}-diagnosis", only: %i[risk warning]) %>
+                <div class="operator-sku-diagnosis-cell">
+                  <div class="operator-sku-diagnosis-cell__section">
+                    <% if diagnosis_tags.present? %>
+                      <%= diagnosis_tags %>
+                    <% else %>
+                      <span class="text-muted"><%= t("operator_skus.values.unavailable") %></span>
+                    <% end %>
                   </div>
-                <% else %>
-                  <div class="sku-ai-diagnosis-event-tags"><span class="text-muted"><%= t("operator_skus.values.unavailable") %></span></div>
-                <% end %>
+                  <div class="operator-sku-diagnosis-cell__section operator-sku-diagnosis-cell__section--advice">
+                    <% if plans.any? %>
+                      <div class="sku-ai-diagnosis-event-tag-groups">
+                        <div class="sku-ai-diagnosis-event-tags sku-ai-diagnosis-event-tags--advice">
+                          <%= render "shared/sku_operation_plan_tags", plans: plans, dom_id_prefix: "operator-sku-#{sku.id}-plan" %>
+                        </div>
+                      </div>
+                    <% else %>
+                      <div class="sku-ai-diagnosis-event-tags"><span class="text-muted"><%= t("operator_skus.values.unavailable") %></span></div>
+                    <% end %>
+                  </div>
+                </div>
               </td>
               <% finance = metrics.dig(:profit, :days_7) || {} %>
               <td class="numeric"><div class="operator-sku-pair operator-sku-finance-grid">
@@ -178,7 +186,7 @@
             </tr>
           <% end %>
           <% if @skus.empty? %>
-            <tr><td colspan="7" class="empty-state"><%= t("operator_skus.empty") %></td></tr>
+            <tr><td colspan="6" class="empty-state"><%= t("operator_skus.empty") %></td></tr>
           <% end %>
         </tbody>
       </table>

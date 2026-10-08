@@ -3516,6 +3516,7 @@ ru:
       inventory: "Запасы"
       status: "Статус"
       events: "Метки диагностики"
+      events_and_advice: "Метки диагностики / ИИ-рекомендации"
       weekly_finance: "Финансы за нед."
       weekly_orders: "Заказы за нед."
       sales_funnel: "Воронка продаж"

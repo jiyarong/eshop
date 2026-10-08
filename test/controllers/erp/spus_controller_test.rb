@@ -332,7 +332,8 @@ class Erp::SpusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sub-tbl tr.sku-row" do
       assert_select ".marketing-grade--a", "A"
       assert_select ".marketing-stage--grw", "GRW"
-      assert_select ".sku-marketing-state__strategy", "加速成长"
+      assert_select ".sku-marketing-state__strategy", count: 0
+      assert_select "a.sku-marketing-state[title=?]", "加速成长"
     end
   end
 

@@ -360,10 +360,15 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
       assert_equal "/operator_skus", links.first["href"]
       assert_equal "/reports/sales_funnel", links[1]["href"]
     end
-    [ "SKU", "诊断标签", "AI 建议", "上周财报", "销售漏斗", "库存", "分仓" ].each do |heading|
+    [ "SKU", "诊断标签 / AI 建议", "上周财报", "销售漏斗", "库存", "分仓" ].each do |heading|
       assert_select ".operator-sku-table thead th", text: heading
     end
     assert_select ".operator-sku-table thead th", { text: "上周订单", count: 0 }
+    assert_select ".operator-sku-table thead th", count: 6
+    assert_select ".operator-sku-row .operator-sku-diagnosis-cell > .operator-sku-diagnosis-cell__section", count: 2
+    assert_select ".operator-sku-row .operator-sku-diagnosis-cell__section--advice"
+    assert_select ".operator-sku-row .operator-sku-responsible > span", count: 2
+    assert_select ".operator-sku-row .sku-marketing-state__strategy", count: 0
     assert_select ".operator-sku-row .code-text.sub", text: @sku.sku_code
     assert_select ".sku-ai-diagnosis-event-tags", text: "-"
     assert_select ".operator-sku-finance-grid > span", minimum: 6
