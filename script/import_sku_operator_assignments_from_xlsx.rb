@@ -1,6 +1,6 @@
-# 用法: bin/rails runner script/import_sku_operator_assignments_from_xlsx.rb <xlsx路径> [--operators=宋慧莹,宋韩] [--apply]
+# 用法: bin/rails runner script/import_sku_operator_assignments_from_xlsx.rb <xlsx路径> [--operators=宋慧莹,宋韩] [--sku-prefix=BB] [--apply]
 # 直接读取产品分配表(表头需含 Operator、SKU 两列),把指定运营人员对应的 SKU 写入 ec_sku_operator_assignments。
-# 默认运营人员为「宋慧莹」「宋韩」。默认 dry-run,加 --apply 才写库;可重复执行。
+# 默认运营人员为「宋慧莹」「宋韩」;--sku-prefix 只处理指定前缀(忽略大小写)的 SKU。默认 dry-run,加 --apply 才写库;可重复执行。
 require "zip"
 require "nokogiri"
 
@@ -9,6 +9,8 @@ abort("文件不存在: #{path}") unless File.file?(path)
 apply = ARGV.include?("--apply")
 operators_arg = ARGV.find { |a| a.start_with?("--operators=") }
 operator_names = operators_arg ? operators_arg.dup.force_encoding("UTF-8").delete_prefix("--operators=").split(",").map(&:strip).reject(&:blank?) : %w[宋慧莹 宋韩]
+prefix_arg = ARGV.find { |a| a.start_with?("--sku-prefix=") }
+sku_prefix = prefix_arg&.dup&.force_encoding("UTF-8")&.delete_prefix("--sku-prefix=")&.strip&.downcase
 
 def parse_xml(content) = Nokogiri::XML(content).tap(&:remove_namespaces!)
 
@@ -54,7 +56,9 @@ missing_users = operator_names - users.keys
 abort("找不到用户: #{missing_users.join(', ')}") if missing_users.any?
 
 sheet_pairs = read_sheet_rows(path).filter_map do |row|
-  [row["sku"], row["operator"]] if operator_names.include?(row["operator"]) && row["sku"].present?
+  next unless operator_names.include?(row["operator"]) && row["sku"].present?
+  next if sku_prefix.present? && !row["sku"].downcase.start_with?(sku_prefix)
+  [row["sku"], row["operator"]]
 end
 
 # SKU 编码优先精确匹配;精确匹配不到时忽略大小写匹配,并统一为系统中的 sku_code
@@ -95,5 +99,5 @@ Ec::SkuOperatorAssignment.transaction do
   end
 end
 
-puts "#{apply ? '已写入' : 'DRY-RUN'}: 运营 #{operator_names.join('/')}, 表内 #{pairs.size} 个 SKU, 新增 #{created}, 变更 #{updated}, 无变化 #{unchanged}"
+puts "#{apply ? '已写入' : 'DRY-RUN'}: 运营 #{operator_names.join('/')}#{" (前缀 #{sku_prefix})" if sku_prefix.present?}, 表内 #{pairs.size} 个 SKU, 新增 #{created}, 变更 #{updated}, 无变化 #{unchanged}"
 puts "系统中不存在的 SKU (#{not_found.size}): #{not_found.join(', ')}" if not_found.any?
