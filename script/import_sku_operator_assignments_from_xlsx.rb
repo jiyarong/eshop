@@ -53,15 +53,27 @@ users = User.where(name: operator_names).index_by(&:name)
 missing_users = operator_names - users.keys
 abort("找不到用户: #{missing_users.join(', ')}") if missing_users.any?
 
-pairs = read_sheet_rows(path).filter_map do |row|
+sheet_pairs = read_sheet_rows(path).filter_map do |row|
   [row["sku"], row["operator"]] if operator_names.include?(row["operator"]) && row["sku"].present?
 end
+
+# SKU 编码优先精确匹配;精确匹配不到时忽略大小写匹配,并统一为系统中的 sku_code
+candidates = Ec::Sku.where("LOWER(sku_code) IN (?)", sheet_pairs.map { |s, _| s.downcase }.uniq)
+                    .pluck(:sku_code).group_by(&:downcase)
+resolve_sku_code = lambda do |sheet_sku|
+  matches = candidates.fetch(sheet_sku.downcase, [])
+  next sheet_sku if matches.include?(sheet_sku)
+  abort("SKU #{sheet_sku} 忽略大小写后对应多个系统 SKU: #{matches.join(', ')}") if matches.size > 1
+  matches.first
+end
+resolved = sheet_pairs.map { |s, op| [resolve_sku_code.call(s), op, s] }
+not_found = resolved.select { |code, _, _| code.nil? }.map(&:last).uniq
+pairs = resolved.filter_map { |code, op, _| [code, op] if code }
 dups = pairs.group_by(&:first).select { |_, v| v.map(&:last).uniq.size > 1 }
 abort("SKU 对应多个运营: #{dups.keys.join(', ')}") if dups.any?
 pairs = pairs.uniq
 
-existing_skus = Ec::Sku.where(sku_code: pairs.map(&:first)).pluck(:sku_code).to_set
-not_found = pairs.map(&:first).reject { |s| existing_skus.include?(s) }
+existing_skus = pairs.map(&:first).to_set
 current = Ec::SkuOperatorAssignment.where(sku_code: pairs.map(&:first)).index_by(&:sku_code)
 
 created = updated = unchanged = 0
