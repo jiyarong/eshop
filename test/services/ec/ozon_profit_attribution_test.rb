@@ -17,12 +17,63 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
   end
 
   teardown do
+    RawOzon::PerformanceSkuSpend.where(account_id: @ozon_account.id).delete_all if @ozon_account
     RawOzon::PostingItem.where(account_id: @ozon_account.id).delete_all if @ozon_account
     Ec::SkuProduct.joins(:store).where(ec_stores: { id: @store_ids }).delete_all if @store_ids.any?
     Ec::Store.where(id: @store_ids).delete_all if @store_ids.any?
     Ec::SkuCost.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
     Ec::Sku.with_deleted.where(sku_code: @sku_codes).delete_all if @sku_codes.any?
     @ozon_account&.destroy
+  end
+
+  test "resolve_ad_cost_periods uses cached natural weeks when page queries disable syncing" do
+    first_from = Date.new(2026, 6, 22)
+    first_to = Date.new(2026, 6, 28)
+    second_to = Date.new(2026, 7, 5)
+    RawOzon::PerformanceSkuSpend.create!(
+      account: @ozon_account,
+      period_from: first_from,
+      period_to: first_to,
+      ad_type: "ppc",
+      ozon_sku_id: rand(10_000_000..99_999_999),
+      spend: 100,
+      synced_at: Time.current
+    )
+
+    service = Ec::OzonProfitAttribution.new(
+      account_id: @ozon_account.id,
+      from_date: first_from,
+      to_date: second_to,
+      rate_cny_rub: 10,
+      sync_missing_ad_costs: false
+    )
+
+    assert_equal [[first_from, first_to]], service.send(:resolve_ad_cost_periods, first_from, second_to)
+  end
+
+  test "resolve_ad_cost_periods keeps cache miss semantics when syncing is enabled" do
+    first_from = Date.new(2026, 6, 22)
+    first_to = Date.new(2026, 6, 28)
+    second_to = Date.new(2026, 7, 5)
+    RawOzon::PerformanceSkuSpend.create!(
+      account: @ozon_account,
+      period_from: first_from,
+      period_to: first_to,
+      ad_type: "ppc",
+      ozon_sku_id: rand(10_000_000..99_999_999),
+      spend: 100,
+      synced_at: Time.current
+    )
+
+    service = Ec::OzonProfitAttribution.new(
+      account_id: @ozon_account.id,
+      from_date: first_from,
+      to_date: second_to,
+      rate_cny_rub: 10,
+      sync_missing_ad_costs: true
+    )
+
+    assert_nil service.send(:resolve_ad_cost_periods, first_from, second_to)
   end
 
   test "compute_counts keeps negative net sales count" do
@@ -40,6 +91,38 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
     service.send(:compute_counts)
 
     assert_equal(-1, service.instance_variable_get(:@counts).dig(123, :net_sales_count))
+  end
+
+  test "compute_counts uses posting item quantity for net sales and destination units" do
+    ozon_sku = rand(10_000_000..99_999_999)
+    posting_number = "posting-quantity-#{@token}"
+    RawOzon::PostingItem.create!(
+      account: @ozon_account,
+      posting_number: posting_number,
+      posting_type: "fbo",
+      ozon_sku: ozon_sku,
+      quantity: 3,
+      raw_json: {}
+    )
+    service = Ec::OzonProfitAttribution.new(
+      account_id: @ozon_account.id,
+      from_date: Date.new(2026, 6, 29),
+      to_date: Date.new(2026, 7, 5),
+      rate_cny_rub: 10.0,
+      sync_missing_ad_costs: false
+    )
+    service.instance_variable_set(:@rows, [
+      AccrualRow.new(0, ozon_sku, posting_number, 300.0)
+    ])
+    service.instance_variable_set(:@destinations, { posting_number => false })
+
+    service.send(:load_posting_quantities)
+    service.send(:compute_counts)
+    service.send(:split_by_destination)
+
+    assert_equal 1, service.instance_variable_get(:@counts).dig(ozon_sku, :order_count)
+    assert_equal 3, service.instance_variable_get(:@counts).dig(ozon_sku, :net_sales_count)
+    assert_equal 3, service.instance_variable_get(:@dest_split).dig(ozon_sku, :export_count)
   end
 
   test "apply_profit_chain reverses goods cost for negative net sales" do

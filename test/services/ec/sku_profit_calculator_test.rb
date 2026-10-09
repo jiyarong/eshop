@@ -164,7 +164,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: version_id).delete_all if version_id
   end
 
-  test "resolves Ozon Belarus fee base from the Russian scenario price" do
+  test "keeps the Ozon Belarus commission base independent from the Russian scenario price" do
     version = @sku.profit_versions.build(name: "Ozon market prices", status: "draft", effective_from: Date.new(2026, 3, 1))
     version.contexts.build(
       platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
@@ -174,37 +174,34 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
       platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
       purchase_price_cny: 270, freight_cny: 22.5, customs_misc_cny: 2.81,
       duty_rate: 0.1, import_vat_rate: 0.2,
-      price_rub: 10_200, exchange_rate_rub_cny: 13,
+      price_rub: 10_200, rf_price_rub: 12_500, exchange_rate_rub_cny: 13,
       outbound_logistics_rub: 245, return_logistics_rub: 245,
       warehouse_operation_rub: 25, commission_rate: 0.075,
       return_rate: 0.1, acquiring_rate: 0.02, advertising_rate: 0.05,
       sales_vat_rate: 0.2
     )
 
-    Ec::SkuProfitVersionPriceResolver.apply!(version)
     result = Ec::SkuProfitCalculator.call_for_context(belarus)
 
     assert_empty result[:errors].to_a
-    assert_in_delta 10_800.to_d / 13, result.dig(:intermediate, :rf_revenue_cny), 0.000001
-    assert_equal 10_800.to_d, belarus.rf_price_rub
+    assert_in_delta 12_500.to_d / 13, result.dig(:intermediate, :rf_revenue_cny), 0.000001
+    assert_equal 12_500.to_d, belarus.rf_price_rub
   end
 
-  test "falls back to the current Ozon Belarus price when the Russian scenario is empty" do
-    version = @sku.profit_versions.build(name: "Ozon Belarus fallback", status: "draft", effective_from: Date.new(2026, 3, 1))
-    version.contexts.build(
-      platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general"
-    )
-    belarus = version.contexts.build(
-      platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
-      purchase_price_cny: 270, price_rub: 8_910.96, exchange_rate_rub_cny: 13,
-      outbound_logistics_rub: 245, return_logistics_rub: 245,
-      warehouse_operation_rub: 25, commission_rate: 0.075
-    )
+  test "requires the Ozon commission base price in both markets" do
+    version = @sku.profit_versions.build(name: "Ozon price validation", status: "draft", effective_from: Date.new(2026, 3, 1))
 
-    result = Ec::SkuProfitCalculator.call_for_context(belarus)
+    %w[ru by].each do |market|
+      context = version.contexts.build(
+        platform: "ozon", market:, delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
+        purchase_price_cny: 270, price_rub: 8_910.96, exchange_rate_rub_cny: 13,
+        outbound_logistics_rub: 245, return_logistics_rub: 245,
+        warehouse_operation_rub: 25, commission_rate: 0.075
+      )
 
-    assert_empty result[:errors].to_a
-    assert_includes result[:warnings], "rf_price_fallback_to_market_price"
-    assert_equal belarus.price_rub, Ec::SkuProfitVersionPriceResolver.price_for(belarus)
+      result = Ec::SkuProfitCalculator.call_for_context(context)
+
+      assert_includes result[:errors], "missing_rf_price_rub"
+    end
   end
 end

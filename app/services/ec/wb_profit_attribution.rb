@@ -263,11 +263,13 @@ module Ec
         [week_from, week_from + 6]
       end
 
-      all_present = week_pairs.all? do |week_from, week_to|
-        ad_settled_fee_scope(week_from, week_to).exists?
-      end
+      cached_pairs = RawWb::AdSettledFee
+        .where(account_id: @account_id, period_from: week_pairs.map(&:first), period_to: week_pairs.map(&:last))
+        .distinct
+        .pluck(:period_from, :period_to)
+        .to_set
 
-      all_present ? week_pairs : nil
+      week_pairs.select { |pair| cached_pairs.include?(pair) }.presence
     end
 
     def multi_week_range?

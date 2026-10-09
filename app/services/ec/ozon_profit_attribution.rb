@@ -45,6 +45,7 @@ module Ec
     def call
       load_rows
       load_sku_mappings
+      load_posting_quantities
       load_ad_costs
       load_destinations
       load_cost_data
@@ -95,6 +96,18 @@ module Ec
           import_vat_cny: cost.import_vat_cny.to_f,
         }
       end
+    end
+
+    def load_posting_quantities
+      posting_numbers = @rows.filter_map(&:posting_number).uniq
+      ozon_sku_ids = @rows.filter_map(&:ozon_sku_id).uniq
+      @posting_quantities = RawOzon::PostingItem
+        .where(account_id: @account_id, posting_number: posting_numbers, ozon_sku: ozon_sku_ids)
+        .group(:ozon_sku, :posting_number)
+        .sum(:quantity)
+        .each_with_object({}) do |((ozon_sku, posting_number), quantity), quantities|
+          quantities[[ ozon_sku_key(ozon_sku), posting_number ]] = quantity.to_i
+        end
     end
 
     def ozon_sku_key(value)
@@ -155,12 +168,15 @@ module Ec
       days = (to_date - from_date).to_i + 1
       if days >= 14 && (days % 7).zero? && from_date.cwday == 1 && to_date.cwday == 7
         week_pairs = (days / 7).times.map { |i| [from_date + i * 7, from_date + i * 7 + 6] }
-        all_present = week_pairs.all? do |wf, wt|
-          RawOzon::PerformanceSkuSpend
-            .where(account_id: @account_id, period_from: wf, period_to: wt)
-            .exists?
-        end
-        return week_pairs if all_present
+        cached_pairs = RawOzon::PerformanceSkuSpend
+          .where(account_id: @account_id, period_from: week_pairs.map(&:first), period_to: week_pairs.map(&:last))
+          .distinct
+          .pluck(:period_from, :period_to)
+          .to_set
+        available_pairs = week_pairs.select { |pair| cached_pairs.include?(pair) }
+
+        return week_pairs if available_pairs.size == week_pairs.size
+        return available_pairs if available_pairs.any? && !@sync_missing_ad_costs
       end
 
       nil
@@ -256,8 +272,8 @@ module Ec
     end
 
     # ── counting logic ───────────────────────────────────────────────────────────
-    # Key rule: count by posting_number net SaleRevenue, NOT by row count.
-    # net > 0  → order + sale; net < 0 → return; net == 0 → order + return (no sale)
+    # Key rule: determine direction from posting_number net SaleRevenue, then use the
+    # posting item's quantity for net sales. Missing posting details fall back to 1.
     def compute_counts
       # posting_number net per SKU
       posting_net = Hash.new { |h, k| h[k] = Hash.new(0.0) }
@@ -284,11 +300,13 @@ module Ec
           end
         end
 
+        sales_quantity = sales_pns.sum { |posting_number| posting_quantity(sku, posting_number) }
+        return_quantity = return_pns.sum { |posting_number| posting_quantity(sku, posting_number) }
         @counts[sku] = {
           order_count:     order_pns.size,
           return_count:    return_pns.size,
-          net_sales_count: order_pns.size - return_pns.size,
-          sales_postings:  sales_pns,
+          net_sales_count: sales_quantity - return_quantity,
+          sales_postings:  sales_pns
         }
       end
     end
@@ -322,18 +340,24 @@ module Ec
           next if net == 0
           is_by = @destinations[pn]
           ds = @dest_split[sku]
+          quantity = posting_quantity(sku, pn)
           if net > 0
             if is_by
-              ds[:blr_count] += 1
+              ds[:blr_count] += quantity
               ds[:blr_sale]  += net
             else
-              ds[:export_count] += 1
+              ds[:export_count] += quantity
             end
           else
-            is_by ? ds[:blr_count] -= 1 : ds[:export_count] -= 1
+            is_by ? ds[:blr_count] -= quantity : ds[:export_count] -= quantity
           end
         end
       end
+    end
+
+    def posting_quantity(ozon_sku, posting_number)
+      quantity = @posting_quantities&.fetch([ ozon_sku_key(ozon_sku), posting_number ], nil).to_i
+      quantity.positive? ? quantity : 1
     end
 
     # ── profit chain ──────────────────────────────────────────────────────────────

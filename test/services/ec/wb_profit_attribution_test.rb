@@ -143,7 +143,7 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     assert_equal [[first_from, first_to], [second_from, second_to]], service.send(:resolve_ad_fee_periods)
   end
 
-  test "resolve_ad_fee_periods returns nil when a natural week is missing" do
+  test "resolve_ad_fee_periods returns cached natural weeks when another week is missing" do
     first_from = Date.new(2026, 6, 22)
     first_to = Date.new(2026, 6, 28)
     second_to = Date.new(2026, 7, 5)
@@ -152,7 +152,7 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
 
     service = build_service(from_date: first_from, to_date: second_to)
 
-    assert_nil service.send(:resolve_ad_fee_periods)
+    assert_equal [[first_from, first_to]], service.send(:resolve_ad_fee_periods)
   end
 
   test "load_ad_costs merges exact weekly fees and ignores overlapping partial cache" do

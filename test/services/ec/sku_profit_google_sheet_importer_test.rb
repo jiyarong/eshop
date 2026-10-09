@@ -115,7 +115,9 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
     assert_equal 6, version.contexts.size
     assert_equal 1_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general").price_rub
     assert_equal 2_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small").price_rub
-    assert_equal 3_000.to_d, version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main").price_rub
+    ozon_ru = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main")
+    assert_equal 3_000.to_d, ozon_ru.price_rub
+    assert_equal 3_000.to_d, ozon_ru.rf_price_rub
     assert_equal 4_000.to_d, version.context_for(platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main").price_rub
     assert_equal 4, version.contexts.count { |context| context.calculation_status == "valid" }
     assert_equal 2, version.contexts.count { |context| context.calculation_status == "incomplete" }

@@ -5,12 +5,7 @@ module Ec
     class << self
       def call(sku:, platform:, parameter_context:, inputs:, effective_on: Date.current)
         normalized_inputs = inputs.to_h.stringify_keys
-        normalized_context = parameter_context.to_h.stringify_keys
-        fallback_reference_price = normalized_context["market"].to_s.downcase == "by" &&
-          normalized_inputs["rf_price_rub"].blank? && normalized_inputs["price_rub"].present?
-        normalized_inputs["rf_price_rub"] = normalized_inputs["price_rub"] if fallback_reference_price
-
-        result = ProfitCalculator.call(
+        ProfitCalculator.call(
           platform: platform,
           parameter_context: parameter_context,
           inputs: initial_inputs(
@@ -20,29 +15,17 @@ module Ec
             effective_on: effective_on
           ).merge(normalized_inputs)
         )
-        add_reference_price_warning(result) if fallback_reference_price
-        result
       end
 
       def call_for_context(context, overrides: {})
         parameter_context = context.attributes.slice("market", "delivery_mode", "warehouse_region", "company_type")
-        resolved_overrides = overrides.to_h.stringify_keys
-        if SkuProfitVersionPriceResolver.belarus_ozon_context?(context)
-          resolved_overrides["rf_price_rub"] = SkuProfitVersionPriceResolver.price_for(context)
-        end
-        result = ProfitCalculator.call(
+        ProfitCalculator.call(
           platform: context.platform,
           parameter_context: parameter_context,
           inputs: default_inputs(platform: context.platform, parameter_context: parameter_context)
             .merge(context.calculation_inputs)
-            .merge(resolved_overrides)
+            .merge(overrides.to_h.stringify_keys)
         )
-        add_reference_price_warning(result) if SkuProfitVersionPriceResolver.fallback_to_market_price?(context)
-        result
-      end
-
-      def add_reference_price_warning(result)
-        result[:warnings] = Array(result[:warnings]).push("rf_price_fallback_to_market_price").uniq
       end
 
       def initial_inputs(sku:, platform:, parameter_context:, effective_on: Date.current)

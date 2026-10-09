@@ -1,10 +1,9 @@
 module Ec
   module ProfitCalculators
     class Ozon < Base
-      REQUIRED = %w[purchase_price_cny price_rub exchange_rate_rub_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub commission_rate].freeze
+      REQUIRED = %w[purchase_price_cny rf_price_rub price_rub exchange_rate_rub_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub commission_rate].freeze
       def call
         required = REQUIRED.dup
-        required << "rf_price_rub" if market == "by"
         errors = validation_errors(required: required, dimensions: %w[length_cm width_cm height_cm])
         errors << "unsupported_market" unless market.in?(%w[ru by])
         errors << "unsupported_delivery_mode" unless @context.fetch("delivery_mode", "").to_s.downcase == "fbo"
@@ -13,8 +12,10 @@ module Ec
         end
         return ProfitCalculator.error(errors.first).merge(errors: errors) if errors.any?
         exchange = decimal("exchange_rate_rub_cny")
-        revenue = decimal("price_rub") / exchange
-        rf_revenue = (market == "by" ? decimal("rf_price_rub") : decimal("price_rub")) / exchange
+        rf_revenue = decimal("rf_price_rub") / exchange
+        # The seller/list price is the economic revenue and the target-margin
+        # basis. Buyer-paid price is only used to audit the Belarus subsidy.
+        revenue = rf_revenue
         purchase = decimal("purchase_price_cny")
         volume = if %w[length_cm width_cm height_cm].all? { |key| numeric?(key) }
           decimal("length_cm") * decimal("width_cm") * decimal("height_cm") / 1000
@@ -34,10 +35,15 @@ module Ec
         warehouse = decimal("warehouse_operation_rub")
         warehouse_surcharge = warehouse * 2 * warehouse_rate
         logistics_rub = decimal("outbound_logistics_rub") + return_amortized + warehouse + warehouse_surcharge
+        sales_vat_rate = value_or_default("sales_vat_rate", "0.2")
         sales_tax = if market == "by"
-          revenue * value_or_default("sales_vat_rate", "0.2") / (1 + value_or_default("sales_vat_rate", "0.2")) - import_vat
+          revenue * sales_vat_rate / (1 + sales_vat_rate) - import_vat
         else
           revenue * value_or_default("tax_rate", "0")
+        end
+        customer_paid_ex_vat_rub = decimal("price_rub") / (1 + sales_vat_rate) if market == "by"
+        platform_subsidy_rub = if market == "by"
+          decimal("rf_price_rub") * (1 - decimal("commission_rate")) - customer_paid_ex_vat_rub
         end
         import_vat_cost = market == "by" ? import_vat : import_vat * value_or_default("ozon_import_vat_cost_rate", "0")
         breakdown = {
@@ -47,7 +53,7 @@ module Ec
           logistics: (logistics_rub - return_amortized) / exchange,
           returns: return_amortized / exchange,
           storage: value_or_default("storage_cny", "0"),
-          commission: revenue * decimal("commission_rate"),
+          commission: rf_revenue * decimal("commission_rate"),
           acquiring: rf_revenue * value_or_default("acquiring_rate", "0.02"),
           advertising: rf_revenue * value_or_default("advertising_rate", "0") + value_or_default("advertising_fixed_rub", "0") / exchange,
           tax: sales_tax,
@@ -60,7 +66,11 @@ module Ec
             return_amortization_factor: return_amortization_factor,
             return_amortized_rub: return_amortized,
             warehouse_surcharge_rub: warehouse_surcharge, platform_logistics_rub: logistics_rub,
-            platform_logistics_cny: logistics_rub / exchange, rf_revenue_cny: rf_revenue })
+            platform_logistics_cny: logistics_rub / exchange, rf_revenue_cny: rf_revenue,
+            commission_base_rub: decimal("rf_price_rub"),
+            commission_base_cny: rf_revenue,
+            customer_paid_ex_vat_rub: customer_paid_ex_vat_rub,
+            platform_subsidy_rub: platform_subsidy_rub })
       end
       private
       def market = @context.fetch("market", "ru").to_s.downcase

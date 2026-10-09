@@ -32,7 +32,7 @@ module SkuProfitPredictionHelper
   ].freeze
 
   PROFIT_OZON_ONLY_COLUMNS = %i[
-    rf_price_rub outbound_logistics_rub return_logistics_rub
+    rf_price_rub
     warehouse_operation_rub cross_docking_cny
   ].freeze
 
@@ -55,20 +55,21 @@ module SkuProfitPredictionHelper
     [ :logistics_inputs, [
       [ :input, :storage_cny ],
       [ :input, :cross_docking_cny ],
-      [ :input, :outbound_logistics_rub ],
-      [ :input, :return_logistics_rub ],
-      [ :input, :warehouse_operation_rub ],
       [ :input, :logistics_coeff ],
+      [ :input, :wb_fixed_return_base_rub ],
+      [ :input, :warehouse_operation_rub ],
+      [ :input, :outbound_logistics_rub ],
       [ :input, :return_rate ],
       [ :input, :logistics_tax_rate ],
       [ :input, :wb_logistics_base_rub ],
       [ :input, :wb_logistics_liter_rub ],
-      [ :input, :wb_fixed_return_base_rub ],
+      [ :input, :return_logistics_rub ],
       [ :input, :fbo_delivery_cny ],
       [ :result, :logistics_cny ],
       [ :result, :returns_cny ]
     ] ],
     [ :commercial_inputs, [
+      [ :input, :rf_price_rub ],
       [ :input, :price_rub ],
       [ :input, :exchange_rate_rub_cny ],
       [ :result, :revenue_cny ],
@@ -192,7 +193,7 @@ module SkuProfitPredictionHelper
   def wb_profit_input_applicable?(context, field)
     common = %i[
       logistics_coeff return_rate wb_logistics_base_rub wb_logistics_liter_rub fbo_delivery_cny storage_cny
-      damage_rate misc_cny
+      damage_rate misc_cny outbound_logistics_rub return_logistics_rub
     ]
     return true if common.include?(field)
     return %i[wb_fixed_return_base_rub sales_vat_rate].include?(field) if context.company_type == "general"
@@ -202,10 +203,10 @@ module SkuProfitPredictionHelper
   end
 
   def ozon_profit_input_applicable?(context, field)
-    common = %i[return_rate storage_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub]
+    common = %i[rf_price_rub return_rate storage_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub]
     return true if common.include?(field)
     return field == :cross_docking_cny if context.market == "ru"
-    return %i[rf_price_rub sales_vat_rate].include?(field) if context.market == "by"
+    return field == :sales_vat_rate if context.market == "by"
 
     false
   end

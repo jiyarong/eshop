@@ -541,6 +541,7 @@ module Ec
       by_total_cost_formula = source_formula(source, columns.fetch(:by_total_cost))
       ru_inputs = shared.merge(
         price_rub: number(row[columns.fetch(:ru_price)], :price_rub),
+        rf_price_rub: number(row[columns.fetch(:ru_price)], :rf_price_rub),
         **ozon_logistics_inputs(source, total_cost_formula: ru_total_cost_formula),
         cross_docking_cny: formula_references_column?(ru_total_cost_formula, "P") ? number(row[15], :cross_docking_cny) : nil,
         storage_cny: formula_references_column?(ru_total_cost_formula, "O") ? number(row[14], :storage_cny) : nil,

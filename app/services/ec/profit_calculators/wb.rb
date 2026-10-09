@@ -2,10 +2,12 @@ module Ec
   module ProfitCalculators
     class Wb < Base
       COMPANY_TYPES = %w[general small].freeze
-      REQUIRED = %w[purchase_price_cny price_rub exchange_rate_rub_cny length_cm width_cm height_cm logistics_coeff commission_rate].freeze
+      REQUIRED = %w[purchase_price_cny price_rub exchange_rate_rub_cny length_cm width_cm height_cm commission_rate].freeze
 
       def call
-        errors = validation_errors(required: REQUIRED, dimensions: %w[length_cm width_cm height_cm])
+        required = REQUIRED.dup
+        required << "logistics_coeff" unless present?("outbound_logistics_rub") || present?("wb_logistics_override_cny")
+        errors = validation_errors(required:, dimensions: %w[length_cm width_cm height_cm])
         errors << "unsupported_delivery_mode" unless @context.fetch("delivery_mode", "").to_s.downcase.in?(%w[fbo fbs])
         errors << "unsupported_company_type" unless company_type.in?(COMPANY_TYPES)
         return ProfitCalculator.error(errors.first).merge(errors: errors) if errors.any?
@@ -21,10 +23,22 @@ module Ec
         base_logistics_rub = base_logistics_fee_rub + (billed_volume - 1) * logistics_liter_fee_rub
         exchange = decimal("exchange_rate_rub_cny")
         revenue = decimal("price_rub") / exchange
-        logistics = present?("wb_logistics_override_cny") ? decimal("wb_logistics_override_cny") : base_logistics_rub * decimal("logistics_coeff") / exchange
+        outbound_logistics_rub = decimal("outbound_logistics_rub") if present?("outbound_logistics_rub")
+        logistics = if outbound_logistics_rub
+          outbound_logistics_rub / exchange
+        elsif present?("wb_logistics_override_cny")
+          decimal("wb_logistics_override_cny")
+        else
+          base_logistics_rub * decimal("logistics_coeff") / exchange
+        end
         return_rate = value_or_default("return_rate", "0.1")
         returns = logistics * return_rate / (1 - return_rate)
-        fixed_return = value_or_default("wb_fixed_return_base_rub", "50") / exchange * return_rate / (1 - return_rate)
+        return_logistics_rub = decimal("return_logistics_rub") if present?("return_logistics_rub")
+        fixed_return = if return_logistics_rub
+          return_logistics_rub / exchange * return_rate / (1 - return_rate)
+        else
+          value_or_default("wb_fixed_return_base_rub", "50") / exchange * return_rate / (1 - return_rate)
+        end
         damage = (goods + import_vat + duty) * value_or_default("damage_rate", "0")
         sales_tax = if general_company?
           vat_rate = value_or_default("sales_vat_rate", "0.2")
@@ -49,6 +63,7 @@ module Ec
         result(revenue: revenue, breakdown: breakdown, warnings: warnings,
           intermediate: { volume_l: volume, billed_volume_l: billed_volume, base_logistics_fee_rub: base_logistics_fee_rub,
             base_logistics_rub: base_logistics_rub, logistics_liter_fee_rub: logistics_liter_fee_rub,
+            outbound_logistics_rub: outbound_logistics_rub, return_logistics_rub: return_logistics_rub,
             platform_logistics_cny: logistics, return_amortization_cny: returns, fixed_return_cny: fixed_return })
       end
 

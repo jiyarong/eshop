@@ -417,7 +417,16 @@ class ReportsController < ApplicationController
 
   def sku_actual_logistics
     sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    render json: Ec::SkuActualLogisticsQuery.run(sku:, today: user_today)
+    platform = params.fetch(:platform, "ozon").to_s.downcase
+    unless Ec::SkuActualLogisticsQuery::PLATFORMS.include?(platform)
+      return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
+    end
+    delivery_mode = params[:delivery_mode].to_s.downcase.presence
+    if platform == "wb" && delivery_mode && !Ec::SkuActualLogisticsQuery::WB_DELIVERY_MODES.include?(delivery_mode)
+      return render json: { errors: ["unsupported_delivery_mode"] }, status: :unprocessable_entity
+    end
+
+    render json: Ec::SkuActualLogisticsQuery.run(sku:, platform:, delivery_mode:, today: user_today)
   end
 
   def sku_actual_return_rate
@@ -2465,7 +2474,6 @@ class ReportsController < ApplicationController
       end
       context.assign_input_values(payload[:inputs]) if payload[:inputs]
     end
-    Ec::SkuProfitVersionPriceResolver.apply!(version)
   end
 
   def profit_context_payloads

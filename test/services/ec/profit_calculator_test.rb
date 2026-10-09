@@ -67,7 +67,7 @@ class Ec::ProfitCalculatorTest < ActiveSupport::TestCase
 
   test "reconciles Ozon Russia row 2 from the baseline sheet" do
     result = calculate_ozon(
-      market: "ru", price_rub: 10_800, purchase_price_cny: 270,
+      market: "ru", rf_price_rub: 10_800, price_rub: 10_800, purchase_price_cny: 270,
       freight_cny: 22.5, customs_misc_cny: 2.81, exchange_rate_rub_cny: 13,
       length_cm: 85, width_cm: 52, height_cm: 5,
       outbound_logistics_rub: 245, return_logistics_rub: 245,
@@ -89,6 +89,23 @@ class Ec::ProfitCalculatorTest < ActiveSupport::TestCase
     assert_in_delta 405, result.dig(:intermediate, :platform_logistics_rub), TOLERANCE
   end
 
+  test "uses separate Ozon Russia seller and buyer prices" do
+    result = calculate_ozon(
+      market: "ru", rf_price_rub: 27_000, price_rub: 15_000,
+      purchase_price_cny: 0, exchange_rate_rub_cny: 13,
+      outbound_logistics_rub: 0, return_logistics_rub: 0,
+      warehouse_operation_rub: 0, commission_rate: 0.47,
+      return_rate: 0, duty_rate: 0, import_vat_rate: 0,
+      acquiring_rate: 0, advertising_rate: 0
+    )
+
+    assert_empty result[:errors].to_a
+    assert_in_delta 27_000.to_d / 13, result[:revenue_cny], TOLERANCE
+    assert_in_delta 27_000.to_d / 13, result.dig(:intermediate, :commission_base_cny), TOLERANCE
+    assert_in_delta 27_000.to_d / 13 * 0.47, result.dig(:cost_breakdown, :commission), TOLERANCE
+    assert_nil result.dig(:intermediate, :platform_subsidy_rub)
+  end
+
   test "reconciles Ozon Belarus row 2 from the baseline sheet" do
     result = calculate_ozon(
       market: "by", price_rub: 10_200, rf_price_rub: 10_800,
@@ -101,10 +118,30 @@ class Ec::ProfitCalculatorTest < ActiveSupport::TestCase
     )
 
     assert_reconciles result,
-      revenue: 784.6153846153846,
-      total_cost: 601.233076923077,
-      profit: 183.38230769230768,
-      margin: 0.23372254901960784
+      revenue: 830.7692307692307,
+      total_cost: 612.3869230769231,
+      profit: 218.3823076923077,
+      margin: 0.2628675925925926
+    assert_in_delta 10_800.to_d / 13, result.dig(:intermediate, :commission_base_cny), TOLERANCE
+    assert_in_delta 10_200.to_d / 1.2, result.dig(:intermediate, :customer_paid_ex_vat_rub), TOLERANCE
+    assert_in_delta 1_490, result.dig(:intermediate, :platform_subsidy_rub), TOLERANCE
+  end
+
+  test "calculates the Ozon Belarus commission and subsidy from separate seller and buyer prices" do
+    result = calculate_ozon(
+      market: "by", price_rub: 15_609, rf_price_rub: 25_000,
+      purchase_price_cny: 0, exchange_rate_rub_cny: 1,
+      outbound_logistics_rub: 0, return_logistics_rub: 0,
+      warehouse_operation_rub: 0, commission_rate: 0.47,
+      sales_vat_rate: 0.22, return_rate: 0,
+      duty_rate: 0, import_vat_rate: 0,
+      acquiring_rate: 0, advertising_rate: 0
+    )
+
+    assert_empty result[:errors].to_a
+    assert_in_delta 11_750, result.dig(:cost_breakdown, :commission), TOLERANCE
+    assert_in_delta 12_794.262295081967, result.dig(:intermediate, :customer_paid_ex_vat_rub), TOLERANCE
+    assert_in_delta 455.737704918033, result.dig(:intermediate, :platform_subsidy_rub), TOLERANCE
   end
 
   test "includes Ozon storage cost for both market scenarios" do
@@ -272,6 +309,30 @@ class Ec::ProfitCalculatorTest < ActiveSupport::TestCase
     assert_in_delta explicit[:profit_cny], defaulted[:profit_cny], TOLERANCE
   end
 
+  test "WB actual outbound and return logistics override the tariff estimate" do
+    %w[general small].each do |company_type|
+      result = calculate_wb(
+        company_type:,
+        purchase_price_cny: 100,
+        length_cm: 10,
+        width_cm: 10,
+        height_cm: 10,
+        price_rub: 1_000,
+        exchange_rate_rub_cny: 10,
+        outbound_logistics_rub: 200,
+        return_logistics_rub: 100,
+        return_rate: 0.2,
+        commission_rate: 0.1
+      )
+
+      assert_empty result[:errors].to_a
+      assert_in_delta 20, result.dig(:cost_breakdown, :logistics), TOLERANCE
+      assert_in_delta 7.5, result.dig(:cost_breakdown, :returns), TOLERANCE
+      assert_in_delta 200, result.dig(:intermediate, :outbound_logistics_rub), TOLERANCE
+      assert_in_delta 100, result.dig(:intermediate, :return_logistics_rub), TOLERANCE
+    end
+  end
+
   private
 
   def calculate_wb(inputs)
@@ -284,6 +345,7 @@ class Ec::ProfitCalculatorTest < ActiveSupport::TestCase
   end
 
   def calculate_ozon(market:, **inputs)
+    inputs[:rf_price_rub] = inputs[:price_rub] unless inputs.key?(:rf_price_rub)
     Ec::ProfitCalculator.call(platform: :ozon, parameter_context: { delivery_mode: "fbo", market: market }, inputs: inputs)
   end
 
