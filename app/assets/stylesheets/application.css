@@ -4545,6 +4545,12 @@ table thead th {
   color: var(--erp-brand);
 }
 
+.sku-detail-tabs__link.is-disabled {
+  color: var(--erp-muted);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .sku-context { min-width: 0; }
 .sku-context__header { margin-bottom: 20px; }
 .sku-context__header .section-title { margin-bottom: 8px; }

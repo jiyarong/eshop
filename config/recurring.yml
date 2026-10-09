@@ -210,9 +210,7 @@ production:
     command: "Ec::CbrDailyExchangeRateFetcher.fetch_and_store(from_date: 7.days.ago.to_date, to_date: Date.current)"
     schedule: every day at 8:40 in Asia/Shanghai
 
-  weekly_profit_report:
-    command: "GoogleSheets::WeeklyProfitReportRunner.run"
-    schedule: every monday at 17:00 in Asia/Shanghai
+  # Disabled: the Monday Google Sheet weekly-profit write is no longer needed.
 
   # Sync W-2 and W-1 Ozon ad performance with natural-week boundaries.
   ozon_performance_weekly_sync:

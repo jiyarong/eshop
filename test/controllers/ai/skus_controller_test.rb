@@ -137,10 +137,12 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
 
   test "returns weekly profit overview for the previous four natural weeks in the user time zone" do
     @user.update!(time_zone: "UTC")
+    Ec::SkuDeveloperAssignment.create!(sku: @sku, user: @user)
     calls = []
     query_runner = WeeklyProfitReports::ReportQueryRunner
     original_run = query_runner.method(:run)
-    query_runner.define_singleton_method(:run) do |params:, today:|
+    query_runner.define_singleton_method(:run) do |params:, today:, access_scope:|
+      assert_instance_of WeeklyProfitReports::AccessScope, access_scope
       calls << { params: params, today: today }
       {
         rows: [ {
@@ -180,6 +182,7 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
     assert_match "annualized_net_profit_cny", body.fetch("description")
   ensure
     query_runner&.define_singleton_method(:run, original_run) if original_run
+    Ec::SkuDeveloperAssignment.where(sku_code: @sku&.sku_code, user_id: @user&.id).delete_all
   end
 
   test "weekly profit overview requires an existing sku" do

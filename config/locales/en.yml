@@ -2337,6 +2337,7 @@ en:
         inventory: "Inventory"
         operation: "Operations overview"
         profit: "Profit allocation"
+        profit_restricted: "You do not have permission to view profit allocation"
         sales_funnel: "Sales funnel"
         search_terms: "Search terms"
         ozon_chats: "Ozon Chat"

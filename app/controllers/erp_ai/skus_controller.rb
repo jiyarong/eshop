@@ -89,6 +89,11 @@ module ErpAI
 
     def weekly_profit_overview
       sku = Ec::Sku.find_by!(sku_code: params.require(:sku).to_s.strip.upcase)
+      access_scope = ::WeeklyProfitReports::AccessScope.new(@current_user)
+      unless access_scope.super_admin? || access_scope.visible_sku_codes.include?(sku.sku_code)
+        return render json: { error: "SKU not found" }, status: :not_found
+      end
+
       today = user_today
       reports = previous_week_ranges(today).map do |range|
         ::WeeklyProfitReports::ReportQueryRunner.run(
@@ -98,7 +103,8 @@ module ErpAI
             from_date: range.fetch(:from_date).iso8601,
             to_date: range.fetch(:to_date).iso8601
           },
-          today: today
+          today: today,
+          access_scope: access_scope
         )
       end
 

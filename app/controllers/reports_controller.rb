@@ -9,7 +9,7 @@ class ReportsController < ApplicationController
   include MasterSkuCategoryFilterable
   include AIDiagnosisEventFilterable
 
-  helper_method :report_value, :sku_sales_series_name, :sku_detail_tabs, :sku_detail_tab_path, :platform_label_for_sales, :inventory_filters_active?,
+  helper_method :report_value, :sku_sales_series_name, :sku_detail_tabs, :sku_detail_tab_path, :sku_detail_profit_visible?, :platform_label_for_sales, :inventory_filters_active?,
                 :capital_distribution_filters_active?,
                 :sku_operation_funnel_columns, :sku_operation_profit_columns, :sku_operation_report_value,
                 :sku_operation_row_comparison, :sku_operation_comparison_label, :sku_operation_comparison_class,
@@ -42,6 +42,21 @@ class ReportsController < ApplicationController
     destroy_sku_competitor_datum
   ]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
+
+  SKU_WORKBENCH_ACTIONS = %i[
+    sku_ai_diagnosis sku_operation_plan ignore_sku_operation_plan evaluate_sku_operation_plan
+    new_sku_general_diagnosis create_sku_general_diagnosis create_sku_planner ignore_sku_ai_diagnosis_event
+    sku_profit_versions sku_actual_logistics sku_actual_return_rate sku_actual_storage
+    sku_actual_selling_price sku_actual_advertising sku_official_commission_rate preview_sku_profit
+    create_sku_profit_version update_sku_profit_version sku_listing_diagnoses new_sku_listing_diagnosis
+    create_sku_listing_diagnosis destroy_sku_competitor_data_batch destroy_sku_competitor_datum
+    sku_profit_trend sku_sales_funnel_trends new_sku_predicted_cost create_sku_predicted_cost
+    create_sku_attachment edit_sku_attachment update_sku_attachment download_sku_attachment
+    preview_sku_attachment destroy_sku_attachment new_sku_operation_action create_sku_operation_action
+    edit_sku_operation_action update_sku_operation_action destroy_sku_operation_action
+    destroy_sku_inventory_health_result
+  ].freeze
+  before_action :require_visible_sku_for_workbench, only: SKU_WORKBENCH_ACTIONS
 
   SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit profit_prediction inventory supply_orders warehouses operation_actions ads search_terms ozon_chats competitor_data ai_inventory_health context basic].freeze
   SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
@@ -374,7 +389,9 @@ class ReportsController < ApplicationController
 
   def skus
     load_ai_diagnosis_event_filter
-    @skus = apply_ai_diagnosis_event_filter_to_skus(Ec::Sku.order(:sku_code))
+    @skus = apply_ai_diagnosis_event_filter_to_skus(
+      weekly_profit_access_scope.visible_skus.order(:sku_code)
+    )
   end
 
   def sku_detail
@@ -635,7 +652,8 @@ class ReportsController < ApplicationController
       )
       return render partial: "reports/sku_common_funnel_trend"
     end
-    comparison_codes = Array(params[:compare_sku_codes]).flat_map { |code| code.to_s.split(/[,\s]+/) }.map(&:upcase).reject(&:blank?).uniq.first(3)
+    comparison_codes = Array(params[:compare_sku_codes]).flat_map { |code| code.to_s.split(/[,\s]+/) }.map(&:upcase).reject(&:blank?).uniq
+    comparison_codes = weekly_profit_access_scope.filter_sku_codes(comparison_codes).first(3)
     skus = Ec::Sku.where(sku_code: [@sku.sku_code, *comparison_codes]).index_by(&:sku_code)
     @funnel_store_trends = skus.values.flat_map do |sku|
       SalesFunnelReports::SkuDailyTrendQuery.new(sku: sku, from_date: @funnel_trend_from_date, to_date: @funnel_trend_to_date).call.map do |trend|
@@ -950,6 +968,17 @@ class ReportsController < ApplicationController
 
   private
 
+  def weekly_profit_access_scope
+    @weekly_profit_access_scope ||= WeeklyProfitReports::AccessScope.new(current_user)
+  end
+
+  def require_visible_sku_for_workbench
+    sku_code = params[:sku_code].to_s.strip.upcase
+    return if weekly_profit_access_scope.visible_skus.where(sku_code: sku_code).exists?
+
+    raise ActiveRecord::RecordNotFound, "SKU not found"
+  end
+
   def build_sku_profit_trend_chart_option(weeks, selected_metric = nil)
     labels = weeks.map { |week| "#{week[:from_date].strftime('%m-%d')} ~ #{week[:to_date].strftime('%m-%d')}" }
     metric_options = {
@@ -1081,9 +1110,15 @@ class ReportsController < ApplicationController
       :predicted_costs,
       attachments: { file_attachment: :blob }
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @sku_detail_profit_visible = weekly_profit_access_scope.super_admin? ||
+      weekly_profit_access_scope.visible_sku_codes.include?(@sku.sku_code)
     @active_tab = active_tab || params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "lifecycle"
     @active_tab = "sales_funnel" if @active_tab == "operation"
-    load_spu_sku_filter
+    load_spu_sku_filter(
+      master_skus: weekly_profit_access_scope.visible_master_skus,
+      orphan_skus: weekly_profit_access_scope.visible_orphan_skus,
+      allowed_sku_codes: weekly_profit_access_scope.restricted? ? weekly_profit_access_scope.visible_sku_codes : nil
+    )
     @stores = Ec::Store.order(:platform, :store_name)
     @sku_cost = @sku.cost
     @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
@@ -1157,15 +1192,17 @@ class ReportsController < ApplicationController
     ).fetch(@sku.id, {})
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
-    @operator_metrics = Ec::OperatorSkuMetricsQuery.new(
-      skus: [@sku],
-      date_to: user_today,
-      time_zone: user_time_zone
-    ).performance_metrics.fetch(@sku)
+    if sku_detail_profit_visible?
+      @operator_metrics = Ec::OperatorSkuMetricsQuery.new(
+        skus: [@sku],
+        date_to: user_today,
+        time_zone: user_time_zone
+      ).performance_metrics.fetch(@sku)
+    end
     @sku_lifecycle = Ec::SkuLifecycleQuery.new(
       @sku, user_today: user_today, time_zone: user_time_zone
     ).call if @active_tab == "lifecycle"
-    load_sku_operation_overview if @active_tab.in?(%w[sales_funnel profit])
+    load_sku_operation_overview if @active_tab == "sales_funnel" || (@active_tab == "profit" && sku_detail_profit_visible?)
     load_sku_supply_orders if @active_tab == "supply_orders"
     load_sku_warehouses if @active_tab == "warehouses"
     load_sku_operation_actions if @active_tab == "operation_actions"
@@ -2134,6 +2171,10 @@ class ReportsController < ApplicationController
 
   def sku_detail_tabs
     SKU_DETAIL_TABS
+  end
+
+  def sku_detail_profit_visible?
+    @sku_detail_profit_visible != false
   end
 
   def load_sku_search_terms

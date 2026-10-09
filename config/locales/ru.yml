@@ -2288,6 +2288,7 @@ ru:
         inventory: "Обзор запасов"
         operation: "Обзор операций"
         profit: "Распределение прибыли"
+        profit_restricted: "У вас нет доступа к распределению прибыли"
         sales_funnel: "Воронка продаж"
         search_terms: "Поисковые запросы"
         ozon_chats: "Чаты Ozon"

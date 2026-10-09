@@ -15,11 +15,16 @@ class OperatorSkusController < ApplicationController
     @q = params[:q].to_s.strip
     load_master_sku_category_filter
     load_sku_marketing_state_filters
-    load_spu_sku_filter
+    access_scope = WeeklyProfitReports::AccessScope.new(current_user)
+    load_spu_sku_filter(
+      master_skus: access_scope.visible_master_skus,
+      orphan_skus: access_scope.visible_orphan_skus,
+      allowed_sku_codes: access_scope.restricted? ? access_scope.visible_sku_codes : nil
+    )
     load_responsible_user_filters
     load_table_sort(allowed_keys: SORT_KEYS, default_key: "weekly_profit", default_direction: "desc")
 
-    scope = Ec::Sku.includes(
+    scope = access_scope.visible_skus.includes(
       :master_sku,
       :current_marketing_state,
       :developers,

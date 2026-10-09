@@ -2538,6 +2538,7 @@ zh:
         inventory: "库存概况"
         operation: "运营概览"
         profit: "利润归集"
+        profit_restricted: "暂无查看利润归集的权限"
         profit_prediction: "定价测算"
         sales_funnel: "销售漏斗"
         search_terms: "搜索词"

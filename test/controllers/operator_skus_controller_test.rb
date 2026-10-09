@@ -3,7 +3,7 @@ require "test_helper"
 class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
   setup do
     @token = SecureRandom.hex(4).upcase
-    @user = create_user_with_roles("operator-skus-#{@token.downcase}@example.com", "manager")
+    @user = create_user_with_roles("operator-skus-#{@token.downcase}@example.com", "super_admin")
     sign_in @user
     @master_sku = Ec::MasterSku.create!(master_sku_code: "OPS-SPU-#{@token}", product_name: "运营系列", is_active: true)
     @sku = Ec::Sku.create!(

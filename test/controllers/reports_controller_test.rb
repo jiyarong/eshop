@@ -3,7 +3,7 @@ require "test_helper"
 class ReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @sku_code = "TST-#{SecureRandom.hex(4).upcase}"
-    @current_user = create_user_with_roles("reports-#{@sku_code.downcase}@example.com", "manager")
+    @current_user = create_user_with_roles("reports-#{@sku_code.downcase}@example.com", "super_admin")
     sign_in @current_user
     @sku = Ec::Sku.create!(
       sku_code: @sku_code,

@@ -2,7 +2,11 @@
   <% if @active_tab == "lifecycle" %>
     <%= render "reports/sku_lifecycle", lifecycle: @sku_lifecycle %>
   <% elsif @active_tab == "profit" %>
-    <%= render "reports/sku_profit_analysis" %>
+    <% if sku_detail_profit_visible? %>
+      <%= render "reports/sku_profit_analysis" %>
+    <% else %>
+      <section class="panel empty-state"><%= t("reports.sku_detail.tabs.profit_restricted") %></section>
+    <% end %>
   <% elsif @active_tab == "profit_prediction" %>
     <%= render "reports/sku_profit_prediction" %>
   <% elsif @active_tab == "sales_funnel" %>

@@ -78,11 +78,11 @@
         <div class="summary-label"><%= label %></div>
         <div class="operator-sku-profit">
           <% %i[days_7 days_30].each do |period_key| %>
-            <% metric = group == :sales ? @operator_metrics.dig(:sales, period_key) : @operator_metrics.dig(:profit, period_key, metric_key) %>
+            <% metric = sku_detail_profit_visible? && @operator_metrics ? (group == :sales ? @operator_metrics.dig(:sales, period_key) : @operator_metrics.dig(:profit, period_key, metric_key)) : { value: nil, comparison: nil } %>
             <% metric ||= { value: nil, comparison: nil } %>
             <div class="operator-sku-period">
-              <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= operator_sku_metric_value(metric[:value], type: type) %></strong></span>
-              <span class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison]) %></span>
+              <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= sku_detail_profit_visible? ? operator_sku_metric_value(metric[:value], type: type) : t("common.empty_value") %></strong></span>
+              <span class="operator-sku-comparison <%= sku_detail_profit_visible? ? operator_sku_comparison_class(metric[:comparison]) : "is-none" %>"><%= sku_detail_profit_visible? ? operator_sku_comparison_text(metric[:comparison]) : t("common.empty_value") %></span>
             </div>
           <% end %>
         </div>
@@ -101,16 +101,22 @@
      data-controller="sku-detail-tabs"
      data-action="turbo:frame-load@window->sku-detail-tabs#sync">
   <% sku_detail_tabs.each do |tab| %>
-    <%= link_to t("reports.sku_detail.tabs.#{tab}"),
-                sku_detail_tab_path(tab),
-                class: "erp-tabs__link sku-detail-tabs__link",
-                data: (@sku_detail_drawer ? {
-                  turbo_frame: "sku_detail_tab_#{tab}",
-                  sku_detail_tabs_target: "link",
-                  sku_detail_tab: tab,
-                  action: "sku-detail-tabs#select"
-                } : {}),
-                aria: (@active_tab == tab ? { current: "page" } : nil) %>
+    <% if tab == "profit" && !sku_detail_profit_visible? %>
+      <span class="erp-tabs__link sku-detail-tabs__link is-disabled"
+            aria-disabled="true"
+            title="<%= t("reports.sku_detail.tabs.profit_restricted") %>"><%= t("reports.sku_detail.tabs.#{tab}") %></span>
+    <% else %>
+      <%= link_to t("reports.sku_detail.tabs.#{tab}"),
+                  sku_detail_tab_path(tab),
+                  class: "erp-tabs__link sku-detail-tabs__link",
+                  data: (@sku_detail_drawer ? {
+                    turbo_frame: "sku_detail_tab_#{tab}",
+                    sku_detail_tabs_target: "link",
+                    sku_detail_tab: tab,
+                    action: "sku-detail-tabs#select"
+                  } : {}),
+                  aria: (@active_tab == tab ? { current: "page" } : nil) %>
+    <% end %>
   <% end %>
 </nav>
 

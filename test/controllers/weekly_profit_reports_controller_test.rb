@@ -35,10 +35,15 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       sku_code: "WPR-SKU-B-#{@token}",
       product_name: "Weekly Profit SKU B #{@token}"
     )
+
+    Ec::SkuDeveloperAssignment.create!(sku_code: @master_sku_child.sku_code, user: @current_user)
+    Ec::SkuOperatorAssignment.create!(sku_code: @direct_sku.sku_code, user: @current_user)
   end
 
   teardown do
     Ec::WeeklyRate.where(week_start: [Date.parse("2026-05-18"), Date.parse("2026-05-25")]).delete_all
+    Ec::SkuDeveloperAssignment.where(sku_code: [@master_sku_child&.sku_code, @direct_sku&.sku_code].compact).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: [@master_sku_child&.sku_code, @direct_sku&.sku_code].compact).delete_all
     Ec::Sku.with_deleted.where(sku_code: [@master_sku_child&.sku_code, @direct_sku&.sku_code].compact).delete_all
     Ec::MasterSku.where(id: @master_sku&.id).delete_all
     @ozon_account&.destroy
@@ -398,6 +403,56 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     query_class.define_singleton_method(:run, original_run)
   end
 
+  test "restricts a regular user to assigned SKUs when no SKU filter is provided" do
+    hidden_sku = Ec::Sku.create!(sku_code: "WPR-HIDDEN-#{@token}", product_name: "Hidden")
+    query_class = Ec::WeeklySummaryQuery
+    original_run = query_class.method(:run)
+    captured_kwargs = nil
+    query_class.define_singleton_method(:run) do |**kwargs|
+      captured_kwargs = kwargs
+      { report_type: "wsu", period: {}, meta: {}, summary: {}, rows: [], extras: {} }
+    end
+
+    get "/weekly_profit_reports.json", params: {
+      report_type: "wsu",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24"
+    }
+
+    assert_response :success
+    assert_equal [@master_sku_child.sku_code, @direct_sku.sku_code].sort, captured_kwargs.fetch(:sku_codes).sort
+    assert_equal true, captured_kwargs.fetch(:sku_filter_active)
+    refute_includes captured_kwargs.fetch(:sku_codes), hidden_sku.sku_code
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+    Ec::Sku.with_deleted.where(sku_code: hidden_sku&.sku_code).delete_all
+  end
+
+  test "does not let a regular user expand access with direct SKU filters" do
+    hidden_sku = Ec::Sku.create!(sku_code: "WPR-HIDDEN-FILTER-#{@token}", product_name: "Hidden")
+    query_class = Ec::WeeklySummaryDeepQuery
+    original_run = query_class.method(:run)
+    captured_kwargs = nil
+    query_class.define_singleton_method(:run) do |**kwargs|
+      captured_kwargs = kwargs
+      { report_type: "wsu_deep", period: {}, meta: {}, summary: {}, rows: [], extras: {} }
+    end
+
+    get "/weekly_profit_reports.json", params: {
+      report_type: "wsu_deep",
+      from_date: "2026-05-18",
+      to_date: "2026-05-24",
+      sku_codes: [hidden_sku.sku_code, @direct_sku.sku_code]
+    }
+
+    assert_response :success
+    assert_equal [@direct_sku.sku_code], captured_kwargs.fetch(:sku_codes)
+    assert_equal true, captured_kwargs.fetch(:sku_filter_active)
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+    Ec::Sku.with_deleted.where(sku_code: hidden_sku&.sku_code).delete_all
+  end
+
   test "show renders wsu result for turbo frame request" do
     payload = {
       report_type: "wsu",
@@ -680,8 +735,12 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     original_query_run = query_class.method(:run)
     original_export_call = export_class.method(:call)
     captured_report = nil
+    captured_query_kwargs = nil
 
-    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+    query_class.define_singleton_method(:run) do |**kwargs|
+      captured_query_kwargs = kwargs
+      payload
+    end
     export_class.define_singleton_method(:call) do |report:|
       captured_report = report
       export_result
@@ -697,6 +756,8 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :success
+    assert_equal [@master_sku_child.sku_code, @direct_sku.sku_code].sort, captured_query_kwargs.fetch(:sku_codes).sort
+    assert_equal true, captured_query_kwargs.fetch(:sku_filter_active)
     assert_equal payload, captured_report
     assert_equal "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", response.media_type
     assert_equal "xlsx-binary", response.body

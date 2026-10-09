@@ -3,7 +3,11 @@ module ErpAI
     include ErpAI::RequestAuthenticatable
 
     def create
-      report = ::WeeklyProfitReports::ReportQueryRunner.run(params: params, today: user_today)
+      report = ::WeeklyProfitReports::ReportQueryRunner.run(
+        params: params,
+        today: user_today,
+        access_scope: ::WeeklyProfitReports::AccessScope.new(@current_user)
+      )
 
       render json: { success: true, data: report, message: "ok" }
     rescue ActionController::ParameterMissing => e

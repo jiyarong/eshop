@@ -89,7 +89,13 @@ class WeeklyProfitReportsController < ApplicationController
     @from_date, @to_date = default_period
     @from_date = params[:from_date].presence || @from_date
     @to_date = params[:to_date].presence || @to_date
-    load_spu_sku_filter(selected_sku_codes: selected_weekly_profit_direct_sku_codes)
+    load_spu_sku_filter(
+      selected_master_sku_ids: weekly_profit_report_runner.selected_master_sku_ids,
+      selected_sku_codes: selected_weekly_profit_direct_sku_codes,
+      master_skus: weekly_profit_access_scope.visible_master_skus,
+      orphan_skus: weekly_profit_access_scope.visible_orphan_skus,
+      allowed_sku_codes: weekly_profit_access_scope.restricted? ? weekly_profit_access_scope.visible_sku_codes : nil
+    )
 
     if @report_type == "wr" && @selected_store_ref.blank?
       render :show and return
@@ -161,7 +167,15 @@ class WeeklyProfitReportsController < ApplicationController
   end
 
   def weekly_profit_report_runner
-    @weekly_profit_report_runner ||= WeeklyProfitReports::ReportQueryRunner.new(params: params, today: user_today)
+    @weekly_profit_report_runner ||= WeeklyProfitReports::ReportQueryRunner.new(
+      params: params,
+      today: user_today,
+      access_scope: weekly_profit_access_scope
+    )
+  end
+
+  def weekly_profit_access_scope
+    @weekly_profit_access_scope ||= WeeklyProfitReports::AccessScope.new(current_user)
   end
 
   def render_bad_request(error)

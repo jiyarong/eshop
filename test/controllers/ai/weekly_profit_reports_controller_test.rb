@@ -18,9 +18,14 @@ class ErpAI::WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       sku_code: "AI-WPR-SKU-B-#{@token.upcase}",
       product_name: "AI Weekly Profit SKU B #{@token}"
     )
+
+    Ec::SkuDeveloperAssignment.create!(sku_code: @master_sku_child.sku_code, user: @user)
+    Ec::SkuOperatorAssignment.create!(sku_code: @direct_sku.sku_code, user: @user)
   end
 
   teardown do
+    Ec::SkuDeveloperAssignment.where(sku_code: [@master_sku_child&.sku_code, @direct_sku&.sku_code].compact).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: [@master_sku_child&.sku_code, @direct_sku&.sku_code].compact).delete_all
     Ec::Sku.with_deleted.where(sku_code: [@master_sku_child&.sku_code, @direct_sku&.sku_code].compact).delete_all
     Ec::MasterSku.where(id: @master_sku&.id).delete_all
     UserApiKey.where(user: @user).delete_all

@@ -2,8 +2,8 @@ module WeeklyProfitReports
   class ReportQueryRunner
     REPORT_TYPES = %w[wr wsu wsu_deep].freeze
 
-    def self.run(params:, today:)
-      new(params: params, today: today).call
+    def self.run(params:, today:, access_scope: nil)
+      new(params: params, today: today, access_scope: access_scope).call
     end
 
     def self.store_options
@@ -32,9 +32,10 @@ module WeeklyProfitReports
       end
     end
 
-    def initialize(params:, today:)
+    def initialize(params:, today:, access_scope: nil)
       @params = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : params.to_h
       @today = today.to_date
+      @access_scope = access_scope
     end
 
     def call
@@ -44,12 +45,14 @@ module WeeklyProfitReports
     def parsed_params
       report_type = require_param(:report_type).to_s
       raise ArgumentError, "invalid_report_type" unless REPORT_TYPES.include?(report_type)
+      effective_sku_codes = selected_sku_codes
 
       parsed = {
         report_type: report_type,
         from_date: parse_date(require_param(:from_date)),
         to_date: parse_date(require_param(:to_date)),
-        sku_codes: selected_sku_codes
+        sku_codes: effective_sku_codes,
+        sku_filter_active: @access_scope&.restricted? || effective_sku_codes.present?
       }
       validate_period!(parsed[:from_date], parsed[:to_date])
 
@@ -58,7 +61,12 @@ module WeeklyProfitReports
     end
 
     def selected_sku_codes
-      (direct_sku_codes + master_sku_codes).uniq
+      requested = (direct_sku_codes + master_sku_codes).uniq
+      return requested unless @access_scope&.restricted?
+
+      return @access_scope.visible_sku_codes unless sku_filter_params_present?
+
+      @access_scope.intersect_sku_codes(requested)
     end
 
     def direct_sku_codes
@@ -72,7 +80,8 @@ module WeeklyProfitReports
         .uniq
       return [] if ids.blank?
 
-      Ec::MasterSku.where(id: ids).pluck(:id)
+      ids = Ec::MasterSku.where(id: ids).pluck(:id)
+      @access_scope ? @access_scope.filter_master_sku_ids(ids) : ids
     end
 
     def selected_direct_sku_codes
@@ -84,7 +93,8 @@ module WeeklyProfitReports
       return [] if sku_codes.blank?
 
       existing_codes = Ec::Sku.where(sku_code: sku_codes).pluck(:sku_code)
-      sku_codes.select { |sku_code| existing_codes.include?(sku_code) }
+      selected = sku_codes.select { |sku_code| existing_codes.include?(sku_code) }
+      @access_scope ? @access_scope.intersect_sku_codes(selected) : selected
     end
 
     def run(parsed)
@@ -94,19 +104,22 @@ module WeeklyProfitReports
           store_ref: parsed[:store_ref],
           from_date: parsed[:from_date],
           to_date: parsed[:to_date],
-          sku_codes: parsed[:sku_codes]
+          sku_codes: parsed[:sku_codes],
+          sku_filter_active: parsed[:sku_filter_active]
         )
       when "wsu"
         Ec::WeeklySummaryQuery.run(
           from_date: parsed[:from_date],
           to_date: parsed[:to_date],
-          sku_codes: parsed[:sku_codes]
+          sku_codes: parsed[:sku_codes],
+          sku_filter_active: parsed[:sku_filter_active]
         )
       when "wsu_deep"
         Ec::WeeklySummaryDeepQuery.run(
           from_date: parsed[:from_date],
           to_date: parsed[:to_date],
-          sku_codes: parsed[:sku_codes]
+          sku_codes: parsed[:sku_codes],
+          sku_filter_active: parsed[:sku_filter_active]
         )
       else
         raise ArgumentError, "invalid_report_type"
@@ -119,6 +132,13 @@ module WeeklyProfitReports
 
     def param(name)
       params[name.to_s] || params[name.to_sym]
+    end
+
+    def sku_filter_params_present?
+      [param(:sku), param(:sku_code), param(:sku_codes), param(:master_sku_id), param(:master_sku_ids)]
+        .any? do |value|
+          Array(value).any? { |item| item.present? }
+        end
     end
 
     def require_param(name)
