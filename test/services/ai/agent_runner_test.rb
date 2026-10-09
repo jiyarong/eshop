@@ -249,6 +249,24 @@ class ErpAI::AgentRunnerTest < ActiveSupport::TestCase
     assert_equal "本次会话提示词", client.request.fetch(:system_prompt)
   end
 
+  test "continues a conversation owned by another user" do
+    other_user = User.create!(
+      email: "ai-runner-other-#{@token}@example.com",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    conversation = @agent.conversations.create!(user: other_user)
+    conversation.messages.create!(role: "user", content: "继续分析")
+
+    ErpAI::AgentRunner.new(agent: @agent, user: @user, client: FakeClient.new).reply(conversation: conversation)
+
+    assert_equal "assistant", conversation.messages.reload.order(:created_at, :id).last.role
+  ensure
+    Message.where(conversation: Conversation.where(user: other_user)).delete_all if other_user
+    Conversation.where(user: other_user).delete_all if other_user
+    User.where(id: other_user&.id).delete_all if other_user
+  end
+
   test "attaches images supplied with the initial question and sends them to the model" do
     blob = ActiveStorage::Blob.create_and_upload!(
       io: StringIO.new("image-bytes"),

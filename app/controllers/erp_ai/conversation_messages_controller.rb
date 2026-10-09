@@ -45,7 +45,6 @@ module ErpAI
 
     def load_conversation
       @conversation = Conversation.find(params[:conversation_id])
-      raise ActiveRecord::RecordNotFound unless @conversation.agent.available_for_conversation?
     end
 
     def message_params

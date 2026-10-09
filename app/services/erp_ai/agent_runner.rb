@@ -36,8 +36,8 @@ module ErpAI
     end
 
     def reply(conversation:, broadcaster: nil)
-      unless conversation.agent_id == agent.id && conversation.user_id == user.id
-        raise ArgumentError, "conversation does not belong to this agent and user"
+      unless conversation.agent_id == agent.id
+        raise ArgumentError, "conversation does not belong to this agent"
       end
 
       run_loop(conversation, conversation.context["data_summary"], broadcaster: broadcaster)

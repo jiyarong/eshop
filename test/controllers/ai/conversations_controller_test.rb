@@ -156,26 +156,31 @@ class ErpAI::ConversationsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "built-in agent conversations remain readable but cannot receive follow-ups" do
-    sign_in @user
-    conversation = @system_agent.conversations.create!(user: @user)
+  test "existing built-in agent conversations can receive follow-ups" do
+    other_user = create_user_with_roles("ai-built-in-other-#{@token}@example.com", "manager")
+    conversation = @system_agent.conversations.create!(user: other_user)
     conversation.messages.create!(role: "assistant", content: "系统分析结果")
+    sign_in @user
 
     get ai_conversation_path(conversation), headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select ".ai-conversation-message--assistant", text: /系统分析结果/
-    assert_select "form[action=?]", ai_conversation_messages_path(conversation), count: 0
+    assert_select "form[action=?]", ai_conversation_messages_path(conversation), count: 1
 
     sign_in @user
-    assert_no_difference "Message.count" do
-      assert_no_enqueued_jobs only: ConversationReplyJob do
-        post ai_conversation_messages_path(conversation),
-             params: { message: { content: "继续分析" } },
-             headers: { "Accept" => Mime[:turbo_stream].to_s }
-      end
+    assert_enqueued_with(job: ConversationReplyJob) do
+      post ai_conversation_messages_path(conversation),
+           params: { message: { content: "继续分析" } },
+           headers: { "Accept" => Mime[:turbo_stream].to_s }
     end
-    assert_response :not_found
+    assert_response :accepted
+    assert_equal "继续分析", conversation.messages.reload.last.content
+  ensure
+    Message.where(conversation: Conversation.where(user: other_user)).delete_all if other_user
+    Conversation.where(user: other_user).delete_all if other_user
+    UserRole.where(user: other_user).delete_all if other_user
+    User.where(id: other_user&.id).delete_all if other_user
   end
 
   test "allows a custom web agent but excludes client agents" do
