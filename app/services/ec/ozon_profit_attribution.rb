@@ -30,13 +30,14 @@ module Ec
 
     attr_reader :results, :unallocated, :summary
 
-    def initialize(account_id:, from_date:, to_date:, rate_cny_rub: nil, sync_missing_ad_costs: true, sku_codes: [])
+    def initialize(account_id:, from_date:, to_date:, rate_cny_rub: nil, sync_missing_ad_costs: true, sku_codes: [], sku_filter_active: false)
       @account_id    = account_id
       @from_date     = from_date.is_a?(Date) ? from_date : Date.parse(from_date.to_s)
       @to_date       = to_date.is_a?(Date) ? to_date : Date.parse(to_date.to_s)
       @rate_cny_rub  = (rate_cny_rub || default_rate).to_f
       @sync_missing_ad_costs = sync_missing_ad_costs
       @sku_codes = sku_codes.map { |sku| sku.to_s.strip.upcase }.reject(&:blank?).uniq
+      @sku_filter_active = sku_filter_active
       # Apply 3% buffer to align with Python口径：rate_effective = rate_cny_rub × 1.03
       @rate_effective = @rate_cny_rub * 1.03
     end
@@ -498,9 +499,10 @@ module Ec
     end
 
     def filter_results_by_sku
-      return if @sku_codes.empty?
+      return unless @sku_filter_active || @sku_codes.present?
 
       @results.select! { |row| @sku_codes.include?(row[:sku_code].to_s.strip.upcase) }
+      @unallocated = { other: 0.0, total: 0.0, rows: [] }
       @summary = build_summary
     end
 

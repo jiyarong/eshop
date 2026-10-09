@@ -12,15 +12,16 @@ module Ec
       annualized_return_pct annualized_net_profit_cny
     ].freeze
 
-    def self.run(from_date:, to_date:, sku_codes: [], include_comparison: true)
-      new(from_date:, to_date:, sku_codes:, include_comparison:).run
+    def self.run(from_date:, to_date:, sku_codes: [], sku_filter_active: false, include_comparison: true)
+      new(from_date:, to_date:, sku_codes:, sku_filter_active:, include_comparison:).run
     end
 
-    def initialize(from_date:, to_date:, rate: nil, sku_codes: [], include_comparison: true)
+    def initialize(from_date:, to_date:, rate: nil, sku_codes: [], sku_filter_active: false, include_comparison: true)
       @from_date = from_date.to_date
       @to_date = to_date.to_date
       @rate = rate || Ec::WeeklyRate.resolve(@from_date)
       @sku_codes = sku_codes
+      @sku_filter_active = sku_filter_active
       @include_comparison = include_comparison
       raise "找不到 #{@from_date} 的汇率，请先录入 ec_weekly_rates" unless @rate
     end

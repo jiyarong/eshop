@@ -29,7 +29,7 @@ module Ec
 
     TAX_REGIME_MAP = { 'general' => 'osn', 'small' => 'usn' }.freeze
 
-    def initialize(account_id:, from_date:, to_date:, rate_cny_rub:, rate_byn_rub:, sku_codes: [])
+    def initialize(account_id:, from_date:, to_date:, rate_cny_rub:, rate_byn_rub:, sku_codes: [], sku_filter_active: false)
       @account      = RawWb::SellerAccount.find(account_id)
       @account_id   = account_id
       @from_date    = from_date.to_date
@@ -38,6 +38,7 @@ module Ec
       @rate_byn_rub = rate_byn_rub.to_f   # 1 BYN = X RUB
       @tax_regime   = TAX_REGIME_MAP.fetch(@account.company_type.to_s, 'usn')
       @sku_codes    = sku_codes.map { |sku| sku.to_s.strip.upcase }.reject(&:blank?).uniq
+      @sku_filter_active = sku_filter_active
     end
 
     def call
@@ -456,10 +457,11 @@ module Ec
     end
 
     def filter_results_by_sku
-      return if @sku_codes.empty?
+      return unless @sku_filter_active || @sku_codes.present?
 
       @results.select! { |row| @sku_codes.include?(row[:vendor_code].to_s.strip.upcase) }
       @unallocated = {}
+      @unalloc_rows = []
       @summary = build_summary
     end
 
