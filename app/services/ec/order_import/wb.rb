@@ -1,20 +1,6 @@
 module Ec
   module OrderImport
     class Wb
-      CURRENCY_MAP = {
-        51 => "AMD",
-        156 => "CNY",
-        398 => "KZT",
-        417 => "KGS",
-        643 => "RUB",
-        860 => "UZS",
-        933 => "BYN",
-        972 => "TJS",
-        840 => "USD",
-        981 => "GEL",
-        978 => "EUR"
-      }.freeze
-
       def call(synced_since: nil)
         total = 0
         raw_orders_for_import(synced_since).find_each do |raw_order|
@@ -235,6 +221,7 @@ module Ec
 
       def import_item(raw_order, store, order, fulfillment)
         sku_product = sku_product_for(store, raw_order.nm_id)
+        stats_order = stats_record_for(RawWb::StatsOrder, raw_order)
         upsert_item(
           order,
           order: order,
@@ -247,9 +234,10 @@ module Ec
           sku_code: sku_product&.sku_code,
           product_name_source: raw_order.article,
           quantity: 1,
-          unit_price: raw_order.price,
-          currency_code: currency_code_for(raw_order),
-          item_payload: raw_order.attributes.slice("nm_id", "article", "barcode", "price", "converted_price"),
+          **price_attributes(stats_order),
+          item_payload: raw_order.attributes.slice(
+            "nm_id", "article", "barcode", "price", "converted_price", "currency_code"
+          ),
           synced_at: raw_order.synced_at
         )
       end
@@ -269,14 +257,10 @@ module Ec
           sku_code: sku_product&.sku_code,
           product_name_source: stats_order.supplier_article,
           quantity: 1,
-          unit_price: raw_order ? raw_order.price : stats_order.total_price,
-          currency_code: raw_order ? currency_code_for(raw_order) : "RUB",
-          buyer_paid_unit_price: stats_order.finished_price,
-          buyer_currency_code: stats_order.finished_price.present? ? "RUB" : nil,
-          buyer_paid_synced_at: stats_order.finished_price.present? ? stats_order.synced_at : nil,
-          **seller_discount_attributes(stats_order, raw_order),
+          **price_attributes(stats_order),
           item_payload: stats_order.attributes.slice(
-            "nm_id", "supplier_article", "barcode", "total_price", "discount_percent"
+            "nm_id", "supplier_article", "barcode", "total_price", "discount_percent",
+            "price_with_disc", "finished_price", "spp"
           ),
           synced_at: stats_order.synced_at
         )
@@ -301,30 +285,29 @@ module Ec
         end
       end
 
-      def currency_code_for(raw_order)
-        CURRENCY_MAP.fetch(raw_order.currency_code.to_i, raw_order.currency_code&.to_s)
-      end
+      # Platform-neutral order item prices (same meaning as Ozon):
+      #   unit_price           commission base: the seller price after seller-funded
+      #                        discounts, before platform-funded ones (WB priceWithDisc).
+      #   buyer_paid_unit_price what the buyer actually paid (WB finishedPrice).
+      # Both come only from the Statistics order; the marketplace order's own price is
+      # the buyer-side price in the seller's currency and is kept in item_payload only.
+      # WB reports 0 while a price is still being filled in, which must read as unknown.
+      def price_attributes(stats_order)
+        return {} unless stats_order
 
-      def seller_discount_attributes(stats_order, raw_order)
-        rate = wb_implicit_rub_byn_rate(stats_order, raw_order)
-        return {} unless rate&.positive? && stats_order.price_with_disc.present?
-
+        commission_base = positive_price(stats_order.price_with_disc)
+        buyer_paid = positive_price(stats_order.finished_price)
         {
-          seller_discount_unit_price: (stats_order.price_with_disc / rate).round(2),
-          seller_discount_currency_code: "BYN",
-          seller_discount_synced_at: stats_order.synced_at
+          unit_price: commission_base,
+          currency_code: commission_base && "RUB",
+          buyer_paid_unit_price: buyer_paid,
+          buyer_currency_code: buyer_paid && "RUB",
+          buyer_paid_synced_at: buyer_paid && stats_order.synced_at
         }
       end
 
-      def wb_implicit_rub_byn_rate(stats_order, raw_order)
-        return unless raw_order
-
-        case raw_order.currency_code.to_i
-        when 643
-          raw_order.price.to_d / raw_order.converted_price.to_d if raw_order.converted_price.to_d.positive?
-        when 933
-          stats_order.finished_price.to_d / raw_order.price.to_d if raw_order.price.to_d.positive?
-        end
+      def positive_price(value)
+        value if value&.positive?
       end
 
       def sku_product_for(store, product_id)

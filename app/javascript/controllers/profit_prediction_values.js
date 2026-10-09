@@ -38,17 +38,20 @@ export function priceVariableCostRate({ platform, market, companyType, inputs })
     return value > -1 ? value / (1 + value) : NaN;
   };
 
-  let result = rate("commission_rate");
   if (platform === "wb") {
+    let result = rate("commission_rate");
     result += rate("acquiring_rate") + rate("advertising_rate");
     result += companyType === "general" ? vatShare("sales_vat_rate", 0.2) : rate("tax_rate", 0.06);
-  } else if (platform === "ozon" && market === "by") {
-    result += vatShare("sales_vat_rate", 0.2);
+    return result;
   } else if (platform === "ozon") {
-    result += rate("acquiring_rate", 0.02) + rate("advertising_rate") + rate("tax_rate");
+    // Ozon target margin follows the seller/list price. Buyer-paid price is
+    // only an audit input for the Belarus platform subsidy.
+    let result = rate("commission_rate") + rate("acquiring_rate") + rate("advertising_rate");
+    result += market === "by" ? vatShare("sales_vat_rate", 0.2) : rate("tax_rate");
+    return result;
   }
 
-  return result;
+  return 0;
 }
 
 export function targetPriceForMargin({ revenueCny, totalCostCny, variableCostRate, targetMargin, exchangeRate }) {
@@ -65,4 +68,34 @@ export function targetPriceForMargin({ revenueCny, totalCostCny, variableCostRat
 
   const priceRub = fixedCost / denominator * exchange;
   return Number.isFinite(priceRub) && priceRub > 0 ? priceRub : null;
+}
+
+// Which actual price fills which input, with the same meaning on every platform:
+//   commission base price -> the input the platform's commission is charged on
+//                            (Ozon rf_price_rub, WB price_rub)
+//   buyer paid price      -> Ozon price_rub (Belarus subsidy audit only); WB has no
+//                            such input, so it is shown but cannot be applied.
+export function sellingPriceShortcuts(platform, data) {
+  const positive = (value) => {
+    if (value === null || value === undefined || value === "") return null;
+
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : null;
+  };
+  const commissionBase = positive(data?.commission_base_price?.average_rub);
+  const buyerPaid = positive(data?.buyer_paid_price?.average_rub);
+  const shortcuts = [];
+
+  if (commissionBase !== null) {
+    shortcuts.push({
+      kind: "commission_base",
+      field: platform === "ozon" ? "rf_price_rub" : "price_rub",
+      priceRub: commissionBase
+    });
+  }
+  if (buyerPaid !== null) {
+    shortcuts.push({ kind: "buyer_paid", field: platform === "ozon" ? "price_rub" : null, priceRub: buyerPaid });
+  }
+
+  return shortcuts;
 }

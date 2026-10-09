@@ -53,6 +53,8 @@ class ErpAI::V3::OrdersFullPeriodContextTest < ActiveSupport::TestCase
     assert_equal @order.id, row.fetch(:order_id)
     assert_equal BigDecimal("100"), row.fetch(:unit_price)
     assert_equal "RUB", row.fetch(:currency_code)
+    assert_equal BigDecimal("100"), row.fetch(:commission_base_unit_price)
+    assert_equal "RUB", row.fetch(:commission_base_currency_code)
     assert_equal BigDecimal("876.54"), row.fetch(:buyer_paid_unit_price)
     assert_equal "RUB", row.fetch(:buyer_currency_code)
     assert_equal BigDecimal("42.63"), row.fetch(:seller_discount_unit_price)

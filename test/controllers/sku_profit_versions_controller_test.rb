@@ -6,6 +6,8 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     @user = create_user_with_roles("profit-versions-#{token}@example.com", "manager")
     sign_in @user
     @sku = Ec::Sku.create!(sku_code: "PV-#{token.upcase}", product_name: "Profit version test", is_active: true)
+    # Workbench endpoints are limited to SKUs the signed-in user is assigned to.
+    Ec::SkuOperatorAssignment.create!(sku: @sku, user: @user)
     Ec::SkuCost.create!(
       sku_code: @sku.sku_code,
       effective_on: Date.new(2026, 1, 1),
@@ -30,6 +32,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     Ec::OperationLog.where(record_type: "Ec::SkuCost", record_id: cost_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::SkuDimension", record_id: dimension_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::Sku", record_id: @sku&.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
     Ec::SkuProfitVersionContext.where(id: context_ids).delete_all
     Ec::SkuProfitVersion.where(id: version_ids).delete_all
     Ec::SkuCost.where(id: cost_ids).delete_all
@@ -81,6 +84,31 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Ec::SkuProfitStandardContexts::SCENARIOS, scenarios
     assert payload.fetch("contexts").all? { |context| context.fetch("calculation_status") == "incomplete" }
     assert payload.fetch("contexts").all? { |context| context.fetch("return_rate").to_d == 0.1.to_d }
+  end
+
+  test "persists Ozon seller and buyer prices independently in both markets" do
+    post report_sku_profit_versions_path(@sku.sku_code), params: {
+      version: { name: "Separate Belarus prices", status: "draft", effective_from: "2026-09-01" },
+      contexts: [
+        {
+          platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
+          inputs: { price_rub: "15216.29", rf_price_rub: "27000" }
+        },
+        {
+          platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
+          inputs: { price_rub: "15609", rf_price_rub: "25000" }
+        }
+      ]
+    }, as: :json
+
+    assert_response :created
+    contexts = response.parsed_body.fetch("contexts")
+    russia = contexts.find { |context| context.fetch("market") == "ru" }
+    belarus = contexts.find { |context| context.fetch("market") == "by" }
+    assert_equal 15_216.29.to_d, russia.fetch("price_rub").to_d
+    assert_equal 27_000.to_d, russia.fetch("rf_price_rub").to_d
+    assert_equal 15_609.to_d, belarus.fetch("price_rub").to_d
+    assert_equal 25_000.to_d, belarus.fetch("rf_price_rub").to_d
   end
 
   test "publishing validates every context and rolls back the whole version" do
@@ -210,7 +238,8 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-platforms='wb'][data-platform-column-group]", minimum: 1
     assert_select "[data-platforms='ozon'][data-platform-column-group]", minimum: 1
     assert_select "th", text: "Amortized return logistics CNY", count: 1
-    assert_select "th", text: "Target sale price (RUB)", count: 1
+    assert_select "th", text: "Customer-paid price (RUB)", count: 1
+    assert_select "th", text: "Target selling / commission-base price (RUB)", count: 1
     assert_select "tr[data-profit-prediction-target='row']", count: 6
     assert_select "tr[data-profit-prediction-target='row'][tabindex='0'][aria-selected='false']", count: 6
     assert_select "tr[data-action*='profit-prediction#selectRow']", count: 6
@@ -219,8 +248,9 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td.profit-prediction-table__identity--warehouse_region", count: 0
     assert_select "td[data-row-status][data-status='pending']", count: 6
     assert_select "input[type='number'][data-field='logistics_coeff']", count: 4
-    assert_select "input[type='number'][data-field='outbound_logistics_rub']", count: 2
+    assert_select "input[type='number'][data-field='outbound_logistics_rub']", count: 6
     assert_select "input[type='number'][data-field='price_rub']:not([disabled])", count: 6
+    assert_select "input[type='number'][data-field='rf_price_rub']:not([disabled])", count: 2
     assert_select "input[type='number'][data-field='length_cm'][disabled]", count: 6
     document = Nokogiri::HTML(response.body)
     rows = document.css("tr[data-profit-prediction-target='row']")
@@ -251,6 +281,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert ozon_rows.all? { |row| row.at_css("input[data-field='warehouse_operation_rub']")["value"].to_d == 25.to_d }
     assert ozon_rows.all? { |row| row.at_css("input[data-field='return_rate']")["value"].to_d == 0.1.to_d }
     assert_select "tr[data-platform='ozon'][data-market='ru'][data-company-type='general']" do
+      assert_select "input[type='number'][data-field='rf_price_rub']:not([disabled])"
       assert_select "input[type='number'][data-field='import_vat_rate'][disabled][value='0.2']"
       assert_select "input[type='number'][data-field='length_cm'][disabled][value='10.00']"
       assert_select "input[type='number'][data-field='width_cm'][disabled][value='20.00']"
@@ -262,13 +293,15 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     end
     group_labels = document.css(".profit-prediction-table__groups th").map { |header| header.text.strip }
     assert_equal ["Scenario", "Product cost and dimensions", "Logistics and other costs", "Price and rates", "Formula results"], group_labels
-    assert_includes response.body, "Belarus revenue = __BY_PRICE__ / __EXCHANGE__; Russia fee base = __RF_PRICE__ / __EXCHANGE__"
+    assert_includes response.body, "Target-price revenue = __RF_PRICE__ / __EXCHANGE__; customer-paid __BY_PRICE__ is only used to derive platform subsidy"
     ordered_fields = document.at_css("tr[data-profit-prediction-target='row']").css("[data-field]").map { |input| input["data-field"] }
+    assert_operator ordered_fields.index("rf_price_rub"), :<, ordered_fields.index("price_rub")
     assert_operator ordered_fields.index("price_rub"), :<, ordered_fields.index("other_cny")
     assert_select "button[data-action='profit-prediction#save']", text: /Save calculation/
       assert_select ".profit-prediction-process" do
         assert_select "h3", text: "Calculation for selected scenario"
         assert_select ".profit-prediction-process__summary"
+        assert_select "[data-profit-prediction-target='detailReferencePrice']"
         assert_select "[data-profit-prediction-target='detailPrice']"
         assert_select "[data-profit-prediction-target='detailTotalCost']"
         assert_select "[data-profit-prediction-target='detailProfit']"
@@ -307,7 +340,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "tr[data-platform='ozon'][data-market='by']" do
       assert_select "input[data-field='price_rub']"
-      assert_select "input[data-field='rf_price_rub']", count: 0
+      assert_select "input[data-field='rf_price_rub']:not([disabled])", count: 1
       assert_select "input[data-field='outbound_logistics_rub']"
       assert_select "input[data-field='return_logistics_rub']"
       assert_select "input[data-field='warehouse_operation_rub']"
@@ -325,24 +358,24 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
         length_cm width_cm height_cm price_rub exchange_rate_rub_cny commission_rate
         acquiring_rate advertising_rate sales_vat_rate logistics_coeff return_rate
         wb_logistics_base_rub wb_logistics_liter_rub wb_fixed_return_base_rub fbo_delivery_cny storage_cny
-        damage_rate misc_cny other_cny
+        damage_rate misc_cny other_cny outbound_logistics_rub return_logistics_rub
       ],
       ["wb", "small"] => %w[
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
         length_cm width_cm height_cm price_rub exchange_rate_rub_cny commission_rate
         acquiring_rate advertising_rate tax_rate logistics_coeff return_rate
         logistics_tax_rate wb_logistics_base_rub wb_logistics_liter_rub fbo_delivery_cny storage_cny
-        damage_rate misc_cny other_cny
+        damage_rate misc_cny other_cny outbound_logistics_rub return_logistics_rub
       ],
       ["ozon", "ru"] => %w[
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
-        length_cm width_cm height_cm price_rub exchange_rate_rub_cny commission_rate
+        length_cm width_cm height_cm price_rub rf_price_rub exchange_rate_rub_cny commission_rate
         acquiring_rate advertising_rate other_cny storage_cny return_rate outbound_logistics_rub
         return_logistics_rub warehouse_operation_rub cross_docking_cny
       ],
       ["ozon", "by"] => %w[
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
-        length_cm width_cm height_cm price_rub exchange_rate_rub_cny
+        length_cm width_cm height_cm price_rub rf_price_rub exchange_rate_rub_cny
         commission_rate acquiring_rate advertising_rate sales_vat_rate other_cny storage_cny return_rate
         outbound_logistics_rub return_logistics_rub warehouse_operation_rub
       ]
@@ -383,7 +416,8 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td[data-result-field='profit_cny']", text: "12.35"
     assert_select "td[data-result-field='margin']", text: "12.35%"
     assert_select "button[data-action='profit-prediction#save']:not([hidden])"
-    assert_includes response.body, "目标成交价（RUB）"
+    assert_includes response.body, "目标成交价/佣金基准价（RUB）"
+    assert_includes response.body, "客户实付价（RUB）"
     assert_includes response.body, "目标利润率"
     assert_no_match(/translation missing/i, response.body)
     assert_includes response.body, "参数不完整：__FIELDS__"
@@ -425,6 +459,25 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, payload.dig("return_rate", "order_count")
     assert_equal 0, payload.dig("return_rate", "return_count")
     assert_nil payload.dig("return_rate", "rate")
+  end
+
+  test "returns the current sku WB actual logistics source payload" do
+    get report_sku_actual_logistics_path(@sku.sku_code), params: { platform: "wb" }, as: :json
+
+    assert_response :success
+    payload = response.parsed_body
+    assert_equal "wb", payload.fetch("platform")
+    assert_equal 0, payload.fetch("store_count")
+    assert_equal 0, payload.dig("outbound", "sample_count")
+    assert_nil payload.dig("outbound", "average_rub")
+    assert_nil payload.dig("return", "average_rub")
+  end
+
+  test "rejects unsupported actual logistics platforms" do
+    get report_sku_actual_logistics_path(@sku.sku_code), params: { platform: "other" }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_equal ["unsupported_platform"], response.parsed_body.fetch("errors")
   end
 
   test "returns actual return rates for both profit platforms" do
@@ -476,9 +529,13 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     payload = response.parsed_body
     assert_equal "ozon", payload.fetch("platform")
     assert_equal "ru", payload.fetch("market")
-    assert_equal "RUB", payload.dig("price", "source_currency")
-    assert_equal 0, payload.dig("price", "item_count")
-    assert_nil payload.dig("price", "average_rub")
+    assert_equal "RUB", payload.dig("buyer_paid_price", "source_currency")
+    assert_equal 0, payload.dig("buyer_paid_price", "item_count")
+    assert_nil payload.dig("buyer_paid_price", "average_rub")
+    assert_equal 0, payload.dig("commission_base_price", "item_count")
+    assert_nil payload.dig("commission_base_price", "average_rub")
+    assert_not payload.key?("price")
+    assert_not payload.key?("seller_price")
   end
 
   test "rejects unsupported actual selling price contexts" do

@@ -289,31 +289,86 @@ module Ec
       assert_equal BigDecimal("876.54"), wb_order.items.first.buyer_paid_unit_price
       assert_equal "RUB", wb_order.items.first.buyer_currency_code
       assert_equal Time.zone.parse("2026-06-05 10:35:00"), wb_order.items.first.buyer_paid_synced_at
-      assert_equal BigDecimal("42.63"), wb_order.items.first.seller_discount_unit_price
-      assert_equal "BYN", wb_order.items.first.seller_discount_currency_code
+      assert_equal BigDecimal("1200"), wb_order.items.first.unit_price
+      assert_equal "RUB", wb_order.items.first.currency_code
+      assert_nil wb_order.items.first.seller_discount_unit_price
       assert_equal @wb_order, wb_order.source_links.first.source
       assert_equal "Центральный", wb_order.fulfillments.first.cluster_from
       assert_equal "Дальневосточный и Сибирский", wb_order.fulfillments.first.cluster_to
     end
 
-    test "wb stats import retains the matching raw order price and currency" do
+    test "wb unit price is the commission base from stats, not the raw marketplace order price" do
       @wb_order.update!(currency_code: 51, price: 789.12, converted_price: 1_200)
 
       Ec::OrderImport::Wb.new.call
 
-      order = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid)
-      assert_equal "AMD", order.items.first.currency_code
-      assert_equal BigDecimal("789.12"), order.items.first.unit_price
+      item = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid).items.first
+      assert_equal BigDecimal("1200"), item.unit_price
+      assert_equal "RUB", item.currency_code
+      assert_equal BigDecimal("1200"), item.item_payload.fetch("price_with_disc").to_d
     end
 
-    test "wb importer maps supported currency codes" do
-      assert_equal(
-        {
-          51 => "AMD", 156 => "CNY", 398 => "KZT", 417 => "KGS", 643 => "RUB",
-          840 => "USD", 860 => "UZS", 933 => "BYN", 972 => "TJS", 978 => "EUR", 981 => "GEL"
-        },
-        Ec::OrderImport::Wb::CURRENCY_MAP
+    test "wb marketplace order without a stats row has no commission base or buyer paid price" do
+      RawWb::StatsSale.where(account_id: @wb_account.id).delete_all
+      RawWb::StatsOrder.where(account_id: @wb_account.id).delete_all
+
+      Ec::OrderImport::Wb.new.call
+
+      item = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid).items.first
+      assert_nil item.unit_price
+      assert_nil item.currency_code
+      assert_nil item.buyer_paid_unit_price
+      assert_equal BigDecimal("1200"), item.item_payload.fetch("price").to_d
+    end
+
+    test "wb stats-only order stores price with discount instead of the list price" do
+      stats = RawWb::StatsOrder.create!(
+        account: @wb_account,
+        order_date: Time.zone.parse("2026-06-10 09:00:00"),
+        supplier_article: "WB707",
+        total_price: 5000,
+        discount_percent: 71,
+        spp: 22,
+        price_with_disc: 1450.05,
+        finished_price: 1131.1,
+        warehouse_name: @wb_region.warehouse_name,
+        warehouse_type: "Склад WB",
+        nm_id: @wb_nm_id,
+        srid: "WB-FBW-#{@token}",
+        synced_at: Time.zone.parse("2026-06-10 10:00:00")
       )
+
+      Ec::OrderImport::Wb.new.call
+
+      item = Ec::Order.find_by!(platform: "wb", external_order_id: stats.srid).items.first
+      assert_equal BigDecimal("1450.05"), item.unit_price
+      assert_equal "RUB", item.currency_code
+      assert_equal BigDecimal("1131.1"), item.buyer_paid_unit_price
+      assert_equal "RUB", item.buyer_currency_code
+    end
+
+    test "wb zero stats prices are not stored as prices" do
+      RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid)
+        .update!(price_with_disc: 0, finished_price: 0)
+
+      Ec::OrderImport::Wb.new.call
+
+      item = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid).items.first
+      assert_nil item.unit_price
+      assert_nil item.currency_code
+      assert_nil item.buyer_paid_unit_price
+      assert_nil item.buyer_currency_code
+    end
+
+    test "wb raw order re-import does not overwrite the stats commission base" do
+      Ec::OrderImport::Wb.new.call
+      @wb_order.update!(price: 789.12, synced_at: Time.zone.parse("2026-06-20 09:00:00"))
+
+      Ec::OrderImport::Wb.new.call(synced_since: Time.zone.parse("2026-06-19 00:00:00"))
+
+      item = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid).items.first
+      assert_equal BigDecimal("1200"), item.unit_price
+      assert_equal "RUB", item.currency_code
     end
 
     test "wb import can limit raw orders by synced_at" do
@@ -465,6 +520,8 @@ module Ec
         supplier_article: "WBSTATSONLY-#{@token}",
         barcode: "460000000099",
         total_price: 456.78,
+        price_with_disc: 321.09,
+        finished_price: 250.5,
         warehouse_name: "Stats Warehouse",
         warehouse_type: "Склад WB",
         oblast: "Stats Region",
@@ -482,7 +539,8 @@ module Ec
       assert_equal Time.zone.parse("2026-06-08 09:00:00"), stats_order.ordered_at
       assert_equal "Stats Region", stats_order.buyer_city
       assert_equal "WBSTATSONLY-#{@token}", stats_order.items.first.offer_id
-      assert_equal BigDecimal("456.78"), stats_order.items.first.unit_price
+      assert_equal BigDecimal("321.09"), stats_order.items.first.unit_price
+      assert_equal BigDecimal("250.5"), stats_order.items.first.buyer_paid_unit_price
       assert_equal @wb_sku.sku_code, stats_order.items.first.sku_code
       assert_equal "fbw", stats_order.fulfillments.first.fulfillment_type
       assert_equal "RUB", stats_order.items.first.currency_code
@@ -551,8 +609,7 @@ module Ec
         quantity: 1
       )
       stats_order = RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid)
-      @wb_order.update!(price: 1_399)
-      stats_order.update!(supplier_article: "WB707-UPDATED")
+      stats_order.update!(supplier_article: "WB707-UPDATED", price_with_disc: 1_399)
 
       Ec::OrderImport::Wb.new.call
 

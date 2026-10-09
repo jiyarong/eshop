@@ -4,6 +4,7 @@ import {
   dualCurrencyAmounts,
   priceVariableCostRate,
   profitInputValue,
+  sellingPriceShortcuts,
   shortcutInputValue,
   targetPriceForMargin
 } from "./profit_prediction_values";
@@ -112,6 +113,8 @@ export default class extends Controller {
     "wbLogisticsActionMessage",
     "wbLogisticsBody",
     "contextCount",
+    "detailReferencePriceItem",
+    "detailReferencePrice",
     "detailPrice",
     "targetMargin",
     "detailTotalCost",
@@ -123,6 +126,7 @@ export default class extends Controller {
     this.previewTimers = new Map();
     this.previewControllers = new Map();
     this.previewData = new Map();
+    this.actualLogisticsData = new Map();
     this.actualSellingPriceData = new Map();
     this.actualReturnRateData = new Map();
     this.actualStorageData = new Map();
@@ -196,6 +200,9 @@ export default class extends Controller {
 
     event.target.dataset.valueChanged = "true";
     this.syncProcessInput(row, event.target.dataset.field);
+    if (this.selectedRow === row && event.target.dataset.field === "rf_price_rub" && this.hasDetailReferencePriceTarget) {
+      this.detailReferencePriceTarget.textContent = this.number(this.numericInputs(row).rf_price_rub);
+    }
     if (this.selectedRow === row && event.target.dataset.field === "price_rub" && this.hasDetailPriceTarget) {
       this.detailPriceTarget.textContent = this.number(this.numericInputs(row).price_rub);
     }
@@ -429,6 +436,7 @@ export default class extends Controller {
       tab.tabIndex = selected ? 0 : -1;
     });
     if (this.hasDetailTitleTarget) this.detailTitleTarget.textContent = row.dataset.contextLabel || "";
+    this.renderReferencePriceSummary(row);
     if (this.hasDetailPriceTarget) this.detailPriceTarget.textContent = this.number(this.numericInputs(row).price_rub);
 
     const data = this.previewData.get(row.dataset.rowKey);
@@ -495,18 +503,15 @@ export default class extends Controller {
     const dutyRate = this.numberOr(inputs.duty_rate, 0.1);
     const importVatRate = this.numberOr(inputs.import_vat_rate, 0.2);
 
-    const isOzonBelarus = row.dataset.platform === "ozon" && row.dataset.market === "by";
-    const russianPriceAvailable = isOzonBelarus && this.russianScenarioPrice(row) !== null;
-    const revenueFormula = isOzonBelarus
-      ? (russianPriceAvailable
-        ? this.messagesValue.process.by_revenue_formula
-        : this.messagesValue.process.by_revenue_formula_fallback)
-        .replace("__BY_PRICE__", this.number(inputs.price_rub))
+    const isOzon = row.dataset.platform === "ozon";
+    const revenueFormula = isOzon
+      ? this.messagesValue.process.by_revenue_formula
         .replace("__RF_PRICE__", this.number(inputs.rf_price_rub))
+        .replace("__BY_PRICE__", this.number(inputs.price_rub))
         .replaceAll("__EXCHANGE__", this.number(exchange))
       : `${this.number(inputs.price_rub)} / ${this.number(exchange)}`;
-    const revenueFields = isOzonBelarus
-      ? ["price_rub", "target_margin", "rf_price_rub", "exchange_rate_rub_cny"]
+    const revenueFields = isOzon
+      ? ["rf_price_rub", "target_margin", "exchange_rate_rub_cny"]
       : ["price_rub", "target_margin", "exchange_rate_rub_cny"];
     this.appendProcessStep(steps.revenue,
       revenueFormula,
@@ -569,6 +574,10 @@ export default class extends Controller {
     const returnRate = inputs.return_rate;
     const baseFee = this.numberOr(inputs.wb_logistics_base_rub, row.dataset.companyType === "general" ? 60 : 46);
     const literFee = this.numberOr(inputs.wb_logistics_liter_rub, 14);
+    const actualOutbound = Number(inputs.outbound_logistics_rub);
+    const actualReturn = Number(inputs.return_logistics_rub);
+    const hasActualOutbound = inputs.outbound_logistics_rub !== null && inputs.outbound_logistics_rub !== undefined && Number.isFinite(actualOutbound);
+    const hasActualReturn = inputs.return_logistics_rub !== null && inputs.return_logistics_rub !== undefined && Number.isFinite(actualReturn);
 
     this.appendProcessStep(steps.volume,
       `${this.number(inputs.length_cm)} * ${this.number(inputs.width_cm)} * ${this.number(inputs.height_cm)} / 1000`,
@@ -584,15 +593,19 @@ export default class extends Controller {
       `${this.number(baseFee)} + (${this.number(intermediate.billed_volume_l)} - 1) * ${this.number(literFee)}`,
       intermediate.base_logistics_rub, units.rub, ["wb_logistics_base_rub", "wb_logistics_liter_rub"], "wb_logistics_tariffs");
     this.appendProcessStep(steps.platform_logistics,
-      `${this.number(inputs.fbo_delivery_cny || 0)} + ${this.number(intermediate.base_logistics_rub)} * ${this.number(inputs.logistics_coeff)} / ${this.number(exchange)}`,
-      costs.logistics, units.cny, ["fbo_delivery_cny", "logistics_coeff", "exchange_rate_rub_cny"]);
+      hasActualOutbound
+        ? `${this.number(inputs.fbo_delivery_cny || 0)} + ${this.number(actualOutbound)} / ${this.number(exchange)}`
+        : `${this.number(inputs.fbo_delivery_cny || 0)} + ${this.number(intermediate.base_logistics_rub)} * ${this.number(inputs.logistics_coeff)} / ${this.number(exchange)}`,
+      costs.logistics, units.cny,
+      ["fbo_delivery_cny", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"]);
 
-    const fixedReturnFormula = row.dataset.companyType === "general"
-      ? `${this.number(this.numberOr(inputs.wb_fixed_return_base_rub, 50))} / ${this.number(exchange)} * ${this.percent(returnRate)} / (1 - ${this.percent(returnRate)})`
-      : `${this.number(intermediate.base_logistics_rub)} * (1 - ${this.percent(this.numberOr(inputs.logistics_tax_rate, 0.2))}) / ${this.number(exchange)}`;
+    const fixedReturnFormula = hasActualReturn
+      ? `${this.number(actualReturn)} / ${this.number(exchange)} * ${this.percent(returnRate)} / (1 - ${this.percent(returnRate)})`
+      : `${this.number(this.numberOr(inputs.wb_fixed_return_base_rub, 50))} / ${this.number(exchange)} * ${this.percent(returnRate)} / (1 - ${this.percent(returnRate)})`;
     this.appendProcessStep(steps.returns,
       `${this.number(intermediate.platform_logistics_cny)} * ${this.percent(returnRate)} / (1 - ${this.percent(returnRate)}) + (${fixedReturnFormula})`,
-      costs.returns, units.cny, ["return_rate", "wb_fixed_return_base_rub", "logistics_tax_rate", "exchange_rate_rub_cny"]);
+      costs.returns, units.cny,
+      ["return_rate", "wb_fixed_return_base_rub", "return_logistics_rub", "logistics_tax_rate", "exchange_rate_rub_cny"]);
   }
 
   appendOzonProcessSteps(row, inputs, costs, intermediate, steps, units) {
@@ -635,7 +648,9 @@ export default class extends Controller {
 
   appendCommonCostSteps(row, inputs, costs, data, steps, units) {
     const revenue = data.revenue_cny;
-    const commissionBase = revenue;
+    const commissionBase = row.dataset.platform === "ozon"
+      ? data.intermediate?.commission_base_cny
+      : revenue;
     const rateBase = row.dataset.platform === "ozon" ? data.intermediate?.rf_revenue_cny : revenue;
 
     this.appendProcessStep(
@@ -649,6 +664,16 @@ export default class extends Controller {
     this.appendProcessStep(steps.commission,
       `${this.number(commissionBase)} * ${this.percent(inputs.commission_rate)}`,
       costs.commission, units.cny, ["commission_rate"], "official_commission");
+    if (row.dataset.platform === "ozon" && row.dataset.market === "by") {
+      const vatRate = this.numberOr(inputs.sales_vat_rate, 0.2);
+      this.appendProcessStep(
+        steps.platform_subsidy,
+        `${this.number(inputs.rf_price_rub)} * (1 - ${this.percent(inputs.commission_rate)}) - ${this.number(inputs.price_rub)} / (1 + ${this.percent(vatRate)})`,
+        data.intermediate?.platform_subsidy_rub,
+        units.rub,
+        ["rf_price_rub", "price_rub", "commission_rate", "sales_vat_rate"]
+      );
+    }
     this.appendProcessStep(steps.acquiring,
       `${this.number(rateBase)} * ${this.percent(this.numberOr(inputs.acquiring_rate, row.dataset.platform === "ozon" ? 0.02 : 0))}`,
       costs.acquiring, units.cny, ["acquiring_rate"]);
@@ -803,7 +828,8 @@ export default class extends Controller {
     logisticsResult.className = "profit-prediction-process__source-result";
     logisticsResult.dataset.actualLogisticsResult = "";
     cell.replaceChildren(actions, logisticsResult);
-    if (this.actualLogisticsLoaded && this.actualMetricsData) this.renderActualLogisticsResult(cell, this.actualMetricsData);
+    const data = this.actualLogisticsData.get(this.actualLogisticsKey(this.selectedRow));
+    if (data) this.renderActualLogisticsResult(cell, data);
   }
 
   renderActualSellingPriceSource(cell) {
@@ -881,12 +907,27 @@ export default class extends Controller {
   }
 
   renderWbLogisticsSource(cell) {
-    const button = this.sourceButton(
-      "bi-truck",
-      this.messagesValue.process.sources.wb_logistics_tariffs.action,
-      "profit-prediction#openWbLogisticsTariffs"
+    const actions = document.createElement("div");
+    actions.className = "profit-prediction-process__source-actions";
+    actions.append(
+      this.sourceButton(
+        "bi-truck",
+        this.messagesValue.process.sources.wb_logistics_tariffs.action,
+        "profit-prediction#openWbLogisticsTariffs"
+      ),
+      this.sourceButton(
+        "bi-clock-history",
+        this.messagesValue.process.sources.actual_logistics.action,
+        "profit-prediction#loadActualLogistics"
+      )
     );
-    cell.replaceChildren(button);
+    const result = document.createElement("div");
+    result.className = "profit-prediction-process__source-result";
+    result.dataset.actualLogisticsResult = "";
+    cell.replaceChildren(actions, result);
+
+    const data = this.actualLogisticsData.get(this.actualLogisticsKey(this.selectedRow));
+    if (data) this.renderActualLogisticsResult(cell, data);
   }
 
   renderActualStorageSource(cell) {
@@ -1316,51 +1357,79 @@ export default class extends Controller {
     const container = cell?.querySelector("[data-actual-selling-price-result]");
     if (!container) return;
 
-    const rawPrice = data.price?.average_rub;
-    const priceRub = rawPrice === null || rawPrice === undefined || rawPrice === "" ? NaN : Number(rawPrice);
+    const commissionBase = data.commission_base_price || {};
+    const buyerPaid = data.buyer_paid_price || {};
     const messages = this.messagesValue.process.sources.actual_selling_price;
-    if (!Number.isFinite(priceRub)) {
-      container.className = data.price?.missing_exchange_rate_item_count > 0
+    const shortcuts = sellingPriceShortcuts(this.selectedRow?.dataset.platform, data);
+    const labels = {
+      commission_base: { result: messages.commission_base_result, apply: messages.apply_commission_base },
+      buyer_paid: { result: messages.buyer_result, apply: messages.apply_buyer }
+    };
+    const links = shortcuts.map(({ kind, field, priceRub }) => this.actualSellingPriceLink({
+      field,
+      priceRub,
+      label: labels[kind].result,
+      title: field ? labels[kind].apply : messages.buyer_reference_only
+    }));
+    if (links.length === 0) {
+      const missingRate = (commissionBase.missing_exchange_rate_item_count || 0) + (buyerPaid.missing_exchange_rate_item_count || 0) > 0;
+      container.className = missingRate
         ? "profit-prediction-process__source-result is-error"
         : "profit-prediction-process__source-result is-empty";
-      container.textContent = data.price?.missing_exchange_rate_item_count > 0 ? messages.missing_rate : messages.empty;
+      container.textContent = missingRate ? messages.missing_rate : messages.empty;
       return;
     }
 
-    const link = document.createElement("button");
-    link.type = "button";
-    link.className = "profit-prediction-process__source-link";
-    link.dataset.action = "profit-prediction#applyActualSellingPrice";
-    link.dataset.priceRub = priceRub;
-    link.title = messages.apply;
-    link.textContent = messages.result.replace("__PRICE__", `${this.number(priceRub)} RUB`);
-    link.disabled = this.readonlyValue;
+    const sources = [];
+    [
+      [commissionBase, messages.commission_base_converted_source],
+      [buyerPaid, messages.converted_source]
+    ].forEach(([price, template]) => {
+      const sourceCurrency = price?.source_currency || "RUB";
+      const sourceAverage = Number(price?.average_source);
+      if (sourceCurrency === "RUB" || !Number.isFinite(sourceAverage) || !template) return;
 
-    const sourceCurrency = data.price?.source_currency || "RUB";
-    const sourceAverage = Number(data.price?.average_source);
-    const source = sourceCurrency !== "RUB" && Number.isFinite(sourceAverage) ? document.createElement("small") : null;
-    if (source) {
-      source.textContent = messages.converted_source
+      const source = document.createElement("small");
+      source.textContent = template
         .replace("__SOURCE_PRICE__", this.number(sourceAverage))
         .replace("__SOURCE_CURRENCY__", sourceCurrency)
-        .replace("__RUB_PRICE__", this.number(priceRub));
-    }
+        .replace("__RUB_PRICE__", this.number(price.average_rub));
+      sources.push(source);
+    });
 
+    const counted = commissionBase.item_count ? commissionBase : buyerPaid;
     const meta = document.createElement("small");
     meta.textContent = messages.meta
-      .replace("__ITEMS__", data.price?.item_count ?? 0)
-      .replace("__UNITS__", data.price?.unit_count ?? 0)
+      .replace("__ITEMS__", counted.item_count ?? 0)
+      .replace("__UNITS__", counted.unit_count ?? 0)
       .replace("__FROM__", data.period?.from_date || "-")
       .replace("__TO__", data.period?.to_date || "-")
       .replace("__DATA_THROUGH__", data.period?.data_through || "-");
     container.className = "profit-prediction-process__source-result";
-    container.replaceChildren(link, ...[source, meta].filter(Boolean));
+    container.replaceChildren(...links, ...sources, meta);
+  }
+
+  // `field` is null for prices that are shown for reference only (no matching input).
+  actualSellingPriceLink({ field, priceRub, label, title }) {
+    const link = document.createElement("button");
+    link.type = "button";
+    link.className = "profit-prediction-process__source-link";
+    link.dataset.action = "profit-prediction#applyActualSellingPrice";
+    link.dataset.field = field || "";
+    link.dataset.priceRub = priceRub;
+    link.title = title;
+    link.textContent = label.replace("__PRICE__", `${this.number(priceRub)} RUB`);
+    link.disabled = this.readonlyValue || !field;
+    return link;
   }
 
   applyActualSellingPrice(event) {
     if (!this.selectedRow || this.readonlyValue) return;
 
-    const input = this.selectedRow.querySelector("[data-field='price_rub']");
+    const field = event.currentTarget.dataset.field;
+    if (!field) return;
+
+    const input = this.selectedRow.querySelector(`[data-field='${field}']`);
     const price = event.currentTarget.dataset.priceRub;
     if (!input || price === undefined || price === "") return;
 
@@ -1374,7 +1443,9 @@ export default class extends Controller {
     if (!this.selectedRow) return;
 
     const platform = this.selectedRow.dataset.platform;
-    if (kind !== "return-rate" && platform !== "ozon") return;
+    const deliveryMode = this.selectedRow.dataset.deliveryMode || "";
+    const logisticsKey = `${platform}:${deliveryMode}`;
+    if (kind === "cross-dock" && platform !== "ozon") return;
 
     this.actualMetricsRequestController?.abort();
     const controller = new AbortController();
@@ -1396,7 +1467,10 @@ export default class extends Controller {
       const url = kind === "return-rate"
         ? new URL(this.actualReturnRateUrlValue, window.location.origin)
         : new URL(this.actualLogisticsUrlValue, window.location.origin);
-      if (kind === "return-rate") url.searchParams.set("platform", platform);
+      if (kind === "return-rate" || kind === "logistics") url.searchParams.set("platform", platform);
+      if (kind === "logistics" && platform === "wb") {
+        url.searchParams.set("delivery_mode", deliveryMode || "fbo");
+      }
       const response = await fetch(url, {
         headers: { Accept: "application/json" },
         signal: controller.signal
@@ -1412,9 +1486,8 @@ export default class extends Controller {
         this.actualCrossDockLoaded = true;
         if (this.selectedRow?.dataset.platform === "ozon") this.renderActualCrossDockResult(cell, this.actualMetricsData);
       } else {
-        this.actualMetricsData = data;
-        this.actualLogisticsLoaded = true;
-        if (this.selectedRow?.dataset.platform === "ozon") this.renderActualLogisticsResult(cell, this.actualMetricsData);
+        this.actualLogisticsData.set(logisticsKey, data);
+        if (this.actualLogisticsKey(this.selectedRow) === logisticsKey) this.renderActualLogisticsResult(cell, data);
       }
     } catch (error) {
       if (error.name !== "AbortError" && result) {
@@ -1468,6 +1541,12 @@ export default class extends Controller {
       .replace("__DATA_THROUGH__", data.period?.data_through || "-");
     container.className = "profit-prediction-process__source-result";
     container.replaceChildren(link, meta);
+  }
+
+  actualLogisticsKey(row) {
+    if (!row) return "";
+
+    return `${row.dataset.platform}:${row.dataset.deliveryMode || ""}`;
   }
 
   applyActualLogistics(event) {
@@ -2094,11 +2173,20 @@ export default class extends Controller {
   }
 
   renderProcessSummary(row, data) {
+    this.renderReferencePriceSummary(row);
     if (this.hasDetailPriceTarget) this.detailPriceTarget.textContent = this.number(this.numericInputs(row).price_rub);
     if (this.hasDetailTotalCostTarget) this.detailTotalCostTarget.textContent = this.number(data.total_cost_cny);
     if (this.hasDetailProfitTarget) this.detailProfitTarget.textContent = this.number(data.profit_cny);
     if (this.hasDetailMarginTarget) this.detailMarginTarget.textContent = `${this.number(Number(data.margin) * 100)}%`;
     this.syncTargetMargin(row, data.margin);
+  }
+
+  renderReferencePriceSummary(row) {
+    const applicable = row?.dataset.platform === "ozon";
+    if (this.hasDetailReferencePriceItemTarget) this.detailReferencePriceItemTarget.hidden = !applicable;
+    if (this.hasDetailReferencePriceTarget) {
+      this.detailReferencePriceTarget.textContent = applicable ? this.number(this.numericInputs(row).rf_price_rub) : "-";
+    }
   }
 
   syncTargetMargin(row, margin) {
@@ -2164,7 +2252,10 @@ export default class extends Controller {
       targetMargin,
       exchangeRate: inputs.exchange_rate_rub_cny
     });
-    const priceInput = row.querySelector("[data-field='price_rub']");
+    // Ozon's target margin is based on the seller/list price (and commission
+    // base), while the buyer-paid price is an independent subsidy input.
+    const targetPriceField = row.dataset.platform === "ozon" ? "rf_price_rub" : "price_rub";
+    const priceInput = row.querySelector(`[data-field='${targetPriceField}']`);
     if (!priceInput || priceRub === null) {
       this.markTargetMarginInvalid(input, true);
       return;
@@ -2175,11 +2266,6 @@ export default class extends Controller {
     priceInput.dataset.valueChanged = "true";
     this.inputChanged({ target: priceInput, type: "target-margin" });
     this.schedulePreview(row);
-    if (row.dataset.platform === "ozon" && row.dataset.market === "ru") {
-      this.rowTargets
-        .filter((candidate) => candidate.dataset.platform === "ozon" && candidate.dataset.market === "by")
-        .forEach((candidate) => this.schedulePreview(candidate));
-    }
   }
 
   async previewTargetMarginBaseData(row) {
@@ -2192,7 +2278,7 @@ export default class extends Controller {
     // temporary 1 RUB probe is enough because target-price solving removes
     // all price-variable costs from the returned total.
     if (!Number.isFinite(probePrice) || probePrice <= 0) inputs.price_rub = "1";
-    if (row.dataset.platform === "ozon" && row.dataset.market === "by") {
+    if (row.dataset.platform === "ozon") {
       const referencePrice = Number(inputs.rf_price_rub);
       if (!Number.isFinite(referencePrice) || referencePrice <= 0) inputs.rf_price_rub = "1";
     }
@@ -2273,6 +2359,7 @@ export default class extends Controller {
   }
 
   clearProcessSummary() {
+    if (this.hasDetailReferencePriceTarget) this.detailReferencePriceTarget.textContent = "-";
     if (this.hasDetailTotalCostTarget) this.detailTotalCostTarget.textContent = "-";
     if (this.hasDetailProfitTarget) this.detailProfitTarget.textContent = "-";
     if (this.hasDetailMarginTarget) this.detailMarginTarget.textContent = "-";
@@ -2412,8 +2499,15 @@ export default class extends Controller {
 
   processParameterLabel(row, field) {
     if (field === "target_margin") return this.messagesValue.process.target_margin;
-    if (field === "price_rub" && row.dataset.platform === "ozon" && row.dataset.market === "by") {
+    if (field === "price_rub" && row.dataset.platform === "ozon") {
       return this.messagesValue.process.by_price_label;
+    }
+    // WB's price_rub is the revenue and commission base, not the buyer-paid price.
+    if (field === "price_rub" && row.dataset.platform === "wb") {
+      return this.messagesValue.process.wb_price_label;
+    }
+    if (field === "rf_price_rub" && row.dataset.platform === "ozon") {
+      return this.messagesValue.process.by_target_price_label;
     }
 
     return this.messagesValue.process.parameter_labels?.[field] || field;
@@ -2474,11 +2568,6 @@ export default class extends Controller {
           return [input.dataset.field, value === "" ? null : Number(value)];
         })
     );
-
-    if (row.dataset.platform === "ozon" && row.dataset.market === "by") {
-      const value = this.russianScenarioPrice(row);
-      inputs.rf_price_rub = value ?? inputs.price_rub ?? null;
-    }
 
     return inputs;
   }
@@ -2698,24 +2787,7 @@ export default class extends Controller {
         .map((input) => [input.dataset.field, profitInputValue(input)])
     );
 
-    if (row.dataset.platform === "ozon" && row.dataset.market === "by") {
-      inputs.rf_price_rub = this.russianScenarioPrice(row) ?? inputs.price_rub ?? "";
-    }
-
     return inputs;
-  }
-
-  russianScenarioPrice(row) {
-    if (row.dataset.platform !== "ozon" || row.dataset.market !== "by") return null;
-
-    const russianRow = this.rowTargets.find(
-      (candidate) => candidate.dataset.platform === "ozon" && candidate.dataset.market === "ru"
-    );
-    const russianPrice = russianRow?.querySelector("[data-field='price_rub']");
-    if (!russianPrice) return null;
-
-    const value = profitInputValue(russianPrice);
-    return value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
   }
 
   versionAttributes(status) {

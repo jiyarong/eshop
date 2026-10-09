@@ -20,9 +20,7 @@
   },
   warnings: warning_fields.index_with do |field|
     t("reports.profit_prediction.warnings.not_included", field: t("reports.profit_prediction.fields.#{field}"))
-  end.transform_keys { |field| "#{field}_not_included" }.merge(
-    "rf_price_fallback_to_market_price" => t("reports.profit_prediction.warnings.rf_price_fallback_to_market_price")
-  ),
+  end.transform_keys { |field| "#{field}_not_included" },
   process: {
     incomplete: t("reports.profit_prediction.process.incomplete"),
     incomplete_fields: t("reports.profit_prediction.process.incomplete_fields", fields: "__FIELDS__"),
@@ -34,15 +32,11 @@
       decrement: t("reports.profit_prediction.process.input_number.decrement")
     },
     cross_docking_not_applicable: t("reports.profit_prediction.process.cross_docking_not_applicable"),
+    by_target_price_label: t("reports.profit_prediction.process.by_target_price_label"),
     by_price_label: t("reports.profit_prediction.process.by_price_label"),
+    wb_price_label: t("reports.profit_prediction.process.wb_price_label"),
     by_revenue_formula: t(
       "reports.profit_prediction.process.by_revenue_formula",
-      by_price: "__BY_PRICE__",
-      rf_price: "__RF_PRICE__",
-      exchange: "__EXCHANGE__"
-    ),
-    by_revenue_formula_fallback: t(
-      "reports.profit_prediction.process.by_revenue_formula_fallback",
       by_price: "__BY_PRICE__",
       rf_price: "__RF_PRICE__",
       exchange: "__EXCHANGE__"
@@ -86,9 +80,13 @@
         empty: t("reports.profit_prediction.sources.actual_selling_price.empty"),
         missing_rate: t("reports.profit_prediction.sources.actual_selling_price.missing_rate"),
         load_failed: t("reports.profit_prediction.sources.actual_selling_price.load_failed"),
-        result: t("reports.profit_prediction.sources.actual_selling_price.result", price: "__PRICE__"),
+        commission_base_result: t("reports.profit_prediction.sources.actual_selling_price.commission_base_result", price: "__PRICE__"),
+        buyer_result: t("reports.profit_prediction.sources.actual_selling_price.buyer_result", price: "__PRICE__"),
+        commission_base_converted_source: t("reports.profit_prediction.sources.actual_selling_price.commission_base_converted_source", source_price: "__SOURCE_PRICE__", source_currency: "__SOURCE_CURRENCY__", rub_price: "__RUB_PRICE__"),
         converted_source: t("reports.profit_prediction.sources.actual_selling_price.converted_source", source_price: "__SOURCE_PRICE__", source_currency: "__SOURCE_CURRENCY__", rub_price: "__RUB_PRICE__"),
-        apply: t("reports.profit_prediction.sources.actual_selling_price.apply"),
+        apply_commission_base: t("reports.profit_prediction.sources.actual_selling_price.apply_commission_base"),
+        apply_buyer: t("reports.profit_prediction.sources.actual_selling_price.apply_buyer"),
+        buyer_reference_only: t("reports.profit_prediction.sources.actual_selling_price.buyer_reference_only"),
         meta: t("reports.profit_prediction.sources.actual_selling_price.meta", items: "__ITEMS__", units: "__UNITS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
       },
       actual_cross_dock: {
@@ -441,6 +439,10 @@
         </div>
         <p class="profit-prediction-process__status" data-profit-prediction-target="detailStatus" role="status" aria-live="polite" hidden></p>
         <div class="profit-prediction-process__summary" aria-label="<%= t("reports.profit_prediction.process.summary") %>">
+          <div class="profit-prediction-process__summary-item" data-profit-prediction-target="detailReferencePriceItem" hidden>
+            <span><%= t("reports.profit_prediction.process.by_target_price_label") %></span>
+            <strong data-profit-prediction-target="detailReferencePrice">-</strong>
+          </div>
           <div class="profit-prediction-process__summary-item">
             <span><%= t("reports.profit_prediction.fields.price_rub") %></span>
             <strong data-profit-prediction-target="detailPrice">-</strong>

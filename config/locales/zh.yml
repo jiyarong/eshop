@@ -855,6 +855,8 @@ zh:
       synced_at: "同步时间"
       tracking_number: "运单号"
       unit_price: "单价"
+      commission_base_price: "佣金基准价"
+      buyer_paid_price: "买家实付价"
       warehouse: "仓库"
     filters:
       all_platforms: "全部平台"
@@ -3216,10 +3218,11 @@ zh:
         tabs: { aria_label: "运营记录视图", list: "记录列表", trend: "趋势图" }
         filters: { store: "店铺", date_range: "日期范围" }
         charts: { combined: "价格、客户成交与净销量趋势" }
-        metrics: { buyer_price: "客户平均成交价", seller_discount_price_byn: "卖家折扣价 · BYN", net_sales: "净销量", unit_profit: "周归集单件利润" }
-        axes: { price: "RUB 价格", quantity: "件数", unit_profit: "CNY/件", seller_discount_byn: "BYN 卖家价" }
+        metrics: { buyer_price: "客户平均成交价", net_sales: "净销量", unit_profit: "周归集单件利润" }
+        axes: { price: "RUB 价格", quantity: "件数", unit_profit: "CNY/件" }
         listing_price: "后台实际定价 · %{listing}"
         buyer_price_currency: "客户平均成交价 · %{currency}"
+        commission_base_price_currency: "佣金基准价 · %{currency}"
         empty:
           no_store: "当前 SKU 没有可用的 WB 或 Ozon 店铺"
           no_price_data: "所选范围内暂无可靠的价格数据"

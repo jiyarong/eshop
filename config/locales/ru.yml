@@ -848,6 +848,8 @@ ru:
       synced_at: "Время синхронизации"
       tracking_number: "Трек-номер"
       unit_price: "Цена за единицу"
+      commission_base_price: "Базовая цена комиссии"
+      buyer_paid_price: "Цена, оплаченная покупателем"
       warehouse: "Склад"
     filters:
       all_platforms: "Все платформы"
@@ -2955,10 +2957,11 @@ ru:
         tabs: { aria_label: "Представление операционных записей", list: "Список записей", trend: "Графики" }
         filters: { store: "Магазин", date_range: "Период" }
         charts: { combined: "Цена, оплата покупателя и чистые продажи" }
-        metrics: { buyer_price: "Средняя цена покупателя", seller_discount_price_byn: "Цена продавца со скидкой · BYN", net_sales: "Чистые продажи", unit_profit: "Недельная прибыль на единицу" }
-        axes: { price: "Цена RUB", quantity: "Штуки", unit_profit: "CNY/шт.", seller_discount_byn: "Цена продавца BYN" }
+        metrics: { buyer_price: "Средняя цена покупателя", net_sales: "Чистые продажи", unit_profit: "Недельная прибыль на единицу" }
+        axes: { price: "Цена RUB", quantity: "Штуки", unit_profit: "CNY/шт." }
         listing_price: "Цена продавца · %{listing}"
         buyer_price_currency: "Средняя цена покупателя · %{currency}"
+        commission_base_price_currency: "Базовая цена комиссии · %{currency}"
         empty:
           no_store: "Для SKU нет доступного магазина WB или Ozon"
           no_price_data: "За выбранный период нет надежных данных о цене"

@@ -877,6 +877,8 @@ en:
       synced_at: "Synced at"
       tracking_number: "Tracking number"
       unit_price: "Unit price"
+      commission_base_price: "Commission base price"
+      buyer_paid_price: "Buyer-paid price"
       warehouse: "Warehouse"
     filters:
       all_platforms: "All platforms"
@@ -3004,10 +3006,11 @@ en:
         tabs: { aria_label: "Operation record views", list: "Records", trend: "Trends" }
         filters: { store: "Store", date_range: "Date range" }
         charts: { combined: "Price, buyer-paid price, and net sales" }
-        metrics: { buyer_price: "Average buyer-paid price", seller_discount_price_byn: "Seller discount price · BYN", net_sales: "Net sales", unit_profit: "Weekly unit profit" }
-        axes: { price: "RUB price", quantity: "Units", unit_profit: "CNY/unit", seller_discount_byn: "BYN seller price" }
+        metrics: { buyer_price: "Average buyer-paid price", net_sales: "Net sales", unit_profit: "Weekly unit profit" }
+        axes: { price: "RUB price", quantity: "Units", unit_profit: "CNY/unit" }
         listing_price: "Seller price · %{listing}"
         buyer_price_currency: "Average buyer-paid price · %{currency}"
+        commission_base_price_currency: "Commission base price · %{currency}"
         empty:
           no_store: "This SKU has no available WB or Ozon store"
           no_price_data: "No reliable price data in the selected range"

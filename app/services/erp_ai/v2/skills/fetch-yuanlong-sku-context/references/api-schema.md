@@ -442,7 +442,7 @@ item 没有关联履约记录时，下列字段均为 `null`。
 | `product_name_source` | 平台商品名称 | 导入时记录的平台商品名称或货号文本 |
 | `quantity` | 数量 | 当前 item 的商品件数；一行不等于一件，需按该字段求和 |
 | `currency_code` | 币种 | 价格和费用字段的币种 |
-| `unit_price` | 成交单价 | 当前商品单位成交价 |
+| `unit_price` | 佣金基准价 | 平台计算佣金所依据的单价（卖家承担折扣后、平台出资折扣前）；未知时为 `null` |
 | `old_unit_price` | 原单价 | 折扣前单价；平台未提供时为 `null` |
 | `discount_amount` | 折扣金额 | 当前商品行折扣额 |
 | `discount_percent` | 折扣比例 | 当前商品行折扣百分比 |

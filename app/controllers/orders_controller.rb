@@ -24,7 +24,6 @@ class OrdersController < ApplicationController
       .find(params[:id])
     @sku_by_item_id = sku_lookup_for(@order.items)
     @ozon_product_details_by_item_id = ozon_product_details_lookup(@order)
-    @raw_wb_order = @order.source_links.map(&:source).find { |source| source.is_a?(RawWb::Order) }
   end
 
   private

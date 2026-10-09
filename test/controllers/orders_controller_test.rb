@@ -76,6 +76,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
       unit_price: 140,
       old_unit_price: 553.96,
       currency_code: "BYN",
+      buyer_paid_unit_price: 95.5,
+      buyer_currency_code: "RUB",
       commission_amount: 0,
       discount_amount: 413.96,
       discount_percent: 75,
@@ -442,6 +444,24 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "123456"
     assert_select "th", { text: "来源 Key", count: 0 }
     assert_select "details", { text: /查看订单源片段/, count: 0 }
+  end
+
+  test "show labels the commission base price and the buyer-paid price separately" do
+    get "/orders/#{@order.id}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "th", "佣金基准价"
+    assert_select "th", "买家实付价"
+    assert_select "td", "140.00"
+    assert_select "td", "95.50 RUB"
+  end
+
+  test "show labels the commission base price and the buyer-paid price in english" do
+    get "/orders/#{@order.id}", params: { locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "th", "Commission base price"
+    assert_select "th", "Buyer-paid price"
   end
 
   test "show localizes visible chrome in english" do

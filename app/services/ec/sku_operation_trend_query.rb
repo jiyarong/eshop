@@ -26,7 +26,7 @@ module Ec
       products = sku.sku_products.active.where(store: store).order(:product_id).to_a
       sales_rows = sales_rows(products)
       buyer_rows = buyer_price_rows(products)
-      seller_discount_rows = seller_discount_price_rows(products)
+      commission_base_rows = commission_base_price_rows(products)
       price_series = products.filter_map { |product| listing_price_series(product) }
       profit_rows = daily_unit_profit_rows
 
@@ -34,9 +34,9 @@ module Ec
         platform: store.platform,
         store: store,
         products: products,
-        chart_option: chart_option(buyer_rows, seller_discount_rows, price_series, sales_rows, profit_rows),
+        chart_option: chart_option(buyer_rows, commission_base_rows, price_series, sales_rows, profit_rows),
         has_buyer_price: buyer_rows.any?,
-        has_seller_discount_price: seller_discount_rows.any?,
+        has_commission_base_price: commission_base_rows.any?,
         has_price_history: price_series.any?,
         has_sales: sales_rows.any? { |row| row[:net_quantity] != 0 },
         has_profit: profit_rows.any?,
@@ -77,16 +77,21 @@ module Ec
         ).map { |date, currency, price| { date: date.to_date, buyer_currency: currency, buyer_price: price.to_d.round(2) } }
     end
 
-    def seller_discount_price_rows(products)
-      return [] unless store.wb? && products.any?
+    # Commission base price (Ec::OrderItem#unit_price): the seller price the platform
+    # charges commission on. Same meaning for Ozon and WB; plotted beside buyer-paid prices.
+    def commission_base_price_rows(products)
+      return [] if products.empty?
 
       base_order_scope(products)
-        .where.not(seller_discount_unit_price: nil)
-        .group(Arel.sql("DATE(#{ordered_at_in_user_zone_sql})"))
+        .where("ec_order_items.unit_price > 0")
+        .where.not(currency_code: [nil, ""])
+        .group(Arel.sql("DATE(#{ordered_at_in_user_zone_sql})"), :currency_code)
+        .order(Arel.sql("DATE(#{ordered_at_in_user_zone_sql})"))
         .pluck(
           Arel.sql("DATE(#{ordered_at_in_user_zone_sql})"),
-          Arel.sql("SUM(ec_order_items.seller_discount_unit_price * ec_order_items.quantity) / NULLIF(SUM(ec_order_items.quantity), 0)")
-        ).map { |date, price| { date: date.to_date, price: price.to_d.round(2) } }
+          :currency_code,
+          Arel.sql("SUM(ec_order_items.unit_price * ec_order_items.quantity) / NULLIF(SUM(ec_order_items.quantity), 0)")
+        ).map { |date, currency, price| { date: date.to_date, currency: currency, price: price.to_d.round(2) } }
     end
 
     def base_order_scope(products)
@@ -176,7 +181,7 @@ module Ec
       (rows.sum { |row| (row[:after_tax] || row["after_tax"]).to_d } / net_quantity).round(2).to_f
     end
 
-    def chart_option(rows, seller_discount_rows, price_series, sales_rows, profit_rows)
+    def chart_option(rows, commission_base_rows, price_series, sales_rows, profit_rows)
       series = price_series.map do |item|
         { name: item[:name], type: "line", yAxisIndex: 0, step: "end", connectNulls: true, showSymbol: true, data: item[:data] }
       end
@@ -187,11 +192,11 @@ module Ec
           data: currency_rows.map { |row| [row[:date].iso8601, row[:buyer_price].to_f] }
         }
       end
-      if seller_discount_rows.any?
+      commission_base_rows.group_by { |row| row[:currency] }.each do |currency, currency_rows|
         series << {
-          name: I18n.t("erp.operation_actions.trends.metrics.seller_discount_price_byn"),
-          type: "line", yAxisIndex: 3, connectNulls: true, showSymbol: true,
-          data: seller_discount_rows.map { |row| [row[:date].iso8601, row[:price].to_f] }
+          name: I18n.t("erp.operation_actions.trends.commission_base_price_currency", currency: currency),
+          type: "line", yAxisIndex: 0, connectNulls: true, showSymbol: true,
+          data: currency_rows.map { |row| [row[:date].iso8601, row[:price].to_f] }
         }
       end
       series << {
@@ -213,14 +218,12 @@ module Ec
             I18n.t("erp.operation_actions.trends.metrics.unit_profit") => false
           }
         },
-        grid: { left: 40, right: seller_discount_rows.any? ? 138 : 75, top: 55, bottom: 32, containLabel: true },
+        grid: { left: 40, right: 75, top: 55, bottom: 32, containLabel: true },
         xAxis: { type: "time", min: from_date.iso8601, max: to_date.iso8601 },
         yAxis: [
           { type: "value", name: I18n.t("erp.operation_actions.trends.axes.price"), scale: true },
           { type: "value", name: I18n.t("erp.operation_actions.trends.axes.quantity"), position: "right" },
-          { type: "value", name: I18n.t("erp.operation_actions.trends.axes.unit_profit"), position: "right", offset: 52, scale: true },
-          { type: "value", name: I18n.t("erp.operation_actions.trends.axes.seller_discount_byn"), position: "right", offset: 106, scale: true,
-            show: seller_discount_rows.any? }
+          { type: "value", name: I18n.t("erp.operation_actions.trends.axes.unit_profit"), position: "right", offset: 52, scale: true }
         ],
         series: series
       }

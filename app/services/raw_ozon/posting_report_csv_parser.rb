@@ -7,10 +7,10 @@ module RawOzon
     HEADERS = {
       order_number: ["Номер заказа", "Заказ", "Order number"],
       posting_number: ["Номер отправления", "Отправление", "Posting number"],
-      processed_at: ["Дата обработки", "Время обработки", "Processed at"],
+      processed_at: ["Принят в обработку", "Дата обработки", "Время обработки", "Processed at"],
       ozon_sku: ["SKU", "Ozon SKU"],
       offer_id: ["Артикул", "Offer ID"],
-      seller_unit_price: ["Максимальная цена", "Maximum price"],
+      seller_unit_price: ["Предельная цена", "Максимальная цена", "Maximum price"],
       seller_currency_code: ["Валюта", "Код валюты товара", "Product currency code"],
       buyer_paid: ["Оплачено покупателем", "Paid by customer"],
       buyer_currency_code: ["Код валюты покупателя", "Customer currency code"],

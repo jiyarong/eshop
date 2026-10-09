@@ -12,7 +12,7 @@ const bundle = await build({
   write: false,
 });
 
-const [{ dualCurrencyAmounts, priceVariableCostRate, profitInputValue, shortcutInputValue, targetPriceForMargin }] = await Promise.all(
+const [{ dualCurrencyAmounts, priceVariableCostRate, profitInputValue, sellingPriceShortcuts, shortcutInputValue, targetPriceForMargin }] = await Promise.all(
   bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)),
 );
 
@@ -73,10 +73,10 @@ test("identifies only price-dependent cost rates for each platform context", () 
   }) - 0.33) < 1e-12);
   assert.ok(Math.abs(priceVariableCostRate({
     platform: "ozon", market: "by", companyType: "general", inputs: sharedInputs,
-  }) - (0.1 + 0.2 / 1.2)) < 1e-12);
+  }) - (0.1 + 0.02 + 0.15 + 0.2 / 1.2)) < 1e-12);
   assert.ok(Math.abs(priceVariableCostRate({
     platform: "ozon", market: "ru", companyType: "general", inputs: sharedInputs,
-  }) - 0.33) < 1e-12);
+  }) - (0.1 + 0.02 + 0.15 + 0.06)) < 1e-12);
 });
 
 test("solves the target sale price from fixed costs and a target margin", () => {
@@ -117,6 +117,13 @@ test("uses a temporary positive probe price when target margin has no sale price
   assert.match(source, /previewTargetMarginBaseData\(row\)/);
 });
 
+test("writes Ozon target-margin prices to the seller price, not the buyer-paid price", async () => {
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+
+  assert.ok(source.includes('const targetPriceField = row.dataset.platform === "ozon" ? "rf_price_rub" : "price_rub"'));
+  assert.ok(source.includes("row.querySelector(`[data-field='${targetPriceField}']`)"));
+});
+
 test("offers the shared actual return-rate shortcut for WB and Ozon", async () => {
   const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
   const wbStart = source.indexOf("  appendWbProcessSteps(");
@@ -128,4 +135,61 @@ test("offers the shared actual return-rate shortcut for WB and Ozon", async () =
   assert.match(wbSteps, /"actual_return_rate"/);
   assert.match(source, /this\.actualReturnRateData\.set\(platform, data\)/);
   assert.match(source, /url\.searchParams\.set\("platform", platform\)/);
+});
+
+test("offers actual WB logistics and writes the explicit outbound and return inputs", async () => {
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+  const wbSourceStart = source.indexOf("  renderWbLogisticsSource(");
+  const wbSourceEnd = source.indexOf("\n  renderActualStorageSource(", wbSourceStart);
+  const wbSource = source.slice(wbSourceStart, wbSourceEnd);
+
+  assert.ok(wbSourceStart >= 0 && wbSourceEnd > wbSourceStart);
+  assert.match(wbSource, /profit-prediction#loadActualLogistics/);
+  assert.match(source, /this\.actualLogisticsData\.set\(logisticsKey, data\)/);
+  assert.match(source, /url\.searchParams\.set\("delivery_mode", deliveryMode/);
+  assert.match(source, /outbound_logistics_rub: event\.currentTarget\.dataset\.outboundRate/);
+  assert.match(source, /return_logistics_rub: event\.currentTarget\.dataset\.returnRate/);
+});
+
+test("keeps commission base and buyer-paid prices separate in the actual-price shortcut on both platforms", async () => {
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+
+  assert.match(source, /sellingPriceShortcuts\(this\.selectedRow\?\.dataset\.platform, data\)/);
+  assert.match(source, /data\.commission_base_price/);
+  assert.match(source, /data\.buyer_paid_price/);
+  // A reference-only price (no matching input) must never be written to an input.
+  assert.match(source, /const field = event\.currentTarget\.dataset\.field;\n\s+if \(!field\) return;/);
+  assert.doesNotMatch(source, /dataset\.field \|\| "price_rub"/);
+  assert.doesNotMatch(source, /data\.seller_price/);
+  assert.doesNotMatch(source, /russianScenarioPrice\(/);
+});
+
+test("renders Ozon target and customer-paid prices as separate controls", async () => {
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+
+  assert.match(source, /\["rf_price_rub", "target_margin", "exchange_rate_rub_cny"\]/);
+  assert.match(source, /process\.by_target_price_label/);
+  assert.match(source, /detailReferencePriceItemTarget\.hidden = !applicable/);
+});
+
+test("commission base price fills the platform's commission base input on both platforms", () => {
+  const data = { commission_base_price: { average_rub: "1450.05" }, buyer_paid_price: { average_rub: "1131.1" } };
+
+  assert.deepEqual(sellingPriceShortcuts("wb", data), [
+    { kind: "commission_base", field: "price_rub", priceRub: 1450.05 },
+    { kind: "buyer_paid", field: null, priceRub: 1131.1 },
+  ]);
+  assert.deepEqual(sellingPriceShortcuts("ozon", data), [
+    { kind: "commission_base", field: "rf_price_rub", priceRub: 1450.05 },
+    { kind: "buyer_paid", field: "price_rub", priceRub: 1131.1 },
+  ]);
+});
+
+test("selling price shortcuts skip prices that are missing or not positive", () => {
+  assert.deepEqual(sellingPriceShortcuts("wb", { commission_base_price: { average_rub: null }, buyer_paid_price: { average_rub: "0" } }), []);
+  assert.deepEqual(sellingPriceShortcuts("ozon", {}), []);
+  assert.deepEqual(
+    sellingPriceShortcuts("wb", { commission_base_price: { average_rub: "" }, buyer_paid_price: { average_rub: "952" } }),
+    [{ kind: "buyer_paid", field: null, priceRub: 952 }],
+  );
 });

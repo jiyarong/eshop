@@ -345,12 +345,14 @@ Accept: text/markdown
 | `cluster_from` / `cluster_to` | 发出/目的集群 | 平台履约集群或区域 |
 | `cancel_reason_source` | 取消原因 | 平台原始取消原因 |
 | `quantity` | 件数 | 订单商品数量 |
-| `currency_code` | 币种 | 价格字段币种 |
-| `unit_price` | 单价 | 平台同步的商品单价 |
-| `buyer_paid_unit_price` | 买家支付单价 | Ozon 买家实际支付单价等补充价格 |
+| `currency_code` | 币种 | `unit_price` 的币种 |
+| `unit_price` | 单价 | 佣金基准价：平台计算佣金所依据的价格（卖家承担折扣后、平台出资折扣前）；Ozon 为订单商品价格，WB 为统计订单 `priceWithDisc`；未知时为 `null` |
+| `commission_base_unit_price` | 佣金基准价 | 与 `unit_price` 相同，字段名更明确 |
+| `commission_base_currency_code` | 佣金基准价币种 | 与 `currency_code` 相同 |
+| `buyer_paid_unit_price` | 买家支付单价 | 买家实际支付的单价（Ozon 发货报表「已由买家支付」，WB `finishedPrice`）；与佣金基准价相互独立，不能互相推算，也不保证小于佣金基准价 |
 | `buyer_currency_code` | 买家支付币种 | 买家支付单价币种 |
-| `seller_discount_unit_price` | 卖家折扣单价 | 卖家承担折扣后的单价 |
-| `seller_discount_currency_code` | 卖家折扣币种 | 卖家折扣单价币种 |
+| `seller_discount_unit_price` | 卖家折扣单价（已废弃） | 旧 WB 字段，不再更新，请改用 `commission_base_unit_price` |
+| `seller_discount_currency_code` | 卖家折扣币种（已废弃） | 同上 |
 
 ## `supply_orders_full_period.md` / `supply_orders_full_period`：周期送仓记录
 

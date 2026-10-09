@@ -18,6 +18,23 @@ module RawOzon
       end
     end
 
+    RECENT_DAYS = 7
+
+    # Daily incremental run: re-request the last few days so orders accepted late
+    # or re-priced by Ozon are refreshed. Imports are idempotent per posting item.
+    def self.run_recent(days: RECENT_DAYS, now: Time.current, accounts: nil)
+      from, to = recent_window(days:, now:)
+      run(from:, to:, buyer_paid_value_kind: :unit_price, accounts:)
+    end
+
+    def self.recent_window(days:, now:)
+      days = Integer(days)
+      raise ArgumentError, "days must be positive" unless days.positive?
+      raise ArgumentError, "days must not exceed #{MAX_RANGE.in_days.to_i}" if days.days > MAX_RANGE
+
+      [now - days.days, now]
+    end
+
     def self.chunks(from_time, to_time)
       [].tap do |result|
         cursor = from_time

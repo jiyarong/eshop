@@ -34,6 +34,17 @@ module Ec
         )
     }
 
+    # Platform-neutral price columns (same meaning for Ozon and WB):
+    #   unit_price / currency_code                    commission base price: the seller price the
+    #       platform charges commission on, after seller-funded discounts and before
+    #       platform-funded ones (Ozon posting price, WB priceWithDisc). Blank when unknown.
+    #   buyer_paid_unit_price / buyer_currency_code   what the buyer actually paid.
+    #   old_unit_price                                 pre-discount list price (Ozon only, reference).
+    # The two prices are independent facts; neither is derived from the other.
+    # seller_discount_* is deprecated: WB-only, no longer written, superseded by unit_price.
+    def commission_base_unit_price = unit_price
+    def commission_base_currency_code = currency_code
+
     def self.ransackable_attributes(_auth_object = nil)
       %w[offer_id platform platform_sku_id product_name_source sku_code store_id]
     end
