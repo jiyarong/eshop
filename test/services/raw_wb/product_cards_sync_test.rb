@@ -97,6 +97,52 @@ class RawWbProductCardsSyncTest < ActiveSupport::TestCase
     RawWb::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "sync_product_cards does not record a specification change when dimensions are unchanged" do
+    token = SecureRandom.hex(6)
+    nm_id = 77_401 + token.hex
+    account = RawWb::SellerAccount.create!(name: "wb-action-#{token}", api_token: "token-#{token}", company_type: "small")
+    store = Ec::Store.create!(
+      platform: "wb", store_name: "wb-action-store-#{token}", company_type: "small",
+      is_active: true, wb_raw_account_id: account.id
+    )
+    sku = Ec::Sku.create!(sku_code: "WB-ACTION-#{token}", product_name: "WB action")
+    sku_product = Ec::SkuProduct.create!(sku: sku, store: store, product_id: nm_id.to_s, offer_id: sku.sku_code)
+    operator = User.create!(
+      email: "wb-action-#{token}@example.com", password: "password123", password_confirmation: "password123"
+    )
+    Ec::SkuOperatorAssignment.create!(sku: sku, user: operator)
+    RawWb::Product.create!(
+      account: account, nm_id: nm_id, vendor_code: "WB-ACTION-#{token}",
+      raw_json: { "dimensions" => { "length" => 123, "width" => 9, "height" => 7, "weightBrutto" => 9 } }
+    )
+    client = FakeWbClient.new([
+      {
+        "cards" => [{
+          "nmID" => nm_id,
+          "vendorCode" => "WB-ACTION-#{token}",
+          "dimensions" => { "length" => 123, "width" => 9, "height" => 7, "weightBrutto" => 9 },
+          "characteristics" => [],
+          "sizes" => []
+        }]
+      }
+    ])
+    sync = RawWb::WeeklySync.new(account, days: 7)
+    sync.instance_variable_set(:@client, client)
+
+    assert_no_difference "Ec::OperationAction.count" do
+      sync.sync_product_cards
+    end
+  ensure
+    Ec::OperationAction.where(ec_sku_product_id: sku_product&.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: sku&.sku_code).delete_all
+    Ec::SkuProduct.where(id: sku_product&.id).delete_all
+    Ec::Sku.where(id: sku&.id).delete_all
+    Ec::Store.where(id: store&.id).delete_all
+    User.where(id: operator&.id).delete_all
+    RawWb::Product.where(account_id: account&.id).delete_all
+    RawWb::SellerAccount.where(id: account&.id).delete_all
+  end
+
   test "sync_product_cards stores subject association from subjectID" do
     token = SecureRandom.hex(6)
     account = RawWb::SellerAccount.create!(

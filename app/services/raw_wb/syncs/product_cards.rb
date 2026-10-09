@@ -127,7 +127,7 @@ module RawWb
 
       def wb_card_specification_snapshot(card)
         {
-          dimensions: normalized_dimensions(card['dimensions']),
+          dimensions: package_dimensions(card['dimensions']),
           characteristics: Array(card['characteristics']).sort_by { |item| item['id'].to_i }.to_h do |item|
             [item['id'].to_s, { name: item['name'], value: item['value'] }]
           end,
@@ -208,6 +208,16 @@ module RawWb
 
       def normalized_dimensions(dimensions)
         dimensions.to_h.slice('length', 'width', 'height', 'weightBrutto', 'weight')
+      end
+
+      def package_dimensions(dimensions)
+        normalized = normalized_dimensions(dimensions)
+        {
+          length_cm: normalized['length'],
+          width_cm: normalized['width'],
+          height_cm: normalized['height'],
+          weight_kg: normalized['weightBrutto'] || normalized['weight']
+        }.compact
       end
 
       def build_sku_rows(c, id_map)
