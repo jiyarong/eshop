@@ -184,7 +184,57 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     assert_equal 0, fulfillment.items.count
   end
 
+  test "counts FBS orders cancelled after dispatch as departed once the seller received the return" do
+    create_cancelled_ozon_fbs_order("RETURNED", return_status: "ReceivedBySeller", quantity: 2)
+    create_cancelled_ozon_fbs_order("NEVER-SHIPPED")
+    create_cancelled_ozon_fbs_order("COMING-BACK", return_status: "MovingToSeller", quantity: 3)
+    order_distribution = {
+      rows: [
+        { platform: "ozon", store_label: "Ozon", fulfillment_type: "fbs", status_key: "delivered_confirmed",
+          source_status_label: "delivered", stocktake_relevant: false, quantity: 5 }
+      ]
+    }
+
+    result = Ec::InventoryPhysicalReconciliationQuery.new(
+      @sku, overview: { summary: { received_quantity: 10 } }, order_distribution: order_distribution
+    ).call
+
+    assert_equal 7, result.dig(:summary, :fbs_departed_quantity)
+    assert_equal 2, result.dig(:summary, :seller_received_return_quantity)
+    assert_equal 5, result.dig(:summary, :expected_physical_stock)
+    assert_equal 7, result.dig(:summary, :fbs_order_quantity)
+    cancelled_row = result[:fbs_order_rows].find { |row| row[:status_key] == "cancelled_returned_to_seller" }
+    assert_equal [ 2, true, "ozon", "fbs" ],
+      [ cancelled_row[:quantity], cancelled_row[:physical_deducted], cancelled_row[:platform], cancelled_row[:fulfillment_type] ]
+    assert_equal 2, result[:fbs_order_rows].size
+  end
+
   private
+
+  def create_cancelled_ozon_fbs_order(suffix, return_status: nil, quantity: 1)
+    order = Ec::Order.create!(
+      platform: "ozon", store: @ozon_store, order_key: "ozon:CANCELLED-#{suffix}-#{@token}",
+      external_order_id: "OZON-CANCELLED-#{suffix}-#{@token}", order_status: "cancelled"
+    )
+    order.fulfillments.create!(
+      platform: "ozon", store: @ozon_store,
+      external_fulfillment_id: "OZON-CANCELLED-#{suffix}-F-#{@token}",
+      fulfillment_key: "OZON-CANCELLED-#{suffix}-F-#{@token}", fulfillment_type: "fbs", status: "cancelled",
+      source_status: "cancelled", source_substatus: "posting_canceled"
+    )
+    return unless return_status
+
+    returned = Ec::Return.create!(
+      platform: "ozon", store: @ozon_store, order: order, return_key: "OZON-CANCELLED-#{suffix}-RETURN-#{@token}",
+      return_type: "cancellation_return", process_status: "received_by_seller",
+      inventory_location: "seller_warehouse", source_status: return_status,
+      external_return_id: "OZON-CANCELLED-#{suffix}-RETURN-#{@token}", requested_at: 1.day.ago
+    )
+    returned.items.create!(
+      platform: "ozon", store: @ozon_store, sku_product: @ozon_product,
+      item_key: "OZON-CANCELLED-#{suffix}-ITEM-#{@token}", quantity: quantity, restockable: true
+    )
+  end
 
   def create_returns
     order = Ec::Order.create!(

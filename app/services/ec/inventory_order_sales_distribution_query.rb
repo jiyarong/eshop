@@ -111,6 +111,10 @@ module Ec
       }
     end
 
+    def source_status_label(platform, source_status, source_substatus)
+      platform_status_label(platform.to_s, source_status, source_substatus)
+    end
+
     private
 
     def order_quantities

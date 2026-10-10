@@ -1,8 +1,11 @@
 module Ec
   class InventoryPhysicalReconciliationQuery
-    FBS_DEPARTED_STATUS_KEYS = %w[
+    # FBS orders cancelled after they left the warehouse and then received back by the seller.
+    CANCELLED_RETURNED_STATUS_KEY = "cancelled_returned_to_seller".freeze
+    FBS_DEPARTED_STATUS_KEYS = %W[
       platform_received carrier_accepted in_transit pickup_ready delivery_postponed
       sold_confirmed delivered_confirmed returned_confirmed returned_to_platform_warehouse
+      #{CANCELLED_RETURNED_STATUS_KEY}
     ].freeze
     WB_PENDING_SUPPLY_STATUS_IDS = [ 2, 3 ].freeze
     WB_DEPARTED_SUPPLY_STATUS_IDS = [ 4, 5, 6 ].freeze
@@ -133,9 +136,51 @@ module Ec
     end
 
     def fbs_order_rows
-      @fbs_order_rows ||= @order_distribution.fetch(:rows, [])
-        .select { |row| row[:fulfillment_type] == "fbs" }
-        .map { |row| row.merge(physical_deducted: row[:status_key].in?(FBS_DEPARTED_STATUS_KEYS)) }
+      @fbs_order_rows ||= (
+        @order_distribution.fetch(:rows, []).select { |row| row[:fulfillment_type] == "fbs" } +
+          cancelled_returned_fbs_rows
+      ).map { |row| row.merge(physical_deducted: row[:status_key].in?(FBS_DEPARTED_STATUS_KEYS)) }
+    end
+
+    # Cancelled orders are excluded from the order distribution, so an FBS order that left the warehouse and was
+    # cancelled never gets deducted, while its seller-received return is added back. A seller-received return
+    # linked to a cancelled FBS order proves the goods left, so count it as departed and let the return add it back.
+    def cancelled_returned_fbs_rows
+      @cancelled_returned_fbs_rows ||= begin
+        quantities = Hash.new(0)
+        return_items.each do |item|
+          return_record = item.return
+          order = return_record.order
+          next unless order&.order_status == "cancelled"
+
+          fulfillment = order.fulfillments.find { |candidate| candidate.fulfillment_type == "fbs" }
+          next unless fulfillment && physical_return_included?(item.platform, return_record)
+
+          quantities[[ item.platform, item.store.store_name, fulfillment.source_status, fulfillment.source_substatus ]] +=
+            item.quantity.to_i
+        end
+
+        status_labeler = Ec::InventoryOrderSalesDistributionQuery.new(@sku)
+        quantities.map do |(platform, store_name, source_status, source_substatus), quantity|
+          {
+            store_label: I18n.t(
+              "reports.inventory.drawer.sales_distribution.store_label",
+              platform: I18n.t("reports.inventory.drawer.sales_distribution.platforms.#{platform}"),
+              store: store_name
+            ),
+            platform: platform,
+            store_name: store_name,
+            fulfillment_type: "fbs",
+            status_key: CANCELLED_RETURNED_STATUS_KEY,
+            evidence_label: nil,
+            source_status_label: status_labeler.source_status_label(platform, source_status, source_substatus),
+            source_status_codes: [ source_status, source_substatus ].compact_blank.join(" / "),
+            needs_status_repair: false,
+            stocktake_relevant: false,
+            quantity: quantity
+          }
+        end
+      end
     end
 
     def physical_stocktake_adjustment_quantity

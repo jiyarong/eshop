@@ -1810,6 +1810,7 @@ zh:
             returned_confirmed: "已退回确认"
             returned_to_platform_warehouse: "已退回平台仓"
             cancelled_confirmed: "已取消确认"
+            cancelled_returned_to_seller: "已发出后取消并退回卖家"
             cancelled_by_wb: "WB 已取消"
             cancelled_by_customer: "买家已取消"
             declined_by_customer: "买家已拒收"
@@ -1914,7 +1915,7 @@ zh:
             returns: "退货流转"
             removals: "平台移出与无订单残次流转"
           notes:
-            fbs_orders: "确认由平台或承运商接收的FBS订单从物理库存扣除；待备货、配货中和待交接订单仍计入盘库应见库存。"
+            fbs_orders: "确认由平台或承运商接收的FBS订单从物理库存扣除；已发出后取消并由卖家签收退货的订单按已离仓扣除，再随退货加回；待备货、配货中和待交接订单仍计入盘库应见库存。"
             pending_supplies: "WB接受中按送仓数量扣除，已接受按平台实收数量扣除；Ozon进入接收、在途或完成阶段后扣除。尚未确认离仓的送仓单不扣。"
             returns: "是否计入物理库存只看平台是否明确显示已交付卖家，不读取restockable；后者仅服务于账面库存口径。"
             removals: "Ozon移出仅在已交付卖家后直接加回盘库应见库存。WB无订单残次与退货流转同源，已交付记录已经通过卖家已收退货计入，此处只展示、不重复累加；其他状态仅作为位置、残次和损毁证据。"
