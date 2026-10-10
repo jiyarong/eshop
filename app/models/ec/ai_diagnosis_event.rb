@@ -26,6 +26,7 @@ module Ec
 
       latest.joins(:ai_diagnosis)
         .where(ec_ai_diagnosis: { sku_id: sku_ids, type: Ec::GeneralDiagnosis.sti_name, created_at: from...to })
+        .where(status: "active")
         .where.not(sub_agent_id: nil)
         .where("ec_ai_diagnosis_events.scope IS NULL OR ec_ai_diagnosis_events.scope != ?", "advise")
     end

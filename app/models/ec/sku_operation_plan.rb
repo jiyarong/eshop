@@ -1,5 +1,7 @@
 module Ec
   class SkuOperationPlan < ApplicationRecord
+    require "digest"
+
     self.table_name = "ec_ai_sku_operation_plans"
     TIME_ZONE = "Asia/Shanghai".freeze
     EXECUTION_GRACE_DAYS = 1
@@ -19,6 +21,14 @@ module Ec
       "关闭" => "close",
       "修改" => "modify",
       "维持" => "maintain"
+    }.freeze
+    TARGET_SCOPES = {
+      "price" => %w[LISTING],
+      "advertising" => %w[LISTING],
+      "listing_attribute" => %w[LISTING],
+      "listing_image" => %w[LISTING],
+      "warehouse_distribution" => %w[LISTING],
+      "replenishment" => %w[SKU]
     }.freeze
 
     belongs_to :sku, class_name: "Ec::Sku"
@@ -54,10 +64,13 @@ module Ec
     before_validation :set_retain_until, on: :create
     before_validation :set_completed_at
     before_validation :normalize_plan_values
+    before_validation :set_fingerprint, on: :create
     before_validation :sync_status_dimensions
 
     validates :message, :retain_until, :plan_date, :planning_period_start, :planning_period_end, :execution_deadline, presence: true
     validate :referer_must_be_present
+    validate :scope_matches_target
+    validate :scope_id_matches_scope
 
     scope :retained, -> { where("retain_until > ?", Time.current) }
     scope :latest, -> { where(is_latest: true) }
@@ -74,6 +87,23 @@ module Ec
 
     def self.execution_deadline_for(date)
       period_end_for(date) + EXECUTION_GRACE_DAYS.days
+    end
+
+    def self.allowed_scopes_for_target(target)
+      TARGET_SCOPES[target.to_s]
+    end
+
+    def self.fingerprint_for(attributes)
+      values = attributes.stringify_keys
+      Digest::SHA256.hexdigest(
+        {
+          target: values["target"].to_s,
+          operation: values["operation"].to_s,
+          scope: values["scope"].to_s,
+          scope_id: values["scope_id"].to_s,
+          planning_period_start: values["planning_period_start"]&.to_date&.iso8601
+        }.to_json
+      )
     end
 
     def cycle
@@ -162,6 +192,47 @@ module Ec
         value if value.present?
       end.uniq
       errors.add(:referer, :blank) if referer.empty?
+    end
+
+    def scope_matches_target
+      return if persisted? && !will_save_change_to_target? && !will_save_change_to_scope?
+      return if target.blank? || scope.blank?
+
+      allowed_scopes = self.class.allowed_scopes_for_target(target)
+      return if allowed_scopes&.include?(scope.to_s)
+
+      errors.add(:scope, :invalid)
+    end
+
+    def scope_id_matches_scope
+      return if persisted? && !will_save_change_to_target? && !will_save_change_to_scope? && !will_save_change_to_scope_id?
+      return if scope.blank?
+
+      if scope_id.blank?
+        errors.add(:scope_id, :blank)
+        return
+      end
+
+      case scope.to_s
+      when "SKU"
+        errors.add(:scope_id, :invalid) unless scope_id.to_s == sku&.sku_code.to_s
+      when "LISTING"
+        listing_id = Integer(scope_id, exception: false)
+        valid_listing = listing_id&.positive? && sku&.sku_products&.exists?(id: listing_id)
+        errors.add(:scope_id, :invalid) unless valid_listing
+      end
+    end
+
+    def set_fingerprint
+      return if fingerprint.present?
+
+      self.fingerprint = self.class.fingerprint_for(
+        target: target,
+        operation: operation,
+        scope: scope,
+        scope_id: scope_id,
+        planning_period_start: planning_period_start
+      )
     end
   end
 end

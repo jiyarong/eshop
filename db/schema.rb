@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_044734) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_065649) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -163,6 +163,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_044734) do
     t.date "execution_deadline", null: false
     t.string "execution_status", default: "not_started", null: false
     t.text "expected_effect"
+    t.string "fingerprint"
     t.boolean "is_latest", default: true, null: false
     t.string "lifecycle_status", default: "active", null: false
     t.text "message", null: false
@@ -182,6 +183,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_044734) do
     t.string "target", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_ec_ai_sku_operation_plans_on_conversation_id"
+    t.index ["planning_cycle_id", "fingerprint"], name: "idx_sku_operation_plans_on_cycle_fingerprint", unique: true, where: "((fingerprint IS NOT NULL) AND (planning_cycle_id IS NOT NULL))"
     t.index ["planning_cycle_id"], name: "index_ec_ai_sku_operation_plans_on_planning_cycle_id"
     t.index ["planning_period_start", "planning_period_end"], name: "idx_sku_operation_plans_on_period"
     t.index ["retain_until"], name: "index_ec_ai_sku_operation_plans_on_retain_until"

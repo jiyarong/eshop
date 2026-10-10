@@ -149,7 +149,7 @@ module Ec
       "executed"
     end
 
-    def metrics_for(plan, diagnosis_context = nil)
+    def metrics_for(plan, _diagnosis_context = nil)
       if metrics_provider
         arguments = {
           plan: plan,
@@ -158,8 +158,6 @@ module Ec
         }
         return metrics_provider.arity == 1 ? (metrics_provider.call(arguments) || {}) : (metrics_provider.call(**arguments) || {})
       end
-
-      return {} if diagnosis_context && diagnosis_context_has_events?(diagnosis_context)
 
       metrics_query_class.new(
         sku: plan.sku,
@@ -516,11 +514,6 @@ module Ec
 
     def evidence_available?(metrics, diagnosis_context)
       metrics_available?(metrics) || diagnosis_context.fetch(:current_week).fetch(:events).present? ||
-        diagnosis_context.fetch(:previous_week).fetch(:events).present?
-    end
-
-    def diagnosis_context_has_events?(diagnosis_context)
-      diagnosis_context.fetch(:current_week).fetch(:events).present? ||
         diagnosis_context.fetch(:previous_week).fetch(:events).present?
     end
 

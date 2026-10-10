@@ -462,8 +462,8 @@ SKU code。
 `ec_sku_products.id` 字符串。不得使用 WB nmId、Ozon product ID、platform SKU ID、
 offer ID 或其他 SKU 的 Listing ID。
 
-这是当前提示词的业务约定；保存工具校验范围和内部 ID，但尚未校验 `target`
-与 `scope` 的组合。不要因此保存与目标不匹配的范围。
+这是当前提示词的业务约定；保存工具和服务端模型会同时校验 `target`、`scope`
+和 `scope_id`。遇到不匹配时调整计划对象，不要尝试用其他范围或平台 ID 绕过校验。
 
 
 ### 4. 推进方式
@@ -551,11 +551,12 @@ offer ID 或其他 SKU 的 Listing ID。
 `scope` 与 `scope_id`、正整数 `priority`，以及非空字符串 `message`、`reason`、
 `baseline`、`constraints` 和 `expected_effect`。
 
-计划日期 `plan_date` 默认使用上海时区当天；`retain_until` 默认创建后 48 小时。
+计划日期 `plan_date` 默认使用上海时区当天；`retain_until` 由系统按执行截止日设置。
 `is_latest`、`status`、`completed_at` 由系统维护，状态默认为 active，转为 done
 或 ignored 时记录完成时间；`conversation_id` 由运行上下文关联。这些字段都不在
-工具调用中填写。Runner 重跑时会删除当前 SKU 当天旧计划，并把此前日期的
-latest 计划标记为非最新。
+工具调用中填写。Runner 重跑时复用当前 planning cycle；相同 cycle、target、operation、scope 和
+scope_id 的重复计划通过 fingerprint 幂等复用。历史 cycle 和计划保留，提交成功后
+当前 cycle 的计划成为 latest，旧计划不再作为当前展示指针。
 
 保存后简短结束，不输出虚构的执行结果。
 

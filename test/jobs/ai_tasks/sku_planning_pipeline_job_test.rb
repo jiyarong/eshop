@@ -110,7 +110,7 @@ class AITasks::SkuPlanningPipelineJobTest < ActiveJob::TestCase
     assert_not planner_called
   end
 
-  test "does not block the pipeline on data readiness" do
+  test "retries the pipeline when evaluation data is not ready" do
     Ec::SkuPlanningDataReadiness.define_singleton_method(:check!) do |**|
       raise Ec::SkuPlanningDataReadiness::NotReady, "source incomplete"
     end
@@ -119,13 +119,15 @@ class AITasks::SkuPlanningPipelineJobTest < ActiveJob::TestCase
       with_stubbed_singleton_method(ErpAI::SkuDiagnosisRunner, :run, ->(**) { calls << :diagnosis }) do
         with_stubbed_singleton_method(AITasks::SkuPlanningPipelineJob, :diagnosis_complete?, ->(**) { true }) do
           with_stubbed_singleton_method(ErpAI::SkuPlannerRunner, :run, ->(**) { calls << :planner }) do
-            AITasks::SkuPlanningPipelineJob.perform_now(sku_code: "WAIT")
+            assert_enqueued_with(job: AITasks::SkuPlanningPipelineJob) do
+              AITasks::SkuPlanningPipelineJob.perform_now(sku_code: "WAIT")
+            end
           end
         end
       end
     end
 
-    assert_equal [ :evaluation, :diagnosis, :planner ], calls
+    assert_empty calls
   end
 
   test "failed evaluation prevents diagnosis and planner and schedules a retry" do

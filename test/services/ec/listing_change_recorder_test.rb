@@ -25,6 +25,7 @@ module Ec
 
     teardown do
       Ec::OperationAction.where(ec_sku_product_id: @sku_product&.id).delete_all
+      Ec::SkuOperationPlanEvaluation.where(plan_id: Ec::SkuOperationPlan.where(sku_id: @sku&.id).select(:id)).delete_all
       Ec::SkuOperationPlan.where(sku_id: @sku&.id).delete_all
       Ec::SkuProductOperator.where(sku_product_id: @sku_product&.id).delete_all
       Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
@@ -123,7 +124,7 @@ module Ec
     test "links a matching latest price plan and completes it at the operation time" do
       plan = create_plan(target: "price", operation: "increase")
       unrelated = create_plan(target: "advertising", operation: "open")
-      old_plan = create_plan(target: "price", operation: "increase", is_latest: false)
+      old_plan = create_plan(target: "price", operation: "increase", created_at: 1.hour.ago, is_latest: false)
       operated_at = Time.current
 
       action = Ec::ListingChangeRecorder.record(
@@ -218,8 +219,8 @@ module Ec
       other_product&.destroy!
     end
 
-    test "matches a SKU scoped plan for a listing action" do
-      plan = create_plan(target: "listing_attribute", operation: "modify", scope: "SKU", scope_id: @sku.sku_code)
+    test "matches a listing scoped plan for a listing action" do
+      plan = create_plan(target: "listing_attribute", operation: "modify", scope: "LISTING", scope_id: @sku_product.id.to_s)
 
       action = Ec::ListingChangeRecorder.record(
         sku_product: @sku_product, operation_type: "listing_specification",
@@ -356,6 +357,61 @@ module Ec
       Ec::OperationActionPlanMatcher.call(within)
       assert_equal plan, within.reload.plan
       assert_equal "not_started", replacement.reload.execution_status
+    end
+
+    test "uses the action period instead of is_latest when selecting a plan" do
+      zone = Time.find_zone!(Ec::SkuOperationPlan::TIME_ZONE)
+      older = create_plan(target: "price", operation: "increase", plan_date: Date.new(2026, 9, 14),
+        created_at: zone.local(2026, 9, 15), is_latest: true)
+      current = create_plan(target: "price", operation: "increase", plan_date: Date.new(2026, 9, 21),
+        created_at: zone.local(2026, 9, 22), is_latest: false)
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }, operated_at: zone.local(2026, 9, 22)
+      )
+
+      assert_equal current, action.plan
+      assert older.reload.active?
+    end
+
+    test "prefers a direction-specific operation over a generic modify plan" do
+      generic = create_plan(target: "price", operation: "modify")
+      increase = create_plan(target: "price", operation: "increase")
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }
+      )
+
+      assert_equal increase, action.plan
+      assert generic.reload.active?
+    end
+
+    test "reopens a successful evaluation when a late action arrives in its observation window" do
+      plan = create_plan(target: "price", operation: "increase", scope: "LISTING", scope_id: @sku_product.id.to_s)
+      plan.evaluations.create!(
+        observation_from: plan.planning_period_start,
+        observation_to: plan.execution_deadline,
+        execution_status: "not_started",
+        effectiveness: "inconclusive",
+        confidence: "low",
+        summary: "Initial evaluation",
+        metrics: {},
+        evidence: {},
+        action_ids: [],
+        evaluator_version: "test",
+        status: "succeeded"
+      )
+      plan.update_columns(evaluation_status: "evaluated")
+
+      action = Ec::ListingChangeRecorder.record(
+        sku_product: @sku_product, operation_type: "listing_pricing",
+        before: { price: 100 }, after: { price: 120 }
+      )
+
+      assert_equal "pending", action.plan.reload.evaluation_status
+      assert_equal "pending", plan.evaluations.first.reload.status
     end
 
     test "removing a regenerated plan leaves its operation action intact" do

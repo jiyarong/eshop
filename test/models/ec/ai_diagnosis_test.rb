@@ -132,6 +132,20 @@ class Ec::AIDiagnosisTest < ActiveSupport::TestCase
     assert second.reload.is_latest?
   end
 
+  test "for_planning excludes ignored latest events" do
+    zone = Time.find_zone!(Ec::SkuOperationPlan::TIME_ZONE)
+    diagnosis = Ec::GeneralDiagnosis.create!(sku: @sku, submitted_by: @user,
+      created_at: zone.local(2026, 9, 29, 3))
+    active = diagnosis.events.create!(sub_agent_id: 101, event_type: "active_risk",
+      severity: "warning", message: "Active")
+    diagnosis.events.create!(sub_agent_id: 102, event_type: "ignored_risk",
+      severity: "critical", message: "Ignored", status: "ignored")
+
+    events = Ec::AIDiagnosisEvent.for_planning(sku_ids: [ @sku.id ], as_of_date: Date.new(2026, 9, 29))
+
+    assert_equal [ active.id ], events.pluck(:id)
+  end
+
   private
 
   def create_diagnosis(klass)

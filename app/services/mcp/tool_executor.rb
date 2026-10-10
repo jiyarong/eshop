@@ -3,10 +3,11 @@ module Mcp
     DEFAULT_LIMIT = 50
     MAX_LIMIT = 100
 
-    def initialize(current_user:, event_date: nil, conversation_id: nil)
+    def initialize(current_user:, event_date: nil, conversation_id: nil, planning_cycle_id: nil)
       @current_user = current_user
       @event_date = event_date
       @conversation_id = conversation_id
+      @planning_cycle_id = planning_cycle_id
       @visible_scope = Mcp::VisibleSkuScope.new(current_user)
     end
 
@@ -264,6 +265,9 @@ module Mcp
 
       scope = args["scope"]
       return { error: "scope must be SKU or LISTING" } unless scope.in?(%w[SKU LISTING])
+      unless Ec::SkuOperationPlan.allowed_scopes_for_target(target)&.include?(scope)
+        return { error: "scope is invalid for target" }
+      end
 
       scope_id = args["scope_id"]
       return { error: "scope_id must be a string" } unless scope_id.is_a?(String) && scope_id.present?
@@ -282,6 +286,7 @@ module Mcp
 
       plan = sku.sku_operation_plans.create!(
         **(@event_date ? { plan_date: @event_date } : {}),
+        planning_cycle_id: @planning_cycle_id,
         target: target,
         operation: operation,
         referer: referer,
@@ -292,6 +297,39 @@ module Mcp
         **details.transform_values(&:strip).symbolize_keys,
         conversation_id: @conversation_id
       )
+      {
+        success: true,
+        sku_code: sku.sku_code,
+        plan_id: plan.id,
+        target: plan.target,
+        operation: plan.operation,
+        referer: plan.referer,
+        scope: plan.scope,
+        scope_id: plan.scope_id,
+        priority: plan.priority,
+        message: plan.message,
+        reason: plan.reason,
+        baseline: plan.baseline,
+        constraints: plan.constraints,
+        expected_effect: plan.expected_effect,
+        status: plan.status,
+        lifecycle_status: plan.lifecycle_status,
+        execution_status: plan.execution_status,
+        evaluation_status: plan.evaluation_status,
+        planning_period_start: plan.planning_period_start.iso8601,
+        planning_period_end: plan.planning_period_end.iso8601,
+        execution_deadline: plan.execution_deadline.iso8601,
+        retain_until: plan.retain_until.iso8601
+      }
+    rescue ActiveRecord::RecordNotUnique
+      fingerprint = Ec::SkuOperationPlan.fingerprint_for(
+        target: target,
+        operation: operation,
+        scope: scope,
+        scope_id: scope_id,
+        planning_period_start: Ec::SkuOperationPlan.period_for(@event_date || Time.current.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date)
+      )
+      plan = sku.sku_operation_plans.find_by!(planning_cycle_id: @planning_cycle_id, fingerprint: fingerprint)
       {
         success: true,
         sku_code: sku.sku_code,

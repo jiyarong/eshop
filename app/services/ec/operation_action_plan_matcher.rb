@@ -10,18 +10,17 @@ module Ec
 
       action.sku.with_lock do
         action_date = action.operated_at.in_time_zone(Ec::SkuOperationPlan::TIME_ZONE).to_date
-        plan = action.sku.sku_operation_plans
+        candidates = action.sku.sku_operation_plans
           .where(lifecycle_status: "active")
           .where("planning_period_start <= ? AND execution_deadline >= ?", action_date, action_date)
           .where("created_at <= ?", action.operated_at)
-          .order(is_latest: :desc, created_at: :desc, id: :desc)
-          .find do |candidate|
-            matches.include?([candidate.target, candidate.operation]) && scope_matches?(candidate, action)
-          end
+          .select { |candidate| matches.include?([candidate.target, candidate.operation]) && scope_matches?(candidate, action) }
+        plan = candidates.min_by { |candidate| candidate_sort_key(candidate, matches) }
         next unless plan
 
         plan.update!(status: :done, execution_status: :executed, completed_at: action.operated_at)
         action.update!(plan: plan)
+        invalidate_stale_evaluation!(plan, action_date)
       end
     end
 
@@ -83,6 +82,44 @@ module Ec
       end
     end
 
+    def self.candidate_sort_key(plan, matches)
+      [
+        -plan.planning_period_start.jd,
+        scope_rank(plan),
+        operation_rank(plan, matches),
+        plan.execution_deadline.jd,
+        -plan.created_at.to_f,
+        -plan.id
+      ]
+    end
+
+    def self.scope_rank(plan)
+      { "LISTING" => 0, "SKU" => 1 }.fetch(plan.scope.to_s, 2)
+    end
+
+    def self.operation_rank(plan, matches)
+      target_matches = matches.select { |target, _operation| target == plan.target }
+      if target_matches.any? { |_target, operation| operation != "modify" }
+        return 1 if plan.operation == "modify"
+        return 0
+      end
+
+      matches.index([plan.target, plan.operation]) || matches.length
+    end
+
+    def self.invalidate_stale_evaluation!(plan, action_date)
+      evaluation = plan.evaluations
+        .where(status: "succeeded")
+        .where("observation_from <= ? AND observation_to >= ?", action_date, action_date)
+        .order(observation_to: :desc, id: :desc)
+        .first
+      return unless evaluation
+
+      evaluation.update!(status: "pending", evaluated_at: nil)
+      plan.update_columns(evaluation_status: "pending")
+      plan.planning_cycle&.update_columns(status: "active") if plan.planning_cycle&.status == "evaluated"
+    end
+
     def self.increased?(change)
       from = BigDecimal(change.fetch("from").to_s, exception: false)
       to = BigDecimal(change.fetch("to").to_s, exception: false)
@@ -94,6 +131,7 @@ module Ec
       to = BigDecimal(change.fetch("to").to_s, exception: false)
       from && to && to < from
     end
-    private_class_method :matching_operations, :scope_matches?, :increased?, :decreased?
+    private_class_method :matching_operations, :scope_matches?, :candidate_sort_key, :scope_rank, :operation_rank,
+      :increased?, :decreased?, :invalidate_stale_evaluation!
   end
 end

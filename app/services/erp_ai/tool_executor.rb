@@ -2,12 +2,13 @@ module ErpAI
   class ToolExecutor
     attr_writer :conversation_id
 
-    def initialize(mcp_clients:, mcp_tool_filters: {}, current_user: nil, event_date: nil, conversation_id: nil)
+    def initialize(mcp_clients:, mcp_tool_filters: {}, current_user: nil, event_date: nil, conversation_id: nil, planning_cycle_id: nil)
       @mcp_clients = mcp_clients
       @mcp_tool_filters = mcp_tool_filters
       @current_user = current_user
       @event_date = event_date
       @conversation_id = conversation_id
+      @planning_cycle_id = planning_cycle_id
     end
 
     def call(id:, name:, arguments:)
@@ -87,7 +88,8 @@ module ErpAI
         result: ::Mcp::ToolExecutor.new(
           current_user: current_user,
           event_date: @event_date,
-          conversation_id: @conversation_id
+          conversation_id: @conversation_id,
+          planning_cycle_id: @planning_cycle_id
         ).call(name, (arguments || {}).stringify_keys)
       }
     end

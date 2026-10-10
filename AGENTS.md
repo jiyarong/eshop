@@ -177,6 +177,107 @@ SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是�
 - 计划详情页的“重新评估”入口为 `POST /reports/skus/:sku_code/plans/:plan_id/evaluate`，操作使用异步 Evaluation Job；计划详情同时展示评估历史和同周期 revision 历史。
 - 所有新增页面、按钮、状态和错误文案必须通过 Rails I18n 管理；Controller、ERB、helper 和 Stimulus 中不要新增硬编码展示文本。
 
+### 本地闭环调试
+
+线上数据导入本地后，调试只连接本地 `development` 数据库；不要从本地配置读取生产写入凭据，也不要在调试过程中触发生产 Job、平台同步或真实运营动作。默认先做只读审计，再对一个 SKU 做分阶段回归。需要写库的步骤只允许在本地执行，并为本地数据库保留可恢复的备份或快照。
+
+调试前先确认日期和依赖：
+
+```sh
+eval "$(/opt/homebrew/bin/rbenv init - zsh)"
+RAILS_ENV=development bin/rails db:version
+RAILS_ENV=development bin/rails runner 'puts Time.current.in_time_zone("Asia/Shanghai").to_date'
+RAILS_ENV=development bin/rails console
+```
+
+在 console 中检查 Agent、诊断规则和数据覆盖。`sku_code` 应替换为已导入且有完整 Listing 的本地 SKU：
+
+```ruby
+sku = Ec::Sku.includes(:current_marketing_state, :sku_products).find_by!(sku_code: "SKU_CODE")
+sku.current_marketing_state&.slice(:grade, :stage)
+sku.sku_products.pluck(:id, :platform, :store_id, :product_id)
+Agent.where(code: %w[sku_diagnosis sku_planner sku_plan_evaluation]).pluck(:code, :enabled)
+rule_check_date = Time.current.in_time_zone("Asia/Shanghai").to_date
+Ec::SkuDiagnosisRule.enabled_for(rule_check_date).pluck(:id, :name, :context_keys)
+```
+
+规则调度按上海时区日期执行：`daily` 每天可用，`weekly` 只在周二进入 `enabled_for`。因此在周五检查得到 0 条 weekly 规则是预期结果；读取已导入的历史周度事件时使用对应周二的 `as_of_date`，而在今天重新生成诊断时使用当前日期并显式传入 weekly `rule_ids`。
+
+用只读查询建立基线，先看该 SKU 的诊断、计划、动作、评估和周期历史，再决定是否重跑：
+
+```ruby
+date = Time.current.in_time_zone("Asia/Shanghai").to_date
+events = Ec::AIDiagnosisEvent.for_planning(sku_ids: sku.id, as_of_date: date).includes(:ai_diagnosis, :sub_agent)
+events.map { |e| [e.id, e.sub_agent_id, e.severity, e.scope, e.effective_simple_context] }
+sku.sku_operation_plans.order(planning_period_start: :desc, id: :desc).limit(20)
+  .pluck(:id, :planning_cycle_id, :planning_period_start, :execution_deadline, :target, :operation,
+    :scope, :scope_id, :referer, :fingerprint, :lifecycle_status, :execution_status, :evaluation_status)
+sku.operation_actions.order(operated_at: :desc).limit(20)
+  .pluck(:id, :operated_at, :operation_type, :plan_id, :record_by_system)
+Ec::SkuPlanningCycle.where(sku: sku).order(period_start: :desc, revision: :desc).limit(12)
+  .pluck(:id, :period_start, :revision, :status, :is_current, :error_message)
+```
+
+推荐按一个 SKU 串行验收四个阶段。每一步完成后检查数据库结果，再进入下一步：
+
+1. Diagnosis：先选定 `as_of_date` 和 `rule_ids`，只跑一个 SKU。运行后确认每个适用规则都有当前周 active、非 `info`、非 `advise` 的 latest 事件，且新事件的 `simple_context` 非空。
+
+   ```ruby
+   as_of = Time.current.in_time_zone("Asia/Shanghai").to_date
+   rule_ids = Ec::SkuDiagnosisRule.where(enabled: true, frequency: "weekly").pluck(:id)
+   ErpAI::SkuDiagnosisRunner.run(as_of_date: as_of, sku_code: sku.sku_code, rule_ids: rule_ids)
+   events = Ec::AIDiagnosisEvent.for_planning(sku_ids: sku.id, as_of_date: as_of)
+   events.pluck(:sub_agent_id, :severity, :scope).inspect
+   ```
+
+   首次调试建议注入 stubbed AI client，或只运行已有事件的后续阶段；不要为了验证控制流反复调用真实模型。重新生成的事件使用实际执行时间写入 `created_at`，所以不要用过去的 `as_of_date` 直接生成后再期待 Planner 读取它；历史周回放应读取已导入事件，或在隔离副本中使用受控时钟。
+
+2. Plan：确认 Planner 输入只来自 `Ec::AIDiagnosisEvent.for_planning(...)`，Plan 的 `referer` 指向当前 SKU 当前周期最新非 `info` 事件，`scope`、`scope_id` 与 target 合法，且同一动作的 fingerprint 重跑不产生重复计划。
+
+   ```ruby
+   ErpAI::SkuPlannerRunner.run(sku_code: sku.sku_code, as_of_date: as_of, rerun: false)
+   cycle = Ec::SkuPlanningCycle.current_for(sku: sku, period_start: Ec::SkuOperationPlan.period_for(as_of))
+   cycle&.operation_plans&.pluck(:id, :referer, :target, :operation, :scope, :scope_id, :fingerprint)
+   ```
+
+   Planner 会先处理已过执行截止日但尚未完成观察窗口的历史计划；因此历史数据调试时，先检查 `Ec::SkuPlanningDataReadiness.check!(as_of_date: as_of, sku_code: sku.sku_code)`，再解释 Planner 是否生成新 revision。数据未就绪或历史评估失败时，不应把“没有新计划”当成 Planner 逻辑失败。
+
+3. Action：通过现有 recorder 记录本地动作，让 `Ec::OperationActionPlanMatcher` 自动匹配；不要直接手写 `plan_id` 来伪造成功。检查动作日期、目标、操作方向、scope 和 Listing 归属，确认匹配后 Plan 的 `execution_status` 更新为 `executed`。晚到动作应使覆盖该动作观察窗口的成功评估重新进入 pending。
+
+4. Evaluation：优先指定一个 `plan_id`，使用与计划一致的观察截止日运行；检查评估记录的 `metrics`、`evidence`、`action_ids`、`observation_from/to`、`evaluator_version` 和 `evaluation_status`。
+
+   ```ruby
+   Ec::SkuOperationPlanEvaluationRunner.run(
+     plan_id: plan.id, as_of_date: as_of, force: true,
+     agent: Agent.ensure_fixed!("sku_plan_evaluation")
+   )
+   plan.reload
+   plan.evaluations.order(observation_to: :desc, id: :desc)
+     .pluck(:id, :status, :execution_status, :effectiveness, :confidence,
+       :observation_from, :observation_to, :metrics, :action_ids, :evaluator_version)
+   ```
+
+   没有动作时执行状态必须是 `not_started`，效果必须是 `inconclusive`；数据不足时计划应为 `insufficient_data`。不要把“没有动作”或“指标缺失”解释成负面效果。
+
+调试 Job 时使用 `perform_now` 串行执行并保留参数，避免直接启动整批队列：
+
+```ruby
+AITasks::SkuDiagnosisJob.perform_now(as_of_date: as_of, sku_code: sku.sku_code, pipeline: false)
+AITasks::SkuPlannerJob.perform_now(as_of_date: as_of, sku_code: sku.sku_code, pipeline: false)
+AITasks::SkuOperationPlanEvaluationJob.perform_now(plan_id: plan.id, as_of_date: as_of, force: true)
+```
+
+完整链路回放才使用 `AITasks::SkuPlanningPipelineJob.perform_now(as_of_date: as_of, sku_code: sku.sku_code)`；它会按 Evaluation → Diagnosis → Planner 顺序运行，并受 data-readiness gate 及有限重试约束。Pipeline 的 batch 入口不要在本地首次调试时直接执行，以免一次性改写全部导入数据。
+
+S/A/B/C 不需要四套架构。应从每个 grade 选取若干有 Listing、诊断和历史计划的 SKU，在同一 `as_of_date`、同一规则集和同一数据窗口下运行同一条 pipeline，然后按 grade 汇总比较：Diagnosis 完整率、Plan referer/scope 合法率、同 fingerprint 重试产生的重复计划数、Action 自动绑定率、Evaluation `metrics` 非空率、无动作是否为 `inconclusive`、`insufficient_data` 比例，以及 planning cycle 是否卡在 `failed`/`generating`。可先生成只读审计表：
+
+```ruby
+skus = Ec::Sku.joins(:current_marketing_state).where(ec_sku_marketing_states: { grade: %w[S A B C] })
+skus.group_by { |item| item.current_marketing_state.grade }.transform_values { |items| items.first(5).map(&:sku_code) }
+```
+
+线上导入数据可能包含历史重复计划、逾期 active/pending 计划或过去生成的空 `metrics`。不要直接批量删除、补 `plan_id` 或重写历史评估；先保存只读审计结果，再针对明确的计划 ID 运行幂等评估或单独补偿任务。关键断点位于 `ErpAI::SkuDiagnosisRunner`、`ErpAI::SkuPlannerRunner`、`Ec::SkuPlanningDataReadiness`、`Ec::OperationActionPlanMatcher`、`Ec::SkuOperationPlanEvaluationRunner` 和 `AITasks::SkuPlanningPipelineJob`。
+
 ## 通用日快照机制
 
 - 通用快照表为 `ec_snapshots`，模型为 `Ec::Snapshot`。

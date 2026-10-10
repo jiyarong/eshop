@@ -7,11 +7,17 @@ module AITasks
 
     class EvaluationFailed < StandardError; end
 
+    retry_on Ec::SkuPlanningDataReadiness::NotReady, wait: 30.minutes, attempts: 5
     retry_on EvaluationFailed, wait: 5.minutes, attempts: 3
 
     def perform(as_of_date: nil, period_start: nil, plan_id: nil, sku_code: nil, force: true,
       pipeline: false, continue_to_diagnosis: false)
       return enqueue_batch(as_of_date:, period_start:, force:, pipeline:, continue_to_diagnosis:) if plan_id.blank? && sku_code.blank?
+
+      if pipeline
+        date = (as_of_date.presence || Time.current.in_time_zone(ErpAI::SkuDiagnosisRunner::TIME_ZONE).to_date).to_date
+        Ec::SkuPlanningDataReadiness.check!(as_of_date: date, sku_code: sku_code)
+      end
 
       agent = Agent.ensure_fixed!("sku_plan_evaluation")
       evaluations = Ec::SkuOperationPlanEvaluationRunner.run(

@@ -5,6 +5,8 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     travel_to Time.utc(2026, 9, 29, 4)
     @token = SecureRandom.hex(5).upcase
     @sku = Ec::Sku.create!(sku_code: "PLANNER-#{@token}", product_name: "Planner test")
+    @store = Ec::Store.create!(platform: "wb", store_name: "Planner store #{@token}", company_type: "small", is_active: true)
+    @sku_product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "PLANNER-#{@token}")
     @user = User.create!(email: "planner-#{@token.downcase}@example.com", password: "password123")
     @agent_existed = Agent.exists?(code: "sku_planner")
     @evaluation_agent_existed = Agent.exists?(code: "sku_plan_evaluation")
@@ -26,6 +28,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     Agent.where(code: "sku_planner").delete_all unless @agent_existed
     Agent.where(code: "sku_plan_evaluation").delete_all unless @evaluation_agent_existed
     @sku.sku_products.delete_all
+    @store&.delete
     @evaluation_store&.delete
     Ec::Sku.with_deleted.where(id: @sku.id).delete_all
     UserRole.where(user_id: @user.id).delete_all
@@ -184,6 +187,19 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_equal [1, 2], @sku.planning_cycles.order(:revision).pluck(:revision)
   end
 
+  test "planner closes an empty cycle" do
+    client = Object.new
+    client.define_singleton_method(:complete) { |_| { content: "本周期无需新增计划", tool_calls: [] } }
+
+    ErpAI::SkuPlannerRunner.run(sku_code: @sku.sku_code, user: @user, client: client,
+      as_of_date: Date.new(2026, 9, 29), rerun: false)
+
+    cycle = @sku.planning_cycles.sole
+    assert_equal "closed", cycle.status
+    assert cycle.completed_at.present?
+    assert_empty cycle.operation_plans
+  end
+
   test "automatic planner failure is retryable without leaving partial plans" do
     failed_runner = Object.new
     failed_runner.define_singleton_method(:ask) { |**| raise "model unavailable" }
@@ -191,8 +207,32 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
       ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, rerun: false,
         runner_factory: ->(**) { failed_runner }).run
     end
-    assert_empty @sku.planning_cycles
+    assert_equal [ "failed" ], @sku.planning_cycles.pluck(:status)
     assert_empty @sku.sku_operation_plans
+  end
+
+  test "automatic planner retry reuses a failed cycle revision" do
+    attempts = 0
+    runner_factory = lambda do |**|
+      fake_runner = Object.new
+      fake_runner.define_singleton_method(:ask) do |**|
+        attempts += 1
+        raise "temporary planner failure" if attempts == 1
+
+        nil
+      end
+      fake_runner
+    end
+
+    assert_raises(ErpAI::SkuPlannerRunner::Failure) do
+      ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, rerun: false,
+        runner_factory: runner_factory).run
+    end
+    ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user, rerun: false,
+      runner_factory: runner_factory).run
+
+    assert_equal [ 1 ], @sku.planning_cycles.order(:revision).pluck(:revision)
+    assert_equal "closed", @sku.planning_cycles.sole.status
   end
 
   test "direct planner evaluates history before building context and does not repeat successful evaluation" do
@@ -302,8 +342,8 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_equal conversation.id, plan.conversation_id
     assert_equal [ @diagnosis.events.first.id ], plan.referer
     assert_equal plan.referer, result.dig(:result, :referer)
-    assert_equal "SKU", plan.scope
-    assert_equal @sku.sku_code, plan.scope_id
+    assert_equal "LISTING", plan.scope
+    assert_equal @sku_product.id.to_s, plan.scope_id
     assert_equal 1, plan.priority
     assert_equal "No price change", plan.constraints
     assert_equal "Keep price stable", result.dig(:result, :message)
@@ -337,7 +377,8 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     { "分仓" => "warehouse_distribution", "补货" => "replenishment" }.each do |target, expected_target|
       result = executor.call(id: target, name: "save_sku_plan", arguments: {
         sku_code: @sku.sku_code, target: target, operation: "降低",
-        referer: [ @diagnosis.events.first.id ], **plan_details
+        referer: [ @diagnosis.events.first.id ],
+        **plan_details.merge(expected_target == "replenishment" ? { scope: "SKU", scope_id: @sku.sku_code } : {})
       })
 
       assert result.dig(:result, :success)
@@ -363,6 +404,17 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
     assert_equal "LISTING", result.dig(:result, :scope)
     assert_equal "Expected savings", plan.expected_effect
 
+    [
+      { target: "price", scope: "SKU", scope_id: @sku.sku_code },
+      { target: "listing_image", scope: "SKU", scope_id: @sku.sku_code },
+      { target: "warehouse_distribution", scope: "SKU", scope_id: @sku.sku_code },
+      { target: "replenishment", scope: "LISTING", scope_id: listing.id.to_s }
+    ].each do |invalid_scope|
+      assert_raises(RuntimeError) do
+        executor.call(id: "invalid-target-scope", name: "save_sku_plan", arguments: args.merge(invalid_scope))
+      end
+    end
+
     [ { scope_id: "unknown" }, { scope_id: "-1" }, { priority: "1" }, { constraints: [ "No price change" ] },
       { baseline: "" }, { message: 5 } ].each do |invalid|
       assert_raises(RuntimeError) { executor.call(id: "invalid", name: "save_sku_plan", arguments: args.merge(invalid)) }
@@ -371,6 +423,30 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   ensure
     listing&.destroy!
     store&.destroy!
+  end
+
+  test "planner retry returns the existing plan for the same cycle fingerprint" do
+    @user.roles << Role.find_by!(code: "manager")
+    cycle = Ec::SkuPlanningCycleLock.acquire(sku: @sku, period_start: Date.new(2026, 9, 28), status: "generating")
+    executor = ErpAI::SkuPlannerRunner::ScopedToolExecutor.new(user: @user, sku: @sku,
+      plan_date: Date.new(2026, 9, 29), planning_cycle_id: cycle.id)
+    arguments = { sku_code: @sku.sku_code, target: "price", operation: "maintain",
+      referer: [ @diagnosis.events.first.id ], **plan_details }
+
+    first = executor.call(id: "first", name: "save_sku_plan", arguments: arguments)
+    second = executor.call(id: "retry", name: "save_sku_plan", arguments: arguments)
+
+    assert_equal first.dig(:result, :plan_id), second.dig(:result, :plan_id)
+    assert_equal 1, @sku.sku_operation_plans.where(planning_cycle_id: cycle.id).count
+  end
+
+  test "evaluation state updates do not revalidate legacy scope combinations" do
+    plan = @sku.sku_operation_plans.create!(target: "price", operation: "maintain",
+      scope: "LISTING", scope_id: @sku_product.id.to_s, referer: [ @diagnosis.events.first.id ],
+      message: "Keep price stable")
+    plan.update_column(:scope, "SKU")
+
+    assert plan.update!(evaluation_status: "evaluated")
   end
 
   test "planner tool requires all detail fields with string types except priority" do
@@ -447,7 +523,7 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   end
 
   def plan_details
-    { scope: "SKU", scope_id: @sku.sku_code, priority: 1, message: "Keep price stable",
+    { scope: "LISTING", scope_id: @sku_product.id.to_s, priority: 1, message: "Keep price stable",
       reason: "Low stock", baseline: "Current price unchanged", constraints: "No price change",
       expected_effect: "Expected savings" }
   end
@@ -458,17 +534,23 @@ class ErpAI::SkuPlannerRunnerTest < ActiveSupport::TestCase
   end
 
   def run_with_plan(message, fail_after_save: false)
-    conversation = Agent.ensure_fixed!("sku_planner").conversations.create!(user: @user, module_name: "sku_planner")
-    fake_runner = Object.new
-    fake_runner.define_singleton_method(:ask) do |**_args|
-      create_plan(message)
-      raise "planner failed" if fail_after_save
-      conversation
+    runner_factory = lambda do |planning_cycle_id:, **_args|
+      conversation = Agent.ensure_fixed!("sku_planner").conversations.create!(user: @user, module_name: "sku_planner")
+      fake_runner = Object.new
+      fake_runner.define_singleton_method(:ask) do |**_request|
+        create_plan(message)
+        raise "planner failed" if fail_after_save
+        conversation
+      end
+      fake_runner.define_singleton_method(:create_plan) do |value|
+        @sku.sku_operation_plans.create!(planning_cycle_id: @planning_cycle_id, target: "price",
+          operation: "maintain", referer: [ "stock_risk" ], message: value)
+      end
+      fake_runner.instance_variable_set(:@sku, @sku)
+      fake_runner.instance_variable_set(:@planning_cycle_id, planning_cycle_id)
+      fake_runner
     end
-    # The fake runner writes through the same table as the planner tool.
-    fake_runner.define_singleton_method(:create_plan) { |value| @sku.sku_operation_plans.create!(target: "price", operation: "maintain", referer: [ "stock_risk" ], message: value) }
-    fake_runner.instance_variable_set(:@sku, @sku)
     ErpAI::SkuPlannerRunner.new(sku_code: @sku.sku_code, user: @user,
-      runner_factory: ->(**_args) { fake_runner }).run
+      runner_factory: runner_factory).run
   end
 end

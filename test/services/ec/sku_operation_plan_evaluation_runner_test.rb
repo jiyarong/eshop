@@ -130,7 +130,7 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     assert_equal 1, @plan.evaluations.count
   end
 
-  test "passes current and previous week diagnosis context without refetching metrics" do
+  test "passes current and previous week diagnosis context and fetches metrics" do
     rule = Ec::SkuDiagnosisRule.create!(name: "Evaluation rule #{@token}", prompt: "Check the event")
     @diagnosis_rules << rule
     previous_diagnosis = Ec::GeneralDiagnosis.create!(
@@ -193,7 +193,7 @@ class Ec::SkuOperationPlanEvaluationRunnerTest < ActiveSupport::TestCase
     assert_equal "current evidence", diagnosis_context.dig("current_week", "events", 0, "simple_context")
     assert_equal "Stock risk improved", diagnosis_context.dig("current_week", "events", 0, "message")
     assert_equal 1, diagnosis_context.fetch("current_week").fetch("events").size
-    assert_equal 0, metrics_query.calls
+    assert_equal 1, metrics_query.calls
     assert_equal({}, evaluation.metrics)
     assert_equal diagnosis_context.deep_stringify_keys, evaluation.evidence.fetch("diagnosis_context")
   end

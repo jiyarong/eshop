@@ -5,9 +5,10 @@ module ErpAI
     AGENT_CODE = "sku_planner".freeze
 
     class ScopedToolExecutor
-      def initialize(user:, sku:, plan_date: nil)
+      def initialize(user:, sku:, plan_date: nil, planning_cycle_id: nil)
         @sku = sku
-        @executor = ErpAI::ToolExecutor.new(mcp_clients: {}, current_user: user, event_date: plan_date)
+        @executor = ErpAI::ToolExecutor.new(mcp_clients: {}, current_user: user, event_date: plan_date,
+          planning_cycle_id: planning_cycle_id)
       end
 
       def conversation_id=(conversation_id)
@@ -39,12 +40,13 @@ module ErpAI
       @as_of_date = as_of_date&.to_date
       @period_start = period_start&.to_date&.beginning_of_week(:monday)
       @rerun = rerun
-      @runner_factory = runner_factory || ->(agent:, user:, sku:, plan_date:) {
+      @runner_factory = runner_factory || ->(agent:, user:, sku:, plan_date:, planning_cycle_id:) {
         ErpAI::AgentRunner.new(
           agent: agent,
           user: user,
           client: client,
-          tool_executor: ScopedToolExecutor.new(user: user, sku: sku, plan_date: plan_date),
+          tool_executor: ScopedToolExecutor.new(user: user, sku: sku, plan_date: plan_date,
+            planning_cycle_id: planning_cycle_id),
           tool_names: [ "save_sku_plan" ]
         )
       }
@@ -128,7 +130,7 @@ module ErpAI
         根据这些事件制定本周期值得执行的运营计划。只使用上方列出的 Listing 内部 id；没有足够依据时不调用 save_sku_plan。
       PROMPT
 
-      sku.with_lock do
+      planning_cycle, existing_plan_ids = sku.with_lock do
         plans = sku.sku_operation_plans
         existing_cycle = Ec::SkuPlanningCycle.current_for(sku: sku, period_start: planning_period_start)
         return existing_cycle.planner_conversation if !@rerun && existing_cycle&.status.in?(%w[active closed evaluated])
@@ -140,35 +142,50 @@ module ErpAI
           diagnosis_event_ids: events.map(&:id),
           context_version: historical_context.fetch(:context_version)
         )
-        existing_plan_ids = plans.pluck(:id)
+        [ planning_cycle, plans.pluck(:id) ]
+      end
 
-        conversation = @runner_factory.call(agent: agent, user: user, sku: sku, plan_date: plan_date).ask(
+      begin
+        conversation = @runner_factory.call(agent: agent, user: user, sku: sku, plan_date: plan_date,
+          planning_cycle_id: planning_cycle.id).ask(
           question: question,
           module_name: "sku_planner",
           business_object_type: "Ec::Sku",
           business_object_id: sku.id.to_s,
           data_summary: data_summary
         )
-        generated_plan_ids = plans.where(plan_date: plan_date).where.not(id: existing_plan_ids).pluck(:id)
-        plans.where(id: generated_plan_ids).update_all(planning_cycle_id: planning_cycle.id)
-        planning_cycle.update!(status: "active", planner_conversation: conversation)
-        plans.where(planning_cycle_id: nil).or(
-          plans.where.not(planning_cycle_id: planning_cycle.id)
-        ).latest.update_all(is_latest: false)
-        if conversation.respond_to?(:context) && conversation.respond_to?(:update!)
-          conversation.update!(context: conversation.context.merge(
-            "history_plan_ids" => historical_context.fetch(:history_plan_ids),
-            "context_version" => historical_context.fetch(:context_version),
-            "planning_period_start" => planning_period_start.iso8601,
-            "planning_period_end" => (planning_period_start + 6.days).iso8601,
-            "input_summary" => {
-              "diagnosis_event_ids" => events.map(&:id),
+        sku.with_lock do
+          plans = sku.sku_operation_plans
+          generated_plan_ids = plans.where(planning_cycle_id: planning_cycle.id)
+            .where.not(id: existing_plan_ids).pluck(:id)
+          plans.where(id: generated_plan_ids).update_all(planning_cycle_id: planning_cycle.id)
+          planning_cycle.reload.update!(status: generated_plan_ids.empty? ? "closed" : "active",
+            completed_at: (Time.current if generated_plan_ids.empty?), planner_conversation: conversation)
+          plans.where(planning_cycle_id: planning_cycle.id).update_all(is_latest: true)
+          plans.where(planning_cycle_id: nil).or(
+            plans.where.not(planning_cycle_id: planning_cycle.id)
+          ).latest.update_all(is_latest: false)
+          if conversation.respond_to?(:context) && conversation.respond_to?(:update!)
+            conversation.update!(context: conversation.context.merge(
               "history_plan_ids" => historical_context.fetch(:history_plan_ids),
-              "cycle" => historical_context.fetch(:cycle)
-            }
-          ))
+              "context_version" => historical_context.fetch(:context_version),
+              "planning_period_start" => planning_period_start.iso8601,
+              "planning_period_end" => (planning_period_start + 6.days).iso8601,
+              "input_summary" => {
+                "diagnosis_event_ids" => events.map(&:id),
+                "history_plan_ids" => historical_context.fetch(:history_plan_ids),
+                "cycle" => historical_context.fetch(:cycle)
+              }
+            ))
+          end
         end
         conversation
+      rescue StandardError => error
+        sku.with_lock do
+          sku.sku_operation_plans.where(planning_cycle_id: planning_cycle.id).delete_all
+          planning_cycle.reload.update!(status: "failed", error_message: "#{error.class}: #{error.message}")
+        end
+        raise
       end
     end
 

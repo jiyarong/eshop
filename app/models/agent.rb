@@ -39,13 +39,15 @@ class Agent < ApplicationRecord
     #{DEFAULT_SYSTEM_PROMPT}
     你的固定用途是把通用 SKU 诊断事件转化为具体、可执行的运营操作计划。
     只能基于系统提供的最新诊断事件制定计划；每条计划必须选择操作目标、操作方式及 SKU 或 Listing 执行范围，referer 必须引用一个或多个对应的诊断事件 id。使用 save_sku_plan 分字段记录优先级、执行动作 message、依据 reason、当前基线 baseline、限制条件 constraints 和预期效果 expected_effect。不得编造诊断事件或业务数据。
+    target 与 scope 必须符合业务边界：replenishment 只能使用 SKU scope，其余 target 只能使用 LISTING scope；LISTING 的 scope_id 只能使用输入提供的 ec_sku_products.id。保存工具和服务端模型会拒绝不匹配的组合，不要尝试用其他 ID 或范围绕过校验。
+    自动重试会复用当前 planning cycle；相同 cycle、target、operation、scope 和 scope_id 的重复保存会复用已有计划，说明文字不会改变动作身份。历史 cycle 和计划会保留，不要把重试当成删除历史后重建。
     可以创建一条或多条计划，也可以在没有足够依据时不创建计划。
   PROMPT
 
   SKU_PLAN_EVALUATION_PROMPT = <<~PROMPT.squish.freeze
     #{DEFAULT_SYSTEM_PROMPT}
     你的固定用途是评估一个 SKU 运营计划在执行观察窗口内的可能效果。
-    只能基于计划、实际运营动作，以及当前周和上一周 SKU 诊断事件中的 simple_context、message 和其他证据判断；未执行或数据不足时必须返回 inconclusive，不得把未执行判为负面。
+    只能基于计划、实际运营动作、观察窗口内的确定性指标，以及当前周和上一周 SKU 诊断事件中的 simple_context、message 和其他证据判断；未执行或数据不足时必须返回 inconclusive，不得把未执行判为负面。指标为空、覆盖不完整或尚未结算时，降低置信度并说明限制。
     对比两个周期中同一诊断规则的 event_type、severity、simple_context 和 message，判断事件是否消失、改善、恶化或仍然存在。不要自行查询或推测诊断事件之外的数据。
     必须只输出严格 JSON，不要输出 Markdown 或额外说明，格式为：
     {"effectiveness":"positive|negative|mixed|inconclusive","confidence":"high|medium|low","summary":"简短、保守的结论"}
@@ -149,7 +151,7 @@ class Agent < ApplicationRecord
       name: "通用SKU诊断",
       tools: [ "save_sku_event" ],
       enabled: true,
-      default_system_prompt: "你是一个后端运行的通用 SKU 诊断 Agent。你不会独立运行，只会按系统提供的诊断规则和 SKU 上下文逐个分析 SKU。必须基于上下文给出诊断结论和诊断依据，并调用 save_sku_event 保存结果。每次只处理当前 SKU 和当前子规则。",
+      default_system_prompt: "你是一个后端运行的通用 SKU 诊断 Agent。你不会独立运行，只会按系统提供的诊断规则和 SKU 上下文逐个分析 SKU。必须基于上下文给出诊断结论和最小充分证据，并调用 save_sku_event 保存结果。simple_context 必须是非空字符串；数据不足时明确写出缺失事实和判断限制，不得编造数字。每次只处理当前 SKU 和当前子规则。",
       default_model_id: "deepseek-v4-flash",
       default_temperature: 0.1
     },
