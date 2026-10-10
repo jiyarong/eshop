@@ -1609,6 +1609,8 @@ en:
             returned_to_platform_warehouse: "Returned to platform warehouse"
             cancelled_confirmed: "Cancellation confirmed"
             cancelled_returned_to_seller: "Cancelled after dispatch, returned to seller"
+            cancelled_before_dispatch: "Cancelled before dispatch"
+            cancelled_dispatched_return_pending: "Cancelled after dispatch, return not yet received"
             cancelled_by_wb: "Cancelled by WB"
             cancelled_by_customer: "Cancelled by customer"
             declined_by_customer: "Declined by customer"
@@ -1713,7 +1715,7 @@ en:
             returns: "Return flow"
             removals: "Platform removals and orderless defect flow"
           notes:
-            fbs_orders: "FBS orders confirmed by the platform or carrier are deducted. Orders cancelled after dispatch and received back by the seller are deducted as departed and added back through the return. Orders awaiting preparation, packing, or handover remain in expected physical stock."
+            fbs_orders: "FBS orders confirmed by the platform or carrier are deducted. Orders cancelled after dispatch and received back by the seller are deducted as departed and added back through the return. WB orders cancelled after dispatch whose return is not yet received are also deducted, and added back once the return arrives. Orders cancelled before dispatch are shown for reference and not deducted. Orders awaiting preparation, packing, or handover remain in expected physical stock."
             pending_supplies: "WB supplies under acceptance use declared quantity; accepted supplies use platform-accepted quantity. Ozon supplies are deducted after acceptance, transit, or completion begins. Supplies without departure evidence are not deducted."
             returns: "Physical stock inclusion depends only on explicit platform evidence that the seller received the item. restockable is ignored here and remains part of the book-inventory logic."
             removals: "Ozon removals are added only after delivery to the seller. Orderless WB defect flows come from the same source as WB returns; delivered rows are already included through seller-received returns and are shown here without being added again. Other states remain location, defect, and disposal evidence."

@@ -2,10 +2,15 @@ module Ec
   class InventoryPhysicalReconciliationQuery
     # FBS orders cancelled after they left the warehouse and then received back by the seller.
     CANCELLED_RETURNED_STATUS_KEY = "cancelled_returned_to_seller".freeze
+    # WB FBS orders handed over for delivery, then cancelled, whose return the seller has not received yet.
+    CANCELLED_DISPATCHED_STATUS_KEY = "cancelled_dispatched_return_pending".freeze
+    # FBS orders cancelled before they left the warehouse; shown for reference, never deducted.
+    CANCELLED_BEFORE_DISPATCH_STATUS_KEY = "cancelled_before_dispatch".freeze
+    WB_DISPATCHED_SUPPLIER_STATUS = "complete".freeze
     FBS_DEPARTED_STATUS_KEYS = %W[
       platform_received carrier_accepted in_transit pickup_ready delivery_postponed
       sold_confirmed delivered_confirmed returned_confirmed returned_to_platform_warehouse
-      #{CANCELLED_RETURNED_STATUS_KEY}
+      #{CANCELLED_RETURNED_STATUS_KEY} #{CANCELLED_DISPATCHED_STATUS_KEY}
     ].freeze
     WB_PENDING_SUPPLY_STATUS_IDS = [ 2, 3 ].freeze
     WB_DEPARTED_SUPPLY_STATUS_IDS = [ 4, 5, 6 ].freeze
@@ -138,7 +143,7 @@ module Ec
     def fbs_order_rows
       @fbs_order_rows ||= (
         @order_distribution.fetch(:rows, []).select { |row| row[:fulfillment_type] == "fbs" } +
-          cancelled_returned_fbs_rows
+          cancelled_returned_fbs_rows + cancelled_unreturned_fbs_rows
       ).map { |row| row.merge(physical_deducted: row[:status_key].in?(FBS_DEPARTED_STATUS_KEYS)) }
     end
 
@@ -160,26 +165,83 @@ module Ec
             item.quantity.to_i
         end
 
-        status_labeler = Ec::InventoryOrderSalesDistributionQuery.new(@sku)
-        quantities.map do |(platform, store_name, source_status, source_substatus), quantity|
-          {
-            store_label: I18n.t(
-              "reports.inventory.drawer.sales_distribution.store_label",
-              platform: I18n.t("reports.inventory.drawer.sales_distribution.platforms.#{platform}"),
-              store: store_name
-            ),
-            platform: platform,
-            store_name: store_name,
-            fulfillment_type: "fbs",
-            status_key: CANCELLED_RETURNED_STATUS_KEY,
-            evidence_label: nil,
-            source_status_label: status_labeler.source_status_label(platform, source_status, source_substatus),
-            source_status_codes: [ source_status, source_substatus ].compact_blank.join(" / "),
-            needs_status_repair: false,
-            stocktake_relevant: false,
-            quantity: quantity
-          }
+        cancelled_fbs_rows(quantities, CANCELLED_RETURNED_STATUS_KEY)
+      end
+    end
+
+    # Cancelled FBS orders the seller has not received back (those with a received return are counted above).
+    # WB marks orders handed over for delivery with supplier status `complete`: they left the warehouse, so they are
+    # deducted until the return arrives. The fulfillment substatus can read `cancelled` while the raw WB order is
+    # still `complete`, so check both. Anything else without a return record never left and stays in physical
+    # stock; it is only shown for reference.
+    def cancelled_unreturned_fbs_rows
+      @cancelled_unreturned_fbs_rows ||= begin
+        items = Ec::OrderItem
+          .joins(:order, :store)
+          .joins(Ec::InventoryOrderSalesDistributionQuery::ORDER_ITEM_JOIN)
+          .where(ec_sku_products: { sku_code: @sku.sku_code })
+          .where(ec_orders: { order_status: "cancelled" })
+          .includes(:store, order: :fulfillments)
+          .to_a
+        returns_by_order = Ec::Return.where(order_id: items.map(&:order_id).uniq).includes(order: :fulfillments)
+          .group_by(&:order_id)
+        dispatched_order_ids = wb_dispatched_order_ids(items.select { |item| item.platform == "wb" }.map(&:order_id))
+
+        dispatched = Hash.new(0)
+        undispatched = Hash.new(0)
+        items.each do |item|
+          fulfillment = item.order.fulfillments.find { |candidate| candidate.fulfillment_type == "fbs" }
+          next unless fulfillment
+
+          returns = returns_by_order.fetch(item.order_id, [])
+          next if returns.any? { |return_record| physical_return_included?(item.platform, return_record) }
+
+          key = [ item.platform, item.store.store_name, fulfillment.source_status, fulfillment.source_substatus ]
+          if item.platform == "wb" &&
+              (fulfillment.source_substatus == WB_DISPATCHED_SUPPLIER_STATUS || dispatched_order_ids.include?(item.order_id))
+            dispatched[key] += item.quantity.to_i
+          elsif returns.empty?
+            undispatched[key] += item.quantity.to_i
+          end
         end
+
+        cancelled_fbs_rows(dispatched, CANCELLED_DISPATCHED_STATUS_KEY) +
+          cancelled_fbs_rows(undispatched, CANCELLED_BEFORE_DISPATCH_STATUS_KEY)
+      end
+    end
+
+    def wb_dispatched_order_ids(order_ids)
+      return Set.new if order_ids.empty?
+
+      links = Ec::OrderSourceLink
+        .where(order_id: order_ids.uniq, source_type: "RawWb::Order", source_role: "primary")
+        .pluck(:order_id, :source_id)
+      dispatched_raw_ids = RawWb::Order
+        .where(id: links.map(&:last), supplier_status: WB_DISPATCHED_SUPPLIER_STATUS)
+        .pluck(:id).to_set
+      links.filter_map { |order_id, raw_id| order_id if dispatched_raw_ids.include?(raw_id) }.to_set
+    end
+
+    def cancelled_fbs_rows(quantities, status_key)
+      status_labeler = Ec::InventoryOrderSalesDistributionQuery.new(@sku)
+      quantities.map do |(platform, store_name, source_status, source_substatus), quantity|
+        {
+          store_label: I18n.t(
+            "reports.inventory.drawer.sales_distribution.store_label",
+            platform: I18n.t("reports.inventory.drawer.sales_distribution.platforms.#{platform}"),
+            store: store_name
+          ),
+          platform: platform,
+          store_name: store_name,
+          fulfillment_type: "fbs",
+          status_key: status_key,
+          evidence_label: nil,
+          source_status_label: status_labeler.source_status_label(platform, source_status, source_substatus),
+          source_status_codes: [ source_status, source_substatus ].compact_blank.join(" / "),
+          needs_status_repair: false,
+          stocktake_relevant: false,
+          quantity: quantity
+        }
       end
     end
 

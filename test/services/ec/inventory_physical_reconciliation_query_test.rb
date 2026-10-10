@@ -39,10 +39,14 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     Ec::ReturnSourceLink.where(return_id: return_ids).delete_all
     Ec::ReturnItem.where(return_id: return_ids).delete_all
     Ec::Return.where(id: return_ids).delete_all
+    Ec::OrderSourceLink.where(
+      order_id: Ec::Order.where(store_id: [ @wb_store&.id, @ozon_store&.id ].compact).select(:id)
+    ).delete_all
     Ec::OrderItem.where(store_id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     Ec::OrderFulfillment.where(store_id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     Ec::Order.where(store_id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     RawWb::GoodsReturn.where(account_id: @wb_account&.id).delete_all
+    RawWb::Order.where(account_id: @wb_account&.id).delete_all
     Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all
     Ec::Store.where(id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     RawWb::SellerAccount.where(id: @wb_account&.id).delete_all
@@ -202,11 +206,57 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     assert_equal 7, result.dig(:summary, :fbs_departed_quantity)
     assert_equal 2, result.dig(:summary, :seller_received_return_quantity)
     assert_equal 5, result.dig(:summary, :expected_physical_stock)
-    assert_equal 7, result.dig(:summary, :fbs_order_quantity)
+    assert_equal 1, result.dig(:summary, :fbs_not_departed_quantity)
+    assert_equal 8, result.dig(:summary, :fbs_order_quantity)
     cancelled_row = result[:fbs_order_rows].find { |row| row[:status_key] == "cancelled_returned_to_seller" }
     assert_equal [ 2, true, "ozon", "fbs" ],
       [ cancelled_row[:quantity], cancelled_row[:physical_deducted], cancelled_row[:platform], cancelled_row[:fulfillment_type] ]
-    assert_equal 2, result[:fbs_order_rows].size
+    undispatched_row = result[:fbs_order_rows].find { |row| row[:status_key] == "cancelled_before_dispatch" }
+    assert_equal [ 1, false, "ozon", "fbs" ],
+      [ undispatched_row[:quantity], undispatched_row[:physical_deducted], undispatched_row[:platform],
+        undispatched_row[:fulfillment_type] ]
+    assert_equal 3, result[:fbs_order_rows].size
+  end
+
+  test "deducts WB FBS orders cancelled after dispatch until the return arrives and only shows undispatched ones" do
+    create_cancelled_wb_order("NEVER-SHIPPED", fulfillment_type: "fbs", source_substatus: "cancel", quantity: 2)
+    create_cancelled_wb_order("HANDED-OVER", fulfillment_type: "fbs", source_substatus: "complete")
+    create_cancelled_wb_order("FBW", fulfillment_type: "fbw", source_substatus: "complete")
+    # The fulfillment substatus reads `cancelled` but the raw WB order is `complete`: it left the warehouse.
+    stale = create_cancelled_wb_order("STALE-SUBSTATUS", fulfillment_type: "fbs", source_substatus: "cancelled")
+    raw_order = RawWb::Order.create!(
+      account: @wb_account, wb_order_id: 70_000_000_000 + @token.to_i(16), nm_id: @wb_product.product_id.to_i,
+      delivery_type: "fbs", wb_status: "canceled_by_client", supplier_status: "complete"
+    )
+    Ec::OrderSourceLink.create!(
+      order: stale.order, platform: "wb", source_type: "RawWb::Order", source_id: raw_order.id,
+      source_role: "primary", source_key: raw_order.wb_order_id.to_s
+    )
+    returned = create_cancelled_wb_order("RETURNED", fulfillment_type: "fbs", source_substatus: "complete")
+    return_record = Ec::Return.create!(
+      platform: "wb", store: @wb_store, order: returned.order, return_key: "WB-CANCELLED-RETURNED-#{@token}",
+      return_type: "cancellation_return", process_status: "completed", source_status: "Выдано",
+      returned_to_seller_at: Time.current, external_return_id: "WB-CANCELLED-RETURNED-#{@token}"
+    )
+    return_record.items.create!(
+      platform: "wb", store: @wb_store, sku_product: @wb_product,
+      item_key: "WB-CANCELLED-RETURNED-ITEM-#{@token}", quantity: 1, restockable: true
+    )
+
+    result = Ec::InventoryPhysicalReconciliationQuery.new(
+      @sku, overview: { summary: { received_quantity: 10 } }, order_distribution: { rows: [] }
+    ).call
+
+    rows = result[:fbs_order_rows].group_by { |row| row[:status_key] }.transform_values { |list| list.sum { |row| row[:quantity] } }
+    assert_equal(
+      { "cancelled_before_dispatch" => 2, "cancelled_dispatched_return_pending" => 2, "cancelled_returned_to_seller" => 1 },
+      rows
+    )
+    assert_equal [ false ], result[:fbs_order_rows].select { |row| row[:status_key] == "cancelled_before_dispatch" }
+      .map { |row| row[:physical_deducted] }
+    assert_equal 3, result.dig(:summary, :fbs_departed_quantity)
+    assert_equal 1, result.dig(:summary, :seller_received_return_quantity)
+    assert_equal 8, result.dig(:summary, :expected_physical_stock)
   end
 
   private
@@ -216,11 +266,16 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
       platform: "ozon", store: @ozon_store, order_key: "ozon:CANCELLED-#{suffix}-#{@token}",
       external_order_id: "OZON-CANCELLED-#{suffix}-#{@token}", order_status: "cancelled"
     )
-    order.fulfillments.create!(
+    fulfillment = order.fulfillments.create!(
       platform: "ozon", store: @ozon_store,
       external_fulfillment_id: "OZON-CANCELLED-#{suffix}-F-#{@token}",
       fulfillment_key: "OZON-CANCELLED-#{suffix}-F-#{@token}", fulfillment_type: "fbs", status: "cancelled",
       source_status: "cancelled", source_substatus: "posting_canceled"
+    )
+    Ec::OrderItem.create!(
+      platform: "ozon", store: @ozon_store, order: order, fulfillment: fulfillment,
+      external_item_id: "OZON-CANCELLED-#{suffix}-ITEM-#{@token}",
+      platform_sku_id: @ozon_product.platform_sku_id, sku_code: @sku.sku_code, quantity: quantity
     )
     return unless return_status
 
@@ -233,6 +288,24 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     returned.items.create!(
       platform: "ozon", store: @ozon_store, sku_product: @ozon_product,
       item_key: "OZON-CANCELLED-#{suffix}-ITEM-#{@token}", quantity: quantity, restockable: true
+    )
+  end
+
+  def create_cancelled_wb_order(suffix, fulfillment_type:, source_substatus:, quantity: 1)
+    order = Ec::Order.create!(
+      platform: "wb", store: @wb_store, order_key: "wb:CANCELLED-#{suffix}-#{@token}",
+      external_order_id: "WB-CANCELLED-#{suffix}-#{@token}", order_status: "cancelled"
+    )
+    fulfillment = order.fulfillments.create!(
+      platform: "wb", store: @wb_store,
+      external_fulfillment_id: "WB-CANCELLED-#{suffix}-F-#{@token}",
+      fulfillment_key: "WB-CANCELLED-#{suffix}-F-#{@token}", fulfillment_type: fulfillment_type,
+      status: "cancelled", source_status: "canceled_by_client", source_substatus: source_substatus
+    )
+    Ec::OrderItem.create!(
+      platform: "wb", store: @wb_store, order: order, fulfillment: fulfillment,
+      external_item_id: "WB-CANCELLED-#{suffix}-ITEM-#{@token}",
+      platform_sku_id: @wb_product.product_id, sku_code: @sku.sku_code, quantity: quantity
     )
   end
 
