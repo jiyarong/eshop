@@ -2,7 +2,7 @@ module Ec
   class InventoryPhysicalReconciliationQuery
     # FBS orders cancelled after they left the warehouse and then received back by the seller.
     CANCELLED_RETURNED_STATUS_KEY = "cancelled_returned_to_seller".freeze
-    # WB FBS orders handed over for delivery, then cancelled, whose return the seller has not received yet.
+    # FBS orders handed over for delivery, then cancelled, whose return the seller has not received yet.
     CANCELLED_DISPATCHED_STATUS_KEY = "cancelled_dispatched_return_pending".freeze
     # FBS orders cancelled before they left the warehouse; shown for reference, never deducted.
     CANCELLED_BEFORE_DISPATCH_STATUS_KEY = "cancelled_before_dispatch".freeze
@@ -170,10 +170,10 @@ module Ec
     end
 
     # Cancelled FBS orders the seller has not received back (those with a received return are counted above).
-    # WB marks orders handed over for delivery with supplier status `complete`: they left the warehouse, so they are
-    # deducted until the return arrives. The fulfillment substatus can read `cancelled` while the raw WB order is
-    # still `complete`, so check both. Anything else without a return record never left and stays in physical
-    # stock; it is only shown for reference.
+    # An order left the warehouse when WB marked it `complete` (supplier status; the fulfillment substatus can read
+    # `cancelled` while the raw WB order is still `complete`, so both are checked), when Ozon recorded a delivery
+    # transfer time (`delivering_date`), or when a return record exists. Those are deducted until the return
+    # arrives. Anything else never left and stays in physical stock; it is only shown for reference.
     def cancelled_unreturned_fbs_rows
       @cancelled_unreturned_fbs_rows ||= begin
         items = Ec::OrderItem
@@ -185,7 +185,8 @@ module Ec
           .to_a
         returns_by_order = Ec::Return.where(order_id: items.map(&:order_id).uniq).includes(order: :fulfillments)
           .group_by(&:order_id)
-        dispatched_order_ids = wb_dispatched_order_ids(items.select { |item| item.platform == "wb" }.map(&:order_id))
+        wb_dispatched_ids = wb_dispatched_order_ids(items.select { |item| item.platform == "wb" }.map(&:order_id))
+        ozon_dispatched_postings = ozon_dispatched_posting_keys(items)
 
         dispatched = Hash.new(0)
         undispatched = Hash.new(0)
@@ -196,18 +197,30 @@ module Ec
           returns = returns_by_order.fetch(item.order_id, [])
           next if returns.any? { |return_record| physical_return_included?(item.platform, return_record) }
 
+          left_warehouse =
+            returns.any? ||
+            (item.platform == "wb" &&
+              (fulfillment.source_substatus == WB_DISPATCHED_SUPPLIER_STATUS || wb_dispatched_ids.include?(item.order_id))) ||
+            (item.platform == "ozon" &&
+              ozon_dispatched_postings.include?([ item.store.ozon_raw_account_id, fulfillment.external_fulfillment_id ]))
           key = [ item.platform, item.store.store_name, fulfillment.source_status, fulfillment.source_substatus ]
-          if item.platform == "wb" &&
-              (fulfillment.source_substatus == WB_DISPATCHED_SUPPLIER_STATUS || dispatched_order_ids.include?(item.order_id))
-            dispatched[key] += item.quantity.to_i
-          elsif returns.empty?
-            undispatched[key] += item.quantity.to_i
-          end
+          (left_warehouse ? dispatched : undispatched)[key] += item.quantity.to_i
         end
 
         cancelled_fbs_rows(dispatched, CANCELLED_DISPATCHED_STATUS_KEY) +
           cancelled_fbs_rows(undispatched, CANCELLED_BEFORE_DISPATCH_STATUS_KEY)
       end
+    end
+
+    def ozon_dispatched_posting_keys(items)
+      numbers = items.select { |item| item.platform == "ozon" }.flat_map do |item|
+        item.order.fulfillments.select { |candidate| candidate.fulfillment_type == "fbs" }
+          .map(&:external_fulfillment_id)
+      end.uniq
+      return Set.new if numbers.empty?
+
+      RawOzon::PostingFbs.where(posting_number: numbers).where.not(delivering_date: nil)
+        .pluck(:account_id, :posting_number).to_set
     end
 
     def wb_dispatched_order_ids(order_ids)

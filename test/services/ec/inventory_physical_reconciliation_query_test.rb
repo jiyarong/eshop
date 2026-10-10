@@ -47,6 +47,7 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     Ec::Order.where(store_id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     RawWb::GoodsReturn.where(account_id: @wb_account&.id).delete_all
     RawWb::Order.where(account_id: @wb_account&.id).delete_all
+    RawOzon::PostingFbs.where(account_id: @ozon_account&.id).delete_all
     Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all
     Ec::Store.where(id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     RawWb::SellerAccount.where(id: @wb_account&.id).delete_all
@@ -188,10 +189,11 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     assert_equal 0, fulfillment.items.count
   end
 
-  test "counts FBS orders cancelled after dispatch as departed once the seller received the return" do
+  test "counts FBS orders cancelled after dispatch as departed and keeps undispatched ones as reference" do
     create_cancelled_ozon_fbs_order("RETURNED", return_status: "ReceivedBySeller", quantity: 2)
     create_cancelled_ozon_fbs_order("NEVER-SHIPPED")
     create_cancelled_ozon_fbs_order("COMING-BACK", return_status: "MovingToSeller", quantity: 3)
+    create_cancelled_ozon_fbs_order("HANDED-OVER", delivering_at: 3.days.ago, quantity: 4)
     order_distribution = {
       rows: [
         { platform: "ozon", store_label: "Ozon", fulfillment_type: "fbs", status_key: "delivered_confirmed",
@@ -200,22 +202,26 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     }
 
     result = Ec::InventoryPhysicalReconciliationQuery.new(
-      @sku, overview: { summary: { received_quantity: 10 } }, order_distribution: order_distribution
+      @sku, overview: { summary: { received_quantity: 20 } }, order_distribution: order_distribution
     ).call
 
-    assert_equal 7, result.dig(:summary, :fbs_departed_quantity)
+    # 5 delivered + 2 returned and received + 3 return still on its way + 4 handed over to delivery
+    assert_equal 14, result.dig(:summary, :fbs_departed_quantity)
     assert_equal 2, result.dig(:summary, :seller_received_return_quantity)
-    assert_equal 5, result.dig(:summary, :expected_physical_stock)
+    assert_equal 8, result.dig(:summary, :expected_physical_stock)
     assert_equal 1, result.dig(:summary, :fbs_not_departed_quantity)
-    assert_equal 8, result.dig(:summary, :fbs_order_quantity)
-    cancelled_row = result[:fbs_order_rows].find { |row| row[:status_key] == "cancelled_returned_to_seller" }
-    assert_equal [ 2, true, "ozon", "fbs" ],
-      [ cancelled_row[:quantity], cancelled_row[:physical_deducted], cancelled_row[:platform], cancelled_row[:fulfillment_type] ]
-    undispatched_row = result[:fbs_order_rows].find { |row| row[:status_key] == "cancelled_before_dispatch" }
-    assert_equal [ 1, false, "ozon", "fbs" ],
-      [ undispatched_row[:quantity], undispatched_row[:physical_deducted], undispatched_row[:platform],
-        undispatched_row[:fulfillment_type] ]
-    assert_equal 3, result[:fbs_order_rows].size
+    assert_equal 15, result.dig(:summary, :fbs_order_quantity)
+    by_status = result[:fbs_order_rows].group_by { |row| row[:status_key] }
+      .transform_values { |list| [ list.sum { |row| row[:quantity] }, list.map { |row| row[:physical_deducted] }.uniq ] }
+    assert_equal(
+      {
+        "delivered_confirmed" => [ 5, [ true ] ],
+        "cancelled_returned_to_seller" => [ 2, [ true ] ],
+        "cancelled_dispatched_return_pending" => [ 7, [ true ] ],
+        "cancelled_before_dispatch" => [ 1, [ false ] ]
+      },
+      by_status
+    )
   end
 
   test "deducts WB FBS orders cancelled after dispatch until the return arrives and only shows undispatched ones" do
@@ -261,7 +267,7 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
 
   private
 
-  def create_cancelled_ozon_fbs_order(suffix, return_status: nil, quantity: 1)
+  def create_cancelled_ozon_fbs_order(suffix, return_status: nil, quantity: 1, delivering_at: nil)
     order = Ec::Order.create!(
       platform: "ozon", store: @ozon_store, order_key: "ozon:CANCELLED-#{suffix}-#{@token}",
       external_order_id: "OZON-CANCELLED-#{suffix}-#{@token}", order_status: "cancelled"
@@ -271,6 +277,10 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
       external_fulfillment_id: "OZON-CANCELLED-#{suffix}-F-#{@token}",
       fulfillment_key: "OZON-CANCELLED-#{suffix}-F-#{@token}", fulfillment_type: "fbs", status: "cancelled",
       source_status: "cancelled", source_substatus: "posting_canceled"
+    )
+    RawOzon::PostingFbs.create!(
+      account: @ozon_account, posting_number: fulfillment.external_fulfillment_id, status: "cancelled",
+      substatus: "posting_canceled", delivering_date: delivering_at, raw_json: {}, created_at: Time.current
     )
     Ec::OrderItem.create!(
       platform: "ozon", store: @ozon_store, order: order, fulfillment: fulfillment,
