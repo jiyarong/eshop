@@ -97,7 +97,8 @@ class Ec::InventoryOrderSalesDistributionQueryTest < ActiveSupport::TestCase
 
     assert_not distribution[:rows].any? { |row| row[:platform] == "wb" && row[:fulfillment_type] == "fbw" }
     assert_equal 12, distribution.dig(:summary_row, :quantity)
-    assert_equal @sku.inventory_overview.dig(:summary, :sales_quantity), distribution.dig(:summary_row, :quantity)
+    # The distribution keeps the legacy deducted scope (stocktake relies on it); the ledger counts the WB `returned` orders as unsold, so only the Ozon FBO order (5) is a sale.
+    assert_equal 5, @sku.inventory_overview.dig(:summary, :sales_quantity)
   end
 
   test "treats an Ozon posting in carriage as in transit rather than awaiting handover" do
