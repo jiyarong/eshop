@@ -299,6 +299,18 @@ class Ec::Inventory::BookLedgerTest < ActiveSupport::TestCase
     assert_equal 1, ledger_entry[:return_in_transit_quantity]
   end
 
+  test "lists non-cancelled sales that match no SKU product" do
+    unknown_id = "UNKNOWN-#{@token}"
+    ledger_order(platform: "ozon", status: "delivered", quantity: 4, platform_sku_id: unknown_id)
+    ledger_order(platform: "ozon", status: "cancelled", quantity: 9, platform_sku_id: unknown_id)
+    ledger_order(platform: "ozon", status: "delivered", quantity: 2)
+
+    rows = Ec::Inventory::BookLedger.unattributed.select { |row| row[:platform_sku_id] == unknown_id }
+
+    assert_equal [ { platform: "ozon", platform_sku_id: unknown_id, quantity: 4 } ], rows
+    assert_equal 0, Ec::Inventory::BookLedger.unattributed.count { |row| row[:platform_sku_id] == @ozon_product.platform_sku_id }
+  end
+
   private
 
   # Adds a second posting (fulfillment plus item of the SKU) to an Ozon order; returns its posting number.

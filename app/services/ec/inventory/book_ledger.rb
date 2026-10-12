@@ -28,6 +28,28 @@ module Ec
         )
       end
 
+      UNATTRIBUTED_SQL = <<~SQL.squish.freeze
+        NOT EXISTS (
+          SELECT 1 FROM ec_sku_products p
+          WHERE p.store_id = ec_order_items.store_id AND p.platform = ec_order_items.platform
+            AND (
+              (ec_order_items.platform = 'ozon' AND p.platform_sku_id = ec_order_items.platform_sku_id)
+              OR (ec_order_items.platform = 'wb' AND p.product_id = ec_order_items.platform_sku_id)
+            )
+        )
+      SQL
+
+      def self.unattributed(as_of: nil)
+        scope = Ec::OrderItem.joins(:order)
+          .where.not(ec_orders: { order_status: "cancelled" })
+          .where(UNATTRIBUTED_SQL)
+        scope = scope.where("ec_orders.ordered_at <= ?", as_of) if as_of
+
+        scope.group("ec_order_items.platform", "ec_order_items.platform_sku_id").sum(:quantity)
+          .map { |(platform, platform_sku_id), quantity| { platform: platform, platform_sku_id: platform_sku_id, quantity: quantity.to_i } }
+          .sort_by { |row| -row[:quantity] }
+      end
+
       def initialize(sku_codes:, as_of:)
         @sku_codes = Array(sku_codes).map { |code| code.to_s.upcase }.uniq
         @as_of = as_of
