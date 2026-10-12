@@ -1,7 +1,10 @@
 require "test_helper"
 require "securerandom"
+require_relative "../../support/book_ledger_fixtures"
 
 class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
+  include BookLedgerFixtures
+
   setup do
     @token = SecureRandom.hex(4).upcase
     @sku_a = Ec::Sku.create!(sku_code: "TURN-A-#{@token}", product_name: "周转商品A")
@@ -55,6 +58,8 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     Ec::Order.where(store_id: @store.id).delete_all
     RawOzon::Return.where(account_id: @account.id).delete_all
     RawOzon::RemovalItem.where(account_id: @account.id).delete_all
+    # Normal purchase batches record an Ec::OperationAction against the first SKU product (after_create_commit).
+    Ec::OperationAction.where(ec_sku_id: [ @sku_a.id, @sku_b.id, @sku_c.id ]).delete_all
     Ec::SkuBatch.where(sku_code: [ @sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code ]).delete_all
     Ec::SkuProduct.where(sku_code: [ @sku_a.sku_code, @sku_b.sku_code, @sku_c.sku_code ]).delete_all
     Ec::Store.where(id: @store.id).delete_all
@@ -132,6 +137,47 @@ class Ec::InventoryTurnoverMetricsQueryTest < ActiveSupport::TestCase
     assert_equal BigDecimal("15") / expected_velocity_b, metrics.dig(@sku_b.sku_code, :turnover_days_with_procurement)
     assert_nil metrics.dig(@sku_c.sku_code, :turnover_days)
     assert_nil metrics.dig(@sku_c.sku_code, :turnover_days_with_procurement)
+  end
+
+  test "book stock at a date follows the ledger rules" do
+    setup_ledger_world
+    ledger_batch(40, received_on: Date.new(2026, 9, 1))
+    ledger_order(platform: "wb", status: "delivered", quantity: 5, ordered_at: Time.zone.parse("2026-09-05 10:00:00"))
+    ledger_order(platform: "wb", status: "delivered", quantity: 8, ordered_at: Time.zone.parse("2026-09-20 10:00:00"))
+    cancelled = ledger_order(platform: "ozon", status: "cancelled", quantity: 7,
+                             ordered_at: Time.zone.parse("2026-09-06 10:00:00"))
+    assert cancelled
+
+    metrics = Ec::InventoryTurnoverMetricsQuery.new(
+      sku_codes: [ @sku.sku_code ], date_to: Date.new(2026, 9, 15), time_zone: Time.find_zone!("Asia/Shanghai")
+    ).call
+
+    assert_equal 35, metrics.fetch(@sku.sku_code.upcase)[:book_stock]
+  ensure
+    teardown_ledger_world
+  end
+
+  test "a return received by the seller restores book stock only from its own date" do
+    setup_ledger_world
+    ledger_batch(40, received_on: Date.new(2026, 9, 1))
+    order = ledger_order(platform: "ozon", status: "delivered", quantity: 6,
+                         ordered_at: Time.zone.parse("2026-09-05 10:00:00"))
+    ledger_return(order, source_status: "ReceivedBySeller", quantity: 6)
+      .update!(returned_to_seller_at: Time.zone.parse("2026-09-10 12:00:00"))
+    zone = Time.find_zone!("Asia/Shanghai")
+    code = @sku.sku_code.upcase
+
+    before_return = Ec::InventoryTurnoverMetricsQuery.new(
+      sku_codes: [ @sku.sku_code ], date_to: Date.new(2026, 9, 8), time_zone: zone
+    ).call
+    after_return = Ec::InventoryTurnoverMetricsQuery.new(
+      sku_codes: [ @sku.sku_code ], date_to: Date.new(2026, 9, 15), time_zone: zone
+    ).call
+
+    assert_equal 34, before_return.fetch(code)[:book_stock]
+    assert_equal 40, after_return.fetch(code)[:book_stock]
+  ensure
+    teardown_ledger_world
   end
 
   private
