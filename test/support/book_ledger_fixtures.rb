@@ -33,6 +33,10 @@ module BookLedgerFixtures
 
   def teardown_ledger_world
     store_ids = [ @wb_store&.id, @ozon_store&.id ].compact
+    # Sku, SkuBatch, SkuProduct and Store are Ec::Auditable: collect ids now so their operation logs can be
+    # removed before the records themselves are deleted.
+    batch_ids = Ec::SkuBatch.where(sku_code: @sku&.sku_code).pluck(:id)
+    product_ids = Ec::SkuProduct.where(sku_code: @sku&.sku_code).pluck(:id)
     return_ids = Ec::Return.where(store_id: store_ids).select(:id)
     Ec::ReturnSourceLink.where(return_id: return_ids).delete_all
     Ec::ReturnItem.where(return_id: return_ids).delete_all
@@ -52,6 +56,12 @@ module BookLedgerFixtures
     RawWb::SellerAccount.where(id: @wb_account&.id).delete_all
     RawOzon::SellerAccount.where(id: @ozon_account&.id).delete_all
     Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
+    {
+      "Ec::SkuBatch" => batch_ids, "Ec::SkuProduct" => product_ids,
+      "Ec::Store" => store_ids, "Ec::Sku" => [ @sku&.id ].compact
+    }.each do |record_type, ids|
+      Ec::OperationLog.where(record_type: record_type, record_id: ids).delete_all
+    end
   end
 
   def ledger_batch(quantity, type: :normal, status: "received", received_on: nil)
