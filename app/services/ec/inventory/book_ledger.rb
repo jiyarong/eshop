@@ -1,6 +1,83 @@
 module Ec
   module Inventory
+    # Single source of truth for book stock: how many units the seller owns and how much of it is sellable.
+    # Does not look at where goods physically are (that is Ec::InventoryPhysicalReconciliationQuery).
     class BookLedger
+      STALE_OPEN_ORDER_DAYS = 45
+      OPEN_STATUSES = %w[pending processing].freeze
+      WB_DISPATCHED_SUPPLIER_STATUS = "complete".freeze
+      RECEIVED_BATCH_STATUSES = %w[received closed].freeze
+      STATUS_BUCKETS = {
+        "pending" => "pending", "processing" => "processing", "shipped" => "shipping", "delivered" => "signed"
+      }.freeze
+
+      def self.call(sku_codes:, as_of: nil)
+        new(sku_codes: sku_codes, as_of: as_of).call
+      end
+
+      def self.compose(entry, platform_sellable:, platform_inbound:)
+        platform_side = platform_sellable.to_i + platform_inbound.to_i
+        own_side = entry[:ledger_total] - platform_side
+        entry.merge(
+          platform_sellable: platform_sellable.to_i,
+          platform_inbound: platform_inbound.to_i,
+          platform_side: platform_side,
+          own_side: own_side,
+          sellable: platform_sellable.to_i + own_side - entry[:return_in_transit_quantity].to_i -
+            entry[:return_at_platform_quantity].to_i - entry[:unsellable_quantity].to_i
+        )
+      end
+
+      def initialize(sku_codes:, as_of:)
+        @sku_codes = Array(sku_codes).map { |code| code.to_s.upcase }.uniq
+        @as_of = as_of
+      end
+
+      def call
+        return {} if @sku_codes.empty?
+
+        ledger = @sku_codes.index_with { empty_entry }
+        apply_batches(ledger)
+        ledger.each_value do |entry|
+          entry[:ledger_total] = entry[:received_quantity] - entry[:gross_sales_quantity] + entry[:reversed_quantity]
+        end
+        ledger
+      end
+
+      private
+
+      def empty_entry
+        {
+          purchase_quantity: 0, adjustment_quantity: 0, received_quantity: 0,
+          gross_sales_quantity: 0, reversed_quantity: 0, ledger_total: 0,
+          return_in_transit_quantity: 0, return_at_platform_quantity: 0, unsellable_quantity: 0,
+          stale_open_order_quantity: 0, by_store: {}
+        }
+      end
+
+      def apply_batches(ledger)
+        scope = Ec::SkuBatch
+          .where(sku_code: @sku_codes, status: RECEIVED_BATCH_STATUSES)
+          .where.not(batch_type: :physical_stocktake_adjustment)
+        if @as_of
+          scope = scope.where(
+            "ec_sku_batches.received_on <= :date OR (ec_sku_batches.received_on IS NULL AND ec_sku_batches.created_at <= :cutoff)",
+            date: @as_of.to_date, cutoff: @as_of
+          )
+        end
+
+        scope.group(:sku_code, :batch_type).sum(:received_quantity).each do |(sku_code, batch_type), quantity|
+          entry = ledger[sku_code.to_s.upcase]
+          next unless entry
+
+          if batch_type.to_s == "normal"
+            entry[:purchase_quantity] += quantity.to_i
+          else
+            entry[:adjustment_quantity] += quantity.to_i
+          end
+          entry[:received_quantity] += quantity.to_i
+        end
+      end
     end
   end
 end
