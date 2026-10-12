@@ -58,6 +58,7 @@ module Ec
       order_rows = order_quantities
       evidence_by_order_id = wb_evidence_by_order_id(order_rows.filter_map { |row| row[1] if row[0].to_s == "wb" })
       grouped_rows = Hash.new(0)
+      order_quantities_by_key = Hash.new { |hash, key| hash[key] = Hash.new(0) }
 
       order_rows.each do |platform, order_id, store_id, store_name, fulfillment_type, order_status,
         fulfillment_status, source_status, source_substatus, quantity|
@@ -74,6 +75,7 @@ module Ec
           source_status_label, source_status.to_s, source_substatus.to_s, needs_status_repair
         ]
         grouped_rows[key] += quantity.to_i
+        order_quantities_by_key[key][order_id] += quantity.to_i
       end
 
       rows = grouped_rows.filter_map do |key, quantity|
@@ -93,7 +95,8 @@ module Ec
           source_status_codes: [source_status, source_substatus].compact_blank.join(" / "),
           needs_status_repair: needs_status_repair,
           stocktake_relevant: fulfillment_type == "fbs" && status_key.in?(STOCKTAKE_STATUS_KEYS),
-          quantity: quantity
+          quantity: quantity,
+          order_quantities: order_quantities_by_key[key]
         }
       end
 

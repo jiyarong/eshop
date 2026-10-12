@@ -12,6 +12,20 @@ module Ec
       sold_confirmed delivered_confirmed returned_confirmed returned_to_platform_warehouse
       #{CANCELLED_RETURNED_STATUS_KEY} #{CANCELLED_DISPATCHED_STATUS_KEY}
     ].freeze
+    # Stage order for the FBS table: the order distribution's own order, with the cancelled-order stages placed
+    # right before the plain cancellation stages.
+    FBS_ROW_STATUS_ORDER = begin
+      base = Ec::InventoryOrderSalesDistributionQuery::STATUS_ORDER
+      cutoff = base.index("cancelled_confirmed") || base.length
+      (base[0...cutoff] +
+        [ CANCELLED_RETURNED_STATUS_KEY, CANCELLED_DISPATCHED_STATUS_KEY, CANCELLED_BEFORE_DISPATCH_STATUS_KEY ] +
+        base[cutoff..]).freeze
+    end
+    # Ozon keeps order status and return status apart, so delivered orders are split by their return's state.
+    NO_RETURN_STATE_KEY = "none".freeze
+    RETURN_STATE_ORDER = (
+      [ NO_RETURN_STATE_KEY ] + Ec::Return::PROCESS_STATUSES
+    ).freeze
     WB_PENDING_SUPPLY_STATUS_IDS = [ 2, 3 ].freeze
     WB_DEPARTED_SUPPLY_STATUS_IDS = [ 4, 5, 6 ].freeze
     WB_ACCEPTED_SUPPLY_STATUS_ID = 5
@@ -142,9 +156,54 @@ module Ec
 
     def fbs_order_rows
       @fbs_order_rows ||= (
-        @order_distribution.fetch(:rows, []).select { |row| row[:fulfillment_type] == "fbs" } +
+        @order_distribution.fetch(:rows, []).select { |row| row[:fulfillment_type] == "fbs" }
+          .flat_map { |row| split_by_return_state(row) } +
           cancelled_returned_fbs_rows + cancelled_unreturned_fbs_rows
-      ).map { |row| row.merge(physical_deducted: row[:status_key].in?(FBS_DEPARTED_STATUS_KEYS)) }
+      ).sort_by do |row|
+        [
+          row[:platform].to_s, row[:store_name].to_s,
+          FBS_ROW_STATUS_ORDER.index(row[:status_key]) || FBS_ROW_STATUS_ORDER.length,
+          RETURN_STATE_ORDER.index(row[:return_state_key]) || RETURN_STATE_ORDER.length,
+          row[:source_status_codes].to_s
+        ]
+      end.map { |row| row.merge(physical_deducted: row[:status_key].in?(FBS_DEPARTED_STATUS_KEYS)) }
+    end
+
+    # Splits an Ozon FBS row by the process status of the return linked to each order, e.g. a delivered order whose
+    # return is back at the seller or still in the Ozon return warehouse. The quantity is only redistributed: the
+    # split rows add up to the original row, so physical stock is unaffected.
+    def split_by_return_state(row)
+      base = row.except(:order_quantities)
+      order_quantities = row[:order_quantities]
+      return [ base.merge(return_state_key: nil) ] unless row[:platform] == "ozon" && order_quantities.present?
+
+      quantities = Hash.new(0)
+      order_quantities.each do |order_id, order_quantity|
+        remaining = order_quantity.to_i
+        ozon_returns_by_order.fetch(order_id, []).each do |return_record|
+          break unless remaining.positive?
+
+          returned = return_record.items
+            .select { |item| item.sku_product&.sku_code == @sku.sku_code }
+            .sum { |item| item.quantity.to_i }
+          allocated = [ returned, remaining ].min
+          next unless allocated.positive?
+
+          quantities[return_record.process_status] += allocated
+          remaining -= allocated
+        end
+        quantities[NO_RETURN_STATE_KEY] += remaining if remaining.positive?
+      end
+      quantities.map { |state, quantity| base.merge(quantity: quantity, return_state_key: state) }
+    end
+
+    def ozon_returns_by_order
+      @ozon_returns_by_order ||= begin
+        order_ids = @order_distribution.fetch(:rows, [])
+          .select { |row| row[:platform] == "ozon" && row[:fulfillment_type] == "fbs" }
+          .flat_map { |row| row[:order_quantities].to_h.keys }.uniq
+        Ec::Return.where(platform: "ozon", order_id: order_ids).includes(items: :sku_product).group_by(&:order_id)
+      end
     end
 
     # Cancelled orders are excluded from the order distribution, so an FBS order that left the warehouse and was

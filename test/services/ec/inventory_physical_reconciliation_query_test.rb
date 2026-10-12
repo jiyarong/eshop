@@ -90,7 +90,8 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     assert_equal 6, result.dig(:summary, :seller_received_return_quantity)
     assert_equal 6, result.dig(:summary, :ozon_seller_received_removal_quantity)
     assert_equal 5, result.dig(:summary, :removal_to_seller_quantity)
-    assert_equal [ [ 3, false ], [ 9, true ] ],
+    # Rows are grouped by platform (ozon before wb), then by stage.
+    assert_equal [ [ 9, true ], [ 3, false ] ],
       result[:fbs_order_rows].map { |row| [ row[:quantity], row[:physical_deducted] ] }
     assert_equal 10, result[:supply_rows].size
     assert_equal({ page: 1, page_size: 10, total_count: 13, total_pages: 2 }, result[:supply_pagination])
@@ -263,6 +264,77 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     assert_equal 3, result.dig(:summary, :fbs_departed_quantity)
     assert_equal 1, result.dig(:summary, :seller_received_return_quantity)
     assert_equal 8, result.dig(:summary, :expected_physical_stock)
+  end
+
+  test "groups FBS rows by platform and then by stage even when cancelled-order rows are appended" do
+    create_cancelled_ozon_fbs_order("NEVER-SHIPPED")
+    create_cancelled_wb_order("NEVER-SHIPPED", fulfillment_type: "fbs", source_substatus: "cancel")
+    order_distribution = {
+      rows: [
+        { platform: "wb", store_name: "WB", store_label: "WB", fulfillment_type: "fbs", status_key: "sold_confirmed",
+          source_status_codes: "sold / complete", quantity: 4 },
+        { platform: "ozon", store_name: "Ozon", store_label: "Ozon", fulfillment_type: "fbs",
+          status_key: "delivered_confirmed", source_status_codes: "delivered / posting_received", quantity: 5 }
+      ]
+    }
+
+    result = Ec::InventoryPhysicalReconciliationQuery.new(
+      @sku, overview: { summary: { received_quantity: 20 } }, order_distribution: order_distribution
+    ).call
+
+    assert_equal %w[ozon ozon wb wb], result[:fbs_order_rows].map { |row| row[:platform] }
+    assert_equal %w[delivered_confirmed cancelled_before_dispatch sold_confirmed cancelled_before_dispatch],
+      result[:fbs_order_rows].map { |row| row[:status_key] }
+  end
+
+  test "splits Ozon FBS rows by the status of the linked return without changing the total" do
+    states = { "NONE" => nil, "AT-OZON" => "ReturnedToOzon", "COMING" => "MovingToSeller", "BACK" => "ReceivedBySeller" }
+    order_ids = states.to_h do |suffix, return_status|
+      order = Ec::Order.create!(
+        platform: "ozon", store: @ozon_store, order_key: "ozon:SPLIT-#{suffix}-#{@token}",
+        external_order_id: "OZON-SPLIT-#{suffix}-#{@token}", order_status: "delivered"
+      )
+      if return_status
+        returned = Ec::Return.create!(
+          platform: "ozon", store: @ozon_store, order: order, return_key: "OZON-SPLIT-#{suffix}-RETURN-#{@token}",
+          return_type: "customer_return", source_status: return_status,
+          process_status: Ec::Returns::OzonNormalizer::STATUS_MAP.fetch(return_status).first,
+          inventory_location: Ec::Returns::OzonNormalizer::STATUS_MAP.fetch(return_status).last,
+          external_return_id: "OZON-SPLIT-#{suffix}-RETURN-#{@token}", requested_at: 1.day.ago
+        )
+        returned.items.create!(
+          platform: "ozon", store: @ozon_store, sku_product: @ozon_product,
+          item_key: "OZON-SPLIT-#{suffix}-ITEM-#{@token}", quantity: 1, restockable: true
+        )
+      end
+      [ suffix, order.id ]
+    end
+    order_distribution = {
+      rows: [
+        { platform: "ozon", store_name: "Ozon", store_label: "Ozon", fulfillment_type: "fbs",
+          status_key: "delivered_confirmed", source_status_codes: "delivered / posting_received", quantity: 4,
+          order_quantities: order_ids.values.to_h { |id| [ id, 1 ] } },
+        { platform: "wb", store_name: "WB", store_label: "WB", fulfillment_type: "fbs",
+          status_key: "sold_confirmed", source_status_codes: "sold / complete", quantity: 3,
+          order_quantities: { 999_999_001 => 3 } }
+      ]
+    }
+
+    result = Ec::InventoryPhysicalReconciliationQuery.new(
+      @sku, overview: { summary: { received_quantity: 20 } }, order_distribution: order_distribution
+    ).call
+
+    ozon_rows = result[:fbs_order_rows].select { |row| row[:platform] == "ozon" }
+    assert_equal(
+      { "none" => 1, "at_platform" => 1, "moving_to_seller" => 1, "received_by_seller" => 1 },
+      ozon_rows.to_h { |row| [ row[:return_state_key], row[:quantity] ] }
+    )
+    assert_equal %w[none at_platform moving_to_seller received_by_seller], ozon_rows.map { |row| row[:return_state_key] }
+    assert_equal [ true ], ozon_rows.map { |row| row[:physical_deducted] }.uniq
+    assert_nil result[:fbs_order_rows].find { |row| row[:platform] == "wb" }[:return_state_key]
+    assert_equal 7, result.dig(:summary, :fbs_order_quantity)
+    assert_equal 7, result.dig(:summary, :fbs_departed_quantity)
+    assert_equal 1, result.dig(:summary, :seller_received_return_quantity)
   end
 
   private

@@ -78,6 +78,7 @@
           <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
           <th><%= t("reports.inventory.drawer.sales_distribution.order_stage") %></th>
           <th><%= t("reports.inventory.drawer.sales_distribution.source_status") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.return_state") %></th>
           <th><%= t("reports.inventory.drawer.physical_stocktake.columns.physical_impact") %></th>
           <th><%= t("reports.inventory.drawer.sales_distribution.quantity") %></th>
         </tr></thead>
@@ -87,17 +88,18 @@
               <td><%= row[:store_label] %></td>
               <td><%= t("reports.inventory.drawer.sales_distribution.stages.#{row[:status_key]}") %></td>
               <td><%= row[:source_status_label].presence || t("reports.inventory.drawer.sales_distribution.no_status_evidence") %></td>
+              <td><%= row[:return_state_key].present? ? t("reports.inventory.drawer.physical_stocktake.return_states.#{row[:return_state_key]}", default: row[:return_state_key]) : "-" %></td>
               <td><span class="inventory-reconciliation-badge inventory-reconciliation-badge--<%= row[:physical_deducted] ? "excluded" : "included" %>"><%= t("reports.inventory.drawer.physical_stocktake.values.#{row[:physical_deducted] ? "physical_deducted" : "physical_retained"}") %></span></td>
               <td><%= row[:quantity].to_i %></td>
             </tr>
           <% end %>
           <% if reconciliation.fetch(:fbs_order_rows, []).empty? %>
-            <tr><td colspan="5" class="empty-state"><%= t("reports.inventory.drawer.physical_stocktake.empty") %></td></tr>
+            <tr><td colspan="6" class="empty-state"><%= t("reports.inventory.drawer.physical_stocktake.empty") %></td></tr>
           <% end %>
         </tbody>
         <tfoot>
           <tr class="inventory-distribution-table__summary">
-            <td colspan="4"><%= t("reports.inventory.drawer.labels.summary") %></td>
+            <td colspan="5"><%= t("reports.inventory.drawer.labels.summary") %></td>
             <td><%= summary[:fbs_order_quantity].to_i %></td>
           </tr>
         </tfoot>

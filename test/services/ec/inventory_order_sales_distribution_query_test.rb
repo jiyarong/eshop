@@ -46,6 +46,7 @@ class Ec::InventoryOrderSalesDistributionQueryTest < ActiveSupport::TestCase
     rows = distribution[:rows]
 
     assert_equal 9, rows.size
+    assert rows.all? { |row| row[:order_quantities].values.sum == row[:quantity] }
     assert_equal 3, rows.find { |row| row[:platform] == "wb" && row[:status_key] == "handover_pending" }[:quantity]
     assert_equal 2, rows.find { |row| row[:platform] == "wb" && row[:status_key] == "awaiting_preparation" }[:quantity]
     assert rows.find { |row| row[:platform] == "wb" && row[:status_key] == "handover_pending" }[:stocktake_relevant]
