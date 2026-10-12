@@ -734,11 +734,14 @@ git commit -m "Compute gross sales, stale open orders and per-store counts in th
     # WB cancelled after dispatch and already issued back -> own side, no bucket.
     back = ledger_order(platform: "wb", status: "cancelled", source_substatus: "complete")
     ledger_return(back, source_status: "Выдано")
+    # WB defect order issued back with an ordinary return type -> still unsellable (raw status defect).
+    defect_back = ledger_order(platform: "wb", status: "cancelled", source_status: "defect", source_substatus: "complete")
+    ledger_return(defect_back, source_status: "Выдано", payload: { "return_type" => "Возврат товара, который приехал по МП, продавцу" })
 
     entry = ledger_entry
 
     assert_equal 4, entry[:return_in_transit_quantity]
-    assert_equal 1, entry[:unsellable_quantity]
+    assert_equal 2, entry[:unsellable_quantity]
     assert_equal 0, entry[:return_at_platform_quantity]
     assert_equal 0, entry[:gross_sales_quantity]
     assert_equal 0, entry[:reversed_quantity]
@@ -815,12 +818,14 @@ Expected: 4 new tests FAIL (reversed/bucket quantities are 0).
         return if unsold.empty?
 
         quantity = unsold.sum { |item| item[:quantity].to_i }
+        # A WB order whose raw status is `defect` is unsellable whatever the return type says (spec 4.5).
+        defect = unsold.any? { |item| item[:fulfillment_source_status] == "defect" }
         parts, remainder = take_from_returns(returns, quantity)
-        parts.each { |part| add_location_bucket(entry, part) }
+        parts.each { |part| add_location_bucket(entry, defect ? part.merge(unsellable: true) : part) }
         return unless remainder.positive?
         return unless unsold.any? { |item| dispatched?(item, wb_dispatched, ozon_dispatched) }
 
-        if unsold.any? { |item| item[:fulfillment_source_status] == "defect" }
+        if defect
           entry[:unsellable_quantity] += remainder
         else
           entry[:return_in_transit_quantity] += remainder
