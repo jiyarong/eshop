@@ -106,29 +106,156 @@ module Ec
       end
 
       def apply_orders(ledger)
+        rows = order_rows
+        return if rows.empty?
+
+        returns_by_order = Ec::Return.where(order_id: rows.map { |row| row[:order_id] }.uniq)
+          .includes(items: :sku_product).group_by(&:order_id)
+        wb_dispatched = wb_dispatched_order_ids(rows.select { |row| row[:platform] == "wb" }.map { |row| row[:order_id] }.uniq)
+        ozon_dispatched = ozon_dispatched_postings(
+          rows.select { |row| row[:platform] == "ozon" }.filter_map { |row| row[:external_fulfillment_id] }.uniq
+        )
         stale_before = (@as_of || Time.current) - STALE_OPEN_ORDER_DAYS.days
 
-        order_rows.group_by { |row| [ row[:order_id], row[:sku_code] ] }.each_value do |items|
-          entry = ledger[items.first[:sku_code]]
+        rows.group_by { |row| [ row[:order_id], row[:sku_code] ] }.each do |(order_id, sku_code), items|
+          entry = ledger[sku_code]
           next unless entry
+
+          returns = counting_returns(returns_by_order.fetch(order_id, []), sku_code)
+          sold_quantity = 0
+          unsold = []
 
           items.each do |item|
             quantity = item[:quantity].to_i
             status = item[:fulfillment_status].presence || item[:order_status]
 
             if unsold_status?(item[:platform], status)
-              next
+              unsold << item
             elsif OPEN_STATUSES.include?(status) && item[:ordered_at] && item[:ordered_at] < stale_before
               entry[:stale_open_order_quantity] += quantity
             else
-              entry[:gross_sales_quantity] += quantity
+              sold_quantity += quantity
               store_entry = store_entry(entry, item)
               store_entry[:gross_sales_quantity] += quantity
               bucket = STATUS_BUCKETS[status]
               store_entry[:status_counts][bucket] += quantity if bucket
             end
           end
+
+          entry[:gross_sales_quantity] += sold_quantity
+          apply_sold_reversal(entry, items.first, returns, sold_quantity)
+          apply_unsold_goods(entry, unsold, returns, wb_dispatched, ozon_dispatched)
         end
+      end
+
+      # Sold items whose sale a return reverses: goods are owned again whatever their location.
+      def apply_sold_reversal(entry, item, returns, sold_quantity)
+        return if sold_quantity <= 0
+
+        parts, = take_from_returns(returns, sold_quantity)
+        reversed = parts.sum { |part| part[:quantity] }
+        return if reversed.zero?
+
+        entry[:reversed_quantity] += reversed
+        store_entry(entry, item)[:reversed_quantity] += reversed
+        parts.each { |part| add_location_bucket(entry, part) }
+      end
+
+      # Cancelled / WB-returned items: nothing to reverse, but goods that already left are on their way back.
+      def apply_unsold_goods(entry, unsold, returns, wb_dispatched, ozon_dispatched)
+        return if unsold.empty?
+
+        quantity = unsold.sum { |item| item[:quantity].to_i }
+        # A WB order whose raw status is `defect` is unsellable whatever the return type says (spec 4.5).
+        defect = unsold.any? { |item| item[:fulfillment_source_status] == "defect" }
+        parts, remainder = take_from_returns(returns, quantity)
+        parts.each { |part| add_location_bucket(entry, defect ? part.merge(unsellable: true) : part) }
+        return unless remainder.positive?
+        return unless unsold.any? { |item| dispatched?(item, wb_dispatched, ozon_dispatched) }
+
+        if defect
+          entry[:unsellable_quantity] += remainder
+        else
+          entry[:return_in_transit_quantity] += remainder
+        end
+      end
+
+      def dispatched?(item, wb_dispatched, ozon_dispatched)
+        case item[:platform]
+        when "wb"
+          item[:fulfillment_source_substatus] == WB_DISPATCHED_SUPPLIER_STATUS || wb_dispatched.include?(item[:order_id])
+        when "ozon"
+          ozon_dispatched.include?(item[:external_fulfillment_id])
+        else
+          false
+        end
+      end
+
+      # Returns of this SKU on the order that count as goods coming back, as mutable hashes.
+      def counting_returns(return_records, sku_code)
+        return_records.filter_map do |record|
+          location = ReturnRules.location(record.platform, record.source_status)
+          next unless location
+
+          quantity = record.items
+            .select { |item| item.sku_product&.sku_code.to_s.upcase == sku_code }
+            .sum { |item| item.quantity.to_i }
+          next unless quantity.positive?
+
+          {
+            location: location,
+            quantity: quantity,
+            unsellable: ReturnRules.unsellable?(
+              record.platform, reason: record.source_substatus, return_type: record.source_payload.to_h["return_type"]
+            )
+          }
+        end
+      end
+
+      # Takes up to `quantity` units from the returns in order; returns [parts, unallocated_remainder].
+      def take_from_returns(returns, quantity)
+        parts = []
+        needed = quantity
+        returns.each do |record|
+          break unless needed.positive?
+
+          take = [ record[:quantity], needed ].min
+          next unless take.positive?
+
+          parts << record.merge(quantity: take)
+          record[:quantity] -= take
+          needed -= take
+        end
+        [ parts, needed ]
+      end
+
+      def add_location_bucket(entry, part)
+        if part[:unsellable]
+          entry[:unsellable_quantity] += part[:quantity]
+        elsif part[:location] == :platform
+          entry[:return_at_platform_quantity] += part[:quantity]
+        elsif part[:location] == :transit
+          entry[:return_in_transit_quantity] += part[:quantity]
+        end
+      end
+
+      def wb_dispatched_order_ids(order_ids)
+        return Set.new if order_ids.empty?
+
+        links = Ec::OrderSourceLink
+          .where(order_id: order_ids, source_type: "RawWb::Order", source_role: "primary")
+          .pluck(:order_id, :source_id)
+        complete_ids = RawWb::Order
+          .where(id: links.map(&:last), supplier_status: WB_DISPATCHED_SUPPLIER_STATUS)
+          .pluck(:id).to_set
+        links.filter_map { |order_id, raw_id| order_id if complete_ids.include?(raw_id) }.to_set
+      end
+
+      def ozon_dispatched_postings(posting_numbers)
+        return Set.new if posting_numbers.empty?
+
+        RawOzon::PostingFbs.where(posting_number: posting_numbers).where.not(delivering_date: nil)
+          .pluck(:posting_number).to_set
       end
 
       # Cancelled orders, and WB orders the platform marks as returned, are not sales.

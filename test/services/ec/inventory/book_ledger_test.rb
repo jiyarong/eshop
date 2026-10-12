@@ -100,4 +100,97 @@ class Ec::Inventory::BookLedgerTest < ActiveSupport::TestCase
 
     assert_equal 3, entry[:gross_sales_quantity]
   end
+
+  test "reverses sold items by the status of linked returns and buckets where the goods are" do
+    ledger_batch(100)
+    received = ledger_order(platform: "ozon", status: "delivered", quantity: 3)
+    ledger_return(received, source_status: "ReceivedBySeller", quantity: 2)
+    at_platform = ledger_order(platform: "ozon", status: "delivered")
+    ledger_return(at_platform, source_status: "ReturnedToOzon")
+    moving = ledger_order(platform: "ozon", status: "delivered")
+    ledger_return(moving, source_status: "MovingToSeller")
+    refunded = ledger_order(platform: "ozon", status: "delivered")
+    ledger_return(refunded, source_status: "MoneyReturned")
+    rejected = ledger_order(platform: "ozon", status: "delivered")
+    ledger_return(rejected, source_status: "Rejected")
+
+    entry = ledger_entry
+
+    assert_equal 7, entry[:gross_sales_quantity]
+    assert_equal 4, entry[:reversed_quantity]
+    assert_equal 97, entry[:ledger_total]
+    assert_equal 1, entry[:return_at_platform_quantity]
+    assert_equal 1, entry[:return_in_transit_quantity]
+    assert_equal 0, entry[:unsellable_quantity]
+    assert_equal 4, entry[:by_store][[ "ozon", @ozon_store.id ]][:reversed_quantity]
+  end
+
+  test "never reverses more than the sold quantity" do
+    ledger_batch(100)
+    order = ledger_order(platform: "ozon", status: "delivered", quantity: 1)
+    ledger_return(order, source_status: "ReceivedBySeller", quantity: 5)
+
+    entry = ledger_entry
+
+    assert_equal 1, entry[:reversed_quantity]
+    assert_equal 100, entry[:ledger_total]
+  end
+
+  test "classifies reversed goods as unsellable by Ozon reason and WB return type" do
+    ledger_batch(100)
+    ozon = ledger_order(platform: "ozon", status: "delivered")
+    ledger_return(ozon, source_status: "ReceivedBySeller", reason: "Товар не работает / брак")
+    wb = ledger_order(platform: "wb", status: "delivered")
+    ledger_return(wb, source_status: "Выдано", payload: { "return_type" => "Возврат брака" })
+    sellable = ledger_order(platform: "ozon", status: "delivered")
+    ledger_return(sellable, source_status: "ReceivedBySeller", reason: "Покупатель передумал")
+
+    entry = ledger_entry
+
+    assert_equal 3, entry[:reversed_quantity]
+    assert_equal 2, entry[:unsellable_quantity]
+    assert_equal 100, entry[:ledger_total]
+  end
+
+  test "buckets goods of cancelled orders that already left the warehouse" do
+    ledger_batch(100)
+    # WB handed over for delivery (supplier status complete), no return yet -> on its way back.
+    ledger_order(platform: "wb", status: "cancelled", quantity: 2, source_substatus: "complete")
+    # WB cancelled before dispatch -> never left, no bucket.
+    ledger_order(platform: "wb", status: "cancelled", quantity: 1, source_substatus: "cancel")
+    # Fulfillment substatus reads cancelled but the raw WB order is complete.
+    stale_substatus = ledger_order(platform: "wb", status: "cancelled", quantity: 1, source_substatus: "cancelled")
+    raw_order = RawWb::Order.create!(
+      account: @wb_account, wb_order_id: 70_000_000_000 + @token.to_i(16), nm_id: 1,
+      delivery_type: "fbs", wb_status: "canceled_by_client", supplier_status: "complete"
+    )
+    Ec::OrderSourceLink.create!(
+      order: stale_substatus, platform: "wb", source_type: "RawWb::Order", source_id: raw_order.id,
+      source_role: "primary", source_key: raw_order.wb_order_id.to_s
+    )
+    # Ozon with a delivery transfer time -> on its way back; without -> never left.
+    handed_over = ledger_order(platform: "ozon", status: "cancelled")
+    RawOzon::PostingFbs.create!(
+      account: @ozon_account, posting_number: handed_over.items.first.external_item_id, status: "cancelled",
+      delivering_date: Time.current - 3.days, raw_json: {}, created_at: Time.current
+    )
+    ledger_order(platform: "ozon", status: "cancelled")
+    # WB defect cancelled after dispatch, no return yet -> unsellable.
+    ledger_order(platform: "wb", status: "cancelled", source_status: "defect", source_substatus: "complete")
+    # WB cancelled after dispatch and already issued back -> own side, no bucket.
+    back = ledger_order(platform: "wb", status: "cancelled", source_substatus: "complete")
+    ledger_return(back, source_status: "Выдано")
+    # WB defect order issued back with an ordinary return type -> still unsellable (raw status defect).
+    defect_back = ledger_order(platform: "wb", status: "cancelled", source_status: "defect", source_substatus: "complete")
+    ledger_return(defect_back, source_status: "Выдано", payload: { "return_type" => "Возврат товара, который приехал по МП, продавцу" })
+
+    entry = ledger_entry
+
+    assert_equal 4, entry[:return_in_transit_quantity]
+    assert_equal 2, entry[:unsellable_quantity]
+    assert_equal 0, entry[:return_at_platform_quantity]
+    assert_equal 0, entry[:gross_sales_quantity]
+    assert_equal 0, entry[:reversed_quantity]
+    assert_equal 100, entry[:ledger_total]
+  end
 end
