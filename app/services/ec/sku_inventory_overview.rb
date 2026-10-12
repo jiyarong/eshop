@@ -18,8 +18,6 @@ module Ec
     private
 
     def summary(store_rows, latest_levels)
-      sold = store_rows.sum { |row| row[:sales_quantity] }
-      returned = store_rows.sum { |row| row[:return_quantity] }
       seller_received_removals = store_rows.sum { |row| row[:ozon_seller_received_removal_quantity] }
       supply = store_rows.sum { |row| row[:supply_quantity] }
       platform_stock = latest_levels.sum(&:quantity)
@@ -29,42 +27,47 @@ module Ec
       fbo_fbw_stock = latest_levels
         .select { |level| level.fulfillment_type.to_s.in?(%w[fbo fbw]) }
         .sum(&:quantity)
-      platform_reserved_stock = fbo_fbw_stock + platform_inbound_stock
-      batches = batch_summary
-      received = batches[:received_quantity]
+      composed = Ec::Inventory::BookLedger.compose(
+        ledger, platform_sellable: fbo_fbw_stock, platform_inbound: platform_inbound_stock
+      )
 
       {
-        purchase_quantity: batches[:purchase_quantity],
-        adjustment_quantity: batches[:adjustment_quantity],
-        received_quantity: received,
-        sales_quantity: sold,
-        return_quantity: returned,
+        purchase_quantity: ledger[:purchase_quantity],
+        adjustment_quantity: ledger[:adjustment_quantity],
+        received_quantity: ledger[:received_quantity],
+        sales_quantity: ledger[:gross_sales_quantity],
+        return_quantity: ledger[:reversed_quantity],
         ozon_seller_received_removal_quantity: seller_received_removals,
         supply_quantity: supply,
         platform_stock: platform_stock,
         platform_inbound_stock: platform_inbound_stock,
         fbo_fbw_stock: fbo_fbw_stock,
-        book_stock: received - sold + returned,
-        available_stock: received - sold + returned - platform_reserved_stock
+        book_stock: composed[:ledger_total],
+        available_stock: composed[:own_side],
+        ledger_total: composed[:ledger_total],
+        platform_sellable: composed[:platform_sellable],
+        platform_inbound: composed[:platform_inbound],
+        platform_side: composed[:platform_side],
+        own_side: composed[:own_side],
+        return_in_transit: composed[:return_in_transit_quantity],
+        return_at_platform: composed[:return_at_platform_quantity],
+        unsellable: composed[:unsellable_quantity],
+        sellable: composed[:sellable],
+        stale_open_order_quantity: composed[:stale_open_order_quantity]
       }
     end
 
-    def batch_summary
-      @batch_summary ||= begin
-        rows = @sku.batches
-          .where(status: %w[received closed])
-          .group(:batch_type)
-          .sum(:received_quantity)
+    def ledger
+      @ledger ||= Ec::Inventory::BookLedger.call(sku_codes: [ @sku.sku_code ]).fetch(@sku.sku_code.upcase)
+    end
 
-        purchase_quantity = rows.fetch("normal", 0).to_i
-        adjustment_quantity = rows.except("normal", "physical_stocktake_adjustment").values.sum(&:to_i)
+    def ledger_stores
+      @ledger_stores ||= Ec::Store.where(id: ledger[:by_store].keys.map(&:last)).index_by(&:id)
+    end
 
-        {
-          purchase_quantity: purchase_quantity,
-          adjustment_quantity: adjustment_quantity,
-          received_quantity: purchase_quantity + adjustment_quantity
-        }
-      end
+    def ledger_store_key(platform, store)
+      account_id = platform == "wb" ? store.wb_raw_account_id : store.ozon_raw_account_id
+      key_for(platform, store.id, store.store_name, account_id)
     end
 
     def build_store_rows(latest_levels)
@@ -101,73 +104,27 @@ module Ec
     def order_rows
       @order_rows ||= begin
         rows = Hash.new { |hash, key| hash[key] = { sales_quantity: 0, order_status_counts: empty_order_status_counts } }
+        ledger[:by_store].each do |(platform, store_id), data|
+          store = ledger_stores[store_id]
+          next unless store
 
-        Ec::OrderItem
-          .deductible_from_book_inventory
-          .joins(:store)
-          .joins(order_item_sku_product_join_sql)
-          .where(ec_sku_products: { sku_code: @sku.sku_code })
-          .select(
-            "ec_order_items.platform",
-            "ec_order_items.store_id",
-            "ec_stores.store_name",
-            "ec_orders.order_status",
-            "CASE WHEN ec_order_items.platform = 'wb' THEN ec_stores.wb_raw_account_id ELSE ec_stores.ozon_raw_account_id END AS account_id",
-            "SUM(ec_order_items.quantity) AS sales_quantity",
-            "SUM(ec_order_items.quantity) AS status_quantity"
-          )
-          .group("ec_order_items.platform", "ec_order_items.store_id", "ec_stores.store_name", "ec_orders.order_status", "ec_stores.wb_raw_account_id", "ec_stores.ozon_raw_account_id")
-          .each do |row|
-            key = key_for(row.platform, row.store_id, row.store_name, row.account_id)
-            status_key = bucket_for_order_status(row.order_status)
-            current = rows[key]
-            current[:sales_quantity] += row.sales_quantity.to_i
-            current[:order_status_counts][status_key] += row.status_quantity.to_i if status_key.present?
-          end
-
+          current = rows[ledger_store_key(platform, store)]
+          current[:sales_quantity] += data[:gross_sales_quantity]
+          data[:status_counts].each { |bucket, quantity| current[:order_status_counts][bucket] += quantity }
+        end
         rows
       end
-    end
-
-    def order_item_sku_product_join_sql
-      <<~SQL.squish
-        INNER JOIN ec_sku_products
-          ON ec_sku_products.store_id = ec_order_items.store_id
-         AND ec_sku_products.platform = ec_order_items.platform
-         AND (
-           (ec_order_items.platform = 'ozon' AND ec_sku_products.platform_sku_id = ec_order_items.platform_sku_id)
-           OR
-           (ec_order_items.platform = 'wb' AND ec_sku_products.product_id = ec_order_items.platform_sku_id)
-         )
-      SQL
     end
 
     def return_rows
       @return_rows ||= begin
         rows = Hash.new(0)
+        ledger[:by_store].each do |(platform, store_id), data|
+          store = ledger_stores[store_id]
+          next unless store && data[:reversed_quantity].positive?
 
-        Ec::SkuReturnItemsQuery.scope_for(@sku)
-          .restockable_for_book_inventory
-          .joins(:store)
-          .select(
-            "ec_return_items.platform",
-            "ec_return_items.store_id",
-            "ec_stores.store_name",
-            "CASE WHEN ec_return_items.platform = 'wb' THEN ec_stores.wb_raw_account_id ELSE ec_stores.ozon_raw_account_id END AS account_id",
-            "SUM(ec_return_items.quantity) AS return_quantity"
-          )
-          .group(
-            "ec_return_items.platform",
-            "ec_return_items.store_id",
-            "ec_stores.store_name",
-            "ec_stores.wb_raw_account_id",
-            "ec_stores.ozon_raw_account_id"
-          )
-          .each do |row|
-            key = key_for(row.platform, row.store_id, row.store_name, row.account_id)
-            rows[key] = row.return_quantity.to_i
-          end
-
+          rows[ledger_store_key(platform, store)] += data[:reversed_quantity]
+        end
         rows
       end
     end
@@ -245,16 +202,6 @@ module Ec
         "shipping" => 0,
         "signed" => 0
       }
-    end
-
-    def bucket_for_order_status(order_status)
-      case order_status.to_s
-      when "pending" then "pending"
-      when "processing" then "processing"
-      when "shipped" then "shipping"
-      when "delivered" then "signed"
-      else nil
-      end
     end
 
     def key_for(platform, store_id, store_name, account_id)

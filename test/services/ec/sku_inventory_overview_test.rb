@@ -185,7 +185,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
 
     @wb_return = Ec::Return.create!(
       platform: "wb", store: @wb_store, order: @wb_fbs_order,
-      return_key: "WB-RETURN-#{@token}", return_type: "customer_return"
+      return_key: "WB-RETURN-#{@token}", return_type: "customer_return", source_status: "Выдано"
     )
     @wb_return_item = @wb_return.items.create!(
       platform: "wb", store: @wb_store, sku_product: @wb_sku_product,
@@ -194,7 +194,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     )
     @ozon_return = Ec::Return.create!(
       platform: "ozon", store: @ozon_store, order: @ozon_order,
-      return_key: "OZON-RETURN-#{@token}", return_type: "customer_return"
+      return_key: "OZON-RETURN-#{@token}", return_type: "customer_return", source_status: "ReceivedBySeller"
     )
     @ozon_return_item = @ozon_return.items.create!(
       platform: "ozon", store: @ozon_store, sku_product: @ozon_sku_product,
@@ -269,6 +269,11 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
   end
 
   teardown do
+    # Sku, SkuBatch, SkuProduct and Store are Ec::Auditable: collect ids now so their operation logs can be
+    # removed together with the records.
+    batch_ids = Ec::SkuBatch.where(sku_code: @sku.sku_code).pluck(:id)
+    product_ids = Ec::SkuProduct.where(sku_code: @sku.sku_code).pluck(:id)
+    store_ids = [ @wb_store.id, @ozon_store.id ]
     Ec::SkuInventoryLevel.where(sku_code: @sku.sku_code).delete_all
     RawOzon::SupplyOrder.where(account_id: @ozon_account.id).delete_all
     RawOzon::RemovalItem.where(account_id: @ozon_account.id).delete_all
@@ -281,12 +286,20 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: [@wb_store.id, @ozon_store.id] }).delete_all
     Ec::OrderFulfillment.where(store_id: [@wb_store.id, @ozon_store.id]).delete_all
     Ec::Order.where(store_id: [@wb_store.id, @ozon_store.id]).delete_all
+    # Normal purchase batches record an Ec::OperationAction against the first SKU product (after_create_commit).
+    Ec::OperationAction.where(ec_sku_id: @sku.id).delete_all
     Ec::SkuBatch.where(sku_code: @sku.sku_code).delete_all
     Ec::SkuProduct.where(sku_code: @sku.sku_code).delete_all
-    Ec::Store.where(id: [@wb_store.id, @ozon_store.id]).delete_all
+    Ec::Store.where(id: store_ids).delete_all
     RawWb::SellerAccount.where(id: @wb_account.id).delete_all
     RawOzon::SellerAccount.where(id: @ozon_account.id).delete_all
     Ec::Sku.with_deleted.where(id: @sku.id).delete_all
+    {
+      "Ec::SkuBatch" => batch_ids, "Ec::SkuProduct" => product_ids,
+      "Ec::Store" => store_ids, "Ec::Sku" => [ @sku.id ]
+    }.each do |record_type, ids|
+      Ec::OperationLog.where(record_type: record_type, record_id: ids).delete_all
+    end
   end
 
   test "summarizes purchase adjustment sales returns and ignores supply quantities in stock formulas" do
@@ -318,13 +331,13 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 100, ozon_row[:supply_quantity]
   end
 
-  test "reflects restockable changes immediately without cached inventory values" do
+  test "reflects return status changes immediately without cached inventory values" do
     assert_equal 3, @sku.inventory_overview.dig(:summary, :return_quantity)
 
-    @wb_return_item.update!(restockable: false)
+    @ozon_return.update!(source_status: "Rejected")
 
-    assert_equal 2, @sku.inventory_overview.dig(:summary, :return_quantity)
-    assert_equal 7, @sku.inventory_overview.dig(:summary, :book_stock)
+    assert_equal 1, @sku.inventory_overview.dig(:summary, :return_quantity)
+    assert_equal 6, @sku.inventory_overview.dig(:summary, :book_stock)
   end
 
   test "reports seller-received Ozon removals without changing book stock" do
@@ -436,6 +449,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
 
   test "does not deduct returned WB FBW orders or add their return items" do
     @wb_fbw_order.update!(order_status: "returned")
+    @wb_fbw_order.fulfillments.update_all(status: "returned")
     fbw_return = Ec::Return.create!(
       platform: "wb", store: @wb_store, order: @wb_fbw_order,
       return_key: "WB-FBW-RETURN-#{@token}", return_type: "customer_return"
@@ -459,18 +473,19 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     assert_equal 16, @sku.inventory_overview.dig(:summary, :sales_quantity)
   end
 
-  test "continues deducting returned WB FBS and Ozon orders" do
+  test "reverses returned WB orders but keeps Ozon orders with a returned status as sales" do
     @wb_fbs_order.update!(order_status: "returned")
+    @wb_fbs_order.fulfillments.update_all(status: "returned")
     @ozon_order.update!(order_status: "returned")
 
     summary = @sku.inventory_overview[:summary]
 
-    assert_equal 21, summary[:sales_quantity]
-    assert_equal 3, summary[:return_quantity]
-    assert_equal 8, summary[:book_stock]
+    assert_equal 14, summary[:sales_quantity]
+    assert_equal 2, summary[:return_quantity]
+    assert_equal 14, summary[:book_stock]
   end
 
-  test "continues deducting returned WB orders with unknown fulfillment" do
+  test "does not count returned WB orders with unknown fulfillment as sales" do
     order = Ec::Order.create!(
       platform: "wb", store: @wb_store,
       order_key: "WB-UNKNOWN-RETURNED-#{@token}",
@@ -482,7 +497,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       quantity: 2
     )
 
-    assert_equal 23, @sku.inventory_overview.dig(:summary, :sales_quantity)
+    assert_equal 21, @sku.inventory_overview.dig(:summary, :sales_quantity)
   end
 
   def create_ozon_removal_item(return_id:, state:, quantity:, box_state: nil, given_out_date: nil)
@@ -501,6 +516,18 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
     )
   end
 
+  test "exposes the ledger split next to the legacy keys" do
+    summary = @sku.inventory_overview[:summary]
+
+    assert_equal summary[:book_stock], summary[:ledger_total]
+    assert_equal summary[:available_stock], summary[:own_side]
+    assert_equal 10, summary[:platform_sellable]
+    assert_equal 2, summary[:platform_inbound]
+    assert_equal 12, summary[:platform_side]
+    assert_equal 0, summary[:stale_open_order_quantity]
+    assert_equal summary[:platform_sellable] + summary[:own_side], summary[:sellable]
+  end
+
   test "captures order status quantity buckets per store" do
     wb_processing_order = Ec::Order.create!(
       platform: "wb",
@@ -509,7 +536,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       external_order_number: "WB-PROC-#{@token}",
       order_key: "wb:#{@wb_store.id}:WB-PROC-#{@token}",
       order_status: "processing",
-      ordered_at: Time.zone.parse("2026-06-17 10:00:00"),
+      ordered_at: Time.current - 2.days,
       synced_at: Time.zone.parse("2026-06-17 10:05:00")
     )
     wb_processing_order.items.create!(
@@ -534,7 +561,7 @@ class Ec::SkuInventoryOverviewTest < ActiveSupport::TestCase
       external_order_number: "OZON-SHIP-#{@token}",
       order_key: "ozon:#{@ozon_store.id}:OZON-SHIP-#{@token}",
       order_status: "shipped",
-      ordered_at: Time.zone.parse("2026-06-18 10:00:00"),
+      ordered_at: Time.current - 2.days,
       synced_at: Time.zone.parse("2026-06-18 10:05:00")
     )
     ozon_shipped_order.items.create!(
