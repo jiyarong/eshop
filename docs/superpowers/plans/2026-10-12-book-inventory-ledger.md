@@ -1313,13 +1313,8 @@ module Ec
         {
           wb_marketplace_orders_without_order: RawWb::Order
             .where.not(id: Ec::OrderSourceLink.where(source_type: "RawWb::Order").select(:source_id)).count,
-          wb_stats_orders_without_order: RawWb::StatsOrder
-            .where.not(srid: [ nil, "" ])
-            .where.not(id: Ec::OrderSourceLink.where(source_type: "RawWb::StatsOrder").select(:source_id))
-            .where(
-              "NOT EXISTS (SELECT 1 FROM raw_wb_orders r " \
-              "WHERE r.account_id = raw_wb_stats_orders.account_id AND r.srid = raw_wb_stats_orders.srid)"
-            ).count,
+          # Same definition as the WB backfill (srid or g_number not covered by a marketplace order, store mapped).
+          wb_stats_orders_without_order: Ec::OrderImport::Wb.new.import_unlinked_stats_only_orders(dry_run: true),
           ozon_postings_without_fulfillment: ozon_postings_without_fulfillment(RawOzon::PostingFbs) +
             ozon_postings_without_fulfillment(RawOzon::PostingFbo)
         }
