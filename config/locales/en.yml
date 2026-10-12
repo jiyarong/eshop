@@ -1571,7 +1571,7 @@ en:
           processing: "Processing"
           shipping: "Shipping"
           signed: "Delivered"
-        sales_distribution_note: "These orders are currently deducted from book stock. WB FBW outcomes are inferred from statistics orders, sales, and returns; 'status update pending' marks a mismatch with the normalized order status."
+        sales_distribution_note: "These are non-cancelled orders by platform status, not the book stock deduction: the book stock formula excludes WB returned orders and open orders older than 45 days. WB FBW outcomes are inferred from statistics orders, sales, and returns; 'status update pending' marks a mismatch with the normalized order status."
         sales_distribution_stocktake_note: "Yellow rows mark FBS orders requiring stocktake attention: goods awaiting picking or being prepared should still be in the Belarus warehouse, while pending handover means departure is not yet confirmed."
         sales_distribution:
           store_label: "%{platform} * %{store}"

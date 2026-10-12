@@ -1773,7 +1773,7 @@ zh:
           processing: "处理中"
           shipping: "配送中"
           signed: "已签收"
-        sales_distribution_note: "以下为当前已从账面扣除的订单。WB FBW 根据统计订单、销售和退货流水推导；“状态待回写”表示推导结果与统一订单状态不一致。"
+        sales_distribution_note: "以下按平台订单状态展示非取消订单，并非账面扣减口径：账面库存公式不计入 WB 已退回（returned）订单，也不计入超过 45 天仍处于待处理或处理中的未结订单。WB FBW 根据统计订单、销售和退货流水推导；“状态待回写”表示推导结果与统一订单状态不一致。"
         sales_distribution_stocktake_note: "黄色行表示需盘库关注的 FBS 订单：待拣配或配货中的货物应仍在白俄仓，待交接表示离仓尚未确认，盘库时需逐项核对。"
         sales_distribution:
           store_label: "%{platform} * %{store}"
