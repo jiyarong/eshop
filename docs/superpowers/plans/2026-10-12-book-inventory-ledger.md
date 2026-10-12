@@ -50,6 +50,7 @@
 ### Task 1: Return rules (pure tables)
 
 **Files:**
+- Create: `app/services/ec/inventory/book_ledger.rb` (empty class stub; Task 2 replaces its content. Zeitwerk needs the parent file to exist, otherwise `BookLedger` is autovivified as a Module and `class BookLedger` in `return_rules.rb` raises a TypeError)
 - Create: `app/services/ec/inventory/book_ledger/return_rules.rb`
 - Test: `test/services/ec/inventory/book_ledger/return_rules_test.rb`
 
@@ -103,6 +104,19 @@ Expected: FAIL / ERROR with `uninitialized constant Ec::Inventory`.
 
 - [ ] **Step 3: Write minimal implementation**
 
+First the parent stub `app/services/ec/inventory/book_ledger.rb`:
+
+```ruby
+module Ec
+  module Inventory
+    class BookLedger
+    end
+  end
+end
+```
+
+Then `app/services/ec/inventory/book_ledger/return_rules.rb`:
+
 ```ruby
 module Ec
   module Inventory
@@ -153,7 +167,7 @@ module Ec
 end
 ```
 
-Note: `BookLedger` is declared as a class here and re-opened in Task 2 (same `class BookLedger` declaration, no superclass).
+Note: `BookLedger` is a plain class (no superclass) in both files; Task 2 replaces the stub's content.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -163,7 +177,7 @@ Expected: 3 runs, 0 failures.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/services/ec/inventory/book_ledger/return_rules.rb test/services/ec/inventory/book_ledger/return_rules_test.rb
+git add app/services/ec/inventory/book_ledger.rb app/services/ec/inventory/book_ledger/return_rules.rb test/services/ec/inventory/book_ledger/return_rules_test.rb
 git commit -m "Add book ledger return status and unsellable rules"
 ```
 
@@ -173,7 +187,7 @@ git commit -m "Add book ledger return status and unsellable rules"
 
 **Files:**
 - Create: `test/support/book_ledger_fixtures.rb`
-- Create: `app/services/ec/inventory/book_ledger.rb`
+- Modify (replace the Task 1 stub content): `app/services/ec/inventory/book_ledger.rb`
 - Test: `test/services/ec/inventory/book_ledger_test.rb`
 
 **Interfaces:**
