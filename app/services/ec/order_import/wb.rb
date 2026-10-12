@@ -48,6 +48,17 @@ module Ec
         repaired
       end
 
+      # One-off backfill: statistics orders that were never turned into orders and are not covered by a
+      # marketplace order (FBW orders). Idempotent: imported rows get a source link and drop out of the scope.
+      def import_unlinked_stats_only_orders(dry_run: false)
+        scope = unlinked_stats_only_scope
+        return scope.count if dry_run
+
+        total = 0
+        scope.find_each { |stats_order| total += import_stats_order(stats_order) }
+        total
+      end
+
       private
 
       def update_linked_status(link, status, source_status, source_substatus)
@@ -72,6 +83,16 @@ module Ec
         return scope unless synced_since
 
         scope.where("raw_wb_stats_orders.synced_at >= ?", synced_since)
+      end
+
+      def unlinked_stats_only_scope
+        RawWb::StatsOrder.includes(:account)
+          .where.not(srid: [ nil, "" ])
+          .where.not(id: Ec::OrderSourceLink.where(source_type: "RawWb::StatsOrder").select(:source_id))
+          .where(
+            "NOT EXISTS (SELECT 1 FROM raw_wb_orders r " \
+            "WHERE r.account_id = raw_wb_stats_orders.account_id AND r.srid = raw_wb_stats_orders.srid)"
+          )
       end
 
       def import_order(raw_order)
