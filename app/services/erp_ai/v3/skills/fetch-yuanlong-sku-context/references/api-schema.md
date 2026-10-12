@@ -196,9 +196,9 @@ Accept: text/markdown
 | 字段 | 中文含义 | 说明 |
 | --- | --- | --- |
 | `incoming_quantity` | 采购中库存 | 已下单或在途、预计会进入账面的采购数量 |
-| `book_stock` | 账面可用库存 | ERP 账面可用库存，来自批次、销售、退货、平台仓补正等汇总 |
+| `book_stock` | 账面库存（名下总量） | ERP 账面库存，名下全平台总量（自有仓 + 平台仓 + 在途退货），来自批次、销售、退货、平台仓补正等汇总 |
 | `platform_stock` | 平台在库 | 平台 FBO/FBW 仓库存合计 |
-| `fbs_total_stock` | FBS 库存 | 可用于 FBS/海外仓履约的库存口径，详情页公式为账面可用减平台在库和平台在途等 |
+| `fbs_total_stock` | 自有侧库存（推算） | 推算参考值，详情页公式为账面库存减平台在库和平台在途；实际盘库以人工实盘为准 |
 | `daily_sales_velocity` | 预测日销 | 生命周期销量趋势口径，不剔除断货日 |
 | `turnover_days` | 库存覆盖天数 | `book_stock / daily_sales_velocity` |
 | `turnover_days_with_procurement` | 含采购库存覆盖天数 | `(book_stock + incoming_quantity) / daily_sales_velocity` |

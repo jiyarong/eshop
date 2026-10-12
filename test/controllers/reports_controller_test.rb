@@ -1145,7 +1145,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".inventory-detail-tabs .erp-tabs__link[aria-current='page']", I18n.t("reports.inventory.drawer.tabs.platform")
     assert_select ".inventory-formula__description", I18n.t("reports.inventory.drawer.formulas.overseas_available")
-    assert_select ".inventory-formula__line", /账面可用库存 12 - 平台在库 3 - 平台在途 2/
+    assert_select ".inventory-formula__line", /账面库存（名下总量） 12 - 平台在库 3 - 平台在途 2/
     assert_select ".inventory-formula__line strong", "= 7"
     assert_select ".inventory-mini-card", text: /Ozon_FBS/, count: 0
     assert_select ".inventory-mini-card", text: /WB_FBS/, count: 0
@@ -2569,7 +2569,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-tabs a[aria-current='page']", "库存概况"
     assert_select "turbo-frame#inventory_drawer_content"
     assert_select ".inventory-metric-card__label", "采购中库存"
-    assert_select ".inventory-metric-card__label", "账面可用库存"
+    assert_select ".inventory-metric-card__label", "账面库存（名下总量）"
     assert_select ".inventory-metric-card__label", "平台在库"
     assert_select ".inventory-overview-content > .inventory-section:first-child > .inventory-metric-grid > .inventory-metric-card:nth-child(4) .inventory-metric-card__label", "自有侧库存（推算）"
     assert_select ".inventory-overview-content > .inventory-section:first-child > .inventory-metric-grid > .inventory-metric-card:nth-child(5) .inventory-metric-card__label", "盘库应见库存"
@@ -2579,14 +2579,14 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-metric-card--link.inventory-metric-card--danger", count: 1
     assert_select ".inventory-detail-tabs__link", text: "物理盘库"
     assert_select ".inventory-detail-tabs__link", text: "采购中库存"
-    assert_select ".inventory-detail-tabs__link", text: "账面可用库存"
+    assert_select ".inventory-detail-tabs__link", text: "账面库存（名下总量）"
     assert_select ".inventory-detail-tabs__link", text: "平台在库"
     assert_select ".inventory-detail-tabs__link", text: "概览"
     assert_select ".inventory-detail-tabs__link", text: "历史趋势", count: 0
     assert_select ".inventory-detail-tabs__link", text: "退货", count: 0
     assert_select ".inventory-detail-tabs__link[aria-current='page']", text: "概览"
     assert_select ".inventory-detail-tabs__link[data-turbo-frame='inventory_drawer_content']", count: 5
-    assert_equal %w[概览 物理盘库 采购中库存 账面可用库存 平台在库], css_select(".inventory-detail-tabs__link").map { |link| link.text.strip }
+    assert_equal %w[概览 物理盘库 采购中库存 账面库存（名下总量） 平台在库], css_select(".inventory-detail-tabs__link").map { |link| link.text.strip }
     assert_select ".inventory-overview-content", count: 1
     assert_select ".inventory-overview-content > .inventory-section", count: 3
     assert_select ".inventory-overview-content > .sku-inventory-trend", count: 1

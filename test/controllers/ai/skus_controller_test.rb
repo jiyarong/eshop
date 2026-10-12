@@ -271,7 +271,8 @@ class ErpAI::SkusControllerTest < ActionDispatch::IntegrationTest
         }
       ]
     }, response.parsed_body.fetch("data"))
-    assert_match "FBS库存", response.parsed_body.fetch("description")
+    assert_match "自有侧库存（推算值", response.parsed_body.fetch("description")
+    assert_match "账面库存（名下全平台总量", response.parsed_body.fetch("description")
   ensure
     Ec::SkuInventoryLevel.where(id: inventory_levels&.map(&:id)).delete_all
     Ec::SkuBatch.where(id: [received_batch&.id, incoming_batch&.id].compact).delete_all

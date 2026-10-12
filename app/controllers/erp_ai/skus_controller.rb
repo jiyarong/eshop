@@ -2,7 +2,7 @@ module ErpAI
   class SkusController < ActionController::API
     include ErpAI::RequestAuthenticatable
 
-    GENERAL_INVENTORY_DESCRIPTION = "SKU总库存信息。incoming_quantity为采购中库存，book_stock为账面可用库存，platform_stock为平台在库，available_stock为报表FBS库存，daily_sales_velocity为日均销量，turnover_days为周转天数，turnover_days_with_procurement为周转天数(含采购)，incoming_batches为正在途中的批次数据。".freeze
+    GENERAL_INVENTORY_DESCRIPTION = "SKU总库存信息。incoming_quantity为采购中库存，book_stock为账面库存（名下全平台总量，含在途退货与平台退货仓），platform_stock为平台在库，available_stock为自有侧库存（推算值，仅供参考，实际盘库以人工实盘为准，物理盘库给出理论应见数），daily_sales_velocity为日均销量，turnover_days为周转天数，turnover_days_with_procurement为周转天数(含采购)，incoming_batches为正在途中的批次数据。".freeze
     SKU_OVERVIEW_DESCRIPTION = "SKU基础信息，包括SKU编码、名称、营销等级、营销阶段、营销策略、开发人员、运营人员、类目、SPU、单件体积和长宽高。developers和operators分别为开发人员和运营人员姓名，volume_per_unit为按内径长宽高计算的单件体积（m³），dimensions为内径长宽高（cm），marketing_state_history为按生效时间倒序排列的营销等级和营销阶段历史。".freeze
     WEEKLY_PROFIT_REPORT_DESCRIPTION = "每周利润报表。包含每周的销售额、成本、毛利、毛利率等数据。
 - goods_cost: 成本

@@ -2018,9 +2018,9 @@ zh:
             disposed: "已销毁"
             unknown: "位置未知"
         formulas:
-          book_inventory: "账面可用库存"
+          book_inventory: "账面库存（名下总量）"
           other_adjustment: "其他调整"
-          overseas_available: "FBS库存 = 账面可用库存 - 平台在库 - 平台在途"
+          overseas_available: "自有侧库存（推算）= 账面库存 - 平台在库 - 平台在途"
           ozon_net_sales: "OZON销量"
           ozon_returns: "OZON可售退货"
           platform_inbound: "平台在途"
@@ -2055,7 +2055,7 @@ zh:
         tabs:
           overview: "概览"
           physical_stocktake: "物理盘库"
-          book: "账面可用库存"
+          book: "账面库存（名下总量）"
           incoming: "采购中库存"
           platform: "平台在库"
           returns: "退货"
@@ -2092,7 +2092,7 @@ zh:
         batch_code: "批次号"
         batch_type: "批次类型"
         belarus_available: "白俄可用"
-        book_available_stock: "账面可用库存"
+        book_available_stock: "账面库存（名下总量）"
         book_stock: "账面库存"
         cluster: "集群"
         daily_sales_velocity: "预测日销量"
@@ -2186,7 +2186,7 @@ zh:
         metrics:
           week: "周期"
           snapshot_date: "实际快照日期"
-          book_stock: "账面可用库存"
+          book_stock: "账面库存（名下总量）"
           platform_stock: "平台在库"
           turnover_days_with_procurement: "周转天数(含采购)"
           fbs_stock: "平台设置的FBS"
@@ -3825,7 +3825,7 @@ zh:
       operator: "运营："
     inventory:
       available: "可售"
-      book_stock: "账面可用"
+      book_stock: "账面总量"
       platform_stock: "平台在库"
       incoming: "在途"
       coverage: "覆盖"

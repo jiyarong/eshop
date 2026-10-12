@@ -594,10 +594,10 @@ Ozon 搜索词数据只同步已结束自然周：周一可能先以截至上周
 | `sku_code` / `product_name` / `product_name_ru` | SKU 及中俄文商品名称 |
 | `marketing_grade` / `marketing_stage` | 当前营销等级和阶段 |
 | `incoming_quantity` | 已下单但尚未收货的采购在途数量 |
-| `book_stock` | 账面库存 |
+| `book_stock` | 账面库存（名下全平台总量，含在途退货与平台退货仓） |
 | `platform_inbound_stock` | 平台入库中库存 |
 | `platform_stock` | 平台 FBO/FBW 库存口径 |
-| `available_stock` | 海外可用库存；当前公式为 `book_stock - platform_stock - platform_inbound_stock` |
+| `available_stock` | 自有侧库存（推算值，仅供参考，实际盘库以人工实盘为准）；当前公式为 `book_stock - platform_stock - platform_inbound_stock` |
 | `pkg_length_cm` / `pkg_width_cm` / `pkg_height_cm` | 包装长宽高，厘米 |
 | `unit_volume_l` | 单件体积，升 |
 | `daily_sales_velocity` | 当前日均销量速度 |
@@ -621,7 +621,7 @@ Ozon 搜索词数据只同步已结束自然周：周一可能先以截至上周
 | `incoming_batches` | 采购在途批次，包括批次号、状态、预计到货日和采购数量 |
 | `platform_shop_rows` | 按平台店铺汇总的 FBO/FBW、入库中和 FBS 库存 |
 | `platform_warehouse_rows` | 按平台仓库和集群展开的库存明细 |
-| `book_formula` / `platform_formula` | 页面用于解释账面库存和海外可用库存的计算项 |
+| `book_formula` / `platform_formula` | 页面用于解释账面库存和自有侧库存（推算）的计算项 |
 
 ## `history_inventory_info`：历史库存
 
