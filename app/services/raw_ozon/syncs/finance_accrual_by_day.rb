@@ -165,8 +165,9 @@ module RawOzon
           delivery        = product['delivery'] || {}
 
           # type_id=0 (SaleRevenue, 合成值)
-          if (sp = commission['seller_price'])
-            amount = sp['amount'].to_d
+          # seller_price 是单价；数量 > 1 的商品行必须取行总额，否则收入少记 (qty-1) × 单价，
+          # 而佣金（sale_commission）是按行总额计提的。
+          if (amount = posting_line_sale_amount(commission, product))
             rows << base.merge(
               type_id:        0,
               type_name:      'SaleRevenue',
@@ -202,6 +203,18 @@ module RawOzon
           end
         end
         rows
+      end
+
+      # 商品行销售额：优先取接口的 sale_amount（= 后台「销售和退货」口径，含折扣积分与合作伙伴计划），
+      # 缺失时退回 seller_price（单价）× quantity。两者都没有时返回 nil。
+      def posting_line_sale_amount(commission, product)
+        total = commission.dig('sale_amount', 'amount')
+        return total.to_d if total.present?
+
+        unit_price = commission.dig('seller_price', 'amount')
+        return nil if unit_price.blank?
+
+        unit_price.to_d * [product['quantity'].to_i, 1].max
       end
 
       # ITEM 类：按 SKU 展开每种 fee 一行
