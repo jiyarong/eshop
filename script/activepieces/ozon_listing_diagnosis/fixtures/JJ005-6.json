@@ -1,0 +1,2159 @@
+{
+  "base": {
+    "base": {
+      "spu_code": "JJ005",
+      "spu_id": 83,
+      "related_spu_sku_codes": [
+        "JJ005-4",
+        "JJ005-5"
+      ],
+      "current_stage": "GRW",
+      "current_grade": "B",
+      "sales_amount_last_3_months": {
+        "2026-07-13": 0,
+        "2026-07-20": 0,
+        "2026-07-27": 0,
+        "2026-08-03": 0,
+        "2026-08-10": 0,
+        "2026-08-17": 0,
+        "2026-08-24": 0,
+        "2026-08-31": 1,
+        "2026-09-07": 3,
+        "2026-09-14": 11,
+        "2026-09-21": 24,
+        "2026-09-28": 29
+      },
+      "sku_products": [
+        {
+          "store_id": 1,
+          "platform": "wb",
+          "product_id": "1449232632",
+          "offer_id": "JJ005-6"
+        },
+        {
+          "store_id": 3,
+          "platform": "ozon",
+          "product_id": "6088234461",
+          "offer_id": "JJ005-6"
+        }
+      ]
+    },
+    "meta": {
+      "period": {
+        "from": "2026-09-28",
+        "to": "2026-10-04",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      },
+      "sku_code": "JJ005-6",
+      "schema_version": 3
+    }
+  },
+  "config": {
+    "model": "gpt-5.2",
+    "sku_code": "JJ005-6",
+    "erp_base_url": "https://eshop.evexport.cn",
+    "llm_base_url": "https://sub.foresight-soft.com",
+    "rule_version": "Ozon Listing V2.2",
+    "llm_max_tokens": 12000,
+    "min_funnel_views": 100,
+    "funnel_relative_drop": 0.3
+  },
+  "funnel": {
+    "meta": {
+      "period": {
+        "from": "2026-10-05",
+        "to": "2026-10-11",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      },
+      "sku_code": "JJ005-6",
+      "schema_version": 3
+    },
+    "listings": [
+      {
+        "store_id": 3,
+        "store_ref": "ozon:1",
+        "sku_product_id": 253,
+        "platform": "ozon",
+        "store_name": "NEVASTAL",
+        "listing_label": "Высокий стеллаж трансформер металлический для гаража для хранения инструментов 180х90х40см",
+        "rows_per_week": [
+          {
+            "period_key": "P-3",
+            "period_from": "2026-09-14",
+            "period_to": "2026-09-20",
+            "values": {
+              "product_card_views": 973,
+              "cart_additions": 57,
+              "cart_rate": 5.86,
+              "orders": 9,
+              "cart_to_order_rate": 15.79,
+              "cancellations": 0,
+              "conversions": 9,
+              "visit_to_conversion_rate": 0.92,
+              "net_sales": 9,
+              "store_ending_inventory": 56,
+              "sku_ending_inventory": 115,
+              "order_amount": 47800,
+              "platform_fulfilled": 4,
+              "ozon_total_views": 10867,
+              "ozon_search_views": 7699,
+              "ozon_click_rate": 12.64,
+              "ozon_all_cart_additions": 71,
+              "ozon_search_cart_additions": 14,
+              "ozon_average_search_position": 67.74,
+              "ozon_returns": 0,
+              "wb_buyout_amount": null,
+              "wb_buyout_rate": null,
+              "wb_cancel_amount": null,
+              "wb_wishlist": null,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          },
+          {
+            "period_key": "P-2",
+            "period_from": "2026-09-21",
+            "period_to": "2026-09-27",
+            "values": {
+              "product_card_views": 1506,
+              "cart_additions": 115,
+              "cart_rate": 7.64,
+              "orders": 30,
+              "cart_to_order_rate": 26.09,
+              "cancellations": 1,
+              "conversions": 19,
+              "visit_to_conversion_rate": 1.26,
+              "net_sales": 19,
+              "store_ending_inventory": 40,
+              "sku_ending_inventory": 90,
+              "order_amount": 161100,
+              "platform_fulfilled": 18,
+              "ozon_total_views": 11819,
+              "ozon_search_views": 6093,
+              "ozon_click_rate": 24.72,
+              "ozon_all_cart_additions": 129,
+              "ozon_search_cart_additions": 14,
+              "ozon_average_search_position": 82.17,
+              "ozon_returns": 0,
+              "wb_buyout_amount": null,
+              "wb_buyout_rate": null,
+              "wb_cancel_amount": null,
+              "wb_wishlist": null,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          },
+          {
+            "period_key": "P-1",
+            "period_from": "2026-09-28",
+            "period_to": "2026-10-04",
+            "values": {
+              "product_card_views": 1356,
+              "cart_additions": 108,
+              "cart_rate": 7.96,
+              "orders": 15,
+              "cart_to_order_rate": 13.89,
+              "cancellations": 2,
+              "conversions": 14,
+              "visit_to_conversion_rate": 1.03,
+              "net_sales": 14,
+              "store_ending_inventory": 25,
+              "sku_ending_inventory": 57,
+              "order_amount": 85800,
+              "platform_fulfilled": 19,
+              "ozon_total_views": 16013,
+              "ozon_search_views": 6016,
+              "ozon_click_rate": 22.54,
+              "ozon_all_cart_additions": 121,
+              "ozon_search_cart_additions": 13,
+              "ozon_average_search_position": 96.72,
+              "ozon_returns": 0,
+              "wb_buyout_amount": null,
+              "wb_buyout_rate": null,
+              "wb_cancel_amount": null,
+              "wb_wishlist": null,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          },
+          {
+            "period_key": "P0",
+            "period_from": "2026-10-05",
+            "period_to": "2026-10-11",
+            "values": {
+              "product_card_views": 648,
+              "cart_additions": 43,
+              "cart_rate": 6.64,
+              "orders": 6,
+              "cart_to_order_rate": 13.95,
+              "cancellations": 0,
+              "conversions": 1,
+              "visit_to_conversion_rate": 0.15,
+              "net_sales": 1,
+              "store_ending_inventory": null,
+              "sku_ending_inventory": null,
+              "order_amount": 36000,
+              "platform_fulfilled": 6,
+              "ozon_total_views": 11265,
+              "ozon_search_views": 5019,
+              "ozon_click_rate": 12.91,
+              "ozon_all_cart_additions": 48,
+              "ozon_search_cart_additions": 5,
+              "ozon_average_search_position": 90.33,
+              "ozon_returns": 0,
+              "wb_buyout_amount": null,
+              "wb_buyout_rate": null,
+              "wb_cancel_amount": null,
+              "wb_wishlist": null,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          }
+        ]
+      },
+      {
+        "store_id": 1,
+        "store_ref": "wb:2",
+        "sku_product_id": 204,
+        "platform": "wb",
+        "store_name": "TaxiLink",
+        "listing_label": "Стеллаж",
+        "rows_per_week": [
+          {
+            "period_key": "P-3",
+            "period_from": "2026-09-14",
+            "period_to": "2026-09-20",
+            "values": {
+              "product_card_views": 838,
+              "cart_additions": 69,
+              "cart_rate": 8.23,
+              "orders": 11,
+              "cart_to_order_rate": 15.94,
+              "cancellations": 0,
+              "conversions": 11,
+              "visit_to_conversion_rate": 1.31,
+              "net_sales": 11,
+              "store_ending_inventory": 25,
+              "sku_ending_inventory": 115,
+              "order_amount": 1515,
+              "platform_fulfilled": 3,
+              "ozon_total_views": null,
+              "ozon_search_views": null,
+              "ozon_click_rate": null,
+              "ozon_all_cart_additions": null,
+              "ozon_search_cart_additions": null,
+              "ozon_average_search_position": null,
+              "ozon_returns": null,
+              "wb_buyout_amount": 409,
+              "wb_buyout_rate": 27.27,
+              "wb_cancel_amount": 0,
+              "wb_wishlist": 18,
+              "wb_stock": 0,
+              "wb_seller_stock": 20
+            }
+          },
+          {
+            "period_key": "P-2",
+            "period_from": "2026-09-21",
+            "period_to": "2026-09-27",
+            "values": {
+              "product_card_views": 593,
+              "cart_additions": 37,
+              "cart_rate": 6.24,
+              "orders": 6,
+              "cart_to_order_rate": 16.22,
+              "cancellations": 0,
+              "conversions": 4,
+              "visit_to_conversion_rate": 0.67,
+              "net_sales": 4,
+              "store_ending_inventory": 19,
+              "sku_ending_inventory": 90,
+              "order_amount": 816,
+              "platform_fulfilled": 4,
+              "ozon_total_views": null,
+              "ozon_search_views": null,
+              "ozon_click_rate": null,
+              "ozon_all_cart_additions": null,
+              "ozon_search_cart_additions": null,
+              "ozon_average_search_position": null,
+              "ozon_returns": null,
+              "wb_buyout_amount": 545,
+              "wb_buyout_rate": 66.67,
+              "wb_cancel_amount": 0,
+              "wb_wishlist": 9,
+              "wb_stock": 0,
+              "wb_seller_stock": 19
+            }
+          },
+          {
+            "period_key": "P-1",
+            "period_from": "2026-09-28",
+            "period_to": "2026-10-04",
+            "values": {
+              "product_card_views": 871,
+              "cart_additions": 69,
+              "cart_rate": 7.92,
+              "orders": 15,
+              "cart_to_order_rate": 21.74,
+              "cancellations": 0,
+              "conversions": 7,
+              "visit_to_conversion_rate": 0.8,
+              "net_sales": 6,
+              "store_ending_inventory": 19,
+              "sku_ending_inventory": 57,
+              "order_amount": 2050,
+              "platform_fulfilled": 6,
+              "ozon_total_views": null,
+              "ozon_search_views": null,
+              "ozon_click_rate": null,
+              "ozon_all_cart_additions": null,
+              "ozon_search_cart_additions": null,
+              "ozon_average_search_position": null,
+              "ozon_returns": null,
+              "wb_buyout_amount": 820,
+              "wb_buyout_rate": 40,
+              "wb_cancel_amount": 0,
+              "wb_wishlist": 12,
+              "wb_stock": 0,
+              "wb_seller_stock": 7
+            }
+          },
+          {
+            "period_key": "P0",
+            "period_from": "2026-10-05",
+            "period_to": "2026-10-11",
+            "values": {
+              "product_card_views": 617,
+              "cart_additions": 49,
+              "cart_rate": 7.94,
+              "orders": 12,
+              "cart_to_order_rate": 24.49,
+              "cancellations": 0,
+              "conversions": 6,
+              "visit_to_conversion_rate": 0.97,
+              "net_sales": 6,
+              "store_ending_inventory": null,
+              "sku_ending_inventory": null,
+              "order_amount": 1635,
+              "platform_fulfilled": 3,
+              "ozon_total_views": null,
+              "ozon_search_views": null,
+              "ozon_click_rate": null,
+              "ozon_all_cart_additions": null,
+              "ozon_search_cart_additions": null,
+              "ozon_average_search_position": null,
+              "ozon_returns": null,
+              "wb_buyout_amount": 410,
+              "wb_buyout_rate": 25,
+              "wb_cancel_amount": 0,
+              "wb_wishlist": 11,
+              "wb_stock": 0,
+              "wb_seller_stock": 7
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "search": {
+    "meta": {
+      "period": {
+        "from": "2026-09-14",
+        "to": "2026-10-11",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      },
+      "sku_code": "JJ005-6",
+      "schema_version": 3
+    },
+    "weeks": [
+      {
+        "period_from": "2026-09-14",
+        "period_to": "2026-09-20",
+        "is_partial": false,
+        "stores": [
+          {
+            "store_ref": "ozon:1",
+            "platform": "ozon",
+            "store_id": 3,
+            "store_name": "NEVASTAL",
+            "data_status": "available",
+            "data": [
+              {
+                "sku_code": "JJ005-6",
+                "product_name": "置物架镀锌6层90*40*180",
+                "term_count": null,
+                "search_volume": 96916,
+                "avg_position": 75,
+                "views": 2909,
+                "add_to_cart": null,
+                "orders": null,
+                "revenue": 14312,
+                "conversion": 2.75,
+                "cart_conversion": null,
+                "visibility": null
+              }
+            ]
+          },
+          {
+            "store_ref": "wb:2",
+            "platform": "wb",
+            "store_id": 1,
+            "store_name": "TaxiLink",
+            "data_status": "available",
+            "data": [
+              {
+                "sku_code": "JJ005-6",
+                "product_name": "置物架镀锌6层90*40*180",
+                "term_count": 47,
+                "search_volume": 0,
+                "avg_position": 81,
+                "views": 323,
+                "add_to_cart": 40,
+                "cart_conversion": 12,
+                "orders": 9,
+                "revenue": null,
+                "conversion": 23,
+                "visibility": 18
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "period_from": "2026-09-21",
+        "period_to": "2026-09-27",
+        "is_partial": false,
+        "stores": [
+          {
+            "store_ref": "ozon:1",
+            "platform": "ozon",
+            "store_id": 3,
+            "store_name": "NEVASTAL",
+            "data_status": "available",
+            "data": [
+              {
+                "sku_code": "JJ005-6",
+                "product_name": "置物架镀锌6层90*40*180",
+                "term_count": null,
+                "search_volume": 102931,
+                "avg_position": 100,
+                "views": 2058,
+                "add_to_cart": null,
+                "orders": null,
+                "revenue": 23612,
+                "conversion": 3.4,
+                "cart_conversion": null,
+                "visibility": null
+              }
+            ]
+          },
+          {
+            "store_ref": "wb:2",
+            "platform": "wb",
+            "store_id": 1,
+            "store_name": "TaxiLink",
+            "data_status": "available",
+            "data": [
+              {
+                "sku_code": "JJ005-6",
+                "product_name": "置物架镀锌6层90*40*180",
+                "term_count": 35,
+                "search_volume": 0,
+                "avg_position": 201,
+                "views": 162,
+                "add_to_cart": 13,
+                "cart_conversion": 8,
+                "orders": 2,
+                "revenue": null,
+                "conversion": 15,
+                "visibility": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "period_from": "2026-09-28",
+        "period_to": "2026-10-04",
+        "is_partial": false,
+        "stores": [
+          {
+            "store_ref": "ozon:1",
+            "platform": "ozon",
+            "store_id": 3,
+            "store_name": "NEVASTAL",
+            "data_status": "available",
+            "data": [
+              {
+                "sku_code": "JJ005-6",
+                "product_name": "置物架镀锌6层90*40*180",
+                "term_count": null,
+                "search_volume": 127675,
+                "avg_position": 121,
+                "views": 2152,
+                "add_to_cart": null,
+                "orders": null,
+                "revenue": 27843,
+                "conversion": 3.49,
+                "cart_conversion": null,
+                "visibility": null
+              }
+            ]
+          },
+          {
+            "store_ref": "wb:2",
+            "platform": "wb",
+            "store_id": 1,
+            "store_name": "TaxiLink",
+            "data_status": "available",
+            "data": [
+              {
+                "sku_code": "JJ005-6",
+                "product_name": "置物架镀锌6层90*40*180",
+                "term_count": 35,
+                "search_volume": 0,
+                "avg_position": 130,
+                "views": 261,
+                "add_to_cart": 30,
+                "cart_conversion": 11,
+                "orders": 2,
+                "revenue": null,
+                "conversion": 7,
+                "visibility": 6
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "period_from": "2026-10-05",
+        "period_to": "2026-10-11",
+        "is_partial": true,
+        "stores": [
+          {
+            "store_ref": "ozon:1",
+            "platform": "ozon",
+            "store_id": 3,
+            "store_name": "NEVASTAL",
+            "data_status": "no_records",
+            "data": []
+          },
+          {
+            "store_ref": "wb:2",
+            "platform": "wb",
+            "store_id": 1,
+            "store_name": "TaxiLink",
+            "data_status": "no_records",
+            "data": []
+          }
+        ]
+      }
+    ]
+  },
+  "catalog": {
+    "rows": [
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 85,
+        "attribute_complex_id": 0,
+        "name": "Бренд",
+        "description": "Наименование бренда, под которым произведен товар. Если товар не имеет бренда, используйте значение \"Нет бренда\".",
+        "value_type": "String",
+        "is_required": true,
+        "dictionary_id": 28732849,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 4180,
+        "attribute_complex_id": 0,
+        "name": "Название",
+        "description": "Название пишется по принципу: Тип + Бренд + Модель (серия + пояснение) + Артикул производителя + , (запятая) + Атрибут Название не пишется большими буквами (не используем caps lock). Перед атрибутом ставится запятая. Если атрибутов несколько, они так же разделяются запятыми. Если какой-то составной части названия нет - пропускаем её. Атрибутом может быть: цвет, вес, объём, количество штук в упаковке и т.д. Цвет пишется с маленькой буквы, в мужском роде, единственном числе. Слово цвет в названии не пишем. Точка в конце не ставится. Никаких знаков препинания, кроме запятой, не используем. Кавычки используем только для названий на русском языке. Примеры корректных названий: Смартфон Apple iPhone XS MT572RU/A, space black Кеды Dr. Martens Киноклассика, бело-черные, размер 43 Стиральный порошок Ariel Магия белого с мерной ложкой, 15 кг Соус Heinz Xtreme Tabasco суперострый, 10 мл Игрушка для животных Четыре лапы \"Бегающая мышка\" БММ, белый",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 4191,
+        "attribute_complex_id": 0,
+        "name": "Аннотация",
+        "description": "Описание товара, маркетинговый текст",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 4383,
+        "attribute_complex_id": 0,
+        "name": "Вес товара, г",
+        "description": "Вес товара без упаковки (нетто) в граммах в расчете на 1 SKU. Можно указать только целое число или десятичную дробь. Разделитель — точка",
+        "value_type": "Decimal",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 4384,
+        "attribute_complex_id": 0,
+        "name": "Комплектация",
+        "description": "Перечислите, что входит в комплект вместе с товаром: инструкция, чехол, комплект проводов и т.п. Не дублируйте сюда значения других характеристик (аннотацию, тип или количество в упаковке). Если вы поставляете товар без дополнительной комплектации, не заполняйте эту характеристику. ",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 4389,
+        "attribute_complex_id": 0,
+        "name": "Страна-изготовитель",
+        "description": "Страна, в которой изготовлен/собран товар и которая указана на упаковке. Может отличаться от страны бренда. Выберите из списка или укажите вручную. Можно добавить несколько значений через точку с запятой.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 1935,
+        "max_value_count": 0,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 4497,
+        "attribute_complex_id": 0,
+        "name": "Вес с упаковкой, г",
+        "description": "Можно указать только целое число или десятичную дробь. Разделитель — точка.",
+        "value_type": "Decimal",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 6650,
+        "attribute_complex_id": 0,
+        "name": "Назначение (помещение)",
+        "description": "Выберите из списка. Можно добавить несколько значений через точку с запятой.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 1652,
+        "max_value_count": 0,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 73362, \"value\": \"Для бани\"}, {\"id\": 970731513, \"value\": \"Для бассейна\"}, {\"id\": 972190131, \"value\": \"Для беседки\"}, {\"id\": 73363, \"value\": \"Для ванной\"}, {\"id\": 972792229, \"value\": \"Для гаража\"}, {\"id\": 73364, \"value\": \"Для дачи\"}, {\"id\": 73365, \"value\": \"Для дома\"}, {\"id\": 972792231, \"value\": \"Для кладовой\"}, {\"id\": 972169354, \"value\": \"Для кухни\"}, {\"id\": 73366, \"value\": \"Для общественных мест\"}, {\"id\": 73367, \"value\": \"Для офиса\"}, {\"id\": 970731512, \"value\": \"Для пляжа\"}, {\"id\": 972792230, \"value\": \"Для погреба\"}, {\"id\": 73368, \"value\": \"Для сада\"}, {\"id\": 73369, \"value\": \"Для сауны\"}, {\"id\": 972988021, \"value\": \"Для столовой\"}, {\"id\": 73370, \"value\": \"Для улицы\"}, {\"id\": 971393638, \"value\": \"Для хамама\"}, {\"id\": 73371, \"value\": \"Для школы\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 6651,
+        "attribute_complex_id": 0,
+        "name": "Исполнение",
+        "description": "Выберите из списка или укажите вручную. Можно добавить несколько значений через точку с запятой. Если точка с запятой есть в значении атрибута, поместите знак в кавычки \";\".",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 1679,
+        "max_value_count": 0,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 970690677, \"value\": \"Бескаркасное\"}, {\"id\": 74490, \"value\": \"Деревянное\"}, {\"id\": 74491, \"value\": \"Каменное\"}, {\"id\": 74492, \"value\": \"Кованое\"}, {\"id\": 970729554, \"value\": \"Металлическое\"}, {\"id\": 972840152, \"value\": \"Нераздвижное\"}, {\"id\": 74493, \"value\": \"Пластиковое\"}, {\"id\": 74494, \"value\": \"Плетеное\"}, {\"id\": 970690876, \"value\": \"Раскладное\"}, {\"id\": 972839720, \"value\": \"Стеклянное\"}, {\"id\": 970730370, \"value\": \"Тканевое\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 6656,
+        "attribute_complex_id": 0,
+        "name": "Материал корпуса",
+        "description": "Выберите одно или несколько значений из списка, но не больше 2. В xls-файле варианты заполняются через точку с запятой (;) без пробелов.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 1503,
+        "max_value_count": 2,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 61704, \"value\": \"ABS пластик\"}, {\"id\": 970807487, \"value\": \"HPL пластик\"}, {\"id\": 970695235, \"value\": \"Акация\"}, {\"id\": 61753, \"value\": \"Алюминий\"}, {\"id\": 61762, \"value\": \"Бамбук\"}, {\"id\": 61766, \"value\": \"Береза\"}, {\"id\": 970945720, \"value\": \"Биопластик\"}, {\"id\": 61775, \"value\": \"Бук\"}, {\"id\": 970807488, \"value\": \"ВЛДСП\"}, {\"id\": 970724787, \"value\": \"Вяз\"}, {\"id\": 62255, \"value\": \"Гофрокартон\"}, {\"id\": 61813, \"value\": \"ДВП\"}, {\"id\": 61815, \"value\": \"Дерево\"}, {\"id\": 970989694, \"value\": \"ДПК (Древесно-полимерный композит)\"}, {\"id\": 61820, \"value\": \"ДСП\"}, {\"id\": 62461, \"value\": \"Дуб\"}, {\"id\": 61839, \"value\": \"Искусственная кожа\"}, {\"id\": 61847, \"value\": \"Искусственный камень\"}, {\"id\": 970730495, \"value\": \"Искусственный ротанг (пластик)\"}, {\"id\": 970741710, \"value\": \"Карагач\"}, {\"id\": 61864, \"value\": \"Карбон\"}, {\"id\": 61873, \"value\": \"Керамика\"}, {\"id\": 61874, \"value\": \"Керамогранит\"}, {\"id\": 61889, \"value\": \"Красное дерево\"}, {\"id\": 61908, \"value\": \"Латунь\"}, {\"id\": 62238, \"value\": \"ЛДСП\"}, {\"id\": 970942133, \"value\": \"Лиственница\"}, {\"id\": 970802007, \"value\": \"Манго\"}, {\"id\": 970729089, \"value\": \"Марморин\"}, {\"id\": 971063155, \"value\": \"Массив березы\"}, {\"id\": 970802006, \"value\": \"Массив дерева\"}, {\"id\": 62267, \"value\": \"Массив дуба\"}, {\"id\": 970803445, \"value\": \"Массив карагача\"}, {\"id\": 970797817, \"value\": \"Массив манго\"}, {\"id\": 971062744, \"value\": \"Массив сосны\"}, {\"id\": 970803444, \"value\": \"Массив ясеня\"}, {\"id\": 61927, \"value\": \"МДФ\"}, {\"id\": 61936, \"value\": \"Металл\"}, {\"id\": 61939, \"value\": \"Металлический сплав\"}, {\"id\": 971534315, \"value\": \"Микрошенилл\"}, {\"id\": 61955, \"value\": \"Мрамор\"}, {\"id\": 61963, \"value\": \"Натуральный камень\"}, {\"id\": 61965, \"value\": \"Нейлон\"}, {\"id\": 61968, \"value\": \"Неопрен\"}, {\"id\": 61969, \"value\": \"Нержавеющая сталь\"}, {\"id\": 61987, \"value\": \"Органическое стекло\"}, {\"id\": 62349, \"value\": \"Орех\"}, {\"id\": 61996, \"value\": \"ПВХ (поливинилхлорид)\"}, {\"id\": 62005, \"value\": \"Пенополиуретан\"}, {\"id\": 62015, \"value\": \"Пластик\"}, {\"id\": 62026, \"value\": \"Поликарбонат\"}, {\"id\": 62030, \"value\": \"Полипропилен\"}, {\"id\": 62031, \"value\": \"Полирезин\"}, {\"id\": 62036, \"value\": \"Полиуретан\"}, {\"id\": 62067, \"value\": \"Ротанг\"}, {\"id\": 970739028, \"value\": \"Саман\"}, {\"id\": 971080139, \"value\": \"Сибирская Сосна\"}, {\"id\": 62077, \"value\": \"Силикон\"}, {\"id\": 62094, \"value\": \"Сосна\"}, {\"id\": 62099, \"value\": \"Сталь\"}, {\"id\": 62102, \"value\": \"Стекло\"}, {\"id\": 62105, \"value\": \"Стеклопластик\"}, {\"id\": 971158550, \"value\": \"Тамбурат\"}, {\"id\": 62115, \"value\": \"Текстиль\"}, {\"id\": 970695236, \"value\": \"Тик\"}, {\"id\": 62148, \"value\": \"Фанера\"}, {\"id\": 62153, \"value\": \"Фибергласс\"}, {\"id\": 970945857, \"value\": \"ХДФ\"}, {\"id\": 970694378, \"value\": \"Хромированная сталь\"}, {\"id\": 970804963, \"value\": \"Цельный спил дерева\"}, {\"id\": 970746639, \"value\": \"Чипборд\"}, {\"id\": 62235, \"value\": \"Шпон\"}, {\"id\": 970780559, \"value\": \"Шпон бука\"}, {\"id\": 62266, \"value\": \"Шпон дуба\"}, {\"id\": 972986029, \"value\": \"Шпон ясеня\"}, {\"id\": 62205, \"value\": \"Экокожа\"}, {\"id\": 62218, \"value\": \"Ясень\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 6711,
+        "attribute_complex_id": 0,
+        "name": "Количество полок",
+        "description": "Можно указать только целое число.",
+        "value_type": "Integer",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 6712,
+        "attribute_complex_id": 0,
+        "name": "Особенности",
+        "description": "Выберите из списка или укажите вручную. Можно добавить несколько значений через точку с запятой. Если точка с запятой есть в значении атрибута, поместите знак в кавычки \";\".",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 1660,
+        "max_value_count": 0,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 971417068, \"value\": \"Бесконтактный сенсор\"}, {\"id\": 73530, \"value\": \"Вешалка\"}, {\"id\": 73531, \"value\": \"Внутренняя подсветка\"}, {\"id\": 73532, \"value\": \"Выдвижная внутренняя секция\"}, {\"id\": 970742615, \"value\": \"Гладильная доска\"}, {\"id\": 73533, \"value\": \"Дверной стопор\"}, {\"id\": 972863463, \"value\": \"для бутылей воды\"}, {\"id\": 972863464, \"value\": \"для игрушек\"}, {\"id\": 972863465, \"value\": \"для рассады\"}, {\"id\": 73534, \"value\": \"Доводчик\"}, {\"id\": 73535, \"value\": \"Замок\"}, {\"id\": 73536, \"value\": \"Защитная подложка\"}, {\"id\": 73537, \"value\": \"Крепление к стене\"}, {\"id\": 73539, \"value\": \"Нажимной механизм\"}, {\"id\": 73538, \"value\": \"На колесиках\"}, {\"id\": 73540, \"value\": \"Настраиваемые разделители в ящиках\"}, {\"id\": 73541, \"value\": \"Отверстия для проводки\"}, {\"id\": 971313931, \"value\": \"Открытый (без задней стенки)\"}, {\"id\": 73543, \"value\": \"Потайной ящик\"}, {\"id\": 73544, \"value\": \"Регулируемые ножки\"}, {\"id\": 971890041, \"value\": \"Регулируемые по высоте полки\"}, {\"id\": 73545, \"value\": \"Розетка\"}, {\"id\": 971100199, \"value\": \"С бельевой корзиной\"}, {\"id\": 73546, \"value\": \"Светильник\"}, {\"id\": 73547, \"value\": \"Сенсорный выключатель\"}, {\"id\": 970672059, \"value\": \"С зеркалом\"}, {\"id\": 73548, \"value\": \"Сифон\"}, {\"id\": 73549, \"value\": \"Скрытый монтаж проводки\"}, {\"id\": 970683056, \"value\": \"С обувницей\"}, {\"id\": 971327056, \"value\": \"Со штангой\"}, {\"id\": 73542, \"value\": \"С подсветкой\"}, {\"id\": 970678545, \"value\": \"С полками\"}, {\"id\": 970743399, \"value\": \"С сиденьем\"}, {\"id\": 971149737, \"value\": \"С сушилкой\"}, {\"id\": 73550, \"value\": \"Стопоры колес\"}, {\"id\": 73551, \"value\": \"Стопоры ящиков\"}, {\"id\": 970776328, \"value\": \"С тумбой\"}, {\"id\": 73552, \"value\": \"Съемные полки\"}, {\"id\": 970679817, \"value\": \"С ящиками\"}, {\"id\": 970776891, \"value\": \"Трельяж\"}, {\"id\": 972271181, \"value\": \"Французская планка\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 6714,
+        "attribute_complex_id": 0,
+        "name": "Макс. нагрузка на полку, кг",
+        "description": "Можно указать только целое число или десятичную дробь. Разделитель — точка.",
+        "value_type": "Decimal",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 8229,
+        "attribute_complex_id": 0,
+        "name": "Тип",
+        "description": "Выберите из списка наиболее подходящий тип товара. Типы участвуют в распределении товаров по категориям на сайте Ozon. Чтобы правильно указать тип, найдите на сайте Ozon товары, похожие на ваш, и укажите в этом поле такой же тип.",
+        "value_type": "String",
+        "is_required": true,
+        "dictionary_id": 1960,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 970968749, \"value\": \"Запчасти для стеллажа\"}, {\"id\": 95098, \"value\": \"Стеллаж\"}, {\"id\": 970666031, \"value\": \"Стеллаж для ванной\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 8789,
+        "attribute_complex_id": 8788,
+        "name": "Название файла PDF",
+        "description": "",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 8790,
+        "attribute_complex_id": 8788,
+        "name": "Документ PDF",
+        "description": "",
+        "value_type": "URL",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 9024,
+        "attribute_complex_id": 0,
+        "name": "Код продавца",
+        "description": "Цифро-буквенный код товара для его учета, является уникальным среди товаров. Не является EAN/серийным номером/штрихкодом, не равен названию модели товара - для этих параметров есть отдельные характеристики. Код продавца не выводится в карточке товара на сайте. Может использоваться при автоматическом формировании названия товара.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 9048,
+        "attribute_complex_id": 0,
+        "name": "Название модели (для объединения в одну карточку)",
+        "description": "Заполните данное поле любым одинаковым значением на товарах, которые хотите объединить. И по разному, если товары нужно разъединить. Объединение произойдет при условии, что товары имеют одинаковый Тип и Бренд, и хотя бы одна вариативная характеристика заполнена по разному на всех товарах в объединении",
+        "value_type": "String",
+        "is_required": true,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 9070,
+        "attribute_complex_id": 0,
+        "name": "Признак 18+",
+        "description": "Признак для товаров, которые содержат эротику, сцены секса, изображения с нецензурными выражениями, даже если они написаны частично или со спец. символами, а также для товаров категории 18+ (только для взрослых)",
+        "value_type": "Boolean",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 9390,
+        "attribute_complex_id": 0,
+        "name": "Целевая аудитория",
+        "description": "Выберите из списка или укажите вручную. Можно добавить несколько значений через точку с запятой. Если точка с запятой есть в значении атрибута, поместите знак в кавычки \";\".",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 1183,
+        "max_value_count": 0,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 43241, \"value\": \"Взрослая\"}, {\"id\": 43242, \"value\": \"Детская\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 9546,
+        "attribute_complex_id": 0,
+        "name": "Стиль дизайна",
+        "description": "Выберите одно или несколько значений из списка, но не больше 2. В xls-файле варианты заполняются через точку с запятой (;) без пробелов.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 10283029,
+        "max_value_count": 2,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 971076345, \"value\": \"Американский\"}, {\"id\": 491120166, \"value\": \"Ампир\"}, {\"id\": 491120167, \"value\": \"Английский\"}, {\"id\": 491120168, \"value\": \"Ар-деко\"}, {\"id\": 491120169, \"value\": \"Африканский\"}, {\"id\": 491120170, \"value\": \"Барокко\"}, {\"id\": 491120171, \"value\": \"Бохо\"}, {\"id\": 971076346, \"value\": \"Викторианский\"}, {\"id\": 971076347, \"value\": \"Винтаж\"}, {\"id\": 970710049, \"value\": \"Восточный\"}, {\"id\": 491120172, \"value\": \"Готический\"}, {\"id\": 971076348, \"value\": \"Детский\"}, {\"id\": 971822707, \"value\": \"Индонезийский\"}, {\"id\": 971076349, \"value\": \"Итальянский\"}, {\"id\": 970807582, \"value\": \"Кантри\"}, {\"id\": 491120173, \"value\": \"Китайский\"}, {\"id\": 491120174, \"value\": \"Китч\"}, {\"id\": 491120175, \"value\": \"Классический\"}, {\"id\": 491120176, \"value\": \"Лофт\"}, {\"id\": 491120177, \"value\": \"Минимализм\"}, {\"id\": 491120178, \"value\": \"Модерн\"}, {\"id\": 971076350, \"value\": \"Молодежный\"}, {\"id\": 971076351, \"value\": \"Морской\"}, {\"id\": 971043788, \"value\": \"Неоклассический\"}, {\"id\": 491226917, \"value\": \"Поп-арт\"}, {\"id\": 491226918, \"value\": \"Прованс\"}, {\"id\": 491226919, \"value\": \"Ретро-стиль\"}, {\"id\": 491226920, \"value\": \"Рококо\"}, {\"id\": 971076352, \"value\": \"Романтика\"}, {\"id\": 971076353, \"value\": \"Русский\"}, {\"id\": 971043789, \"value\": \"Рустик\"}, {\"id\": 491226921, \"value\": \"Скандинавский\"}, {\"id\": 971076354, \"value\": \"Современная классика\"}, {\"id\": 970789952, \"value\": \"Современный\"}, {\"id\": 491226922, \"value\": \"Средиземноморский\"}, {\"id\": 491226923, \"value\": \"Техно\"}, {\"id\": 970897782, \"value\": \"Тиффани\"}, {\"id\": 971076355, \"value\": \"Французский\"}, {\"id\": 491226924, \"value\": \"Хай-тек\"}, {\"id\": 971043790, \"value\": \"Шале\"}, {\"id\": 971043791, \"value\": \"Шебби-шик\"}, {\"id\": 491226925, \"value\": \"Эклектика\"}, {\"id\": 491226926, \"value\": \"Эко-стиль\"}, {\"id\": 971076356, \"value\": \"Этнический\"}, {\"id\": 491226927, \"value\": \"Японский\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10096,
+        "attribute_complex_id": 0,
+        "name": "Цвет товара",
+        "description": "Основной или доминирующий цвет товара. Если точного соответствия нет, используйте ближайшие цвета. Сложные цвета нужно описывать перечислением простых цветов. Например, если в товаре преобладают черный, желтый и белый цвета, то укажите их все простым перечислением. Атрибут \"Цвет товара\" — это основной цвет. Все остальные цвета можно перечислить в атрибуте \"Название цвета\", если он доступен в категории",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 1494,
+        "max_value_count": 0,
+        "is_collection": true,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 61573, \"value\": \"бежевый\"}, {\"id\": 61571, \"value\": \"белый\"}, {\"id\": 61595, \"value\": \"бирюзовый\"}, {\"id\": 61590, \"value\": \"бордовый\"}, {\"id\": 61587, \"value\": \"бронза\"}, {\"id\": 61584, \"value\": \"голубой\"}, {\"id\": 258411664, \"value\": \"горчичный\"}, {\"id\": 61578, \"value\": \"желтый\"}, {\"id\": 61583, \"value\": \"зеленый\"}, {\"id\": 970693003, \"value\": \"зеркальный\"}, {\"id\": 61582, \"value\": \"золотой\"}, {\"id\": 61601, \"value\": \"коралловый\"}, {\"id\": 61603, \"value\": \"коричнево-красный\"}, {\"id\": 61575, \"value\": \"коричневый\"}, {\"id\": 61579, \"value\": \"красный\"}, {\"id\": 258411648, \"value\": \"кремовый\"}, {\"id\": 258411643, \"value\": \"лазурный\"}, {\"id\": 971039569, \"value\": \"лиловый\"}, {\"id\": 970671252, \"value\": \"малиновый\"}, {\"id\": 61609, \"value\": \"медь\"}, {\"id\": 61605, \"value\": \"оливковый\"}, {\"id\": 61585, \"value\": \"оранжевый\"}, {\"id\": 971039568, \"value\": \"перламутровый\"}, {\"id\": 61572, \"value\": \"прозрачный\"}, {\"id\": 970628491, \"value\": \"пурпурный\"}, {\"id\": 369939085, \"value\": \"разноцветный\"}, {\"id\": 61580, \"value\": \"розовый\"}, {\"id\": 258411659, \"value\": \"салатовый\"}, {\"id\": 61593, \"value\": \"светло-бежевый\"}, {\"id\": 970673967, \"value\": \"светло-желтый\"}, {\"id\": 61589, \"value\": \"светло-зеленый\"}, {\"id\": 61591, \"value\": \"светло-коричневый\"}, {\"id\": 61596, \"value\": \"светло-розовый\"}, {\"id\": 61594, \"value\": \"светло-серый\"}, {\"id\": 971001201, \"value\": \"светло-синий\"}, {\"id\": 61610, \"value\": \"серебристый\"}, {\"id\": 61576, \"value\": \"серый\"}, {\"id\": 61577, \"value\": \"серый металлик\"}, {\"id\": 61581, \"value\": \"синий\"}, {\"id\": 61588, \"value\": \"сиреневый\"}, {\"id\": 61597, \"value\": \"слоновая кость\"}, {\"id\": 61604, \"value\": \"темно-бежевый\"}, {\"id\": 970832145, \"value\": \"темно-бордовый\"}, {\"id\": 61602, \"value\": \"темно-зеленый\"}, {\"id\": 61598, \"value\": \"темно-коричневый\"}, {\"id\": 61611, \"value\": \"темно-розовый\"}, {\"id\": 61600, \"value\": \"темно-серый\"}, {\"id\": 61592, \"value\": \"темно-синий\"}, {\"id\": 61586, \"value\": \"фиолетовый\"}, {\"id\": 61599, \"value\": \"фуксия\"}, {\"id\": 258411654, \"value\": \"хаки\"}, {\"id\": 970726613, \"value\": \"хром\"}, {\"id\": 61607, \"value\": \"черно-серый\"}, {\"id\": 61574, \"value\": \"черный\"}, {\"id\": 970671251, \"value\": \"черный матовый\"}, {\"id\": 61606, \"value\": \"шоколадный\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10097,
+        "attribute_complex_id": 0,
+        "name": "Название цвета",
+        "description": "Текстовое описание цвета  - заполните, если товар имеет маркетинговое название цвета от поставщика, номер тона или оттенка, например: \"№17 Нежная голубая лазурь\", \"Deep blue\"",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10119,
+        "attribute_complex_id": 0,
+        "name": "Количество в комплекте, шт.",
+        "description": "Можно указать только целое число.",
+        "value_type": "Integer",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10174,
+        "attribute_complex_id": 0,
+        "name": "Высота, см",
+        "description": "Высота товара в собранном виде. Если изделие регулируется по высоте, укажите максимальную высоту и заполните дополнительные поля \"Минимальная высота\" и \"Максимальная высота\". Это необходимо для правильной фильтрации в каталоге. Высота должна быть в формате целого или десятичного числа, где разделитель — точка. Например, 10 или 11.5. Недопустимые значения: 134 см, 124-134 см, 134.0.",
+        "value_type": "Decimal",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10175,
+        "attribute_complex_id": 0,
+        "name": "Ширина, см",
+        "description": "Можно указать только целое число или десятичную дробь. Разделитель — точка.",
+        "value_type": "Decimal",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10176,
+        "attribute_complex_id": 0,
+        "name": "Глубина, см",
+        "description": "Глубина товара в собранном виде. Можно указать только целое число или десятичную дробь. Разделитель — точка.",
+        "value_type": "Decimal",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10400,
+        "attribute_complex_id": 0,
+        "name": "Гарантия",
+        "description": "Период, в течение которого производитель отвечает за качество товара. А покупатель может оформить заявку на возврат по гарантийному случаю. Выберите одно значение из выпадающего списка.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 46700526,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 973015834, \"value\": \"1000 дней\"}, {\"id\": 973015833, \"value\": \"100 дней\"}, {\"id\": 973015858, \"value\": \"1090 дней\"}, {\"id\": 972120538, \"value\": \"10 дней\"}, {\"id\": 970731993, \"value\": \"10 лет\"}, {\"id\": 972931468, \"value\": \"10 месяцев\"}, {\"id\": 972931458, \"value\": \"11 дней\"}, {\"id\": 972099157, \"value\": \"11 лет\"}, {\"id\": 973015905, \"value\": \"11 месяцев\"}, {\"id\": 972120544, \"value\": \"12 дней\"}, {\"id\": 971362564, \"value\": \"12 лет\"}, {\"id\": 972120540, \"value\": \"12 месяцев\"}, {\"id\": 972931459, \"value\": \"13 дней\"}, {\"id\": 972120562, \"value\": \"13 лет\"}, {\"id\": 970892977, \"value\": \"14 дней\"}, {\"id\": 972120565, \"value\": \"14 лет\"}, {\"id\": 971298510, \"value\": \"14 месяцев\"}, {\"id\": 972120566, \"value\": \"15 дней\"}, {\"id\": 970748445, \"value\": \"15 лет\"}, {\"id\": 972929846, \"value\": \"1,5 месяца\"}, {\"id\": 972099709, \"value\": \"15 месяцев\"}, {\"id\": 972931897, \"value\": \"16 дней\"}, {\"id\": 972120568, \"value\": \"16 лет\"}, {\"id\": 972120567, \"value\": \"16 месяцев\"}, {\"id\": 972931899, \"value\": \"17 дней\"}, {\"id\": 972036681, \"value\": \"17 лет\"}, {\"id\": 972931891, \"value\": \"17 месяцев\"}, {\"id\": 972120569, \"value\": \"18 лет\"}, {\"id\": 971078639, \"value\": \"18 месяцев\"}, {\"id\": 972120571, \"value\": \"19 лет\"}, {\"id\": 973016745, \"value\": \"19 месяцев\"}, {\"id\": 970716397, \"value\": \"1 год\"}, {\"id\": 972929840, \"value\": \"1 день\"}, {\"id\": 971295615, \"value\": \"1 месяц\"}, {\"id\": 972931896, \"value\": \"20 дней\"}, {\"id\": 970868729, \"value\": \"20 лет\"}, {\"id\": 973018540, \"value\": \"20 месяцев\"}, {\"id\": 972930179, \"value\": \"21 день\"}, {\"id\": 973017831, \"value\": \"22 дня\"}, {\"id\": 973018542, \"value\": \"22 месяца\"}, {\"id\": 970749588, \"value\": \"25 лет\"}, {\"id\": 972930174, \"value\": \"2,5 месяца\"}, {\"id\": 971453994, \"value\": \"25 месяцев\"}, {\"id\": 972930182, \"value\": \"28 дней\"}, {\"id\": 972930185, \"value\": \"29 дней\"}, {\"id\": 970716398, \"value\": \"2 года\"}, {\"id\": 971114717, \"value\": \"2 месяца\"}, {\"id\": 971148068, \"value\": \"30 лет\"}, {\"id\": 971283756, \"value\": \"30 месяцев\"}, {\"id\": 973019455, \"value\": \"31 месяц\"}, {\"id\": 973019456, \"value\": \"32 месяца\"}, {\"id\": 973019457, \"value\": \"33 месяца\"}, {\"id\": 972891014, \"value\": \"34 года\"}, {\"id\": 973019458, \"value\": \"35 дней\"}, {\"id\": 973019459, \"value\": \"35 месяцев\"}, {\"id\": 973021493, \"value\": \"37 месяцев\"}, {\"id\": 973021494, \"value\": \"38 дней\"}, {\"id\": 973021514, \"value\": \"39 дней\"}, {\"id\": 973021516, \"value\": \"39 месяцев\"}, {\"id\": 970716399, \"value\": \"3 года\"}, {\"id\": 972930186, \"value\": \"3 дня\"}, {\"id\": 970874872, \"value\": \"3 месяца\"}, {\"id\": 973021938, \"value\": \"40 дней\"}, {\"id\": 971985482, \"value\": \"40 лет\"}, {\"id\": 973021939, \"value\": \"40 месяцев\"}, {\"id\": 973021940, \"value\": \"41 день\"}, {\"id\": 973021941, \"value\": \"41 месяц\"}, {\"id\": 970982038, \"value\": \"42 месяца\"}, {\"id\": 973026830, \"value\": \"45 лет\"}, {\"id\": 973021944, \"value\": \"48 лет\"}, {\"id\": 970724779, \"value\": \"4 года\"}, {\"id\": 973021936, \"value\": \"4 дня\"}, {\"id\": 971404055, \"value\": \"4 месяца\"}, {\"id\": 973023244, \"value\": \"50 дней\"}, {\"id\": 971157940, \"value\": \"50 лет\"}, {\"id\": 973022630, \"value\": \"540 дней\"}, {\"id\": 973022631, \"value\": \"55 дней\"}, {\"id\": 972120553, \"value\": \"5 дней\"}, {\"id\": 970716400, \"value\": \"5 лет\"}, {\"id\": 971984601, \"value\": \"5 месяцев\"}, {\"id\": 973023719, \"value\": \"61 месяц\"}, {\"id\": 973023643, \"value\": \"66 месяцев\"}, {\"id\": 973028254, \"value\": \"6 дней\"}, {\"id\": 970878197, \"value\": \"6 лет\"}, {\"id\": 970856055, \"value\": \"6 месяцев\"}, {\"id\": 973022734, \"value\": \"6 недель\"}, {\"id\": 973021943, \"value\": \"70 дней\"}, {\"id\": 973021632, \"value\": \"78 месяцев\"}, {\"id\": 970960202, \"value\": \"7 дней\"}, {\"id\": 970724780, \"value\": \"7 лет\"}, {\"id\": 972931890, \"value\": \"7 месяцев\"}, {\"id\": 973017274, \"value\": \"8 дней\"}, {\"id\": 970984654, \"value\": \"8 лет\"}, {\"id\": 973017324, \"value\": \"8 месяцев\"}, {\"id\": 973017325, \"value\": \"9 дней\"}, {\"id\": 972120558, \"value\": \"9 лет\"}, {\"id\": 971224805, \"value\": \"9 месяцев\"}, {\"id\": 970960203, \"value\": \"Без гарантии\"}, {\"id\": 970716401, \"value\": \"Ограниченная пожизненная\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 10596,
+        "attribute_complex_id": 0,
+        "name": "Форма поставки",
+        "description": "Выберите из списка. Можно указать только одно значение.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 49009872,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 970730321, \"value\": \"В разобранном виде\"}, {\"id\": 970730322, \"value\": \"В собранном виде\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 11118,
+        "attribute_complex_id": 0,
+        "name": "Ориентация",
+        "description": "Выберите из списка. Если сборка универсальная – оставьте поле пустым. Эта характеристика необходима для объединения изделий одной модели с не универсальной сборкой. Рекомендуем дополнительно указать в подробном описании, за счет чего определена ориентация товара: расположение петель на дверце, направление открытия дверцы, расположение тумбы, расположение угла и т. д.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 59741184,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 970795859, \"value\": \"Левый\"}, {\"id\": 970795860, \"value\": \"Правый\"}, {\"id\": 970834767, \"value\": \"Универсальный\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 11254,
+        "attribute_complex_id": 0,
+        "name": "Rich-контент JSON",
+        "description": "Добавьте расширенное описание товара с фото и видео по шаблону в формате JSON. Подробнее о заполнении этой характеристики можно узнать в статье \"Rich-контент\" в \"Базе знаний\".",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 11650,
+        "attribute_complex_id": 0,
+        "name": "Количество заводских упаковок",
+        "description": "Сколько заводских упаковок продаёте под этим SKU. Пример: 24 банки детского пюре запаяны в 1 упаковку на заводе и в таком же виде продаются в других магазинах — укажите значение 1. \nДругой пример: завод выпускает лампочки в упаковках по 1 или 10 штук, а вы решили продавать по 3 лампочки и запаяли их в одну упаковку — значение атрибута будет 3",
+        "value_type": "Integer",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 12141,
+        "attribute_complex_id": 0,
+        "name": "Название модели для шаблона наименования",
+        "description": "Только краткое название модели, без типа, бренда и характеристик товара. Будет использовано в шаблонизаторе для составления названия карточки для сайта.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 21837,
+        "attribute_complex_id": 100001,
+        "name": "Озон.Видео: название",
+        "description": "Укажите название для видео",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 21841,
+        "attribute_complex_id": 100001,
+        "name": "Озон.Видео: ссылка",
+        "description": "Укажите ссылку на видео (MP4, MOV). Продолжительность от 8 сек до 5 минут, размер файла не более 2ГБ",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 21845,
+        "attribute_complex_id": 100002,
+        "name": "Озон.Видеообложка: ссылка",
+        "description": "Укажите ссылку на видео (MP4, MOV). Продолжительность от 8 до 30 секунд, размер файла не более 20МБ",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 22232,
+        "attribute_complex_id": 0,
+        "name": "ТН ВЭД коды ЕАЭС",
+        "description": "Выберите одно значение из списка. Если вы не знаете, какой код нужно указать, то вам необходимо обратиться к таможенной службе или таможенному представителю",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 124412395,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 22273,
+        "attribute_complex_id": 100001,
+        "name": "Озон.Видео: товары на видео",
+        "description": "Укажите товары, которые демонстрируются в вашем видео. Перечислите SKU через запятую (не более 5).",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 22390,
+        "attribute_complex_id": 0,
+        "name": "Объединить в похожие товары",
+        "description": "Введите одинаковое значение в этом атрибуте для объединения товаров в группу \"Похожие\". Обратите внимание, что товары в группе собираются в рамках одной категории второго уровня в личном кабинете. Если у товаров будет указано одно Название группы, но они находятся в разных категориях — вы получите несколько объединений товаров. Подробнее об объединении в Похожие можно прочитать в статье \"Похожие товары\" в \"Базе знаний\"",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 23171,
+        "attribute_complex_id": 0,
+        "name": "#Хештеги",
+        "description": "Хештеги работают так же, как в соцсетях: покупатели могут нажать на них в карточке или написать в поиске. Укажите тут тренд, стиль или тематику. Например, для одежды #oldmoney #kpop #бохо, для мебели #скандинавский_стиль #минимализм #лофт. Не добавляйте бренды, параметры или название товара.  Хештег должен начинаться со знака # и содержать только буквы и цифры. Если хештег состоит из 2+ слов, соедините их нижним подчеркиванием. Длина — не более 30 символов. Укажите не больше 30 хештегов, разделяйте пробелом",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 23249,
+        "attribute_complex_id": 0,
+        "name": "Количество товара в УЕИ",
+        "description": "УЕИ – унифицированная единица измерения. Необходимо указывать для продажи товаров на территории Республики Беларусь согласно локальному законодательству. Указывается количество ШТУК в одной SKU. Можно указать только целое число.",
+        "value_type": "Decimal",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 23274,
+        "attribute_complex_id": 0,
+        "name": "Вид комплектующего",
+        "description": "Выберите из списка. Можно указать только одно значение.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 124413164,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 972845631, \"value\": \"Вставная полка для стеллажа\"}, {\"id\": 972845632, \"value\": \"Комплект полок для стеллажа\"}, {\"id\": 972845633, \"value\": \"Ребро жесткости для стеллажа\"}, {\"id\": 972845634, \"value\": \"Стойка для стеллажа\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 23276,
+        "attribute_complex_id": 0,
+        "name": "Особенности конструкции и дизайна",
+        "description": "Выберите из списка. Можно указать только одно значение.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 124413166,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[{\"id\": 972845688, \"value\": \"Витрина выставочная\"}, {\"id\": 972845692, \"value\": \"Стеллаж модульный\"}, {\"id\": 972845693, \"value\": \"Стеллаж настенный\"}, {\"id\": 972846328, \"value\": \"Стойка для CD дисков\"}, {\"id\": 972846329, \"value\": \"Стойка для пластинок\"}]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 23536,
+        "attribute_complex_id": 0,
+        "name": "Нужен код маркировки",
+        "description": "Выберите «Да», если товар имеет код маркировки (КИЗ). Будем проверять его у каждой отгрузки или поставки. При интеграции через Seller API передавайте параметр как \"true\" ",
+        "value_type": "Boolean",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      },
+      {
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "attribute_id": 23673,
+        "attribute_complex_id": 0,
+        "name": "4-значный код по классификатору дополнительной таможенной информации",
+        "description": "Можно указать только четырехзначное целое число.",
+        "value_type": "String",
+        "is_required": false,
+        "dictionary_id": 0,
+        "max_value_count": 0,
+        "is_collection": false,
+        "synced_at": "2026-10-05T19:00:51.063Z",
+        "options": "[]"
+      }
+    ],
+    "success": true,
+    "pagination": {
+      "limit": 500,
+      "offset": 0,
+      "returned": 45,
+      "has_more": false,
+      "next_offset": null
+    }
+  },
+  "listing": {
+    "rows": [
+      {
+        "sku_code": "JJ005-6",
+        "product_name": "置物架镀锌6层90*40*180",
+        "product_info": "6层货架置物架镀锌\n产品尺寸：90*40*180cm，包装尺寸：93x41x7cm，重量：11.1kg，立柱≥0.5mm， 横梁≥0.4mm ，密度板≥3.7mm，单层静态承重≥100kg，材质: 钢框架+高密度MDF板，配套橡胶锤x1，连接片x4片，配套俄语说明书。\n",
+        "color": null,
+        "size": null,
+        "spec": null,
+        "features": null,
+        "sku_product_id": 253,
+        "store_id": 3,
+        "store_name": "NEVASTAL",
+        "product_id": "6088234461",
+        "offer_id": "JJ005-6",
+        "title": "Стеллаж металлический ZEPPTO 180х90х40 см, сборный без болтов, 6 полок МДФ до 150 кг",
+        "description_category_id": 80731485,
+        "type_id": 95098,
+        "product_synced_at": "2026-10-10T00:30:50.608Z",
+        "source_found": true,
+        "attributes_synced": true,
+        "primary_image": "[\"https://ir.ozone.ru/s3/multimedia-1-u/14254446882.jpg\"]",
+        "images": "[\"https://ir.ozone.ru/s3/multimedia-1-v/14254445443.jpg\", \"https://ir.ozone.ru/s3/multimedia-1-y/14254444438.jpg\", \"https://ir.ozone.ru/s3/multimedia-1-s/14254446376.jpg\", \"https://ir.ozone.ru/s3/multimedia-1-r/14254447851.jpg\", \"https://ir.ozone.ru/s3/multimedia-1-3/14254445955.jpg\", \"https://ir.ozone.ru/s3/multimedia-1-q/14254445330.jpg\", \"https://ir.ozone.ru/s3/multimedia-1-d/14254445857.jpg\"]",
+        "description": null,
+        "product_attributes": "[{\"id\": 85, \"name\": \"Бренд\", \"values\": [{\"value\": \"ZEPPTO\", \"dictionary_value_id\": 972990613}], \"complex_id\": 0}, {\"id\": 23171, \"name\": \"#Хештеги\", \"values\": [{\"value\": \"#стеллаж_для_хранения #стеллаж_металлический #стеллаждляхранения #стеллаж_лофт #стеллаж_металлический_4_полки #стеллаж_с_полками #стеллаж_трансформер #стеллаж_для_гаража #стеллаж_на_балкон #для_гаража #для_дачи #для_офиса #для_пвз #для_склада #хранение #организация_пространства\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 4191, \"name\": \"Аннотация\", \"values\": [{\"value\": \"Сборный металлический стеллаж-трансформер ZEPPTO (180х90х40 см) в практичном оцинкованном серебристом цвете с увеличенной глубиной 40 см — идеальное решение для хранения крупногабаритного инструмента, автозапчастей и тяжелых вещей в гараже, мастерской, на балконе или складе.<br/><br/>Преимущества и характеристики:<br/><br/>Высокая грузоподъемность: усиленный стальной каркас (стойки ≥ 0,5 мм, балки ≥ 0,4 мм) и полки МДФ толщиной ≥ 3,7 мм. Выдерживает до 150 кг на ярус (суммарная нагрузка — до 750 кг).<br/><br/>Стойкое оцинкованное покрытие: серебристый оцинкованный металл надежно защищен от ржавчины, сколов и влаги. Отлично подходит для сырых и неотапливаемых помещений (автогаражи, подвалы, лоджии).<br/><br/>Глубокие полки 40 см: увеличенная глубина полок позволяет удобно размещать объемные чемоданы с инструментом, канистры, автомобильные колеса и габаритные коробки.<br/><br/>Быстрая сборка без болтов: зацепная система фиксации позволяет собрать конструкцию без отверток и гаечных ключей за 10–15 минут.<br/><br/>Конструкция-трансформер: шаг перфорации позволяет легко регулировать высоту полок. Стеллаж можно собрать на всю высоту (180 см), разделить на два независимых верстака или собрать углом (L-образно).<br/><br/>Защита пола: плотные пластиковые подпятники в комплекте предотвращают появление царапин и вмятин на полу.<br/><br/>Комплектация:<br/><br/>Комплект оцинкованных вертикальных стоек и балок — 1 шт.<br/><br/>Полки из прочного МДФ (≥ 3,7 мм) — 6 шт.<br/><br/>Резиновый молоток для сборки — 1 шт.<br/><br/>Соединительные пластины (переходники) — 4 шт.<br/><br/>Защитные подпятники для ножек<br/><br/>Инструкция по сборке на русском языке — 1 шт.\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 22390, \"name\": \"Объединить в похожие товары\", \"values\": [{\"value\": \"JJ00\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 10175, \"name\": \"Ширина, см\", \"values\": [{\"value\": \"90\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 10174, \"name\": \"Высота, см\", \"values\": [{\"value\": \"180\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 10176, \"name\": \"Глубина, см\", \"values\": [{\"value\": \"40\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 6656, \"name\": \"Материал корпуса\", \"values\": [{\"value\": \"МДФ\", \"dictionary_value_id\": 61927}, {\"value\": \"Сталь\", \"dictionary_value_id\": 62099}], \"complex_id\": 0}, {\"id\": 6711, \"name\": \"Количество полок\", \"values\": [{\"value\": \"6\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 6714, \"name\": \"Макс. нагрузка на полку, кг\", \"values\": [{\"value\": \"150\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 6712, \"name\": \"Особенности\", \"values\": [{\"value\": \"Съемные полки\", \"dictionary_value_id\": 73552}, {\"value\": \"Регулируемые по высоте полки\", \"dictionary_value_id\": 971890041}, {\"value\": \"Открытый (без задней стенки)\", \"dictionary_value_id\": 971313931}, {\"value\": \"С полками\", \"dictionary_value_id\": 970678545}], \"complex_id\": 0}, {\"id\": 4383, \"name\": \"Вес товара, г\", \"values\": [{\"value\": \"12500\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 11118, \"name\": \"Ориентация\", \"values\": [{\"value\": \"Универсальный\", \"dictionary_value_id\": 970834767}], \"complex_id\": 0}, {\"id\": 10119, \"name\": \"Количество в комплекте, шт.\", \"values\": [{\"value\": \"1\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 9546, \"name\": \"Стиль дизайна\", \"values\": [{\"value\": \"Лофт\", \"dictionary_value_id\": 491120176}, {\"value\": \"Минимализм\", \"dictionary_value_id\": 491120177}], \"complex_id\": 0}, {\"id\": 6651, \"name\": \"Исполнение\", \"values\": [{\"value\": \"Металлическое\", \"dictionary_value_id\": 970729554}], \"complex_id\": 0}, {\"id\": 6650, \"name\": \"Назначение (помещение)\", \"values\": [{\"value\": \"Для гаража\", \"dictionary_value_id\": 972792229}, {\"value\": \"Для кладовой\", \"dictionary_value_id\": 972792231}, {\"value\": \"Для офиса\", \"dictionary_value_id\": 73367}, {\"value\": \"Для погреба\", \"dictionary_value_id\": 972792230}, {\"value\": \"Для сада\", \"dictionary_value_id\": 73368}, {\"value\": \"Для дачи\", \"dictionary_value_id\": 73364}, {\"value\": \"Для дома\", \"dictionary_value_id\": 73365}], \"complex_id\": 0}, {\"id\": 10097, \"name\": \"Название цвета\", \"values\": [{\"value\": \"серебристый\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 9390, \"name\": \"Целевая аудитория\", \"values\": [{\"value\": \"Взрослая\", \"dictionary_value_id\": 43241}], \"complex_id\": 0}, {\"id\": 10596, \"name\": \"Форма поставки\", \"values\": [{\"value\": \"В разобранном виде\", \"dictionary_value_id\": 970730321}], \"complex_id\": 0}, {\"id\": 10096, \"name\": \"Цвет товара\", \"values\": [{\"value\": \"серебристый\", \"dictionary_value_id\": 61610}], \"complex_id\": 0}, {\"id\": 9048, \"name\": \"Название модели (для объединения в одну карточку)\", \"values\": [{\"value\": \"JJ00\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 12141, \"name\": \"Название модели для шаблона наименования\", \"values\": [{\"value\": \"JJ00\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 11650, \"name\": \"Количество заводских упаковок\", \"values\": [{\"value\": \"1\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 4389, \"name\": \"Страна-изготовитель\", \"values\": [{\"value\": \"Китай\", \"dictionary_value_id\": 90296}], \"complex_id\": 0}, {\"id\": 4384, \"name\": \"Комплектация\", \"values\": [{\"value\": \"Комплект оцинкованных вертикальных стоек и балок — 1 шт.\\nПолки из прочного МДФ (≥ 3,7 мм) — 6 шт.\\nРезиновый молоток для сборки — 1 шт.\\nСоединительные пластины (переходники) — 4 шт.\\nЗащитные подпятники для ножек\\nИнструкция по сборке на русском языке — 1 шт.\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 22232, \"name\": \"ТН ВЭД коды ЕАЭС\", \"values\": [{\"value\": \"9403208009 - Мебель металлическая прочая (кроме: кроватей), прочая\", \"dictionary_value_id\": 971400641}], \"complex_id\": 0}, {\"id\": 23536, \"name\": \"Нужен код маркировки\", \"values\": [{\"value\": \"false\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 4180, \"name\": \"Название\", \"values\": [{\"value\": \"Стеллаж металлический ZEPPTO 180х90х40 см, сборный без болтов, 6 полок МДФ до 150 кг\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 4497, \"name\": \"Вес с упаковкой, г\", \"values\": [{\"value\": \"13000\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 9024, \"name\": \"Код продавца\", \"values\": [{\"value\": \"JJ005-6\", \"dictionary_value_id\": 0}], \"complex_id\": 0}, {\"id\": 23249, \"name\": \"Количество товара в УЕИ\", \"values\": [{\"value\": \"1\", \"dictionary_value_id\": 0}], \"complex_id\": 0}]",
+        "complex_attributes": "[]",
+        "attributes_synced_at": "2026-10-10T00:30:56.676Z"
+      }
+    ],
+    "success": true,
+    "pagination": {
+      "limit": 500,
+      "offset": 0,
+      "returned": 1,
+      "has_more": false,
+      "next_offset": null
+    }
+  },
+  "inventory": {
+    "meta": {
+      "period": {
+        "from": "2026-09-14",
+        "to": "2026-10-11",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      },
+      "sku_code": "JJ005-6",
+      "schema_version": 3
+    },
+    "inventory": {
+      "current_inventory_info": {
+        "values": {
+          "incoming_quantity": 200,
+          "book_stock": 37,
+          "platform_stock": 2,
+          "fbs_total_stock": 25,
+          "daily_sales_velocity": 4.022857142857143,
+          "turnover_days": 9.197443181818182,
+          "turnover_days_with_procurement": 58.91335227272727,
+          "platform_fbs_stock": 16,
+          "platform_reported_fbs_stock": 26,
+          "strict_forecast_daily_sales": 6.2143,
+          "strict_forecast_cover_days": 5.9540093011280435
+        },
+        "forecast_explanation": {
+          "date_to": "2026-10-10",
+          "windows": [
+            {
+              "days": 7,
+              "quantity": 30,
+              "daily_average": 4.285714285714286,
+              "weight": 0.5
+            },
+            {
+              "days": 15,
+              "quantity": 58,
+              "daily_average": 3.8666666666666667,
+              "weight": 0.3
+            },
+            {
+              "days": 30,
+              "quantity": 108,
+              "daily_average": 3.6,
+              "weight": 0.2
+            }
+          ],
+          "excludes_stockout_days": false
+        },
+        "strict_forecast": {
+          "sku": "JJ005-6",
+          "marketing_stage": "GRW",
+          "forecast_daily_sales": 6.2143,
+          "snapshot_period": {
+            "from": "2026-09-10",
+            "to": "2026-10-09"
+          },
+          "snapshot_days": 30,
+          "valid_days": 21,
+          "stockout_days": 9,
+          "calculation": {
+            "s7": 4.1429,
+            "s15": 3.0667,
+            "s30": 2.8095,
+            "historical_s7": 2.2857,
+            "slope": 0.2653,
+            "path": "rising"
+          },
+          "cover_days": 5.9540093011280435
+        },
+        "data_through": "2026-10-10T08:00:00.224Z"
+      },
+      "history_inventory_info": {
+        "sku_inventory_trend": {
+          "weeks": [
+            {
+              "week_start": "2026-07-20",
+              "week_end": "2026-07-26",
+              "snapshot_date": "2026-07-26",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 0,
+                "platform_stock": 0,
+                "turnover_days_with_procurement": null,
+                "fbs_stock": null,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 150,
+                "daily_sales_velocity": 0,
+                "turnover_days": null
+              }
+            },
+            {
+              "week_start": "2026-07-27",
+              "week_end": "2026-08-02",
+              "snapshot_date": "2026-08-02",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 0,
+                "platform_stock": 0,
+                "turnover_days_with_procurement": null,
+                "fbs_stock": null,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 150,
+                "daily_sales_velocity": 0,
+                "turnover_days": null
+              }
+            },
+            {
+              "week_start": "2026-08-03",
+              "week_end": "2026-08-09",
+              "snapshot_date": "2026-08-09",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 0,
+                "platform_stock": 0,
+                "turnover_days_with_procurement": null,
+                "fbs_stock": null,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 150,
+                "daily_sales_velocity": 0,
+                "turnover_days": null
+              }
+            },
+            {
+              "week_start": "2026-08-10",
+              "week_end": "2026-08-16",
+              "snapshot_date": "2026-08-16",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 0,
+                "platform_stock": 0,
+                "turnover_days_with_procurement": null,
+                "fbs_stock": null,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 150,
+                "daily_sales_velocity": 0,
+                "turnover_days": null
+              }
+            },
+            {
+              "week_start": "2026-08-17",
+              "week_end": "2026-08-23",
+              "snapshot_date": "2026-08-23",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 0,
+                "platform_stock": 0,
+                "turnover_days_with_procurement": null,
+                "fbs_stock": 0,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 150,
+                "daily_sales_velocity": 0,
+                "turnover_days": null
+              }
+            },
+            {
+              "week_start": "2026-08-24",
+              "week_end": "2026-08-30",
+              "snapshot_date": "2026-08-30",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 148,
+                "platform_stock": 0,
+                "turnover_days_with_procurement": 754.3689320388349,
+                "fbs_stock": 50,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 0,
+                "daily_sales_velocity": 0.1961904761904762,
+                "turnover_days": 754.3689320388349
+              }
+            },
+            {
+              "week_start": "2026-08-31",
+              "week_end": "2026-09-06",
+              "snapshot_date": "2026-09-06",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 146,
+                "platform_stock": 2,
+                "turnover_days_with_procurement": 585.1145038167939,
+                "fbs_stock": 80,
+                "platform_inbound_stock": 16,
+                "incoming_quantity": 0,
+                "daily_sales_velocity": 0.24952380952380954,
+                "turnover_days": 585.1145038167939
+              }
+            },
+            {
+              "week_start": "2026-09-07",
+              "week_end": "2026-09-13",
+              "snapshot_date": "2026-09-13",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 137,
+                "platform_stock": 15,
+                "turnover_days_with_procurement": 134.1884328358209,
+                "fbs_stock": 88,
+                "platform_inbound_stock": 1,
+                "incoming_quantity": 0,
+                "daily_sales_velocity": 1.020952380952381,
+                "turnover_days": 134.1884328358209
+              }
+            },
+            {
+              "week_start": "2026-09-14",
+              "week_end": "2026-09-20",
+              "snapshot_date": "2026-09-20",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 115,
+                "platform_stock": 6,
+                "turnover_days_with_procurement": 47.03934553954032,
+                "fbs_stock": 75,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 0,
+                "daily_sales_velocity": 2.4447619047619047,
+                "turnover_days": 47.03934553954032
+              }
+            },
+            {
+              "week_start": "2026-09-21",
+              "week_end": "2026-09-27",
+              "snapshot_date": "2026-09-27",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 90,
+                "platform_stock": 0,
+                "turnover_days_with_procurement": 28.489599035272835,
+                "fbs_stock": 59,
+                "platform_inbound_stock": 0,
+                "incoming_quantity": 0,
+                "daily_sales_velocity": 3.159047619047619,
+                "turnover_days": 28.489599035272835
+              }
+            },
+            {
+              "week_start": "2026-09-28",
+              "week_end": "2026-10-04",
+              "snapshot_date": "2026-10-04",
+              "is_week_end": true,
+              "missing": false,
+              "values": {
+                "book_stock": 57,
+                "platform_stock": 3,
+                "turnover_days_with_procurement": 60.274737547464824,
+                "fbs_stock": 41,
+                "platform_inbound_stock": 2,
+                "incoming_quantity": 200,
+                "daily_sales_velocity": 4.263809523809524,
+                "turnover_days": 13.368327004690642
+              }
+            },
+            {
+              "week_start": "2026-10-05",
+              "week_end": "2026-10-11",
+              "snapshot_date": "2026-10-09",
+              "is_week_end": false,
+              "missing": false,
+              "values": {
+                "book_stock": 39,
+                "platform_stock": 2,
+                "turnover_days_with_procurement": 59.01928504233302,
+                "fbs_stock": 16,
+                "platform_inbound_stock": 12,
+                "incoming_quantity": 200,
+                "daily_sales_velocity": 4.0495238095238095,
+                "turnover_days": 9.630761994355597
+              }
+            }
+          ]
+        },
+        "store_listing_inventory_trend": {
+          "from_date": "2026-09-13",
+          "to_date": "2026-10-10",
+          "selected_store_key": "ozon:store:3",
+          "store_options": [
+            {
+              "key": "ozon:store:3",
+              "label": "OZON * NEVASTAL"
+            },
+            {
+              "key": "wb:store:1",
+              "label": "WB * TaxiLink"
+            }
+          ],
+          "store_listings": [
+            {
+              "store_key": "ozon:store:3",
+              "store_label": "OZON * NEVASTAL",
+              "days": [
+                {
+                  "date": "2026-09-13",
+                  "snapshot_date": "2026-09-13",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 15,
+                    "fbs_stock": 49,
+                    "platform_inbound_stock": 1
+                  }
+                },
+                {
+                  "date": "2026-09-14",
+                  "snapshot_date": "2026-09-14",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 14,
+                    "fbs_stock": 49,
+                    "platform_inbound_stock": 1
+                  }
+                },
+                {
+                  "date": "2026-09-15",
+                  "snapshot_date": "2026-09-15",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 14,
+                    "fbs_stock": 50,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-16",
+                  "snapshot_date": "2026-09-16",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 14,
+                    "fbs_stock": 50,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-17",
+                  "snapshot_date": "2026-09-17",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 12,
+                    "fbs_stock": 50,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-18",
+                  "snapshot_date": "2026-09-18",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 11,
+                    "fbs_stock": 50,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-19",
+                  "snapshot_date": "2026-09-19",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 10,
+                    "fbs_stock": 50,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-20",
+                  "snapshot_date": "2026-09-20",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 6,
+                    "fbs_stock": 50,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-21",
+                  "snapshot_date": "2026-09-21",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 6,
+                    "fbs_stock": 50,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-22",
+                  "snapshot_date": "2026-09-22",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 47,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-23",
+                  "snapshot_date": "2026-09-23",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 45,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-24",
+                  "snapshot_date": "2026-09-24",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 45,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-25",
+                  "snapshot_date": "2026-09-25",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 41,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-26",
+                  "snapshot_date": "2026-09-26",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 40,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-27",
+                  "snapshot_date": "2026-09-27",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 40,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-28",
+                  "snapshot_date": "2026-09-28",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 21,
+                    "platform_inbound_stock": 10
+                  }
+                },
+                {
+                  "date": "2026-09-29",
+                  "snapshot_date": "2026-09-29",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 15,
+                    "platform_inbound_stock": 10
+                  }
+                },
+                {
+                  "date": "2026-09-30",
+                  "snapshot_date": "2026-09-30",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 10,
+                    "fbs_stock": 24,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-01",
+                  "snapshot_date": "2026-10-01",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 8,
+                    "fbs_stock": 24,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-02",
+                  "snapshot_date": "2026-10-02",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 6,
+                    "fbs_stock": 24,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-03",
+                  "snapshot_date": "2026-10-03",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 6,
+                    "fbs_stock": 22,
+                    "platform_inbound_stock": 2
+                  }
+                },
+                {
+                  "date": "2026-10-04",
+                  "snapshot_date": "2026-10-04",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 3,
+                    "fbs_stock": 22,
+                    "platform_inbound_stock": 2
+                  }
+                },
+                {
+                  "date": "2026-10-05",
+                  "snapshot_date": "2026-10-05",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 3,
+                    "fbs_stock": 22,
+                    "platform_inbound_stock": 2
+                  }
+                },
+                {
+                  "date": "2026-10-06",
+                  "snapshot_date": "2026-10-06",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 2,
+                    "fbs_stock": 22,
+                    "platform_inbound_stock": 2
+                  }
+                },
+                {
+                  "date": "2026-10-07",
+                  "snapshot_date": "2026-10-07",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 2,
+                    "fbs_stock": 11,
+                    "platform_inbound_stock": 12
+                  }
+                },
+                {
+                  "date": "2026-10-08",
+                  "snapshot_date": "2026-10-08",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 9,
+                    "platform_inbound_stock": 12
+                  }
+                },
+                {
+                  "date": "2026-10-09",
+                  "snapshot_date": "2026-10-09",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 2,
+                    "fbs_stock": 9,
+                    "platform_inbound_stock": 12
+                  }
+                },
+                {
+                  "date": "2026-10-10",
+                  "snapshot_date": null,
+                  "missing": true,
+                  "values": {
+                    "platform_stock": null,
+                    "fbs_stock": null,
+                    "platform_inbound_stock": null
+                  }
+                }
+              ]
+            },
+            {
+              "store_key": "wb:store:1",
+              "store_label": "WB * TaxiLink",
+              "days": [
+                {
+                  "date": "2026-09-13",
+                  "snapshot_date": "2026-09-13",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 39,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-14",
+                  "snapshot_date": "2026-09-14",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 34,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-15",
+                  "snapshot_date": "2026-09-15",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 30,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-16",
+                  "snapshot_date": "2026-09-16",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 29,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-17",
+                  "snapshot_date": "2026-09-17",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 29,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-18",
+                  "snapshot_date": "2026-09-18",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 29,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-19",
+                  "snapshot_date": "2026-09-19",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 28,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-20",
+                  "snapshot_date": "2026-09-20",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 25,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-21",
+                  "snapshot_date": "2026-09-21",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 25,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-22",
+                  "snapshot_date": "2026-09-22",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 23,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-23",
+                  "snapshot_date": "2026-09-23",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 23,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-24",
+                  "snapshot_date": "2026-09-24",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 23,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-25",
+                  "snapshot_date": "2026-09-25",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 20,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-26",
+                  "snapshot_date": "2026-09-26",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 20,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-27",
+                  "snapshot_date": "2026-09-27",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 19,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-28",
+                  "snapshot_date": "2026-09-28",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 18,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-29",
+                  "snapshot_date": "2026-09-29",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 15,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-09-30",
+                  "snapshot_date": "2026-09-30",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 29,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-01",
+                  "snapshot_date": "2026-10-01",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 29,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-02",
+                  "snapshot_date": "2026-10-02",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 27,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-03",
+                  "snapshot_date": "2026-10-03",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 25,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-04",
+                  "snapshot_date": "2026-10-04",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 19,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-05",
+                  "snapshot_date": "2026-10-05",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 17,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-06",
+                  "snapshot_date": "2026-10-06",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 11,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-07",
+                  "snapshot_date": "2026-10-07",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 8,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-08",
+                  "snapshot_date": "2026-10-08",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 7,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-09",
+                  "snapshot_date": "2026-10-09",
+                  "missing": false,
+                  "values": {
+                    "platform_stock": 0,
+                    "fbs_stock": 7,
+                    "platform_inbound_stock": 0
+                  }
+                },
+                {
+                  "date": "2026-10-10",
+                  "snapshot_date": null,
+                  "missing": true,
+                  "values": {
+                    "platform_stock": null,
+                    "fbs_stock": null,
+                    "platform_inbound_stock": null
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "type": "object",
+  "properties": {
+    "sku_code": {
+      "type": "string"
+    },
+    "listings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sku_product_id": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "top_issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "P0",
+                    "P1"
+                  ]
+                },
+                "confidence": {
+                  "type": "string",
+                  "enum": [
+                    "high"
+                  ]
+                },
+                "defect_type": {
+                  "type": "string",
+                  "enum": [
+                    "内部冲突",
+                    "纯错误",
+                    "形态错选",
+                    "质变虚标",
+                    "SEO疑似误导",
+                    "缺失"
+                  ]
+                },
+                "current_evidence": {
+                  "type": "string"
+                },
+                "fact_evidence": {
+                  "type": "string"
+                },
+                "impact": {
+                  "type": "string"
+                },
+                "recommendation": {
+                  "type": "string"
+                },
+                "module": {
+                  "type": "string",
+                  "enum": [
+                    "title",
+                    "description",
+                    "rich_content",
+                    "seo"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "priority",
+                "confidence",
+                "defect_type",
+                "current_evidence",
+                "fact_evidence",
+                "impact",
+                "recommendation",
+                "module"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "title": {
+            "type": "object",
+            "properties": {
+              "quality": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "fail",
+                  "insufficient_data"
+                ]
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "KEEP",
+                  "REWRITE"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "recommended_ru": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_zh": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "first_screen_logic": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "quality",
+              "action",
+              "reason",
+              "recommended_ru",
+              "recommended_zh",
+              "first_screen_logic"
+            ],
+            "additionalProperties": false
+          },
+          "description": {
+            "type": "object",
+            "properties": {
+              "quality": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "fail",
+                  "insufficient_data"
+                ]
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "KEEP",
+                  "REWRITE"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "recommended_ru": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_zh": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "quality",
+              "action",
+              "reason",
+              "recommended_ru",
+              "recommended_zh"
+            ],
+            "additionalProperties": false
+          },
+          "rich_content": {
+            "type": "object",
+            "properties": {
+              "quality": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "fail",
+                  "insufficient_data",
+                  "not_configured"
+                ]
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "KEEP",
+                  "REWRITE"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "recommended_ru": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_zh": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "quality",
+              "action",
+              "reason",
+              "recommended_ru",
+              "recommended_zh"
+            ],
+            "additionalProperties": false
+          },
+          "funnel_attribution": {
+            "type": "object",
+            "properties": {
+              "listing_explains_anomaly": {
+                "type": "boolean"
+              },
+              "explanation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "listing_explains_anomaly",
+              "explanation"
+            ],
+            "additionalProperties": false
+          },
+          "seo": {
+            "type": "object",
+            "properties": {
+              "traffic_quality": {
+                "type": "string",
+                "enum": [
+                  "verified_irrelevant",
+                  "no_verified_irrelevant",
+                  "insufficient_data"
+                ]
+              },
+              "verified_terms": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "explanation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "traffic_quality",
+              "verified_terms",
+              "explanation"
+            ],
+            "additionalProperties": false
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "sku_product_id",
+          "summary",
+          "top_issues",
+          "problems",
+          "title",
+          "description",
+          "rich_content",
+          "funnel_attribution",
+          "seo",
+          "limitations"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sku_code",
+    "listings"
+  ],
+  "additionalProperties": false
+}

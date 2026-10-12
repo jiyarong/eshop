@@ -77,6 +77,35 @@
 - GBrain 和网页搜索工具默认不加载；用户在 Agent 编辑页的工具列表中逐项勾选，选择保存在 `Agent#tools` 的 `gbrain__*` 或 `search__web_search` 名称中。未选择时不得请求对应工具的定义，也不得执行其工具。
 - GBrain 和网页搜索工具必须同时满足 Agent 选择和 `config/mcp_servers.yml` 的服务端白名单；网页搜索还需配置 Tavily API Key。可选工具由 `ErpAI::ToolRegistry.optional_mcp_tools` 提供，不应加入内置 Agent 的默认工具集合。
 
+## Activepieces 工作流使用技巧
+
+### 工具与编辑方式
+
+- 当前通过 `mcp__eshop_flow__ap_*` 工具管理工作流，控制台地址为 `https://flow.eshop.evexport.cn`。先用 `ap_list_flows` 查找目标，再用 `ap_flow_structure` 获取真实步骤名、父子关系和分支位置；不要猜测 `step_N` 编号。
+- 配置组件前先用 `ap_research_pieces` 查动作或触发器，再用 `ap_get_piece_props` 读取字段结构。动态下拉选项通过 `ap_resolve_property_options` / `ap_resolve_property_chain` 获取，使用返回的 `value`，不要使用显示标签。
+- 新流程可用 `ap_build_flow` 一次创建触发器与顺序步骤；该工具不能完整配置 Router，条件分支需随后通过 `ap_add_step`、`ap_add_branch`、`ap_update_branch` 逐步添加。已有流程使用 `ap_update_step` / `ap_update_trigger` 修改，避免删除重建而丢失样本数据。
+- 修改前用 `ap_read_step_settings` 读取完整配置；CODE 源码可用 `ap_read_step_code`。`ap_flow_structure` 的配置文本可能被截断，不适合作为完整备份。
+- 工作流优先使用内置 HTTP、Data Mapper、Router、Loop 组件；简单转换使用支持的公式，复杂业务判断再拆成职责单一的小 CODE 模块。CODE 必须导出 `code` 函数，参数从 `inputs` 获取。
+- 参数、数据提取、业务规则和最终输出分开：SKU、地址与阈值放独立参数节点；每个 API 后放独立 Data Mapper；Grade/Stage 使用可见的 Router 分支；最终输出保留指标、诊断标签及来源/计算证据。使用画布 notes 标明修改入口和关键限制。
+
+### 变量、引用与 ERP API
+
+- 步骤输出引用格式为 `{{step_1['output'].field}}`，HTTP JSON 通常为 `{{step_1['output'].body.data.field}}`；触发器同样使用 `{{trigger['output'].field}}`，不要写 `{{trigger.field}}`。开启失败后继续执行的步骤，其错误使用 `{{step_1['error'].message}}`。
+- ERP 地址为 `https://eshop.evexport.cn`，Bearer token 已保存在 Activepieces 项目变量 `YUANLONG_TOKEN`。HTTP 节点使用 `authType: "BEARER_TOKEN"` 和 `authFields: { token: "{{variables['YUANLONG_TOKEN']}}" }`，不要把密钥写入代码、日志或本地快照。
+- 项目变量与应用 Connections 是两种不同配置；`ap_list_connections` 返回空列表不代表项目变量不存在。使用应用连接时，通过该工具获取 `externalId`，传给步骤的 `auth` 参数。
+- SKU 上下文优先读取 `ErpAI::V3::SkusController` 的分段 JSON API：`/ai/v3/sku/{base,inventory,lifecycle,profit,sales_funnel,warehouse_recommendation}_context.json`，查询参数为 `sku_code`。字段提取以实际返回值为准，并核对仓库中 Controller/Context 的实现。
+- V3 数据位于 `body.data`，时间锚点为 `data.period.as_of`，时区为 `data.period.time_zone`；不同 API 的 SKU、日期与时区应一致。周数据为带 `period_key` 和 `values` 的数组，按 P0/P-1 等键查找，不能假定数组顺序。默认利润 P0 为上个完整自然周，漏斗 P0 为本周，须保留各自周期。
+- 现成指标优先直接引用；空值、板块缺失和明确不在 `available_metrics` 中的字段不得补为0。本周末库存为空时不能据此判定断货；采用其他有效来源时保留来源说明。
+
+### 测试、发布与源码维护
+
+- 先做 `ap_validate_flow`，再做完整 `ap_test_flow`，最后通过 `ap_get_run` 检查关键步骤的实际输出和错误。测试可能执行真实 API、写入或消息动作，应按当前任务授权范围选择测试内容。
+- 单步 `ap_test_step` 的成功状态不能代替完整验收；本次发现它的前置步骤可能显示成功但输出为空。验收需确认最终关键字段非空、分支正确、数值有依据。传入 `triggerTestData` 的测试应明确标为样本测试，不能宣称已验证真实触发器。
+- 当前 MCP `ap_validate_flow` 会把 `{{variables[...]}}` 中的 `variables` 当成步骤名并报引用错误。本次 `YUANLONG_TOKEN` 的六个 GET 请求在完整测试中均鉴权成功；遇到相同报错时核查实际运行，保留正确变量引用，不要为消除报错而硬编码密钥，也不要忽略其他校验错误。
+- 草稿可在编辑器用 Test Flow 测试；正式 Run Flow 或自动触发需发布启用。`ap_lock_and_publish` 会同时发布并启用，`ap_change_flow_status` 可停用；按用户要求决定是否发布，单 SKU 验证可先保留草稿。
+- 当前模块化参考位于 `script/activepieces/sku_inventory_health/`，详见其 `README.md`。本地 `.mjs` 不会自动同步到 Activepieces；修改后用 `ap_update_step` 更新对应 `sourceCode`，运行相关规则回归与完整流程测试，再更新配置快照和样本结果。
+- 该目录的 `flow-definition.json` 是节点设置与父子关系快照，不是 Activepieces UI 原生导入包。快照仅保留变量引用；本地规则回归命令为 `node --test script/activepieces/sku_inventory_health/health.test.mjs`。
+
 ## 当前报表现状
 
 - 报表导航当前包含：

@@ -1,0 +1,610 @@
+{
+  "config": {
+    "sku_code": "JJ005-6",
+    "erp_base_url": "https://eshop.evexport.cn",
+    "lead_time_days": 90,
+    "low_return_pct": 50,
+    "high_return_pct": 80,
+    "new_target_days": 30,
+    "normal_monthly_days": 30,
+    "priority_target_days": 60,
+    "standard_target_days": 45,
+    "lot_rounding_tolerance": 0.1
+  },
+  "base": {
+    "meta": {
+      "schema_version": 3,
+      "sku_code": "JJ005-6",
+      "period": {
+        "from": "2026-09-28",
+        "to": "2026-10-04",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      }
+    },
+    "base": {
+      "current_grade": "B",
+      "current_stage": "GRW"
+    }
+  },
+  "inventory": {
+    "meta": {
+      "schema_version": 3,
+      "sku_code": "JJ005-6",
+      "period": {
+        "from": "2026-09-14",
+        "to": "2026-10-11",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      }
+    },
+    "current": {
+      "values": {
+        "book_stock": 37,
+        "incoming_quantity": 200,
+        "strict_forecast_daily_sales": 6.2143,
+        "strict_forecast_cover_days": 5.9540093011280435,
+        "daily_sales_velocity": 4.022857142857143,
+        "turnover_days": 9.197443181818182,
+        "turnover_days_with_procurement": 58.91335227272727
+      },
+      "strict_forecast": {
+        "valid_days": 21
+      },
+      "data_through": "2026-10-10T08:00:00.224Z"
+    },
+    "weeks": [
+      {
+        "week_start": "2026-07-20",
+        "week_end": "2026-07-26",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 0,
+          "daily_sales_velocity": 0
+        }
+      },
+      {
+        "week_start": "2026-07-27",
+        "week_end": "2026-08-02",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 0,
+          "daily_sales_velocity": 0
+        }
+      },
+      {
+        "week_start": "2026-08-03",
+        "week_end": "2026-08-09",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 0,
+          "daily_sales_velocity": 0
+        }
+      },
+      {
+        "week_start": "2026-08-10",
+        "week_end": "2026-08-16",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 0,
+          "daily_sales_velocity": 0
+        }
+      },
+      {
+        "week_start": "2026-08-17",
+        "week_end": "2026-08-23",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 0,
+          "daily_sales_velocity": 0
+        }
+      },
+      {
+        "week_start": "2026-08-24",
+        "week_end": "2026-08-30",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 148,
+          "daily_sales_velocity": 0.1961904761904762
+        }
+      },
+      {
+        "week_start": "2026-08-31",
+        "week_end": "2026-09-06",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 146,
+          "daily_sales_velocity": 0.24952380952380954
+        }
+      },
+      {
+        "week_start": "2026-09-07",
+        "week_end": "2026-09-13",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 137,
+          "daily_sales_velocity": 1.020952380952381
+        }
+      },
+      {
+        "week_start": "2026-09-14",
+        "week_end": "2026-09-20",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 115,
+          "daily_sales_velocity": 2.4447619047619047
+        }
+      },
+      {
+        "week_start": "2026-09-21",
+        "week_end": "2026-09-27",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 90,
+          "daily_sales_velocity": 3.159047619047619
+        }
+      },
+      {
+        "week_start": "2026-09-28",
+        "week_end": "2026-10-04",
+        "missing": false,
+        "is_week_end": true,
+        "values": {
+          "book_stock": 57,
+          "daily_sales_velocity": 4.263809523809524
+        }
+      },
+      {
+        "week_start": "2026-10-05",
+        "week_end": "2026-10-11",
+        "missing": false,
+        "is_week_end": false,
+        "values": {
+          "book_stock": 39,
+          "daily_sales_velocity": 4.0495238095238095
+        }
+      }
+    ]
+  },
+  "lifecycle": {
+    "meta": {
+      "schema_version": 3,
+      "sku_code": "JJ005-6",
+      "period": {
+        "from": "2026-09-14",
+        "to": "2026-10-11",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      }
+    },
+    "summary": {
+      "values": {
+        "current_grade": "B",
+        "current_stage": "grw",
+        "first_sale_at": "2026-08-28T12:43:43.000Z",
+        "inventory_cover_days": 9.197443181818182,
+        "daily_sales_velocity": 4.022857142857143
+      }
+    },
+    "events": [
+      {
+        "id": 542,
+        "event_type": "purchase_ordered",
+        "occurred_on": "2026-07-01",
+        "content": {
+          "status": "received",
+          "batch_code": "YLZY260702-JJ005-6",
+          "purchased_quantity": 150,
+          "expected_arrival_on": "2026-08-30"
+        }
+      },
+      {
+        "id": 366,
+        "event_type": "marketing_state_changed",
+        "occurred_on": "2026-07-24",
+        "content": {
+          "to_stage": "new"
+        }
+      },
+      {
+        "id": 199,
+        "event_type": "first_sale",
+        "occurred_on": "2026-08-28",
+        "content": {}
+      },
+      {
+        "id": 2359,
+        "event_type": "marketing_state_changed",
+        "occurred_on": "2026-09-15",
+        "content": {
+          "to_stage": "clr"
+        }
+      },
+      {
+        "id": 3750,
+        "event_type": "platform_stockout",
+        "occurred_on": "2026-09-21",
+        "content": {}
+      },
+      {
+        "id": 3751,
+        "event_type": "all_platform_stockout",
+        "occurred_on": "2026-09-21",
+        "content": {}
+      },
+      {
+        "id": 4788,
+        "event_type": "purchase_ordered",
+        "occurred_on": "2026-09-27",
+        "content": {
+          "status": "ordered",
+          "batch_code": "YLZY260928-JJ005-6",
+          "purchased_quantity": 200,
+          "expected_arrival_on": "2026-11-30"
+        }
+      },
+      {
+        "id": 4577,
+        "event_type": "marketing_state_changed",
+        "occurred_on": "2026-09-29",
+        "content": {
+          "to_stage": "grw"
+        }
+      },
+      {
+        "id": 4980,
+        "event_type": "stock_recovered",
+        "occurred_on": "2026-09-29",
+        "content": {}
+      },
+      {
+        "id": 4981,
+        "event_type": "stock_recovered",
+        "occurred_on": "2026-09-29",
+        "content": {}
+      },
+      {
+        "id": 5830,
+        "event_type": "all_platform_stockout",
+        "occurred_on": "2026-10-03",
+        "content": {}
+      }
+    ],
+    "data_started_on": "2026-08-28"
+  },
+  "profit": {
+    "meta": {
+      "schema_version": 3,
+      "sku_code": "JJ005-6",
+      "period": {
+        "from": "2026-09-28",
+        "to": "2026-10-04",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      }
+    },
+    "periods": [
+      {
+        "period_key": "P-3",
+        "period_from": "2026-09-07",
+        "period_to": "2026-09-13",
+        "values": {
+          "net_sales": 3,
+          "after_tax": -138.56,
+          "goods_cost": 339.77,
+          "average_profit_per_order": -46.18666666666667,
+          "annualized_return_pct": -105.52,
+          "ad_ratio_pct": 25.87
+        }
+      },
+      {
+        "period_key": "P-2",
+        "period_from": "2026-09-14",
+        "period_to": "2026-09-20",
+        "values": {
+          "net_sales": 11,
+          "after_tax": 479.23,
+          "goods_cost": 1245.83,
+          "average_profit_per_order": 43.56636363636363,
+          "annualized_return_pct": 59.54,
+          "ad_ratio_pct": 8.11
+        }
+      },
+      {
+        "period_key": "P-1",
+        "period_from": "2026-09-21",
+        "period_to": "2026-09-27",
+        "values": {
+          "net_sales": 24,
+          "after_tax": 1426.89,
+          "goods_cost": 2718.15,
+          "average_profit_per_order": 59.45375,
+          "annualized_return_pct": 88.76,
+          "ad_ratio_pct": 1.88
+        }
+      },
+      {
+        "period_key": "P0",
+        "period_from": "2026-09-28",
+        "period_to": "2026-10-04",
+        "values": {
+          "net_sales": 29,
+          "after_tax": 1678.57,
+          "goods_cost": 3284.45,
+          "average_profit_per_order": 57.88172413793104,
+          "annualized_return_pct": 85.87,
+          "ad_ratio_pct": 1.52
+        }
+      }
+    ]
+  },
+  "funnel": {
+    "meta": {
+      "schema_version": 3,
+      "sku_code": "JJ005-6",
+      "period": {
+        "from": "2026-10-05",
+        "to": "2026-10-11",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      }
+    },
+    "periods": [
+      {
+        "period_key": "P-3",
+        "period_from": "2026-09-14",
+        "period_to": "2026-09-20",
+        "values": {
+          "sku_ending_inventory": 115
+        }
+      },
+      {
+        "period_key": "P-2",
+        "period_from": "2026-09-21",
+        "period_to": "2026-09-27",
+        "values": {
+          "sku_ending_inventory": 90
+        }
+      },
+      {
+        "period_key": "P-1",
+        "period_from": "2026-09-28",
+        "period_to": "2026-10-04",
+        "values": {
+          "sku_ending_inventory": 57
+        }
+      },
+      {
+        "period_key": "P0",
+        "period_from": "2026-10-05",
+        "period_to": "2026-10-11",
+        "values": {
+          "sku_ending_inventory": null
+        }
+      }
+    ],
+    "listings": [
+      {
+        "platform": "ozon",
+        "store_id": 3,
+        "store_ref": "ozon:1",
+        "store_name": "NEVASTAL",
+        "rows_per_week": [
+          {
+            "period_key": "P-3",
+            "period_from": "2026-09-14",
+            "period_to": "2026-09-20",
+            "values": {
+              "orders": 9,
+              "cart_additions": 57,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          },
+          {
+            "period_key": "P-2",
+            "period_from": "2026-09-21",
+            "period_to": "2026-09-27",
+            "values": {
+              "orders": 30,
+              "cart_additions": 115,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          },
+          {
+            "period_key": "P-1",
+            "period_from": "2026-09-28",
+            "period_to": "2026-10-04",
+            "values": {
+              "orders": 15,
+              "cart_additions": 108,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          },
+          {
+            "period_key": "P0",
+            "period_from": "2026-10-05",
+            "period_to": "2026-10-11",
+            "values": {
+              "orders": 6,
+              "cart_additions": 43,
+              "wb_stock": null,
+              "wb_seller_stock": null
+            }
+          }
+        ]
+      },
+      {
+        "platform": "wb",
+        "store_id": 1,
+        "store_ref": "wb:2",
+        "store_name": "TaxiLink",
+        "rows_per_week": [
+          {
+            "period_key": "P-3",
+            "period_from": "2026-09-14",
+            "period_to": "2026-09-20",
+            "values": {
+              "orders": 11,
+              "cart_additions": 69,
+              "wb_stock": 0,
+              "wb_seller_stock": 20
+            }
+          },
+          {
+            "period_key": "P-2",
+            "period_from": "2026-09-21",
+            "period_to": "2026-09-27",
+            "values": {
+              "orders": 6,
+              "cart_additions": 37,
+              "wb_stock": 0,
+              "wb_seller_stock": 19
+            }
+          },
+          {
+            "period_key": "P-1",
+            "period_from": "2026-09-28",
+            "period_to": "2026-10-04",
+            "values": {
+              "orders": 15,
+              "cart_additions": 69,
+              "wb_stock": 0,
+              "wb_seller_stock": 7
+            }
+          },
+          {
+            "period_key": "P0",
+            "period_from": "2026-10-05",
+            "period_to": "2026-10-11",
+            "values": {
+              "orders": 12,
+              "cart_additions": 49,
+              "wb_stock": 0,
+              "wb_seller_stock": 7
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "warehouse": {
+    "meta": {
+      "schema_version": 3,
+      "sku_code": "JJ005-6",
+      "period": {
+        "from": "2026-09-14",
+        "to": "2026-10-11",
+        "as_of": "2026-10-10",
+        "time_zone": "Europe/Moscow",
+        "week_starts_on": "monday"
+      }
+    },
+    "stores": [
+      {
+        "platform": "ozon",
+        "store_id": 3,
+        "data_status": "available",
+        "summary": {
+          "available": 2,
+          "fbs_available": 25,
+          "days_of_stock": 1,
+          "daily_sales": 1.86,
+          "distribution_gap": 50
+        },
+        "sales_clusters": [
+          {
+            "cluster_name": "Краснодар",
+            "distribution_gap": 11
+          },
+          {
+            "cluster_name": "Беларусь",
+            "distribution_gap": 6
+          },
+          {
+            "cluster_name": "Санкт-Петербург и СЗО",
+            "distribution_gap": 4
+          },
+          {
+            "cluster_name": "Дальний Восток",
+            "distribution_gap": 4
+          },
+          {
+            "cluster_name": "Новосибирск",
+            "distribution_gap": 4
+          },
+          {
+            "cluster_name": "Саратов",
+            "distribution_gap": 4
+          },
+          {
+            "cluster_name": "Уфа",
+            "distribution_gap": 4
+          },
+          {
+            "cluster_name": "Невинномысск",
+            "distribution_gap": 2
+          },
+          {
+            "cluster_name": "Тюмень",
+            "distribution_gap": 2
+          },
+          {
+            "cluster_name": "Екатеринбург",
+            "distribution_gap": 2
+          },
+          {
+            "cluster_name": "Казань",
+            "distribution_gap": 2
+          },
+          {
+            "cluster_name": "Самара",
+            "distribution_gap": 2
+          },
+          {
+            "cluster_name": "Ярославль",
+            "distribution_gap": 2
+          },
+          {
+            "cluster_name": "Москва, МО и Дальние регионы",
+            "distribution_gap": 1
+          },
+          {
+            "cluster_name": "Ростов",
+            "distribution_gap": 0
+          }
+        ]
+      },
+      {
+        "platform": "wb",
+        "store_id": 1,
+        "data_status": "available",
+        "summary": {
+          "available": 0,
+          "fbs_available": 25,
+          "days_of_stock": null,
+          "daily_sales": 0,
+          "distribution_gap": 0
+        },
+        "sales_clusters": []
+      }
+    ]
+  }
+}

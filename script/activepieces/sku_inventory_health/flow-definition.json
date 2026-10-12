@@ -1,0 +1,1486 @@
+{
+  "flowId": "Qh7au61yzigFaAdkxK8SX",
+  "url": "https://flow.eshop.evexport.cn/projects/D39taW24AEQ4mNoeEO8IE/flows/Qh7au61yzigFaAdkxK8SX",
+  "name": "SKU库存诊断与健康度 · JJ005-6 · 模块化验证",
+  "status": "DISABLED",
+  "published": false,
+  "tokenReference": "{{variables['YUANLONG_TOKEN']}}",
+  "testedRunId": "NmH5RsjsOAylAtzFkLG3S",
+  "testEnvironment": "TESTING",
+  "steps": [
+    {
+      "name": "trigger",
+      "type": "PIECE_TRIGGER",
+      "displayName": "manual_trigger",
+      "parentName": null,
+      "relationship": "trigger",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {},
+        "pieceName": "@activepieces/piece-manual-trigger",
+        "sampleData": {
+          "lastTestDate": "2026-10-10T08:05:17.683Z",
+          "sampleDataFileId": "k8bPpoy8EPsGqy6W4CE7m"
+        },
+        "triggerName": "manual_trigger",
+        "pieceVersion": "0.0.8",
+        "propertySettings": {}
+      }
+    },
+    {
+      "name": "step_1",
+      "type": "PIECE",
+      "displayName": "01 固定SKU与业务参数（修改入口）",
+      "parentName": "trigger",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "sku_code": "JJ005-6",
+            "erp_base_url": "https://eshop.evexport.cn",
+            "lead_time_days": 90,
+            "low_return_pct": 50,
+            "high_return_pct": 80,
+            "new_target_days": 30,
+            "normal_monthly_days": 30,
+            "priority_target_days": 60,
+            "standard_target_days": 45,
+            "lot_rounding_tolerance": 0.1
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_2",
+      "type": "PIECE",
+      "displayName": "GET 基础信息",
+      "parentName": "step_1",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/base_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_3",
+      "type": "PIECE",
+      "displayName": "提取 基础信息（字段适配入口）",
+      "parentName": "step_2",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "base": "{{step_2['output'].body.data.base}}",
+            "meta": {
+              "period": "{{step_2['output'].body.data.period}}",
+              "sku_code": "{{step_2['output'].body.data.sku_code}}",
+              "schema_version": "{{step_2['output'].body.data.schema_version}}"
+            }
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_4",
+      "type": "PIECE",
+      "displayName": "GET 当前与历史库存",
+      "parentName": "step_3",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/inventory_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_5",
+      "type": "PIECE",
+      "displayName": "提取 当前与历史库存（字段适配入口）",
+      "parentName": "step_4",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_4['output'].body.data.period}}",
+              "sku_code": "{{step_4['output'].body.data.sku_code}}",
+              "schema_version": "{{step_4['output'].body.data.schema_version}}"
+            },
+            "weeks": "{{step_4['output'].body.data.inventory.history_inventory_info.sku_inventory_trend.weeks}}",
+            "current": {
+              "values": {
+                "book_stock": "{{step_4['output'].body.data.inventory.current_inventory_info.values.book_stock}}",
+                "turnover_days": "{{step_4['output'].body.data.inventory.current_inventory_info.values.turnover_days}}",
+                "incoming_quantity": "{{step_4['output'].body.data.inventory.current_inventory_info.values.incoming_quantity}}",
+                "daily_sales_velocity": "{{step_4['output'].body.data.inventory.current_inventory_info.values.daily_sales_velocity}}",
+                "strict_forecast_cover_days": "{{step_4['output'].body.data.inventory.current_inventory_info.values.strict_forecast_cover_days}}",
+                "strict_forecast_daily_sales": "{{step_4['output'].body.data.inventory.current_inventory_info.values.strict_forecast_daily_sales}}",
+                "turnover_days_with_procurement": "{{step_4['output'].body.data.inventory.current_inventory_info.values.turnover_days_with_procurement}}"
+              },
+              "data_through": "{{step_4['output'].body.data.inventory.current_inventory_info.data_through}}",
+              "strict_forecast": "{{step_4['output'].body.data.inventory.current_inventory_info.strict_forecast}}",
+              "available_metrics": "{{step_4['output'].body.data.inventory.current_inventory_info.available_metrics}}"
+            },
+            "store_history": "{{step_4['output'].body.data.inventory.history_inventory_info.store_listing_inventory_trend.store_listings}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_6",
+      "type": "PIECE",
+      "displayName": "GET 生命周期与采购事件",
+      "parentName": "step_5",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/lifecycle_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_7",
+      "type": "PIECE",
+      "displayName": "提取 生命周期与采购事件（字段适配入口）",
+      "parentName": "step_6",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_6['output'].body.data.period}}",
+              "sku_code": "{{step_6['output'].body.data.sku_code}}",
+              "schema_version": "{{step_6['output'].body.data.schema_version}}"
+            },
+            "events": "{{step_6['output'].body.data.lifecycle.key_events.events}}",
+            "summary": {
+              "values": {
+                "current_grade": "{{step_6['output'].body.data.lifecycle.summary.values.current_grade}}",
+                "current_stage": "{{step_6['output'].body.data.lifecycle.summary.values.current_stage}}",
+                "first_sale_at": "{{step_6['output'].body.data.lifecycle.summary.values.first_sale_at}}",
+                "daily_sales_velocity": "{{step_6['output'].body.data.lifecycle.summary.values.daily_sales_velocity}}",
+                "inventory_cover_days": "{{step_6['output'].body.data.lifecycle.summary.values.inventory_cover_days}}"
+              },
+              "available_metrics": "{{step_6['output'].body.data.lifecycle.summary.available_metrics}}"
+            },
+            "data_started_on": "{{step_6['output'].body.data.lifecycle.key_events.data_started_on}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_8",
+      "type": "PIECE",
+      "displayName": "GET 自然周利润",
+      "parentName": "step_7",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/profit_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_9",
+      "type": "PIECE",
+      "displayName": "提取 自然周利润（字段适配入口）",
+      "parentName": "step_8",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_8['output'].body.data.period}}",
+              "sku_code": "{{step_8['output'].body.data.sku_code}}",
+              "schema_version": "{{step_8['output'].body.data.schema_version}}"
+            },
+            "periods": "{{step_8['output'].body.data.profit.sku_profit_overview_per_week.periods}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_10",
+      "type": "PIECE",
+      "displayName": "GET 渠道销售漏斗",
+      "parentName": "step_9",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/sales_funnel_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_11",
+      "type": "PIECE",
+      "displayName": "提取 渠道销售漏斗（字段适配入口）",
+      "parentName": "step_10",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_10['output'].body.data.period}}",
+              "sku_code": "{{step_10['output'].body.data.sku_code}}",
+              "schema_version": "{{step_10['output'].body.data.schema_version}}"
+            },
+            "periods": "{{step_10['output'].body.data.sales_funnel.sku_funnel_overview_per_week.periods}}",
+            "listings": "{{step_10['output'].body.data.sales_funnel.sku_funnel_store_listing_perweek.store_listings}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_12",
+      "type": "PIECE",
+      "displayName": "GET 官方仓分仓建议",
+      "parentName": "step_11",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/warehouse_recommendation_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_13",
+      "type": "PIECE",
+      "displayName": "提取 官方仓分仓建议（字段适配入口）",
+      "parentName": "step_12",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_12['output'].body.data.period}}",
+              "sku_code": "{{step_12['output'].body.data.sku_code}}",
+              "schema_version": "{{step_12['output'].body.data.schema_version}}"
+            },
+            "stores": "{{step_12['output'].body.data.warehouse_recommendation.stores}}",
+            "target_days": "{{step_12['output'].body.data.warehouse_recommendation.target_days}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_14",
+      "type": "CODE",
+      "displayName": "统一Context与校验数据质量",
+      "parentName": "step_13",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "base": "{{step_3['output']}}",
+          "config": "{{step_1['output']}}",
+          "funnel": "{{step_11['output']}}",
+          "profit": "{{step_9['output']}}",
+          "inventory": "{{step_5['output']}}",
+          "lifecycle": "{{step_7['output']}}",
+          "warehouse": "{{step_13['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async (inputs) => {\n  const { config, base, inventory, lifecycle, profit, funnel, warehouse } = inputs;\n  const sources = { base, inventory, lifecycle, profit, funnel, warehouse };\n  for (const [name, source] of Object.entries(sources)) {\n    if (source?.meta?.schema_version !== 3 || source.meta.sku_code !== config.sku_code)\n      throw new Error(`${name}: unexpected schema or SKU`);\n    if (source.meta.period?.as_of !== base.meta.period.as_of || source.meta.period?.time_zone !== base.meta.period.time_zone)\n      throw new Error(`${name}: inconsistent context date or time zone`);\n  }\n  const as_of = base.meta.period.as_of;\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(as_of)) throw new Error('Context as_of is required');\n  const number = v => v === null || v === undefined || v === '' || typeof v === 'boolean' || !Number.isFinite(Number(v)) ? null : Number(v);\n  const metric = (node, key) => Array.isArray(node?.available_metrics) && !node.available_metrics.includes(key) ? null : number(node?.values?.[key]);\n  const rows = list => (Array.isArray(list) ? list : []).map(row => ({ ...row,\n    values: Object.fromEntries(Object.keys(row.values || {}).map(key => [key, metric(row, key)])) }));\n  const current = inventory.current;\n  const summary = lifecycle.summary;\n  const funnel_periods = rows(funnel.periods);\n  const p0 = funnel_periods.find(row => row.period_key === 'P0');\n  const pick = (...items) => items.find(item => item.value !== null && item.value !== undefined && item.value !== '') || { value: null, source: null };\n  const selection = {\n    book_stock: pick({ value: metric(current, 'book_stock'), source: 'inventory.current.values.book_stock' },\n      { value: metric(p0, 'sku_ending_inventory'), source: 'sales_funnel.P0.values.sku_ending_inventory' }),\n    incoming_quantity: { value: metric(current, 'incoming_quantity'), source: 'inventory.current.values.incoming_quantity' },\n    days_in_stock: pick(...['strict_forecast_cover_days', 'turnover_days'].map(key => ({ value: metric(current, key), source: `inventory.current.values.${key}` })),\n      { value: metric(summary, 'inventory_cover_days'), source: 'lifecycle.summary.values.inventory_cover_days' }),\n    regular_daily_sales: pick({ value: number(current?.strict_forecast?.valid_days) === 0 ? null : metric(current, 'strict_forecast_daily_sales'), source: 'inventory.current.values.strict_forecast_daily_sales' },\n      { value: metric(current, 'daily_sales_velocity'), source: 'inventory.current.values.daily_sales_velocity' },\n      { value: metric(summary, 'daily_sales_velocity'), source: 'lifecycle.summary.values.daily_sales_velocity' })\n  };\n  const missing = Object.entries(selection).filter(([, item]) => item.value === null).map(([key]) => key);\n  if (!Array.isArray(lifecycle.events)) missing.push('lifecycle_events');\n  if (!Array.isArray(inventory.weeks)) missing.push('inventory_history');\n  const grade = (summary?.values?.current_grade || base.base?.current_grade || '').toUpperCase() || null;\n  const stage = (summary?.values?.current_stage || base.base?.current_stage || '').toUpperCase() || null;\n  if (!grade) missing.push('grade');\n  if (!['NEW', 'GRW', 'MAT', 'CLR'].includes(stage)) missing.push('stage');\n  const values = Object.fromEntries(Object.entries(selection).map(([key, item]) => [key, item.value]));\n  for (const [key, value] of Object.entries(values)) if (value !== null && value < 0) throw new Error(`${key}: negative inventory or velocity`);\n  const profit_periods = rows(profit.periods);\n  for (const row of profit_periods) {\n    const span = (Date.parse(row.period_to) - Date.parse(row.period_from)) / 86400000;\n    if (span !== 6) throw new Error('Profit periods must be independent seven-day weeks');\n  }\n  return { sku_code: config.sku_code, as_of, time_zone: base.meta.period.time_zone, grade, stage, ...values,\n    strict_daily_sales: number(current?.strict_forecast?.valid_days) === 0 ? null : metric(current, 'strict_forecast_daily_sales'),\n    daily_sales_velocity: metric(current, 'daily_sales_velocity') ?? metric(summary, 'daily_sales_velocity'),\n    context_total_cover_days: metric(current, 'turnover_days_with_procurement'),\n    forecast_valid_days: number(current?.strict_forecast?.valid_days), selection, missing,\n    weeks: rows(inventory.weeks), events: Array.isArray(lifecycle.events) ? lifecycle.events : [],\n    first_sale_at: summary?.values?.first_sale_at || null, data_started_on: lifecycle.data_started_on || null,\n    profit_periods, funnel_periods,\n    listings: (Array.isArray(funnel.listings) ? funnel.listings : []).map(listing => ({ ...listing, rows_per_week: rows(listing.rows_per_week) })),\n    warehouses: Array.isArray(warehouse.stores) ? warehouse.stores : [],\n    source_periods: Object.fromEntries(Object.entries(sources).map(([name, source]) => [name, source.meta.period])),\n    inventory_data_through: current?.data_through || null };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_15",
+      "type": "ROUTER",
+      "displayName": "Grade分支：S / A / B-C / 缺失",
+      "parentName": "step_14",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "branches": [
+          {
+            "branchName": "S：21天 / 30件",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].grade}}",
+                  "secondValue": "S"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "A：14天 / 30件",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].grade}}",
+                  "secondValue": "A"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "B/C：14天 / 20件",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].grade}}",
+                  "secondValue": "B"
+                }
+              ],
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].grade}}",
+                  "secondValue": "C"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "Otherwise",
+            "branchType": "FALLBACK"
+          }
+        ],
+        "executionType": "EXECUTE_FIRST_MATCH"
+      }
+    },
+    {
+      "name": "step_16",
+      "type": "PIECE",
+      "displayName": "S级阈值",
+      "parentName": "step_15",
+      "relationship": "branch",
+      "branchIndex": 0,
+      "branchName": "S：21天 / 30件",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "grade_group": "S",
+            "shortage_days": 21,
+            "shortage_stock": 30
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_17",
+      "type": "PIECE",
+      "displayName": "A级阈值",
+      "parentName": "step_15",
+      "relationship": "branch",
+      "branchIndex": 1,
+      "branchName": "A：14天 / 30件",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "grade_group": "A",
+            "shortage_days": 14,
+            "shortage_stock": 30
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_18",
+      "type": "PIECE",
+      "displayName": "B/C级阈值",
+      "parentName": "step_15",
+      "relationship": "branch",
+      "branchIndex": 2,
+      "branchName": "B/C：14天 / 20件",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "grade_group": "BC",
+            "shortage_days": 14,
+            "shortage_stock": 20
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_19",
+      "type": "PIECE",
+      "displayName": "评级缺失：保守阈值",
+      "parentName": "step_15",
+      "relationship": "branch",
+      "branchIndex": 3,
+      "branchName": "Otherwise",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "grade_group": "UNKNOWN",
+            "shortage_days": 14,
+            "shortage_stock": 20
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_20",
+      "type": "CODE",
+      "displayName": "合并生效Grade阈值",
+      "parentName": "step_15",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "a": "{{step_17['output']}}",
+          "s": "{{step_16['output']}}",
+          "bc": "{{step_18['output']}}",
+          "unknown": "{{step_19['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async (inputs) => {\n  const policy = [inputs.s, inputs.a, inputs.bc, inputs.unknown].find(value => value && typeof value === 'object' && value.shortage_stock !== undefined);\n  if (!policy) throw new Error('Grade policy branch did not return a policy');\n  return policy;\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_21",
+      "type": "CODE",
+      "displayName": "断货销量校准：历史锚点与有效日销",
+      "parentName": "step_20",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}",
+          "policy": "{{step_20['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d, policy }) => {\n  const age = date => (Date.parse(d.as_of) - Date.parse(String(date).slice(0, 10))) / 86400000;\n  const recent = (type, days) => d.events.some(e => e.event_type === type && age(e.occurred_on) >= 0 && age(e.occurred_on) <= days);\n  const reasons = [];\n  if (d.days_in_stock !== null && d.days_in_stock < policy.shortage_days) reasons.push('low_cover');\n  if (d.book_stock !== null && d.book_stock < policy.shortage_stock) reasons.push('low_stock');\n  if (recent('stock_recovered', 14)) reasons.push('stock_recovered_14d');\n  if (recent('purchase_received', 7)) reasons.push('purchase_received_7d');\n  const calibrated = reasons.length > 0;\n  const samples = calibrated ? d.weeks.filter(w => !w.missing && w.values.book_stock !== null && w.values.book_stock >= policy.shortage_stock && w.values.daily_sales_velocity !== null && w.values.daily_sales_velocity >= 0)\n    .sort((a, b) => b.week_start.localeCompare(a.week_start)).slice(0, 3) : [];\n  const before = samples.length ? Math.max(...samples.map(w => w.values.daily_sales_velocity)) : null;\n  const candidates = [before, d.strict_daily_sales, d.daily_sales_velocity].filter(v => v !== null);\n  const v_effective = calibrated ? (candidates.length ? Math.max(...candidates) : null) : d.regular_daily_sales;\n  return { calibrated, reasons, v_effective, daily_sales_before_shortage: before,\n    historical_samples: samples.map(w => ({ week_start: w.week_start, book_stock: w.values.book_stock, daily_sales_velocity: w.values.daily_sales_velocity, is_week_end: w.is_week_end })),\n    warnings: calibrated && samples.length < 3 ? ['断货校准可用历史样本不足3周，使用实际可用样本。'] : [] };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_22",
+      "type": "CODE",
+      "displayName": "财务平滑：独立自然周P0/P-1/P-2",
+      "parentName": "step_21",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d }) => {\n  const periods = ['P0', 'P-1', 'P-2'].map(key => d.profit_periods.find(row => row.period_key === key));\n  const complete = key => periods.every(row => row?.values?.[key] !== null && row?.values?.[key] !== undefined);\n  const sum = key => periods.reduce((total, row) => total + row.values[key], 0);\n  const sold = complete('net_sales') ? sum('net_sales') : null;\n  const p0 = periods[0]?.values || {};\n  const avg_profit_per_unit = sold !== null && sold > 0 && complete('after_tax') ? sum('after_tax') / sold :\n    sold !== null && sold <= 0 ? (p0.average_profit_per_order ?? null) : null;\n  const unit_goods_cost = sold !== null && sold > 0 && complete('goods_cost') ? sum('goods_cost') / sold : null;\n  return { avg_profit_per_unit, unit_goods_cost, net_sales_3_weeks: sold,\n    annualized_return_pct: p0.annualized_return_pct ?? null, ad_ratio_pct: p0.ad_ratio_pct ?? null,\n    method: sold !== null && sold > 0 ? 'three_week_sales_weighted' : sold !== null ? 'p0_profit_fallback' : 'missing',\n    periods: periods.filter(Boolean).map(row => ({ period_key: row.period_key, from: row.period_from, to: row.period_to })),\n    missing: [avg_profit_per_unit === null && 'avg_profit_per_unit', unit_goods_cost === null && 'unit_goods_cost'].filter(Boolean) };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_23",
+      "type": "CODE",
+      "displayName": "在途批次、CLR起点与积压保护门禁",
+      "parentName": "step_22",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d }) => {\n  const age = date => (Date.parse(d.as_of) - Date.parse(String(date).slice(0, 10))) / 86400000;\n  const incoming_batches = d.events.filter(e => e.event_type === 'purchase_ordered' && e.content?.status === 'ordered' && e.content.expected_arrival_on > d.as_of && e.occurred_on <= d.as_of)\n    .sort((a, b) => a.content.expected_arrival_on.localeCompare(b.content.expected_arrival_on))\n    .map(e => ({ event_id: e.id, batch_code: e.content.batch_code, quantity: e.content.purchased_quantity ?? null, expected_arrival_on: e.content.expected_arrival_on }));\n  const next_arrival = incoming_batches[0] || null;\n  const recent_receipt = d.events.some(e => e.event_type === 'purchase_received' && age(e.occurred_on) >= 0 && age(e.occurred_on) <= 14);\n  const p0 = d.funnel_periods.find(p => p.period_key === 'P0')?.values.sku_ending_inventory;\n  const p1 = d.funnel_periods.find(p => p.period_key === 'P-1')?.values.sku_ending_inventory;\n  const inventory_jump = p0 != null && p1 != null && p0 - p1 > 100;\n  const low_stock_gate = (d.days_in_stock !== null && d.days_in_stock < 7) || (d.book_stock !== null && d.book_stock < 10);\n  const receipt_gate = recent_receipt || inventory_jump;\n  const clr_event = d.events.filter(e => e.event_type === 'marketing_state_changed' && String(e.content?.to_stage).toUpperCase() === 'CLR' && e.occurred_on <= d.as_of)\n    .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on))[0];\n  return { incoming_batches, next_arrival,\n    days_until_next_arrival: next_arrival ? -age(next_arrival.expected_arrival_on) : null,\n    low_stock_gate, receipt_gate, suppress_overstock: low_stock_gate || receipt_gate,\n    clr_entry_date: clr_event?.occurred_on || (d.stage === 'CLR' ? String(d.first_sale_at || d.data_started_on || '').slice(0, 10) || null : null),\n    clr_entry_estimated: d.stage === 'CLR' && !clr_event,\n    receipt_recovery_advice: receipt_gate && ['S', 'A'].includes(d.grade) && d.stage !== 'CLR' ?\n      '新货入库后检查并恢复WB/Ozon站内广告、正常活动销售价，并安排现货向官方仓送货分仓。' : null };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_24",
+      "type": "ROUTER",
+      "displayName": "Stage分支：NEW / GRW / MAT / CLR",
+      "parentName": "step_23",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "branches": [
+          {
+            "branchName": "NEW 新品：30天小批",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].stage}}",
+                  "secondValue": "NEW"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "GRW 成长期：45/60天",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].stage}}",
+                  "secondValue": "GRW"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "MAT 成熟期：45/60天",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].stage}}",
+                  "secondValue": "MAT"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "CLR 清仓：禁止补货",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_14['output'].stage}}",
+                  "secondValue": "CLR"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "Otherwise",
+            "branchType": "FALLBACK"
+          }
+        ],
+        "executionType": "EXECUTE_FIRST_MATCH"
+      }
+    },
+    {
+      "name": "step_25",
+      "type": "PIECE",
+      "displayName": "NEW目标库存策略",
+      "parentName": "step_24",
+      "relationship": "branch",
+      "branchIndex": 0,
+      "branchName": "NEW 新品：30天小批",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "kind": "supply",
+            "stage": "NEW",
+            "priority_target_days": "{{step_1['output'].new_target_days}}",
+            "standard_target_days": "{{step_1['output'].new_target_days}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_26",
+      "type": "PIECE",
+      "displayName": "GRW目标库存策略",
+      "parentName": "step_24",
+      "relationship": "branch",
+      "branchIndex": 1,
+      "branchName": "GRW 成长期：45/60天",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "kind": "supply",
+            "stage": "GRW",
+            "priority_target_days": "{{step_1['output'].priority_target_days}}",
+            "standard_target_days": "{{step_1['output'].standard_target_days}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_27",
+      "type": "PIECE",
+      "displayName": "MAT目标库存策略",
+      "parentName": "step_24",
+      "relationship": "branch",
+      "branchIndex": 2,
+      "branchName": "MAT 成熟期：45/60天",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "kind": "supply",
+            "stage": "MAT",
+            "priority_target_days": "{{step_1['output'].priority_target_days}}",
+            "standard_target_days": "{{step_1['output'].standard_target_days}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_28",
+      "type": "PIECE",
+      "displayName": "CLR专有清库策略",
+      "parentName": "step_24",
+      "relationship": "branch",
+      "branchIndex": 3,
+      "branchName": "CLR 清仓：禁止补货",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "kind": "clearance",
+            "stage": "CLR",
+            "priority_target_days": 0,
+            "standard_target_days": 0
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_29",
+      "type": "PIECE",
+      "displayName": "阶段缺失：仅输出数据不足",
+      "parentName": "step_24",
+      "relationship": "branch",
+      "branchIndex": 4,
+      "branchName": "Otherwise",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "kind": "unknown",
+            "stage": "UNKNOWN",
+            "priority_target_days": null,
+            "standard_target_days": null
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_30",
+      "type": "CODE",
+      "displayName": "合并生效Stage策略",
+      "parentName": "step_24",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "clr": "{{step_28['output']}}",
+          "grw": "{{step_26['output']}}",
+          "mat": "{{step_27['output']}}",
+          "new": "{{step_25['output']}}",
+          "unknown": "{{step_29['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async (inputs) => {\n  const policy = [inputs.new, inputs.grw, inputs.mat, inputs.clr, inputs.unknown].find(value => value && typeof value === 'object' && value.kind);\n  if (!policy) throw new Error('Stage policy branch did not return a policy');\n  return policy;\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_31",
+      "type": "ROUTER",
+      "displayName": "诊断分支：供应链 / CLR清库 / 数据不足",
+      "parentName": "step_30",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "branches": [
+          {
+            "branchName": "非CLR供应链库存诊断",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_30['output'].kind}}",
+                  "secondValue": "supply"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "CLR清库诊断",
+            "branchType": "CONDITION",
+            "conditions": [
+              [
+                {
+                  "operator": "TEXT_EXACTLY_MATCHES",
+                  "firstValue": "{{step_30['output'].kind}}",
+                  "secondValue": "clearance"
+                }
+              ]
+            ]
+          },
+          {
+            "branchName": "Otherwise",
+            "branchType": "FALLBACK"
+          }
+        ],
+        "executionType": "EXECUTE_FIRST_MATCH"
+      }
+    },
+    {
+      "name": "step_32",
+      "type": "CODE",
+      "displayName": "90天全链供给与到货前断档",
+      "parentName": "step_31",
+      "relationship": "branch",
+      "branchIndex": 0,
+      "branchName": "非CLR供应链库存诊断",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}",
+          "config": "{{step_1['output']}}",
+          "events": "{{step_23['output']}}",
+          "finance": "{{step_22['output']}}",
+          "velocity": "{{step_21['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d, velocity: v, finance: f, events: e, config: c }) => {\n  const speed = v.v_effective;\n  const canCalculate = d.book_stock !== null && d.incoming_quantity !== null && speed !== null && speed > 0;\n  const useContext = !v.calibrated && d.context_total_cover_days !== null;\n  const total_cover_days = useContext ? d.context_total_cover_days : canCalculate ? (d.book_stock + d.incoming_quantity) / speed : null;\n  const stockout_days_immediate = e.days_until_next_arrival !== null && d.days_in_stock !== null && speed > 0 ? Math.max(0, e.days_until_next_arrival - d.days_in_stock) : null;\n  const stockout_date = d.days_in_stock !== null ? new Date(Date.parse(d.as_of) + Math.floor(d.days_in_stock) * 86400000).toISOString().slice(0, 10) : null;\n  const missed_profit = stockout_days_immediate !== null && f.avg_profit_per_unit !== null && speed !== null ? stockout_days_immediate * speed * Math.max(0, f.avg_profit_per_unit) : null;\n  const weekly_loss = f.avg_profit_per_unit !== null && speed !== null ? speed * Math.max(0, f.avg_profit_per_unit) * 7 : null;\n  const alerts = [];\n  if (total_cover_days !== null && total_cover_days < c.lead_time_days) alerts.push({ type: '补货预警', level: 'red',\n    message: `全链覆盖${total_cover_days.toFixed(1)}天，距${c.lead_time_days}天供应周期缺${(c.lead_time_days - total_cover_days).toFixed(1)}天。`,\n    advice: '立即启动采购排产，并核实到货节奏。', evidence: { total_cover_days, lead_time_days: c.lead_time_days } });\n  if (stockout_days_immediate > 0) alerts.push({ type: '到货前断货', level: weekly_loss >= 2000 ? 'red' : 'yellow',\n    message: `预计${stockout_date}库存耗尽，下一批${e.next_arrival.expected_arrival_on}到达，间隔${stockout_days_immediate.toFixed(1)}天。`,\n    advice: f.avg_profit_per_unit < 0 ? '当前单件亏损，断货在财务上减少亏损；补货前核实盈利能力。' : '协调现有在途到货和可用渠道调拨，降低近期断档。',\n    evidence: { stockout_days_immediate, missed_profit, weekly_loss, profit_impact: f.avg_profit_per_unit < 0 ? 'loss_reduction' : f.avg_profit_per_unit === null ? 'unknown' : 'lost_profit' } });\n  return { total_cover_days, cover_source: useContext ? 'context.turnover_days_with_procurement' : canCalculate ? 'calibrated_or_missing_metric_formula' : 'missing',\n    stockout_date, stockout_days_immediate, missed_profit, weekly_loss,\n    lead_time_gap: total_cover_days !== null ? Math.max(0, c.lead_time_days - total_cover_days) : null,\n    buffer_days: total_cover_days !== null ? Math.max(0, total_cover_days - c.lead_time_days) : null,\n    gap_explanation: total_cover_days !== null && total_cover_days < c.lead_time_days && stockout_days_immediate > 0 ?\n      '90天总供给缺口与首轮到货前断档重叠，后续在途耗尽还可能形成次轮断档；两者不可直接相加。' : null,\n    alerts, missing: [total_cover_days === null && 'total_cover_days', stockout_days_immediate === null && d.incoming_quantity > 0 && 'immediate_gap_arrival_or_cover'].filter(Boolean) };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_33",
+      "type": "CODE",
+      "displayName": "建议补货量：目标周转与批量规整",
+      "parentName": "step_32",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}",
+          "config": "{{step_1['output']}}",
+          "events": "{{step_23['output']}}",
+          "supply": "{{step_32['output']}}",
+          "finance": "{{step_22['output']}}",
+          "velocity": "{{step_21['output']}}",
+          "stage_policy": "{{step_30['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d, velocity: v, finance: f, supply: s, config: c, events: e, stage_policy: p }) => {\n  if (s.total_cover_days === null) return { suggested_quantity: null, target_days: null, status: 'insufficient_data', reason: '缺少全链覆盖或有效日销，暂不能确定补货量。' };\n  if (s.total_cover_days >= c.lead_time_days) return { suggested_quantity: 0, target_days: 0, status: 'covered', reason: `当前覆盖完整供应周期，可在${s.buffer_days.toFixed(1)}天缓冲内启动下一批排产。` };\n  const priority = ['S', 'A'].includes(d.grade) || f.annualized_return_pct > c.high_return_pct;\n  const target_days = priority ? p.priority_target_days : p.standard_target_days;\n  const raw_quantity = target_days * v.v_effective;\n  const past = d.events.filter(event => event.event_type === 'purchase_ordered' && event.occurred_on <= d.as_of && event.content?.purchased_quantity != null && Number(event.content.purchased_quantity) > 0)\n    .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));\n  const standard_lot = past.length ? Number(past[0].content.purchased_quantity) : null;\n  const near_lot = standard_lot ? Math.max(1, Math.round(raw_quantity / standard_lot)) * standard_lot : null;\n  const round_to_lot = near_lot !== null && Math.abs(near_lot - raw_quantity) / raw_quantity <= c.lot_rounding_tolerance && !(d.stage === 'NEW' && near_lot > raw_quantity);\n  const suggested_quantity = round_to_lot ? Math.ceil(near_lot) : Math.ceil(raw_quantity);\n  const finance_review = f.avg_profit_per_unit < 0 || (f.annualized_return_pct !== null && f.annualized_return_pct < c.low_return_pct);\n  return { suggested_quantity, raw_quantity, target_days, standard_lot, rounded_to_lot: round_to_lot,\n    status: finance_review ? 'review_profit_before_order' : 'replenish', finance_review,\n    reason: `按新批次到货后${target_days}天动销备货：${target_days} × ${v.v_effective.toFixed(4)} = ${raw_quantity.toFixed(1)}件，建议${suggested_quantity}件。交期内损失销量不再重复计入；之后每月按约${c.normal_monthly_days}天动销复核采购。`,\n    warning: finance_review ? '当前利润或年化回报不足，确认补货收益后再下单。' : f.avg_profit_per_unit === null || f.annualized_return_pct === null ? '利润或年化回报缺失，采购前补充核实。' : null,\n    next_arrival: e.next_arrival };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_34",
+      "type": "CODE",
+      "displayName": "渠道健康：官方仓 / 白俄FBS与集群缺口",
+      "parentName": "step_33",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d }) => {\n  const number = v => v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v);\n  const channels = [], alerts = [], missing = [];\n  for (const listing of d.listings) {\n    const p0 = listing.rows_per_week.find(row => row.period_key === 'P0');\n    const values = p0?.values || {};\n    const warehouse = d.warehouses.find(store => store.store_id === listing.store_id && store.platform === listing.platform && store.data_status === 'available');\n    const fbo = number(warehouse?.summary?.available) ?? (listing.platform === 'wb' ? (values.wb_stock ?? null) : null);\n    const fbs = number(warehouse?.summary?.fbs_available) ?? (listing.platform === 'wb' ? (values.wb_seller_stock ?? null) : null);\n    const demand = (values.orders ?? 0) > 0 || (values.cart_additions ?? 0) > 0;\n    let status = fbo === null || fbs === null ? 'insufficient_data' : fbo <= 2 && fbs <= 2 ? 'channel_stockout' : fbo <= 2 && fbs > 2 ? 'fbs_fallback' : 'available';\n    if (status === 'insufficient_data') missing.push(`channel_stock:${listing.store_ref}`);\n    const top_clusters = (warehouse?.sales_clusters || []).filter(cluster => number(cluster.distribution_gap) > 0)\n      .sort((a, b) => b.distribution_gap - a.distribution_gap).slice(0, 5)\n      .map(cluster => ({ cluster_name: cluster.cluster_name, suggested_quantity: cluster.distribution_gap }));\n    const channel = { platform: listing.platform, store_id: listing.store_id, store_name: listing.store_name, status,\n      fbo_stock: fbo, fbs_stock: fbs, stock_source: warehouse ? 'warehouse_recommendation.current' : 'funnel.P0',\n      distribution_gap: number(warehouse?.summary?.distribution_gap), top_clusters,\n      days_of_stock: number(warehouse?.summary?.days_of_stock), daily_sales: number(warehouse?.summary?.daily_sales) };\n    channels.push(channel);\n    if (status === 'fbs_fallback') alerts.push({ type: '渠道失衡', level: 'yellow',\n      message: `${listing.platform.toUpperCase()} ${listing.store_name}官方仓库存${fbo}件，商品未断货，由白俄本地仓FBS兜底；配送通常慢2～4天，可能影响转化和搜索排位。`,\n      advice: '按官方仓分布缺口安排送仓，优先核心销售集群；FBS挂载库存不能跨Listing相加为物理库存。', evidence: channel });\n    if (status === 'channel_stockout' && demand) alerts.push({ type: '渠道失衡', level: 'yellow',\n      message: `${listing.platform.toUpperCase()} ${listing.store_name}官方仓与FBS均接近售罄，近期仍有销售或加购需求。`,\n      advice: d.days_in_stock !== null && d.days_in_stock >= 28 ? '立即从白俄总仓向该渠道配货。' : '核实其他渠道冗余现货，评估跨平台紧急调拨。', evidence: channel });\n  }\n  if (!d.listings.length) missing.push('channel_listings');\n  return { channels, alerts, missing, unallocated_stock: null,\n    limitation: '各Listing的FBS可能重复挂载同一白俄物理库存，当前API没有可去重的分配明细，不能用book_stock减Listing现货总和计算未铺发库存。' };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_35",
+      "type": "CODE",
+      "displayName": "库存积压检查：先执行保护门禁",
+      "parentName": "step_34",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}",
+          "events": "{{step_23['output']}}",
+          "supply": "{{step_32['output']}}",
+          "channels": "{{step_34['output']}}",
+          "velocity": "{{step_21['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d, velocity: v, events: e, supply: s, channels: ch }) => {\n  if (e.suppress_overstock) return { suppressed: true, reasons: [e.low_stock_gate && 'near_stockout', e.receipt_gate && 'receipt_14d_protection'].filter(Boolean), alerts: [], recovery_advice: e.receipt_recovery_advice };\n  const alerts = [];\n  if (s.total_cover_days > 180) alerts.push({ type: '库存积压', level: 'red', message: `全链库存覆盖${s.total_cover_days.toFixed(1)}天，超过180天。`, advice: '压缩后续排产并评估促销去库存。' });\n  if (v.v_effective === 0 && d.book_stock > 0) alerts.push({ type: '库存积压', level: 'yellow', message: '有在库库存但有效日销为0。', advice: '排查链接、价格和投放，并核实库存去化方案。' });\n  for (const channel of ch.channels) {\n    if (channel.fbo_stock > 0 && channel.days_of_stock > 90) alerts.push({ type: '库存积压', level: 'yellow', message: `${channel.platform.toUpperCase()}官方仓周转超过90天。`, advice: '核实平台超期仓储费风险并优化官方仓存量。', evidence: channel });\n    const listing = d.listings.find(row => row.store_id === channel.store_id && row.platform === channel.platform);\n    const history = listing?.rows_per_week || [];\n    const dormant = history.length >= 3 && history.every(row => row.values.orders === 0);\n    if (channel.fbo_stock === 0 && channel.fbs_stock > 0 && dormant) alerts.push({ type: '动销异常 · 渠道 Listing 休眠', level: 'yellow', message: `${channel.platform.toUpperCase()}仅FBS挂载库存，多个周期没有订单。`, advice: '排查链接屏蔽、定价和广告；白俄FBS库存不产生平台仓储费。', evidence: channel });\n  }\n  return { suppressed: false, reasons: [], alerts };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_36",
+      "type": "CODE",
+      "displayName": "S/A新品成长期：日销增长30%压力测试",
+      "parentName": "step_35",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}",
+          "config": "{{step_1['output']}}",
+          "velocity": "{{step_21['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d, velocity: v, config: c }) => {\n  const applicable = ['S', 'A'].includes(d.grade) && ['NEW', 'GRW'].includes(d.stage);\n  if (!applicable) return { applicable: false, alerts: [] };\n  const speed = v.v_effective;\n  const total_cover_days = d.book_stock !== null && d.incoming_quantity !== null && speed > 0 ? (d.book_stock + d.incoming_quantity) / (1.3 * speed) : null;\n  return { applicable, scenario: 'daily_sales_plus_30_pct', total_cover_days,\n    shortage_risk: total_cover_days === null ? null : total_cover_days < c.lead_time_days,\n    alerts: total_cover_days !== null && total_cover_days < c.lead_time_days ? [{ type: '销量增长压力测试', level: 'yellow', message: `销量增长30%时覆盖${total_cover_days.toFixed(1)}天，低于${c.lead_time_days}天。`, advice: '将增长情景单独纳入安全库存评估，保持基准指标独立。' }] : [] };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_37",
+      "type": "CODE",
+      "displayName": "CLR清库时间表：期限与停滞检查",
+      "parentName": "step_31",
+      "relationship": "branch",
+      "branchIndex": 1,
+      "branchName": "CLR清库诊断",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}",
+          "events": "{{step_23['output']}}",
+          "velocity": "{{step_21['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ data: d, velocity: v, events: e }) => {\n  const total = d.book_stock !== null && d.incoming_quantity !== null ? d.book_stock + d.incoming_quantity : null;\n  const deadline = e.clr_entry_date ? new Date(Date.parse(e.clr_entry_date) + 90 * 86400000).toISOString().slice(0, 10) : null;\n  const days_left = deadline ? (Date.parse(deadline) - Date.parse(d.as_of)) / 86400000 : null;\n  const days_to_clear = total !== null && v.v_effective > 0 ? total / v.v_effective : null;\n  const overdue_days = days_to_clear !== null && days_left !== null ? days_to_clear - days_left : null;\n  const alerts = [];\n  const stalled = total > 0 && v.v_effective === 0;\n  if (total !== 0 && (stalled || overdue_days > 0)) alerts.push({ type: '清库超期', level: stalled || overdue_days > 30 ? 'red' : 'yellow',\n    message: stalled ? '清库库存仍有剩余，但销售停滞。' : `按当前动销预计超过清库期限${overdue_days.toFixed(1)}天。`,\n    advice: '调整清仓价格与渠道配置，按固定90天清仓周期复核进度。' });\n  return { clearance_total: total, clr_entry_date: e.clr_entry_date, clr_entry_estimated: e.clr_entry_estimated,\n    latest_clearance_date: deadline, days_left, days_to_clear, overdue_days, stalled, completed: total === 0, alerts,\n    missing: [total === null && 'clearance_total', !deadline && 'clr_entry_date', v.v_effective === null && 'v_effective'].filter(Boolean) };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_38",
+      "type": "CODE",
+      "displayName": "CLR财务底线：广告失真与资产占用",
+      "parentName": "step_37",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "finance": "{{step_22['output']}}",
+          "clearance": "{{step_37['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ finance: f, clearance: c }) => {\n  const total_goods_cost = c.clearance_total !== null && f.unit_goods_cost !== null ? c.clearance_total * f.unit_goods_cost : null;\n  const raw_projected_profit = c.clearance_total !== null && f.avg_profit_per_unit !== null ? c.clearance_total * f.avg_profit_per_unit : null;\n  const loss_ratio = f.avg_profit_per_unit < 0 && f.unit_goods_cost > 0 ? Math.abs(f.avg_profit_per_unit) / f.unit_goods_cost : null;\n  const ad_distortion = f.avg_profit_per_unit < 0 && ((f.ad_ratio_pct !== null && f.ad_ratio_pct > 25) || (f.unit_goods_cost !== null && Math.abs(f.avg_profit_per_unit) > f.unit_goods_cost));\n  const alerts = [];\n  if (c.clearance_total > 0 && ad_distortion) alerts.push({ type: '广告空转失血', level: 'red',\n    message: '广告费占比或单件亏损命中失真保护；需核查低动销下广告费用分摊，不能据此直接认定商品刚性亏损。',\n    advice: '暂停或大幅调低付费广告，将预算转为清仓折让；如白俄总仓有可用现货，可小批量20～30件送往官方仓。' });\n  else if (c.clearance_total > 0 && f.avg_profit_per_unit < 0) alerts.push({ type: '清库亏损', level: loss_ratio > 0.3 ? 'red' : 'yellow',\n    message: loss_ratio !== null ? `按平滑利润测算，清库亏损约占货值${(loss_ratio * 100).toFixed(1)}%。` : '当前平滑单件利润为负，货值成本不足以核算亏损率。', advice: '核实清仓价格底线与可接受亏损预算。' });\n  return { total_goods_cost, raw_projected_profit, loss_ratio, ad_distortion, alerts,\n    limitation: ad_distortion ? '广告失真时账面预计损益仅作原始证据，不作为真实清库亏损预测。' : null };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_39",
+      "type": "PIECE",
+      "displayName": "诊断暂停：阶段缺失或不支持",
+      "parentName": "step_31",
+      "relationship": "branch",
+      "branchIndex": 2,
+      "branchName": "Otherwise",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "reason": "stage_missing_or_unknown",
+            "status": "insufficient_data"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_40",
+      "type": "CODE",
+      "displayName": "最终输出：健康度、关键指标与计算证据",
+      "parentName": "step_31",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "data": "{{step_14['output']}}",
+          "events": "{{step_23['output']}}",
+          "stress": "{{step_36['output']}}",
+          "supply": "{{step_32['output']}}",
+          "finance": "{{step_22['output']}}",
+          "channels": "{{step_34['output']}}",
+          "velocity": "{{step_21['output']}}",
+          "clearance": "{{step_37['output']}}",
+          "overstock": "{{step_35['output']}}",
+          "replenishment": "{{step_33['output']}}",
+          "clearance_finance": "{{step_38['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async (inputs) => {\n  const { data: d, velocity: v, finance: f, events: e } = inputs;\n  const objects = [inputs.supply, inputs.replenishment, inputs.channels, inputs.overstock, inputs.stress, inputs.clearance, inputs.clearance_finance].filter(x => x && typeof x === 'object');\n  const missing = [...new Set([...d.missing, ...f.missing, ...objects.flatMap(x => x.missing || []), ...(v.v_effective === null ? ['v_effective'] : [])])];\n  const rank = { red: 2, yellow: 1, green: 0 };\n  const alerts = objects.flatMap(x => x.alerts || []).sort((a, b) => (b.type === '补货预警') - (a.type === '补货预警') || rank[b.level] - rank[a.level]);\n  const supply = inputs.supply || {};\n  const clr = inputs.clearance || {};\n  const replenishment = inputs.replenishment || {};\n  const unknown_stage = !['NEW', 'GRW', 'MAT', 'CLR'].includes(d.stage);\n  const risk_level = alerts.some(x => x.level === 'red') ? 'red' : alerts.length || missing.length ? 'yellow' : 'green';\n  const round = value => typeof value === 'number' && Number.isFinite(value) ? Math.round(value * 10000) / 10000 : value ?? null;\n  const metrics = Object.fromEntries(Object.entries({ book_stock: d.book_stock, incoming_quantity: d.incoming_quantity,\n    v_effective: v.v_effective, days_in_stock: d.days_in_stock, total_cover_days: d.stage === 'CLR' ? clr.days_to_clear : supply.total_cover_days,\n    next_arrival_date: e.next_arrival?.expected_arrival_on, next_arrival_quantity: e.next_arrival?.quantity,\n    stockout_days_immediate: supply.stockout_days_immediate, missed_profit_cny: supply.missed_profit,\n    lead_time_gap: supply.lead_time_gap, buffer_days: supply.buffer_days,\n    suggested_replenishment_quantity: d.stage === 'CLR' ? 0 : replenishment.suggested_quantity,\n    replenishment_target_days: replenishment.target_days, avg_profit_per_unit_cny: f.avg_profit_per_unit,\n    annualized_return_pct: f.annualized_return_pct, clearance_total: clr.clearance_total,\n    latest_clearance_date: clr.latest_clearance_date, days_to_clear: clr.days_to_clear, overdue_days: clr.overdue_days }).map(([k, value]) => [k, round(value)]));\n  const labels = { book_stock: '当前库存', incoming_quantity: '在途库存', v_effective: '基准日销', days_in_stock: '在库覆盖天数', total_cover_days: '全链覆盖天数', next_arrival_date: '最近预计到货日', suggested_replenishment_quantity: '建议补货量' };\n  const markdown = [`# ${d.sku_code} 库存诊断`, `Grade / Stage：${d.grade || '缺失'} / ${d.stage || '缺失'}`, `基准日期：${d.as_of}（${d.time_zone}）`,\n    `综合风险：${{ red: '红', yellow: '黄', green: '绿' }[risk_level]}；诊断标签：${[...new Set(alerts.map(x => x.type))].join('、') || (missing.length ? '数据不足' : '未命中风险')}`,\n    '', '| 指标 | 数值 |', '| --- | --- |', ...Object.entries(labels).map(([key, label]) => `| ${label} | ${metrics[key] ?? '数据缺失'} |`), '',\n    ...alerts.flatMap(x => [`## ${x.type}`, x.message, x.advice,\n      x.type === '到货前断货' && metrics.missed_profit_cny !== null ? `预计错失利润：${metrics.missed_profit_cny}元；按三周平滑单件净利测算。` : '',\n      x.type === '渠道失衡' && x.evidence?.distribution_gap > 0 ? `官方仓分布缺口：${x.evidence.distribution_gap}件；优先集群：${x.evidence.top_clusters.map(c => `${c.cluster_name} ${c.suggested_quantity}件`).join('、')}。` : '', '']),\n    replenishment.reason || '', replenishment.warning || '',\n    supply.gap_explanation || '', e.clr_entry_estimated ? '清仓起点为估算值。' : '',\n    missing.length ? `数据缺口：${missing.join('、')}。` : '', ...v.warnings].filter(x => x !== null).join('\\n');\n  return { sku_code: d.sku_code, as_of: d.as_of, time_zone: d.time_zone, grade: d.grade, stage: d.stage,\n    status: missing.length || unknown_stage ? 'insufficient_data' : 'completed', risk_level, tags: [...new Set(alerts.map(x => x.type))],\n    metrics, alerts, missing, markdown, evidence: { selection: d.selection, source_periods: d.source_periods,\n      inventory_data_through: d.inventory_data_through, velocity: v, finance: f, arrivals: e, supply, replenishment,\n      channel_health: inputs.channels || null, overstock: inputs.overstock || null, stress: inputs.stress || null,\n      clearance: inputs.clearance || null, clearance_finance: inputs.clearance_finance || null } };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    }
+  ]
+}

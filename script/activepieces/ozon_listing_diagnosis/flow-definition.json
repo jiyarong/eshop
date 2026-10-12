@@ -1,0 +1,1722 @@
+{
+  "flowId": "yugdpW8OQC0LJiRJDAAvr",
+  "url": "https://flow.eshop.evexport.cn/projects/D39taW24AEQ4mNoeEO8IE/flows/yugdpW8OQC0LJiRJDAAvr",
+  "name": "Ozon Listing文本诊断 · JJ005-6 · V2.2模块化验证",
+  "status": "DISABLED",
+  "published": false,
+  "tokenReferences": [
+    "{{variables['YUANLONG_TOKEN']}}",
+    "{{variables['SUB2_API_KEY']}}"
+  ],
+  "testEnvironment": "TESTING",
+  "steps": [
+    {
+      "name": "trigger",
+      "type": "PIECE_TRIGGER",
+      "displayName": "manual_trigger",
+      "parentName": null,
+      "relationship": "trigger",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {},
+        "pieceName": "@activepieces/piece-manual-trigger",
+        "sampleData": {
+          "lastTestDate": "2026-10-10T08:39:55.830Z",
+          "sampleDataFileId": "1axRJIKzka9OcYSP8CFV9"
+        },
+        "triggerName": "manual_trigger",
+        "pieceVersion": "0.0.8",
+        "propertySettings": {}
+      }
+    },
+    {
+      "name": "step_1",
+      "type": "PIECE",
+      "displayName": "01 固定SKU与模型参数（修改入口）",
+      "parentName": "trigger",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "model": "gpt-6-sol",
+            "sku_code": "JJ005-6",
+            "ai_provider": "custom",
+            "erp_base_url": "https://eshop.evexport.cn",
+            "llm_base_url": "https://sub.foresight-soft.com",
+            "rule_version": "Ozon Listing V2.2",
+            "llm_max_tokens": 12000,
+            "min_funnel_views": 100,
+            "funnel_relative_drop": 0.3
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_2",
+      "type": "PIECE",
+      "displayName": "GET 基础经营状态",
+      "parentName": "step_1",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/base_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_3",
+      "type": "PIECE",
+      "displayName": "提取 基础经营状态（字段适配入口）",
+      "parentName": "step_2",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "base": "{{step_2['output'].body.data.base}}",
+            "meta": {
+              "period": "{{step_2['output'].body.data.period}}",
+              "sku_code": "{{step_2['output'].body.data.sku_code}}",
+              "schema_version": "{{step_2['output'].body.data.schema_version}}"
+            }
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_4",
+      "type": "PIECE",
+      "displayName": "GET Ozon销售漏斗",
+      "parentName": "step_3",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/sales_funnel_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_5",
+      "type": "PIECE",
+      "displayName": "提取 Ozon销售漏斗（字段适配入口）",
+      "parentName": "step_4",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_4['output'].body.data.period}}",
+              "sku_code": "{{step_4['output'].body.data.sku_code}}",
+              "schema_version": "{{step_4['output'].body.data.schema_version}}"
+            },
+            "listings": "{{step_4['output'].body.data.sales_funnel.sku_funnel_store_listing_perweek.store_listings}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_6",
+      "type": "PIECE",
+      "displayName": "GET SEO搜索词",
+      "parentName": "step_5",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/search_terms_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_7",
+      "type": "PIECE",
+      "displayName": "提取 SEO搜索词（字段适配入口）",
+      "parentName": "step_6",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_6['output'].body.data.period}}",
+              "sku_code": "{{step_6['output'].body.data.sku_code}}",
+              "schema_version": "{{step_6['output'].body.data.schema_version}}"
+            },
+            "weeks": "{{step_6['output'].body.data.search_terms_per_week}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_8",
+      "type": "PIECE",
+      "displayName": "GET 库存与缺货证据",
+      "parentName": "step_7",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/v3/sku/inventory_context.json",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {
+            "sku_code": "{{step_1['output'].sku_code}}"
+          },
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_9",
+      "type": "PIECE",
+      "displayName": "提取 库存与缺货证据（字段适配入口）",
+      "parentName": "step_8",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "meta": {
+              "period": "{{step_8['output'].body.data.period}}",
+              "sku_code": "{{step_8['output'].body.data.sku_code}}",
+              "schema_version": "{{step_8['output'].body.data.schema_version}}"
+            },
+            "inventory": "{{step_8['output'].body.data.inventory}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_10",
+      "type": "PIECE",
+      "displayName": "POST 只读查询：Listing事实与原始文本",
+      "parentName": "step_9",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/sql_queries.json",
+          "body": {
+            "data": {
+              "sql": "SELECT sk.sku_code, sk.product_name, sk.product_info, sk.color, sk.size, sk.spec, sk.features,\nsp.id AS sku_product_id, sp.store_id, st.store_name, sp.product_id, sp.offer_id,\np.name AS title, p.description_category_id, p.type_id, p.synced_at AS product_synced_at,\np.ozon_product_id IS NOT NULL AS source_found, a.ozon_product_id IS NOT NULL AS attributes_synced,\np.raw_json -> 'primary_image' AS primary_image, p.images,\nCOALESCE(p.raw_json ->> 'description', a.raw_json ->> 'description') AS description,\na.product_attributes, a.complex_attributes, a.synced_at AS attributes_synced_at\nFROM ec_skus sk\nJOIN ec_sku_products sp ON sp.sku_code = sk.sku_code AND sp.platform = 'ozon' AND sp.is_active = TRUE\nJOIN ec_stores st ON st.id = sp.store_id\nLEFT JOIN raw_ozon_products p ON p.account_id = st.ozon_raw_account_id AND p.ozon_product_id::text = sp.product_id\nLEFT JOIN raw_ozon_product_attributes a ON a.account_id = st.ozon_raw_account_id AND a.ozon_product_id::text = sp.product_id\nWHERE sk.sku_code = '{{step_1['output'].sku_code}}' AND sk.deleted_at IS NULL\nORDER BY sp.id",
+              "limit": 500,
+              "offset": 0
+            }
+          },
+          "method": "POST",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "json",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {},
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_11",
+      "type": "PIECE",
+      "displayName": "提取 Listing事实与原始文本（字段适配入口）",
+      "parentName": "step_10",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "rows": "{{step_10['output'].body.rows}}",
+            "success": "{{step_10['output'].body.success}}",
+            "pagination": "{{step_10['output'].body.pagination}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_12",
+      "type": "PIECE",
+      "displayName": "POST 只读查询：官方属性定义与完整候选池",
+      "parentName": "step_11",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/sql_queries.json",
+          "body": {
+            "data": {
+              "sql": "SELECT DISTINCT p.description_category_id, p.type_id, c.attribute_id, c.attribute_complex_id,\nc.name, c.description, c.value_type, c.is_required, c.dictionary_id, c.max_value_count,\nc.is_collection, c.synced_at,\nCOALESCE((SELECT jsonb_agg(jsonb_build_object('id', v.dictionary_value_id, 'value', v.value) ORDER BY v.value)\nFROM raw_ozon_attribute_values v\nWHERE v.description_category_id = c.description_category_id AND v.type_id = c.type_id\nAND v.attribute_id = c.attribute_id), '[]'::jsonb) AS options\nFROM ec_sku_products sp\nJOIN ec_stores st ON st.id = sp.store_id\nJOIN raw_ozon_products p ON p.account_id = st.ozon_raw_account_id AND p.ozon_product_id::text = sp.product_id\nJOIN raw_ozon_category_attributes c ON c.description_category_id = p.description_category_id AND c.type_id = p.type_id\nWHERE sp.sku_code = '{{step_1['output'].sku_code}}' AND sp.platform = 'ozon' AND sp.is_active = TRUE\nORDER BY p.description_category_id, p.type_id, c.attribute_id, c.attribute_complex_id",
+              "limit": 500,
+              "offset": 0
+            }
+          },
+          "method": "POST",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "json",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {},
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_13",
+      "type": "PIECE",
+      "displayName": "提取 官方属性定义与完整候选池（字段适配入口）",
+      "parentName": "step_12",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "rows": "{{step_12['output'].body.rows}}",
+            "success": "{{step_12['output'].body.success}}",
+            "pagination": "{{step_12['output'].body.pagination}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_14",
+      "type": "PIECE",
+      "displayName": "整合六个来源（后续模块统一输入）",
+      "parentName": "step_13",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "base": "{{step_3['output']}}",
+            "config": "{{step_1['output']}}",
+            "funnel": "{{step_5['output']}}",
+            "search": "{{step_7['output']}}",
+            "catalog": "{{step_13['output']}}",
+            "listing": "{{step_11['output']}}",
+            "inventory": "{{step_9['output']}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_15",
+      "type": "PIECE",
+      "displayName": "已停用：旧HTTP模型检查（由AI Provider管理）",
+      "parentName": "step_14",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "skipped",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].llm_base_url}}/v1/models",
+          "body": {},
+          "method": "GET",
+          "headers": {
+            "Accept": "application/json"
+          },
+          "timeout": 60,
+          "authType": "BEARER_TOKEN",
+          "body_type": "none",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['SUB2_API_KEY']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {},
+          "proxy_settings": {},
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_16",
+      "type": "PIECE",
+      "displayName": "POST 只读查询：实际SEO搜索词明细",
+      "parentName": "step_15",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].erp_base_url}}/ai/sql_queries.json",
+          "body": {
+            "data": {
+              "sql": "SELECT sp.id AS sku_product_id, sp.store_id, st.store_name, sp.sku_code, d.query,\nd.period_from, d.period_to, d.top_order_by, d.top_order_rank,\nd.unique_search_users, d.unique_view_users, d.view_conversion, d.order_count, d.gmv, d.position, d.synced_at\nFROM ec_sku_products sp\nJOIN ec_stores st ON st.id = sp.store_id\nJOIN raw_ozon_product_query_details d ON d.account_id = st.ozon_raw_account_id AND d.sku::text = sp.platform_sku_id\nWHERE sp.sku_code = '{{step_1['output'].sku_code}}' AND sp.platform = 'ozon' AND sp.is_active = TRUE\nAND d.period_from >= '{{step_7['output'].meta.period.from}}'::date\nAND d.period_to <= '{{step_7['output'].meta.period.to}}'::date\nORDER BY d.period_from DESC, d.top_order_by, d.top_order_rank",
+              "limit": 500,
+              "offset": 0
+            }
+          },
+          "method": "POST",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          "timeout": 120,
+          "authType": "BEARER_TOKEN",
+          "body_type": "json",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['YUANLONG_TOKEN']}}"
+          },
+          "failureMode": "continue_none",
+          "queryParams": {},
+          "proxy_settings": {},
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_17",
+      "type": "PIECE",
+      "displayName": "提取 SEO词明细（字段适配入口）",
+      "parentName": "step_16",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "rows": "{{step_16['output'].body.rows}}",
+            "success": "{{step_16['output'].body.success}}",
+            "pagination": "{{step_16['output'].body.pagination}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_18",
+      "type": "CODE",
+      "displayName": "规范化Listing、字典与证据；校验来源完整性",
+      "parentName": "step_17",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "sources": "{{step_14['output']}}",
+          "search_details": "{{step_17['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ sources: s, search_details: search }) => {\n  const parse = (v, fallback) => typeof v === 'string' ? JSON.parse(v) : (v ?? fallback);\n  const text = v => String(v ?? '').replace(/<br\\s*\\/?\\s*>/gi, '\\n').replace(/<[^>]+>/g, '').trim();\n  const flatten = list => parse(list, []).flatMap(a => [a, ...flatten(a.attributes ?? [])]);\n  const richText = v => {\n    if (Array.isArray(v)) return v.map(richText).filter(Boolean).join('\\n');\n    if (v && typeof v === 'object') return Object.entries(v).map(([k, x]) => /^(text|title|content|caption|description|items|blocks|widgets|children)$/i.test(k) ? richText(x) : (typeof x === 'object' ? richText(x) : '')).filter(Boolean).join('\\n');\n    return typeof v === 'string' ? text(v) : '';\n  };\n  for (const key of ['base', 'funnel', 'search', 'inventory']) {\n    const meta = s[key]?.meta;\n    if (meta?.schema_version !== 3 || meta.sku_code !== s.config.sku_code) throw new Error(`${key}: SKU/schema mismatch`);\n    if (meta.period.as_of !== s.base.meta.period.as_of || meta.period.time_zone !== s.base.meta.period.time_zone) throw new Error(`${key}: date/time zone mismatch`);\n  }\n  for (const [key, source] of Object.entries({ listing: s.listing, catalog: s.catalog, search })) {\n    if (source?.success !== true || !Array.isArray(source.rows) || source.pagination?.has_more) throw new Error(`${key}: incomplete query result; narrow the period or add pagination`);\n  }\n  if (!/^[A-Z0-9_-]+$/.test(s.config.sku_code)) throw new Error('SKU must use letters, digits, underscores or hyphens');\n  const catalog = s.catalog.rows.map(a => ({\n    id: Number(a.attribute_id), complex_id: Number(a.attribute_complex_id), name: a.name,\n    category_id: a.description_category_id, type_id: a.type_id, required: a.is_required,\n    input_mode: Number(a.dictionary_id) > 0 ? 'dictionary' : 'free_input',\n    max_count: Number(a.max_value_count) > 0 ? Number(a.max_value_count) : (a.is_collection ? null : 1),\n    options: parse(a.options, []), synced_at: a.synced_at\n  }));\n  const terms = new Map();\n  for (const row of [...search.rows].sort((a, b) => String(a.synced_at).localeCompare(String(b.synced_at)))) {\n    const key = JSON.stringify([row.sku_product_id, row.period_from, row.period_to, row.query]);\n    terms.set(key, { sku_product_id: row.sku_product_id, query: row.query, period_from: row.period_from,\n      period_to: row.period_to, unique_search_users: row.unique_search_users, unique_view_users: row.unique_view_users,\n      order_count: row.order_count, gmv: row.gmv, position: row.position,\n      source_rankings: [...(terms.get(key)?.source_rankings ?? []), row.top_order_by], synced_at: row.synced_at });\n  }\n  const listings = s.listing.rows.map(row => {\n    if (row.sku_code !== s.config.sku_code || !row.source_found || !row.attributes_synced || !row.title) throw new Error(`Listing ${row.sku_product_id}: missing critical source data`);\n    const attributes = flatten(row.product_attributes).concat(flatten(row.complex_attributes));\n    const value = id => attributes.filter(a => Number(a.id) === id).flatMap(a => a.values ?? []).map(v => v.value).join('\\n');\n    const definitions = catalog.filter(a => a.category_id === row.description_category_id && a.type_id === row.type_id);\n    if (!definitions.length) throw new Error(`Listing ${row.sku_product_id}: missing category definitions`);\n    const current = definitions.map(a => ({ ...a, current_values: attributes.filter(v => Number(v.id) === a.id && Number(v.complex_id ?? 0) === a.complex_id).flatMap(v => v.values ?? []).map(v => ({ id: v.dictionary_value_id || null, value: v.value })) }));\n    const unknown = attributes.filter(a => !definitions.some(d => d.id === Number(a.id))).map(a => ({ id: Number(a.id), name: a.name, input_mode: 'unknown', options: [], max_count: null, current_values: a.values ?? [] }));\n    const richRaw = value(11254);\n    let rich = null;\n    try { rich = richRaw ? JSON.parse(richRaw) : null; } catch { rich = { text: richRaw }; }\n    const images = [].concat(parse(row.primary_image, []), parse(row.images, [])).map(x => typeof x === 'string' ? x : x?.url).filter(x => /^https:\\/\\//.test(x ?? ''));\n    return {\n      sku_product_id: row.sku_product_id, store_id: row.store_id, store_name: row.store_name,\n      product_id: row.product_id, category_id: row.description_category_id, type_id: row.type_id,\n      product_info: row.product_info || null, product_name: row.product_name,\n      title: row.title, description: text(row.description || value(4191)), rich_content: rich,\n      rich_content_text: richText(rich), rich_content_configured: Boolean(richRaw),\n      primary_image_url: images[0] || null, product_synced_at: row.product_synced_at,\n      attributes_synced_at: row.attributes_synced_at, attributes: current.concat(unknown),\n      funnel: s.funnel.listings.filter(l => l.platform === 'ozon' && l.sku_product_id === row.sku_product_id).flatMap(l => l.rows_per_week),\n      search_terms: [...terms.values()].filter(t => t.sku_product_id === row.sku_product_id),\n      search_summary: s.search.weeks.map(w => ({ from: w.period_from, to: w.period_to, is_partial: w.is_partial, stores: w.stores.filter(st => st.platform === 'ozon' && st.store_id === row.store_id) }))\n    };\n  });\n  if (!listings.length) throw new Error('No active Ozon Listing found');\n  return { sku_code: s.config.sku_code, grade: s.base.base.current_grade ?? null, stage: s.base.base.current_stage ?? null,\n    as_of: s.base.meta.period.as_of, time_zone: s.base.meta.period.time_zone, listings,\n    inventory: s.inventory.inventory.current_inventory_info, periods: { funnel: s.funnel.meta.period, search: s.search.meta.period } };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_19",
+      "type": "CODE",
+      "displayName": "经营敏感度与完整周漏斗异常判断",
+      "parentName": "step_18",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "config": "{{step_1['output']}}",
+          "context": "{{step_18['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ context: d, config: c }) => {\n  const metrics = ['ozon_click_rate', 'cart_rate', 'visit_to_conversion_rate'];\n  const listings = d.listings.map(l => {\n    const completed = l.funnel.filter(p => p.period_to < d.as_of).sort((a, b) => b.period_to.localeCompare(a.period_to));\n    const [latest, previous] = completed;\n    const alerts = [];\n    if (latest && previous && latest.values.product_card_views >= c.min_funnel_views && previous.values.product_card_views >= c.min_funnel_views) {\n      for (const metric of metrics) {\n        const a = latest.values[metric], b = previous.values[metric];\n        if (a !== null && a !== undefined && b > 0 && a / b <= 1 - c.funnel_relative_drop) alerts.push({ metric, latest: a, previous: b, relative_drop: 1 - a / b });\n      }\n    }\n    const high = d.stage !== 'CLR' && (['S', 'A'].includes(d.grade) || d.stage === 'NEW' || alerts.length > 0);\n    const warnings = [];\n    if (!d.grade || !d.stage) warnings.push('Grade/Stage missing; limit conclusions');\n    if (!l.product_info) warnings.push('No technical product_info; do not invent facts');\n    if (!l.description) warnings.push('Description absent from synced source; cannot confirm live absence');\n    if (!l.search_terms.length) warnings.push('No actual query terms; SEO semantic attribution unavailable');\n    if (l.attributes.some(a => a.input_mode === 'dictionary' && !a.options.length)) warnings.push('Some official dictionaries are not locally cached; no new values may be invented');\n    return { sku_product_id: l.sku_product_id, grade: d.grade, stage: d.stage,\n      text_strategy: high ? 'pass_then_high_value_only' : 'pass_then_keep',\n      attribute_strategy: d.stage === 'CLR' ? 'correct_errors_and_relevant_attributes' : 'structured_optimal',\n      funnel_anomaly: alerts.length > 0, funnel_alerts: alerts,\n      latest_complete_period: latest ?? null, current_partial_period: l.funnel.find(p => p.period_from <= d.as_of && p.period_to >= d.as_of) ?? null,\n      warnings, attribution_rule: 'A funnel anomaly raises inspection sensitivity and never proves a Listing defect. Partial-week conversions are provisional.' };\n  });\n  return { listings, funnel_anomaly_count: listings.filter(l => l.funnel_anomaly).length };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_20",
+      "type": "PIECE",
+      "displayName": "诊断规则与两个LLM输出契约（Prompt修改入口）",
+      "parentName": "step_19",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "rule": "# Ozon Listing 闭环诊断规则（生产 V2.2）\n\n## 一、角色定位与总原则\n你是一名资深 Ozon 商品卡属性、文本与转化诊断专家，负责诊断并在确有必要时优化：\n- Attributes（类目属性）：追求结构化最优\n- Title（标题）、Description（长描述）与 Rich-content（富文本）：遵循“及格线 + 经营价值”原则\n\n本规则不负责主图设计与视觉修改（主图仅作防伪与一致性参考）。\n\n**核心操盘哲学**：\n> **Attributes 追求结构化最优；Title、Description、Rich-content 不及格就重做，及格则克制；S/A、NEW 和漏斗异常品提高优化敏感度，但任何修改都必须有明确依据和实际经营价值。**\n\n---\n\n## 二、诊断敏感度矩阵与经营定位\n\n在诊断前，必须先结合 SKU 的 Stage、Grade 及漏斗表现确定诊断敏感度，严禁无差别对待：\n\n| 商品状态 | Attributes | Title | Description / Rich-content |\n| :--- | :--- | :--- | :--- |\n| **S / A** | 追求结构化最优 | 及格基础上寻找高价值优化 | 及格基础上寻找高价值优化 |\n| **NEW** | 追求结构化最优 | 高敏感检查 | 高敏感检查 |\n| **漏斗异常** | 追求结构化最优 | 高敏感检查是否存在具体问题 | 高敏感检查是否存在具体问题 |\n| **B / C** | 追求结构化最优 | 过及格线即可 | 过及格线即可 |\n| **CLR** | 纠正硬伤 + 相关属性完善 | 过及格线即可 | 过及格线即可 |\n\n### 【核心铁律】漏斗异常 ≠ Listing 有问题\n当某个 SKU 转化率低、CTR 差或加购低迷时，**严禁直接推导为 Listing 存在缺陷**（低转化往往由价格、缺货、差评、大盘竞争或广告出价导致）。\n- **正确推演链路**：漏斗异常 $\\to$ 提高 Listing 检查敏感度 $\\to$ 深入核对是否存在能够解释该异常的具体 Listing 缺陷 $\\to$ 仅在找到有证据支持的问题时才提出修改。\n- **无病坦白机制**：若排查后未发现足以解释异常的缺陷，必须明确说明：*“当前 Listing 未发现足以解释漏斗异常的明显问题，建议排查价格、竞品动态或物流时效”*。坚决不要为了“完成诊断”而强行修改标题或文案。\n\n---\n\n## 三、类目属性（Attributes）诊断原则：【追求结构化最优】\n\n属性是 Ozon 搜索和筛选的重要结构化信息来源，原则上所有 SKU 均应追求结构化最优：\n\n1. **官方选项池与名额利用（应填尽填）**：\n   - 严格对照 Context 中提供的官方 `options` 候选池与 `max_count` 上限；\n   - 在**“真实、相关、有搜索/筛选意义”**的前提下，只要有名额且符合商品实际，应填尽填（例如补齐高频面料词、结构形态词）；\n   - **严禁为了凑满 `max_count` 强行勾选无关选项**。\n2. **形态与类目纠偏（必纠 · P0）**：\n   - 必须纠正错误属性、错误类目与形态错选（例如：立体多层立柱猫爬架错选为扁平板式 `Доска`，而漏选核心形态 `Столбик`；此类错选会导致商品进入错误价格带，属于严重缺陷）。\n3. **属性内部逻辑自洽**：\n   - 属性字段之间不得产生物理逻辑冲突（例如：不能同时勾选“落地式 Напольный”与“悬挂式 Подвесная”）。\n4. **字典合法性强制约束**：\n   - 字典属性（`input_mode: dictionary`）的建议值**必须 100% 严格来源于 Context 中的 options 列表**，严禁自造字典外词汇。\n5. **系统字段白名单（免检）**：\n   - `Название модели` 与 `Объединить в похожие товары` 属于变体聚合系统字段，常由系统自动生成 UUID 或内部编码。在单 SKU 视角下**严禁将其判定为乱码或错误，直接忽略免检**。\n\n---\n\n## 四、Title / Description / Rich-content 诊断原则：【及格线 + 经营价值】\n\n文案改动具有一定经营成本，因此改动门槛必须严格管理：\n\n### 1. “及格线”门槛与分层管理机制\n只要商品卡文本满足以下条件，即视为达到**及格线（Pass）**：\n- 核心商品是什么能够说清楚；\n- 俄语自然，无明显语法错误或严重机翻感；\n- 核心卖点与信息表达清晰；\n- 内部无矛盾打架（Title ↔ Attributes ↔ Description ↔ 主图一致）；\n- 无严重关键词堆砌；\n- 买家基本能够快速理解商品。\n\n**【及格后的分层处理法则】**：\n- **B / C / CLR 商品**：达到及格线后，**默认直接 KEEP**，不投入运营成本进行非必要调整；\n- **S / A、NEW、漏斗异常商品**：达到及格线后进入“克制区”，原则上克制修改；但**仍可继续检查是否存在明确、高置信度且具有实际经营价值的优化机会**（如关键转化痛点破局、高权重品类词规范布局）。\n- **【克制红线】**：绝不能因为*“可以换一个词”、“可以增加几个关键词”、“可以再加一个卖点”、“可以让文字更优美”、“还可以进一步 SEO”*等边际理由制造修改任务。\n\n### 2. 核心规格缺失不要机械判错\n- **判定条件**：只有当某项规格（如大件的展开尺寸、电器核心功率、特定容量）**对该商品的搜索理解或购买决策确实具有明显重要性**时，才考虑因为缺失而发起修改。\n- 严禁看到“未注明功率/容量/尺寸”就机械化判定 Listing 不合格。\n\n### 3. 不及格熔断大改（不及格就大改）\n若整体质量明显不及格，严禁只修补一两个词，必须明确判定为“不及格”并执行整体重塑：\n- 核心品类词缺失或模糊，买家看完全文无法确认商品主体；\n- 俄语存在严重机翻语病，严重影响阅读与品牌信任；\n- 关键词无脑恶意堆砌，破坏正常阅读结构；\n- 存在改变商品材质、物理性质、核心功能的严重虚假陈述；\n- Listing 自身内部数据严重冲突打架；\n- 详情信息结构极度混乱，核心购买疑虑（如适用场景、安装、清单）完全未交代。\n\n### 4. Rich-content 独立核查原则\n- Rich-content 遵循同样的“及格线 + 经营价值”原则，但**必须作为独立模块单独检查**；\n- 不能因为 Description 写得好，就默认 Rich-content 没问题；\n- **拒绝主观审美偏好**：只有当 Rich-content 自身存在事实冲突，或**信息结构明显混乱并影响理解与转化**时，才建议重新设计文案结构。\n\n---\n\n## 五、事实判断决策天平（防挑刺与合规底线）\n\n在对照技术资料（`product_info`）与 Listing 时，严格遵守：\n1. **内部冲突（必纠 · P0）**：单个 Listing 内部的标题、属性、描述或主图自相矛盾（如描述写的尺寸与属性/主图打架），必须优先纠正。各店铺 Listing 互相独立，严禁跨店比对报问题。\n2. **纯录入错误（必纠 · P0）**：错字、错选类目、单位颠倒、关键数值错位填报等低级错误。\n3. **质变型虚标（必纠 · P0）**：改变材质（塑料改金属）、核心功能或配件缺失等买家到手即穿帮的客诉雷区。\n4. **合理数值包装（默认放行）**：电池容量微调放大、水箱标高 10ml、承重合理上浮等迎合竞品大盘的常规营销包装，**默认不要报错**。\n5. **文档缺失但 Listing 具备（默认放行）**：常规质保、防水等级、食品级材质等合理运营发挥，只要无确凿反证，**默认不要报错**。\n\n---\n\n## 六、SEO 搜索词关联度分析\n\n若提供搜索词报表（`search_terms_per_week`）：\n1. **高曝光并不等于垃圾流量**：只有先确认搜索词与商品存在**明确的跨品类、跨场景脱节**（语义根本无关），再结合曝光与极低转化，才能定性为有负面影响的错误流量。\n2. **谨慎推导诱因**：属性过度勾选、标题歧义仅能列为“疑似诱因”，严禁在无确凿依据时断言算法被某单个词彻底带偏。\n3. **针对性拔刺**：针对经核实的跨品类脱节流量，给出属性取消勾选或删词建议。\n\n---\n\n## 七、主图事实反光镜原则\n主图不属于本规则优化范围。仅将主图作为“事实检验镜”：核对实物外观、颜色、配件是否与文字冲突。若产生冲突，客观指出不一致之处供核查，**不提供主图设计方案，也不武断判定主图一定准确**。\n\n---\n\n## 八、输出状态与格式规范\n\n### 1. 状态判定逻辑门禁（强制执行）\n严禁将问题严重度与修改工作量混淆，必须严格按以下规则输出总状态 `status`：\n- **`status: has_error`（红色 · 存在硬伤 / 必须立刻处理）**：\n  **只要识别出至少 1 个 P0 级问题，总状态必须一票否决定为 `has_error`！** 严禁以“只需微调一个数值/属性”为由降级为 needs_optimization。\n- **`status: needs_optimization`（黄色 · 结构欠优 / 建议完善）**：\n  **必须在零 P0 错误的前提下**，且存在明确、高置信度、具有实际经营价值的 **P1 级优化项**（如官方属性名额未吃满补齐、高敏感品高价值优化机会）时，才输出此状态。\n- **`status: healthy`（绿色 · 达标健康 / 维持现状）**：\n  零 P0 错误，且无明确高价值 P1 优化项（或 B/C/CLR 级品已过及格线），直接输出 `healthy`（KEEP）。\n\n### 2. Executive Summary\n- **status**: `healthy` / `needs_optimization` / `has_error`\n- **SKU 经营状态认知**：明确当前 Stage/Grade，指出本次审查采用的是“及格线默认维稳”还是“及格基础上寻找高价值优化”策略；\n- **核心问题 (Top 1~3)**：直击最关键病灶（无核心问题则明确写明保留依据）；\n- **漏斗与 Listing 归因说明**：若漏斗异常，明确指出 Listing 是否存在足以解释异常的具体缺陷；若无，客观说明归因；\n- **SEO 流量质量判定**：说明是否存在经核实的跨品类错误流量。\n\n### 3. Problems List\n只列真正值得处理的问题。若无实质问题输出：`No significant Listing issue found.`\n> **优先级标准**：\n> - **P0**：必须优先处理的明确错误 / 内部冲突 / 形态错选 / 质变型虚标 / 经核实的严重 SEO 误召回。（**出现即触发 has_error**）\n> - **P1**：明确值得优化，且具有实际经营价值的问题（如高频核心属性补齐、名额吃满、高价值文案优化。普通文字笔误仅在影响理解、事实准确性或实际经营时才列入）。\n\n| 优先级 (P0/P1) | 店铺名称 | 缺陷类型 (内部冲突/纯错误/形态错选/质变虚标/SEO疑似误导/缺失) | 证据 (前台现状 vs 事实/规则) | 业务影响 | 修复建议 |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n\n### 4. Attributes Action Table（核心交付：结构化最优）\n*(若属性无需修改，输出：`Attributes: KEEP`)*\n| 店铺名称 | 属性名称 (俄文) | 当前值 | 建议修正/补充值 (必须来自 options) | 调整理由 (纠错 / 纠偏 / 吃满名额) |\n| :--- | :--- | :--- | :--- | :--- |\n\n### 5. Title\n- 若及格（且无高价值优化）：`Title: KEEP`（简述符合及格线的理由）；\n- 若不及格或存在高置信度、高价值优化机会：给出 `Recommended Title`（附中文释义与首屏截断词逻辑）。\n\n### 6. Description\n- 若及格（且无高价值优化）：`Description: KEEP`；\n- 若不及格或存在高置信度、高价值优化机会：输出完整模块化俄文 Description（附中文对照）。\n\n### 7. Rich-content\n- 若无配置或及格：`Rich-content: KEEP`；\n- 若存在信息结构明显混乱并影响理解与转化的问题：指出具体模块缺陷并给出优化结构大纲。\n\n### 8. Action Plan\n为运营梳理最小落地操作清单（属性修改项、文本替换项）。若无需动作，输出：`No action required. Keep the current Listing.`",
+            "text_contract": "本步骤独立检查 Title、Description、Rich-content、SEO。属性结果仅作为已验证参考，禁止重复登记属性问题。每个店铺分别输出，严禁跨店对比。\n必须逐字引用本Listing的title/description/rich_content_text或实际search_terms.query短句作为current_evidence。仅当对应字段为空可用__EMPTY__。P0/P1均只列confidence=high且证据明确问题；因果推断克制。SEO误召回必须先证明跨品类脱节，再结合真实曝光和极低转化。无实际词明细时traffic_quality=insufficient_data，verified_terms=[]。只有零订购+少量曝光不足以证明错流量。主图仅验证颜色/外观/配件一致性，不设计，不武断认定图片正确；若无法读取标注限制。\nB/C/CLR通过及格线必须KEEP；S/A/NEW/真实完整周漏斗异常通过后仅明确高价值机会可REWRITE。最近不完整周转化是暂定数据，不能直接触发Listing归因。Description为空可能是同步缺失，应insufficient_data而非确认前台缺失。rich_content_configured=false必须not_configured+KEEP。未找到可解释完整周异常的缺陷，明确说明“当前Listing未发现足以解释漏斗异常的明显问题，建议排查价格、竞品动态或物流时效”。没有完整周异常时listing_explains_anomaly=false。\n常规数值营销包装默认放行；整架承重上限可以小于各层上限之和，不能仅因6×150!=750报错；明显4层与6层冲突可核实。引用技术文档时不要机械纠正合理数值包装。缺少文档证明的防水/质保等没有确凿反证默认放行。\n输出严格JSON，不要Markdown围栏：{\"sku_code\":\"当前SKU\",\"listings\":[{\"sku_product_id\":253,\"summary\":\"中文Executive Summary包含经营策略\",\"top_issues\":[\"最多3项，无问题则写KEEP依据\"],\"problems\":[{\"id\":\"T1\",\"module\":\"title|description|rich_content|seo\",\"priority\":\"P0|P1\",\"confidence\":\"high\",\"defect_type\":\"内部冲突|纯错误|形态错选|质变虚标|SEO疑似误导|缺失\",\"current_evidence\":\"当前模块逐字原文短句或__EMPTY__\",\"fact_evidence\":\"来源与论据\",\"impact\":\"业务影响\",\"recommendation\":\"具体最小操作\"}],\"title\":{\"quality\":\"pass|fail|insufficient_data\",\"action\":\"KEEP|REWRITE\",\"reason\":\"中文理由\",\"recommended_ru\":null,\"recommended_zh\":null,\"first_screen_logic\":null},\"description\":{\"quality\":\"pass|fail|insufficient_data\",\"action\":\"KEEP|REWRITE\",\"reason\":\"中文理由\",\"recommended_ru\":null,\"recommended_zh\":null},\"rich_content\":{\"quality\":\"pass|fail|insufficient_data|not_configured\",\"action\":\"KEEP|REWRITE\",\"reason\":\"独立判断理由\",\"recommended_ru\":null,\"recommended_zh\":null},\"funnel_attribution\":{\"listing_explains_anomaly\":false,\"explanation\":\"完整周与未完整周区分，说明是否有具体Listing依据\"},\"seo\":{\"traffic_quality\":\"verified_irrelevant|no_verified_irrelevant|insufficient_data\",\"verified_terms\":[],\"explanation\":\"语义和数据证据\"},\"limitations\":[\"明确缺失或限制\"]}]}\n每个Listing必须且仅出现一次。REWRITE必须关联本模块问题并提供完整俄文替换稿和中文对照；Title同时提供first_screen_logic。不及格必须整体重塑，不做局部补词。Rich-content REWRITE给完整俄文结构大纲和中文对照。KEEP时recommended_ru/recommended_zh=null。\nseo.verified_terms只输出已核实的原始query字符串数组，不要输出对象。词级数值和证据放在seo.explanation与problems.fact_evidence。禁止输出自判总status，总状态由后续P0/P1门禁统一计算。",
+            "attributes_contract": "本步骤只负责 Attributes，包括 #Хештеги；Title/Description/Rich-content 交给下一步骤独立检查。忽略免检系统字段、媒体链接及报关系统字段。只对当前sku_product_id内部判断，禁止跨店比较。\n官方 max_count 为 null 表示未提供明确上限，不允许猜测；0已在输入转换成未知上限或单值约束。字典options为空只标注限制，不要生成新建议值。可移除错误值，但不得新增候选池外值。每个suggested_values是修改后该字段完整的最终值集合，保留正确现有值。核心 Type 可能由类目隐式确定，未出现在当前属性并不能单独证明平台商品缺少必填类型。文档中的常规承重数值包装按规则默认放行；“单层150kg、整架750kg”可表示不同约束，不能仅用6×150=900推导矛盾。\n任何问题必须confidence=high，current_evidence为该属性当前值内逐字原文短句（不要改写）；仅当current_values=[]时可用__EMPTY__。fact_evidence明确标明事实来源/规则和论据。P1必须真实、相关、有搜索/筛选或实际经营价值，严禁为凑满名额改动。不得把未知或缺失资料输出为P0。输出严格JSON，禁止Markdown代码围栏。\n格式：{\"sku_code\":\"当前SKU\",\"listings\":[{\"sku_product_id\":253,\"assessment\":\"KEEP|CHANGE|insufficient_data\",\"summary\":\"中文总结\",\"problems\":[{\"id\":\"A1\",\"attribute_id\":6712,\"complex_id\":0,\"priority\":\"P0|P1\",\"confidence\":\"high\",\"defect_type\":\"内部冲突|纯错误|形态错选|质变虚标|SEO疑似误导|缺失\",\"current_evidence\":\"逐字短引文或__EMPTY__\",\"fact_evidence\":\"中文论据\",\"impact\":\"业务影响\",\"recommendation\":\"最小修复\"}],\"actions\":[{\"problem_id\":\"A1\",\"attribute_id\":6712,\"complex_id\":0,\"attribute_name\":\"俄文属性名称\",\"suggested_values\":[{\"id\":73552,\"value\":\"官方选项原值\"}],\"reason\":\"中文理由\"}],\"limitations\":[\"数据限制\"]}]}\n每个输入Listing必须且只能出现一次。free_input建议值id=null；dictionary的id和value必须严格匹配options。KEEP必须problems=[]、actions=[]。CHANGE必须有问题和动作。无证据的相关属性机会不要报。\n事实裁决补充：仅技术资料与Listing的单个数值不同，尚不能自动证明是纯录入错误。先排除测量口径、合理数值包装及资料版本差异；缺少单位颠倒、数量错位、Listing内部冲突或改变物理性质的明确证据时，不因单项数值差异制造P0或自动建议替换。必要时仅在limitations记录需核实的信息，不把疑点写成已确认错误。"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_21",
+      "type": "CODE",
+      "displayName": "组装属性诊断请求（官方候选池）",
+      "parentName": "step_20",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "config": null,
+          "policy": "{{step_19['output']}}",
+          "context": "{{step_18['output']}}",
+          "prompts": "{{step_20['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ context, policy, prompts }) => {\n  const listings = context.listings.map(l => ({ sku_product_id: l.sku_product_id, store_name: l.store_name,\n    category_id: l.category_id, type_id: l.type_id, product_info: l.product_info,\n    title: l.title, description: l.description, rich_content_text: l.rich_content_text,\n    attributes: l.attributes.filter(a => ![4180, 4191, 11254, 9048, 12141, 22390, 8789, 8790, 21837, 21841, 21845, 22232, 22273, 23249, 23536, 23673].includes(a.id))\n  }));\n  return { prompt: prompts.rule + '\\n\\n' + prompts.attributes_contract,\n    text: JSON.stringify({ sku_code: context.sku_code, grade: context.grade, stage: context.stage, as_of: context.as_of, policy, listings }) };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_31",
+      "type": "PIECE",
+      "displayName": "AI ① 属性诊断 · 结构化输出",
+      "parentName": "step_21",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mode": "advanced",
+          "text": "{{step_21['output'].text}}",
+          "files": [],
+          "model": "gpt-6-sol",
+          "prompt": "{{step_21['output'].prompt}}",
+          "schema": {
+            "fields": {
+              "type": "object",
+              "required": [
+                "sku_code",
+                "listings"
+              ],
+              "properties": {
+                "listings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "sku_product_id",
+                      "assessment",
+                      "summary",
+                      "problems",
+                      "actions",
+                      "limitations"
+                    ],
+                    "properties": {
+                      "actions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "problem_id",
+                            "attribute_id",
+                            "complex_id",
+                            "attribute_name",
+                            "suggested_values",
+                            "reason"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "type": "string"
+                            },
+                            "complex_id": {
+                              "type": "integer"
+                            },
+                            "problem_id": {
+                              "type": "string"
+                            },
+                            "attribute_id": {
+                              "type": "integer"
+                            },
+                            "attribute_name": {
+                              "type": "string"
+                            },
+                            "suggested_values": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "value"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  },
+                                  "value": {
+                                    "type": "string"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "problems": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "priority",
+                            "confidence",
+                            "defect_type",
+                            "current_evidence",
+                            "fact_evidence",
+                            "impact",
+                            "recommendation",
+                            "attribute_id",
+                            "complex_id"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "impact": {
+                              "type": "string"
+                            },
+                            "priority": {
+                              "enum": [
+                                "P0",
+                                "P1"
+                              ],
+                              "type": "string"
+                            },
+                            "complex_id": {
+                              "type": "integer"
+                            },
+                            "confidence": {
+                              "enum": [
+                                "high"
+                              ],
+                              "type": "string"
+                            },
+                            "defect_type": {
+                              "enum": [
+                                "内部冲突",
+                                "纯错误",
+                                "形态错选",
+                                "质变虚标",
+                                "SEO疑似误导",
+                                "缺失"
+                              ],
+                              "type": "string"
+                            },
+                            "attribute_id": {
+                              "type": "integer"
+                            },
+                            "fact_evidence": {
+                              "type": "string"
+                            },
+                            "recommendation": {
+                              "type": "string"
+                            },
+                            "current_evidence": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "assessment": {
+                        "enum": [
+                          "KEEP",
+                          "CHANGE",
+                          "insufficient_data"
+                        ],
+                        "type": "string"
+                      },
+                      "limitations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "sku_product_id": {
+                        "type": "integer"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "sku_code": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "provider": {
+            "configId": "Q2vQRmkdAf9Mf2TItZUCZ",
+            "provider": "custom"
+          },
+          "maxOutputTokens": "{{step_1['output'].llm_max_tokens}}"
+        },
+        "pieceName": "@activepieces/piece-ai",
+        "actionName": "extractStructuredData",
+        "pieceVersion": "0.11.0",
+        "propertySettings": {
+          "schema": {
+            "type": "MANUAL",
+            "schema": {
+              "fields": {
+                "type": "JSON",
+                "required": true,
+                "description": "Learn more about JSON Schema here: https://json-schema.org/learn/getting-started-step-by-step",
+                "displayName": "JSON Schema",
+                "defaultValue": {
+                  "type": "object",
+                  "required": [
+                    "name"
+                  ],
+                  "properties": {
+                    "age": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_22",
+      "type": "PIECE",
+      "displayName": "已停用：旧HTTP属性诊断（保留验收样本）",
+      "parentName": "step_31",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "skipped",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].llm_base_url}}/v1/chat/completions",
+          "body": {
+            "data": "{{step_21['output']}}"
+          },
+          "method": "POST",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          "timeout": 300,
+          "authType": "BEARER_TOKEN",
+          "body_type": "json",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['SUB2_API_KEY']}}"
+          },
+          "failureMode": "retry_5xx",
+          "queryParams": {},
+          "proxy_settings": {},
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_23",
+      "type": "PIECE",
+      "displayName": "已停用：旧属性JSON解析（AI直接输出对象）",
+      "parentName": "step_22",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "skipped",
+      "settings": {
+        "input": {
+          "text": "{{step_22['output'].body.choices[0].message.content}}"
+        },
+        "pieceName": "@activepieces/piece-json",
+        "actionName": "convert_text_to_json",
+        "pieceVersion": "0.1.13",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_24",
+      "type": "CODE",
+      "displayName": "属性门禁：字典值、数量上限、引用证据与免检字段",
+      "parentName": "step_23",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "context": "{{step_18['output']}}",
+          "response": null,
+          "diagnosis": "{{step_31['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ diagnosis: d, context: c }) => {\n  if (!d || d.sku_code !== c.sku_code || !Array.isArray(d.listings) || d.listings.length !== c.listings.length) throw new Error('Attribute diagnosis SKU/Listing coverage mismatch');\n  const ids = new Set();\n  for (const result of d.listings) {\n    const l = c.listings.find(l => l.sku_product_id === result.sku_product_id);\n    if (!l || ids.has(l.sku_product_id)) throw new Error('Unknown or duplicate Listing in attribute diagnosis');\n    ids.add(l.sku_product_id);\n    if (!['KEEP', 'CHANGE', 'insufficient_data'].includes(result.assessment) || !Array.isArray(result.problems) || !Array.isArray(result.actions) || !Array.isArray(result.limitations)) throw new Error('Invalid attribute assessment');\n    const issues = new Set();\n    for (const p of result.problems) {\n      const a = l.attributes.find(a => a.id === p.attribute_id && a.complex_id === (p.complex_id ?? 0));\n      if (!a || [9048, 12141, 22390, 4180, 4191, 11254].includes(a.id)) throw new Error('Unknown or exempt attribute reported as a problem');\n      if (!p.id || issues.has(p.id) || !['P0', 'P1'].includes(p.priority) || p.confidence !== 'high' || !p.fact_evidence || !p.impact || !p.recommendation) throw new Error('Attribute issue lacks high confidence or evidence');\n      const current = JSON.stringify(a.current_values);\n      if (!(p.current_evidence === '__EMPTY__' ? a.current_values.length === 0 : p.current_evidence && current.includes(p.current_evidence))) throw new Error('Attribute evidence is not from the current Listing');\n      issues.add(p.id);\n    }\n    const actionKeys = new Set();\n    for (const action of result.actions) {\n      const a = l.attributes.find(a => a.id === action.attribute_id && a.complex_id === (action.complex_id ?? 0));\n      const key = `${action.attribute_id}:${action.complex_id ?? 0}`;\n      if (!a || actionKeys.has(key) || !issues.has(action.problem_id) || !Array.isArray(action.suggested_values)) throw new Error('Invalid or duplicate attribute action');\n      actionKeys.add(key);\n      if (a.max_count && action.suggested_values.length > a.max_count) throw new Error(`Attribute ${a.id} exceeds official max_count`);\n      if (new Set(action.suggested_values.map(v => `${v.id}:${v.value}`)).size !== action.suggested_values.length) throw new Error('Duplicate suggested values');\n      for (const v of action.suggested_values) {\n        if (typeof v.value !== 'string' || !v.value.trim()) throw new Error('Empty attribute value');\n        if (a.input_mode === 'unknown') throw new Error('Cannot modify an attribute without its official definition');\n        if (a.input_mode === 'dictionary' && !a.options.some(o => o.id === v.id && o.value === v.value)) throw new Error(`Attribute ${a.id}: value is outside the official options pool`);\n      }\n    }\n    if (result.assessment === 'KEEP' && (result.problems.length || result.actions.length)) throw new Error('KEEP conflicts with attribute changes');\n    if (result.assessment === 'CHANGE' && (!result.problems.length || !result.actions.length)) throw new Error('CHANGE requires evidence and actions');\n  }\n  return d;\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_25",
+      "type": "CODE",
+      "displayName": "组装文本诊断请求（主图仅作事实参考）",
+      "parentName": "step_24",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "config": null,
+          "policy": "{{step_19['output']}}",
+          "context": "{{step_18['output']}}",
+          "prompts": "{{step_20['output']}}",
+          "attributes": "{{step_24['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ context, policy, attributes, prompts }) => {\n  const listings = context.listings.map(l => ({ sku_product_id: l.sku_product_id, store_name: l.store_name,\n    product_info: l.product_info, title: l.title, description: l.description,\n    rich_content_text: l.rich_content_text, rich_content_configured: l.rich_content_configured,\n    primary_image_url: l.primary_image_url, search_terms: l.search_terms,\n    attributes: l.attributes.map(a => ({ id: a.id, name: a.name, current_values: a.current_values })) }));\n  return { prompt: prompts.rule + '\\n\\n' + prompts.text_contract,\n    text: JSON.stringify({ sku_code: context.sku_code, grade: context.grade, stage: context.stage, as_of: context.as_of, policy, attribute_diagnosis: attributes, listings }),\n    files: listings.filter(l => l.primary_image_url).map(l => ({ file: l.primary_image_url })) };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_32",
+      "type": "PIECE",
+      "displayName": "AI ② 文本与SEO诊断 · 结构化输出",
+      "parentName": "step_25",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mode": "advanced",
+          "text": "{{step_25['output'].text}}",
+          "files": "{{step_25['output'].files}}",
+          "model": "gpt-6-sol",
+          "prompt": "{{step_25['output'].prompt}}",
+          "schema": {
+            "fields": {
+              "type": "object",
+              "required": [
+                "sku_code",
+                "listings"
+              ],
+              "properties": {
+                "listings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "sku_product_id",
+                      "summary",
+                      "top_issues",
+                      "problems",
+                      "title",
+                      "description",
+                      "rich_content",
+                      "funnel_attribution",
+                      "seo",
+                      "limitations"
+                    ],
+                    "properties": {
+                      "seo": {
+                        "type": "object",
+                        "required": [
+                          "traffic_quality",
+                          "verified_terms",
+                          "explanation"
+                        ],
+                        "properties": {
+                          "explanation": {
+                            "type": "string"
+                          },
+                          "verified_terms": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "traffic_quality": {
+                            "enum": [
+                              "verified_irrelevant",
+                              "no_verified_irrelevant",
+                              "insufficient_data"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "title": {
+                        "type": "object",
+                        "required": [
+                          "quality",
+                          "action",
+                          "reason",
+                          "recommended_ru",
+                          "recommended_zh",
+                          "first_screen_logic"
+                        ],
+                        "properties": {
+                          "action": {
+                            "enum": [
+                              "KEEP",
+                              "REWRITE"
+                            ],
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "quality": {
+                            "enum": [
+                              "pass",
+                              "fail",
+                              "insufficient_data"
+                            ],
+                            "type": "string"
+                          },
+                          "recommended_ru": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recommended_zh": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "first_screen_logic": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "problems": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "priority",
+                            "confidence",
+                            "defect_type",
+                            "current_evidence",
+                            "fact_evidence",
+                            "impact",
+                            "recommendation",
+                            "module"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "impact": {
+                              "type": "string"
+                            },
+                            "module": {
+                              "enum": [
+                                "title",
+                                "description",
+                                "rich_content",
+                                "seo"
+                              ],
+                              "type": "string"
+                            },
+                            "priority": {
+                              "enum": [
+                                "P0",
+                                "P1"
+                              ],
+                              "type": "string"
+                            },
+                            "confidence": {
+                              "enum": [
+                                "high"
+                              ],
+                              "type": "string"
+                            },
+                            "defect_type": {
+                              "enum": [
+                                "内部冲突",
+                                "纯错误",
+                                "形态错选",
+                                "质变虚标",
+                                "SEO疑似误导",
+                                "缺失"
+                              ],
+                              "type": "string"
+                            },
+                            "fact_evidence": {
+                              "type": "string"
+                            },
+                            "recommendation": {
+                              "type": "string"
+                            },
+                            "current_evidence": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "top_issues": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "description": {
+                        "type": "object",
+                        "required": [
+                          "quality",
+                          "action",
+                          "reason",
+                          "recommended_ru",
+                          "recommended_zh"
+                        ],
+                        "properties": {
+                          "action": {
+                            "enum": [
+                              "KEEP",
+                              "REWRITE"
+                            ],
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "quality": {
+                            "enum": [
+                              "pass",
+                              "fail",
+                              "insufficient_data"
+                            ],
+                            "type": "string"
+                          },
+                          "recommended_ru": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recommended_zh": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "limitations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "rich_content": {
+                        "type": "object",
+                        "required": [
+                          "quality",
+                          "action",
+                          "reason",
+                          "recommended_ru",
+                          "recommended_zh"
+                        ],
+                        "properties": {
+                          "action": {
+                            "enum": [
+                              "KEEP",
+                              "REWRITE"
+                            ],
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "quality": {
+                            "enum": [
+                              "pass",
+                              "fail",
+                              "insufficient_data",
+                              "not_configured"
+                            ],
+                            "type": "string"
+                          },
+                          "recommended_ru": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recommended_zh": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "sku_product_id": {
+                        "type": "integer"
+                      },
+                      "funnel_attribution": {
+                        "type": "object",
+                        "required": [
+                          "listing_explains_anomaly",
+                          "explanation"
+                        ],
+                        "properties": {
+                          "explanation": {
+                            "type": "string"
+                          },
+                          "listing_explains_anomaly": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "sku_code": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "provider": {
+            "configId": "Q2vQRmkdAf9Mf2TItZUCZ",
+            "provider": "custom"
+          },
+          "maxOutputTokens": "{{step_1['output'].llm_max_tokens}}"
+        },
+        "pieceName": "@activepieces/piece-ai",
+        "actionName": "extractStructuredData",
+        "pieceVersion": "0.11.0",
+        "propertySettings": {
+          "schema": {
+            "type": "MANUAL",
+            "schema": {
+              "fields": {
+                "type": "JSON",
+                "required": true,
+                "description": "Learn more about JSON Schema here: https://json-schema.org/learn/getting-started-step-by-step",
+                "displayName": "JSON Schema",
+                "defaultValue": {
+                  "type": "object",
+                  "required": [
+                    "name"
+                  ],
+                  "properties": {
+                    "age": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_26",
+      "type": "PIECE",
+      "displayName": "已停用：旧HTTP文本诊断（保留验收样本）",
+      "parentName": "step_32",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "skipped",
+      "settings": {
+        "input": {
+          "url": "{{step_1['output'].llm_base_url}}/v1/chat/completions",
+          "body": {
+            "data": "{{step_25['output']}}"
+          },
+          "method": "POST",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          "timeout": 300,
+          "authType": "BEARER_TOKEN",
+          "body_type": "json",
+          "use_proxy": false,
+          "authFields": {
+            "token": "{{variables['SUB2_API_KEY']}}"
+          },
+          "failureMode": "retry_5xx",
+          "queryParams": {},
+          "proxy_settings": {},
+          "followRedirects": false,
+          "response_is_binary": false
+        },
+        "pieceName": "@activepieces/piece-http",
+        "actionName": "send_request",
+        "pieceVersion": "0.12.2",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_27",
+      "type": "PIECE",
+      "displayName": "已停用：旧文本JSON解析（AI直接输出对象）",
+      "parentName": "step_26",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "skipped",
+      "settings": {
+        "input": {
+          "text": "{{step_26['output'].body.choices[0].message.content}}"
+        },
+        "pieceName": "@activepieces/piece-json",
+        "actionName": "convert_text_to_json",
+        "pieceVersion": "0.1.13",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_28",
+      "type": "CODE",
+      "displayName": "文本门禁：KEEP策略、改稿、SEO与漏斗归因证据",
+      "parentName": "step_27",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "policy": "{{step_19['output']}}",
+          "context": "{{step_18['output']}}",
+          "response": null,
+          "diagnosis": "{{step_32['output']}}"
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ diagnosis: d, context: c, policy }) => {\n  if (!d || d.sku_code !== c.sku_code || !Array.isArray(d.listings) || d.listings.length !== c.listings.length) throw new Error('Text diagnosis SKU/Listing coverage mismatch');\n  const ids = new Set();\n  for (const r of d.listings) {\n    const l = c.listings.find(l => l.sku_product_id === r.sku_product_id);\n    const p = policy.listings.find(p => p.sku_product_id === r.sku_product_id);\n    if (!l || ids.has(l.sku_product_id) || !Array.isArray(r.problems) || !Array.isArray(r.limitations)) throw new Error('Invalid text Listing coverage');\n    ids.add(l.sku_product_id);\n    const issueIds = new Set();\n    for (const issue of r.problems) {\n      if (!issue.id || issueIds.has(issue.id) || !['title', 'description', 'rich_content', 'seo'].includes(issue.module) || !['P0', 'P1'].includes(issue.priority) || issue.confidence !== 'high' || !issue.fact_evidence || !issue.impact || !issue.recommendation) throw new Error('Text issue lacks high confidence or evidence');\n      const source = issue.module === 'seo' ? JSON.stringify(l.search_terms) : issue.module === 'rich_content' ? l.rich_content_text : l[issue.module];\n      if (!(issue.current_evidence === '__EMPTY__' ? !source : issue.current_evidence && source.includes(issue.current_evidence))) throw new Error('Text evidence is not from this Listing/module');\n      issueIds.add(issue.id);\n    }\n    for (const module of ['title', 'description', 'rich_content']) {\n      const m = r[module];\n      if (!m || !['pass', 'fail', 'insufficient_data', 'not_configured'].includes(m.quality) || !['KEEP', 'REWRITE'].includes(m.action) || !m.reason) throw new Error(`Invalid ${module} assessment`);\n      const issues = r.problems.filter(i => i.module === module);\n      if (m.action === 'REWRITE') {\n        if (!issues.length || !m.recommended_ru || !m.recommended_zh) throw new Error('Rewrite needs evidence and complete Russian/Chinese copy');\n        if (m.quality === 'pass' && p.text_strategy === 'pass_then_keep') throw new Error('Passing B/C/CLR text must KEEP');\n      }\n      if (m.quality === 'fail' && m.action !== 'REWRITE') throw new Error('Failed text needs a complete rewrite');\n      if (m.quality === 'insufficient_data' && (m.action !== 'KEEP' || issues.length)) throw new Error('Missing evidence cannot become a modification task');\n    }\n    if (!l.rich_content_configured && (r.rich_content.quality !== 'not_configured' || r.rich_content.action !== 'KEEP')) throw new Error('Unconfigured rich content must KEEP');\n    if (!r.funnel_attribution?.explanation || typeof r.funnel_attribution.listing_explains_anomaly !== 'boolean') throw new Error('Missing funnel attribution');\n    if (r.funnel_attribution.listing_explains_anomaly && (!p.funnel_anomaly || !r.problems.length)) throw new Error('Unsupported funnel attribution');\n    if (!r.seo || !['verified_irrelevant', 'no_verified_irrelevant', 'insufficient_data'].includes(r.seo.traffic_quality) || !Array.isArray(r.seo.verified_terms)) throw new Error('Invalid SEO assessment');\n    if (!l.search_terms.length && r.seo.traffic_quality !== 'insufficient_data') throw new Error('No terms means SEO evidence is unavailable');\n    r.seo.verified_terms = r.seo.verified_terms.map(term => typeof term === 'string' ? term : term?.query);\n    for (const term of r.seo.verified_terms) if (typeof term !== 'string' || !l.search_terms.some(t => t.query === term)) throw new Error('SEO term absent from source');\n    if (r.seo.traffic_quality === 'verified_irrelevant' && (!r.seo.verified_terms.length || !r.problems.some(i => i.module === 'seo'))) throw new Error('Irrelevant SEO traffic needs a verified issue');\n    if (!Array.isArray(r.top_issues) || !r.summary) throw new Error('Missing executive summary');\n  }\n  return d;\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_29",
+      "type": "CODE",
+      "displayName": "汇总指标与运营报告；P0强制has_error",
+      "parentName": "step_28",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "text": "{{step_28['output']}}",
+          "config": "{{step_1['output']}}",
+          "policy": "{{step_19['output']}}",
+          "context": "{{step_18['output']}}",
+          "attributes": "{{step_24['output']}}",
+          "text_response": null,
+          "attribute_response": null
+        },
+        "useDeno": true,
+        "sourceCode": {
+          "code": "export const code = async ({ context: c, policy, attributes, text, config }) => {\n  const listings = c.listings.map(l => {\n    const a = attributes.listings.find(a => a.sku_product_id === l.sku_product_id);\n    const t = text.listings.find(t => t.sku_product_id === l.sku_product_id);\n    const p = policy.listings.find(p => p.sku_product_id === l.sku_product_id);\n    const problems = a.problems.concat(t.problems).sort((a, b) => a.priority.localeCompare(b.priority));\n    const p0 = problems.filter(p => p.priority === 'P0').length, p1 = problems.filter(p => p.priority === 'P1').length;\n    const incomplete = a.assessment === 'insufficient_data' || [t.title, t.description].some(m => m.quality === 'insufficient_data');\n    const status = p0 ? 'has_error' : p1 ? 'needs_optimization' : incomplete ? null : 'healthy';\n    const limitations = [...new Set(p.warnings.concat(a.limitations, t.limitations))];\n    return { sku_product_id: l.sku_product_id, store_name: l.store_name, product_id: l.product_id,\n      status, audit_status: incomplete ? 'insufficient_data' : limitations.length ? 'partial' : 'complete',\n      p0_count: p0, p1_count: p1, attribute_change_count: a.actions.length,\n      title_action: t.title.action, description_action: t.description.action, rich_content_action: t.rich_content.action,\n      funnel_anomaly: p.funnel_anomaly, seo_traffic_quality: t.seo.traffic_quality,\n      summary: [a.summary, t.summary].filter(Boolean).join('\\n'),\n      top_issues: problems.length ? problems.slice(0, 3).map(p => `${p.priority}：${p.recommendation}`) : t.top_issues,\n      problems, attribute_actions: a.actions.map(action => ({ ...action, current_values: l.attributes.find(a => a.id === action.attribute_id && a.complex_id === (action.complex_id ?? 0))?.current_values ?? [] })),\n      title: t.title, description: t.description, rich_content: t.rich_content,\n      funnel_attribution: t.funnel_attribution, seo: t.seo, limitations,\n      latest_complete_funnel: p.latest_complete_period, current_partial_funnel: p.current_partial_period,\n      source_timestamps: { product: l.product_synced_at, attributes: l.attributes_synced_at } };\n  });\n  const sum = k => listings.reduce((n, l) => n + l[k], 0);\n  const status = sum('p0_count') ? 'has_error' : sum('p1_count') ? 'needs_optimization' : listings.some(l => !l.status) ? null : 'healthy';\n  const metrics = { sku_code: c.sku_code, grade: c.grade, stage: c.stage, status,\n    audit_status: listings.some(l => l.audit_status === 'insufficient_data') ? 'insufficient_data' : listings.some(l => l.audit_status === 'partial') ? 'partial' : 'complete',\n    listing_count: listings.length, p0_count: sum('p0_count'), p1_count: sum('p1_count'),\n    attribute_change_count: sum('attribute_change_count'), title_rewrite_count: listings.filter(l => l.title_action === 'REWRITE').length,\n    description_rewrite_count: listings.filter(l => l.description_action === 'REWRITE').length,\n    rich_content_rewrite_count: listings.filter(l => l.rich_content_action === 'REWRITE').length,\n    funnel_anomaly_count: policy.funnel_anomaly_count, verified_irrelevant_term_count: listings.reduce((n, l) => n + l.seo.verified_terms.length, 0) };\n  const lines = [`# Ozon Listing诊断：${c.sku_code}`, `规则：${config.rule_version}；Grade/Stage：${c.grade}/${c.stage}；日期：${c.as_of}（${c.time_zone}）`, `总状态：${status ?? 'insufficient_data'}；P0：${metrics.p0_count}；P1：${metrics.p1_count}`];\n  for (const l of listings) {\n    lines.push(`\\n## ${l.store_name}（Listing ${l.sku_product_id}）`, l.summary, `Title: ${l.title_action}；Description: ${l.description_action}；Rich-content: ${l.rich_content_action}`, l.funnel_attribution.explanation, `SEO：${l.seo.traffic_quality} — ${l.seo.explanation}`);\n    for (const p of l.problems) lines.push(`\\n- **${p.priority} / ${p.defect_type}**：${p.current_evidence}\\n  依据：${p.fact_evidence}\\n  影响：${p.impact}\\n  建议：${p.recommendation}`);\n    if (!l.problems.length) lines.push('No significant Listing issue found.');\n    if (!l.attribute_actions.length) lines.push('Attributes: KEEP');\n    if (l.attribute_actions.length) {\n      const cell = v => String(v).replace(/\\|/g, '\\\\|').replace(/\\n/g, '<br>');\n      lines.push('\\n| 店铺 | 属性 | 当前值 | 建议最终值 | 理由 |', '| --- | --- | --- | --- | --- |');\n      for (const a of l.attribute_actions) lines.push(`| ${cell(l.store_name)} | ${cell(a.attribute_name ?? a.attribute_id)} | ${cell(a.current_values.map(v => v.value).join('、'))} | ${cell(a.suggested_values.map(v => v.value).join('、'))} | ${cell(a.reason)} |`);\n    }\n    for (const k of ['title', 'description', 'rich_content']) if (l[k].action === 'REWRITE') lines.push(`\\n### ${k}\\n${l[k].recommended_ru}\\n\\n中文：${l[k].recommended_zh}`);\n    lines.push('\\n### 最小动作清单');\n    if (!l.problems.length) lines.push('No action required.');\n    for (const p of l.problems) lines.push(`- ${p.priority}：${p.recommendation}`);\n    if (l.limitations.length) lines.push(`\\n数据限制：${l.limitations.join('；')}`);\n  }\n  return { metrics, listings, markdown: lines.join('\\n'), llm: { provider: config.ai_provider, model: config.model, action: 'extractStructuredData' }, rule_version: config.rule_version, as_of: c.as_of, time_zone: c.time_zone };\n};\n",
+          "packageJson": "{}"
+        },
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "name": "step_30",
+      "type": "PIECE",
+      "displayName": "最终输出：关键指标、最小动作、完整诊断",
+      "parentName": "step_29",
+      "relationship": "next",
+      "valid": true,
+      "configStatus": "configured",
+      "settings": {
+        "input": {
+          "mapping": {
+            "llm": "{{step_29['output'].llm}}",
+            "as_of": "{{step_29['output'].as_of}}",
+            "metrics": "{{step_29['output'].metrics}}",
+            "listings": "{{step_29['output'].listings}}",
+            "markdown": "{{step_29['output'].markdown}}",
+            "time_zone": "{{step_29['output'].time_zone}}",
+            "rule_version": "{{step_29['output'].rule_version}}"
+          }
+        },
+        "pieceName": "@activepieces/piece-data-mapper",
+        "actionName": "advanced_mapping",
+        "pieceVersion": "0.3.21",
+        "propertySettings": {},
+        "errorHandlingOptions": {
+          "retryOnFailure": {
+            "value": false
+          },
+          "continueOnFailure": {
+            "value": false
+          }
+        }
+      }
+    }
+  ],
+  "aiModule": {
+    "piece": "@activepieces/piece-ai",
+    "action": "extractStructuredData",
+    "attributeStep": "step_31",
+    "textStep": "step_32",
+    "provider": "custom",
+    "model": "gpt-6-sol",
+    "credentials": "Managed in Settings > AI Providers; not resolved in this snapshot"
+  },
+  "previousHttpRunId": "FgZQO9rHgJmSOs1FaNLOx",
+  "previousHttpDuration": "100.2s",
+  "testedRunId": "sydguammqn87Ea2QmQuGD",
+  "testedStatus": "FAILED",
+  "testedDuration": "3.8s",
+  "testBlocker": "Native AI step_31 reaches the custom provider but receives Unauthorized. Provider currently exposes model gpt-6-sol; Authorization header value must be corrected in Settings > AI Providers."
+}
