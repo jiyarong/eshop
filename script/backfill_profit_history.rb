@@ -80,7 +80,7 @@ if platform == "ozon"
     end
   end
 else
-  steps = %i[sync_sales_reports sync_sales_report_items sync_finance_details sync_paid_storage]
+  steps = %i[sync_sales_reports sync_finance_details sync_paid_storage]
   say "steps per window: #{steps.join(', ')}; ads: per natural week via sync_ad_settled_fees_for_period (existing weeks skipped)"
   exit unless execute
 

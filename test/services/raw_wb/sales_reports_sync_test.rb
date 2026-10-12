@@ -19,6 +19,12 @@ class RawWb::SalesReportsSyncTest < ActiveSupport::TestCase
     @account.destroy
   end
 
+  test "weekly sync does not schedule the unused sales report items step" do
+    refute_includes RawWb::WeeklySync::STEPS, :sync_sales_report_items
+    assert_includes RawWb::WeeklySync::STEPS, :sync_sales_reports
+    assert_includes RawWb::WeeklySync::STEPS, :sync_finance_details
+  end
+
   test "maps current camel case settlement report fields" do
     row = @sync.send(:build_sales_report, {
       "reportId" => 835_651_868,

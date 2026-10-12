@@ -5,6 +5,9 @@ module RawWb
   class WeeklySync < BaseSync
     DEFAULT_DAYS = 7
 
+    # sync_sales_report_items is intentionally not scheduled: no report reads
+    # raw_wb_sales_report_items (profit queries use raw_wb_finance_details), and
+    # the per-report detailed endpoint is rate-limited and returns duplicate keys.
     STEPS = %i[
       sync_product_cards
       sync_characteristics
@@ -15,7 +18,6 @@ module RawWb
       sync_region_sale
       sync_goods_return
       sync_sales_reports
-      sync_sales_report_items
       sync_finance_details
       sync_paid_storage
       sync_ad_settled_fees
