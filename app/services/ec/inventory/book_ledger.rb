@@ -38,6 +38,7 @@ module Ec
 
         ledger = @sku_codes.index_with { empty_entry }
         apply_batches(ledger)
+        apply_orders(ledger)
         ledger.each_value do |entry|
           entry[:ledger_total] = entry[:received_quantity] - entry[:gross_sales_quantity] + entry[:reversed_quantity]
         end
@@ -77,6 +78,69 @@ module Ec
           end
           entry[:received_quantity] += quantity.to_i
         end
+      end
+
+      ORDER_COLUMNS = %w[
+        ec_sku_products.sku_code ec_order_items.order_id ec_order_items.platform ec_order_items.store_id
+        ec_order_items.quantity ec_orders.order_status ec_orders.ordered_at ledger_f.status
+        ledger_f.source_status ledger_f.source_substatus ledger_f.external_fulfillment_id
+      ].freeze
+      ORDER_KEYS = %i[
+        sku_code order_id platform store_id quantity order_status ordered_at fulfillment_status
+        fulfillment_source_status fulfillment_source_substatus external_fulfillment_id
+      ].freeze
+
+      def order_rows
+        scope = Ec::OrderItem
+          .joins(:order)
+          .joins(Ec::InventoryOrderSalesDistributionQuery::ORDER_ITEM_JOIN)
+          .joins("LEFT JOIN ec_order_fulfillments ledger_f ON ledger_f.id = ec_order_items.fulfillment_id")
+          .where(ec_sku_products: { sku_code: @sku_codes })
+        scope = scope.where("ec_orders.ordered_at <= ?", @as_of) if @as_of
+
+        scope.pluck(*ORDER_COLUMNS.map { |column| Arel.sql(column) }).map do |values|
+          row = ORDER_KEYS.zip(values).to_h
+          row[:sku_code] = row[:sku_code].to_s.upcase
+          row
+        end
+      end
+
+      def apply_orders(ledger)
+        stale_before = (@as_of || Time.current) - STALE_OPEN_ORDER_DAYS.days
+
+        order_rows.group_by { |row| [ row[:order_id], row[:sku_code] ] }.each_value do |items|
+          entry = ledger[items.first[:sku_code]]
+          next unless entry
+
+          items.each do |item|
+            quantity = item[:quantity].to_i
+            status = item[:fulfillment_status].presence || item[:order_status]
+
+            if unsold_status?(item[:platform], status)
+              next
+            elsif OPEN_STATUSES.include?(status) && item[:ordered_at] && item[:ordered_at] < stale_before
+              entry[:stale_open_order_quantity] += quantity
+            else
+              entry[:gross_sales_quantity] += quantity
+              store_entry = store_entry(entry, item)
+              store_entry[:gross_sales_quantity] += quantity
+              bucket = STATUS_BUCKETS[status]
+              store_entry[:status_counts][bucket] += quantity if bucket
+            end
+          end
+        end
+      end
+
+      # Cancelled orders, and WB orders the platform marks as returned, are not sales.
+      def unsold_status?(platform, status)
+        status == "cancelled" || (platform == "wb" && status == "returned")
+      end
+
+      def store_entry(entry, item)
+        entry[:by_store][[ item[:platform], item[:store_id] ]] ||= {
+          gross_sales_quantity: 0, reversed_quantity: 0,
+          status_counts: STATUS_BUCKETS.values.index_with { 0 }
+        }
       end
     end
   end
