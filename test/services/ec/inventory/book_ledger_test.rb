@@ -7,6 +7,10 @@ class Ec::Inventory::BookLedgerTest < ActiveSupport::TestCase
   setup { setup_ledger_world }
   teardown { teardown_ledger_world }
 
+  test "exposes the date the ledger rules took effect" do
+    assert_kind_of Date, Ec::Inventory::BookLedger::EFFECTIVE_ON
+  end
+
   test "splits received batches into purchase and adjustment and ignores stocktake and unreceived batches" do
     ledger_batch(30)
     ledger_batch(-4, type: :wb_fbw_offset)

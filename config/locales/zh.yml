@@ -2110,7 +2110,7 @@ zh:
         ozon_inbound: "Ozon送仓中"
         ozon_return: "Ozon退货"
         ozon_sales: "Ozon销售"
-        overseas_available_stock: "FBS总库存"
+        overseas_available_stock: "自有侧库存（推算）"
         pending_stock: "采购中库存"
         platform_inbound: "平台在途"
         platform_stock: "平台在库"
@@ -2182,6 +2182,7 @@ zh:
         empty: "暂无库存历史快照"
         quantity_axis: "库存数量"
         days_axis: "天数"
+        ledger_rules_note: "账面库存口径自 %{date} 起调整，此日期之前的快照沿用旧口径，不可与之后的数值直接比较。"
         metrics:
           week: "周期"
           snapshot_date: "实际快照日期"

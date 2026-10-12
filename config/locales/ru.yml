@@ -1873,7 +1873,7 @@ ru:
         ozon_inbound: "Ozon в поставке"
         ozon_return: "Возвраты Ozon"
         ozon_sales: "Продажи Ozon"
-        overseas_available_stock: "Общий остаток FBS"
+        overseas_available_stock: "Остаток на стороне продавца (расчётный)"
         pending_stock: "Закупаемый остаток"
         platform_inbound: "В поставке"
         platform_stock: "Остаток платформ"
@@ -1945,6 +1945,7 @@ ru:
         empty: "Нет исторических снимков остатков"
         quantity_axis: "Остаток"
         days_axis: "Дни"
+        ledger_rules_note: "Правила учётного остатка изменены %{date}; более ранние снимки используют прежнюю формулу и несопоставимы."
         metrics:
           week: "Период"
           snapshot_date: "Дата снимка"

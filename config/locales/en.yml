@@ -1908,7 +1908,7 @@ en:
         ozon_inbound: "Ozon inbound"
         ozon_return: "Ozon returns"
         ozon_sales: "Ozon sales"
-        overseas_available_stock: "Total FBS inventory"
+        overseas_available_stock: "Own-side stock (derived)"
         pending_stock: "Procurement stock"
         platform_inbound: "Inbound"
         platform_stock: "Platform stock"
@@ -1980,6 +1980,7 @@ en:
         empty: "No inventory snapshots"
         quantity_axis: "Inventory"
         days_axis: "Days"
+        ledger_rules_note: "Book stock rules changed on %{date}; earlier snapshots keep the old formula and are not directly comparable."
         metrics:
           week: "Period"
           snapshot_date: "Snapshot date"

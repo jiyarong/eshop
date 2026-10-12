@@ -67,6 +67,9 @@
         </tbody>
       </table>
     <% end %>
+    <% if trend[:weeks].any? { |row| row[:snapshot_date].present? && row[:snapshot_date].to_date < Ec::Inventory::BookLedger::EFFECTIVE_ON } %>
+      <p class="muted"><%= t("reports.inventory.trend.ledger_rules_note", date: Ec::Inventory::BookLedger::EFFECTIVE_ON.iso8601) %></p>
+    <% end %>
     <% end %>
   <% end %>
 </section>

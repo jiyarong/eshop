@@ -2571,7 +2571,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-metric-card__label", "采购中库存"
     assert_select ".inventory-metric-card__label", "账面可用库存"
     assert_select ".inventory-metric-card__label", "平台在库"
-    assert_select ".inventory-overview-content > .inventory-section:first-child > .inventory-metric-grid > .inventory-metric-card:nth-child(4) .inventory-metric-card__label", "FBS总库存"
+    assert_select ".inventory-overview-content > .inventory-section:first-child > .inventory-metric-grid > .inventory-metric-card:nth-child(4) .inventory-metric-card__label", "自有侧库存（推算）"
     assert_select ".inventory-overview-content > .inventory-section:first-child > .inventory-metric-grid > .inventory-metric-card:nth-child(5) .inventory-metric-card__label", "盘库应见库存"
     assert_select ".inventory-metric-card--link[href*='detail_tab=physical_stocktake'][data-turbo-frame='inventory_drawer_content']", count: 1 do
       assert_select ".inventory-metric-card__label", "盘库应见库存"
@@ -2917,6 +2917,42 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-inventory-trend .table-viewport.table-scroll--horizontal[data-controller~='sticky-table-header']", count: 1
 
   ensure
+    snapshot&.destroy
+  end
+
+  test "inventory history tab annotates snapshots dated before the ledger rules took effect" do
+    snapshot_date = Time.current.in_time_zone(@current_user.time_zone).to_date
+    original_effective_on = Ec::Inventory::BookLedger::EFFECTIVE_ON
+    snapshot = Ec::Snapshot.create!(
+      sku: @sku, snapshot_type: Ec::InventorySnapshot.snapshot_type, snapshot_date: snapshot_date,
+      content: {
+        overview: { book_stock: 20, platform_stock: 8, incoming_quantity: 4, daily_sales_velocity: "2.0",
+                    turnover_days: "10.0", turnover_days_with_procurement: "12.0" },
+        distribution: { levels: [] }
+      }
+    )
+
+    set_effective_on = lambda do |date|
+      silence_warnings { Ec::Inventory::BookLedger.const_set(:EFFECTIVE_ON, date) }
+    end
+    fetch_history = lambda do
+      sign_in @current_user
+      get report_inventory_detail_path(@sku.sku_code),
+        params: { detail_tab: "history" },
+        headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+      assert_response :success
+      assert_select ".sku-inventory-trend table", count: 1
+    end
+
+    set_effective_on.call(snapshot_date + 1.day)
+    fetch_history.call
+    assert_select ".sku-inventory-trend p.muted", text: /#{Regexp.escape((snapshot_date + 1.day).iso8601)}/, count: 1
+
+    set_effective_on.call(snapshot_date)
+    fetch_history.call
+    assert_select ".sku-inventory-trend p.muted", count: 0
+  ensure
+    set_effective_on&.call(original_effective_on) if original_effective_on
     snapshot&.destroy
   end
 

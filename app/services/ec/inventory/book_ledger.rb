@@ -4,6 +4,8 @@ module Ec
     # Does not look at where goods physically are (that is Ec::InventoryPhysicalReconciliationQuery).
     class BookLedger
       STALE_OPEN_ORDER_DAYS = 45
+      # First day snapshots use the ledger rules. Earlier persisted snapshots keep the old formula.
+      EFFECTIVE_ON = Date.new(2026, 10, 14)
       OPEN_STATUSES = %w[pending processing].freeze
       WB_DISPATCHED_SUPPLIER_STATUS = "complete".freeze
       RECEIVED_BATCH_STATUSES = %w[received closed].freeze
