@@ -193,4 +193,131 @@ class Ec::Inventory::BookLedgerTest < ActiveSupport::TestCase
     assert_equal 0, entry[:reversed_quantity]
     assert_equal 100, entry[:ledger_total]
   end
+
+  test "matches a return to the posting it names so another delivered posting is not reversed" do
+    ledger_batch(100)
+    order = ledger_order(platform: "ozon", status: "delivered")
+    cancelled_posting = add_ozon_posting(order, status: "cancelled", delivering_date: Time.current - 3.days)
+    returned = ledger_return(order, source_status: "ReceivedBySeller")
+    returned.update!(external_posting_number: cancelled_posting)
+
+    entry = ledger_entry
+
+    assert_equal 1, entry[:gross_sales_quantity]
+    assert_equal 0, entry[:reversed_quantity]
+    assert_equal 99, entry[:ledger_total]
+    assert_equal 0, entry[:return_in_transit_quantity]
+  end
+
+  test "buckets a posting scoped return in transit without reversing the delivered posting" do
+    ledger_batch(100)
+    order = ledger_order(platform: "ozon", status: "delivered")
+    cancelled_posting = add_ozon_posting(order, status: "cancelled", delivering_date: Time.current - 3.days)
+    returned = ledger_return(order, source_status: "MovingToSeller")
+    returned.update!(external_posting_number: cancelled_posting)
+
+    entry = ledger_entry
+
+    assert_equal 1, entry[:gross_sales_quantity]
+    assert_equal 0, entry[:reversed_quantity]
+    assert_equal 99, entry[:ledger_total]
+    assert_equal 1, entry[:return_in_transit_quantity]
+  end
+
+  test "falls back to order level allocation when the return posting matches no item" do
+    ledger_batch(100)
+    order = ledger_order(platform: "ozon", status: "delivered")
+    returned = ledger_return(order, source_status: "ReceivedBySeller")
+    returned.update!(external_posting_number: "UNKNOWN-#{@token}")
+
+    entry = ledger_entry
+
+    assert_equal 1, entry[:reversed_quantity]
+    assert_equal 100, entry[:ledger_total]
+  end
+
+  test "ignores returns that happened after as_of" do
+    ledger_batch(100)
+    order = ledger_order(platform: "ozon", status: "delivered", quantity: 2, ordered_at: Time.current - 40.days)
+    ledger_return(order, source_status: "ReceivedBySeller").update!(requested_at: Time.current - 10.days)
+
+    assert_equal 0, ledger_entry(as_of: Time.current - 30.days)[:reversed_quantity]
+    assert_equal 1, ledger_entry[:reversed_quantity]
+  end
+
+  test "attributes a return item without a sku product to the only SKU of the order" do
+    ledger_batch(100)
+    order = ledger_order(platform: "ozon", status: "delivered")
+    ledger_return(order, source_status: "ReceivedBySeller").items.update_all(sku_product_id: nil)
+
+    entry = ledger_entry
+
+    assert_equal 1, entry[:reversed_quantity]
+    assert_equal 100, entry[:ledger_total]
+  end
+
+  test "ignores a return item without a sku product when the order spans several SKUs" do
+    other_sku = Ec::Sku.create!(sku_code: "LEDGER-OTHER-#{@token}", product_name: "Other #{@token}")
+    other_product = Ec::SkuProduct.create!(
+      sku_code: other_sku.sku_code, store: @ozon_store, product_id: "OZO-#{@token}",
+      platform_sku_id: "8#{@token.to_i(16) % 100_000_000}", offer_id: "OFFER-O-#{@token}"
+    )
+    ledger_batch(100)
+    order = ledger_order(platform: "ozon", status: "delivered")
+    order.items.create!(
+      fulfillment: order.fulfillments.first, platform: "ozon", store: @ozon_store,
+      external_item_id: "OTHER-#{@token}", platform_sku_id: other_product.platform_sku_id, quantity: 1
+    )
+    ledger_return(order, source_status: "ReceivedBySeller").items.update_all(sku_product_id: nil)
+
+    entry = ledger_entry
+
+    assert_equal 1, entry[:gross_sales_quantity]
+    assert_equal 0, entry[:reversed_quantity]
+  ensure
+    if other_product
+      Ec::OrderItem.where(store_id: @ozon_store.id).delete_all
+      Ec::OperationAction.where(ec_sku_id: other_sku.id).delete_all
+      Ec::SkuProduct.where(id: other_product.id).delete_all
+      Ec::OperationLog.where(record_type: "Ec::SkuProduct", record_id: other_product.id).delete_all
+    end
+    if other_sku
+      Ec::Sku.with_deleted.where(id: other_sku.id).delete_all
+      Ec::OperationLog.where(record_type: "Ec::Sku", record_id: other_sku.id).delete_all
+    end
+  end
+
+  test "does not treat an Ozon delivering date after as_of as a dispatch signal" do
+    ledger_batch(100)
+    cancelled = ledger_order(platform: "ozon", status: "cancelled", ordered_at: Time.current - 40.days)
+    RawOzon::PostingFbs.create!(
+      account: @ozon_account, posting_number: cancelled.items.first.external_item_id, status: "cancelled",
+      delivering_date: Time.current - 5.days, raw_json: {}, created_at: Time.current
+    )
+
+    assert_equal 0, ledger_entry(as_of: Time.current - 30.days)[:return_in_transit_quantity]
+    assert_equal 1, ledger_entry[:return_in_transit_quantity]
+  end
+
+  private
+
+  # Adds a second posting (fulfillment plus item of the SKU) to an Ozon order; returns its posting number.
+  def add_ozon_posting(order, status:, delivering_date: nil, quantity: 1)
+    key = "ozon-#{SecureRandom.hex(6)}"
+    fulfillment = order.fulfillments.create!(
+      platform: "ozon", store: @ozon_store, external_fulfillment_id: key,
+      fulfillment_key: "ozon:#{@ozon_store.id}:#{key}", fulfillment_type: "fbs", status: status
+    )
+    order.items.create!(
+      fulfillment: fulfillment, platform: "ozon", store: @ozon_store, external_item_id: key,
+      platform_sku_id: @ozon_product.platform_sku_id, quantity: quantity
+    )
+    if delivering_date
+      RawOzon::PostingFbs.create!(
+        account: @ozon_account, posting_number: key, status: status,
+        delivering_date: delivering_date, raw_json: {}, created_at: Time.current
+      )
+    end
+    key
+  end
 end
