@@ -59,6 +59,21 @@ module Ec
         total
       end
 
+      # Unlinked statistics orders that the backfill leaves out because a marketplace order of the same account
+      # shares their g_number (mirrors the g_number fallback of marketplace_order_for).
+      def count_unlinked_stats_covered_only_by_g_number
+        unlinked_stats_candidates
+          .where(
+            "NOT EXISTS (SELECT 1 FROM raw_wb_orders r " \
+            "WHERE r.account_id = raw_wb_stats_orders.account_id AND r.srid = raw_wb_stats_orders.srid)"
+          )
+          .where(
+            "EXISTS (SELECT 1 FROM raw_wb_orders r " \
+            "WHERE r.account_id = raw_wb_stats_orders.account_id " \
+            "AND COALESCE(raw_wb_stats_orders.g_number, '') <> '' AND r.g_number = raw_wb_stats_orders.g_number)"
+          ).count
+      end
+
       private
 
       def update_linked_status(link, status, source_status, source_substatus)
@@ -85,14 +100,27 @@ module Ec
         scope.where("raw_wb_stats_orders.synced_at >= ?", synced_since)
       end
 
-      def unlinked_stats_only_scope
+      # Statistics orders with a srid, no source link yet, and an account that has a WB store (others cannot be
+      # imported, so counting them would keep the dry run from converging with the applied count).
+      def unlinked_stats_candidates
         RawWb::StatsOrder.includes(:account)
           .where.not(srid: [ nil, "" ])
           .where.not(id: Ec::OrderSourceLink.where(source_type: "RawWb::StatsOrder").select(:source_id))
           .where(
-            "NOT EXISTS (SELECT 1 FROM raw_wb_orders r " \
-            "WHERE r.account_id = raw_wb_stats_orders.account_id AND r.srid = raw_wb_stats_orders.srid)"
+            "raw_wb_stats_orders.account_id IN (SELECT wb_raw_account_id FROM ec_stores " \
+            "WHERE platform = 'wb' AND wb_raw_account_id IS NOT NULL)"
           )
+      end
+
+      # Not covered by a marketplace order of the same account, matched like marketplace_order_for does:
+      # by srid first, then by a non-empty g_number.
+      def unlinked_stats_only_scope
+        unlinked_stats_candidates.where(
+          "NOT EXISTS (SELECT 1 FROM raw_wb_orders r " \
+          "WHERE r.account_id = raw_wb_stats_orders.account_id AND (" \
+          "r.srid = raw_wb_stats_orders.srid OR " \
+          "(COALESCE(raw_wb_stats_orders.g_number, '') <> '' AND r.g_number = raw_wb_stats_orders.g_number)))"
+        )
       end
 
       def import_order(raw_order)
