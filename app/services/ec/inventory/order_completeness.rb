@@ -13,6 +13,17 @@ module Ec
         }
       end
 
+      # Order items whose platform product is not bound to any internal SKU. Reported next to the completeness
+      # counts but deliberately not part of them: these orders exist, they just are not attributable yet.
+      def self.unattributed_summary(limit: 10)
+        rows = Ec::Inventory::BookLedger.unattributed
+        {
+          quantity: rows.sum { |row| row[:quantity] },
+          products: rows.size,
+          top: rows.first(limit)
+        }
+      end
+
       def self.ozon_postings_without_fulfillment(model)
         model.where(
           "NOT EXISTS (SELECT 1 FROM ec_order_fulfillments f " \
