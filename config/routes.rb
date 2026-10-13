@@ -42,7 +42,6 @@ Rails.application.routes.draw do
     "reports/ozon_chats#attachment", as: :reports_ozon_chat_attachment
   get "reports/supply_orders" => "reports/supply_orders#show", as: :reports_supply_orders
   get "reports/inventory/:sku_code" => "reports#inventory_detail", as: :report_inventory_detail
-  get "reports/inventory/:sku_code/fbs_orders" => "reports#inventory_fbs_orders", as: :report_inventory_fbs_orders
   patch "reports/inventory/:sku_code/returns" => "reports#update_inventory_returns", as: :report_inventory_returns
   get "reports/ozon_ads" => "reports/ozon_ads#overview", as: :reports_ozon_ads
   get "reports/ozon_ads/cpc" => "reports/ozon_ads#cpc", as: :reports_ozon_ads_cpc

@@ -185,6 +185,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    Ec::Order.where(id: @extra_orders&.map(&:id)).destroy_all if @extra_orders.present?
     Ec::SkuProduct.where(id: @sku_product&.id).delete_all if defined?(Ec::SkuProduct)
     RawOzon::ProductStock.where(account_id: @ozon_account&.id).delete_all
     RawOzon::ProductPrice.where(account_id: @ozon_account&.id).delete_all
@@ -345,8 +346,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "订单中心 Ozon 店"
   end
 
-  test "index renders business and return status columns with order level values" do
-    @order.update_columns(business_status: "in_delivery", return_business_status: "returning_to_seller")
+  test "index renders business and return status columns with per-fulfillment values" do
+    @fulfillment.update_columns(business_status: "in_delivery", return_business_status: "returning_to_seller")
 
     get "/orders", params: { q: { platform_eq: "ozon", order_status_eq: "shipped" } },
                    headers: { "Accept" => "text/html" }
@@ -365,7 +366,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "index renders business and return status columns in english" do
-    @order.update_columns(business_status: "delivered", return_business_status: "none")
+    @fulfillment.update_columns(business_status: "delivered", return_business_status: "none")
 
     get "/orders", params: { locale: "en", q: { order_status_eq: "shipped" } }, headers: { "Accept" => "text/html" }
 
@@ -382,64 +383,349 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "No return"
   end
 
-  test "index business status multi-select returns the union of selected statuses and keeps them selected" do
-    @order.update_columns(business_status: "in_delivery")
-    @wb_order.update_columns(business_status: "awaiting_assembly")
-    @later_processed_order.update_columns(business_status: "delivered")
+  test "index status columns join the distinct per-fulfillment values of an order" do
+    @fulfillment.update_columns(business_status: "returned", return_business_status: "at_platform_side")
+    add_fulfillment(@order, type: "fbs", business_status: "delivered", return_business_status: "none")
+    add_fulfillment(@order, type: "fbs", business_status: "delivered", return_business_status: "none")
+
+    get "/orders", params: { locale: "en", q: { platform_eq: "ozon", order_status_eq: "shipped" } },
+                   headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    headers = css_select("thead th").map { |th| th.text.strip }
+    row = css_select("tbody tr").find { |tr| tr.at_css("a[href='/orders/#{@order.id}']") }
+    cells = row.css("td").map { |td| td.text.strip }
+    assert_equal "Delivered / Returned", cells[headers.index("Business status")]
+    assert_equal "No return / At platform", cells[headers.index("Return status")]
+    assert_equal "FBO / FBS", cells[headers.index("Fulfillment mode")]
+
+    sign_in @current_user
+
+    get "/orders", params: { locale: "en", q: { platform_eq: "wb" } }, headers: { "Accept" => "text/html" }
+
+    row = css_select("tbody tr").find { |tr| tr.at_css("a[href='/orders/#{@wb_order.id}']") }
+    cells = row.css("td").map { |td| td.text.strip }
+    assert_equal "-", cells[headers.index("Business status")]
+    assert_equal "-", cells[headers.index("Return status")]
+  end
+
+  test "index business status multi-select returns the union of selected fulfillment statuses and keeps them selected" do
+    @fulfillment.update_columns(business_status: "in_delivery")
+    add_fulfillment(@wb_order, type: "fbs", business_status: "awaiting_assembly")
+    add_fulfillment(@later_processed_order, type: "fbs", business_status: "delivered")
 
     get "/orders",
-        params: { q: { business_status_in: %w[in_delivery awaiting_assembly] } },
+        params: { q: { fulfillments_business_status_in: %w[in_delivery awaiting_assembly] } },
         headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "a[href=?]", "/orders/#{@order.id}"
     assert_select "a[href=?]", "/orders/#{@wb_order.id}"
     assert_select "a[href=?]", "/orders/#{@later_processed_order.id}", count: 0
-    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "in_delivery"
-    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "awaiting_assembly"
-    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "delivered", count: 0
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_business_status_in][]", "in_delivery"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_business_status_in][]", "awaiting_assembly"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_business_status_in][]", "delivered", count: 0
     assert_select "#orders-business-status-filter-trigger span", "已选 2 项"
   end
 
   test "index business status filter offers the returned status and filters by it" do
-    @order.update_columns(business_status: "returned", return_business_status: "received_by_seller")
-    @wb_order.update_columns(business_status: "delivered")
+    @fulfillment.update_columns(business_status: "returned", return_business_status: "received_by_seller")
+    add_fulfillment(@wb_order, type: "fbs", business_status: "delivered")
 
     get "/orders",
-        params: { q: { business_status_in: %w[returned] } },
+        params: { q: { fulfillments_business_status_in: %w[returned] } },
         headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "a[href=?]", "/orders/#{@order.id}"
     assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
-    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "returned"
-    assert_select "input[type=checkbox][name=?][value=?]", "q[business_status_in][]", "delivered"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_business_status_in][]", "returned"
+    assert_select "input[type=checkbox][name=?][value=?]", "q[fulfillments_business_status_in][]", "delivered"
     row = css_select("tbody tr").find { |tr| tr.at_css("a[href='/orders/#{@order.id}']") }
     assert_includes row.css("td").map { |td| td.text.strip }, "已退货"
   end
 
-  test "index return status multi-select filters by order level return status" do
-    @order.update_columns(return_business_status: "expected")
-    @wb_order.update_columns(return_business_status: "received_by_seller")
+  test "index return status multi-select filters by fulfillment return status" do
+    @fulfillment.update_columns(return_business_status: "expected")
+    add_fulfillment(@wb_order, type: "fbs", return_business_status: "received_by_seller")
 
     get "/orders",
-        params: { q: { return_business_status_in: %w[expected] } },
+        params: { q: { fulfillments_return_business_status_in: %w[expected] } },
         headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "a[href=?]", "/orders/#{@order.id}"
     assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
-    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[return_business_status_in][]", "expected"
-    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[return_business_status_in][]", "received_by_seller", count: 0
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_return_business_status_in][]", "expected"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_return_business_status_in][]", "received_by_seller", count: 0
 
     sign_in @current_user
 
     get "/orders",
-        params: { q: { return_business_status_in: %w[expected received_by_seller] } },
+        params: { q: { fulfillments_return_business_status_in: %w[expected received_by_seller] } },
         headers: { "Accept" => "text/html" }
 
     assert_select "a[href=?]", "/orders/#{@order.id}"
     assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+  end
+
+  test "index ignores the legacy order level status params" do
+    @order.update_columns(business_status: "delivered", return_business_status: "expected")
+
+    get "/orders",
+        params: { q: { business_status_in: %w[delivered], return_business_status_in: %w[expected] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+    assert_select "input[type=checkbox][name=?][checked]", "q[fulfillments_business_status_in][]", count: 0
+    assert_select "input[type=checkbox][name=?][checked]", "q[fulfillments_return_business_status_in][]", count: 0
+  end
+
+  test "index applies fulfillment mode and both statuses to the same fulfillment without duplicates" do
+    # Matches: two FBS delivered/none fulfillments (must still count once) plus an FBO returned one.
+    both_modes = create_order_with_item("BOTH-#{@token}", platform_sku_id: "PS-BOTH-#{@token}")
+    add_fulfillment(both_modes, type: "fbs", business_status: "delivered", return_business_status: "none")
+    add_fulfillment(both_modes, type: "fbs", business_status: "delivered", return_business_status: "none")
+    add_fulfillment(both_modes, type: "fbo", business_status: "returned", return_business_status: "at_platform_side")
+    fbs_returned = create_order_with_item("FBSRET-#{@token}", platform_sku_id: "PS-FBSRET-#{@token}")
+    add_fulfillment(fbs_returned, type: "fbs", business_status: "returned", return_business_status: "at_platform_side")
+    fbs_delivered = create_order_with_item("FBSDEL-#{@token}", platform_sku_id: "PS-FBSDEL-#{@token}")
+    add_fulfillment(fbs_delivered, type: "fbs", business_status: "delivered", return_business_status: "none")
+
+    get "/orders",
+        params: { q: { fulfillments_fulfillment_type_in: %w[fbs],
+                       fulfillments_business_status_in: %w[delivered],
+                       fulfillments_return_business_status_in: %w[none] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_includes listed_order_ids, both_modes.id
+    assert_includes listed_order_ids, fbs_delivered.id
+    refute_includes listed_order_ids, fbs_returned.id
+    totals = css_select(".weekly-profit-summary-card .summary-value").map { |node| node.text.strip.to_i }
+    assert_equal 2, totals.first
+    # The filter only selects orders; the row still shows every fulfillment of the order.
+    row = css_select("tbody tr").find { |tr| tr.at_css("a[href='/orders/#{both_modes.id}']") }
+    assert_includes row.css("td").map { |td| td.text.strip }, "FBS / FBO"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_fulfillment_type_in][]", "fbs"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_business_status_in][]", "delivered"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_return_business_status_in][]", "none"
+
+    sign_in @current_user
+
+    # The FBO fulfillment is "returned"; the FBS one is not, so fbs + returned must not match both_modes.
+    get "/orders",
+        params: { q: { fulfillments_fulfillment_type_in: %w[fbs], fulfillments_business_status_in: %w[returned] } },
+        headers: { "Accept" => "text/html" }
+
+    refute_includes listed_order_ids, both_modes.id
+    assert_includes listed_order_ids, fbs_returned.id
+    refute_includes listed_order_ids, fbs_delivered.id
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { fulfillments_fulfillment_type_in: %w[fbo], fulfillments_business_status_in: %w[returned] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_includes listed_order_ids, both_modes.id
+    refute_includes listed_order_ids, fbs_returned.id
+  end
+
+  test "index drops unknown multi-select values silently" do
+    @fulfillment.update_columns(business_status: "in_delivery")
+
+    get "/orders",
+        params: {
+          q: {
+            fulfillments_business_status_in: %w[in_delivery bogus],
+            fulfillments_return_business_status_in: %w[bogus],
+            fulfillments_fulfillment_type_in: [""]
+          }
+        },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
+    assert_select "input[type=checkbox][name=?][checked]", "q[fulfillments_business_status_in][]", count: 1
+    assert_select "input[type=checkbox][name=?][checked]", "q[fulfillments_return_business_status_in][]", count: 0
+    assert_select "input[type=checkbox][name=?][checked]", "q[fulfillments_fulfillment_type_in][]", count: 0
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { fulfillments_business_status_in: %w[bogus] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+  end
+
+  test "index combines multi-select statuses with the platform filter" do
+    @fulfillment.update_columns(business_status: "in_delivery")
+    add_fulfillment(@wb_order, type: "fbs", business_status: "in_delivery")
+
+    get "/orders",
+        params: { q: { platform_eq: "wb", fulfillments_business_status_in: %w[in_delivery] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 0
+    assert_select "select[name=?] option[selected][value=?]", "q[platform_eq]", "wb"
+  end
+
+  test "index paginates with the shared pagination bar and keeps filters" do
+    add_fulfillment(@order, type: "fbs", business_status: "in_delivery")
+    @older_orders.each { |order| add_fulfillment(order, type: "fbs", business_status: "in_delivery") }
+
+    get "/orders",
+        params: { q: { platform_eq: "ozon", fulfillments_business_status_in: %w[in_delivery] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "nav.pagination", count: 0
+    assert_select ".table-list-card > .inventory-pagination-bar", count: 1
+    assert_select ".inventory-pagination-bar nav.pagination-nav[aria-label=?]", "订单列表分页"
+    assert_select ".inventory-pagination-bar .pg-btn.on", "1"
+    assert_select ".inventory-pagination-bar a.pg-btn" do |links|
+      page_two = links.find { |link| link.text.strip == "2" }
+      assert page_two, "expected a link to page 2"
+      query = Rack::Utils.parse_nested_query(URI.parse(page_two["href"]).query)
+      assert_equal "2", query["page"]
+      assert_equal "ozon", query.dig("q", "platform_eq")
+      assert_equal %w[in_delivery], query.dig("q", "fulfillments_business_status_in")
+    end
+    assert_select ".inventory-pagination-bar form.pagination-jump input[name=?]", "jump_page"
+    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "q[platform_eq]", "ozon"
+    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "q[fulfillments_business_status_in][]", "in_delivery"
+  end
+
+  test "index filters orders by SKU through the hard sku product link only" do
+    unlinked = create_order_with_item("UNLINKED-#{@token}", platform_sku_id: "PS-UNLINKED-#{@token}", sku_code: @sku.sku_code)
+    other_store = Ec::Store.create!(
+      platform: "ozon",
+      store_name: "订单中心 Ozon 另一店 #{@token}",
+      company_type: "general",
+      ozon_raw_account_id: @ozon_account.id
+    )
+    # Same platform SKU id as the bound product, but in a store where it is not bound.
+    other_store_order = create_order_with_item("OTHERSTORE-#{@token}", platform_sku_id: @sku_product.platform_sku_id, store: other_store)
+    wb_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code, store: @wb_store, product_id: "WB-PID-#{@token}", offer_id: "WB-OFFER-#{@token}",
+      platform_sku_id: "WB-NM-#{@token}", product_name: "WB product"
+    )
+    wb_item = @wb_order.items.create!(
+      platform: "wb", store: @wb_store, external_item_id: "WB-ITEM-#{@token}",
+      platform_sku_id: "WB-PID-#{@token}", quantity: 1, synced_at: Time.zone.parse("2026-06-02 04:00:00")
+    )
+
+    get "/orders", params: { sku_codes: [@sku.sku_code] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 1
+    refute_includes listed_order_ids, unlinked.id
+    refute_includes listed_order_ids, other_store_order.id
+    assert_select "a[href=?]", "/orders/#{@later_processed_order.id}", count: 0
+    totals = css_select(".weekly-profit-summary-card .summary-value").map { |node| node.text.strip.to_i }
+    assert_equal 2, totals.first
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "sku_codes[]", @sku.sku_code
+    assert_select "#orders-spu-sku-filter-trigger", text: @sku.sku_code
+  ensure
+    wb_item&.destroy
+    Ec::SkuProduct.where(id: wb_product&.id).delete_all
+    Ec::OrderItem.where(order_id: [unlinked&.id, other_store_order&.id]).delete_all
+    unlinked&.destroy
+    other_store_order&.destroy
+    other_store&.destroy
+  end
+
+  test "index SKU filter takes the union of selected SPUs and SKUs" do
+    master = Ec::MasterSku.create!(master_sku_code: "ORD-SPU-#{@token}", product_name: "订单中心 SPU")
+    second_sku = Ec::Sku.create!(sku_code: "CTR2-#{@token}", product_name: "第二个商品", master_sku: master, is_active: true)
+    second_product = Ec::SkuProduct.create!(
+      sku_code: second_sku.sku_code, store: @store, product_id: "777#{@token.hex}", offer_id: "CTR2-#{@token}",
+      platform_sku_id: "PS-SECOND-#{@token}", product_name: "second"
+    )
+    second_order = create_order_with_item("SECOND-#{@token}", platform_sku_id: "PS-SECOND-#{@token}")
+
+    get "/orders", params: { master_sku_ids: [master.id] }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_includes listed_order_ids, second_order.id
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 0
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "master_sku_ids[]", master.id.to_s
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { master_sku_ids: [master.id], sku_codes: [@sku.sku_code] },
+        headers: { "Accept" => "text/html" }
+
+    assert_includes listed_order_ids, second_order.id
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{@later_processed_order.id}", count: 0
+  ensure
+    Ec::OrderItem.where(order_id: second_order&.id).delete_all
+    second_order&.destroy
+    Ec::SkuProduct.where(id: second_product&.id).delete_all
+    Ec::Sku.with_deleted.where(id: second_sku&.id).delete_all
+    Ec::MasterSku.where(id: master&.id).delete_all
+  end
+
+  test "index SKU filter combines with the drill-down filters and keeps them across pagination" do
+    @fulfillment.update_columns(fulfillment_type: "fbs", business_status: "delivered", return_business_status: "none")
+    @older_orders.each do |order|
+      order.items.create!(
+        platform: "ozon", store: @store, external_item_id: "PG-#{order.id}",
+        platform_sku_id: @sku_product.platform_sku_id, quantity: 1, synced_at: Time.zone.parse("2026-06-02 04:00:00")
+      )
+      add_fulfillment(order, type: "fbs", business_status: "delivered", return_business_status: "none")
+    end
+    drilldown = {
+      sku_codes: [@sku.sku_code],
+      q: {
+        platform_eq: "ozon", store_id_eq: @store.id.to_s,
+        fulfillments_fulfillment_type_in: %w[fbs],
+        fulfillments_business_status_in: %w[delivered],
+        fulfillments_return_business_status_in: %w[none]
+      }
+    }
+
+    get "/orders", params: drilldown, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    totals = css_select(".weekly-profit-summary-card .summary-value").map { |node| node.text.strip.to_i }
+    assert_equal 22, totals.first
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
+    assert_select ".inventory-pagination-bar .pg-btn.on", "1"
+    assert_select ".inventory-pagination-bar a.pg-btn" do |links|
+      page_two = links.find { |link| link.text.strip == "2" }
+      assert page_two, "expected a link to page 2"
+      query = Rack::Utils.parse_nested_query(URI.parse(page_two["href"]).query)
+      assert_equal "2", query["page"]
+      assert_equal [@sku.sku_code], query["sku_codes"]
+      assert_equal %w[fbs], query.dig("q", "fulfillments_fulfillment_type_in")
+      assert_equal %w[delivered], query.dig("q", "fulfillments_business_status_in")
+      assert_equal %w[none], query.dig("q", "fulfillments_return_business_status_in")
+      assert_equal @store.id.to_s, query.dig("q", "store_id_eq")
+    end
+    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "sku_codes[]", @sku.sku_code
+    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "q[fulfillments_business_status_in][]", "delivered"
+
+    sign_in @current_user
+
+    get "/orders", params: drilldown.merge(page: 2), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select "tbody tr", count: 2
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "sku_codes[]", @sku.sku_code
   end
 
   test "index fulfillment mode multi-select matches any selected mode and does not duplicate orders" do
@@ -509,77 +795,6 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
   ensure
     Ec::OrderFulfillment.where(order_id: fbs_only_order&.id).delete_all
     fbs_only_order&.destroy
-  end
-
-  test "index drops unknown multi-select values silently" do
-    @order.update_columns(business_status: "in_delivery")
-
-    get "/orders",
-        params: {
-          q: {
-            business_status_in: %w[in_delivery bogus],
-            return_business_status_in: %w[bogus],
-            fulfillments_fulfillment_type_in: [""]
-          }
-        },
-        headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "a[href=?]", "/orders/#{@order.id}"
-    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
-    assert_select "input[type=checkbox][name=?][checked]", "q[business_status_in][]", count: 1
-    assert_select "input[type=checkbox][name=?][checked]", "q[return_business_status_in][]", count: 0
-    assert_select "input[type=checkbox][name=?][checked]", "q[fulfillments_fulfillment_type_in][]", count: 0
-
-    sign_in @current_user
-
-    get "/orders",
-        params: { q: { business_status_in: %w[bogus] } },
-        headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "a[href=?]", "/orders/#{@order.id}"
-    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
-  end
-
-  test "index combines multi-select statuses with the platform filter" do
-    @order.update_columns(business_status: "in_delivery")
-    @wb_order.update_columns(business_status: "in_delivery")
-
-    get "/orders",
-        params: { q: { platform_eq: "wb", business_status_in: %w[in_delivery] } },
-        headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
-    assert_select "a[href=?]", "/orders/#{@order.id}", count: 0
-    assert_select "select[name=?] option[selected][value=?]", "q[platform_eq]", "wb"
-  end
-
-  test "index paginates with the shared pagination bar and keeps filters" do
-    @order.update_columns(business_status: "in_delivery")
-    @older_orders.each { |order| order.update_columns(business_status: "in_delivery") }
-
-    get "/orders",
-        params: { q: { platform_eq: "ozon", business_status_in: %w[in_delivery] } },
-        headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "nav.pagination", count: 0
-    assert_select ".table-list-card > .inventory-pagination-bar", count: 1
-    assert_select ".inventory-pagination-bar nav.pagination-nav[aria-label=?]", "订单列表分页"
-    assert_select ".inventory-pagination-bar .pg-btn.on", "1"
-    assert_select ".inventory-pagination-bar a.pg-btn" do |links|
-      page_two = links.find { |link| link.text.strip == "2" }
-      assert page_two, "expected a link to page 2"
-      query = Rack::Utils.parse_nested_query(URI.parse(page_two["href"]).query)
-      assert_equal "2", query["page"]
-      assert_equal "ozon", query.dig("q", "platform_eq")
-      assert_equal %w[in_delivery], query.dig("q", "business_status_in")
-    end
-    assert_select ".inventory-pagination-bar form.pagination-jump input[name=?]", "jump_page"
-    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "q[platform_eq]", "ozon"
-    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "q[business_status_in][]", "in_delivery"
   end
 
   test "index jump_page selects the requested page" do
@@ -720,5 +935,52 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", "Source links"
     assert_select "th", "Source type"
     assert_select "td", "Shipped"
+  end
+
+  private
+
+  def listed_order_ids
+    css_select("tbody tr a").filter_map { |link| link["href"].to_s[%r{\A/orders/(\d+)\z}, 1]&.to_i }.uniq
+  end
+
+  def add_fulfillment(order, type: "fbs", business_status: "needs_review", return_business_status: "none")
+    key = "#{order.external_order_number}-#{type}-#{SecureRandom.hex(3)}"
+    order.fulfillments.create!(
+      platform: order.platform,
+      store: order.store,
+      external_fulfillment_id: key,
+      fulfillment_key: "#{order.platform}:#{order.store_id}:#{key}",
+      fulfillment_type: type,
+      status: order.order_status,
+      business_status: business_status,
+      return_business_status: return_business_status,
+      synced_at: Time.zone.parse("2026-06-02 04:00:00")
+    )
+  end
+
+  # An ozon order with one item and no fulfillment; destroyed in teardown.
+  def create_order_with_item(number, platform_sku_id:, store: @store, sku_code: nil)
+    order = Ec::Order.create!(
+      platform: "ozon",
+      store: store,
+      external_order_id: number,
+      external_order_number: number,
+      order_key: "ozon:#{store.id}:#{number}",
+      order_status: "processing",
+      ordered_at: Time.zone.parse("2026-06-02 06:30:00"),
+      synced_at: Time.zone.parse("2026-06-02 06:35:00")
+    )
+    (@extra_orders ||= []) << order
+    order.items.create!(
+      platform: "ozon",
+      store: store,
+      external_item_id: "#{number}-ITEM",
+      platform_sku_id: platform_sku_id,
+      offer_id: sku_code,
+      sku_code: sku_code,
+      quantity: 1,
+      synced_at: Time.zone.parse("2026-06-02 06:35:00")
+    )
+    order
   end
 end

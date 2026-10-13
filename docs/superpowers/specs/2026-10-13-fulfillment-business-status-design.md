@@ -179,8 +179,8 @@
 ## 7. 页面
 
 - `reports/_inventory_physical_reconciliation.html.erb` 的"FBS 订单流转"板块：27 行表格换成按平台＋店铺聚合的列表，列为店铺、业务状态、退货状态、物理库存影响、件数；每行是一个（店铺、业务状态、退货状态）组合，件数是链接。第 5 节的交叉表保留为分类依据，页面不再画交叉表网格。
-- 点击件数，用现有的 `erp_modal` 弹窗框架弹出订单列表（与同一板块里的"物理盘库矫正"弹窗一致，`inventory.html.erb` 和 `inventory_detail.html.erb` 已经渲染了这个框架）。新增一个只读 GET，参数为 `sku_code`、`business_status`、`return_business_status`、可选的 `store_id`（按店铺过滤）、分页。
-- 列表列：平台／店铺、订单号、发货单号、下单时间（`display_time`）、业务状态、退货业务状态、平台原始状态（沿用现有 `source_status_label`）、数量。表格用 `table_viewport`，分页在表格上方。
+- 点击件数，在新标签页（`target="_blank"`、`rel="noopener"`）打开订单中心 `/orders`，带上筛选：`sku_codes[]`（当前 SKU）、`q[platform_eq]`、`q[store_id_eq]`（该行的平台和店铺）、`q[fulfillments_fulfillment_type_in][]=fbs`、`q[fulfillments_business_status_in][]`（该行业务状态）、`q[fulfillments_return_business_status_in][]`（该行退货状态）。原先的订单列表弹窗及其路由、控制器动作、查询对象一并移除。
+- 订单中心的三个状态筛选是发货单级别的 ransack 条件，三者作用于同一条发货单记录，因此列表与格子一致；SKU 筛选用共享的 SPU/SKU 选择器，只通过 `ec_sku_products` 硬关联归属，不使用 `ec_order_items.sku_code`。订单中心的业务状态、退货状态两列显示该订单各发货单去重后的取值（以 " / " 连接）。
 - 所有展示文案走 I18n（`zh`、`en`、`ru`），不新增硬编码文案。
 - 现有 27 个阶段文案和合成阶段逻辑在新页面上线后移除；`Ec::InventoryOrderSalesDistributionQuery` 的其他消费者不受影响，保留。
 
@@ -189,7 +189,7 @@
 - 解析器：表驱动，覆盖 4.1 与 4.2 两张映射表的每一行，加上多退货取最新、WB 取消类优先于 R 流水、统计证据优先于卡住的 `waiting/new`、离仓证据有无的组合。
 - 回填：幂等，多发货单订单，无订单的 WB 退货不报错。
 - 交叉表查询：每个格子的数量，异常格子单列。
-- 弹窗控制器：筛选参数白名单、分页、权限沿用盘库详情页。
+- 订单中心：SKU 硬关联筛选（不匹配仅有 `sku_code` 字符串的商品）、SPU/SKU 并集、三个发货单级状态条件作用于同一条发货单、无重复且合计正确、分页与跳页保留筛选参数；FBS 列表件数链接的新标签页属性与筛选参数。
 - 公式回归：用 `script/physical_stocktake_baseline.rb` 对比重构前后每个 SKU 的全部汇总指标，差异只允许来自第 5 节列出的三项。基线文件为 `docs/superpowers/baselines/2026-10-13-physical-stocktake-baseline.json`。
 - 注意：`test/test_helper.rb` 里 `use_transactional_tests = false`，测试需用唯一 SKU 并自行清理数据。
 

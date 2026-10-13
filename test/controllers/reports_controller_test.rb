@@ -3699,16 +3699,31 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "table.inventory-fbs-status-table tbody tr:nth-child(#{ozon_delivered + 1})" do
       assert_select "td:nth-child(4) .inventory-reconciliation-badge--excluded", text: "已扣除物理库存"
-      assert_select "td:nth-child(5) a[data-turbo-frame='erp_modal'][href*='fbs_orders'][href*='store_id=#{@sales_store.id}']", text: "3"
+      assert_select "td:nth-child(5) a[target='_blank'][rel~='noopener']:not([data-turbo-frame])", text: "3" do |links|
+        link = links.first
+        assert_equal "在新标签页查看这些订单", link["title"]
+        query = Rack::Utils.parse_nested_query(URI.parse(link["href"]).query)
+        assert_equal "/orders", URI.parse(link["href"]).path
+        assert_equal [ @sku.sku_code ], query["sku_codes"]
+        assert_equal "ozon", query.dig("q", "platform_eq")
+        assert_equal @sales_store.id.to_s, query.dig("q", "store_id_eq")
+        assert_equal %w[fbs], query.dig("q", "fulfillments_fulfillment_type_in")
+        assert_equal %w[delivered], query.dig("q", "fulfillments_business_status_in")
+        assert_equal %w[none], query.dig("q", "fulfillments_return_business_status_in")
+        raw = link["href"]
+        assert_includes raw, "sku_codes%5B%5D=#{CGI.escape(@sku.sku_code)}"
+        assert_includes raw, "q%5Bstore_id_eq%5D=#{@sales_store.id}"
+        assert_includes raw, "q%5Bfulfillments_fulfillment_type_in%5D%5B%5D=fbs"
+      end
     end
     assert_select "table.inventory-fbs-status-table tbody tr:nth-child(#{ozon_returned + 1})" do
       assert_select "td:nth-child(4) .inventory-reconciliation-badge--neutral", text: "已扣除，退货已加回"
-      assert_select "td:nth-child(5) a[href*='store_id=#{@sales_store.id}']", text: "2"
+      assert_select "td:nth-child(5) a[target='_blank'][href*='q%5Bfulfillments_business_status_in%5D%5B%5D=returned'][href*='q%5Bfulfillments_return_business_status_in%5D%5B%5D=received_by_seller']", text: "2"
     end
     assert_select "table.inventory-fbs-status-table tbody tr:nth-child(#{wb_awaiting + 1})" do
       assert_select "td:nth-child(3) .inventory-fbs-status-table__anomaly", text: "状态异常"
       assert_select "td:nth-child(4) .inventory-reconciliation-badge--excluded", text: "已扣除物理库存"
-      assert_select "td:nth-child(5) a[href*='store_id=#{@wb_sales_store.id}']", text: "5"
+      assert_select "td:nth-child(5) a[target='_blank'][href*='q%5Bstore_id_eq%5D=#{@wb_sales_store.id}'][href*='q%5Bplatform_eq%5D=wb']", text: "5"
     end
     footer_total = table_rows.sum { |cells| cells[4].to_i }
     assert_operator footer_total, :>=, 10
@@ -3717,44 +3732,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       assert_select "td:last-child", text: footer_total.to_s
     end
     assert_select ".inventory-fbs-matrix", count: 0
-
-    sign_in @current_user
-    get report_inventory_fbs_orders_path(
-      @sku.sku_code, business_status: "delivered", return_business_status: "none", store_id: @sales_store.id
-    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
-
-    assert_response :success
-    assert_select "turbo-frame#erp_modal"
-    assert_select ".erp-modal__subtitle", text: /销量统计 Ozon 店 #{@sku_code}/
-    assert_select "td", text: "FBSM-NUMBER-OZ-#{@sku_code}"
-    assert_select ".inventory-fbs-orders-modal__summary strong", text: "3"
-
-    sign_in @current_user
-    get report_inventory_fbs_orders_path(
-      @sku.sku_code, business_status: "returned", return_business_status: "received_by_seller", store_id: @sales_store.id
-    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
-
-    assert_response :success
-    assert_select "td", text: "FBSM-NUMBER-OZR-#{@sku_code}"
-    assert_select "td", text: "FBSM-NUMBER-OZ-#{@sku_code}", count: 0
-    assert_select ".inventory-fbs-orders-modal__summary strong", text: "2"
-
-    sign_in @current_user
-    get report_inventory_fbs_orders_path(
-      @sku.sku_code, business_status: "awaiting_assembly", return_business_status: "expected", store_id: @sales_store.id
-    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
-
-    assert_response :success
-    assert_select ".inventory-fbs-orders-modal__summary strong", text: "0"
-    assert_select "td", text: "FBSM-NUMBER-WB-#{@sku_code}", count: 0
-
-    sign_in @current_user
-    get report_inventory_fbs_orders_path(
-      @sku.sku_code, business_status: "awaiting_assembly", return_business_status: "expected", store_id: "not-a-number"
-    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
-
-    assert_response :success
-    assert_select ".inventory-fbs-orders-modal__summary strong", text: "5"
   ensure
     order_ids = [ ozon_order, ozon_returned_order, wb_order ].compact.map(&:id)
     Ec::OrderItem.where(order_id: order_ids).delete_all
@@ -3762,50 +3739,6 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::Order.where(id: order_ids).delete_all
     ozon_product&.delete
     wb_product&.delete
-  end
-
-  test "FBS order list pagination links keep the store filter" do
-    product = Ec::SkuProduct.create!(
-      sku_code: @sku.sku_code, store: @sales_store, product_id: "FBSP-#{@sku_code}", platform_sku_id: "6#{SecureRandom.random_number(10**8)}"
-    )
-    order_ids = Array.new(21) do |index|
-      key = "FBSP-#{index}-#{@sku_code}"
-      order = Ec::Order.create!(
-        platform: "ozon", store: @sales_store, order_key: key, external_order_id: key, external_order_number: key,
-        order_status: "delivered", ordered_at: (index + 1).hours.ago
-      )
-      fulfillment = order.fulfillments.create!(
-        platform: "ozon", store: @sales_store, external_fulfillment_id: key, fulfillment_key: key,
-        fulfillment_type: "fbs", status: "delivered", business_status: "delivered", return_business_status: "none"
-      )
-      Ec::OrderItem.create!(
-        platform: "ozon", store: @sales_store, order: order, fulfillment: fulfillment, external_item_id: key,
-        platform_sku_id: product.platform_sku_id, quantity: 1
-      )
-      order.id
-    end
-
-    get report_inventory_fbs_orders_path(
-      @sku.sku_code, business_status: "delivered", return_business_status: "none", store_id: @sales_store.id
-    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
-
-    assert_response :success
-    assert_select ".pagination-nav a.pg-btn[data-turbo-frame='erp_modal'][href*='store_id=#{@sales_store.id}']", minimum: 1
-    assert_select ".pagination-nav a.pg-btn:not([href*='store_id=#{@sales_store.id}'])", count: 0
-    assert_select ".inventory-fbs-orders-modal__summary strong", text: "21"
-  ensure
-    Ec::OrderItem.where(order_id: order_ids).delete_all
-    Ec::OrderFulfillment.where(order_id: order_ids).delete_all
-    Ec::Order.where(id: order_ids).delete_all
-    product&.delete
-  end
-
-  test "FBS order list rejects statuses outside the vocabulary" do
-    get report_inventory_fbs_orders_path(
-      @sku.sku_code, business_status: "bogus", return_business_status: "none"
-    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
-
-    assert_response :bad_request
   end
 
 end

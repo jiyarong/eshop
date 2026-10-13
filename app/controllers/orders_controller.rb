@@ -1,20 +1,25 @@
 class OrdersController < ApplicationController
+  include SpuSkuFilterable
+
   helper_method :order_status_label, :platform_label, :fulfillment_label, :display_value, :money_value,
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
                 :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
                 :order_fulfillment_types, :order_amount, :order_currency,
                 :business_status_filter_options, :return_business_status_filter_options,
-                :fulfillment_type_filter_options, :business_status_label, :return_business_status_label
+                :fulfillment_type_filter_options, :business_status_label, :return_business_status_label,
+                :order_business_statuses, :order_return_business_statuses
   before_action -> { require_permission!(:view_reports) }
 
   ORDERS_PER_PAGE = 20
   FULFILLMENT_TYPE_FILTER_VALUES = %w[fbs fbo fbw].freeze
+  ORDER_ITEM_SKU_JOIN = SalesFunnelReports::SkuFunnelAnalysisQuery::ORDER_ITEM_JOIN
 
   def index
     @q_params = normalized_ransack_params
     @stores = Ec::Store.order(:platform, :store_name)
-    @search = base_order_scope.ransack(@q_params)
+    load_spu_sku_filter
+    @search = apply_sku_filter(base_order_scope).ransack(@q_params)
     @orders_scope = @search.result(distinct: true)
     @summary = build_summary(@orders_scope)
     @orders = paginated_orders(@orders_scope)
@@ -48,6 +53,20 @@ class OrdersController < ApplicationController
     page.positive? ? page : 1
   end
 
+  # Orders that have at least one item hard-linked (store + platform + platform SKU id /
+  # product id through ec_sku_products) to one of the selected SKUs. ec_order_items.sku_code
+  # is deliberately not used.
+  def apply_sku_filter(scope)
+    return scope unless spu_sku_filter_active?
+
+    sku_codes = apply_spu_sku_filter_to_skus(Ec::Sku.all).select(:sku_code)
+    order_ids = Ec::OrderItem
+      .joins(ORDER_ITEM_SKU_JOIN)
+      .where(ec_sku_products: { sku_code: sku_codes })
+      .select(:order_id)
+    scope.where(id: order_ids)
+  end
+
   def base_order_scope
     Ec::Order
       .includes(:store, :fulfillments, { items: :sku })
@@ -61,8 +80,8 @@ class OrdersController < ApplicationController
         :order_status_eq,
         :store_id_eq,
         :external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont,
-        business_status_in: [],
-        return_business_status_in: [],
+        fulfillments_business_status_in: [],
+        fulfillments_return_business_status_in: [],
         fulfillments_fulfillment_type_in: []
       ).to_h
     else
@@ -75,8 +94,8 @@ class OrdersController < ApplicationController
     query[:order_status_eq] ||= params[:status].presence_in(Ec::Order::STATUSES.values)
     query[:store_id_eq] ||= params[:store_id].presence
 
-    restrict_to_vocabulary!(query, :business_status_in, Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES)
-    restrict_to_vocabulary!(query, :return_business_status_in, Ec::FulfillmentBusinessStatus::RETURN_STATUSES)
+    restrict_to_vocabulary!(query, :fulfillments_business_status_in, Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES)
+    restrict_to_vocabulary!(query, :fulfillments_return_business_status_in, Ec::FulfillmentBusinessStatus::RETURN_STATUSES)
     restrict_to_vocabulary!(query, :fulfillments_fulfillment_type_in, FULFILLMENT_TYPE_FILTER_VALUES)
     query.compact_blank
   end
@@ -133,6 +152,26 @@ class OrdersController < ApplicationController
   def order_fulfillment_types(order)
     labels = order.fulfillments.map(&:fulfillment_type).compact_blank.uniq.map { |type| fulfillment_label(type) }
     labels.presence&.join(" / ") || "-"
+  end
+
+  # Distinct per-fulfillment statuses of an order, in vocabulary order, joined like the
+  # fulfillment mode column. Fulfillments are preloaded by base_order_scope.
+  def order_business_statuses(order)
+    distinct_fulfillment_statuses(order, :business_status, Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES) do |value|
+      business_status_label(value)
+    end
+  end
+
+  def order_return_business_statuses(order)
+    distinct_fulfillment_statuses(order, :return_business_status, Ec::FulfillmentBusinessStatus::RETURN_STATUSES) do |value|
+      return_business_status_label(value)
+    end
+  end
+
+  def distinct_fulfillment_statuses(order, attribute, vocabulary)
+    values = order.fulfillments.map(&attribute).compact_blank.uniq
+    values = values.sort_by { |value| [vocabulary.index(value) || vocabulary.size, value] }
+    values.map { |value| yield(value) }.presence&.join(" / ") || "-"
   end
 
   def display_value(value)

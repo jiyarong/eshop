@@ -38,19 +38,19 @@
       <%= render "shared/popover_multiselect_filter",
                  field_class: "",
                  dom_id_prefix: "orders-business-status-filter",
-                 param_name: "q[business_status_in]",
+                 param_name: "q[fulfillments_business_status_in]",
                  label: t("orders.filters.business_status"),
                  all_label: t("orders.filters.all_business_statuses"),
-                 selected_values: @q_params["business_status_in"],
+                 selected_values: @q_params["fulfillments_business_status_in"],
                  options: business_status_filter_options %>
 
       <%= render "shared/popover_multiselect_filter",
                  field_class: "",
                  dom_id_prefix: "orders-return-business-status-filter",
-                 param_name: "q[return_business_status_in]",
+                 param_name: "q[fulfillments_return_business_status_in]",
                  label: t("orders.filters.return_business_status"),
                  all_label: t("orders.filters.all_return_business_statuses"),
-                 selected_values: @q_params["return_business_status_in"],
+                 selected_values: @q_params["fulfillments_return_business_status_in"],
                  options: return_business_status_filter_options %>
 
       <%= render "shared/popover_multiselect_filter",
@@ -61,6 +61,10 @@
                  all_label: t("orders.filters.all_fulfillment_types"),
                  selected_values: @q_params["fulfillments_fulfillment_type_in"],
                  options: fulfillment_type_filter_options %>
+
+      <%= render "shared/spu_sku_filter",
+                 field_class: "",
+                 dom_id_prefix: "orders-spu-sku-filter" %>
 
       <div class="field">
         <label for="q"><%= t("orders.filters.search") %></label>
@@ -138,8 +142,8 @@
                   <td><%= platform_label(order.platform) %></td>
                   <td><%= order.store.store_name %></td>
                   <td title="<%= order_status_title(order) %>"><%= order_status_label(order.order_status) %></td>
-                  <td><%= business_status_label(order.business_status) %></td>
-                  <td><%= return_business_status_label(order.return_business_status) %></td>
+                  <td><%= order_business_statuses(order) %></td>
+                  <td><%= order_return_business_statuses(order) %></td>
                   <td><%= order_fulfillment_types(order) %></td>
                   <td>
                     <% if platform_order_url(order).present? %>

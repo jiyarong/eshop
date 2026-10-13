@@ -30,16 +30,4 @@ en:
             impact:
               returned: Deducted, return added back
             anomaly_summary: Status anomalies (included above)
-          fbs_orders_modal:
-            title: FBS orders
-            summary_cell: "%{business} × %{return}"
-            quantity: Total quantity
-            empty: No matching orders
-            columns:
-              platform_store: Platform / store
-              order_number: Order number
-              fulfillment_number: Fulfillment number
-              ordered_at: Ordered at
-              source_status: Platform status
-              quantity: Quantity
-            pagination_aria_label: FBS order list pagination
+            open_orders_title: View these orders in a new tab

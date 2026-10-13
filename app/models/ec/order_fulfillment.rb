@@ -34,7 +34,7 @@ module Ec
     end
 
     def self.ransackable_attributes(_auth_object = nil)
-      %w[external_fulfillment_id fulfillment_type platform source_status source_substatus status store_id]
+      %w[business_status external_fulfillment_id fulfillment_type platform return_business_status source_status source_substatus status store_id]
     end
   end
 end
