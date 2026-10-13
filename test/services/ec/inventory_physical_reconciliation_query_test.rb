@@ -181,7 +181,7 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
 
   test "adds back seller-received WB returns of orders with an FBS fulfillment" do
     order = create_fbs_fulfillment(
-      platform: "wb", business_status: "delivered", return_business_status: "received_by_seller", quantity: 3
+      platform: "wb", business_status: "returned", return_business_status: "received_by_seller", quantity: 3
     ).order
     returned = Ec::Return.create!(
       platform: "wb", store: @wb_store, order: order, return_key: "WB-FBS-RETURN-#{@token}",

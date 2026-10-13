@@ -11,7 +11,8 @@ module Ec
       "awaiting_dispatch" => %w[none],
       "needs_review" => %w[none],
       "in_delivery" => %w[none],
-      "delivered" => %w[none at_platform_side returning_to_seller received_by_seller no_physical_return],
+      "delivered" => %w[none no_physical_return],
+      "returned" => %w[at_platform_side returning_to_seller received_by_seller no_physical_return],
       "cancelled" => %w[none expected at_platform_side returning_to_seller received_by_seller no_physical_return]
     }.freeze
 

@@ -5,6 +5,7 @@ zh:
       awaiting_dispatch: 待发运
       in_delivery: 配送中
       delivered: 已签收
+      returned: 已退货
       cancelled: 已取消
       needs_review: 待核实
     return:

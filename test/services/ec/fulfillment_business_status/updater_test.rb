@@ -23,9 +23,9 @@ class Ec::FulfillmentBusinessStatus::UpdaterTest < ActiveSupport::TestCase
 
     result = Ec::FulfillmentBusinessStatus::Updater.call(fulfillment)
 
-    assert_equal %w[delivered received_by_seller], [ result.business_status, result.return_business_status ]
-    assert_equal %w[delivered received_by_seller], statuses(fulfillment)
-    assert_equal %w[delivered received_by_seller], order.reload.attributes.values_at("business_status", "return_business_status")
+    assert_equal %w[returned received_by_seller], [ result.business_status, result.return_business_status ]
+    assert_equal %w[returned received_by_seller], statuses(fulfillment)
+    assert_equal %w[returned received_by_seller], order.reload.attributes.values_at("business_status", "return_business_status")
   end
 
   test "Ozon cancelled posting handed to delivery without a return is expected back" do
@@ -155,7 +155,7 @@ class Ec::FulfillmentBusinessStatus::UpdaterTest < ActiveSupport::TestCase
     Ec::FulfillmentBusinessStatus::Updater.for_order(order)
 
     assert_equal %w[delivered none], statuses(order.fulfillments.find_by!(fulfillment_type: "fbs"))
-    assert_equal %w[delivered received_by_seller], statuses(second)
+    assert_equal %w[returned received_by_seller], statuses(second)
   end
 
   test "return attaches through the posting number when it has no order item link" do
@@ -172,7 +172,7 @@ class Ec::FulfillmentBusinessStatus::UpdaterTest < ActiveSupport::TestCase
     Ec::FulfillmentBusinessStatus::Updater.for_order(order)
 
     assert_equal %w[delivered none], statuses(order.fulfillments.find_by!(fulfillment_type: "fbs"))
-    assert_equal %w[delivered received_by_seller], statuses(second)
+    assert_equal %w[returned received_by_seller], statuses(second)
   end
 
   test "return with an order item link ignores a conflicting posting number" do
@@ -195,7 +195,7 @@ class Ec::FulfillmentBusinessStatus::UpdaterTest < ActiveSupport::TestCase
     Ec::FulfillmentBusinessStatus::Updater.for_order(order)
 
     assert_equal %w[delivered none], statuses(first)
-    assert_equal %w[delivered received_by_seller], statuses(second)
+    assert_equal %w[returned received_by_seller], statuses(second)
   end
 
   test "order summary shows the least finished fulfillment and the most unresolved return" do
@@ -210,6 +210,67 @@ class Ec::FulfillmentBusinessStatus::UpdaterTest < ActiveSupport::TestCase
     Ec::FulfillmentBusinessStatus::Updater.for_order(order)
 
     assert_equal %w[awaiting_assembly none], order.reload.attributes.values_at("business_status", "return_business_status")
+  end
+
+  test "order summary surfaces a returned posting over a delivered one but behind unfinished ones" do
+    order = ledger_order(platform: "ozon", status: "delivered", source_status: "delivered",
+      source_substatus: "posting_received")
+    returned_posting = order.fulfillments.first
+    delivered_posting = order.fulfillments.create!(
+      platform: "ozon", store: @ozon_store, external_fulfillment_id: "POSTING-4-#{@token}",
+      fulfillment_key: "ozon:#{@ozon_store.id}:POSTING-4-#{@token}", fulfillment_type: "fbs", status: "delivered",
+      source_status: "delivered", source_substatus: "posting_received"
+    )
+    ledger_return(order, source_status: "ReturnedToOzon").tap do |record|
+      record.update!(external_posting_number: returned_posting.external_fulfillment_id)
+    end
+
+    Ec::FulfillmentBusinessStatus::Updater.for_order(order)
+
+    assert_equal %w[returned at_platform_side], statuses(returned_posting)
+    assert_equal %w[delivered none], statuses(delivered_posting)
+    assert_equal %w[returned at_platform_side],
+      order.reload.attributes.values_at("business_status", "return_business_status")
+
+    delivered_posting.update_columns(source_status: "delivering", source_substatus: "posting_on_way_to_city")
+    Ec::FulfillmentBusinessStatus::Updater.for_order(order)
+
+    assert_equal %w[in_delivery at_platform_side],
+      order.reload.attributes.values_at("business_status", "return_business_status")
+  end
+
+  test "Ozon delivered posting with only a voided return stays delivered without a physical return" do
+    order = ledger_order(platform: "ozon", status: "delivered", source_status: "delivered",
+      source_substatus: "posting_received")
+    ledger_return(order, source_status: "Cancelled")
+    fulfillment = order.fulfillments.first
+
+    Ec::FulfillmentBusinessStatus::Updater.call(fulfillment)
+
+    assert_equal %w[delivered no_physical_return], statuses(fulfillment)
+    assert_equal %w[delivered no_physical_return],
+      order.reload.attributes.values_at("business_status", "return_business_status")
+  end
+
+  test "WB delivered order with a statistics return flow is returned" do
+    order = ledger_order(platform: "wb", status: "delivered", source_status: "sold", source_substatus: "complete")
+    stats_order = RawWb::StatsOrder.create!(
+      account: @wb_account, srid: "SRID-#{@token}", g_number: "G-#{@token}", nm_id: @wb_product.product_id.to_i,
+      order_date: 3.days.ago, last_change_date: 1.day.ago, is_cancel: false, synced_at: Time.current
+    )
+    Ec::OrderSourceLink.create!(
+      order: order, platform: "wb", source_type: "RawWb::StatsOrder", source_id: stats_order.id,
+      source_role: "primary", source_key: stats_order.srid
+    )
+    RawWb::StatsSale.create!(
+      account: @wb_account, sale_id: "R#{@token}", srid: stats_order.srid, g_number: stats_order.g_number,
+      sale_date: 1.day.ago, is_storno: false, synced_at: Time.current
+    )
+
+    assert_equal "return", Ec::FulfillmentBusinessStatus::WbStatsEvidence.for_orders([ order.id ])[order.id]
+    Ec::FulfillmentBusinessStatus::Updater.call(order.fulfillments.first)
+
+    assert_equal %w[returned at_platform_side], statuses(order.fulfillments.first)
   end
 
   test "write false computes without touching the database" do

@@ -3,7 +3,9 @@ module Ec
     # Gathers the inputs of one fulfillment from the database, resolves its two business statuses and writes them
     # (plus the order summary). The only place that touches the database for this feature.
     class Updater
-      BUSINESS_ROLLUP = %w[needs_review awaiting_assembly awaiting_dispatch in_delivery delivered cancelled].freeze
+      BUSINESS_ROLLUP = %w[
+        needs_review awaiting_assembly awaiting_dispatch in_delivery returned delivered cancelled
+      ].freeze
       RETURN_ROLLUP = %w[expected at_platform_side returning_to_seller received_by_seller no_physical_return none].freeze
       WB_DISPATCHED_SUPPLIER_STATUS = "complete".freeze
 

@@ -5,6 +5,7 @@ ru:
       awaiting_dispatch: Ожидает отправки
       in_delivery: В доставке
       delivered: Доставлен
+      returned: Возвращён
       cancelled: Отменён
       needs_review: Требует проверки
     return:

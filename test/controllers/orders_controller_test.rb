@@ -401,6 +401,23 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "#orders-business-status-filter-trigger span", "已选 2 项"
   end
 
+  test "index business status filter offers the returned status and filters by it" do
+    @order.update_columns(business_status: "returned", return_business_status: "received_by_seller")
+    @wb_order.update_columns(business_status: "delivered")
+
+    get "/orders",
+        params: { q: { business_status_in: %w[returned] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "returned"
+    assert_select "input[type=checkbox][name=?][value=?]", "q[business_status_in][]", "delivered"
+    row = css_select("tbody tr").find { |tr| tr.at_css("a[href='/orders/#{@order.id}']") }
+    assert_includes row.css("td").map { |td| td.text.strip }, "已退货"
+  end
+
   test "index return status multi-select filters by order level return status" do
     @order.update_columns(return_business_status: "expected")
     @wb_order.update_columns(return_business_status: "received_by_seller")

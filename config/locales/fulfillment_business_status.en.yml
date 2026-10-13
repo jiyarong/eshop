@@ -5,6 +5,7 @@ en:
       awaiting_dispatch: Awaiting dispatch
       in_delivery: In delivery
       delivered: Delivered
+      returned: Returned
       cancelled: Cancelled
       needs_review: Needs review
     return:

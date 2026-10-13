@@ -105,3 +105,52 @@ FBS 合计变化拆分：离仓 +48 = 20 + 29 − 1；未离仓 −53 = −20 �
 ## 计划外的差异
 
 JJ005-5（未离仓 −4、FBS 订单总量 −4，盘库应见库存不变）。原因与 KJ-226-GY 相同：已取消的多发货单 Ozon 订单 24570 里，4 件商品行属于 FBO 发货单，旧逻辑按订单找 FBS 发货单把它们算成 FBS，新逻辑按商品所属发货单归属，这是预期的口径修正；计划里漏列是因为预期差异表只按盘库应见库存的变化列出 SKU，而这 4 件落在不扣减的"未离仓"里。结论：不是缺陷，无需改代码。
+
+## 已退货状态上线后复核
+
+业务状态新增第 7 个值 `returned`（已退货）：已签收且有成立退货的发货单由"已签收"改判为"已退货"，口径见设计文档 4.1.1。只改归类名称，不应改变任何盘库数量，因此用同一份基线重新比较。
+
+回填（开发库，`ecommerce_manage_development`，只写两个状态列）：
+
+| 步骤 | 输出 |
+|---|---|
+| 回填前试跑 `--dry-run` | `checked=22911 changed=437 dry_run=true`（样本全部是 `delivered → returned`，退货轴不变） |
+| 实际回填 | `checked=22911 changed=437 dry_run=false` |
+| 回填后再次试跑 `--dry-run` | `checked=22911 changed=0 dry_run=true`（幂等） |
+
+`fulfillment_type = 'fbs'` 的发货单分布（回填后，合计 10952）：
+
+| 业务状态 | 退货业务状态 | 发货单数 |
+|---|---|---|
+| 待装配 | 无退货 | 192 |
+| 待装配 | 卖家已收（异常） | 29 |
+| 待发运 | 无退货 | 1 |
+| 配送中 | 无退货 | 794 |
+| 配送中 | 在平台侧（异常） | 2 |
+| 已签收 | 无退货 | 7922 |
+| 已签收 | 无实物回流 | 1 |
+| 已退货 | 在平台侧 | 25 |
+| 已退货 | 返回卖家途中 | 6 |
+| 已退货 | 卖家已收 | 16 |
+| 已取消 | 无退货 | 441 |
+| 已取消 | 待退回 | 707 |
+| 已取消 | 在平台侧 | 283 |
+| 已取消 | 返回卖家途中 | 74 |
+| 已取消 | 卖家已收 | 454 |
+| 已取消 | 无实物回流 | 1 |
+| 待核实 | 无退货 | 4 |
+
+"已签收"不再有在平台侧、返回卖家途中、卖家已收的组合；"已签收 × 无实物回流"只剩 1 条（只有作废退货）。
+
+对比命令与结果：
+
+```bash
+bin/rails runner script/physical_stocktake_baseline.rb capture tmp/physical_stocktake_returned.json
+bin/rails runner script/physical_stocktake_baseline.rb compare docs/superpowers/baselines/2026-10-13-physical-stocktake-baseline.json tmp/physical_stocktake_returned.json
+```
+
+```
+21 of 236 skus differ
+```
+
+差异的 21 个 SKU、每个 SKU 的指标变化与上文"差异 SKU"表逐项相同，盘库应见库存合计仍为 −48，没有新增差异。

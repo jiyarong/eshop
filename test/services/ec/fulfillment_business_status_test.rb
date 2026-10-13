@@ -19,7 +19,7 @@ class Ec::FulfillmentBusinessStatusTest < ActiveSupport::TestCase
   end
 
   test "vocabulary matches the design" do
-    assert_equal %w[awaiting_assembly awaiting_dispatch in_delivery delivered cancelled needs_review],
+    assert_equal %w[awaiting_assembly awaiting_dispatch in_delivery delivered returned cancelled needs_review],
       Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES
     assert_equal %w[none expected at_platform_side returning_to_seller received_by_seller no_physical_return],
       Ec::FulfillmentBusinessStatus::RETURN_STATUSES
@@ -52,7 +52,7 @@ class Ec::FulfillmentBusinessStatusTest < ActiveSupport::TestCase
   test "WB statistics evidence outranks a stuck waiting status but not a cancel class status" do
     assert_equal "delivered",
       business(platform: "wb", source_status: "waiting", source_substatus: "new", stats_evidence: "sale")
-    assert_equal "delivered",
+    assert_equal "returned",
       business(platform: "wb", source_status: "waiting", source_substatus: "new", stats_evidence: "return")
     assert_equal "cancelled",
       business(platform: "wb", source_status: "waiting", source_substatus: "new", stats_evidence: "cancel")
@@ -63,9 +63,111 @@ class Ec::FulfillmentBusinessStatusTest < ActiveSupport::TestCase
       business(platform: "wb", source_status: "waiting", source_substatus: "new", stats_evidence: "order_only")
   end
 
-  test "WB sold and returned orders without a platform status are delivered" do
+  test "WB delivered orders are delivered, and returned once the order status or the R flow says so" do
     assert_equal "delivered", business(platform: "wb", status: "delivered")
-    assert_equal "delivered", business(platform: "wb", status: "returned", source_status: "sold", source_substatus: "complete")
+    assert_equal "delivered",
+      business(platform: "wb", status: "delivered", source_status: "sold", source_substatus: "complete")
+    assert_equal "delivered",
+      business(platform: "wb", status: "delivered", source_status: "sold", source_substatus: "complete",
+        stats_evidence: "sale")
+    assert_equal "returned",
+      business(platform: "wb", status: "returned", source_status: "sold", source_substatus: "complete")
+    assert_equal "returned", business(platform: "wb", status: "returned")
+    assert_equal "returned",
+      business(platform: "wb", status: "delivered", source_status: "sold", source_substatus: "complete",
+        stats_evidence: "return")
+  end
+
+  test "WB goods return records make a delivered order returned" do
+    base = { platform: "wb", status: "delivered", source_status: "sold", source_substatus: "complete" }
+
+    [
+      return_record(source_status: "Выдано", process_status: "completed"),
+      return_record(returned_to_seller: true),
+      return_record(source_status: "Готов к выдаче", process_status: "ready_for_seller_pickup"),
+      return_record(source_status: "В пути в пвз", process_status: "unknown")
+    ].each do |record|
+      assert_equal "returned", business(**base, returns: [ record ]), record.inspect
+    end
+  end
+
+  test "WB cancel class statuses stay cancelled even with the R flow or a return record" do
+    cancelled = { platform: "wb", source_status: "canceled_by_client", source_substatus: "complete", status: "returned",
+                  stats_evidence: "return" }
+
+    assert_equal "cancelled", business(**cancelled)
+    assert_equal "cancelled",
+      business(**cancelled, returns: [ return_record(source_status: "Выдано", process_status: "completed") ])
+    assert_equal "cancelled",
+      business(platform: "wb", source_status: "defect", source_substatus: "complete", status: "cancelled",
+        returns: [ return_record(returned_to_seller: true) ])
+  end
+
+  test "WB in delivery or waiting fulfillments are never turned into returned" do
+    assert_equal "in_delivery",
+      business(platform: "wb", source_status: "sorted", source_substatus: "complete", status: "shipped",
+        returns: [ return_record(returned_to_seller: true) ])
+    assert_equal "awaiting_assembly",
+      business(platform: "wb", source_status: "waiting", source_substatus: "new", status: "processing",
+        returns: [ return_record(returned_to_seller: true) ])
+    assert_equal "needs_review",
+      business(platform: "wb", status: "processing", returns: [ return_record(returned_to_seller: true) ])
+  end
+
+  test "Ozon delivered postings with an effective return are returned" do
+    base = { platform: "ozon", source_status: "delivered", source_substatus: "posting_received", status: "delivered" }
+    %w[
+      ReturnedToOzon ReceivedBySeller MovingToSeller ReadyForSeller ArrivedAtReturnPlace OnSellerApproval
+      WaitingShipment Approved MovingToOzon MoneyReturned PartialCompensationReturned WriteOff Utilized
+      PotentiallyLost SomethingNew
+    ].each do |source_status|
+      assert_equal "returned", business(**base, returns: [ return_record(source_status: source_status) ]), source_status
+    end
+    assert_equal "returned", business(**base, returns: [ return_record(source_status: nil) ])
+  end
+
+  test "Ozon delivered postings with only voided returns stay delivered without a physical return" do
+    base = { platform: "ozon", source_status: "delivered", source_substatus: "posting_received", status: "delivered" }
+
+    assert_equal %w[Cancelled CancelledDisputeNotOpen Rejected], Ec::FulfillmentBusinessStatus::OZON_VOIDED_RETURN_STATUSES
+    Ec::FulfillmentBusinessStatus::OZON_VOIDED_RETURN_STATUSES.each do |source_status|
+      result = resolve(**base, returns: [ return_record(source_status: source_status) ])
+
+      assert_equal %w[delivered no_physical_return], [ result.business_status, result.return_business_status ], source_status
+    end
+
+    both = resolve(**base, returns: [
+      return_record(source_status: "Cancelled", id: 1),
+      return_record(source_status: "Rejected", id: 2, at: Time.zone.parse("2026-09-02 10:00"))
+    ])
+    assert_equal %w[delivered no_physical_return], [ both.business_status, both.return_business_status ]
+
+    mixed = resolve(**base, returns: [
+      return_record(source_status: "Cancelled", id: 1),
+      return_record(source_status: "ReceivedBySeller", id: 2, at: Time.zone.parse("2026-09-02 10:00"))
+    ])
+    assert_equal %w[returned received_by_seller], [ mixed.business_status, mixed.return_business_status ]
+  end
+
+  test "Ozon cancelled and in delivery postings with a return keep their status" do
+    record = return_record(source_status: "ReceivedBySeller")
+
+    assert_equal "cancelled",
+      business(platform: "ozon", source_status: "cancelled", source_substatus: "posting_canceled", returns: [ record ])
+    assert_equal "cancelled",
+      business(platform: "ozon", source_status: "delivering", source_substatus: "posting_returned_to_warehouse",
+        returns: [ record ])
+    assert_equal "in_delivery",
+      business(platform: "ozon", source_status: "delivering", source_substatus: "posting_on_way_to_city", returns: [ record ])
+    assert_equal "received_by_seller",
+      return_status(platform: "ozon", source_status: "cancelled", source_substatus: "posting_canceled", returns: [ record ])
+  end
+
+  test "delivered fulfillments without returns stay delivered" do
+    assert_equal "delivered",
+      business(platform: "ozon", source_status: "delivered", source_substatus: "posting_received", status: "delivered")
+    assert_equal "delivered",
+      business(platform: "wb", source_status: "sold", source_substatus: "complete", status: "delivered", returns: [])
   end
 
   test "maps Ozon posting statuses" do
@@ -174,7 +276,7 @@ class Ec::FulfillmentBusinessStatusTest < ActiveSupport::TestCase
     result = resolve(platform: "ozon", source_status: "delivered", source_substatus: "posting_received",
       status: "delivered", returns: [ return_record(source_status: "ReceivedBySeller") ])
 
-    assert_equal "delivered", result.business_status
+    assert_equal "returned", result.business_status
     assert_equal "received_by_seller", result.return_business_status
   end
 end

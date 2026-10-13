@@ -27,6 +27,11 @@ class Ec::InventoryFbsStatusMatrixQueryTest < ActiveSupport::TestCase
     assert_equal "left", kind.call("cancelled", "expected")
     assert_equal "left", kind.call("cancelled", "at_platform_side")
     assert_equal "left", kind.call("delivered", "no_physical_return")
+    assert_equal "left", kind.call("returned", "at_platform_side")
+    assert_equal "left", kind.call("returned", "returning_to_seller")
+    assert_equal "left", kind.call("returned", "no_physical_return")
+    assert_equal "left", kind.call("returned", "none")
+    assert_equal "returned", kind.call("returned", "received_by_seller")
     assert_equal "returned", kind.call("delivered", "received_by_seller")
     assert_equal "returned", kind.call("cancelled", "received_by_seller")
     assert_equal "returned", kind.call("awaiting_assembly", "received_by_seller")
@@ -35,11 +40,23 @@ class Ec::InventoryFbsStatusMatrixQueryTest < ActiveSupport::TestCase
   test "anomaly marks combinations that should not occur" do
     anomaly = ->(business, ret) { Ec::InventoryFbsStatusMatrixQuery.anomaly?(business, ret) }
 
-    assert_not anomaly.call("delivered", "received_by_seller")
+    assert_not anomaly.call("delivered", "none")
+    assert_not anomaly.call("delivered", "no_physical_return")
+    assert_not anomaly.call("returned", "at_platform_side")
+    assert_not anomaly.call("returned", "returning_to_seller")
+    assert_not anomaly.call("returned", "received_by_seller")
+    assert_not anomaly.call("returned", "no_physical_return")
     assert_not anomaly.call("cancelled", "expected")
+    assert_not anomaly.call("cancelled", "received_by_seller")
+    assert_not anomaly.call("in_delivery", "none")
+    assert anomaly.call("delivered", "at_platform_side")
+    assert anomaly.call("delivered", "returning_to_seller")
+    assert anomaly.call("delivered", "received_by_seller")
+    assert anomaly.call("delivered", "expected")
+    assert anomaly.call("returned", "none")
+    assert anomaly.call("returned", "expected")
     assert anomaly.call("awaiting_assembly", "received_by_seller")
     assert anomaly.call("in_delivery", "at_platform_side")
-    assert anomaly.call("delivered", "expected")
   end
 
   test "sums FBS order item quantities per cell for the sku only" do
@@ -48,6 +65,8 @@ class Ec::InventoryFbsStatusMatrixQueryTest < ActiveSupport::TestCase
     fbs_fulfillment(platform: "wb", business_status: "awaiting_assembly", quantity: 3)
     fbs_fulfillment(platform: "wb", business_status: "cancelled", return_business_status: "received_by_seller", quantity: 4)
     fbs_fulfillment(platform: "wb", business_status: "awaiting_assembly", return_business_status: "received_by_seller")
+    fbs_fulfillment(platform: "wb", business_status: "returned", return_business_status: "at_platform_side", quantity: 2)
+    fbs_fulfillment(platform: "wb", business_status: "returned", return_business_status: "none", quantity: 1)
     fbs_fulfillment(platform: "ozon", business_status: "delivered", fulfillment_type: "fbo", quantity: 9)
 
     result = Ec::InventoryFbsStatusMatrixQuery.new(@sku).call
@@ -58,8 +77,13 @@ class Ec::InventoryFbsStatusMatrixQueryTest < ActiveSupport::TestCase
     assert_equal 3, cells.fetch([ "awaiting_assembly", "none" ])[:quantity]
     assert_equal 4, cells.fetch([ "cancelled", "received_by_seller" ])[:quantity]
     assert cells.fetch([ "awaiting_assembly", "received_by_seller" ])[:anomaly]
+    assert_equal 2, cells.fetch([ "returned", "at_platform_side" ])[:quantity]
+    assert_equal "left", cells.fetch([ "returned", "at_platform_side" ])[:kind]
+    assert_not cells.fetch([ "returned", "at_platform_side" ])[:anomaly]
+    assert_equal "left", cells.fetch([ "returned", "none" ])[:kind]
+    assert cells.fetch([ "returned", "none" ])[:anomaly]
     assert_equal(
-      { departed_quantity: 12, not_departed_quantity: 3, returned_quantity: 5, anomaly_quantity: 1, total_quantity: 15 },
+      { departed_quantity: 15, not_departed_quantity: 3, returned_quantity: 5, anomaly_quantity: 2, total_quantity: 18 },
       result[:summary]
     )
   end
@@ -68,8 +92,9 @@ class Ec::InventoryFbsStatusMatrixQueryTest < ActiveSupport::TestCase
     fbs_fulfillment(platform: "wb", business_status: "delivered", quantity: 5)
     fbs_fulfillment(platform: "ozon", business_status: "delivered", quantity: 2)
     fbs_fulfillment(platform: "ozon", business_status: "delivered", quantity: 1)
-    fbs_fulfillment(platform: "ozon", business_status: "delivered", return_business_status: "received_by_seller", quantity: 6)
+    fbs_fulfillment(platform: "ozon", business_status: "returned", return_business_status: "received_by_seller", quantity: 6)
     fbs_fulfillment(platform: "ozon", business_status: "awaiting_assembly", quantity: 3)
+    fbs_fulfillment(platform: "wb", business_status: "returned", return_business_status: "at_platform_side", quantity: 2)
     fbs_fulfillment(platform: "wb", business_status: "cancelled", return_business_status: "received_by_seller", quantity: 4)
     fbs_fulfillment(platform: "wb", business_status: "delivered", return_business_status: "expected", quantity: 7)
 
@@ -80,9 +105,10 @@ class Ec::InventoryFbsStatusMatrixQueryTest < ActiveSupport::TestCase
       [
         [ "ozon", @ozon_store.id, @ozon_store.store_name, "awaiting_assembly", "none", 3, "not_left", false ],
         [ "ozon", @ozon_store.id, @ozon_store.store_name, "delivered", "none", 3, "left", false ],
-        [ "ozon", @ozon_store.id, @ozon_store.store_name, "delivered", "received_by_seller", 6, "returned", false ],
+        [ "ozon", @ozon_store.id, @ozon_store.store_name, "returned", "received_by_seller", 6, "returned", false ],
         [ "wb", @wb_store.id, @wb_store.store_name, "delivered", "none", 5, "left", false ],
         [ "wb", @wb_store.id, @wb_store.store_name, "delivered", "expected", 7, "left", true ],
+        [ "wb", @wb_store.id, @wb_store.store_name, "returned", "at_platform_side", 2, "left", false ],
         [ "wb", @wb_store.id, @wb_store.store_name, "cancelled", "received_by_seller", 4, "returned", false ]
       ],
       rows.map do |row|
@@ -98,13 +124,21 @@ class Ec::InventoryFbsStatusMatrixQueryTest < ActiveSupport::TestCase
         [ "awaiting_assembly", "none" ] => 3,
         [ "delivered", "none" ] => 8,
         [ "delivered", "expected" ] => 7,
-        [ "delivered", "received_by_seller" ] => 6,
+        [ "returned", "received_by_seller" ] => 6,
+        [ "returned", "at_platform_side" ] => 2,
         [ "cancelled", "received_by_seller" ] => 4
       },
       cells
     )
     assert_equal(
-      { departed_quantity: 25, not_departed_quantity: 3, returned_quantity: 10, anomaly_quantity: 7, total_quantity: 28 },
+      [
+        [ "awaiting_assembly", "none" ], [ "delivered", "none" ], [ "delivered", "expected" ],
+        [ "returned", "at_platform_side" ], [ "returned", "received_by_seller" ], [ "cancelled", "received_by_seller" ]
+      ],
+      result[:cells].map { |cell| [ cell[:business_status], cell[:return_business_status] ] }
+    )
+    assert_equal(
+      { departed_quantity: 27, not_departed_quantity: 3, returned_quantity: 10, anomaly_quantity: 7, total_quantity: 30 },
       result[:summary]
     )
   end

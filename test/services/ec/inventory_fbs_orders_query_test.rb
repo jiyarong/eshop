@@ -34,6 +34,18 @@ class Ec::InventoryFbsOrdersQueryTest < ActiveSupport::TestCase
     assert_equal 3, result[:total_quantity]
   end
 
+  test "lists the orders of the returned business status cell" do
+    returned = fbs_order(business_status: "returned", return_business_status: "received_by_seller", quantity: 3)
+    fbs_order(business_status: "delivered", return_business_status: "none")
+
+    result = Ec::InventoryFbsOrdersQuery.new(
+      @sku, business_status: "returned", return_business_status: "received_by_seller"
+    ).call
+
+    assert_equal [ returned.external_order_id ], result[:rows].map { |row| row[:fulfillment_number] }
+    assert_equal 3, result[:total_quantity]
+  end
+
   test "store_id restricts the list and the total quantity to one store" do
     wb_order = fbs_order(business_status: "delivered", quantity: 4)
     ozon_order = ledger_order(platform: "ozon", status: "delivered", quantity: 9)

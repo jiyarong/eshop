@@ -4,7 +4,7 @@ module Ec
   # are (return business status). Pure functions: the caller (Updater) gathers the inputs.
   module FulfillmentBusinessStatus
     BUSINESS_STATUSES = %w[
-      awaiting_assembly awaiting_dispatch in_delivery delivered cancelled needs_review
+      awaiting_assembly awaiting_dispatch in_delivery delivered returned cancelled needs_review
     ].freeze
     RETURN_STATUSES = %w[
       none expected at_platform_side returning_to_seller received_by_seller no_physical_return
@@ -33,6 +33,10 @@ module Ec
       posting_transferred_to_courier_service posting_in_carriage posting_on_way_to_city posting_in_pickup_point
     ].freeze
 
+    # Ozon return requests that were voided: they do not make a delivered posting a returned one. Every other Ozon
+    # return status (and every WB goods return record) is an effective return.
+    OZON_VOIDED_RETURN_STATUSES = %w[Cancelled CancelledDisputeNotOpen Rejected].freeze
+
     OZON_RETURN_STATES = {
       "ReceivedBySeller" => "received_by_seller",
       "MovingToSeller" => "returning_to_seller",
@@ -58,7 +62,7 @@ module Ec
     def resolve(platform:, status:, source_status:, source_substatus:, stats_evidence: nil, returns: [], dispatched: false)
       business = business_status(
         platform: platform, status: status, source_status: source_status,
-        source_substatus: source_substatus, stats_evidence: stats_evidence
+        source_substatus: source_substatus, stats_evidence: stats_evidence, returns: returns
       )
       Result.new(
         business_status: business,
@@ -69,14 +73,32 @@ module Ec
       )
     end
 
-    def business_status(platform:, status:, source_status:, source_substatus:, stats_evidence: nil)
+    # A delivered fulfillment that has an effective return is `returned` (the buyer's return was accepted after the
+    # goods were received). Cancelled, in delivery and the rest are never turned into `returned`.
+    def business_status(platform:, status:, source_status:, source_substatus:, stats_evidence: nil, returns: [])
       source_status = source_status.to_s
       source_substatus = source_substatus.to_s
-      if platform.to_s == "wb"
-        wb_business_status(status.to_s, source_status, source_substatus, stats_evidence.to_s)
-      else
-        ozon_business_status(source_status, source_substatus)
-      end
+      base =
+        if platform.to_s == "wb"
+          wb_business_status(status.to_s, source_status, source_substatus, stats_evidence.to_s)
+        else
+          ozon_business_status(source_status, source_substatus)
+        end
+      return base unless base == "delivered"
+
+      returned_after_delivery?(platform: platform, status: status, stats_evidence: stats_evidence, returns: returns) ? "returned" : base
+    end
+
+    def returned_after_delivery?(platform:, status:, stats_evidence:, returns:)
+      return true if platform.to_s == "wb" && (status.to_s == "returned" || stats_evidence.to_s == "return")
+
+      Array(returns).any? { |item| effective_return?(platform: platform, source_status: item[:source_status]) }
+    end
+
+    def effective_return?(platform:, source_status:)
+      return true unless platform.to_s == "ozon"
+
+      !source_status.to_s.in?(OZON_VOIDED_RETURN_STATUSES)
     end
 
     def wb_business_status(status, source_status, source_substatus, stats_evidence)

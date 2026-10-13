@@ -3657,7 +3657,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     )
     ozon_returned_order = fbs_order.call(
       platform: "ozon", store: @sales_store, product_ref: ozon_product.platform_sku_id, suffix: "OZR",
-      quantity: 2, business_status: "delivered", return_business_status: "received_by_seller"
+      quantity: 2, business_status: "returned", return_business_status: "received_by_seller"
     )
     wb_order = fbs_order.call(
       platform: "wb", store: @wb_sales_store, product_ref: wb_product.product_id, suffix: "WB",
@@ -3681,7 +3681,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     ozon_label = "销量统计 Ozon 店 #{@sku_code}"
     wb_label = "销量统计 WB 店 #{@sku_code}"
     ozon_delivered = table_rows.index { |cells| cells[0].include?(ozon_label) && cells[1] == "已签收" && cells[2] == "无退货" }
-    ozon_returned = table_rows.index { |cells| cells[0].include?(ozon_label) && cells[1] == "已签收" && cells[2] == "卖家已收" }
+    ozon_returned = table_rows.index { |cells| cells[0].include?(ozon_label) && cells[1] == "已退货" && cells[2] == "卖家已收" }
     wb_awaiting = table_rows.index { |cells| cells[0].include?(wb_label) && cells[1] == "待装配" }
     assert ozon_delivered && ozon_returned && wb_awaiting, "expected rows missing: #{table_rows.inspect}"
     # sorted by platform (ozon before wb), then business status, then return status
@@ -3695,6 +3695,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "已扣除物理库存", table_rows[wb_awaiting][3]
     assert_includes table_rows[wb_awaiting][2], "状态异常"
     assert_not_includes table_rows[ozon_delivered][2], "状态异常"
+    assert_not_includes table_rows[ozon_returned][2], "状态异常"
 
     assert_select "table.inventory-fbs-status-table tbody tr:nth-child(#{ozon_delivered + 1})" do
       assert_select "td:nth-child(4) .inventory-reconciliation-badge--excluded", text: "已扣除物理库存"
@@ -3727,6 +3728,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".erp-modal__subtitle", text: /销量统计 Ozon 店 #{@sku_code}/
     assert_select "td", text: "FBSM-NUMBER-OZ-#{@sku_code}"
     assert_select ".inventory-fbs-orders-modal__summary strong", text: "3"
+
+    sign_in @current_user
+    get report_inventory_fbs_orders_path(
+      @sku.sku_code, business_status: "returned", return_business_status: "received_by_seller", store_id: @sales_store.id
+    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "td", text: "FBSM-NUMBER-OZR-#{@sku_code}"
+    assert_select "td", text: "FBSM-NUMBER-OZ-#{@sku_code}", count: 0
+    assert_select ".inventory-fbs-orders-modal__summary strong", text: "2"
 
     sign_in @current_user
     get report_inventory_fbs_orders_path(

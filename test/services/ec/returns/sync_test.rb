@@ -131,7 +131,7 @@ module Ec
         Ec::Returns::Sync.call(raw_records: [ @ozon_return ])
 
         fulfillment.reload
-        assert_equal "delivered", fulfillment.business_status
+        assert_equal "returned", fulfillment.business_status
         assert_equal "received_by_seller", fulfillment.return_business_status
         assert_equal "received_by_seller", @ozon_order.reload.return_business_status
       ensure
