@@ -4,9 +4,33 @@ module Ec
     # differences, which makes it the consistency check between stored and computed values.
     class Backfill
       SAMPLE_LIMIT = 20
+      SCHEDULED_SAMPLE_LIMIT = 5
 
       def self.run(dry_run: false, batch_size: 500, platform: nil, store_ids: nil)
         new(dry_run: dry_run, batch_size: batch_size, platform: platform, store_ids: store_ids).run
+      end
+
+      # Scheduled safety net (see config/recurring.yml). Order/return imports and return syncs already refresh the
+      # statuses; this repairs the rare paths that do not (a return re-linked to another order, an order that later
+      # gets a second fulfillment). Both importer locks are held, WB then Ozon (a sync never holds both, so there is
+      # no deadlock), because the backfill writes with update_columns and must not race a running importer.
+      # A positive `changed` means some refresh path is missing, hence the WARN line.
+      def self.run_scheduled(logger: Rails.logger, store_ids: nil)
+        result = nil
+        SyncRunLock.with_lock(RawWb::OrderIncrementalSync::LOCK_NAME, wait: true, logger: logger) do
+          SyncRunLock.with_lock(RawOzon::OrderIncrementalSync::LOCK_NAME, wait: true, logger: logger) do
+            result = run(store_ids: store_ids)
+          end
+        end
+
+        logger.info("[FulfillmentBusinessStatus] scheduled backfill checked=#{result[:checked]} changed=#{result[:changed]}")
+        if result[:changed].positive?
+          logger.warn(
+            "[FulfillmentBusinessStatus] scheduled backfill repaired #{result[:changed]} stale fulfillment(s) " \
+            "samples=#{result[:samples].first(SCHEDULED_SAMPLE_LIMIT).to_json}"
+          )
+        end
+        result
       end
 
       def initialize(dry_run:, batch_size:, platform:, store_ids:)
