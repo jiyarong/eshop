@@ -178,7 +178,7 @@ SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是�
 - `Ec::SkuPlanningCycle` 表示一个 SKU 在一个自然周的计划集合，状态为 `pending -> generating -> active -> closed -> evaluated`，失败时为 `failed`。同一 SKU、同一周期通过 `revision` 和 `is_current` 管理重跑历史。
 - 任务重试或从某个阶段恢复时复用当前周期 revision；只有明确的人工 Planner 重跑才创建新 revision。不要删除旧 revision 或覆盖其 Plan / Evaluation 历史。
 - 周度编排任务是 `AITasks::SkuPlanningPipelineJob`，唯一自动闭环入口在 `config/recurring.yml` 的每周二 03:30（Asia/Shanghai）：
-  1. `Ec::SkuPlanningDataReadiness` 核对周一 18:00 后的源同步完成、日期覆盖、精确本地周汇率和利润报表可查询性；未就绪每 30 分钟重试，共 5 次；
+  1. `Ec::SkuPlanningDataReadiness` 仅核对相关启用店铺的上一完整自然周利润报表可查询性；不再单独检查源同步任务、广告同步、结算发布或周一 18:00 时间门槛。汇率等报表必需依赖由报表查询自身校验，零活动空报表可正常通过；查询失败每 30 分钟重试，共 5 次；
   2. 使用 `sku_plan_evaluation` Agent 评估上一完整自然周及更早尚待完成观察窗口的 Plan；
   3. 运行当前周期当天适用的 daily 和 weekly Diagnosis；
   4. 确认每个适用且启用的诊断规则都已生成当前最新事件；
