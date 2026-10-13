@@ -71,8 +71,9 @@ module Ec
         @stats_evidence
       end
 
-      # Returns of the order that belong to this fulfillment: by the order item they were booked against, else by
-      # the Ozon posting number, else (an order with a single fulfillment) all returns of the order.
+      # Returns that belong to this fulfillment. Every return attaches through exactly one tier, first hit wins:
+      # the fulfillment of the order items its return items point at, else the fulfillment of its order whose
+      # external id is the return's posting number, else the order's sole fulfillment.
       def return_inputs
         attached_returns.map do |record|
           {
@@ -87,10 +88,27 @@ module Ec
 
       def attached_returns
         order_id = fulfillment.order_id
-        ids = Ec::ReturnItem.where(order_item_id: fulfillment.items.select(:id)).pluck(:return_id)
-        ids += Ec::Return.where(order_id: order_id, external_posting_number: fulfillment.external_fulfillment_id).pluck(:id)
-        ids += Ec::Return.where(order_id: order_id).pluck(:id) if Ec::OrderFulfillment.where(order_id: order_id).count == 1
-        Ec::Return.where(id: ids.uniq)
+        through_items = Ec::ReturnItem.where(order_item_id: fulfillment.items.select(:id)).select(:return_id)
+        candidates = Ec::Return.where(order_id: order_id).or(Ec::Return.where(id: through_items)).to_a
+        return [] if candidates.empty?
+
+        item_fulfillment_ids = Ec::ReturnItem
+          .where(return_id: candidates.map(&:id))
+          .joins("INNER JOIN ec_order_items ON ec_order_items.id = ec_return_items.order_item_id")
+          .where.not(ec_order_items: { fulfillment_id: nil })
+          .pluck(:return_id, "ec_order_items.fulfillment_id")
+          .group_by(&:first).transform_values { |pairs| pairs.map(&:last).uniq }
+        order_fulfillments = Ec::OrderFulfillment.where(order_id: order_id).pluck(:id, :external_fulfillment_id)
+
+        candidates.select do |record|
+          linked_ids = item_fulfillment_ids[record.id]
+          next linked_ids.include?(fulfillment.id) if linked_ids.present?
+          next false unless record.order_id == order_id
+
+          posting_ids = order_fulfillments.select { |_id, external_id| external_id == record.external_posting_number }.map(&:first)
+          posting_ids = [ order_fulfillments.first.first ] if posting_ids.empty? && order_fulfillments.one?
+          posting_ids.include?(fulfillment.id)
+        end
       end
 
       # Evidence that a cancelled fulfillment already left the warehouse.

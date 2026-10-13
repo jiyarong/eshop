@@ -113,6 +113,30 @@ class Ec::FulfillmentBusinessStatus::UpdaterTest < ActiveSupport::TestCase
     assert_equal "return", Ec::FulfillmentBusinessStatus::WbStatsEvidence.for_orders([ order.id ])[order.id]
   end
 
+  test "statistics evidence ignores blank keys and does not borrow another order's sale" do
+    order_a = ledger_order(platform: "wb", status: "processing", source_status: "waiting", source_substatus: "new")
+    order_b = ledger_order(platform: "wb", status: "processing", source_status: "waiting", source_substatus: "new")
+    stats_orders = [ order_a, order_b ].each_with_index.map do |order, index|
+      stats_order = RawWb::StatsOrder.create!(
+        account: @wb_account, srid: "SRID-#{index}-#{@token}", g_number: nil, nm_id: @wb_product.product_id.to_i,
+        order_date: 3.days.ago, last_change_date: 1.day.ago, is_cancel: false, synced_at: Time.current
+      )
+      Ec::OrderSourceLink.create!(
+        order: order, platform: "wb", source_type: "RawWb::StatsOrder", source_id: stats_order.id,
+        source_role: "primary", source_key: stats_order.srid
+      )
+      stats_order
+    end
+    RawWb::StatsSale.create!(
+      account: @wb_account, sale_id: "S#{@token}", srid: stats_orders.last.srid, g_number: nil,
+      sale_date: 1.day.ago, is_storno: false, synced_at: Time.current
+    )
+
+    evidence = Ec::FulfillmentBusinessStatus::WbStatsEvidence.for_orders([ order_a.id, order_b.id ])
+
+    assert_equal({ order_a.id => "order_only", order_b.id => "sale" }, evidence)
+  end
+
   test "return attaches through the order item first, then the posting number, then a sole fulfillment" do
     order = ledger_order(platform: "ozon", status: "delivered", source_status: "delivered",
       source_substatus: "posting_received")
@@ -131,6 +155,46 @@ class Ec::FulfillmentBusinessStatus::UpdaterTest < ActiveSupport::TestCase
     Ec::FulfillmentBusinessStatus::Updater.for_order(order)
 
     assert_equal %w[delivered none], statuses(order.fulfillments.find_by!(fulfillment_type: "fbs"))
+    assert_equal %w[delivered received_by_seller], statuses(second)
+  end
+
+  test "return attaches through the posting number when it has no order item link" do
+    order = ledger_order(platform: "ozon", status: "delivered", source_status: "delivered",
+      source_substatus: "posting_received")
+    second = order.fulfillments.create!(
+      platform: "ozon", store: @ozon_store, external_fulfillment_id: "POSTING-2-#{@token}",
+      fulfillment_key: "ozon:#{@ozon_store.id}:POSTING-2-#{@token}", fulfillment_type: "fbo", status: "delivered",
+      source_status: "delivered", source_substatus: "posting_received"
+    )
+    record = ledger_return(order, source_status: "ReceivedBySeller")
+    record.update!(external_posting_number: second.external_fulfillment_id)
+
+    Ec::FulfillmentBusinessStatus::Updater.for_order(order)
+
+    assert_equal %w[delivered none], statuses(order.fulfillments.find_by!(fulfillment_type: "fbs"))
+    assert_equal %w[delivered received_by_seller], statuses(second)
+  end
+
+  test "return with an order item link ignores a conflicting posting number" do
+    order = ledger_order(platform: "ozon", status: "delivered", source_status: "delivered",
+      source_substatus: "posting_received")
+    first = order.fulfillments.find_by!(fulfillment_type: "fbs")
+    second = order.fulfillments.create!(
+      platform: "ozon", store: @ozon_store, external_fulfillment_id: "POSTING-2-#{@token}",
+      fulfillment_key: "ozon:#{@ozon_store.id}:POSTING-2-#{@token}", fulfillment_type: "fbo", status: "delivered",
+      source_status: "delivered", source_substatus: "posting_received"
+    )
+    second_item = order.items.create!(
+      fulfillment: second, platform: "ozon", store: @ozon_store, external_item_id: "ITEM-2-#{@token}",
+      platform_sku_id: @ozon_product.platform_sku_id, quantity: 1
+    )
+    record = ledger_return(order, source_status: "ReceivedBySeller")
+    record.update!(external_posting_number: first.external_fulfillment_id)
+    record.items.first.update!(order_item: second_item)
+
+    Ec::FulfillmentBusinessStatus::Updater.for_order(order)
+
+    assert_equal %w[delivered none], statuses(first)
     assert_equal %w[delivered received_by_seller], statuses(second)
   end
 

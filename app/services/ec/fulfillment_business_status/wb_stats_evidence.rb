@@ -20,16 +20,19 @@ module Ec
         g_numbers = stats_orders.values.map(&:g_number).compact_blank.uniq
         sales = RawWb::StatsSale.where(is_storno: [ false, nil ])
           .where("srid IN (:srids) OR g_number IN (:g_numbers)", srids: srids, g_numbers: g_numbers).to_a
-        sales_by_srid = sales.group_by { |sale| [ sale.account_id, sale.srid ] }
-        sales_by_g_number = sales.group_by { |sale| [ sale.account_id, sale.g_number ] }
+        sales_by_srid = sales.select { |sale| sale.srid.present? }.group_by { |sale| [ sale.account_id, sale.srid ] }
+        sales_by_g_number = sales.select { |sale| sale.g_number.present? }.group_by { |sale| [ sale.account_id, sale.g_number ] }
 
         links.group_by(&:first).to_h do |order_id, order_links|
           keys = order_links.filter_map do |_order_id, source_id|
             stats_order = stats_orders[source_id]
             next unless stats_order
 
-            matching = sales_by_srid[[ stats_order.account_id, stats_order.srid ]].to_a
-            matching = sales_by_g_number[[ stats_order.account_id, stats_order.g_number ]].to_a if matching.empty?
+            matching = []
+            matching = sales_by_srid[[ stats_order.account_id, stats_order.srid ]].to_a if stats_order.srid.present?
+            if matching.empty? && stats_order.g_number.present?
+              matching = sales_by_g_number[[ stats_order.account_id, stats_order.g_number ]].to_a
+            end
             evidence_key(stats_order, matching)
           end
           [ order_id, PRECEDENCE.find { |key| keys.include?(key) } ]
