@@ -1,0 +1,26 @@
+<%= turbo_frame_tag "sku_detail_metrics", data: { sku_detail_metrics_loaded: loaded } do %>
+  <div class="summary-grid sku-detail-performance-grid">
+    <% performance_cards = [
+      [t("operator_skus.columns.sales"), :sales, nil, :number],
+      [t("operator_skus.columns.revenue"), :profit, :revenue, :currency],
+      [t("operator_skus.columns.profit"), :profit, :after_tax, :currency],
+      [t("operator_skus.columns.margin"), :profit, :margin_pct, :percentage],
+      [t("operator_skus.columns.ads"), :profit, :ads, :currency]
+    ] %>
+    <% performance_cards.each do |label, group, metric_key, type| %>
+      <div class="weekly-profit-summary-card sku-detail-performance-card">
+        <div class="summary-label"><%= label %></div>
+        <div class="operator-sku-profit">
+          <% %i[days_7 days_30].each do |period_key| %>
+            <% metric = sku_detail_profit_visible? && @operator_metrics ? (group == :sales ? @operator_metrics.dig(:sales, period_key) : @operator_metrics.dig(:profit, period_key, metric_key)) : { value: nil, comparison: nil } %>
+            <% metric ||= { value: nil, comparison: nil } %>
+            <div class="operator-sku-period">
+              <span class="operator-sku-period__value"><%= t("operator_skus.values.#{period_key}") %> <strong><%= sku_detail_profit_visible? ? operator_sku_metric_value(metric[:value], type: type) : t("common.empty_value") %></strong></span>
+              <span class="operator-sku-comparison <%= sku_detail_profit_visible? ? operator_sku_comparison_class(metric[:comparison]) : "is-none" %>"><%= sku_detail_profit_visible? ? operator_sku_comparison_text(metric[:comparison]) : t("common.empty_value") %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

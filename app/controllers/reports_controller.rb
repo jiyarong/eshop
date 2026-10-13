@@ -398,6 +398,16 @@ class ReportsController < ApplicationController
     @sku_detail_frame = request.headers["Turbo-Frame"]
     requested_tab = @sku_detail_frame&.delete_prefix("sku_detail_tab_") if @sku_detail_frame&.start_with?("sku_detail_tab_")
     @sku_detail_drawer = @sku_detail_frame == "sku_detail_drawer" || requested_tab.in?(SKU_DETAIL_AVAILABLE_TABS)
+    if @sku_detail_frame == "sku_detail_drawer"
+      @sku = Ec::Sku.includes(:current_marketing_state).find_by!(sku_code: params[:sku_code].to_s.upcase)
+      @sku_detail_profit_visible = weekly_profit_access_scope.super_admin? ||
+        weekly_profit_access_scope.visible_sku_codes.include?(@sku.sku_code)
+      @active_tab = params[:tab].presence_in(SKU_DETAIL_AVAILABLE_TABS) || "lifecycle"
+      @active_tab = "sales_funnel" if @active_tab == "operation"
+      @sku_detail_tab_frame_id = "sku_detail_tab_#{@active_tab}"
+      return render :sku_detail_shell
+    end
+
     load_sku_detail
     @sku_detail_tab_frame_id = requested_tab.in?(SKU_DETAIL_AVAILABLE_TABS) ? @sku_detail_frame : "sku_detail_tab_#{@active_tab}"
 
@@ -407,6 +417,17 @@ class ReportsController < ApplicationController
       render partial: "reports/sku_detail_tab_frame",
              locals: { frame_id: @sku_detail_tab_frame_id, loaded: true }
     end
+  end
+
+  def sku_detail_metrics
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    @sku_detail_profit_visible = weekly_profit_access_scope.super_admin? ||
+      weekly_profit_access_scope.visible_sku_codes.include?(@sku.sku_code)
+    @operator_metrics = if @sku_detail_profit_visible
+      Ec::OperatorSkuMetricsQuery.new(skus: [@sku], date_to: user_today, time_zone: user_time_zone)
+        .performance_metrics.fetch(@sku)
+    end
+    render partial: "reports/sku_detail_metrics_frame", locals: { loaded: true }
   end
 
   def sku_profit_versions
@@ -1200,7 +1221,7 @@ class ReportsController < ApplicationController
     ).fetch(@sku.id, {})
     @predicted_cost ||= @sku.predicted_costs.new(cost_currency: "CNY", effective_from: user_today)
 
-    if sku_detail_profit_visible?
+    if !@sku_detail_drawer && sku_detail_profit_visible? && @active_tab == "lifecycle"
       @operator_metrics = Ec::OperatorSkuMetricsQuery.new(
         skus: [@sku],
         date_to: user_today,

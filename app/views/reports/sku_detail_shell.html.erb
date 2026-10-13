@@ -1,0 +1,47 @@
+<% drawer_body = capture do %>
+  <div class="sku-detail-drawer__content">
+    <section class="panel sku-detail-hero">
+      <div class="sku-detail-identity">
+        <h2><%= report_value(@sku.product_name) %></h2>
+        <p><%= report_value(@sku.product_name_ru) %></p>
+        <div class="sku-detail-marketing-state">
+          <%= render "erp/sku_marketing_states/marketing_state", sku: @sku,
+                     locale_params: request.query_parameters.slice(:locale), return_to: request.fullpath %>
+        </div>
+      </div>
+      <%= turbo_frame_tag "sku_detail_metrics", src: report_sku_metrics_path(@sku.sku_code, locale: params[:locale].presence),
+                          loading: "eager" do %>
+        <%= render "reports/sku_detail_metrics_skeleton" %>
+      <% end %>
+    </section>
+    <nav class="erp-tabs erp-tabs--underline sku-detail-tabs"
+         aria-label="<%= t("reports.sku_detail.tabs.aria_label") %>"
+         data-controller="sku-detail-tabs"
+         data-action="turbo:frame-load@window->sku-detail-tabs#sync">
+      <% sku_detail_tabs.each do |tab| %>
+        <% if tab == "profit" && !sku_detail_profit_visible? %>
+          <span class="erp-tabs__link sku-detail-tabs__link is-disabled" aria-disabled="true"
+                title="<%= t("reports.sku_detail.tabs.profit_restricted") %>"><%= t("reports.sku_detail.tabs.#{tab}") %></span>
+        <% else %>
+          <%= link_to t("reports.sku_detail.tabs.#{tab}"), report_sku_path(@sku.sku_code, request.query_parameters.merge(tab: tab).except(:sku_code)),
+                      class: "erp-tabs__link sku-detail-tabs__link", data: { turbo_frame: "sku_detail_tab_#{tab}",
+                        sku_detail_tabs_target: "link", sku_detail_tab: tab, action: "sku-detail-tabs#select" },
+                      aria: (@active_tab == tab ? { current: "page" } : nil) %>
+        <% end %>
+      <% end %>
+    </nav>
+    <div class="sku-detail-tab-panels">
+      <% sku_detail_tabs.each do |tab| %>
+        <% tab_path = report_sku_path(@sku.sku_code, request.query_parameters.merge(tab: tab).except(:sku_code)) %>
+        <%= turbo_frame_tag "sku_detail_tab_#{tab}", src: tab_path, loading: (tab == @active_tab ? "eager" : "lazy"),
+                            hidden: tab != @active_tab, data: { sku_detail_tab_loaded: false } do %>
+          <%= render "reports/sku_detail_tab_skeleton" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%= render "shared/overlay_drawer", frame_id: "sku_detail_drawer", title_id: "sku-detail-drawer-title",
+           title: @sku.product_name.presence || @sku.sku_code, eyebrow: t("reports.sku_detail.title"),
+           subtitle: @sku.sku_code, drawer_width: "min(95vw, calc(100vw - 24px))", body: drawer_body %>

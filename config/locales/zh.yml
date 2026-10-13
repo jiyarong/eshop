@@ -2199,6 +2199,7 @@ zh:
       loading:
         title: "SKU 详情"
         subtitle: "正在加载详情…"
+        metrics: "指标加载中…"
       listing_diagnosis:
         choose_product: "选择要诊断的平台商品"
         no_products: "当前 SKU 暂无可诊断的平台商品"

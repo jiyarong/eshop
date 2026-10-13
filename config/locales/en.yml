@@ -1997,6 +1997,7 @@ en:
       loading:
         title: "SKU details"
         subtitle: "Loading details..."
+        metrics: "Loading metrics..."
       listing_diagnosis:
         choose_product: "Select a platform product to diagnose"
         no_products: "This SKU has no platform products to diagnose"

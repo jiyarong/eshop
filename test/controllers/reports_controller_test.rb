@@ -1236,7 +1236,18 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-detail-tabs a:nth-child(4)", text: "送仓记录"
     assert_select ".sku-detail-tabs a:nth-child(5)", text: "分仓建议"
     assert_select ".sku-detail-tabs a:nth-child(6)", text: "运营记录"
-    assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='true']:not([hidden])", count: 1
+    assert_select "turbo-frame#sku_detail_tab_sales_funnel[data-sku-detail-tab-loaded='false'][src][loading='eager']:not([hidden])", count: 1
+    assert_select "turbo-frame#sku_detail_metrics[src][loading='eager']", count: 1
+    assert_select ".sku-funnel-analysis", count: 0
+  end
+
+  test "sku detail metrics load in their own frame" do
+    get report_sku_metrics_path(@sku.sku_code),
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_metrics" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_detail_metrics[data-sku-detail-metrics-loaded='true']", count: 1
+    assert_select ".sku-detail-performance-card", count: 5
   end
 
   test "sku context tab shows the latest saved diagnosis snapshot with separate copy sources" do

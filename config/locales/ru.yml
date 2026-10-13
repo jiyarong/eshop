@@ -1962,6 +1962,7 @@ ru:
       loading:
         title: "Данные SKU"
         subtitle: "Загрузка данных..."
+        metrics: "Загрузка показателей..."
       listing_diagnosis:
         choose_product: "Выберите товар платформы для диагностики"
         no_products: "У этого SKU нет товаров платформы для диагностики"

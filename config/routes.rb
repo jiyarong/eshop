@@ -75,6 +75,7 @@ Rails.application.routes.draw do
   get "reports/skus/:sku_code/listing_diagnoses/new" => "reports#new_sku_listing_diagnosis", as: :new_report_sku_listing_diagnosis
   post "reports/skus/:sku_code/listing_diagnoses" => "reports#create_sku_listing_diagnosis"
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
+  get "reports/skus/:sku_code/metrics" => "reports#sku_detail_metrics", as: :report_sku_metrics
   get "reports/skus/:sku_code/profit_versions" => "reports#sku_profit_versions", as: :report_sku_profit_versions
   get "reports/skus/:sku_code/actual_logistics" => "reports#sku_actual_logistics", as: :report_sku_actual_logistics
   get "reports/skus/:sku_code/actual_return_rate" => "reports#sku_actual_return_rate", as: :report_sku_actual_return_rate
