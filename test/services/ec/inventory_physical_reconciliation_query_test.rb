@@ -46,8 +46,6 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     Ec::OrderFulfillment.where(store_id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     Ec::Order.where(store_id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     RawWb::GoodsReturn.where(account_id: @wb_account&.id).delete_all
-    RawWb::Order.where(account_id: @wb_account&.id).delete_all
-    RawOzon::PostingFbs.where(account_id: @ozon_account&.id).delete_all
     Ec::SkuProduct.where(sku_code: @sku&.sku_code).delete_all
     Ec::Store.where(id: [ @wb_store&.id, @ozon_store&.id ].compact).delete_all
     RawWb::SellerAccount.where(id: @wb_account&.id).delete_all
@@ -179,6 +177,32 @@ class Ec::InventoryPhysicalReconciliationQueryTest < ActiveSupport::TestCase
     assert_equal false, result[:return_rows].sole[:physical_included]
     assert_equal 4, result[:return_rows].sole[:quantity]
     assert_equal 0, fulfillment.items.count
+  end
+
+  test "adds back seller-received WB returns of orders with an FBS fulfillment" do
+    order = create_fbs_fulfillment(
+      platform: "wb", business_status: "delivered", return_business_status: "received_by_seller", quantity: 3
+    ).order
+    returned = Ec::Return.create!(
+      platform: "wb", store: @wb_store, order: order, return_key: "WB-FBS-RETURN-#{@token}",
+      return_type: "customer_return", process_status: "completed", inventory_location: "seller_warehouse",
+      inventory_condition: "defective", refund_status: "none", source_status: "Выдано",
+      returned_to_seller_at: Time.current
+    )
+    returned.items.create!(
+      platform: "wb", store: @wb_store, sku_product: @wb_product, order_item: nil,
+      item_key: "WB-FBS-RETURN-ITEM-#{@token}", quantity: 2, restockable: true
+    )
+
+    result = Ec::InventoryPhysicalReconciliationQuery.new(
+      @sku, overview: { summary: { received_quantity: 10 } }
+    ).call
+
+    assert_equal 3, result.dig(:summary, :fbs_departed_quantity)
+    assert_equal 2, result.dig(:summary, :seller_received_return_quantity)
+    # only the 2 returned units come back, not the whole 3 unit posting
+    assert_equal 9, result.dig(:summary, :expected_physical_stock)
+    assert_equal true, result[:return_rows].sole[:physical_included]
   end
 
   test "FBS departures come from the business status matrix and seller received returns are added back" do

@@ -310,6 +310,37 @@ module Ec
       assert_equal "in_delivery", fulfillment.order.business_status
     end
 
+    test "imported WB fulfillments get business statuses from the marketplace status and stats evidence" do
+      Ec::OrderImport::Wb.new.call
+
+      fulfillment = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid).fulfillments.sole
+
+      # The fixture marketplace order is still `waiting`, but its statistics order is cancelled and was never
+      # handed to the carrier (supplier status is not `complete`), so no return is expected.
+      assert_equal "cancelled", fulfillment.business_status
+      assert_equal "none", fulfillment.return_business_status
+      assert_equal "cancelled", fulfillment.order.business_status
+    end
+
+    test "a WB order stuck on waiting is corrected to delivered by a statistics sale" do
+      @wb_order.update!(supplier_status: "new", wb_status: "waiting")
+      RawWb::StatsOrder.find_by!(account: @wb_account, srid: @wb_order.srid).update!(
+        is_cancel: false, cancel_date: nil
+      )
+      RawWb::StatsSale.find_by!(account: @wb_account, srid: @wb_order.srid).update!(
+        sale_id: "S-#{@token}", is_storno: false
+      )
+
+      Ec::OrderImport::Wb.new.call
+
+      fulfillment = Ec::Order.find_by!(platform: "wb", external_order_number: @wb_order.srid).fulfillments.sole
+      assert_equal "waiting", fulfillment.source_status
+      assert_equal "new", fulfillment.source_substatus
+      assert_equal "delivered", fulfillment.business_status
+      assert_equal "none", fulfillment.return_business_status
+      assert_equal "delivered", fulfillment.order.business_status
+    end
+
     test "wb unit price is the commission base from stats, not the raw marketplace order price" do
       @wb_order.update!(currency_code: 51, price: 789.12, converted_price: 1_200)
 

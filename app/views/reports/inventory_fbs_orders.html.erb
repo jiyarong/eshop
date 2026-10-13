@@ -53,7 +53,7 @@
           <tbody>
             <% @fbs_orders[:rows].each do |row| %>
               <tr>
-                <td><%= t("reports.inventory.drawer.sales_distribution.store_label", platform: row[:platform].to_s.upcase, store: row[:store_name]) %></td>
+                <td><%= t("reports.inventory.drawer.sales_distribution.store_label", platform: t("reports.inventory.drawer.sales_distribution.platforms.#{row[:platform]}"), store: row[:store_name]) %></td>
                 <td><%= report_value(row[:order_number]) %></td>
                 <td><%= report_value(row[:fulfillment_number]) %></td>
                 <td><%= display_time(row[:ordered_at]) %></td>

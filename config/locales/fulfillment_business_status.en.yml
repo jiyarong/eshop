@@ -19,12 +19,12 @@ en:
       drawer:
         physical_stocktake:
           fbs_matrix:
-            note: The business status shows how far the goods got in the delivery chain; the return status shows where returning goods are. Departed cells are deducted from the expected physical stock, cells received by the seller are added back, and not departed cells are still in the Belarus warehouse. Click a number to see the orders.
+            note: The business status shows how far the goods got in the delivery chain; the return status shows where returning goods are. Departed cells are deducted from the expected physical stock; for postings with a return received by the seller, only the returned units are added back; not departed cells are still in the Belarus warehouse. Click a number to see the orders.
             row_header: Business status ╲ Return status
             kinds:
               not_left: Not departed
               left: Departed
-              returned: Back in warehouse
+              returned: Departed, return received
               anomaly: Status anomaly
             legend: Legend
             anomaly_summary: Status anomalies (included above)
