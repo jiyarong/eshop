@@ -20,13 +20,14 @@ zh:
         physical_stocktake:
           fbs_matrix:
             note: 业务状态表示货在发货链路的哪一步，退货状态表示退回的货走到哪里。已离仓的格子从盘库应见库存中扣除；发货单有卖家已收的退货时，只加回已收到的退货件数；未离仓的格子仍在白俄仓。点击数字查看订单。
-            row_header: 业务状态 ╲ 退货状态
             kinds:
-              not_left: 未离仓
-              left: 已离仓
-              returned: 已离仓·退货已收
               anomaly: 状态异常
-            legend: 图例
+            columns:
+              business_status: 业务状态
+              return_status: 退货状态
+              quantity: 件数
+            impact:
+              returned: 已扣除，退货已加回
             anomaly_summary: 状态异常（已计入上方数量）
           fbs_orders_modal:
             title: FBS 订单明细

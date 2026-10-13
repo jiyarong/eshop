@@ -34,6 +34,32 @@ class Ec::InventoryFbsOrdersQueryTest < ActiveSupport::TestCase
     assert_equal 3, result[:total_quantity]
   end
 
+  test "store_id restricts the list and the total quantity to one store" do
+    wb_order = fbs_order(business_status: "delivered", quantity: 4)
+    ozon_order = ledger_order(platform: "ozon", status: "delivered", quantity: 9)
+    ozon_order.fulfillments.first.update_columns(business_status: "delivered", return_business_status: "none")
+
+    all_stores = Ec::InventoryFbsOrdersQuery.new(
+      @sku, business_status: "delivered", return_business_status: "none"
+    ).call
+    wb_only = Ec::InventoryFbsOrdersQuery.new(
+      @sku, business_status: "delivered", return_business_status: "none", store_id: @wb_store.id
+    ).call
+    ozon_only = Ec::InventoryFbsOrdersQuery.new(
+      @sku, business_status: "delivered", return_business_status: "none", store_id: @ozon_store.id.to_s
+    ).call
+    ignored = Ec::InventoryFbsOrdersQuery.new(
+      @sku, business_status: "delivered", return_business_status: "none", store_id: "abc"
+    ).call
+
+    assert_equal 13, all_stores[:total_quantity]
+    assert_equal 4, wb_only[:total_quantity]
+    assert_equal [ wb_order.external_order_id ], wb_only[:rows].map { |row| row[:fulfillment_number] }
+    assert_equal 9, ozon_only[:total_quantity]
+    assert_equal [ ozon_order.external_order_id ], ozon_only[:rows].map { |row| row[:fulfillment_number] }
+    assert_equal 13, ignored[:total_quantity]
+  end
+
   test "paginates and clamps the page" do
     21.times { |index| fbs_order(business_status: "delivered", quantity: index + 1) }
 

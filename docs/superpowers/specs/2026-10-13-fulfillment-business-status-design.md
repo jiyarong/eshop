@@ -123,6 +123,8 @@
 
 "异常"是逻辑上不该出现的组合，页面上单独标出，数量照常按上面的规则计入已离仓（有退货记录就证明货走过）。典型例子：卡在 `waiting/new` 但退货已完成的 WB 订单会落进"待装配 × 卖家已收"，它们现在会被算作"已离仓"再由退货加回，不再被重复加回一次。
 
+页面不直接画这张 6×6 交叉表，而是把同样的分类按平台＋店铺展开成行（店铺 × 业务状态 × 退货状态），每行标出分类对应的物理库存影响；汇总口径（`cells`、`summary`）仍按交叉表在 SKU 层聚合，数字与第 5 节一致。
+
 ### 公式
 
 公式结构保持不变，只是"FBS 离仓件数"改为从交叉表取"已离仓"和"已回仓"格之和：
@@ -162,8 +164,8 @@
 
 ## 7. 页面
 
-- `reports/_inventory_physical_reconciliation.html.erb` 的"FBS 订单流转"板块：27 行表格换成上面的交叉表，每个格子是链接。
-- 点击格子，用现有的 `erp_modal` 弹窗框架弹出订单列表（与同一板块里的"物理盘库矫正"弹窗一致，`inventory.html.erb` 和 `inventory_detail.html.erb` 已经渲染了这个框架）。新增一个只读 GET，参数为 `sku_code`、`business_status`、`return_business_status`、分页。
+- `reports/_inventory_physical_reconciliation.html.erb` 的"FBS 订单流转"板块：27 行表格换成按平台＋店铺聚合的列表，列为店铺、业务状态、退货状态、物理库存影响、件数；每行是一个（店铺、业务状态、退货状态）组合，件数是链接。第 5 节的交叉表保留为分类依据，页面不再画 6×6 网格。
+- 点击件数，用现有的 `erp_modal` 弹窗框架弹出订单列表（与同一板块里的"物理盘库矫正"弹窗一致，`inventory.html.erb` 和 `inventory_detail.html.erb` 已经渲染了这个框架）。新增一个只读 GET，参数为 `sku_code`、`business_status`、`return_business_status`、可选的 `store_id`（按店铺过滤）、分页。
 - 列表列：平台／店铺、订单号、发货单号、下单时间（`display_time`）、业务状态、退货业务状态、平台原始状态（沿用现有 `source_status_label`）、数量。表格用 `table_viewport`，分页在表格上方。
 - 所有展示文案走 I18n（`zh`、`en`、`ru`），不新增硬编码文案。
 - 现有 27 个阶段文案和合成阶段逻辑在新页面上线后移除；`Ec::InventoryOrderSalesDistributionQuery` 的其他消费者不受影响，保留。

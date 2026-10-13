@@ -12,6 +12,11 @@
             <%= t("reports.inventory.drawer.physical_stocktake.fbs_orders_modal.summary_cell",
                   business: t("fulfillment_business_status.business.#{@business_status}"),
                   return: t("fulfillment_business_status.return.#{@return_business_status}")) %>
+            <% if @fbs_store %>
+              · <%= t("reports.inventory.drawer.sales_distribution.store_label",
+                      platform: t("reports.inventory.drawer.sales_distribution.platforms.#{@fbs_store.platform}"),
+                      store: @fbs_store.store_name) %>
+            <% end %>
           </p>
         </div>
         <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="modal#close">
@@ -33,7 +38,11 @@
                    path_builder: ->(query) {
                      report_inventory_fbs_orders_path(
                        @sku.sku_code,
-                       query.merge(business_status: @business_status, return_business_status: @return_business_status)
+                       query.merge(
+                         business_status: @business_status,
+                         return_business_status: @return_business_status,
+                         store_id: @fbs_store&.id
+                       ).compact
                      )
                    } %>
       <% end %>

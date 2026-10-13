@@ -1,14 +1,25 @@
 module Ec
-  # Orders behind one cell of the FBS status matrix of a SKU.
+  # Orders behind one (business status, return business status) combination of a SKU's FBS matrix,
+  # optionally restricted to one store.
   class InventoryFbsOrdersQuery
     PAGE_SIZE = 20
     ORDER_ITEM_JOIN = Ec::InventoryFbsStatusMatrixQuery::ORDER_ITEM_JOIN
 
-    def initialize(sku, business_status:, return_business_status:, page: 1)
+    def initialize(sku, business_status:, return_business_status:, store_id: nil, page: 1)
       @sku = sku
+      @store_id = self.class.normalize_store_id(store_id)
       @business_status = business_status
       @return_business_status = return_business_status
       @requested_page = [ page.to_i, 1 ].max
+    end
+
+    # Positive integer or nil; blank, non-numeric and non-positive values are ignored.
+    def self.normalize_store_id(value)
+      string = value.to_s.strip
+      return unless string.match?(/\A\d+\z/)
+
+      id = string.to_i
+      id if id.positive?
     end
 
     def call
@@ -49,14 +60,18 @@ module Ec
     private
 
     def scope
-      @scope ||= Ec::OrderItem
-        .joins(:fulfillment, :order, :store)
-        .joins(ORDER_ITEM_JOIN)
-        .where(ec_sku_products: { sku_code: @sku.sku_code })
-        .where(ec_order_fulfillments: {
-          fulfillment_type: "fbs", business_status: @business_status,
-          return_business_status: @return_business_status
-        })
+      @scope ||= begin
+        relation = Ec::OrderItem
+          .joins(:fulfillment, :order, :store)
+          .joins(ORDER_ITEM_JOIN)
+          .where(ec_sku_products: { sku_code: @sku.sku_code })
+          .where(ec_order_fulfillments: {
+            fulfillment_type: "fbs", business_status: @business_status,
+            return_business_status: @return_business_status
+          })
+        relation = relation.where(ec_order_items: { store_id: @store_id }) if @store_id
+        relation
+      end
     end
   end
 end

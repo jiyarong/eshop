@@ -1,5 +1,7 @@
 module Ec
-  # Physical stocktake view of one SKU's FBS fulfillments: quantity per (business status x return business status).
+  # Physical stocktake view of one SKU's FBS fulfillments.
+  # `cells`: quantity per (business status x return business status), aggregated across stores; `summary` totals them.
+  # `rows`: the same quantities split per (platform, store, business status, return business status) for display.
   # Order items are attributed to the SKU only through the hard ec_sku_products link.
   class InventoryFbsStatusMatrixQuery
     ORDER_ITEM_JOIN = SalesFunnelReports::SkuFunnelAnalysisQuery::ORDER_ITEM_JOIN
@@ -48,10 +50,47 @@ module Ec
         ]
       end
 
-      { cells: cells, summary: summary(cells) }
+      { cells: cells, rows: rows, summary: summary(cells) }
     end
 
     private
+
+    def rows
+      result = store_quantities.map do |(platform, store_id, store_name, business_status, return_business_status), quantity|
+        {
+          platform: platform,
+          store_id: store_id,
+          store_name: store_name,
+          business_status: business_status,
+          return_business_status: return_business_status,
+          quantity: quantity.to_i,
+          kind: self.class.kind(business_status, return_business_status),
+          anomaly: self.class.anomaly?(business_status, return_business_status)
+        }
+      end
+      result.sort_by do |row|
+        [
+          row[:platform].to_s,
+          row[:store_name].to_s,
+          row[:store_id].to_i,
+          Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES.index(row[:business_status]).to_i,
+          Ec::FulfillmentBusinessStatus::RETURN_STATUSES.index(row[:return_business_status]).to_i
+        ]
+      end
+    end
+
+    def store_quantities
+      Ec::OrderItem
+        .joins(:fulfillment, :store)
+        .joins(ORDER_ITEM_JOIN)
+        .where(ec_sku_products: { sku_code: @sku.sku_code })
+        .where(ec_order_fulfillments: { fulfillment_type: "fbs" })
+        .group(
+          "ec_order_items.platform", "ec_order_items.store_id", "ec_stores.store_name",
+          "ec_order_fulfillments.business_status", "ec_order_fulfillments.return_business_status"
+        )
+        .sum("ec_order_items.quantity")
+    end
 
     def quantities
       Ec::OrderItem

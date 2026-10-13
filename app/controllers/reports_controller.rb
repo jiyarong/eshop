@@ -163,10 +163,13 @@ class ReportsController < ApplicationController
 
     @business_status = business_status
     @return_business_status = return_business_status
+    store_id = Ec::InventoryFbsOrdersQuery.normalize_store_id(params[:store_id])
+    @fbs_store = Ec::Store.find_by(id: store_id) if store_id
     @fbs_orders = Ec::InventoryFbsOrdersQuery.new(
       @sku,
       business_status: business_status,
       return_business_status: return_business_status,
+      store_id: store_id,
       page: params[:jump_page].presence || params[:page]
     ).call
   end
