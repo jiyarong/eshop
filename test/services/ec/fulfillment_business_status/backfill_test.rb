@@ -24,6 +24,7 @@ class Ec::FulfillmentBusinessStatus::BackfillTest < ActiveSupport::TestCase
     assert_equal [ "needs_review", "none" ], result[:samples].first[:from]
     assert_equal [ "delivered", "none" ], result[:samples].first[:to]
     assert_equal "needs_review", order.fulfillments.first.reload.business_status
+    assert_equal "needs_review", order.reload.business_status
   end
 
   test "backfill writes statuses and is idempotent" do
@@ -37,6 +38,23 @@ class Ec::FulfillmentBusinessStatus::BackfillTest < ActiveSupport::TestCase
     assert_equal 2, first[:changed]
     assert_equal 0, second[:changed]
     assert_equal "delivered", order.fulfillments.first.reload.business_status
+    assert_equal "delivered", order.reload.business_status
+  end
+
+  test "repairs a stale order summary whose fulfillments already match, and a dry run leaves it alone" do
+    order = ledger_order(platform: "ozon", status: "delivered", source_status: "delivered",
+      source_substatus: "posting_received")
+    order.fulfillments.first.update_columns(business_status: "delivered", return_business_status: "none")
+    order.update_columns(business_status: "needs_review", return_business_status: "none")
+
+    dry = scoped_run(dry_run: true)
+
+    assert_equal 0, dry[:changed]
+    assert_equal "needs_review", order.reload.business_status
+
+    result = scoped_run
+
+    assert_equal 0, result[:changed]
     assert_equal "delivered", order.reload.business_status
   end
 end

@@ -18,7 +18,6 @@ module Ec
 
       def run
         result = { checked: 0, changed: 0, samples: [] }
-        touched_order_ids = []
 
         scope.includes(:store).find_in_batches(batch_size: @batch_size) do |batch|
           evidence = Ec::FulfillmentBusinessStatus::WbStatsEvidence.for_orders(
@@ -40,11 +39,10 @@ module Ec
             next if @dry_run
 
             fulfillment.update_columns(business_status: after.first, return_business_status: after.last)
-            touched_order_ids << fulfillment.order_id
           end
+          roll_up(batch.map(&:order_id).uniq) unless @dry_run
         end
 
-        roll_up(touched_order_ids.uniq) unless @dry_run
         result
       end
 
@@ -57,10 +55,10 @@ module Ec
         relation
       end
 
+      # Rolls up every order of the batch, not only the changed ones: an interrupted run leaves written
+      # fulfillments behind whose orders were never summarised, and a re-run would not see them as changed.
       def roll_up(order_ids)
-        order_ids.each_slice(@batch_size) do |ids|
-          Ec::Order.where(id: ids).find_each { |order| Ec::FulfillmentBusinessStatus::Updater.rollup_order(order) }
-        end
+        Ec::Order.where(id: order_ids).find_each { |order| Ec::FulfillmentBusinessStatus::Updater.rollup_order(order) }
       end
     end
   end

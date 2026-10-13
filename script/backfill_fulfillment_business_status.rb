@@ -5,8 +5,21 @@
 #   bin/rails runner script/backfill_fulfillment_business_status.rb --platform=wb
 #
 # --dry-run only reports how many fulfillments differ from the stored values (a consistency check).
-dry_run = ARGV.include?("--dry-run")
-platform = ARGV.filter_map { |argument| argument.delete_prefix("--platform=") if argument.start_with?("--platform=") }.first
+# Any other argument aborts, so a typo can never turn a dry run into a real write.
+platforms = Ec::Order::PLATFORMS.values
+usage = "usage: backfill_fulfillment_business_status.rb [--dry-run] [--platform=#{platforms.join('|')}]"
+dry_run = false
+platform = nil
+
+ARGV.each do |argument|
+  if argument == "--dry-run"
+    dry_run = true
+  elsif argument.start_with?("--platform=") && platforms.include?(argument.delete_prefix("--platform="))
+    platform = argument.delete_prefix("--platform=")
+  else
+    abort "unknown argument #{argument.inspect}\n#{usage}"
+  end
+end
 
 result = Ec::FulfillmentBusinessStatus::Backfill.run(dry_run: dry_run, platform: platform)
 puts "checked=#{result[:checked]} changed=#{result[:changed]} dry_run=#{dry_run}"
