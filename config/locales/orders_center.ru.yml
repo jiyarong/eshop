@@ -1,0 +1,14 @@
+ru:
+  orders:
+    fields:
+      business_status: "Бизнес-статус"
+      return_business_status: "Статус возврата"
+    filters:
+      all_business_statuses: "Все бизнес-статусы"
+      all_fulfillment_types: "Все режимы"
+      all_return_business_statuses: "Все статусы возврата"
+      business_status: "Бизнес-статус"
+      fulfillment_type: "Режим выполнения"
+      return_business_status: "Статус возврата"
+    index:
+      pagination_aria_label: "Страницы списка заказов"

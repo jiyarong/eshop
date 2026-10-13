@@ -1,0 +1,14 @@
+en:
+  orders:
+    fields:
+      business_status: "Business status"
+      return_business_status: "Return status"
+    filters:
+      all_business_statuses: "All business statuses"
+      all_fulfillment_types: "All fulfillment modes"
+      all_return_business_statuses: "All return statuses"
+      business_status: "Business status"
+      fulfillment_type: "Fulfillment mode"
+      return_business_status: "Return status"
+    index:
+      pagination_aria_label: "Order list pagination"

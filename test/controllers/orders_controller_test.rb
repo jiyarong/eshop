@@ -250,7 +250,6 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Orders"
     assert_select "label", "Platform"
-    assert_select "label[for=?]", "orders-time-range-trigger", "Date range"
     assert_select "option", "All platforms"
     assert_select "label", "Search"
     assert_select "input[placeholder=?]", "Order number / Fulfillment / SKU"
@@ -293,119 +292,304 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: "订单中心 Ozon 店", count: 0 }
   end
 
-  test "index filters orders by processing date range" do
-    get "/orders",
-        params: { q: { platform_eq: "ozon", in_process_at_lteq_end_of_day: "2026-06-02" } },
-        headers: { "Accept" => "text/html" }
+  test "index renders order time in the current user time zone and no time filters" do
+    get "/orders", params: { q: { platform_eq: "ozon" } }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "input[name=?][value=?]", "q[in_process_at_lteq_end_of_day]", "2026-06-02"
-    assert_select "td", "0128619527-0157-LONG"
-    assert_select "td", { text: "LATER-PROCESSED-#{@token}", count: 0 }
-    assert_select "td", { text: "OLDER-#{@token}-20", count: 0 }
-  end
-
-  test "index maps top-level range picker params into ordered_at filters" do
-    boundary_order = Ec::Order.create!(
-      platform: "ozon",
-      store: @store,
-      external_order_id: "TOP-LEVEL-DAY-#{@token}",
-      external_order_number: "TOP-LEVEL-DAY-#{@token}",
-      order_key: "ozon:#{@store.id}:TOP-LEVEL-DAY-#{@token}",
-      order_status: "processing",
-      ordered_at: Time.zone.parse("2026-06-01 16:30:00"),
-      synced_at: Time.zone.parse("2026-06-01 16:35:00")
-    )
-
-    get "/orders",
-        params: {
-          platform: "ozon",
-          from_date: "2026-06-02",
-          to_date: "2026-06-02"
-        },
-        headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "input[name='from_date'][type='hidden'][value='2026-06-02']", count: 1
-    assert_select "input[name='to_date'][type='hidden'][value='2026-06-02']", count: 1
-    assert_select "a[href=?]", "/orders/#{boundary_order.id}"
-    assert_select "td", "2026-06-02 00:30"
-  ensure
-    boundary_order&.destroy
-  end
-
-  test "index filters order dates in current user time zone and defaults to shanghai" do
-    boundary_order = Ec::Order.create!(
-      platform: "ozon",
-      store: @store,
-      external_order_id: "SHANGHAI-DAY-#{@token}",
-      external_order_number: "SHANGHAI-DAY-#{@token}",
-      order_key: "ozon:#{@store.id}:SHANGHAI-DAY-#{@token}",
-      order_status: "processing",
-      ordered_at: Time.zone.parse("2026-06-01 16:30:00"),
-      synced_at: Time.zone.parse("2026-06-01 16:35:00")
-    )
-
-    get "/orders",
-        params: {
-          q: {
-            platform_eq: "ozon",
-            ordered_at_gteq: "2026-06-02",
-            ordered_at_lteq_end_of_day: "2026-06-02"
-          }
-        },
-        headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "a[href=?]", "/orders/#{boundary_order.id}"
-    assert_select "td", "2026-06-02 00:30"
+    assert_select "td", "2026-06-02 11:54"
 
     @current_user.update!(time_zone: "UTC")
     sign_in @current_user
 
+    get "/orders", params: { q: { platform_eq: "ozon" } }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "td", "2026-06-02 03:54"
+  end
+
+  test "index no longer renders time range or date picker filters" do
+    get "/orders", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "[data-controller='time-range-selector']", count: 0
+    assert_select "[data-controller='date-picker']", count: 0
+    assert_select "input[name='from_date']", count: 0
+    assert_select "input[name='to_date']", count: 0
+    assert_select "input[name='q[in_process_at_gteq]']", count: 0
+    assert_select "input[name='q[in_process_at_lteq_end_of_day]']", count: 0
+    assert_select "input[name='q[ordered_at_gteq]']", count: 0
+    assert_select "input[name='q[ordered_at_lteq_end_of_day]']", count: 0
+    assert_select "label[for=?]", "orders-time-range-trigger", count: 0
+  end
+
+  test "index ignores legacy date params in the url" do
     get "/orders",
         params: {
+          platform: "ozon",
+          from_date: "2030-01-01",
+          to_date: "2030-01-02",
+          process_from_date: "2030-01-01",
+          process_to_date: "2030-01-02",
           q: {
-            platform_eq: "ozon",
-            ordered_at_gteq: "2026-06-02",
-            ordered_at_lteq_end_of_day: "2026-06-02"
+            ordered_at_gteq: "2030-01-01",
+            ordered_at_lteq_end_of_day: "2030-01-02",
+            in_process_at_gteq: "2030-01-01",
+            in_process_at_lteq_end_of_day: "2030-01-02"
           }
         },
         headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "a[href=?]", "/orders/#{boundary_order.id}", count: 0
-  ensure
-    boundary_order&.destroy
-  end
-
-  test "index renders order time range selector and keeps processing date pickers" do
-    get "/orders", headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select ".order-date-timezone", count: 0
-    assert_select "[data-controller='time-range-selector']", count: 1
-    assert_select "label[for=?]", "orders-time-range-trigger", "时间范围"
-    assert_select "input[name='from_date'][type='hidden']", count: 1
-    assert_select "input[name='to_date'][type='hidden']", count: 1
-    assert_select "button[aria-controls='orders-time-range-popover']", count: 1
-    assert_select ".time-range-trigger-shift[data-direction='-1'][disabled]", count: 1
-    assert_select ".time-range-trigger-shift[data-direction='1'][disabled]", count: 1
-    assert_select "#orders-time-range-popover[role='dialog']", count: 1
-    assert_select "input[name='q[ordered_at_gteq]']", count: 0
-    assert_select "input[name='q[ordered_at_lteq_end_of_day]']", count: 0
-    assert_select "[data-controller='date-picker'][data-date-picker-date-format-value='Y-m-d']", count: 2
-    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[in_process_at_gteq]"
-    assert_select "input[type='text'][inputmode='numeric'][data-date-picker-target='input'][name=?]", "q[in_process_at_lteq_end_of_day]"
-  end
-
-  test "index paginates order list" do
-    get "/orders", params: { q: { platform_eq: "ozon" }, page: 2 }, headers: { "Accept" => "text/html" }
-
-    assert_response :success
-    assert_select "nav.pagination"
-    assert_select "span.page.current", "2"
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@later_processed_order.id}"
     assert_select "td", "订单中心 Ozon 店"
+  end
+
+  test "index renders business and return status columns with order level values" do
+    @order.update_columns(business_status: "in_delivery", return_business_status: "returning_to_seller")
+
+    get "/orders", params: { q: { platform_eq: "ozon", external_order_number_cont_placeholder: nil, order_status_eq: "shipped" } },
+                   headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "th", "业务状态"
+    assert_select "th", "退货状态"
+    headers = css_select("thead th").map { |th| th.text.strip }
+    assert_equal headers.index("状态") + 1, headers.index("业务状态")
+    assert_equal headers.index("业务状态") + 1, headers.index("退货状态")
+
+    row = css_select("tbody tr").find { |tr| tr.at_css("a[href='/orders/#{@order.id}']") }
+    cells = row.css("td").map { |td| td.text.strip }
+    assert_equal "配送中", cells[headers.index("业务状态")]
+    assert_equal "返回卖家途中", cells[headers.index("退货状态")]
+  end
+
+  test "index renders business and return status columns in english" do
+    @order.update_columns(business_status: "delivered", return_business_status: "none")
+
+    get "/orders", params: { locale: "en", q: { order_status_eq: "shipped" } }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "th", "Business status"
+    assert_select "th", "Return status"
+    assert_select "label", "Business status"
+    assert_select "label", "Return status"
+    assert_select "label", "Fulfillment mode"
+    assert_select ".popover-multiselect__trigger span", "All business statuses"
+    assert_select ".popover-multiselect__trigger span", "All return statuses"
+    assert_select ".popover-multiselect__trigger span", "All fulfillment modes"
+    assert_select "td", "Delivered"
+    assert_select "td", "No return"
+  end
+
+  test "index business status multi-select returns the union of selected statuses and keeps them selected" do
+    @order.update_columns(business_status: "in_delivery")
+    @wb_order.update_columns(business_status: "awaiting_assembly")
+    @later_processed_order.update_columns(business_status: "delivered")
+
+    get "/orders",
+        params: { q: { business_status_in: %w[in_delivery awaiting_assembly] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+    assert_select "a[href=?]", "/orders/#{@later_processed_order.id}", count: 0
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "in_delivery"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "awaiting_assembly"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[business_status_in][]", "delivered", count: 0
+    assert_select "#orders-business-status-filter-trigger span", "已选 2 项"
+  end
+
+  test "index return status multi-select filters by order level return status" do
+    @order.update_columns(return_business_status: "expected")
+    @wb_order.update_columns(return_business_status: "received_by_seller")
+
+    get "/orders",
+        params: { q: { return_business_status_in: %w[expected] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[return_business_status_in][]", "expected"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[return_business_status_in][]", "received_by_seller", count: 0
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { return_business_status_in: %w[expected received_by_seller] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+  end
+
+  test "index fulfillment mode multi-select matches any selected mode and does not duplicate orders" do
+    @order.fulfillments.create!(
+      platform: "ozon",
+      store: @store,
+      external_fulfillment_id: "0128619527-0157-2",
+      fulfillment_key: "ozon:#{@store.id}:0128619527-0157-2",
+      fulfillment_type: "fbs",
+      status: "shipped",
+      synced_at: Time.zone.parse("2026-06-02 04:00:00")
+    )
+    fbs_only_order = Ec::Order.create!(
+      platform: "ozon",
+      store: @store,
+      external_order_id: "FBS-ONLY-#{@token}",
+      external_order_number: "FBS-ONLY-#{@token}",
+      order_key: "ozon:#{@store.id}:FBS-ONLY-#{@token}",
+      order_status: "processing",
+      ordered_at: Time.zone.parse("2026-06-02 06:00:00"),
+      synced_at: Time.zone.parse("2026-06-02 06:05:00")
+    )
+    fbs_only_order.fulfillments.create!(
+      platform: "ozon",
+      store: @store,
+      external_fulfillment_id: "FBS-ONLY-#{@token}-1",
+      fulfillment_key: "ozon:#{@store.id}:FBS-ONLY-#{@token}-1",
+      fulfillment_type: "fbs",
+      status: "processing",
+      synced_at: Time.zone.parse("2026-06-02 06:05:00")
+    )
+
+    get "/orders",
+        params: { q: { fulfillments_fulfillment_type_in: %w[fbs fbo] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{fbs_only_order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
+    assert_select "td", "FBO / FBS"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_fulfillment_type_in][]", "fbs"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_fulfillment_type_in][]", "fbo"
+    assert_select "input[type=checkbox][name=?][value=?][checked]", "q[fulfillments_fulfillment_type_in][]", "fbw", count: 0
+    assert_select "label", "履约模式"
+
+    # Status summary counts every matching order once, even with two fulfillments.
+    totals = css_select(".weekly-profit-summary-card .summary-value").map { |node| node.text.strip.to_i }
+    assert_equal 2, totals.first
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { fulfillments_fulfillment_type_in: %w[fbs] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{fbs_only_order.id}", count: 1
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { fulfillments_fulfillment_type_in: %w[fbw] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 0
+  ensure
+    Ec::OrderFulfillment.where(order_id: fbs_only_order&.id).delete_all
+    fbs_only_order&.destroy
+  end
+
+  test "index drops unknown multi-select values silently" do
+    @order.update_columns(business_status: "in_delivery")
+
+    get "/orders",
+        params: {
+          q: {
+            business_status_in: %w[in_delivery bogus],
+            return_business_status_in: %w[bogus],
+            fulfillments_fulfillment_type_in: [""]
+          }
+        },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
+    assert_select "input[type=checkbox][name=?][checked]", "q[business_status_in][]", count: 1
+    assert_select "input[type=checkbox][name=?][checked]", "q[return_business_status_in][]", count: 0
+    assert_select "input[type=checkbox][name=?][checked]", "q[fulfillments_fulfillment_type_in][]", count: 0
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { business_status_in: %w[bogus] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@order.id}"
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+  end
+
+  test "index combines multi-select statuses with the platform filter" do
+    @order.update_columns(business_status: "in_delivery")
+    @wb_order.update_columns(business_status: "in_delivery")
+
+    get "/orders",
+        params: { q: { platform_eq: "wb", business_status_in: %w[in_delivery] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
+    assert_select "a[href=?]", "/orders/#{@order.id}", count: 0
+    assert_select "select[name=?] option[selected][value=?]", "q[platform_eq]", "wb"
+  end
+
+  test "index paginates with the shared pagination bar and keeps filters" do
+    @order.update_columns(business_status: "in_delivery")
+    @older_orders.each { |order| order.update_columns(business_status: "in_delivery") }
+
+    get "/orders",
+        params: { q: { platform_eq: "ozon", business_status_in: %w[in_delivery] } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "nav.pagination", count: 0
+    assert_select ".table-list-card > .inventory-pagination-bar", count: 1
+    assert_select ".inventory-pagination-bar nav.pagination-nav[aria-label=?]", "订单列表分页"
+    assert_select ".inventory-pagination-bar .pg-btn.on", "1"
+    assert_select ".inventory-pagination-bar a.pg-btn" do |links|
+      page_two = links.find { |link| link.text.strip == "2" }
+      assert page_two, "expected a link to page 2"
+      query = Rack::Utils.parse_nested_query(URI.parse(page_two["href"]).query)
+      assert_equal "2", query["page"]
+      assert_equal "ozon", query.dig("q", "platform_eq")
+      assert_equal %w[in_delivery], query.dig("q", "business_status_in")
+    end
+    assert_select ".inventory-pagination-bar form.pagination-jump input[name=?]", "jump_page"
+    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "q[platform_eq]", "ozon"
+    assert_select ".inventory-pagination-bar form.pagination-jump input[type=hidden][name=?][value=?]", "q[business_status_in][]", "in_delivery"
+  end
+
+  test "index jump_page selects the requested page" do
+    get "/orders",
+        params: { q: { platform_eq: "ozon" }, jump_page: 2, current_page: 1 },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select "td", "订单中心 Ozon 店"
+    assert_select "a[href=?]", "/orders/#{@later_processed_order.id}", count: 0
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { platform_eq: "ozon" }, page: 1, jump_page: "" },
+        headers: { "Accept" => "text/html" }
+
+    assert_select ".inventory-pagination-bar .pg-btn.on", "1"
+  end
+
+  test "index hides the pagination bar when everything fits on one page" do
+    get "/orders", params: { q: { platform_eq: "wb" } }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar", count: 0
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}"
   end
 
   test "show renders order detail with fulfillments items and source links" do

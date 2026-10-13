@@ -3,18 +3,21 @@ class OrdersController < ApplicationController
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
                 :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
-                :order_fulfillment_types, :order_amount, :order_currency
+                :order_fulfillment_types, :order_amount, :order_currency,
+                :business_status_filter_options, :return_business_status_filter_options,
+                :fulfillment_type_filter_options, :business_status_label, :return_business_status_label
   before_action -> { require_permission!(:view_reports) }
 
+  ORDERS_PER_PAGE = 20
+  FULFILLMENT_TYPE_FILTER_VALUES = %w[fbs fbo fbw].freeze
+
   def index
-    @order_time_zone = user_time_zone
     @q_params = normalized_ransack_params
-    @date_params = date_filter_params(@q_params)
     @stores = Ec::Store.order(:platform, :store_name)
     @search = base_order_scope.ransack(@q_params)
     @orders_scope = @search.result(distinct: true)
     @summary = build_summary(@orders_scope)
-    @orders = @orders_scope.page(params[:page]).per(20)
+    @orders = @orders_scope.page(params[:jump_page].presence || params[:page]).per(ORDERS_PER_PAGE)
     @sku_by_item_id = sku_lookup_for(@orders.flat_map(&:items))
   end
 
@@ -40,16 +43,13 @@ class OrdersController < ApplicationController
         :platform_eq,
         :order_status_eq,
         :store_id_eq,
-        :ordered_at_gteq,
-        :ordered_at_lteq_end_of_day,
-        :ordered_at_lteq,
-        :in_process_at_gteq,
-        :in_process_at_lteq_end_of_day,
-        :in_process_at_lteq,
-        :external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont
+        :external_order_number_or_external_order_id_or_fulfillments_external_fulfillment_id_or_items_offer_id_or_items_platform_sku_id_or_items_sku_code_cont,
+        business_status_in: [],
+        return_business_status_in: [],
+        fulfillments_fulfillment_type_in: []
       ).to_h
     else
-      {}
+      {}.with_indifferent_access
     end
 
     legacy_query = params[:q].is_a?(String) ? params[:q].strip : nil
@@ -57,33 +57,37 @@ class OrdersController < ApplicationController
     query[:platform_eq] ||= params[:platform].presence_in(%w[wb ozon amazon])
     query[:order_status_eq] ||= params[:status].presence_in(Ec::Order::STATUSES.values)
     query[:store_id_eq] ||= params[:store_id].presence
-    query[:ordered_at_gteq] ||= params[:from_date].presence
-    query[:ordered_at_lteq_end_of_day] ||= params[:to_date].presence
-    query[:in_process_at_gteq] ||= params[:process_from_date].presence
-    query[:in_process_at_lteq_end_of_day] ||= params[:process_to_date].presence
 
-    normalize_date_range!(query, :ordered_at)
-    normalize_date_range!(query, :in_process_at)
+    restrict_to_vocabulary!(query, :business_status_in, Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES)
+    restrict_to_vocabulary!(query, :return_business_status_in, Ec::FulfillmentBusinessStatus::RETURN_STATUSES)
+    restrict_to_vocabulary!(query, :fulfillments_fulfillment_type_in, FULFILLMENT_TYPE_FILTER_VALUES)
     query.compact_blank
   end
 
-  def normalize_date_range!(query, attribute)
-    start_key = :"#{attribute}_gteq"
-    end_of_day_key = :"#{attribute}_lteq_end_of_day"
-    end_key = :"#{attribute}_lteq"
-
-    query[start_key] = time_in_user_zone(query[start_key], :beginning_of_day)
-    query[end_key] ||= time_in_user_zone(query[end_of_day_key], :end_of_day)
-    query.delete(end_of_day_key)
+  # Multi-select filters: unknown values are dropped silently and an empty
+  # selection disappears via compact_blank.
+  def restrict_to_vocabulary!(query, key, vocabulary)
+    query[key] = Array(query[key]).map(&:to_s) & vocabulary.map(&:to_s)
   end
 
-  def date_filter_params(query)
-    {
-      "ordered_at_gteq" => query[:ordered_at_gteq]&.in_time_zone(@order_time_zone)&.to_date,
-      "ordered_at_lteq_end_of_day" => query[:ordered_at_lteq]&.in_time_zone(@order_time_zone)&.to_date,
-      "in_process_at_gteq" => query[:in_process_at_gteq]&.in_time_zone(@order_time_zone)&.to_date,
-      "in_process_at_lteq_end_of_day" => query[:in_process_at_lteq]&.in_time_zone(@order_time_zone)&.to_date
-    }
+  def business_status_filter_options
+    Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES.map { |value| [business_status_label(value), value] }
+  end
+
+  def return_business_status_filter_options
+    Ec::FulfillmentBusinessStatus::RETURN_STATUSES.map { |value| [return_business_status_label(value), value] }
+  end
+
+  def fulfillment_type_filter_options
+    FULFILLMENT_TYPE_FILTER_VALUES.map { |value| [fulfillment_label(value), value] }
+  end
+
+  def business_status_label(value)
+    t("fulfillment_business_status.business.#{value}", default: value.to_s)
+  end
+
+  def return_business_status_label(value)
+    t("fulfillment_business_status.return.#{value}", default: value.to_s)
   end
 
   def build_summary(scope)

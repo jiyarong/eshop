@@ -28,6 +28,7 @@ module Ec
 
     def self.ransackable_attributes(_auth_object = nil)
       %w[
+        business_status
         buyer_city
         cancelled_at
         completed_at
@@ -37,6 +38,7 @@ module Ec
         order_status
         ordered_at
         platform
+        return_business_status
         source_status
         source_substatus
         store_id

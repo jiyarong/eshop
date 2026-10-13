@@ -2,6 +2,7 @@
 <% page_param = local_assigns.fetch(:page_param, :page).to_sym %>
 <% path_builder = local_assigns.fetch(:path_builder, ->(params) { reports_supply_orders_path(params) }) %>
 <% turbo_frame = local_assigns.fetch(:turbo_frame, "supply_order_report_results") %>
+<% aria_label = local_assigns.fetch(:aria_label, t("supply_order_reports.pagination.aria_label")) %>
 <% query = request.query_parameters.symbolize_keys.except(page_param, :page, :jump_page, :current_page) %>
 <div class="inventory-pagination-bar">
   <div class="pagination-meta">
@@ -9,7 +10,7 @@
     <span class="pagination-chip"><%= t("supply_order_reports.pagination.page", page: pagination[:page], pages: pagination[:total_pages]) %></span>
   </div>
   <div class="pagination-shell">
-    <nav class="pagination-nav" aria-label="<%= t("supply_order_reports.pagination.aria_label") %>">
+    <nav class="pagination-nav" aria-label="<%= aria_label %>">
       <% if pagination[:page] > 1 %>
         <%= link_to "‹", path_builder.call(query.merge(page_param => pagination[:page] - 1)), class: "pg-btn pg-btn-nav", data: { turbo_frame: turbo_frame }.compact, aria: { label: t("supply_order_reports.pagination.previous") } %>
       <% else %><span class="pg-btn pg-btn-nav" aria-disabled="true">‹</span><% end %>
@@ -24,8 +25,9 @@
     </nav>
     <span class="pagination-divider" aria-hidden="true"></span>
     <%= form_with url: path_builder.call({}), method: :get, local: true, class: "pagination-jump", data: { turbo_frame: turbo_frame }.compact do %>
-      <% query.each do |key, value| %>
-        <% Array(value).each do |item| %><%= hidden_field_tag(value.is_a?(Array) ? "#{key}[]" : key, item) %><% end %>
+      <% query.compact.to_query.split("&").each do |pair| %>
+        <% name, value = pair.split("=", 2).map { |part| CGI.unescape(part.to_s) } %>
+        <%= hidden_field_tag(name, value, id: nil) %>
       <% end %>
       <%= hidden_field_tag :current_page, pagination[:page] %>
       <span class="pagination-jump-label"><%= t("supply_order_reports.pagination.jump_label") %></span>

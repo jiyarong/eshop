@@ -88,13 +88,6 @@ class ApplicationController < ActionController::Base
     nil
   end
 
-  def time_in_user_zone(value, boundary)
-    date = parse_user_date(value)
-    return unless date
-
-    time_for_user_date(date).public_send(boundary)
-  end
-
   def user_date_range(from_date, to_date)
     time_for_user_date(from_date).beginning_of_day..time_for_user_date(to_date).end_of_day
   end

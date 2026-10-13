@@ -35,24 +35,32 @@
         </select>
       </div>
 
-      <div class="field field--time-range">
-        <label for="orders-time-range-trigger"><%= t("orders.filters.date_range") %></label>
-        <%= render "shared/time_range_selector",
-                   id: "orders-time-range",
-                   from_date: @date_params["ordered_at_gteq"],
-                   to_date: @date_params["ordered_at_lteq_end_of_day"],
-                   submit_on_apply: true %>
-      </div>
+      <%= render "shared/popover_multiselect_filter",
+                 field_class: "",
+                 dom_id_prefix: "orders-business-status-filter",
+                 param_name: "q[business_status_in]",
+                 label: t("orders.filters.business_status"),
+                 all_label: t("orders.filters.all_business_statuses"),
+                 selected_values: @q_params["business_status_in"],
+                 options: business_status_filter_options %>
 
-      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
-        <label for="process_from_date"><%= t("orders.filters.process_from_date") %></label>
-        <input id="process_from_date" type="text" inputmode="numeric" name="q[in_process_at_gteq]" value="<%= @date_params["in_process_at_gteq"] %>" data-date-picker-target="input">
-      </div>
+      <%= render "shared/popover_multiselect_filter",
+                 field_class: "",
+                 dom_id_prefix: "orders-return-business-status-filter",
+                 param_name: "q[return_business_status_in]",
+                 label: t("orders.filters.return_business_status"),
+                 all_label: t("orders.filters.all_return_business_statuses"),
+                 selected_values: @q_params["return_business_status_in"],
+                 options: return_business_status_filter_options %>
 
-      <div class="field" data-controller="date-picker" data-date-picker-date-format-value="Y-m-d">
-        <label for="process_to_date"><%= t("orders.filters.process_to_date") %></label>
-        <input id="process_to_date" type="text" inputmode="numeric" name="q[in_process_at_lteq_end_of_day]" value="<%= @date_params["in_process_at_lteq_end_of_day"] %>" data-date-picker-target="input">
-      </div>
+      <%= render "shared/popover_multiselect_filter",
+                 field_class: "",
+                 dom_id_prefix: "orders-fulfillment-type-filter",
+                 param_name: "q[fulfillments_fulfillment_type_in]",
+                 label: t("orders.filters.fulfillment_type"),
+                 all_label: t("orders.filters.all_fulfillment_types"),
+                 selected_values: @q_params["fulfillments_fulfillment_type_in"],
+                 options: fulfillment_type_filter_options %>
 
       <div class="field">
         <label for="q"><%= t("orders.filters.search") %></label>
@@ -97,7 +105,14 @@
         <div class="empty-state"><%= t("orders.index.empty") %></div>
       <% else %>
         <div class="table-list-card">
-          <%= paginate @orders %>
+          <% if @orders.total_pages > 1 %>
+            <%= render "reports/supply_orders/pagination",
+                       report: { pagination: { page: @orders.current_page, per_page: @orders.limit_value, total_count: @orders.total_count, total_pages: @orders.total_pages } },
+                       path_builder: ->(query) { orders_path(query) },
+                       page_param: :page,
+                       turbo_frame: nil,
+                       aria_label: t("orders.index.pagination_aria_label") %>
+          <% end %>
           <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
             <table>
             <thead>
@@ -105,6 +120,8 @@
                 <th><%= t("orders.fields.platform") %></th>
                 <th><%= t("orders.fields.store") %></th>
                 <th><%= t("orders.fields.status") %></th>
+                <th><%= t("orders.fields.business_status") %></th>
+                <th><%= t("orders.fields.return_business_status") %></th>
                 <th><%= t("orders.fields.fulfillment_mode") %></th>
                 <th><%= t("orders.fields.external_order_number") %></th>
                 <th><%= t("orders.fields.ordered_at") %></th>
@@ -121,6 +138,8 @@
                   <td><%= platform_label(order.platform) %></td>
                   <td><%= order.store.store_name %></td>
                   <td title="<%= order_status_title(order) %>"><%= order_status_label(order.order_status) %></td>
+                  <td><%= business_status_label(order.business_status) %></td>
+                  <td><%= return_business_status_label(order.return_business_status) %></td>
                   <td><%= order_fulfillment_types(order) %></td>
                   <td>
                     <% if platform_order_url(order).present? %>

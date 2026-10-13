@@ -1,0 +1,14 @@
+zh:
+  orders:
+    fields:
+      business_status: "业务状态"
+      return_business_status: "退货状态"
+    filters:
+      all_business_statuses: "全部业务状态"
+      all_fulfillment_types: "全部履约模式"
+      all_return_business_statuses: "全部退货状态"
+      business_status: "业务状态"
+      fulfillment_type: "履约模式"
+      return_business_status: "退货状态"
+    index:
+      pagination_aria_label: "订单列表分页"
