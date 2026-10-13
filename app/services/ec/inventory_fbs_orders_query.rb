@@ -41,6 +41,7 @@ module Ec
 
       {
         rows: rows,
+        total_quantity: scope.sum("ec_order_items.quantity").to_i,
         pagination: { page: page, per_page: PAGE_SIZE, total_count: total_count, total_pages: total_pages }
       }
     end

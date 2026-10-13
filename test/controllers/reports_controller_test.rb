@@ -3662,6 +3662,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-frame#erp_modal"
     assert_select "td", text: "FBSM-NUMBER-#{@sku_code}"
+    assert_select ".inventory-fbs-orders-modal__summary strong", text: "3"
   ensure
     Ec::OrderItem.where(order_id: order&.id).delete_all
     Ec::OrderFulfillment.where(order_id: order&.id).delete_all

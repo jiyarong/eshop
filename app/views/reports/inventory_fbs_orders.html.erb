@@ -22,7 +22,7 @@
       <% pagination = @fbs_orders[:pagination] %>
       <div class="inventory-fbs-orders-modal__summary">
         <span><%= t("reports.inventory.drawer.physical_stocktake.fbs_orders_modal.quantity") %></span>
-        <strong><%= @fbs_orders[:rows].sum { |row| row[:quantity] } %><% if pagination[:total_pages] > 1 %> / <%= pagination[:total_count] %><% end %></strong>
+        <strong><%= @fbs_orders[:total_quantity] %></strong>
       </div>
 
       <% if pagination[:total_pages] > 1 %>

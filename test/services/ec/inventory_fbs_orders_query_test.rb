@@ -31,11 +31,15 @@ class Ec::InventoryFbsOrdersQueryTest < ActiveSupport::TestCase
     assert_equal "wb", result[:rows].first[:platform]
     assert_equal @wb_store.store_name, result[:rows].first[:store_name]
     assert_equal({ page: 1, per_page: 20, total_count: 2, total_pages: 1 }, result[:pagination])
+    assert_equal 3, result[:total_quantity]
   end
 
   test "paginates and clamps the page" do
-    21.times { fbs_order(business_status: "delivered") }
+    21.times { |index| fbs_order(business_status: "delivered", quantity: index + 1) }
 
+    first = Ec::InventoryFbsOrdersQuery.new(
+      @sku, business_status: "delivered", return_business_status: "none", page: 1
+    ).call
     second = Ec::InventoryFbsOrdersQuery.new(
       @sku, business_status: "delivered", return_business_status: "none", page: 2
     ).call
@@ -45,6 +49,9 @@ class Ec::InventoryFbsOrdersQueryTest < ActiveSupport::TestCase
 
     assert_equal 1, second[:rows].size
     assert_equal 21, second.dig(:pagination, :total_count)
+    assert_equal 231, first[:total_quantity]
+    assert_equal 231, second[:total_quantity]
+    assert_equal 231, clamped[:total_quantity]
     assert_equal 2, clamped.dig(:pagination, :page)
   end
 end

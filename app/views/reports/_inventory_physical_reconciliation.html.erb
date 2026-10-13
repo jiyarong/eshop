@@ -76,7 +76,7 @@
       <h4><%= t("reports.inventory.drawer.physical_stocktake.sections.fbs_orders") %></h4>
       <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.note") %></p>
     </div>
-    <div class="inventory-fbs-matrix__legend" aria-label="<%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.legend") %>">
+    <div class="inventory-fbs-matrix__legend" role="group" aria-label="<%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.legend") %>">
       <% %w[not_left left returned].each do |kind| %>
         <span class="inventory-fbs-matrix__legend-item inventory-fbs-matrix__cell--<%= kind.dasherize %>">
           <%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.kinds.#{kind}") %>
