@@ -113,8 +113,11 @@ module Ec
         sku_code order_id platform store_id quantity order_status ordered_at fulfillment_status
         fulfillment_source_status fulfillment_source_substatus external_fulfillment_id
       ].freeze
+      ORDER_STATUS_SQL = "COALESCE(NULLIF(ledger_f.status, ''), ec_orders.order_status)".freeze
+      UNSOLD_SQL = "(#{ORDER_STATUS_SQL} = 'cancelled' OR (ec_order_items.platform = 'wb' AND #{ORDER_STATUS_SQL} = 'returned'))".freeze
+      HAS_RETURN_SQL = "EXISTS (SELECT 1 FROM ec_returns WHERE ec_returns.order_id = ec_order_items.order_id)".freeze
 
-      def order_rows
+      def order_items_scope
         scope = Ec::OrderItem
           .joins(:order)
           .joins(Ec::InventoryOrderSalesDistributionQuery::ORDER_ITEM_JOIN)
@@ -122,7 +125,40 @@ module Ec
           .where(ec_sku_products: { sku_code: @sku_codes })
         scope = scope.where("ec_orders.ordered_at <= ?", @as_of) if @as_of
 
-        scope.pluck(*ORDER_COLUMNS.map { |column| Arel.sql(column) }).map do |values|
+        scope
+      end
+
+      # Most orders need only totals. Posting-level allocation is needed only
+      # when goods were not sold or when a return belongs to the order.
+      def detailed_order_scope
+        order_items_scope.where("#{UNSOLD_SQL} OR #{HAS_RETURN_SQL}")
+      end
+
+      def apply_sales_totals(ledger, stale_before)
+        stale_sql = Ec::OrderItem.sanitize_sql_array([
+          "#{ORDER_STATUS_SQL} IN (?) AND ec_orders.ordered_at < ?", OPEN_STATUSES, stale_before
+        ])
+        order_items_scope.where("NOT #{UNSOLD_SQL}").where("NOT #{HAS_RETURN_SQL}")
+          .group("ec_sku_products.sku_code", "ec_order_items.platform", "ec_order_items.store_id", Arel.sql(ORDER_STATUS_SQL))
+          .pluck(
+            Arel.sql("ec_sku_products.sku_code"), :platform, :store_id, Arel.sql(ORDER_STATUS_SQL),
+            Arel.sql("SUM(CASE WHEN #{stale_sql} THEN 0 ELSE ec_order_items.quantity END)"),
+            Arel.sql("SUM(CASE WHEN #{stale_sql} THEN ec_order_items.quantity ELSE 0 END)")
+          ).each do |sku_code, platform, store_id, status, quantity, stale_quantity|
+            entry = ledger[sku_code.to_s.upcase]
+            entry[:stale_open_order_quantity] += stale_quantity.to_i
+            next unless quantity.to_i.positive?
+
+            entry[:gross_sales_quantity] += quantity.to_i
+            store = store_entry(entry, platform: platform, store_id: store_id)
+            store[:gross_sales_quantity] += quantity.to_i
+            bucket = STATUS_BUCKETS[status]
+            store[:status_counts][bucket] += quantity.to_i if bucket
+          end
+      end
+
+      def order_rows
+        detailed_order_scope.pluck(*ORDER_COLUMNS.map { |column| Arel.sql(column) }).map do |values|
           row = ORDER_KEYS.zip(values).to_h
           row[:sku_code] = row[:sku_code].to_s.upcase
           row
@@ -130,20 +166,16 @@ module Ec
       end
 
       def apply_orders(ledger)
+        stale_before = (@as_of || Time.current) - STALE_OPEN_ORDER_DAYS.days
+        apply_sales_totals(ledger, stale_before)
         rows = order_rows
         return if rows.empty?
 
-        returns_by_order = Ec::Return.where(order_id: rows.map { |row| row[:order_id] }.uniq)
+        returns_by_order = Ec::Return.where(order_id: order_items_scope.select(:order_id))
           .includes(items: :sku_product).group_by(&:order_id)
         skus_by_order = order_sku_codes(returns_by_order)
-        unsold_rows = rows.select { |row| unsold_status?(row[:platform], row_status(row)) }
-        wb_dispatched = wb_dispatched_order_ids(
-          unsold_rows.select { |row| row[:platform] == "wb" }.map { |row| row[:order_id] }.uniq
-        )
-        ozon_dispatched = ozon_dispatched_postings(
-          unsold_rows.select { |row| row[:platform] == "ozon" }.filter_map { |row| row[:external_fulfillment_id] }.uniq
-        )
-        stale_before = (@as_of || Time.current) - STALE_OPEN_ORDER_DAYS.days
+        wb_dispatched = wb_dispatched_order_ids
+        ozon_dispatched = ozon_dispatched_postings
 
         rows.group_by { |row| [ row[:order_id], row[:sku_code] ] }.each do |(order_id, sku_code), items|
           entry = ledger[sku_code]
@@ -183,10 +215,12 @@ module Ec
       # Distinct SKU codes of every item on orders that have a return item without a matched SKU product, so
       # such an item can be attributed when the whole order belongs to one SKU.
       def order_sku_codes(returns_by_order)
-        order_ids = returns_by_order.select do |_, records|
-          records.any? { |record| record.items.any? { |item| item.sku_product.nil? } }
-        end.keys
-        return {} if order_ids.empty?
+        return {} unless returns_by_order.values.flatten.any? { |record| record.items.any? { |item| item.sku_product.nil? } }
+
+        order_ids = Ec::ReturnItem.joins(:return).left_joins(:sku_product)
+          .where(ec_sku_products: { id: nil })
+          .where(ec_returns: { order_id: order_items_scope.select(:order_id) })
+          .select("ec_returns.order_id")
 
         Ec::OrderItem.joins(Ec::InventoryOrderSalesDistributionQuery::ORDER_ITEM_JOIN)
           .where(order_id: order_ids).distinct
@@ -301,21 +335,17 @@ module Ec
         end
       end
 
-      def wb_dispatched_order_ids(order_ids)
-        return Set.new if order_ids.empty?
-
-        links = Ec::OrderSourceLink
-          .where(order_id: order_ids, source_type: "RawWb::Order", source_role: "primary")
-          .pluck(:order_id, :source_id)
-        complete_ids = RawWb::Order
-          .where(id: links.map(&:last), supplier_status: WB_DISPATCHED_SUPPLIER_STATUS)
-          .pluck(:id).to_set
-        links.filter_map { |order_id, raw_id| order_id if complete_ids.include?(raw_id) }.to_set
+      def wb_dispatched_order_ids
+        Ec::OrderSourceLink
+          .where(order_id: detailed_order_scope.where(platform: "wb").select(:order_id),
+            source_type: "RawWb::Order", source_role: "primary")
+          .joins("INNER JOIN raw_wb_orders ON raw_wb_orders.id = ec_order_source_links.source_id")
+          .where(raw_wb_orders: { supplier_status: WB_DISPATCHED_SUPPLIER_STATUS })
+          .pluck(:order_id).to_set
       end
 
-      def ozon_dispatched_postings(posting_numbers)
-        return Set.new if posting_numbers.empty?
-
+      def ozon_dispatched_postings
+        posting_numbers = detailed_order_scope.where(platform: "ozon").select("ledger_f.external_fulfillment_id")
         scope = RawOzon::PostingFbs.where(posting_number: posting_numbers).where.not(delivering_date: nil)
         scope = scope.where("delivering_date <= ?", @as_of) if @as_of
         scope.pluck(:posting_number).to_set

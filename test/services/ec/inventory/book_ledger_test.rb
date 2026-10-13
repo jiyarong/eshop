@@ -87,6 +87,26 @@ class Ec::Inventory::BookLedgerTest < ActiveSupport::TestCase
     assert_equal 97, entry[:ledger_total]
   end
 
+  test "batches sales totals and queries return orders through a subquery" do
+    ledger_batch(100)
+    12.times { ledger_order(platform: "ozon", status: "delivered", quantity: 2) }
+    returned_order = ledger_order(platform: "ozon", status: "delivered", quantity: 3)
+    ledger_return(returned_order, source_status: "ReceivedBySeller", quantity: 1)
+    sql = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") { |*, payload| sql << payload[:sql] }
+
+    entry = ledger_entry
+
+    assert_equal 27, entry[:gross_sales_quantity]
+    assert_equal 1, entry[:reversed_quantity]
+    assert_equal 74, entry[:ledger_total]
+    assert sql.any? { |query| query.include?("SUM(CASE") && query.include?("ec_order_items.quantity") }
+    return_query = sql.find { |query| query.start_with?('SELECT "ec_returns".*') }
+    assert_match(/order_id" IN \(SELECT/, return_query)
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+  end
+
   test "falls back to the order status when an item has no fulfillment" do
     ledger_batch(100)
     ledger_order(platform: "wb", status: "returned", quantity: 2, with_fulfillment: false)

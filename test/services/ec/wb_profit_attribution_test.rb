@@ -26,6 +26,7 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     RawWb::AdCampaignProduct.where(campaign_id: @campaign_ids).delete_all if @campaign_ids.any?
     RawWb::AdCampaign.where(id: @campaign_ids).delete_all if @campaign_ids.any?
     RawWb::FinanceDetail.where(account_id: @account.id).delete_all
+    RawWb::PaidStorage.where(account_id: @account.id).delete_all
     RawWb::SalesReport.where(account_id: @account.id).destroy_all
     @account.destroy
   end
@@ -335,6 +336,55 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
 
     assert_nil service.results.first[:vendor_code]
     assert_equal 555, service.results.first[:nm_id]
+  end
+
+  test "filtered attribution preserves barcode fallback and the account wide advertising rate" do
+    code = "WB-FILTER-#{SecureRandom.hex(4).upcase}"
+    nm_id = rand(10_000_000..99_999_999)
+    report_id = rand(100_000_000..999_999_999)
+    @sku_codes << code
+    Ec::Sku.create!(sku_code: code)
+    Ec::SkuProduct.create!(sku_code: code, store: create_wb_store(code, @account), product_id: nm_id.to_s)
+    from_date = Date.new(2026, 8, 31)
+    to_date = Date.new(2026, 9, 6)
+    create_sales_report(report_id: report_id, date_from: from_date, date_to: to_date, bank_payment_sum: 200)
+    create_finance_detail(report_id: report_id, nm_id: nm_id, sale_dt: from_date, for_pay: 100).update!(shk_id: 12345)
+    create_finance_detail(report_id: report_id, nm_id: nil, sale_dt: from_date, for_pay: 0,
+      seller_oper_name: "Логистика", delivery_rub: 10).update!(shk_id: 12345)
+    create_finance_detail(report_id: report_id, nm_id: nm_id + 1, sale_dt: from_date, for_pay: 100)
+    create_finance_detail(report_id: report_id, nm_id: nil, sale_dt: from_date, for_pay: 0,
+      seller_oper_name: "Удержание").update!(bonus_type_name: "Продвижение", deduction: 100)
+    advert_id = rand(100_000..999_999)
+    create_fee(advert_id: advert_id, amount: 300, from_date: from_date, to_date: to_date)
+    create_campaign_with_fallback_products(wb_advert_id: advert_id, nm_ids: [ nm_id, nm_id + 1 ])
+
+    full = build_service(from_date: from_date, to_date: to_date, rate_byn_rub: 5).call
+    filtered = build_service(from_date: from_date, to_date: to_date, rate_byn_rub: 5, sku_codes: [ code ]).call
+
+    assert_equal full.results.select { |row| row[:vendor_code] == code }, filtered.results
+    assert_equal 2, filtered.instance_variable_get(:@rows).size
+    assert_in_delta 50, filtered.results.sum { |row| row[:ad] }, 0.001
+  end
+
+  test "filtered attribution keeps storage for a SKU without finance rows" do
+    code = "WB-STORAGE-#{SecureRandom.hex(4).upcase}"
+    nm_id = rand(10_000_000..99_999_999)
+    report_id = rand(100_000_000..999_999_999)
+    @sku_codes << code
+    Ec::Sku.create!(sku_code: code)
+    Ec::SkuProduct.create!(sku_code: code, store: create_wb_store(code, @account), product_id: nm_id.to_s)
+    from_date = Date.new(2026, 8, 31)
+    to_date = Date.new(2026, 9, 6)
+    create_sales_report(report_id: report_id, date_from: from_date, date_to: to_date, bank_payment_sum: 100)
+    create_finance_detail(report_id: report_id, nm_id: nm_id + 1, sale_dt: from_date, for_pay: 100)
+    RawWb::PaidStorage.create!(account: @account, nm_id: nm_id, calc_date: from_date, warehouse_price_rub: 30)
+
+    full = build_service(from_date: from_date, to_date: to_date).call
+    filtered = build_service(from_date: from_date, to_date: to_date, sku_codes: [ code ]).call
+
+    assert_equal full.results.select { |row| row[:vendor_code] == code }, filtered.results
+    assert_empty filtered.instance_variable_get(:@rows)
+    assert_equal 10, filtered.results.first[:storage]
   end
 
   private

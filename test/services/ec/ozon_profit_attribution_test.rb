@@ -17,6 +17,8 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
   end
 
   teardown do
+    RawOzon::AccrualByDay.where(account_id: @ozon_account.id).delete_all if @ozon_account
+    RawOzon::PostingDestination.where(account_id: @ozon_account.id).delete_all if @ozon_account
     RawOzon::PerformanceSkuSpend.where(account_id: @ozon_account.id).delete_all if @ozon_account
     RawOzon::PostingItem.where(account_id: @ozon_account.id).delete_all if @ozon_account
     Ec::SkuProduct.joins(:store).where(ec_stores: { id: @store_ids }).delete_all if @store_ids.any?
@@ -104,6 +106,8 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
       quantity: 3,
       raw_json: {}
     )
+    create_accrual(ozon_sku, posting_number, amount: 100)
+    create_accrual(ozon_sku, posting_number, amount: 200)
     service = Ec::OzonProfitAttribution.new(
       account_id: @ozon_account.id,
       from_date: Date.new(2026, 6, 29),
@@ -111,9 +115,7 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
       rate_cny_rub: 10.0,
       sync_missing_ad_costs: false
     )
-    service.instance_variable_set(:@rows, [
-      AccrualRow.new(0, ozon_sku, posting_number, 300.0)
-    ])
+    service.send(:load_rows)
     service.instance_variable_set(:@destinations, { posting_number => false })
 
     service.send(:load_posting_quantities)
@@ -123,6 +125,35 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
     assert_equal 1, service.instance_variable_get(:@counts).dig(ozon_sku, :order_count)
     assert_equal 3, service.instance_variable_get(:@counts).dig(ozon_sku, :net_sales_count)
     assert_equal 3, service.instance_variable_get(:@dest_split).dig(ozon_sku, :export_count)
+  end
+
+  test "posting quantities and destinations are limited by accrual account period and SKU without literal posting lists" do
+    sku_id = rand(10_000_000..99_999_999)
+    posting = "posting-scope-#{@token}"
+    old_posting = "posting-old-#{@token}"
+    create_accrual(sku_id, posting)
+    create_accrual(sku_id, old_posting, accrual_date: Date.new(2026, 6, 28))
+    [ [ posting, sku_id, 4 ], [ posting, sku_id + 1, 99 ], [ old_posting, sku_id, 88 ] ].each do |number, sku, quantity|
+      RawOzon::PostingItem.create!(account: @ozon_account, posting_number: number, posting_type: "fbo",
+        ozon_sku: sku, quantity: quantity, raw_json: {})
+    end
+    [ posting, old_posting ].each do |number|
+      RawOzon::PostingDestination.create!(account: @ozon_account, posting_number: number, is_belarus: true, synced_at: Time.current)
+    end
+    service = Ec::OzonProfitAttribution.new(account_id: @ozon_account.id,
+      from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5), rate_cny_rub: 10, sync_missing_ad_costs: false)
+
+    sql = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") { |*, payload| sql << payload[:sql] }
+    service.send(:load_posting_quantities)
+    service.send(:load_destinations)
+
+    assert_equal({ [ sku_id, posting ] => 4 }, service.instance_variable_get(:@posting_quantities))
+    assert_equal({ posting => true }, service.instance_variable_get(:@destinations))
+    assert sql.any? { |query| query.include?("EXISTS") }
+    assert sql.none? { |query| query.include?(posting) }, "posting numbers should stay in the database"
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
   end
 
   test "apply_profit_chain reverses goods cost for negative net sales" do
@@ -293,5 +324,51 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
     assert_equal sku_code, mapping.fetch(ozon_sku_b)
     assert_not mapping.key?(ozon_sku_unbound)
     assert_equal 12.0, service.instance_variable_get(:@cost_by_sku).dig(ozon_sku_b, :cost_cny)
+  end
+
+  test "filtered profit matches full attribution while loading only the bound SKU accruals" do
+    code = "OZ-FILTER-#{@token}"
+    @sku_codes << code
+    Ec::Sku.create!(sku_code: code)
+    store = Ec::Store.create!(platform: "ozon", store_name: code, company_type: "small", ozon_raw_account_id: @ozon_account.id)
+    @store_ids << store.id
+    sku_id = rand(10_000_000..99_999_999)
+    Ec::SkuProduct.create!(sku_code: code, store: store, product_id: "P-#{@token}", platform_sku_id: sku_id.to_s)
+    create_accrual(sku_id, "target-#{@token}", amount: 300)
+    create_accrual(sku_id + 1, "other-#{@token}", amount: 900)
+    create_accrual(nil, nil, type_id: 41, amount: -75)
+    RawOzon::PerformanceSkuSpend.create!(account: @ozon_account, period_from: Date.new(2026, 6, 29),
+      period_to: Date.new(2026, 7, 5), ad_type: "ppc", ozon_sku_id: sku_id, spend: 25, synced_at: Time.current)
+    options = { account_id: @ozon_account.id, from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5),
+      rate_cny_rub: 10, sync_missing_ad_costs: false }
+
+    full = Ec::OzonProfitAttribution.new(**options).call
+    filtered = Ec::OzonProfitAttribution.new(**options, sku_codes: [ code ]).call
+
+    assert_equal full.results.select { |row| row[:sku_code] == code }, filtered.results
+    assert_equal [ sku_id ], filtered.instance_variable_get(:@rows).map(&:ozon_sku_id)
+    assert_equal 0.0, filtered.unallocated[:total]
+
+    query = Ec::WeeklySummaryDeepQuery.new(from_date: options[:from_date], to_date: options[:to_date],
+      rate: Struct.new(:rate_cny_rub, :rate_byn_rub).new(10, 3), sku_codes: [ code.downcase ], include_comparison: false)
+    account_ids = []
+    original_new = Ec::OzonProfitAttribution.method(:new)
+    Ec::OzonProfitAttribution.define_singleton_method(:new) do |**arguments|
+      account_ids << arguments.fetch(:account_id)
+      original_new.call(**arguments)
+    end
+    query.run
+
+    assert_equal [ @ozon_account.id ], account_ids
+  ensure
+    Ec::OzonProfitAttribution.define_singleton_method(:new, original_new) if original_new
+  end
+
+  private
+
+  def create_accrual(sku_id, posting, **attributes)
+    RawOzon::AccrualByDay.create!({ account: @ozon_account, ozon_sku_id: sku_id, posting_number: posting,
+      accrual_date: Date.new(2026, 6, 29), accrued_category: "ITEM", type_id: 0, type_name: "SaleRevenue",
+      amount: 100, synced_at: Time.current }.merge(attributes))
   end
 end

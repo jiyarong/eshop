@@ -77,15 +77,40 @@ module Ec
     end
 
     def load_finance_rows
-      @rows = RawWb::FinanceDetail
+      scope = RawWb::FinanceDetail
         .where(account_id: @account_id)
         .where(wb_report_id: @settlement_reports.map(&:wb_report_id))
-        .to_a
+      if @sku_codes.present?
+        # Barcode attribution and the implied advertising exchange rate depend
+        # on the entire settlement. Load those separately before filtering rows.
+        @shk_to_nm = {}
+        scope.where("nm_id > 0 AND shk_id > 0").pluck(:shk_id, :nm_id).each do |shk_id, nm_id|
+          @shk_to_nm[shk_id] ||= nm_id
+        end
+        ad_condition = RawWb::FinanceDetail.sanitize_sql_array([
+          "seller_oper_name LIKE ? AND bonus_type_name LIKE ?",
+          "%#{RawWb::FinanceDetail::DEDUCT_KEYWORD}%", "%#{RawWb::FinanceDetail::DEDUCT_AD_KEYWORD}%"
+        ])
+        @advertising_deduction_byn, attributed_rows = scope.pick(
+          Arel.sql("SUM(CASE WHEN #{ad_condition} THEN deduction ELSE 0 END)"),
+          Arel.sql("COUNT(*) FILTER (WHERE nm_id > 0)")
+        )
+        @advertising_deduction_byn = @advertising_deduction_byn.to_f
+        @finance_has_attributed_rows = attributed_rows.to_i.positive?
+        nm_ids = build_nm_to_sku_map.keys
+        shk_ids = @shk_to_nm.filter_map { |shk_id, nm_id| shk_id if nm_ids.include?(nm_id) }
+        scope = scope.where(nm_id: nm_ids).or(
+          scope.where("nm_id IS NULL OR nm_id <= 0").where(shk_id: shk_ids)
+        )
+      end
+      @rows = scope.to_a
     end
 
     # ─── Step 2: 构建 shkId → nmId 反查表 ────────────────────────────────────────
 
     def build_shk_nm_mapping
+      return if @shk_to_nm
+
       @shk_to_nm = {}
       @rows.each do |r|
         next unless r.nm_id.to_i.positive? && r.shk_id.to_i.positive?
@@ -159,7 +184,7 @@ module Ec
 
     def load_storage
       nm_ids = @buckets.keys.map(&:first).uniq
-      return if nm_ids.empty?
+      return if nm_ids.empty? && !@finance_has_attributed_rows
 
       RawWb::PaidStorage
         .where(account_id: @account_id)
@@ -195,7 +220,7 @@ module Ec
       # 非广告类 Удержание（如 "Джем" 等促销服务）不参与隐含汇率计算
       implied_rate = nil
       if total_ad_rub > 0
-        total_deduction_byn = @rows
+        total_deduction_byn = @advertising_deduction_byn || @rows
           .select { |r|
             r.seller_oper_name.to_s.include?(RawWb::FinanceDetail::DEDUCT_KEYWORD) &&
             r.bonus_type_name.to_s.include?(RawWb::FinanceDetail::DEDUCT_AD_KEYWORD)
@@ -308,7 +333,8 @@ module Ec
       sku_map  = build_nm_to_sku_map(nm_ids)
 
       cost_date = @from_date.beginning_of_week(:monday)
-      effective_costs = Ec::SkuCost.latest_as_of(cost_date).to_a
+      effective_costs = Ec::SkuCost.latest_as_of(cost_date)
+        .where("LOWER(ec_sku_costs.sku_code) IN (?)", sku_map.values.map(&:downcase).uniq).to_a
 
       # 构建 sku_code.downcase → sku_code 索引，供大小写不敏感匹配
       sku_code_index = effective_costs.each_with_object({}) { |c, h| h[c.sku_code.downcase] = c.sku_code }
@@ -480,15 +506,20 @@ module Ec
 
     # nm_id → 内部 sku_code，只认 ec_sku_products 硬关联（同 store、platform=wb、product_id=nm_id）。
     # 未绑定的 nm_id 不返回，结果行的 vendor_code 为 nil，由报表层作为未绑定 Listing 处理。
-    def build_nm_to_sku_map(nm_ids)
+    def build_nm_to_sku_map(nm_ids = nil)
+      if @nm_to_sku_map
+        return nm_ids ? @nm_to_sku_map.slice(*nm_ids.map(&:to_i)) : @nm_to_sku_map
+      end
+
       store = Ec::Store.find_by(platform: "wb", wb_raw_account_id: @account_id)
       return {} unless store
 
-      scope = Ec::SkuProduct.where(store_id: store.id, platform: "wb", product_id: nm_ids.map(&:to_s))
+      scope = Ec::SkuProduct.where(store_id: store.id, platform: "wb")
       scope = scope.where(sku_code: @sku_codes) if @sku_codes.present?
-      scope.pluck(:product_id, :sku_code).each_with_object({}) do |(product_id, sku_code), sku_map|
+      @nm_to_sku_map = scope.pluck(:product_id, :sku_code).each_with_object({}) do |(product_id, sku_code), sku_map|
         sku_map[product_id.to_i] = sku_code
       end
+      nm_ids ? @nm_to_sku_map.slice(*nm_ids.map(&:to_i)) : @nm_to_sku_map
     end
 
     # 将已绑定的内部 sku_code 大小写不敏感地对应到 ec_sku_costs 中的 sku_code

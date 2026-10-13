@@ -177,9 +177,11 @@ module Ec
           next if ozon_skus.empty?
 
           store = products.first.store
-          quantity = RawOzon::SupplyOrder.where(account_id: account_id, status: "COMPLETED").sum do |order|
-            ozon_skus.sum { |ozon_sku| order.items.to_h[ozon_sku].to_i }
-          end
+          quantity_sql = ozon_skus.map do |ozon_sku|
+            "COALESCE((items ->> #{RawOzon::SupplyOrder.connection.quote(ozon_sku)})::integer, 0)"
+          end.join(" + ")
+          quantity = RawOzon::SupplyOrder.where(account_id: account_id, status: "COMPLETED")
+            .sum(Arel.sql(quantity_sql))
           rows[key_for("ozon", store.id, store.store_name, account_id)] = quantity
         end
 

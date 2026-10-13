@@ -66,9 +66,28 @@ module Ec
     # ── data loading ────────────────────────────────────────────────────────────
 
     def load_rows
-      @rows = RawOzon::AccrualByDay
+      @rows = accrual_scope.to_a
+    end
+
+    def accrual_scope
+      scope = RawOzon::AccrualByDay
         .where(account_id: @account_id, accrual_date: @from_date..@to_date)
-        .to_a
+
+      # A detail page passes one or a few SKU codes. Keep the filter in SQL so a
+      # single SKU does not materialize the whole account's accrual history.
+      if @sku_codes.present?
+        store_sku_ids = Ec::SkuProduct
+          .where(
+            store_id: Ec::Store.where(platform: "ozon", ozon_raw_account_id: @account_id),
+            platform: "ozon",
+            sku_code: @sku_codes
+          )
+          .where("platform_sku_id ~ '^[0-9]+$'")
+          .select(Arel.sql("platform_sku_id::bigint"))
+        scope = scope.where(ozon_sku_id: store_sku_ids)
+      end
+
+      scope
     end
 
     # ozon sku → 内部 sku_code，只认 ec_sku_products 硬关联（同 store、platform=ozon、platform_sku_id）。
@@ -99,10 +118,17 @@ module Ec
     end
 
     def load_posting_quantities
-      posting_numbers = @rows.filter_map(&:posting_number).uniq
-      ozon_sku_ids = @rows.filter_map(&:ozon_sku_id).uniq
+      # Match the posting items through the accrual rows in the database. The old
+      # implementation interpolated every posting number into a giant IN list
+      # (over 130 KB on the SKU detail request).
+      accrual_match = accrual_scope
+        .where("raw_ozon_accrual_by_day.posting_number = raw_ozon_posting_items.posting_number")
+        .where("raw_ozon_accrual_by_day.ozon_sku_id = raw_ozon_posting_items.ozon_sku")
+        .select("1")
+
       @posting_quantities = RawOzon::PostingItem
-        .where(account_id: @account_id, posting_number: posting_numbers, ozon_sku: ozon_sku_ids)
+        .where(account_id: @account_id)
+        .where("EXISTS (?)", accrual_match)
         .group(:ozon_sku, :posting_number)
         .sum(:quantity)
         .each_with_object({}) do |((ozon_sku, posting_number), quantity), quantities|
@@ -131,10 +157,12 @@ module Ec
         scope.or(RawOzon::PerformanceSkuSpend.where(account_id: @account_id, period_from: wf, period_to: wt))
       end
 
-      @ppc_by_sku       = spends.where(ad_type: 'ppc').pluck(:ozon_sku_id, :spend)
-                                .each_with_object(Hash.new(0.0)) { |(s, v), h| h[s] += v.to_f }
-      @promotion_by_sku = spends.where(ad_type: 'promotion').pluck(:ozon_sku_id, :spend)
-                                .each_with_object(Hash.new(0.0)) { |(s, v), h| h[s] += v.to_f }
+      @ppc_by_sku = Hash.new(0.0)
+      @promotion_by_sku = Hash.new(0.0)
+      spends.group(:ad_type, :ozon_sku_id).sum(:spend).each do |(ad_type, sku), amount|
+        target = ad_type == "ppc" ? @ppc_by_sku : @promotion_by_sku
+        target[sku] = amount.to_f if ad_type.in?(%w[ppc promotion])
+      end
 
       # 用 accrual_by_day type_id=41/54 总额归一化，确保报表与财务结算严格对齐
       rescale_ad_costs_to_accrual
@@ -183,9 +211,9 @@ module Ec
     end
 
     def load_destinations
-      # All posting_destinations for this account
       @destinations = RawOzon::PostingDestination
         .where(account_id: @account_id)
+        .where(posting_number: accrual_scope.select(:posting_number))
         .pluck(:posting_number, :is_belarus)
         .each_with_object({}) { |(pn, by), h| h[pn] = by }
     end

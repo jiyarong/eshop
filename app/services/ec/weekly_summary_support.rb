@@ -23,7 +23,16 @@ module Ec
       rows = []
       unalloc = { wb: 0.0, ozon: 0.0 }
 
-      RawWb::SellerAccount.all.each do |acct|
+      wb_accounts = RawWb::SellerAccount.all
+      ozon_accounts = RawOzon::SellerAccount.all
+      sku_codes = @sku_codes.map { |code| code.to_s.strip.upcase }.reject(&:blank?).uniq
+      if sku_codes.present? || @sku_filter_active
+        stores = Ec::Store.where(id: Ec::SkuProduct.where(sku_code: sku_codes).select(:store_id))
+        wb_accounts = wb_accounts.where(id: stores.where(platform: "wb").select(:wb_raw_account_id))
+        ozon_accounts = ozon_accounts.where(id: stores.where(platform: "ozon").select(:ozon_raw_account_id))
+      end
+
+      wb_accounts.each do |acct|
         svc = Ec::WbProfitAttribution.new(
           account_id: acct.id,
           from_date: from_date,
@@ -77,7 +86,7 @@ module Ec
         unalloc[:wb] += -(svc.unallocated.values.sum.to_f * byn_cny).round(2)
       end
 
-      RawOzon::SellerAccount.all.each do |acct|
+      ozon_accounts.each do |acct|
         svc = Ec::OzonProfitAttribution.new(
           account_id: acct.id,
           from_date: from_date,

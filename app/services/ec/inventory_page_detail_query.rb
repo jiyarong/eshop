@@ -347,7 +347,7 @@ module Ec
     end
 
     def sales_quantity_for(platform)
-      @sales_quantity_by_platform ||= @sku.inventory_overview[:store_rows]
+      @sales_quantity_by_platform ||= @overview[:store_rows]
         .group_by { |row| row[:platform].to_s }
         .transform_values { |rows| rows.sum { |row| row[:sales_quantity].to_i } }
 
@@ -355,7 +355,7 @@ module Ec
     end
 
     def return_quantity_for(platform)
-      @return_quantity_by_platform ||= @sku.inventory_overview[:store_rows]
+      @return_quantity_by_platform ||= @overview[:store_rows]
         .group_by { |row| row[:platform].to_s }
         .transform_values { |rows| rows.sum { |row| row[:return_quantity].to_i } }
 

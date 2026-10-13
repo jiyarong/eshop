@@ -56,7 +56,7 @@ module Ec
 
     def call
       order_rows = order_quantities
-      evidence_by_order_id = wb_evidence_by_order_id(order_rows.filter_map { |row| row[1] if row[0].to_s == "wb" })
+      evidence_by_order_id = wb_evidence_by_order_id
       grouped_rows = Hash.new(0)
       order_quantities_by_key = Hash.new { |hash, key| hash[key] = Hash.new(0) }
 
@@ -120,12 +120,16 @@ module Ec
 
     private
 
-    def order_quantities
+    def order_items_scope
       Ec::OrderItem
         .deductible_from_book_inventory
         .joins(:store)
         .joins(ORDER_ITEM_JOIN)
         .where(ec_sku_products: { sku_code: @sku.sku_code })
+    end
+
+    def order_quantities
+      order_items_scope
         .group(
           "ec_order_items.platform", "ec_orders.id", "ec_order_items.store_id", "ec_stores.store_name",
           "ec_order_fulfillments.fulfillment_type", "ec_orders.order_status", "ec_order_fulfillments.status",
@@ -139,14 +143,16 @@ module Ec
         )
     end
 
-    def wb_evidence_by_order_id(order_ids)
-      return {} if order_ids.empty?
+    def wb_evidence_by_order_id
+      links_scope = Ec::OrderSourceLink
+        .where(order_id: order_items_scope.where(platform: "wb").select(:order_id),
+          source_type: "RawWb::StatsOrder", source_role: "primary")
+      links = links_scope.pluck(:order_id, :source_id)
+      return {} if links.empty?
 
-      links = Ec::OrderSourceLink
-        .where(order_id: order_ids, source_type: "RawWb::StatsOrder", source_role: "primary")
-        .pluck(:order_id, :source_id)
-      stats_orders = RawWb::StatsOrder.where(id: links.map(&:last)).index_by(&:id)
-      sales = relevant_stats_sales(stats_orders.values)
+      stats_scope = RawWb::StatsOrder.where(id: links_scope.select(:source_id))
+      stats_orders = stats_scope.index_by(&:id)
+      sales = relevant_stats_sales(stats_scope)
       sales_by_srid = sales.group_by { |sale| [sale.account_id, sale.srid] }
       sales_by_g_number = sales.group_by { |sale| [sale.account_id, sale.g_number] }
 
@@ -155,7 +161,7 @@ module Ec
           stats_order = stats_orders[source_id]
           next unless stats_order
 
-          matching_sales = sales_by_srid[[stats_order.account_id, stats_order.srid]].to_a
+          matching_sales = sales_by_srid[[ stats_order.account_id, stats_order.srid ]].to_a
           matching_sales = sales_by_g_number[[stats_order.account_id, stats_order.g_number]].to_a if matching_sales.empty?
           stats_evidence_key(stats_order, matching_sales)
         end
@@ -163,19 +169,15 @@ module Ec
       end
     end
 
-    def relevant_stats_sales(stats_orders)
-      return [] if stats_orders.empty?
-
-      base_scope = RawWb::StatsSale
-        .where(account_id: stats_orders.map(&:account_id).uniq, is_storno: [false, nil])
-      srids = stats_orders.map(&:srid).compact_blank.uniq
-      g_numbers = stats_orders.map(&:g_number).compact_blank.uniq
-      scopes = []
-      scopes << base_scope.where(srid: srids) if srids.any?
-      scopes << base_scope.where(g_number: g_numbers) if g_numbers.any?
-      return [] if scopes.empty?
-
-      scopes.reduce { |combined, scope| combined.or(scope) }.to_a
+    def relevant_stats_sales(stats_scope)
+      matching_orders = stats_scope
+        .where("raw_wb_stats_orders.account_id = raw_wb_stats_sales.account_id")
+        .where(<<~SQL.squish)
+          (NULLIF(raw_wb_stats_orders.srid, '') IS NOT NULL AND raw_wb_stats_orders.srid = raw_wb_stats_sales.srid)
+          OR (NULLIF(raw_wb_stats_orders.g_number, '') IS NOT NULL AND raw_wb_stats_orders.g_number = raw_wb_stats_sales.g_number)
+        SQL
+        .select("1")
+      RawWb::StatsSale.where(is_storno: [false, nil]).where("EXISTS (?)", matching_orders).to_a
     end
 
     def stats_evidence_key(stats_order, sales)

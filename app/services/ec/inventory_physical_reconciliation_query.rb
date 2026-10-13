@@ -180,16 +180,13 @@ module Ec
       quantities = Hash.new(0)
       order_quantities.each do |order_id, order_quantity|
         remaining = order_quantity.to_i
-        ozon_returns_by_order.fetch(order_id, []).each do |return_record|
+        ozon_returns_by_order.fetch(order_id, []).each do |state, returned|
           break unless remaining.positive?
 
-          returned = return_record.items
-            .select { |item| item.sku_product&.sku_code == @sku.sku_code }
-            .sum { |item| item.quantity.to_i }
-          allocated = [ returned, remaining ].min
+          allocated = [ returned.to_i, remaining ].min
           next unless allocated.positive?
 
-          quantities[return_record.process_status] += allocated
+          quantities[state] += allocated
           remaining -= allocated
         end
         quantities[NO_RETURN_STATE_KEY] += remaining if remaining.positive?
@@ -199,10 +196,15 @@ module Ec
 
     def ozon_returns_by_order
       @ozon_returns_by_order ||= begin
-        order_ids = @order_distribution.fetch(:rows, [])
-          .select { |row| row[:platform] == "ozon" && row[:fulfillment_type] == "fbs" }
-          .flat_map { |row| row[:order_quantities].to_h.keys }.uniq
-        Ec::Return.where(platform: "ozon", order_id: order_ids).includes(items: :sku_product).group_by(&:order_id)
+        Ec::ReturnItem.joins(:sku_product, :return)
+          .where(ec_sku_products: { sku_code: @sku.sku_code }, ec_returns: { platform: "ozon" })
+          .where.not(ec_returns: { order_id: nil })
+          .group("ec_returns.order_id", "ec_returns.id", "ec_returns.process_status")
+          .order("ec_returns.id")
+          .pluck("ec_returns.order_id", "ec_returns.process_status", Arel.sql("SUM(ec_return_items.quantity)"))
+          .each_with_object({}) do |(order_id, state, quantity), grouped|
+            (grouped[order_id] ||= []) << [ state, quantity ]
+          end
       end
     end
 
@@ -235,17 +237,13 @@ module Ec
     # arrives. Anything else never left and stays in physical stock; it is only shown for reference.
     def cancelled_unreturned_fbs_rows
       @cancelled_unreturned_fbs_rows ||= begin
-        items = Ec::OrderItem
-          .joins(:order, :store)
-          .joins(Ec::InventoryOrderSalesDistributionQuery::ORDER_ITEM_JOIN)
-          .where(ec_sku_products: { sku_code: @sku.sku_code })
-          .where(ec_orders: { order_status: "cancelled" })
-          .includes(:store, order: :fulfillments)
+        items = cancelled_order_items_scope
+          .preload(:store, order: :fulfillments)
           .to_a
-        returns_by_order = Ec::Return.where(order_id: items.map(&:order_id).uniq).includes(order: :fulfillments)
+        returns_by_order = Ec::Return.where(order_id: cancelled_order_items_scope.select(:order_id)).includes(order: :fulfillments)
           .group_by(&:order_id)
-        wb_dispatched_ids = wb_dispatched_order_ids(items.select { |item| item.platform == "wb" }.map(&:order_id))
-        ozon_dispatched_postings = ozon_dispatched_posting_keys(items)
+        wb_dispatched_ids = wb_dispatched_order_ids
+        ozon_dispatched_postings = ozon_dispatched_posting_keys
 
         dispatched = Hash.new(0)
         undispatched = Hash.new(0)
@@ -271,27 +269,31 @@ module Ec
       end
     end
 
-    def ozon_dispatched_posting_keys(items)
-      numbers = items.select { |item| item.platform == "ozon" }.flat_map do |item|
-        item.order.fulfillments.select { |candidate| candidate.fulfillment_type == "fbs" }
-          .map(&:external_fulfillment_id)
-      end.uniq
-      return Set.new if numbers.empty?
+    def sku_order_items_scope
+      Ec::OrderItem.joins(:order).joins(Ec::InventoryOrderSalesDistributionQuery::ORDER_ITEM_JOIN)
+        .where(ec_sku_products: { sku_code: @sku.sku_code })
+    end
+
+    def cancelled_order_items_scope
+      sku_order_items_scope.where(ec_orders: { order_status: "cancelled" })
+    end
+
+    def ozon_dispatched_posting_keys
+      numbers = Ec::OrderFulfillment
+        .where(order_id: cancelled_order_items_scope.where(platform: "ozon").select(:order_id), fulfillment_type: "fbs")
+        .select(:external_fulfillment_id)
 
       RawOzon::PostingFbs.where(posting_number: numbers).where.not(delivering_date: nil)
         .pluck(:account_id, :posting_number).to_set
     end
 
-    def wb_dispatched_order_ids(order_ids)
-      return Set.new if order_ids.empty?
-
-      links = Ec::OrderSourceLink
-        .where(order_id: order_ids.uniq, source_type: "RawWb::Order", source_role: "primary")
-        .pluck(:order_id, :source_id)
-      dispatched_raw_ids = RawWb::Order
-        .where(id: links.map(&:last), supplier_status: WB_DISPATCHED_SUPPLIER_STATUS)
-        .pluck(:id).to_set
-      links.filter_map { |order_id, raw_id| order_id if dispatched_raw_ids.include?(raw_id) }.to_set
+    def wb_dispatched_order_ids
+      Ec::OrderSourceLink
+        .where(order_id: cancelled_order_items_scope.where(platform: "wb").select(:order_id),
+          source_type: "RawWb::Order", source_role: "primary")
+        .joins("INNER JOIN raw_wb_orders ON raw_wb_orders.id = ec_order_source_links.source_id")
+        .where(raw_wb_orders: { supplier_status: WB_DISPATCHED_SUPPLIER_STATUS })
+        .pluck(:order_id).to_set
     end
 
     def cancelled_fbs_rows(quantities, status_key)

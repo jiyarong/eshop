@@ -1113,9 +1113,8 @@ class ReportsController < ApplicationController
       { cost: :sku_dimension },
       :platform_costs,
       :store_assignments,
-      :inventory_levels,
       :current_marketing_state,
-      :sku_products,
+      { sku_products: :store },
       :predicted_costs,
       attachments: { file_attachment: :blob }
     ).find_by!(sku_code: params[:sku_code].to_s.upcase)
@@ -1133,7 +1132,7 @@ class ReportsController < ApplicationController
     @wb_costs = @sku.platform_costs.select { |cost| cost.platform == "wb" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @ozon_costs = @sku.platform_costs.select { |cost| cost.platform == "ozon" }.sort_by { |cost| [cost.delivery_mode.to_s, cost.company_type.to_s] }
     @store_assignments = @sku.store_assignments.sort_by { |assignment| [assignment.platform.to_s, assignment.store_key.to_s] }
-    @sku_products = @sku.sku_products.includes(:store).sort_by { |product| [product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s] }
+    @sku_products = @sku.sku_products.sort_by { |product| [ product.platform.to_s, product.store.store_name.to_s, product.product_id.to_s ] }
     load_latest_active_ai_diagnosis_risk_events_for([@sku])
     @sku_ai_diagnosis_events = @ai_diagnosis_events_by_sku_id.fetch(@sku.id, []).select { |event| event.sub_agent_id.present? }
     @sku_operation_plan_tags = @sku.sku_operation_plans.latest.includes(:evaluations, operation_actions: [ :operated_by_user, :store ])
@@ -1230,18 +1229,20 @@ class ReportsController < ApplicationController
     @selected_store_id = params[:store_id].presence
     load_sku_search_terms if @active_tab == "search_terms"
 
-    @sku_sales_rows = sku_detail_sales_rows(
-      sku_products: @sku_products,
-      from_date: @from_date,
-      to_date: @to_date,
-      period: sku_detail_sales_period,
-      grain: @grain,
-      platform: @selected_platform,
-      store_id: @selected_store_id
-    )
-    @sku_sales_summary = build_sku_sales_summary(@sku_sales_rows)
-    @sku_sales_chart_series = build_sku_sales_chart_series(@sku_sales_rows)
-    @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
+    if @active_tab.in?(%w[stores trend])
+      @sku_sales_rows = sku_detail_sales_rows(
+        sku_products: @sku_products,
+        from_date: @from_date,
+        to_date: @to_date,
+        period: sku_detail_sales_period,
+        grain: @grain,
+        platform: @selected_platform,
+        store_id: @selected_store_id
+      )
+      @sku_sales_summary = build_sku_sales_summary(@sku_sales_rows)
+      @sku_sales_chart_series = build_sku_sales_chart_series(@sku_sales_rows)
+      @sku_sales_chart_option = build_sku_sales_chart_option(@sku_sales_chart_series)
+    end
   end
 
   def load_sku_ozon_chats
