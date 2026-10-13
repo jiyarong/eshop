@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_065649) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -415,6 +415,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_065649) do
   end
 
   create_table "ec_order_fulfillments", force: :cascade do |t|
+    t.string "business_status", default: "needs_review", null: false
     t.string "cancel_reason_source"
     t.datetime "cancelled_at"
     t.string "cluster_from"
@@ -430,6 +431,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_065649) do
     t.string "platform", null: false
     t.bigint "raw_source_id"
     t.string "raw_source_type"
+    t.string "return_business_status", default: "none", null: false
     t.datetime "shipped_at"
     t.string "source_status"
     t.string "source_substatus"
@@ -440,6 +442,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_065649) do
     t.datetime "updated_at", null: false
     t.string "warehouse_external_id"
     t.string "warehouse_name"
+    t.index ["business_status", "return_business_status"], name: "idx_ec_order_fulfillments_business_statuses"
     t.index ["order_id"], name: "index_ec_order_fulfillments_on_order_id"
     t.index ["platform", "store_id", "fulfillment_key"], name: "idx_ec_order_fulfillments_unique_key", unique: true
     t.index ["raw_source_type", "raw_source_id"], name: "idx_ec_order_fulfillments_raw_source"
@@ -505,6 +508,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_065649) do
   end
 
   create_table "ec_orders", force: :cascade do |t|
+    t.string "business_status", default: "needs_review", null: false
     t.string "buyer_city"
     t.string "buyer_country"
     t.string "buyer_region"
@@ -520,12 +524,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_065649) do
     t.datetime "ordered_at"
     t.string "payment_method_source"
     t.string "platform", null: false
+    t.string "return_business_status", default: "none", null: false
     t.jsonb "source_payload"
     t.string "source_status"
     t.string "source_substatus"
     t.bigint "store_id", null: false
     t.datetime "synced_at"
     t.datetime "updated_at", null: false
+    t.index ["business_status", "return_business_status"], name: "idx_ec_orders_business_statuses"
     t.index ["order_status"], name: "index_ec_orders_on_order_status"
     t.index ["ordered_at"], name: "index_ec_orders_on_ordered_at"
     t.index ["platform", "store_id", "external_order_number"], name: "idx_ec_orders_external_order_number"

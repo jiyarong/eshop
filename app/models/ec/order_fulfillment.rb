@@ -22,6 +22,8 @@ module Ec
 
     validates :platform, :store, :order, :external_fulfillment_id, :fulfillment_key, :fulfillment_type, :status, presence: true
     validates :fulfillment_key, uniqueness: { scope: [:platform, :store_id] }
+    validates :business_status, inclusion: { in: Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES }
+    validates :return_business_status, inclusion: { in: Ec::FulfillmentBusinessStatus::RETURN_STATUSES }
 
     def raw_source
       return if raw_source_type.blank? || raw_source_id.blank?

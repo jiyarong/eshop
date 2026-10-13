@@ -23,6 +23,8 @@ module Ec
 
     validates :platform, :store, :order_key, :order_status, presence: true
     validates :order_key, uniqueness: { scope: [:platform, :store_id] }
+    validates :business_status, inclusion: { in: Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES }
+    validates :return_business_status, inclusion: { in: Ec::FulfillmentBusinessStatus::RETURN_STATUSES }
 
     def self.ransackable_attributes(_auth_object = nil)
       %w[
