@@ -84,6 +84,7 @@ module Ec
         }
         link.order.update!(attributes.merge(order_status: status))
         link.fulfillment&.update!(attributes.merge(status: status))
+        Ec::FulfillmentBusinessStatus::Updater.call(link.fulfillment) if link.fulfillment
       end
 
       def raw_orders_for_import(synced_since)
@@ -131,6 +132,7 @@ module Ec
         fulfillment = upsert_fulfillment(raw_order, store, order)
         import_item(raw_order, store, order, fulfillment)
         upsert_source_link(order, fulfillment, raw_order)
+        Ec::FulfillmentBusinessStatus::Updater.call(fulfillment)
         1
       end
 
@@ -142,6 +144,7 @@ module Ec
         fulfillment = upsert_fulfillment_from_stats(stats_order, store, order)
         import_item_from_stats(stats_order, store, order, fulfillment)
         upsert_stats_source_link(order, fulfillment, stats_order)
+        Ec::FulfillmentBusinessStatus::Updater.call(fulfillment)
         1
       end
 

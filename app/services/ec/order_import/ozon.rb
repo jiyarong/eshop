@@ -45,6 +45,7 @@ module Ec
         fulfillment = upsert_fulfillment(posting, store, order, type, source_type)
         import_items(posting, store, order, fulfillment, type)
         upsert_source_link(order, fulfillment, nil, source_type, posting.id, posting.posting_number)
+        Ec::FulfillmentBusinessStatus::Updater.call(fulfillment)
         1
       end
 

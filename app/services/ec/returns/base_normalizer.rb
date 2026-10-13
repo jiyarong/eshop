@@ -6,7 +6,7 @@ module Ec
       end
 
       def call
-        ApplicationRecord.transaction do
+        normalized_return = ApplicationRecord.transaction do
           normalized_return = Ec::Return.find_or_initialize_by(
             platform: platform,
             store: store,
@@ -34,11 +34,22 @@ module Ec
 
           normalized_return
         end
+
+        refresh_fulfillment_business_status(normalized_return)
+        normalized_return
       end
 
       private
 
       attr_reader :raw_record
+
+      # The return changes where the goods of its order are; refresh every fulfillment of that order.
+      def refresh_fulfillment_business_status(normalized_return)
+        order = normalized_return.order
+        return unless order
+
+        Ec::FulfillmentBusinessStatus::Updater.for_order(order)
+      end
 
       def store
         @store ||= Ec::Store.find_by!(store_lookup)

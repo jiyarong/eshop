@@ -118,6 +118,28 @@ module Ec
         assert_equal "moving_to_seller", normalized.reload.process_status
       end
 
+      test "syncing a seller received return refreshes the fulfillment business status" do
+        fulfillment = @ozon_order.fulfillments.create!(
+          platform: "ozon", store: @ozon_store, external_fulfillment_id: @ozon_order.external_order_number,
+          fulfillment_key: "ozon:#{@ozon_store.id}:#{@ozon_order.external_order_number}",
+          fulfillment_type: "fbs", status: "delivered", source_status: "delivered",
+          source_substatus: "posting_received"
+        )
+        @ozon_order_item.update!(fulfillment: fulfillment)
+        @ozon_return.update!(raw_json: { "visual" => { "status" => { "sys_name" => "ReceivedBySeller" } } })
+
+        Ec::Returns::Sync.call(raw_records: [ @ozon_return ])
+
+        fulfillment.reload
+        assert_equal "delivered", fulfillment.business_status
+        assert_equal "received_by_seller", fulfillment.return_business_status
+        assert_equal "received_by_seller", @ozon_order.reload.return_business_status
+      ensure
+        # Release the item and drop the fulfillment before teardown deletes the order (foreign keys).
+        Ec::OrderItem.where(order_id: @ozon_order&.id).update_all(fulfillment_id: nil)
+        Ec::OrderFulfillment.where(order_id: @ozon_order&.id).delete_all
+      end
+
       test "reports missing hard bindings without using offer id as fallback" do
         @ozon_return.update!(ozon_sku: @number + 99, offer_id: @ozon_sku_product.offer_id,
           posting_number: "MISSING-#{@token}", order_number: nil, order_id: nil)

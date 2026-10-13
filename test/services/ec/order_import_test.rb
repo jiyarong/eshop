@@ -297,6 +297,19 @@ module Ec
       assert_equal "Дальневосточный и Сибирский", wb_order.fulfillments.first.cluster_to
     end
 
+    test "imported Ozon FBS fulfillments get business statuses" do
+      Ec::OrderImport::Ozon.new.call
+
+      fulfillment = Ec::OrderFulfillment.find_by!(
+        platform: "ozon", store: @ozon_store, external_fulfillment_id: @ozon_fbs.posting_number
+      )
+
+      # The fixture posting is `delivering` / `posting_on_way_to_city` and has no return.
+      assert_equal "in_delivery", fulfillment.business_status
+      assert_equal "none", fulfillment.return_business_status
+      assert_equal "in_delivery", fulfillment.order.business_status
+    end
+
     test "wb unit price is the commission base from stats, not the raw marketplace order price" do
       @wb_order.update!(currency_code: 51, price: 789.12, converted_price: 1_200)
 
