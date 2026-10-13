@@ -15,9 +15,7 @@ module PhysicalStocktakeBaseline
     wb_supply_reconciliation_quantity pending_supply_quantity
     seller_received_return_quantity ozon_seller_received_removal_quantity removal_to_seller_quantity
   ].freeze
-  FBS_ROW_KEYS = %i[
-    platform store_name status_key return_state_key source_status_codes quantity physical_deducted
-  ].freeze
+  FBS_CELL_KEYS = %i[business_status return_business_status quantity kind].freeze
 
   module_function
 
@@ -38,15 +36,12 @@ module PhysicalStocktakeBaseline
 
   def capture_sku(sku)
     overview = sku.inventory_overview
-    order_distribution = Ec::InventoryOrderSalesDistributionQuery.new(sku).call
-    result = Ec::InventoryPhysicalReconciliationQuery.new(
-      sku, overview: overview, order_distribution: order_distribution
-    ).call
+    result = Ec::InventoryPhysicalReconciliationQuery.new(sku, overview: overview).call
 
     {
       sku_code: sku.sku_code,
       summary: result[:summary].slice(*SUMMARY_KEYS),
-      fbs_order_rows: result[:fbs_order_rows].map { |row| row.slice(*FBS_ROW_KEYS) },
+      fbs_matrix: result[:fbs_matrix][:cells].map { |cell| cell.slice(*FBS_CELL_KEYS) },
       supply_row_count: result[:supply_pagination][:total_count],
       return_row_count: result[:return_pagination][:total_count],
       removal_row_count: result[:removal_rows].size

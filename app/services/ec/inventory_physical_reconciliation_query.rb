@@ -1,31 +1,5 @@
 module Ec
   class InventoryPhysicalReconciliationQuery
-    # FBS orders cancelled after they left the warehouse and then received back by the seller.
-    CANCELLED_RETURNED_STATUS_KEY = "cancelled_returned_to_seller".freeze
-    # FBS orders handed over for delivery, then cancelled, whose return the seller has not received yet.
-    CANCELLED_DISPATCHED_STATUS_KEY = "cancelled_dispatched_return_pending".freeze
-    # FBS orders cancelled before they left the warehouse; shown for reference, never deducted.
-    CANCELLED_BEFORE_DISPATCH_STATUS_KEY = "cancelled_before_dispatch".freeze
-    WB_DISPATCHED_SUPPLIER_STATUS = "complete".freeze
-    FBS_DEPARTED_STATUS_KEYS = %W[
-      platform_received carrier_accepted in_transit pickup_ready delivery_postponed
-      sold_confirmed delivered_confirmed returned_confirmed returned_to_platform_warehouse
-      #{CANCELLED_RETURNED_STATUS_KEY} #{CANCELLED_DISPATCHED_STATUS_KEY}
-    ].freeze
-    # Stage order for the FBS table: the order distribution's own order, with the cancelled-order stages placed
-    # right before the plain cancellation stages.
-    FBS_ROW_STATUS_ORDER = begin
-      base = Ec::InventoryOrderSalesDistributionQuery::STATUS_ORDER
-      cutoff = base.index("cancelled_confirmed") || base.length
-      (base[0...cutoff] +
-        [ CANCELLED_RETURNED_STATUS_KEY, CANCELLED_DISPATCHED_STATUS_KEY, CANCELLED_BEFORE_DISPATCH_STATUS_KEY ] +
-        base[cutoff..]).freeze
-    end
-    # Ozon keeps order status and return status apart, so delivered orders are split by their return's state.
-    NO_RETURN_STATE_KEY = "none".freeze
-    RETURN_STATE_ORDER = (
-      [ NO_RETURN_STATE_KEY ] + Ec::Return::PROCESS_STATUSES
-    ).freeze
     WB_PENDING_SUPPLY_STATUS_IDS = [ 2, 3 ].freeze
     WB_DEPARTED_SUPPLY_STATUS_IDS = [ 4, 5, 6 ].freeze
     WB_ACCEPTED_SUPPLY_STATUS_ID = 5
@@ -73,10 +47,9 @@ module Ec
       }
     }.freeze
 
-    def initialize(sku, overview:, order_distribution:, supply_page: nil, return_filters: nil, return_page: nil)
+    def initialize(sku, overview:, supply_page: nil, return_filters: nil, return_page: nil)
       @sku = sku
       @overview = overview
-      @order_distribution = order_distribution
       @requested_supply_page = [ supply_page.to_i, 1 ].max
       @return_filters = normalize_return_filters(return_filters)
       @requested_return_page = [ return_page.to_i, 1 ].max
@@ -86,7 +59,7 @@ module Ec
       {
         summary: summary,
         formula: physical_formula,
-        fbs_order_rows: fbs_order_rows,
+        fbs_matrix: fbs_matrix,
         supply_rows: paginated_supply_rows,
         supply_pagination: supply_pagination,
         return_rows: paginated_return_rows,
@@ -107,7 +80,7 @@ module Ec
       @summary ||= begin
         received_quantity = @overview.dig(:summary, :received_quantity).to_i
         stocktake_adjustment_quantity = physical_stocktake_adjustment_quantity
-        fbs_departed_quantity = fbs_departed_rows.sum { |row| row[:quantity].to_i }
+        fbs_departed_quantity = fbs_matrix.dig(:summary, :departed_quantity).to_i
         wb_supply_departed_quantity = wb_departed_supply_rows.sum { |row| row[:deducted_quantity].to_i }
         ozon_supply_departed_quantity = ozon_departed_supply_rows.sum { |row| row[:deducted_quantity].to_i }
         seller_received_return_quantity = all_return_rows
@@ -124,8 +97,8 @@ module Ec
           received_quantity: received_quantity,
           physical_stocktake_adjustment_quantity: stocktake_adjustment_quantity,
           fbs_departed_quantity: fbs_departed_quantity,
-          fbs_not_departed_quantity: fbs_not_departed_rows.sum { |row| row[:quantity].to_i },
-          fbs_order_quantity: fbs_order_rows.sum { |row| row[:quantity].to_i },
+          fbs_not_departed_quantity: fbs_matrix.dig(:summary, :not_departed_quantity).to_i,
+          fbs_order_quantity: fbs_matrix.dig(:summary, :total_quantity).to_i,
           platform_supply_departed_quantity: wb_supply_departed_quantity + ozon_supply_departed_quantity,
           wb_supply_departed_quantity: wb_supply_departed_quantity,
           ozon_supply_departed_quantity: ozon_supply_departed_quantity,
@@ -154,169 +127,8 @@ module Ec
       ]
     end
 
-    def fbs_order_rows
-      @fbs_order_rows ||= (
-        @order_distribution.fetch(:rows, []).select { |row| row[:fulfillment_type] == "fbs" }
-          .flat_map { |row| split_by_return_state(row) } +
-          cancelled_returned_fbs_rows + cancelled_unreturned_fbs_rows
-      ).sort_by do |row|
-        [
-          row[:platform].to_s, row[:store_name].to_s,
-          FBS_ROW_STATUS_ORDER.index(row[:status_key]) || FBS_ROW_STATUS_ORDER.length,
-          RETURN_STATE_ORDER.index(row[:return_state_key]) || RETURN_STATE_ORDER.length,
-          row[:source_status_codes].to_s
-        ]
-      end.map { |row| row.merge(physical_deducted: row[:status_key].in?(FBS_DEPARTED_STATUS_KEYS)) }
-    end
-
-    # Splits an Ozon FBS row by the process status of the return linked to each order, e.g. a delivered order whose
-    # return is back at the seller or still in the Ozon return warehouse. The quantity is only redistributed: the
-    # split rows add up to the original row, so physical stock is unaffected.
-    def split_by_return_state(row)
-      base = row.except(:order_quantities)
-      order_quantities = row[:order_quantities]
-      return [ base.merge(return_state_key: nil) ] unless row[:platform] == "ozon" && order_quantities.present?
-
-      quantities = Hash.new(0)
-      order_quantities.each do |order_id, order_quantity|
-        remaining = order_quantity.to_i
-        ozon_returns_by_order.fetch(order_id, []).each do |state, returned|
-          break unless remaining.positive?
-
-          allocated = [ returned.to_i, remaining ].min
-          next unless allocated.positive?
-
-          quantities[state] += allocated
-          remaining -= allocated
-        end
-        quantities[NO_RETURN_STATE_KEY] += remaining if remaining.positive?
-      end
-      quantities.map { |state, quantity| base.merge(quantity: quantity, return_state_key: state) }
-    end
-
-    def ozon_returns_by_order
-      @ozon_returns_by_order ||= begin
-        Ec::ReturnItem.joins(:sku_product, :return)
-          .where(ec_sku_products: { sku_code: @sku.sku_code }, ec_returns: { platform: "ozon" })
-          .where.not(ec_returns: { order_id: nil })
-          .group("ec_returns.order_id", "ec_returns.id", "ec_returns.process_status")
-          .order("ec_returns.id")
-          .pluck("ec_returns.order_id", "ec_returns.process_status", Arel.sql("SUM(ec_return_items.quantity)"))
-          .each_with_object({}) do |(order_id, state, quantity), grouped|
-            (grouped[order_id] ||= []) << [ state, quantity ]
-          end
-      end
-    end
-
-    # Cancelled orders are excluded from the order distribution, so an FBS order that left the warehouse and was
-    # cancelled never gets deducted, while its seller-received return is added back. A seller-received return
-    # linked to a cancelled FBS order proves the goods left, so count it as departed and let the return add it back.
-    def cancelled_returned_fbs_rows
-      @cancelled_returned_fbs_rows ||= begin
-        quantities = Hash.new(0)
-        return_items.each do |item|
-          return_record = item.return
-          order = return_record.order
-          next unless order&.order_status == "cancelled"
-
-          fulfillment = order.fulfillments.find { |candidate| candidate.fulfillment_type == "fbs" }
-          next unless fulfillment && physical_return_included?(item.platform, return_record)
-
-          quantities[[ item.platform, item.store.store_name, fulfillment.source_status, fulfillment.source_substatus ]] +=
-            item.quantity.to_i
-        end
-
-        cancelled_fbs_rows(quantities, CANCELLED_RETURNED_STATUS_KEY)
-      end
-    end
-
-    # Cancelled FBS orders the seller has not received back (those with a received return are counted above).
-    # An order left the warehouse when WB marked it `complete` (supplier status; the fulfillment substatus can read
-    # `cancelled` while the raw WB order is still `complete`, so both are checked), when Ozon recorded a delivery
-    # transfer time (`delivering_date`), or when a return record exists. Those are deducted until the return
-    # arrives. Anything else never left and stays in physical stock; it is only shown for reference.
-    def cancelled_unreturned_fbs_rows
-      @cancelled_unreturned_fbs_rows ||= begin
-        items = cancelled_order_items_scope
-          .preload(:store, order: :fulfillments)
-          .to_a
-        returns_by_order = Ec::Return.where(order_id: cancelled_order_items_scope.select(:order_id)).includes(order: :fulfillments)
-          .group_by(&:order_id)
-        wb_dispatched_ids = wb_dispatched_order_ids
-        ozon_dispatched_postings = ozon_dispatched_posting_keys
-
-        dispatched = Hash.new(0)
-        undispatched = Hash.new(0)
-        items.each do |item|
-          fulfillment = item.order.fulfillments.find { |candidate| candidate.fulfillment_type == "fbs" }
-          next unless fulfillment
-
-          returns = returns_by_order.fetch(item.order_id, [])
-          next if returns.any? { |return_record| physical_return_included?(item.platform, return_record) }
-
-          left_warehouse =
-            returns.any? ||
-            (item.platform == "wb" &&
-              (fulfillment.source_substatus == WB_DISPATCHED_SUPPLIER_STATUS || wb_dispatched_ids.include?(item.order_id))) ||
-            (item.platform == "ozon" &&
-              ozon_dispatched_postings.include?([ item.store.ozon_raw_account_id, fulfillment.external_fulfillment_id ]))
-          key = [ item.platform, item.store.store_name, fulfillment.source_status, fulfillment.source_substatus ]
-          (left_warehouse ? dispatched : undispatched)[key] += item.quantity.to_i
-        end
-
-        cancelled_fbs_rows(dispatched, CANCELLED_DISPATCHED_STATUS_KEY) +
-          cancelled_fbs_rows(undispatched, CANCELLED_BEFORE_DISPATCH_STATUS_KEY)
-      end
-    end
-
-    def sku_order_items_scope
-      Ec::OrderItem.joins(:order).joins(Ec::InventoryOrderSalesDistributionQuery::ORDER_ITEM_JOIN)
-        .where(ec_sku_products: { sku_code: @sku.sku_code })
-    end
-
-    def cancelled_order_items_scope
-      sku_order_items_scope.where(ec_orders: { order_status: "cancelled" })
-    end
-
-    def ozon_dispatched_posting_keys
-      numbers = Ec::OrderFulfillment
-        .where(order_id: cancelled_order_items_scope.where(platform: "ozon").select(:order_id), fulfillment_type: "fbs")
-        .select(:external_fulfillment_id)
-
-      RawOzon::PostingFbs.where(posting_number: numbers).where.not(delivering_date: nil)
-        .pluck(:account_id, :posting_number).to_set
-    end
-
-    def wb_dispatched_order_ids
-      Ec::OrderSourceLink
-        .where(order_id: cancelled_order_items_scope.where(platform: "wb").select(:order_id),
-          source_type: "RawWb::Order", source_role: "primary")
-        .joins("INNER JOIN raw_wb_orders ON raw_wb_orders.id = ec_order_source_links.source_id")
-        .where(raw_wb_orders: { supplier_status: WB_DISPATCHED_SUPPLIER_STATUS })
-        .pluck(:order_id).to_set
-    end
-
-    def cancelled_fbs_rows(quantities, status_key)
-      status_labeler = Ec::InventoryOrderSalesDistributionQuery.new(@sku)
-      quantities.map do |(platform, store_name, source_status, source_substatus), quantity|
-        {
-          store_label: I18n.t(
-            "reports.inventory.drawer.sales_distribution.store_label",
-            platform: I18n.t("reports.inventory.drawer.sales_distribution.platforms.#{platform}"),
-            store: store_name
-          ),
-          platform: platform,
-          store_name: store_name,
-          fulfillment_type: "fbs",
-          status_key: status_key,
-          evidence_label: nil,
-          source_status_label: status_labeler.source_status_label(platform, source_status, source_substatus),
-          source_status_codes: [ source_status, source_substatus ].compact_blank.join(" / "),
-          needs_status_repair: false,
-          stocktake_relevant: false,
-          quantity: quantity
-        }
-      end
+    def fbs_matrix
+      @fbs_matrix ||= Ec::InventoryFbsStatusMatrixQuery.new(@sku).call
     end
 
     def physical_stocktake_adjustment_quantity
@@ -324,14 +136,6 @@ module Ec
         .where(batch_type: :physical_stocktake_adjustment, status: EFFECTIVE_ADJUSTMENT_STATUSES)
         .sum(:received_quantity)
         .to_i
-    end
-
-    def fbs_departed_rows
-      @fbs_departed_rows ||= fbs_order_rows.select { |row| row[:physical_deducted] }
-    end
-
-    def fbs_not_departed_rows
-      @fbs_not_departed_rows ||= fbs_order_rows.reject { |row| row[:physical_deducted] }
     end
 
     def return_items

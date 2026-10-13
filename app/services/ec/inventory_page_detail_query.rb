@@ -49,7 +49,7 @@ module Ec
         book_batch_pagination: pagination,
         book_mini_stats: book_mini_stats(overview[:summary]),
         book_sales_distribution: book_sales_distribution,
-        physical_reconciliation: physical_reconciliation(overview, book_sales_distribution),
+        physical_reconciliation: physical_reconciliation(overview),
         return_distribution: return_distribution(overview[:store_rows]),
         return_summary: @detail_tab == "returns" ? return_summary : nil,
         book_formula: book_formula(overview[:summary]),
@@ -65,13 +65,12 @@ module Ec
 
     private
 
-    def physical_reconciliation(overview, order_distribution)
+    def physical_reconciliation(overview)
       return unless @detail_tab.in?(%w[overview physical_stocktake])
 
       Ec::InventoryPhysicalReconciliationQuery.new(
         @sku,
         overview: overview,
-        order_distribution: order_distribution,
         supply_page: @physical_supply_page,
         return_filters: @physical_return_filters,
         return_page: @physical_return_page

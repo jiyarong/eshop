@@ -55,12 +55,7 @@ module Ec
     end
 
     def expected_physical_stock(overview)
-      order_distribution = Ec::InventoryOrderSalesDistributionQuery.new(@sku).call
-      Ec::InventoryPhysicalReconciliationQuery.new(
-        @sku,
-        overview: overview,
-        order_distribution: order_distribution
-      ).expected_physical_stock
+      Ec::InventoryPhysicalReconciliationQuery.new(@sku, overview: overview).expected_physical_stock
     end
 
     def procurement_batches
