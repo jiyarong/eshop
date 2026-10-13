@@ -13039,3 +13039,12 @@ button.ai-row-action {
 }
 .operator-sku-table td:nth-child(5) .operator-sku-metric-grid > span:not(.operator-sku-forecast),
 .operator-sku-table td:nth-child(5) .operator-sku-forecast__row { grid-template-columns: 7.9em minmax(42px, auto); column-gap: 4.4px; justify-content: start; }
+.inventory-fbs-matrix th[scope="row"] { text-align: left; white-space: nowrap; }
+.inventory-fbs-matrix__cell a { font-weight: 600; text-decoration: none; }
+.inventory-fbs-matrix__cell--not-left { background: color-mix(in srgb, var(--success, #1a7f37) 12%, transparent); }
+.inventory-fbs-matrix__cell--left { background: color-mix(in srgb, var(--warning, #b7791f) 12%, transparent); }
+.inventory-fbs-matrix__cell--returned { background: color-mix(in srgb, var(--info, #2563eb) 12%, transparent); }
+.inventory-fbs-matrix__cell--anomaly { outline: 2px dashed var(--danger, #c0392b); outline-offset: -2px; }
+.inventory-fbs-matrix__legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.inventory-fbs-matrix__legend-item { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.inventory-fbs-orders-modal__summary { display: flex; gap: 8px; align-items: baseline; margin: 8px 0; }

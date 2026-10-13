@@ -1,0 +1,43 @@
+ru:
+  fulfillment_business_status:
+    business:
+      awaiting_assembly: Ожидает сборки
+      awaiting_dispatch: Ожидает отправки
+      in_delivery: В доставке
+      delivered: Доставлен
+      cancelled: Отменён
+      needs_review: Требует проверки
+    return:
+      none: Нет возврата
+      expected: Ожидается возврат
+      at_platform_side: На стороне площадки
+      returning_to_seller: Возвращается продавцу
+      received_by_seller: Получено продавцом
+      no_physical_return: Без возврата товара
+  reports:
+    inventory:
+      drawer:
+        physical_stocktake:
+          fbs_matrix:
+            note: Бизнес-статус показывает, как далеко товар продвинулся по цепочке доставки, статус возврата — где находится возвращаемый товар. Ячейки «покинул склад» вычитаются из ожидаемого физического остатка, ячейки «получено продавцом» добавляются обратно, «не покинул склад» остаётся на складе в Беларуси. Нажмите на число, чтобы увидеть заказы.
+            row_header: Бизнес-статус ╲ Статус возврата
+            kinds:
+              not_left: Не покинул склад
+              left: Покинул склад
+              returned: Вернулся на склад
+              anomaly: Аномалия статуса
+            legend: Легенда
+            anomaly_summary: Аномалии статуса (включены выше)
+          fbs_orders_modal:
+            title: Заказы FBS
+            summary_cell: "%{business} × %{return}"
+            quantity: Итого
+            empty: Подходящих заказов нет
+            columns:
+              platform_store: Площадка / магазин
+              order_number: Номер заказа
+              fulfillment_number: Номер отправления
+              ordered_at: Дата заказа
+              source_status: Статус площадки
+              quantity: Количество
+            pagination_aria_label: Страницы списка заказов FBS

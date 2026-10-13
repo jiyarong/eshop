@@ -2681,6 +2681,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".inventory-physical-reconciliation__table tfoot .inventory-distribution-table__summary", count: 1 do
       assert_select "td:first-child", text: "汇总"
     end
+    assert_select ".inventory-physical-reconciliation__table.inventory-fbs-matrix", count: 1
     assert_select ".inventory-overview-content", count: 0
 
     sign_in @current_user
@@ -3625,6 +3626,55 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     yield
   ensure
     singleton_class.send(:define_method, :new, original_new)
+  end
+  test "FBS matrix cells link to the order list modal" do
+    store = @sales_store
+    sku_product = Ec::SkuProduct.create!(
+      sku_code: @sku.sku_code, store: store, product_id: "FBSM-#{@sku_code}", platform_sku_id: "7#{SecureRandom.random_number(10**8)}"
+    )
+    order = Ec::Order.create!(
+      platform: "ozon", store: store, order_key: "FBSM-#{@sku_code}", external_order_id: "FBSM-#{@sku_code}",
+      external_order_number: "FBSM-NUMBER-#{@sku_code}", order_status: "delivered", ordered_at: 2.days.ago
+    )
+    fulfillment = order.fulfillments.create!(
+      platform: "ozon", store: store, external_fulfillment_id: "FBSM-F-#{@sku_code}",
+      fulfillment_key: "FBSM-F-#{@sku_code}", fulfillment_type: "fbs", status: "delivered",
+      source_status: "delivered", source_substatus: "posting_received",
+      business_status: "delivered", return_business_status: "none"
+    )
+    Ec::OrderItem.create!(
+      platform: "ozon", store: store, order: order, fulfillment: fulfillment, external_item_id: "FBSM-I-#{@sku_code}",
+      platform_sku_id: sku_product.platform_sku_id, quantity: 3
+    )
+
+    get report_inventory_detail_path(@sku.sku_code),
+      params: { detail_tab: "physical_stocktake" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "inventory_drawer_content" }
+
+    assert_response :success
+    assert_select "table.inventory-fbs-matrix a[data-turbo-frame='erp_modal'][href*='fbs_orders']", text: "3"
+
+    sign_in @current_user
+    get report_inventory_fbs_orders_path(
+      @sku.sku_code, business_status: "delivered", return_business_status: "none"
+    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :success
+    assert_select "turbo-frame#erp_modal"
+    assert_select "td", text: "FBSM-NUMBER-#{@sku_code}"
+  ensure
+    Ec::OrderItem.where(order_id: order&.id).delete_all
+    Ec::OrderFulfillment.where(order_id: order&.id).delete_all
+    Ec::Order.where(id: order&.id).delete_all
+    sku_product&.delete
+  end
+
+  test "FBS order list rejects statuses outside the vocabulary" do
+    get report_inventory_fbs_orders_path(
+      @sku.sku_code, business_status: "bogus", return_business_status: "none"
+    ), headers: { "Accept" => "text/html", "Turbo-Frame" => "erp_modal" }
+
+    assert_response :bad_request
   end
 
 end

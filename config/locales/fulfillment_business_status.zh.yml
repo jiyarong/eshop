@@ -1,0 +1,43 @@
+zh:
+  fulfillment_business_status:
+    business:
+      awaiting_assembly: 待装配
+      awaiting_dispatch: 待发运
+      in_delivery: 配送中
+      delivered: 已签收
+      cancelled: 已取消
+      needs_review: 待核实
+    return:
+      none: 无退货
+      expected: 待退回
+      at_platform_side: 在平台侧
+      returning_to_seller: 返回卖家途中
+      received_by_seller: 卖家已收
+      no_physical_return: 无实物回流
+  reports:
+    inventory:
+      drawer:
+        physical_stocktake:
+          fbs_matrix:
+            note: 业务状态表示货在发货链路的哪一步，退货状态表示退回的货走到哪里。已离仓的格子从盘库应见库存中扣除，卖家已收的格子随退货加回；未离仓的格子仍在白俄仓。点击数字查看订单。
+            row_header: 业务状态 ╲ 退货状态
+            kinds:
+              not_left: 未离仓
+              left: 已离仓
+              returned: 已回仓
+              anomaly: 状态异常
+            legend: 图例
+            anomaly_summary: 状态异常（已计入上方数量）
+          fbs_orders_modal:
+            title: FBS 订单明细
+            summary_cell: "%{business} × %{return}"
+            quantity: 数量合计
+            empty: 当前没有相关订单
+            columns:
+              platform_store: 平台 / 店铺
+              order_number: 订单号
+              fulfillment_number: 发货单号
+              ordered_at: 下单时间
+              source_status: 平台原始状态
+              quantity: 数量
+            pagination_aria_label: FBS 订单明细分页

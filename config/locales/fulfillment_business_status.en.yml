@@ -1,0 +1,43 @@
+en:
+  fulfillment_business_status:
+    business:
+      awaiting_assembly: Awaiting assembly
+      awaiting_dispatch: Awaiting dispatch
+      in_delivery: In delivery
+      delivered: Delivered
+      cancelled: Cancelled
+      needs_review: Needs review
+    return:
+      none: No return
+      expected: Return expected
+      at_platform_side: At platform
+      returning_to_seller: Returning to seller
+      received_by_seller: Received by seller
+      no_physical_return: No goods returned
+  reports:
+    inventory:
+      drawer:
+        physical_stocktake:
+          fbs_matrix:
+            note: The business status shows how far the goods got in the delivery chain; the return status shows where returning goods are. Departed cells are deducted from the expected physical stock, cells received by the seller are added back, and not departed cells are still in the Belarus warehouse. Click a number to see the orders.
+            row_header: Business status ╲ Return status
+            kinds:
+              not_left: Not departed
+              left: Departed
+              returned: Back in warehouse
+              anomaly: Status anomaly
+            legend: Legend
+            anomaly_summary: Status anomalies (included above)
+          fbs_orders_modal:
+            title: FBS orders
+            summary_cell: "%{business} × %{return}"
+            quantity: Total quantity
+            empty: No matching orders
+            columns:
+              platform_store: Platform / store
+              order_number: Order number
+              fulfillment_number: Fulfillment number
+              ordered_at: Ordered at
+              source_status: Platform status
+              quantity: Quantity
+            pagination_aria_label: FBS order list pagination

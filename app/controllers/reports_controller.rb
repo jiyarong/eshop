@@ -155,6 +155,22 @@ class ReportsController < ApplicationController
     end
   end
 
+  def inventory_fbs_orders
+    @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    business_status = params[:business_status].to_s.presence_in(Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES)
+    return_business_status = params[:return_business_status].to_s.presence_in(Ec::FulfillmentBusinessStatus::RETURN_STATUSES)
+    return head :bad_request unless business_status && return_business_status
+
+    @business_status = business_status
+    @return_business_status = return_business_status
+    @fbs_orders = Ec::InventoryFbsOrdersQuery.new(
+      @sku,
+      business_status: business_status,
+      return_business_status: return_business_status,
+      page: params[:jump_page].presence || params[:page]
+    ).call
+  end
+
   def sku_ai_diagnosis
     @sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     @diagnosis = @sku.ai_diagnoses

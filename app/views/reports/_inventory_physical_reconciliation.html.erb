@@ -67,41 +67,69 @@
   </nav>
 
   <% if active_section == "fbs_orders" %>
+  <% fbs_matrix = reconciliation[:fbs_matrix] || { cells: [], summary: {} } %>
+  <% matrix_cells = fbs_matrix[:cells].index_by { |cell| [ cell[:business_status], cell[:return_business_status] ] } %>
+  <% matrix_summary = fbs_matrix[:summary] %>
+  <% return_statuses = Ec::FulfillmentBusinessStatus::RETURN_STATUSES %>
   <div class="inventory-physical-reconciliation__group" data-stocktake-section="fbs_orders">
     <div class="inventory-detail-panel__head">
       <h4><%= t("reports.inventory.drawer.physical_stocktake.sections.fbs_orders") %></h4>
-      <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.notes.fbs_orders") %></p>
+      <p class="muted"><%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.note") %></p>
+    </div>
+    <div class="inventory-fbs-matrix__legend" aria-label="<%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.legend") %>">
+      <% %w[not_left left returned].each do |kind| %>
+        <span class="inventory-fbs-matrix__legend-item inventory-fbs-matrix__cell--<%= kind.dasherize %>">
+          <%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.kinds.#{kind}") %>
+        </span>
+      <% end %>
+      <span class="inventory-fbs-matrix__legend-item inventory-fbs-matrix__cell--anomaly">
+        <%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.kinds.anomaly") %>
+      </span>
     </div>
     <%= table_viewport(class_name: "table-scroll--horizontal") do %>
-      <table class="inventory-distribution-table inventory-physical-reconciliation__table">
+      <table class="inventory-distribution-table inventory-physical-reconciliation__table inventory-fbs-matrix">
         <thead><tr>
-          <th><%= t("reports.inventory.drawer.labels.shop_platform_store") %></th>
-          <th><%= t("reports.inventory.drawer.sales_distribution.order_stage") %></th>
-          <th><%= t("reports.inventory.drawer.sales_distribution.source_status") %></th>
-          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.return_state") %></th>
-          <th><%= t("reports.inventory.drawer.physical_stocktake.columns.physical_impact") %></th>
-          <th><%= t("reports.inventory.drawer.sales_distribution.quantity") %></th>
+          <th><%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.row_header") %></th>
+          <% return_statuses.each do |return_status| %>
+            <th class="numeric"><%= t("fulfillment_business_status.return.#{return_status}") %></th>
+          <% end %>
         </tr></thead>
         <tbody>
-          <% reconciliation.fetch(:fbs_order_rows, []).each do |row| %>
+          <% Ec::FulfillmentBusinessStatus::BUSINESS_STATUSES.each do |business_status| %>
             <tr>
-              <td><%= row[:store_label] %></td>
-              <td><%= t("reports.inventory.drawer.sales_distribution.stages.#{row[:status_key]}") %></td>
-              <td><%= row[:source_status_label].presence || t("reports.inventory.drawer.sales_distribution.no_status_evidence") %></td>
-              <td><%= row[:return_state_key].present? ? t("reports.inventory.drawer.physical_stocktake.return_states.#{row[:return_state_key]}", default: row[:return_state_key]) : "-" %></td>
-              <td><span class="inventory-reconciliation-badge inventory-reconciliation-badge--<%= row[:physical_deducted] ? "excluded" : "included" %>"><%= t("reports.inventory.drawer.physical_stocktake.values.#{row[:physical_deducted] ? "physical_deducted" : "physical_retained"}") %></span></td>
-              <td><%= row[:quantity].to_i %></td>
+              <th scope="row"><%= t("fulfillment_business_status.business.#{business_status}") %></th>
+              <% return_statuses.each do |return_status| %>
+                <% cell = matrix_cells[[ business_status, return_status ]] %>
+                <% if cell && cell[:quantity].positive? %>
+                  <td class="numeric inventory-fbs-matrix__cell inventory-fbs-matrix__cell--<%= cell[:kind].dasherize %><%= " inventory-fbs-matrix__cell--anomaly" if cell[:anomaly] %>">
+                    <%= link_to cell[:quantity],
+                                report_inventory_fbs_orders_path(
+                                  sku.sku_code,
+                                  business_status: business_status,
+                                  return_business_status: return_status,
+                                  locale: params[:locale].presence
+                                ),
+                                data: { turbo_frame: "erp_modal" },
+                                title: t("reports.inventory.drawer.physical_stocktake.fbs_matrix.kinds.#{cell[:kind]}") %>
+                  </td>
+                <% else %>
+                  <td class="numeric muted">-</td>
+                <% end %>
+              <% end %>
             </tr>
-          <% end %>
-          <% if reconciliation.fetch(:fbs_order_rows, []).empty? %>
-            <tr><td colspan="6" class="empty-state"><%= t("reports.inventory.drawer.physical_stocktake.empty") %></td></tr>
           <% end %>
         </tbody>
         <tfoot>
           <tr class="inventory-distribution-table__summary">
-            <td colspan="5"><%= t("reports.inventory.drawer.labels.summary") %></td>
-            <td><%= summary[:fbs_order_quantity].to_i %></td>
+            <td colspan="<%= return_statuses.size %>"><%= t("reports.inventory.drawer.labels.summary") %></td>
+            <td class="numeric"><%= matrix_summary[:total_quantity].to_i %></td>
           </tr>
+          <% if matrix_summary[:anomaly_quantity].to_i.positive? %>
+            <tr>
+              <td colspan="<%= return_statuses.size %>"><%= t("reports.inventory.drawer.physical_stocktake.fbs_matrix.anomaly_summary") %></td>
+              <td class="numeric"><%= matrix_summary[:anomaly_quantity].to_i %></td>
+            </tr>
+          <% end %>
         </tfoot>
       </table>
     <% end %>
