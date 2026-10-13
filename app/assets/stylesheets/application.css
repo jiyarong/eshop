@@ -13041,6 +13041,7 @@ button.ai-row-action {
 .operator-sku-table td:nth-child(5) .operator-sku-forecast__row { grid-template-columns: 7.9em minmax(42px, auto); column-gap: 4.4px; justify-content: start; }
 .inventory-physical-reconciliation__table.inventory-fbs-status-table th:nth-child(5),
 .inventory-physical-reconciliation__table.inventory-fbs-status-table td:nth-child(5) { text-align: right; }
+.inventory-physical-reconciliation__table.inventory-fbs-status-table tfoot td:last-child { text-align: right; }
 .inventory-fbs-status-table a { font-weight: 600; text-decoration: none; }
 .inventory-fbs-status-table__anomaly { margin-left: 6px; font-size: 12px; color: var(--erp-danger-text, #c0392b); }
 .inventory-fbs-orders-modal__summary { display: flex; gap: 8px; align-items: baseline; margin: 8px 0; }
