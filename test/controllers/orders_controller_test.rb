@@ -292,7 +292,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", { text: "订单中心 Ozon 店", count: 0 }
   end
 
-  test "index renders order time in the current user time zone and no time filters" do
+  test "index renders order time in the current user time zone" do
     get "/orders", params: { q: { platform_eq: "ozon" } }, headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -348,7 +348,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
   test "index renders business and return status columns with order level values" do
     @order.update_columns(business_status: "in_delivery", return_business_status: "returning_to_seller")
 
-    get "/orders", params: { q: { platform_eq: "ozon", external_order_number_cont_placeholder: nil, order_status_eq: "shipped" } },
+    get "/orders", params: { q: { platform_eq: "ozon", order_status_eq: "shipped" } },
                    headers: { "Accept" => "text/html" }
 
     assert_response :success
@@ -581,6 +581,42 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         params: { q: { platform_eq: "ozon" }, page: 1, jump_page: "" },
         headers: { "Accept" => "text/html" }
 
+    assert_select ".inventory-pagination-bar .pg-btn.on", "1"
+  end
+
+  test "index clamps an out-of-range jump_page to the last page and keeps the pagination bar" do
+    get "/orders", params: { q: { platform_eq: "ozon" }, jump_page: 99 }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar", count: 1
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+    assert_select "td", "订单中心 Ozon 店"
+    assert_select ".empty-state", count: 0
+
+    sign_in @current_user
+
+    get "/orders", params: { q: { platform_eq: "ozon" }, page: 99 }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pg-btn.on", "2"
+  end
+
+  test "index treats non numeric or nested page params as page 1" do
+    get "/orders",
+        params: { q: { platform_eq: "ozon" }, jump_page: { x: "1" }, page: { x: "1" } },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar .pg-btn.on", "1"
+    assert_select "a[href=?]", "/orders/#{@later_processed_order.id}"
+
+    sign_in @current_user
+
+    get "/orders",
+        params: { q: { platform_eq: "ozon" }, jump_page: "abc", page: "-3" },
+        headers: { "Accept" => "text/html" }
+
+    assert_response :success
     assert_select ".inventory-pagination-bar .pg-btn.on", "1"
   end
 

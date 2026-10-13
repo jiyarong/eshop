@@ -17,7 +17,7 @@ class OrdersController < ApplicationController
     @search = base_order_scope.ransack(@q_params)
     @orders_scope = @search.result(distinct: true)
     @summary = build_summary(@orders_scope)
-    @orders = @orders_scope.page(params[:jump_page].presence || params[:page]).per(ORDERS_PER_PAGE)
+    @orders = paginated_orders(@orders_scope)
     @sku_by_item_id = sku_lookup_for(@orders.flat_map(&:items))
   end
 
@@ -30,6 +30,23 @@ class OrdersController < ApplicationController
   end
 
   private
+
+  def paginated_orders(scope)
+    current_page = requested_page_number
+    orders = scope.page(current_page).per(ORDERS_PER_PAGE)
+    if orders.total_pages.positive? && current_page > orders.total_pages
+      orders = scope.page(orders.total_pages).per(ORDERS_PER_PAGE)
+    end
+    orders
+  end
+
+  # jump_page (pagination jump form) wins over page; anything that is not a
+  # positive integer string (including nested params) falls back to page 1.
+  def requested_page_number
+    requested = params[:jump_page].presence || params[:page].presence
+    page = requested.to_s.match?(/\A\d+\z/) ? requested.to_s.to_i : 1
+    page.positive? ? page : 1
+  end
 
   def base_order_scope
     Ec::Order
