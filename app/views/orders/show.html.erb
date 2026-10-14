@@ -20,6 +20,14 @@
         <div class="summary-value"><%= display_value(@order.source_status) %></div>
       </div>
       <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("orders.fields.business_status") %></div>
+        <div class="summary-value"><%= business_status_label(@order.business_status) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
+        <div class="summary-label"><%= t("orders.fields.return_business_status") %></div>
+        <div class="summary-value"><%= return_business_status_label(@order.return_business_status) %></div>
+      </div>
+      <div class="weekly-profit-summary-card">
         <div class="summary-label"><%= t("orders.show.summary.city_country") %></div>
         <div class="summary-value"><%= display_value([@order.buyer_city, @order.buyer_country].compact_blank.join(" / ")) %></div>
       </div>
@@ -52,6 +60,8 @@
             <tr>
               <th><%= t("orders.fields.mode") %></th>
               <th><%= t("orders.fields.status") %></th>
+              <th><%= t("orders.fields.business_status") %></th>
+              <th><%= t("orders.fields.return_business_status") %></th>
               <th><%= t("orders.fields.source_status") %></th>
               <th><%= t("orders.fields.source_substatus") %></th>
               <th><%= t("orders.fields.warehouse") %></th>
@@ -67,6 +77,8 @@
               <tr>
                 <td><%= fulfillment_label(fulfillment.fulfillment_type) %></td>
                 <td><%= order_status_label(fulfillment.status) %></td>
+                <td><%= business_status_label(fulfillment.business_status) %></td>
+                <td><%= return_business_status_label(fulfillment.return_business_status) %></td>
                 <td><%= display_value(fulfillment.source_status) %></td>
                 <td><%= display_value(fulfillment.source_substatus) %></td>
                 <td><%= display_value(fulfillment.warehouse_name) %></td>

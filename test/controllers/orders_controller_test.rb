@@ -898,6 +898,44 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "details", { text: /查看订单源片段/, count: 0 }
   end
 
+  test "show renders the business and return statuses on the summary cards and each fulfillment row" do
+    @order.update_columns(business_status: "returned", return_business_status: "at_platform_side")
+    @fulfillment.update_columns(business_status: "delivered", return_business_status: "none")
+    add_fulfillment(@order, type: "fbs", business_status: "returned", return_business_status: "at_platform_side")
+
+    get "/orders/#{@order.id}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    cards = css_select(".weekly-profit-summary-card").to_h do |card|
+      [card.at_css(".summary-label").text.strip, card.at_css(".summary-value").text.strip]
+    end
+    assert_equal "已退货", cards["业务状态"]
+    assert_equal "在平台侧", cards["退货状态"]
+
+    table = css_select("table").find { |t| t.css("thead th").map { |th| th.text.strip }.include?("业务状态") }
+    assert table, "fulfillment tracking table should have a business status column"
+    headers = table.css("thead th").map { |th| th.text.strip }
+    assert_equal headers.index("状态") + 1, headers.index("业务状态")
+    assert_equal headers.index("业务状态") + 1, headers.index("退货状态")
+    rows = table.css("tbody tr").to_h do |tr|
+      cells = tr.css("td").map { |td| td.text.strip }
+      [cells[headers.index("模式")], cells.values_at(headers.index("业务状态"), headers.index("退货状态"))]
+    end
+    assert_equal ["已签收", "无退货"], rows["FBO"]
+    assert_equal ["已退货", "在平台侧"], rows["FBS"]
+  end
+
+  test "show renders the default needs-review and no-return statuses" do
+    get "/orders/#{@order.id}", headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    cards = css_select(".weekly-profit-summary-card").to_h do |card|
+      [card.at_css(".summary-label").text.strip, card.at_css(".summary-value").text.strip]
+    end
+    assert_equal "待核实", cards["业务状态"]
+    assert_equal "无退货", cards["退货状态"]
+  end
+
   test "show labels the commission base price and the buyer-paid price separately" do
     get "/orders/#{@order.id}", headers: { "Accept" => "text/html" }
 
