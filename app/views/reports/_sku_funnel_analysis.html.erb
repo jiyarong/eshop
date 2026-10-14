@@ -34,6 +34,71 @@
       <% end %>
     </section>
 
+    <% if @funnel_profit_estimate.present? %>
+      <% estimate_scope = "#{scope}.profit_estimate" %>
+      <section class="sku-profit-analysis__section sku-funnel-profit-estimate">
+        <h3><%= t("#{estimate_scope}.title") %></h3>
+        <p class="sub"><%= t("#{estimate_scope}.hint") %></p>
+        <%= table_viewport(class_name: "sku-funnel-profit-estimate-viewport") do %>
+          <table class="sku-profit-matrix">
+            <thead><tr><th><%= t("#{scope}.metric") %></th>
+              <% @funnel_profit_estimate[:periods].each do |period| %>
+                <th><div class="sku-profit-period__heading"><span class="sku-profit-period__key"><%= period[:key] %></span></div><div class="sku-profit-period__dates"><%= period[:from_date] %> ~ <%= period[:to_date] %></div></th>
+              <% end %>
+            </tr></thead>
+            <tbody>
+              <tr><th><%= t("#{estimate_scope}.version") %></th>
+                <% @funnel_profit_estimate[:periods].each do |period| %>
+                  <td><% if period[:version] %><%= period[:version][:name] %> <small>(<%= t("#{estimate_scope}.statuses.#{period[:version][:status]}") %>)</small><% else %><span class="empty-state"><%= t("#{estimate_scope}.no_version") %></span><% end %></td>
+                <% end %>
+              </tr>
+              <% %i[orders conversions].each do |basis| %>
+                <tr><th><%= t("#{estimate_scope}.bases.#{basis}") %></th>
+                  <% @funnel_profit_estimate[:periods].each do |period| %>
+                    <% estimate = period[:bases][basis] %>
+                    <td>
+                      <div class="weekly-profit-table-value"><%= t("#{estimate_scope}.units", count: number_with_precision(estimate[:units], precision: 1, strip_insignificant_zeros: true)) %> / <%= estimate[:profit_cny].nil? ? "-" : number_with_precision(estimate[:profit_cny], precision: 2, delimiter: ",") %> <small>CNY</small></div>
+                      <% unpriced = estimate[:units] - estimate[:priced_units] %>
+                      <% if unpriced.positive? %><small class="is-negative"><%= t("#{estimate_scope}.unpriced", count: number_with_precision(unpriced, precision: 1, strip_insignificant_zeros: true)) %></small><% end %>
+                    </td>
+                  <% end %>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+        <details class="sku-funnel-profit-estimate__scenarios">
+          <summary><%= t("#{estimate_scope}.scenario_detail") %></summary>
+          <%= table_viewport(class_name: "sku-funnel-profit-estimate-viewport") do %>
+            <table class="sku-profit-matrix">
+              <thead><tr><th><%= t("#{estimate_scope}.scenario") %></th>
+                <% @funnel_profit_estimate[:periods].each do |period| %><th><%= period[:key] %></th><% end %>
+              </tr></thead>
+              <tbody>
+                <% scenario_rows = @funnel_profit_estimate[:periods].flat_map { |period| period[:bases].values.flat_map { |estimate| estimate[:scenarios].map { |entry| entry[:identity] } } }.uniq %>
+                <% scenario_rows.each do |identity| %>
+                  <tr><th><%= sku_funnel_profit_scenario_label(identity) %></th>
+                    <% @funnel_profit_estimate[:periods].each do |period| %>
+                      <td>
+                        <% %i[orders conversions].each do |basis| %>
+                          <% entry = period[:bases][basis][:scenarios].find { |candidate| candidate[:identity] == identity } %>
+                          <% next unless entry %>
+                          <div><small><%= t("#{estimate_scope}.bases_short.#{basis}") %></small>
+                            <%= number_with_precision(entry[:units], precision: 1, strip_insignificant_zeros: true) %>
+                            <% if entry[:unit_profit_cny] %>× <%= number_with_precision(entry[:unit_profit_cny], precision: 2) %> = <strong><%= number_with_precision(entry[:profit_cny], precision: 2, delimiter: ",") %></strong><% else %><span class="is-negative"><%= t("#{estimate_scope}.not_priced") %></span><% end %>
+                          </div>
+                        <% end %>
+                      </td>
+                    <% end %>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% end %>
+        </details>
+      </section>
+    <% end %>
+
     <section class="sku-profit-analysis__section sku-profit-analysis__trend-toggle" data-controller="profit-trend-toggle" data-profit-trend-toggle-show-label-value="<%= t("#{scope}.show_common_trend") %>" data-profit-trend-toggle-hide-label-value="<%= t("#{scope}.hide_common_trend") %>">
       <button type="button" class="button sku-profit-analysis__trend-button" aria-expanded="false" data-profit-trend-toggle-target="button" data-action="profit-trend-toggle#toggle"><%= t("#{scope}.show_common_trend") %></button>
       <div data-profit-trend-toggle-target="content" hidden><%= turbo_frame_tag "sku_common_funnel_trend", src: report_sku_sales_funnel_trends_path(@sku.sku_code, view: "sku", trend_to_date: @funnel_to_date, locale: params[:locale]), loading: :lazy do %><div class="empty-state"><%= t("#{scope}.loading") %></div><% end %></div>

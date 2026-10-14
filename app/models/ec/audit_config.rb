@@ -1,6 +1,11 @@
 module Ec
   module AuditConfig
     ATTRIBUTES = {
+      "Ec::OwnWarehouseCostPeriod" => %w[
+        own_warehouse_code effective_from effective_to total_operating_cost billing_unit currency
+        storage_ratio transport_ratio labor_ratio fbo_labor_weight status source_reference note
+        created_by_id confirmed_by_id confirmed_at
+      ],
       "Ec::Attachment" => %w[
         attach_type
       ],
@@ -195,8 +200,9 @@ module Ec
         length_cm
         width_cm
         height_cm
-        price_rub
-        rf_price_rub
+        commission_base_price_rub
+        buyer_paid_price_rub
+        buyer_price_vat_rate
         exchange_rate_rub_cny
         commission_rate
         acquiring_rate

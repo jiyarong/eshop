@@ -5,6 +5,10 @@ module Ec
     WB_DELIVERY_MODES = %w[fbo fbs].freeze
     WB_OUTBOUND_BONUS_PREFIXES = ["К клиенту при продаже", "К клиенту при отмене"].freeze
     WB_RETURN_BONUS_PREFIXES = ["От клиента при возврате", "От клиента при отмене"].freeze
+    # Goods sent back to the seller ("Возврат ... (К продавцу)") travel as their own parcels with
+    # their own srid, so they cannot be tied to a single order. They are part of what a returned
+    # order costs and are spread over the returned orders of the period.
+    WB_RETURN_TO_SELLER_BONUS_PREFIXES = ["Возврат"].freeze
 
     def self.run(sku:, today:, platform: "ozon", delivery_mode: nil, weeks: DEFAULT_WEEKS)
       new(sku:, today:, platform:, delivery_mode:, weeks:).run
@@ -53,7 +57,7 @@ module Ec
         outbound: metric_payload(grouped_fees.fetch(:outbound)),
         return: metric_payload(grouped_fees.fetch(:return)),
         cross_dock: cross_dock_payload(rows, bindings),
-        return_rate: return_rate_payload(rows, bindings)
+        return_rate: return_rate_payload(grouped_fees)
       }
     end
 
@@ -79,7 +83,8 @@ module Ec
         store_count: bindings.map(&:first).uniq.size,
         listing_count: bindings.size,
         outbound: positive_metric_payload(grouped_fees.fetch(:outbound)),
-        return: positive_metric_payload(grouped_fees.fetch(:return)),
+        return: wb_return_payload(grouped_fees.fetch(:return), grouped_fees.fetch(:return_to_seller)),
+        return_to_seller: positive_metric_payload(grouped_fees.fetch(:return_to_seller)),
         source_currency: "BYN",
         output_currency: "RUB",
         missing_exchange_rate_row_count: missing_rate_count
@@ -173,7 +178,8 @@ module Ec
       allowed_bindings = bindings.to_set
       grouped = {
         outbound: Hash.new(0.to_d),
-        return: Hash.new(0.to_d)
+        return: Hash.new(0.to_d),
+        return_to_seller: Hash.new(0.to_d)
       }
       rates = wb_rates_by_week(rows)
       missing_rate_count = 0
@@ -218,6 +224,7 @@ module Ec
       name = bonus_type_name.to_s
       return :outbound if WB_OUTBOUND_BONUS_PREFIXES.any? { |prefix| name.start_with?(prefix) }
       return :return if WB_RETURN_BONUS_PREFIXES.any? { |prefix| name.start_with?(prefix) }
+      return :return_to_seller if WB_RETURN_TO_SELLER_BONUS_PREFIXES.any? { |prefix| name.start_with?(prefix) }
     end
 
     def logistics_category(type_id, type_name)
@@ -264,20 +271,30 @@ module Ec
       }
     end
 
-    def return_rate_payload(rows, bindings)
-      allowed_bindings = bindings.to_set
-      posting_revenue = Hash.new(0.to_d)
+    # Cost of a returned order = what the customer leg cost plus the share of parcels sent back
+    # to the seller. Seller parcels have their own references, so they are added to the total and
+    # divided by the returned orders (references with a customer return leg).
+    def wb_return_payload(customer_returns, seller_returns)
+      customer = customer_returns.values.select(&:positive?)
+      seller_total = seller_returns.values.select(&:positive?).sum(0.to_d)
+      total = customer.sum(0.to_d) + seller_total
+      average = total / customer.size if total.positive? && customer.any?
 
-      rows.each do |row|
-        next unless allowed_bindings.include?([row.account_id, row.ozon_sku_id])
-        next unless row.type_id.to_i.zero? && row.posting_number.present?
+      {
+        total_rub: total.round(2),
+        sample_count: customer.size,
+        average_rub: average&.round(2)
+      }
+    end
 
-        key = [row.account_id, row.ozon_sku_id, row.posting_number]
-        posting_revenue[key] += row.amount.to_d
-      end
-
-      order_count = posting_revenue.count { |_key, net| net >= 0 }
-      return_count = posting_revenue.count { |_key, net| net <= 0 }
+    # Return rate = postings billed a return leg / postings billed an outbound leg.
+    # A posting that was never delivered (not picked up, cancelled) books no SaleRevenue yet
+    # pays both legs, so a revenue-reversal count would miss it. This is the ratio the
+    # calculator's amortization needs: per net sale it adds (outbound + return) x r / (1 - r).
+    # `order_count` is the number of outbound postings, `return_count` the number of returns.
+    def return_rate_payload(grouped_fees)
+      order_count = grouped_fees.fetch(:outbound).values.count { |amount| !amount.zero? }
+      return_count = grouped_fees.fetch(:return).values.count { |amount| !amount.zero? }
       rate = return_count.to_d / order_count if order_count.positive?
 
       {

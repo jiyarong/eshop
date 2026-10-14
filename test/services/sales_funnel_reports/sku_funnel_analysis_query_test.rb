@@ -58,6 +58,36 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
     assert_equal "RUB", result[:store_groups].find { |group| group[:platform] == "ozon" }.dig(:rows_by_period, "P0", :currency)
   end
 
+  test "places order items into pricing scenarios by fulfillment, store tax regime and buyer currency" do
+    ozon_general = Ec::Store.create!(platform: "ozon", store_name: "Ozon general #{@token}", company_type: "general", ozon_raw_account_id: @ozon_account.id)
+    ozon_product = Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: ozon_general, product_id: "OZG-#{@token}", platform_sku_id: "81002", product_name: "Ozon general")
+    create_order(@wb_store, "wb", "71001", "delivered", 6, fulfillment_type: "fbw")
+    create_order(@wb_store, "wb", "71001", "returned", 2, fulfillment_type: "fbs", order_key: "wb-fbs")
+    create_order(@wb_store, "wb", "71001", "cancelled", 1, fulfillment_type: "fbs", order_key: "wb-cancelled")
+    create_order(ozon_general, "ozon", "81002", "delivered", 4, fulfillment_type: "fbo", buyer_currency: "BYN", order_key: "oz-by")
+    create_order(ozon_general, "ozon", "81002", "delivered", 3, fulfillment_type: "fbo", buyer_currency: "RUB", order_key: "oz-ru")
+    create_order(ozon_general, "ozon", "81002", "delivered", 5, fulfillment_type: "fbs", buyer_currency: "RUB", order_key: "oz-fbs")
+    create_order(ozon_general, "ozon", "81002", "delivered", 7, fulfillment_type: "fbo", order_key: "oz-no-currency")
+
+    result = query
+    wb = result[:store_groups].find { |group| group[:platform] == "wb" }.dig(:rows_by_period, "P0", :scenario_units)
+    ozon = result[:store_groups].find { |group| group[:store_id] == ozon_general.id }.dig(:rows_by_period, "P0", :scenario_units)
+
+    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "ru", "fbs", "small" ] => 3 }, wb[:orders])
+    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "ru", "fbs", "small" ] => 2 }, wb[:conversions])
+    assert_equal 4, ozon[:orders][[ "ozon", "by", "fbo", "general" ]]
+    assert_equal 3, ozon[:orders][[ "ozon", "ru", "fbo", "general" ]]
+    assert_equal 12, ozon[:orders][:uncovered]
+    assert_equal 12, ozon[:conversions][:uncovered]
+  ensure
+    store_ids = [ @wb_store&.id, @ozon_store&.id, ozon_general&.id ]
+    Ec::OrderItem.where(store_id: store_ids).delete_all
+    Ec::OrderFulfillment.where(store_id: store_ids).delete_all
+    Ec::Order.where(store_id: ozon_general&.id).delete_all
+    Ec::SkuProduct.where(id: ozon_product&.id).delete_all
+    Ec::Store.where(id: ozon_general&.id).delete_all
+  end
+
   test "keeps platform-only values unavailable and distinguishes missing funnel data from zero" do
     RawOzon::SalesFunnelDaily.create!(account: @ozon_account, stat_date: Date.new(2026, 8, 3), sku: 81001,
       hits_view: 0, hits_view_search: 0, hits_view_pdp: 0, hits_tocart: 0, hits_tocart_pdp: 0,
@@ -106,10 +136,15 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
     )
   end
 
-  def create_order(store, platform, platform_sku_id, status, quantity)
-    order = Ec::Order.create!(store:, platform:, order_key: "#{platform}-#{@token}-#{quantity}", order_status: status,
+  def create_order(store, platform, platform_sku_id, status, quantity, fulfillment_type: nil, buyer_currency: nil, order_key: nil)
+    order = Ec::Order.create!(store:, platform:, order_key: "#{platform}-#{@token}-#{order_key || quantity}", order_status: status,
       ordered_at: Time.find_zone!("Asia/Shanghai").local(2026, 8, 4, 12), completed_at: Time.find_zone!("Asia/Shanghai").local(2026, 8, 5, 12))
-    Ec::OrderItem.create!(order:, store:, platform:, platform_sku_id:, quantity:)
+    fulfillment = if fulfillment_type
+      Ec::OrderFulfillment.create!(order:, store:, platform:, fulfillment_type:, status: "delivered",
+        external_fulfillment_id: "f-#{order.order_key}", fulfillment_key: "f-#{order.order_key}")
+    end
+    Ec::OrderItem.create!(order:, store:, platform:, platform_sku_id:, quantity:, fulfillment_id: fulfillment&.id,
+      buyer_currency_code: buyer_currency)
   end
 
   def create_inventory_snapshot

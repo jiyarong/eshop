@@ -2,7 +2,7 @@ module Ec
   module ProfitCalculators
     class Base
       RATE_KEYS = %w[
-        commission_rate acquiring_rate advertising_rate tax_rate sales_vat_rate
+        commission_rate acquiring_rate advertising_rate tax_rate sales_vat_rate buyer_price_vat_rate
         return_rate logistics_tax_rate damage_rate
         ozon_warehouse_rate ozon_import_vat_cost_rate
       ].freeze
@@ -12,6 +12,28 @@ module Ec
       private
       def decimal(key) = BigDecimal(@inputs[key].to_s)
       def present?(key) = @inputs[key].present?
+      def value_or_default(key, default) = present?(key) ? decimal(key) : default.to_d
+
+      # Audit only: what the platform effectively pays on top of what the buyer paid.
+      #   seller due   = commission base x (1 - commission rate)   (before logistics etc.)
+      #                  / (1 + invoice VAT rate) when we issue a VAT invoice the platform deducts
+      #   buyer net    = buyer-paid price / (1 + VAT embedded in the buyer price)
+      #   subsidy      = seller due - buyer net   (negative: the platform keeps the difference)
+      # The invoice VAT is money we pass to the platform, so it is not part of the due amount;
+      # an ordinary invoice (small company) or self-declared VAT (Ozon) passes nothing on.
+      # It never enters revenue, costs or profit, and needs no buyer-paid price to calculate.
+      def buyer_price_audit(commission_base_rub, default_vat_rate, invoice_vat_rate: nil)
+        return {} unless present?("buyer_paid_price_rub")
+
+        buyer_net = decimal("buyer_paid_price_rub") / (1 + value_or_default("buyer_price_vat_rate", default_vat_rate))
+        seller_due = commission_base_rub * (1 - decimal("commission_rate"))
+        seller_due /= (1 + invoice_vat_rate) if invoice_vat_rate
+        {
+          buyer_paid_ex_vat_rub: buyer_net,
+          seller_due_rub: seller_due,
+          platform_subsidy_rub: seller_due - buyer_net
+        }
+      end
       def numeric?(key) = @inputs[key].is_a?(Numeric) || BigDecimal(@inputs[key].to_s, exception: false).present?
       def missing(*keys) = keys.reject { |key| present?(key) }
       def optional_warnings(*keys) = keys.reject { |key| present?(key) }.map { |key| "#{key}_not_included" }

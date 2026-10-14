@@ -5,7 +5,7 @@ module SkuProfitPredictionHelper
     length_cm width_cm height_cm
   ].freeze
   PROFIT_COMMERCIAL_INPUT_COLUMNS = %i[
-    price_rub rf_price_rub exchange_rate_rub_cny commission_rate acquiring_rate
+    commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny commission_rate acquiring_rate
     advertising_rate tax_rate sales_vat_rate
   ].freeze
   PROFIT_LOGISTICS_INPUT_COLUMNS = %i[
@@ -22,7 +22,7 @@ module SkuProfitPredictionHelper
 
   PROFIT_RATE_INPUT_COLUMNS = %i[
     duty_rate import_vat_rate commission_rate acquiring_rate advertising_rate
-    tax_rate sales_vat_rate return_rate logistics_tax_rate damage_rate
+    tax_rate sales_vat_rate buyer_price_vat_rate return_rate logistics_tax_rate damage_rate
   ].freeze
 
   PROFIT_WB_ONLY_COLUMNS = %i[
@@ -32,7 +32,6 @@ module SkuProfitPredictionHelper
   ].freeze
 
   PROFIT_OZON_ONLY_COLUMNS = %i[
-    rf_price_rub
     warehouse_operation_rub cross_docking_cny
   ].freeze
 
@@ -69,8 +68,9 @@ module SkuProfitPredictionHelper
       [ :result, :returns_cny ]
     ] ],
     [ :commercial_inputs, [
-      [ :input, :rf_price_rub ],
-      [ :input, :price_rub ],
+      [ :input, :commission_base_price_rub ],
+      [ :input, :buyer_paid_price_rub ],
+      [ :input, :buyer_price_vat_rate ],
       [ :input, :exchange_rate_rub_cny ],
       [ :result, :revenue_cny ],
       [ :input, :commission_rate ],
@@ -131,7 +131,10 @@ module SkuProfitPredictionHelper
   def profit_prediction_input_applicable?(context, field)
     field = field.to_sym
     return true if PROFIT_BASE_INPUT_COLUMNS.include?(field)
-    return true if %i[price_rub exchange_rate_rub_cny commission_rate acquiring_rate advertising_rate other_cny].include?(field)
+    return true if %i[
+      commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate
+      exchange_rate_rub_cny commission_rate acquiring_rate advertising_rate other_cny
+    ].include?(field)
 
     context.platform == "wb" ? wb_profit_input_applicable?(context, field) : ozon_profit_input_applicable?(context, field)
   end
@@ -177,11 +180,43 @@ module SkuProfitPredictionHelper
     number_with_precision(value, precision: 2)
   end
 
+  # Ratio columns (VAT, commission, return rate ...) are stored as decimal ratios but typed
+  # and shown as percentages; the page script converts back before anything is submitted.
+  # "WB / FBW / 一般" or "Ozon RU / FBO": a pricing scenario of a profit version.
+  def sku_funnel_profit_scenario_label(identity)
+    return t("reports.sku_detail.funnel_analysis.profit_estimate.uncovered") if identity.blank?
+
+    platform = identity.fetch("platform")
+    mode = t("reports.profit_prediction.options.delivery_modes.#{platform}_#{identity.fetch('delivery_mode')}")
+    if platform == "wb"
+      company = t("reports.profit_prediction.options.company_types.#{identity.fetch('company_type')}")
+      [ "WB", mode, company ].join(" / ")
+    else
+      [ "Ozon #{identity.fetch('market').upcase}", mode ].join(" / ")
+    end
+  end
+
+  def profit_prediction_percent_field?(field)
+    PROFIT_RATE_INPUT_COLUMNS.include?(field.to_sym)
+  end
+
   def profit_prediction_input_value(value, field)
     return if value.nil?
-    return value.to_d.to_s("F") if PROFIT_RATE_INPUT_COLUMNS.include?(field.to_sym)
+    return profit_prediction_percent_value(value) if profit_prediction_percent_field?(field)
 
     format("%.2f", value)
+  end
+
+  # 0.075 -> "7.5", 0.2 -> "20" (BigDecimal, so no floating point noise)
+  def profit_prediction_percent_value(ratio)
+    (ratio.to_d * 100).to_s("F").sub(/(\.\d*?)0+\z/, "\\1").sub(/\.\z/, "")
+  end
+
+  # Column heading / aria label with the unit for ratio columns.
+  def profit_prediction_field_label(kind, field)
+    scope = kind == :result ? "result_fields" : "fields"
+    label = t("reports.profit_prediction.#{scope}.#{field}")
+    kind == :input && profit_prediction_percent_field?(field) ? "#{label} (%)" : label
   end
 
   def profit_prediction_raw_value(value)
@@ -203,7 +238,7 @@ module SkuProfitPredictionHelper
   end
 
   def ozon_profit_input_applicable?(context, field)
-    common = %i[rf_price_rub return_rate storage_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub]
+    common = %i[return_rate storage_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub]
     return true if common.include?(field)
     return field == :cross_docking_cny if context.market == "ru"
     return field == :sales_vat_rate if context.market == "by"

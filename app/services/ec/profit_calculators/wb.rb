@@ -2,7 +2,7 @@ module Ec
   module ProfitCalculators
     class Wb < Base
       COMPANY_TYPES = %w[general small].freeze
-      REQUIRED = %w[purchase_price_cny price_rub exchange_rate_rub_cny length_cm width_cm height_cm commission_rate].freeze
+      REQUIRED = %w[purchase_price_cny commission_base_price_rub exchange_rate_rub_cny length_cm width_cm height_cm commission_rate].freeze
 
       def call
         required = REQUIRED.dup
@@ -22,7 +22,8 @@ module Ec
         logistics_liter_fee_rub = value_or_default("wb_logistics_liter_rub", "14")
         base_logistics_rub = base_logistics_fee_rub + (billed_volume - 1) * logistics_liter_fee_rub
         exchange = decimal("exchange_rate_rub_cny")
-        revenue = decimal("price_rub") / exchange
+        commission_base_rub = decimal("commission_base_price_rub")
+        revenue = commission_base_rub / exchange
         outbound_logistics_rub = decimal("outbound_logistics_rub") if present?("outbound_logistics_rub")
         logistics = if outbound_logistics_rub
           outbound_logistics_rub / exchange
@@ -64,14 +65,16 @@ module Ec
           intermediate: { volume_l: volume, billed_volume_l: billed_volume, base_logistics_fee_rub: base_logistics_fee_rub,
             base_logistics_rub: base_logistics_rub, logistics_liter_fee_rub: logistics_liter_fee_rub,
             outbound_logistics_rub: outbound_logistics_rub, return_logistics_rub: return_logistics_rub,
-            platform_logistics_cny: logistics, return_amortization_cny: returns, fixed_return_cny: fixed_return })
+            platform_logistics_cny: logistics, return_amortization_cny: returns, fixed_return_cny: fixed_return,
+            commission_base_rub: commission_base_rub, commission_base_cny: revenue }.merge(
+              buyer_price_audit(commission_base_rub, "0.2", invoice_vat_rate: general_company? ? value_or_default("sales_vat_rate", "0.2") : nil)
+            ))
       end
 
       private
 
       def company_type = @context.fetch("company_type", "").to_s.downcase
       def general_company? = company_type == "general"
-      def value_or_default(key, default) = present?(key) ? decimal(key) : default.to_d
     end
   end
 end

@@ -50,7 +50,12 @@ class Ec::SkuActualWbLogisticsQueryTest < ActiveSupport::TestCase
     create_logistics(day:, srid: "RET-1", bonus: "От клиента при возврате", amount: 1)
     create_logistics(day:, srid: "RET-1", bonus: "От клиента при возврате", amount: 0.5)
     create_logistics(day:, srid: "RET-2", bonus: "От клиента при отмене", amount: 2)
-    create_logistics(day:, srid: "IGNORED", bonus: "Возврат товара продавцу (К продавцу)", amount: 9)
+    # Goods sent back to the seller travel as their own parcels (own srid), so they cannot be
+    # tied to one order: they are spread over the returned orders of the period.
+    create_logistics(day:, srid: "mp.SELLER-RET-1", bonus: "Возврат товара, который приехал по МП, продавцу (К продавцу)", amount: 8)
+    create_logistics(day:, srid: "mp.SELLER-RET-1", bonus: "Возврат товара, который приехал по МП, продавцу (От продавца при отмене)", amount: 1)
+    create_logistics(day:, srid: "BRAK-1", bonus: "Возврат брака (К продавцу)", amount: 3, delivery_method: "FBW, (МГТ, паллеты)")
+    create_logistics(day:, srid: "FBS-SELLER-RET", bonus: "Возврат товара, который приехал по МП, продавцу (К продавцу)", amount: 4, delivery_method: "FBS")
     create_logistics(day:, srid: "WRONG-MODE", bonus: "К клиенту при продаже", amount: 100, delivery_method: "FBS, (МГТ)")
     create_logistics(day: day - 10, srid: "OUTSIDE", bonus: "К клиенту при продаже", amount: 100)
     create_logistics(day:, srid: "OTHER-SKU", bonus: "К клиенту при продаже", amount: 100, nm_id: @nm_id + 1)
@@ -68,7 +73,10 @@ class Ec::SkuActualWbLogisticsQueryTest < ActiveSupport::TestCase
     assert_equal 1, payload[:store_count]
     assert_equal 1, payload[:listing_count]
     assert_equal({ total_rub: 475.to_d, sample_count: 2, average_rub: 237.5.to_d }, payload[:outbound])
-    assert_equal({ total_rub: 87.5.to_d, sample_count: 2, average_rub: 43.75.to_d }, payload[:return])
+    # Customer legs 37.5 + 50 = 87.5; seller returns (8 + 1 + 3) BYN x 25 = 300; averaged per
+    # returned order (the 2 references with a customer return leg), not per parcel.
+    assert_equal({ total_rub: 387.5.to_d, sample_count: 2, average_rub: 193.75.to_d }, payload[:return])
+    assert_equal({ total_rub: 300.to_d, sample_count: 2, average_rub: 150.to_d }, payload[:return_to_seller])
     assert_equal 0, payload[:missing_exchange_rate_row_count]
 
     fbs_payload = Ec::SkuActualLogisticsQuery.run(
@@ -78,7 +86,9 @@ class Ec::SkuActualWbLogisticsQueryTest < ActiveSupport::TestCase
       today: day.beginning_of_week(:monday) + 4.weeks
     )
     assert_equal({ total_rub: 2_500.to_d, sample_count: 1, average_rub: 2_500.to_d }, fbs_payload[:outbound])
-    assert_equal({ total_rub: 0.to_d, sample_count: 0, average_rub: nil }, fbs_payload[:return])
+    # Only a seller return exists in FBS: no returned order to spread it over, so no average.
+    assert_equal({ total_rub: 100.to_d, sample_count: 0, average_rub: nil }, fbs_payload[:return])
+    assert_equal({ total_rub: 100.to_d, sample_count: 1, average_rub: 100.to_d }, fbs_payload[:return_to_seller])
   end
 
   private

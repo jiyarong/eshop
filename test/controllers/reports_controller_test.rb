@@ -1572,6 +1572,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       assert_equal Date.new(2026, 6, 7), funnel_calls.first.fetch(:to_date)
       assert_select ".sku-detail-tabs a[aria-current='page']", "销售漏斗"
       assert_select ".sku-funnel-analysis", 1
+      assert_select ".sku-funnel-analysis .sku-funnel-profit-estimate h3", text: "估算利润"
+      assert_select ".sku-funnel-profit-estimate th", text: /下单口径/
+      assert_select ".sku-funnel-profit-estimate th", text: /成交口径/
       assert_select ".sku-operation-report--profit", 0
       assert_select "form.sku-operation-filter input[name='tab'][value='sales_funnel']"
       assert_select ".sku-funnel-analysis .section-title", "销售漏斗"

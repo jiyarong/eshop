@@ -66,6 +66,7 @@ module Ec
 
         {
           exchange_rate_rub_cny: DEFAULT_EXCHANGE_RATE_RUB_CNY,
+          buyer_price_vat_rate: decimal("0.2"),
           logistics_coeff: company_type == "small" && delivery_mode == "fbo" ? decimal("1.3") : decimal("1.55"),
           return_rate: decimal("0.1"),
           acquiring_rate: general_company ? decimal("0.015") : decimal("0.031"),
@@ -86,6 +87,8 @@ module Ec
         market = context.fetch("market", "ru").to_s.downcase
         {
           exchange_rate_rub_cny: DEFAULT_EXCHANGE_RATE_RUB_CNY,
+          # VAT embedded in what the buyer pays: Russian buyers 22%, Belarusian buyers 20%.
+          buyer_price_vat_rate: decimal(market == "ru" ? "0.22" : "0.2"),
           return_rate: decimal("0.1"),
           acquiring_rate: decimal("0.02"),
           tax_rate: decimal("0"),

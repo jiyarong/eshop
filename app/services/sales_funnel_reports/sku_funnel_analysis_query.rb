@@ -110,9 +110,10 @@ module SalesFunnelReports
       to_time = local_day(range.end).end_of_day
       result = Hash.new { |hash, key| hash[key] = [] }
       Ec::OrderItem.joins(:order).joins(ORDER_ITEM_JOIN)
+        .joins("LEFT JOIN ec_order_fulfillments ON ec_order_fulfillments.id = ec_order_items.fulfillment_id")
         .where(ec_sku_products: { id: product_ids.keys })
         .where(ec_orders: { ordered_at: from_time..to_time })
-        .select("ec_order_items.*, ec_sku_products.id AS matched_sku_product_id, ec_orders.ordered_at AS matched_ordered_at, ec_orders.order_status AS matched_order_status")
+        .select("ec_order_items.*, ec_sku_products.id AS matched_sku_product_id, ec_orders.ordered_at AS matched_ordered_at, ec_orders.order_status AS matched_order_status, ec_order_fulfillments.fulfillment_type AS matched_fulfillment_type")
         .find_each do |item|
           result[item.matched_sku_product_id.to_i] << item
         end
@@ -150,8 +151,31 @@ module SalesFunnelReports
         visit_to_conversion_rate: percent(conversions, platform_values[:product_card_views]),
         store_ending_inventory: store_inventory,
         sku_ending_inventory: inventory.dig(period[:to_date], :total),
+        scenario_units: scenario_units(product, items),
         source_present: raw.any? || items.any? || !store_inventory.nil?,
         available_metrics: available_store_metrics(product.platform, raw.any?, items.any?, !inventory[period[:to_date]].nil?)
+      )
+    end
+
+    # Units of the period by pricing scenario [platform, market, delivery_mode, company_type], for
+    # estimating profit from the SKU's profit version. `orders` is the mix of every order item
+    # (the funnel's own order count is spread over it), `conversions` the completed/returned ones.
+    # Items that fit no scenario (Ozon FBS, an Ozon item without buyer currency) are :uncovered.
+    def scenario_units(product, items)
+      units = { orders: Hash.new(0), conversions: Hash.new(0) }
+      items.each do |item|
+        key = scenario_key(product, item) || :uncovered
+        quantity = item.quantity.to_i
+        units[:orders][key] += quantity
+        units[:conversions][key] += quantity if item.matched_order_status.in?(%w[delivered returned])
+      end
+      units.transform_values(&:to_h)
+    end
+
+    def scenario_key(product, item)
+      PricingScenario.key(
+        platform: product.platform, company_type: product.store.company_type,
+        fulfillment_type: item.try(:matched_fulfillment_type), buyer_currency: item.buyer_currency_code
       )
     end
 

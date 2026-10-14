@@ -120,8 +120,7 @@
                   [:cart_additions, :cart_rate],
                   [:orders, :cart_to_order_rate],
                   [:conversions, :visit_to_conversion_rate],
-                  [:cancellations, nil],
-                  [:net_sales, nil]
+                  [:cancellations, nil]
                 ].each do |key, rate_key| %>
                   <% metric = sales_funnel[key] || {} %>
                   <% rate_metric = sales_funnel[rate_key] || {} if rate_key %>
@@ -135,6 +134,20 @@
                     </strong>
                     <small class="operator-sku-comparison <%= operator_sku_comparison_class(metric[:comparison]) %>"><%= operator_sku_comparison_text(metric[:comparison], compact: true) %></small>
                   </span>
+                <% end %>
+                <% estimate = sales_funnel[:profit_estimate] %>
+                <% if estimate && %i[orders conversions].any? { |basis| estimate.dig(:bases, basis, :units).to_d.positive? } %>
+                  <% estimate_scope = "operator_skus.funnel_estimate" %>
+                  <% unpriced = estimate.dig(:bases, :orders, :units).to_d - estimate.dig(:bases, :orders, :priced_units).to_d %>
+                  <% hint = estimate[:version] ? t("#{estimate_scope}.version_hint", name: estimate[:version][:name], status: t("reports.sku_detail.funnel_analysis.profit_estimate.statuses.#{estimate[:version][:status]}"), unpriced: number_with_precision(unpriced, precision: 1, strip_insignificant_zeros: true)) : t("#{estimate_scope}.no_version") %>
+                  <% %i[orders conversions].each_with_index do |basis, index| %>
+                    <% entry = estimate.dig(:bases, basis) %>
+                    <span class="operator-sku-funnel-estimate<%= " operator-sku-funnel-estimate--first" if index.zero? %>" title="<%= hint %>">
+                      <span class="operator-sku-metric-label"><%= t("#{estimate_scope}.#{basis}") %></span>
+                      <strong class="operator-sku-funnel-value"><%= t("#{estimate_scope}.units", count: number_with_precision(entry[:units], precision: 1, strip_insignificant_zeros: true)) %> / <%= entry[:profit_cny].nil? ? "-" : number_with_precision(entry[:profit_cny], precision: 2, delimiter: ",") %></strong>
+                      <small class="operator-sku-comparison">CNY</small>
+                    </span>
+                  <% end %>
                 <% end %>
               </div></td>
               <td class="numeric">

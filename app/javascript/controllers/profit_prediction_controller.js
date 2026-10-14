@@ -4,12 +4,16 @@ import {
   dualCurrencyAmounts,
   priceVariableCostRate,
   profitInputValue,
+  ratioToPercentString,
   sellingPriceShortcuts,
   shortcutInputValue,
   targetPriceForMargin
 } from "./profit_prediction_values";
 
 const PREVIEW_DEBOUNCE_MS = 350;
+
+const BULK_LOAD_ACTION_SELECTOR =
+  "[data-action^='profit-prediction#loadActual'], [data-action='profit-prediction#loadOfficialCommission']";
 
 const COST_FORMULA_STEPS = [
   ["goods", "goods"],
@@ -54,6 +58,7 @@ export default class extends Controller {
     actualStorageUrl: String,
     actualSellingPriceUrl: String,
     actualAdvertisingUrl: String,
+    actualAcquiringUrl: String,
     officialCommissionUrl: String,
     messages: Object,
     newRecord: Boolean,
@@ -113,9 +118,10 @@ export default class extends Controller {
     "wbLogisticsActionMessage",
     "wbLogisticsBody",
     "contextCount",
-    "detailReferencePriceItem",
-    "detailReferencePrice",
-    "detailPrice",
+    "bulkActualButton",
+    "detailCommissionBasePrice",
+    "detailBuyerPaidPrice",
+    "detailPlatformSubsidy",
     "targetMargin",
     "detailTotalCost",
     "detailProfit",
@@ -131,6 +137,7 @@ export default class extends Controller {
     this.actualReturnRateData = new Map();
     this.actualStorageData = new Map();
     this.actualAdvertisingData = new Map();
+    this.actualAcquiringData = new Map();
     this.officialCommissionData = new Map();
     this.targetMarginRequestController = null;
     this.targetMarginRequestToken = 0;
@@ -182,6 +189,7 @@ export default class extends Controller {
     this.actualStorageRequestController?.abort();
     this.actualSellingPriceRequestController?.abort();
     this.actualAdvertisingRequestController?.abort();
+    this.actualAcquiringRequestController?.abort();
     this.officialCommissionRequestController?.abort();
     this.targetMarginRequestController?.abort();
     window.removeEventListener("beforeunload", this.beforeUnloadHandler);
@@ -200,11 +208,8 @@ export default class extends Controller {
 
     event.target.dataset.valueChanged = "true";
     this.syncProcessInput(row, event.target.dataset.field);
-    if (this.selectedRow === row && event.target.dataset.field === "rf_price_rub" && this.hasDetailReferencePriceTarget) {
-      this.detailReferencePriceTarget.textContent = this.number(this.numericInputs(row).rf_price_rub);
-    }
-    if (this.selectedRow === row && event.target.dataset.field === "price_rub" && this.hasDetailPriceTarget) {
-      this.detailPriceTarget.textContent = this.number(this.numericInputs(row).price_rub);
+    if (this.selectedRow === row && ["commission_base_price_rub", "buyer_paid_price_rub"].includes(event.target.dataset.field)) {
+      this.renderPriceSummary(row);
     }
     this.dirtyRows.add(row.dataset.rowKey);
     this.previewData.delete(row.dataset.rowKey);
@@ -212,11 +217,6 @@ export default class extends Controller {
     this.updateControls();
 
     if (event.type === "input") this.schedulePreview(row);
-    if (event.type === "input" && row.dataset.platform === "ozon" && row.dataset.market === "ru" && event.target.dataset.field === "price_rub") {
-      this.rowTargets
-        .filter((candidate) => candidate.dataset.platform === "ozon" && candidate.dataset.market === "by")
-        .forEach((candidate) => this.schedulePreview(candidate));
-    }
   }
 
   versionChanged() {
@@ -436,8 +436,7 @@ export default class extends Controller {
       tab.tabIndex = selected ? 0 : -1;
     });
     if (this.hasDetailTitleTarget) this.detailTitleTarget.textContent = row.dataset.contextLabel || "";
-    this.renderReferencePriceSummary(row);
-    if (this.hasDetailPriceTarget) this.detailPriceTarget.textContent = this.number(this.numericInputs(row).price_rub);
+    this.renderPriceSummary(row);
 
     const data = this.previewData.get(row.dataset.rowKey);
     if (data) {
@@ -503,19 +502,12 @@ export default class extends Controller {
     const dutyRate = this.numberOr(inputs.duty_rate, 0.1);
     const importVatRate = this.numberOr(inputs.import_vat_rate, 0.2);
 
-    const isOzon = row.dataset.platform === "ozon";
-    const revenueFormula = isOzon
-      ? this.messagesValue.process.by_revenue_formula
-        .replace("__RF_PRICE__", this.number(inputs.rf_price_rub))
-        .replace("__BY_PRICE__", this.number(inputs.price_rub))
-        .replaceAll("__EXCHANGE__", this.number(exchange))
-      : `${this.number(inputs.price_rub)} / ${this.number(exchange)}`;
-    const revenueFields = isOzon
-      ? ["rf_price_rub", "target_margin", "exchange_rate_rub_cny"]
-      : ["price_rub", "target_margin", "exchange_rate_rub_cny"];
+    // Revenue is the commission base price on every platform; the buyer-paid price
+    // never enters it (it only feeds the platform subsidy step below).
     this.appendProcessStep(steps.revenue,
-      revenueFormula,
-      data.revenue_cny, units.cny, revenueFields, "actual_selling_price");
+      `${this.number(inputs.commission_base_price_rub)} / ${this.number(exchange)}`,
+      data.revenue_cny, units.cny, ["commission_base_price_rub", "target_margin", "exchange_rate_rub_cny"], "actual_selling_price");
+    this.appendPlatformSubsidyStep(row, inputs, data, steps, units);
     this.appendProcessStep(steps.goods,
       `${this.number(purchase)} + ${this.number(freight)} + ${this.number(customs)}`,
       costs.goods, units.cny, ["purchase_price_cny", "freight_cny", "customs_misc_cny"]);
@@ -546,8 +538,8 @@ export default class extends Controller {
     this.clearProcessSummary();
     const invalidFields = this.processInputFields(row, errors);
     const invalidLabels = invalidFields.map((field) => this.messagesValue.process.parameter_labels?.[field] || field);
-    const incompleteMessage = errors.includes("missing_rf_price_rub")
-      ? this.messagesValue.process.missing_reference_price
+    const incompleteMessage = errors.includes("missing_commission_base_price_rub")
+      ? this.messagesValue.process.missing_commission_base_price
       : invalidLabels.length > 0
       ? this.messagesValue.process.incomplete_fields.replace("__FIELDS__", invalidLabels.join(", "))
       : this.messagesValue.process.incomplete;
@@ -646,12 +638,32 @@ export default class extends Controller {
       ["outbound_logistics_rub", "return_logistics_rub", "return_amortization_factor_override", "return_rate", "exchange_rate_rub_cny"]);
   }
 
+  // Audit only, on every platform: what the platform effectively pays on top of what the
+  // buyer paid. Listed right after revenue and shown even before a buyer-paid price exists,
+  // so it can be entered here. A WB general company issues a VAT invoice the platform
+  // deducts, so that VAT is not part of what we are due; everyone else passes none on.
+  // The commission base and commission rate inputs are rendered on the revenue and
+  // commission rows, so they are not repeated here.
+  appendPlatformSubsidyStep(row, inputs, data, steps, units) {
+    const buyerVatRate = this.numberOr(inputs.buyer_price_vat_rate, this.defaultBuyerVatRate(row));
+    const invoiceVatRate = row.dataset.platform === "wb" && row.dataset.companyType === "general"
+      ? this.numberOr(inputs.sales_vat_rate, 0.2)
+      : null;
+    const dueFormula = `${this.number(inputs.commission_base_price_rub)} * (1 - ${this.percent(inputs.commission_rate)})`
+      + (invoiceVatRate === null ? "" : ` / (1 + ${this.percent(invoiceVatRate)})`);
+    this.appendProcessStep(
+      steps.platform_subsidy,
+      `${dueFormula} - ${this.number(inputs.buyer_paid_price_rub)} / (1 + ${this.percent(buyerVatRate)})`,
+      data.intermediate?.platform_subsidy_rub,
+      units.rub,
+      ["buyer_paid_price_rub", "buyer_price_vat_rate"]
+    );
+  }
+
   appendCommonCostSteps(row, inputs, costs, data, steps, units) {
     const revenue = data.revenue_cny;
-    const commissionBase = row.dataset.platform === "ozon"
-      ? data.intermediate?.commission_base_cny
-      : revenue;
-    const rateBase = row.dataset.platform === "ozon" ? data.intermediate?.rf_revenue_cny : revenue;
+    const commissionBase = revenue;
+    const rateBase = revenue;
 
     this.appendProcessStep(
       steps.storage,
@@ -664,19 +676,9 @@ export default class extends Controller {
     this.appendProcessStep(steps.commission,
       `${this.number(commissionBase)} * ${this.percent(inputs.commission_rate)}`,
       costs.commission, units.cny, ["commission_rate"], "official_commission");
-    if (row.dataset.platform === "ozon" && row.dataset.market === "by") {
-      const vatRate = this.numberOr(inputs.sales_vat_rate, 0.2);
-      this.appendProcessStep(
-        steps.platform_subsidy,
-        `${this.number(inputs.rf_price_rub)} * (1 - ${this.percent(inputs.commission_rate)}) - ${this.number(inputs.price_rub)} / (1 + ${this.percent(vatRate)})`,
-        data.intermediate?.platform_subsidy_rub,
-        units.rub,
-        ["rf_price_rub", "price_rub", "commission_rate", "sales_vat_rate"]
-      );
-    }
     this.appendProcessStep(steps.acquiring,
       `${this.number(rateBase)} * ${this.percent(this.numberOr(inputs.acquiring_rate, row.dataset.platform === "ozon" ? 0.02 : 0))}`,
-      costs.acquiring, units.cny, ["acquiring_rate"]);
+      costs.acquiring, units.cny, ["acquiring_rate"], "actual_acquiring");
     this.appendProcessStep(steps.advertising,
       `${this.number(rateBase)} * ${this.percent(inputs.advertising_rate || 0)}`,
       costs.advertising, units.cny, ["advertising_rate"], "actual_advertising");
@@ -780,6 +782,12 @@ export default class extends Controller {
       cell.dataset.sourceRowKey = sourceRowKey;
       return;
     }
+    if (sourceKey === "actual_acquiring") {
+      this.renderActualAcquiringSource(cell);
+      cell.dataset.sourceKey = sourceKey;
+      cell.dataset.sourceRowKey = sourceRowKey;
+      return;
+    }
     if (sourceKey === "actual_advertising") {
       this.renderActualAdvertisingSource(cell);
       cell.dataset.sourceKey = sourceKey;
@@ -859,6 +867,21 @@ export default class extends Controller {
     cell.replaceChildren(actions, result);
     const data = this.actualReturnRateData.get(this.selectedRow?.dataset.platform);
     if (data) this.renderActualReturnRateResult(cell, data);
+  }
+
+  renderActualAcquiringSource(cell) {
+    const actions = document.createElement("div");
+    actions.className = "profit-prediction-process__source-actions";
+    actions.append(
+      this.sourceButton("bi-credit-card", this.messagesValue.process.sources.actual_acquiring.action, "profit-prediction#loadActualAcquiring")
+    );
+    const result = document.createElement("div");
+    result.className = "profit-prediction-process__source-result";
+    result.dataset.actualAcquiringResult = "";
+    cell.replaceChildren(actions, result);
+
+    const data = this.actualAcquiringData.get(this.selectedRow?.dataset.platform);
+    if (data) this.renderActualAcquiringResult(cell, data);
   }
 
   renderActualAdvertisingSource(cell) {
@@ -958,6 +981,73 @@ export default class extends Controller {
     return button;
   }
 
+  // Runs every loader of the process table (actual data and the official commission rate)
+  // from top to bottom, one at a time, exactly as if each button below were clicked.
+  async loadAllActuals() {
+    await this.runAllActuals({ apply: false });
+  }
+
+  async loadAndApplyAllActuals() {
+    await this.runAllActuals({ apply: true });
+  }
+
+  async runAllActuals({ apply }) {
+    const row = this.selectedRow;
+    if (!row || !this.hasDetailBodyTarget || this.bulkActualsRunning) return;
+    if (apply && this.readonlyValue) return;
+
+    this.bulkActualsRunning = true;
+    this.setBulkActualButtonsDisabled(true);
+    try {
+      const sourceKeys = Array.from(this.detailBodyTarget.querySelectorAll(".profit-prediction-process__source[data-source-key]"))
+        .map((cell) => cell.dataset.sourceKey);
+      for (const sourceKey of sourceKeys) {
+        if (this.selectedRow !== row) break;
+
+        const button = this.processSourceCell(sourceKey)?.querySelector(BULK_LOAD_ACTION_SELECTOR);
+        if (!button) continue;
+
+        const method = button.dataset.action.split("#").pop();
+        await this[method]({ currentTarget: button });
+        if (apply && this.selectedRow === row) this.applyLoadedActual(sourceKey);
+      }
+    } finally {
+      this.bulkActualsRunning = false;
+      this.setBulkActualButtonsDisabled(false);
+    }
+  }
+
+  setBulkActualButtonsDisabled(disabled) {
+    if (!this.hasBulkActualButtonTarget) return;
+
+    this.bulkActualButtonTargets.forEach((button) => { button.disabled = disabled; });
+  }
+
+  processSourceCell(sourceKey) {
+    return Array.from(this.detailBodyTarget.querySelectorAll(".profit-prediction-process__source[data-source-key]"))
+      .find((cell) => cell.dataset.sourceKey === sourceKey);
+  }
+
+  // Clicks the result links the loader just rendered, i.e. the same "click to fill" the
+  // user would do. The process table may have been re-rendered while the request was in
+  // flight, so re-render the cell from the loaded data first when its result is missing.
+  applyLoadedActual(sourceKey) {
+    const cell = this.processSourceCell(sourceKey);
+    if (!cell) return;
+
+    const selector = ".profit-prediction-process__source-result .profit-prediction-process__source-link";
+    if (!cell.querySelector(selector)) {
+      delete cell.dataset.sourceKey;
+      this.renderProcessSource(cell, sourceKey);
+    }
+    const links = Array.from(cell.querySelectorAll(selector)).filter((link) => !link.disabled);
+    // A SKU bound to products with different official rates gets one link per rate: there is
+    // no way to tell which one is meant, so leave that choice to the user.
+    if (sourceKey === "official_commission" && links.length > 1) return;
+
+    links.forEach((link) => link.click());
+  }
+
   async loadActualLogistics(event) {
     await this.loadActualMetrics(event, "logistics");
   }
@@ -1000,6 +1090,42 @@ export default class extends Controller {
       }
     } finally {
       if (this.actualStorageRequestController === controller) this.actualStorageRequestController = null;
+      if (event.currentTarget.isConnected) event.currentTarget.disabled = false;
+    }
+  }
+
+  async loadActualAcquiring(event) {
+    if (!this.selectedRow) return;
+
+    const platform = this.selectedRow.dataset.platform;
+    const cell = event.currentTarget.closest(".profit-prediction-process__source");
+    const result = cell?.querySelector("[data-actual-acquiring-result]");
+    const messages = this.messagesValue.process.sources.actual_acquiring;
+    this.actualAcquiringRequestController?.abort();
+    const controller = new AbortController();
+    this.actualAcquiringRequestController = controller;
+    event.currentTarget.disabled = true;
+    if (result) result.textContent = messages.loading;
+
+    try {
+      const url = new URL(this.actualAcquiringUrlValue, window.location.origin);
+      url.searchParams.set("platform", platform);
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      this.actualAcquiringData.set(platform, data);
+      if (this.selectedRow?.dataset.platform === platform) this.renderActualAcquiringResult(cell, data);
+    } catch (error) {
+      if (error.name !== "AbortError" && result) {
+        result.className = "profit-prediction-process__source-result is-error";
+        result.textContent = messages.load_failed;
+      }
+    } finally {
+      if (this.actualAcquiringRequestController === controller) this.actualAcquiringRequestController = null;
       if (event.currentTarget.isConnected) event.currentTarget.disabled = false;
     }
   }
@@ -1127,7 +1253,7 @@ export default class extends Controller {
     const rate = event.currentTarget.dataset.commissionRate;
     if (!input || rate === undefined || rate === "") return;
 
-    input.value = shortcutInputValue(rate);
+    this.assignShortcutValue(input, rate);
     input.dataset.valueChanged = "true";
     this.inputChanged({ target: input, type: "official-commission" });
     this.schedulePreview(this.selectedRow);
@@ -1296,7 +1422,7 @@ export default class extends Controller {
     Object.entries(values).forEach(([field, value]) => {
       const input = this.selectedRow.querySelector(`[data-field='${field}']`);
       if (!input || value === undefined || value === null) return;
-      input.value = shortcutInputValue(value);
+      this.assignShortcutValue(input, value);
       input.dataset.valueChanged = "true";
       this.inputChanged({ target: input, type: "wb-logistics-tariff" });
     });
@@ -1433,7 +1559,7 @@ export default class extends Controller {
     const price = event.currentTarget.dataset.priceRub;
     if (!input || price === undefined || price === "") return;
 
-    input.value = shortcutInputValue(price);
+    this.assignShortcutValue(input, price);
     input.dataset.valueChanged = "true";
     this.inputChanged({ target: input, type: "actual-selling-price" });
     this.schedulePreview(this.selectedRow);
@@ -1562,7 +1688,7 @@ export default class extends Controller {
       const input = this.selectedRow.querySelector(`[data-field='${field}']`);
       if (!input) return;
 
-      input.value = shortcutInputValue(value);
+      this.assignShortcutValue(input, value);
       input.dataset.valueChanged = "true";
       this.inputChanged({ target: input, type: "actual-logistics" });
     });
@@ -1597,7 +1723,10 @@ export default class extends Controller {
     link.disabled = this.readonlyValue;
 
     const meta = document.createElement("small");
-    meta.textContent = messages.meta
+    // Ozon's rate is returns billed per outbound posting (it includes undelivered returns,
+    // which book no revenue), WB's is the share of returned units: say which one this is.
+    const template = data.platform === "ozon" ? messages.meta_ozon : messages.meta;
+    meta.textContent = template
       .replace("__ORDERS__", data.return_rate?.order_count ?? 0)
       .replace("__RETURNS__", data.return_rate?.return_count ?? 0)
       .replace("__FROM__", data.period?.from_date || "-")
@@ -1614,7 +1743,7 @@ export default class extends Controller {
     const rate = event.currentTarget.dataset.returnRate;
     if (!input || rate === undefined || rate === "") return;
 
-    input.value = shortcutInputValue(rate);
+    this.assignShortcutValue(input, rate);
     input.dataset.valueChanged = "true";
     this.inputChanged({ target: input, type: "actual-return-rate" });
     this.schedulePreview(this.selectedRow);
@@ -1660,7 +1789,7 @@ export default class extends Controller {
     const input = this.selectedRow.querySelector("[data-field='cross_docking_cny']");
     if (!input || !Number.isFinite(amountRub) || !Number.isFinite(exchange) || exchange <= 0) return;
 
-    input.value = shortcutInputValue(amountRub / exchange);
+    this.assignShortcutValue(input, amountRub / exchange);
     input.dataset.valueChanged = "true";
     this.inputChanged({ target: input, type: "actual-cross-dock" });
     this.schedulePreview(this.selectedRow);
@@ -1716,9 +1845,61 @@ export default class extends Controller {
     const input = this.selectedRow.querySelector("[data-field='storage_cny']");
     if (!input || !Number.isFinite(amountRub) || !Number.isFinite(exchange) || exchange <= 0) return;
 
-    input.value = shortcutInputValue(amountRub / exchange);
+    this.assignShortcutValue(input, amountRub / exchange);
     input.dataset.valueChanged = "true";
     this.inputChanged({ target: input, type: "actual-storage" });
+    this.schedulePreview(this.selectedRow);
+  }
+
+  renderActualAcquiringResult(cell, data) {
+    const container = cell?.querySelector("[data-actual-acquiring-result]");
+    if (!container) return;
+
+    const rawRate = data.acquiring?.rate;
+    const rate = rawRate === null || rawRate === undefined || rawRate === "" ? NaN : Number(rawRate);
+    const messages = this.messagesValue.process.sources.actual_acquiring;
+    if (!Number.isFinite(rate)) {
+      container.className = "profit-prediction-process__source-result is-empty";
+      container.textContent = messages.empty;
+      return;
+    }
+    if (rate < 0 || rate >= 1) {
+      container.className = "profit-prediction-process__source-result is-error";
+      container.textContent = messages.unusable.replace("__RATE__", this.percent(rate));
+      return;
+    }
+
+    const link = document.createElement("button");
+    link.type = "button";
+    link.className = "profit-prediction-process__source-link";
+    link.dataset.action = "profit-prediction#applyActualAcquiring";
+    link.dataset.acquiringRate = rate;
+    link.title = messages.apply;
+    link.textContent = messages.result.replace("__RATE__", this.percent(rate));
+    link.disabled = this.readonlyValue;
+
+    const meta = document.createElement("small");
+    meta.textContent = messages.meta
+      .replace("__FEE__", this.number(data.acquiring?.fee || 0))
+      .replace("__BASE__", this.number(data.acquiring?.base || 0))
+      .replace("__COUNT__", data.acquiring?.sample_count ?? 0)
+      .replace("__FROM__", data.period?.from_date || "-")
+      .replace("__TO__", data.period?.to_date || "-")
+      .replace("__DATA_THROUGH__", data.period?.data_through || "-");
+    container.className = "profit-prediction-process__source-result";
+    container.replaceChildren(link, meta);
+  }
+
+  applyActualAcquiring(event) {
+    if (!this.selectedRow || this.readonlyValue) return;
+
+    const input = this.selectedRow.querySelector("[data-field='acquiring_rate']");
+    const rate = event.currentTarget.dataset.acquiringRate;
+    if (!input || rate === undefined || rate === "") return;
+
+    this.assignShortcutValue(input, rate);
+    input.dataset.valueChanged = "true";
+    this.inputChanged({ target: input, type: "actual-acquiring" });
     this.schedulePreview(this.selectedRow);
   }
 
@@ -1778,7 +1959,7 @@ export default class extends Controller {
     const rate = event.currentTarget.dataset.advertisingRate;
     if (!input || rate === undefined || rate === "") return;
 
-    input.value = shortcutInputValue(rate);
+    this.assignShortcutValue(input, rate);
     input.dataset.valueChanged = "true";
     this.inputChanged({ target: input, type: "actual-advertising" });
     this.schedulePreview(this.selectedRow);
@@ -1960,7 +2141,7 @@ export default class extends Controller {
       const input = this.selectedRow.querySelector(`[data-field='${field}']`);
       if (!input) return;
 
-      input.value = shortcutInputValue(numericRate);
+      this.assignShortcutValue(input, numericRate);
       input.dataset.valueChanged = "true";
       this.inputChanged({ target: input, type: "tariff" });
     });
@@ -2150,7 +2331,7 @@ export default class extends Controller {
     const input = this.selectedRow.querySelector("[data-field='cross_docking_cny']");
     if (!input) return;
 
-    input.value = shortcutInputValue(numericAmount / exchange);
+    this.assignShortcutValue(input, numericAmount / exchange);
     input.dataset.valueChanged = "true";
     this.inputChanged({ target: input, type: "cross-dock-tariff" });
     this.schedulePreview(this.selectedRow);
@@ -2173,20 +2354,28 @@ export default class extends Controller {
   }
 
   renderProcessSummary(row, data) {
-    this.renderReferencePriceSummary(row);
-    if (this.hasDetailPriceTarget) this.detailPriceTarget.textContent = this.number(this.numericInputs(row).price_rub);
+    this.renderPriceSummary(row);
+    if (this.hasDetailPlatformSubsidyTarget) this.detailPlatformSubsidyTarget.textContent = this.number(data.intermediate?.platform_subsidy_rub);
     if (this.hasDetailTotalCostTarget) this.detailTotalCostTarget.textContent = this.number(data.total_cost_cny);
     if (this.hasDetailProfitTarget) this.detailProfitTarget.textContent = this.number(data.profit_cny);
     if (this.hasDetailMarginTarget) this.detailMarginTarget.textContent = `${this.number(Number(data.margin) * 100)}%`;
     this.syncTargetMargin(row, data.margin);
   }
 
-  renderReferencePriceSummary(row) {
-    const applicable = row?.dataset.platform === "ozon";
-    if (this.hasDetailReferencePriceItemTarget) this.detailReferencePriceItemTarget.hidden = !applicable;
-    if (this.hasDetailReferencePriceTarget) {
-      this.detailReferencePriceTarget.textContent = applicable ? this.number(this.numericInputs(row).rf_price_rub) : "-";
+  renderPriceSummary(row) {
+    const inputs = row ? this.numericInputs(row) : {};
+    if (this.hasDetailCommissionBasePriceTarget) {
+      this.detailCommissionBasePriceTarget.textContent = this.number(inputs.commission_base_price_rub);
     }
+    if (this.hasDetailBuyerPaidPriceTarget) {
+      this.detailBuyerPaidPriceTarget.textContent = this.number(inputs.buyer_paid_price_rub);
+    }
+  }
+
+  // VAT embedded in the buyer price when the row has no explicit value:
+  // Russian buyers (Ozon RU) 22%, Belarusian buyers (Ozon BY) and WB 20%.
+  defaultBuyerVatRate(row) {
+    return row?.dataset.platform === "ozon" && row.dataset.market === "ru" ? 0.22 : 0.2;
   }
 
   syncTargetMargin(row, margin) {
@@ -2211,7 +2400,7 @@ export default class extends Controller {
     const rowKey = row.dataset.rowKey;
     const data = this.previewData.get(rowKey);
     this.targetMarginBaseData = data ? { rowKey, data } : null;
-    const priceInput = row.querySelector("[data-field='price_rub']");
+    const priceInput = row.querySelector("[data-field='commission_base_price_rub']");
     if (!data && priceInput?.value && !this.previewControllers.has(rowKey) && !this.previewTimers.has(rowKey)) {
       this.previewRow(row, { detailOnly: true });
     }
@@ -2254,15 +2443,14 @@ export default class extends Controller {
     });
     // Ozon's target margin is based on the seller/list price (and commission
     // base), while the buyer-paid price is an independent subsidy input.
-    const targetPriceField = row.dataset.platform === "ozon" ? "rf_price_rub" : "price_rub";
-    const priceInput = row.querySelector(`[data-field='${targetPriceField}']`);
+    const priceInput = row.querySelector("[data-field='commission_base_price_rub']");
     if (!priceInput || priceRub === null) {
       this.markTargetMarginInvalid(input, true);
       return;
     }
 
     this.markTargetMarginInvalid(input, false);
-    priceInput.value = shortcutInputValue(priceRub);
+    this.assignShortcutValue(priceInput, priceRub);
     priceInput.dataset.valueChanged = "true";
     this.inputChanged({ target: priceInput, type: "target-margin" });
     this.schedulePreview(row);
@@ -2272,16 +2460,12 @@ export default class extends Controller {
     const controller = new AbortController();
     this.targetMarginRequestController = controller;
     const inputs = this.rowInputs(row);
-    const probePrice = Number(inputs.price_rub);
+    const probePrice = Number(inputs.commission_base_price_rub);
 
-    // The calculator needs a positive sale price to produce a preview. A
+    // The calculator needs a positive commission base price to produce a preview. A
     // temporary 1 RUB probe is enough because target-price solving removes
     // all price-variable costs from the returned total.
-    if (!Number.isFinite(probePrice) || probePrice <= 0) inputs.price_rub = "1";
-    if (row.dataset.platform === "ozon") {
-      const referencePrice = Number(inputs.rf_price_rub);
-      if (!Number.isFinite(referencePrice) || referencePrice <= 0) inputs.rf_price_rub = "1";
-    }
+    if (!Number.isFinite(probePrice) || probePrice <= 0) inputs.commission_base_price_rub = "1";
 
     try {
       const response = await fetch(this.urlValue, {
@@ -2359,7 +2543,9 @@ export default class extends Controller {
   }
 
   clearProcessSummary() {
-    if (this.hasDetailReferencePriceTarget) this.detailReferencePriceTarget.textContent = "-";
+    if (this.hasDetailCommissionBasePriceTarget) this.detailCommissionBasePriceTarget.textContent = "-";
+    if (this.hasDetailBuyerPaidPriceTarget) this.detailBuyerPaidPriceTarget.textContent = "-";
+    if (this.hasDetailPlatformSubsidyTarget) this.detailPlatformSubsidyTarget.textContent = "-";
     if (this.hasDetailTotalCostTarget) this.detailTotalCostTarget.textContent = "-";
     if (this.hasDetailProfitTarget) this.detailProfitTarget.textContent = "-";
     if (this.hasDetailMarginTarget) this.detailMarginTarget.textContent = "-";
@@ -2499,18 +2685,10 @@ export default class extends Controller {
 
   processParameterLabel(row, field) {
     if (field === "target_margin") return this.messagesValue.process.target_margin;
-    if (field === "price_rub" && row.dataset.platform === "ozon") {
-      return this.messagesValue.process.by_price_label;
-    }
-    // WB's price_rub is the revenue and commission base, not the buyer-paid price.
-    if (field === "price_rub" && row.dataset.platform === "wb") {
-      return this.messagesValue.process.wb_price_label;
-    }
-    if (field === "rf_price_rub" && row.dataset.platform === "ozon") {
-      return this.messagesValue.process.by_target_price_label;
-    }
 
-    return this.messagesValue.process.parameter_labels?.[field] || field;
+    const label = this.messagesValue.process.parameter_labels?.[field] || field;
+    const percent = row.querySelector(`[data-field='${field}']`)?.dataset.percent === "true";
+    return percent ? `${label} (%)` : label;
   }
 
   processInputStep(field) {
@@ -2521,17 +2699,17 @@ export default class extends Controller {
     const rateFields = [
       "duty_rate", "import_vat_rate", "commission_rate", "acquiring_rate",
       "advertising_rate", "tax_rate", "sales_vat_rate", "return_rate",
-      "logistics_tax_rate", "damage_rate"
+      "logistics_tax_rate", "damage_rate", "buyer_price_vat_rate"
     ];
     if (field === "target_margin") return { step: "1", min: "0", max: "100" };
-    // Rates are stored as ratios (15% = 0.15), but the stepper should move
-    // by one percentage point at a time: 0.15 -> 0.16. Manual text input
-    // still accepts more precision, e.g. 0.075 for a 7.5% commission rate.
-    if (rateFields.includes(field)) return { step: "0.01", min: "0", max: "1" };
+    // Rates are stored as ratios (15% = 0.15) but typed and shown as percentages, so the
+    // stepper moves one percentage point (15 -> 16). Manual input accepts more precision,
+    // e.g. 7.5 for a 7.5% commission rate.
+    if (rateFields.includes(field)) return { step: "1", min: "0", max: "100" };
     if (["length_cm", "width_cm", "height_cm"].includes(field)) {
       return { step: "0.1", min: "0" };
     }
-    if (["price_rub", "rf_price_rub"].includes(field)) {
+    if (["commission_base_price_rub", "buyer_paid_price_rub"].includes(field)) {
       return { step: "1", magnitudeStep: "true", minimumStep: "1", min: "0" };
     }
     if (field === "exchange_rate_rub_cny") {
@@ -2570,6 +2748,13 @@ export default class extends Controller {
     );
 
     return inputs;
+  }
+
+  // Shortcuts (official commission, actual return rate, ...) compute ratios; a percent input
+  // (data-percent) must be given the percentage, everything else the plain value.
+  assignShortcutValue(input, value) {
+    const plain = shortcutInputValue(value);
+    input.value = input.dataset.percent === "true" ? ratioToPercentString(plain) : plain;
   }
 
   numberOr(value, fallback) {

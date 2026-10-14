@@ -9,7 +9,7 @@ module Ec
     COMPANY_TYPES = %w[general small].freeze
     INPUT_COLUMNS = %w[
       purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
-      length_cm width_cm height_cm price_rub rf_price_rub exchange_rate_rub_cny
+      length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny
       commission_rate acquiring_rate advertising_rate tax_rate sales_vat_rate
       logistics_coeff return_rate logistics_tax_rate wb_logistics_base_rub wb_logistics_liter_rub
       wb_fixed_return_base_rub wb_logistics_override_cny fbo_delivery_cny storage_cny damage_rate misc_cny

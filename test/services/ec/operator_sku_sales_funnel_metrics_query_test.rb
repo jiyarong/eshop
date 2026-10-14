@@ -13,6 +13,13 @@ class Ec::OperatorSkuSalesFunnelMetricsQueryTest < ActiveSupport::TestCase
 
   teardown do
     Ec::OrderItem.where(store_id: @store&.id).delete_all
+    Ec::OrderFulfillment.where(store_id: @store&.id).delete_all
+    version_ids = Ec::SkuProfitVersion.where(sku_id: @skus&.map(&:id)).pluck(:id)
+    context_ids = Ec::SkuProfitVersionContext.where(sku_profit_version_id: version_ids).pluck(:id)
+    Ec::OperationLog.where(record_type: "Ec::SkuProfitVersionContext", record_id: context_ids).delete_all
+    Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: version_ids).delete_all
+    Ec::SkuProfitVersionContext.where(id: context_ids).delete_all
+    Ec::SkuProfitVersion.where(id: version_ids).delete_all
     Ec::Order.where(store_id: @store&.id).delete_all
     RawWb::SalesFunnelDaily.where(account_id: @account&.id).delete_all
     Ec::SkuProduct.where(id: @products&.map(&:id)).delete_all
@@ -43,6 +50,41 @@ class Ec::OperatorSkuSalesFunnelMetricsQueryTest < ActiveSupport::TestCase
     assert_equal 6, first.dig(:conversions, :value)
     assert_equal 6, first.dig(:net_sales, :value)
     assert_operator sql_count, :<=, 5
+  end
+
+  test "estimates profit for the selected week from the order table and the profit version, in a fixed number of queries" do
+    first_product = @products.first
+    create_order(first_product, Date.new(2026, 9, 1), "delivered", 6, fulfillment_type: "fbw", key: "a")
+    create_order(first_product, Date.new(2026, 9, 2), "returned", 1, fulfillment_type: "fbs", key: "b")
+    create_order(first_product, Date.new(2026, 9, 3), "cancelled", 2, fulfillment_type: "fbw", key: "c")
+    create_order(first_product, Date.new(2026, 8, 25), "delivered", 50, fulfillment_type: "fbw", key: "previous-week")
+    create_order(first_product, Date.new(2026, 9, 4), "delivered", 3, fulfillment_type: "fbs", key: "e")
+    @skus.each { |sku| create_version(sku, fbo_profit: 10, fbs_profit: 4) }
+
+    counts = {}
+    [ [ @skus.first ], @skus ].each do |skus|
+      sql_count = 0
+      callback = lambda do |_name, _started, _finished, _id, payload|
+        sql_count += 1 unless payload[:name].in?(%w[SCHEMA CACHE]) || payload[:cached]
+      end
+      result = ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { query_for(skus).call }
+      counts[skus.size] = sql_count
+      @result = result
+    end
+
+    estimate = @result.fetch(@skus.first).fetch(:profit_estimate)
+    orders = estimate.dig(:bases, :orders)
+    conversions = estimate.dig(:bases, :conversions)
+    # Ordered in the week: 6 FBW + 1 FBS + 2 FBW (cancelled still counts as ordered) + 3 FBS.
+    assert_equal 12, orders.fetch(:units)
+    assert_equal 8 * 10 + 4 * 4, orders.fetch(:profit_cny)
+    # Completed or returned: 6 FBW + 1 FBS + 3 FBS.
+    assert_equal 10, conversions.fetch(:units)
+    assert_equal 6 * 10 + 4 * 4, conversions.fetch(:profit_cny)
+    assert_equal "draft", estimate.dig(:version, :status)
+    assert_equal 0, @result.fetch(@skus.last).dig(:profit_estimate, :bases, :orders, :units)
+    assert_operator counts.fetch(2), :<=, counts.fetch(1), "query count must not grow with the number of SKUs"
+    assert_operator counts.fetch(2), :<=, 7
   end
 
   test "adds Ozon cancellations into the same operator sku funnel metric" do
@@ -99,11 +141,25 @@ class Ec::OperatorSkuSalesFunnelMetricsQueryTest < ActiveSupport::TestCase
     )
   end
 
-  def create_order(product, date, status, quantity)
+  def create_order(product, date, status, quantity, fulfillment_type: nil, key: nil)
     order = Ec::Order.create!(
-      store: @store, platform: "wb", order_key: "#{product.product_id}-#{date}-#{@token}",
+      store: @store, platform: "wb", order_key: "#{product.product_id}-#{date}-#{key}-#{@token}",
       order_status: status, ordered_at: Time.find_zone!("Asia/Shanghai").local(date.year, date.month, date.day, 12)
     )
-    Ec::OrderItem.create!(order:, store: @store, platform: "wb", platform_sku_id: product.product_id, quantity:)
+    fulfillment = if fulfillment_type
+      Ec::OrderFulfillment.create!(order:, store: @store, platform: "wb", fulfillment_type:, status: "delivered",
+        external_fulfillment_id: "f-#{order.order_key}", fulfillment_key: "f-#{order.order_key}")
+    end
+    Ec::OrderItem.create!(order:, store: @store, platform: "wb", platform_sku_id: product.product_id, quantity:,
+      fulfillment_id: fulfillment&.id)
+  end
+
+  def create_version(sku, fbo_profit:, fbs_profit:)
+    version = sku.profit_versions.new(name: "Estimate #{@token}", status: "draft", effective_from: Date.new(2026, 8, 1))
+    { "fbo" => fbo_profit, "fbs" => fbs_profit }.each do |mode, profit|
+      version.contexts.build(platform: "wb", market: "ru", delivery_mode: mode, warehouse_region: "main",
+        company_type: "small", calculation_status: "valid", profit_cny: profit)
+    end
+    version.save!
   end
 end

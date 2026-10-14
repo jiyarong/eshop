@@ -22,14 +22,16 @@ module Ec
         .where(sku_code: @sku_codes, platform: %w[wb ozon])
         .select { |product| product.store&.is_active? }
       raw = load_raw_totals(products)
+      @scenario_units = Hash.new { |hash, sku_code| hash[sku_code] = { orders: Hash.new(0), conversions: Hash.new(0) } }
       orders = load_order_totals(products)
+      versions_by_sku_id = load_profit_versions
 
       @skus.index_with do |sku|
         current = aggregate(sku.sku_code, :current, products, raw, orders)
         previous = aggregate(sku.sku_code, :previous, products, raw, orders)
         METRICS.index_with do |metric|
           { value: current[metric], comparison: comparison(current[metric], previous[metric], metric: metric) }
-        end
+        end.merge(profit_estimate: profit_estimate(sku, versions_by_sku_id.fetch(sku.id, [])))
       end
     end
 
@@ -57,16 +59,42 @@ module Ec
       return result if product_ids.empty?
 
       Ec::OrderItem.joins(:order).joins(ORDER_ITEM_JOIN)
+        .joins("INNER JOIN ec_stores ON ec_stores.id = ec_order_items.store_id")
+        .joins("LEFT JOIN ec_order_fulfillments ON ec_order_fulfillments.id = ec_order_items.fulfillment_id")
         .where(ec_sku_products: { id: product_ids })
         .where(ec_orders: { ordered_at: local_day(full_range.begin).beginning_of_day..local_day(full_range.end).end_of_day })
-        .pluck("ec_sku_products.sku_code", "ec_orders.ordered_at", "ec_orders.order_status", "ec_order_items.quantity")
-        .each do |sku_code, ordered_at, status, quantity|
-          totals = result[[sku_code.to_s, period_key(ordered_at.in_time_zone(@time_zone).to_date)]]
+        .pluck("ec_sku_products.sku_code", "ec_orders.ordered_at", "ec_orders.order_status", "ec_order_items.quantity",
+          "ec_sku_products.platform", "ec_stores.company_type", "ec_order_fulfillments.fulfillment_type",
+          "ec_order_items.buyer_currency_code")
+        .each do |sku_code, ordered_at, status, quantity, platform, company_type, fulfillment_type, buyer_currency|
+          period = period_key(ordered_at.in_time_zone(@time_zone).to_date)
+          totals = result[[sku_code.to_s, period]]
           totals[:conversions] += quantity.to_i if status.in?(%w[delivered returned])
           totals[:net_sales] += quantity.to_i if status == "delivered"
           totals[:present] = true
+          add_scenario_units(sku_code.to_s, platform, company_type, fulfillment_type, buyer_currency, status, quantity.to_i) if period == :current
         end
       result
+    end
+
+    # Units of the selected week by pricing scenario, for the estimated profit under the funnel.
+    def add_scenario_units(sku_code, platform, company_type, fulfillment_type, buyer_currency, status, quantity)
+      key = SalesFunnelReports::PricingScenario.key(platform:, company_type:, fulfillment_type:, buyer_currency:) || :uncovered
+      units = @scenario_units[sku_code]
+      units[:orders][key] += quantity
+      units[:conversions][key] += quantity if status.in?(%w[delivered returned])
+    end
+
+    def load_profit_versions
+      Ec::SkuProfitVersion.where(sku_id: @skus.map(&:id)).includes(:contexts)
+        .order(effective_from: :desc, id: :desc).group_by(&:sku_id)
+    end
+
+    # Orders and completed units x the unit profit of the SKU's profit version (see
+    # SalesFunnelReports::SkuProfitEstimateQuery). nil when the SKU has no orders in the week.
+    def profit_estimate(sku, versions)
+      units = @scenario_units.key?(sku.sku_code) ? @scenario_units[sku.sku_code] : { orders: {}, conversions: {} }
+      SalesFunnelReports::SkuProfitEstimateQuery.estimate_units(scenario_units: units, versions: versions, to_date: @to_date)
     end
 
     def add_raw(result, product, date, views, carts, orders, cancellations)

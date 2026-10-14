@@ -329,7 +329,14 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
               conversions: { value: 41, comparison: comparison },
               visit_to_conversion_rate: { value: BigDecimal("3.29"), comparison: comparison },
               cancellations: { value: 4, comparison: { delta_pct: -20, semantic: "positive" } },
-              net_sales: { value: 38, comparison: comparison }
+              net_sales: { value: 38, comparison: comparison },
+              profit_estimate: {
+                version: { name: "月度自动更新 2026-10", status: "draft" },
+                bases: {
+                  orders: { units: BigDecimal("53"), priced_units: BigDecimal("50"), profit_cny: BigDecimal("1234.5") },
+                  conversions: { units: BigDecimal("41"), priced_units: BigDecimal("41"), profit_cny: BigDecimal("900") }
+                }
+              }
             }
           }
         end
@@ -373,9 +380,16 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select ".sku-ai-diagnosis-event-tags", text: "-"
     assert_select ".operator-sku-finance-grid > span", minimum: 6
     sku_row = css_select(".operator-sku-row").find { |row| row.text.include?(@sku.sku_code) }
-    assert_equal %w[商品卡访问 加购 下单 成交 取消数 净销量],
+    assert_equal %w[商品卡访问 加购 下单 成交 取消数 下单估算利润 成交估算利润],
       sku_row.css(".operator-sku-funnel-grid .operator-sku-metric-label").map { |node| node.text.squish }
-    assert_select ".operator-sku-funnel-grid > span", count: 6
+    assert_select ".operator-sku-funnel-grid > span", count: 7
+    assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "净销量", count: 0 }
+    assert_select ".operator-sku-funnel-estimate", count: 2
+    assert_select ".operator-sku-funnel-estimate .operator-sku-metric-label", text: "下单估算利润"
+    assert_select ".operator-sku-funnel-estimate .operator-sku-metric-label", text: "成交估算利润"
+    assert_select ".operator-sku-funnel-estimate .operator-sku-funnel-value", text: "53 单 / 1,234.50"
+    assert_select ".operator-sku-funnel-estimate .operator-sku-funnel-value", text: "41 单 / 900.00"
+    assert_select ".operator-sku-funnel-estimate[title*='月度自动更新 2026-10']", count: 2
     assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "加购率", count: 0 }
     assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "加购到下单率", count: 0 }
     assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "访问到成交率", count: 0 }

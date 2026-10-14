@@ -26,6 +26,12 @@ production:
     command: "RawWb::OrderIncrementalSync.run(days: 90, sync_keys: [:sync_orders], wait: true)"
     schedule: every day at 2:12 in Asia/Shanghai
 
+  # On the 1st, copy each SKU's latest profit version into a draft for the new month and
+  # refresh it with the last four full weeks of actual data.
+  sku_profit_monthly_refresh:
+    command: "Ec::SkuProfitMonthlyRefresh.run"
+    schedule: every month on the 1st at 7:00 in Asia/Shanghai
+
   wb_order_status_monthly_catchup:
     command: "RawWb::OrderIncrementalSync.run(days: 500, sync_keys: [:sync_orders], wait: true)"
     schedule: every month on the 3rd at 3:12 in Asia/Shanghai

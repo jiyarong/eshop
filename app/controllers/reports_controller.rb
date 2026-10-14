@@ -47,7 +47,7 @@ class ReportsController < ApplicationController
     sku_ai_diagnosis sku_operation_plan ignore_sku_operation_plan evaluate_sku_operation_plan
     new_sku_general_diagnosis create_sku_general_diagnosis create_sku_planner ignore_sku_ai_diagnosis_event
     sku_profit_versions sku_actual_logistics sku_actual_return_rate sku_actual_storage
-    sku_actual_selling_price sku_actual_advertising sku_official_commission_rate preview_sku_profit
+    sku_actual_selling_price sku_actual_advertising sku_actual_acquiring sku_official_commission_rate preview_sku_profit
     create_sku_profit_version update_sku_profit_version sku_listing_diagnoses new_sku_listing_diagnosis
     create_sku_listing_diagnosis destroy_sku_competitor_data_batch destroy_sku_competitor_datum
     sku_profit_trend sku_sales_funnel_trends new_sku_predicted_cost create_sku_predicted_cost
@@ -500,6 +500,16 @@ class ReportsController < ApplicationController
     end
 
     render json: Ec::SkuActualAdvertisingQuery.run(sku:, platform:, today: user_today)
+  end
+
+  def sku_actual_acquiring
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    platform = params[:platform].to_s.downcase
+    unless Ec::SkuActualAcquiringQuery::PLATFORMS.include?(platform)
+      return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
+    end
+
+    render json: Ec::SkuActualAcquiringQuery.run(sku:, platform:, today: user_today)
   end
 
   def sku_official_commission_rate
@@ -1846,6 +1856,9 @@ class ReportsController < ApplicationController
           from_date: @funnel_from_date,
           to_date: @funnel_to_date,
           time_zone: Time.find_zone(current_user&.time_zone.presence || "Asia/Shanghai")
+        )
+        @funnel_profit_estimate = SalesFunnelReports::SkuProfitEstimateQuery.run(
+          sku: @sku, funnel_analysis: @funnel_analysis
         )
       rescue ActiveRecord::RecordNotFound, ArgumentError => error
         @operation_funnel_error = error.message

@@ -472,7 +472,7 @@ module Ec
         customs_misc_cny: number(row[6], :customs_misc_cny),
         duty_rate: ratio(effective_duty_amount, purchase),
         import_vat_rate: ratio(import_vat_amount, add(purchase, effective_duty_amount)),
-        price_rub: number(row[26], :price_rub),
+        commission_base_price_rub: number(row[26], :commission_base_price_rub),
         exchange_rate_rub_cny: number(row[columns.fetch(:exchange_rate)], :exchange_rate_rub_cny),
         logistics_coeff: number(row[16], :logistics_coeff),
         return_rate: ratio(return_cost, add(platform_logistics, return_cost)),
@@ -540,8 +540,7 @@ module Ec
       ru_total_cost_formula = source_formula(source, columns.fetch(:ru_total_cost))
       by_total_cost_formula = source_formula(source, columns.fetch(:by_total_cost))
       ru_inputs = shared.merge(
-        price_rub: number(row[columns.fetch(:ru_price)], :price_rub),
-        rf_price_rub: number(row[columns.fetch(:ru_price)], :rf_price_rub),
+        commission_base_price_rub: number(row[columns.fetch(:ru_price)], :commission_base_price_rub),
         **ozon_logistics_inputs(source, total_cost_formula: ru_total_cost_formula),
         cross_docking_cny: formula_references_column?(ru_total_cost_formula, "P") ? number(row[15], :cross_docking_cny) : nil,
         storage_cny: formula_references_column?(ru_total_cost_formula, "O") ? number(row[14], :storage_cny) : nil,
@@ -549,8 +548,8 @@ module Ec
         ozon_import_vat_cost_rate: ru_total_cost_formula.present? && !formula_subtracts_column?(ru_total_cost_formula, "F") ? 1 : nil
       )
       by_inputs = shared.merge(
-        price_rub: number(row[columns.fetch(:by_price)], :price_rub),
-        rf_price_rub: number(row[columns.fetch(:ru_price)], :rf_price_rub),
+        commission_base_price_rub: number(row[columns.fetch(:ru_price)], :commission_base_price_rub),
+        buyer_paid_price_rub: number(row[columns.fetch(:by_price)], :buyer_paid_price_rub),
         **ozon_logistics_inputs(source, total_cost_formula: by_total_cost_formula),
         storage_cny: formula_references_column?(by_total_cost_formula, "O") ? number(row[14], :storage_cny) : nil,
         sales_vat_rate: BigDecimal("0.2")

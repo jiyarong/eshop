@@ -10325,6 +10325,10 @@ thead .table-sticky-column {
 
 .profit-prediction-tariff-dialog__context strong,
 .profit-prediction-tariff-dialog__summary strong {
+.profit-prediction-process__summary-item[hidden] {
+  display: none;
+}
+
   color: var(--fg);
 }
 
@@ -10437,6 +10441,27 @@ thead .table-sticky-column {
   min-width: 0;
   margin: 0 0 8px;
   padding: 12px 14px;
+.profit-prediction-process__source-head-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.profit-prediction-process__source-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profit-prediction-process__source-head .btn {
+  min-width: 0;
+  padding-inline: 7px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
   border-bottom: 1px solid var(--border);
 }
 
@@ -13045,3 +13070,4 @@ button.ai-row-action {
 .inventory-fbs-status-table a { font-weight: 600; text-decoration: none; }
 .inventory-fbs-status-table__anomaly { margin-left: 6px; font-size: 12px; color: var(--erp-danger-text, #c0392b); }
 .inventory-fbs-orders-modal__summary { display: flex; gap: 8px; align-items: baseline; margin: 8px 0; }
+.operator-sku-funnel-estimate--first { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }

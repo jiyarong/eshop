@@ -40,7 +40,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
       parameter_context: { market: "ru", delivery_mode: "fbo", company_type: "small" },
       effective_on: Date.new(2026, 3, 1),
       inputs: {
-        price_rub: 7_000,
+        commission_base_price_rub: 7_000,
         exchange_rate_rub_cny: 13,
         logistics_coeff: 1.25,
         fbo_delivery_cny: 10,
@@ -90,6 +90,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal 60.to_d, wb_general.fetch("wb_logistics_base_rub")
     assert_equal 50.to_d, wb_general.fetch("wb_fixed_return_base_rub")
     assert_equal 0.2.to_d, wb_general.fetch("sales_vat_rate")
+    assert_equal 0.2.to_d, wb_general.fetch("buyer_price_vat_rate")
     assert_equal 2.to_d, wb_general.fetch("misc_cny")
 
     assert_equal 1.3.to_d, wb_small_fbo.fetch("logistics_coeff")
@@ -98,6 +99,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal 0.031.to_d, wb_small_fbo.fetch("acquiring_rate")
     assert_equal 46.to_d, wb_small_fbo.fetch("wb_logistics_base_rub")
     assert_equal 0.06.to_d, wb_small_fbo.fetch("tax_rate")
+    assert_equal 0.2.to_d, wb_small_fbo.fetch("buyer_price_vat_rate")
 
     assert_equal 13.to_d, ozon_ru.fetch("exchange_rate_rub_cny")
     assert_equal 0.1.to_d, ozon_ru.fetch("return_rate")
@@ -105,7 +107,9 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal 25.to_d, ozon_ru.fetch("warehouse_operation_rub")
     assert_equal 0.25.to_d, ozon_ru.fetch("ozon_warehouse_rate")
     assert_equal 0.to_d, ozon_ru.fetch("cross_docking_cny")
+    assert_equal 0.22.to_d, ozon_ru.fetch("buyer_price_vat_rate")
     assert_equal 0.2.to_d, ozon_by.fetch("sales_vat_rate")
+    assert_equal 0.2.to_d, ozon_by.fetch("buyer_price_vat_rate")
   end
 
   test "call applies WB scenario defaults without a controller" do
@@ -114,7 +118,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
       platform: "wb",
       parameter_context: { market: "ru", delivery_mode: "fbo", company_type: "small" },
       effective_on: Date.new(2026, 3, 1),
-      inputs: { price_rub: 7_000, commission_rate: 0.175 }
+      inputs: { commission_base_price_rub: 7_000, commission_rate: 0.175 }
     )
 
     assert_empty result[:errors].to_a
@@ -142,7 +146,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
       purchase_price_cny: 210, freight_cny: 22.5, customs_misc_cny: 2.81,
       duty_rate: 0.1, import_vat_rate: 0.2,
       length_cm: 77, width_cm: 17, height_cm: 7,
-      price_rub: 7_000, exchange_rate_rub_cny: 13,
+      commission_base_price_rub: 7_000, exchange_rate_rub_cny: 13,
       logistics_coeff: 1.25, return_rate: 0.18, commission_rate: 0.175,
       fbo_delivery_cny: 10, acquiring_rate: 0.031, advertising_rate: 0.175,
       storage_cny: 0, damage_rate: 0, misc_cny: 2, tax_rate: 0.06, other_cny: 0
@@ -168,13 +172,13 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     version = @sku.profit_versions.build(name: "Ozon market prices", status: "draft", effective_from: Date.new(2026, 3, 1))
     version.contexts.build(
       platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
-      price_rub: 10_800
+      commission_base_price_rub: 10_800
     )
     belarus = version.contexts.build(
       platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
       purchase_price_cny: 270, freight_cny: 22.5, customs_misc_cny: 2.81,
       duty_rate: 0.1, import_vat_rate: 0.2,
-      price_rub: 10_200, rf_price_rub: 12_500, exchange_rate_rub_cny: 13,
+      buyer_paid_price_rub: 10_200, commission_base_price_rub: 12_500, exchange_rate_rub_cny: 13,
       outbound_logistics_rub: 245, return_logistics_rub: 245,
       warehouse_operation_rub: 25, commission_rate: 0.075,
       return_rate: 0.1, acquiring_rate: 0.02, advertising_rate: 0.05,
@@ -184,8 +188,9 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     result = Ec::SkuProfitCalculator.call_for_context(belarus)
 
     assert_empty result[:errors].to_a
-    assert_in_delta 12_500.to_d / 13, result.dig(:intermediate, :rf_revenue_cny), 0.000001
-    assert_equal 12_500.to_d, belarus.rf_price_rub
+    assert_in_delta 12_500.to_d / 13, result.dig(:intermediate, :commission_base_cny), 0.000001
+    assert_equal 12_500.to_d, belarus.commission_base_price_rub
+    assert_in_delta 12_500.to_d * 0.925 - 10_200.to_d / 1.2, result.dig(:intermediate, :platform_subsidy_rub), 0.000001
   end
 
   test "requires the Ozon commission base price in both markets" do
@@ -194,14 +199,14 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     %w[ru by].each do |market|
       context = version.contexts.build(
         platform: "ozon", market:, delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
-        purchase_price_cny: 270, price_rub: 8_910.96, exchange_rate_rub_cny: 13,
+        purchase_price_cny: 270, buyer_paid_price_rub: 8_910.96, exchange_rate_rub_cny: 13,
         outbound_logistics_rub: 245, return_logistics_rub: 245,
         warehouse_operation_rub: 25, commission_rate: 0.075
       )
 
       result = Ec::SkuProfitCalculator.call_for_context(context)
 
-      assert_includes result[:errors], "missing_rf_price_rub"
+      assert_includes result[:errors], "missing_commission_base_price_rub"
     end
   end
 end

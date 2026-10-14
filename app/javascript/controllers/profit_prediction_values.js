@@ -1,9 +1,36 @@
+// Ratio inputs (VAT, commission, return rate ...) are stored and sent as decimal ratios
+// (0.075) but typed and shown as percentages (7.5). These two functions are the only
+// place that converts; the toPrecision step removes floating point noise (0.07500000000000001).
+function shiftDecimal(value, factor) {
+  const text = String(value ?? "").trim();
+  if (text === "") return "";
+
+  const number = Number(text);
+  if (!Number.isFinite(number)) return text;
+
+  return String(Number((number * factor).toPrecision(12)));
+}
+
+export function ratioToPercentString(value) {
+  return shiftDecimal(value, 100);
+}
+
+export function percentToRatioString(value) {
+  return shiftDecimal(value, 0.01);
+}
+
+// The value to submit for a table input. Percent inputs (data-percent) hold a percentage
+// on screen, so an edited one is converted back to the stored ratio; an unedited one keeps
+// the exact ratio it was loaded with.
 export function profitInputValue(input) {
-  if (input.dataset.valueChanged === "true") return input.value;
+  const percent = input.dataset.percent === "true";
+  const displayed = () => (percent ? percentToRatioString(input.value) : input.value);
+
+  if (input.dataset.valueChanged === "true") return displayed();
 
   return Object.prototype.hasOwnProperty.call(input.dataset, "sourceValue")
     ? input.dataset.sourceValue
-    : input.value;
+    : displayed();
 }
 
 export function shortcutInputValue(value) {
@@ -70,11 +97,10 @@ export function targetPriceForMargin({ revenueCny, totalCostCny, variableCostRat
   return Number.isFinite(priceRub) && priceRub > 0 ? priceRub : null;
 }
 
-// Which actual price fills which input, with the same meaning on every platform:
-//   commission base price -> the input the platform's commission is charged on
-//                            (Ozon rf_price_rub, WB price_rub)
-//   buyer paid price      -> Ozon price_rub (Belarus subsidy audit only); WB has no
-//                            such input, so it is shown but cannot be applied.
+// Which actual price fills which input. The meaning is the same on every platform:
+//   commission base price -> commission_base_price_rub (revenue, commission base and the
+//                            input the target margin solves for)
+//   buyer paid price      -> buyer_paid_price_rub (audit only: derives the platform subsidy)
 export function sellingPriceShortcuts(platform, data) {
   const positive = (value) => {
     if (value === null || value === undefined || value === "") return null;
@@ -87,14 +113,10 @@ export function sellingPriceShortcuts(platform, data) {
   const shortcuts = [];
 
   if (commissionBase !== null) {
-    shortcuts.push({
-      kind: "commission_base",
-      field: platform === "ozon" ? "rf_price_rub" : "price_rub",
-      priceRub: commissionBase
-    });
+    shortcuts.push({ kind: "commission_base", field: "commission_base_price_rub", priceRub: commissionBase });
   }
   if (buyerPaid !== null) {
-    shortcuts.push({ kind: "buyer_paid", field: platform === "ozon" ? "price_rub" : null, priceRub: buyerPaid });
+    shortcuts.push({ kind: "buyer_paid", field: "buyer_paid_price_rub", priceRub: buyerPaid });
   }
 
   return shortcuts;

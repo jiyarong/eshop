@@ -77,7 +77,35 @@ class Ec::SkuActualLogisticsQueryTest < ActiveSupport::TestCase
     assert_equal({ total_rub: 500.to_d, sample_count: 3, average_rub: 166.67.to_d }, payload[:outbound])
     assert_equal({ total_rub: 140.to_d, sample_count: 2, average_rub: 70.to_d }, payload[:return])
     assert_equal({ total_rub: 180.to_d, sample_count: 3, average_rub: 60.to_d }, payload[:cross_dock])
-    assert_equal({ order_count: 3, return_count: 1, rate: 0.3333333333.to_d }, payload[:return_rate])
+    # Rate = postings billed a return leg / postings billed an outbound leg. Revenue
+    # reversals (RETURN-1) are irrelevant: orders that were never delivered pay both legs
+    # but never book revenue.
+    assert_equal({ order_count: 3, return_count: 2, rate: 0.6666666667.to_d }, payload[:return_rate])
+  end
+
+  test "counts undelivered returns, which never book revenue, in the return rate" do
+    create_accrual(0, type_id: 32, posting: "SOLD-1", amount: -100, date: Date.new(2026, 9, 1))
+    create_accrual(0, type_id: 0, posting: "SOLD-1", amount: 2_000, date: Date.new(2026, 9, 2))
+    create_accrual(0, type_id: 32, posting: "SOLD-2", amount: -100, date: Date.new(2026, 9, 1))
+    create_accrual(0, type_id: 0, posting: "SOLD-2", amount: 2_000, date: Date.new(2026, 9, 2))
+    create_accrual(0, type_id: 32, posting: "FAILED-1", amount: -100, date: Date.new(2026, 9, 1))
+    create_accrual(0, type_id: 59, posting: "FAILED-1", amount: -70, date: Date.new(2026, 9, 3))
+    create_accrual(0, type_id: 32, posting: "FAILED-2", amount: -100, date: Date.new(2026, 9, 1))
+    create_accrual(0, type_id: 59, posting: "FAILED-2", amount: -70, date: Date.new(2026, 9, 3))
+
+    payload = Ec::SkuActualLogisticsQuery.run(sku: @sku, today: Date.new(2026, 9, 21))
+
+    assert_equal({ order_count: 4, return_count: 2, rate: 0.5.to_d }, payload[:return_rate])
+    assert_equal({ total_rub: 140.to_d, sample_count: 2, average_rub: 70.to_d }, payload[:return])
+  end
+
+  test "has no return rate without any outbound posting" do
+    create_accrual(0, type_id: 59, posting: "ORPHAN-RETURN", amount: -70, date: Date.new(2026, 9, 3))
+
+    payload = Ec::SkuActualLogisticsQuery.run(sku: @sku, today: Date.new(2026, 9, 21))
+
+    assert_equal 0, payload.dig(:return_rate, :order_count)
+    assert_nil payload.dig(:return_rate, :rate)
   end
 
   test "returns an empty cross-dock metric when the period has no charges" do

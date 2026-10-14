@@ -24,7 +24,7 @@
   process: {
     incomplete: t("reports.profit_prediction.process.incomplete"),
     incomplete_fields: t("reports.profit_prediction.process.incomplete_fields", fields: "__FIELDS__"),
-    missing_reference_price: t("reports.profit_prediction.process.missing_reference_price"),
+    missing_commission_base_price: t("reports.profit_prediction.process.missing_commission_base_price"),
     target_margin_invalid: t("reports.profit_prediction.process.target_margin_invalid"),
     target_margin: t("reports.profit_prediction.fields.target_margin"),
     input_number: {
@@ -32,15 +32,6 @@
       decrement: t("reports.profit_prediction.process.input_number.decrement")
     },
     cross_docking_not_applicable: t("reports.profit_prediction.process.cross_docking_not_applicable"),
-    by_target_price_label: t("reports.profit_prediction.process.by_target_price_label"),
-    by_price_label: t("reports.profit_prediction.process.by_price_label"),
-    wb_price_label: t("reports.profit_prediction.process.wb_price_label"),
-    by_revenue_formula: t(
-      "reports.profit_prediction.process.by_revenue_formula",
-      by_price: "__BY_PRICE__",
-      rf_price: "__RF_PRICE__",
-      exchange: "__EXCHANGE__"
-    ),
     sum_costs: t("reports.profit_prediction.process.sum_costs"),
     formula_summary: {
       total_cost: t("reports.profit_prediction.process.formula_summary.total_cost", items: "__ITEMS__", total: "__TOTAL__"),
@@ -72,7 +63,8 @@
         load_failed: t("reports.profit_prediction.sources.actual_return_rate.load_failed"),
         result: t("reports.profit_prediction.sources.actual_return_rate.result", rate: "__RATE__"),
         apply: t("reports.profit_prediction.sources.actual_return_rate.apply"),
-        meta: t("reports.profit_prediction.sources.actual_return_rate.meta", orders: "__ORDERS__", returns: "__RETURNS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+        meta: t("reports.profit_prediction.sources.actual_return_rate.meta", orders: "__ORDERS__", returns: "__RETURNS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__"),
+        meta_ozon: t("reports.profit_prediction.sources.actual_return_rate.meta_ozon", orders: "__ORDERS__", returns: "__RETURNS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
       },
       actual_selling_price: {
         action: t("reports.profit_prediction.sources.actual_selling_price.action"),
@@ -106,6 +98,16 @@
         result: t("reports.profit_prediction.sources.actual_storage.result", amount: "__AMOUNT__"),
         apply: t("reports.profit_prediction.sources.actual_storage.apply"),
         meta: t("reports.profit_prediction.sources.actual_storage.meta", total: "__TOTAL__", count: "__COUNT__", sales: "__SALES__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+      },
+      actual_acquiring: {
+        action: t("reports.profit_prediction.sources.actual_acquiring.action"),
+        loading: t("reports.profit_prediction.sources.actual_acquiring.loading"),
+        empty: t("reports.profit_prediction.sources.actual_acquiring.empty"),
+        load_failed: t("reports.profit_prediction.sources.actual_acquiring.load_failed"),
+        unusable: t("reports.profit_prediction.sources.actual_acquiring.unusable", rate: "__RATE__"),
+        result: t("reports.profit_prediction.sources.actual_acquiring.result", rate: "__RATE__"),
+        apply: t("reports.profit_prediction.sources.actual_acquiring.apply"),
+        meta: t("reports.profit_prediction.sources.actual_acquiring.meta", fee: "__FEE__", base: "__BASE__", count: "__COUNT__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
       },
       actual_advertising: {
         action: t("reports.profit_prediction.sources.actual_advertising.action"),
@@ -201,6 +203,7 @@
   data-profit-prediction-actual-storage-url-value="<%= report_sku_actual_storage_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-actual-selling-price-url-value="<%= report_sku_actual_selling_price_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-actual-advertising-url-value="<%= report_sku_actual_advertising_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-actual-acquiring-url-value="<%= report_sku_actual_acquiring_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-official-commission-url-value="<%= report_sku_official_commission_rate_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-messages-value="<%= json_escape(profit_messages.to_json) %>"
   data-profit-prediction-new-record-value="<%= profit_version_new %>"
@@ -315,7 +318,7 @@
             <% profit_prediction_table_groups.each do |_group, columns| %>
               <% columns.each do |kind, field| %>
                 <th class="num" data-field="<%= field %>" data-platforms="<%= profit_prediction_column_platforms(field).join(" ") %>" data-platform-column-group="<%= _group %>">
-                  <%= t("reports.profit_prediction.#{kind == :result ? "result_fields" : "fields"}.#{field}") %>
+                  <%= profit_prediction_field_label(kind, field) %>
                 </th>
               <% end %>
             <% end %>
@@ -362,12 +365,13 @@
                         <%= number_field_tag "profit_context_#{index}_#{field}", profit_prediction_input_value(input_value, field),
                           step: "any",
                           disabled: profit_version_readonly || !input_editable,
-                          aria: { label: t("reports.profit_prediction.fields.#{field}") },
+                          aria: { label: profit_prediction_field_label(:input, field) },
                           class: "profit-prediction-cell-input",
                           data: {
                             profit_prediction_target: "input",
                             field: field,
                             editable: input_editable,
+                            percent: (profit_prediction_percent_field?(field) ? "true" : nil),
                             source_value: profit_prediction_raw_value(input_value),
                             action: "input->profit-prediction#inputChanged"
                           } %>
@@ -439,13 +443,17 @@
         </div>
         <p class="profit-prediction-process__status" data-profit-prediction-target="detailStatus" role="status" aria-live="polite" hidden></p>
         <div class="profit-prediction-process__summary" aria-label="<%= t("reports.profit_prediction.process.summary") %>">
-          <div class="profit-prediction-process__summary-item" data-profit-prediction-target="detailReferencePriceItem" hidden>
-            <span><%= t("reports.profit_prediction.process.by_target_price_label") %></span>
-            <strong data-profit-prediction-target="detailReferencePrice">-</strong>
+          <div class="profit-prediction-process__summary-item">
+            <span><%= t("reports.profit_prediction.fields.commission_base_price_rub") %></span>
+            <strong data-profit-prediction-target="detailCommissionBasePrice">-</strong>
           </div>
           <div class="profit-prediction-process__summary-item">
-            <span><%= t("reports.profit_prediction.fields.price_rub") %></span>
-            <strong data-profit-prediction-target="detailPrice">-</strong>
+            <span><%= t("reports.profit_prediction.fields.buyer_paid_price_rub") %></span>
+            <strong data-profit-prediction-target="detailBuyerPaidPrice">-</strong>
+          </div>
+          <div class="profit-prediction-process__summary-item">
+            <span><%= t("reports.profit_prediction.process.summary_platform_subsidy") %></span>
+            <strong data-profit-prediction-target="detailPlatformSubsidy">-</strong>
           </div>
           <div class="profit-prediction-process__summary-item">
             <span><%= t("reports.profit_prediction.result_fields.total_cost_cny") %></span>
@@ -467,7 +475,33 @@
         <tr>
           <th><%= t("reports.profit_prediction.process.columns.item") %></th>
           <th><%= t("reports.profit_prediction.process.columns.parameters") %></th>
-          <th><%= t("reports.profit_prediction.process.columns.source") %></th>
+          <th class="profit-prediction-process__source-head">
+            <div class="profit-prediction-process__source-head-inner">
+              <span><%= t("reports.profit_prediction.process.columns.source") %></span>
+              <div class="profit-prediction-process__source-head-actions">
+                <button
+                  type="button"
+                  class="btn btn-outline btn-sm"
+                  title="<%= t("reports.profit_prediction.process.source_actions.load_all_title") %>"
+                  data-profit-prediction-target="bulkActualButton"
+                  data-action="profit-prediction#loadAllActuals">
+                  <i class="bi bi-cloud-download" aria-hidden="true"></i>
+                  <span><%= t("reports.profit_prediction.process.source_actions.load_all") %></span>
+                </button>
+                <% unless profit_version_readonly %>
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm"
+                    title="<%= t("reports.profit_prediction.process.source_actions.load_and_apply_all_title") %>"
+                    data-profit-prediction-target="bulkActualButton"
+                    data-action="profit-prediction#loadAndApplyAllActuals">
+                    <i class="bi bi-magic" aria-hidden="true"></i>
+                    <span><%= t("reports.profit_prediction.process.source_actions.load_and_apply_all") %></span>
+                  </button>
+                <% end %>
+              </div>
+            </div>
+          </th>
           <th><%= t("reports.profit_prediction.process.columns.calculation") %></th>
         </tr>
       </thead>

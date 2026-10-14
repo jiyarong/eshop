@@ -943,7 +943,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
     t.decimal "ozon_import_vat_cost_rate", precision: 14, scale: 10
     t.decimal "ozon_warehouse_rate", precision: 14, scale: 10
     t.string "platform", null: false
-    t.decimal "price_rub", precision: 20, scale: 8
     t.decimal "profit_cny", precision: 20, scale: 8
     t.decimal "purchase_price_cny", precision: 20, scale: 8
     t.decimal "return_amortization_factor_override", precision: 14, scale: 10
@@ -951,7 +950,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
     t.decimal "return_rate", precision: 14, scale: 10
     t.decimal "returns_cny", precision: 20, scale: 8
     t.decimal "revenue_cny", precision: 20, scale: 8
-    t.decimal "rf_price_rub", precision: 20, scale: 8
     t.decimal "sales_vat_rate", precision: 14, scale: 10
     t.bigint "sku_profit_version_id", null: false
     t.decimal "storage_cny", precision: 20, scale: 8
@@ -971,8 +969,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
   end
 
   create_table "ec_sku_profit_versions", force: :cascade do |t|
+    t.decimal "buyer_paid_price_rub", precision: 20, scale: 8
+    t.decimal "buyer_price_vat_rate", precision: 14, scale: 10
     t.datetime "created_at", null: false
     t.date "effective_from", null: false
+    t.decimal "commission_base_price_rub", precision: 20, scale: 8
     t.date "effective_to"
     t.integer "lock_version", default: 0, null: false
     t.string "name", null: false

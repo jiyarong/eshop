@@ -113,12 +113,14 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
     version = sku.profit_versions.includes(:contexts).sole
     assert_equal "draft", version.status
     assert_equal 6, version.contexts.size
-    assert_equal 1_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general").price_rub
-    assert_equal 2_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small").price_rub
+    assert_equal 1_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general").commission_base_price_rub
+    assert_equal 2_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small").commission_base_price_rub
     ozon_ru = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main")
-    assert_equal 3_000.to_d, ozon_ru.price_rub
-    assert_equal 3_000.to_d, ozon_ru.rf_price_rub
-    assert_equal 4_000.to_d, version.context_for(platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main").price_rub
+    assert_equal 3_000.to_d, ozon_ru.commission_base_price_rub
+    assert_nil ozon_ru.buyer_paid_price_rub
+    ozon_by = version.context_for(platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main")
+    assert_equal 3_000.to_d, ozon_by.commission_base_price_rub
+    assert_equal 4_000.to_d, ozon_by.buyer_paid_price_rub
     assert_equal 4, version.contexts.count { |context| context.calculation_status == "valid" }
     assert_equal 2, version.contexts.count { |context| context.calculation_status == "incomplete" }
 
@@ -140,7 +142,7 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
     )
     existing = version.contexts.create!(
       platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
-      purchase_price_cny: 100, price_rub: 777, exchange_rate_rub_cny: 10,
+      purchase_price_cny: 100, commission_base_price_rub: 777, exchange_rate_rub_cny: 10,
       length_cm: 10, width_cm: 10, height_cm: 10, logistics_coeff: 1.2, commission_rate: 0.1
     )
     rows = { wb_general: [ [ "header" ], wb_row(sku.sku_code, company_type: "general", price: 9_999) ] }
@@ -152,7 +154,7 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
     assert_equal 1, summary.fetch(:versions_updated)
     assert_equal 5, summary.fetch(:contexts_created)
     assert_equal 6, version.reload.contexts.count
-    assert_equal 777.to_d, existing.reload.price_rub
+    assert_equal 777.to_d, existing.reload.commission_base_price_rub
   end
 
   test "system SKU dimensions override different spreadsheet dimensions" do
