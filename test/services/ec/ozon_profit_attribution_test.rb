@@ -95,6 +95,61 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
     assert_equal(-1, service.instance_variable_get(:@counts).dig(123, :net_sales_count))
   end
 
+  test "compute_counts nets a posting sold and returned inside the period to zero units" do
+    service = Ec::OzonProfitAttribution.new(
+      account_id: 0,
+      from_date: Date.new(2026, 10, 5),
+      to_date: Date.new(2026, 10, 11),
+      rate_cny_rub: 10.0,
+      sync_missing_ad_costs: false
+    )
+    service.instance_variable_set(:@rows, [
+      AccrualRow.new(0, 123, "kept-1", 10_500.0),
+      AccrualRow.new(0, 123, "kept-2", 10_800.0),
+      # sold and returned within the period: +1 and -1, never a net -1
+      AccrualRow.new(0, 123, "same-period-1", 10_500.0),
+      AccrualRow.new(0, 123, "same-period-1", -10_500.0),
+      # sold in an earlier period, returned now: a real -1 for this period
+      AccrualRow.new(0, 123, "earlier-1", -10_800.0)
+    ])
+    service.instance_variable_set(:@destinations, {})
+
+    service.send(:compute_counts)
+    service.send(:split_by_destination)
+    counts = service.instance_variable_get(:@counts).fetch(123)
+    split = service.instance_variable_get(:@dest_split).fetch(123)
+
+    assert_equal 1, counts.fetch(:net_sales_count), "2 kept sales - 1 return of an earlier sale"
+    assert_equal 3, counts.fetch(:order_count)
+    assert_equal 2, counts.fetch(:return_count)
+    assert_equal split.fetch(:export_count) + split.fetch(:blr_count), counts.fetch(:net_sales_count),
+      "net units and the units refunded import VAT is paid on must agree"
+  end
+
+  test "compute_counts nets a multi-unit posting sold and returned inside the period to zero" do
+    ozon_sku = rand(10_000_000..99_999_999)
+    posting_number = "posting-same-period-#{@token}"
+    RawOzon::PostingItem.create!(
+      account: @ozon_account, posting_number: posting_number, posting_type: "fbo",
+      ozon_sku: ozon_sku, quantity: 3, raw_json: {}
+    )
+    create_accrual(ozon_sku, posting_number, amount: 300)
+    create_accrual(ozon_sku, posting_number, amount: -300)
+    service = Ec::OzonProfitAttribution.new(
+      account_id: @ozon_account.id,
+      from_date: Date.new(2026, 6, 29),
+      to_date: Date.new(2026, 7, 5),
+      rate_cny_rub: 10.0,
+      sync_missing_ad_costs: false
+    )
+    service.send(:load_rows)
+    service.send(:load_posting_quantities)
+
+    service.send(:compute_counts)
+
+    assert_equal 0, service.instance_variable_get(:@counts).dig(ozon_sku, :net_sales_count)
+  end
+
   test "compute_counts uses posting item quantity for net sales and destination units" do
     ozon_sku = rand(10_000_000..99_999_999)
     posting_number = "posting-quantity-#{@token}"

@@ -323,7 +323,11 @@ module Ec
           elsif net < 0
             return_pns << pn
           else
+            # Sold and returned inside the period: one sale and one return, net zero units.
+            # Counting only the return would leave a permanent -1 (the sale has no other
+            # period to be added in), under-charging goods cost and inflating average price.
             order_pns  << pn
+            sales_pns  << pn
             return_pns << pn
           end
         end
