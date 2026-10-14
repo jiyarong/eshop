@@ -52,11 +52,14 @@ module Gbrain
         system_prompt: agent.system_prompt,
         context: "当前日期：#{today.iso8601}",
         messages: [ { role: "user", content: content } ],
-        tools: []
+        tools: [],
+        allow_raw_json: true
       ).fetch(:content)
     end
 
     def parse_response(content)
+      return content.deep_stringify_keys if content.is_a?(Hash)
+
       json = content.to_s.strip
       json = json.sub(/\A```(?:json)?\s*/i, "").sub(/\s*```\z/, "")
       parsed = JSON.parse(json)

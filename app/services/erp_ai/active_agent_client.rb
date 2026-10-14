@@ -10,19 +10,25 @@ module ErpAI
       不要在 JSON 外添加说明文字、Markdown 或代码块。
     MESSAGE
 
+    RAW_JSON_RETRY_MESSAGE = <<~MESSAGE.squish.freeze
+      上一条响应不符合约定。请只重新输出一个严格 JSON 对象，不要输出 Markdown、代码块或其他说明文字。
+      JSON 字符串中的换行必须转义为 \n。
+    MESSAGE
+
     def initialize(agent_class: BusinessAnalysisAgent)
       @agent_class = agent_class
     end
 
     def complete(request, &on_stream)
+      allow_raw_json = request[:allow_raw_json] == true
       response = generate(request, on_stream)
-      result = normalize_response(response)
-      return result unless invalid_structured_response?(response)
+      result = normalize_response(response, allow_raw_json: allow_raw_json)
+      return result unless invalid_structured_response?(response, allow_raw_json: allow_raw_json)
 
-      response = generate(retry_request(request), on_stream)
-      raise invalid_response_error(response) if invalid_structured_response?(response)
+      response = generate(retry_request(request, allow_raw_json: allow_raw_json), on_stream)
+      raise invalid_response_error(response) if invalid_structured_response?(response, allow_raw_json: allow_raw_json)
 
-      normalize_response(response)
+      normalize_response(response, allow_raw_json: allow_raw_json)
     end
 
     private
@@ -43,35 +49,41 @@ module ErpAI
       ).analyze.generate_now
     end
 
-    def normalize_response(response)
+    def normalize_response(response, allow_raw_json: false)
       {
-        content: extract_content(response),
-        tool_calls: extract_tool_calls(response),
+        content: extract_content(response, allow_raw_json: allow_raw_json),
+        tool_calls: extract_tool_calls(response, allow_raw_json: allow_raw_json),
         usage: extract_usage(response),
         finish_reason: value_from(response, :finish_reason)
       }
     end
 
-    def retry_request(request)
+    def retry_request(request, allow_raw_json: false)
       request.merge(
         messages: [
           *request.fetch(:messages),
-          { role: "user", content: FORMAT_RETRY_MESSAGE }
+          {
+            role: "user",
+            content: allow_raw_json ? RAW_JSON_RETRY_MESSAGE : FORMAT_RETRY_MESSAGE
+          }
         ]
       )
     end
 
-    def invalid_structured_response?(response)
+    def invalid_structured_response?(response, allow_raw_json: false)
       content = message_content(response)
       return true if value_from(response, :finish_reason).to_s == "length"
 
       json_content = parsed_message_content(response)
       if json_content
+        return false if allow_raw_json
         return false if json_content["content"].present?
         return false if normalize_tool_calls(json_content["tool_calls"]).present?
 
         return true
       end
+
+      return true if allow_raw_json
 
       raw_tool_calls = value_from(message_from(response), :tool_calls) || value_from(response, :tool_calls)
       return false if normalize_tool_calls(raw_tool_calls).present?
@@ -94,8 +106,9 @@ module ErpAI
       )
     end
 
-    def extract_content(response)
+    def extract_content(response, allow_raw_json: false)
       json_content = parsed_message_content(response)
+      return json_content if allow_raw_json && json_content
       return json_content["content"] if json_content&.key?("content")
       return nil if json_content&.key?("tool_calls")
       malformed_content = malformed_content_payload(message_content(response))
@@ -123,7 +136,9 @@ module ErpAI
       usage
     end
 
-    def extract_tool_calls(response)
+    def extract_tool_calls(response, allow_raw_json: false)
+      return [] if allow_raw_json
+
       json_content = parsed_message_content(response)
       return normalize_tool_calls(json_content["tool_calls"]) if json_content&.key?("tool_calls")
 

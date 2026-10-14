@@ -40,6 +40,7 @@ class Gbrain::PageClassifierTest < ActiveSupport::TestCase
     assert_equal false, client.request.fetch(:thinking_enabled)
     assert_equal "", client.request.fetch(:thinking_level)
     assert_equal [], client.request.fetch(:tools)
+    assert_equal true, client.request.fetch(:allow_raw_json)
     assert_equal [ { role: "user", content: "原始运营资料" } ], client.request.fetch(:messages)
     assert_equal "2026-07-18", result.fetch("reviewed_at")
     assert_equal "2026-10-18", result.fetch("review_after")
@@ -64,6 +65,16 @@ class Gbrain::PageClassifierTest < ActiveSupport::TestCase
 
     result = Gbrain::PageClassifier.new(
       client: FakeClient.new(content: content),
+      agent: @agent,
+      today: Date.new(2026, 7, 18)
+    ).classify("原始资料")
+
+    assert_equal "notes/ai-#{@token}", result.fetch("slug")
+  end
+
+  test "accepts a JSON object returned by the client" do
+    result = Gbrain::PageClassifier.new(
+      client: FakeClient.new(content: valid_payload),
       agent: @agent,
       today: Date.new(2026, 7, 18)
     ).classify("原始资料")

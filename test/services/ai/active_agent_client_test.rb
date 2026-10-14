@@ -241,6 +241,51 @@ class ErpAI::ActiveAgentClientTest < ActiveSupport::TestCase
     ], result.fetch(:tool_calls)
   end
 
+  test "accepts a direct JSON object when the caller requests raw JSON" do
+    payload = { title: "报价说明", page_type: "platform-guide", content: "原文" }.to_json
+    FakeGeneration.response = OpenStruct.new(
+      message: OpenStruct.new(content: payload),
+      usage: { "total_tokens" => 20 }
+    )
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "只输出 JSON 对象",
+      context: "",
+      messages: [{ role: "user", content: "分类" }],
+      tools: [],
+      thinking_enabled: false,
+      allow_raw_json: true
+    )
+
+    assert_equal JSON.parse(payload), result.fetch(:content)
+    assert_equal [], result.fetch(:tool_calls)
+    assert_equal 1, FakeGeneration.generate_now_calls
+  end
+
+  test "retries non-JSON content when the caller requests raw JSON" do
+    FakeGeneration.responses = [
+      OpenStruct.new(message: OpenStruct.new(content: "分类结果如下"), usage: { "total_tokens" => 10 }),
+      OpenStruct.new(message: OpenStruct.new(content: { title: "报价说明" }.to_json), usage: { "total_tokens" => 20 })
+    ]
+
+    result = ErpAI::ActiveAgentClient.new(agent_class: FakeAgent).complete(
+      model: "custom-model",
+      temperature: 0.2,
+      system_prompt: "只输出 JSON 对象",
+      context: "",
+      messages: [{ role: "user", content: "分类" }],
+      tools: [],
+      thinking_enabled: false,
+      allow_raw_json: true
+    )
+
+    assert_equal({ "title" => "报价说明" }, result.fetch(:content))
+    assert_equal 2, FakeGeneration.generate_now_calls
+    assert_includes FakeAgent.last_generation.params.fetch(:messages).last.fetch(:content), "严格 JSON 对象"
+  end
+
   test "uses the first JSON object when a provider appends assistant content" do
     FakeGeneration.response = OpenStruct.new(
       message: OpenStruct.new(
