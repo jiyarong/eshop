@@ -54,6 +54,45 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     assert_equal 0.1.to_d, previous.reload.contexts.find_by(platform: "wb", delivery_mode: "fbo", company_type: "small").return_rate
   end
 
+  test "a scenario without a price gets its own realized price when enough units sold, existing prices stay" do
+    sku = create_sku("MP-#{@token}")
+    version = sku.profit_versions.new(name: "v", status: "published", effective_from: Date.new(2026, 10, 1))
+    [ [ "fbo", 12_500 ], [ "fbs", nil ] ].each do |mode, price|
+      identity = { "platform" => "wb", "market" => "ru", "delivery_mode" => mode, "warehouse_region" => "main", "company_type" => "small" }
+      context = version.contexts.build(identity)
+      context.assign_input_values(
+        Ec::SkuProfitCalculator.default_inputs(platform: "wb", parameter_context: identity).merge(
+          "purchase_price_cny" => 77, "freight_cny" => 10, "customs_misc_cny" => 2, "duty_rate" => 0.1,
+          "import_vat_rate" => 0.2, "length_cm" => 10, "width_cm" => 10, "height_cm" => 10, "commission_rate" => 0.185,
+          "commission_base_price_rub" => price
+        )
+      )
+    end
+    version.save!
+
+    prices = { [ "wb", "ru", "fbo", "small" ] => [ 9_999, 50 ], [ "wb", "ru", "fbs", "small" ] => [ 3_100, 7 ],
+               [ "wb", "ru", "fbo", "general" ] => [ 2_000, 4 ] }
+    original = Ec::SkuActualScenarioPriceQuery.method(:run)
+    Ec::SkuActualScenarioPriceQuery.define_singleton_method(:run) do |**args|
+      average, units = prices.fetch([ args[:platform], args[:market], args[:delivery_mode], args[:company_type] ], [ nil, 0 ])
+      { commission_base_price: { average_rub: average && BigDecimal(average.to_s), unit_count: units, item_count: 2, missing_exchange_rate_item_count: 0 } }
+    end
+    begin
+      summary = run_refresh
+    ensure
+      Ec::SkuActualScenarioPriceQuery.define_singleton_method(:run, original)
+    end
+
+    created = sku.profit_versions.find_by!(effective_from: MONTH_START)
+    price_of = lambda do |mode, company|
+      created.context_for(platform: "wb", market: "ru", delivery_mode: mode, warehouse_region: "main", company_type: company)&.commission_base_price_rub
+    end
+    assert_equal 12_500.to_d, price_of.call("fbo", "small"), "an existing price is never replaced"
+    assert_equal 3_100.to_d, price_of.call("fbs", "small")
+    assert_nil price_of.call("fbo", "general"), "4 units are below the 5-unit minimum"
+    assert_equal 1, summary.fetch(:created).sole.fetch(:prices_filled)
+  end
+
   test "a figure without platform data keeps the previous version's value" do
     sku = create_sku("MK-#{@token}")
     create_version(sku, "published", Date.new(2026, 10, 1), price: 9_000, return_rate: 0.22)

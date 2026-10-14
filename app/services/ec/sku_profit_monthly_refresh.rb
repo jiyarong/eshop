@@ -2,9 +2,11 @@ module Ec
   # Once a month (the 1st), every SKU that already has a profit version gets a new draft version
   # effective on the first day of the month:
   #   - the six standard scenarios are copied from the previous version, prices included;
-  #   - the figures that come from platform data are refreshed with the last four full weeks.
-  # Costs, prices, commission and the other parameters are carried over unchanged, and a figure
-  # the platform has no data for keeps the previous version's value. The new version is a draft:
+  #   - the figures that come from platform data are refreshed with the last four full weeks;
+  #   - a scenario that has no price yet gets the price it actually realized over those weeks,
+  #     when at least SkuProfitPriceFromActuals::MIN_UNITS units were sold in that scenario.
+  # Costs, existing prices, commission and the other parameters are carried over unchanged, and
+  # a figure the platform has no data for keeps the previous version's value. The new version is a draft:
   # publishing it (and closing the old one) stays a person's decision.
   class SkuProfitMonthlyRefresh
     MARKER_VERSION = "v1".freeze
@@ -65,6 +67,7 @@ module Ec
       Ec::SkuProfitStandardContexts.build_missing(version, sku:, effective_on: month_start)
 
       refreshed = refresh_actuals(sku, version)
+      prices_filled = fill_missing_prices(sku, version)
       Ec::SkuProfitVersionRecalculator.call(version)
       version.save! unless dry_run
 
@@ -72,7 +75,8 @@ module Ec
         sku_code: sku.sku_code,
         copied_from_version_id: previous.id,
         contexts: version.contexts.size,
-        refreshed_inputs: refreshed
+        refreshed_inputs: refreshed,
+        prices_filled: prices_filled
       }
     end
 
@@ -85,6 +89,19 @@ module Ec
         values = actuals.call(identity:, exchange_rate: exchange).fetch(:values)
         context.assign_input_values(values)
         values.size
+      end
+    end
+
+    # Empty prices only: a price somebody set is never replaced by an average.
+    def fill_missing_prices(sku, version)
+      version.contexts.count do |context|
+        next false if context.commission_base_price_rub.present?
+
+        result = Ec::SkuProfitPriceFromActuals.realized_price_for(sku, context, today:, time_zone:)
+        next false unless result[:price_rub]
+
+        context.commission_base_price_rub = result[:price_rub]
+        true
       end
     end
 
