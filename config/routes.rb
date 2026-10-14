@@ -108,6 +108,7 @@ Rails.application.routes.draw do
   get "reports/skus/:sku_code/predicted_costs/new" => "reports#new_sku_predicted_cost", as: :new_report_sku_predicted_cost
   post "reports/skus/:sku_code/predicted_costs" => "reports#create_sku_predicted_cost", as: :report_sku_predicted_costs
   get "reports/sku_sales" => "reports#sku_sales"
+  get "reports/sku_sales_forecast" => "reports#sku_sales_forecast", as: :reports_sku_sales_forecast
   get "reports/costs"     => "reports#costs"
 
   resources :orders, only: [:index, :show]

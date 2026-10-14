@@ -1,0 +1,156 @@
+<% content_for :page_heading, t("reports.sku_sales_forecast.title") %>
+
+<div class="report-stack sku-sales-forecast-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title"><%= t("reports.sku_sales_forecast.title") %></h1>
+      <p class="page-subtitle"><%= t("reports.sku_sales_forecast.description") %></p>
+    </div>
+  </div>
+
+  <section class="panel">
+    <%= form_with url: reports_sku_sales_forecast_path, method: :get, local: true, class: "report-form" do %>
+      <%= render "shared/spu_sku_filter",
+                 dom_id_prefix: "sku-sales-forecast-filter",
+                 selection_mode: :single,
+                 sku_input_name: "sku_code",
+                 selected_sku_codes: Array(@selected_sku_code).compact,
+                 allowed_sku_codes: @available_sku_codes,
+                 label: t("reports.sku_sales_forecast.filters.sku"),
+                 placeholder: t("shared.spu_sku_filter.select_sku") %>
+
+      <div class="field field--time-range">
+        <label for="sku-sales-forecast-time-range-trigger"><%= t("reports.sku_sales_forecast.sections.timeline") %></label>
+        <%= render "shared/time_range_selector",
+                   id: "sku-sales-forecast-time-range",
+                   from_date: @from_date,
+                   to_date: @to_date,
+                   submit_on_apply: false %>
+      </div>
+
+      <div class="field">
+        <label for="sku_sales_forecast_as_of_date"><%= t("reports.sku_sales_forecast.filters.as_of_date") %></label>
+        <input id="sku_sales_forecast_as_of_date" type="date" name="as_of_date" value="<%= @as_of_date %>" min="<%= @from_date %>" max="<%= @to_date %>">
+      </div>
+
+      <button class="button" type="submit"><%= t("reports.sku_sales_forecast.filters.submit") %></button>
+    <% end %>
+  </section>
+
+  <% if @forecast_error.present? %>
+    <div class="alert alert-warning" role="alert"><%= @forecast_error %></div>
+  <% elsif @forecast_report.blank? %>
+    <section class="panel empty-state"><%= t("reports.sku_sales_forecast.empty") %></section>
+  <% else %>
+    <% forecasts = @forecast_report.fetch(:forecasts) %>
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_sales_forecast.sections.forecasts") %></h2>
+      <div class="summary-grid sku-sales-forecast-summary">
+        <% %i[simple strict version_1 version_2].each do |key| %>
+          <% forecast = forecasts.fetch(key) %>
+          <article class="weekly-profit-summary-card">
+            <div class="summary-label"><%= t("reports.sku_sales_forecast.forecast_labels.#{key}") %></div>
+            <div class="summary-value">
+              <%= forecast[:daily_sales].nil? ? t("reports.sku_sales_forecast.values.unavailable") : number_with_precision(forecast[:daily_sales], precision: 2, strip_insignificant_zeros: true) %>
+            </div>
+            <div class="summary-meta"><%= t("reports.sku_sales_forecast.fields.daily_sales") %></div>
+            <% if forecast[:training_days].present? || forecast[:inventory_days].present? %>
+              <div class="summary-meta">
+                <%= t("reports.sku_sales_forecast.fields.training_days") %>:
+                <%= forecast[:training_days].presence || t("reports.sku_sales_forecast.values.unavailable") %>
+                <% if forecast[:inventory_days].present? %>
+                  · <%= t("reports.sku_sales_forecast.fields.inventory_days") %>: <%= forecast[:inventory_days] %>
+                <% end %>
+              </div>
+            <% end %>
+            <div class="summary-meta"><%= t("reports.sku_sales_forecast.fields.formula") %>: <%= forecast[:formula].presence || t("reports.sku_sales_forecast.values.unavailable") %></div>
+          </article>
+        <% end %>
+      </div>
+      <p class="table-note">
+        <%= t("reports.sku_sales_forecast.fields.as_of") %>: <strong><%= @forecast_report.dig(:period, :as_of) %></strong>
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_sales_forecast.sections.backtests") %></h2>
+      <% if @forecast_report[:backtests].any? %>
+        <%= table_viewport do %>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th><%= t("reports.sku_sales_forecast.fields.as_of") %></th>
+                <th><%= t("reports.sku_sales_forecast.fields.target_period") %></th>
+                <th><%= t("reports.sku_sales_forecast.forecast_labels.version_1") %> · <%= t("reports.sku_sales_forecast.fields.predicted_units") %></th>
+                <th><%= t("reports.sku_sales_forecast.forecast_labels.version_1") %> · <%= t("reports.sku_sales_forecast.fields.actual_units") %></th>
+                <th><%= t("reports.sku_sales_forecast.forecast_labels.version_2") %> · <%= t("reports.sku_sales_forecast.fields.predicted_units") %></th>
+                <th><%= t("reports.sku_sales_forecast.forecast_labels.version_2") %> · <%= t("reports.sku_sales_forecast.fields.actual_units") %></th>
+                <th><%= t("reports.sku_sales_forecast.fields.relative_error") %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @forecast_report[:backtests].each do |row| %>
+                <% v1 = row[:version_1] || {}; v2 = row[:version_2] || {} %>
+                <tr>
+                  <td><%= row[:as_of] %></td>
+                  <td><%= row[:target_from] %> ~ <%= row[:target_to] %></td>
+                  <td><%= v1[:predicted_units].nil? ? t("reports.sku_sales_forecast.values.unavailable") : number_with_precision(v1[:predicted_units], precision: 2, strip_insignificant_zeros: true) %></td>
+                  <td><%= v1[:actual_units].nil? ? t("reports.sku_sales_forecast.values.unavailable") : v1[:actual_units] %></td>
+                  <td><%= v2[:predicted_units].nil? ? t("reports.sku_sales_forecast.values.unavailable") : number_with_precision(v2[:predicted_units], precision: 2, strip_insignificant_zeros: true) %></td>
+                  <td><%= v2[:actual_units].nil? ? t("reports.sku_sales_forecast.values.unavailable") : v2[:actual_units] %></td>
+                  <td>
+                    <% errors = [v1[:relative_error], v2[:relative_error]].compact %>
+                    <%= errors.empty? ? t("reports.sku_sales_forecast.values.unavailable") : errors.map { |error| number_to_percentage(error.to_d * 100, precision: 1) }.join(" / ") %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+      <% else %>
+        <div class="empty-state"><%= t("reports.sku_sales_forecast.no_backtests") %></div>
+      <% end %>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title"><%= t("reports.sku_sales_forecast.sections.timeline") %></h2>
+      <%= table_viewport do %>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_sales_forecast.fields.date") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.actual_sales") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.inventory") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.book_stock") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.out_of_stock") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.price") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.price_change") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.ad_enabled") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.ad_spend") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.ad_campaign_count") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @forecast_report[:timeline].each do |row| %>
+              <tr>
+                <td><%= row[:date] %></td>
+                <td>
+                  <%= row[:actual_sales].nil? ? t("reports.sku_sales_forecast.values.unavailable") : number_with_precision(row[:actual_sales], precision: 2, strip_insignificant_zeros: true) %>
+                  <% if row[:actual_sales_source].present? %><small class="muted">(<%= t("reports.sku_sales_forecast.values.#{row[:actual_sales_source]}") %>)</small><% end %>
+                </td>
+                <td><%= row[:inventory].nil? ? t("reports.sku_sales_forecast.values.unavailable") : row[:inventory] %></td>
+                <td><%= row[:book_stock].nil? ? t("reports.sku_sales_forecast.values.unavailable") : row[:book_stock] %></td>
+                <td><%= row[:out_of_stock] ? t("reports.sku_sales_forecast.values.yes") : t("reports.sku_sales_forecast.values.no") %></td>
+                <td><%= row[:price].nil? ? t("reports.sku_sales_forecast.values.unavailable") : number_with_precision(row[:price], precision: 2, strip_insignificant_zeros: true) %></td>
+                <td><%= row[:price_change].nil? ? t("reports.sku_sales_forecast.values.unavailable") : number_with_precision(row[:price_change], precision: 2, strip_insignificant_zeros: true) %></td>
+                <td><%= row[:ad_enabled] ? t("reports.sku_sales_forecast.values.enabled") : t("reports.sku_sales_forecast.values.disabled") %></td>
+                <td><%= row[:ad_spend].to_d.zero? ? t("reports.sku_sales_forecast.values.unavailable") : number_with_precision(row[:ad_spend], precision: 2, strip_insignificant_zeros: true) %></td>
+                <td><%= row[:ad_campaign_count].zero? ? t("reports.sku_sales_forecast.values.unavailable") : row[:ad_campaign_count] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+  <% end %>
+</div>

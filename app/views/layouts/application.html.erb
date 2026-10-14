@@ -72,10 +72,12 @@
     <% if can?(:manage_users) %>
       <% admin_links << { label: t("navigation.sku_diagnosis_rules"), path: "/admin/sku_diagnosis_rules", icon: "bi-clipboard2-pulse", active: active_link.call("/admin/sku_diagnosis_rules") } %>
       <% admin_links << { label: t("navigation.skills"), path: "/admin/skills", icon: "bi-puzzle", active: active_link.call("/admin/skills") } %>
+      <% admin_links << { label: t("navigation.sku_sales_forecast"), path: reports_sku_sales_forecast_path, icon: "bi-graph-up", active: active_link.call("/reports/sku_sales_forecast") } if can?(:view_reports) %>
       <% admin_links << { label: t("navigation.operation_logs"), path: "/admin/operation_logs", icon: "bi-clock-history", active: active_link.call("/admin/operation_logs") } %>
       <% admin_links << { label: t("navigation.gbrain"), path: "/admin/gbrain_pages", icon: "bi-journal-text", active: active_link.call("/admin/gbrain_pages") } %>
       <% admin_links << { label: t("navigation.mcp_debug"), path: "/admin/mcp_debug", icon: "bi-braces", active: active_link.call("/admin/mcp_debug") } %>
     <% end %>
+    <% admin_links << { label: t("navigation.sku_sales_forecast"), path: reports_sku_sales_forecast_path, icon: "bi-graph-up", active: active_link.call("/reports/sku_sales_forecast") } if can?(:view_reports) && !can?(:manage_users) %>
     <% if can?(:manage_feedback_tasks) %>
       <% admin_links << { label: t("navigation.feedback_tasks"), path: "/admin/feedback_tasks", icon: "bi-chat-square-text", active: active_link.call("/admin/feedback_tasks") } %>
     <% end %>
