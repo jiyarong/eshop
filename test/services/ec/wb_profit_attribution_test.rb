@@ -187,6 +187,39 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
                     0.001
   end
 
+  test "returns reduce the tax base, so tax follows net sales for both tax regimes" do
+    nm_id = rand(10_000_000..99_999_999)
+    rows = [
+      RawWb::FinanceDetail.new(account_id: @account.id, nm_id: nm_id, report_type: 2, seller_oper_name: "Продажа",
+        quantity: 3, retail_price_with_disc: 100, retail_amount: 100, for_pay: 75, acquiring_fee: 1),
+      RawWb::FinanceDetail.new(account_id: @account.id, nm_id: nm_id, report_type: 2, seller_oper_name: "Возврат",
+        quantity: 1, retail_price_with_disc: 100, retail_amount: 100, for_pay: 75, acquiring_fee: -1)
+    ]
+
+    # rate_cny_rub 10, rate_byn_rub 3: import VAT 5 CNY = 5 x 10 x 1.03 / 3 BYN per unit.
+    import_vat_byn = 5.0 * 10.0 * 1.03 / 3.0
+    {
+      "small" => 0.06 * 200,
+      "general" => 200 * 20.0 / 120 - 2 * import_vat_byn
+    }.each do |company_type, expected_tax|
+      @account.update!(company_type: company_type)
+      service = build_service(from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5))
+      service.instance_variable_set(:@rows, rows)
+      service.instance_variable_set(:@shk_to_nm, {})
+      service.send(:attribute_costs)
+      service.instance_variable_set(:@goods_costs, { nm_id => { total_cost_cny: 30.0, import_vat_cny: 5.0, sku_code: "SKU-TAX" } })
+      service.instance_variable_set(:@unalloc_rows, [])
+      service.define_singleton_method(:build_nm_to_sku_map) { |_nm_ids| { nm_id => "SKU-TAX" } }
+
+      service.send(:compute_profit)
+      row = service.results.sole
+
+      assert_equal 2, row[:net_qty]
+      assert_in_delta 200.0, row[:tax_base], 0.001, "3 sold x 100 - 1 returned x 100"
+      assert_in_delta expected_tax, row[:tax], 0.01, "#{company_type} tax"
+    end
+  end
+
   test "compute_profit keeps negative net quantity and reverses goods cost" do
     service = build_service(from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5), rate_cny_rub: 10.0, rate_byn_rub: 5.0)
     bucket = service.send(:new_bucket).merge(

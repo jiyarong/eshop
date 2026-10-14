@@ -151,6 +151,10 @@ module Ec
         when op.include?(RawWb::FinanceDetail::RETURN_KEYWORD)
           bucket[:acquiring_byn]  += r.acquiring_fee.to_f
           bucket[:return_qty]     += r.quantity.to_i.abs
+          # A return reduces the turnover tax is charged on, just as it reduces net quantity
+          # (the import VAT credit below already follows net quantity). It can leave the base
+          # negative when returns of earlier sales exceed this period's sales.
+          bucket[:tax_base_byn]   -= r.retail_price_with_disc.to_f * r.quantity.to_i.abs
         when op.include?(RawWb::FinanceDetail::LOGISTIC_KEYWORD)
         when op.include?(RawWb::FinanceDetail::REIMB_KEYWORD)
           bucket[:reimb_byn]           += r.rebill_logistic_cost.to_f
