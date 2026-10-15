@@ -1,0 +1,182 @@
+zh:
+  pallet_calculator:
+    title: 托盘打包计算器
+    eyebrow: 仓库发货工具
+    description: 选平台、选 SKU，即时生成数量、费用与仓库码放说明。
+    rule_date: "规则口径 %{date}"
+    setup: 选择发货场景
+    instant: 修改后自动重新计算
+    platform: 平台
+    platforms:
+      ozon: Ozon
+      wb: Wildberries
+    mode: 计算模式
+    manual: 手动选择 SKU
+    automatic_soon: 自动模式（待实现）
+    fulfillment: 供货类型
+    skus: "SKU / SPU（1～5 个 SKU）"
+    select_skus: 搜索并选择 SKU
+    manifest: 本次打包清单
+    none_selected: 0 / 5
+    quantity_hint: 数量全部留空：推荐单托容量，同托放不下的 SKU 自动分托。数量全部填写：按指定箱数安排整批托盘。不要混用两种填写方式。
+    dimensions_hint: 尺寸为运输外箱厘米数，重量为单箱毛重；件数来自每外箱件数。可临时修改，填写不会保存到 SKU。缺失包装数据请先补填；单品体积缺失仍可排托，但部分费用待补。每个 SKU 按一个商品条码计算。
+    fashion_hint: Fashion 免按组成排序费仅适用于 2026-10-01～12-31，确认符合活动条件后勾选；按库区排序与纠正组成不免。
+    sku: SKU
+    recommend_placeholder: 自动推荐
+    missing_placeholder: 待补
+    start: 从上方选择 1～5 个 SKU 开始计算
+    parameters: 收货限制与费用参数
+    route_hint: 填目标仓当日路线报价即可估算运输费；留空时仅展示已知费用。
+    route_reference: 查看路线参考费率
+    fbs_rate_hint: 默认信任收货 10 ₽/商品件；СЦ 自助收货可改为 0，特殊点位按后台报价。
+    long_axis: 长边（120 cm）
+    short_axis: 短边（80 cm）
+    axis_hint: "分区沿托盘%{axis}依次排列，列数沿该方向；摆放尺寸统一按托盘长边 × 短边 × 竖直方向标注。"
+    parameters_hint: 默认遵循平台标准，可按目标仓收紧限制
+    limits: 托盘与限制（120 × 80 × 14.5 cm）
+    tare_hint: 默认托盘自重按 25 kg 估算，请按实测修改。默认不超边，限高含托盘；Ozon FBO 限重按货物，其余模式按含托毛重。
+    transport_handling: 运输与处理
+    storage: 仓储估算
+    storage_hint: 只填实际计费天数，免费期不计入。WB 单一托盘按 ₽/托/天，其余按 ₽/L/天；仓库系数可修改。
+    fee_scope: 仅估算已列出的运输、处理、取货、仓储与手填固定费用；不含销售佣金、买家配送、罚款或未填成本。费率按 2026-10-14 资料设置，Ozon 路线请填目标仓/日期的后台报价；2026-10-30 起须重新核对费率。
+    recalculate: 重新计算
+    pending: 待补
+    result_eyebrow: 打包计算结果
+    recommendation: 推荐装载方案
+    shipment_plan: 整批发货方案
+    method: 同 SKU 分区、同向列式叠放，比较双向分区和允许的朝向，优先覆盖所选 SKU，再提高装载体积。这是稳定分区方案的启发式推荐，不保证任意三维混排的全局最优。
+    recommendation_badge: 数量自动推荐
+    shipment_badge: 按指定数量排托
+    total_pallets: 需要托盘
+    pallet_unit: 托
+    sku_count: "%{count} 个 SKU"
+    total_boxes: 装载箱数
+    unit_count: "%{count} 件商品"
+    total_weight: 整批毛重
+    includes_tare: 包含托盘自重
+    estimated_fee: 预计费用
+    known_subtotal: 已知费用小计
+    fee_estimate: 估算金额 · 俄罗斯卢布
+    fee_incomplete: 部分费用待补，不是最终总价
+    missing_fees: "费用尚不完整：请补充%{fields}。装载数量已可使用，已知费用仅作小计。"
+    mono_short: "注意：存在总高度不足 50 cm 的 WB 单一托盘，不满足该供货类型最低高度；请增加货量或改用箱/按件托盘后重新核算。小于 1 m³ 也可能被改按箱型仓储收费。"
+    sku_results: 各 SKU 数量与费用
+    boxes: 箱数
+    units: 商品件数
+    carton: 单箱规格 / 毛重
+    allocated_fee: 已知费用分摊
+    allocation_hint: 处理费直接归属 SKU，共同费用按商品体积分摊；单品体积缺失时，共同费用暂按外箱体积分摊。带 * 为不完整费用小计，非最终报价。
+    visualization: 码放效果与分区
+    current_pallet: 查看托盘
+    pallet_option: "第 %{number} 托 · %{boxes} 箱"
+    pallet_height: "含托高 %{value} / %{limit} cm"
+    pallet_weight: "含托毛重 %{value} kg"
+    carton_volume: "外箱总体积 %{value} L"
+    pallet_cost: "本托费用 %{value}"
+    isometric: 立体码放示意
+    top_view: 底层俯视图
+    top_hint: 不同颜色代表不同 SKU；从各区底层向上叠放，同列保持朝向一致。
+    box_count: "%{count} 箱"
+    orientation: 箱体朝向
+    layer_grid: 每层列 × 行
+    layers: 层数
+    last_layer: 顶层箱数
+    fee_detail: 查看本托费用明细与计算口径
+    goods_volume: 商品总体积
+    bill_volume: 运输计费体积（最低 1900 L）
+    diagram_hint: 示意图用于理解分区与方向，每区最多显示 400 箱；实际按数量表逐箱码放。几何计算未评估纸箱承压、易碎性与货物重心，仓库应先试码并确认固定强度；不满足时降低限高再计算。
+    diagram_label: "第 %{number} 托码放示意"
+    diagram_height: "含托高 %{value} cm"
+    handoff: 交付仓库的打包策略
+    copy: 复制交付说明
+    copied: 交付说明已复制
+    empty_title: 把发货清单变成可执行的打托方案
+    empty_description: 选择 SKU 后自动带入外箱参数，展示分区示意、费用明细和可复制的仓库说明。
+    gross_weight: 含托毛重
+    cargo_weight: 货物重量
+    profiles:
+      ozon_fbo: Ozon FBO · 仓库/СЦ/交叉转运
+      ozon_fbs: Ozon FBS · 可分拣信任收货
+      wb_mono: Wildberries FBW · 单一托盘
+      wb_piece: Wildberries FBW · 按件托盘
+    rules:
+      ozon_fbo: 欧标 EUR 托盘 120 × 80 × 14.5 cm；含托高 ≤220 cm，货物 ≤800 kg，单边超出 ≤2 cm。仓库/СЦ 交付或快递取货；ПВЗ/ППЗ 箱型不在本模式内。
+      ozon_fbs: 标准托盘 120 × 80 × 14.5 cm；含托高 ≤240 cm，整托 ≤600 kg，单箱 ≤35 kg，单边超出 ≤2 cm。仅计算可分拣货，不可分拣货须另行分托。
+      wb_mono: 欧标木托 120 × 80 × 14.5 cm；送 СЦ 含托高 50～180 cm，整托 ≤500 kg；同托最多 3 个条码。不同条码沿窄边用竖向纸板分隔；特殊品类单品尺寸须另查。
+      wb_piece: 欧标木托 120 × 80 × 14.5 cm；送 СЦ 含托高 ≤180 cm，整托 ≤500 kg，单箱 ≤25 kg；同托最多 3 个条码。商品先装运输箱，托盘不可叠放。
+    fields:
+      length: 外箱长 cm
+      width: 外箱宽 cm
+      height: 高度 cm
+      weight: 重量 kg
+      pcs: 每箱件数
+      unit_volume_l: 单品体积 L
+      quantity: 发货箱数
+      rotatable: 允许侧放/立放
+      fashion: Fashion 优惠
+      overhang: 单边允许超出 cm
+      tare: 托盘自重 kg
+      route_rate: 路线运价 ₽/L
+      discount: 路线折扣 %
+      fixed_fee: 整批固定/出车费 ₽
+      handling_rate: FBS 处理费 ₽/商品件
+      sorting: FBO 排序口径
+      pickup: Ozon 快递取货（1.55 ₽/L，另填出车费）
+      storage_days: 计费仓储天数
+      storage_rate: 仓储基础费（按上述单位）
+      coefficient: 仓储系数（倍）
+    sorting:
+      composition: 同库区、组成正确（混 SKU 才排序）
+      zones: 跨库区排序
+      correction: 纠正组成
+    orientations:
+      upright: 正放（原箱顶面朝上）
+      sideways: 侧放（原宽边竖直）
+      vertical: 立放（原长边竖直）
+    fees:
+      route: 路线运输
+      handling: 入库/处理
+      pickup: 快递取货处理
+      storage: 仓储
+      fixed: 整批固定费（仅首托计入）
+    formulas:
+      ozon_fbo: "路线运输 = max(商品体积向上取整, 1900) × 路线价 × (1−折扣)。快递取货处理按商品体积向上取整 ×1.55；固定费整批仅计一次。排序按商品件数及单品体积，不按外箱数；单 SKU 且组成正确不收按组成排序费。"
+      ozon_fbs: "处理费 = 商品件数 × FBS 每件处理费；固定费整批仅计一次。СЦ 自助收货费率可填 0；特殊点位请填写后台报价。"
+      wb_mono: "当前 СЦ/PФЦ 处理免费；仓储 = 托盘数 × 每托每天基础费 × 系数 × 计费天数；固定费整批仅计一次。"
+      wb_piece: "当前 СЦ/PФЦ 处理免费；仓储 = 商品总体积 × 每升每天基础费 × 系数 × 计费天数；固定费整批仅计一次。"
+    missing:
+      goods_volume: 单品体积
+      route_rate: 目标路线单价
+    messages:
+      changed: 参数已变化，正在准备重新计算…
+      sku_count: 请选择 1～5 个 SKU；选择 SPU 后也按展开后的 SKU 个数限制。
+      complete_fields: 请补全有效的外箱尺寸、重量和每箱件数，并检查展开参数中的限制。
+      calculating: 正在比较码放方式并计算费用…
+      updated: 已按当前参数更新，费用为估算值。
+      invalid: 请按结果区域的提示调整参数。
+      request_error: 计算失败，请检查网络后重试。
+    errors:
+      profile: 请选择支持的供货类型。
+      sku_count: 每次请选择 1～5 个 SKU。
+      duplicate_skus: 同一 SKU 只能选择一次。
+      sku_unavailable: 有 SKU 不存在或不在当前用户可见范围。
+      setting: "请填写有效的%{field}。"
+      rule_limit: "%{field}不能超过本供货类型上限 %{limit}。"
+      item_field: "%{sku} 的%{field}无效，请填写正数；尺寸至少 1 cm，每箱件数和发货箱数须为整数。"
+      does_not_fit: "%{sku} 无法装入托盘，请检查外箱尺寸、允许朝向和限重。"
+      box_weight: "%{sku} 单箱重量超过此模式 %{limit} kg 上限，请调整运输箱包装。"
+      mixed_quantities: 发货箱数请全部留空（推荐容量），或全部填写（整批排托）。
+      too_many_pallets: "本次超过 %{count} 托，请拆分批次后计算。"
+    strategy:
+      origin: 码放坐标以托盘左上角为 (0,0)，X 沿 120 cm 长边、Y 沿 80 cm 短边，单位 cm；各分区独立向上叠放，同层按子区编号顺序放箱，顶层仅放指定余箱数。
+      grid: "    子区 %{number}：起点 X=%{x}、Y=%{y}；箱底沿 X 为 %{length} cm、沿 Y 为 %{width} cm；X 方向 %{columns} 列 × Y 方向 %{rows} 行。"
+      heading: "%{profile}｜共 %{pallets} 托、%{boxes} 箱、%{units} 件商品。"
+      limits: "使用 120×80×14.5 cm 标准托盘，估计自重 %{tare} kg。含托总高 ≤%{height} cm；%{basis} ≤%{weight} kg；单边超出 ≤%{overhang} cm。"
+      pallet: "第 %{number} 托：%{boxes} 箱；含托高 %{height} cm，含托毛重 %{weight} kg。"
+      zone: "  分区 %{number} / %{sku}：%{boxes} 箱（%{units} 件）；%{orientation}，摆放尺寸 %{dimensions} cm；每层布局 %{grid}，最多 %{per_layer} 箱，共 %{layers} 层，顶层 %{last_layer} 箱。加号表示同层拼区，斜线分隔平面旋转后的尺寸；各层箱位对齐，余箱放顶层。"
+      ozon_fbo: EUR 托盘，拉伸膜至少 3 层；包住木质底座和顶层形成“帽子”，胶带交叉固定。同托仅一个供货单，商品按列集中。按后台货位/运输货位要求贴标签；运输货位每箱也须贴箱标签。交叉转运须在卖家仓预先打托，托盘不返还。创建供货时核对普通 30 箱/40 托或运输货位 1500 箱资格与点位容量。
+      ozon_fbs: 拉伸膜至少 3 层且完整，货物不能在不破坏膜的情况下抽出；托盘货位标签贴三面。可分拣与不可分拣货物必须分开，逐件检查 OZN 标签，单箱 ≤35 kg；按交付点确认信任收货资格、容量和取货费用。
+      wb_mono: 同托最多 3 个条码，每箱只放一个条码，同条码每箱件数一致。沿 80 cm 窄边用可见竖向纸板分隔不同条码；窄侧贴托盘条码和 A4 装箱单（托盘号/总托数、供货编号、箱数、发货点、供货类型、法人、日期）。透明膜厚度至少 0.15 mm，车辆边缘留 ≥10 cm。
+      wb_piece: 商品先装运输箱；同托最多 3 个条码，每箱一个条码，同条码箱内件数一致。贴托盘条码，不可上下叠托；中转供货附装箱单并写明托盘数。透明膜厚度至少 0.15 mm，车辆边缘留 ≥10 cm。
+      check: 发货前按卖家后台核对仓库/日期费率、SKU 商品条码、单品尺寸及品类资格、供货组成与实际数量；特殊品类、危险品、不同供货单和不兼容货物不得混托。几何排托不代表承压安全，必须试码，重货优先靠下并确保固定稳定。
+      preview: 以页面同编号托盘的俯视图和朝向表为码放位置依据；方案内不得随意改变箱体朝向或把不同 SKU 跨区叠放。

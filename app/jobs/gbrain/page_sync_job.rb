@@ -1,5 +1,7 @@
 module Gbrain
   class PageSyncJob < ApplicationJob
+    require "digest"
+
     queue_as :gbrain
     limits_concurrency to: 1,
       key: ->(*) { "page_writes" },
@@ -36,13 +38,19 @@ module Gbrain
 
     def write_page(page, version)
       page.update_columns(sync_status: "syncing", last_error: nil, updated_at: Time.current)
-      client.put_page(slug: page.slug, content: page.compiled_content)
+      payload = page.compiled_content
+      payload_sha256 = Digest::SHA256.hexdigest(payload)
+      client.put_page(slug: page.slug, content: payload)
 
       page.reload
-      attributes = { knowledge_base_written_at: Time.current, updated_at: Time.current }
+      attributes = { updated_at: Time.current }
       if page.content_updated_at == version && !page.pending_deletion?
-        attributes[:sync_status] = "synced"
-        attributes[:last_error] = nil
+        attributes.merge!(
+          knowledge_base_written_at: Time.current,
+          synced_payload_sha256: payload_sha256,
+          sync_status: "synced",
+          last_error: nil
+        )
       end
       page.update_columns(attributes)
     end

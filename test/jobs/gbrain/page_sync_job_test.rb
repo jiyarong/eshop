@@ -54,6 +54,7 @@ class Gbrain::PageSyncJobTest < ActiveJob::TestCase
     page.reload
     assert_equal "pending", page.sync_status
     assert_equal "new body", page.content
+    assert_nil page.synced_payload_sha256
   end
 
   test "deletes the local record after gbrain confirms deletion" do

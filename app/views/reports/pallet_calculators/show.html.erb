@@ -1,0 +1,116 @@
+<% content_for :title, t("pallet_calculator.title") %>
+<div class="pallet-calculator"
+     data-controller="pallet-calculator"
+     data-pallet-calculator-catalogue-value="<%= @catalogue.to_json %>"
+     data-pallet-calculator-rules-value="<%= PalletPacking::Rules::PROFILES.to_json %>"
+     data-pallet-calculator-defaults-value="<%= defaults.to_json %>"
+     data-pallet-calculator-messages-value="<%= t('pallet_calculator.messages').to_json %>">
+  <header class="pallet-calculator__heading">
+    <div>
+      <div class="pallet-calculator__eyebrow"><i class="bi bi-boxes" aria-hidden="true"></i> <%= t("pallet_calculator.eyebrow") %></div>
+      <h1 class="page-title"><%= t("pallet_calculator.title") %></h1>
+      <p><%= t("pallet_calculator.description") %></p>
+    </div>
+    <span class="pallet-calculator__badge"><%= t("pallet_calculator.rule_date", date: PalletPacking::Rules::AS_OF) %></span>
+  </header>
+
+  <%= form_with url: calculate_reports_pallet_calculator_path(locale: I18n.locale), method: :post, html: { novalidate: true }, data: { turbo: false, pallet_calculator_target: "form", action: "submit->pallet-calculator#calculate input->pallet-calculator#input change->pallet-calculator#change click->pallet-calculator#pickerClick" } do %>
+    <section class="panel pallet-calculator__setup">
+      <div class="pallet-calculator__section-heading"><h2><span>01</span> <%= t("pallet_calculator.setup") %></h2><span><%= t("pallet_calculator.instant") %></span></div>
+      <div class="pallet-calculator__selectors">
+        <div class="field">
+          <label for="pallet-platform"><%= t("pallet_calculator.platform") %></label>
+          <select id="pallet-platform" data-pallet-calculator-target="platform"><option value="ozon"><%= t("pallet_calculator.platforms.ozon") %></option><option value="wb"><%= t("pallet_calculator.platforms.wb") %></option></select>
+        </div>
+        <div class="field">
+          <label for="pallet-mode"><%= t("pallet_calculator.mode") %></label>
+          <select id="pallet-mode"><option><%= t("pallet_calculator.manual") %></option><option disabled><%= t("pallet_calculator.automatic_soon") %></option></select>
+        </div>
+        <div class="field">
+          <label for="pallet-profile"><%= t("pallet_calculator.fulfillment") %></label>
+          <select id="pallet-profile" name="profile" data-pallet-calculator-target="profile">
+            <% PalletPacking::Rules::PROFILES.each do |key, rule| %><option value="<%= key %>" data-platform="<%= rule[:platform] %>"><%= t("pallet_calculator.profiles.#{key}") %></option><% end %>
+          </select>
+        </div>
+        <%= render "shared/spu_sku_filter", dom_id_prefix: "pallet-skus", field_class: "pallet-calculator__sku-picker", label: t("pallet_calculator.skus"), placeholder: t("pallet_calculator.select_skus") %>
+      </div>
+      <p class="pallet-calculator__rule-line" data-pallet-calculator-target="rule"></p>
+      <template data-pallet-calculator-target="ruleTemplate">
+        <% PalletPacking::Rules::PROFILES.each_key do |key| %><span data-profile="<%= key %>"><%= t("pallet_calculator.rules.#{key}") %></span><% end %>
+      </template>
+      <div class="pallet-calculator__quote" data-profile-only="ozon_fbo">
+        <div class="field"><label for="pallet-setting-route_rate"><%= t("pallet_calculator.fields.route_rate") %></label><input id="pallet-setting-route_rate" name="settings[route_rate]" data-setting="route_rate" type="number" min="0" step="any" placeholder="<%= t('pallet_calculator.missing_placeholder') %>"></div>
+        <p class="pallet-calculator__hint"><%= t("pallet_calculator.route_hint") %> <%= link_to t("pallet_calculator.route_reference"), reports_ozon_cross_dock_tariffs_path, target: "_blank", rel: "noopener" %></p>
+      </div>
+      <div class="pallet-calculator__quote" data-profile-only="ozon_fbs">
+        <div class="field"><label for="pallet-setting-handling_rate"><%= t("pallet_calculator.fields.handling_rate") %></label><input id="pallet-setting-handling_rate" name="settings[handling_rate]" data-setting="handling_rate" type="number" min="0" step="any" required></div>
+        <p class="pallet-calculator__hint"><%= t("pallet_calculator.fbs_rate_hint") %></p>
+      </div>
+    </section>
+
+    <section class="panel pallet-calculator__manifest">
+      <div class="pallet-calculator__section-heading"><h2><span>02</span> <%= t("pallet_calculator.manifest") %></h2><span data-pallet-calculator-target="count"><%= t("pallet_calculator.none_selected") %></span></div>
+      <p class="pallet-calculator__hint"><%= t("pallet_calculator.quantity_hint") %></p>
+      <%= table_viewport do %>
+        <table class="prod-tbl pallet-calculator__items">
+          <thead><tr><th><%= t("pallet_calculator.sku") %></th>
+            <% %w[length width height weight pcs unit_volume_l quantity].each do |key| %><th><%= t("pallet_calculator.fields.#{key}") %></th><% end %>
+            <th><%= t("pallet_calculator.fields.rotatable") %></th><th data-profile-only="ozon_fbo"><%= t("pallet_calculator.fields.fashion") %></th>
+          </tr></thead>
+          <tbody data-pallet-calculator-target="rows"></tbody>
+        </table>
+      <% end %>
+      <p class="pallet-calculator__empty-manifest" data-pallet-calculator-target="empty"><i class="bi bi-plus-circle" aria-hidden="true"></i> <%= t("pallet_calculator.start") %></p>
+      <template data-pallet-calculator-target="rowTemplate">
+        <tr>
+          <td><div class="pallet-calculator__sku-label"><span class="pallet-calculator__swatch"></span><div><strong data-sku-code></strong><small data-sku-name></small></div></div><input type="hidden" name="items[][sku_code]" data-field="sku_code"></td>
+          <% %w[length width height weight pcs unit_volume_l quantity].each do |key| %>
+            <td><input type="number" name="items[][<%= key %>]" data-field="<%= key %>" data-label="<%= t("pallet_calculator.fields.#{key}") %>"
+                       step="<%= %w[pcs quantity].include?(key) ? '1' : 'any' %>" min="<%= %w[length width height pcs quantity].include?(key) ? '1' : '0.0001' %>"
+                       <%= "required" unless %w[unit_volume_l quantity].include?(key) %> <%= "max=100000" if key == "quantity" %>
+                       placeholder="<%= t("pallet_calculator.#{key == 'quantity' ? 'recommend_placeholder' : 'missing_placeholder'}") %>"></td>
+          <% end %>
+          <td><input type="checkbox" name="items[][rotatable]" value="1" data-field="rotatable" data-label="<%= t("pallet_calculator.fields.rotatable") %>"></td>
+          <td data-profile-only="ozon_fbo"><input type="checkbox" name="items[][fashion]" value="1" data-field="fashion" data-label="<%= t("pallet_calculator.fields.fashion") %>"></td>
+        </tr>
+      </template>
+      <p class="pallet-calculator__hint"><%= t("pallet_calculator.dimensions_hint") %></p>
+      <p class="pallet-calculator__hint" data-profile-only="ozon_fbo"><%= t("pallet_calculator.fashion_hint") %></p>
+    </section>
+
+    <details class="panel pallet-calculator__parameters">
+      <summary><i class="bi bi-sliders2" aria-hidden="true"></i> <%= t("pallet_calculator.parameters") %><span><%= t("pallet_calculator.parameters_hint") %></span></summary>
+      <div class="pallet-calculator__parameter-grid">
+        <fieldset><legend><%= t("pallet_calculator.limits") %></legend>
+          <% %w[height weight overhang tare].each do |key| %>
+            <div class="field"><label for="pallet-setting-<%= key %>"><%= t("pallet_calculator.fields.#{key}") %></label><input id="pallet-setting-<%= key %>" name="settings[<%= key %>]" data-setting="<%= key %>" type="number" min="0" step="any" required></div>
+          <% end %>
+          <p class="pallet-calculator__hint"><%= t("pallet_calculator.tare_hint") %></p>
+        </fieldset>
+        <fieldset><legend><%= t("pallet_calculator.transport_handling") %></legend>
+          <% %w[discount fixed_fee].each do |key| %>
+            <div class="field" <%= 'data-profile-only="ozon_fbo"'.html_safe if key == 'discount' %>>
+              <label for="pallet-setting-<%= key %>"><%= t("pallet_calculator.fields.#{key}") %></label><input id="pallet-setting-<%= key %>" name="settings[<%= key %>]" data-setting="<%= key %>" type="number" min="0" step="any" <%= 'max=100' if key == 'discount' %> <%= 'required' unless key == 'route_rate' %>>
+            </div>
+          <% end %>
+          <div class="field" data-profile-only="ozon_fbo"><label for="pallet-sorting"><%= t("pallet_calculator.fields.sorting") %></label><select id="pallet-sorting" name="settings[sorting]" data-setting="sorting"><% %w[composition zones correction].each do |key| %><option value="<%= key %>"><%= t("pallet_calculator.sorting.#{key}") %></option><% end %></select></div>
+          <label class="checkbox-option" data-profile-only="ozon_fbo"><input type="checkbox" name="settings[pickup]" value="1" data-setting="pickup"><%= t("pallet_calculator.fields.pickup") %></label>
+        </fieldset>
+        <fieldset data-profile-only="ozon_fbo wb_mono wb_piece"><legend><%= t("pallet_calculator.storage") %></legend>
+          <% %w[storage_days storage_rate coefficient].each do |key| %>
+            <div class="field"><label for="pallet-setting-<%= key %>"><%= t("pallet_calculator.fields.#{key}") %></label><input id="pallet-setting-<%= key %>" name="settings[<%= key %>]" data-setting="<%= key %>" type="number" min="0" step="any" required></div>
+          <% end %>
+          <p class="pallet-calculator__hint"><%= t("pallet_calculator.storage_hint") %></p>
+        </fieldset>
+      </div>
+      <p class="pallet-calculator__hint"><%= t("pallet_calculator.fee_scope") %></p>
+    </details>
+    <div class="pallet-calculator__calculate-bar">
+      <p role="status" aria-live="polite" data-pallet-calculator-target="status"></p>
+      <button type="submit" class="button" data-pallet-calculator-target="submit"><i class="bi bi-calculator" aria-hidden="true"></i><%= t("pallet_calculator.recalculate") %></button>
+    </div>
+  <% end %>
+  <div data-pallet-calculator-target="results" aria-live="polite">
+    <%= render "results" %>
+  </div>
+</div>

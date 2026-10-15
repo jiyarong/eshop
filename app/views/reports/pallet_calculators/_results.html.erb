@@ -1,0 +1,97 @@
+<%= turbo_frame_tag "pallet_calculator_results" do %>
+  <% if @error %>
+    <div class="pallet-calculator__error" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><%= @error %></div>
+  <% elsif @result %>
+    <% result = @result %>
+    <section class="pallet-calculator__result-header">
+      <div><div class="pallet-calculator__eyebrow"><%= t("pallet_calculator.result_eyebrow") %></div><h2><%= t("pallet_calculator.#{result[:recommendation] ? 'recommendation' : 'shipment_plan'}") %></h2><p><%= t("pallet_calculator.method") %></p></div>
+      <span class="pallet-calculator__badge"><%= t("pallet_calculator.#{result[:recommendation] ? 'recommendation_badge' : 'shipment_badge'}") %></span>
+    </section>
+    <div class="pallet-calculator__stats">
+      <div class="pallet-calculator__stat pallet-calculator__stat--primary"><span><%= t("pallet_calculator.total_pallets") %></span><strong><%= result[:pallets].size %><small><%= t("pallet_calculator.pallet_unit") %></small></strong><p><%= t("pallet_calculator.sku_count", count: result[:items].size) %></p></div>
+      <div class="pallet-calculator__stat"><span><%= t("pallet_calculator.total_boxes") %></span><strong><%= pallet_number(result[:total_boxes], precision: 0) %></strong><p><%= t("pallet_calculator.unit_count", count: result[:total_units]) %></p></div>
+      <div class="pallet-calculator__stat"><span><%= t("pallet_calculator.total_weight") %></span><strong><%= pallet_number(result[:pallets].sum { |pallet| pallet[:gross_weight] }) %><small>kg</small></strong><p><%= t("pallet_calculator.includes_tare") %></p></div>
+      <div class="pallet-calculator__stat"><span><%= t("pallet_calculator.#{result[:total_fee] ? 'estimated_fee' : 'known_subtotal'}") %></span><strong><%= pallet_money(result[:total_fee] || result[:known_fee]) %></strong><p><%= t("pallet_calculator.#{result[:total_fee] ? 'fee_estimate' : 'fee_incomplete'}") %></p></div>
+    </div>
+    <% if result[:missing].any? %>
+      <div class="pallet-calculator__notice"><i class="bi bi-info-circle" aria-hidden="true"></i><%= t("pallet_calculator.missing_fees", fields: result[:missing].map { |field| t("pallet_calculator.missing.#{field}") }.join(" / ")) %></div>
+    <% end %>
+    <% if result[:profile] == "wb_mono" && result[:pallets].any? { |pallet| pallet[:height] < 50 } %><div class="pallet-calculator__notice"><%= t("pallet_calculator.mono_short") %></div><% end %>
+
+    <section class="panel pallet-calculator__allocation">
+      <div class="pallet-calculator__section-heading"><h2><span>03</span> <%= t("pallet_calculator.sku_results") %></h2></div>
+      <%= table_viewport do %>
+        <table class="prod-tbl"><thead><tr><th><%= t("pallet_calculator.sku") %></th><th><%= t("pallet_calculator.boxes") %></th><th><%= t("pallet_calculator.units") %></th><th><%= t("pallet_calculator.carton") %></th><th><%= t("pallet_calculator.allocated_fee") %></th></tr></thead>
+          <tbody><% result[:sku_totals].each do |total| %><% item = result[:items][total[:item_index]] %><tr>
+            <td><div class="pallet-calculator__sku-label"><span class="pallet-calculator__swatch" style="--sku-color: <%= PalletCalculatorsHelper::PALLET_COLORS[total[:item_index]] %>"></span><strong><%= item[:sku_code] %></strong></div></td>
+            <td><strong><%= total[:boxes] %></strong></td><td><%= total[:units] %></td><td><%= item.values_at(:length, :width, :height).map { |value| pallet_number(value) }.join(" × ") %> cm / <%= pallet_number(item[:weight]) %> kg</td>
+            <td><%= pallet_money(total[:known_fee]) %><%= " *" if result[:missing].any? %></td>
+          </tr><% end %></tbody>
+        </table>
+      <% end %>
+      <p class="pallet-calculator__hint"><%= t("pallet_calculator.allocation_hint") %></p>
+    </section>
+
+    <section class="panel pallet-calculator__visualization">
+      <div class="pallet-calculator__section-heading">
+        <h2><span>04</span> <%= t("pallet_calculator.visualization") %></h2>
+        <label class="pallet-calculator__pallet-select"><span><%= t("pallet_calculator.current_pallet") %></span><select data-action="change->pallet-calculator#selectPallet"><% result[:pallets].each_with_index do |pallet, index| %><option value="<%= index %>"><%= t("pallet_calculator.pallet_option", number: index + 1, boxes: pallet[:boxes]) %></option><% end %></select></label>
+      </div>
+      <% result[:pallets].each_with_index do |pallet, index| %>
+        <div data-pallet-panel="<%= index %>" <%= "hidden" unless index.zero? %>>
+          <div class="pallet-calculator__pallet-metrics">
+            <span><%= t("pallet_calculator.pallet_height", value: pallet_number(pallet[:height]), limit: pallet_number(result[:settings][:height])) %></span>
+            <span><%= t("pallet_calculator.pallet_weight", value: pallet_number(pallet[:gross_weight])) %></span>
+            <span><%= t("pallet_calculator.carton_volume", value: pallet_number(pallet[:cargo_l])) %></span>
+            <span><%= t("pallet_calculator.pallet_cost", value: pallet_money(pallet[:fee])) %></span>
+          </div>
+          <p class="pallet-calculator__hint"><%= t("pallet_calculator.axis_hint", axis: t("pallet_calculator.#{pallet[:zones].first[:swap] ? 'short_axis' : 'long_axis'}")) %></p>
+          <div class="pallet-calculator__diagrams">
+            <figure><figcaption><%= t("pallet_calculator.isometric") %></figcaption><%= render "diagram", pallet: pallet, result: result, index: index %></figure>
+            <figure><figcaption><%= t("pallet_calculator.top_view") %></figcaption>
+              <svg viewBox="-8 -8 140 104" role="img" aria-label="<%= t("pallet_calculator.top_view") %>" class="pallet-calculator__top-view">
+                <rect width="120" height="80" rx="1" fill="#e7c999" stroke="#b38a51" stroke-width="0.6" />
+                <% pallet[:zones].each do |zone| %>
+                  <% item = result[:items][zone[:item_index]]; color = PalletCalculatorsHelper::PALLET_COLORS[zone[:item_index]] %>
+                  <% pallet_zone_boxes(zone).select { |box| box[:z].zero? }.each do |box| %>
+                    <rect x="<%= box[:x] - result[:settings][:overhang] %>" y="<%= box[:y] - result[:settings][:overhang] %>" width="<%= box[:length] %>" height="<%= box[:width] %>" fill="<%= color %>" fill-opacity="0.78" stroke="white" stroke-width="0.45" />
+                  <% end %>
+                <% end %>
+                <text x="60" y="94" text-anchor="middle" font-size="4" fill="currentColor">120 × 80 cm</text>
+              </svg>
+              <p class="pallet-calculator__hint"><%= t("pallet_calculator.top_hint") %></p>
+            </figure>
+          </div>
+          <div class="pallet-calculator__legend"><% pallet[:zones].each do |zone| %><span><i class="pallet-calculator__swatch" style="--sku-color: <%= PalletCalculatorsHelper::PALLET_COLORS[zone[:item_index]] %>"></i><%= result[:items][zone[:item_index]][:sku_code] %> · <%= t("pallet_calculator.box_count", count: zone[:count]) %></span><% end %></div>
+          <%= table_viewport do %>
+            <table class="prod-tbl"><thead><tr><% %w[sku orientation layer_grid layers last_layer boxes].each do |key| %><th><%= t("pallet_calculator.#{key}") %></th><% end %></tr></thead>
+              <tbody><% pallet[:zones].each do |zone| %><% item = result[:items][zone[:item_index]]; per_layer = zone[:per_layer] %><tr>
+                <td><%= item[:sku_code] %></td><td><%= pallet_orientation(item, zone) %><br><small><%= pallet_zone_dimensions_label(zone) %> cm</small></td>
+                <td><%= pallet_layer_grid(zone) %> = <%= per_layer %></td><td><%= zone[:layers] %></td><td><%= zone[:count] - (zone[:layers] - 1) * per_layer %></td><td><%= zone[:count] %></td>
+              </tr><% end %></tbody>
+            </table>
+          <% end %>
+          <details class="pallet-calculator__fee-detail"><summary><%= t("pallet_calculator.fee_detail") %></summary>
+            <dl><% pallet[:breakdown].each do |key, value| %><div><dt><%= t("pallet_calculator.fees.#{key}") %></dt><dd><%= pallet_money(value) %></dd></div><% end %>
+              <div><dt><%= t("pallet_calculator.goods_volume") %></dt><dd><%= pallet[:goods_l] ? "#{pallet_number(pallet[:goods_l])} L" : t("pallet_calculator.pending") %></dd></div>
+              <% if result[:profile] == "ozon_fbo" %><div><dt><%= t("pallet_calculator.bill_volume") %></dt><dd><%= pallet[:bill_l] ? "#{pallet_number(pallet[:bill_l])} L" : t("pallet_calculator.pending") %></dd></div><% end %>
+            </dl>
+            <p class="pallet-calculator__hint"><%= t("pallet_calculator.formulas.#{result[:profile]}") %></p>
+            <p class="pallet-calculator__hint"><%= t("pallet_calculator.fee_scope") %></p>
+          </details>
+        </div>
+      <% end %>
+      <p class="pallet-calculator__hint"><%= t("pallet_calculator.diagram_hint") %></p>
+    </section>
+
+    <section class="panel pallet-calculator__handoff" data-controller="clipboard" data-clipboard-copied-label-value="<%= t('pallet_calculator.copied') %>">
+      <div class="pallet-calculator__section-heading"><h2><span>05</span> <%= t("pallet_calculator.handoff") %></h2>
+        <button class="button button-secondary" type="button" data-action="clipboard#copy" data-clipboard-target="button" aria-label="<%= t('pallet_calculator.copy') %>"><i class="bi bi-copy" data-clipboard-target="icon" aria-hidden="true"></i><%= t("pallet_calculator.copy") %></button>
+      </div>
+      <pre data-clipboard-target="source"><%= pallet_strategy(result) %></pre>
+      <span role="status" data-clipboard-target="status"></span>
+    </section>
+  <% else %>
+    <div class="pallet-calculator__blank-result"><i class="bi bi-box-seam" aria-hidden="true"></i><h2><%= t("pallet_calculator.empty_title") %></h2><p><%= t("pallet_calculator.empty_description") %></p></div>
+  <% end %>
+<% end %>

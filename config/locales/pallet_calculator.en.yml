@@ -1,0 +1,182 @@
+en:
+  pallet_calculator:
+    title: Pallet packing calculator
+    eyebrow: Warehouse dispatch tool
+    description: Select a platform and SKUs to calculate quantities, fees and warehouse packing instructions.
+    rule_date: "Rules as of %{date}"
+    setup: Dispatch settings
+    instant: Changes recalculate automatically
+    platform: Platform
+    platforms:
+      ozon: Ozon
+      wb: Wildberries
+    mode: Calculation mode
+    manual: Select SKUs manually
+    automatic_soon: Automatic mode (coming later)
+    fulfillment: Supply type
+    skus: SKU / SPU (1–5 SKUs)
+    select_skus: Search and select SKUs
+    manifest: Packing manifest
+    none_selected: 0 / 5
+    quantity_hint: Leave ALL quantities blank to recommend pallet capacity, splitting SKUs when needed. Fill ALL quantities to pack an exact shipment. Do not mix blank and specified quantities.
+    dimensions_hint: Dimensions are outer-carton cm, weight is gross carton kg, and units are merchandise units per carton. Edits apply only to this calculation. Complete missing packaging data. Missing unit volume allows packing but leaves some fees pending. One barcode is assumed per SKU.
+    fashion_hint: The Fashion composition-sorting exemption applies only from 2026-10-01 to 12-31. Select it only for eligible goods; zone sorting and composition correction remain chargeable.
+    sku: SKU
+    recommend_placeholder: Recommend
+    missing_placeholder: Missing
+    start: Select 1–5 SKUs above to begin
+    parameters: Receiving limits and fee parameters
+    route_hint: Enter the current destination route quote to estimate transport. Leave blank to see only known costs.
+    route_reference: View reference route tariffs
+    fbs_rate_hint: Trusted acceptance defaults to 10 ₽/merchandise unit. Use 0 for SC self-acceptance or the actual special-point quote.
+    long_axis: long side (120 cm)
+    short_axis: short side (80 cm)
+    axis_hint: "Zones run along the pallet's %{axis}; columns follow this direction. Placed dimensions always mean pallet long side × short side × vertical."
+    parameters_hint: Platform defaults; tighten limits for your destination
+    limits: Pallet and limits (120 × 80 × 14.5 cm)
+    tare_hint: Pallet tare defaults to an estimated 25 kg; replace with measured weight. No overhang by default. Height includes the pallet. FBO weight is cargo only; other modes use gross weight.
+    transport_handling: Transport and handling
+    storage: Storage estimate
+    storage_hint: Enter chargeable days only, excluding free periods. WB mono uses ₽/pallet/day; other types use ₽/L/day. Adjust the warehouse coefficient.
+    fee_scope: Estimates only the listed transport, handling, pickup, storage and entered fixed fees. Excludes sales commission, customer delivery, penalties and unspecified costs. Defaults use 2026-10-14 documentation. Enter the actual route quote for your destination/date; recheck tariffs from 2026-10-30.
+    recalculate: Recalculate
+    pending: Pending
+    result_eyebrow: Packing results
+    recommendation: Recommended load
+    shipment_plan: Shipment plan
+    method: Separate aligned SKU columns, comparing both partition directions and allowed orientations. Covers selected SKUs before maximizing loaded volume. This stable-partition heuristic does not guarantee a global optimum for arbitrary 3D packing.
+    recommendation_badge: Recommended quantities
+    shipment_badge: Exact shipment quantities
+    total_pallets: Pallets required
+    pallet_unit: pallets
+    sku_count: "%{count} SKUs"
+    total_boxes: Cartons loaded
+    unit_count: "%{count} merchandise units"
+    total_weight: Shipment gross weight
+    includes_tare: Includes pallet tare
+    estimated_fee: Estimated fees
+    known_subtotal: Known fee subtotal
+    fee_estimate: Estimate in Russian rubles
+    fee_incomplete: Incomplete estimate, not a final total
+    missing_fees: "Incomplete fees: provide %{fields}. Packing quantities are available; known fees are only a subtotal."
+    mono_short: "Some WB mono pallets are below the 50 cm minimum height. Increase quantities or switch supply type and recalculate. Pallets below 1 m³ may also be charged as box storage."
+    sku_results: Quantities and fees per SKU
+    boxes: Cartons
+    units: Merchandise units
+    carton: Carton dimensions / gross weight
+    allocated_fee: Allocated known fees
+    allocation_hint: Handling is attributed directly to each SKU; shared fees are allocated by merchandise volume. If unavailable, outer-carton volume is the provisional allocation basis. * indicates an incomplete subtotal.
+    visualization: Pallet layout
+    current_pallet: View pallet
+    pallet_option: "Pallet %{number} · %{boxes} cartons"
+    pallet_height: "Height incl. pallet %{value} / %{limit} cm"
+    pallet_weight: "Gross weight %{value} kg"
+    carton_volume: "Carton volume %{value} L"
+    pallet_cost: "Pallet fees %{value}"
+    isometric: Isometric layout
+    top_view: Bottom layer, top view
+    top_hint: Colors identify SKUs. Stack upwards from each zone, keeping every column aligned.
+    box_count: "%{count} cartons"
+    orientation: Carton orientation
+    layer_grid: Columns × rows per layer
+    layers: Layers
+    last_layer: Cartons on top layer
+    fee_detail: Pallet fee breakdown and formulas
+    goods_volume: Merchandise volume
+    bill_volume: Billable transport volume (min. 1900 L)
+    diagram_hint: Diagrams explain zones and orientations, showing at most 400 cartons per zone. Follow the quantity table. Geometry does not assess compression strength, fragility or center of gravity. Trial-stack and verify securing strength; lower the height limit if needed.
+    diagram_label: "Pallet %{number} layout"
+    diagram_height: "Height incl. pallet %{value} cm"
+    handoff: Warehouse packing instructions
+    copy: Copy instructions
+    copied: Instructions copied
+    empty_title: Turn your manifest into a packing plan
+    empty_description: Select SKUs to load carton parameters, inspect layouts and fees, and copy warehouse instructions.
+    gross_weight: gross weight incl. pallet
+    cargo_weight: cargo weight
+    profiles:
+      ozon_fbo: Ozon FBO · warehouse / SC / cross-docking
+      ozon_fbs: Ozon FBS · sortable trusted acceptance
+      wb_mono: Wildberries FBW · mono pallet
+      wb_piece: Wildberries FBW · piece pallet
+    rules:
+      ozon_fbo: EUR pallet 120 × 80 × 14.5 cm; total height ≤220 cm, cargo ≤800 kg, overhang ≤2 cm per side. Warehouse/SC delivery or pickup; PVZ/PPZ box delivery is outside this mode.
+      ozon_fbs: Standard pallet 120 × 80 × 14.5 cm; total height ≤240 cm, gross weight ≤600 kg, carton ≤35 kg, overhang ≤2 cm per side. Sortable goods only; non-sortable goods require separate pallets.
+      wb_mono: Wooden Euro pallet 120 × 80 × 14.5 cm; SC total height 50–180 cm, gross weight ≤500 kg, max. 3 barcodes. Separate barcodes with vertical cardboard along the narrow side. Check category-specific unit dimensions.
+      wb_piece: Wooden Euro pallet 120 × 80 × 14.5 cm; SC total height ≤180 cm, gross weight ≤500 kg, carton ≤25 kg, max. 3 barcodes. Pack goods in transport cartons; do not stack pallets.
+    fields:
+      length: Carton length cm
+      width: Carton width cm
+      height: Height cm
+      weight: Weight kg
+      pcs: Units/carton
+      unit_volume_l: Unit volume L
+      quantity: Shipment cartons
+      rotatable: Allow tipping
+      fashion: Fashion exemption
+      overhang: Overhang per side cm
+      tare: Pallet tare kg
+      route_rate: Route rate ₽/L
+      discount: Route discount %
+      fixed_fee: Fixed fee per shipment ₽
+      handling_rate: FBS handling ₽/unit
+      sorting: FBO sorting category
+      pickup: Ozon pickup (1.55 ₽/L; enter vehicle fee separately)
+      storage_days: Chargeable storage days
+      storage_rate: Base storage rate (units above)
+      coefficient: Storage coefficient
+    sorting:
+      composition: Same zone, correct composition (mixed SKUs only)
+      zones: Sort by warehouse zone
+      correction: Correct composition
+    orientations:
+      upright: Upright (original top upwards)
+      sideways: Sideways (original width vertical)
+      vertical: On end (original length vertical)
+    fees:
+      route: Route transport
+      handling: Receiving / handling
+      pickup: Pickup handling
+      storage: Storage
+      fixed: Shipment fixed fee (first pallet only)
+    formulas:
+      ozon_fbo: "Transport = max(rounded-up merchandise liters, 1900) × route rate × (1 − discount). Pickup handling = rounded-up merchandise liters × 1.55. Fixed fees apply once per shipment. Sorting uses merchandise units and unit volume, not carton count; a correct single-SKU load has no composition-sorting fee."
+      ozon_fbs: "Handling = merchandise units × handling rate. Fixed fees apply once per shipment. Enter 0 for SC self-acceptance or the portal quote for special points."
+      wb_mono: "Current SC/PFC receiving is free. Storage = pallets × base rate per pallet/day × coefficient × chargeable days. Fixed fees apply once."
+      wb_piece: "Current SC/PFC receiving is free. Storage = merchandise liters × base rate per L/day × coefficient × chargeable days. Fixed fees apply once."
+    missing:
+      goods_volume: unit volume
+      route_rate: destination route rate
+    messages:
+      changed: Parameters changed; preparing to recalculate…
+      sku_count: Select 1–5 SKUs. An SPU counts as its expanded SKUs.
+      complete_fields: Complete valid carton dimensions, weights and units per carton; check the expanded limits.
+      calculating: Comparing layouts and calculating fees…
+      updated: Updated for the current parameters. Fees are estimates.
+      invalid: Adjust parameters using the message below.
+      request_error: Calculation failed. Check the connection and retry.
+    errors:
+      profile: Select a supported supply type.
+      sku_count: Select 1–5 SKUs.
+      duplicate_skus: Select each SKU only once.
+      sku_unavailable: A SKU is unavailable or outside your access scope.
+      setting: "Enter a valid %{field}."
+      rule_limit: "%{field} must not exceed %{limit} for this supply type."
+      item_field: "%{sku}: invalid %{field}. Use positive numbers, dimensions ≥1 cm, and whole numbers for carton quantities and units/carton."
+      does_not_fit: "%{sku} cannot fit. Check carton dimensions, permitted orientations and weight limits."
+      box_weight: "%{sku} exceeds the %{limit} kg carton limit. Adjust packaging."
+      mixed_quantities: Leave all carton quantities blank for capacity recommendations, or specify all for an exact shipment.
+      too_many_pallets: "More than %{count} pallets. Split the shipment."
+    strategy:
+      origin: Coordinates start at the top-left pallet corner (0,0); X follows the 120 cm edge and Y the 80 cm edge, in cm. Stack each zone independently, fill subareas in order, and place only the specified residual quantity on top.
+      grid: "    Subarea %{number}: start X=%{x}, Y=%{y}; carton footprint %{length} cm along X and %{width} cm along Y; %{columns} columns along X × %{rows} rows along Y."
+      heading: "%{profile} | %{pallets} pallets, %{boxes} cartons, %{units} merchandise units."
+      limits: "Use standard 120×80×14.5 cm pallets, estimated tare %{tare} kg. Total height ≤%{height} cm; %{basis} ≤%{weight} kg; overhang ≤%{overhang} cm per side."
+      pallet: "Pallet %{number}: %{boxes} cartons; total height %{height} cm, gross weight %{weight} kg."
+      zone: "  Zone %{number} / %{sku}: %{boxes} cartons (%{units} units); %{orientation}, placed dimensions %{dimensions} cm; layout %{grid}, up to %{per_layer} cartons/layer, %{layers} layers, %{last_layer} cartons on top. Plus signs join areas in a layer; slashes separate horizontally rotated dimensions. Align columns and put residual cartons on top."
+      ozon_fbo: EUR pallets; at least 3 stretch-film layers, wrapping the base and top into a cap secured with crossed tape. One supply order per pallet; group SKUs in columns. Apply portal cargo/transport labels; transport cargo requires carton labels too. Preassemble cross-dock pallets at the seller warehouse; pallets are not returned. Confirm point capacity and eligibility for normal 30-carton/40-pallet or transport 1500-carton limits.
+      ozon_fbs: Use at least 3 intact film layers so goods cannot be removed without breaking the film. Apply pallet labels on three sides. Separate sortable and non-sortable goods; check every OZN label, carton ≤35 kg. Confirm point capacity, trusted-acceptance eligibility and pickup fees.
+      wb_mono: Maximum 3 barcodes per pallet, one barcode per carton and equal units per carton for each barcode. Separate barcodes with visible vertical cardboard along the 80 cm side. Attach the pallet barcode and A4 packing list on that side (pallet number/total, supply ID, cartons, dispatch point, supply type, legal entity, date). Transparent film ≥0.15 mm; vehicle-edge clearance ≥10 cm.
+      wb_piece: Pack units into transport cartons. Maximum 3 barcodes per pallet, one barcode per carton, equal units per carton for each barcode. Apply pallet barcode; never stack pallets. Transit requires a packing list stating the pallet count. Transparent film ≥0.15 mm; vehicle-edge clearance ≥10 cm.
+      check: Before dispatch, verify portal warehouse/date tariffs, product barcodes, unit dimensions/category eligibility, declared composition and actual quantities. Do not mix incompatible goods, hazardous categories or different supply orders. Geometry does not certify compression safety; trial-stack, place heavy goods low and secure the load.
+      preview: Follow the top-view diagram and orientation table for each numbered pallet. Do not change orientations or stack different SKUs across zones.

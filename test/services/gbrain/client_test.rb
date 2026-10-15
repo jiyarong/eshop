@@ -4,8 +4,8 @@ class Gbrain::ClientTest < ActiveSupport::TestCase
   class FakeMcpClient
     attr_reader :calls
 
-    def initialize(result = { "content" => [{ "type" => "text", "text" => "ok" }] })
-      @result = result
+    def initialize(result = nil)
+      @result = result || { "content" => [{ "type" => "text", "text" => "ok" }] }
       @calls = []
     end
 
@@ -28,11 +28,30 @@ class Gbrain::ClientTest < ActiveSupport::TestCase
     client.search("利润", limit: 8)
 
     assert_equal [
+      ["get_page", { "slug" => "ops/sku" }],
       ["put_page", { "slug" => "ops/sku", "content" => "# SKU" }],
       ["list_pages", { "limit" => 25, "sort" => "updated_desc" }],
+      ["get_page", { "slug" => "ops/obsolete" }],
       ["delete_page", { "slug" => "ops/obsolete" }],
       ["query", { "query" => "库存", "limit" => 5 }],
       ["search", { "query" => "利润", "limit" => 8 }]
+    ], mcp_client.calls
+  end
+
+  test "passes the current revision when updating or deleting a remote page" do
+    page = { "slug" => "ops/sku", "revision" => "11111111-1111-4111-8111-111111111111" }
+    result = { "content" => [{ "type" => "text", "text" => JSON.generate(page) }] }
+    mcp_client = FakeMcpClient.new(result)
+    client = build_client(mcp_client)
+
+    client.put_page(slug: "ops/sku", content: "# SKU")
+    client.delete_page("ops/sku")
+
+    assert_equal [
+      ["get_page", { "slug" => "ops/sku" }],
+      ["put_page", { "slug" => "ops/sku", "content" => "# SKU", "expected_revision" => page["revision"] }],
+      ["get_page", { "slug" => "ops/sku" }],
+      ["delete_page", { "slug" => "ops/sku", "expected_revision" => page["revision"] }]
     ], mcp_client.calls
   end
 

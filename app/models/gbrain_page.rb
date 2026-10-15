@@ -1,4 +1,8 @@
 class GbrainPage < ApplicationRecord
+  require "digest"
+
+  belongs_to :source_document, class_name: "GbrainSourceDocument", optional: true
+
   SYNC_STATUSES = %w[pending syncing synced pending_delete deleting failed].freeze
   PAGE_TYPES = {
     "platform-guide" => %w[platform-guides/],
@@ -105,6 +109,10 @@ class GbrainPage < ApplicationRecord
 
   def wiki_content_changed?
     WIKI_CONTENT_ATTRIBUTES.any? { |attribute| will_save_change_to_attribute?(attribute) }
+  end
+
+  def payload_sha256
+    Digest::SHA256.hexdigest(compiled_content)
   end
 
   private

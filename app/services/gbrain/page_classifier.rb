@@ -17,7 +17,7 @@ module Gbrain
       @today = today
     end
 
-    def classify(content)
+    def classify(content, fixed_attributes: {})
       source_content = content.to_s.strip
       raise InvalidInput if source_content.blank?
 
@@ -26,6 +26,7 @@ module Gbrain
         "reviewed_at" => today.iso8601,
         "review_after" => (today + 3.months).iso8601
       )
+      attributes.merge!(fixed_attributes.stringify_keys)
       validate!(attributes, source_content)
       attributes
     rescue Error

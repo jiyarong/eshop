@@ -29,6 +29,7 @@ import MarkdownController from "./controllers/markdown_controller";
 import ModalController from "./controllers/modal_controller";
 import OperatorDialogController from "./controllers/operator_dialog_controller";
 import OzonChatInboxController from "./controllers/ozon_chat_inbox_controller";
+import PalletCalculatorController from "./controllers/pallet_calculator_controller";
 import PageTranslationController from "./controllers/page_translation_controller";
 import PopoverMultiselectFilterController from "./controllers/popover_multiselect_filter_controller";
 import ProfitTrendToggleController from "./controllers/profit_trend_toggle_controller";
@@ -52,6 +53,7 @@ import WeeklyProfitFilterController from "./controllers/weekly_profit_filter_con
 import YclawDownloadController from "./controllers/yclaw_download_controller";
 
 window.Stimulus = Application.start();
+Stimulus.register("pallet-calculator", PalletCalculatorController);
 Stimulus.register("agent-form", AgentFormController);
 Stimulus.register("attachment-preview", AttachmentPreviewController);
 Stimulus.register("attachment-upload", AttachmentUploadController);

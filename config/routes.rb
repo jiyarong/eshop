@@ -24,6 +24,8 @@ Rails.application.routes.draw do
   get "weekly_profit_reports/accounts" => "weekly_profit_reports#accounts"
   get "weekly_profit_reports"          => "weekly_profit_reports#show"
   resources :operator_skus, only: :index
+  get "reports/pallet_calculator" => "reports/pallet_calculators#show", as: :reports_pallet_calculator
+  post "reports/pallet_calculator/calculate" => "reports/pallet_calculators#calculate", as: :calculate_reports_pallet_calculator
 
   get "reports/capital_distribution" => "reports#capital_distribution", as: :reports_capital_distribution
   get "reports/inventory" => "reports#inventory"

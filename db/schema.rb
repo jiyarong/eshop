@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_15_081233) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -1124,6 +1124,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
     t.index ["user_id"], name: "index_feedback_tasks_on_user_id"
   end
 
+  create_table "gbrain_import_batches", force: :cascade do |t|
+    t.date "captured_on", null: false
+    t.datetime "created_at", null: false
+    t.integer "expected_documents", null: false
+    t.text "last_error"
+    t.string "manifest_sha256", null: false
+    t.string "platform", null: false
+    t.text "raw_manifest"
+    t.string "status", default: "importing", null: false
+    t.datetime "updated_at", null: false
+    t.index ["platform", "captured_on", "manifest_sha256"], name: "index_gbrain_batches_on_source_snapshot", unique: true
+  end
+
   create_table "gbrain_pages", force: :cascade do |t|
     t.jsonb "aliases", default: [], null: false
     t.jsonb "category_scope", default: [], null: false
@@ -1134,6 +1147,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
     t.datetime "created_at", null: false
     t.datetime "delete_requested_at"
     t.date "effective_date"
+    t.string "imported_payload_sha256"
     t.datetime "knowledge_base_written_at"
     t.text "last_error"
     t.string "page_type"
@@ -1142,16 +1156,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
     t.date "review_after"
     t.date "reviewed_at"
     t.string "slug", null: false
+    t.bigint "source_document_id"
     t.string "source_tier"
     t.string "subtype"
     t.text "summary"
     t.string "sync_status", default: "pending", null: false
+    t.string "synced_payload_sha256"
     t.jsonb "tags", default: [], null: false
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["page_type"], name: "index_gbrain_pages_on_page_type"
     t.index ["slug"], name: "index_gbrain_pages_on_slug", unique: true
+    t.index ["source_document_id"], name: "index_gbrain_pages_on_source_document_id"
     t.index ["sync_status"], name: "index_gbrain_pages_on_sync_status"
+  end
+
+  create_table "gbrain_source_documents", force: :cascade do |t|
+    t.jsonb "classification", default: {}, null: false
+    t.integer "classification_attempts", default: 0, null: false
+    t.string "classification_input_sha256", null: false
+    t.datetime "classification_started_at"
+    t.string "classification_status", default: "stored", null: false
+    t.datetime "classified_at"
+    t.datetime "created_at", null: false
+    t.string "document_kind", null: false
+    t.bigint "import_batch_id", null: false
+    t.text "last_error"
+    t.string "platform", null: false
+    t.integer "priority", default: 0, null: false
+    t.text "raw_content", null: false
+    t.string "raw_sha256", null: false
+    t.string "relative_path", null: false
+    t.string "source_key", null: false
+    t.jsonb "source_metadata", default: {}, null: false
+    t.string "source_url"
+    t.string "target_slug", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["import_batch_id", "classification_status"], name: "index_gbrain_documents_on_batch_status"
+    t.index ["import_batch_id", "relative_path"], name: "index_gbrain_documents_on_batch_path", unique: true
+    t.index ["import_batch_id"], name: "index_gbrain_source_documents_on_import_batch_id"
+    t.index ["platform", "source_key", "classification_input_sha256"], name: "index_gbrain_documents_on_classification_input"
   end
 
   create_table "messages", force: :cascade do |t|
@@ -3513,6 +3558,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_13_081518) do
   add_foreign_key "ec_tool_configurations", "users", column: "created_by_id"
   add_foreign_key "ec_tool_definitions", "users", column: "created_by_id"
   add_foreign_key "feedback_tasks", "users"
+  add_foreign_key "gbrain_pages", "gbrain_source_documents", column: "source_document_id"
+  add_foreign_key "gbrain_source_documents", "gbrain_import_batches", column: "import_batch_id"
   add_foreign_key "messages", "conversations"
   add_foreign_key "raw_ozon_accrual_by_day", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "raw_ozon_ad_daily_stats", "raw_ozon_ad_units", column: "ad_unit_id"

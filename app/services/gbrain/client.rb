@@ -17,11 +17,17 @@ module Gbrain
     end
 
     def put_page(slug:, content:)
-      call_tool("put_page", { "slug" => slug, "content" => content })
+      arguments = { "slug" => slug, "content" => content }
+      revision = page_revision(slug)
+      arguments["expected_revision"] = revision if revision.present?
+      call_tool("put_page", arguments)
     end
 
     def delete_page(slug)
-      call_tool("delete_page", { "slug" => slug })
+      arguments = { "slug" => slug }
+      revision = page_revision(slug)
+      arguments["expected_revision"] = revision if revision.present?
+      call_tool("delete_page", arguments)
     end
 
     def query(text, limit: 20)
@@ -52,6 +58,14 @@ module Gbrain
     def error_message(result)
       messages = Array(result["content"]).filter_map { |item| item["text"] if item.is_a?(Hash) }
       messages.join("\n").presence || I18n.t("admin.gbrain.errors.tool_failed")
+    end
+
+    def page_revision(slug)
+      result = client.call_tool("get_page", { "slug" => slug })
+      return if result.is_a?(Hash) && result["isError"]
+
+      payload = McpResult.payload(result)
+      payload["revision"] if payload.is_a?(Hash)
     end
   end
 end

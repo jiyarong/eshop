@@ -1,0 +1,12 @@
+<svg viewBox="40 20 450 540" role="img" aria-label="<%= t('pallet_calculator.diagram_label', number: index + 1) %>" class="pallet-calculator__isometric">
+  <defs><pattern id="pallet-grid-<%= index %>" width="22" height="22" patternUnits="userSpaceOnUse"><path d="M 22 0 L 0 0 0 22" fill="none" stroke="#dce4ee" stroke-width="0.6" /></pattern></defs>
+  <rect x="40" y="20" width="450" height="540" fill="url(#pallet-grid-<%= index %>)" opacity="0.6" />
+  <% pallet_cuboid_faces({ x: 0, y: 0, z: -14.5, length: 120, width: 80, height: 14.5 }).each_with_index do |points, face| %><polygon points="<%= points %>" fill="<%= %w[#b18a51 #96713e #e7c999][face] %>" stroke="#96713e" stroke-width="0.6" /><% end %>
+  <% pallet[:zones].flat_map { |zone| pallet_zone_boxes(zone).map { |box| box.merge(item_index: zone[:item_index]) } }.sort_by { |box| [box[:z], box[:x] + box[:y]] }.each do |box| %>
+    <% shifted_box = box.merge(x: box[:x] - result[:settings][:overhang], y: box[:y] - result[:settings][:overhang]) %>
+    <% pallet_cuboid_faces(shifted_box).each_with_index do |points, face| %>
+      <polygon points="<%= points %>" fill="<%= PalletCalculatorsHelper::PALLET_COLORS[box[:item_index]] %>" fill-opacity="<%= [0.76, 0.92, 0.62][face] %>" stroke="white" stroke-opacity="0.9" stroke-width="0.55" />
+    <% end %>
+  <% end %>
+  <text x="250" y="540" text-anchor="middle" font-size="16" fill="currentColor">120 × 80 cm · <%= t("pallet_calculator.diagram_height", value: pallet_number(pallet[:height])) %></text>
+</svg>
