@@ -1,6 +1,10 @@
 module Ec
   module Returns
     class WbNormalizer < BaseNormalizer
+      ISSUED_STATUS = "Выдано".freeze
+      # On its way from the Wildberries sorting centre to the pickup point the seller collects the goods at.
+      SELLER_RETURN_TRANSIT_STATUSES = [ "В пути в пвз", "Погружен в машину до СЦ/РЦ" ].freeze
+
       private
 
       def platform
@@ -47,8 +51,12 @@ module Ec
         "unknown"
       end
 
+      # Issued goods are in the seller's hands; the in-transit statuses are on the way to the pickup point.
+      # Cancelled-by-delay and not-picked statuses stay unknown: the report does not say where the goods are.
       def inventory_location
-        return "platform_return_warehouse" if raw_record.ready_to_return_dt.present? && raw_record.completed_dt.blank?
+        return "seller_warehouse" if raw_record.status == ISSUED_STATUS || raw_record.completed_dt.present?
+        return "seller_return_transit" if raw_record.status.in?(SELLER_RETURN_TRANSIT_STATUSES)
+        return "platform_return_warehouse" if raw_record.ready_to_return_dt.present?
 
         "unknown"
       end
