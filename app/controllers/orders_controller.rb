@@ -8,7 +8,8 @@ class OrdersController < ApplicationController
                 :order_fulfillment_types, :order_amount, :order_currency,
                 :business_status_filter_options, :return_business_status_filter_options,
                 :fulfillment_type_filter_options, :business_status_label, :return_business_status_label,
-                :order_business_statuses, :order_return_business_statuses
+                :order_business_statuses, :order_return_business_statuses,
+                :order_identifiers_for, :identifier_label, :platform_order_list_url
   before_action -> { require_permission!(:view_reports) }
 
   ORDERS_PER_PAGE = 20
@@ -24,6 +25,7 @@ class OrdersController < ApplicationController
     @summary = build_summary(@orders_scope)
     @orders = paginated_orders(@orders_scope)
     @sku_by_item_id = sku_lookup_for(@orders.flat_map(&:items))
+    @order_identifiers = Ec::OrderIdentifiers.for_orders(@orders)
   end
 
   def show
@@ -225,13 +227,22 @@ class OrdersController < ApplicationController
     display_value(order.external_order_number).to_s.truncate(20, omission: "")
   end
 
+  # Address that opens this very order in the platform cabinet (Ozon FBS only, see Ec::PlatformOrderLink).
   def platform_order_url(order)
-    case order.platform
-    when "ozon"
-      ozon_order_url(order)
-    when "wb"
-      wb_order_url(order)
-    end
+    Ec::PlatformOrderLink.exact_url(order)
+  end
+
+  # Cabinet list that holds the order, for platforms without a page per order (Wildberries FBS).
+  def platform_order_list_url(order)
+    Ec::PlatformOrderLink.list_url(order)
+  end
+
+  def order_identifiers_for(order)
+    @order_identifiers&.fetch(order.id, nil) || []
+  end
+
+  def identifier_label(key)
+    t("orders.identifiers.#{key}", default: key.to_s)
   end
 
   def order_item_sku_label(item)
@@ -362,19 +373,4 @@ class OrdersController < ApplicationController
     end.first
   end
 
-  def ozon_order_url(order)
-    fulfillment = order.fulfillments.first
-    posting_number = fulfillment&.external_fulfillment_id.presence
-    return unless posting_number
-
-    type = fulfillment.fulfillment_type.presence_in(%w[fbo fbs]) || "fbo"
-    "https://seller.ozon.ru/app/postings/crossborder/#{type}/#{posting_number}"
-  end
-
-  def wb_order_url(order)
-    order_id = order.external_order_id.presence || order.fulfillments.first&.external_fulfillment_id.presence
-    return unless order_id
-
-    "https://seller.wildberries.ru/order-feed?orderId=#{ERB::Util.url_encode(order_id)}"
-  end
 end

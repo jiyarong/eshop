@@ -1,6 +1,9 @@
 en:
   orders:
+    actions:
+      open_platform_list: "Platform list"
     fields:
+      identifiers: "Related numbers"
       business_status: "Business status"
       return_business_status: "Return status"
     filters:
@@ -12,3 +15,25 @@ en:
       return_business_status: "Return status"
     index:
       pagination_aria_label: "Order list pagination"
+    identifiers:
+      platform_order_id: "Platform order ID"
+      platform_order_number: "Platform order number"
+      fulfillment_id: "Fulfillment ID"
+      tracking_number: "Tracking number"
+      item_id: "Item ID"
+      posting_number: "Posting number"
+      parent_posting_number: "Parent posting number"
+      ozon_order_id: "Ozon order ID"
+      ozon_order_number: "Ozon order number"
+      label_barcode: "Label barcode"
+      wb_task_id: "Assembly task"
+      order_uid: "Order UID"
+      srid: "SRID"
+      g_number: "gNumber"
+      sticker: "Sticker"
+      sale_id: "Sale ID"
+      supply_id: "Supply ID"
+      return_id: "Return ID"
+      return_posting_number: "Return posting"
+      return_barcode: "Return barcode"
+      clearing_id: "Clearing ID"

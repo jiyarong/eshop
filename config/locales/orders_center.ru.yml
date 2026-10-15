@@ -1,6 +1,9 @@
 ru:
   orders:
+    actions:
+      open_platform_list: "Список на площадке"
     fields:
+      identifiers: "Связанные номера"
       business_status: "Бизнес-статус"
       return_business_status: "Статус возврата"
     filters:
@@ -12,3 +15,25 @@ ru:
       return_business_status: "Статус возврата"
     index:
       pagination_aria_label: "Страницы списка заказов"
+    identifiers:
+      platform_order_id: "ID заказа площадки"
+      platform_order_number: "Номер заказа площадки"
+      fulfillment_id: "Номер отправки"
+      tracking_number: "Трек-номер"
+      item_id: "ID позиции"
+      posting_number: "Номер отправления"
+      parent_posting_number: "Родительское отправление"
+      ozon_order_id: "ID заказа Ozon"
+      ozon_order_number: "Номер заказа Ozon"
+      label_barcode: "Штрихкод этикетки"
+      wb_task_id: "Сборочное задание"
+      order_uid: "UID заказа"
+      srid: "SRID"
+      g_number: "gNumber"
+      sticker: "Стикер"
+      sale_id: "ID продажи"
+      supply_id: "ID поставки"
+      return_id: "ID возврата"
+      return_posting_number: "Отправление возврата"
+      return_barcode: "Штрихкод возврата"
+      clearing_id: "Clearing ID"

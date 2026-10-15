@@ -230,11 +230,9 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", "配送中" do |elements|
       assert_equal "源状态: delivering\n源子状态: posting_on_way_to_city", elements.first["title"]
     end
-    assert_select "a[href=?][target=?][rel=?]",
-                  "https://seller.ozon.ru/app/postings/crossborder/fbo/0128619527-0157-1",
-                  "_blank",
-                  "noopener",
-                  "0128619527-0157-LONG"
+    # An Ozon FBO posting has no card in the seller cabinet, so the number opens our own order page.
+    assert_select "a[href=?]", "/orders/#{@order.id}", "0128619527-0157-LONG"
+    assert_select "a[href*=?]", "seller.ozon.ru", count: 0
     assert_select "a", { text: "0128619527-0157-LONG-ORDER", count: 0 }
     assert_select "th", { text: "履约单号", count: 0 }
     assert_select "td", { text: "0128619527-0157-1", count: 0 }
@@ -268,15 +266,67 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", "/orders/#{@order.id}", "View details"
   end
 
-  test "index links wb order number to seller order feed" do
-    get "/orders", params: { platform: "wb", q: "WB-G-#{@token}" }, headers: { "Accept" => "text/html" }
+  test "index opens an ozon fbs posting card in the seller cabinet" do
+    fbs_order = create_order_with_item("OZON-FBS-#{@token}", platform_sku_id: "7700#{@token.first(2).to_i(16)}")
+    fbs_order.fulfillments.create!(
+      platform: "ozon", store: @store, external_fulfillment_id: "OZON-FBS-#{@token}-1",
+      fulfillment_key: "ozon:#{@store.id}:OZON-FBS-#{@token}-1", fulfillment_type: "fbs", status: "processing",
+      synced_at: Time.zone.parse("2026-06-02 06:35:00")
+    )
+
+    get "/orders", params: { platform: "ozon", q: "OZON-FBS-#{@token}" }, headers: { "Accept" => "text/html" }
 
     assert_response :success
     assert_select "a[href=?][target=?][rel=?]",
-                  "https://seller.wildberries.ru/order-feed?orderId=WB-SRID-#{@token}",
-                  "_blank",
-                  "noopener",
-                  "WB-G-#{@token}"
+                  "https://seller.ozon.ru/app/postings/fbs?postingDetails=OZON-FBS-#{@token}-1",
+                  "_blank", "noopener"
+  end
+
+  test "index links a wb fbs order to its order page and to the cabinet tab that holds it" do
+    @wb_order.fulfillments.create!(
+      platform: "wb", store: @wb_store, external_fulfillment_id: "WB-SRID-#{@token}",
+      fulfillment_key: "wb:#{@wb_store.id}:WB-SRID-#{@token}", fulfillment_type: "fbs", status: "shipped",
+      business_status: "in_delivery", return_business_status: "none",
+      synced_at: Time.zone.parse("2026-06-02 04:00:00")
+    )
+
+    get "/orders", params: { platform: "wb", q: "WB-G-#{@token}" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    # The old address (order-feed?orderId=) does not exist: Wildberries has no page for a single FBS task.
+    assert_select "a[href*=?]", "order-feed", count: 0
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", "WB-G-#{@token}"
+    assert_select "a[href=?][target=?][rel=?]",
+                  "https://seller.wildberries.ru/marketplace-orders-fbs/on-delivery", "_blank", "noopener"
+  end
+
+  test "index lists every number of the order chain in one column" do
+    wb_raw = RawWb::Order.create!(
+      account: RawWb::SellerAccount.create!(name: "orders-ids-#{@token}", api_token: "t-#{@token}", company_type: "small"),
+      wb_order_id: 70_000_000_000 + @token.first(6).to_i(16), srid: "WB-SRID-#{@token}", order_uid: "UID-#{@token}",
+      g_number: "G-#{@token}", delivery_type: "fbs", nm_id: 1, supplier_status: "complete", wb_status: "sold",
+      price: 1, converted_price: 1, currency_code: 643, required_meta: [], optional_meta: [], is_zero_order: false,
+      created_at: Time.zone.parse("2026-06-02 03:00:00"), updated_at: Time.zone.now, synced_at: Time.zone.now
+    )
+    @wb_order.source_links.create!(
+      platform: "wb", source_type: "RawWb::Order", source_id: wb_raw.id, source_key: wb_raw.wb_order_id.to_s,
+      source_role: "primary", synced_at: Time.zone.now
+    )
+
+    get "/orders", params: { platform: "wb", q: "WB-G-#{@token}" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "th", "相关编号"
+    assert_select "td div", /装配任务号\s+#{wb_raw.wb_order_id}/
+    assert_select "td div", /订单 UID\s+UID-#{@token}/
+    assert_select "td div", /gNumber\s+G-#{@token}/
+    # the same value is shown once, under the most specific label
+    assert_select "td div", text: /WB-SRID-#{@token}/, count: 1
+  ensure
+    Ec::OrderSourceLink.where(order_id: @wb_order&.id).delete_all
+    acct = wb_raw&.account
+    RawWb::Order.where(id: wb_raw&.id).delete_all
+    RawWb::SellerAccount.where(id: acct&.id).delete_all
   end
 
   test "index filters orders with ransack params" do
@@ -627,8 +677,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     get "/orders", params: { sku_codes: [@sku.sku_code] }, headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
-    assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{@order.id}", minimum: 1
+    assert_select "a[href=?]", "/orders/#{@wb_order.id}", minimum: 1
     refute_includes listed_order_ids, unlinked.id
     refute_includes listed_order_ids, other_store_order.id
     assert_select "a[href=?]", "/orders/#{@later_processed_order.id}", count: 0
@@ -668,7 +718,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         headers: { "Accept" => "text/html" }
 
     assert_includes listed_order_ids, second_order.id
-    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{@order.id}", minimum: 1
     assert_select "a[href=?]", "/orders/#{@later_processed_order.id}", count: 0
   ensure
     Ec::OrderItem.where(order_id: second_order&.id).delete_all
@@ -763,7 +813,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{@order.id}", minimum: 1
     assert_select "a[href=?]", "/orders/#{fbs_only_order.id}", count: 1
     assert_select "a[href=?]", "/orders/#{@wb_order.id}", count: 0
     assert_select "td", "FBO / FBS"
@@ -782,7 +832,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
         params: { q: { fulfillments_fulfillment_type_in: %w[fbs] } },
         headers: { "Accept" => "text/html" }
 
-    assert_select "a[href=?]", "/orders/#{@order.id}", count: 1
+    assert_select "a[href=?]", "/orders/#{@order.id}", minimum: 1
     assert_select "a[href=?]", "/orders/#{fbs_only_order.id}", count: 1
 
     sign_in @current_user

@@ -1,6 +1,9 @@
 zh:
   orders:
+    actions:
+      open_platform_list: "平台列表"
     fields:
+      identifiers: "相关编号"
       business_status: "业务状态"
       return_business_status: "退货状态"
     filters:
@@ -12,3 +15,25 @@ zh:
       return_business_status: "退货状态"
     index:
       pagination_aria_label: "订单列表分页"
+    identifiers:
+      platform_order_id: "平台订单 ID"
+      platform_order_number: "平台订单号"
+      fulfillment_id: "发货单号"
+      tracking_number: "物流单号"
+      item_id: "商品行 ID"
+      posting_number: "货件号"
+      parent_posting_number: "父货件号"
+      ozon_order_id: "Ozon 订单 ID"
+      ozon_order_number: "Ozon 订单号"
+      label_barcode: "标签条码"
+      wb_task_id: "装配任务号"
+      order_uid: "订单 UID"
+      srid: "SRID"
+      g_number: "gNumber"
+      sticker: "贴纸号"
+      sale_id: "销售流水号"
+      supply_id: "供货单号"
+      return_id: "退货号"
+      return_posting_number: "退货货件号"
+      return_barcode: "退货条码"
+      clearing_id: "clearing ID"

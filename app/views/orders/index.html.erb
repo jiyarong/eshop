@@ -128,6 +128,7 @@
                 <th><%= t("orders.fields.return_business_status") %></th>
                 <th><%= t("orders.fields.fulfillment_mode") %></th>
                 <th><%= t("orders.fields.external_order_number") %></th>
+                <th><%= t("orders.fields.identifiers") %></th>
                 <th><%= t("orders.fields.ordered_at") %></th>
                 <th><%= t("orders.fields.city") %></th>
                 <th><%= t("orders.fields.sku_quantity") %></th>
@@ -152,6 +153,16 @@
                       <%= link_to truncated_order_number(order), order_path(order), title: display_value(order.external_order_number) %>
                     <% end %>
                   </td>
+                  <td>
+                    <% identifiers = order_identifiers_for(order) %>
+                    <% if identifiers.empty? %>
+                      -
+                    <% else %>
+                      <% identifiers.each do |identifier| %>
+                        <div><small><%= identifier_label(identifier.key) %></small> <%= identifier.value %></div>
+                      <% end %>
+                    <% end %>
+                  </td>
                   <td><%= display_time(order.ordered_at) %></td>
                   <td><%= display_value(order.buyer_city) %></td>
                   <td>
@@ -168,7 +179,12 @@
                   </td>
                   <td><%= money_value(order_amount(order)) %></td>
                   <td><%= display_value(order_currency(order)) %></td>
-                  <td><%= link_to t("orders.actions.view_details"), order_path(order) %></td>
+                  <td>
+                    <%= link_to t("orders.actions.view_details"), order_path(order) %>
+                    <% if platform_order_list_url(order).present? %>
+                      <%= link_to t("orders.actions.open_platform_list"), platform_order_list_url(order), target: "_blank", rel: "noopener" %>
+                    <% end %>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
