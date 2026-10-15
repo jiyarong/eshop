@@ -36,6 +36,12 @@ production:
     command: "RawWb::OrderIncrementalSync.run(days: 500, sync_keys: [:sync_orders], wait: true)"
     schedule: every month on the 3rd at 3:12 in Asia/Shanghai
 
+  # Orders older than the 90 day status refresh only get their final status from the archive feed.
+  # Re-reads the current and the previous three months and imports the changed orders.
+  wb_archive_orders_catchup:
+    command: "RawWb::ArchiveOrdersSync.run(wait: true)"
+    schedule: every sunday at 3:30 in Asia/Shanghai
+
   # The goods-return API filters by the original order date, so a short daily
   # window misses later transitions such as in-transit -> ready for pickup.
   wb_goods_return_status_catchup:
