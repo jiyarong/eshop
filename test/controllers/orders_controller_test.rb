@@ -219,13 +219,15 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", { text: "处理时间", count: 0 }
     assert_select "th", { text: "SKU已关联？", count: 0 }
     assert_select "th", { text: "同步时间", count: 0 }
-    assert_select "th", "订单金额"
-    assert_select "th", "币种"
+    assert_select "th", "佣金基准价"
+    assert_select "th", "买家实付价"
+    assert_select "th", { text: "订单金额", count: 0 }
+    assert_select "th", { text: "币种", count: 0 }
     assert_select "th", "履约模式"
     assert_select "td", { text: "delivering", count: 0 }
     assert_select "td", { text: "posting_on_way_to_city", count: 0 }
-    assert_select "td", "140.00"
-    assert_select "td", "BYN"
+    assert_select "td", "140.00 BYN"
+    assert_select "td", "95.50 RUB"
     assert_select "td", "FBO"
     assert_select "td", "配送中" do |elements|
       assert_equal "源状态: delivering\n源子状态: posting_on_way_to_city", elements.first["title"]
@@ -259,8 +261,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "Platform order number"
     assert_select "th", { text: "SKU linked?", count: 0 }
     assert_select "th", { text: "Synced at", count: 0 }
-    assert_select "th", "Order amount"
-    assert_select "th", "Currency"
+    assert_select "th", "Commission base price"
+    assert_select "th", "Buyer-paid price"
     assert_select "td", "Shipped"
     assert_select "td", "FBO"
     assert_select "a[href=?]", "/orders/#{@order.id}", "View details"

@@ -132,8 +132,8 @@
                 <th><%= t("orders.fields.ordered_at") %></th>
                 <th><%= t("orders.fields.city") %></th>
                 <th><%= t("orders.fields.sku_quantity") %></th>
-                <th><%= t("orders.fields.order_amount") %></th>
-                <th><%= t("orders.fields.currency") %></th>
+                <th><%= t("orders.fields.commission_base_price") %></th>
+                <th><%= t("orders.fields.buyer_paid_price") %></th>
                 <th><%= t("orders.fields.actions") %></th>
               </tr>
             </thead>
@@ -177,8 +177,8 @@
                     <% end %>
                     / <%= order.items.sum { |item| item.quantity.to_i } %>
                   </td>
-                  <td><%= money_value(order_amount(order)) %></td>
-                  <td><%= display_value(order_currency(order)) %></td>
+                  <td><%= display_value(order_commission_base_total(order)) %></td>
+                  <td><%= display_value(order_buyer_paid_total(order)) %></td>
                   <td>
                     <%= link_to t("orders.actions.view_details"), order_path(order) %>
                     <% if platform_order_list_url(order).present? %>
