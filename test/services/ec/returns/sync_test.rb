@@ -83,6 +83,29 @@ module Ec
         assert normalized.items.sole.reload.restockable
       end
 
+      test "places WB returns by their status: issued with the seller, in transit on the way, the rest unknown" do
+        expected = {
+          [ "Выдано", nil ] => "seller_warehouse",
+          [ "Выдано", Time.current ] => "seller_warehouse",
+          [ "В пути в пвз", nil ] => "seller_return_transit",
+          [ "Погружен в машину до СЦ/РЦ", nil ] => "seller_return_transit",
+          [ "Готов к выдаче", nil ] => "platform_return_warehouse",
+          [ "Отмена по задержке", nil ] => "unknown",
+          [ "Неподбор", nil ] => "unknown"
+        }
+
+        expected.each do |(status, completed_dt), location|
+          @wb_return.update!(
+            status: status, completed_dt: completed_dt,
+            ready_to_return_dt: status == "Готов к выдаче" ? Time.current : nil
+          )
+          Ec::Returns::Sync.call(raw_records: [ @wb_return ])
+          normalized = Ec::Return.find_by!(store: @wb_store, return_key: @wb_return.shk_id.to_s)
+
+          assert_equal location, normalized.inventory_location, "#{status} / completed #{completed_dt.present?}"
+        end
+      end
+
       test "finds WB order through a primary source link scoped to the same store" do
         other_account = RawWb::SellerAccount.create!(name: "Other WB #{@token}", api_token: "other-#{@token}", company_type: "small")
         other_store = Ec::Store.create!(platform: "wb", store_name: "Other WB #{@token}",
