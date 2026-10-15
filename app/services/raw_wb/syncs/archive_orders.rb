@@ -1,6 +1,11 @@
 module RawWb
   module Syncs
     module ArchiveOrders
+      # The status refresh of sync_orders only reaches orders younger than 90 days; the archive feed is the only
+      # source of the final status after that, and WB moves an order into it a little after the 90 day mark. The
+      # current and the three previous calendar months cover that gap with a few requests per account.
+      ARCHIVE_LOOKBACK_MONTHS = 3
+
       # GET /api/marketplace/v3/fbs/orders/archive
       # Fetches completed/declined FBS orders that have left the active /api/v3/orders feed.
       # Required params: year, month, next (cursor from 0), limit (100..1000).
@@ -15,6 +20,10 @@ module RawWb
       # Usage (full backfill from given start_date):
       #   sync.sync_archive_orders(from_month: Date.new(2025, 1))
       #
+      def sync_recent_archive_orders
+        sync_archive_orders(from_month: ARCHIVE_LOOKBACK_MONTHS.months.ago.to_date)
+      end
+
       def sync_archive_orders(from_month: 12.months.ago.to_date)
         result    = empty_sync_count
         synced_at = Time.current
