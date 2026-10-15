@@ -5,7 +5,7 @@ class OrdersController < ApplicationController
                 :order_items_summary, :order_item_sku_label, :sku_for_order_item,
                 :order_status_title, :truncated_order_number, :platform_order_url,
                 :ozon_product_details_for, :ozon_product_image_url, :truncated_display_value,
-                :order_fulfillment_types, :order_amount, :order_currency,
+                :order_fulfillment_types, :order_commission_base_total, :order_buyer_paid_total,
                 :business_status_filter_options, :return_business_status_filter_options,
                 :fulfillment_type_filter_options, :business_status_label, :return_business_status_label,
                 :order_business_statuses, :order_return_business_statuses,
@@ -190,15 +190,27 @@ class OrdersController < ApplicationController
     format("%.2f", value)
   end
 
-  def order_amount(order)
-    return if order.items.empty? || order.items.any? { |item| item.unit_price.nil? }
-    return if order_currency_codes(order).length > 1
-
-    order.items.sum { |item| item.unit_price.to_d * item.quantity.to_i }
+  # Order totals of the two prices kept on every item (see Ec::OrderItem): the commission base price and
+  # what the buyer paid. nil unless every item has the price, so a partial total is never shown as a whole.
+  def order_commission_base_total(order)
+    order_price_total(order) { |item| [ item.commission_base_unit_price, item.commission_base_currency_code ] }
   end
 
-  def order_currency(order)
-    order_currency_codes(order).join(" / ").presence
+  def order_buyer_paid_total(order)
+    order_price_total(order) { |item| [ item.buyer_paid_unit_price, item.buyer_currency_code ] }
+  end
+
+  def order_price_total(order)
+    return if order.items.empty?
+
+    totals = Hash.new { |hash, currency| hash[currency] = 0.to_d }
+    order.items.each do |item|
+      price, currency = yield(item)
+      return if price.nil?
+
+      totals[currency.to_s] += price.to_d * item.quantity.to_i
+    end
+    totals.map { |currency, amount| "#{money_value(amount)} #{currency}".strip }.join(" / ")
   end
 
   def ozon_product_details_for(item)
@@ -254,9 +266,6 @@ class OrdersController < ApplicationController
     item.sku || @sku_by_item_id&.[](item.id)
   end
 
-  def order_currency_codes(order)
-    order.items.filter_map { |item| item.currency_code.presence }.uniq
-  end
 
   def sku_lookup_for(items)
     product_ids_by_item_id = items.each_with_object({}) do |item, result|
