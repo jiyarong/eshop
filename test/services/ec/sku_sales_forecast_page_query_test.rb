@@ -57,18 +57,18 @@ class Ec::SkuSalesForecastPageQueryTest < ActiveSupport::TestCase
   test "combines four forecast values with historical facts and backtests" do
     result = described_class.new(
       sku: @sku,
-      from_date: @from_date,
-      to_date: @to_date,
       as_of_date: @from_date + 40.days
     ).call
 
-    assert_equal @from_date, result.dig(:period, :from)
-    assert_equal 56, result.fetch(:timeline).size
+    assert_equal @from_date - 15.days, result.dig(:period, :from)
+    assert_equal @from_date + 47.days, result.dig(:period, :to)
+    assert_equal 63, result.fetch(:timeline).size
     assert_equal BigDecimal("2.9429"), result.dig(:forecasts, :simple, :daily_sales)
     assert_equal BigDecimal("3.9111"), result.dig(:forecasts, :strict, :daily_sales)
-    assert_equal BigDecimal("2"), result.dig(:timeline, 0, :actual_sales)
-    assert result.dig(:timeline, 0, :out_of_stock)
-    assert_equal BigDecimal("90"), result.dig(:timeline, 0, :price)
+    first_snapshot = result.fetch(:timeline).find { |row| row[:date] == @from_date }
+    assert_equal BigDecimal("2"), first_snapshot[:actual_sales]
+    assert first_snapshot[:out_of_stock]
+    assert_equal BigDecimal("90"), first_snapshot[:price]
     assert result.fetch(:backtests).any?
     assert result.dig(:forecasts, :version_1, :daily_sales).present?
     assert result.dig(:forecasts, :version_2, :daily_sales).present?
@@ -76,6 +76,55 @@ class Ec::SkuSalesForecastPageQueryTest < ActiveSupport::TestCase
     assert_equal 28, result.dig(:forecasts, :version_1, :inventory_days)
     assert_equal 28, result.dig(:forecasts, :version_2, :training_days)
     assert_equal 28, result.dig(:forecasts, :version_2, :inventory_days)
+    assert_equal @from_date + 13.days, result.dig(:forecasts, :version_1, :calculation, :from)
+    assert_equal @from_date + 40.days, result.dig(:forecasts, :version_2, :calculation, :to)
+    assert result[:backtests].all? { |row| row[:target_to] <= result.dig(:period, :as_of) }
+  end
+
+  test "moves the entire history window with the forecast cutoff" do
+    [ @from_date + 20.days, @to_date ].each do |as_of|
+      result = described_class.new(sku: @sku, as_of_date: as_of).call
+
+      assert_equal as_of - 55.days, result.dig(:period, :from)
+      assert_equal as_of + 7.days, result.dig(:period, :to)
+      assert_equal (as_of - 55.days..as_of + 7.days).to_a, result[:timeline].map { |row| row[:date] }
+      %i[version_1 version_2].each do |version|
+        calculation = result.dig(:forecasts, version, :calculation)
+        assert_equal as_of - 27.days, calculation[:from]
+        assert_equal as_of, calculation[:to]
+      end
+    end
+  end
+
+  test "caps followup history at today without changing forecasts or backtests" do
+    as_of = @to_date - 5.days
+    cutoff_report = travel_to(as_of.in_time_zone("Asia/Shanghai").noon) do
+      described_class.new(sku: @sku, as_of_date: as_of).call
+    end
+    today = as_of + 3.days
+    expanded_report = travel_to(today.in_time_zone("Asia/Shanghai").noon) do
+      described_class.new(sku: @sku, as_of_date: as_of).call
+    end
+
+    assert_equal as_of, cutoff_report.dig(:period, :to)
+    assert_equal 56, cutoff_report[:timeline].size
+    assert_equal today, expanded_report.dig(:period, :to)
+    assert_equal 59, expanded_report[:timeline].size
+    assert_equal today, expanded_report[:timeline].last[:date]
+    assert_equal BigDecimal("4"), expanded_report[:timeline].last[:actual_sales]
+    assert_equal BigDecimal("20"), expanded_report[:timeline].last[:inventory]
+    assert_equal cutoff_report[:timeline], expanded_report[:timeline].first(56)
+    assert_equal cutoff_report[:forecasts], expanded_report[:forecasts]
+    assert_equal cutoff_report[:backtests], expanded_report[:backtests]
+  end
+
+  test "caps followup history using the requested time zone" do
+    travel_to Time.utc(2026, 8, 25, 20) do
+      result = described_class.new(sku: @sku, as_of_date: Date.new(2026, 8, 24), time_zone: "UTC").call
+
+      assert_equal Date.new(2026, 8, 25), result.dig(:period, :to)
+      assert_equal Date.new(2026, 8, 25), result[:timeline].last[:date]
+    end
   end
 
   private

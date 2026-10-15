@@ -19,22 +19,14 @@
                  label: t("reports.sku_sales_forecast.filters.sku"),
                  placeholder: t("shared.spu_sku_filter.select_sku") %>
 
-      <div class="field field--time-range">
-        <label for="sku-sales-forecast-time-range-trigger"><%= t("reports.sku_sales_forecast.sections.timeline") %></label>
-        <%= render "shared/time_range_selector",
-                   id: "sku-sales-forecast-time-range",
-                   from_date: @from_date,
-                   to_date: @to_date,
-                   submit_on_apply: false %>
-      </div>
-
       <div class="field">
         <label for="sku_sales_forecast_as_of_date"><%= t("reports.sku_sales_forecast.filters.as_of_date") %></label>
-        <input id="sku_sales_forecast_as_of_date" type="date" name="as_of_date" value="<%= @as_of_date %>" min="<%= @from_date %>" max="<%= @to_date %>">
+        <input id="sku_sales_forecast_as_of_date" type="date" name="as_of_date" value="<%= @as_of_date %>" aria-describedby="sku-sales-forecast-history-hint">
       </div>
 
       <button class="button" type="submit"><%= t("reports.sku_sales_forecast.filters.submit") %></button>
     <% end %>
+    <p id="sku-sales-forecast-history-hint" class="table-note"><%= t("reports.sku_sales_forecast.history_hint", history_days: Ec::SkuSalesForecastPageQuery::HISTORY_DAYS, followup_days: Ec::SkuSalesForecastPageQuery::HISTORY_FOLLOWUP_DAYS, training_days: Ec::SkuSalesForecastPageQuery::ACTIVE_DAYS) %></p>
   </section>
 
   <% if @forecast_error.present? %>
@@ -70,6 +62,13 @@
       <p class="table-note">
         <%= t("reports.sku_sales_forecast.fields.as_of") %>: <strong><%= @forecast_report.dig(:period, :as_of) %></strong>
       </p>
+    </section>
+
+    <section class="panel report-stack">
+      <h2 class="section-title"><%= t("reports.sku_sales_forecast.sections.calculations") %></h2>
+      <% %i[version_1 version_2].each do |version| %>
+        <%= render "sku_sales_forecast_calculation", version: version, forecast: forecasts.fetch(version) %>
+      <% end %>
     </section>
 
     <section class="panel">
@@ -112,8 +111,9 @@
       <% end %>
     </section>
 
-    <section class="panel">
+    <section id="sku-sales-forecast-history" class="panel">
       <h2 class="section-title"><%= t("reports.sku_sales_forecast.sections.timeline") %></h2>
+      <p id="sku-sales-forecast-history-period" class="table-note"><%= t("reports.sku_sales_forecast.history_period", from: @forecast_report.dig(:period, :from), to: @forecast_report.dig(:period, :to)) %></p>
       <%= table_viewport do %>
         <table class="data-table">
           <thead>

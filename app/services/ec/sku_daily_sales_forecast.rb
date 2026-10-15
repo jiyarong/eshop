@@ -216,12 +216,14 @@ module Ec
 
     def forecast_from_rows(rows, as_of:)
       usable_rows = rows.select { |row| row[:observed] }.reject { |row| row[:out_of_stock] }
-      return empty_forecast if usable_rows.empty?
+      calculation = training_calculation(rows, as_of: as_of, window_days: training_days)
+      return empty_forecast.merge(calculation: calculation) if usable_rows.empty?
 
       formula = selected_formula(usable_rows)
       daily_sales = case formula
       when :weighted_mean
-        weighted_average(usable_rows, as_of: as_of)
+        calculation.merge!(weighted_calculation(usable_rows, as_of: as_of))
+        calculation[:weighted_sales] / calculation[:total_weight] if calculation[:total_weight].positive?
       when :ewma
         exponential_average(usable_rows, as_of: as_of)
       when :recent_mean
@@ -229,7 +231,7 @@ module Ec
       else
         raise ArgumentError, "unsupported forecast formula: #{formula}"
       end
-      return empty_forecast if daily_sales.nil?
+      return empty_forecast.merge(calculation: calculation) if daily_sales.nil?
 
       velocity = average(usable_rows.filter_map { |row| row[:daily_sales_velocity] })
       if @velocity_weight.positive? && velocity
@@ -241,7 +243,21 @@ module Ec
         training_days: usable_rows.size,
         inventory_days: usable_rows.count { |row| row[:inventory] },
         formula: formula,
-        daily_sales_velocity: velocity
+        daily_sales_velocity: velocity,
+        calculation: calculation
+      }
+    end
+
+    def training_calculation(rows, as_of:, window_days:)
+      observed_rows = rows.select { |row| row[:observed] }
+      {
+        from: as_of - (window_days - 1).days,
+        to: as_of,
+        window_days: window_days,
+        observed_days: observed_rows.size,
+        missing_days: window_days - observed_rows.size,
+        stockout_days: observed_rows.count { |row| row[:out_of_stock] },
+        valid_days: observed_rows.count { |row| !row[:out_of_stock] }
       }
     end
 
@@ -261,19 +277,26 @@ module Ec
       end
     end
 
-    def weighted_average(rows, as_of:)
+    def weighted_calculation(rows, as_of:)
       weighted_rows = rows.filter_map do |row|
         age_days = (as_of - row.fetch(:date)).to_i
         next if age_days.negative? || age_days >= training_days
 
         recency = (training_days - age_days).to_d / training_days
         availability = inventory_availability(row)
-        { sales: row.fetch(:sales).to_d, weight: recency * availability }
+        weight = recency * availability
+        {
+          date: row.fetch(:date), sales: row.fetch(:sales).to_d, inventory: row[:inventory],
+          age_days: age_days, recency: recency, availability: availability, weight: weight,
+          weighted_sales: row.fetch(:sales).to_d * weight
+        }
       end.select { |row| row[:weight].positive? }
-      return if weighted_rows.empty?
 
-      total_weight = weighted_rows.sum(BigDecimal("0")) { |row| row.fetch(:weight) }
-      weighted_rows.sum(BigDecimal("0")) { |row| row.fetch(:sales) * row.fetch(:weight) } / total_weight
+      {
+        rows: weighted_rows,
+        total_weight: weighted_rows.sum(BigDecimal("0")) { |row| row.fetch(:weight) },
+        weighted_sales: weighted_rows.sum(BigDecimal("0")) { |row| row.fetch(:weighted_sales) }
+      }
     end
 
     def exponential_average(rows, as_of:)

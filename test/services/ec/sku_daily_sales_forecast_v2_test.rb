@@ -22,6 +22,10 @@ class Ec::SkuDailySalesForecastV2Test < ActiveSupport::TestCase
     assert_in_delta 2.8, forecast.fetch(:daily_sales).to_f, 0.0001
     assert_equal "demand_state_weekly_blend", forecast.fetch(:formula)
     assert_equal :continuous, forecast.fetch(:demand_state)
+    assert_equal BigDecimal("2"), forecast.dig(:calculation, :recent, :mean_sales)
+    assert_equal BigDecimal("10"), forecast.dig(:calculation, :prior, :mean_sales)
+    assert_equal BigDecimal("0.9"), forecast.dig(:calculation, :effective_recent_weight)
+    assert_equal BigDecimal("2.8"), forecast.dig(:calculation, :base_demand)
   end
 
   test "marks intermittent demand and keeps the original service independent" do
@@ -31,6 +35,11 @@ class Ec::SkuDailySalesForecastV2Test < ActiveSupport::TestCase
 
     assert_equal :intermittent, forecast.fetch(:demand_state)
     assert_operator forecast.fetch(:daily_sales), :>, 0
+    calculation = forecast.fetch(:calculation)
+    assert_in_delta BigDecimal("2") / 14, calculation[:positive_rate], 0.000001
+    assert_equal BigDecimal("4"), calculation.dig(:intermittent, :positive_sales_mean)
+    assert_in_delta BigDecimal("1") / 7, calculation.dig(:intermittent, :occurrence_rate), 0.000001
+    assert_equal forecast[:daily_sales], calculation[:intermittent][:daily_sales] * (1 + calculation[:uplift])
     assert_equal :weighted_mean, Ec::SkuDailySalesForecast.new(
       sku_codes: [ @sku.sku_code ], from_date: @from_date, to_date: @to_date
     ).send(:instance_variable_get, :@formula)
@@ -42,6 +51,41 @@ class Ec::SkuDailySalesForecastV2Test < ActiveSupport::TestCase
     forecast = service.forecast(as_of: @from_date + 13.days, sku_code: @sku.sku_code).fetch(@sku.sku_code)
 
     assert_in_delta 4.0, forecast.fetch(:daily_sales).to_f, 0.0001
+    assert_equal BigDecimal("0"), forecast.dig(:calculation, :effective_recent_weight)
+    assert_equal 7, forecast.dig(:calculation, :stockout_days)
+  end
+
+  test "explains reduced recent coverage and the inventory uplift" do
+    create_snapshots(sales: [ 4 ] * 7 + [ 8 ] * 3 + [ 0 ] * 4, inventory: [ 20 ] * 10 + [ 0 ] * 4)
+
+    forecast = service(stockout_uplift_cap: 0.5).forecast(
+      as_of: @from_date + 13.days, sku_code: @sku.sku_code
+    ).fetch(@sku.sku_code)
+    calculation = forecast.fetch(:calculation)
+    weight = BigDecimal("0.9") * 3 / 7
+    base = 8 * weight + 4 * (1 - weight)
+
+    assert_equal 7, calculation.dig(:recent, :observed_days)
+    assert_equal 3, calculation.dig(:recent, :valid_days)
+    assert_in_delta weight, calculation[:effective_recent_weight], 0.000001
+    assert_in_delta base, calculation[:base_demand], 0.000001
+    assert_in_delta BigDecimal("4") / 14 * BigDecimal("0.5"), calculation[:uplift], 0.000001
+    assert_in_delta base * (1 + calculation[:uplift]), forecast[:daily_sales], 0.000001
+  end
+
+  test "explains a recent-only window and observed zero sales" do
+    create_snapshots(sales: [ 0 ] * 7, inventory: [ 20 ] * 7)
+
+    forecast = service.forecast(as_of: @from_date + 6.days, sku_code: @sku.sku_code).fetch(@sku.sku_code)
+    calculation = forecast.fetch(:calculation)
+
+    assert_equal :intermittent, forecast[:demand_state]
+    assert_equal 7, calculation[:missing_days]
+    assert_equal 7, calculation[:valid_days]
+    assert_equal 0, calculation.dig(:prior, :valid_days)
+    assert_equal 1, calculation[:effective_recent_weight]
+    assert_equal 0, calculation.dig(:intermittent, :positive_sales_mean)
+    assert_equal 0, forecast[:daily_sales]
   end
 
   test "backtests real following windows and exposes V2 parameters" do

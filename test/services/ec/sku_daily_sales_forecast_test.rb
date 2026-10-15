@@ -39,6 +39,41 @@ class Ec::SkuDailySalesForecastTest < ActiveSupport::TestCase
     assert_equal 3, result.dig(:skus, 0, :fold_count)
   end
 
+  test "explains actual daily weights while excluding missing stockout and future days" do
+    create_snapshots(sales: [ 2, 100, 4, 10000 ], inventory: [ 20, 0, 10, 20 ])
+
+    forecast = service(training_weeks: 1).forecast(
+      as_of: @from_date + 2.days, sku_code: @sku.sku_code
+    ).fetch(@sku.sku_code)
+    calculation = forecast.fetch(:calculation)
+    first_weight = BigDecimal("5") / 7 * (BigDecimal("20") / 22)
+    last_weight = BigDecimal("10") / 14
+
+    assert_equal @from_date - 4.days, calculation[:from]
+    assert_equal @from_date + 2.days, calculation[:to]
+    assert_equal 3, calculation[:observed_days]
+    assert_equal 4, calculation[:missing_days]
+    assert_equal 1, calculation[:stockout_days]
+    assert_equal 2, calculation[:valid_days]
+    assert_equal [ @from_date, @from_date + 2.days ], calculation[:rows].map { |row| row[:date] }
+    assert_in_delta first_weight + last_weight, calculation[:total_weight], 0.000001
+    assert_in_delta 2 * first_weight + 4 * last_weight, calculation[:weighted_sales], 0.000001
+    assert_in_delta calculation[:weighted_sales] / calculation[:total_weight], forecast[:daily_sales], 0.000001
+  end
+
+  test "explains when all observed days are out of stock" do
+    create_snapshots(sales: [ 0, 0 ], inventory: [ 0, 0 ])
+
+    forecast = service(training_weeks: 1).forecast(
+      as_of: @from_date + 1.day, sku_code: @sku.sku_code
+    ).fetch(@sku.sku_code)
+
+    assert_equal 0, forecast[:daily_sales]
+    assert_equal 2, forecast.dig(:calculation, :stockout_days)
+    assert_equal 5, forecast.dig(:calculation, :missing_days)
+    assert_equal 0, forecast.dig(:calculation, :valid_days)
+  end
+
   test "excludes zero inventory days and reports accuracy by SKU" do
     create_snapshots(sales: [ 20 ] + [ 4 ] * 27, inventory: [ 0 ] + [ 20 ] * 27)
 

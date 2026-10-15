@@ -3,20 +3,17 @@ module Ec
   # calculations stay in their existing services; this object only joins their
   # results with the historical facts shown on the page.
   class SkuSalesForecastPageQuery
-    MAX_RANGE_DAYS = 366
+    HISTORY_DAYS = 56
+    HISTORY_FOLLOWUP_DAYS = 7
     TRAINING_WEEKS = 4
     ACTIVE_DAYS = TRAINING_WEEKS * 7
 
-    def initialize(sku:, from_date:, to_date:, as_of_date:, time_zone: Ec::Snapshot::TIME_ZONE)
+    def initialize(sku:, as_of_date:, time_zone: Ec::Snapshot::TIME_ZONE)
       @sku = sku
-      @from_date = from_date.to_date
-      @to_date = to_date.to_date
       @as_of_date = as_of_date.to_date
+      @from_date = @as_of_date - (HISTORY_DAYS - 1).days
       @time_zone = time_zone.is_a?(String) ? Time.find_zone!(time_zone) : time_zone
-
-      raise ArgumentError, "to_date must be on or after from_date" if @to_date < @from_date
-      raise ArgumentError, "as_of_date must be within the selected period" unless (@from_date..@to_date).cover?(@as_of_date)
-      raise ArgumentError, "date range is too large" if (@to_date - @from_date).to_i >= MAX_RANGE_DAYS
+      @to_date = [ @as_of_date + HISTORY_FOLLOWUP_DAYS.days, Time.current.in_time_zone(@time_zone).to_date ].min
     end
 
     def call
@@ -84,6 +81,7 @@ module Ec
         inventory_days: result[:inventory_days],
         formula: result[:formula].to_s,
         demand_state: result[:demand_state]&.to_s,
+        calculation: result[:calculation],
         version: version
       }
     end
@@ -124,7 +122,7 @@ module Ec
       @version_1_service ||= Ec::SkuDailySalesForecast.new(
         sku_codes: [ @sku.sku_code ],
         from_date: @from_date,
-        to_date: @to_date,
+        to_date: @as_of_date,
         time_zone: @time_zone,
         training_weeks: TRAINING_WEEKS,
         include_predictions: true
@@ -135,7 +133,7 @@ module Ec
       @version_2_service ||= Ec::SkuDailySalesForecastV2.new(
         sku_codes: [ @sku.sku_code ],
         from_date: @from_date,
-        to_date: @to_date,
+        to_date: @as_of_date,
         time_zone: @time_zone,
         training_weeks: TRAINING_WEEKS,
         active_days: ACTIVE_DAYS,

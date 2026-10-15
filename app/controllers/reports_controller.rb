@@ -1015,31 +1015,21 @@ class ReportsController < ApplicationController
       allowed_sku_codes: @available_sku_codes,
       orphan_skus: Ec::Sku.where(master_sku_id: nil, sku_code: @available_sku_codes).order(:sku_code)
     )
-    @from_date = parse_report_date(params[:from_date]) || (user_today - 55.days)
-    @to_date = parse_report_date(params[:to_date]) || user_today
-    @as_of_date = parse_report_date(params[:as_of_date]) || @to_date
-    @from_date, @to_date = @to_date, @from_date if @from_date > @to_date
-    @as_of_date = [ [ @as_of_date, @from_date ].max, @to_date ].min
+    @as_of_date = parse_report_date(params[:as_of_date]) || user_today
 
     @sku = @skus.find_by(sku_code: @selected_sku_code) if @selected_sku_code
     if @sku
       @forecast_report = Ec::SkuSalesForecastPageQuery.new(
         sku: @sku,
-        from_date: @from_date,
-        to_date: @to_date,
         as_of_date: @as_of_date,
         time_zone: user_time_zone
       ).call
     elsif @selected_sku_code
       @forecast_error = t("reports.sku_sales_forecast.errors.sku_not_found")
     end
-  rescue ArgumentError => error
+  rescue ArgumentError
     @forecast_report = nil
-    @forecast_error = if error.message == "date range is too large"
-      t("reports.sku_sales_forecast.errors.date_range_too_large")
-    else
-      t("reports.sku_sales_forecast.errors.load_failed")
-    end
+    @forecast_error = t("reports.sku_sales_forecast.errors.load_failed")
   end
 
   private

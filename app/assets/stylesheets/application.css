@@ -4926,6 +4926,10 @@ details {
   max-width: 420px;
 }
 
+.sku-sales-forecast-page details {
+  max-width: 100%;
+}
+
 summary {
   color: var(--erp-brand);
   cursor: pointer;

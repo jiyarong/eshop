@@ -1,0 +1,82 @@
+<% calculation = forecast[:calculation] || {} %>
+<% number = ->(value) { number_with_precision(value, precision: 4, strip_insignificant_zeros: true) } %>
+<article id="sku-sales-forecast-calculation-<%= version %>">
+  <h3><%= t("reports.sku_sales_forecast.forecast_labels.#{version}") %></h3>
+  <% if calculation.present? %>
+    <p><%= t("reports.sku_sales_forecast.calculation.window", from: calculation[:from], to: calculation[:to], days: calculation[:window_days]) %></p>
+    <p><%= t("reports.sku_sales_forecast.calculation.samples", observed: calculation[:observed_days], missing: calculation[:missing_days], stockout: calculation[:stockout_days], valid: calculation[:valid_days]) %></p>
+  <% end %>
+
+  <% if calculation.blank? %>
+    <p class="muted"><%= t("reports.sku_sales_forecast.values.unavailable") %></p>
+  <% elsif calculation[:valid_days].to_i.zero? %>
+    <p class="muted"><%= t("reports.sku_sales_forecast.calculation.no_valid_days") %></p>
+  <% elsif version == :version_1 %>
+    <p><%= t("reports.sku_sales_forecast.calculation.v1_weights", days: calculation[:window_days]) %></p>
+    <p><%= t("reports.sku_sales_forecast.calculation.v1_result", sales: number.call(calculation[:weighted_sales]), weight: number.call(calculation[:total_weight]), result: number.call(forecast[:daily_sales])) %></p>
+    <details>
+      <summary><%= t("reports.sku_sales_forecast.calculation.daily_weights") %></summary>
+      <%= table_viewport do %>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <% %w[date actual_sales].each do |field| %>
+                <th scope="col"><%= t("reports.sku_sales_forecast.fields.#{field}") %></th>
+              <% end %>
+              <% %w[inventory age_days recency availability weight weighted_sales].each do |field| %>
+                <th scope="col"><%= t("reports.sku_sales_forecast.calculation.#{field}") %></th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <% calculation.fetch(:rows).each do |row| %>
+              <tr>
+                <td><%= row[:date] %></td>
+                <td><%= number.call(row[:sales]) %></td>
+                <td><%= row[:inventory].nil? ? t("reports.sku_sales_forecast.values.unavailable") : number.call(row[:inventory]) %></td>
+                <td><%= row[:age_days] %></td>
+                <% %i[recency availability weight weighted_sales].each do |field| %>
+                  <td><%= number.call(row[field]) %></td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </details>
+  <% else %>
+    <%= table_viewport do %>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <% %w[period observed_days valid_days sales mean_sales positive_rate].each do |field| %>
+              <th scope="col"><%= t("reports.sku_sales_forecast.calculation.#{field}") %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% %i[recent prior].each do |period| %>
+            <% data = calculation.fetch(period) %>
+            <tr>
+              <th scope="row"><%= t("reports.sku_sales_forecast.calculation.#{period}") %></th>
+              <td><%= data[:observed_days] %></td>
+              <td><%= data[:valid_days] %></td>
+              <td><%= number.call(data[:sales]) %></td>
+              <td><%= data[:valid_days].zero? ? t("reports.sku_sales_forecast.values.unavailable") : number.call(data[:mean_sales]) %></td>
+              <td><%= data[:valid_days].zero? ? t("reports.sku_sales_forecast.values.unavailable") : number_to_percentage(data[:positive_rate] * 100, precision: 2) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+    <p><%= t("reports.sku_sales_forecast.calculation.v2_weight", weight: number.call(calculation[:recent_weight])) %></p>
+    <p><%= t("reports.sku_sales_forecast.calculation.v2_base", recent: number.call(calculation.dig(:recent, :mean_sales)), prior: number.call(calculation.dig(:prior, :mean_sales)), weight: number.call(calculation[:effective_recent_weight]), result: number.call(calculation[:base_demand])) %></p>
+    <p><%= t("reports.sku_sales_forecast.calculation.v2_state", rate: number_to_percentage(calculation[:positive_rate] * 100, precision: 2), threshold: number_to_percentage(calculation[:intermittent_threshold] * 100, precision: 2), state: t("reports.sku_sales_forecast.calculation.states.#{forecast[:demand_state]}")) %></p>
+    <% if (intermittent = calculation[:intermittent]) %>
+      <p><%= t("reports.sku_sales_forecast.calculation.v2_occurrence", recent: number.call(intermittent[:recent_rate]), prior: number.call(intermittent[:prior_rate]), weight: number.call(calculation[:recent_weight]), result: number.call(intermittent[:occurrence_rate])) %></p>
+      <p><%= t("reports.sku_sales_forecast.calculation.v2_intermittent", mean: number.call(intermittent[:positive_sales_mean]), rate: number.call(intermittent[:occurrence_rate]), result: number.call(intermittent[:daily_sales])) %></p>
+    <% end %>
+    <p><%= t("reports.sku_sales_forecast.calculation.v2_uplift", stockout: calculation[:stockout_days], low: calculation[:low_inventory_days], observed: calculation[:observed_days], cap: number.call(calculation[:stockout_uplift_cap]), uplift: number.call(calculation[:uplift])) %></p>
+    <p><%= t("reports.sku_sales_forecast.calculation.v2_result", uplift: number.call(calculation[:uplift]), demand: number.call(calculation[:unadjusted_demand]), result: number.call(forecast[:daily_sales])) %></p>
+  <% end %>
+</article>
