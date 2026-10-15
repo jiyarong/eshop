@@ -7,6 +7,16 @@ module RawOzon
         "stock" => "/v1/removal/from-stock/list",
         "supply" => "/v1/removal/from-supply/list"
       }.freeze
+      # The removal list is filtered by creation date, so a request that stays open longer than the default
+      # window would never be refreshed again. Open requests are re-read back to their creation date, capped so a
+      # request the platform never finalises (rejected or cancelled requests keep their last state) cannot make
+      # the daily window grow without bound.
+      REMOVAL_WINDOW_DAYS = 90
+      MAX_OPEN_REMOVAL_LOOKBACK_DAYS = 400
+      FINAL_REMOVAL_STATES = [
+        RawOzon::RemovalItem::COMPLETED_STATE, "Утилизирована", "Утилизировано", "Отклонено складом",
+        "Отменено", "Отменена"
+      ].freeze
 
       def sync_removal_items
         synced_at = Time.current
@@ -30,16 +40,35 @@ module RawOzon
       private
 
       # A removal can stay active longer than DailySync's normal two-day window.
-      # Re-read at least 90 days so later state transitions replace the stored row.
+      # Re-read at least 90 days, and further back while an older request is still open, so later state
+      # transitions replace the stored row.
       def removal_date_chunks
-        cursor = [@from.to_date, 89.days.ago.to_date].min
+        cursor = [ @from.to_date, (REMOVAL_WINDOW_DAYS - 1).days.ago.to_date, oldest_open_removal_date ].compact.min
         chunks = []
         while cursor <= Date.current
-          date_to = [cursor + 89, Date.current].min
-          chunks << [cursor, date_to]
+          date_to = [ cursor + (REMOVAL_WINDOW_DAYS - 1), Date.current ].min
+          chunks << [ cursor, date_to ]
           cursor = date_to + 1
         end
         chunks
+      end
+
+      # Creation date of the oldest request of this account that has no finished row yet.
+      def oldest_open_removal_date
+        RawOzon::RemovalItem
+          .where(account_id: @account.id)
+          .where("return_created_at >= ?", MAX_OPEN_REMOVAL_LOOKBACK_DAYS.days.ago)
+          .where(<<~SQL.squish, FINAL_REMOVAL_STATES)
+            NOT EXISTS (
+              SELECT 1 FROM raw_ozon_removal_items done
+              WHERE done.account_id = raw_ozon_removal_items.account_id
+                AND done.source_type = raw_ozon_removal_items.source_type
+                AND done.return_id = raw_ozon_removal_items.return_id
+                AND done.return_state IN (?)
+            )
+          SQL
+          .minimum(:return_created_at)
+          &.to_date
       end
 
       def sync_removal_source(source_type:, path:, date_from:, date_to:, synced_at:)
@@ -61,9 +90,29 @@ module RawOzon
             unique_by: %i[account_id source_type row_key],
             update_only: rows.first.keys - %i[account_id source_type row_key created_at updated_at]
           )
+          remove_superseded_boxless_rows(source_type, rows.map { |row| row[:return_id] }.uniq)
         end
 
         fetched
+      end
+
+      # A request first appears without a box (box_id 0). Once its boxes exist the platform reports only the box
+      # rows, so the stored placeholder would otherwise keep counting the same units as still on their way.
+      def remove_superseded_boxless_rows(source_type, return_ids)
+        return_ids.each_slice(500) do |ids|
+          RawOzon::RemovalItem
+            .where(account_id: @account.id, source_type: source_type, return_id: ids, box_id: %w[0 ""])
+            .where(<<~SQL.squish)
+              EXISTS (
+                SELECT 1 FROM raw_ozon_removal_items boxed
+                WHERE boxed.account_id = raw_ozon_removal_items.account_id
+                  AND boxed.source_type = raw_ozon_removal_items.source_type
+                  AND boxed.return_id = raw_ozon_removal_items.return_id
+                  AND boxed.box_id NOT IN ('0', '')
+              )
+            SQL
+            .delete_all
+        end
       end
 
       def collapse_removal_items(items)
