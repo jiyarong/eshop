@@ -36,12 +36,15 @@ module Ec
         warehouse_surcharge = warehouse * 2 * warehouse_rate
         logistics_rub = decimal("outbound_logistics_rub") + return_amortized + warehouse + warehouse_surcharge
         sales_vat_rate = value_or_default("sales_vat_rate", "0.2")
+        sales_tax_rate = value_or_default("tax_rate", "0")
         sales_tax = if market == "by"
           revenue * sales_vat_rate / (1 + sales_vat_rate) - import_vat
         else
-          revenue * value_or_default("tax_rate", "0")
+          revenue * sales_tax_rate
         end
-        import_vat_cost = market == "by" ? import_vat : import_vat * value_or_default("ozon_import_vat_cost_rate", "0")
+        import_vat_cost_rate = value_or_default("ozon_import_vat_cost_rate", "0")
+        import_vat_cost = market == "by" ? import_vat : import_vat * import_vat_cost_rate
+        advertising_fixed_rub = value_or_default("advertising_fixed_rub", "0")
         breakdown = {
           goods: goods,
           import_vat: import_vat_cost,
@@ -51,7 +54,7 @@ module Ec
           storage: value_or_default("storage_cny", "0"),
           commission: revenue * decimal("commission_rate"),
           acquiring: revenue * value_or_default("acquiring_rate", "0.02"),
-          advertising: revenue * value_or_default("advertising_rate", "0") + value_or_default("advertising_fixed_rub", "0") / exchange,
+          advertising: revenue * value_or_default("advertising_rate", "0") + advertising_fixed_rub / exchange,
           tax: sales_tax,
           other: (market == "ru" ? value_or_default("cross_docking_cny", "0") : 0.to_d) + value_or_default("other_cny", "0")
         }
@@ -60,7 +63,10 @@ module Ec
           intermediate: { import_vat_cny: import_vat, volume_l: volume, billed_volume_l: billed_volume,
             return_rate: return_rate,
             return_amortization_factor: return_amortization_factor,
+            return_amortization_factor_overridden: present?("return_amortization_factor_override"),
             return_amortized_rub: return_amortized,
+            warehouse_rate: warehouse_rate, import_vat_cost_rate: import_vat_cost_rate,
+            advertising_fixed_rub: advertising_fixed_rub, sales_tax_rate: sales_tax_rate,
             warehouse_surcharge_rub: warehouse_surcharge, platform_logistics_rub: logistics_rub,
             platform_logistics_cny: logistics_rub / exchange,
             commission_base_rub: commission_base_rub,

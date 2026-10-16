@@ -9,6 +9,7 @@ import {
   shortcutInputValue,
   targetPriceForMargin
 } from "./profit_prediction_values";
+import { buildCalculationSteps, formulaTokenName, formulaTokenText, isOperator } from "./profit_prediction_formula";
 
 const PREVIEW_DEBOUNCE_MS = 350;
 
@@ -611,46 +612,31 @@ export default class extends Controller {
   }
 
   renderCalculationSteps(row, data) {
+    const process = this.messagesValue.process;
     const inputs = this.numericInputs(row);
-    const costs = data.cost_breakdown || {};
-    const intermediate = data.intermediate || {};
-    const steps = this.messagesValue.process.steps;
-    const units = this.messagesValue.process.units;
-    const exchange = inputs.exchange_rate_rub_cny;
-    this.processExchangeRate = exchange;
-    this.processCurrencyUnits = units;
-    const purchase = inputs.purchase_price_cny;
-    const freight = inputs.freight_cny || 0;
-    const customs = inputs.customs_misc_cny || 0;
-    const dutyRate = this.numberOr(inputs.duty_rate, 0.1);
-    const importVatRate = this.numberOr(inputs.import_vat_rate, 0.2);
+    this.processExchangeRate = inputs.exchange_rate_rub_cny;
+    this.processCurrencyUnits = process.units;
 
-    // Revenue is the commission base price on every platform; the buyer-paid price
-    // never enters it (it only feeds the platform subsidy step below).
-    this.appendProcessStep(steps.revenue,
-      `${this.number(inputs.commission_base_price_rub)} / ${this.number(exchange)}`,
-      data.revenue_cny, units.cny, ["commission_base_price_rub", "target_margin", "exchange_rate_rub_cny"], "actual_selling_price");
-    this.appendPlatformSubsidyStep(row, inputs, data, steps, units);
-    this.appendProcessStep(steps.goods,
-      `${this.number(purchase)} + ${this.number(freight)} + ${this.number(customs)}`,
-      costs.goods, units.cny, ["purchase_price_cny", "freight_cny", "customs_misc_cny"]);
-    this.appendProcessStep(steps.duty,
-      `${this.number(purchase)} * ${this.percent(dutyRate)}`,
-      costs.duty, units.cny, ["purchase_price_cny", "duty_rate"]);
-
-    if (row.dataset.platform === "wb" || row.dataset.market === "by") {
-      this.appendProcessStep(steps.import_vat,
-        `(${this.number(purchase)} + ${this.number(costs.duty)}) * ${this.percent(importVatRate)}`,
-        costs.import_vat, units.cny, ["purchase_price_cny", "duty_rate", "import_vat_rate"]);
-    }
-
-    if (row.dataset.platform === "wb") {
-      this.appendWbProcessSteps(row, inputs, costs, intermediate, steps, units);
-    } else {
-      this.appendOzonProcessSteps(row, inputs, costs, intermediate, steps, units);
-    }
-
-    this.appendCommonCostSteps(row, inputs, costs, data, steps, units);
+    buildCalculationSteps({
+      platform: row.dataset.platform,
+      market: row.dataset.market,
+      companyType: row.dataset.companyType,
+      inputs,
+      data,
+      labels: {
+        fields: process.parameter_labels,
+        steps: process.steps,
+        formula: process.formula_labels,
+        sumCosts: process.sum_costs,
+        crossDockingNotApplicable: process.cross_docking_not_applicable,
+        crossDockingInOther: process.cross_docking_in_other
+      }
+    }).forEach((step) => {
+      this.appendProcessStep(step.label, step.formula, step.result, process.units[step.unit], step.fields, step.source, {
+        key: step.key,
+        note: step.note
+      });
+    });
   }
 
   renderIncompleteCalculationProcess(row, errors = []) {
@@ -684,160 +670,7 @@ export default class extends Controller {
     return invalidFields;
   }
 
-  appendWbProcessSteps(row, inputs, costs, intermediate, steps, units) {
-    const exchange = inputs.exchange_rate_rub_cny;
-    const returnRate = inputs.return_rate;
-    const baseFee = this.numberOr(inputs.wb_logistics_base_rub, row.dataset.companyType === "general" ? 60 : 46);
-    const literFee = this.numberOr(inputs.wb_logistics_liter_rub, 14);
-    const actualOutbound = Number(inputs.outbound_logistics_rub);
-    const actualReturn = Number(inputs.return_logistics_rub);
-    const hasActualOutbound = inputs.outbound_logistics_rub !== null && inputs.outbound_logistics_rub !== undefined && Number.isFinite(actualOutbound);
-    const hasActualReturn = inputs.return_logistics_rub !== null && inputs.return_logistics_rub !== undefined && Number.isFinite(actualReturn);
-
-    this.appendProcessStep(steps.volume,
-      `${this.number(inputs.length_cm)} * ${this.number(inputs.width_cm)} * ${this.number(inputs.height_cm)} / 1000`,
-      intermediate.volume_l, units.liter, ["length_cm", "width_cm", "height_cm"]);
-    this.appendProcessStep(steps.billed_volume,
-      `ceil(${this.number(intermediate.volume_l)})`,
-      intermediate.billed_volume_l, units.liter, ["length_cm", "width_cm", "height_cm"]);
-    this.appendProcessStep(steps.return_rate,
-      this.percent(returnRate),
-      returnRate * 100, units.percent, ["return_rate"],
-      "actual_return_rate");
-    this.appendProcessStep(steps.base_logistics,
-      `${this.number(baseFee)} + (${this.number(intermediate.billed_volume_l)} - 1) * ${this.number(literFee)}`,
-      intermediate.base_logistics_rub, units.rub, ["wb_logistics_base_rub", "wb_logistics_liter_rub"], "wb_logistics_tariffs");
-    this.appendProcessStep(steps.platform_logistics,
-      hasActualOutbound
-        ? `${this.number(inputs.fbo_delivery_cny || 0)} + ${this.number(actualOutbound)} / ${this.number(exchange)}`
-        : `${this.number(inputs.fbo_delivery_cny || 0)} + ${this.number(intermediate.base_logistics_rub)} * ${this.number(inputs.logistics_coeff)} / ${this.number(exchange)}`,
-      costs.logistics, units.cny,
-      ["fbo_delivery_cny", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"]);
-
-    const fixedReturnFormula = hasActualReturn
-      ? `${this.number(actualReturn)} / ${this.number(exchange)} * ${this.percent(returnRate)} / (1 - ${this.percent(returnRate)})`
-      : `${this.number(this.numberOr(inputs.wb_fixed_return_base_rub, 50))} / ${this.number(exchange)} * ${this.percent(returnRate)} / (1 - ${this.percent(returnRate)})`;
-    this.appendProcessStep(steps.returns,
-      `${this.number(intermediate.platform_logistics_cny)} * ${this.percent(returnRate)} / (1 - ${this.percent(returnRate)}) + (${fixedReturnFormula})`,
-      costs.returns, units.cny,
-      ["return_rate", "wb_fixed_return_base_rub", "return_logistics_rub", "logistics_tax_rate", "exchange_rate_rub_cny"]);
-  }
-
-  appendOzonProcessSteps(row, inputs, costs, intermediate, steps, units) {
-    const exchange = inputs.exchange_rate_rub_cny;
-    const returnRate = this.numberOr(inputs.return_rate, 0.1);
-    const factorOverride = inputs.return_amortization_factor_override;
-    const factorFormula = factorOverride === undefined || factorOverride === null || factorOverride === ""
-      ? `${this.percent(returnRate)} / (1 - ${this.percent(returnRate)})`
-      : this.number(factorOverride);
-    this.appendProcessStep(steps.volume,
-      `${this.number(inputs.length_cm)} * ${this.number(inputs.width_cm)} * ${this.number(inputs.height_cm)} / 1000`,
-      intermediate.volume_l, units.liter, ["length_cm", "width_cm", "height_cm"]);
-    this.appendProcessStep(steps.billed_volume,
-      `ceil(${this.number(intermediate.volume_l)})`,
-      intermediate.billed_volume_l, units.liter, ["length_cm", "width_cm", "height_cm"]);
-    this.appendProcessStep(steps.return_rate,
-      this.percent(returnRate),
-      returnRate * 100, units.percent, ["return_rate"],
-      "actual_return_rate");
-    this.appendProcessStep(steps.platform_logistics,
-      `(${this.number(inputs.outbound_logistics_rub)} + ${this.number(inputs.warehouse_operation_rub)} + ${this.number(intermediate.warehouse_surcharge_rub)}) / ${this.number(exchange)}`,
-      costs.logistics, units.cny, ["outbound_logistics_rub", "return_logistics_rub", "warehouse_operation_rub", "exchange_rate_rub_cny"],
-      "ozon_logistics_tariffs");
-    const crossDockingApplicable = row.dataset.market === "ru";
-    this.appendProcessStep(
-      steps.cross_docking,
-      crossDockingApplicable
-        ? this.number(inputs.cross_docking_cny || 0)
-        : this.messagesValue.process.cross_docking_not_applicable,
-      crossDockingApplicable ? inputs.cross_docking_cny || 0 : 0,
-      units.cny,
-      crossDockingApplicable ? ["cross_docking_cny"] : [],
-      crossDockingApplicable ? "ozon_cross_dock_tariffs" : null
-    );
-    this.appendProcessStep(steps.return_amortized,
-      `(${this.number(inputs.outbound_logistics_rub)} + ${this.number(inputs.return_logistics_rub)}) * (${factorFormula}) / ${this.number(exchange)}`,
-      costs.returns, units.cny,
-      ["outbound_logistics_rub", "return_logistics_rub", "return_amortization_factor_override", "return_rate", "exchange_rate_rub_cny"]);
-  }
-
-  // Audit only, on every platform: what the platform effectively pays on top of what the
-  // buyer paid. Listed right after revenue and shown even before a buyer-paid price exists,
-  // so it can be entered here. A WB general company issues a VAT invoice the platform
-  // deducts, so that VAT is not part of what we are due; everyone else passes none on.
-  // The commission base and commission rate inputs are rendered on the revenue and
-  // commission rows, so they are not repeated here.
-  appendPlatformSubsidyStep(row, inputs, data, steps, units) {
-    const buyerVatRate = this.numberOr(inputs.buyer_price_vat_rate, this.defaultBuyerVatRate(row));
-    const invoiceVatRate = row.dataset.platform === "wb" && row.dataset.companyType === "general"
-      ? this.numberOr(inputs.sales_vat_rate, 0.2)
-      : null;
-    const dueFormula = `${this.number(inputs.commission_base_price_rub)} * (1 - ${this.percent(inputs.commission_rate)})`
-      + (invoiceVatRate === null ? "" : ` / (1 + ${this.percent(invoiceVatRate)})`);
-    this.appendProcessStep(
-      steps.platform_subsidy,
-      `${dueFormula} - ${this.number(inputs.buyer_paid_price_rub)} / (1 + ${this.percent(buyerVatRate)})`,
-      data.intermediate?.platform_subsidy_rub,
-      units.rub,
-      ["buyer_paid_price_rub", "buyer_price_vat_rate"]
-    );
-  }
-
-  appendCommonCostSteps(row, inputs, costs, data, steps, units) {
-    const revenue = data.revenue_cny;
-    const commissionBase = revenue;
-    const rateBase = revenue;
-
-    this.appendProcessStep(
-      steps.storage,
-      this.number(inputs.storage_cny || 0),
-      costs.storage,
-      units.cny,
-      ["storage_cny"],
-      "actual_storage"
-    );
-    this.appendProcessStep(steps.commission,
-      `${this.number(commissionBase)} * ${this.percent(inputs.commission_rate)}`,
-      costs.commission, units.cny, ["commission_rate"], "official_commission");
-    this.appendProcessStep(steps.acquiring,
-      `${this.number(rateBase)} * ${this.percent(this.numberOr(inputs.acquiring_rate, row.dataset.platform === "ozon" ? 0.02 : 0))}`,
-      costs.acquiring, units.cny, ["acquiring_rate"], "actual_acquiring");
-    this.appendProcessStep(steps.advertising,
-      `${this.number(rateBase)} * ${this.percent(inputs.advertising_rate || 0)}`,
-      costs.advertising, units.cny, ["advertising_rate"], "actual_advertising");
-
-    const taxFormula = this.taxFormula(row, inputs, data);
-    this.appendProcessStep(steps.tax, taxFormula, costs.tax, units.cny, ["tax_rate", "sales_vat_rate"]);
-    this.appendProcessStep(steps.other, this.otherCostFormula(row, inputs, costs), costs.other, units.cny, ["damage_rate", "misc_cny", "other_cny", "cross_docking_cny"]);
-    this.appendProcessStep(steps.total_cost, this.messagesValue.process.sum_costs, data.total_cost_cny, units.cny);
-    this.appendProcessStep(steps.profit,
-      `${this.number(revenue)} - ${this.number(data.total_cost_cny)}`,
-      data.profit_cny, units.cny);
-    this.appendProcessStep(steps.margin,
-      `${this.number(data.profit_cny)} / ${this.number(revenue)}`,
-      Number(data.margin) * 100, units.percent);
-  }
-
-  taxFormula(row, inputs, data) {
-    if (row.dataset.platform === "ozon" && row.dataset.market !== "by") return "0";
-    if (row.dataset.companyType === "small") {
-      return `${this.number(data.revenue_cny)} * ${this.percent(this.numberOr(inputs.tax_rate, 0.06))}`;
-    }
-
-    const rate = this.numberOr(inputs.sales_vat_rate, 0.2);
-    return `${this.number(data.revenue_cny)} * ${this.percent(rate)} / (1 + ${this.percent(rate)}) - ${this.number(data.cost_breakdown?.import_vat)}`;
-  }
-
-  otherCostFormula(row, inputs, costs) {
-    if (row.dataset.platform === "ozon") {
-      const crossDocking = row.dataset.market === "ru" ? inputs.cross_docking_cny || 0 : 0;
-      return `${this.number(crossDocking)} + ${this.number(inputs.other_cny || 0)}`;
-    }
-
-    return `(${this.number(costs.goods)} + ${this.number(costs.import_vat)} + ${this.number(costs.duty)}) * ${this.percent(inputs.damage_rate || 0)} + ${this.number(inputs.misc_cny || 0)} + ${this.number(inputs.other_cny || 0)}`;
-  }
-
-  appendProcessStep(label, formula, result, unit, parameterFields = [], sourceKey = null) {
+  appendProcessStep(label, formula, result, unit, parameterFields = [], sourceKey = null, { key = null, note = null } = {}) {
     const stepIndex = this.processStepIndex++;
     let row = this.detailBodyTarget.querySelector(`[data-process-step-index='${stepIndex}']`);
     if (!row) {
@@ -866,9 +699,96 @@ export default class extends Controller {
     });
     this.renderProcessSource(sourceCell, sourceKey);
     calculationCell.className = "profit-prediction-process__calculation";
-    formulaElement.textContent = formula;
+    this.renderProcessFormula(formulaElement, formula);
     resultElement.textContent = this.formatProcessResult(result, unit);
+    this.renderProcessNote(calculationCell, note);
+    if (key) row.dataset.processStepKey = key;
+    else delete row.dataset.processStepKey;
     row.classList.toggle("is-incomplete", parameterFields.some((field) => this.processInvalidFields?.has(field)));
+  }
+
+  // A formula is either a plain string or a token list (see profit_prediction_formula.js): the
+  // token list renders as a line of parameter names above the same line with the numbers in.
+  renderProcessFormula(formulaElement, formula) {
+    if (!Array.isArray(formula)) {
+      formulaElement.textContent = formula;
+      return;
+    }
+
+    const format = { number: (value) => this.number(value), percent: (value) => this.percent(value) };
+    const named = document.createElement("span");
+    const values = document.createElement("span");
+    named.className = "profit-prediction-process__formula-named";
+    values.className = "profit-prediction-process__formula-values";
+    formula.forEach((token, index) => {
+      if (index > 0) {
+        named.append(" ");
+        values.append(" ");
+      }
+      named.append(this.formulaTokenElement(token, formulaTokenName(token), formulaTokenText(token, format)));
+      values.append(this.formulaTokenElement(token, formulaTokenText(token, format), formulaTokenName(token)));
+    });
+    formulaElement.replaceChildren(named, values);
+  }
+
+  formulaTokenElement(token, text, title) {
+    const element = document.createElement("span");
+    element.textContent = text;
+    if (isOperator(token) || token.type === "const") {
+      element.className = "profit-prediction-process__token profit-prediction-process__token--plain";
+      return element;
+    }
+
+    element.className = "profit-prediction-process__token";
+    element.title = `${formulaTokenName(token)} = ${formulaTokenText(token, { number: (value) => this.number(value), percent: (value) => this.percent(value) })}`;
+    if (token.field) element.dataset.formulaField = token.field;
+    if (token.key) element.dataset.formulaStep = token.key;
+    if (token.field || token.key) {
+      element.dataset.action = "mouseover->profit-prediction#highlightFormulaToken mouseout->profit-prediction#clearFormulaHighlight";
+    }
+    return element;
+  }
+
+  // Hovering a name or a number lights up the same token everywhere in the table, plus the
+  // input it stands for (or the row of the step it quotes), so the formula reads back to the form.
+  highlightFormulaToken(event) {
+    this.clearFormulaHighlight();
+    if (!this.hasDetailBodyTarget) return;
+
+    const { formulaField: field, formulaStep: step } = event.currentTarget.dataset;
+    const linked = [];
+    if (field) {
+      linked.push(...this.detailBodyTarget.querySelectorAll("[data-process-parameter-field]"));
+      linked.push(...this.detailBodyTarget.querySelectorAll("[data-formula-field]"));
+    }
+    if (step) {
+      linked.push(...this.detailBodyTarget.querySelectorAll("[data-process-step-key]"));
+      linked.push(...this.detailBodyTarget.querySelectorAll("[data-formula-step]"));
+    }
+    this.linkedFormulaElements = linked.filter((element) => (
+      (field && (element.dataset.processParameterField === field || element.dataset.formulaField === field))
+      || (step && (element.dataset.processStepKey === step || element.dataset.formulaStep === step))
+    ));
+    this.linkedFormulaElements.forEach((element) => element.classList.add("is-formula-linked"));
+  }
+
+  clearFormulaHighlight() {
+    (this.linkedFormulaElements || []).forEach((element) => element.classList.remove("is-formula-linked"));
+    this.linkedFormulaElements = [];
+  }
+
+  renderProcessNote(calculationCell, note) {
+    let element = calculationCell.querySelector(".profit-prediction-process__note");
+    if (!note) {
+      element?.remove();
+      return;
+    }
+    if (!element) {
+      element = document.createElement("span");
+      element.className = "profit-prediction-process__note";
+      calculationCell.append(element);
+    }
+    element.textContent = note;
   }
 
   renderProcessSource(cell, sourceKey) {
@@ -2497,10 +2417,6 @@ export default class extends Controller {
 
   // VAT embedded in the buyer price when the row has no explicit value:
   // Russian buyers (Ozon RU) 22%, Belarusian buyers (Ozon BY) and WB 20%.
-  defaultBuyerVatRate(row) {
-    return row?.dataset.platform === "ozon" && row.dataset.market === "ru" ? 0.22 : 0.2;
-  }
-
   syncTargetMargin(row, margin) {
     const input = this.targetMarginTargets.find(
       (candidate) => candidate.dataset.processRowKey === row?.dataset.rowKey

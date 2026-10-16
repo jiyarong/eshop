@@ -66,6 +66,7 @@ module Ec
             base_logistics_rub: base_logistics_rub, logistics_liter_fee_rub: logistics_liter_fee_rub,
             outbound_logistics_rub: outbound_logistics_rub, return_logistics_rub: return_logistics_rub,
             platform_logistics_cny: logistics, return_amortization_cny: returns, fixed_return_cny: fixed_return,
+            logistics_source: outbound_logistics_rub ? "actual" : (present?("wb_logistics_override_cny") ? "override" : "coefficient"),
             commission_base_rub: commission_base_rub, commission_base_cny: revenue }.merge(
               buyer_price_audit(commission_base_rub, "0.2", invoice_vat_rate: general_company? ? value_or_default("sales_vat_rate", "0.2") : nil)
             ))

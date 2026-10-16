@@ -124,15 +124,15 @@ test("writes target-margin prices to the commission base input on every platform
   assert.doesNotMatch(source, /targetPriceField/);
 });
 
+const FORMULA_SOURCE_PATH = "app/javascript/controllers/profit_prediction_formula.js";
+
 test("offers the shared actual return-rate shortcut for WB and Ozon", async () => {
   const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
-  const wbStart = source.indexOf("  appendWbProcessSteps(");
-  const wbEnd = source.indexOf("\n  appendOzonProcessSteps(", wbStart);
-  const wbSteps = source.slice(wbStart, wbEnd);
+  const formulas = await readFile(FORMULA_SOURCE_PATH, "utf8");
+  const returnRate = formulas.slice(formulas.indexOf('step("return_rate"'), formulas.indexOf("if (wb) {"));
 
-  assert.ok(wbStart >= 0 && wbEnd > wbStart);
-  assert.match(wbSteps, /steps\.return_rate/);
-  assert.match(wbSteps, /"actual_return_rate"/);
+  // One step definition serves both platforms, and it carries the shortcut.
+  assert.match(returnRate, /"actual_return_rate"/);
   assert.match(source, /this\.actualReturnRateData\.set\(platform, data\)/);
   assert.match(source, /url\.searchParams\.set\("platform", platform\)/);
 });
@@ -166,8 +166,9 @@ test("keeps commission base and buyer-paid prices separate in the actual-price s
 
 test("renders the commission base and buyer-paid prices as separate controls on every platform", async () => {
   const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+  const formulas = await readFile(FORMULA_SOURCE_PATH, "utf8");
 
-  assert.match(source, /\["commission_base_price_rub", "target_margin", "exchange_rate_rub_cny"\]/);
+  assert.match(formulas, /\["commission_base_price_rub", "target_margin", "exchange_rate_rub_cny"\]/);
   assert.match(source, /detailCommissionBasePriceTarget/);
   assert.match(source, /detailBuyerPaidPriceTarget/);
   assert.doesNotMatch(source, /by_target_price_label|by_price_label|wb_price_label|detailReferencePrice/);
@@ -175,12 +176,13 @@ test("renders the commission base and buyer-paid prices as separate controls on 
 
 test("derives the platform subsidy step whenever a buyer-paid price exists, on every platform", async () => {
   const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+  const formulas = await readFile(FORMULA_SOURCE_PATH, "utf8");
 
-  assert.match(source, /steps\.platform_subsidy/);
-  assert.match(source, /buyer_price_vat_rate/);
+  assert.match(formulas, /step\("platform_subsidy"/);
+  assert.match(formulas, /buyer_price_vat_rate/);
   // WB general companies pass the VAT on their invoice to the platform; nobody else does.
-  assert.match(source, /row\.dataset\.platform === "wb" && row\.dataset\.companyType === "general"/);
-  assert.match(source, /invoiceVatRate/);
+  assert.match(formulas, /wb && companyType === "general"/);
+  assert.match(formulas, /invoiceVatRate/);
   assert.doesNotMatch(source, /row\.dataset\.market === "by"\) \{\s+const vatRate/);
 });
 
@@ -217,21 +219,16 @@ test("shows the platform subsidy in the header summary for every platform and cl
 });
 
 test("lists the platform subsidy as the second calculation step, right after revenue", async () => {
-  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
-  const start = source.indexOf("  renderCalculationSteps(");
-  const end = source.indexOf("\n  renderIncompleteCalculationProcess(", start);
-  const steps = source.slice(start, end);
-  const common = source.slice(source.indexOf("  appendCommonCostSteps("), source.indexOf("  taxFormula("));
+  const formulas = await readFile(FORMULA_SOURCE_PATH, "utf8");
 
-  const revenue = steps.indexOf("steps.revenue");
-  const subsidy = steps.indexOf("appendPlatformSubsidyStep(");
-  const goods = steps.indexOf("steps.goods");
+  const revenue = formulas.indexOf('step("revenue"');
+  const subsidy = formulas.indexOf('step("platform_subsidy"');
+  const goods = formulas.indexOf('step("goods"');
   assert.ok(revenue >= 0 && revenue < subsidy && subsidy < goods);
-  // It is no longer appended among the common cost steps.
-  assert.doesNotMatch(common, /steps\.platform_subsidy/);
+  // It is not one of the closing cost steps.
+  assert.ok(subsidy < formulas.indexOf('step("storage"'));
   // Inputs already shown on the revenue and commission rows are not repeated on this row.
-  const method = source.slice(source.indexOf("  appendPlatformSubsidyStep("), source.indexOf("  appendCommonCostSteps("));
-  assert.match(method, /\["buyer_paid_price_rub", "buyer_price_vat_rate"\]/);
+  assert.match(formulas, /\["buyer_paid_price_rub", "buyer_price_vat_rate"\]/);
 });
 
 test("shows ratios as percentages without floating point noise", () => {
@@ -480,8 +477,9 @@ test("the source column header offers both bulk buttons, and the fill one is hid
 
 test("offers the actual acquiring rate on the acquiring step, writes the acquiring input, and joins the bulk load", async () => {
   const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
-  const stepStart = source.indexOf("this.appendProcessStep(steps.acquiring,");
-  const step = source.slice(stepStart, source.indexOf(");", stepStart) + 2);
+  const formulas = await readFile(FORMULA_SOURCE_PATH, "utf8");
+  const stepStart = formulas.indexOf('step("acquiring"');
+  const step = formulas.slice(stepStart, formulas.indexOf("\n\n", stepStart));
 
   assert.match(step, /"actual_acquiring"/);
   assert.match(source, /profit-prediction#loadActualAcquiring/);
@@ -772,4 +770,50 @@ test("the table's platform filter is not carried into the calculator", () => {
   assert.equal(controller.platformFilter, "");
   assert.equal(controller.filterResets, 1);
   assert.deepEqual(controller.platformFilterTargets.map((tab) => tab.classes.has("is-active")), [ true, false, false ]);
+});
+
+function formulaElement(dataset) {
+  const classes = new Set();
+  return { dataset, classes, classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name) } };
+}
+
+function formulaHarness(elements) {
+  const controller = new ProfitPredictionController();
+  Object.assign(controller, {
+    hasDetailBodyTarget: true,
+    detailBodyTarget: {
+      querySelectorAll: (selector) => elements.filter((element) => {
+        const attribute = selector.match(/\[data-([a-z-]+)\]/)[1].replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+        return attribute in element.dataset;
+      })
+    }
+  });
+  return controller;
+}
+
+test("hovering a formula parameter lights up its input and every same token, then clears", () => {
+  const parameter = formulaElement({ processParameterField: "return_rate" });
+  const otherParameter = formulaElement({ processParameterField: "commission_rate" });
+  const hovered = formulaElement({ formulaField: "return_rate" });
+  const sameToken = formulaElement({ formulaField: "return_rate" });
+  const otherToken = formulaElement({ formulaField: "commission_rate" });
+  const controller = formulaHarness([parameter, otherParameter, hovered, sameToken, otherToken]);
+
+  controller.highlightFormulaToken({ currentTarget: hovered });
+  assert.deepEqual([parameter, hovered, sameToken].map((element) => element.classes.has("is-formula-linked")), [true, true, true]);
+  assert.deepEqual([otherParameter, otherToken].map((element) => element.classes.has("is-formula-linked")), [false, false]);
+
+  controller.clearFormulaHighlight();
+  assert.ok([parameter, hovered, sameToken].every((element) => !element.classes.has("is-formula-linked")));
+});
+
+test("hovering a quoted step lights up that step's row", () => {
+  const row = formulaElement({ processStepKey: "revenue" });
+  const otherRow = formulaElement({ processStepKey: "goods" });
+  const hovered = formulaElement({ formulaStep: "revenue" });
+  const controller = formulaHarness([row, otherRow, hovered]);
+
+  controller.highlightFormulaToken({ currentTarget: hovered });
+
+  assert.deepEqual([row, hovered, otherRow].map((element) => element.classes.has("is-formula-linked")), [true, true, false]);
 });

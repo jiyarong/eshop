@@ -122,6 +122,14 @@ zh:
           increment: "增加"
           decrement: "减少"
         cross_docking_not_applicable: "白俄场景不适用，不参与计算"
+        cross_docking_in_other: "已计入「其他成本」，不重复计算"
+        formula_labels:
+          ozon_warehouse_rate: "仓库附加费率"
+          ozon_import_vat_cost_rate: "进口增值税计入成本比例"
+          advertising_fixed_rub: "固定广告费"
+          wb_logistics_override_cny: "WB 物流费覆盖值"
+          logistics_ex_fbo: "去程物流费"
+          return_amortization_factor_override: "退货折算系数"
         formula_summary:
           label: "计算关系"
           total_cost: "总成本 = %{items} = %{total} CNY"
@@ -464,6 +472,14 @@ en:
           increment: "Increase"
           decrement: "Decrease"
         cross_docking_not_applicable: "Not applicable in Belarus; excluded from calculation"
+        cross_docking_in_other: "Already included in Other costs; not counted twice"
+        formula_labels:
+          ozon_warehouse_rate: "Warehouse surcharge rate"
+          ozon_import_vat_cost_rate: "Import VAT cost share"
+          advertising_fixed_rub: "Fixed advertising"
+          wb_logistics_override_cny: "WB logistics override"
+          logistics_ex_fbo: "Outbound logistics"
+          return_amortization_factor_override: "Return amortization factor"
         formula_summary:
           label: "Calculation"
           total_cost: "Total cost = %{items} = %{total} CNY"
@@ -806,6 +822,14 @@ ru:
           increment: "Увеличить"
           decrement: "Уменьшить"
         cross_docking_not_applicable: "Не применяется для Беларуси и не участвует в расчете"
+        cross_docking_in_other: "Уже входит в «Прочие расходы», повторно не считается"
+        formula_labels:
+          ozon_warehouse_rate: "Надбавка за склад"
+          ozon_import_vat_cost_rate: "Доля НДС при импорте в затратах"
+          advertising_fixed_rub: "Фиксированная реклама"
+          wb_logistics_override_cny: "Ручная стоимость логистики WB"
+          logistics_ex_fbo: "Логистика до покупателя"
+          return_amortization_factor_override: "Коэффициент возвратов"
         formula_summary:
           label: "Расчет"
           total_cost: "Общие расходы = %{items} = %{total} CNY"

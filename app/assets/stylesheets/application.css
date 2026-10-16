@@ -10233,6 +10233,48 @@ thead .table-sticky-column {
   min-width: 0;
 }
 
+.profit-prediction-process__formula-named,
+.profit-prediction-process__formula-values {
+  display: block;
+}
+
+.profit-prediction-process__formula-named {
+  margin-bottom: 2px;
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.profit-prediction-process__token:not(.profit-prediction-process__token--plain) {
+  border-radius: 3px;
+  border-bottom: 1px dotted var(--border-strong);
+  cursor: help;
+}
+
+.profit-prediction-process__token.is-formula-linked {
+  background: #fef3c7;
+  border-bottom-color: #d97706;
+  color: #92400e;
+}
+
+.profit-prediction-process__parameter.is-formula-linked {
+  border-radius: 4px;
+  background: #fef3c7;
+  box-shadow: 0 0 0 3px #fef3c7;
+}
+
+.profit-prediction-process__table tbody tr.is-formula-linked > td:first-child {
+  box-shadow: inset 3px 0 0 #d97706;
+}
+
+.profit-prediction-process__note {
+  display: block;
+  margin-top: 2px;
+  color: var(--fg-subtle);
+  font-size: 11px;
+}
+
+
 .profit-prediction-process__source {
   width: 475px;
   max-width: 475px;
