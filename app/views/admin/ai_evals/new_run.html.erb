@@ -1,0 +1,19 @@
+<%= render "heading", heading: t("admin.ai_evals.actions.configure_run") %>
+<section class="panel">
+  <p><%= link_to @case_record.case_key, admin_ai_eval_case_path(@case_record) %> · <%= t("admin.ai_evals.fields.version") %> <%= @case_record.version %></p>
+  <p class="form-hint"><%= t("admin.ai_evals.hints.run") %></p>
+  <%= form_with url: admin_ai_eval_runs_path(@case_record) do |form| %>
+    <div class="ai-form-grid ai-form-grid--identity">
+      <div class="field"><%= label_tag "settings_mode", t("admin.ai_evals.fields.mode") %><%= select_tag "settings[mode]", options_for_select(AiEval::RunRecord::MODES.map { |mode| [t("admin.ai_evals.modes.#{mode}"), mode] }, params.dig(:settings, :mode) || "online_synthetic") %></div>
+      <div class="field"><%= label_tag "settings_anchor_date", t("admin.ai_evals.fields.anchor_date") %><%= date_field_tag "settings[anchor_date]", params.dig(:settings, :anchor_date) || @anchor_date %></div>
+      <div class="field"><%= form.label :baseline_id, t("admin.ai_evals.fields.baseline") %><%= form.select :baseline_id, @baselines.map { |run| ["#{run.id} · #{t("admin.ai_evals.statuses.#{run.status}")}", run.id] }, include_blank: t("admin.ai_evals.fields.no_baseline") %></div>
+    </div>
+    <fieldset><legend><%= t("admin.ai_evals.fields.adapters") %></legend><div class="ai-toggle-grid ai-toggle-grid--compact">
+      <% AiEval::RunRecord::ADAPTERS.each do |adapter| %><label class="checkbox-option ai-toggle-option"><%= check_box_tag "settings[adapters][]", adapter, Array(params.dig(:settings, :adapters) || @case_record.oracle.keys).include?(adapter), id: "eval-adapter-#{adapter}" %><span><strong><%= t("admin.ai_evals.adapters.#{adapter}") %></strong></span></label><% end %>
+    </div></fieldset>
+    <fieldset><legend><%= t("admin.ai_evals.fields.rules") %></legend><div class="ai-toggle-grid ai-toggle-grid--compact">
+      <% @rules.each do |rule| %><label class="checkbox-option ai-toggle-option"><%= check_box_tag "settings[rule_ids][]", rule.id, Array(params.dig(:settings, :rule_ids)).include?(rule.id.to_s), id: "eval-rule-#{rule.id}" %><span><strong><%= rule.name %></strong></span></label><% end %>
+    </div><p class="form-hint"><%= t("admin.ai_evals.hints.rules") %></p></fieldset>
+    <div class="form-actions"><%= form.submit t("admin.ai_evals.actions.run"), class: "button", disabled: @case_record.status != "approved" %></div>
+  <% end %>
+</section>

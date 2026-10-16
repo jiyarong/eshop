@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-eval/case/v1",
+  "title": "SKU eval case (original responses plus JSON Patch)",
+  "type": "object",
+  "required": ["case_key", "version", "base_snapshot"],
+  "properties": {
+    "case_key": {"type": "string", "minLength": 1},
+    "version": {"type": "integer", "minimum": 1},
+    "base_snapshot": {"type": "string", "minLength": 1},
+    "time_zone": {"type": "string"},
+    "scenario": {"type": "string"},
+    "review_status": {"enum": ["draft", "approved"]},
+    "date_mode": {
+      "oneOf": [
+        {"type": "object", "required": ["type"], "properties": {"type": {"const": "none"}}, "additionalProperties": false},
+        {"type": "object", "required": ["type", "days"], "properties": {"type": {"const": "shift"}, "days": {"type": "integer"}}, "additionalProperties": false}
+      ]
+    },
+    "patches": {
+      "type": "array", "items": {
+        "type": "object", "required": ["target", "op", "path"],
+        "properties": {
+          "target": {"type": "string", "pattern": "^v3/[^/]+_context\\.json$"},
+          "op": {"enum": ["add", "remove", "replace", "test", "copy", "move"]},
+          "path": {"type": "string", "pattern": "^/"},
+          "from": {"type": "string", "pattern": "^/"},
+          "value": {}, "reason": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "derived_fields": {"type": "object", "required": ["mode"], "properties": {"mode": {"enum": ["preserve", "recompute", "inject_conflict"]}, "paths": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+    "windows": {"type": "object"},
+    "oracle": {"type": "object"},
+    "planner_input": {"type": "object"},
+    "evaluation_input": {"type": "object"}
+  },
+  "additionalProperties": false
+}

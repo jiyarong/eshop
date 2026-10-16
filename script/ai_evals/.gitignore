@@ -1,0 +1,3 @@
+# Keep raw captured business data local; deliberately curated fixtures can be
+# added separately after review.
+/snapshots/

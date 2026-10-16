@@ -1,0 +1,16 @@
+<% if @run.scores.empty? %><p class="form-hint"><%= t("admin.ai_evals.empty.scores") %></p><% end %>
+<% @run.scores.each do |adapter, score| %>
+  <div class="ai-admin-heading"><h3><%= t("admin.ai_evals.adapters.#{adapter}") %></h3><p><strong><%= score["score"] %> / <%= score["max_score"] || 100 %></strong> · <%= ai_eval_status(score["status"]) %> · <%= t("admin.ai_evals.fields.threshold") %>: <%= score["threshold"] %></p></div>
+  <% if score["critical_failed"] %><p class="error-box"><%= t("admin.ai_evals.hints.critical_failed") %> <%= Array(score["critical_failures"]).join(t("common.list_separator")) %></p><% end %>
+  <%= table_viewport do %>
+    <table class="ai-admin-table"><thead><tr><% %w[assertion status expected actual evidence].each do |key| %><th><%= t("admin.ai_evals.fields.#{key}") %></th><% end %></tr></thead><tbody>
+      <% Array(score["assertions"]).each do |assertion| %><tr>
+        <td><strong><%= assertion["id"] %></strong><br><code><%= assertion["path"] %></code> <code><%= assertion["operator"] %></code></td>
+        <td><%= ai_eval_status(assertion["status"]) %><% if assertion["error"].present? %><br><%= assertion["error"] %><% end %></td>
+        <td><pre><%= ai_eval_json(assertion["expected"]) %></pre></td><td><pre><%= ai_eval_json(assertion["actual"]) %></pre></td><td><pre><%= ai_eval_json(assertion["evidence"]) %></pre></td>
+      </tr><% end %>
+    </tbody></table>
+  <% end %>
+  <details><summary><%= t("admin.ai_evals.sections.gates") %></summary><pre class="json-viewer--scroll"><%= ai_eval_json(score.slice("gates", "categories")) %></pre></details>
+  <% if score["baseline_diff"] %><details open><summary><%= t("admin.ai_evals.sections.baseline_diff") %></summary><pre class="json-viewer--scroll"><%= ai_eval_json(score["baseline_diff"]) %></pre></details><% end %>
+<% end %>

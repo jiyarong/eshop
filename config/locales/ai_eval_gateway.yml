@@ -1,0 +1,54 @@
+zh:
+  ai_eval:
+    gateway:
+      errors:
+        forbidden: "您无权访问评测数据。"
+        missing_parameter: "缺少参数：%{parameter}。"
+        unsupported_context_section: "不支持此 SKU 上下文板块。"
+        invalid_snapshot_id: "快照标识不合法。"
+        snapshot_source_not_allowed: "不允许使用此来源的快照。"
+        context_section_not_available: "此快照不包含所选上下文板块。"
+        invalid_v3_envelope: "快照中的 V3 响应结构不合法。"
+        invalid_case_key: "案例标识不合法。"
+        case_not_found: "未找到评测案例。"
+        case_snapshot_mismatch: "案例与所选快照不一致。"
+        fixture_path_outside_root: "评测数据路径不在允许的目录中。"
+        fixture_not_found: "未找到评测数据。"
+        sku_code_does_not_match_snapshot: "SKU 与所选快照不一致。"
+        invalid_fixture: "评测数据校验失败。"
+en:
+  ai_eval:
+    gateway:
+      errors:
+        forbidden: "You cannot access evaluation data."
+        missing_parameter: "Missing parameter: %{parameter}."
+        unsupported_context_section: "This SKU context section is not supported."
+        invalid_snapshot_id: "The snapshot identifier is invalid."
+        snapshot_source_not_allowed: "This snapshot source is not allowed."
+        context_section_not_available: "The snapshot does not contain this context section."
+        invalid_v3_envelope: "The snapshot has an invalid V3 response structure."
+        invalid_case_key: "The case identifier is invalid."
+        case_not_found: "The evaluation case was not found."
+        case_snapshot_mismatch: "The case does not match the selected snapshot."
+        fixture_path_outside_root: "The evaluation data path is outside the allowed directory."
+        fixture_not_found: "The evaluation data was not found."
+        sku_code_does_not_match_snapshot: "The SKU does not match the selected snapshot."
+        invalid_fixture: "Evaluation data validation failed."
+ru:
+  ai_eval:
+    gateway:
+      errors:
+        forbidden: "У вас нет доступа к данным оценки."
+        missing_parameter: "Отсутствует параметр: %{parameter}."
+        unsupported_context_section: "Этот раздел контекста SKU не поддерживается."
+        invalid_snapshot_id: "Недопустимый идентификатор снимка."
+        snapshot_source_not_allowed: "Этот источник снимка не разрешён."
+        context_section_not_available: "В снимке отсутствует выбранный раздел контекста."
+        invalid_v3_envelope: "Структура ответа V3 в снимке недопустима."
+        invalid_case_key: "Недопустимый идентификатор сценария."
+        case_not_found: "Сценарий оценки не найден."
+        case_snapshot_mismatch: "Сценарий не соответствует выбранному снимку."
+        fixture_path_outside_root: "Путь к данным оценки находится вне разрешённого каталога."
+        fixture_not_found: "Данные оценки не найдены."
+        sku_code_does_not_match_snapshot: "SKU не соответствует выбранному снимку."
+        invalid_fixture: "Проверка данных оценки завершилась ошибкой."

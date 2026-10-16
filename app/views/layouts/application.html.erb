@@ -72,6 +72,7 @@
     <% admin_links << { label: t("navigation.ai_conversations"), path: ai_conversations_path, icon: "bi-chat-square-text", active: active_link.call("/ai/conversations") } if can?(:view_reports) %>
     <% if can?(:manage_users) %>
       <% admin_links << { label: t("navigation.sku_diagnosis_rules"), path: "/admin/sku_diagnosis_rules", icon: "bi-clipboard2-pulse", active: active_link.call("/admin/sku_diagnosis_rules") } %>
+      <% admin_links << { label: t("admin.ai_evals.title"), path: admin_ai_evals_path, icon: "bi-check2-square", active: active_link.call("/admin/ai_evals") } %>
       <% admin_links << { label: t("navigation.skills"), path: "/admin/skills", icon: "bi-puzzle", active: active_link.call("/admin/skills") } %>
       <% admin_links << { label: t("navigation.sku_sales_forecast"), path: reports_sku_sales_forecast_path, icon: "bi-graph-up", active: active_link.call("/reports/sku_sales_forecast") } if can?(:view_reports) %>
       <% admin_links << { label: t("navigation.operation_logs"), path: "/admin/operation_logs", icon: "bi-clock-history", active: active_link.call("/admin/operation_logs") } %>

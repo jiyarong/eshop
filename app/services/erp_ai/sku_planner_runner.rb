@@ -119,16 +119,10 @@ module ErpAI
       listings = sku.sku_products.order(:id).pluck(:id, :platform, :store_id, :product_id).map do |id, platform, store_id, product_id|
         { id: id.to_s, platform: platform, store_id: store_id, product_id: product_id }
       end
-      question = <<~PROMPT
-        当前 SKU：#{sku.sku_code}
-        当前计划周期：#{planning_period_start.iso8601} 至 #{(planning_period_start + 6.days).iso8601}
-        可用 Listing（scope_id 使用内部 id）：#{listings.to_json}
-
-        下方是该 SKU 本周期各子规则最新的非 info 通用诊断事件。info 事件已排除；warning 和 critical 表示诊断紧迫程度，仅供经营判断参考。旧事件缺少 simple_context 时，使用其已有 message 和 details 作为证据，不得据此补造数据。
-        以下是最近周期的历史 Plan / Evaluation Context。历史记录只用于识别已验证、无效、未执行或数据不足的方向，不得机械复制上一周期计划：
-        #{historical_context.to_json}
-        根据这些事件制定本周期值得执行的运营计划。只使用上方列出的 Listing 内部 id；没有足够依据时不调用 save_sku_plan。
-      PROMPT
+      question = ErpAI::SkuEvaluationPrompts.planner(
+        sku_code: sku.sku_code, period_start: planning_period_start,
+        listings: listings, historical_context: historical_context
+      )
 
       planning_cycle, existing_plan_ids = sku.with_lock do
         plans = sku.sku_operation_plans

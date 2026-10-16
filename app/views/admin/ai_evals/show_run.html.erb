@@ -1,0 +1,34 @@
+<%= render "heading", heading: t("admin.ai_evals.run_title", id: @run.id) %>
+<section class="panel">
+  <div class="ai-admin-heading"><p><%= link_to @run.case_record.case_key, admin_ai_eval_case_path(@run.case_record) %> · <%= ai_eval_status(@run.status) %></p><%= link_to t("admin.ai_evals.actions.refresh"), admin_ai_eval_run_path(@run), class: "button button-secondary" %></div>
+  <p><%= t("admin.ai_evals.fields.anchor_date") %>: <%= @run.settings["anchor_date"] %> · <%= t("admin.ai_evals.fields.baseline") %>: <%= @run.baseline_id || t("admin.ai_evals.fields.no_baseline") %></p>
+  <% if @run.error.present? %><div class="error-box" role="alert"><%= @run.error %></div><% end %>
+  <% unless @run.terminal? %><p class="form-hint" role="status"><%= t("admin.ai_evals.hints.running") %></p><% end %>
+</section>
+<section class="panel"><h2><%= t("admin.ai_evals.sections.scores") %></h2><%= render "scores" %></section>
+<section class="panel">
+  <details open><summary><%= t("admin.ai_evals.sections.outputs") %></summary><pre class="json-viewer--scroll"><%= ai_eval_json(@run.outputs) %></pre></details>
+  <details><summary><%= t("admin.ai_evals.sections.trace") %></summary><pre class="json-viewer--scroll"><%= ai_eval_json(@run.trace) %></pre></details>
+  <details><summary><%= t("admin.ai_evals.sections.settings") %></summary><pre class="json-viewer--scroll"><%= ai_eval_json(@run.settings) %></pre></details>
+</section>
+<% if @run.settings.fetch("adapters", []).include?("activepieces") %>
+  <section class="panel">
+    <h2><%= t("admin.ai_evals.sections.activepieces") %></h2>
+    <p class="form-hint"><%= t("admin.ai_evals.hints.activepieces") %></p>
+    <code><%= "/ai/eval_runs/#{@run.id}/ai/v3/sku/inventory_context.json" %></code>
+    <%= form_with url: admin_import_ai_eval_activepieces_path(@run) do |form| %>
+      <div class="field"><%= form.label :external_run_id, t("admin.ai_evals.fields.external_run_id") %><%= form.text_field :external_run_id, required: true %></div>
+      <div class="field"><%= form.label :payload_json, t("admin.ai_evals.fields.payload_json") %><%= form.text_area :payload_json, rows: 8, required: true, class: "code-input", spellcheck: false %><small class="form-hint"><%= t("admin.ai_evals.hints.receipt") %></small></div>
+      <div class="form-actions"><%= form.submit t("admin.ai_evals.actions.import_result"), class: "button button-secondary" %></div>
+    <% end %>
+  </section>
+<% end %>
+<section class="panel">
+  <h2><%= t("admin.ai_evals.sections.review") %></h2>
+  <% if @run.review.present? %><pre class="json-viewer--scroll"><%= ai_eval_json(@run.review) %></pre><% end %>
+  <%= form_with url: admin_review_ai_eval_run_path(@run), method: :patch do |form| %>
+    <div class="field"><%= form.label :verdict, t("admin.ai_evals.fields.verdict") %><%= form.select :verdict, Admin::AIEvalsController::REVIEW_VERDICTS.map { |verdict| [t("admin.ai_evals.verdicts.#{verdict}"), verdict] }, selected: @run.review["verdict"] %></div>
+    <div class="field"><%= form.label :note, t("admin.ai_evals.fields.note") %><%= form.text_area :note, rows: 3, value: @run.review["note"] %></div>
+    <div class="form-actions"><%= form.submit t("admin.ai_evals.actions.save_review"), class: "button" %></div>
+  <% end %>
+</section>

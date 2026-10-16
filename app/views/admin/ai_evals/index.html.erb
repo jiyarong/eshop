@@ -1,0 +1,54 @@
+<%= render "heading" %>
+<p class="form-hint"><%= t("admin.ai_evals.hints.workflow") %></p>
+<section class="panel ai-editor-main">
+  <h2><%= t("admin.ai_evals.sections.capture") %></h2>
+  <p class="form-hint"><%= t("admin.ai_evals.hints.capture") %></p>
+  <%= form_with url: admin_capture_ai_eval_snapshot_path do |form| %>
+    <div class="ai-form-grid ai-form-grid--identity">
+      <div class="field"><%= form.label :name, t("admin.ai_evals.fields.name") %><%= form.text_field :name %></div>
+      <div class="field"><%= form.label :sku_code, t("admin.ai_evals.fields.sku_code") %><%= form.text_field :sku_code, required: true %></div>
+      <div class="field"><%= form.label :snapshot_date, t("admin.ai_evals.fields.snapshot_date") %><%= form.date_field :snapshot_date, value: user_today, required: true %></div>
+    </div>
+    <div class="form-actions"><%= form.submit t("admin.ai_evals.actions.capture"), class: "button" %></div>
+  <% end %>
+  <details>
+    <summary><%= t("admin.ai_evals.sections.import") %></summary>
+    <%= form_with url: admin_import_ai_eval_snapshot_path do |form| %>
+      <div class="field"><%= form.label :name, t("admin.ai_evals.fields.name"), for: "import_snapshot_name" %><%= form.text_field :name, id: "import_snapshot_name" %></div>
+      <div class="field"><%= form.label :snapshot_json, t("admin.ai_evals.fields.snapshot_json") %><%= form.text_area :snapshot_json, rows: 10, required: true, class: "code-input", spellcheck: false %><small class="form-hint"><%= t("admin.ai_evals.hints.import") %></small></div>
+      <div class="form-actions"><%= form.submit t("admin.ai_evals.actions.import"), class: "button button-secondary" %></div>
+    <% end %>
+  </details>
+</section>
+<section class="panel table-list-card">
+  <h2><%= t("admin.ai_evals.sections.snapshots") %></h2>
+  <%= table_viewport(class_name: "table-list-viewport") do %>
+    <table class="ai-admin-table"><thead><tr>
+      <% %w[name sku_code snapshot_date source actions].each do |key| %><th><%= t("admin.ai_evals.fields.#{key}") %></th><% end %>
+    </tr></thead><tbody>
+      <% @snapshots.each do |snapshot| %><tr>
+        <td><%= link_to snapshot.name, admin_ai_eval_snapshot_path(snapshot) %></td><td><%= snapshot.sku_code %></td><td><%= snapshot.snapshot_date %></td><td><%= snapshot[:source_environment] %></td>
+        <td><%= link_to t("admin.ai_evals.actions.new_case"), admin_new_ai_eval_case_path(snapshot), class: "ai-row-action" %></td>
+      </tr><% end %>
+      <% if @snapshots.empty? %><tr><td colspan="5"><%= t("admin.ai_evals.empty.snapshots") %></td></tr><% end %>
+    </tbody></table>
+  <% end %>
+</section>
+<section class="panel table-list-card">
+  <h2><%= t("admin.ai_evals.sections.cases") %></h2>
+  <%= table_viewport(class_name: "table-list-viewport") do %>
+    <table class="ai-admin-table"><thead><tr><% %w[case_key sku_code version status actions].each do |key| %><th><%= t("admin.ai_evals.fields.#{key}") %></th><% end %></tr></thead><tbody>
+      <% @cases.each do |record| %><tr><td><%= link_to record.case_key, admin_ai_eval_case_path(record) %></td><td><%= record[:snapshot_sku_code] %></td><td><%= record.version %></td><td><%= ai_eval_status(record.status) %></td><td><%= link_to t("admin.ai_evals.actions.configure_run"), admin_new_ai_eval_run_path(record), class: "ai-row-action" if record.status == "approved" %></td></tr><% end %>
+      <% if @cases.empty? %><tr><td colspan="5"><%= t("admin.ai_evals.empty.cases") %></td></tr><% end %>
+    </tbody></table>
+  <% end %>
+</section>
+<section class="panel table-list-card">
+  <h2><%= t("admin.ai_evals.sections.runs") %></h2>
+  <%= table_viewport(class_name: "table-list-viewport") do %>
+    <table class="ai-admin-table"><thead><tr><% %w[run case_key status created_at].each do |key| %><th><%= t("admin.ai_evals.fields.#{key}") %></th><% end %></tr></thead><tbody>
+      <% @runs.each do |run| %><tr><td><%= link_to run.id, admin_ai_eval_run_path(run) %></td><td><%= run[:case_key] %></td><td><%= ai_eval_status(run.status) %></td><td><%= display_time(run.created_at) %></td></tr><% end %>
+      <% if @runs.empty? %><tr><td colspan="4"><%= t("admin.ai_evals.empty.runs") %></td></tr><% end %>
+    </tbody></table>
+  <% end %>
+</section>

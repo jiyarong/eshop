@@ -1,0 +1,7 @@
+<%= render "heading", heading: @snapshot.name %>
+<section class="panel">
+  <p><strong><%= @snapshot.sku_code %></strong> · <%= @snapshot.snapshot_date %> · <%= @snapshot.manifest["source_environment"] %></p>
+  <%= link_to t("admin.ai_evals.actions.new_case"), admin_new_ai_eval_case_path(@snapshot), class: "button" %>
+  <details><summary><%= t("admin.ai_evals.sections.manifest") %></summary><pre class="json-viewer--scroll"><%= ai_eval_json(@snapshot.manifest) %></pre></details>
+  <% @snapshot.documents.each do |path, document| %><details><summary><code><%= path %></code></summary><pre class="json-viewer--scroll"><%= ai_eval_json(document) %></pre></details><% end %>
+</section>

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-eval/snapshot-manifest/v1",
+  "title": "SKU eval snapshot manifest",
+  "type": "object",
+  "required": ["format_version", "sku_code", "snapshot_date", "time_zone", "source_environment", "files"],
+  "properties": {
+    "format_version": {"const": 1},
+    "snapshot_type": {"const": "sku_context"},
+    "sku_code": {"type": "string", "minLength": 1},
+    "snapshot_date": {"type": "string", "format": "date"},
+    "time_zone": {"type": "string", "minLength": 1},
+    "source_environment": {"type": "string", "minLength": 1},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "period": {"type": "object"},
+    "sections": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "metadata": {"type": "object"},
+    "files": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": {
+        "type": "object", "required": ["sha256", "content_sha256"],
+        "properties": {
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "size": {"type": "integer", "minimum": 0}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

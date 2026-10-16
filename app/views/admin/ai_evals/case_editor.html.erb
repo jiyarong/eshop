@@ -1,0 +1,48 @@
+<%= render "heading", heading: t("admin.ai_evals.sections.case_editor") %>
+<section class="panel">
+  <p><%= link_to @snapshot.name, admin_ai_eval_snapshot_path(@snapshot) %> · <%= @snapshot.sku_code %> · <%= @snapshot.snapshot_date %></p>
+  <% if @case_record.persisted? %><p><%= ai_eval_status(@case_record.status) %> <%= t("admin.ai_evals.fields.version") %>: <%= @case_record.version %></p><% end %>
+  <p class="form-hint"><%= t("admin.ai_evals.hints.case_editor") %></p>
+  <% if @case_record.status != "draft" %><p class="form-hint"><%= t("admin.ai_evals.hints.new_version") %></p><% end %>
+  <% if @patch_suggestion %>
+    <div role="status">
+      <p><%= t("admin.ai_evals.sections.suggestion") %>: <%= t("admin.ai_evals.suggestion_statuses.#{@patch_suggestion.status}") %></p>
+      <% if @patch_suggestion.status.in?(%w[queued running]) %>
+        <p class="form-hint"><%= t("admin.ai_evals.hints.suggestion_pending") %></p>
+        <%= link_to t("admin.ai_evals.actions.refresh"), request.fullpath, class: "button button-secondary" %>
+      <% elsif @patch_suggestion.status == "failed" %>
+        <div class="error-box" role="alert"><%= @patch_suggestion.error %></div>
+      <% end %>
+    </div>
+  <% end %>
+  <%= form_with url: (@case_record.persisted? ? admin_ai_eval_case_path(@case_record) : admin_ai_eval_cases_path(@snapshot)), method: (@case_record.persisted? ? :patch : :post), class: "ai-agent-form" do |form| %>
+    <div class="field"><%= form.label :case_key, t("admin.ai_evals.fields.case_key") %><%= form.text_field :case_key, value: @case_record.case_key, readonly: @case_record.persisted?, required: true %></div>
+    <div class="field"><%= form.label :definition_json, t("admin.ai_evals.fields.definition_json") %><%= form.text_area :definition_json, value: @definition_json, rows: 22, required: true, spellcheck: false, class: "code-input", aria: { describedby: "eval-definition-hint" } %><small class="form-hint" id="eval-definition-hint"><%= t("admin.ai_evals.hints.definition") %></small></div>
+    <div class="form-actions">
+      <%= form.button t("admin.ai_evals.actions.preview"), name: "intent", value: "preview", class: "button button-secondary" %>
+      <%= form.button t(@case_record.status == "draft" ? "admin.ai_evals.actions.save_draft" : "admin.ai_evals.actions.save_version"), name: "intent", value: "save", class: "button" %>
+    </div>
+    <details>
+      <summary><%= t("admin.ai_evals.sections.assistant") %></summary>
+      <p class="form-hint"><%= t("admin.ai_evals.hints.assistant") %></p>
+      <div class="field"><%= form.label :agent_id, t("admin.ai_evals.fields.agent") %><%= form.select :agent_id, @agents.map { |agent| [agent.name, agent.id] }, { include_blank: t("admin.ai_evals.fields.choose_agent"), selected: params[:agent_id] || @patch_suggestion&.agent_id } %></div>
+      <div class="field"><%= form.label :instruction, t("admin.ai_evals.fields.instruction") %><%= form.text_area :instruction, rows: 3, value: params[:instruction] || @patch_suggestion&.instruction %></div>
+      <div class="form-actions"><%= form.button t("admin.ai_evals.actions.assist"), name: "intent", value: "assist", class: "button button-secondary", data: { turbo_submits_with: t("admin.ai_evals.actions.generating") } %></div>
+    </details>
+  <% end %>
+  <% if @case_record.persisted? && @case_record.status == "draft" %><%= button_to t("admin.ai_evals.actions.approve"), admin_approve_ai_eval_case_path(@case_record), class: "button", form: { data: { turbo_confirm: t("admin.ai_evals.hints.approve_confirm") } } %><% end %>
+  <% if @case_record.status == "approved" %><%= link_to t("admin.ai_evals.actions.configure_run"), admin_new_ai_eval_run_path(@case_record), class: "button" %><% end %>
+</section>
+<% if @diff %>
+  <section class="panel table-list-card">
+    <h2><%= t("admin.ai_evals.sections.diff") %></h2>
+    <%= table_viewport(class_name: "table-list-viewport") do %>
+      <table class="ai-admin-table"><thead><tr><% %w[path operation before after].each do |key| %><th><%= t("admin.ai_evals.fields.#{key}") %></th><% end %></tr></thead><tbody>
+        <% @diff.each do |change| %><% change = change.with_indifferent_access %><tr><td><code><%= change[:path] %></code></td><td><%= change[:operation] %></td><td><pre><%= ai_eval_json(change[:before]) %></pre></td><td><pre><%= ai_eval_json(change[:after]) %></pre></td></tr><% end %>
+        <% if @diff.empty? %><tr><td colspan="4"><%= t("admin.ai_evals.empty.diff") %></td></tr><% end %>
+      </tbody></table>
+    <% end %>
+    <details><summary><%= t("admin.ai_evals.sections.materialized") %></summary><pre class="json-viewer--scroll"><%= ai_eval_json(@preview.documents) %></pre></details>
+  </section>
+<% end %>
+<% if @assistant_suggestion %><section class="panel"><h2><%= t("admin.ai_evals.sections.suggestion") %></h2><pre class="json-viewer--scroll"><%= ai_eval_json(@assistant_suggestion) %></pre></section><% end %>

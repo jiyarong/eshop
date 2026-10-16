@@ -1,0 +1,8 @@
+<% content_for :title, t("admin.ai_evals.title") %>
+<% content_for :page_heading, t("admin.ai_evals.title") %>
+<div class="ai-admin-heading">
+  <h1 class="page-title"><%= local_assigns[:heading] || t("admin.ai_evals.title") %></h1>
+  <%= link_to t("admin.ai_evals.actions.back"), admin_ai_evals_path, class: "button button-secondary" unless action_name == "index" %>
+</div>
+<%= render "admin/shared/ai_navigation", section: :ai_evals %>
+<% if @error.present? %><div class="error-box" role="alert"><%= @error %></div><% end %>

@@ -125,6 +125,9 @@ Rails.application.routes.draw do
   resources :feedback_tasks, only: [:create]
 
   namespace :ai, module: :erp_ai do
+    get "eval_runs/:run_id/ai/v3/sku/:section" => "eval_runs#show", as: :eval_run_section
+    get "eval_snapshots/*snapshot_id/ai/v3/sku/:section" => "eval_snapshots#show",
+      as: :eval_snapshot_section
     resources :conversations, only: [:index, :create, :show] do
       resources :messages, only: :create, controller: "conversation_messages"
     end
@@ -165,6 +168,20 @@ Rails.application.routes.draw do
   end
 
   namespace :admin do
+    get "ai_evals" => "ai_evals#index", as: :ai_evals
+    post "ai_evals/snapshots" => "ai_evals#capture_snapshot", as: :capture_ai_eval_snapshot
+    post "ai_evals/snapshots/import" => "ai_evals#import_snapshot", as: :import_ai_eval_snapshot
+    get "ai_evals/snapshots/:snapshot_id" => "ai_evals#show_snapshot", as: :ai_eval_snapshot
+    get "ai_evals/snapshots/:snapshot_id/cases/new" => "ai_evals#new_case", as: :new_ai_eval_case
+    post "ai_evals/snapshots/:snapshot_id/cases" => "ai_evals#create_case", as: :ai_eval_cases
+    get "ai_evals/cases/:case_id" => "ai_evals#show_case", as: :ai_eval_case
+    patch "ai_evals/cases/:case_id" => "ai_evals#update_case"
+    post "ai_evals/cases/:case_id/approve" => "ai_evals#approve_case", as: :approve_ai_eval_case
+    get "ai_evals/cases/:case_id/runs/new" => "ai_evals#new_run", as: :new_ai_eval_run
+    post "ai_evals/cases/:case_id/runs" => "ai_evals#create_run", as: :ai_eval_runs
+    get "ai_evals/runs/:run_id" => "ai_evals#show_run", as: :ai_eval_run
+    patch "ai_evals/runs/:run_id/review" => "ai_evals#review_run", as: :review_ai_eval_run
+    post "ai_evals/runs/:run_id/activepieces" => "ai_evals#import_activepieces", as: :import_ai_eval_activepieces
     mount MissionControl::Jobs::Engine, at: "/jobs"
     mount SimpleApm::Engine => "/apm"
     resource :sub2_usage, only: :show

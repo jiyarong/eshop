@@ -156,23 +156,10 @@ module ErpAI
         "数据周期：#{period.fetch('from')} 至 #{period.fetch('to')}；快照日期：#{period.fetch('as_of')}",
         context_sections.join("\n\n---\n\n")
       ].join("\n\n")
-      event_type_instruction = if rule.allowed_event_types.any?
-        "event_type 建议优先使用以下值，也可按诊断结论填写其他具体类型：#{rule.allowed_event_types.join(', ')}"
-      else
-        "event_type 写具体诊断事件类型"
-      end
-      listing_image_instruction = if selected_listing_platforms.any?
-        "每个 Listing product 的图片均按两张一组排列：第一张为主图，第二张为其余产品图合集。"
-      end
-      question = <<~PROMPT
-        当前 SKU：#{sku.sku_code}
-        当前子规则 ID：#{rule.id}
-        子规则追加提示词：
-        #{rule.prompt}
-        #{listing_image_instruction}
-
-        请严格基于下方上下文诊断当前 SKU。必须调用 save_sku_event，sub_agent_id 使用 #{rule.id}，#{event_type_instruction}，message 写诊断结果和依据，simple_context 按当前子规则 Prompt 的要求填写非空的最小证据；severity 使用 info、warning 或 critical 之一。工具返回字段校验错误时，请修正对应字段并再次调用，只有保存成功才算完成。不要处理其他 SKU。
-      PROMPT
+      question = ErpAI::SkuEvaluationPrompts.diagnosis(
+        sku_code: sku.sku_code, rule_id: rule.id, rule_prompt: rule.prompt,
+        event_types: rule.allowed_event_types, listing_platforms: selected_listing_platforms
+      )
       conversation = ErpAI::AgentRunner.new(
         agent: agent, user: user, client: client,
         tool_executor: ScopedToolExecutor.new(user: user, date: as_of_date, sku: sku, rule: rule),
