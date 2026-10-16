@@ -673,6 +673,35 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".profit-prediction-alert--info", text: /not looking at the current version/
   end
 
+  test "a saved version opens with the neutral saved status, an unsaved new one with the dirty status" do
+    @sku.profit_versions.create!(name: "Saved", status: "draft", effective_from: Date.new(2026, 10, 1))
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }, headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".profit-prediction-mode-status:not(.is-dirty)", text: "Saved"
+
+    sign_in @user
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en", new_profit_version: 1 }, headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".profit-prediction-mode-status.is-dirty"
+  end
+
+  test "the tab offers the calculator and the table as two views, calculator first, with both kept in the page" do
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".profit-prediction-workbench[data-view-mode='calculator']"
+    assert_select ".profit-prediction-view-tabs[role='tablist'] .profit-prediction-view-tab", count: 2
+    assert_select ".profit-prediction-view-tab.is-active[data-view-mode='calculator']", text: "Scenario calculator"
+    assert_select ".profit-prediction-view-tab[data-view-mode='table'][aria-selected='false']", text: "Scenario table"
+    assert_select "[data-profit-prediction-target='tableView'][hidden]"
+    assert_select "[data-profit-prediction-target='calculatorView']:not([hidden])"
+    # The calculator reads the table's inputs, so the table must stay in the page even when hidden.
+    assert_select "[data-profit-prediction-target='tableView'] .profit-prediction-table tbody tr[data-profit-prediction-target~='row']", minimum: 6
+    assert_select "[data-profit-prediction-target='tableView'] .profit-prediction-platform-tab", count: 3
+    assert_select "[data-profit-prediction-target='calculatorView'] .profit-prediction-process__scenario-tab", count: 6
+  end
+
   test "an unsaved new version offers no way to set it as current" do
     @sku.profit_versions.create!(name: "Saved", status: "draft", effective_from: Date.new(2026, 10, 1)).make_current!
 

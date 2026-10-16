@@ -638,3 +638,138 @@ test("copy and new links ask before discarding edits and can be cancelled", () =
   assert.equal(prevented, 1);
   assert.deepEqual(clean.confirmations, []);
 });
+
+function modeStatusController({ dirtyRows = [], versionDirty = false } = {}) {
+  const classes = new Set();
+  const controller = new ProfitPredictionController();
+  Object.assign(controller, {
+    calculationMode: true,
+    dirtyRows: new Set(dirtyRows),
+    versionDirty,
+    saving: false,
+    hasSaveButtonTarget: false,
+    hasNavigationControlTarget: false,
+    hasModeStatusTarget: true,
+    modeStatusTarget: {
+      textContent: "",
+      classList: { toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)) }
+    },
+    messagesValue: { dirty: "__COUNT__ unsaved", saved: "saved" }
+  });
+  return { controller, classes };
+}
+
+test("an untouched version shows 'saved', not the yellow dirty state", () => {
+  const { controller, classes } = modeStatusController();
+
+  controller.updateControls();
+
+  assert.equal(controller.modeStatusTarget.textContent, "saved");
+  assert.equal(classes.has("is-dirty"), false);
+});
+
+test("the dirty state appears only once a scenario or the version was edited, and goes away when clean again", () => {
+  const { controller, classes } = modeStatusController({ dirtyRows: [ "row-1", "row-2" ] });
+  controller.updateControls();
+  assert.equal(controller.modeStatusTarget.textContent, "2 unsaved");
+  assert.equal(classes.has("is-dirty"), true);
+
+  controller.dirtyRows.clear();
+  controller.updateControls();
+  assert.equal(controller.modeStatusTarget.textContent, "saved");
+  assert.equal(classes.has("is-dirty"), false);
+
+  const renamed = modeStatusController({ versionDirty: true });
+  renamed.controller.updateControls();
+  assert.equal(renamed.controller.modeStatusTarget.textContent, "1 unsaved");
+  assert.equal(renamed.classes.has("is-dirty"), true);
+});
+
+function viewModeController({ stored, throwOnStorage = false, platformFilter = "" } = {}) {
+  const store = new Map(stored ? [ [ "profit_prediction_view_mode", stored ] ] : []);
+  globalThis.window = {
+    localStorage: {
+      getItem(key) { if (throwOnStorage) throw new Error("blocked"); return store.get(key) ?? null; },
+      setItem(key, value) { if (throwOnStorage) throw new Error("blocked"); store.set(key, value); }
+    }
+  };
+  const makeTab = (mode) => {
+    const classes = new Set();
+    return { dataset: { viewMode: mode }, attrs: {}, classes,
+      classList: { toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)) },
+      setAttribute(name, value) { this.attrs[name] = value; } };
+  };
+  const platformTabs = [ "", "wb", "ozon" ].map((value) => {
+    const classes = new Set();
+    return { dataset: { platformValue: value }, attrs: {}, classes,
+      classList: { toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)) },
+      setAttribute(name, val) { this.attrs[name] = val; } };
+  });
+  const controller = new ProfitPredictionController();
+  Object.assign(controller, {
+    element: { dataset: {} },
+    hasTableViewTarget: true,
+    tableViewTarget: { hidden: true },
+    hasCalculatorViewTarget: true,
+    calculatorViewTarget: { hidden: false },
+    viewTabTargets: [ makeTab("calculator"), makeTab("table") ],
+    platformFilterTargets: platformTabs,
+    platformFilter,
+    filterResets: 0,
+    applyPlatformFilter() { this.filterResets += 1; }
+  });
+  return { controller, store };
+}
+
+test("the pricing tab opens in the scenario calculator unless the user chose the table", () => {
+  const fresh = viewModeController();
+  fresh.controller.setViewMode(fresh.controller.storedViewMode());
+  assert.equal(fresh.controller.viewMode, "calculator");
+  assert.equal(fresh.controller.element.dataset.viewMode, "calculator");
+  assert.equal(fresh.controller.calculatorViewTarget.hidden, false);
+  assert.equal(fresh.controller.tableViewTarget.hidden, true);
+
+  const remembered = viewModeController({ stored: "table" });
+  remembered.controller.setViewMode(remembered.controller.storedViewMode());
+  assert.equal(remembered.controller.viewMode, "table");
+  assert.equal(remembered.controller.tableViewTarget.hidden, false);
+  assert.equal(remembered.controller.calculatorViewTarget.hidden, true);
+
+  const garbage = viewModeController({ stored: "something-else" });
+  assert.equal(garbage.controller.storedViewMode(), "calculator");
+});
+
+test("switching views shows exactly one of them, marks the tab, and remembers the choice", () => {
+  const { controller, store } = viewModeController();
+  const clickOn = (mode) => ({ currentTarget: { dataset: { viewMode: mode } } });
+
+  controller.selectViewMode(clickOn("table"));
+  assert.deepEqual([ controller.tableViewTarget.hidden, controller.calculatorViewTarget.hidden ], [ false, true ]);
+  assert.deepEqual(controller.viewTabTargets.map((tab) => tab.attrs["aria-selected"]), [ "false", "true" ]);
+  assert.equal(store.get("profit_prediction_view_mode"), "table");
+
+  controller.selectViewMode(clickOn("calculator"));
+  assert.deepEqual([ controller.tableViewTarget.hidden, controller.calculatorViewTarget.hidden ], [ true, false ]);
+  assert.deepEqual(controller.viewTabTargets.map((tab) => tab.classes.has("is-active")), [ true, false ]);
+  assert.equal(store.get("profit_prediction_view_mode"), "calculator");
+});
+
+test("blocked storage never breaks the view switch: it just falls back to the calculator", () => {
+  const { controller } = viewModeController({ throwOnStorage: true });
+
+  assert.equal(controller.storedViewMode(), "calculator");
+  controller.selectViewMode({ currentTarget: { dataset: { viewMode: "table" } } });
+  assert.equal(controller.viewMode, "table");
+});
+
+test("the table's platform filter is not carried into the calculator", () => {
+  const { controller } = viewModeController({ platformFilter: "wb" });
+  controller.setViewMode("table");
+  assert.equal(controller.platformFilter, "wb", "the table keeps its own filter");
+
+  controller.setViewMode("calculator");
+
+  assert.equal(controller.platformFilter, "");
+  assert.equal(controller.filterResets, 1);
+  assert.deepEqual(controller.platformFilterTargets.map((tab) => tab.classes.has("is-active")), [ true, false, false ]);
+});

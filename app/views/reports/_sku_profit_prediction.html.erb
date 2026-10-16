@@ -222,6 +222,7 @@
   data-profit-prediction-new-record-value="<%= profit_version_new %>"
   data-profit-prediction-status-value="<%= @profit_version.status %>"
   data-profit-prediction-readonly-value="<%= profit_version_readonly %>"
+  data-view-mode="calculator"
   data-save-url="<%= save_url %>"
   data-save-method="<%= profit_version_new ? "POST" : "PATCH" %>"
   data-lock-version="<%= @profit_version.lock_version %>"
@@ -248,7 +249,7 @@
             } %>
         </label>
         <div class="profit-prediction-toolbar__statuses">
-          <span class="profit-prediction-mode-status" data-profit-prediction-target="modeStatus" aria-live="polite">
+          <span class="profit-prediction-mode-status<%= " is-dirty" if profit_version_new %>" data-profit-prediction-target="modeStatus" aria-live="polite">
             <%= profit_version_new ? t("reports.profit_prediction.status.measuring") : t("reports.profit_prediction.status.saved") %>
           </span>
         </div>
@@ -320,130 +321,146 @@
     </div>
   <% end %>
 
-  <div class="profit-prediction-table-note">
-    <nav class="profit-prediction-platform-tabs" aria-label="<%= t("reports.profit_prediction.platform_tabs.label") %>">
-      <% [["", "all"], ["wb", "wb"], ["ozon", "ozon"]].each_with_index do |(value, key), index| %>
-        <button
-          type="button"
-          class="profit-prediction-platform-tab<%= " is-active" if index.zero? %>"
-          data-profit-prediction-target="platformFilter"
-          data-platform-value="<%= value %>"
-          aria-selected="<%= index.zero? %>"
-          role="tab"
-          data-action="click->profit-prediction#platformFilterChanged"
-        ><%= t("reports.profit_prediction.platform_tabs.#{key}") %></button>
-      <% end %>
-    </nav>
-    <span data-profit-prediction-target="contextCount"><%= t("reports.profit_prediction.context_count", count: profit_contexts.size) %></span>
-  </div>
+  <nav class="profit-prediction-view-tabs" role="tablist" aria-label="<%= t("reports.profit_prediction.view_modes.label") %>">
+    <% [["calculator", true], ["table", false]].each do |mode, active| %>
+      <button
+        type="button"
+        class="profit-prediction-view-tab<%= " is-active" if active %>"
+        role="tab"
+        aria-selected="<%= active %>"
+        data-profit-prediction-target="viewTab"
+        data-view-mode="<%= mode %>"
+        data-action="click->profit-prediction#selectViewMode"
+      ><%= t("reports.profit_prediction.view_modes.#{mode}") %></button>
+    <% end %>
+  </nav>
 
-  <section class="table-list-card profit-prediction-table-card">
-    <%= table_viewport(
-      class_name: "table-list-viewport",
-      sticky_header: true,
-      sticky_columns: SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.size + 1
-    ) do %>
-      <table class="prod-tbl profit-prediction-table">
-        <thead>
-          <tr class="profit-prediction-table__groups">
-            <th colspan="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.size + 1 %>"><%= t("reports.profit_prediction.groups.context") %></th>
-            <% profit_prediction_table_groups.each do |group, columns| %>
-              <th colspan="<%= columns.size %>" data-platform-group="<%= group %>"><%= t("reports.profit_prediction.groups.#{group}") %></th>
-            <% end %>
-          </tr>
-          <tr>
-            <th class="profit-prediction-table__health-heading">
-              <span class="sr-only"><%= t("reports.profit_prediction.result_fields.calculation_status") %></span>
-            </th>
-            <% SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.each do |field| %>
-              <th class="profit-prediction-table__identity-heading profit-prediction-table__identity-heading--<%= field %>"><%= t("reports.profit_prediction.identity_fields.#{field}") %></th>
-            <% end %>
-            <% profit_prediction_table_groups.each do |_group, columns| %>
-              <% columns.each do |kind, field| %>
-                <th class="num" data-field="<%= field %>" data-platforms="<%= profit_prediction_column_platforms(field).join(" ") %>" data-platform-column-group="<%= _group %>">
-                  <%= profit_prediction_field_label(kind, field) %>
-                </th>
+  <div class="profit-prediction-table-view" data-profit-prediction-target="tableView" hidden>
+    <div class="profit-prediction-table-note">
+      <nav class="profit-prediction-platform-tabs" aria-label="<%= t("reports.profit_prediction.platform_tabs.label") %>">
+        <% [["", "all"], ["wb", "wb"], ["ozon", "ozon"]].each_with_index do |(value, key), index| %>
+          <button
+            type="button"
+            class="profit-prediction-platform-tab<%= " is-active" if index.zero? %>"
+            data-profit-prediction-target="platformFilter"
+            data-platform-value="<%= value %>"
+            aria-selected="<%= index.zero? %>"
+            role="tab"
+            data-action="click->profit-prediction#platformFilterChanged"
+          ><%= t("reports.profit_prediction.platform_tabs.#{key}") %></button>
+        <% end %>
+      </nav>
+      <span data-profit-prediction-target="contextCount"><%= t("reports.profit_prediction.context_count", count: profit_contexts.size) %></span>
+    </div>
+
+    <section class="table-list-card profit-prediction-table-card">
+      <%= table_viewport(
+        class_name: "table-list-viewport",
+        sticky_header: true,
+        sticky_columns: SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.size + 1
+      ) do %>
+        <table class="prod-tbl profit-prediction-table">
+          <thead>
+            <tr class="profit-prediction-table__groups">
+              <th colspan="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.size + 1 %>"><%= t("reports.profit_prediction.groups.context") %></th>
+              <% profit_prediction_table_groups.each do |group, columns| %>
+                <th colspan="<%= columns.size %>" data-platform-group="<%= group %>"><%= t("reports.profit_prediction.groups.#{group}") %></th>
               <% end %>
-            <% end %>
-          </tr>
-        </thead>
-        <tbody>
-          <% profit_contexts.each_with_index do |context, index| %>
-            <% row_key = context.id || "new-#{index}" %>
-            <tr
-              class="profit-prediction-row"
-              data-profit-prediction-target="row"
-              data-row-key="<%= row_key %>"
-              data-context-id="<%= context.id %>"
-              data-platform="<%= context.platform %>"
-              data-market="<%= context.market %>"
-              data-delivery-mode="<%= context.delivery_mode %>"
-              data-warehouse-region="<%= context.warehouse_region %>"
-              data-company-type="<%= context.company_type %>"
-              data-calculation-status="<%= context.calculation_status %>"
-              data-context-label="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.map { |field| profit_prediction_identity_value(context, field) }.join(" · ") %>"
-              data-action="click->profit-prediction#selectRow keydown->profit-prediction#selectRowWithKeyboard"
-              tabindex="0"
-              aria-selected="false"
-            >
-              <td
-                class="profit-prediction-table__health"
-                data-row-status
-                data-status="<%= context.calculation_status %>"
-                title="<%= t("reports.profit_prediction.calculation_statuses.#{context.calculation_status}") %>"
-              >
-                <span class="sr-only" data-row-status-label><%= t("reports.profit_prediction.calculation_statuses.#{context.calculation_status}") %></span>
-              </td>
+            </tr>
+            <tr>
+              <th class="profit-prediction-table__health-heading">
+                <span class="sr-only"><%= t("reports.profit_prediction.result_fields.calculation_status") %></span>
+              </th>
               <% SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.each do |field| %>
-                <td class="profit-prediction-table__identity profit-prediction-table__identity--<%= field %>"><%= profit_prediction_identity_value(context, field) %></td>
+                <th class="profit-prediction-table__identity-heading profit-prediction-table__identity-heading--<%= field %>"><%= t("reports.profit_prediction.identity_fields.#{field}") %></th>
               <% end %>
               <% profit_prediction_table_groups.each do |_group, columns| %>
                 <% columns.each do |kind, field| %>
-                  <% column_platforms = profit_prediction_column_platforms(field) %>
-                  <% if kind == :input %>
-                    <td class="num profit-prediction-table__input-cell" data-platforms="<%= column_platforms.join(" ") %>" data-platform-column-group="<%= _group %>">
-                      <% if profit_prediction_input_applicable?(context, field) %>
-                        <% input_editable = profit_prediction_input_editable?(context, field) %>
-                        <% input_value = context.public_send(field) %>
-                        <%= number_field_tag "profit_context_#{index}_#{field}", profit_prediction_input_value(input_value, field),
-                          step: "any",
-                          disabled: profit_version_readonly || !input_editable,
-                          aria: { label: profit_prediction_field_label(:input, field) },
-                          class: "profit-prediction-cell-input",
-                          data: {
-                            profit_prediction_target: "input",
-                            field: field,
-                            editable: input_editable,
-                            percent: (profit_prediction_percent_field?(field) ? "true" : nil),
-                            source_value: profit_prediction_raw_value(input_value),
-                            action: "input->profit-prediction#inputChanged"
-                          } %>
-                      <% else %>
-                        <%= hidden_field_tag "profit_context_#{index}_#{field}", context.public_send(field),
-                          disabled: profit_version_readonly,
-                          data: { profit_prediction_target: "input", field: field, editable: false } %>
-                        <span class="profit-prediction-table__not-applicable"><%= profit_prediction_not_applicable_label(context, field) %></span>
-                      <% end %>
-                    </td>
-                  <% else %>
-                    <% result_value = context.public_send(field) %>
-                    <% result_class = if (field == :profit_cny || field == :margin) && result_value.present?
-                      result_value.to_d.negative? ? "is-negative" : "is-positive"
-                    end %>
-                    <td class="num profit-prediction-table__result <%= result_class %>" data-result-field="<%= field %>" data-platforms="<%= column_platforms.join(" ") %>" data-platform-column-group="<%= _group %>">
-                      <%= profit_prediction_result_value(context, field) %>
-                    </td>
-                  <% end %>
+                  <th class="num" data-field="<%= field %>" data-platforms="<%= profit_prediction_column_platforms(field).join(" ") %>" data-platform-column-group="<%= _group %>">
+                    <%= profit_prediction_field_label(kind, field) %>
+                  </th>
                 <% end %>
               <% end %>
             </tr>
-          <% end %>
-        </tbody>
-      </table>
-    <% end %>
-  </section>
+          </thead>
+          <tbody>
+            <% profit_contexts.each_with_index do |context, index| %>
+              <% row_key = context.id || "new-#{index}" %>
+              <tr
+                class="profit-prediction-row"
+                data-profit-prediction-target="row"
+                data-row-key="<%= row_key %>"
+                data-context-id="<%= context.id %>"
+                data-platform="<%= context.platform %>"
+                data-market="<%= context.market %>"
+                data-delivery-mode="<%= context.delivery_mode %>"
+                data-warehouse-region="<%= context.warehouse_region %>"
+                data-company-type="<%= context.company_type %>"
+                data-calculation-status="<%= context.calculation_status %>"
+                data-context-label="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.map { |field| profit_prediction_identity_value(context, field) }.join(" · ") %>"
+                data-action="click->profit-prediction#selectRow keydown->profit-prediction#selectRowWithKeyboard"
+                tabindex="0"
+                aria-selected="false"
+              >
+                <td
+                  class="profit-prediction-table__health"
+                  data-row-status
+                  data-status="<%= context.calculation_status %>"
+                  title="<%= t("reports.profit_prediction.calculation_statuses.#{context.calculation_status}") %>"
+                >
+                  <span class="sr-only" data-row-status-label><%= t("reports.profit_prediction.calculation_statuses.#{context.calculation_status}") %></span>
+                </td>
+                <% SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.each do |field| %>
+                  <td class="profit-prediction-table__identity profit-prediction-table__identity--<%= field %>"><%= profit_prediction_identity_value(context, field) %></td>
+                <% end %>
+                <% profit_prediction_table_groups.each do |_group, columns| %>
+                  <% columns.each do |kind, field| %>
+                    <% column_platforms = profit_prediction_column_platforms(field) %>
+                    <% if kind == :input %>
+                      <td class="num profit-prediction-table__input-cell" data-platforms="<%= column_platforms.join(" ") %>" data-platform-column-group="<%= _group %>">
+                        <% if profit_prediction_input_applicable?(context, field) %>
+                          <% input_editable = profit_prediction_input_editable?(context, field) %>
+                          <% input_value = context.public_send(field) %>
+                          <%= number_field_tag "profit_context_#{index}_#{field}", profit_prediction_input_value(input_value, field),
+                            step: "any",
+                            disabled: profit_version_readonly || !input_editable,
+                            aria: { label: profit_prediction_field_label(:input, field) },
+                            class: "profit-prediction-cell-input",
+                            data: {
+                              profit_prediction_target: "input",
+                              field: field,
+                              editable: input_editable,
+                              percent: (profit_prediction_percent_field?(field) ? "true" : nil),
+                              source_value: profit_prediction_raw_value(input_value),
+                              action: "input->profit-prediction#inputChanged"
+                            } %>
+                        <% else %>
+                          <%= hidden_field_tag "profit_context_#{index}_#{field}", context.public_send(field),
+                            disabled: profit_version_readonly,
+                            data: { profit_prediction_target: "input", field: field, editable: false } %>
+                          <span class="profit-prediction-table__not-applicable"><%= profit_prediction_not_applicable_label(context, field) %></span>
+                        <% end %>
+                      </td>
+                    <% else %>
+                      <% result_value = context.public_send(field) %>
+                      <% result_class = if (field == :profit_cny || field == :margin) && result_value.present?
+                        result_value.to_d.negative? ? "is-negative" : "is-positive"
+                      end %>
+                      <td class="num profit-prediction-table__result <%= result_class %>" data-result-field="<%= field %>" data-platforms="<%= column_platforms.join(" ") %>" data-platform-column-group="<%= _group %>">
+                        <%= profit_prediction_result_value(context, field) %>
+                      </td>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </section>
+  </div>
 
-  <section class="profit-prediction-process" aria-labelledby="profit-prediction-process-title">
+  <section class="profit-prediction-process" aria-labelledby="profit-prediction-process-title" data-profit-prediction-target="calculatorView">
     <header class="profit-prediction-process__header">
       <nav
         class="profit-prediction-process__scenario-tabs"

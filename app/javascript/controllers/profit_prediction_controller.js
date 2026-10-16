@@ -12,6 +12,10 @@ import {
 
 const PREVIEW_DEBOUNCE_MS = 350;
 
+const VIEW_MODE_STORAGE_KEY = "profit_prediction_view_mode";
+const VIEW_MODES = ["calculator", "table"];
+const DEFAULT_VIEW_MODE = "calculator";
+
 const BULK_LOAD_ACTION_SELECTOR =
   "[data-action^='profit-prediction#loadActual'], [data-action='profit-prediction#loadOfficialCommission']";
 
@@ -75,6 +79,9 @@ export default class extends Controller {
     "input",
     "platformFilter",
     "scenarioTab",
+    "viewTab",
+    "tableView",
+    "calculatorView",
     "versionInput",
     "navigationControl",
     "modeStatus",
@@ -179,6 +186,7 @@ export default class extends Controller {
     }
     this.setCalculationMode(true);
     this.applyPlatformFilter();
+    this.setViewMode(this.storedViewMode());
 
     if (!this.selectedRow && this.visibleRows()[0]) this.setSelectedRow(this.visibleRows()[0]);
   }
@@ -411,12 +419,62 @@ export default class extends Controller {
     this.activateScenarioTab(tab);
   }
 
+  // Two mutually exclusive views over the same scenario rows: the calculator (default) and the
+  // six-row table. The table's inputs stay in the DOM in both, because the calculator reads them.
+  selectViewMode(event) {
+    const mode = event.currentTarget.dataset.viewMode;
+    this.setViewMode(mode);
+    this.storeViewMode(mode);
+  }
+
+  setViewMode(mode) {
+    this.viewMode = VIEW_MODES.includes(mode) ? mode : DEFAULT_VIEW_MODE;
+    this.element.dataset.viewMode = this.viewMode;
+    if (this.hasTableViewTarget) this.tableViewTarget.hidden = this.viewMode !== "table";
+    if (this.hasCalculatorViewTarget) this.calculatorViewTarget.hidden = this.viewMode !== "calculator";
+    this.viewTabTargets.forEach((tab) => {
+      const active = tab.dataset.viewMode === this.viewMode;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    // The platform filter belongs to the table: do not carry it into the calculator, where it
+    // would silently narrow the table the next time it is opened.
+    if (this.viewMode === "calculator" && this.platformFilter) this.resetPlatformFilter();
+  }
+
+  resetPlatformFilter() {
+    this.platformFilter = "";
+    this.platformFilterTargets.forEach((tab) => {
+      const active = !tab.dataset.platformValue;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    this.applyPlatformFilter();
+  }
+
+  storedViewMode() {
+    try {
+      const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      return VIEW_MODES.includes(stored) ? stored : DEFAULT_VIEW_MODE;
+    } catch (error) {
+      return DEFAULT_VIEW_MODE;
+    }
+  }
+
+  storeViewMode(mode) {
+    try {
+      window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    } catch (error) {
+      // Private windows and blocked storage: the choice just is not remembered.
+    }
+  }
+
   activateScenarioTab(tab) {
     const rowKey = tab.dataset.rowKey;
     const row = this.rowTargets.find((candidate) => candidate.dataset.rowKey === rowKey);
     if (!row) return;
 
-    if (row.hidden) {
+    if (row.hidden && this.viewMode === "table") {
       this.platformFilter = row.dataset.platform || "";
       this.platformFilterTargets.forEach((platformTab) => {
         const active = platformTab.dataset.platformValue === this.platformFilter;
@@ -3003,14 +3061,13 @@ export default class extends Controller {
     }
     if (!this.hasModeStatusTarget) return;
 
-    if (this.calculationMode && dirty) {
-      const count = Math.max(this.dirtyRows.size, 1);
-      this.modeStatusTarget.textContent = this.messagesValue.dirty.replace("__COUNT__", count);
-    } else if (this.calculationMode) {
-      this.modeStatusTarget.textContent = this.messagesValue.measuring;
-    } else {
-      this.modeStatusTarget.textContent = this.messagesValue.saved;
-    }
+    // The yellow state only appears once something differs from what is stored: an untouched
+    // saved version reads "saved", not "measuring".
+    const showDirty = this.calculationMode && dirty;
+    this.modeStatusTarget.classList.toggle("is-dirty", showDirty);
+    this.modeStatusTarget.textContent = showDirty
+      ? this.messagesValue.dirty.replace("__COUNT__", Math.max(this.dirtyRows.size, 1))
+      : this.messagesValue.saved;
   }
 
   contextPayload(row) {

@@ -9584,14 +9584,14 @@ thead .table-sticky-column {
   content: "";
 }
 
-.profit-prediction-workbench.is-calculating .profit-prediction-mode-status {
+.profit-prediction-mode-status.is-dirty {
   border-color: #f2c879;
   background: #fff8e8;
   color: #8a4b08;
   font-weight: 600;
 }
 
-.profit-prediction-workbench.is-calculating .profit-prediction-mode-status::before {
+.profit-prediction-mode-status.is-dirty::before {
   background: #d97706;
 }
 
@@ -9636,7 +9636,8 @@ thead .table-sticky-column {
   white-space: nowrap;
 }
 
-.profit-prediction-platform-tabs {
+.profit-prediction-platform-tabs,
+.profit-prediction-view-tabs {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -9646,7 +9647,8 @@ thead .table-sticky-column {
   background: var(--gray-50);
 }
 
-.profit-prediction-platform-tab {
+.profit-prediction-platform-tab,
+.profit-prediction-view-tab {
   min-height: 27px;
   padding: 0 10px;
   border: 0;
@@ -9658,15 +9660,33 @@ thead .table-sticky-column {
   cursor: pointer;
 }
 
-.profit-prediction-platform-tab.is-active {
+.profit-prediction-platform-tab.is-active,
+.profit-prediction-view-tab.is-active {
   background: #fff;
   color: var(--fg);
   box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
 }
 
-.profit-prediction-platform-tab:focus-visible {
+.profit-prediction-platform-tab:focus-visible,
+.profit-prediction-view-tab:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+.profit-prediction-view-tabs {
+  justify-self: start;
+  margin: 2px 0;
+}
+
+.profit-prediction-table-view {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.profit-prediction-table-view[hidden],
+.profit-prediction-process[hidden] {
+  display: none !important;
 }
 
 .profit-prediction-table-card {
@@ -10016,6 +10036,10 @@ thead .table-sticky-column {
   white-space: nowrap;
 }
 
+.profit-prediction-process__summary-item[hidden] {
+  display: none;
+}
+
 .profit-prediction-process__target-margin-control {
   display: grid;
   grid-template-columns: minmax(0, 88px) auto;
@@ -10118,6 +10142,27 @@ thead .table-sticky-column {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.profit-prediction-process__source-head-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.profit-prediction-process__source-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profit-prediction-process__source-head .btn {
+  min-width: 0;
+  padding-inline: 7px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
 }
 
 .profit-prediction-process__source-result {
@@ -10348,10 +10393,6 @@ thead .table-sticky-column {
 
 .profit-prediction-tariff-dialog__context strong,
 .profit-prediction-tariff-dialog__summary strong {
-.profit-prediction-process__summary-item[hidden] {
-  display: none;
-}
-
   color: var(--fg);
 }
 
@@ -10464,27 +10505,6 @@ thead .table-sticky-column {
   min-width: 0;
   margin: 0 0 8px;
   padding: 12px 14px;
-.profit-prediction-process__source-head-inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-}
-
-.profit-prediction-process__source-head-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.profit-prediction-process__source-head .btn {
-  min-width: 0;
-  padding-inline: 7px;
-  font-size: 12px;
-  font-weight: 400;
-  white-space: nowrap;
-}
-
   border-bottom: 1px solid var(--border);
 }
 

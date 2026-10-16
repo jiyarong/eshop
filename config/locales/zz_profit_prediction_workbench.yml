@@ -22,6 +22,10 @@ zh:
         dirty: "%{count} 条场景有未保存修改"
         calculating: "计算中"
         measuring: "测算中，尚未写入数据库"
+      view_modes:
+        label: "视图切换"
+        calculator: "场景计算器"
+        table: "场景总表"
       current_version:
         badge: "当前"
         label: "当前版本"
@@ -360,6 +364,10 @@ en:
         dirty: "%{count} scenarios have unsaved changes"
         calculating: "Calculating"
         measuring: "Calculating locally, not yet saved"
+      view_modes:
+        label: "View mode"
+        calculator: "Scenario calculator"
+        table: "Scenario table"
       current_version:
         badge: "Current"
         label: "Current version"
@@ -698,6 +706,10 @@ ru:
         dirty: "Несохраненные изменения в сценариях: %{count}"
         calculating: "Выполняется расчет"
         measuring: "Расчет выполняется локально и еще не сохранен"
+      view_modes:
+        label: "Режим просмотра"
+        calculator: "Калькулятор сценария"
+        table: "Сводная таблица сценариев"
       current_version:
         badge: "Текущая"
         label: "Текущая версия"
