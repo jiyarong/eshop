@@ -1,7 +1,8 @@
 module Ec
   # Once a month (the 1st), every SKU that already has a profit version gets a new draft version
   # effective on the first day of the month:
-  #   - the six standard scenarios are copied from the previous version, prices included;
+  #   - the six standard scenarios are copied from the SKU's current version (else its latest one),
+  #     prices included;
   #   - the figures that come from platform data are refreshed with the last four full weeks;
   #   - a scenario that has no price yet gets the price it actually realized over those weeks,
   #     when at least SkuProfitPriceFromActuals::MIN_UNITS units were sold in that scenario.
@@ -55,8 +56,8 @@ module Ec
         return
       end
 
-      previous = versions.includes(:contexts).where("effective_from < ?", month_start)
-        .order(effective_from: :desc, id: :desc).first
+      earlier = versions.includes(:contexts).where("effective_from < ?", month_start)
+      previous = earlier.where(is_current: true).first || earlier.order(effective_from: :desc, id: :desc).first
       unless previous
         summary[:skipped_no_previous_version] += 1
         return

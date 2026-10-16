@@ -26,10 +26,10 @@ module SalesFunnelReports
       }
     end
 
+    # The SKU's current version (see Ec::SkuProfitVersion.resolve_for); the date only matters for
+    # SKUs that have not marked one.
     def self.version_for(versions, date)
-      versions.find do |version|
-        version.published? && version.effective_from <= date && (version.effective_to.nil? || version.effective_to >= date)
-      end || versions.first
+      Ec::SkuProfitVersion.resolve_for(versions, date: date)
     end
 
     def self.version_summary(version)

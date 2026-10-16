@@ -9617,6 +9617,25 @@ thead .table-sticky-column {
   color: var(--fg-muted);
 }
 
+.profit-prediction-alert--info {
+  border-left-color: var(--accent, #2563eb);
+  background: #eef4ff;
+  color: #1e3a8a;
+}
+
+.profit-prediction-current-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #e8f6ee;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .profit-prediction-platform-tabs {
   display: inline-flex;
   align-items: center;

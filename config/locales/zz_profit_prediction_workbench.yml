@@ -22,6 +22,15 @@ zh:
         dirty: "%{count} 条场景有未保存修改"
         calculating: "计算中"
         measuring: "测算中，尚未写入数据库"
+      current_version:
+        badge: "当前"
+        label: "当前版本"
+        set_current: "设为当前版本"
+        set_current_title: "把这一套测算设为该 SKU 当前正在使用的版本"
+        not_current_notice: "你正在查看的不是当前版本。"
+        needs_save: "请先保存当前修改，再设为当前版本"
+        incomplete_confirm: "有 %{count} 个场景尚未算完，仍要设为当前版本吗？"
+        failed: "设置失败，请稍后重试"
       version_statuses:
         draft: "草稿"
         published: "已发布"
@@ -351,6 +360,15 @@ en:
         dirty: "%{count} scenarios have unsaved changes"
         calculating: "Calculating"
         measuring: "Calculating locally, not yet saved"
+      current_version:
+        badge: "Current"
+        label: "Current version"
+        set_current: "Set as current version"
+        set_current_title: "Use this calculation as the version this SKU is currently run on"
+        not_current_notice: "You are not looking at the current version."
+        needs_save: "Save your changes before setting this as the current version"
+        incomplete_confirm: "%{count} scenarios are not fully calculated. Set as current version anyway?"
+        failed: "Could not set the current version. Please try again later."
       version_statuses:
         draft: "Draft"
         published: "Published"
@@ -680,6 +698,15 @@ ru:
         dirty: "Несохраненные изменения в сценариях: %{count}"
         calculating: "Выполняется расчет"
         measuring: "Расчет выполняется локально и еще не сохранен"
+      current_version:
+        badge: "Текущая"
+        label: "Текущая версия"
+        set_current: "Сделать текущей версией"
+        set_current_title: "Использовать этот расчёт как версию, по которой SKU работает сейчас"
+        not_current_notice: "Вы просматриваете не текущую версию."
+        needs_save: "Сохраните изменения, прежде чем сделать версию текущей"
+        incomplete_confirm: "Сценариев без полного расчёта: %{count}. Всё равно сделать версию текущей?"
+        failed: "Не удалось задать текущую версию. Повторите позже."
       version_statuses:
         draft: "Черновик"
         published: "Опубликована"

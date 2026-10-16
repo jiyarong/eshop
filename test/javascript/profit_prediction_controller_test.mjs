@@ -491,6 +491,72 @@ test("offers the actual acquiring rate on the acquiring step, writes the acquiri
   assert.match(source, /data-action\^='profit-prediction#loadActual'/);
 });
 
+function currentVersionSetter({ dirty = false, incomplete = 0, response = { ok: true } } = {}) {
+  const fetches = [];
+  const alerts = [];
+  const { controller, confirmations, answer } = versionSwitcher({ frame: { id: "sku_detail_tab_profit_prediction" }, dirty });
+  globalThis.fetch = async (url, options) => { fetches.push([ url, options ]); return response; };
+  Object.assign(controller, {
+    setCurrentUrlValue: "/reports/skus/KJ-217-GD/profit_versions/9/set_current",
+    versionIdValue: 9,
+    incompleteCountValue: incomplete,
+    hasModeStatusTarget: true,
+    modeStatusTarget: { textContent: "" },
+    messagesValue: {
+      confirm_leave: "discard?",
+      current_version: { needs_save: "save first", incomplete_confirm: "__COUNT__ incomplete", failed: "failed" }
+    },
+    jsonHeaders: () => ({ "X-CSRF-Token": "t" })
+  });
+  const button = { disabled: false };
+  return { controller, button, fetches, alerts, confirmations, answer };
+}
+
+test("setting the current version refuses while there are unsaved edits", async () => {
+  const { controller, button, fetches } = currentVersionSetter({ dirty: true });
+
+  await controller.setCurrent({ currentTarget: button });
+
+  assert.equal(fetches.length, 0);
+  assert.equal(controller.modeStatusTarget.textContent, "save first");
+});
+
+test("setting the current version asks when scenarios are not fully calculated", async () => {
+  const { controller, button, fetches, confirmations, answer } = currentVersionSetter({ incomplete: 2 });
+  answer.value = false;
+  await controller.setCurrent({ currentTarget: button });
+  assert.deepEqual(confirmations, [ "2 incomplete" ]);
+  assert.equal(fetches.length, 0);
+
+  answer.value = true;
+  await controller.setCurrent({ currentTarget: button });
+  assert.equal(fetches.length, 1);
+});
+
+test("setting the current version PATCHes the version, then reloads this version's tab frame", async () => {
+  const { controller, button, fetches } = currentVersionSetter();
+
+  await controller.setCurrent({ currentTarget: button });
+
+  assert.equal(fetches.length, 1);
+  assert.equal(fetches[0][0], "/reports/skus/KJ-217-GD/profit_versions/9/set_current");
+  assert.equal(fetches[0][1].method, "PATCH");
+  const [url, options] = globalThis.__turboVisits.at(-1);
+  assert.deepEqual(options, { frame: "sku_detail_tab_profit_prediction" });
+  assert.equal(new URL(url).searchParams.get("version_id"), "9");
+});
+
+test("a failed set-current request is reported and the button works again", async () => {
+  const { controller, button } = currentVersionSetter({ response: { ok: false, status: 422 } });
+  globalThis.__turboVisits = [];
+
+  await controller.setCurrent({ currentTarget: button });
+
+  assert.equal(controller.modeStatusTarget.textContent, "failed");
+  assert.equal(button.disabled, false);
+  assert.equal(globalThis.__turboVisits.length, 0);
+});
+
 function versionSwitcher({ frame, dirty = false, switchUrl = "/reports/skus/KJ-217-GD?tab=profit_prediction", currentVersion = "3" } = {}) {
   globalThis.__turboVisits = [];
   const confirmations = [];

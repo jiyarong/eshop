@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_15_081233) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_074114) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -910,8 +910,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_081233) do
     t.decimal "advertising_cny", precision: 20, scale: 8
     t.decimal "advertising_fixed_rub", precision: 20, scale: 8
     t.decimal "advertising_rate", precision: 14, scale: 10
+    t.decimal "buyer_paid_price_rub", precision: 20, scale: 8
+    t.decimal "buyer_price_vat_rate", precision: 14, scale: 10
     t.datetime "calculated_at"
     t.string "calculation_status", default: "pending", null: false
+    t.decimal "commission_base_price_rub", precision: 20, scale: 8
     t.decimal "commission_cny", precision: 20, scale: 8
     t.decimal "commission_rate", precision: 14, scale: 10
     t.string "company_type"
@@ -965,16 +968,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_081233) do
     t.decimal "wb_logistics_liter_rub", precision: 20, scale: 8
     t.decimal "wb_logistics_override_cny", precision: 20, scale: 8
     t.decimal "width_cm", precision: 12, scale: 4
+    t.index ["sku_profit_version_id", "platform", "market", "delivery_mode", "warehouse_region", "company_type"], name: "idx_sku_profit_contexts_unique", unique: true, nulls_not_distinct: true
     t.index ["sku_profit_version_id"], name: "index_ec_sku_profit_version_contexts_on_sku_profit_version_id"
   end
 
   create_table "ec_sku_profit_versions", force: :cascade do |t|
-    t.decimal "buyer_paid_price_rub", precision: 20, scale: 8
-    t.decimal "buyer_price_vat_rate", precision: 14, scale: 10
     t.datetime "created_at", null: false
     t.date "effective_from", null: false
-    t.decimal "commission_base_price_rub", precision: 20, scale: 8
     t.date "effective_to"
+    t.boolean "is_current", default: false, null: false
     t.integer "lock_version", default: 0, null: false
     t.string "name", null: false
     t.text "note"
@@ -982,6 +984,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_15_081233) do
     t.string "status", default: "draft", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_id", "effective_from"], name: "idx_sku_profit_versions_sku_start"
+    t.index ["sku_id"], name: "idx_sku_profit_versions_one_current", unique: true, where: "is_current"
     t.index ["sku_id"], name: "index_ec_sku_profit_versions_on_sku_id"
     t.exclusion_constraint "sku_id WITH =, daterange(effective_from, COALESCE(effective_to, 'infinity'::date), '[]'::text) WITH &&", where: "(status)::text = 'published'::text", using: :gist, name: "ec_sku_profit_versions_no_published_overlap"
   end

@@ -20,7 +20,7 @@ class ReportsController < ApplicationController
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
-  before_action -> { require_permission!(:manage_skus) }, only: %i[create_sku_profit_version update_sku_profit_version]
+  before_action -> { require_permission!(:manage_skus) }, only: %i[create_sku_profit_version update_sku_profit_version set_current_sku_profit_version]
   before_action -> { require_permission!(:manage_skus) }, only: %i[
     create_sku_attachment
     edit_sku_attachment
@@ -48,7 +48,7 @@ class ReportsController < ApplicationController
     new_sku_general_diagnosis create_sku_general_diagnosis create_sku_planner ignore_sku_ai_diagnosis_event
     sku_profit_versions sku_actual_logistics sku_actual_return_rate sku_actual_storage
     sku_actual_selling_price sku_actual_advertising sku_actual_acquiring sku_official_commission_rate preview_sku_profit
-    create_sku_profit_version update_sku_profit_version sku_listing_diagnoses new_sku_listing_diagnosis
+    create_sku_profit_version update_sku_profit_version set_current_sku_profit_version sku_listing_diagnoses new_sku_listing_diagnosis
     create_sku_listing_diagnosis destroy_sku_competitor_data_batch destroy_sku_competitor_datum
     sku_profit_trend sku_sales_funnel_trends new_sku_predicted_cost create_sku_predicted_cost
     create_sku_attachment edit_sku_attachment update_sku_attachment download_sku_attachment
@@ -568,6 +568,17 @@ class ReportsController < ApplicationController
     raise unless e.cause.is_a?(PG::ExclusionViolation)
 
     render json: { errors: { effective_from: ["overlaps_published_version"] } }, status: :unprocessable_entity
+  end
+
+  def set_current_sku_profit_version
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    version = sku.profit_versions.find(params[:id])
+    version.make_current!
+    render json: { id: version.id, is_current: true }
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.to_hash }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    render json: { errors: { base: ["not_found"] } }, status: :not_found
   end
 
   def sku_listing_diagnoses
@@ -1198,6 +1209,7 @@ class ReportsController < ApplicationController
     @predicted_costs = @sku.predicted_costs.sort_by { |cost| [cost.effective_from || Date.new(1900, 1, 1), cost.id || 0] }.reverse
     if @active_tab == "profit_prediction"
       @profit_versions = @sku.profit_versions.includes(:contexts).order(effective_from: :desc, id: :desc)
+      default_version_date = parse_report_date(params[:effective_date]) || user_today
       @profit_version = if params[:copy_version_id].present?
         source = @profit_versions.find_by(id: params[:copy_version_id])
         source&.build_copy(
@@ -1209,7 +1221,7 @@ class ReportsController < ApplicationController
       elsif params[:version_id].present?
         @profit_versions.find_by(id: params[:version_id])
       else
-        @profit_versions.for_date(params[:effective_date].presence || user_today).first || @profit_versions.first
+        Ec::SkuProfitVersion.resolve_for(@profit_versions, date: default_version_date)
       end
       @profit_version ||= build_standard_profit_version
       load_ozon_logistics_tariff_options
@@ -2491,7 +2503,7 @@ class ReportsController < ApplicationController
   end
 
   def version_payload(version)
-    version.attributes.slice("id", "name", "status", "effective_from", "effective_to", "note", "lock_version", "created_at", "updated_at").merge(
+    version.attributes.slice("id", "name", "status", "is_current", "effective_from", "effective_to", "note", "lock_version", "created_at", "updated_at").merge(
       "contexts" => Ec::SkuProfitStandardContexts.sort(version.contexts).map do |context|
         context.attributes.slice(
           "id", "platform", "market", "delivery_mode", "warehouse_region", "company_type",

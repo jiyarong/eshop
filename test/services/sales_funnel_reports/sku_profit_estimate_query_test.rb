@@ -91,6 +91,21 @@ class SalesFunnelReports::SkuProfitEstimateQueryTest < ActiveSupport::TestCase
     assert_equal current.id, estimate(funnel_analysis([], to_date: Date.new(2026, 6, 7))).fetch(:periods).last.dig(:version, :id)
   end
 
+  test "the SKU's current version is used for every period, ahead of a published one in effect" do
+    in_effect = create_version("published", [ context("wb", "ru", "fbs", "small", profit: 10) ],
+      name: "in effect", effective_from: Date.new(2026, 1, 1))
+    chosen = create_version("draft", [ context("wb", "ru", "fbs", "small", profit: 40) ],
+      name: "chosen", effective_from: Date.new(2026, 9, 1))
+    chosen.make_current!
+    funnel = funnel_analysis([ row(scenario_units: { orders: { [ "wb", "ru", "fbs", "small" ] => 2 }, conversions: {} }) ])
+
+    period = estimate(funnel).fetch(:periods).last
+
+    assert_equal chosen.id, period.dig(:version, :id)
+    assert_equal 80, period.dig(:bases, :orders, :profit_cny)
+    assert_not_equal in_effect.id, period.dig(:version, :id)
+  end
+
   private
 
   def estimate(funnel)

@@ -184,6 +184,7 @@ module Ec
         effective_from
         effective_to
         note
+        is_current
       ],
       "Ec::SkuProfitVersionContext" => %w[
         sku_profit_version_id

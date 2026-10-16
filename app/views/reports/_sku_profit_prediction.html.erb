@@ -2,6 +2,8 @@
 <% profit_version_new = @profit_version.new_record? %>
 <% profit_version_readonly = @profit_version.persisted? && @profit_version.archived? %>
 <% save_url = profit_version_new ? report_sku_profit_versions_path(@sku.sku_code) : report_sku_profit_version_path(@sku.sku_code, @profit_version) %>
+<% profit_version_options = @profit_versions.to_a.partition(&:is_current?).flatten %>
+<% incomplete_context_count = @profit_version.persisted? ? @profit_version.contexts.count { |context| context.calculation_status != "valid" } : 0 %>
 <% warning_fields = %i[fbo_delivery_cny storage_cny acquiring_rate advertising_rate damage_rate misc_cny other_cny] %>
 <% profit_messages = {
   calculating: t("reports.profit_prediction.status.calculating"),
@@ -13,6 +15,11 @@
   saved: t("reports.profit_prediction.status.saved"),
   save_failed: t("reports.profit_prediction.status.save_failed"),
   confirm_leave: t("reports.profit_prediction.confirm_leave"),
+  current_version: {
+    needs_save: t("reports.profit_prediction.current_version.needs_save"),
+    incomplete_confirm: t("reports.profit_prediction.current_version.incomplete_confirm", count: "__COUNT__"),
+    failed: t("reports.profit_prediction.current_version.failed")
+  },
   statuses: {
     valid: t("reports.profit_prediction.calculation_statuses.valid"),
     incomplete: t("reports.profit_prediction.calculation_statuses.incomplete"),
@@ -205,6 +212,11 @@
   data-profit-prediction-actual-advertising-url-value="<%= report_sku_actual_advertising_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-actual-acquiring-url-value="<%= report_sku_actual_acquiring_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-switch-url-value="<%= report_sku_path(@sku.sku_code, tab: "profit_prediction") %>"
+  <% if @profit_version.persisted? %>
+    data-profit-prediction-version-id-value="<%= @profit_version.id %>"
+    data-profit-prediction-set-current-url-value="<%= set_current_report_sku_profit_version_path(@sku.sku_code, @profit_version) %>"
+    data-profit-prediction-incomplete-count-value="<%= incomplete_context_count %>"
+  <% end %>
   data-profit-prediction-official-commission-url-value="<%= report_sku_official_commission_rate_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-messages-value="<%= json_escape(profit_messages.to_json) %>"
   data-profit-prediction-new-record-value="<%= profit_version_new %>"
@@ -221,7 +233,10 @@
         <label class="profit-prediction-version-switcher">
           <%= select_tag :profit_version_id,
             options_for_select(
-              @profit_versions.map { |version| ["#{version.name} · #{t("reports.profit_prediction.version_statuses.#{version.status}")}", version.id] },
+              profit_version_options.map do |version|
+                label = [version.name, (t("reports.profit_prediction.current_version.badge") if version.is_current?), t("reports.profit_prediction.version_statuses.#{version.status}")].compact.join(" · ")
+                [label, version.id]
+              end,
               @profit_version.id
             ),
             include_blank: profit_version_new ? t("reports.profit_prediction.unsaved_version") : nil,
@@ -241,6 +256,19 @@
 
       <div class="profit-prediction-toolbar__actions">
         <div class="profit-prediction-toolbar__version-actions">
+          <% if @profit_version.persisted? && !profit_version_readonly %>
+            <% if @profit_version.is_current? %>
+              <span class="profit-prediction-current-badge" title="<%= t("reports.profit_prediction.current_version.set_current_title") %>">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                <%= t("reports.profit_prediction.current_version.label") %>
+              </span>
+            <% else %>
+              <button type="button" class="btn btn-outline btn-sm" title="<%= t("reports.profit_prediction.current_version.set_current_title") %>" data-action="profit-prediction#setCurrent">
+                <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                <%= t("reports.profit_prediction.current_version.set_current") %>
+              </button>
+            <% end %>
+          <% end %>
           <% if @profit_version.persisted? %>
             <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", copy_version_id: @profit_version.id),
               class: "btn btn-ghost btn-sm", data: { action: "click->profit-prediction#confirmLeave" } do %>
@@ -272,6 +300,18 @@
     <%= hidden_field_tag :profit_version_effective_to, @profit_version.effective_to,
       data: { profit_prediction_target: "versionInput", version_field: "effective_to" } %>
   </header>
+
+  <% if @profit_version.persisted? && !@profit_version.is_current? && @profit_versions.any?(&:is_current?) %>
+    <div class="profit-prediction-alert profit-prediction-alert--info" role="status">
+      <i class="bi bi-info-circle" aria-hidden="true"></i>
+      <%= t("reports.profit_prediction.current_version.not_current_notice") %>
+      <% unless profit_version_readonly %>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="profit-prediction#setCurrent">
+          <%= t("reports.profit_prediction.current_version.set_current") %>
+        </button>
+      <% end %>
+    </div>
+  <% end %>
 
   <% if @sku.dimension.blank? %>
     <div class="profit-prediction-alert" role="alert">

@@ -18,13 +18,53 @@ module Ec
     validates :name, :effective_from, presence: true
     validates_associated :contexts
     validate :effective_range_valid
+    validate :current_version_not_archived, if: :is_current?
     validate :published_version_has_contexts, if: :published?
     validate :no_overlapping_published_version, if: :published?
 
     scope :published, -> { where(status: "published") }
+    scope :current, -> { where(is_current: true) }
     scope :for_date, ->(date) {
       published.where("effective_from <= ? AND (effective_to IS NULL OR effective_to >= ?)", date, date)
     }
+
+    # The version a SKU is read through: the one marked current, else the published version in
+    # effect on `date`, else the newest. `versions` is one SKU's versions, already loaded (so the
+    # page and the list queries stay at a fixed number of queries).
+    def self.resolve_for(versions, date: Date.current)
+      ordered = versions.to_a.sort_by { |version| [ version.effective_from, version.id.to_i ] }.reverse
+      date = date.to_date
+
+      ordered.find(&:is_current?) ||
+        ordered.find { |version| version.published? && version.effective_from <= date && (version.effective_to.nil? || version.effective_to >= date) } ||
+        ordered.first
+    end
+
+    # Makes this the SKU's only current version. It is a pointer, not content: the flip does not
+    # bump lock_version (that would fail the next save of whoever has the old current version
+    # open), so the rows are updated directly and the change is audited by hand.
+    def make_current!
+      raise ActiveRecord::RecordNotSaved.new("unsaved version", self) if new_record?
+
+      if archived?
+        errors.add(:status, :archived)
+        raise ActiveRecord::RecordInvalid, self
+      end
+
+      transaction do
+        siblings = self.class.where(sku_id: sku_id).order(:id).lock.to_a
+        siblings.each do |version|
+          next unless version.is_current? && version.id != id
+
+          flip_current!(version, false)
+        end
+        target = siblings.find { |version| version.id == id }
+        flip_current!(target, true) unless target.is_current?
+        self.is_current = true
+        clear_attribute_changes([ "is_current" ])
+      end
+      self
+    end
 
     def context_for(platform:, market:, delivery_mode:, warehouse_region: nil, company_type: nil)
       normalized_platform = platform.to_s.downcase
@@ -46,7 +86,9 @@ module Ec
         status: "draft",
         effective_from: effective_from,
         effective_to: effective_to,
-        lock_version: 0
+        lock_version: 0,
+        # A copy is never current: only one version per SKU may be (unique index).
+        is_current: false
       )
       contexts.each do |context|
         attributes = context.attributes.slice(
@@ -59,6 +101,15 @@ module Ec
     end
 
     private
+
+    def flip_current!(version, value)
+      version.update_columns(is_current: value)
+      version.send(:record_operation_log, "update", { "is_current" => [ !value, value ] })
+    end
+
+    def current_version_not_archived
+      errors.add(:status, :archived) if archived?
+    end
 
     def effective_range_valid
       return if effective_from.blank? || effective_to.blank? || effective_to >= effective_from

@@ -93,6 +93,21 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     assert_equal 1, summary.fetch(:created).sole.fetch(:prices_filled)
   end
 
+  test "copies the SKU's current version rather than the newest one" do
+    sku = create_sku("MC-#{@token}")
+    chosen = create_version(sku, "published", Date.new(2026, 9, 1), price: 11_000, return_rate: 0.1, effective_to: Date.new(2026, 9, 30))
+    create_version(sku, "draft", Date.new(2026, 10, 1), price: 22_000, return_rate: 0.1)
+    chosen.make_current!
+
+    summary = run_refresh
+
+    assert_equal [ chosen.id ], summary.fetch(:created).map { |entry| entry.fetch(:copied_from_version_id) }
+    copy = sku.profit_versions.find_by!(effective_from: MONTH_START)
+    wb = copy.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
+    assert_equal 11_000.to_d, wb.commission_base_price_rub
+    assert_not copy.is_current, "the new draft does not take over as current by itself"
+  end
+
   test "a figure without platform data keeps the previous version's value" do
     sku = create_sku("MK-#{@token}")
     create_version(sku, "published", Date.new(2026, 10, 1), price: 9_000, return_rate: 0.22)

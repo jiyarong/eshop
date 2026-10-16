@@ -597,6 +597,92 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal ["unsupported_platform"], response.parsed_body.fetch("errors")
   end
 
+  test "sets one current version per SKU and rejects what cannot be current" do
+    older = @sku.profit_versions.create!(name: "older", status: "draft", effective_from: Date.new(2026, 9, 1))
+    newer = @sku.profit_versions.create!(name: "newer", status: "draft", effective_from: Date.new(2026, 10, 1))
+    archived = @sku.profit_versions.create!(name: "archived", status: "archived", effective_from: Date.new(2026, 8, 1))
+
+    patch set_current_report_sku_profit_version_path(@sku.sku_code, older), as: :json
+    assert_response :success
+    assert_equal({ "id" => older.id, "is_current" => true }, response.parsed_body)
+
+    sign_in @user
+    patch set_current_report_sku_profit_version_path(@sku.sku_code, newer), as: :json
+    assert_response :success
+    assert_equal [ newer.id ], @sku.profit_versions.current.pluck(:id)
+    assert_not older.reload.is_current
+
+    sign_in @user
+    patch set_current_report_sku_profit_version_path(@sku.sku_code, archived), as: :json
+    assert_response :unprocessable_entity
+    assert response.parsed_body.fetch("errors").key?("status")
+    assert_equal [ newer.id ], @sku.profit_versions.current.pluck(:id)
+
+    other_sku = Ec::Sku.create!(sku_code: "PVO-#{SecureRandom.hex(4).upcase}")
+    foreign = other_sku.profit_versions.create!(name: "foreign", status: "draft", effective_from: Date.new(2026, 10, 1))
+    begin
+      sign_in @user
+      patch set_current_report_sku_profit_version_path(@sku.sku_code, foreign), as: :json
+      assert_response :not_found
+      assert_not foreign.reload.is_current
+    ensure
+      Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: foreign.id).delete_all
+      foreign.destroy
+      Ec::OperationLog.where(record_type: "Ec::Sku", record_id: other_sku.id).delete_all
+      other_sku.destroy
+    end
+  end
+
+  test "setting the current version needs the manage SKUs permission" do
+    version = @sku.profit_versions.create!(name: "v", status: "draft", effective_from: Date.new(2026, 10, 1))
+    reader = create_user_with_roles("reader-#{SecureRandom.hex(4)}@example.com", "auditor")
+    sign_in reader
+
+    patch set_current_report_sku_profit_version_path(@sku.sku_code, version), as: :json
+
+    assert_response :forbidden
+    assert_not version.reload.is_current
+  ensure
+    UserRole.where(user_id: reader&.id).delete_all
+    User.where(id: reader&.id).delete_all
+  end
+
+  test "the tab opens the current version and marks it, with a way to set another one" do
+    older = @sku.profit_versions.create!(name: "Older model", status: "draft", effective_from: Date.new(2026, 9, 1))
+    newer = @sku.profit_versions.create!(name: "Newer model", status: "draft", effective_from: Date.new(2026, 10, 1))
+    older.make_current!
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".profit-prediction-workbench[data-profit-prediction-version-id-value='#{older.id}']"
+    assert_select ".profit-prediction-workbench[data-profit-prediction-set-current-url-value='#{set_current_report_sku_profit_version_path(@sku.sku_code, older)}']"
+    assert_select ".profit-prediction-version-switcher option[selected]", text: "Older model · Current · Draft"
+    assert_select ".profit-prediction-version-switcher option", text: "Newer model · Draft"
+    assert_select ".profit-prediction-version-switcher option:first-child", text: "Older model · Current · Draft"
+    assert_select ".profit-prediction-current-badge", text: /Current version/
+    assert_select "button[data-action='profit-prediction#setCurrent']", count: 0
+    assert_select ".profit-prediction-alert--info", count: 0
+
+    sign_in @user
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en", version_id: newer.id }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".profit-prediction-current-badge", count: 0
+    assert_select ".profit-prediction-toolbar button[data-action='profit-prediction#setCurrent']", text: /Set as current version/
+    assert_select ".profit-prediction-alert--info", text: /not looking at the current version/
+  end
+
+  test "an unsaved new version offers no way to set it as current" do
+    @sku.profit_versions.create!(name: "Saved", status: "draft", effective_from: Date.new(2026, 10, 1)).make_current!
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en", new_profit_version: 1 }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "button[data-action='profit-prediction#setCurrent']", count: 0
+    assert_select ".profit-prediction-current-badge", count: 0
+  end
+
   test "returns the official commission source payload for a supported scenario" do
     get report_sku_official_commission_rate_path(@sku.sku_code),
       params: { platform: "ozon", delivery_mode: "fbo" }, as: :json

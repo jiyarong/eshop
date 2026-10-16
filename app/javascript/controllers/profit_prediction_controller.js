@@ -60,6 +60,9 @@ export default class extends Controller {
     actualAdvertisingUrl: String,
     actualAcquiringUrl: String,
     switchUrl: String,
+    versionId: Number,
+    setCurrentUrl: String,
+    incompleteCount: Number,
     officialCommissionUrl: String,
     messages: Object,
     newRecord: Boolean,
@@ -245,6 +248,37 @@ export default class extends Controller {
     url.searchParams.delete("copy_version_id");
     url.searchParams.delete("new_profit_version");
     this.navigateWithinFrame(url);
+  }
+
+  // Marks this saved version as the SKU's current one, then reloads the tab so the badge, the
+  // switcher order and the lock version are fresh.
+  async setCurrent(event) {
+    const messages = this.messagesValue.current_version;
+    if (this.hasUnsavedChanges()) {
+      this.showModeMessage(messages.needs_save);
+      return;
+    }
+    if (this.incompleteCountValue > 0 &&
+        !window.confirm(messages.incomplete_confirm.replace("__COUNT__", this.incompleteCountValue))) return;
+
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const response = await fetch(this.setCurrentUrlValue, { method: "PATCH", headers: this.jsonHeaders() });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const url = new URL(this.switchUrlValue, window.location.origin);
+      url.searchParams.set("tab", "profit_prediction");
+      url.searchParams.set("version_id", this.versionIdValue);
+      this.navigateWithinFrame(url);
+    } catch (error) {
+      button.disabled = false;
+      this.showModeMessage(messages.failed);
+    }
+  }
+
+  showModeMessage(text) {
+    if (this.hasModeStatusTarget) this.modeStatusTarget.textContent = text;
   }
 
   // Copy and New are frame links; ask before they throw away unsaved edits.
