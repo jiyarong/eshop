@@ -253,6 +253,19 @@
             <%= profit_version_new ? t("reports.profit_prediction.status.measuring") : t("reports.profit_prediction.status.saved") %>
           </span>
         </div>
+        <nav class="profit-prediction-view-tabs" role="tablist" aria-label="<%= t("reports.profit_prediction.view_modes.label") %>">
+          <% [["calculator", true], ["table", false]].each do |mode, active| %>
+            <button
+              type="button"
+              class="profit-prediction-view-tab<%= " is-active" if active %>"
+              role="tab"
+              aria-selected="<%= active %>"
+              data-profit-prediction-target="viewTab"
+              data-view-mode="<%= mode %>"
+              data-action="click->profit-prediction#selectViewMode"
+            ><%= t("reports.profit_prediction.view_modes.#{mode}") %></button>
+          <% end %>
+        </nav>
       </div>
 
       <div class="profit-prediction-toolbar__actions">
@@ -320,20 +333,6 @@
       <%= t("reports.profit_prediction.dimension_missing") %>
     </div>
   <% end %>
-
-  <nav class="profit-prediction-view-tabs" role="tablist" aria-label="<%= t("reports.profit_prediction.view_modes.label") %>">
-    <% [["calculator", true], ["table", false]].each do |mode, active| %>
-      <button
-        type="button"
-        class="profit-prediction-view-tab<%= " is-active" if active %>"
-        role="tab"
-        aria-selected="<%= active %>"
-        data-profit-prediction-target="viewTab"
-        data-view-mode="<%= mode %>"
-        data-action="click->profit-prediction#selectViewMode"
-      ><%= t("reports.profit_prediction.view_modes.#{mode}") %></button>
-    <% end %>
-  </nav>
 
   <div class="profit-prediction-table-view" data-profit-prediction-target="tableView" hidden>
     <div class="profit-prediction-table-note">

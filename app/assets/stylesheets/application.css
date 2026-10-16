@@ -9674,8 +9674,7 @@ thead .table-sticky-column {
 }
 
 .profit-prediction-view-tabs {
-  justify-self: start;
-  margin: 2px 0;
+  flex: 0 0 auto;
 }
 
 .profit-prediction-table-view {
