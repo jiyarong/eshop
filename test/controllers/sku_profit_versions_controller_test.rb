@@ -229,6 +229,9 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".profit-prediction-workbench.is-calculating"
     assert_select ".profit-prediction-workbench[data-profit-prediction-actual-logistics-url-value]"
     assert_select ".profit-prediction-workbench[data-profit-prediction-official-commission-url-value]"
+    # Switching version reloads the tab's own frame from the SKU detail URL, never the host page.
+    assert_select ".profit-prediction-workbench[data-profit-prediction-switch-url-value='#{report_sku_path(@sku.sku_code, tab: "profit_prediction")}']"
+    assert_select ".profit-prediction-toolbar__version-actions a[data-action='click->profit-prediction#confirmLeave']", minimum: 1
     assert_select ".profit-prediction-header", count: 0
     assert_select ".profit-prediction-version-bar", count: 0
     assert_select ".table-viewport[data-sticky-table-header-sticky-columns-value='5']"

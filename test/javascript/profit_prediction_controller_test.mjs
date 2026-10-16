@@ -306,7 +306,9 @@ const controllerBundle = await build({
     setup(build) {
       build.onResolve({ filter: /^@hotwired\// }, (args) => ({ path: args.path, namespace: "stub" }));
       build.onLoad({ filter: /.*/, namespace: "stub" }, (args) => ({
-        contents: args.path.includes("stimulus") ? "export class Controller {}" : "export const Turbo = {};",
+        contents: args.path.includes("stimulus")
+          ? "export class Controller {}"
+          : "export const Turbo = { visit(...args) { (globalThis.__turboVisits ||= []).push(args); } };",
         loader: "js"
       }));
     }
@@ -487,4 +489,86 @@ test("offers the actual acquiring rate on the acquiring step, writes the acquiri
   assert.match(source, /this\.actualAcquiringData\.set\(platform, data\)/);
   // The bulk buttons pick every "loadActual*" loader up by that prefix.
   assert.match(source, /data-action\^='profit-prediction#loadActual'/);
+});
+
+function versionSwitcher({ frame, dirty = false, switchUrl = "/reports/skus/KJ-217-GD?tab=profit_prediction", currentVersion = "3" } = {}) {
+  globalThis.__turboVisits = [];
+  const confirmations = [];
+  const answer = { value: true };
+  globalThis.window = {
+    location: { href: "http://localhost:4010/operator_skus?q=KJ", origin: "http://localhost:4010" },
+    confirm(message) { confirmations.push(message); return answer.value; }
+  };
+  const controller = new ProfitPredictionController();
+  Object.assign(controller, {
+    element: { closest: () => frame },
+    switchUrlValue: switchUrl,
+    messagesValue: { confirm_leave: "discard?" },
+    calculationMode: true,
+    dirtyRows: new Set(dirty ? [ "row-1" ] : []),
+    versionDirty: false
+  });
+  const select = {
+    value: "9",
+    querySelector: (selector) => (selector === "option[selected]" ? { value: currentVersion } : null)
+  };
+  return { controller, select, confirmations, answer };
+}
+
+test("switching version reloads only the tab's own frame from the SKU detail URL", () => {
+  const { controller, select, confirmations } = versionSwitcher({ frame: { id: "sku_detail_tab_profit_prediction" } });
+
+  controller.changeVersion({ target: select });
+
+  assert.equal(globalThis.__turboVisits.length, 1);
+  const [url, options] = globalThis.__turboVisits[0];
+  assert.deepEqual(options, { frame: "sku_detail_tab_profit_prediction" });
+  const parsed = new URL(url);
+  assert.equal(parsed.pathname, "/reports/skus/KJ-217-GD", "not the host page (/operator_skus)");
+  assert.equal(parsed.searchParams.get("tab"), "profit_prediction");
+  assert.equal(parsed.searchParams.get("version_id"), "9");
+  assert.equal(parsed.searchParams.get("copy_version_id"), null);
+  assert.deepEqual(confirmations, [], "nothing unsaved, nothing to confirm");
+});
+
+test("switching version with unsaved edits asks first: cancel keeps the version and restores the dropdown", () => {
+  const { controller, select, confirmations, answer } = versionSwitcher({ frame: { id: "sku_detail_tab" }, dirty: true });
+  answer.value = false;
+
+  controller.changeVersion({ target: select });
+
+  assert.deepEqual(confirmations, [ "discard?" ]);
+  assert.equal(globalThis.__turboVisits.length, 0);
+  assert.equal(select.value, "3");
+
+  answer.value = true;
+  controller.changeVersion({ target: { ...select, value: "9", querySelector: select.querySelector } });
+  assert.equal(globalThis.__turboVisits.length, 1);
+  assert.equal(confirmations.length, 2);
+});
+
+test("without a frame the switch falls back to a top-level visit that does not ask a second time", () => {
+  const { controller, select } = versionSwitcher({ frame: null });
+
+  controller.changeVersion({ target: select });
+
+  assert.deepEqual(globalThis.__turboVisits[0][1], { action: "replace" });
+  assert.equal(controller.allowNavigation, true);
+});
+
+test("copy and new links ask before discarding edits and can be cancelled", () => {
+  const { controller, answer } = versionSwitcher({ frame: { id: "sku_detail_tab" }, dirty: true });
+  let prevented = 0;
+  answer.value = false;
+  controller.confirmLeave({ preventDefault() { prevented += 1; } });
+  assert.equal(prevented, 1);
+
+  answer.value = true;
+  controller.confirmLeave({ preventDefault() { prevented += 1; } });
+  assert.equal(prevented, 1, "confirmed: the link goes ahead");
+
+  const clean = versionSwitcher({ frame: { id: "sku_detail_tab" } });
+  clean.controller.confirmLeave({ preventDefault() { prevented += 1; } });
+  assert.equal(prevented, 1);
+  assert.deepEqual(clean.confirmations, []);
 });

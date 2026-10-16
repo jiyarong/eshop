@@ -59,6 +59,7 @@ export default class extends Controller {
     actualSellingPriceUrl: String,
     actualAdvertisingUrl: String,
     actualAcquiringUrl: String,
+    switchUrl: String,
     officialCommissionUrl: String,
     messages: Object,
     newRecord: Boolean,
@@ -226,14 +227,44 @@ export default class extends Controller {
     this.updateControls();
   }
 
+  // Switching version reloads only the frame this tab lives in (the drawer's or the page's), so
+  // the drawer and the other tabs stay put. It must not build the URL from window.location: in
+  // the drawer that is the host page, not the SKU detail.
   changeVersion(event) {
-    if (!event.target.value) return;
+    const select = event.target;
+    if (!select.value) return;
 
-    const url = new URL(window.location.href);
+    if (!this.confirmDiscardChanges()) {
+      select.value = select.querySelector("option[selected]")?.value || "";
+      return;
+    }
+
+    const url = new URL(this.switchUrlValue || window.location.href, window.location.origin);
     url.searchParams.set("tab", "profit_prediction");
-    url.searchParams.set("version_id", event.target.value);
+    url.searchParams.set("version_id", select.value);
     url.searchParams.delete("copy_version_id");
     url.searchParams.delete("new_profit_version");
+    this.navigateWithinFrame(url);
+  }
+
+  // Copy and New are frame links; ask before they throw away unsaved edits.
+  confirmLeave(event) {
+    if (!this.confirmDiscardChanges()) event.preventDefault();
+  }
+
+  confirmDiscardChanges() {
+    return !this.hasUnsavedChanges() || window.confirm(this.messagesValue.confirm_leave);
+  }
+
+  navigateWithinFrame(url) {
+    const frame = this.element.closest("turbo-frame");
+    if (frame?.id) {
+      Turbo.visit(url.toString(), { frame: frame.id });
+      return;
+    }
+
+    // Already confirmed above: do not ask again on the top-level visit.
+    this.allowNavigation = true;
     Turbo.visit(url.toString(), { action: "replace" });
   }
 

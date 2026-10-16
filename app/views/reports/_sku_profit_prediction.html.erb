@@ -204,6 +204,7 @@
   data-profit-prediction-actual-selling-price-url-value="<%= report_sku_actual_selling_price_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-actual-advertising-url-value="<%= report_sku_actual_advertising_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-actual-acquiring-url-value="<%= report_sku_actual_acquiring_path(@sku.sku_code, format: :json) %>"
+  data-profit-prediction-switch-url-value="<%= report_sku_path(@sku.sku_code, tab: "profit_prediction") %>"
   data-profit-prediction-official-commission-url-value="<%= report_sku_official_commission_rate_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-messages-value="<%= json_escape(profit_messages.to_json) %>"
   data-profit-prediction-new-record-value="<%= profit_version_new %>"
@@ -241,12 +242,14 @@
       <div class="profit-prediction-toolbar__actions">
         <div class="profit-prediction-toolbar__version-actions">
           <% if @profit_version.persisted? %>
-            <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", copy_version_id: @profit_version.id), class: "btn btn-ghost btn-sm" do %>
+            <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", copy_version_id: @profit_version.id),
+              class: "btn btn-ghost btn-sm", data: { action: "click->profit-prediction#confirmLeave" } do %>
               <i class="bi bi-copy" aria-hidden="true"></i>
               <%= t("reports.profit_prediction.actions.copy") %>
             <% end %>
           <% end %>
-          <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", new_profit_version: 1), class: "btn btn-ghost btn-sm" do %>
+          <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", new_profit_version: 1),
+            class: "btn btn-ghost btn-sm", data: { action: "click->profit-prediction#confirmLeave" } do %>
             <i class="bi bi-plus-lg" aria-hidden="true"></i>
             <%= t("reports.profit_prediction.actions.new") %>
           <% end %>
