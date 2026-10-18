@@ -21,6 +21,7 @@ module Ec
         period: { from: @from_date, to: @to_date, as_of: @as_of_date },
         forecasts: forecasts,
         backtests: backtests,
+        price_currency: "RUB",
         timeline: timeline
       }
     end
@@ -203,10 +204,11 @@ module Ec
     def prices_by_date
       @prices_by_date ||= begin
         date_sql = "DATE((ec_orders.ordered_at AT TIME ZONE 'UTC') AT TIME ZONE #{quoted_time_zone})"
-        price_sql = <<~SQL.squish
-          SUM(COALESCE(ec_order_items.buyer_paid_unit_price, ec_order_items.unit_price) * ec_order_items.quantity)
-          / NULLIF(SUM(ec_order_items.quantity), 0)
+        currency_sql = <<~SQL.squish
+          NULLIF(UPPER(TRIM(CASE WHEN ec_order_items.buyer_paid_unit_price IS NOT NULL
+            THEN ec_order_items.buyer_currency_code ELSE ec_order_items.currency_code END)), '')
         SQL
+        amount_sql = "SUM(COALESCE(ec_order_items.buyer_paid_unit_price, ec_order_items.unit_price) * ec_order_items.quantity)"
         order_items = Ec::OrderItem
           .joins(:order)
           .joins(order_item_sku_product_join_sql)
@@ -215,11 +217,36 @@ module Ec
           .where(ec_orders: { ordered_at: user_date_range })
           .where("COALESCE(ec_order_items.buyer_paid_unit_price, ec_order_items.unit_price) IS NOT NULL")
 
-        order_items
-          .group(Arel.sql(date_sql))
-          .pluck(Arel.sql(date_sql), Arel.sql(price_sql))
-          .to_h { |date, price| [ date.to_date, price&.to_d ] }
+        totals = order_items
+          .group(Arel.sql(date_sql), Arel.sql(currency_sql))
+          .pluck(Arel.sql(date_sql), Arel.sql(currency_sql), Arel.sql(amount_sql), Arel.sql("SUM(ec_order_items.quantity)"))
+        currencies = totals.filter_map { |_date, currency, _amount, _quantity| currency unless currency == "RUB" }.uniq
+        rates = if currencies.any?
+          Ec::DailyExchangeRate
+            .where(rate_date: @from_date..@to_date, base_currency: "CNY", currency_code: currencies + [ "RUB" ])
+            .pluck(:rate_date, :currency_code, :rate_to_base)
+            .to_h { |date, currency, rate| [ [ date, currency ], rate ] }
+        else
+          {}
+        end
+
+        totals.group_by { |date, _currency, _amount, _quantity| date.to_date }.transform_values do |rows|
+          amounts = rows.map do |date, currency, amount, _quantity|
+            rate = rub_conversion_rate(date.to_date, currency, rates)
+            amount.to_d * rate if rate
+          end
+          quantity = rows.sum { |_date, _currency, _amount, units| units.to_d }
+          amounts.sum / quantity if amounts.none?(&:nil?) && quantity.positive?
+        end
       end
+    end
+
+    def rub_conversion_rate(date, currency, rates)
+      return 1.to_d if currency == "RUB"
+
+      source_rate = currency == "CNY" ? 1.to_d : rates[[ date, currency ]]
+      rub_rate = rates[[ date, "RUB" ]]
+      source_rate / rub_rate if source_rate && rub_rate
     end
 
     def advertising_by_date

@@ -2683,6 +2683,7 @@ en:
         calculations: "Calculation details"
       history_hint: "History covers %{history_days} days through the cutoff, plus %{followup_days} following days, capped at today. V1/V2 train on the latest %{training_days} days through the cutoff."
       history_period: "Historical period: %{from} ~ %{to}"
+      price_hint: "Prices are converted to %{currency} at each order date's exchange rate, then averaged by units sold. Buyer-paid prices take priority, falling back to commission base prices when unavailable. The daily average is unavailable if any currency or required rate is missing."
       calculation:
         window: "Training window: %{from} ~ %{to} (%{days} calendar days, including the cutoff)"
         samples: "%{observed} observed days, %{missing} missing days; %{stockout} stockout days excluded, %{valid} valid days. Missing days are excluded rather than counted as zero sales."
@@ -2735,8 +2736,8 @@ en:
         inventory: "Platform stock"
         book_stock: "Book stock"
         out_of_stock: "Stockout"
-        price: "Average paid price"
-        price_change: "Price change"
+        price: "Average paid price (%{currency})"
+        price_change: "Price change (%{currency})"
         ad_enabled: "Advertising"
         ad_spend: "Ad spend"
         ad_campaign_count: "Ad campaigns"

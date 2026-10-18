@@ -2,7 +2,7 @@ en:
   pallet_workbench:
     title: Pallet workbench
     description: "Build one pallet from replenishment needs. Carton changes validate automatically before saving."
-    more_filters: "More filters: people, SKUs and stock"
+    more_filters: "More filters: people and stock"
     step_demand: "01 · Select replenishment"
     step_pack: "02 · Build a pallet"
     step_save: "03 · Validate and save"
@@ -37,6 +37,7 @@ en:
     editing: Editing %{number}
     store: Store
     cluster: Destination cluster
+    cluster_option: "%{name} (gap %{shortage})"
     choose_cluster: Select a cluster to start
     target_days: Target stock days
     search: Search SKU / product

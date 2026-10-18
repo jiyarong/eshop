@@ -2890,6 +2890,7 @@ zh:
         calculations: "计算过程"
       history_hint: "历史数据展示截止日及之前共 %{history_days} 天，并向后多展示 %{followup_days} 天，最晚至今日；v1/v2 使用截止日及之前最近 %{training_days} 天训练。"
       history_period: "历史数据范围：%{from} ~ %{to}"
+      price_hint: "成交均价按订单当日汇率统一换算为 %{currency} 后，按成交件数加权平均；优先使用买家实付价，缺失时使用佣金计价基数。币种或所需汇率缺失时，当天均价不展示。"
       calculation:
         window: "训练窗口：%{from} ~ %{to}（%{days} 个自然日，包含截止日）"
         samples: "有数据 %{observed} 天，缺失 %{missing} 天；剔除断货 %{stockout} 天，有效观察 %{valid} 天。缺失日不按零销量参与计算。"
@@ -2942,8 +2943,8 @@ zh:
         inventory: "平台库存"
         book_stock: "账面库存"
         out_of_stock: "断货"
-        price: "成交均价"
-        price_change: "价格变动"
+        price: "成交均价（%{currency}）"
+        price_change: "价格变动（%{currency}）"
         ad_enabled: "广告开关"
         ad_spend: "广告消耗"
         ad_campaign_count: "广告活动数"

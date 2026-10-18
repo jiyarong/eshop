@@ -58,6 +58,9 @@ class SkuSalesForecastControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", text: "2026-08-01"
     assert_select "#sku-sales-forecast-history tbody td", text: "2026-08-28"
     assert_select "#sku-sales-forecast-history tbody td", text: "2026-08-29", count: 0
+    assert_select "#sku-sales-forecast-history tbody tr td:first-child" do |cells|
+      assert_equal (Date.new(2026, 6, 27)..Date.new(2026, 8, 28)).to_a.reverse.map(&:to_s), cells.map(&:text)
+    end
   end
 
   test "adapts history to a cutoff outside stale history parameters" do
@@ -119,6 +122,12 @@ class SkuSalesForecastControllerTest < ActionDispatch::IntegrationTest
       assert_select "[id^='sku-sales-forecast-calculation-'] .translation_missing", count: 0
       assert_select "#sku-sales-forecast-calculation-version_2 p",
         text: I18n.t("reports.sku_sales_forecast.calculation.v2_intermittent", locale: locale, mean: "4", rate: "0.1286", result: "0.5143")
+      %w[price price_change].each do |field|
+        assert_select "#sku-sales-forecast-history th",
+          text: I18n.t("reports.sku_sales_forecast.fields.#{field}", locale: locale, currency: "RUB")
+      end
+      assert_select "#sku-sales-forecast-price-hint",
+        text: I18n.t("reports.sku_sales_forecast.price_hint", locale: locale, currency: "RUB")
     end
   end
 end

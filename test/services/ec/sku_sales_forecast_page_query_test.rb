@@ -5,6 +5,8 @@ class Ec::SkuSalesForecastPageQueryTest < ActiveSupport::TestCase
     @sku = Ec::Sku.create!(sku_code: "FORECAST-PAGE-#{SecureRandom.hex(4).upcase}", product_name: "Forecast page")
     @from_date = Date.new(2026, 8, 1)
     @to_date = @from_date + 55.days
+    @price_date = Date.new(2094, 8, 1)
+    @rate_source = "forecast-page-test-#{@sku.id}"
     @store = Ec::Store.create!(platform: "wb", store_name: "Forecast page store", company_type: "small")
     Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: @store, platform: "wb", product_id: "12345")
     order = Ec::Order.create!(
@@ -46,6 +48,7 @@ class Ec::SkuSalesForecastPageQueryTest < ActiveSupport::TestCase
   end
 
   teardown do
+    Ec::DailyExchangeRate.where(source: @rate_source).delete_all
     Ec::OrderItem.where(store_id: @store&.id).delete_all if @store
     Ec::Order.where(store_id: @store&.id).delete_all if @store
     Ec::Snapshot.where(sku_id: @sku&.id).delete_all if @sku
@@ -127,7 +130,98 @@ class Ec::SkuSalesForecastPageQueryTest < ActiveSupport::TestCase
     end
   end
 
+  test "converts matching price currencies to RUB before quantity weighting" do
+    create_rates(@price_date, "RUB" => "0.1", "BYN" => "2", "USD" => "7")
+    create_price_item(date: @price_date, quantity: 2, buyer_paid_unit_price: 90, buyer_currency_code: "RUB")
+    create_price_item(date: @price_date, quantity: 3, buyer_paid_unit_price: 10, buyer_currency_code: "BYN")
+    create_price_item(date: @price_date, quantity: 1, buyer_paid_unit_price: 5, buyer_currency_code: "USD")
+    create_price_item(date: @price_date, quantity: 1, buyer_paid_unit_price: nil, buyer_currency_code: "BYN", unit_price: 5, currency_code: "CNY")
+    %w[cancelled returned].each do |status|
+      create_price_item(date: @price_date, status: status, buyer_paid_unit_price: 99_999, buyer_currency_code: "UNKNOWN")
+    end
+
+    report = price_report
+
+    assert_equal "RUB", report[:price_currency]
+    assert_equal BigDecimal("168.5714"), report[:timeline].find { |row| row[:date] == @price_date }[:price]
+  end
+
+  test "uses each order dates rate and computes chronological price changes" do
+    create_rates(@price_date, "RUB" => "0.1", "BYN" => "2")
+    create_rates(@price_date + 1.day, "RUB" => "0.08", "BYN" => "2.4")
+    [@price_date, @price_date + 1.day].each do |date|
+      create_price_item(date: date, buyer_paid_unit_price: 10, buyer_currency_code: "BYN")
+    end
+
+    rows = price_report[:timeline].index_by { |row| row[:date] }
+
+    assert_equal 200.to_d, rows[@price_date][:price]
+    assert_nil rows[@price_date][:price_change]
+    assert_equal 300.to_d, rows[@price_date + 1.day][:price]
+    assert_equal 100.to_d, rows[@price_date + 1.day][:price_change]
+  end
+
+  test "keeps the daily average unavailable when any currency or required rate is missing" do
+    create_rates(@price_date, "RUB" => "0.1")
+    create_rates(@price_date + 1.day, "BYN" => "2")
+    3.times do |index|
+      date = @price_date + index.days
+      create_price_item(date: date, buyer_paid_unit_price: 90, buyer_currency_code: "RUB")
+      create_price_item(date: date, buyer_paid_unit_price: 10, buyer_currency_code: index == 2 ? nil : "BYN")
+    end
+    create_price_item(date: @price_date + 3.days, buyer_paid_unit_price: 90, buyer_currency_code: "RUB")
+
+    rows = price_report[:timeline].index_by { |row| row[:date] }
+
+    3.times { |index| assert_nil rows[@price_date + index.days][:price] }
+    assert_equal 90.to_d, rows[@price_date + 3.days][:price]
+  end
+
+  test "selects exchange rates using the orders date in the requested time zone" do
+    create_rates(@price_date - 1.day, "RUB" => "0.1", "BYN" => "1")
+    create_rates(@price_date, "RUB" => "0.1", "BYN" => "2")
+    create_price_item(
+      date: @price_date, ordered_at: Time.utc(2094, 7, 31, 20),
+      buyer_paid_unit_price: 10, buyer_currency_code: "BYN"
+    )
+
+    shanghai = price_report[:timeline].index_by { |row| row[:date] }
+    utc = price_report(time_zone: "UTC")[:timeline].index_by { |row| row[:date] }
+
+    assert_equal 200.to_d, shanghai[@price_date][:price]
+    assert_nil shanghai[@price_date - 1.day][:price]
+    assert_equal 100.to_d, utc[@price_date - 1.day][:price]
+    assert_nil utc[@price_date][:price]
+  end
+
   private
+
+  def create_price_item(date:, status: "delivered", ordered_at: nil, **attributes)
+    order = Ec::Order.create!(
+      platform: "wb", store: @store, order_key: "forecast-price-#{SecureRandom.hex(8)}",
+      order_status: status, ordered_at: ordered_at || date.in_time_zone("Asia/Shanghai").noon
+    )
+    order.items.create!(**{
+      platform: "wb", store: @store, platform_sku_id: "12345", quantity: 1,
+      unit_price: 100, currency_code: "RUB"
+    }.merge(attributes))
+  end
+
+  def create_rates(date, rates)
+    rates.each do |currency, rate|
+      Ec::DailyExchangeRate.create!(
+        rate_date: date, base_currency: "CNY", currency_code: currency,
+        rate_to_base: rate.to_d, rate_from_base: 1.to_d / rate.to_d,
+        source: @rate_source
+      )
+    end
+  end
+
+  def price_report(time_zone: "Asia/Shanghai")
+    travel_to((@price_date + 7.days).in_time_zone(time_zone).noon) do
+      described_class.new(sku: @sku, as_of_date: @price_date, time_zone: time_zone).call
+    end
+  end
 
   def described_class
     Ec::SkuSalesForecastPageQuery

@@ -75,6 +75,73 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_081245) do
     t.check_constraint "agent_type::text = ANY (ARRAY['web'::character varying::text, 'client'::character varying::text])", name: "agents_agent_type_check"
   end
 
+  create_table "ai_eval_cases", force: :cascade do |t|
+    t.datetime "approved_at"
+    t.bigint "approved_by_id"
+    t.string "case_key", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "definition", default: {}, null: false
+    t.bigint "snapshot_id", null: false
+    t.string "status", default: "draft", null: false
+    t.datetime "updated_at", null: false
+    t.integer "version", default: 1, null: false
+    t.index ["approved_by_id"], name: "index_ai_eval_cases_on_approved_by_id"
+    t.index ["case_key", "version"], name: "index_ai_eval_cases_on_case_key_and_version", unique: true
+    t.index ["snapshot_id"], name: "index_ai_eval_cases_on_snapshot_id"
+  end
+
+  create_table "ai_eval_patch_suggestions", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.string "case_key", null: false
+    t.bigint "case_record_id"
+    t.datetime "created_at", null: false
+    t.jsonb "definition", default: {}, null: false
+    t.text "error"
+    t.text "instruction", null: false
+    t.jsonb "proposal", default: {}, null: false
+    t.bigint "requested_by_id", null: false
+    t.bigint "snapshot_id", null: false
+    t.string "status", default: "queued", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id"], name: "index_ai_eval_patch_suggestions_on_agent_id"
+    t.index ["case_record_id"], name: "index_ai_eval_patch_suggestions_on_case_record_id"
+    t.index ["requested_by_id"], name: "index_ai_eval_patch_suggestions_on_requested_by_id"
+    t.index ["snapshot_id"], name: "index_ai_eval_patch_suggestions_on_snapshot_id"
+  end
+
+  create_table "ai_eval_runs", force: :cascade do |t|
+    t.bigint "baseline_id"
+    t.bigint "case_record_id", null: false
+    t.datetime "created_at", null: false
+    t.text "error"
+    t.datetime "finished_at"
+    t.jsonb "materialized_documents", default: {}, null: false
+    t.jsonb "outputs", default: {}, null: false
+    t.bigint "requested_by_id"
+    t.jsonb "review", default: {}, null: false
+    t.jsonb "scores", default: {}, null: false
+    t.jsonb "settings", default: {}, null: false
+    t.datetime "started_at"
+    t.string "status", default: "queued", null: false
+    t.jsonb "trace", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["baseline_id"], name: "index_ai_eval_runs_on_baseline_id"
+    t.index ["case_record_id"], name: "index_ai_eval_runs_on_case_record_id"
+    t.index ["requested_by_id"], name: "index_ai_eval_runs_on_requested_by_id"
+  end
+
+  create_table "ai_eval_snapshots", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.jsonb "documents", default: {}, null: false
+    t.jsonb "manifest", default: {}, null: false
+    t.string "name", null: false
+    t.string "sku_code", null: false
+    t.date "snapshot_date", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_ai_eval_snapshots_on_created_by_id"
+  end
+
   create_table "conversations", force: :cascade do |t|
     t.bigint "agent_id", null: false
     t.string "business_object_id"
@@ -3557,6 +3624,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_081245) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "agent_skills", "agents"
   add_foreign_key "agent_skills", "skills"
+  add_foreign_key "ai_eval_cases", "ai_eval_snapshots", column: "snapshot_id"
+  add_foreign_key "ai_eval_cases", "users", column: "approved_by_id"
+  add_foreign_key "ai_eval_patch_suggestions", "agents"
+  add_foreign_key "ai_eval_patch_suggestions", "ai_eval_cases", column: "case_record_id"
+  add_foreign_key "ai_eval_patch_suggestions", "ai_eval_snapshots", column: "snapshot_id"
+  add_foreign_key "ai_eval_patch_suggestions", "users", column: "requested_by_id"
+  add_foreign_key "ai_eval_runs", "ai_eval_cases", column: "case_record_id"
+  add_foreign_key "ai_eval_runs", "ai_eval_runs", column: "baseline_id"
+  add_foreign_key "ai_eval_runs", "users", column: "requested_by_id"
+  add_foreign_key "ai_eval_snapshots", "users", column: "created_by_id"
   add_foreign_key "conversations", "agents"
   add_foreign_key "conversations", "users"
   add_foreign_key "ec_ai_diagnosis", "ec_skus", column: "sku_id"

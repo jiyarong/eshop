@@ -26,7 +26,10 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
 
       assert_response :success
       assert_select "h1", I18n.t("pallet_workbench.title", locale: locale)
-      assert_select "select[name='cluster_id'] option[value='771']", text: "Москва"
+      assert_select "select[name='cluster_id'] option[value='771']", text: /Москва.*0/
+      assert_select "[data-controller='spu-sku-filter']", 1
+      assert_select "[data-controller='time-range-selector']", 0
+      assert_select "input[name='q']", 0
       assert_select "[data-controller='pallet-workbench']"
       assert_select "[data-pallet-workbench-target='mode'] option[value='single']"
       assert_select "[data-pallet-workbench-target='recommendButton']"
@@ -42,6 +45,41 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal @store.id, response.parsed_body.fetch("store_id")
     assert_equal @cluster.macrolocal_cluster_id, response.parsed_body.fetch("cluster_id")
+  end
+
+  test "sorts target clusters by their aggregate shortage" do
+    second_cluster = RawOzon::WarehouseCluster.create!(account: @account, macrolocal_cluster_id: 772,
+      cluster_name: "Казань", warehouse_id: 172, warehouse_name: "KAZAN_WORKBENCH", synced_at: Time.current)
+    sku = Ec::Sku.create!(sku_code: "CLUSTER-GAP-#{SecureRandom.hex(5).upcase}", product_name: "Cluster gap test")
+    Ec::SkuOperatorAssignment.create!(sku: sku, user: @user)
+    product = Ec::SkuProduct.create!(sku: sku, store: @store, product_id: sku.sku_code, platform_sku_id: sku.sku_code)
+    sku.create_dimension!(outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
+    order = Ec::Order.create!(platform: "ozon", store: @store, order_key: "cluster-gap-#{SecureRandom.hex(5)}",
+      order_status: "delivered", ordered_at: 3.days.ago)
+    fulfillment = order.fulfillments.create!(platform: "ozon", store: @store,
+      external_fulfillment_id: "CLUSTER-GAP-#{SecureRandom.hex(5)}", fulfillment_key: "cluster-gap-#{SecureRandom.hex(5)}",
+      fulfillment_type: "fbo", status: "delivered", cluster_to: second_cluster.cluster_name)
+    order.items.create!(platform: "ozon", store: @store, fulfillment: fulfillment,
+      platform_sku_id: product.platform_sku_id, quantity: 56)
+    Ec::SkuInventoryLevel.create!(sku: sku, store: @store, platform: "ozon", account_id: @account.id,
+      fulfillment_type: "fbo", quantity: 0, is_latest: true, synced_at: Time.current,
+      warehouse_breakdown: [{ warehouse_name: second_cluster.warehouse_name, cluster_name: second_cluster.cluster_name, quantity: 0 }])
+
+    get reports_pallet_workbench_path(store_id: @store.id, format: :json)
+
+    assert_response :success
+    clusters = response.parsed_body.fetch("clusters")
+    assert_equal [second_cluster.macrolocal_cluster_id, @cluster.macrolocal_cluster_id], clusters.map { |cluster| cluster.fetch("id") }
+    assert_equal [56, 0], clusters.map { |cluster| cluster.fetch("shortage") }
+  ensure
+    Ec::OperationAction.where(ec_store_id: @store.id).delete_all
+    Ec::OrderItem.where(store_id: @store.id).delete_all
+    Ec::OrderFulfillment.where(store_id: @store.id).delete_all
+    Ec::Order.where(store_id: @store.id).delete_all
+    Ec::SkuInventoryLevel.where(store_id: @store.id).delete_all
+    Ec::SkuProduct.where(id: product&.id).delete_all
+    Ec::SkuOperatorAssignment.where(sku_code: sku&.sku_code).delete_all
+    Ec::Sku.with_deleted.where(id: sku&.id).delete_all
   end
 
   test "previewing a reserved plan excludes its own stock reservation" do

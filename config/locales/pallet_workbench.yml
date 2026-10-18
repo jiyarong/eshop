@@ -2,7 +2,7 @@ zh:
   pallet_workbench:
     title: 打托盘工作台
     description: "选好补货需求，一键生成一托；调整箱数后自动验算，再保存方案。"
-    more_filters: "更多筛选：人员、SKU 与库存条件"
+    more_filters: "更多筛选：人员与库存条件"
     step_demand: "01 · 选择补货商品"
     step_pack: "02 · 组装托盘"
     step_save: "03 · 验算并保存"
@@ -37,6 +37,7 @@ zh:
     editing: 正在编辑 %{number}
     store: 店铺
     cluster: 目标集群
+    cluster_option: "%{name}（缺口 %{shortage} 件）"
     choose_cluster: 选择集群后开始工作
     target_days: 目标覆盖天数
     search: 搜索 SKU / 产品

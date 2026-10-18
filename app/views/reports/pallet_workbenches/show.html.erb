@@ -19,19 +19,19 @@
   <section class="panel pallet-workbench__filters">
     <%= form_with url: reports_pallet_workbench_path, method: :get, data: { turbo: false } do |form| %>
       <%= hidden_field_tag :locale, I18n.locale %>
+      <%= hidden_field_tag :from_date, @from_date %>
+      <%= hidden_field_tag :to_date, @to_date %>
       <div class="report-form">
         <div class="field"><%= form.label :store_id, t("pallet_workbench.store") %><%= form.select :store_id, @stores.map { |store| [store.store_name, store.id] }, { selected: @store&.id }, data: { action: "change->pallet-workbench#changeStore" } %></div>
-        <div class="field"><%= form.label :cluster_id, t("pallet_workbench.cluster") %><%= form.select :cluster_id, @clusters.map { |cluster| [cluster[:name], cluster[:id]] }, { selected: @cluster_id, include_blank: t("pallet_workbench.choose_cluster") } %></div>
-        <%= render "shared/time_range_selector", id: "pallet-workbench-period", from_date: @from_date, to_date: @to_date %>
+        <div class="field"><%= form.label :cluster_id, t("pallet_workbench.cluster") %><%= form.select :cluster_id, @clusters.map { |cluster| [t("pallet_workbench.cluster_option", name: cluster[:name], shortage: cluster[:shortage]), cluster[:id]] }, { selected: @cluster_id, include_blank: t("pallet_workbench.choose_cluster") } %></div>
+        <%= render "shared/spu_sku_filter", dom_id_prefix: "pallet-workbench-skus", field_class: "" %>
         <div class="field pallet-workbench__days"><%= form.label :target_days, t("pallet_workbench.target_days") %><%= form.number_field :target_days, value: @target_days, min: 1, max: 180 %></div>
-        <div class="field"><%= form.label :q, t("pallet_workbench.search") %><%= form.search_field :q, value: params[:q] %></div>
         <%= form.submit t("pallet_workbench.start"), class: "button button-secondary" %>
       </div>
-      <details class="pallet-workbench__advanced" <%= 'open' if [params[:developer_id], params[:operator_id], params[:shortage_gt], params[:master_sku_ids], params[:sku_codes]].any?(&:present?) %>>
+      <details class="pallet-workbench__advanced" <%= 'open' if [params[:developer_id], params[:operator_id], params[:shortage_gt]].any?(&:present?) %>>
         <summary><%= t("pallet_workbench.more_filters") %></summary>
         <div class="report-form">
           <%= render "shared/responsible_user_filters", dom_id_prefix: "pallet-workbench-responsible", field_class: "" %>
-          <%= render "shared/spu_sku_filter", dom_id_prefix: "pallet-workbench-skus", field_class: "" %>
           <div class="field"><%= form.label :shortage_gt, t("pallet_workbench.shortage_gt") %><%= form.number_field :shortage_gt, value: params[:shortage_gt], min: 0 %></div>
           <label class="checkbox-option"><%= check_box_tag :packaging_complete, "1", params[:packaging_complete] == "1" %><%= t("pallet_workbench.packaging_complete") %></label>
           <label class="checkbox-option"><%= check_box_tag :allocatable_only, "1", params[:allocatable_only] == "1" %><%= t("pallet_workbench.allocatable_only") %></label>

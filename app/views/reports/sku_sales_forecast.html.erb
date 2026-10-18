@@ -114,6 +114,7 @@
     <section id="sku-sales-forecast-history" class="panel">
       <h2 class="section-title"><%= t("reports.sku_sales_forecast.sections.timeline") %></h2>
       <p id="sku-sales-forecast-history-period" class="table-note"><%= t("reports.sku_sales_forecast.history_period", from: @forecast_report.dig(:period, :from), to: @forecast_report.dig(:period, :to)) %></p>
+      <p id="sku-sales-forecast-price-hint" class="table-note"><%= t("reports.sku_sales_forecast.price_hint", currency: @forecast_report[:price_currency]) %></p>
       <%= table_viewport do %>
         <table class="data-table">
           <thead>
@@ -123,15 +124,15 @@
               <th><%= t("reports.sku_sales_forecast.fields.inventory") %></th>
               <th><%= t("reports.sku_sales_forecast.fields.book_stock") %></th>
               <th><%= t("reports.sku_sales_forecast.fields.out_of_stock") %></th>
-              <th><%= t("reports.sku_sales_forecast.fields.price") %></th>
-              <th><%= t("reports.sku_sales_forecast.fields.price_change") %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.price", currency: @forecast_report[:price_currency]) %></th>
+              <th><%= t("reports.sku_sales_forecast.fields.price_change", currency: @forecast_report[:price_currency]) %></th>
               <th><%= t("reports.sku_sales_forecast.fields.ad_enabled") %></th>
               <th><%= t("reports.sku_sales_forecast.fields.ad_spend") %></th>
               <th><%= t("reports.sku_sales_forecast.fields.ad_campaign_count") %></th>
             </tr>
           </thead>
           <tbody>
-            <% @forecast_report[:timeline].each do |row| %>
+            <% @forecast_report[:timeline].reverse_each do |row| %>
               <tr>
                 <td><%= row[:date] %></td>
                 <td>

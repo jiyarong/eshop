@@ -75,16 +75,24 @@ module Reports
         allowed_sku_codes: visible_skus.pluck(:sku_code))
       sku_scope = apply_spu_sku_filter_to_skus(visible_skus)
       @catalogue = []
-      if @store && @cluster_id
-        report = Ec::PalletPlans::WorkbenchQuery.new(user: current_user, store: @store, cluster_id: @cluster_id,
+      if @store && @clusters.any?
+        report_cluster_id = @cluster_id || @clusters.first[:id]
+        report = Ec::PalletPlans::WorkbenchQuery.new(user: current_user, store: @store, cluster_id: report_cluster_id,
           from_date: @from_date, to_date: @to_date, time_zone: user_time_zone, target_days: @target_days,
           query: params[:q], operator_id: operator_override || @operator_id, developer_id: @developer_id,
           sku_codes: sku_scope.select(:sku_code), excluding_plan_id: @plan&.id).call
-        @catalogue = report.fetch(:rows)
-        @inventory_synced_at = report[:inventory_synced_at]
-        @catalogue.select! { |row| row[:shortage].to_f > params[:shortage_gt].to_f } if params[:shortage_gt].present?
-        @catalogue.select! { |row| row[:packaging_complete] } if params[:packaging_complete] == "1"
-        @catalogue.select! { |row| row[:fbs_allocatable].to_i >= row[:pcs].to_i && row[:pcs].to_i.positive? } if params[:allocatable_only] == "1"
+        gaps_by_cluster = report.fetch(:cluster_rows).index_by { |row| row[:cluster_name].to_s }
+        @clusters = @clusters.map do |cluster|
+          cluster.merge(shortage: gaps_by_cluster.dig(cluster[:name].to_s, :distribution_gap).to_i)
+        end.sort_by { |cluster| [-cluster[:shortage], cluster[:name].to_s] }
+
+        if @cluster_id
+          @catalogue = report.fetch(:rows)
+          @inventory_synced_at = report[:inventory_synced_at]
+          @catalogue.select! { |row| row[:shortage].to_f > params[:shortage_gt].to_f } if params[:shortage_gt].present?
+          @catalogue.select! { |row| row[:packaging_complete] } if params[:packaging_complete] == "1"
+          @catalogue.select! { |row| row[:fbs_allocatable].to_i >= row[:pcs].to_i && row[:pcs].to_i.positive? } if params[:allocatable_only] == "1"
+        end
       end
       load_table_sort(allowed_keys: SORT_KEYS, default_key: :shortage)
       @catalogue = sort_table_records(@catalogue) { |row| row[table_sort_key.to_sym] }
