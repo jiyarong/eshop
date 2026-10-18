@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_074114) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_081245) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -537,6 +537,85 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_074114) do
     t.index ["platform", "store_id", "external_order_number"], name: "idx_ec_orders_external_order_number"
     t.index ["platform", "store_id", "order_key"], name: "idx_ec_orders_unique_order_key", unique: true
     t.index ["store_id"], name: "index_ec_orders_on_store_id"
+  end
+
+  create_table "ec_pallet_items", force: :cascade do |t|
+    t.integer "boxes", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "layout", default: {}, null: false
+    t.bigint "pallet_id", null: false
+    t.bigint "pallet_plan_item_id", null: false
+    t.integer "units", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pallet_id", "pallet_plan_item_id"], name: "idx_pallet_items_unique", unique: true
+    t.index ["pallet_id"], name: "index_ec_pallet_items_on_pallet_id"
+    t.index ["pallet_plan_item_id"], name: "index_ec_pallet_items_on_pallet_plan_item_id"
+  end
+
+  create_table "ec_pallet_plan_items", force: :cascade do |t|
+    t.integer "boxes", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "inventory_baseline", default: {}, null: false
+    t.jsonb "packaging", default: {}, null: false
+    t.bigint "pallet_plan_id", null: false
+    t.integer "pcs", null: false
+    t.integer "platform_covered_units", default: 0, null: false
+    t.string "platform_sku_id", null: false
+    t.integer "shortage", default: 0, null: false
+    t.string "sku_code", null: false
+    t.bigint "sku_product_id", null: false
+    t.integer "units", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pallet_plan_id", "sku_code"], name: "index_ec_pallet_plan_items_on_pallet_plan_id_and_sku_code", unique: true
+    t.index ["pallet_plan_id"], name: "index_ec_pallet_plan_items_on_pallet_plan_id"
+    t.index ["sku_code"], name: "index_ec_pallet_plan_items_on_sku_code"
+    t.index ["sku_product_id"], name: "index_ec_pallet_plan_items_on_sku_product_id"
+  end
+
+  create_table "ec_pallet_plans", force: :cascade do |t|
+    t.jsonb "calculation", default: {}, null: false
+    t.datetime "closed_at"
+    t.string "cluster_name", null: false
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.datetime "dispatched_at"
+    t.date "from_date", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.bigint "macrolocal_cluster_id", null: false
+    t.string "ozon_order_id"
+    t.string "plan_no", null: false
+    t.text "platform_check_note"
+    t.jsonb "platform_snapshot", default: {}, null: false
+    t.string "platform_status"
+    t.datetime "platform_synced_at"
+    t.jsonb "settings", default: {}, null: false
+    t.string "status", default: "draft", null: false
+    t.bigint "store_id", null: false
+    t.string "supply_order_number"
+    t.text "sync_error"
+    t.integer "target_days", default: 28, null: false
+    t.string "time_zone", null: false
+    t.date "to_date", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_ec_pallet_plans_on_created_by_id"
+    t.index ["plan_no"], name: "index_ec_pallet_plans_on_plan_no", unique: true
+    t.index ["store_id", "macrolocal_cluster_id", "status"], name: "idx_pallet_plans_workbench"
+    t.index ["store_id", "ozon_order_id"], name: "idx_pallet_plans_bound_order", unique: true, where: "((ozon_order_id IS NOT NULL) AND ((status)::text <> 'cancelled'::text))"
+    t.index ["store_id"], name: "index_ec_pallet_plans_on_store_id"
+  end
+
+  create_table "ec_pallets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "layout", default: {}, null: false
+    t.jsonb "metrics", default: {}, null: false
+    t.string "ozon_supply_id"
+    t.bigint "pallet_plan_id", null: false
+    t.integer "position", null: false
+    t.bigint "storage_warehouse_id"
+    t.datetime "updated_at", null: false
+    t.index ["pallet_plan_id", "position"], name: "index_ec_pallets_on_pallet_plan_id_and_position", unique: true
+    t.index ["pallet_plan_id"], name: "index_ec_pallets_on_pallet_plan_id"
   end
 
   create_table "ec_payment_requests", force: :cascade do |t|
@@ -3516,6 +3595,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_074114) do
   add_foreign_key "ec_order_source_links", "ec_order_items", column: "item_id"
   add_foreign_key "ec_order_source_links", "ec_orders", column: "order_id"
   add_foreign_key "ec_orders", "ec_stores", column: "store_id"
+  add_foreign_key "ec_pallet_items", "ec_pallet_plan_items", column: "pallet_plan_item_id"
+  add_foreign_key "ec_pallet_items", "ec_pallets", column: "pallet_id"
+  add_foreign_key "ec_pallet_plan_items", "ec_pallet_plans", column: "pallet_plan_id"
+  add_foreign_key "ec_pallet_plan_items", "ec_sku_products", column: "sku_product_id"
+  add_foreign_key "ec_pallet_plans", "ec_stores", column: "store_id"
+  add_foreign_key "ec_pallet_plans", "users", column: "created_by_id"
+  add_foreign_key "ec_pallets", "ec_pallet_plans", column: "pallet_plan_id"
   add_foreign_key "ec_payment_requests", "ec_purchase_orders", column: "purchase_order_id"
   add_foreign_key "ec_purchase_order_items", "ec_purchase_orders", column: "purchase_order_id"
   add_foreign_key "ec_purchase_order_items", "ec_sku_batches", column: "sku_batch_id"

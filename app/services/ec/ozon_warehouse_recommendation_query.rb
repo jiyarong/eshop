@@ -3,7 +3,7 @@ module Ec
     DEFAULT_TARGET_DAYS = 28
     MAX_TARGET_DAYS = 180
 
-    def initialize(store:, from_date:, to_date:, time_zone:, target_days: nil, query: nil, operator_id: nil, sku_codes: nil)
+    def initialize(store:, from_date:, to_date:, time_zone:, target_days: nil, query: nil, operator_id: nil, sku_codes: nil, fbs_available: nil)
       @store = store
       @from_date = from_date.to_date
       @to_date = to_date.to_date
@@ -11,7 +11,8 @@ module Ec
       @target_days = bounded_target_days(target_days)
       @query = query.to_s.strip.presence
       @operator_id = operator_id
-      @sku_codes = sku_codes&.map(&:to_s)&.uniq
+      @sku_codes = sku_codes.is_a?(ActiveRecord::Relation) ? sku_codes : sku_codes&.map(&:to_s)&.uniq
+      @fbs_available = fbs_available
     end
 
     def call
@@ -91,6 +92,8 @@ module Ec
     end
 
     def fbs_available_by_sku(products)
+      return @fbs_available unless @fbs_available.nil?
+
       products.group_by(&:sku_code).transform_values do |sku_products|
         sku_products.first.sku.inventory_overview.dig(:summary, :available_stock).to_i
       end

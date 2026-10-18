@@ -1,0 +1,18 @@
+<div class="pallet-calculator">
+  <section class="panel">
+    <h2><%= t("pallet_workbench.validated") %></h2><p><%= t("pallet_workbench.result_summary", pallets: result[:pallets].size, boxes: result[:total_boxes], units: result[:total_units]) %></p>
+    <p><%= t("pallet_calculator.rules.ozon_fbo") %></p>
+    <% result[:pallets].each_with_index do |pallet, index| %>
+      <details class="pallet-workbench__pallet" <%= 'open' if index.zero? %>>
+        <summary><%= t("pallet_calculator.pallet_option", number: index + 1, boxes: pallet[:boxes]) %> · <%= t("pallet_calculator.pallet_height", value: pallet_number(pallet[:height]), limit: pallet_number(result[:settings][:height])) %> · <%= t("pallet_calculator.pallet_weight", value: pallet_number(pallet[:gross_weight])) %></summary>
+        <div class="pallet-calculator__diagrams"><figure><%= render "reports/pallet_calculators/diagram", pallet: pallet, result: result, index: index %></figure></div>
+        <%= table_viewport do %><table class="prod-tbl"><thead><tr><% %w[sku boxes layers layer_grid orientation].each do |key| %><th><%= t("pallet_calculator.#{key}") %></th><% end %></tr></thead>
+          <tbody><% pallet[:zones].each do |zone| %><% item = result[:items][zone[:item_index]] %><tr><td><%= item[:sku_code] %></td><td><%= zone[:count] %></td><td><%= zone[:layers] %></td><td><%= pallet_layer_grid(zone) %></td><td><%= pallet_orientation(item, zone) %></td></tr><% end %></tbody></table><% end %>
+      </details>
+    <% end %>
+    <p><%= t("pallet_calculator.strategy.check") %></p>
+  </section>
+  <section class="panel pallet-calculator__handoff" data-controller="clipboard" data-clipboard-copied-label-value="<%= t('pallet_calculator.copied') %>">
+    <button type="button" class="button button-secondary" data-action="clipboard#copy" data-clipboard-target="button"><%= t("pallet_calculator.copy") %></button><pre data-clipboard-target="source"><%= pallet_strategy(result) %></pre><span role="status" data-clipboard-target="status"></span>
+  </section>
+</div>

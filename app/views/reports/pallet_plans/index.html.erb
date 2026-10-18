@@ -1,0 +1,15 @@
+<% content_for :title, t("pallet_workbench.plans") %>
+<div class="report-stack">
+  <header class="ozon-warehouse-heading"><h1 class="page-title"><%= t("pallet_workbench.plans") %></h1><%= link_to t("pallet_workbench.new_plan"), reports_pallet_workbench_path, class: "button" %></header>
+  <section class="panel"><%= form_with url: reports_pallet_plans_path, method: :get, class: "report-form", data: { turbo: false } do |form| %>
+    <div class="field"><%= form.label :status, t("pallet_workbench.status") %><%= form.select :status, %w[draft reserved packing packed dispatched closed cancelled].map { |status| [t("pallet_workbench.statuses.#{status}"), status] }, { selected: params[:status], include_blank: t("pallet_workbench.all_statuses") } %></div><%= form.submit t("pallet_workbench.apply_selection"), class: "button" %>
+  <% end %></section>
+  <section class="panel table-list-card">
+    <%= render "reports/pallet_workbenches/pagination", rows: @plans %>
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %><table class="inventory-list-table">
+      <thead><tr><% %w[plan_no store cluster status supply_order_number platform_status updated_at].each do |key| %><th><%= t("pallet_workbench.#{key}") %></th><% end %></tr></thead>
+      <tbody><% @plans.each do |plan| %><tr><td><%= link_to plan.plan_no, reports_pallet_plan_path(plan) %></td><td><%= plan.store.store_name %></td><td><%= plan.cluster_name %></td><td><%= pallet_workbench_status(plan) %></td><td><%= plan.supply_order_number.presence || t("common.empty_value") %></td><td><%= plan.platform_status.presence || t("common.empty_value") %></td><td><%= display_time(plan.updated_at) %></td></tr><% end %></tbody>
+    </table><% end %>
+    <% if @plans.empty? %><div class="empty-state"><%= t("pallet_workbench.no_plans") %></div><% end %>
+  </section>
+</div>

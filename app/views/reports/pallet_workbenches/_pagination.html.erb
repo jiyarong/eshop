@@ -1,0 +1,8 @@
+<div class="inventory-pagination-bar">
+  <span><%= t("pallet_workbench.pagination", total: rows.total_count, page: rows.current_page, pages: [rows.total_pages, 1].max) %></span>
+  <% if rows.total_pages > 1 %><nav class="pagination-nav" aria-label="<%= t('pallet_workbench.plans') %>">
+    <% inventory_pagination_items(rows.current_page, rows.total_pages).each do |page| %>
+      <% if page.is_a?(Symbol) %><span>…</span><% else %><%= link_to page, url_for(request.query_parameters.merge(page: page)), class: "pg-btn #{'on' if page == rows.current_page}" %><% end %>
+    <% end %>
+  </nav><% end %>
+</div>

@@ -1,0 +1,82 @@
+<% content_for :title, t("pallet_workbench.title") %>
+<div class="report-stack pallet-workbench"
+     data-controller="pallet-workbench"
+     data-pallet-workbench-catalogue-value="<%= @catalogue.to_json %>"
+     data-pallet-workbench-context-value="<%= { plan_id: @plan&.id, store_id: @store&.id, cluster_id: @cluster_id, from_date: @from_date, to_date: @to_date, target_days: @target_days, time_zone: user_time_zone, lock_version: @plan&.lock_version }.to_json %>"
+     data-pallet-workbench-initial-value="<%= pallet_workbench_initial_items.to_json %>"
+     data-pallet-workbench-allocations-value="<%= pallet_workbench_initial_allocations.to_json %>"
+     data-pallet-workbench-preview-url-value="<%= preview_reports_pallet_workbench_path(format: :json, locale: I18n.locale) %>"
+     data-pallet-workbench-auto-url-value="<%= auto_select_reports_pallet_workbench_path(request.query_parameters.except('page').merge(format: :json, locale: I18n.locale)) %>"
+     data-pallet-workbench-save-url-value="<%= @plan ? reports_pallet_plan_path(@plan, format: :json, locale: I18n.locale) : reports_pallet_plans_path(format: :json, locale: I18n.locale) %>"
+     data-pallet-workbench-method-value="<%= @plan ? 'PATCH' : 'POST' %>"
+     data-pallet-workbench-plan-id-value="<%= @plan&.id %>"
+     data-pallet-workbench-messages-value="<%= t('pallet_workbench.messages').to_json %>">
+  <header class="ozon-warehouse-heading">
+    <div><h1 class="page-title"><%= t("pallet_workbench.title") %></h1><p class="page-subtitle"><%= t("pallet_workbench.description") %></p></div>
+    <%= link_to t("pallet_workbench.plans"), reports_pallet_plans_path, class: "button button-secondary" %>
+  </header>
+  <% if @plan %><div class="panel"><%= t("pallet_workbench.editing", number: @plan.plan_no) %></div><% end %>
+  <section class="panel pallet-workbench__filters">
+    <%= form_with url: reports_pallet_workbench_path, method: :get, data: { turbo: false } do |form| %>
+      <%= hidden_field_tag :locale, I18n.locale %>
+      <div class="report-form">
+        <div class="field"><%= form.label :store_id, t("pallet_workbench.store") %><%= form.select :store_id, @stores.map { |store| [store.store_name, store.id] }, { selected: @store&.id }, data: { action: "change->pallet-workbench#changeStore" } %></div>
+        <div class="field"><%= form.label :cluster_id, t("pallet_workbench.cluster") %><%= form.select :cluster_id, @clusters.map { |cluster| [cluster[:name], cluster[:id]] }, { selected: @cluster_id, include_blank: t("pallet_workbench.choose_cluster") } %></div>
+        <%= render "shared/time_range_selector", id: "pallet-workbench-period", from_date: @from_date, to_date: @to_date %>
+        <div class="field pallet-workbench__days"><%= form.label :target_days, t("pallet_workbench.target_days") %><%= form.number_field :target_days, value: @target_days, min: 1, max: 180 %></div>
+        <div class="field"><%= form.label :q, t("pallet_workbench.search") %><%= form.search_field :q, value: params[:q] %></div>
+        <%= form.submit t("pallet_workbench.start"), class: "button button-secondary" %>
+      </div>
+      <details class="pallet-workbench__advanced" <%= 'open' if [params[:developer_id], params[:operator_id], params[:shortage_gt], params[:master_sku_ids], params[:sku_codes]].any?(&:present?) %>>
+        <summary><%= t("pallet_workbench.more_filters") %></summary>
+        <div class="report-form">
+          <%= render "shared/responsible_user_filters", dom_id_prefix: "pallet-workbench-responsible", field_class: "" %>
+          <%= render "shared/spu_sku_filter", dom_id_prefix: "pallet-workbench-skus", field_class: "" %>
+          <div class="field"><%= form.label :shortage_gt, t("pallet_workbench.shortage_gt") %><%= form.number_field :shortage_gt, value: params[:shortage_gt], min: 0 %></div>
+          <label class="checkbox-option"><%= check_box_tag :packaging_complete, "1", params[:packaging_complete] == "1" %><%= t("pallet_workbench.packaging_complete") %></label>
+          <label class="checkbox-option"><%= check_box_tag :allocatable_only, "1", params[:allocatable_only] == "1" %><%= t("pallet_workbench.allocatable_only") %></label>
+        </div>
+      </details>
+    <% end %>
+  </section>
+  <% if @cluster_id %>
+    <div class="pallet-workbench__workspace">
+      <section class="panel pallet-workbench__catalogue">
+        <div class="pallet-workbench__section-heading">
+          <div><span class="pallet-workbench__eyebrow"><%= t("pallet_workbench.step_demand") %></span><h2><%= @clusters.find { |cluster| cluster[:id] == @cluster_id }[:name] %></h2></div>
+          <span class="pallet-workbench__badge"><%= t("pallet_workbench.eligible_count", count: @catalogue.count { |row| row[:suggested_boxes].to_i.positive? }) %></span>
+        </div>
+        <p class="pallet-workbench__hint"><%= t("reports.ozon_warehouses.updated_at", time: display_time(@inventory_synced_at)) %></p>
+        <div class="pallet-workbench__table-tools">
+          <label class="checkbox-option"><input type="checkbox" data-action="change->pallet-workbench#toggleDetails"><%= t("pallet_workbench.stock_details") %></label>
+          <% if can?(:manage_skus) %><button type="button" class="button button-secondary" data-action="pallet-workbench#openAuto"><%= t("pallet_workbench.auto_select") %></button><% end %>
+        </div>
+        <div class="table-list-card">
+          <%= render "reports/pallet_workbenches/pagination", rows: @rows %>
+          <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+            <table class="inventory-list-table pallet-workbench__stock-table">
+              <thead><tr><th><%= t("pallet_workbench.select") %></th>
+                <% %w[sku_code shortage days_of_stock fbs_allocatable].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key %><% end %>
+                <th><%= t("pallet_workbench.fields.suggested_boxes") %></th>
+                <% %w[daily_sales sales_quantity available inbound].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key, class_name: "pallet-workbench__stock-detail" %><% end %>
+                <th class="pallet-workbench__stock-detail"><%= t("pallet_workbench.fields.reserved_quantity") %></th>
+              </tr></thead>
+              <tbody><% @rows.each do |row| %><tr data-pallet-workbench-target="catalogueRow" data-sku="<%= row[:sku_code] %>">
+                <td><input type="checkbox" data-sku="<%= row[:sku_code] %>" data-pallet-workbench-target="pick" data-action="change->pallet-workbench#pick" aria-label="<%= t('pallet_workbench.select_sku', sku: row[:sku_code]) %>" <%= 'disabled' unless can?(:manage_skus) && row[:exclusion_reason] != :ambiguous_listing %>></td>
+                <td><strong><%= row[:sku_code] %></strong><small class="pallet-workbench__product"><%= row[:product_name] %></small><small class="pallet-workbench__hint"><%= row[:operator_name] %></small></td>
+                <% %i[shortage days_of_stock].each do |key| %><td class="numeric"><%= row[key].nil? ? t("common.empty_value") : number_with_precision(row[key], precision: 0) %></td><% end %>
+                <td class="numeric"><% if row[:reserved_quantity].to_i.positive? %><del><%= row[:fbs_available] %></del><br><% end %><strong><%= row[:fbs_allocatable] %></strong><small class="pallet-workbench__hint"><%= t("pallet_workbench.carton_size", count: row[:pcs]) if row[:pcs].to_i.positive? %></small></td>
+                <td class="numeric"><strong><%= row[:suggested_boxes] %></strong><% if row[:exclusion_reason].present? %><small class="pallet-workbench__exclusion"><%= t("pallet_workbench.exclusions.#{row[:exclusion_reason]}", default: t("pallet_workbench.exclusions.packaging_incomplete")) %></small><% end %></td>
+                <% %i[daily_sales sales_quantity available inbound].each do |key| %><td class="numeric pallet-workbench__stock-detail"><%= number_with_precision(row[key], precision: key == :daily_sales ? 2 : 0) %></td><% end %>
+                <td class="numeric pallet-workbench__stock-detail"><%= row[:reserved_quantity] %></td>
+              </tr><% end %></tbody>
+            </table>
+          <% end %>
+          <% if @rows.empty? %><div class="empty-state"><%= t("pallet_workbench.empty") %></div><% end %>
+        </div>
+        <p class="pallet-workbench__hint"><%= t("pallet_workbench.stock_hint") %></p>
+      </section>
+      <%= render "reports/pallet_workbenches/editor" if can?(:manage_skus) %>
+    </div>
+  <% else %><div class="empty-state"><%= t("pallet_workbench.choose_cluster") %></div><% end %>
+</div>

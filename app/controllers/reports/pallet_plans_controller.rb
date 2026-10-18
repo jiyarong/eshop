@@ -1,0 +1,95 @@
+module Reports
+  class PalletPlansController < PalletWorkbenchesController
+    before_action -> { require_permission!(:manage_skus) }, except: %i[index show]
+    before_action :find_plan, except: %i[index create]
+
+    def index
+      scope = Ec::PalletPlan.includes(:store).order(id: :desc)
+      hidden_items = Ec::PalletPlanItem.where.not(sku_code: access_scope.visible_skus.select(:sku_code))
+      scope = scope.where.not(id: hidden_items.select(:pallet_plan_id))
+      scope = scope.where(store_id: params[:store_id]) if params[:store_id].present?
+      scope = scope.where(status: params[:status]) if params[:status].present?
+      @plans = scope.page(params[:page]).per(30)
+      respond_to do |format|
+        format.html
+        format.json { render json: @plans.map { |plan| plan_data(plan) } }
+      end
+    end
+
+    def show
+      @result = @plan.calculation.deep_symbolize_keys
+      respond_to do |format|
+        format.html
+        format.json { render json: plan_data(@plan).merge(items: @plan.items, calculation: @plan.calculation) }
+      end
+    end
+
+    def edit
+      raise Ec::PalletPlans::Error.new(:not_editable) unless @plan.editable?
+      params[:store_id] = @plan.store_id
+      params[:cluster_id] = @plan.macrolocal_cluster_id
+      params[:from_date] = @plan.from_date.iso8601
+      params[:to_date] = @plan.to_date.iso8601
+      params[:target_days] = @plan.target_days
+      load_workbench
+      render "reports/pallet_workbenches/show"
+    end
+
+    def create
+      @plan = Ec::PalletPlans::Save.new(user: current_user, attributes: plan_attributes).call
+      saved_response
+    end
+
+    def update
+      @plan = Ec::PalletPlans::Save.new(user: current_user, plan: @plan, attributes: plan_attributes).call
+      saved_response
+    end
+
+    def confirm
+      workflow.confirm!
+      saved_response
+    end
+
+    def advance
+      workflow.advance!(params[:status].to_s, platform_check_note: params[:platform_check_note])
+      saved_response
+    end
+
+    def cancel
+      workflow.cancel!
+      saved_response
+    end
+
+    def bind
+      workflow.bind!(params[:supply_order_number].to_s.strip)
+      saved_response
+    end
+
+    def refresh
+      workflow.refresh!
+      saved_response
+    end
+
+    private
+
+    def find_plan
+      @plan = Ec::PalletPlan.includes(:store, :items, :pallets).find(params[:id])
+      raise ActiveRecord::RecordNotFound if @plan.items.where.not(sku_code: access_scope.visible_skus.select(:sku_code)).exists?
+    end
+
+    def workflow
+      Ec::PalletPlans::Workflow.new(plan: @plan, user: current_user)
+    end
+
+    def plan_data(plan)
+      plan.as_json(only: %i[id plan_no store_id macrolocal_cluster_id cluster_name status supply_order_number ozon_order_id platform_status platform_synced_at sync_error lock_version created_at])
+    end
+
+    def saved_response
+      respond_to do |format|
+        format.html { redirect_to reports_pallet_plan_path(@plan), notice: t("pallet_workbench.saved"), status: :see_other }
+        format.json { render json: plan_data(@plan).merge("url" => reports_pallet_plan_path(@plan, locale: I18n.locale)) }
+      end
+    end
+  end
+end

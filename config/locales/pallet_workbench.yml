@@ -1,0 +1,162 @@
+zh:
+  pallet_workbench:
+    title: 打托盘工作台
+    description: "选好补货需求，一键生成一托；调整箱数后自动验算，再保存方案。"
+    more_filters: "更多筛选：人员、SKU 与库存条件"
+    step_demand: "01 · 选择补货商品"
+    step_pack: "02 · 组装托盘"
+    step_save: "03 · 验算并保存"
+    current_pallet: "当前装托方案"
+    local_draft: "草稿不占库存"
+    packing_mode: "本次装托方式"
+    single_mode: "只打一托（最多 5 个 SKU）"
+    multiple_mode: "多托计划"
+    recommend_one: "一键推荐一托"
+    recommend_hint: "从全部筛选结果中，按缺口优先选取前 5 个可补货 SKU，自动调整箱数装入一托。会替换当前清单，可撤销。"
+    eligible_count: "%{count} 个 SKU 可补货"
+    stock_details: "显示销量与库存明细"
+    carton_size: "%{count} 件 / 箱"
+    undo: "撤销上次操作"
+    empty_manifest: "先组好这一个托盘"
+    empty_manifest_hint: "点击“一键推荐一托”，或勾选左侧 SKU 手动组托。"
+    autosave_hint: "选品与参数在本标签页自动保留；更改箱数后自动验算。保存草稿后可继续确认并占用库存。"
+    recalculate: "重新验算"
+    packaging_details: "包装参数 / 朝向"
+    decrease: "减少一箱"
+    increase: "增加一箱"
+    summary:
+      skus: "SKU"
+      boxes: "箱"
+      units: "件"
+      weight: "货重 kg"
+    height_usage: "高度使用（cm）"
+    weight_usage: "货重使用（kg）"
+    view_layout: "查看装托图与摆放明细 ↓"
+    plans: 托盘计划
+    new_plan: 新建方案
+    editing: 正在编辑 %{number}
+    store: 店铺
+    cluster: 目标集群
+    choose_cluster: 选择集群后开始工作
+    target_days: 目标覆盖天数
+    search: 搜索 SKU / 产品
+    shortage_gt: 缺口大于（件）
+    packaging_complete: 仅包装参数完整
+    allocatable_only: 仅可分配整箱
+    start: "应用筛选"
+    stock_hint: 可分配 FBS 库存 = 当前 FBS 库存 − 尚未计入平台出库的计划占用；划线值为扣除前库存。
+    select: 选择
+    select_sku: 选择 %{sku}
+    auto_select: "批量选品 / 多托"
+    empty: 没有符合条件的 SKU
+    manifest: 装箱清单
+    quantity_hint: 输入箱数；建议数量向上取整补足缺口，并以可分配整箱库存为上限。尺寸为外箱厘米、重量为每箱千克。缺失参数可在此补填。
+    remove: 移除
+    auto_pack: 自动排托 / 重新计算
+    save_draft: 保存草稿
+    manual_allocation: 手动分配托盘
+    allocation_hint: 按托盘调整各 SKU 箱数，可新增或移除托盘。各托盘数量之和必须等于清单，调整后请验算。
+    add_pallet: 新增托盘
+    validate: 验算手动方案
+    auto_hint: 作用于当前筛选的全部 SKU（包括其他页）。排除包装缺失或无可分配整箱库存的 SKU；应用后替换清单。
+    my_skus: 仅我运营的 SKU
+    preview_selection: 预览选品
+    apply_selection: 应用
+    close: 关闭
+    validated: 计算器验算通过
+    result_summary: '%{pallets} 个托盘 · %{boxes} 箱 · %{units} 件'
+    pagination: 共 %{total} 条 · 第 %{page} / %{pages} 页
+    status: 计划状态
+    all_statuses: 全部状态
+    plan_no: 计划编号
+    supply_order_number: Ozon 供货单号
+    platform_status: 平台原始状态
+    updated_at: 更新时间
+    no_plans: 暂无托盘计划
+    stock_status_hint: 草稿不占库存；确认后按状态保留占用。已发出后取消需等待平台对账，避免重复分配。
+    edit: 编辑方案
+    confirm: 确认方案并占用库存
+    advance: 标记为%{status}
+    cancel: 取消计划
+    cancel_confirm: 确认取消此托盘计划？已发出数量仍需平台对账。
+    supply_binding: 供货单绑定与同步
+    bind: 绑定供货单
+    refresh: 刷新平台状态
+    saved: 托盘计划已更新
+    platform_check: 平台要求核验记录
+    platform_check_hint: 记录目的仓、商品准入、标签与供货要求核验结果
+    fields:
+      sku_code: SKU / 产品
+      shortage: 剩余缺口（件）
+      daily_sales: 日均销量
+      sales_quantity: 周期销量
+      days_of_stock: 覆盖天数
+      available: 集群可售
+      inbound: 集群在途
+      fbs_allocatable: FBS 可分配
+      reserved_quantity: 计划占用（件）
+      pcs: 每箱件数
+      suggested_boxes: 建议箱数
+    statuses:
+      draft: 草稿
+      reserved: 已确认
+      packing: 打包中
+      packed: 已打包
+      dispatched: 已发出
+      closed: 已完成
+      cancelled: 已取消
+    errors:
+      single_pallet_limit: "一托最多包含 5 个 SKU，请移除多余 SKU，或切换为多托计划。"
+      single_pallet_capacity: "当前箱数无法装入一托。可点击“清单适配一托”自动调整，或减少箱数、切换多托计划。"
+      invalid_input: 输入有误，请检查店铺、集群、日期与装箱参数。
+      invalid_store: 请选择有效的 Ozon 店铺。
+      invalid_cluster: 此集群未映射到当前店铺，请重新选择。
+      invalid_dates: 日期区间或目标覆盖天数无效。
+      invalid_items: "请补齐包装参数，并检查箱数是否为正整数且未超过库存。"
+      sku_unavailable: 包含不存在或无权操作的 SKU。
+      ambiguous_listing: 当前店铺中 SKU 对应多个 Listing，无法确定供货商品。
+      missing_packaging: 包装参数不完整，请补齐尺寸、重量与每箱件数。
+      invalid_quantity: 箱数必须为正整数。
+      insufficient_stock: 可分配库存不足，请调整箱数后重试。
+      invalid_status: 当前状态不允许执行此操作。
+      stale_plan: 计划已被其他人修改，请刷新页面后重新操作。
+      platform_check_required: 发出前请填写平台供货要求核验记录。
+      allocation_mismatch: 托盘箱数合计必须与 SKU 清单完全一致。
+      allocation_pallet: 手动分配无法装入单个合规托盘，请减少箱数或增加托盘。
+      not_editable: 该计划已不可编辑。
+      supply_not_found: 找不到该店铺的 Ozon 供货单，请核对单号或等待同步。
+      supply_mismatch: 供货单集群、SKU 或数量与计划不一致。
+      cluster_unavailable: 此集群未映射到当前店铺，请重新选择。
+      invalid_period: 日期区间或目标覆盖天数无效。
+      binding_number: 请填写 Ozon 供货单号。
+      supply_pending: 供货单尚未同步，请稍后重试。
+      supply_unknown_status: Ozon 供货单状态无法识别，请检查平台状态。
+      supply_review_required: Ozon 供货单需要人工复核后再继续。
+      supply_status_regressed: 平台供货状态发生回退，请人工复核。
+      supply_cancelled_after_dispatch: 供货单在发出后被取消，请人工复核实际发货数量。
+      supply_cluster: 供货单的目的集群与托盘计划不一致。
+      supply_split: 同一 SKU 被平台拆分到多个供货目的地，无法匹配托盘。
+      supply_pallet: 托盘对应的供货目的地不完整或不唯一。
+      supply_warehouse_changed: 平台供货仓发生变化，请人工复核托盘目的地。
+      sync_failed: 平台供货状态同步失败，请稍后重试。
+    exclusions:
+      ambiguous_listing: 店铺中存在多个 Listing，无法确定供货商品
+      unavailable: 无可分配的整箱库存
+      packaging_incomplete: 包装参数缺失
+      stock_unavailable: 无可分配整箱库存
+      below_threshold: 缺口未超过阈值
+      no_shortage: 暂无缺口
+    messages:
+      fit: "清单适配一托"
+      recalculate: "重新验算"
+      empty: "先选品或推荐一托，系统将自动验算。"
+      recommended: "已生成并验算一托，可调整箱数或保存草稿。"
+      single_limit: "一托最多 5 个 SKU；可移除商品，或切换多托计划。"
+      stock: "建议 %{suggested} 箱 · 库存最多 %{max} 箱"
+      changed: "更改已保留，准备自动验算…"
+      failed: 操作失败，请重试。
+      calculating: 正在计算…
+      validated: 验算通过，可保存方案。
+      saving: 正在保存…
+      pallet: 托盘 %{number}
+      selection: 可选 %{selected} 个 SKU，排除 %{excluded} 个。

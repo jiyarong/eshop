@@ -1,0 +1,173 @@
+en:
+  pallet_workbench:
+    title: Pallet workbench
+    description: "Build one pallet from replenishment needs. Carton changes validate automatically before saving."
+    more_filters: "More filters: people, SKUs and stock"
+    step_demand: "01 · Select replenishment"
+    step_pack: "02 · Build a pallet"
+    step_save: "03 · Validate and save"
+    current_pallet: "Current pallet manifest"
+    local_draft: "Draft · no stock reserved"
+    packing_mode: "Packing mode"
+    single_mode: "One pallet (up to 5 SKUs)"
+    multiple_mode: "Multiple pallets"
+    recommend_one: "Recommend one pallet"
+    recommend_hint: "Across all filtered pages, take the top 5 eligible SKUs by shortage and fit carton counts to one pallet. Replaces the manifest; undo is available."
+    eligible_count: "%{count} SKUs ready to replenish"
+    stock_details: "Show sales and stock details"
+    carton_size: "%{count} units / carton"
+    undo: "Undo last change"
+    empty_manifest: "Build your next pallet"
+    empty_manifest_hint: "Recommend one pallet, or select SKUs from the list."
+    autosave_hint: "Selections and settings stay in this tab. Changes validate automatically. Save a draft, then confirm it to reserve stock."
+    recalculate: "Validate again"
+    packaging_details: "Packaging / orientation"
+    decrease: "Remove one carton"
+    increase: "Add one carton"
+    summary:
+      skus: "SKUs"
+      boxes: "Cartons"
+      units: "Units"
+      weight: "Cargo kg"
+    height_usage: "Height used (cm)"
+    weight_usage: "Cargo weight (kg)"
+    view_layout: "View layout and placement details ↓"
+    plans: Pallet plans
+    new_plan: New plan
+    editing: Editing %{number}
+    store: Store
+    cluster: Destination cluster
+    choose_cluster: Select a cluster to start
+    target_days: Target stock days
+    search: Search SKU / product
+    shortage_gt: Shortage greater than (units)
+    packaging_complete: Complete packaging only
+    allocatable_only: Available full cartons only
+    start: "Apply filters"
+    stock_hint: Allocatable FBS stock subtracts outstanding plan reservations; the
+      crossed-out value is stock before reservations.
+    select: Select
+    select_sku: Select %{sku}
+    auto_select: "Bulk selection / multiple pallets"
+    empty: No matching SKUs
+    manifest: Carton manifest
+    quantity_hint: Enter carton counts. Suggestions round up to cover shortages, capped
+      by available full cartons. Dimensions are outer-carton centimetres and weight
+      is kg per carton. Fill missing packaging here.
+    remove: Remove
+    auto_pack: Pack automatically / recalculate
+    save_draft: Save draft
+    manual_allocation: Manual pallet allocation
+    allocation_hint: Adjust SKU carton counts per pallet and add or remove pallets.
+      Totals must match the manifest. Validate after changes.
+    add_pallet: Add pallet
+    validate: Validate allocation
+    auto_hint: Applies to all filtered SKUs across pages. Excludes incomplete packaging
+      and unavailable cartons. Applying replaces the manifest.
+    my_skus: Only SKUs I operate
+    preview_selection: Preview selection
+    apply_selection: Apply
+    close: Close
+    validated: Calculator validation passed
+    result_summary: '%{pallets} pallets · %{boxes} cartons · %{units} units'
+    pagination: '%{total} records · page %{page} / %{pages}'
+    status: Plan status
+    all_statuses: All statuses
+    plan_no: Plan number
+    supply_order_number: Ozon supply order number
+    platform_status: Platform status
+    updated_at: Updated
+    no_plans: No pallet plans
+    stock_status_hint: Drafts do not reserve stock. Confirmed plans retain reservations
+      by status. Cancellation after dispatch requires platform reconciliation.
+    edit: Edit plan
+    confirm: Confirm and reserve stock
+    advance: Mark as %{status}
+    cancel: Cancel plan
+    cancel_confirm: Cancel this pallet plan? Dispatched stock still requires platform
+      reconciliation.
+    supply_binding: Supply binding and sync
+    bind: Bind supply order
+    refresh: Refresh platform status
+    saved: Pallet plan updated
+    platform_check: Platform compliance check
+    platform_check_hint: Record destination, product admission, labels and supply
+      requirements checks
+    fields:
+      sku_code: SKU / product
+      shortage: Remaining shortage
+      daily_sales: Daily sales
+      sales_quantity: Period sales
+      days_of_stock: Stock days
+      available: Cluster stock
+      inbound: Cluster inbound
+      fbs_allocatable: Allocatable FBS
+      reserved_quantity: Reserved units
+      pcs: Units per carton
+      suggested_boxes: Suggested cartons
+    statuses:
+      draft: Draft
+      reserved: Confirmed
+      packing: Packing
+      packed: Packed
+      dispatched: Dispatched
+      closed: Completed
+      cancelled: Cancelled
+    errors:
+      single_pallet_limit: "One pallet supports up to 5 SKUs. Remove SKUs or switch to multiple pallets."
+      single_pallet_capacity: "These quantities do not fit one pallet. Fit the current manifest automatically, reduce cartons, or switch to multiple pallets."
+      invalid_input: Invalid input. Check store, cluster, dates and carton parameters.
+      invalid_store: Select a valid Ozon store.
+      invalid_cluster: This cluster is not mapped to the selected store.
+      invalid_dates: Invalid date range or target stock days.
+      invalid_items: "Complete packaging and enter positive whole carton counts within available stock."
+      sku_unavailable: The selection includes an unavailable or inaccessible SKU.
+      ambiguous_listing: A SKU has multiple listings in this store and cannot be resolved.
+      missing_packaging: Complete carton dimensions, weight and units per carton.
+      invalid_quantity: Carton quantities must be positive integers.
+      insufficient_stock: Insufficient allocatable stock. Reduce carton quantities
+        and retry.
+      invalid_status: This action is not allowed in the current status.
+      stale_plan: The plan changed. Refresh and retry.
+      platform_check_required: Record the platform requirements check before dispatch.
+      allocation_mismatch: Pallet carton totals must exactly match the SKU manifest.
+      allocation_pallet: This allocation does not fit one compliant pallet. Reduce
+        cartons or add a pallet.
+      not_editable: This plan cannot be edited.
+      supply_not_found: Supply order not found for this store. Check the number or
+        wait for sync.
+      supply_mismatch: The supply cluster, SKUs or quantities do not match this plan.
+      cluster_unavailable: This cluster is not mapped to the selected store.
+      invalid_period: Invalid date range or target stock days.
+      binding_number: Enter an Ozon supply order number.
+      supply_pending: The supply order has not synced yet. Try again later.
+      supply_unknown_status: The Ozon supply order status is unknown. Check the platform status.
+      supply_review_required: The Ozon supply order requires manual review before continuing.
+      supply_status_regressed: The platform supply status regressed. Review the order manually.
+      supply_cancelled_after_dispatch: The supply order was cancelled after dispatch. Review the actual shipped quantity.
+      supply_cluster: The supply order destination cluster does not match this pallet plan.
+      supply_split: The platform split this SKU across multiple supply destinations, so the pallet cannot be matched.
+      supply_pallet: The pallet supply destination is missing or not unique.
+      supply_warehouse_changed: The platform supply warehouse changed. Review pallet destinations manually.
+      sync_failed: Platform supply status sync failed. Try again later.
+    exclusions:
+      ambiguous_listing: Multiple listings exist for this store
+      unavailable: No allocatable full cartons
+      packaging_incomplete: Incomplete packaging
+      stock_unavailable: No allocatable full cartons
+      below_threshold: Shortage does not exceed threshold
+      no_shortage: No shortage
+    messages:
+      fit: "Fit this manifest to one pallet"
+      recalculate: "Validate again"
+      empty: "Select SKUs or recommend a pallet to validate automatically."
+      recommended: "One pallet recommended and validated. Adjust cartons or save a draft."
+      single_limit: "Up to 5 SKUs per pallet. Remove a SKU or switch to multiple pallets."
+      stock: "Suggested %{suggested} cartons · stock limit %{max}"
+      changed: "Changes kept. Automatic validation pending…"
+      failed: Operation failed. Please retry.
+      calculating: Calculating…
+      validated: Validation passed. Ready to save.
+      saving: Saving…
+      pallet: Pallet %{number}
+      selection: Select %{selected} SKUs; %{excluded} excluded.

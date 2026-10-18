@@ -26,6 +26,21 @@ Rails.application.routes.draw do
   resources :operator_skus, only: :index
   get "reports/pallet_calculator" => "reports/pallet_calculators#show", as: :reports_pallet_calculator
   post "reports/pallet_calculator/calculate" => "reports/pallet_calculators#calculate", as: :calculate_reports_pallet_calculator
+  namespace :reports do
+    resource :pallet_workbench, only: :show do
+      post :preview
+      post :auto_select
+    end
+    resources :pallet_plans, only: %i[index show edit create update] do
+      member do
+        post :confirm
+        post :advance
+        post :cancel
+        post :bind
+        post :refresh
+      end
+    end
+  end
 
   get "reports/capital_distribution" => "reports#capital_distribution", as: :reports_capital_distribution
   get "reports/inventory" => "reports#inventory"

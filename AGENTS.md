@@ -162,6 +162,43 @@
   - `Ec::OperationTaskGenerator`
   - 以上整套旧库存快照/汇总机制已从项目移除，不应再作为当前实现参考
 
+## Ozon 打托盘工作台
+
+### 入口与职责
+
+- 工作台入口为 `GET /reports/pallet_workbench`，计算预览为 `POST /reports/pallet_workbench/preview`，批量选品为 `POST /reports/pallet_workbench/auto_select`；计划列表、详情和编辑位于 `/reports/pallet_plans`。Controller 分别为 `Reports::PalletWorkbenchesController`、`Reports::PalletPlansController`，保留 HTML / `.json` 两种响应。
+- 当前链路：`Ec::PalletPlans::WorkbenchQuery` 组装需求与库存，`Build` 校验店铺、集群、日期、SKU 权限、Listing、包装及库存并调用 `Packing`，`Save` 保存计划、清单、托盘和托盘明细；状态变更由 `Workflow` 负责。
+- 页面位于 `app/views/reports/pallet_workbenches/`，交互为 `app/javascript/controllers/pallet_workbench_controller.js`。包装几何、平台限制和费用继续复用 `PalletPacking::Calculator`、`Rules`、`Fees`，不要在页面或 Stimulus 中另写排托算法。
+- 工作台 GET、自动选品和计算预览不创建计划、不占库存、不触发平台 API。保存草稿后，由用户在计划详情明确确认库存占用。Ozon 供货绑定、状态回读使用 `OzonReconciler` 与 `Ec::PalletPlanSyncJob`；定时回读在 `config/recurring.yml` 中每 15 分钟运行，不要并入页面 GET。
+
+### 单托、多托与数量规则
+
+- 新方案默认 `packing_mode: single`，每托最多 5 个 SKU；同时保留 `multiple` 多托计划。使用 `ozon_fbo` 规则，自有/FBS 侧出库不代表采用 `ozon_fbs` 收货限制。
+- 需求限定当前店铺与目标集群；包装完整且 Listing 唯一时，建议箱数为 `min(ceil(剩余缺口 / 每箱件数), floor(max(可分配库存, 0) / 每箱件数))`，即整箱向上补足缺口、库存上限向下取整。同一店铺 SKU 对应多个 Listing 时不能自动选取供货商品。
+- “一键推荐一托”使用**全部筛选结果**，不受当前页或表格排序影响：筛选包装完整且建议箱数大于 0 的 SKU，按缺口降序、日均销量降序、SKU 编码升序取前 5 个候选，再请求 `recommend_one: true`。这是启发式推荐，候选可能无法全部装入，不保证全局最优装载率。
+- “清单适配一托”使用当前清单的选品与箱数上限请求单托推荐；两种推荐均可减少箱数或移除本托未装入的 SKU，应用前保留一次撤销。不要把它们改成未经提示的整份多托补货。
+- `Packing#retain_packed_items!` 必须同步裁减结果清单、更新实际箱数并重排 zone 的 `item_index`；`Build` 同步裁减待保存明细并保留 `sku_product_id`，确保清单、几何结果、箱数和件数一致，不能只隐藏剩余托盘。
+- 普通改量只验算当前输入，不自动减量；单托超容量报 `single_pallet_capacity`，超过 5 个 SKU 报 `single_pallet_limit`，不能静默拆托。多托手工分配必须逐托验算，所有托盘按 SKU 汇总的箱数必须与清单相等；总托数沿用计算器上限。
+- 外箱尺寸为 cm、外箱重量为 kg，箱数与每箱件数必须为正整数。单品体积可缺省，SKU 尺寸推导出的非正单品体积按缺失处理，不要传 0 给计算器代替缺失值。
+
+### 库存、权限与编辑上下文
+
+- 可分配量统一从 `Availability` / `BaseStockQuery` 读取，计划额外占用按 `max(units - platform_covered_units, 0)` 计算，占用状态来自 `Ec::PalletPlan::COMMITTED_STATUSES`。当前实现会把 `store_id` 下传到基础库存与占用查询；修改库存归属口径时同时核对这两个服务及工作台缺口计算，不在前端另算一套库存。
+- `Build` 在保存前重新检查实际可分配库存与几何约束；前端显示的建议、库存上限和已通过验算不能替代服务端校验。包装与 SKU 关联使用批量预加载，不能逐行查询尺寸。
+- SKU 可见范围统一使用 `WeeklyProfitReports::AccessScope`，基于 SKU 级开发/运营负责人归属。计划只要包含不可见 SKU，就不能通过计划 ID 查看或编辑整单；工作台批量选品和计划写入继续检查 `manage_skus` 权限。
+- 编辑时预览及批量选品必须携带 `plan_id`，先检查整单 SKU 可见范围与 `editable?`，再向 `Build` / `WorkbenchQuery` 传入当前计划上下文，以排除自身占用。不得只接受一个未经权限校验的 `excluding_plan_id`。
+- 现有计划编辑不能改变店铺或集群。可编辑状态为 `draft/reserved/packing/packed`，且尚未绑定 `ozon_order_id`；其余状态沿用模型和工作流约束。
+
+### 页面交互与回归
+
+- 需求表与当前清单并排，窄屏优先显示清单；表格每页 15 条，默认只显示决策所需字段，销量/库存明细、人员/SKU 筛选、包装与收货参数按需展开。继续复用通用筛选、排序及表格视口组件，文案补齐 `pallet_workbench` 的 zh/en/ru。
+- 修改清单或参数后先使旧结果失效，等待 650ms 自动验算；请求期间禁止重复提交，使用递增 `revision` 丢弃旧请求结果。仅最新方案验算通过后启用保存，单托高度使用含托高度，重量容量使用货重，二者分别对应 FBO 规则限制。
+- `sessionStorage` 按计划（或 `new`）、店铺、集群隔离，保存清单、模式、分配、参数及 `lockVersion`；跨页/刷新恢复后仍重新验算。服务器版本与本地版本不同时丢弃旧本地清单，保存成功后清理本标签页草稿。该机制不是跨设备的服务器草稿。
+- 显示库存明细时，须同时更新原表与通用浮动表头的 `table.pallet-workbench__stock-table`；浮动表头由 `sticky_table_header_controller.js` 克隆到 `document.body`，不能仅靠工作台祖先 CSS 控制隐藏列。
+- 关键回归包括：单托超量拒绝而非拆托、推荐裁减与索引/保存数量一致、多托数量守恒、库存上限、编辑排除自身占用、权限、三种 locale、跨页与刷新恢复、撤销及异步旧结果失效。
+- 相关 Rails 测试为 `test/services/ec/pallet_plans/`、`test/controllers/reports/pallet_workbenches_controller_test.rb`、`test/controllers/reports/pallet_calculators_controller_test.rb`。先初始化 rbenv，再运行 `bin/rails test` 加上述路径；Stimulus 使用 `node --check app/javascript/controllers/pallet_workbench_controller.js` 检查语法。沿用默认无需启动浏览器或前端构建的约定，用户明确要求交互验收时再操作浏览器。
+- 详细实现说明与本地只读测量见 `docs/ozon_pallet_workbench_implementation_plan.md`，样本装托结果及单次耗时不作为固定业务规则或性能承诺。
+
 ## SKU Diagnosis -> Plan -> Action -> Evaluation 闭环
 
 SKU 经营闭环以 `Asia/Shanghai` 的自然周为边界，周一至周日是一个计划周期。日期计算、事件归属、动作匹配和评估观察窗口必须使用同一时区；不要用服务器本地时区或 `plan_date` 代替执行周期。

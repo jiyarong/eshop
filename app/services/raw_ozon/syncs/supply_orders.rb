@@ -19,9 +19,9 @@ module RawOzon
       # Step 1: POST /v3/supply-order/list  → order_ids（last_id 翻页）
       # Step 2: POST /v3/supply-order/get   → 完整 supply order 对象（每批 50）
       # Step 3: POST /v1/supply-order/bundle → {sku: quantity}（每个 order 单独查，避免混批）
-      def sync_supply_orders
+      def sync_supply_orders(order_ids: nil)
         synced_at = Time.current
-        order_ids = fetch_all_supply_order_ids
+        order_ids = order_ids.nil? ? fetch_all_supply_order_ids : Array(order_ids).map(&:to_s).uniq
         return 0 if order_ids.empty?
 
         total = 0
@@ -50,6 +50,7 @@ module RawOzon
             replace_supply_order_items(payloads, synced_at)
             Ec::SupplyOrderChangeRecorder.record(account: @account, changes: changes, operated_at: synced_at)
           end
+          Ec::PalletPlans::OzonReconciler.sync_for(account_id: @account.id, order_ids: rows.map { |row| row[:supply_order_id] })
           total += rows.size
           sleep 0.5
         end

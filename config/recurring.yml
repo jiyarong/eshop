@@ -134,6 +134,10 @@ production:
     command: "RawOzon::DailySync.run"
     schedule: every day at 20:30 in Asia/Shanghai
 
+  ozon_pallet_plan_sync:
+    class: Ec::PalletPlanSyncJob
+    schedule: every 15 minutes
+
   # Buyer-paid prices only exist in Ozon's posting report (async CSV). Refresh the
   # last 7 days after the morning daily sync; imports link to order items on arrival.
   ozon_posting_report_sync:

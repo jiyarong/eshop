@@ -87,6 +87,9 @@
                       class: "ozon-ads-tabs__link #{'is-active' if @ozon_warehouse_view == view}",
                       aria: (@ozon_warehouse_view == view ? { current: "page" } : {}) %>
         <% end %>
+        <% unless @sku_warehouse_embed %>
+          <%= link_to t("pallet_workbench.title"), reports_pallet_workbench_path(store_id: @store.id), class: "ozon-ads-tabs__link" %>
+        <% end %>
       </nav>
 
       <% if @ozon_warehouse_rows.any? %>
@@ -188,6 +191,9 @@
                 <% cluster_key = "cluster-#{cluster_index}" %>
                 <tr class="ozon-warehouse-product-row ozon-warehouse-primary-cluster-row">
                   <td>
+                    <% if row[:macrolocal_cluster_id].present? %>
+                      <%= link_to t("pallet_workbench.start"), reports_pallet_workbench_path(store_id: @store.id, cluster_id: row[:macrolocal_cluster_id]), class: "button button-secondary" %>
+                    <% end %>
                     <div class="ozon-warehouse-product">
                       <button type="button" class="ozon-warehouse-toggle" aria-expanded="false" data-hierarchy-table-kind-param="product" data-hierarchy-table-key-param="<%= cluster_key %>" data-action="hierarchy-table#toggle">
                         <i class="bi bi-chevron-right" aria-hidden="true"></i>
