@@ -11,6 +11,9 @@ module RawWb
         Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError,
         Errno::ECONNRESET, Errno::ETIMEDOUT, EOFError
       ].freeze
+      # A re-issued report leaves exactly as many stale rows as it has fresh ones (more after
+      # several re-issues). Far more stale rows than fresh ones means the answer is suspect.
+      STALE_ROWS_MAX_RATIO = 3
 
       # POST /api/finance/v1/sales-reports/detailed
       # Body: { dateFrom, dateTo, limit, rrdid }
@@ -20,6 +23,7 @@ module RawWb
 
         date_chunks(chunk_days: 1).reverse_each do |from_date, to_date|
           rrdid = 0
+          fresh_ids = Hash.new { |hash, report_id| hash[report_id] = Set.new }
 
           loop do
             body = {
@@ -33,6 +37,7 @@ module RawWb
             break if items.empty?
 
             rows = items.filter_map { |r| build_finance_detail(r) }
+            rows.each { |row| fresh_ids[row[:wb_report_id].to_i] << row[:rrdid] if row[:wb_report_id].present? }
             if rows.any?
               RawWb::FinanceDetail.upsert_all(
                 rows,
@@ -49,12 +54,41 @@ module RawWb
             break if items.size < FINANCE_PAGE_SIZE
             sleep 2
           end
+
+          purge_reissued_finance_rows(from_date, to_date, fresh_ids)
         end
 
         total
       end
 
       private
+
+      # WB re-issues a settlement report under all-new rrdIds. The upsert above is keyed on
+      # (account_id, rrdid), so the previous copy of the same report and day would stay behind
+      # and every figure read from the rows would count twice (2026-10: 10-03 and 10-04 of
+      # reports 865217120 / 865217124). Once a day has been fetched completely, the rows of the
+      # reports WB returned for that day whose rrdId WB no longer lists are stale. Only whole,
+      # successfully fetched days get here (a failed page raises before this runs).
+      def purge_reissued_finance_rows(from_date, to_date, fresh_ids)
+        purged = 0
+        fresh_ids.each do |report_id, ids|
+          stale = RawWb::FinanceDetail.where(account_id: @account.id, wb_report_id: report_id, rr_dt: from_date..to_date)
+                                      .where.not(rrdid: ids.to_a)
+          stale_count = stale.count
+          next if stale_count.zero?
+
+          if stale_count > ids.size * STALE_ROWS_MAX_RATIO
+            log "  finance report #{report_id} #{from_date}: #{stale_count} stale rows vs #{ids.size} fresh; " \
+                "not purged", level: :warn
+            next
+          end
+
+          stale.delete_all
+          purged += stale_count
+          log "  finance report #{report_id} #{from_date}: removed #{stale_count} rows from a superseded copy"
+        end
+        purged
+      end
 
       def fetch_finance_details(body)
         retries = 0
