@@ -133,7 +133,7 @@ test("offers the shared actual return-rate shortcut for WB and Ozon", async () =
 
   // One step definition serves both platforms, and it carries the shortcut.
   assert.match(returnRate, /"actual_return_rate"/);
-  assert.match(source, /this\.actualReturnRateData\.set\(platform, data\)/);
+  assert.match(source, /this\.actualReturnRateData\.set\(logisticsKey, data\)/);
   assert.match(source, /url\.searchParams\.set\("platform", platform\)/);
 });
 
@@ -281,13 +281,19 @@ test("percent inputs get percent steppers, percent shortcut values and a percent
   assert.match(source, /if \(rateFields\.includes\(field\)\) return \{ step: "1", min: "0", max: "100" \}/);
 });
 
-test("explains the Ozon return rate as returns billed per outbound posting, not as buyer returns", async () => {
+test("explains the return rate as return legs per outbound leg on every platform and shows the buyer rate only as a reference", async () => {
   const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
   const start = source.indexOf("  renderActualReturnRateResult(");
   const end = source.indexOf("\n  applyActualReturnRate(", start);
   const render = source.slice(start, end);
 
-  assert.match(render, /data\.platform === "ozon" \? messages\.meta_ozon : messages\.meta/);
+  assert.match(render, /messages\.meta\b/);
+  assert.doesNotMatch(render, /meta_ozon/);
+  assert.match(render, /messages\.basis/);
+  assert.match(render, /messages\.buyer_reference/);
+  // The reference is never the value that gets applied.
+  assert.match(render, /link\.dataset\.returnRate = rate/);
+  assert.match(source, /\(kind === "logistics" \|\| kind === "return-rate"\) && platform === "wb"/);
 });
 
 // The controller itself is bundled with the Hotwire imports stubbed, so the "load all actual

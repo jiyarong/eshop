@@ -908,7 +908,7 @@ export default class extends Controller {
     result.className = "profit-prediction-process__source-result";
     result.dataset.actualReturnRateResult = "";
     cell.replaceChildren(actions, result);
-    const data = this.actualReturnRateData.get(this.selectedRow?.dataset.platform);
+    const data = this.actualReturnRateData.get(this.actualLogisticsKey(this.selectedRow));
     if (data) this.renderActualReturnRateResult(cell, data);
   }
 
@@ -1637,7 +1637,7 @@ export default class extends Controller {
         ? new URL(this.actualReturnRateUrlValue, window.location.origin)
         : new URL(this.actualLogisticsUrlValue, window.location.origin);
       if (kind === "return-rate" || kind === "logistics") url.searchParams.set("platform", platform);
-      if (kind === "logistics" && platform === "wb") {
+      if ((kind === "logistics" || kind === "return-rate") && platform === "wb") {
         url.searchParams.set("delivery_mode", deliveryMode || "fbo");
       }
       const response = await fetch(url, {
@@ -1648,8 +1648,8 @@ export default class extends Controller {
 
       const data = await response.json();
       if (kind === "return-rate") {
-        this.actualReturnRateData.set(platform, data);
-        if (this.selectedRow?.dataset.platform === platform) this.renderActualReturnRateResult(cell, data);
+        this.actualReturnRateData.set(logisticsKey, data);
+        if (this.actualLogisticsKey(this.selectedRow) === logisticsKey) this.renderActualReturnRateResult(cell, data);
       } else if (kind === "cross-dock") {
         this.actualMetricsData = data;
         this.actualCrossDockLoaded = true;
@@ -1766,17 +1766,29 @@ export default class extends Controller {
     link.disabled = this.readonlyValue;
 
     const meta = document.createElement("small");
-    // Ozon's rate is returns billed per outbound posting (it includes undelivered returns,
-    // which book no revenue), WB's is the share of returned units: say which one this is.
-    const template = data.platform === "ozon" ? messages.meta_ozon : messages.meta;
-    meta.textContent = template
+    // Both platforms use the ledger definition: return legs billed per outbound leg billed. It
+    // includes undelivered returns (which book no revenue) and is the ratio the return
+    // amortization formula needs; the buyer-side rate from orders is only shown for reference.
+    meta.textContent = messages.meta
       .replace("__ORDERS__", data.return_rate?.order_count ?? 0)
       .replace("__RETURNS__", data.return_rate?.return_count ?? 0)
       .replace("__FROM__", data.period?.from_date || "-")
       .replace("__TO__", data.period?.to_date || "-")
       .replace("__DATA_THROUGH__", data.period?.data_through || "-");
+    const basis = document.createElement("small");
+    basis.textContent = messages.basis;
+    const lines = [link, meta, basis];
+    const buyerRate = data.buyer_return_rate?.rate;
+    if (buyerRate !== null && buyerRate !== undefined && buyerRate !== "" && Number.isFinite(Number(buyerRate))) {
+      const reference = document.createElement("small");
+      reference.textContent = messages.buyer_reference
+        .replace("__RATE__", this.percent(buyerRate))
+        .replace("__RETURNS__", data.buyer_return_rate.return_count ?? 0)
+        .replace("__ORDERS__", data.buyer_return_rate.order_count ?? 0);
+      lines.push(reference);
+    }
     container.className = "profit-prediction-process__source-result";
-    container.replaceChildren(link, meta);
+    container.replaceChildren(...lines);
   }
 
   applyActualReturnRate(event) {
@@ -1814,14 +1826,30 @@ export default class extends Controller {
     link.textContent = messages.result.replace("__AMOUNT__", this.crossDockAmountLabel(amountRub));
     link.disabled = this.readonlyValue;
 
+    // The window is the cross-dock query's own (12 weeks of supplies), not the 4-week one.
+    const crossDock = data.cross_dock || {};
     const meta = document.createElement("small");
     meta.textContent = messages.meta
-      .replace("__COUNT__", data.cross_dock?.sample_count ?? 0)
-      .replace("__FROM__", data.period?.from_date || "-")
-      .replace("__TO__", data.period?.to_date || "-")
-      .replace("__DATA_THROUGH__", data.period?.data_through || "-");
+      .replace("__UNITS__", crossDock.unit_count ?? 0)
+      .replace("__SUPPLIES__", crossDock.sample_count ?? 0)
+      .replace("__FROM__", crossDock.from_date || "-")
+      .replace("__TO__", crossDock.to_date || "-")
+      .replace("__DATA_THROUGH__", crossDock.data_through || "-");
+    const notes = [];
+    if (Number(crossDock.direct_unit_count) > 0) notes.push(messages.direct.replace("__COUNT__", crossDock.direct_unit_count));
+    if (crossDock.expanded_to_all_history) notes.push(messages.expanded);
+    if (Number(crossDock.unmatched_supply_count) > 0) {
+      notes.push(messages.unmatched
+        .replace("__COUNT__", crossDock.unmatched_supply_count)
+        .replace("__FEE__", this.number(crossDock.unmatched_fee_rub)));
+    }
+    const details = notes.map((note) => {
+      const element = document.createElement("small");
+      element.textContent = note;
+      return element;
+    });
     container.className = "profit-prediction-process__source-result";
-    container.replaceChildren(link, meta);
+    container.replaceChildren(link, meta, ...details);
   }
 
   applyActualCrossDock(event) {

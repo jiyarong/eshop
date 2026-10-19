@@ -37,7 +37,7 @@ class Ec::SkuActualReturnRateQueryTest < ActiveSupport::TestCase
     Ec::Sku.with_deleted.where(id: [@sku.id, @other_sku.id]).delete_all
   end
 
-  test "calculates the WB returned-unit share across the last four completed weeks" do
+  test "keeps the WB buyer-side returned-unit share from orders as a reference across the last four completed weeks" do
     create_item(status: "delivered", quantity: 2, date: Date.new(2093, 8, 25))
     create_item(status: "returned", quantity: 1, date: Date.new(2093, 9, 1))
     create_item(status: "cancelled", quantity: 5, date: Date.new(2093, 9, 2))
@@ -50,19 +50,23 @@ class Ec::SkuActualReturnRateQueryTest < ActiveSupport::TestCase
     assert_equal "wb", payload[:platform]
     assert_equal Date.new(2093, 8, 24), payload.dig(:period, :from_date)
     assert_equal Date.new(2093, 9, 20), payload.dig(:period, :to_date)
-    assert_equal Date.new(2093, 9, 1), payload.dig(:period, :data_through)
-    assert_equal 1, payload[:store_count]
-    assert_equal 1, payload[:listing_count]
-    assert_equal 3, payload.dig(:return_rate, :order_count)
-    assert_equal 1, payload.dig(:return_rate, :return_count)
-    assert_equal 0.3333333333.to_d, payload.dig(:return_rate, :rate)
+    assert_nil payload.dig(:period, :data_through) # the period follows the ledger legs, of which there are none
+    assert_equal 0, payload[:store_count] # counted over the ledger bindings: this store has no WB account
+    assert_equal 0, payload[:listing_count]
+    assert_equal 3, payload.dig(:buyer_return_rate, :order_count)
+    assert_equal 1, payload.dig(:buyer_return_rate, :return_count)
+    assert_equal 0.3333333333.to_d, payload.dig(:buyer_return_rate, :rate)
+    # The rate to apply is the ledger one; this store has no WB account, so it has no legs.
+    assert_nil payload.dig(:return_rate, :rate)
   end
 
-  test "returns an empty rate when there are no completed WB orders" do
+  test "returns empty rates when there are no completed WB orders" do
     payload = query
 
+    assert_equal 0, payload.dig(:buyer_return_rate, :order_count)
+    assert_equal 0, payload.dig(:buyer_return_rate, :return_count)
+    assert_nil payload.dig(:buyer_return_rate, :rate)
     assert_equal 0, payload.dig(:return_rate, :order_count)
-    assert_equal 0, payload.dig(:return_rate, :return_count)
     assert_nil payload.dig(:return_rate, :rate)
   end
 

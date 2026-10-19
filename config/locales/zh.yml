@@ -3120,7 +3120,7 @@ zh:
         logistics_coeff: "物流系数"
         wb_logistics_base_rub: "WB 基础物流费（RUB）"
         wb_fixed_return_base_rub: "WB 固定退货费基数（RUB）"
-        return_rate: "退货率"
+        return_rate: "物流退货率"
         logistics_tax_rate: "物流税率"
         fbo_delivery_cny: "送仓费（CNY）"
         storage_cny: "仓储费（CNY）"

@@ -2859,7 +2859,7 @@ ru:
         logistics_coeff: "Коэффициент логистики"
         wb_logistics_base_rub: "Базовый тариф логистики WB (RUB)"
         wb_fixed_return_base_rub: "Базовый тариф фиксированного возврата WB (RUB)"
-        return_rate: "Доля возвратов"
+        return_rate: "Доля возвратов по логистике"
         logistics_tax_rate: "Налоговая ставка логистики"
         fbo_delivery_cny: "Доставка на склад (CNY)"
         storage_cny: "Хранение (CNY)"

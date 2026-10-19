@@ -2908,7 +2908,7 @@ en:
         logistics_coeff: "Logistics coefficient"
         wb_logistics_base_rub: "WB base logistics fee (RUB)"
         wb_fixed_return_base_rub: "WB fixed return fee base (RUB)"
-        return_rate: "Return rate"
+        return_rate: "Logistics return rate"
         logistics_tax_rate: "Logistics tax rate"
         fbo_delivery_cny: "Warehouse delivery (CNY)"
         storage_cny: "Storage (CNY)"

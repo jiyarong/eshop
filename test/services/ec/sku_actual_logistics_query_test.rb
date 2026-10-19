@@ -76,7 +76,10 @@ class Ec::SkuActualLogisticsQueryTest < ActiveSupport::TestCase
     assert_equal 2, payload[:listing_count]
     assert_equal({ total_rub: 500.to_d, sample_count: 3, average_rub: 166.67.to_d }, payload[:outbound])
     assert_equal({ total_rub: 140.to_d, sample_count: 2, average_rub: 70.to_d }, payload[:return])
-    assert_equal({ total_rub: 180.to_d, sample_count: 3, average_rub: 60.to_d }, payload[:cross_dock])
+    # Cross-dock is priced per supplied unit (see SkuActualCrossDockQuery); these fee lines name no
+    # supply with items, so none of them is usable here.
+    assert_equal 0, payload.dig(:cross_dock, :sample_count)
+    assert_nil payload.dig(:cross_dock, :average_rub)
     # Rate = postings billed a return leg / postings billed an outbound leg. Revenue
     # reversals (RETURN-1) are irrelevant: orders that were never delivered pay both legs
     # but never book revenue.
@@ -114,7 +117,8 @@ class Ec::SkuActualLogisticsQueryTest < ActiveSupport::TestCase
       today: Date.new(2026, 9, 21)
     )
 
-    assert_equal({ total_rub: 0.to_d, sample_count: 0, average_rub: nil }, payload[:cross_dock])
+    assert_equal 0, payload.dig(:cross_dock, :sample_count)
+    assert_nil payload.dig(:cross_dock, :average_rub)
   end
 
   private

@@ -56,7 +56,7 @@ module Ec
         listing_count: bindings.size,
         outbound: metric_payload(grouped_fees.fetch(:outbound)),
         return: metric_payload(grouped_fees.fetch(:return)),
-        cross_dock: cross_dock_payload(rows, bindings),
+        cross_dock: Ec::SkuActualCrossDockQuery.run(sku: sku, today: today),
         return_rate: return_rate_payload(grouped_fees)
       }
     end
@@ -301,25 +301,6 @@ module Ec
         order_count: order_count,
         return_count: return_count,
         rate: rate&.round(10)
-      }
-    end
-
-    def cross_dock_payload(rows, bindings)
-      allowed_bindings = bindings.to_set
-      amounts = rows.filter_map do |row|
-        next unless allowed_bindings.include?([row.account_id, row.ozon_sku_id])
-        next unless row.type_id.to_i == Ec::OzonProfitAttribution::CROSSDOCK_TYPE_ID
-
-        amount = row.amount.to_d
-        amount unless amount.zero?
-      end
-      total = amounts.sum(0.to_d).abs
-      average = total / amounts.size if total.positive? && amounts.any?
-
-      {
-        total_rub: total.round(2),
-        sample_count: amounts.size,
-        average_rub: average&.round(2)
       }
     end
   end

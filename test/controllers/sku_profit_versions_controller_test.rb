@@ -243,7 +243,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", text: "Amortized return logistics CNY", count: 1
     assert_select "th", text: "Commission base price (RUB)", count: 1
     assert_select "th", text: "Commission rate (%)", count: 1
-    assert_select "th", text: "Return rate (%)", count: 1
+    assert_select "th", text: "Logistics return rate (%)", count: 1
     assert_select "th", text: "Exchange rate (%)", count: 0
     assert_select "th", text: "Buyer-paid price incl. VAT (RUB)", count: 1
     assert_select "th", text: "VAT rate in the buyer price (%)", count: 1

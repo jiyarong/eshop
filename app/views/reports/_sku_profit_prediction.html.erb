@@ -73,7 +73,8 @@
         result: t("reports.profit_prediction.sources.actual_return_rate.result", rate: "__RATE__"),
         apply: t("reports.profit_prediction.sources.actual_return_rate.apply"),
         meta: t("reports.profit_prediction.sources.actual_return_rate.meta", orders: "__ORDERS__", returns: "__RETURNS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__"),
-        meta_ozon: t("reports.profit_prediction.sources.actual_return_rate.meta_ozon", orders: "__ORDERS__", returns: "__RETURNS__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+        basis: t("reports.profit_prediction.sources.actual_return_rate.basis"),
+        buyer_reference: t("reports.profit_prediction.sources.actual_return_rate.buyer_reference", rate: "__RATE__", returns: "__RETURNS__", orders: "__ORDERS__")
       },
       actual_selling_price: {
         action: t("reports.profit_prediction.sources.actual_selling_price.action"),
@@ -97,7 +98,10 @@
         load_failed: t("reports.profit_prediction.sources.actual_cross_dock.load_failed"),
         result: t("reports.profit_prediction.sources.actual_cross_dock.result", amount: "__AMOUNT__"),
         apply: t("reports.profit_prediction.sources.actual_cross_dock.apply"),
-        meta: t("reports.profit_prediction.sources.actual_cross_dock.meta", count: "__COUNT__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__")
+        meta: t("reports.profit_prediction.sources.actual_cross_dock.meta", units: "__UNITS__", supplies: "__SUPPLIES__", from: "__FROM__", to: "__TO__", data_through: "__DATA_THROUGH__"),
+        direct: t("reports.profit_prediction.sources.actual_cross_dock.direct", count: "__COUNT__"),
+        expanded: t("reports.profit_prediction.sources.actual_cross_dock.expanded"),
+        unmatched: t("reports.profit_prediction.sources.actual_cross_dock.unmatched", count: "__COUNT__", fee: "__FEE__")
       },
       actual_storage: {
         action: t("reports.profit_prediction.sources.actual_storage.action"),

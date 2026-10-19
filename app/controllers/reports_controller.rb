@@ -531,11 +531,17 @@ class ReportsController < ApplicationController
       return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
     end
 
+    delivery_mode = params[:delivery_mode].to_s.downcase.presence
+    if platform == "wb" && delivery_mode && !Ec::SkuActualLogisticsQuery::WB_DELIVERY_MODES.include?(delivery_mode)
+      return render json: { errors: ["unsupported_delivery_mode"] }, status: :unprocessable_entity
+    end
+
     render json: Ec::SkuActualReturnRateQuery.run(
       sku:,
       platform:,
       today: user_today,
-      time_zone: user_time_zone
+      time_zone: user_time_zone,
+      delivery_mode: (delivery_mode if platform == "wb")
     )
   end
 

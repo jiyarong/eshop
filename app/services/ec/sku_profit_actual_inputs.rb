@@ -53,8 +53,10 @@ module Ec
         values["cross_docking_cny"] = cross_dock / exchange if cross_dock && exchange.positive? && platform == "ozon" && market == "ru"
       end
 
-      return_rate = fetch.call(:return_rate, platform) do
-        Ec::SkuActualReturnRateQuery.run(sku: sku, platform: platform, today: today, time_zone: time_zone, weeks: weeks)
+      return_rate = fetch.call(:return_rate, platform, platform == "wb" ? mode : nil) do
+        args = { sku: sku, platform: platform, today: today, time_zone: time_zone, weeks: weeks }
+        args[:delivery_mode] = mode if platform == "wb"
+        Ec::SkuActualReturnRateQuery.run(**args)
       end
       rate = decimal(return_rate&.dig(:return_rate, :rate))
       values["return_rate"] = rate if rate && rate >= 0 && rate < 1

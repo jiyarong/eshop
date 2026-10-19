@@ -1,18 +1,25 @@
 module Ec
+  # The return rate the calculators' return amortization needs: return legs billed per outbound
+  # leg billed, on both platforms. A returned unit costs its outbound leg plus its return leg, and
+  # so does every cancelled or refused parcel that never became a sale, so the calculator adds
+  # (outbound + return) x r / (1 - r) per net sale; only a rate counted in logistics legs
+  # reproduces what the profit attribution charges. The buyer-side rate from the orders table
+  # (WB only: Ozon orders have no "returned" status) is kept in `buyer_return_rate` for reference.
   class SkuActualReturnRateQuery
     DEFAULT_WEEKS = 4
     PLATFORMS = %w[wb ozon].freeze
 
-    def self.run(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS)
-      new(sku:, platform:, today:, time_zone:, weeks:).run
+    def self.run(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
+      new(sku:, platform:, today:, time_zone:, weeks:, delivery_mode:).run
     end
 
-    def initialize(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS)
+    def initialize(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
       @sku = sku
       @platform = platform.to_s.downcase
       @today = today.to_date
       @time_zone = time_zone
       @weeks = Integer(weeks)
+      @delivery_mode = delivery_mode.to_s.downcase.presence
       raise ArgumentError, "unsupported_platform" unless PLATFORMS.include?(@platform)
       raise ArgumentError, "weeks_must_be_positive" unless @weeks.positive?
     end
@@ -25,7 +32,7 @@ module Ec
 
     private
 
-    attr_reader :sku, :platform, :today, :time_zone, :weeks
+    attr_reader :sku, :platform, :today, :time_zone, :weeks, :delivery_mode
 
     def ozon_payload
       payload = Ec::SkuActualLogisticsQuery.run(sku:, today:, weeks:)
@@ -33,7 +40,25 @@ module Ec
       payload.slice(:platform, :period, :store_count, :listing_count, :return_rate)
     end
 
+    # Return legs ("От клиента при возврате / при отмене") per outbound leg ("К клиенту при
+    # продаже / при отмене"), counted per parcel in the 4-week finance details, for the
+    # scenario's delivery mode when given.
     def wb_payload
+      logistics = Ec::SkuActualLogisticsQuery.run(sku:, today:, platform: "wb", delivery_mode:, weeks:)
+      outbound_count = logistics.dig(:outbound, :sample_count).to_i
+      return_count = logistics.dig(:return, :sample_count).to_i
+
+      logistics.slice(:platform, :delivery_mode, :period, :store_count, :listing_count).merge(
+        return_rate: {
+          order_count: outbound_count,
+          return_count: return_count,
+          rate: outbound_count.positive? ? (return_count.to_d / outbound_count).round(10) : nil
+        },
+        buyer_return_rate: wb_buyer_return_rate
+      )
+    end
+
+    def wb_buyer_return_rate
       period_to = today.beginning_of_week(:monday) - 1.day
       period_from = period_to - (weeks * 7 - 1).days
       rows = wb_order_rows(period_from:, period_to:)
@@ -41,19 +66,9 @@ module Ec
       return_count = rows.sum { |row| row.fetch(:status) == "returned" ? row.fetch(:quantity) : 0 }
 
       {
-        platform: platform,
-        period: {
-          from_date: period_from,
-          to_date: period_to,
-          data_through: rows.filter_map { |row| row.fetch(:ordered_at)&.in_time_zone(time_zone)&.to_date }.max
-        },
-        store_count: wb_bindings.map(&:first).uniq.size,
-        listing_count: wb_bindings.size,
-        return_rate: {
-          order_count: order_count,
-          return_count: return_count,
-          rate: order_count.positive? ? (return_count.to_d / order_count).round(10) : nil
-        }
+        order_count: order_count,
+        return_count: return_count,
+        rate: order_count.positive? ? (return_count.to_d / order_count).round(10) : nil
       }
     end
 
