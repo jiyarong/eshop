@@ -65,6 +65,18 @@ module Reports
       saved_response
     end
 
+    def supply_orders
+      bound_orders = Ec::PalletPlan.where(store_id: @plan.store_id).where.not(id: @plan.id)
+        .where.not(status: "cancelled").where.not(ozon_order_id: nil).select(:ozon_order_id)
+      options = SupplyOrderReports::ReportQuery.new(params: {
+        store_ref: "ozon:#{@plan.store.ozon_raw_account_id}", q: params[:q]
+      }).ozon_order_options(platform_sku_ids: @plan.items.map(&:platform_sku_id),
+        cluster_id: @plan.macrolocal_cluster_id, excluded_order_ids: bound_orders)
+
+      render json: options.map { |option| { id: option[:id], label: t("pallet_workbench.supply_option",
+        number: option[:order_number], status: t("supply_order_reports.statuses.ozon.#{option[:status]}", default: option[:status])) } }
+    end
+
     def refresh
       workflow.refresh!
       saved_response

@@ -114,19 +114,19 @@ module Ec
         plan_items = @plan.items.to_a
         fail_input(:supply_mismatch) if plan_items.empty? || plan_items.any? { |item| item.platform_sku_id.blank? }
         expected = plan_items.each_with_object(Hash.new(0)) { |item, totals| totals[item.platform_sku_id.to_s] += item.units }
-        rows = order.supply_order_items.to_a
-        actual = rows.each_with_object(Hash.new(0)) { |item, totals| totals[item.platform_sku_id.to_s] += item.quantity }
+        rows = supply_report_rows(order)
+        actual = rows.each_with_object(Hash.new(0)) { |item, totals| totals[item[:platform_item_id].to_s] += item[:quantity].to_i }
         fail_input(:supply_mismatch) unless actual == expected
-        fail_input(:supply_cluster) if rows.any? { |item| item.macrolocal_cluster_id.to_s != @plan.macrolocal_cluster_id.to_s }
-        rows_by_sku = rows.group_by { |item| item.platform_sku_id.to_s }
-        fail_input(:supply_split) if rows_by_sku.values.any? { |items| items.map { |item| [item.ozon_supply_id, item.storage_warehouse_id] }.uniq.size > 1 }
+        fail_input(:supply_cluster) if rows.any? { |item| item[:destination_cluster_id].to_s != @plan.macrolocal_cluster_id.to_s }
+        rows_by_sku = rows.group_by { |item| item[:platform_item_id].to_s }
+        fail_input(:supply_split) if rows_by_sku.values.any? { |items| items.map { |item| [item[:supply_id], item[:destination_warehouse_id]] }.uniq.size > 1 }
         evidence = plan_items.to_h do |item|
           row = rows_by_sku.fetch(item.platform_sku_id.to_s).first
-          fail_input(:supply_pallet) if row.ozon_supply_id.blank? || row.storage_warehouse_id.blank?
+          fail_input(:supply_pallet) if row[:supply_id].blank? || row[:destination_warehouse_id].blank?
           [item.sku_code, {
-            platform_sku_id: item.platform_sku_id.to_s, quantity: item.units, state: row.state.presence || order.status,
-            supply_id: row.ozon_supply_id.to_s, warehouse_id: row.storage_warehouse_id,
-            cluster_id: row.macrolocal_cluster_id
+            platform_sku_id: item.platform_sku_id.to_s, quantity: item.units, state: row[:status].presence || order.status,
+            supply_id: row[:supply_id].to_s, warehouse_id: row[:destination_warehouse_id],
+            cluster_id: row[:destination_cluster_id]
           }]
         end
         destinations = @plan.pallets.includes(items: :pallet_plan_item).map do |pallet|
@@ -135,6 +135,15 @@ module Ec
           [pallet, targets.first]
         end
         [evidence, destinations]
+      end
+
+      def supply_report_rows(order)
+        SupplyOrderReports::ReportQuery.new(
+          params: {
+            store_ref: "ozon:#{@plan.store.ozon_raw_account_id}",
+            supply_order_id: order.supply_order_id
+          }
+        ).ozon_reconciliation_rows
       end
 
       def apply_cancellation!(order)

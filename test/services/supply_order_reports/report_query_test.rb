@@ -105,6 +105,54 @@ class SupplyOrderReports::ReportQueryTest < ActiveSupport::TestCase
     RawOzon::WarehouseCluster.where(account_id: @ozon_account.id, warehouse_id: 91_001).delete_all
   end
 
+  test "provides the Ozon destination identifiers used by pallet reconciliation" do
+    platform_id = Ec::SkuProduct.find_by!(store: @ozon_store).platform_sku_id
+    order = RawOzon::SupplyOrder.create!(account: @ozon_account, supply_order_id: "SO-RECONCILE-#{@token}", status: "READY_TO_SUPPLY",
+      raw_json: { "order_number" => "ORD-RECONCILE-#{@token}" }, synced_at: Time.current)
+    order.supply_order_items.create!(ozon_supply_id: 2_000_064_845_541, bundle_id: "bundle-reconcile", state: "READY_TO_SUPPLY",
+      platform_sku_id: platform_id, quantity: 4, macrolocal_cluster_id: 4008, storage_warehouse_id: 92_002,
+      storage_warehouse_name: "Kazan storage", synced_at: Time.current)
+    other = RawOzon::SupplyOrder.create!(account: @ozon_account, supply_order_id: "SO-OTHER-#{@token}", status: "READY_TO_SUPPLY",
+      raw_json: { "order_number" => "ORD-OTHER-#{@token}" }, synced_at: Time.current)
+    other.supply_order_items.create!(ozon_supply_id: 2_000_064_845_542, bundle_id: "bundle-other", state: "READY_TO_SUPPLY",
+      platform_sku_id: platform_id, quantity: 9, macrolocal_cluster_id: 4008, storage_warehouse_id: 92_003,
+      synced_at: Time.current)
+
+    rows = SupplyOrderReports::ReportQuery.new(
+      params: { store_ref: "ozon:#{@ozon_account.id}", supply_order_id: order.supply_order_id }
+    ).ozon_reconciliation_rows
+    displayed_row = SupplyOrderReports::ReportQuery.new(params: { store_ref: "ozon:#{@ozon_account.id}" }).call[:rows]
+      .find { |row| row[:order_number] == "ORD-RECONCILE-#{@token}" }
+
+    assert_equal 1, rows.size
+    assert_equal displayed_row.slice(*rows.first.keys), rows.first.slice(*displayed_row.keys)
+    assert_equal order.supply_order_id, rows.first[:parent_supply_order_id]
+    assert_equal "bundle-reconcile", rows.first[:bundle_id]
+    assert_equal 4008, rows.first[:destination_cluster_id]
+    assert_equal 92_002, rows.first[:destination_warehouse_id]
+    assert_equal "Kazan storage", rows.first[:destination_warehouse]
+  end
+
+  test "reconciliation reads the whole order regardless of report filters and pagination" do
+    platform_id = Ec::SkuProduct.find_by!(store: @ozon_store).platform_sku_id
+    order = RawOzon::SupplyOrder.create!(account: @ozon_account, supply_order_id: "SO-FULL-#{@token}", status: "READY_TO_SUPPLY", raw_json: {})
+    12.times do |index|
+      order.supply_order_items.create!(ozon_supply_id: 2_000_064_845_543, bundle_id: "bundle-#{index}",
+        platform_sku_id: platform_id, quantity: 1, state: index == 11 ? "IN_TRANSIT" : "READY_TO_SUPPLY")
+    end
+    params = { store_ref: "ozon:#{@ozon_account.id}", supply_order_id: order.supply_order_id,
+      statuses: ["READY_TO_SUPPLY"], operator_id: @operator.id, page: 2 }
+
+    rows = SupplyOrderReports::ReportQuery.new(params: params).ozon_reconciliation_rows
+
+    assert_equal 12, rows.size
+    assert_equal 12, rows.sum { |row| row[:quantity] }
+    assert_includes rows.map { |row| row[:status] }, "IN_TRANSIT"
+    assert_raises(ActionController::ParameterMissing) do
+      SupplyOrderReports::ReportQuery.new(params: { store_ref: "ozon:#{@ozon_account.id}" }).ozon_reconciliation_rows
+    end
+  end
+
   test "keeps Ozon supply items mapped to a soft-deleted SKU" do
     product = Ec::SkuProduct.find_by!(store: @ozon_store)
     product.update!(product_name: "Stored platform product")

@@ -1,5 +1,8 @@
 <% picker_id = local_assigns.fetch(:dom_id) %>
 <% selected_record = local_assigns[:selected_record] %>
+<% selected_value = local_assigns.fetch(:selected_value, selected_record&.id) %>
+<% selected_label = local_assigns.fetch(:selected_label, selected_record&.name) %>
+<% create_url = local_assigns[:create_url] %>
 <div class="field association-picker"
      data-controller="association-picker"
      data-association-picker-id-value="<%= picker_id %>"
@@ -7,12 +10,12 @@
      data-association-picker-empty-label-value="<%= empty_label %>"
      data-action="association-picker:selected@window->association-picker#selectCreated">
   <label for="<%= "#{picker_id}-query" %>"><%= label %></label>
-  <%= hidden_field_tag field_name, selected_record&.id, data: { association_picker_target: "input" } %>
+  <%= hidden_field_tag field_name, selected_value, data: { association_picker_target: "input" } %>
   <div class="association-picker__control">
     <input id="<%= "#{picker_id}-query" %>"
            class="input association-picker__query"
            type="search"
-           value="<%= selected_record&.name %>"
+           value="<%= selected_label %>"
            placeholder="<%= placeholder %>"
            autocomplete="off"
            role="combobox"
@@ -21,9 +24,11 @@
            aria-expanded="false"
            data-association-picker-target="query"
            data-action="input->association-picker#search keydown->association-picker#navigate blur->association-picker#closeSoon">
-    <button class="icon-button" type="button" title="<%= create_label %>" aria-label="<%= create_label %>" data-action="association-picker#openCreate">
-      <i class="bi bi-plus-lg" aria-hidden="true"></i>
-    </button>
+    <% if create_url.present? %>
+      <button class="icon-button" type="button" title="<%= create_label %>" aria-label="<%= create_label %>" data-action="association-picker#openCreate">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+      </button>
+    <% end %>
   </div>
   <div id="<%= "#{picker_id}-results" %>" class="association-picker__results" role="listbox" data-association-picker-target="results" hidden></div>
   <template data-association-picker-target="emptyTemplate">

@@ -81,6 +81,10 @@ zh:
     cancel: 取消计划
     cancel_confirm: 确认取消此托盘计划？已发出数量仍需平台对账。
     supply_binding: 供货单绑定与同步
+    supply_search: 搜索订单编号或送仓单号
+    supply_empty: 暂无符合当前计划的送仓记录
+    supply_search_hint: 从当前店铺送仓记录中选择，绑定时核对商品、数量、集群和目的仓。
+    supply_option: '%{number} · %{status}'
     bind: 绑定供货单
     refresh: 刷新平台状态
     saved: 托盘计划已更新

@@ -43,6 +43,36 @@ class Ec::PalletPlans::OzonReconcilerTest < ActiveSupport::TestCase
     assert_equal "IN_TRANSIT", @plan.platform_status
   end
 
+  test "binds every bundle even when the supply order spans report pages" do
+    order = supply_order(status: "READY_TO_SUPPLY", state: "READY_TO_SUPPLY")
+    order.supply_order_items.sole.update!(quantity: 1)
+    11.times do |index|
+      order.supply_order_items.create!(bundle_id: "EXTRA-#{index}-#{@token}", ozon_supply_id: 501, platform_sku_id: 1001,
+        quantity: 1, state: "READY_TO_SUPPLY", macrolocal_cluster_id: 761, storage_warehouse_id: 9001)
+    end
+    @plan_item.update!(pcs: 12, units: 12)
+    @pallet.items.sole.update!(units: 12)
+
+    Ec::PalletPlans::OzonReconciler.new(plan: @plan).bind!(order.supply_order_id, enqueue: false)
+
+    assert_equal order.supply_order_id, @plan.reload.ozon_order_id
+    assert_equal 12, @plan.platform_snapshot.dig("items", @sku.sku_code, "quantity")
+    assert_equal "501", @pallet.reload.ozon_supply_id
+  end
+
+  test "rejects extra platform items instead of hiding them with report SKU filters" do
+    order = supply_order(status: "READY_TO_SUPPLY", state: "READY_TO_SUPPLY")
+    order.supply_order_items.create!(bundle_id: "OTHER-#{@token}", ozon_supply_id: 501, platform_sku_id: 1002,
+      quantity: 1, state: "READY_TO_SUPPLY", macrolocal_cluster_id: 761, storage_warehouse_id: 9001)
+
+    error = assert_raises(Ec::PalletPlans::Error) do
+      Ec::PalletPlans::OzonReconciler.new(plan: @plan).bind!(order.supply_order_id, enqueue: false)
+    end
+
+    assert_equal :supply_mismatch, error.key
+    assert_nil @plan.reload.ozon_order_id
+  end
+
   private
 
   def supply_order(status:, state:)

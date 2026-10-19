@@ -88,6 +88,10 @@ en:
     cancel_confirm: Cancel this pallet plan? Dispatched stock still requires platform
       reconciliation.
     supply_binding: Supply binding and sync
+    supply_search: Search by order number or supply ID
+    supply_empty: No supply records found for this plan
+    supply_search_hint: Choose a supply record from this store. Products, quantities, cluster and destination are checked when binding.
+    supply_option: '%{number} · %{status}'
     bind: Bind supply order
     refresh: Refresh platform status
     saved: Pallet plan updated

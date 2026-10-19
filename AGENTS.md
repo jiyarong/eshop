@@ -86,6 +86,7 @@
 - SPU 类目多选筛选：`app/views/shared/_master_sku_category_filter.html.erb` + `MasterSkuCategoryFilterable`。它按 Master SKU 的类目过滤，区别于编辑表单中选择单个类目的 `app/views/shared/_category_selector.html.erb`，两者不要混用。
 - 表格行内编辑：`app/views/shared/_inline_edit_cell.html.erb` + `inline_cell_controller.js` + `InlineEditableResponse`。新字段接入时沿用现有 helper 组装 locals、Turbo Frame 编辑和 Turbo Stream 回写模式；Controller 必须对允许编辑的字段使用白名单。
 - 可搜索关联记录选择：`app/views/shared/_association_picker.html.erb` + `association_picker_controller.js`。搜索接口返回 `[{ id:, label: }]` JSON；如支持弹窗新建，页面还需提供 `association_create_modal` Turbo Frame，并按现有 `association-picker:selected` 事件协议回填。
+- 关联选择器只搜索已有记录时省略 `create_url`，组件会隐藏新建按钮；非 `id/name` 模型可传 `selected_value`、`selected_label` 作为当前值，`selected_record` 仍兼容原调用。`dom_id` 必须在页面内唯一；业务搜索接口负责权限及数据范围，提交后继续在服务端校验所选记录。
 - Turbo 侧边抽屉外壳：`app/views/shared/_overlay_drawer.html.erb`，配合 `modal_controller.js`。传 `frame_id`、`title_id`、`title`、`body`，按需传 `subtitle`、`eyebrow`、`header_actions`、`close_path`、`drawer_width`；业务内容保留在调用方 partial，不要复制抽屉遮罩、标题栏和关闭逻辑。
 
 ## AI Agent 工具选择
@@ -170,6 +171,7 @@
 - 当前链路：`Ec::PalletPlans::WorkbenchQuery` 组装需求与库存，`Build` 校验店铺、集群、日期、SKU 权限、Listing、包装及库存并调用 `Packing`，`Save` 保存计划、清单、托盘和托盘明细；状态变更由 `Workflow` 负责。
 - 页面位于 `app/views/reports/pallet_workbenches/`，交互为 `app/javascript/controllers/pallet_workbench_controller.js`。包装几何、平台限制和费用继续复用 `PalletPacking::Calculator`、`Rules`、`Fees`，不要在页面或 Stimulus 中另写排托算法。
 - 工作台 GET、自动选品和计算预览不创建计划、不占库存、不触发平台 API。保存草稿后，由用户在计划详情明确确认库存占用。Ozon 供货绑定、状态回读使用 `OzonReconciler` 与 `Ec::PalletPlanSyncJob`；定时回读在 `config/recurring.yml` 中每 15 分钟运行，不要并入页面 GET。
+- 计划详情的供货关联从送仓记录页 `/reports/supply_orders?store_ref=ozon:<账号ID>` 同源查询中搜索选择。`SupplyOrderReports::ReportQuery#ozon_order_options` 限定账号、集群和相关平台 SKU，排除其他有效计划已绑定的父供货；`#ozon_reconciliation_rows` 按账号和父供货 ID 读取完整明细，不应用页面分页或 SKU/状态筛选，防止隐藏额外商品。提交继续校验整单数量、目的仓及集群，不以搜索结果替代校验。
 
 ### 单托、多托与数量规则
 

@@ -44,6 +44,40 @@ module SupplyOrderReports
       }
     end
 
+    # Reconciliation needs every item in the order, including rows hidden by
+    # report filters or pagination, and the stable destination identifiers.
+    def ozon_reconciliation_rows
+      platform, account_id = parse_store_ref(required(:store_ref))
+      raise ArgumentError, "invalid_store_ref" unless platform == "ozon"
+
+      order_id = required(:supply_order_id).to_s
+      ozon_supply_rows(RawOzon::SupplyOrder.where(account_id: account_id, supply_order_id: order_id))
+    end
+
+    def ozon_order_options(platform_sku_ids:, cluster_id:, excluded_order_ids:)
+      platform, account_id = parse_store_ref(required(:store_ref))
+      raise ArgumentError, "invalid_store_ref" unless platform == "ozon"
+
+      accounts = RawOzon::SellerAccount.where(id: account_id, is_active: true)
+      orders = RawOzon::SupplyOrder.where(account_id: accounts.select(:id))
+      items = RawOzon::SupplyOrderItem.where(supply_order_id: orders.select(:id),
+        platform_sku_id: platform_sku_ids, macrolocal_cluster_id: cluster_id)
+      scope = orders.where(id: items.select(:supply_order_id))
+        .where.not(status: %w[CANCELLED REJECTED_AT_SUPPLY_WAREHOUSE OVERDUE])
+        .where.not(supply_order_id: excluded_order_ids)
+      query = param(:q).to_s.strip
+      if query.present?
+        pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
+        matches = scope.where("supply_order_id ILIKE :pattern OR raw_json ->> 'order_number' ILIKE :pattern", pattern: pattern)
+        scope = matches.or(scope.where(id: items.where("ozon_supply_id::text ILIKE ?", pattern).select(:supply_order_id)))
+      end
+
+      scope.order(created_at: :desc, id: :desc).limit(20)
+        .pluck(:supply_order_id, Arel.sql("raw_json ->> 'order_number'"), :status).map do |id, number, status|
+          { id: id, order_number: number.presence || id, status: status }
+        end
+    end
+
     def selected_direct_sku_codes
       values = Array(param(:sku_codes).presence || param(:sku_code)).filter_map { |value| value.to_s.strip.upcase.presence }.uniq
       Ec::Sku.where(sku_code: values).pluck(:sku_code)
@@ -179,25 +213,34 @@ module SupplyOrderReports
         .where.not(cluster_name: nil)
         .pluck(:macrolocal_cluster_id, :cluster_name)
         .to_h
-      scope = RawOzon::SupplyOrder.includes(:supply_order_items).where(account_id: account.id)
       statuses = selected_statuses("ozon")
-      rows = scope.flat_map do |order|
-        raw = order.raw_json || {}
-        order.supply_order_items.map do |item|
-          product = mapping[item.platform_sku_id.to_s]
-          {
-            order_number: raw["order_number"], supply_id: item.ozon_supply_id, status: item.state.presence || order.status,
-            platform_item_id: item.platform_sku_id.to_s, sku_code: product&.dig(:sku_code), product_name: product&.dig(:product_name), operator_ids: product&.dig(:operator_ids).to_a, quantity: item.quantity,
-            created_at: order.created_at, timeslot: order.timeslot,
-            origin_warehouse: raw.dig("drop_off_warehouse", "name"),
-            destination_cluster: cluster_names[item.macrolocal_cluster_id.to_i],
-            destination_warehouse: item.storage_warehouse_name,
-            state_updated_at: raw["state_updated_date"], synced_at: item.synced_at
-          }
-        end
+      rows = ozon_supply_rows(RawOzon::SupplyOrder.where(account_id: account.id)).map do |row|
+        product = mapping[row[:platform_item_id]]
+        row.merge(
+          sku_code: product&.dig(:sku_code), product_name: product&.dig(:product_name), operator_ids: product&.dig(:operator_ids).to_a,
+          destination_cluster: cluster_names[row[:destination_cluster_id].to_i]
+        ).slice(*OZON_COLUMNS, :operator_ids)
       end
       rows.select! { |row| statuses.include?(row[:status].to_s) } if statuses.any?
       filter_rows(rows).sort_by { |row| [-(row[:created_at]&.to_i || 0), row[:supply_id].to_s, row[:platform_item_id].to_s] }
+    end
+
+    def ozon_supply_rows(scope)
+      scope.includes(:supply_order_items).flat_map do |order|
+        raw = order.raw_json || {}
+        order.supply_order_items.map do |item|
+          {
+            order_number: raw["order_number"], supply_id: item.ozon_supply_id, status: item.state.presence || order.status,
+            platform_item_id: item.platform_sku_id.to_s, quantity: item.quantity,
+            created_at: order.created_at, timeslot: order.timeslot,
+            origin_warehouse: raw.dig("drop_off_warehouse", "name"),
+            destination_warehouse: item.storage_warehouse_name,
+            state_updated_at: raw["state_updated_date"], synced_at: item.synced_at,
+            parent_supply_order_id: order.supply_order_id, bundle_id: item.bundle_id,
+            destination_cluster_id: item.macrolocal_cluster_id, destination_warehouse_id: item.storage_warehouse_id
+          }
+        end
+      end
     end
   end
 end

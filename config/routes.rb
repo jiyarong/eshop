@@ -47,6 +47,7 @@ Rails.application.routes.draw do
         post :cancel
         post :bind
         post :refresh
+        get :supply_orders
       end
     end
   end
