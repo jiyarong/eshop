@@ -20,7 +20,7 @@ class ReportsController < ApplicationController
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
-  before_action -> { require_permission!(:manage_skus) }, only: %i[create_sku_profit_version update_sku_profit_version set_current_sku_profit_version]
+  before_action -> { require_permission!(:manage_skus) }, only: %i[create_sku_profit_version update_sku_profit_version set_current_sku_profit_version update_sku_scenario_visibility]
   before_action -> { require_permission!(:manage_skus) }, only: %i[
     create_sku_attachment
     edit_sku_attachment
@@ -51,7 +51,7 @@ class ReportsController < ApplicationController
     new_sku_general_diagnosis create_sku_general_diagnosis create_sku_planner ignore_sku_ai_diagnosis_event
     sku_profit_versions sku_actual_logistics sku_actual_return_rate sku_actual_storage
     sku_actual_selling_price sku_actual_advertising sku_actual_acquiring sku_official_commission_rate preview_sku_profit
-    create_sku_profit_version update_sku_profit_version set_current_sku_profit_version sku_listing_diagnoses new_sku_listing_diagnosis
+    create_sku_profit_version update_sku_profit_version set_current_sku_profit_version update_sku_scenario_visibility sku_listing_diagnoses new_sku_listing_diagnosis
     create_sku_listing_diagnosis destroy_sku_competitor_data_batch destroy_sku_competitor_datum
     sku_profit_trend sku_sales_funnel_trends new_sku_predicted_cost create_sku_predicted_cost
     create_sku_attachment edit_sku_attachment update_sku_attachment download_sku_attachment
@@ -659,6 +659,19 @@ class ReportsController < ApplicationController
     render json: { errors: e.record.errors.to_hash }, status: :unprocessable_entity
   rescue ActiveRecord::RecordNotFound
     render json: { errors: { base: ["not_found"] } }, status: :not_found
+  end
+
+  # Hide or restore one pricing scenario for the SKU. A view choice shared by everybody: it never
+  # touches a version, so it is allowed on archived versions too.
+  def update_sku_scenario_visibility
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    identity = params.permit(*Ec::SkuScenarioVisibility::IDENTITY_KEYS).to_h
+    record = Ec::SkuScenarioVisibility.set!(
+      sku: sku, identity: identity, hidden: ActiveModel::Type::Boolean.new.cast(params[:hidden]), user: current_user
+    )
+    render json: { key: Ec::SkuScenarioVisibility.key_for(record), hidden: record.hidden }
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.to_hash }, status: :unprocessable_entity
   end
 
   def sku_listing_diagnoses
@@ -1348,6 +1361,8 @@ class ReportsController < ApplicationController
       end
       @profit_version ||= build_standard_profit_version
       load_ozon_logistics_tariff_options
+      @hidden_scenario_keys = Ec::SkuScenarioVisibility.hidden_keys_for(@sku)
+      @scenario_sales = load_scenario_sales
     end
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     @prototype_media = @attachments.reverse.find do |attachment|
@@ -2631,6 +2646,15 @@ class ReportsController < ApplicationController
     )
     Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: user_today)
     version
+  end
+
+  # Signed units per scenario for the scenario bar. The marks and the missed-scenario banner are
+  # an aid: when the figures cannot be built the page still opens, without them.
+  def load_scenario_sales
+    Ec::SkuScenarioSales.call(sku: @sku, today: user_today, time_zone: user_time_zone)
+  rescue StandardError => e
+    Rails.logger.warn("[ReportsController] scenario sales failed for #{@sku.sku_code}: #{e.class} #{e.message}")
+    nil
   end
 
   def load_ozon_logistics_tariff_options

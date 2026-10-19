@@ -132,6 +132,7 @@ Rails.application.routes.draw do
   patch "reports/skus/:sku_code/profit_scenarios/:id" => "reports#update_sku_profit_version"
   delete "reports/skus/:sku_code/competitor_data_batches/:batch_id" => "reports#destroy_sku_competitor_data_batch", as: :report_sku_competitor_data_batch
   get "reports/skus/:sku_code/actual_acquiring" => "reports#sku_actual_acquiring", as: :report_sku_actual_acquiring
+  patch "reports/skus/:sku_code/scenario_visibility" => "reports#update_sku_scenario_visibility", as: :report_sku_scenario_visibility
   delete "reports/skus/:sku_code/competitor_data_batches/:batch_id/data/:competitor_datum_id" => "reports#destroy_sku_competitor_datum", as: :report_sku_competitor_datum
   post "reports/skus/:sku_code/attachments" => "reports#create_sku_attachment", as: :report_sku_attachments
   get "reports/skus/:sku_code/attachments/:attachment_id/edit" => "reports#edit_sku_attachment", as: :edit_report_sku_attachment

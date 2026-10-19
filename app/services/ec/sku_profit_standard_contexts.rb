@@ -10,6 +10,20 @@ module Ec
       { "platform" => "ozon", "market" => "by", "delivery_mode" => "fbo", "warehouse_region" => "main", "company_type" => "general" }
     ].map(&:freeze).freeze
     SCENARIO_INDEX = SCENARIOS.each_with_index.to_h.freeze
+    DEFAULT_WAREHOUSE_REGION = "main".freeze
+
+    # "wb|ru|fbo|main|general": one string per scenario, for hashes, DOM ids and URLs.
+    def self.key_for(attributes)
+      IDENTITY_KEYS.map do |key|
+        value = attributes[key] || attributes[key.to_sym]
+        value = DEFAULT_WAREHOUSE_REGION if key == "warehouse_region" && value.blank?
+        value.to_s.downcase
+      end.join("|")
+    end
+
+    def self.scenario_keys
+      SCENARIOS.map { |attributes| key_for(attributes) }
+    end
 
     def self.build_missing(version, sku: version.sku, effective_on: version.effective_from || Date.current)
       SCENARIOS.filter_map do |attributes|

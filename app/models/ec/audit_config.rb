@@ -186,6 +186,15 @@ module Ec
         note
         is_current
       ],
+      "Ec::SkuScenarioVisibility" => %w[
+        sku_id
+        platform
+        market
+        delivery_mode
+        warehouse_region
+        company_type
+        hidden
+      ],
       "Ec::SkuProfitVersionContext" => %w[
         sku_profit_version_id
         platform

@@ -10,6 +10,9 @@ import {
   targetPriceForMargin
 } from "./profit_prediction_values";
 import { buildCalculationSteps, formulaTokenName, formulaTokenText, isOperator } from "./profit_prediction_formula";
+import {
+  fill, hiddenScenarios, missedScenarios, missedSummary, scenarioWarning
+} from "./profit_prediction_scenarios";
 
 const PREVIEW_DEBOUNCE_MS = 350;
 
@@ -68,6 +71,8 @@ export default class extends Controller {
     versionId: Number,
     setCurrentUrl: String,
     incompleteCount: Number,
+    scenarioState: Object,
+    scenarioVisibilityUrl: String,
     officialCommissionUrl: String,
     messages: Object,
     newRecord: Boolean,
@@ -80,6 +85,12 @@ export default class extends Controller {
     "input",
     "platformFilter",
     "scenarioTab",
+    "scenarioTabItem",
+    "scenarioBanner",
+    "scenarioNote",
+    "scenarioRestore",
+    "scenarioMenu",
+    "tableHiddenNote",
     "viewTab",
     "tableView",
     "calculatorView",
@@ -166,6 +177,10 @@ export default class extends Controller {
     this.captureSnapshot();
     this.beforeUnloadHandler = (event) => this.handleBeforeUnload(event);
     this.beforeVisitHandler = (event) => this.handleBeforeVisit(event);
+    this.scenarios = this.hasScenarioStateValue && this.scenarioStateValue.scenarios
+      ? JSON.parse(JSON.stringify(this.scenarioStateValue))
+      : null;
+    this.closeScenarioMenuHandler = (event) => this.closeScenarioMenuOnOutsideEvent(event);
     window.addEventListener("beforeunload", this.beforeUnloadHandler);
     document.addEventListener("turbo:before-visit", this.beforeVisitHandler);
 
@@ -187,6 +202,7 @@ export default class extends Controller {
     }
     this.setCalculationMode(true);
     this.applyPlatformFilter();
+    this.renderScenarios();
     this.setViewMode(this.storedViewMode());
 
     if (!this.selectedRow && this.visibleRows()[0]) this.setSelectedRow(this.visibleRows()[0]);
@@ -207,6 +223,7 @@ export default class extends Controller {
     this.targetMarginRequestController?.abort();
     window.removeEventListener("beforeunload", this.beforeUnloadHandler);
     document.removeEventListener("turbo:before-visit", this.beforeVisitHandler);
+    this.closeScenarioMenu();
   }
 
   inputChanged(event) {
@@ -405,7 +422,7 @@ export default class extends Controller {
     if (!keys.includes(event.key)) return;
 
     event.preventDefault();
-    const tabs = this.scenarioTabTargets;
+    const tabs = this.scenarioTabTargets.filter((tab) => !tab.closest("[data-scenario-key]")?.hidden);
     const currentIndex = tabs.indexOf(event.currentTarget);
     let nextIndex = currentIndex;
     if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
@@ -418,6 +435,221 @@ export default class extends Controller {
 
     tab.focus();
     this.activateScenarioTab(tab);
+  }
+
+  // ── Scenario visibility ────────────────────────────────────────────────────────────────────
+  // A scenario can be hidden per SKU (shared by everybody, saved at once, not part of the
+  // version). The marks, the missed-scenario banner and the restore list are drawn from
+  // `this.scenarios`, so they follow every change without asking the server.
+  renderScenarios() {
+    const state = this.scenarios;
+    if (!state) return;
+
+    const messages = this.messagesValue.scenarios || {};
+    state.scenarios.forEach((scenario) => {
+      const item = this.scenarioTabItemTargets.find((candidate) => candidate.dataset.scenarioKey === scenario.key);
+      if (!item) return;
+
+      item.hidden = Boolean(scenario.hidden);
+      const warning = item.querySelector("[data-scenario-warning]");
+      if (!warning) return;
+      const warn = scenarioWarning(state, scenario);
+      warning.hidden = !warn;
+      warning.title = warn
+        ? fill(messages.warning, { weeks: state.weeks, units: scenario.units ?? 0, min: state.min_units })
+        : "";
+    });
+
+    const hidden = hiddenScenarios(state);
+    if (this.hasScenarioRestoreTarget) {
+      this.scenarioRestoreTarget.hidden = hidden.length === 0;
+      const count = this.scenarioRestoreTarget.querySelector("[data-scenario-restore-count]");
+      if (count) count.textContent = hidden.length ? String(hidden.length) : "";
+    }
+    if (this.hasTableHiddenNoteTarget) {
+      this.tableHiddenNoteTarget.hidden = hidden.length === 0;
+      const button = this.tableHiddenNoteTarget.querySelector("button");
+      if (button) button.textContent = fill(messages.table_hidden || "", { count: hidden.length });
+    }
+    this.renderScenarioBanner(state, messages);
+  }
+
+  renderScenarioBanner(state, messages) {
+    if (this.hasScenarioBannerTarget) {
+      const summary = missedSummary(state);
+      this.scenarioBannerTarget.hidden = summary.count === 0;
+      if (summary.count > 0) {
+        const text = document.createElement("span");
+        text.textContent = fill(messages.missed, {
+          count: summary.count, weeks: state.weeks, units: summary.units, share: summary.share, labels: summary.labels
+        });
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-ghost btn-sm";
+        button.dataset.action = "profit-prediction#restoreMissedScenarios";
+        button.textContent = messages.restore_one;
+        this.scenarioBannerTarget.replaceChildren(text, button);
+      } else {
+        this.scenarioBannerTarget.replaceChildren();
+      }
+    }
+
+    if (this.hasScenarioNoteTarget) {
+      const outside = Number(state.outside_units || 0);
+      const show = Boolean(state.measured) && outside > 0;
+      this.scenarioNoteTarget.hidden = !show;
+      this.scenarioNoteTarget.textContent = show ? fill(messages.outside, { units: outside }) : "";
+    }
+  }
+
+  // Marks the rows and tabs, re-applies the platform filter (which also moves the selection off a
+  // hidden scenario) and refreshes what depends on the visible set.
+  applyScenarioVisibility() {
+    const state = this.scenarios;
+    if (!state) return;
+
+    this.rowTargets.forEach((row) => {
+      const scenario = state.scenarios.find((candidate) => candidate.row_key === row.dataset.rowKey);
+      row.dataset.scenarioHidden = scenario?.hidden ? "true" : "false";
+    });
+    this.applyPlatformFilter();
+    this.renderScenarios();
+    this.syncIncompleteCount();
+  }
+
+  // The "not finished" count behind the set-as-current confirmation ignores hidden scenarios.
+  syncIncompleteCount() {
+    if (!this.versionIdValue) return;
+
+    this.incompleteCountValue = this.rowTargets.filter((row) => (
+      row.dataset.scenarioHidden !== "true" && row.dataset.calculationStatus !== "valid"
+    )).length;
+  }
+
+  async setScenarioHidden(key, hidden) {
+    const scenario = this.scenarios?.scenarios.find((candidate) => candidate.key === key);
+    if (!scenario || Boolean(scenario.hidden) === hidden) return;
+
+    scenario.hidden = hidden;
+    this.applyScenarioVisibility();
+    try {
+      const response = await fetch(this.scenarioVisibilityUrlValue, {
+        method: "PATCH",
+        headers: this.jsonHeaders(),
+        body: JSON.stringify({ ...scenario.identity, hidden })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      scenario.hidden = !hidden;
+      this.applyScenarioVisibility();
+      this.showModeMessage(this.messagesValue.scenarios?.save_failed || "");
+    }
+  }
+
+  restoreMissedScenarios() {
+    if (!this.scenarios) return;
+
+    missedScenarios(this.scenarios).forEach((scenario) => this.setScenarioHidden(scenario.key, false));
+  }
+
+  toggleScenarioMenu(event) {
+    event.stopPropagation();
+    const key = event.currentTarget.closest("[data-scenario-key]")?.dataset.scenarioKey;
+    const scenario = this.scenarios?.scenarios.find((candidate) => candidate.key === key);
+    if (!scenario) return;
+
+    if (this.openScenarioMenuFor === event.currentTarget) {
+      this.closeScenarioMenu();
+      return;
+    }
+
+    const messages = this.messagesValue.scenarios || {};
+    this.openScenarioMenu(event.currentTarget, [
+      { info: this.scenarioSalesLine(scenario) },
+      { text: messages.hide, action: () => this.setScenarioHidden(key, true) }
+    ]);
+  }
+
+  toggleRestoreMenu(event) {
+    event.stopPropagation();
+    if (!this.scenarios) return;
+
+    if (this.openScenarioMenuFor === event.currentTarget) {
+      this.closeScenarioMenu();
+      return;
+    }
+
+    const messages = this.messagesValue.scenarios || {};
+    const hidden = hiddenScenarios(this.scenarios);
+    const entries = hidden.map((scenario) => ({
+      text: `${scenario.label} · ${this.scenarioSalesLine(scenario)}`,
+      action: () => this.setScenarioHidden(scenario.key, false)
+    }));
+    if (hidden.length > 1) {
+      entries.push({ text: messages.restore_all, action: () => hidden.forEach((scenario) => this.setScenarioHidden(scenario.key, false)) });
+    }
+    this.openScenarioMenu(event.currentTarget, entries);
+  }
+
+  scenarioSalesLine(scenario) {
+    const messages = this.messagesValue.scenarios || {};
+    const state = this.scenarios;
+    if (!state.measured) return messages.unmeasured;
+    if (!Number(scenario.units)) return fill(messages.sales_none, { weeks: state.weeks });
+
+    return fill(messages.sales_line, {
+      weeks: state.weeks, units: scenario.units, orders: scenario.orders ?? 0, date: scenario.last_date || "-"
+    });
+  }
+
+  openScenarioMenu(anchor, entries) {
+    if (!this.hasScenarioMenuTarget || entries.length === 0) return;
+
+    const menu = this.scenarioMenuTarget;
+    menu.replaceChildren(...entries.map((entry) => {
+      if (entry.info !== undefined) {
+        const info = document.createElement("div");
+        info.className = "profit-prediction-scenario-menu__info";
+        info.textContent = entry.info;
+        return info;
+      }
+      const button = document.createElement("button");
+      button.type = "button";
+      button.setAttribute("role", "menuitem");
+      button.className = "profit-prediction-scenario-menu__item";
+      button.textContent = entry.text;
+      button.addEventListener("click", () => {
+        this.closeScenarioMenu();
+        entry.action();
+      });
+      return button;
+    }));
+    const box = anchor.getBoundingClientRect();
+    menu.style.top = `${Math.round(box.bottom + 4)}px`;
+    menu.style.left = `${Math.round(Math.max(8, Math.min(box.left, window.innerWidth - 320)))}px`;
+    menu.hidden = false;
+    this.openScenarioMenuFor = anchor;
+    anchor.setAttribute("aria-expanded", "true");
+    document.addEventListener("click", this.closeScenarioMenuHandler, true);
+    document.addEventListener("keydown", this.closeScenarioMenuHandler, true);
+    window.addEventListener("resize", this.closeScenarioMenuHandler);
+  }
+
+  closeScenarioMenu() {
+    if (this.hasScenarioMenuTarget) this.scenarioMenuTarget.hidden = true;
+    this.openScenarioMenuFor?.setAttribute("aria-expanded", "false");
+    this.openScenarioMenuFor = null;
+    document.removeEventListener("click", this.closeScenarioMenuHandler, true);
+    document.removeEventListener("keydown", this.closeScenarioMenuHandler, true);
+    window.removeEventListener("resize", this.closeScenarioMenuHandler);
+  }
+
+  closeScenarioMenuOnOutsideEvent(event) {
+    if (event.type === "keydown" && event.key !== "Escape") return;
+    // A click on the button that opened the menu is its own toggle; a click inside the menu is a choice.
+    if (event.type === "click" && (this.scenarioMenuTarget.contains(event.target) || this.openScenarioMenuFor?.contains(event.target))) return;
+
+    this.closeScenarioMenu();
   }
 
   // Two mutually exclusive views over the same scenario rows: the calculator (default) and the
@@ -503,7 +735,7 @@ export default class extends Controller {
   applyPlatformFilter() {
     const filter = this.platformFilter;
     this.rowTargets.forEach((row) => {
-      row.hidden = Boolean(filter) && row.dataset.platform !== filter;
+      row.hidden = row.dataset.scenarioHidden === "true" || (Boolean(filter) && row.dataset.platform !== filter);
     });
 
     const tables = [
@@ -518,7 +750,7 @@ export default class extends Controller {
       const template = filter ? this.messagesValue.filteredContextCount : this.messagesValue.contextCount;
       this.contextCountTarget.textContent = template
         .replace("__VISIBLE__", visibleRows.length)
-        .replace("__TOTAL__", this.rowTargets.length)
+        .replace("__TOTAL__", this.rowTargets.filter((row) => row.dataset.scenarioHidden !== "true").length)
         .replace("__COUNT__", visibleRows.length)
         .replace("%{count}", visibleRows.length);
     }

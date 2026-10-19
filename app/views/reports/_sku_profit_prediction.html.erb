@@ -3,7 +3,11 @@
 <% profit_version_readonly = @profit_version.persisted? && @profit_version.archived? %>
 <% save_url = profit_version_new ? report_sku_profit_versions_path(@sku.sku_code) : report_sku_profit_version_path(@sku.sku_code, @profit_version) %>
 <% profit_version_options = @profit_versions.to_a.partition(&:is_current?).flatten %>
-<% incomplete_context_count = @profit_version.persisted? ? @profit_version.contexts.count { |context| context.calculation_status != "valid" } : 0 %>
+<% hidden_scenario_keys = @hidden_scenario_keys || Set.new %>
+<% scenario_key = ->(context) { Ec::SkuProfitStandardContexts.key_for(context.attributes.slice(*Ec::SkuProfitStandardContexts::IDENTITY_KEYS)) } %>
+<% scenario_state = profit_prediction_scenario_state(profit_contexts, sales: @scenario_sales, hidden_keys: hidden_scenario_keys) %>
+<%# A hidden scenario is not "left unfinished": it is not counted before a version is made current. %>
+<% incomplete_context_count = @profit_version.persisted? ? @profit_version.contexts.count { |context| context.calculation_status != "valid" && !hidden_scenario_keys.include?(scenario_key.(context)) } : 0 %>
 <% warning_fields = %i[fbo_delivery_cny storage_cny acquiring_rate advertising_rate damage_rate misc_cny other_cny] %>
 <% profit_messages = {
   calculating: t("reports.profit_prediction.status.calculating"),
@@ -28,6 +32,21 @@
   warnings: warning_fields.index_with do |field|
     t("reports.profit_prediction.warnings.not_included", field: t("reports.profit_prediction.fields.#{field}"))
   end.transform_keys { |field| "#{field}_not_included" },
+  scenarios: {
+    hide: t("reports.profit_prediction.scenarios.hide"),
+    menu_label: t("reports.profit_prediction.scenarios.menu_label"),
+    restore_label: t("reports.profit_prediction.scenarios.restore_label"),
+    restore_one: t("reports.profit_prediction.scenarios.restore_one"),
+    restore_all: t("reports.profit_prediction.scenarios.restore_all"),
+    sales_line: t("reports.profit_prediction.scenarios.sales_line", weeks: "__WEEKS__", units: "__UNITS__", orders: "__ORDERS__", date: "__DATE__"),
+    sales_none: t("reports.profit_prediction.scenarios.sales_none", weeks: "__WEEKS__"),
+    unmeasured: t("reports.profit_prediction.scenarios.unmeasured"),
+    warning: t("reports.profit_prediction.scenarios.warning", weeks: "__WEEKS__", units: "__UNITS__", min: "__MIN__"),
+    missed: t("reports.profit_prediction.scenarios.missed", count: "__COUNT__", weeks: "__WEEKS__", units: "__UNITS__", share: "__SHARE__", labels: "__LABELS__"),
+    outside: t("reports.profit_prediction.scenarios.outside", units: "__UNITS__"),
+    table_hidden: t("reports.profit_prediction.scenarios.table_hidden", count: "__COUNT__"),
+    save_failed: t("reports.profit_prediction.scenarios.save_failed")
+  },
   process: {
     incomplete: t("reports.profit_prediction.process.incomplete"),
     incomplete_fields: t("reports.profit_prediction.process.incomplete_fields", fields: "__FIELDS__"),
@@ -225,6 +244,8 @@
   <% end %>
   data-profit-prediction-official-commission-url-value="<%= report_sku_official_commission_rate_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-messages-value="<%= json_escape(profit_messages.to_json) %>"
+  data-profit-prediction-scenario-state-value="<%= json_escape(scenario_state.to_json) %>"
+  data-profit-prediction-scenario-visibility-url-value="<%= report_sku_scenario_visibility_path(@sku.sku_code) %>"
   data-profit-prediction-new-record-value="<%= profit_version_new %>"
   data-profit-prediction-status-value="<%= @profit_version.status %>"
   data-profit-prediction-readonly-value="<%= profit_version_readonly %>"
@@ -333,6 +354,10 @@
     </div>
   <% end %>
 
+  <%# Filled in by the controller: hidden scenarios that carry sales, and sales outside the known scenarios. %>
+  <div class="profit-prediction-alert profit-prediction-alert--warning" role="alert" data-profit-prediction-target="scenarioBanner" hidden></div>
+  <p class="profit-prediction-scenario-note" data-profit-prediction-target="scenarioNote" hidden></p>
+
   <% if @sku.dimension.blank? %>
     <div class="profit-prediction-alert" role="alert">
       <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
@@ -391,10 +416,14 @@
           <tbody>
             <% profit_contexts.each_with_index do |context, index| %>
               <% row_key = context.id || "new-#{index}" %>
+              <% scenario_hidden = hidden_scenario_keys.include?(scenario_key.(context)) %>
               <tr
                 class="profit-prediction-row"
                 data-profit-prediction-target="row"
                 data-row-key="<%= row_key %>"
+                data-scenario-key="<%= scenario_key.(context) %>"
+                data-scenario-hidden="<%= scenario_hidden %>"
+                <%= "hidden" if scenario_hidden %>
                 data-context-id="<%= context.id %>"
                 data-platform="<%= context.platform %>"
                 data-market="<%= context.market %>"
@@ -462,6 +491,9 @@
           </tbody>
         </table>
       <% end %>
+      <p class="profit-prediction-table-hidden-note" data-profit-prediction-target="tableHiddenNote" hidden>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="profit-prediction#toggleRestoreMenu"></button>
+      </p>
     </section>
   </div>
 
@@ -472,30 +504,61 @@
         role="tablist"
         aria-label="<%= t("reports.profit_prediction.process.scenario_tabs_label") %>"
       >
+        <% first_visible_index = profit_contexts.index { |context| !hidden_scenario_keys.include?(scenario_key.(context)) } %>
         <% profit_contexts.each_with_index do |context, index| %>
           <% row_key = context.id || "new-#{index}" %>
-          <button
-            type="button"
-            class="profit-prediction-process__scenario-tab<%= " is-active" if index.zero? %>"
-            role="tab"
-            aria-selected="<%= index.zero? %>"
-            tabindex="<%= index.zero? ? 0 : -1 %>"
-            title="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.map { |field| profit_prediction_identity_value(context, field) }.join(" · ") %>"
-            data-profit-prediction-target="scenarioTab"
+          <% scenario_hidden = hidden_scenario_keys.include?(scenario_key.(context)) %>
+          <% first_tab = index == first_visible_index %>
+          <div
+            class="profit-prediction-process__scenario-item"
+            data-profit-prediction-target="scenarioTabItem"
             data-row-key="<%= row_key %>"
-            data-action="click->profit-prediction#selectScenarioTab keydown->profit-prediction#selectScenarioTabWithKeyboard"
+            data-scenario-key="<%= scenario_key.(context) %>"
+            <%= "hidden" if scenario_hidden %>
           >
-            <span class="profit-prediction-process__scenario-tab-primary">
-              <%= profit_prediction_identity_value(context, :platform) %>
-              <%= profit_prediction_identity_value(context, :market) %>
-            </span>
-            <span class="profit-prediction-process__scenario-tab-secondary">
-              <%= profit_prediction_identity_value(context, :delivery_mode) %>
-              &middot;
-              <%= profit_prediction_identity_value(context, :company_type) %>
-            </span>
-          </button>
+            <button
+              type="button"
+              class="profit-prediction-process__scenario-tab<%= " is-active" if first_tab %>"
+              role="tab"
+              aria-selected="<%= first_tab %>"
+              tabindex="<%= first_tab ? 0 : -1 %>"
+              title="<%= SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.map { |field| profit_prediction_identity_value(context, field) }.join(" · ") %>"
+              data-profit-prediction-target="scenarioTab"
+              data-row-key="<%= row_key %>"
+              data-action="click->profit-prediction#selectScenarioTab keydown->profit-prediction#selectScenarioTabWithKeyboard"
+            >
+              <span class="profit-prediction-process__scenario-tab-primary">
+                <%= profit_prediction_identity_value(context, :platform) %>
+                <%= profit_prediction_identity_value(context, :market) %>
+              </span>
+              <span class="profit-prediction-process__scenario-tab-secondary">
+                <%= profit_prediction_identity_value(context, :delivery_mode) %>
+                &middot;
+                <%= profit_prediction_identity_value(context, :company_type) %>
+              </span>
+            </button>
+            <i class="bi bi-exclamation-triangle-fill profit-prediction-process__scenario-warning" data-scenario-warning hidden aria-hidden="true"></i>
+            <button
+              type="button"
+              class="profit-prediction-process__scenario-menu-button"
+              aria-haspopup="menu"
+              aria-label="<%= t("reports.profit_prediction.scenarios.menu_label") %>"
+              data-row-key="<%= row_key %>"
+              data-action="click->profit-prediction#toggleScenarioMenu"
+            ><i class="bi bi-three-dots" aria-hidden="true"></i></button>
+          </div>
         <% end %>
+        <button
+          type="button"
+          class="profit-prediction-process__scenario-restore"
+          aria-haspopup="menu"
+          aria-label="<%= t("reports.profit_prediction.scenarios.restore_label") %>"
+          title="<%= t("reports.profit_prediction.scenarios.restore_label") %>"
+          data-profit-prediction-target="scenarioRestore"
+          data-action="click->profit-prediction#toggleRestoreMenu"
+          hidden
+        ><i class="bi bi-plus-lg" aria-hidden="true"></i><span data-scenario-restore-count></span></button>
+        <div class="profit-prediction-scenario-menu" role="menu" data-profit-prediction-target="scenarioMenu" hidden></div>
       </nav>
       <div class="profit-prediction-process__header-content">
         <h3 id="profit-prediction-process-title"><%= t("reports.profit_prediction.process.title") %></h3>

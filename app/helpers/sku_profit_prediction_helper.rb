@@ -102,6 +102,39 @@ module SkuProfitPredictionHelper
     ]
   end
 
+  # What the scenario bar needs: per scenario its key, label, whether it is hidden and its signed
+  # units over the window. `sales` can be nil (the figures could not be built): the bar then shows
+  # the scenarios without marks. The marks and the missed-scenario banner are decided in the
+  # browser from these figures and the thresholds, so hiding or restoring needs no round trip.
+  def profit_prediction_scenario_state(contexts, sales:, hidden_keys:)
+    identity_keys = Ec::SkuProfitStandardContexts::IDENTITY_KEYS
+    {
+      min_units: Ec::SkuScenarioSales::MIN_UNITS,
+      missed_share_percent: Ec::SkuScenarioSales::MISSED_SHARE_PERCENT,
+      weeks: Ec::SkuScenarioSales::WEEKS,
+      measured: sales.present?,
+      from_date: sales&.dig(:from_date)&.iso8601,
+      to_date: sales&.dig(:to_date)&.iso8601,
+      total_units: sales&.dig(:total_units),
+      outside_units: sales&.dig(:outside_units).to_i,
+      unclassified_units: sales&.dig(:unclassified_units).to_i,
+      scenarios: contexts.each_with_index.map do |context, index|
+        key = Ec::SkuProfitStandardContexts.key_for(context.attributes.slice(*identity_keys))
+        figures = sales&.dig(:scenarios, key)
+        {
+          key: key,
+          row_key: (context.id || "new-#{index}").to_s,
+          identity: context.attributes.slice(*identity_keys),
+          label: SkuProfitPredictionHelper::PROFIT_IDENTITY_COLUMNS.map { |field| profit_prediction_identity_value(context, field) }.join(" · "),
+          hidden: hidden_keys.include?(key),
+          units: figures&.dig(:units),
+          orders: figures&.dig(:orders),
+          last_date: figures&.dig(:last_date)&.iso8601
+        }
+      end
+    }
+  end
+
   def profit_prediction_table_groups
     PROFIT_TABLE_GROUPS
   end

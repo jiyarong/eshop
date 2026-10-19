@@ -10017,8 +10017,7 @@ thead .table-sticky-column {
 }
 
 .profit-prediction-process__scenario-tabs {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(118px, 1fr));
+  display: flex;
   gap: 4px;
   margin: 0 -1px 10px;
   padding: 6px 1px;
@@ -10026,6 +10025,155 @@ thead .table-sticky-column {
   border-bottom: 1px solid var(--border);
   background: var(--gray-50);
   scrollbar-width: thin;
+}
+
+.profit-prediction-process__scenario-item {
+  position: relative;
+  display: grid;
+  flex: 1 1 118px;
+  min-width: 118px;
+}
+
+.profit-prediction-process__scenario-item[hidden] {
+  display: none;
+}
+
+.profit-prediction-process__scenario-item .profit-prediction-process__scenario-tab {
+  padding-right: 26px;
+}
+
+.profit-prediction-process__scenario-menu-button {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  opacity: .6;
+}
+
+.profit-prediction-process__scenario-menu-button:hover,
+.profit-prediction-process__scenario-menu-button:focus-visible,
+.profit-prediction-process__scenario-menu-button[aria-expanded="true"] {
+  background: var(--gray-100, #eef1f5);
+  opacity: 1;
+}
+
+.profit-prediction-process__scenario-warning {
+  position: absolute;
+  top: 5px;
+  right: 26px;
+  color: #b7791f;
+  cursor: help;
+  font-size: 12px;
+}
+
+.profit-prediction-process__scenario-warning[hidden] {
+  display: none;
+}
+
+.profit-prediction-process__scenario-restore {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  align-self: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.profit-prediction-process__scenario-restore[hidden] {
+  display: none;
+}
+
+.profit-prediction-process__scenario-restore:hover,
+.profit-prediction-process__scenario-restore[aria-expanded="true"] {
+  border-color: var(--color-primary);
+  color: var(--fg);
+}
+
+.profit-prediction-scenario-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--erp-surface, #fff);
+  box-shadow: 0 8px 20px rgba(24, 34, 53, .16);
+}
+
+.profit-prediction-scenario-menu[hidden] {
+  display: none;
+}
+
+.profit-prediction-scenario-menu__info {
+  padding: 6px 8px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.profit-prediction-scenario-menu__item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.profit-prediction-scenario-menu__item:hover,
+.profit-prediction-scenario-menu__item:focus-visible {
+  background: var(--gray-100, #eef1f5);
+}
+
+.profit-prediction-alert--warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-color: #f3c77b;
+  background: #fff8e6;
+  color: #8a5200;
+}
+
+.profit-prediction-alert--warning[hidden] {
+  display: none;
+}
+
+.profit-prediction-scenario-note {
+  margin: 4px 0 8px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.profit-prediction-scenario-note[hidden],
+.profit-prediction-table-hidden-note[hidden] {
+  display: none;
+}
+
+.profit-prediction-table-hidden-note {
+  margin: 6px 0 0;
 }
 
 .profit-prediction-process__scenario-tab {
