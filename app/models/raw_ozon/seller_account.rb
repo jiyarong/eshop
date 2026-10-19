@@ -32,5 +32,6 @@ module RawOzon
     has_many :posting_report_items,   class_name: 'RawOzon::PostingReportItem',    foreign_key: :account_id, dependent: :destroy
     has_many :sync_tasks,             class_name: 'RawOzon::SyncTask',             foreign_key: :account_id, dependent: :destroy
     has_many :warehouse_clusters,      class_name: 'RawOzon::WarehouseCluster',     foreign_key: :account_id, dependent: :destroy
+    has_many :ozon_listing_publications, class_name: 'Ec::OzonListingPublication', foreign_key: :account_id, dependent: :destroy
   end
 end

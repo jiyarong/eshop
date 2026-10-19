@@ -14,6 +14,7 @@ module Ec
 
     has_many :orders, class_name: "Ec::Order", foreign_key: :store_id, dependent: :restrict_with_error
     has_many :sku_products, class_name: "Ec::SkuProduct", foreign_key: :store_id, dependent: :restrict_with_error
+    has_many :ozon_listing_publications, class_name: "Ec::OzonListingPublication", foreign_key: :store_id, dependent: :restrict_with_error
 
     validates :platform,    presence: true
     validates :store_name,  presence: true

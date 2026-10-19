@@ -1,0 +1,173 @@
+<% listing_frame_id = "sku_detail_tab_ozon_listing" if @sku_detail_drawer %>
+<section class="panel sku-ozon-listing" data-testid="sku-ozon-listing">
+  <div class="table-section-header">
+    <div>
+      <p class="resource-eyebrow"><%= t("reports.sku_detail.ozon_listing.eyebrow") %></p>
+      <h2 class="section-title"><%= t("reports.sku_detail.ozon_listing.title") %></h2>
+    </div>
+    <% if @ozon_listing_stores.present? %>
+      <%= form_with url: report_sku_ozon_listing_drafts_path(@sku.sku_code, locale: params[:locale].presence), method: :post,
+                    scope: :ozon_listing, local: false,
+                    data: { turbo_frame: listing_frame_id }.compact,
+                    class: "sku-ozon-listing__draft-form" do |form| %>
+        <%= form.label :store_id, t("reports.sku_detail.ozon_listing.store") %>
+        <%= form.select :store_id,
+                        options_from_collection_for_select(@ozon_listing_stores, :id, :store_name, @ozon_listing_selected_store&.id),
+                        {}, required: true %>
+        <%= form.submit t("reports.sku_detail.ozon_listing.actions.generate_draft"), class: "button" %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if @ozon_listing_stores.blank? %>
+    <div class="empty-state"><%= t("reports.sku_detail.ozon_listing.no_stores") %></div>
+  <% else %>
+    <p class="form-hint"><%= t("reports.sku_detail.ozon_listing.manual_only") %></p>
+
+    <% if @ozon_listing_publications.present? %>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><%= t("reports.sku_detail.ozon_listing.publications.store") %></th>
+              <th><%= t("reports.sku_detail.ozon_listing.publications.offer_id") %></th>
+              <th><%= t("reports.sku_detail.ozon_listing.publications.state") %></th>
+              <th><%= t("reports.sku_detail.ozon_listing.publications.updated_at") %></th>
+              <th><%= t("reports.sku_detail.ozon_listing.publications.actions") %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @ozon_listing_publications.each do |publication| %>
+              <tr class="<%= "is-selected" if publication == @ozon_listing_selected_publication %>">
+                <td><%= publication.store.store_name %></td>
+                <td><%= publication.offer_id %></td>
+                <td><%= t("reports.sku_detail.ozon_listing.states.#{publication.state}", default: publication.state) %></td>
+                <td><%= display_time(publication.updated_at) %></td>
+                <td>
+                  <%= link_to t("reports.sku_detail.ozon_listing.actions.view"),
+                              report_sku_path(@sku.sku_code, tab: "ozon_listing", publication_id: publication.id, locale: params[:locale].presence),
+                              class: "button button-secondary",
+                              data: { turbo_frame: listing_frame_id }.compact %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% publication = @ozon_listing_selected_publication %>
+    <% if publication && @ozon_listing_payload %>
+      <% payload = @ozon_listing_payload %>
+      <section class="sku-ozon-listing__draft">
+        <div class="table-section-header">
+          <h3 class="section-title"><%= t("reports.sku_detail.ozon_listing.draft_title", id: publication.id) %></h3>
+          <span class="status-badge"><%= t("reports.sku_detail.ozon_listing.states.#{publication.state}", default: publication.state) %></span>
+        </div>
+
+        <dl class="definition-list">
+          <dt><%= t("reports.sku_detail.ozon_listing.fields.offer_id") %></dt>
+          <dd><%= report_value(payload[:offer_id]) %></dd>
+          <dt><%= t("reports.sku_detail.ozon_listing.fields.title") %></dt>
+          <dd><%= report_value(payload[:name]) %></dd>
+          <dt><%= t("reports.sku_detail.ozon_listing.fields.category") %></dt>
+          <dd><%= [payload.dig(:category, :description_category_id), payload.dig(:category, :type_id)].compact.join(" / ").presence || t("common.empty_value") %></dd>
+          <dt><%= t("reports.sku_detail.ozon_listing.fields.dimensions") %></dt>
+          <dd><%= [payload.dig(:dimensions, :length), payload.dig(:dimensions, :width), payload.dig(:dimensions, :height)].compact.join(" × ").presence || t("common.empty_value") %> <%= payload.dig(:dimensions, :unit) %></dd>
+          <dt><%= t("reports.sku_detail.ozon_listing.fields.weight") %></dt>
+          <dd><%= [payload[:weight], payload[:weight_unit]].compact.join(" ").presence || t("common.empty_value") %></dd>
+          <dt><%= t("reports.sku_detail.ozon_listing.fields.price") %></dt>
+          <dd><%= [payload.dig(:price, :price), payload.dig(:price, :currency_code) || payload[:currency_code]].compact.join(" ").presence || t("common.empty_value") %></dd>
+          <dt><%= t("reports.sku_detail.ozon_listing.fields.stock") %></dt>
+          <dd><%= payload[:stock].present? ? JSON.pretty_generate(payload[:stock]) : t("common.empty_value") %></dd>
+        </dl>
+
+        <div class="sku-ozon-listing__section">
+          <h4><%= t("reports.sku_detail.ozon_listing.fields.images") %></h4>
+          <% images = Array(payload[:images]).compact_blank %>
+          <% if images.present? %>
+            <ul>
+              <% images.each do |url| %>
+                <li>
+                  <% if url.to_s.start_with?("https://") %>
+                    <%= link_to url, url, target: "_blank", rel: "noreferrer" %>
+                  <% else %>
+                    <%= url %>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="empty-state"><%= t("common.empty_value") %></p>
+          <% end %>
+        </div>
+
+        <div class="sku-ozon-listing__section">
+          <h4><%= t("reports.sku_detail.ozon_listing.fields.attributes") %></h4>
+          <pre><%= JSON.pretty_generate((Array(payload[:attributes]) + Array(payload[:complex_attributes])).presence || []) %></pre>
+        </div>
+
+        <% if @ozon_listing_validation&.errors.present? %>
+          <div class="inline-alert inline-alert--danger">
+            <strong><%= t("reports.sku_detail.ozon_listing.validation_errors") %></strong>
+            <ul>
+              <% @ozon_listing_validation.errors.each do |error| %>
+                <li><%= [error[:field], error[:message], error[:remediation]].compact.join(" — ") %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        <% if @ozon_listing_validation&.warnings.present? %>
+          <div class="inline-alert inline-alert--warning">
+            <strong><%= t("reports.sku_detail.ozon_listing.validation_warnings") %></strong>
+            <ul>
+              <% @ozon_listing_validation.warnings.each do |warning| %>
+                <li><%= [warning[:field], warning[:message]].compact.join(" — ") %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <% if publication.last_error.present? || publication.error_details.present? %>
+          <div class="inline-alert inline-alert--danger">
+            <strong><%= t("reports.sku_detail.ozon_listing.platform_errors") %></strong>
+            <% if publication.last_error.present? %><p><%= publication.last_error %></p><% end %>
+            <% if publication.error_details.present? %><pre><%= JSON.pretty_generate(publication.error_details) %></pre><% end %>
+          </div>
+        <% end %>
+
+        <div class="form-actions">
+          <% if publication.draft? %>
+            <%= button_to t("reports.sku_detail.ozon_listing.actions.confirm"),
+                          confirm_report_sku_ozon_listing_path(@sku.sku_code, publication, locale: params[:locale].presence),
+                          method: :post, class: "button",
+                          form: { data: { turbo_frame: listing_frame_id }.compact } %>
+          <% elsif publication.confirmed? %>
+            <%= button_to t("reports.sku_detail.ozon_listing.actions.submit"),
+                          import_report_sku_ozon_listing_path(@sku.sku_code, publication, locale: params[:locale].presence),
+                          method: :post, class: "button",
+                          form: { data: { turbo_frame: listing_frame_id }.compact } %>
+          <% elsif publication.ready_for_price_stock? || publication.completed? %>
+            <%= button_to t("reports.sku_detail.ozon_listing.actions.submit_price_stock"),
+                          price_stock_report_sku_ozon_listing_path(@sku.sku_code, publication, locale: params[:locale].presence),
+                          method: :post, class: "button",
+                          form: { data: { turbo_frame: listing_frame_id }.compact } %>
+          <% end %>
+          <%= link_to t("reports.sku_detail.ozon_listing.actions.refresh"),
+                      report_sku_path(@sku.sku_code, tab: "ozon_listing", publication_id: publication.id, locale: params[:locale].presence),
+                      class: "button button-secondary",
+                      data: { turbo_frame: listing_frame_id }.compact %>
+        </div>
+
+        <% if publication.ozon_task_id.present? %>
+          <p class="form-hint"><%= t("reports.sku_detail.ozon_listing.task_id", id: publication.ozon_task_id) %></p>
+        <% end %>
+        <% if publication.product_id.present? || publication.platform_sku_id.present? %>
+          <p class="form-hint"><%= t("reports.sku_detail.ozon_listing.product_ids", product_id: publication.product_id.presence || t("common.empty_value"), platform_sku_id: publication.platform_sku_id.presence || t("common.empty_value")) %></p>
+        <% end %>
+      </section>
+    <% else %>
+      <div class="empty-state"><%= t("reports.sku_detail.ozon_listing.empty_publications") %></div>
+    <% end %>
+  <% end %>
+</section>

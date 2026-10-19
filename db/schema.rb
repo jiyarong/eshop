@@ -606,6 +606,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_042853) do
     t.index ["store_id"], name: "index_ec_orders_on_store_id"
   end
 
+  create_table "ec_ozon_listing_publications", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.integer "attempts", default: 0, null: false
+    t.datetime "completed_at"
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.jsonb "error_details", default: [], null: false
+    t.jsonb "final_image_urls", default: [], null: false
+    t.text "last_error"
+    t.string "offer_id", null: false
+    t.string "operation", default: "import", null: false
+    t.string "ozon_task_id"
+    t.jsonb "payload", default: {}, null: false
+    t.string "payload_checksum", null: false
+    t.string "platform_sku_id"
+    t.string "product_id"
+    t.string "request_id"
+    t.jsonb "response_json", default: {}, null: false
+    t.string "sku_code", null: false
+    t.string "state", default: "draft", null: false
+    t.bigint "store_id", null: false
+    t.datetime "submitted_at"
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "offer_id", "operation", "payload_checksum"], name: "idx_ozon_listing_publications_idempotency", unique: true
+    t.index ["account_id", "ozon_task_id"], name: "idx_on_account_id_ozon_task_id_e741142393"
+    t.index ["account_id"], name: "index_ec_ozon_listing_publications_on_account_id"
+    t.index ["store_id", "sku_code"], name: "index_ec_ozon_listing_publications_on_store_id_and_sku_code"
+    t.index ["store_id"], name: "index_ec_ozon_listing_publications_on_store_id"
+  end
+
   create_table "ec_pallet_items", force: :cascade do |t|
     t.integer "boxes", null: false
     t.datetime "created_at", null: false
@@ -3710,6 +3740,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_042853) do
   add_foreign_key "ec_order_source_links", "ec_order_items", column: "item_id"
   add_foreign_key "ec_order_source_links", "ec_orders", column: "order_id"
   add_foreign_key "ec_orders", "ec_stores", column: "store_id"
+  add_foreign_key "ec_ozon_listing_publications", "ec_skus", column: "sku_code", primary_key: "sku_code"
+  add_foreign_key "ec_ozon_listing_publications", "ec_stores", column: "store_id"
+  add_foreign_key "ec_ozon_listing_publications", "raw_ozon_seller_accounts", column: "account_id"
   add_foreign_key "ec_pallet_items", "ec_pallet_plan_items", column: "pallet_plan_item_id"
   add_foreign_key "ec_pallet_items", "ec_pallets", column: "pallet_id"
   add_foreign_key "ec_pallet_plan_items", "ec_pallet_plans", column: "pallet_plan_id"

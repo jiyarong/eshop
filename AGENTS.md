@@ -383,6 +383,15 @@ skus.group_by { |item| item.current_marketing_state.grade }.transform_values { |
 - 通用快照与每小时执行的 `Ec::SkuInventorySnapshotSync` 是两套不同机制，不要互相替代或混用。
 - 页面 GET 请求不得触发快照采集或写入；快照应由定时任务或明确的后台补跑执行。
 
+## Ozon 上架手动操作
+
+- Ozon 上架手动操作页面仍由 SKU 详情页承载，但当前不在详情页页签导航中展示；需要人工操作时通过 `tab=ozon_listing` 直接进入。页面只负责选择可见的 Ozon 店铺、生成本地草稿、查看校验结果、确认草稿、提交异步导入，以及在导入回读完成后提交价格和库存。
+- 草稿由 `Ec::OzonListingDraftBuilder` 生成，校验由 `Ec::OzonListingValidator` 执行，发布过程由 `Ec::OzonListingPublication` 记录。页面请求不得直接调用 Ozon API，也不得在 Controller、ERB 或 Stimulus 中保存平台凭证。
+- 所有外部写操作必须通过 `RawOzon::ListingClient` 和后台 Job 完成。只有 `confirmed` 状态的发布记录才能入队；导入任务完成并通过 `/v3/product/info/list` 回读后，才允许创建或更新 `Ec::SkuProduct`。
+- Ozon 绑定字段保持固定口径：`Ec::SkuProduct.product_id` 保存 Ozon product id，`platform_sku_id` 保存 Ozon SKU，`offer_id` 保存卖家 offer id。图片必须是公开 HTTPS URL；价格和库存只能在导入回读成功后写入。
+- 页面状态至少覆盖 `draft`、`confirmed`、`queued`、`pending`、`failed`、`ready_for_price_stock` 和 `completed`，并展示任务 ID、结构化校验错误、平台错误和回读后的商品 ID。
+- 不注册 Ozon 上架 MCP tool。Agent 只读取本节和 `docs/platform_apis/ozon/18-商品上架自动化接口矩阵.md` 中的约束；上架动作必须由 SKU 详情页的人工确认触发。
+
 ## 生产部署
 
 - 生产部署使用 Kamal：`kamal deploy -c config/deploy.yml`。

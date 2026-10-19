@@ -100,6 +100,10 @@ Rails.application.routes.draw do
   get "reports/skus/:sku_code/listing_diagnoses" => "reports#sku_listing_diagnoses", as: :report_sku_listing_diagnoses
   get "reports/skus/:sku_code/listing_diagnoses/new" => "reports#new_sku_listing_diagnosis", as: :new_report_sku_listing_diagnosis
   post "reports/skus/:sku_code/listing_diagnoses" => "reports#create_sku_listing_diagnosis"
+  post "reports/skus/:sku_code/ozon_listing/drafts" => "reports#create_ozon_listing_draft", as: :report_sku_ozon_listing_drafts
+  post "reports/skus/:sku_code/ozon_listing/publications/:publication_id/confirm" => "reports#confirm_ozon_listing", as: :confirm_report_sku_ozon_listing
+  post "reports/skus/:sku_code/ozon_listing/publications/:publication_id/import" => "reports#import_ozon_listing", as: :import_report_sku_ozon_listing
+  post "reports/skus/:sku_code/ozon_listing/publications/:publication_id/price_stock" => "reports#price_stock_ozon_listing", as: :price_stock_report_sku_ozon_listing
   get "reports/skus/:sku_code" => "reports#sku_detail", as: :report_sku
   get "reports/skus/:sku_code/metrics" => "reports#sku_detail_metrics", as: :report_sku_metrics
   get "reports/skus/:sku_code/profit_versions" => "reports#sku_profit_versions", as: :report_sku_profit_versions

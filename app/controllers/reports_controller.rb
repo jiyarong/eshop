@@ -42,6 +42,9 @@ class ReportsController < ApplicationController
     destroy_sku_competitor_datum
   ]
   before_action -> { require_permission!(:manage_skus) }, only: [:update_inventory_returns]
+  before_action -> { require_permission!(:manage_skus) }, only: %i[
+    create_ozon_listing_draft confirm_ozon_listing import_ozon_listing price_stock_ozon_listing
+  ]
 
   SKU_WORKBENCH_ACTIONS = %i[
     sku_ai_diagnosis sku_operation_plan ignore_sku_operation_plan evaluate_sku_operation_plan
@@ -59,7 +62,7 @@ class ReportsController < ApplicationController
   before_action :require_visible_sku_for_workbench, only: SKU_WORKBENCH_ACTIONS
 
   SKU_DETAIL_TABS = %w[lifecycle sales_funnel profit profit_prediction inventory supply_orders warehouses operation_actions ads search_terms ozon_chats competitor_data ai_inventory_health context basic].freeze
-  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend].freeze
+  SKU_DETAIL_HIDDEN_TABS = %w[operation costs stores trend ozon_listing].freeze
   SKU_DETAIL_AVAILABLE_TABS = (SKU_DETAIL_TABS + SKU_DETAIL_HIDDEN_TABS).freeze
   OZON_WAREHOUSE_PAGE_SIZE = 10
   WB_WAREHOUSE_PAGE_SIZE = 10
@@ -417,6 +420,77 @@ class ReportsController < ApplicationController
       render partial: "reports/sku_detail_tab_frame",
              locals: { frame_id: @sku_detail_tab_frame_id, loaded: true }
     end
+  end
+
+  def create_ozon_listing_draft
+    sku = visible_ozon_listing_sku!
+    store = ozon_listing_store!(sku, params.dig(:ozon_listing, :store_id) || params[:store_id])
+    account = store.raw_ozon_account
+    unless account
+      return redirect_to_ozon_listing(sku, alert: t("reports.sku_detail.ozon_listing.errors.account_unavailable"))
+    end
+
+    payload = Ec::OzonListingDraftBuilder.new(sku: sku, store: store, account: account).call
+    publication = Ec::OzonListingPublication.create_draft!(
+      account: account,
+      store: store,
+      sku: sku,
+      payload: payload,
+      offer_id: payload[:offer_id]
+    )
+
+    redirect_to report_sku_path(
+      sku.sku_code,
+      tab: "ozon_listing",
+      publication_id: publication.id,
+      locale: params[:locale].presence
+    ), notice: t("reports.sku_detail.ozon_listing.draft_created"), status: :see_other
+  rescue ActiveRecord::RecordNotFound
+    raise
+  rescue ArgumentError
+    redirect_to_ozon_listing(
+      sku || Ec::Sku.find_by(sku_code: params[:sku_code].to_s.upcase),
+      alert: t("reports.sku_detail.ozon_listing.errors.draft_generation_failed")
+    )
+  end
+
+  def confirm_ozon_listing
+    sku = visible_ozon_listing_sku!
+    publication = visible_ozon_listing_publication!(sku, params[:publication_id])
+    unless publication.draft?
+      return redirect_to_ozon_listing(sku, publication: publication, alert: t("reports.sku_detail.ozon_listing.errors.not_draft"))
+    end
+
+    validation = Ec::OzonListingValidator.new(publication.payload, account: publication.account).call
+    unless validation.valid?
+      return redirect_to_ozon_listing(sku, publication: publication, alert: t("reports.sku_detail.ozon_listing.errors.invalid_draft"))
+    end
+
+    publication.confirm!
+    redirect_to_ozon_listing(sku, publication: publication, notice: t("reports.sku_detail.ozon_listing.confirmed"))
+  end
+
+  def import_ozon_listing
+    sku = visible_ozon_listing_sku!
+    publication = visible_ozon_listing_publication!(sku, params[:publication_id])
+    unless publication.confirmed?
+      return redirect_to_ozon_listing(sku, publication: publication, alert: t("reports.sku_detail.ozon_listing.errors.must_confirm"))
+    end
+
+    publication.queue!
+    RawOzon::ListingImportJob.perform_later(publication.id)
+    redirect_to_ozon_listing(sku, publication: publication, notice: t("reports.sku_detail.ozon_listing.import_queued"))
+  end
+
+  def price_stock_ozon_listing
+    sku = visible_ozon_listing_sku!
+    publication = visible_ozon_listing_publication!(sku, params[:publication_id])
+    unless publication.ready_for_price_stock? || publication.completed?
+      return redirect_to_ozon_listing(sku, publication: publication, alert: t("reports.sku_detail.ozon_listing.errors.not_ready_for_price_stock"))
+    end
+
+    RawOzon::ListingPriceStockJob.perform_later(publication.id)
+    redirect_to_ozon_listing(sku, publication: publication, notice: t("reports.sku_detail.ozon_listing.price_stock_queued"))
   end
 
   def sku_detail_metrics
@@ -1049,6 +1123,49 @@ class ReportsController < ApplicationController
     @weekly_profit_access_scope ||= WeeklyProfitReports::AccessScope.new(current_user)
   end
 
+  def visible_ozon_listing_sku!
+    sku_code = params[:sku_code].to_s.strip.upcase
+    sku = weekly_profit_access_scope.visible_skus.find_by(sku_code: sku_code)
+    raise ActiveRecord::RecordNotFound unless sku
+
+    sku
+  end
+
+  def ozon_listing_store_scope(sku)
+    scope = Ec::Store.active
+      .where(platform: "ozon")
+      .where.not(ozon_raw_account_id: nil)
+    return scope if weekly_profit_access_scope.super_admin?
+    return scope if weekly_profit_access_scope.visible_skus.where(id: sku.id).exists?
+
+    scope.none
+  end
+
+  def ozon_listing_store!(sku, store_id)
+    id = Integer(store_id, exception: false)
+    store = id && ozon_listing_store_scope(sku).find_by(id: id)
+    raise ActiveRecord::RecordNotFound unless store
+
+    store
+  end
+
+  def visible_ozon_listing_publication!(sku, publication_id)
+    publication = sku.ozon_listing_publications.includes(:store, :account).find_by(id: publication_id)
+    if publication &&
+        ozon_listing_store_scope(sku).where(id: publication.store_id).exists? &&
+        publication.account_id.to_i == publication.store.ozon_raw_account_id.to_i
+      return publication
+    end
+
+    raise ActiveRecord::RecordNotFound
+  end
+
+  def redirect_to_ozon_listing(sku, publication: nil, **options)
+    query = { tab: "ozon_listing", locale: params[:locale].presence }
+    query[:publication_id] = publication.id if publication
+    redirect_to report_sku_path(sku.sku_code, query), **options.merge(status: options.fetch(:status, :see_other))
+  end
+
   def require_visible_sku_for_workbench
     sku_code = params[:sku_code].to_s.strip.upcase
     return if weekly_profit_access_scope.visible_skus.where(sku_code: sku_code).exists?
@@ -1286,6 +1403,7 @@ class ReportsController < ApplicationController
     load_sku_inventory_detail if @active_tab == "inventory"
     load_sku_ads if @active_tab == "ads"
     load_sku_ozon_chats if @active_tab == "ozon_chats"
+    load_ozon_listing if @active_tab == "ozon_listing"
     load_sku_competitor_data if @active_tab == "competitor_data"
     @sku_context_snapshot = Ec::Snapshot.of_type(Ec::SkuContextSnapshot.snapshot_type)
       .for_sku(@sku).order(snapshot_date: :desc).first if @active_tab == "context"
@@ -1330,6 +1448,27 @@ class ReportsController < ApplicationController
       @sku_ozon_selected_chat.messages.with_attached_images.order(message_id: :desc).limit(100).to_a.reverse
     else
       []
+    end
+  end
+
+  def load_ozon_listing
+    @ozon_listing_stores = ozon_listing_store_scope(@sku).order(:store_name).to_a
+    publication_scope = @sku.ozon_listing_publications
+      .where(store_id: ozon_listing_store_scope(@sku).select(:id))
+      .includes(:store, :account)
+      .order(created_at: :desc, id: :desc)
+    @ozon_listing_publications = publication_scope.limit(20).to_a.select do |publication|
+      publication.account_id.to_i == publication.store.ozon_raw_account_id.to_i
+    end
+    @ozon_listing_selected_publication = @ozon_listing_publications.find { |publication| publication.id.to_s == params[:publication_id].to_s } || @ozon_listing_publications.first
+    @ozon_listing_selected_store = @ozon_listing_stores.find { |store| store.id.to_s == params[:store_id].to_s } ||
+      @ozon_listing_selected_publication&.store || @ozon_listing_stores.first
+    if @ozon_listing_selected_publication
+      @ozon_listing_payload = @ozon_listing_selected_publication.payload.to_h.deep_symbolize_keys
+      @ozon_listing_validation = Ec::OzonListingValidator.new(
+        @ozon_listing_payload,
+        account: @ozon_listing_selected_publication.account
+      ).call
     end
   end
 
