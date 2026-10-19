@@ -101,14 +101,24 @@ module Ec
         amount.to_d if allowed.include?([account_id, product_id]) && amount.to_d.nonzero?
       end
 
+      # Storage is paid per SKU whatever region the goods finally sell in, and the profit attribution
+      # divides by net units (sales - returns, both report types), so the per-unit cost does too.
       report_ids = RawWb::SalesReport.where(account_id: bindings.map(&:first).uniq, date_to: period_from..period_to).pluck(:account_id, :wb_report_id)
       reports_by_account = report_ids.group_by(&:first).transform_values { |entries| entries.map(&:last) }
-      sale_count = bindings.sum do |account_id, product_id|
+      net_units = bindings.sum do |account_id, product_id|
         RawWb::FinanceDetail.where(
-          account_id: account_id, wb_report_id: reports_by_account.fetch(account_id, []), nm_id: product_id,
-          report_type: Ec::WbProfitAttribution::REPORT_TYPE_EXPORT
-        ).where("seller_oper_name LIKE ?", "%#{RawWb::FinanceDetail::SALE_KEYWORD}%").sum(:quantity).to_i.then { |quantity| [quantity, 0].max }
+          account_id: account_id, wb_report_id: reports_by_account.fetch(account_id, []), nm_id: product_id
+        ).pluck(:seller_oper_name, :quantity).sum do |operation, quantity|
+          if operation.to_s.include?(RawWb::FinanceDetail::SALE_KEYWORD)
+            quantity.to_i
+          elsif operation.to_s.include?(RawWb::FinanceDetail::RETURN_KEYWORD)
+            -quantity.to_i.abs
+          else
+            0
+          end
+        end
       end
+      sale_count = [net_units, 0].max
 
       { amounts: amounts, sale_count: sale_count, data_through: rows.map(&:last).max }
     end

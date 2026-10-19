@@ -46,7 +46,7 @@ class Ec::SkuActualStorageQueryTest < ActiveSupport::TestCase
     assert_equal({ total_rub: 150.to_d, sample_count: 3, sale_count: 2, average_rub: 75.to_d }, payload[:storage])
   end
 
-  test "WB divides net paid storage by same-period export sales quantity" do
+  test "WB divides net paid storage by same-period net units of both report types" do
     account, product_id = bind_wb
     day = Date.new(2026, 9, 1)
     wb_storage(account, product_id, -30, day)
@@ -62,7 +62,26 @@ class Ec::SkuActualStorageQueryTest < ActiveSupport::TestCase
 
     payload = query("wb")
     assert_equal day + 1, payload.dig(:period, :data_through)
-    assert_equal({ total_rub: 60.to_d, sample_count: 2, sale_count: 3, average_rub: 20.to_d }, payload[:storage])
+    # 2 + 1 export and 8 local units; storage does not depend on the region the goods sell in
+    assert_equal({ total_rub: 60.to_d, sample_count: 2, sale_count: 11, average_rub: (60.to_d / 11).round(6) }, payload[:storage])
+  end
+
+  test "WB returns reduce the units storage is divided by, and never below zero" do
+    account, product_id = bind_wb
+    day = Date.new(2026, 9, 1)
+    wb_storage(account, product_id, 90, day)
+    report = RawWb::SalesReport.create!(account: account, wb_report_id: random_id, date_from: day, date_to: day + 6)
+    wb_sale(account, report, product_id, quantity: 5, report_type: 2)
+    wb_sale(account, report, product_id, quantity: 2, report_type: 1)
+    wb_sale(account, report, product_id, quantity: -1, report_type: 2, operation: "Возврат")
+    wb_sale(account, report, product_id, quantity: 0, report_type: 2, operation: "Логистика")
+
+    assert_equal 6, query("wb").dig(:storage, :sale_count)
+    assert_equal 15.to_d, query("wb").dig(:storage, :average_rub)
+
+    wb_sale(account, report, product_id, quantity: 20, report_type: 2, operation: "Возврат")
+    assert_equal 0, query("wb").dig(:storage, :sale_count)
+    assert_nil query("wb").dig(:storage, :average_rub)
   end
 
   test "does not offer a per-sale amount without both charges and sales" do
@@ -117,9 +136,9 @@ class Ec::SkuActualStorageQueryTest < ActiveSupport::TestCase
     RawWb::PaidStorage.create!(account: account, nm_id: product_id, warehouse_price_rub: amount, calc_date: date)
   end
 
-  def wb_sale(account, report, product_id, quantity:, report_type:)
+  def wb_sale(account, report, product_id, quantity:, report_type:, operation: "Продажа")
     RawWb::FinanceDetail.create!(account: account, wb_report_id: report.wb_report_id, nm_id: product_id, rrdid: random_id,
-      seller_oper_name: "Продажа", report_type: report_type, quantity: quantity)
+      seller_oper_name: operation, report_type: report_type, quantity: quantity)
   end
 
   def random_id

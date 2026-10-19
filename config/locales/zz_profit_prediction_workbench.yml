@@ -230,7 +230,7 @@ zh:
           load_failed: "真实仓储费获取失败，请稍后重试"
           result: "平均仓储费 %{amount}"
           apply: "点击回填近4周真实仓储费"
-          meta: "仓储费合计 %{total} · %{count} 条明细 / %{sales} 个销售单 · %{from}—%{to} · 截至 %{data_through}"
+          meta: "仓储费合计 %{total} · %{count} 条明细 / 净销售 %{sales} · %{from}—%{to} · 截至 %{data_through}"
         actual_acquiring:
           action: "使用近4周真实收单费率"
           loading: "正在获取真实收单费率…"
@@ -584,7 +584,7 @@ en:
           load_failed: "Unable to load actual storage costs. Try again later."
           result: "Average storage cost %{amount}"
           apply: "Apply actual storage cost from the last 4 weeks"
-          meta: "Storage total %{total} · %{count} charge details / %{sales} sales · %{from}–%{to} · through %{data_through}"
+          meta: "Storage total %{total} · %{count} charge details / %{sales} net sales · %{from}–%{to} · through %{data_through}"
         actual_acquiring:
           action: "Use actual acquiring rate from the last 4 weeks"
           loading: "Loading actual acquiring rate..."
@@ -938,7 +938,7 @@ ru:
           load_failed: "Не удалось загрузить расходы на хранение. Повторите позже."
           result: "Средняя стоимость хранения %{amount}"
           apply: "Применить фактическую стоимость хранения за 4 недели"
-          meta: "Хранение всего %{total} · %{count} начислений / %{sales} заказов · %{from}–%{to} · данные по %{data_through}"
+          meta: "Хранение всего %{total} · %{count} начислений / чистых продаж %{sales} · %{from}–%{to} · данные по %{data_through}"
         actual_acquiring:
           action: "Использовать фактическую ставку эквайринга за 4 недели"
           loading: "Загрузка фактической ставки эквайринга..."
