@@ -62,7 +62,7 @@ class Ec::SkuActualAdvertisingQueryTest < ActiveSupport::TestCase
     assert_equal 0.75.to_d, payload.dig(:coverage, :attribution_rate)
   end
 
-  test "calculates WB settled ad spend over return-adjusted sales and exposes allocation fallback" do
+  test "calculates WB settled ad spend over return-adjusted commission-base sales and exposes allocation fallback" do
     account, target_nm_id = create_wb_binding
     week_from = Date.new(2026, 8, 24)
     week_to = Date.new(2026, 8, 30)
@@ -74,8 +74,9 @@ class Ec::SkuActualAdvertisingQueryTest < ActiveSupport::TestCase
       date_to: week_to,
       synced_at: Time.current
     )
-    create_wb_finance(account, report_id:, nm_id: target_nm_id, operation: "Продажа", quantity: 1, retail_amount: 500)
-    create_wb_finance(account, report_id:, nm_id: target_nm_id, operation: "Возврат", quantity: 1, retail_amount: 100)
+    # retail_amount is the lower buyer-side amount; the denominator is the commission base.
+    create_wb_finance(account, report_id:, nm_id: target_nm_id, operation: "Продажа", quantity: 1, retail_amount: 500, retail_price_with_disc: 625)
+    create_wb_finance(account, report_id:, nm_id: target_nm_id, operation: "Возврат", quantity: 1, retail_amount: 100, retail_price_with_disc: 125)
     create_wb_finance(
       account,
       report_id:,
@@ -102,8 +103,9 @@ class Ec::SkuActualAdvertisingQueryTest < ActiveSupport::TestCase
     )
 
     assert_equal({ total: 40.to_d, currency: "RUB" }, payload[:advertising])
-    assert_equal({ total: 2_000.to_d, currency: "RUB" }, payload[:sales])
-    assert_equal 0.02.to_d, payload[:rate]
+    # (625 - 125) x 5, the implied rate being 140 settled / 28 deducted; retail_amount would give 2000
+    assert_equal({ total: 2_500.to_d, currency: "RUB" }, payload[:sales])
+    assert_equal 0.016.to_d, payload[:rate]
     assert_equal 1, payload.dig(:coverage, :covered_account_weeks)
     assert_equal 4, payload.dig(:coverage, :expected_account_weeks)
     assert payload.dig(:coverage, :allocation_fallback)
@@ -186,7 +188,7 @@ class Ec::SkuActualAdvertisingQueryTest < ActiveSupport::TestCase
     [account, nm_id]
   end
 
-  def create_wb_finance(account, report_id:, nm_id:, operation:, quantity:, retail_amount:, deduction: 0, bonus_type_name: nil)
+  def create_wb_finance(account, report_id:, nm_id:, operation:, quantity:, retail_amount:, retail_price_with_disc: retail_amount, deduction: 0, bonus_type_name: nil)
     RawWb::FinanceDetail.create!(
       account: account,
       rrdid: rand(1_000_000_000..9_999_999_999),
@@ -196,6 +198,7 @@ class Ec::SkuActualAdvertisingQueryTest < ActiveSupport::TestCase
       report_type: Ec::WbProfitAttribution::REPORT_TYPE_EXPORT,
       quantity: quantity,
       retail_amount: retail_amount,
+      retail_price_with_disc: retail_price_with_disc,
       deduction: deduction,
       bonus_type_name: bonus_type_name,
       sale_dt: Date.new(2026, 8, 25),

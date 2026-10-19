@@ -231,13 +231,17 @@ module Ec
       RawWb::FinanceDetail.where(account_id: account_id, wb_report_id: report_ids).to_a
     end
 
+    # Net sales on the price the platform charges commission on (`retail_price_with_disc`, the same
+    # base the calculators price advertising on and the attribution's tax base uses). `retail_amount`
+    # is a different, lower amount (about 83% of it): for_pay = retail_price_with_disc x
+    # (1 - commission) - acquiring on every sale row, and never with retail_amount.
     def wb_net_sales(rows, nm_ids)
       target_ids = nm_ids.to_set
       rows.sum(0.to_d) do |row|
         next 0.to_d unless target_ids.include?(row.nm_id)
 
         operation = row.seller_oper_name.to_s
-        amount = row.retail_amount.to_d * row.quantity.to_i.abs
+        amount = row.retail_price_with_disc.to_d * row.quantity.to_i.abs
         if operation.include?(RawWb::FinanceDetail::RETURN_KEYWORD)
           -amount
         elsif operation.include?(RawWb::FinanceDetail::SALE_KEYWORD)
