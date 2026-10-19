@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_081245) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_042853) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -1208,6 +1208,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_081245) do
     t.integer "wb_raw_account_id"
     t.index ["ozon_client_id"], name: "index_ec_stores_on_ozon_client_id", unique: true, where: "(ozon_client_id IS NOT NULL)"
     t.index ["platform"], name: "index_ec_stores_on_platform"
+  end
+
+  create_table "ec_system_notification_recipients", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.bigint "notification_id", null: false
+    t.datetime "read_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["notification_id", "user_id"], name: "idx_ec_system_notification_recipients_unique", unique: true
+    t.index ["notification_id"], name: "index_ec_system_notification_recipients_on_notification_id"
+    t.index ["user_id", "deleted_at", "read_at"], name: "idx_ec_system_notification_recipients_inbox"
+    t.index ["user_id"], name: "index_ec_system_notification_recipients_on_user_id"
+  end
+
+  create_table "ec_system_notifications", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.string "fingerprint"
+    t.datetime "last_seen_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "notification_type", null: false
+    t.datetime "occurred_at", null: false
+    t.integer "occurrence_count", default: 1, null: false
+    t.datetime "resolved_at"
+    t.string "severity", default: "warning", null: false
+    t.string "sku_code"
+    t.bigint "source_id"
+    t.string "source_type"
+    t.bigint "store_id"
+    t.string "target_path", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fingerprint"], name: "idx_ec_system_notifications_active_fingerprint", unique: true, where: "((fingerprint IS NOT NULL) AND (resolved_at IS NULL))"
+    t.index ["notification_type", "occurred_at"], name: "idx_ec_system_notifications_type_time"
+    t.index ["sku_code", "occurred_at"], name: "idx_ec_system_notifications_sku_time"
+    t.index ["source_type", "source_id"], name: "idx_ec_system_notifications_source"
+    t.index ["store_id"], name: "index_ec_system_notifications_on_store_id"
   end
 
   create_table "ec_tool_configurations", force: :cascade do |t|
@@ -3720,6 +3758,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_081245) do
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
   add_foreign_key "ec_snapshots", "ec_skus", column: "sku_id"
+  add_foreign_key "ec_system_notification_recipients", "ec_system_notifications", column: "notification_id"
+  add_foreign_key "ec_system_notification_recipients", "users"
   add_foreign_key "ec_tool_configurations", "ec_tool_definitions", column: "tool_definition_id"
   add_foreign_key "ec_tool_configurations", "users", column: "created_by_id"
   add_foreign_key "ec_tool_definitions", "users", column: "created_by_id"

@@ -41,6 +41,12 @@ class User < ApplicationRecord
     source: :sku
   has_many :sku_operator_assignments, class_name: "Ec::SkuOperatorAssignment", dependent: :destroy
   has_many :operated_skus, through: :sku_operator_assignments, source: :sku
+  has_many :system_notification_recipients,
+    class_name: "Ec::SystemNotificationRecipient",
+    dependent: :destroy
+  has_many :system_notifications,
+    through: :system_notification_recipients,
+    source: :notification
   has_one_attached :avatar
 
   validates :active, inclusion: { in: [true, false] }

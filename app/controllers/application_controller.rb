@@ -1,7 +1,8 @@
 class ApplicationController < ActionController::Base
   include Devise::Controllers::Helpers
 
-  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale, :user_time_zone, :user_today
+  helper_method :current_user, :user_signed_in?, :can?, :available_locales, :current_locale, :user_time_zone, :user_today,
+    :notification_unread_count
 
   prepend_before_action :set_locale
   before_action :redirect_guest_with_locale, if: :html_request?
@@ -78,6 +79,12 @@ class ApplicationController < ActionController::Base
 
   def user_today
     Time.current.in_time_zone(user_time_zone).to_date
+  end
+
+  def notification_unread_count
+    return 0 unless current_user
+
+    current_user.system_notification_recipients.active.unread.count
   end
 
   def parse_user_date(value)

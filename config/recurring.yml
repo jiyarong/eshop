@@ -182,6 +182,10 @@ production:
     command: "RawOzon::SalesFunnelDailySync.run_recent_days(days: 8)"
     schedule: every day at 1:10 in Asia/Shanghai
 
+  ozon_sales_funnel_health_check:
+    command: "Ec::OzonSalesFunnelHealthCheckJob.perform_later"
+    schedule: every hour at minute 20 in Asia/Shanghai
+
   ozon_weekly_sync:
     command: "RawOzon::WeeklySync.run(days: 8, sync_keys: [:sync_products, :sync_category_attributes, :sync_product_attributes, :sync_promotions, :sync_finance_realization])"
     schedule: every tuesday at 3:00 in Asia/Shanghai

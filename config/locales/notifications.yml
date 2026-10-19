@@ -1,0 +1,137 @@
+zh:
+  notifications:
+    title: 系统通知
+    detail_title: 通知详情
+    subtitle: 查看需要开发、运营和管理员关注的经营异常
+    back: 返回通知列表
+    unread_count: 未读 %{count}
+    mark_read: 标记已读
+    mark_unread: 标记未读
+    mark_all_read: 全部标记已读
+    delete: 删除
+    open_event: 查看关联事件
+    empty: 暂无通知
+    filters:
+      label: 通知筛选
+      all: 全部
+      unread: 未读
+      read: 已读
+    types:
+      price_anomaly: 价格异常
+      funnel_anomaly: 销售漏斗异常
+    severity:
+      warning: 预警
+      critical: 严重
+    price_anomaly:
+      title: SKU %{sku_code} 价格异常
+      body: "店铺 %{store_name} 的 SKU %{sku_code} %{field} 从 %{before_price} RUB 调整为 %{after_price} RUB，涨幅 %{change_percent}%%，请检查俄罗斯与白俄罗斯的定价配置。"
+      fields:
+        marketing_price: 营销价
+        price: 商品价
+      batch_title: 店铺 %{store_name} 出现批量价格异常
+      batch_body: "店铺 %{store_name} 在一次同步中有 %{sku_count} 个 SKU 同方向大幅涨价，中位涨幅 %{median_change_percent}%%，请立即检查地理位置促销和区域价格配置。"
+    funnel_anomaly:
+      title: SKU %{sku_code} 销售漏斗异常
+      body: "店铺 %{store_name}：当前 3 天浏览 %{current_views}，前一窗口 %{baseline_views}；下单 %{current_orders}，前一窗口 %{baseline_orders}。下单下降 %{order_drop_percent}%%，浏览下降 %{view_drop_percent}%%。"
+      batch_title: 店铺 %{store_name} 出现批量漏斗异常
+      batch_body: "店铺 %{store_name} 有 %{sku_count} 个 SKU 出现销售漏斗明显下降，请检查价格、地理位置促销和商品可售状态。"
+    flash:
+      deleted: 通知已删除
+      marked_all_read: 已全部标记为已读
+    pagination:
+      label: 通知分页
+      previous: 上一页
+      next: 下一页
+      page: 第 %{page} / %{pages} 页
+
+en:
+  notifications:
+    title: System notifications
+    detail_title: Notification details
+    subtitle: Review business anomalies for developers, operators, and administrators
+    back: Back to notifications
+    unread_count: "%{count} unread"
+    mark_read: Mark as read
+    mark_unread: Mark as unread
+    mark_all_read: Mark all as read
+    delete: Delete
+    open_event: Open related event
+    empty: No notifications
+    filters:
+      label: Notification filters
+      all: All
+      unread: Unread
+      read: Read
+    types:
+      price_anomaly: Price anomaly
+      funnel_anomaly: Sales funnel anomaly
+    severity:
+      warning: Warning
+      critical: Critical
+    price_anomaly:
+      title: Price anomaly for SKU %{sku_code}
+      body: "Store %{store_name}: %{field} for SKU %{sku_code} changed from %{before_price} RUB to %{after_price} RUB, up %{change_percent}%%. Check Russia and Belarus pricing configuration."
+      fields:
+        marketing_price: marketing price
+        price: product price
+      batch_title: Batch price anomaly in %{store_name}
+      batch_body: "Store %{store_name}: %{sku_count} SKUs increased sharply in one sync, with a median increase of %{median_change_percent}%%. Check geographic promotions and regional pricing now."
+    funnel_anomaly:
+      title: Sales funnel anomaly for SKU %{sku_code}
+      body: "Store %{store_name}: views were %{current_views} in the current 3-day window versus %{baseline_views} before; orders were %{current_orders} versus %{baseline_orders}. Orders fell %{order_drop_percent}%% and views fell %{view_drop_percent}%%."
+      batch_title: Batch sales funnel anomaly in %{store_name}
+      batch_body: "Store %{store_name}: %{sku_count} SKUs show a sharp sales funnel decline. Check pricing, geographic promotions, and product availability."
+    flash:
+      deleted: Notification deleted
+      marked_all_read: All notifications marked as read
+    pagination:
+      label: Notification pagination
+      previous: Previous page
+      next: Next page
+      page: Page %{page} of %{pages}
+
+ru:
+  notifications:
+    title: Системные уведомления
+    detail_title: Детали уведомления
+    subtitle: Аномалии продаж для разработчиков, операторов и администраторов
+    back: Назад к уведомлениям
+    unread_count: "Непрочитано: %{count}"
+    mark_read: Отметить прочитанным
+    mark_unread: Отметить непрочитанным
+    mark_all_read: Отметить всё прочитанным
+    delete: Удалить
+    open_event: Открыть связанное событие
+    empty: Уведомлений нет
+    filters:
+      label: Фильтры уведомлений
+      all: Все
+      unread: Непрочитанные
+      read: Прочитанные
+    types:
+      price_anomaly: Аномалия цены
+      funnel_anomaly: Аномалия воронки продаж
+    severity:
+      warning: Предупреждение
+      critical: Критично
+    price_anomaly:
+      title: Аномалия цены SKU %{sku_code}
+      body: "Магазин %{store_name}: %{field} SKU %{sku_code} изменена с %{before_price} RUB до %{after_price} RUB, рост %{change_percent}%%. Проверьте цены для России и Беларуси."
+      fields:
+        marketing_price: маркетинговая цена
+        price: цена товара
+      batch_title: Массовая аномалия цен в магазине %{store_name}
+      batch_body: "Магазин %{store_name}: за одну синхронизацию резко выросли цены у %{sku_count} SKU, медианный рост %{median_change_percent}%%. Проверьте географические акции и региональные цены."
+    funnel_anomaly:
+      title: "SKU %{sku_code}: аномалия воронки продаж"
+      body: "Магазин %{store_name}: за текущие 3 дня просмотры %{current_views} против %{baseline_views} в предыдущем окне, заказы %{current_orders} против %{baseline_orders}; падение заказов %{order_drop_percent}%%, просмотров %{view_drop_percent}%%."
+      batch_title: Массовая аномалия воронки в магазине %{store_name}
+      batch_body: "Магазин %{store_name}: аномальное падение воронки обнаружено у %{sku_count} SKU. Проверьте цены, географические акции и доступность товаров."
+    flash:
+      deleted: Уведомление удалено
+      marked_all_read: Все уведомления отмечены прочитанными
+    pagination:
+      label: Пагинация уведомлений
+      previous: Предыдущая
+      next: Следующая
+      page: Страница %{page} из %{pages}

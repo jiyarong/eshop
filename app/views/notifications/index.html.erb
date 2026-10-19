@@ -1,0 +1,89 @@
+<% content_for :page_heading, t("notifications.title") %>
+
+<div class="product-management notifications-page">
+  <div class="page-h">
+    <div>
+      <h1><%= t("notifications.title") %></h1>
+      <p class="sub"><%= t("notifications.subtitle") %></p>
+    </div>
+    <%= button_to mark_all_read_notifications_path(filter: @filter), method: :patch, class: "btn btn-outline" do %>
+      <i class="bi bi-check2-all" aria-hidden="true"></i>
+      <%= t("notifications.mark_all_read") %>
+    <% end %>
+  </div>
+
+  <nav class="weekly-profit-tag-row" aria-label="<%= t("notifications.filters.label") %>">
+    <% %w[all unread read].each do |filter| %>
+      <%= link_to t("notifications.filters.#{filter}"),
+                  notifications_path(filter: filter),
+                  class: "weekly-profit-filter-tag#{" is-active" if @filter == filter}",
+                  aria: { current: ("page" if @filter == filter) } %>
+    <% end %>
+  </nav>
+
+  <section class="card product-list-card table-list-card">
+    <% if @recipients.any? %>
+      <div class="notifications-list">
+        <% @recipients.each do |recipient| %>
+          <% notification = recipient.notification %>
+          <article class="notification-card#{" notification-card--unread" if recipient.unread?}">
+            <div class="notification-card__header">
+              <div>
+                <span class="badge <%= notification.severity == "critical" ? "badge-danger" : "badge-pri" %>">
+                  <%= t("notifications.severity.#{notification.severity}") %>
+                </span>
+                <span class="badge badge-sec"><%= t("notifications.types.#{notification.notification_type}") %></span>
+              </div>
+              <time datetime="<%= notification.occurred_at.iso8601 %>"><%= display_time(notification.occurred_at) %></time>
+            </div>
+            <h2><%= link_to notification.title, notification_path(recipient) %></h2>
+            <p><%= notification.body %></p>
+            <div class="notification-card__footer">
+              <% if notification.sku_code.present? %>
+                <%= link_to report_sku_path(notification.sku_code, tab: "operation_actions"), class: "code-text" do %>
+                  <i class="bi bi-box-seam" aria-hidden="true"></i>
+                  <%= notification.sku_code %>
+                <% end %>
+              <% end %>
+              <span class="spacer"></span>
+              <%= link_to notification.target_path, class: "btn btn-outline btn-sm" do %>
+                <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+                <%= t("notifications.open_event") %>
+              <% end %>
+              <% if recipient.unread? %>
+                <%= button_to mark_read_notification_path(recipient, filter: @filter), method: :patch, class: "btn btn-outline btn-sm" do %>
+                  <%= t("notifications.mark_read") %>
+                <% end %>
+              <% else %>
+                <%= button_to mark_unread_notification_path(recipient, filter: @filter), method: :patch, class: "btn btn-outline btn-sm" do %>
+                  <%= t("notifications.mark_unread") %>
+                <% end %>
+              <% end %>
+              <%= button_to notification_path(recipient, filter: @filter), method: :delete, class: "btn btn-outline btn-sm" do %>
+                <i class="bi bi-trash3" aria-hidden="true"></i>
+                <%= t("notifications.delete") %>
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <i class="bi bi-bell-slash" aria-hidden="true"></i>
+        <%= t("notifications.empty") %>
+      </div>
+    <% end %>
+
+    <% if @recipients.total_pages > 1 %>
+      <nav class="pagination-nav notifications-pagination" aria-label="<%= t("notifications.pagination.label") %>">
+        <% if @recipients.prev_page %>
+          <%= link_to "‹", notifications_path(filter: @filter, page: @recipients.prev_page), class: "pg-btn pg-btn-nav", aria: { label: t("notifications.pagination.previous") } %>
+        <% end %>
+        <span class="pagination-chip"><%= t("notifications.pagination.page", page: @recipients.current_page, pages: @recipients.total_pages) %></span>
+        <% if @recipients.next_page %>
+          <%= link_to "›", notifications_path(filter: @filter, page: @recipients.next_page), class: "pg-btn pg-btn-nav", aria: { label: t("notifications.pagination.next") } %>
+        <% end %>
+      </nav>
+    <% end %>
+  </section>
+</div>

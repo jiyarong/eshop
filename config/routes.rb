@@ -24,6 +24,15 @@ Rails.application.routes.draw do
   get "weekly_profit_reports/accounts" => "weekly_profit_reports#accounts"
   get "weekly_profit_reports"          => "weekly_profit_reports#show"
   resources :operator_skus, only: :index
+  resources :notifications, only: %i[index show destroy] do
+    member do
+      patch :mark_read
+      patch :mark_unread
+    end
+    collection do
+      patch :mark_all_read
+    end
+  end
   get "reports/pallet_calculator" => "reports/pallet_calculators#show", as: :reports_pallet_calculator
   post "reports/pallet_calculator/calculate" => "reports/pallet_calculators#calculate", as: :calculate_reports_pallet_calculator
   namespace :reports do

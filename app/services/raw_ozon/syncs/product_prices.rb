@@ -25,6 +25,7 @@ module RawOzon
         existing = RawOzon::ProductPrice
           .where(account_id: @account.id, ozon_product_id: rows.map { |row| row[:ozon_product_id] })
           .index_by(&:ozon_product_id)
+        actions = []
 
         rows.each do |row|
           price = existing[row[:ozon_product_id]]
@@ -33,13 +34,16 @@ module RawOzon
           sku_product = ozon_price_sku_product(row[:ozon_product_id])
           next unless sku_product
 
-          Ec::ListingChangeRecorder.record(
+          action = Ec::ListingChangeRecorder.record(
             sku_product: sku_product,
             operation_type: "listing_pricing",
             before: ozon_price_snapshot(price.attributes.symbolize_keys),
             after: ozon_price_snapshot(row)
           )
+          actions << action if action
         end
+
+        Ec::PriceAnomalyNotifier.call(actions: actions, store: @ozon_price_store) if actions.any?
       end
 
       def ozon_price_snapshot(values)

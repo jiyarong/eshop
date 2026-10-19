@@ -1,0 +1,36 @@
+<% content_for :page_heading, t("notifications.detail_title") %>
+
+<div class="product-management notifications-page">
+  <div class="page-h">
+    <div>
+      <h1><%= @notification.title %></h1>
+      <p class="sub"><%= display_time(@notification.occurred_at) %></p>
+    </div>
+    <%= link_to notifications_path, class: "btn btn-outline" do %>
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <%= t("notifications.back") %>
+    <% end %>
+  </div>
+
+  <section class="card notification-detail-card">
+    <div class="notification-card__header">
+      <div>
+        <span class="badge <%= @notification.severity == "critical" ? "badge-danger" : "badge-pri" %>">
+          <%= t("notifications.severity.#{@notification.severity}") %>
+        </span>
+        <span class="badge badge-sec"><%= t("notifications.types.#{@notification.notification_type}") %></span>
+      </div>
+      <% if @notification.sku_code.present? %>
+        <%= link_to report_sku_path(@notification.sku_code, tab: "operation_actions"), class: "code-text" do %>
+          <i class="bi bi-box-seam" aria-hidden="true"></i>
+          <%= @notification.sku_code %>
+        <% end %>
+      <% end %>
+    </div>
+    <p class="notification-detail-card__body"><%= @notification.body %></p>
+    <%= link_to @notification.target_path, class: "btn btn-primary" do %>
+      <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+      <%= t("notifications.open_event") %>
+    <% end %>
+  </section>
+</div>

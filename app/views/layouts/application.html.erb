@@ -254,6 +254,16 @@
                 </details>
               <% end %>
               <% if user_signed_in? %>
+                <% unread_notification_count = notification_unread_count %>
+                <%= link_to notifications_path,
+                            class: "topbar-notifications",
+                            title: t("notifications.title"),
+                            aria: { label: t("notifications.title") } do %>
+                  <i class="bi bi-bell" aria-hidden="true"></i>
+                  <% if unread_notification_count.positive? %>
+                    <span class="topbar-notifications__count"><%= [unread_notification_count, 99].min %><%= "+" if unread_notification_count > 99 %></span>
+                  <% end %>
+                <% end %>
                 <div class="hd-divider" aria-hidden="true"></div>
                 <details class="erp-account-menu">
                   <summary>
