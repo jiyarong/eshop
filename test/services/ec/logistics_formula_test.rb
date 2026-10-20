@@ -78,7 +78,7 @@ class Ec::LogisticsFormulaTest < ActiveSupport::TestCase
     end
   end
 
-  test "Ozon weights the route tariff by the share of our units that travel each route" do
+  test "Ozon averages the tariff of the scenario's busiest routes, equally weighted" do
     snapshot = RawOzon::LogisticsTariffSnapshot.create!(market_code: "zz#{SecureRandom.hex(3)}", effective_from: Date.new(2026, 1, 1), imported_at: Time.current,
       source_checksum: SecureRandom.hex(8), source_file_name: "test.xlsx", status: "succeeded")
     tariffs = [ [ "Москва", "Москва", 100 ], [ "Москва", "Казань", 200 ], [ "Москва", "Омск", 400 ] ]
@@ -89,14 +89,15 @@ class Ec::LogisticsFormulaTest < ActiveSupport::TestCase
     end
     original = RawOzon::LogisticsTariffSnapshot.method(:current_for)
     RawOzon::LogisticsTariffSnapshot.define_singleton_method(:current_for) { |**| snapshot }
-    mix = [ [ "Москва", "Москва", BigDecimal("0.7") ], [ "Москва", "Казань", BigDecimal("0.2") ], [ "Москва", "Нигде", BigDecimal("0.1") ] ]
+    one = BigDecimal("1")
+    mix = [ [ "Москва", "Москва", one ], [ "Москва", "Казань", one ], [ "Москва", "Нигде", one ] ]
     original_routes = Ec::OzonRouteMix.method(:routes)
     Ec::OzonRouteMix.define_singleton_method(:routes) { |mode, market| mode == "fbo" && market == "ru" ? mix : [] }
 
     context = { "delivery_mode" => "fbo", "market" => "ru" }
-    # 0.7 x 100 + 0.2 x 200 over the 0.9 of the units whose route the tariff lists; "Нигде" drops out and the rest is renormalised
-    assert_equal (110.0 / 0.9).to_d.round(2), Ec::LogisticsFormula.ozon_route_average(INPUTS, context)
-    # a scenario without a mix (Belarus FBO here) keeps the plain average of every route
+    # (100 + 200) / 2: "Нигде" is not in the tariff, so it drops out and the others keep equal weights
+    assert_equal 150.to_d, Ec::LogisticsFormula.ozon_route_average(INPUTS, context)
+    # a scenario without routes (Belarus FBO here) keeps the plain average of every route
     assert_equal (700.0 / 3).to_d.round(2), Ec::LogisticsFormula.ozon_route_average(INPUTS, context.merge("market" => "by"))
   ensure
     Ec::OzonRouteMix.define_singleton_method(:routes, original_routes) if original_routes
@@ -105,14 +106,16 @@ class Ec::LogisticsFormulaTest < ActiveSupport::TestCase
     snapshot&.destroy
   end
 
-  test "the generated route mix adds up to one for every fulfilment and market" do
+  test "the route file picks the busiest routes: 40 for FBO, 20 for FBS, equal weights" do
     Ec::OzonRouteMix.reset!
-    %w[fbo fbs].each do |mode|
-      %w[ru by].each do |market|
-        shares = Ec::OzonRouteMix.routes(mode, market).map(&:last)
-        assert_in_delta 1.0, shares.sum, 0.0005, "#{mode}/#{market}" if shares.any?
-      end
-    end
-    assert Ec::OzonRouteMix.routes("fbo", "ru").any?, "the file covers the Russian FBO scenario"
+    assert_equal 40, Ec::OzonRouteMix.top_routes("fbo")
+    assert_equal 20, Ec::OzonRouteMix.top_routes("fbs")
+    fbo = Ec::OzonRouteMix.routes("fbo", "ru")
+    assert_equal 40, fbo.size
+    assert_equal [ 1 ], fbo.map(&:last).uniq
+    assert_equal [ "Москва, МО и Дальние регионы", "Москва, МО и Дальние регионы" ], fbo.first.first(2), "the busiest route comes first"
+    assert_equal 20, Ec::OzonRouteMix.routes("fbs", "ru").size, "FBS ships on 20 routes in all"
+    assert_equal 1, Ec::OzonRouteMix.routes("fbs", "by").size
+    assert_empty Ec::OzonRouteMix.routes("fbo", "xx")
   end
 end

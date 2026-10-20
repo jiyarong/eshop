@@ -34,10 +34,10 @@ module Ec
         end
       end
 
-      # What the Ozon route tariff says for the inputs' volume, or nil without volume, price or tariff. The tariff of
-      # each route is weighted by the share of our units that really travel it (Ec::OzonRouteMix, by fulfilment and
-      # buyer market); a route the tariff does not list drops out and the rest are renormalised. Without a mix for
-      # the scenario it is the plain average of every route.
+      # What the Ozon route tariff says for the inputs' volume, or nil without volume, price or tariff: the simple
+      # average of the tariff of the scenario's busiest routes (Ec::OzonRouteMix: top 40 for FBO, top 20 for FBS, by
+      # fulfilment and buyer market). A route the tariff does not list drops out. Without routes for the scenario it
+      # is the plain average of every route.
       def ozon_route_average(inputs, parameter_context)
         volume = volume_l(inputs)
         return unless volume
