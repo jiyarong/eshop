@@ -32,6 +32,7 @@ module Ec
           total += import_posting(posting, "fbs", "RawOzon::PostingFbs")
         end
         RawOzon::PostingReportLinker.run
+        Ec::OrderBuyerCountryBackfill.run_after_import("ozon")
         total
       end
 

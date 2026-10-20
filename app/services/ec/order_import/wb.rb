@@ -9,6 +9,7 @@ module Ec
         stats_orders_for_import(synced_since).find_each do |stats_order|
           total += import_stats_order(stats_order)
         end
+        Ec::OrderBuyerCountryBackfill.run_after_import("wb")
         total
       end
 

@@ -32,6 +32,12 @@ production:
     command: "Ec::SkuProfitMonthlyRefresh.run"
     schedule: every month on the 1st at 7:00 in Asia/Shanghai
 
+  # Late statistics orders, clusters and places land here: re-try the last 120 days' orders that still
+  # have no platform-given buyer country, and log what is filled and what is still unknown.
+  ec_order_buyer_country_catchup:
+    command: "Ec::OrderBuyerCountryBackfill.catch_up"
+    schedule: every day at 4:40 in Asia/Shanghai
+
   wb_order_status_monthly_catchup:
     command: "RawWb::OrderIncrementalSync.run(days: 500, sync_keys: [:sync_orders], wait: true)"
     schedule: every month on the 3rd at 3:12 in Asia/Shanghai

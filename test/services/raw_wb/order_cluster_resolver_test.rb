@@ -15,7 +15,10 @@ class RawWb::OrderClusterResolverTest < ActiveSupport::TestCase
     armenia = RawWb::StatsOrder.new(region_name: "Ереван", country_name: "Армения")
     belarus = RawWb::StatsOrder.new(region_name: "Минск", country_name: "Беларусь")
 
+    kazakhstan = RawWb::StatsOrder.new(region_name: "Алматы", country_name: "Казахстан")
+
     assert_equal "Армения", RawWb::OrderClusterResolver.cluster_to(armenia)
     assert_equal "Беларусь", RawWb::OrderClusterResolver.cluster_to(belarus)
+    assert_equal "Казахстан", RawWb::OrderClusterResolver.cluster_to(kazakhstan)
   end
 end

@@ -14,7 +14,8 @@ module RawWb
       "Ереван" => "Армения",
       "Армения" => "Армения",
       "Минск" => "Беларусь",
-      "Беларусь" => "Беларусь"
+      "Беларусь" => "Беларусь",
+      "Казахстан" => "Казахстан"
     }.freeze
 
     def self.resolve(stats_order, on: stats_order.order_date&.to_date || Date.current)

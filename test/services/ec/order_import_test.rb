@@ -590,6 +590,29 @@ module Ec
       assert_equal "RUB", stats_order.items.first.currency_code
     end
 
+    test "an order imported now gets its buyer country right after the import" do
+      RawWb::StatsOrder.create!(
+        account: @wb_account,
+        g_number: "WB-COUNTRY-G-#{@token}",
+        order_date: Time.current,
+        last_change_date: Time.current,
+        supplier_article: "WBCOUNTRY-#{@token}",
+        barcode: "460000000097",
+        total_price: 100,
+        warehouse_name: "Stats Warehouse",
+        warehouse_type: "Склад WB",
+        country_name: "Казахстан",
+        nm_id: @wb_product.nm_id,
+        srid: "WB-COUNTRY-SRID-#{@token}",
+        synced_at: Time.current
+      )
+
+      Ec::OrderImport::Wb.new.call(synced_since: 1.hour.ago)
+
+      order = Ec::Order.find_by!(platform: "wb", external_order_number: "WB-COUNTRY-SRID-#{@token}")
+      assert_equal [ "KZ", "stats_order" ], [ order.buyer_country, order.buyer_country_source ]
+    end
+
     test "wb stats order import maps seller warehouse type to fbs fulfillment" do
       RawWb::StatsOrder.create!(
         account: @wb_account,
