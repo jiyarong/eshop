@@ -93,7 +93,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal 0.2.to_d, wb_general.fetch("buyer_price_vat_rate")
     assert_equal 2.to_d, wb_general.fetch("misc_cny")
 
-    assert_equal 1.3.to_d, wb_small_fbo.fetch("logistics_coeff")
+    assert_equal 1.55.to_d, wb_small_fbo.fetch("logistics_coeff"), "the high end of the measured tiers, for FBW as for FBS"
     assert_equal 1.55.to_d, wb_small_fbs.fetch("logistics_coeff")
     assert_equal 0.1.to_d, wb_small_fbo.fetch("return_rate")
     assert_equal 0.031.to_d, wb_small_fbo.fetch("acquiring_rate")

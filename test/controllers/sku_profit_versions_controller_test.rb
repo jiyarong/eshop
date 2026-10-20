@@ -298,7 +298,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     small_fbo = rows.find do |row|
       row["data-platform"] == "wb" && row["data-company-type"] == "small" && row["data-delivery-mode"] == "fbo"
     end
-    assert_equal 1.3.to_d, small_fbo.at_css("input[data-field='logistics_coeff']")["value"].to_d
+    assert_equal 1.55.to_d, small_fbo.at_css("input[data-field='logistics_coeff']")["value"].to_d
     ozon_rows = rows.select { |row| row["data-platform"] == "ozon" }
     ozon_fbo_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbo" }
     ozon_fbs_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbs" }

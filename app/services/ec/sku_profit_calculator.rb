@@ -111,14 +111,17 @@ module Ec
 
       def wb_default_inputs(context)
         company_type = context.fetch("company_type", "general").to_s.downcase
-        delivery_mode = context.fetch("delivery_mode", "fbo").to_s.downcase
         belarus = context.fetch("market", "ru").to_s.downcase == "by"
         general_company = company_type == "general"
 
         {
           exchange_rate_rub_cny: DEFAULT_EXCHANGE_RATE_RUB_CNY,
           buyer_price_vat_rate: decimal("0.2"),
-          logistics_coeff: company_type == "small" && delivery_mode == "fbo" ? decimal("1.3") : decimal("1.55"),
+          # WB's coefficient is the warehouse tier (1.0 ... 2.0), not a tax-regime or market property. Measured on the
+          # outbound legs of Jul-Oct 2026, FBS sits on 1.45-1.55 (95% at or below 1.55) and FBW anywhere from 1.0 to 2.0
+          # (about 80% at or below 1.55): 1.55 is the high end that covers most parcels, so a fixed-formula profit is
+          # never the optimistic one. 1.55 is also the official 71.3 / 21.7 tier of the base 46 / 14.
+          logistics_coeff: decimal("1.55"),
           return_rate: decimal("0.1"),
           # Acquiring is 1.8-1.9% on sales to Belarusian buyers, 3.2-3.4% on sales to Russian ones
           # (Jul-Sep 2026, by the buyer's country in the statistics orders).

@@ -121,3 +121,12 @@ export function sellingPriceShortcuts(platform, data) {
 
   return shortcuts;
 }
+
+// A tariff fee with the coefficient it was multiplied by taken back out, to the cent (71.3 / 1.55 = 46).
+export function withoutCoefficient(fee, coefficient) {
+  const amount = Number(fee);
+  const factor = Number(coefficient);
+  if (!Number.isFinite(amount) || !Number.isFinite(factor) || factor <= 0) return fee;
+
+  return Math.round((amount / factor) * 100) / 100;
+}

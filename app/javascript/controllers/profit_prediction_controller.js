@@ -7,7 +7,8 @@ import {
   ratioToPercentString,
   sellingPriceShortcuts,
   shortcutInputValue,
-  targetPriceForMargin
+  targetPriceForMargin,
+  withoutCoefficient
 } from "./profit_prediction_values";
 import { buildCalculationSteps, formulaTokenName, formulaTokenText, isOperator } from "./profit_prediction_formula";
 import {
@@ -2110,10 +2111,12 @@ export default class extends Controller {
 
   applyWbLogisticsRate(rate) {
     if (!this.selectedRow || this.readonlyValue) return;
+    // WB's tariff base and per-litre fee are already multiplied by the coefficient (71.3 / 21.7 = 46 / 14 x 1.55), and
+    // the calculator multiplies by the coefficient itself, so the fees go in with the coefficient taken back out.
     const values = {
       logistics_coeff: rate.logistics_coeff,
-      wb_logistics_base_rub: rate.base_rub,
-      wb_logistics_liter_rub: rate.liter_rub
+      wb_logistics_base_rub: withoutCoefficient(rate.base_rub, rate.logistics_coeff),
+      wb_logistics_liter_rub: withoutCoefficient(rate.liter_rub, rate.logistics_coeff)
     };
     Object.entries(values).forEach(([field, value]) => {
       const input = this.selectedRow.querySelector(`[data-field='${field}']`);

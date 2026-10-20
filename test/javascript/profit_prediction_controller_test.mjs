@@ -12,7 +12,7 @@ const bundle = await build({
   write: false,
 });
 
-const [{ dualCurrencyAmounts, percentToRatioString, priceVariableCostRate, profitInputValue, ratioToPercentString, sellingPriceShortcuts, shortcutInputValue, targetPriceForMargin }] = await Promise.all(
+const [{ dualCurrencyAmounts, percentToRatioString, priceVariableCostRate, profitInputValue, ratioToPercentString, sellingPriceShortcuts, shortcutInputValue, targetPriceForMargin, withoutCoefficient }] = await Promise.all(
   bundle.outputFiles.map((file) => import(`data:text/javascript;base64,${Buffer.from(file.text).toString("base64")}`)),
 );
 
@@ -1048,4 +1048,17 @@ test("on the WB formula the greyed freight fields keep the real figures, Ozon's 
 
   assert.match(body, /row\.dataset\.platform === "wb"[\s\S]*this\.restoreRealFigures\(row\)/);
   assert.match(body, /formula\.outbound_rub/);
+});
+
+test("WB's official tariff fees go in without the coefficient they were multiplied by", async () => {
+  // Official rows: base and per-litre fee are 46 / 14 times the coefficient (1.55 -> 71.3 / 21.7).
+  [[1, 46, 14], [1.3, 59.8, 18.2], [1.45, 66.7, 20.3], [1.55, 71.3, 21.7], [1.7, 78.2, 23.8], [2, 92, 28]].forEach(([coefficient, base, liter]) => {
+    assert.equal(withoutCoefficient(base, coefficient), 46, `base at ${coefficient}`);
+    assert.equal(withoutCoefficient(liter, coefficient), 14, `per litre at ${coefficient}`);
+  });
+  assert.equal(withoutCoefficient(46, 0), 46, "no usable coefficient leaves the fee alone");
+
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+  assert.match(source, /wb_logistics_base_rub: withoutCoefficient\(rate\.base_rub, rate\.logistics_coeff\)/);
+  assert.match(source, /wb_logistics_liter_rub: withoutCoefficient\(rate\.liter_rub, rate\.logistics_coeff\)/);
 });
