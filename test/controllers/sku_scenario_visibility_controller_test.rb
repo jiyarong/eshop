@@ -114,6 +114,18 @@ class SkuScenarioVisibilityControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-scenario-key]", count: Ec::SkuProfitStandardContexts::SCENARIOS.size
   end
 
+  test "the scenario bar starts on custom scenarios, with actual scenarios as the second choice" do
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }
+
+    assert_response :success
+    tabs = css_select("[data-profit-prediction-target='scenarioModeTab']")
+    assert_equal %w[custom actual], tabs.map { |tab| tab["data-scenario-mode"] }
+    assert_equal %w[true false], tabs.map { |tab| tab["aria-selected"] }
+    assert_equal [ "Custom scenarios", "Actual scenarios" ], tabs.map { |tab| tab.text.strip }
+    assert_nil tabs.last["disabled"], "sales were measured, so actual scenarios are available"
+    assert_select "[data-profit-prediction-target='scenarioModeNote'][hidden]"
+  end
+
   test "the mark says one thing for no sales and another for thin sales" do
     get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }
 

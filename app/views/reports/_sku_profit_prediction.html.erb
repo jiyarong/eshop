@@ -45,6 +45,8 @@
     warning: t("reports.profit_prediction.scenarios.warning", weeks: "__WEEKS__", units: "__UNITS__", min: "__MIN__"),
     missed: t("reports.profit_prediction.scenarios.missed", count: "__COUNT__", weeks: "__WEEKS__", units: "__UNITS__", share: "__SHARE__", labels: "__LABELS__"),
     outside: t("reports.profit_prediction.scenarios.outside", units: "__UNITS__"),
+    mode_actual_note: t("reports.profit_prediction.scenarios.mode_actual_note", weeks: "__WEEKS__", count: "__COUNT__", units: "__UNITS__"),
+    mode_actual_empty: t("reports.profit_prediction.scenarios.mode_actual_empty", weeks: "__WEEKS__"),
     table_hidden: t("reports.profit_prediction.scenarios.table_hidden", count: "__COUNT__"),
     save_failed: t("reports.profit_prediction.scenarios.save_failed")
   },
@@ -502,6 +504,32 @@
 
   <section class="profit-prediction-process" aria-labelledby="profit-prediction-process-title" data-profit-prediction-target="calculatorView">
     <header class="profit-prediction-process__header">
+      <div class="profit-prediction-process__scenario-mode">
+        <nav class="profit-prediction-view-tabs" role="tablist" aria-label="<%= t("reports.profit_prediction.scenarios.mode_label") %>">
+          <button
+            type="button"
+            class="profit-prediction-view-tab is-active"
+            role="tab"
+            aria-selected="true"
+            title="<%= t("reports.profit_prediction.scenarios.mode_custom_hint") %>"
+            data-profit-prediction-target="scenarioModeTab"
+            data-scenario-mode="custom"
+            data-action="click->profit-prediction#selectScenarioMode"
+          ><%= t("reports.profit_prediction.scenarios.mode_custom") %></button>
+          <button
+            type="button"
+            class="profit-prediction-view-tab"
+            role="tab"
+            aria-selected="false"
+            title="<%= scenario_state[:measured] ? t("reports.profit_prediction.scenarios.mode_actual_hint", weeks: scenario_state[:weeks]) : t("reports.profit_prediction.scenarios.mode_actual_unavailable") %>"
+            data-profit-prediction-target="scenarioModeTab"
+            data-scenario-mode="actual"
+            data-action="click->profit-prediction#selectScenarioMode"
+            <%= "disabled" unless scenario_state[:measured] %>
+          ><%= t("reports.profit_prediction.scenarios.mode_actual") %></button>
+        </nav>
+        <span class="profit-prediction-process__scenario-mode-note" data-profit-prediction-target="scenarioModeNote" hidden></span>
+      </div>
       <nav
         class="profit-prediction-process__scenario-tabs"
         role="tablist"

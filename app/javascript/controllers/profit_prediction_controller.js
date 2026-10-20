@@ -11,7 +11,7 @@ import {
 } from "./profit_prediction_values";
 import { buildCalculationSteps, formulaTokenName, formulaTokenText, isOperator } from "./profit_prediction_formula";
 import {
-  fill, hiddenScenarios, missedScenarios, missedSummary, scenarioWarning
+  fill, hiddenScenarios, missedScenarios, missedSummary, scenarioShownIn, scenarioWarning, soldScenarios, soldSummary
 } from "./profit_prediction_scenarios";
 
 const PREVIEW_DEBOUNCE_MS = 350;
@@ -86,6 +86,8 @@ export default class extends Controller {
     "platformFilter",
     "scenarioTab",
     "scenarioTabItem",
+    "scenarioModeTab",
+    "scenarioModeNote",
     "scenarioBanner",
     "scenarioNote",
     "scenarioRestore",
@@ -180,6 +182,9 @@ export default class extends Controller {
     this.scenarios = this.hasScenarioStateValue && this.scenarioStateValue.scenarios
       ? JSON.parse(JSON.stringify(this.scenarioStateValue))
       : null;
+    // "custom": the scenarios this SKU chose to show (hide / restore work). "actual": the ones it
+    // really sold in the window, read-only. Always starts on custom.
+    this.scenarioMode = "custom";
     this.closeScenarioMenuHandler = (event) => this.closeScenarioMenuOnOutsideEvent(event);
     window.addEventListener("beforeunload", this.beforeUnloadHandler);
     document.addEventListener("turbo:before-visit", this.beforeVisitHandler);
@@ -451,10 +456,13 @@ export default class extends Controller {
       const item = this.scenarioTabItemTargets.find((candidate) => candidate.dataset.scenarioKey === scenario.key);
       if (!item) return;
 
-      item.hidden = Boolean(scenario.hidden);
+      item.hidden = !this.scenarioShown(scenario);
+      const gear = item.querySelector(".profit-prediction-process__scenario-menu-button");
+      if (gear) gear.hidden = this.actualScenarioMode();
       const warning = item.querySelector("[data-scenario-warning]");
       if (!warning) return;
-      const warn = scenarioWarning(state, scenario);
+      // A scenario shown only because it sold is not "hidden", whatever the SKU chose.
+      const warn = scenarioWarning(state, { ...scenario, hidden: !this.scenarioShown(scenario) });
       warning.hidden = !warn;
       const text = !warn ? ""
         : Number(scenario.units || 0) === 0
@@ -466,21 +474,62 @@ export default class extends Controller {
 
     const hidden = hiddenScenarios(state);
     if (this.hasScenarioRestoreTarget) {
-      this.scenarioRestoreTarget.hidden = hidden.length === 0;
+      this.scenarioRestoreTarget.hidden = hidden.length === 0 || this.actualScenarioMode();
       const count = this.scenarioRestoreTarget.querySelector("[data-scenario-restore-count]");
       if (count) count.textContent = hidden.length ? String(hidden.length) : "";
     }
     if (this.hasTableHiddenNoteTarget) {
-      this.tableHiddenNoteTarget.hidden = hidden.length === 0;
+      this.tableHiddenNoteTarget.hidden = hidden.length === 0 || this.actualScenarioMode();
       const button = this.tableHiddenNoteTarget.querySelector("button");
       if (button) button.textContent = fill(messages.table_hidden || "", { count: hidden.length });
     }
     this.renderScenarioBanner(state, messages);
+    this.renderScenarioModeNote(state, messages);
+  }
+
+  actualScenarioMode() {
+    return this.scenarioMode === "actual";
+  }
+
+  // What the scenario bar shows: in custom mode the ones not hidden, in actual mode the ones
+  // with signed units (hiding does not apply there).
+  scenarioShown(scenario) {
+    return scenarioShownIn(this.scenarioMode, scenario);
+  }
+
+  renderScenarioModeNote(state, messages) {
+    if (!this.hasScenarioModeNoteTarget) return;
+
+    const sold = soldScenarios(state);
+    const show = this.actualScenarioMode();
+    this.scenarioModeNoteTarget.hidden = !show;
+    if (!show) {
+      this.scenarioModeNoteTarget.textContent = "";
+      return;
+    }
+    this.scenarioModeNoteTarget.textContent = sold.length === 0
+      ? fill(messages.mode_actual_empty || "", { weeks: state.weeks })
+      : fill(messages.mode_actual_note || "", { weeks: state.weeks, ...soldSummary(state) });
+  }
+
+  selectScenarioMode(event) {
+    const mode = event.currentTarget.dataset.scenarioMode === "actual" ? "actual" : "custom";
+    if (!this.scenarios || this.scenarioMode === mode) return;
+    if (mode === "actual" && !this.scenarios.measured) return;
+
+    this.closeScenarioMenu();
+    this.scenarioMode = mode;
+    this.scenarioModeTabTargets.forEach((tab) => {
+      const active = tab.dataset.scenarioMode === mode;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    this.applyScenarioVisibility();
   }
 
   renderScenarioBanner(state, messages) {
     if (this.hasScenarioBannerTarget) {
-      const summary = missedSummary(state);
+      const summary = this.actualScenarioMode() ? { count: 0 } : missedSummary(state);
       this.scenarioBannerTarget.hidden = summary.count === 0;
       if (summary.count > 0) {
         const text = document.createElement("span");
@@ -515,6 +564,7 @@ export default class extends Controller {
     this.rowTargets.forEach((row) => {
       const scenario = state.scenarios.find((candidate) => candidate.key === row.dataset.scenarioKey);
       row.dataset.scenarioHidden = scenario?.hidden ? "true" : "false";
+      row.dataset.scenarioUnsold = scenario && Number(scenario.units || 0) > 0 ? "false" : "true";
     });
     this.applyPlatformFilter();
     this.renderScenarios();
@@ -531,6 +581,8 @@ export default class extends Controller {
   }
 
   async setScenarioHidden(key, hidden) {
+    if (this.actualScenarioMode()) return;
+
     const scenario = this.scenarios?.scenarios.find((candidate) => candidate.key === key);
     if (!scenario || Boolean(scenario.hidden) === hidden) return;
 
@@ -558,6 +610,7 @@ export default class extends Controller {
 
   toggleScenarioMenu(event) {
     event.stopPropagation();
+    if (this.actualScenarioMode()) return;
     const key = event.currentTarget.closest("[data-scenario-key]")?.dataset.scenarioKey;
     const scenario = this.scenarios?.scenarios.find((candidate) => candidate.key === key);
     if (!scenario) return;
@@ -591,6 +644,7 @@ export default class extends Controller {
 
   toggleRestoreMenu(event) {
     event.stopPropagation();
+    if (this.actualScenarioMode()) return;
     if (!this.scenarios) return;
 
     if (this.openScenarioMenuFor === event.currentTarget) {
@@ -769,7 +823,7 @@ export default class extends Controller {
   applyPlatformFilter() {
     const filter = this.platformFilter;
     this.rowTargets.forEach((row) => {
-      row.hidden = row.dataset.scenarioHidden === "true" || (Boolean(filter) && row.dataset.platform !== filter);
+      row.hidden = this.scenarioRowOutOfScope(row) || (Boolean(filter) && row.dataset.platform !== filter);
     });
 
     const tables = [
@@ -785,10 +839,15 @@ export default class extends Controller {
       const template = (filter ? this.messagesValue.filtered_context_count : this.messagesValue.context_count) || "";
       this.contextCountTarget.textContent = template
         .replace("__VISIBLE__", visibleRows.length)
-        .replace("__TOTAL__", this.rowTargets.filter((row) => row.dataset.scenarioHidden !== "true").length)
+        .replace("__TOTAL__", this.rowTargets.filter((row) => !this.scenarioRowOutOfScope(row)).length)
         .replace("__COUNT__", visibleRows.length)
         .replace("%{count}", visibleRows.length);
     }
+  }
+
+  // True for a row the current scenario scope leaves out (hidden by the SKU, or unsold in actual mode).
+  scenarioRowOutOfScope(row) {
+    return this.actualScenarioMode() ? row.dataset.scenarioUnsold === "true" : row.dataset.scenarioHidden === "true";
   }
 
   applyColumnFilter(table, filter) {

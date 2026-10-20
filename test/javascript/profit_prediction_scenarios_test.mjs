@@ -11,7 +11,7 @@ const bundle = await build({
   write: false,
 });
 
-const { fill, hiddenScenarios, missedScenarios, missedSummary, scenarioWarning, visibleScenarios } = await import(
+const { fill, hiddenScenarios, missedScenarios, missedSummary, scenarioShownIn, scenarioWarning, soldScenarios, soldSummary, visibleScenarios } = await import(
   `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -85,4 +85,22 @@ test("visible and hidden scenarios partition the list", () => {
 test("fill replaces every placeholder, also repeated ones", () => {
   assert.equal(fill("__N__ units, __N__ again, __NAME__", { n: 3, name: "WB" }), "3 units, 3 again, WB");
   assert.equal(fill("x __GONE__", { gone: null }), "x ");
+});
+
+test("actual scenarios are the ones with signed units, whatever the SKU hid", () => {
+  const current = state([scenario("a", 12), scenario("b", 0), scenario("c", 3, true), scenario("d", 0, true)]);
+
+  assert.deepEqual(soldScenarios(current).map((item) => item.key), ["a", "c"]);
+  assert.deepEqual(soldSummary(current), { count: 2, units: 15 });
+});
+
+test("the scenario bar shows by what the SKU chose in custom mode and by what sold in actual mode", () => {
+  const hiddenAndSold = scenario("a", 8, true);
+  const shownAndUnsold = scenario("b", 0);
+
+  assert.equal(scenarioShownIn("custom", hiddenAndSold), false);
+  assert.equal(scenarioShownIn("custom", shownAndUnsold), true);
+  assert.equal(scenarioShownIn("actual", hiddenAndSold), true);
+  assert.equal(scenarioShownIn("actual", shownAndUnsold), false);
+  assert.equal(scenarioShownIn("actual", { key: "x", hidden: false }), false, "no figure means nothing sold");
 });

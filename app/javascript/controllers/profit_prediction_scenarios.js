@@ -37,6 +37,22 @@ export function missedSummary(state) {
   };
 }
 
+// Scenarios with at least one signed unit in the window: the "actual" scenarios.
+export function soldScenarios(state) {
+  return state.scenarios.filter((scenario) => Number(scenario.units || 0) > 0);
+}
+
+export function soldSummary(state) {
+  const sold = soldScenarios(state);
+  return { count: sold.length, units: sold.reduce((sum, scenario) => sum + Number(scenario.units), 0) };
+}
+
+// Whether the scenario bar shows a scenario: "custom" follows what the SKU hid, "actual" follows
+// what it sold (hiding does not apply there).
+export function scenarioShownIn(mode, scenario) {
+  return mode === "actual" ? Number(scenario.units || 0) > 0 : !scenario.hidden;
+}
+
 export function hiddenScenarios(state) {
   return state.scenarios.filter((scenario) => scenario.hidden);
 }
