@@ -10016,22 +10016,33 @@ thead .table-sticky-column {
   box-shadow: 0 4px 10px rgba(24, 34, 53, .06);
 }
 
+/* Twelve scenarios on one row are too tight: six columns make two rows, fewer on narrow screens. */
 .profit-prediction-process__scenario-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   margin: 0 -1px 10px;
   padding: 6px 1px;
-  overflow-x: auto;
   border-bottom: 1px solid var(--border);
   background: var(--gray-50);
-  scrollbar-width: thin;
+}
+
+@media (max-width: 1100px) {
+  .profit-prediction-process__scenario-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .profit-prediction-process__scenario-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .profit-prediction-process__scenario-item {
   position: relative;
   display: grid;
-  flex: 1 1 118px;
-  min-width: 118px;
+  min-width: 0;
 }
 
 .profit-prediction-process__scenario-item[hidden] {
