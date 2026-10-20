@@ -57,6 +57,7 @@ class Ec::InventoryVelocityMetricsQueryTest < ActiveSupport::TestCase
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: @store.id }).delete_all
     Ec::Order.where(store_id: @store.id).delete_all
     Ec::SkuBatch.where(sku_code: [@sku.sku_code, @other_sku.sku_code]).delete_all
+    Ec::OperationAction.where(ec_sku_id: [ @sku.id, @other_sku.id ]).delete_all
     Ec::SkuProduct.where(sku_code: [@sku.sku_code, @other_sku.sku_code]).delete_all
     Ec::Store.where(id: @store.id).delete_all
     RawOzon::SellerAccount.where(id: @account.id).delete_all

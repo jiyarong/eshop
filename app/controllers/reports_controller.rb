@@ -1667,6 +1667,7 @@ class ReportsController < ApplicationController
   end
 
   def build_inventory_volume_summary(scope)
+    @inventory_stock_by_sku = Ec::InventoryPageStockQuery.new(sku_codes: scope.map(&:sku_code)).call
     rows = scope.map do |sku|
       fetch_inventory_row(sku)
     end
@@ -1809,6 +1810,7 @@ class ReportsController < ApplicationController
   def fetch_inventory_row(sku, metrics: {}, include_expected_physical_stock: false)
     raw_row = Ec::InventoryPageRowQuery.new(
       sku,
+      stock: @inventory_stock_by_sku.fetch(sku.sku_code.upcase),
       include_expected_physical_stock: include_expected_physical_stock
     ).call
 

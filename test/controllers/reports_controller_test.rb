@@ -273,6 +273,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     Ec::SkuDeveloperAssignment.where(sku_code: [@sku&.sku_code, @second_sku&.sku_code]).delete_all if defined?(Ec::SkuDeveloperAssignment)
     Ec::SkuOperatorAssignment.where(sku_code: [@sku&.sku_code, @second_sku&.sku_code]).delete_all
     Ec::SkuProductOperator.joins(:sku_product).where(ec_sku_products: { store_id: [@sales_store&.id, @wb_sales_store&.id] }).delete_all if defined?(Ec::SkuProductOperator)
+    Ec::OperationAction.where(ec_sku_id: [ @sku&.id, @second_sku&.id ].compact).delete_all
     Ec::SkuProduct.where(store_id: [@sales_store&.id, @wb_sales_store&.id]).delete_all if defined?(Ec::SkuProduct)
     RawOzon::Product.where(account_id: @sales_ozon_account&.id).delete_all
     RawOzon::SalesFunnelDaily.where(account_id: @sales_ozon_account&.id).delete_all
@@ -661,6 +662,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   ensure
     Ec::OrderItem.joins(:order).where(ec_orders: { store_id: store&.id }).delete_all if defined?(store)
     Ec::Order.where(store_id: store&.id).delete_all if defined?(store)
+    Ec::OperationAction.where(ec_sku_id: [ sku_a&.id, sku_b&.id, sku_c&.id, sku_d&.id ].compact).delete_all
     Ec::SkuBatch.where(sku_code: [sku_a&.sku_code, sku_b&.sku_code, sku_c&.sku_code, sku_d&.sku_code].compact).delete_all
     Ec::SkuProduct.where(sku_code: [sku_a&.sku_code, sku_b&.sku_code, sku_c&.sku_code, sku_d&.sku_code].compact).delete_all
     Ec::Store.where(id: store&.id).delete_all if defined?(store)
@@ -677,7 +679,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
-    fake_query_factory = lambda do |sku, include_expected_physical_stock: false|
+    fake_query_factory = lambda do |sku, include_expected_physical_stock: false, stock: nil|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -751,7 +753,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
-    fake_query_factory = lambda do |sku, include_expected_physical_stock: false|
+    fake_query_factory = lambda do |sku, include_expected_physical_stock: false, stock: nil|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           {
@@ -808,12 +810,14 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     extra_skus&.each(&:destroy)
   end
 
-  test "inventory report uses inventory page row query for each filtered sku" do
+  test "inventory report reuses batch stock for volume totals and current page rows" do
     calls = []
-    fake_query_factory = lambda do |sku, include_expected_physical_stock: false|
+    stock_inputs = []
+    fake_query_factory = lambda do |sku, include_expected_physical_stock: false, stock: nil|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           calls << sku.sku_code
+          stock_inputs << stock
           {
             sku_code: sku.sku_code,
             product_name: "商品 #{sku.sku_code}",
@@ -858,6 +862,8 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal [@sku_code, @sku_code], calls
+    assert_same stock_inputs.first, stock_inputs.last
+    assert stock_inputs.first.key?(:summary)
     assert_equal 1, velocity_calls.size
     assert_equal [@sku_code], velocity_calls.first[0]
     assert_kind_of Date, velocity_calls.first[1]

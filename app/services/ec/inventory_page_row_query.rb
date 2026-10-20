@@ -2,14 +2,15 @@ module Ec
   class InventoryPageRowQuery
     INCOMING_STATUSES = %w[draft ordered in_transit].freeze
 
-    def initialize(sku, metrics: nil, include_expected_physical_stock: false)
+    def initialize(sku, metrics: nil, include_expected_physical_stock: false, stock: nil)
       @sku = sku
       @metrics = metrics || {}
       @include_expected_physical_stock = include_expected_physical_stock
+      @stock = stock
     end
 
     def call
-      overview = @sku.inventory_overview
+      overview = @stock || @sku.inventory_overview
       summary = overview[:summary]
       cost = @sku.cost
       dimension = @sku.dimension
@@ -47,6 +48,8 @@ module Ec
     end
 
     def incoming_quantity
+      return @stock.fetch(:incoming_quantity) if @stock
+
       procurement_batches.sum(Arel.sql(Ec::SkuBatch::EFFECTIVE_RECEIVED_QUANTITY_SQL)).to_i
     end
 

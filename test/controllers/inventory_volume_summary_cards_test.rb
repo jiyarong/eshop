@@ -11,6 +11,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
   teardown do
     sku_codes = Ec::Sku.with_deleted.where("sku_code LIKE ?", "SUM-%-#{@token}").pluck(:sku_code)
     Ec::SkuCost.where(sku_code: sku_codes).delete_all
+    Ec::SkuDimension.where(sku_code: sku_codes).delete_all
     Ec::SkuBatch.where(sku_code: sku_codes).delete_all
     Ec::Sku.with_deleted.where(sku_code: sku_codes).delete_all
     UserRole.joins(:user).where("users.email LIKE ?", "inventory-summary-#{@token.downcase}%").delete_all
@@ -49,7 +50,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     row_payloads[skus[10]].merge!(platform_inbound_stock: 2, platform_stock: 3, available_stock: 4, unit_volume_l: BigDecimal("1.5"))
     row_payloads[skus[11]].merge!(incoming_quantity: -9, unit_volume_l: BigDecimal("5.0"))
 
-    fake_query_factory = lambda do |sku|
+    fake_query_factory = lambda do |sku, **|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           row_payloads.fetch(sku)
@@ -127,7 +128,7 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     }
 
     summary_builder_calls = 0
-    fake_query_factory = lambda do |requested_sku|
+    fake_query_factory = lambda do |requested_sku, **|
       Object.new.tap do |query|
         query.define_singleton_method(:call) do
           row_payload
@@ -177,6 +178,38 @@ class InventoryVolumeSummaryCardsTest < ActionDispatch::IntegrationTest
     end
 
     assert_operator summary_builder_calls, :>=, 2
+  end
+
+  test "real stock totals span all pages and refresh after a batch changes" do
+    skus = 12.times.map do |index|
+      sku = Ec::Sku.create!(sku_code: format("SUM-REAL-%02d-%s", index, @token), product_name: "Stock #{index}")
+      Ec::SkuDimension.create!(sku_code: sku.sku_code, inner_length_cm: 10, inner_width_cm: 10, inner_height_cm: 10)
+      sku
+    end
+    Ec::SkuBatch.insert_all!(skus.each_with_index.map do |sku, index|
+      {
+        sku_code: sku.sku_code, batch_code: "#{sku.sku_code}-BATCH", status: "received", batch_type: 1,
+        purchased_quantity: index == 11 ? -9 : index + 1, received_quantity: index == 11 ? -9 : index + 1,
+        purchase_unit_price_cny: 1
+      }
+    end)
+
+    [ 1, 2 ].each do |page|
+      sign_in @current_user
+      get "/reports/inventory", params: { sku: "sum-real-", page: page }, headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select "tbody tr.inventory-list-table__row", count: page == 1 ? 10 : 2
+      assert_summary_card_value(I18n.t("reports.inventory.fields.book_available_stock"), "0.0660 m³")
+      assert_summary_card_value(I18n.t("reports.inventory.fields.overseas_available_stock"), "0.0660 m³")
+    end
+
+    Ec::SkuBatch.find_by!(sku_code: skus[10].sku_code).update!(received_quantity: 22)
+    sign_in @current_user
+    get "/reports/inventory", params: { sku: "sum-real-", page: 1 }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_summary_card_value(I18n.t("reports.inventory.fields.book_available_stock"), "0.0770 m³")
   end
 
   private
