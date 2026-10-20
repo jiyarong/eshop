@@ -35,8 +35,8 @@ const labels = {
   },
   steps: {
     revenue: "收入", goods: "商品成本", duty: "关税", import_vat: "进口增值税", volume: "商品体积",
-    billed_volume: "计费体积", delivered_rate: "成交签收率", failed_per_delivered: "每件成交对应的失败包裹数", returns_outbound: "失败包裹去程摊销", returns_return: "失败包裹回程摊销", logistics_mode: "物流费模式", return_rate: "退货率", return_amortized: "退货/取消成本摊销",
-    platform_logistics: "平台物流费", cross_docking: "越库费", returns: "退货/取消成本摊销", storage: "仓储费", commission: "佣金",
+    billed_volume: "计费体积", delivered_rate: "成交签收率", logistics_mode: "物流费模式", return_rate: "退货率", return_amortized: "退货运费折算",
+    platform_logistics: "平台物流费", cross_docking: "越库费", returns: "退货费用", storage: "仓储费", commission: "佣金",
     platform_subsidy: "平台净补贴（参考）", acquiring: "收单费", advertising: "广告费", tax: "销售税", other: "其他成本",
     total_cost: "总成本", profit: "利润", margin: "利润率",
   },
@@ -135,11 +135,10 @@ test("WB's return step uses the outbound fee without the inbound delivery, and n
     const steps = stepsFor(testCase);
     const named = (key) => formulaLines(steps.find((step) => step.key === key).formula, format).named;
 
-    assert.ok(!steps.find((step) => step.key === "returns_return").fields.includes("logistics_tax_rate"), testCase.name);
-    assert.equal(named("failed_per_delivered"), "退货率 ÷ 成交签收率");
-    assert.equal(named("returns_outbound"), "去程物流费 × 每件成交对应的失败包裹数", "the failed parcels' outbound fee");
-    assert.match(named("returns_return"), /× 每件成交对应的失败包裹数$/, "and their return leg");
-    assert.equal(named("returns"), "失败包裹去程摊销 + 失败包裹回程摊销");
+    const returns = steps.find((step) => step.key === "returns");
+
+    assert.ok(!returns.fields.includes("logistics_tax_rate"), testCase.name);
+    assert.match(named("returns"), /^\( 去程物流费 \+ .* \) × 退货率 ÷ 成交签收率$/);
   });
 });
 
@@ -184,10 +183,8 @@ test("legacy sheet parameters the calculator applies are shown in the formulas",
   assert.ok(hidden.some((step) => step.key === "import_vat"));
   assert.ok(!standard.some((step) => step.key === "import_vat"), "Ozon Russia shows no import VAT line unless part of it is a cost");
   assert.equal(named(hidden, "tax"), "收入 × 税率");
-  assert.equal(named(hidden, "returns_outbound"), "去程物流 × 退货折算系数");
-  assert.equal(named(hidden, "returns_return"), "返程物流 × 退货折算系数");
-  assert.equal(named(standard, "returns_outbound"), "去程物流 × 每件成交对应的失败包裹数");
-  assert.equal(named(standard, "return_amortized"), "失败包裹去程摊销 + 失败包裹回程摊销");
+  assert.equal(named(hidden, "return_amortized"), "( 去程物流 + 返程物流 ) × 退货折算系数");
+  assert.equal(named(standard, "return_amortized"), "( 去程物流 + 返程物流 ) × 退货率 ÷ 成交签收率");
   assert.equal(named(standard, "delivered_rate"), "1 − 退货率");
 });
 
@@ -256,9 +253,9 @@ test("WB keeps every freight row and parameter in place and flags what does not 
   assert.ok(stepOf(formula, "logistics_mode").control);
 
   assert.deepEqual(stepOf(formula, "platform_logistics").inactiveFields, ["outbound_logistics_rub"]);
-  assert.deepEqual(stepOf(formula, "returns_return").inactiveFields, ["return_logistics_rub"]);
+  assert.deepEqual(stepOf(formula, "returns").inactiveFields, ["return_logistics_rub"]);
 
   assert.deepEqual(stepOf(actual, "platform_logistics").inactiveFields, ["wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff"],
     "the base fee, per-litre fee and coefficient are void on typed freight");
-  assert.deepEqual(stepOf(actual, "returns_return").inactiveFields, ["wb_fixed_return_base_rub"]);
+  assert.deepEqual(stepOf(actual, "returns").inactiveFields, ["wb_fixed_return_base_rub"]);
 });
