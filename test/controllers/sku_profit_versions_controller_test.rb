@@ -720,7 +720,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".profit-prediction-workbench[data-view-mode='calculator']"
-    assert_select ".profit-prediction-view-tabs[role='tablist'] .profit-prediction-view-tab", count: 2
+    assert_select ".profit-prediction-toolbar__identity .profit-prediction-view-tabs[role='tablist'] .profit-prediction-view-tab", count: 2
     # The switch lives in the title row, right after the save status, not in a row of its own.
     assert_select ".profit-prediction-toolbar__identity > .profit-prediction-toolbar__statuses + .profit-prediction-view-tabs"
     assert_select ".profit-prediction-view-tab.is-active[data-view-mode='calculator']", text: "Scenario calculator"
