@@ -18,7 +18,7 @@ module Ec
         goods = purchase + value_or_default("freight_cny", "0") + value_or_default("customs_misc_cny", "0")
         volume = decimal("length_cm") * decimal("width_cm") * decimal("height_cm") / 1000
         billed_volume = volume.ceil
-        base_logistics_fee_rub = value_or_default("wb_logistics_base_rub", general_company? ? "60" : "46")
+        base_logistics_fee_rub = value_or_default("wb_logistics_base_rub", "46")
         logistics_liter_fee_rub = value_or_default("wb_logistics_liter_rub", "14")
         base_logistics_rub = base_logistics_fee_rub + (billed_volume - 1) * logistics_liter_fee_rub
         exchange = decimal("exchange_rate_rub_cny")

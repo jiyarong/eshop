@@ -66,7 +66,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0.1.to_d, context.fetch("return_rate").to_d
     assert_equal 1.55.to_d, context.fetch("logistics_coeff").to_d
     assert_equal 0.015.to_d, context.fetch("acquiring_rate").to_d
-    assert_equal 60.to_d, context.fetch("wb_logistics_base_rub").to_d
+    assert_equal 46.to_d, context.fetch("wb_logistics_base_rub").to_d
     assert_equal 50.to_d, context.fetch("wb_fixed_return_base_rub").to_d
     assert_equal 2.to_d, context.fetch("misc_cny").to_d
     assert_equal "incomplete", context.fetch("calculation_status")
@@ -481,7 +481,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
         purchase_price_cny: 270, freight_cny: 22.5, customs_misc_cny: 2.81,
         length_cm: 85, width_cm: 52, height_cm: 5,
         commission_base_price_rub: 15_000, exchange_rate_rub_cny: 13,
-        logistics_coeff: 1.55, return_rate: 0.18,
+        logistics_coeff: 1.55, return_rate: 0.18, wb_logistics_base_rub: 60,
         commission_rate: 0.218, acquiring_rate: 0.031,
         sales_vat_rate: 0.2, misc_cny: 2
       }

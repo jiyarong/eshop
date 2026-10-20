@@ -87,7 +87,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal 0.1.to_d, wb_general.fetch("return_rate")
     assert_equal 1.55.to_d, wb_general.fetch("logistics_coeff")
     assert_equal 0.015.to_d, wb_general.fetch("acquiring_rate")
-    assert_equal 60.to_d, wb_general.fetch("wb_logistics_base_rub")
+    assert_equal 46.to_d, wb_general.fetch("wb_logistics_base_rub"), "one tariff whatever the tax regime"
     assert_equal 50.to_d, wb_general.fetch("wb_fixed_return_base_rub")
     assert_equal 0.2.to_d, wb_general.fetch("sales_vat_rate")
     assert_equal 0.2.to_d, wb_general.fetch("buyer_price_vat_rate")
@@ -293,10 +293,10 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal blank[:profit_cny], formula[:profit_cny], "typed figures do not matter on the formula"
     assert_not_equal formula[:profit_cny], actual[:profit_cny]
 
-    # volume 4 L -> billed 4 L: 60 + 3 x 14 = 102 RUB, x 1.55 coefficient = 158.1 RUB; the return is the flat 50
-    assert_equal 158.1.to_d, formula.dig(:logistics, :formula, :outbound_rub)
+    # volume 4 L -> billed 4 L: 46 + 3 x 14 = 88 RUB, x 1.55 coefficient = 136.4 RUB; the return is the flat 50
+    assert_equal 136.4.to_d, formula.dig(:logistics, :formula, :outbound_rub)
     assert_equal 50.to_d, formula.dig(:logistics, :formula, :return_rub)
-    assert_equal 158.1.to_d, actual.dig(:logistics, :formula, :outbound_rub), "the formula's figure is shown in actual mode too"
+    assert_equal 136.4.to_d, actual.dig(:logistics, :formula, :outbound_rub), "the formula's figure is shown in actual mode too"
 
     assert_equal "formula", formula.dig(:logistics, :mode)
     assert_equal "actual", formula.dig(:logistics, :alternative, :mode)

@@ -130,7 +130,9 @@ module Ec
                           end,
           sales_vat_rate: general_company ? decimal("0.2") : nil,
           tax_rate: general_company ? nil : decimal("0.06"),
-          wb_logistics_base_rub: general_company ? decimal("60") : decimal("46"),
+          # WB charges the same tariff whatever the tax regime: 46 for the first litre, 14 for each further one (x the
+          # warehouse coefficient). The sheet's 60 for a general company has no official or measured counterpart.
+          wb_logistics_base_rub: decimal("46"),
           wb_logistics_liter_rub: decimal("14"),
           wb_fixed_return_base_rub: decimal("50"),
           fbo_delivery_cny: decimal("0"),

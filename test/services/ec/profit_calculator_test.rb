@@ -49,6 +49,7 @@ class Ec::ProfitCalculatorTest < ActiveSupport::TestCase
       length_cm: 85, width_cm: 52, height_cm: 5,
       commission_base_price_rub: 15_000, exchange_rate_rub_cny: 13,
       logistics_coeff: 1.55, fbo_delivery_cny: 0,
+      wb_logistics_base_rub: 60, # the sheet's own base for this row; the calculator's default is the official 46 now
       return_rate: 0.18, storage_cny: 0,
       acquiring_rate: 0.031, advertising_rate: 0, damage_rate: 0,
       misc_cny: 2, commission_rate: 0.218, sales_vat_rate: 0.2, other_cny: 0

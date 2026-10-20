@@ -28,7 +28,8 @@
       "damage_rate": 0.01,
       "misc_cny": 2,
       "sales_vat_rate": 0.2,
-      "tax_rate": 0.06
+      "tax_rate": 0.06,
+      "wb_logistics_base_rub": 60
     },
     "expected": {
       "revenue_cny": 375.0,
