@@ -624,12 +624,14 @@ export default class extends Controller {
       });
       return button;
     }));
+    menu.hidden = false;
+    // Open under the button, with the menu's right edge on the button's right edge: the ⋯ sits at
+    // the right of its tab, so the menu stays under that tab instead of the next one.
     const box = anchor.getBoundingClientRect();
     const top = Math.round(box.bottom + 4);
-    const left = Math.round(Math.max(8, Math.min(box.left, window.innerWidth - 320)));
+    const left = Math.round(Math.max(8, Math.min(box.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 8)));
     menu.style.top = `${top}px`;
     menu.style.left = `${left}px`;
-    menu.hidden = false;
     // `position: fixed` is relative to the viewport unless an ancestor (a transform, filter or
     // contain) becomes its containing block; measure where it really landed and shift it back.
     const placed = menu.getBoundingClientRect();
@@ -758,7 +760,8 @@ export default class extends Controller {
     const visibleRows = this.visibleRows();
     if (!visibleRows.includes(this.selectedRow)) this.setSelectedRow(visibleRows[0]);
     if (this.hasContextCountTarget) {
-      const template = filter ? this.messagesValue.filteredContextCount : this.messagesValue.contextCount;
+      // The page sends its messages with snake_case keys (profit_messages in the ERB).
+      const template = (filter ? this.messagesValue.filtered_context_count : this.messagesValue.context_count) || "";
       this.contextCountTarget.textContent = template
         .replace("__VISIBLE__", visibleRows.length)
         .replace("__TOTAL__", this.rowTargets.filter((row) => row.dataset.scenarioHidden !== "true").length)
