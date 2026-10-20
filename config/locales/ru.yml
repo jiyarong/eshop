@@ -2882,7 +2882,7 @@ ru:
         import_vat_cny: "Импортный НДС CNY"
         duty_cny: "Пошлина CNY"
         logistics_cny: "Логистика CNY"
-        returns_cny: "Амортизация обратной логистики CNY"
+        returns_cny: "Распределённые расходы на возвраты CNY"
         storage_cost_cny: "Хранение CNY"
         commission_cny: "Комиссия CNY"
         acquiring_cny: "Эквайринг CNY"

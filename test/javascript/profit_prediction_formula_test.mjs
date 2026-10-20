@@ -35,8 +35,8 @@ const labels = {
   },
   steps: {
     revenue: "收入", goods: "商品成本", duty: "关税", import_vat: "进口增值税", volume: "商品体积",
-    billed_volume: "计费体积", delivered_rate: "成交签收率", logistics_mode: "物流费模式", return_rate: "退货率", return_amortized: "退货运费折算",
-    platform_logistics: "平台物流费", outbound_logistics: "去程物流费", fbo_delivery: "送仓费", total_logistics: "总物流费", cross_docking: "越库费", returns: "退货费用", storage: "仓储费", commission: "佣金",
+    billed_volume: "计费体积", delivered_rate: "成交签收率", logistics_mode: "物流费模式", return_rate: "退货率", return_amortized: "退货分摊费用",
+    platform_logistics: "平台物流费", outbound_logistics: "去程物流费", fbo_delivery: "送仓费", total_logistics: "总物流费", cross_docking: "越库费", returns: "退货分摊费用", storage: "仓储费", commission: "佣金",
     platform_subsidy: "平台净补贴（参考）", acquiring: "收单费", advertising: "广告费", tax: "销售税", other: "其他成本",
     total_cost: "总成本", profit: "利润", margin: "利润率",
   },
@@ -120,7 +120,7 @@ test("formulas name the parameters and then substitute the numbers", () => {
   assert.equal(outbound.named, "( WB 基础物流费 + ( 计费体积 − 1 ) × WB 每升物流费 ) × 物流系数");
   assert.match(outbound.values, /^\( 60 \+ \( 7 − 1 \) × 14 \) × /);
   assert.equal(named("fbo_delivery"), "送仓费 × 汇率");
-  assert.equal(named("total_logistics"), "去程物流费 + 退货费用 + 送仓费", "the total sits below the return cost and the delivery row");
+  assert.equal(named("total_logistics"), "去程物流费 + 退货分摊费用 + 送仓费", "the total sits below the return cost and the delivery row");
   assert.ok(!wb.some((step) => step.key === "base_logistics"), "WB's base fee is part of the outbound logistics row");
   assert.equal(formulaLines(wb.find((step) => step.key === "revenue").formula, format).named, "佣金基准价 ÷ 汇率");
   assert.equal(formulaLines(wb.find((step) => step.key === "margin").formula, format).named, "利润 ÷ 收入");

@@ -248,7 +248,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".profit-prediction-platform-tab.is-active[data-platform-value='']", count: 1
     assert_select "[data-platforms='wb'][data-platform-column-group]", minimum: 1
     assert_select "[data-platforms='ozon'][data-platform-column-group]", minimum: 1
-    assert_select "th", text: "Amortized return logistics CNY", count: 1
+    assert_select "th", text: "Allocated return cost CNY", count: 1
     assert_select "th", text: "Commission base price (RUB)", count: 1
     assert_select "th", text: "Commission rate (%)", count: 1
     assert_select "th", text: "Logistics return rate (%)", count: 1

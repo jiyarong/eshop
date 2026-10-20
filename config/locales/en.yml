@@ -2931,7 +2931,7 @@ en:
         import_vat_cny: "Import VAT CNY"
         duty_cny: "Duty CNY"
         logistics_cny: "Logistics CNY"
-        returns_cny: "Amortized return logistics CNY"
+        returns_cny: "Allocated return cost CNY"
         storage_cost_cny: "Storage CNY"
         commission_cny: "Commission CNY"
         acquiring_cny: "Acquiring CNY"

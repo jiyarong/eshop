@@ -3143,7 +3143,7 @@ zh:
         import_vat_cny: "进口增值税 CNY"
         duty_cny: "关税 CNY"
         logistics_cny: "物流 CNY"
-        returns_cny: "退货运费折算 CNY"
+        returns_cny: "退货分摊费用 CNY"
         storage_cost_cny: "仓储 CNY"
         commission_cny: "佣金 CNY"
         acquiring_cny: "收单 CNY"
