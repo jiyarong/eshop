@@ -1,7 +1,7 @@
 require "test_helper"
 
-# The actual-data queries narrowed to one scenario: WB by target market (the ledger's report_type),
-# Ozon by FBO/FBS (the FBS posting table).
+# The actual-data queries narrowed to one scenario: WB by target market (the buyer's country in the
+# statistics orders, matched by srid), Ozon by FBO/FBS (the FBS posting table).
 class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
   DAY = Date.new(2099, 9, 1)
   TODAY = DAY.beginning_of_week(:monday) + 4.weeks # the four full weeks before it contain DAY
@@ -25,6 +25,7 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
 
   teardown do
     RawWb::FinanceDetail.where(account_id: @wb_account.id).delete_all
+    RawWb::StatsOrder.where(account_id: @wb_account.id).delete_all
     RawOzon::AccrualByDay.where(account_id: @ozon_account.id).delete_all
     RawOzon::PostingFbs.where(account_id: @ozon_account.id).delete_all
     Ec::OrderItem.where(store_id: [ @wb_store.id, @ozon_store.id ]).delete_all
@@ -41,7 +42,7 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
     Ec::Sku.with_deleted.where(id: @sku.id).delete_all
   end
 
-  # ── WB: the market comes from the ledger's report_type ─────────────────────────────────────
+  # ── WB: the market is the buyer's country, found through the srid ──────────────────────────
 
   test "WB logistics and return rate are measured per target market" do
     # Export to Russia (report_type 2): 2 outbound legs of 10 and 30 BYN, one return leg of 5.
@@ -52,27 +53,34 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
     wb_leg("BY-1", "К клиенту при продаже", 20, report_type: 1)
     wb_leg("BY-2", "К клиенту при отмене", 20, report_type: 1)
     wb_leg("BY-2", "От клиента при отмене", 8, report_type: 1)
+    # A Russian buyer's cancelled parcel is booked in report type 1 too: it is a Russian parcel.
+    wb_leg("RU-CANCEL", "К клиенту при отмене", 12, report_type: 1, country: "Россия")
+    wb_leg("RU-CANCEL", "От клиента при отмене", 12, report_type: 1, country: "Россия")
+    # Parcels with no statistics order (country unknown) belong to no market.
+    wb_leg("UNKNOWN-CANCEL", "К клиенту при отмене", 50, report_type: 1, country: nil)
+    wb_leg("UNKNOWN-CANCEL", "От клиента при отмене", 50, report_type: 1, country: nil)
 
     all = logistics(nil)
     ru = logistics("ru")
     by = logistics("by")
 
-    assert_equal 4, all.dig(:outbound, :sample_count)
-    assert_equal({ total_rub: 2000.to_d, sample_count: 4, average_rub: 500.to_d }, all[:outbound]) # (10+30+20+20) BYN * 25
-    assert_equal({ total_rub: 1000.to_d, sample_count: 2, average_rub: 500.to_d }, ru[:outbound])
-    assert_equal({ total_rub: 125.to_d, sample_count: 1, average_rub: 125.to_d }, ru[:return])
+    assert_equal 6, all.dig(:outbound, :sample_count)
+    # RU: legs 10 and 30 plus the Russian cancelled parcel's 12 BYN, all converted at 25.
+    assert_equal({ total_rub: 1300.to_d, sample_count: 3, average_rub: 433.33.to_d }, ru[:outbound])
+    assert_equal({ total_rub: 425.to_d, sample_count: 2, average_rub: 212.5.to_d }, ru[:return]) # 5 and 12 BYN
     assert_equal({ total_rub: 1000.to_d, sample_count: 2, average_rub: 500.to_d }, by[:outbound])
     assert_equal({ total_rub: 200.to_d, sample_count: 1, average_rub: 200.to_d }, by[:return])
     assert_equal "ru", ru[:market]
 
     rate = Ec::SkuActualReturnRateQuery.run(sku: @sku, platform: "wb", today: TODAY, time_zone: ActiveSupport::TimeZone["Asia/Shanghai"], delivery_mode: "fbo", market: "by")
-    assert_equal({ order_count: 2, return_count: 1, rate: 0.5.to_d }, rate[:return_rate])
+    assert_equal({ order_count: 2, return_count: 1, rate: 0.5.to_d }, rate[:return_rate], "the Russian and unknown cancelled parcels are not Belarus's")
     assert_nil rate[:buyer_return_rate], "the orders table cannot tell the markets apart"
   end
 
   test "WB acquiring is measured per target market" do
     wb_sale("RU-1", price: 1000, acquiring: 30, report_type: 2)
     wb_sale("BY-1", price: 1000, acquiring: 19, report_type: 1)
+    wb_sale("KZ-1", price: 1000, acquiring: 99, report_type: 1, country: "Казахстан") # neither market
 
     ru = Ec::SkuActualAcquiringQuery.run(sku: @sku, platform: "wb", today: TODAY, market: "ru")
     by = Ec::SkuActualAcquiringQuery.run(sku: @sku, platform: "wb", today: TODAY, market: "by")
@@ -80,29 +88,31 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
 
     assert_equal 0.03.to_d, ru.dig(:acquiring, :rate)
     assert_equal 0.019.to_d, by.dig(:acquiring, :rate)
-    assert_equal 0.0245.to_d, all.dig(:acquiring, :rate)
+    assert_equal ((30 + 19 + 99).to_d / 3000).round(10), all.dig(:acquiring, :rate)
   end
 
-  test "a WB selling price is the one of the orders the ledger puts in that market; orders it has not reached count as Russian and are reported" do
+  test "a WB selling price is the one of the orders whose buyer is in that market; orders with no known country count as Russian and are reported" do
     wb_order("RU-A", price: 4000, quantity: 1)
     wb_order("BY-A", price: 3000, quantity: 1)
-    wb_order("FRESH-A", price: 9000, quantity: 1) # not in the ledger yet
-    wb_sale("RU-A", price: 100, acquiring: 1, report_type: 2)
-    wb_sale("BY-A", price: 100, acquiring: 1, report_type: 1)
+    wb_order("KZ-A", price: 7000, quantity: 1) # a country with no scenario
+    wb_order("FRESH-A", price: 9000, quantity: 1) # no statistics order, so no known country
+    wb_stats("RU-A", "Россия")
+    wb_stats("BY-A", "Беларусь")
+    wb_stats("KZ-A", "Казахстан")
 
     ru = price("wb", "ru", "fbo")
     by = price("wb", "by", "fbo")
 
-    assert_equal 6500.to_d, ru.dig(:commission_base_price, :average_rub), "RU-A and the order not yet in the ledger"
-    assert_equal 3000.to_d, by.dig(:commission_base_price, :average_rub), "only what the ledger places in Belarus"
+    assert_equal 6500.to_d, ru.dig(:commission_base_price, :average_rub), "RU-A and the order with no known country; not the Kazakh one"
+    assert_equal 3000.to_d, by.dig(:commission_base_price, :average_rub), "only what is known to be Belarusian"
     assert_equal 1, ru[:unclassified_unit_count]
   end
 
   test "a scenario price query also separates WB markets" do
     wb_order("RU-A", price: 4000, quantity: 2)
     wb_order("BY-A", price: 3000, quantity: 3)
-    wb_sale("RU-A", price: 100, acquiring: 1, report_type: 2)
-    wb_sale("BY-A", price: 100, acquiring: 1, report_type: 1)
+    wb_stats("RU-A", "Россия")
+    wb_stats("BY-A", "Беларусь")
 
     result = Ec::SkuActualScenarioPriceQuery.run(sku: @sku, platform: "wb", market: "by", delivery_mode: "fbo", company_type: "general",
       today: TODAY, time_zone: ActiveSupport::TimeZone["Asia/Shanghai"])
@@ -197,12 +207,23 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
     Ec::SkuActualSellingPriceQuery.run(sku: @sku, platform: platform, market: market, delivery_mode: mode, today: TODAY, time_zone: ActiveSupport::TimeZone["Asia/Shanghai"])
   end
 
-  def wb_leg(srid, bonus, amount, report_type:)
+  def wb_stats(srid, country)
+    RawWb::StatsOrder.create!(account_id: @wb_account.id, srid: "#{srid}-#{@token}", order_date: DAY.in_time_zone, nm_id: @nm_id, country_name: country)
+  end
+
+  # The country of a parcel's order defaults to the one its report type usually means.
+  def wb_country(report_type, country)
+    country == :by_report_type ? { 2 => "Россия", 1 => "Беларусь" }.fetch(report_type) : country
+  end
+
+  def wb_leg(srid, bonus, amount, report_type:, country: :by_report_type)
+    wb_stats(srid, wb_country(report_type, country)) if wb_country(report_type, country) && !RawWb::StatsOrder.exists?(account_id: @wb_account.id, srid: "#{srid}-#{@token}")
     RawWb::FinanceDetail.create!(account: @wb_account, nm_id: @nm_id, rrdid: (@rrdid += 1), rr_dt: DAY, sale_dt: DAY, srid: "#{srid}-#{@token}",
       seller_oper_name: "Логистика", bonus_type_name: bonus, delivery_method: "FBW, (МГТ, короба)", delivery_rub: amount, report_type: report_type)
   end
 
-  def wb_sale(srid, price:, acquiring:, report_type:)
+  def wb_sale(srid, price:, acquiring:, report_type:, country: :by_report_type)
+    wb_stats(srid, wb_country(report_type, country)) if wb_country(report_type, country)
     RawWb::FinanceDetail.create!(account: @wb_account, nm_id: @nm_id, rrdid: (@rrdid += 1), rr_dt: DAY, sale_dt: DAY, srid: "#{srid}-#{@token}",
       seller_oper_name: "Продажа", quantity: 1, retail_price_with_disc: price, acquiring_fee: acquiring, report_type: report_type)
   end

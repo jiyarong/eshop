@@ -71,7 +71,7 @@ class Ec::SkuProfitStandardContextsTest < ActiveSupport::TestCase
     assert_equal 10, built.size
     belarus = built.find { |context| context.platform == "wb" && context.market == "by" && context.delivery_mode == "fbs" && context.company_type == "small" }
     assert_equal 0.019.to_d, belarus.acquiring_rate
-    assert_equal 0.3.to_d, belarus.return_rate
+    assert_equal 0.1.to_d, belarus.return_rate
     fbs = built.find { |context| context.platform == "ozon" && context.delivery_mode == "fbs" && context.market == "ru" }
     assert_equal 30.to_d, fbs.fbs_handover_rub
     assert_nil fbs.warehouse_operation_rub

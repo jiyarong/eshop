@@ -19,7 +19,6 @@ module Ec
     # A hidden scenario is reported as missed when it has at least MIN_UNITS signed units and at
     # least this share (percent) of all the SKU's signed units.
     MISSED_SHARE_PERCENT = 1
-    WB_MARKETS = Ec::WbLedgerMarket::REPORT_TYPE_MARKETS
     WB_MODES = { "FBW" => "fbo", "FBS" => "fbs" }.freeze
     OZON_MARKETS = { "BYN" => "by", "RUB" => "ru" }.freeze
 
@@ -115,12 +114,13 @@ module Ec
         .where(account_id: bindings.keys.map(&:first).uniq, nm_id: bindings.keys.map(&:last).uniq,
           seller_oper_name: RawWb::FinanceDetail::SALE_KEYWORD, rr_dt: from_date..@today)
         .where("quantity > 0")
-        .pluck(:account_id, :nm_id, :srid, :quantity, :report_type, :rr_dt)
+        .pluck(:account_id, :nm_id, :srid, :quantity, :rr_dt)
         .select { |account_id, nm_id, *| bindings.key?([ account_id, nm_id ]) }
       modes = wb_modes(rows)
-      rows.map do |account_id, nm_id, srid, quantity, report_type, date|
+      markets = Ec::WbOrderMarket.markets_by_srid(rows.map { |_account_id, _nm_id, srid, *| srid })
+      rows.map do |account_id, nm_id, srid, quantity, date|
         { units: quantity.to_i, date: date,
-          identity: identity("wb", WB_MARKETS[report_type.to_i], modes[[ account_id, srid ]], bindings[[ account_id, nm_id ]]) }
+          identity: identity("wb", markets[srid], modes[[ account_id, srid ]], bindings[[ account_id, nm_id ]]) }
       end
     end
 

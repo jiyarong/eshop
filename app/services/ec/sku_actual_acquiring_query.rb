@@ -21,7 +21,7 @@ module Ec
       @market = market.to_s.downcase.presence
       raise ArgumentError, "unsupported_platform" unless PLATFORMS.include?(@platform)
       raise ArgumentError, "unsupported_delivery_mode" if @delivery_mode && !(@platform == "ozon" && %w[fbo fbs].include?(@delivery_mode))
-      raise ArgumentError, "unsupported_market" if @market && !(@platform == "wb" && Ec::WbLedgerMarket.report_type_for(@market))
+      raise ArgumentError, "unsupported_market" if @market && !(@platform == "wb" && Ec::WbOrderMarket::MARKETS.include?(@market))
       raise ArgumentError, "weeks_must_be_positive" unless @weeks.positive?
     end
 
@@ -120,14 +120,14 @@ module Ec
         nm_id: bindings.map(&:last).uniq,
         rr_dt: period_from..period_to
       ).where("seller_oper_name LIKE ?", "%#{RawWb::FinanceDetail::SALE_KEYWORD}%")
-        .then { |scope| market ? scope.where(report_type: Ec::WbLedgerMarket.report_type_for(market)) : scope }
-        .pluck(:account_id, :nm_id, :acquiring_fee, :retail_price_with_disc, :quantity, :rr_dt)
+        .pluck(:account_id, :nm_id, :acquiring_fee, :retail_price_with_disc, :quantity, :rr_dt, :srid)
         .select { |account_id, nm_id, *| allowed.include?([ account_id, nm_id ]) }
+      rows = rows_of_market(rows) if market
 
       fee = 0.to_d
       base = 0.to_d
       count = 0
-      rows.each do |_account_id, _nm_id, acquiring_fee, price, quantity, _date|
+      rows.each do |_account_id, _nm_id, acquiring_fee, price, quantity, _date, _srid|
         next unless acquiring_fee.to_d.positive? && price.to_d.positive?
 
         fee += acquiring_fee.to_d
@@ -135,7 +135,13 @@ module Ec
         count += 1
       end
 
-      { fee:, base:, sample_count: count, data_through: rows.map(&:last).max }
+      { fee:, base:, sample_count: count, data_through: rows.map { |row| row[5] }.max }
+    end
+
+    # The sales whose buyer is in the market (by the statistics order of the same srid).
+    def rows_of_market(rows)
+      markets = Ec::WbOrderMarket.markets_by_srid(rows.map(&:last))
+      rows.select { |row| markets[row.last] == market }
     end
 
     def posting_key(posting_number)

@@ -69,11 +69,9 @@ module Ec
           exchange_rate_rub_cny: DEFAULT_EXCHANGE_RATE_RUB_CNY,
           buyer_price_vat_rate: decimal("0.2"),
           logistics_coeff: company_type == "small" && delivery_mode == "fbo" ? decimal("1.3") : decimal("1.55"),
-          # Belarus-local sales: a third of the outbound parcels are cancelled or refused and come
-          # back (measured on the ledger, Jul-Sep 2026), so the placeholder is well above Russia's;
-          # "get actual data" replaces it per SKU.
-          return_rate: decimal(belarus ? "0.3" : "0.1"),
-          # Acquiring is 1.9% on Belarus sales, 3.0-3.4% on exports to Russia.
+          return_rate: decimal("0.1"),
+          # Acquiring is 1.8-1.9% on sales to Belarusian buyers, 3.2-3.4% on sales to Russian ones
+          # (Jul-Sep 2026, by the buyer's country in the statistics orders).
           acquiring_rate: if belarus then decimal("0.019")
                           else general_company ? decimal("0.015") : decimal("0.031")
                           end,

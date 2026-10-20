@@ -17,6 +17,7 @@ class Ec::SkuScenarioSalesTest < ActiveSupport::TestCase
   teardown do
     store_ids = @stores.map(&:id)
     RawWb::FinanceDetail.where(account_id: @accounts.select { |a| a.is_a?(RawWb::SellerAccount) }.map(&:id)).delete_all
+    RawWb::StatsOrder.where(account_id: @accounts.select { |a| a.is_a?(RawWb::SellerAccount) }.map(&:id)).delete_all
     Ec::OrderItem.where(store_id: store_ids).delete_all
     Ec::OrderFulfillment.where(store_id: store_ids).delete_all
     Ec::Order.where(store_id: store_ids).delete_all
@@ -63,7 +64,7 @@ class Ec::SkuScenarioSalesTest < ActiveSupport::TestCase
     assert_equal 20, result[:total_units]
   end
 
-  test "WB tells the market from the report type, the fulfillment from the logistics rows and the tax from the account" do
+  test "WB tells the market from the buyer's country, the fulfillment from the logistics rows and the tax from the account" do
     small = wb_store("small", "71001")
     general = wb_store("general", "71002")
     wb_sale(small, 71_001, srid: "A", quantity: 2, report_type: 2, mode: "FBW, (МГТ, короба)")
@@ -74,6 +75,8 @@ class Ec::SkuScenarioSalesTest < ActiveSupport::TestCase
     wb_sale(small, 71_001, srid: "F", quantity: 6, report_type: 2, mode: "FBS", date: Date.new(2026, 7, 20))
     wb_sale(small, 71_001, srid: "G", quantity: 7, report_type: 2, mode: "FBS", operation: "Возврат")
     wb_sale(small, 71_999, srid: "H", quantity: 8, report_type: 2, mode: "FBS") # not a listing of this SKU
+    wb_sale(small, 71_001, srid: "I", quantity: 2, report_type: 1, mode: "FBS", country: "Казахстан") # a country with no scenario
+    wb_sale(small, 71_001, srid: "J", quantity: 3, report_type: 2, mode: "FBS", country: nil) # no statistics order: market unknown
 
     result = call
 
@@ -81,9 +84,20 @@ class Ec::SkuScenarioSalesTest < ActiveSupport::TestCase
     assert_equal 1, result[:scenarios].fetch("wb|ru|fbs|main|small")[:units]
     assert_equal 3, result[:scenarios].fetch("wb|ru|fbs|main|general")[:units]
     assert_equal 4, result[:scenarios].fetch("wb|by|fbs|main|small")[:units], "Belarus-local WB sales have their own scenarios now"
-    assert_equal 0, result[:outside_units]
-    assert_equal 5, result[:unclassified_units], "a sale row without a logistics row cannot be told FBW from FBS"
-    assert_equal 15, result[:total_units]
+    assert_equal 2, result[:outside_units], "Kazakhstan is not Russia or Belarus"
+    assert_equal 8, result[:unclassified_units], "no logistics row (FBW or FBS unknown) and no statistics order (market unknown)"
+    assert_equal 20, result[:total_units]
+  end
+
+  test "the ledger's report type is not taken for the market" do
+    small = wb_store("small", "71001")
+    # A Russian buyer's sale booked in report type 1 still sells in Russia.
+    wb_sale(small, 71_001, srid: "RT", quantity: 3, report_type: 1, mode: "FBS", country: "Россия")
+
+    result = call
+
+    assert_equal 3, result[:scenarios].fetch("wb|ru|fbs|main|small")[:units]
+    assert_equal 0, result[:scenarios].fetch("wb|by|fbs|main|small")[:units]
   end
 
   test "units of another SKU are not counted" do
@@ -133,8 +147,12 @@ class Ec::SkuScenarioSalesTest < ActiveSupport::TestCase
     store
   end
 
-  def wb_sale(store, nm_id, srid:, quantity:, report_type:, mode:, date: Date.new(2026, 9, 2), operation: "Продажа")
+  def wb_sale(store, nm_id, srid:, quantity:, report_type:, mode:, date: Date.new(2026, 9, 2), operation: "Продажа", country: :by_report_type)
     account_id = store.wb_raw_account_id
+    country = { 2 => "Россия", 1 => "Беларусь" }.fetch(report_type) if country == :by_report_type
+    if country
+      RawWb::StatsOrder.create!(account_id:, srid: "#{srid}-#{@token}", order_date: date.in_time_zone, nm_id:, country_name: country)
+    end
     RawWb::FinanceDetail.create!(account_id:, rrdid: (@rrdid += 1), nm_id:, srid: "#{srid}-#{@token}", seller_oper_name: operation,
       quantity:, report_type:, rr_dt: date)
     return unless mode

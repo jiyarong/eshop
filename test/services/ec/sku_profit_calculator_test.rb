@@ -188,15 +188,14 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal 0.2.to_d, fbs.fetch("sales_vat_rate")
   end
 
-  test "WB Belarus scenarios default to the Belarus acquiring rate and a higher return rate" do
+  test "WB Belarus scenarios default to the Belarus acquiring rate" do
     %w[general small].each do |company_type|
       %w[fbo fbs].each do |mode|
         by = Ec::SkuProfitCalculator.default_inputs(platform: "wb", parameter_context: { market: "by", delivery_mode: mode, company_type: company_type })
         ru = Ec::SkuProfitCalculator.default_inputs(platform: "wb", parameter_context: { market: "ru", delivery_mode: mode, company_type: company_type })
 
         assert_equal 0.019.to_d, by.fetch("acquiring_rate"), "#{company_type}/#{mode}"
-        assert_equal 0.3.to_d, by.fetch("return_rate"), "#{company_type}/#{mode}"
-        assert_equal 0.1.to_d, ru.fetch("return_rate")
+        assert_equal ru.fetch("return_rate"), by.fetch("return_rate"), "the return rate is measured, not guessed per market"
         # Tax regime and logistics inputs follow the company type and mode, not the market.
         assert_equal ru.fetch("logistics_coeff"), by.fetch("logistics_coeff")
         assert_equal ru.slice("tax_rate", "sales_vat_rate"), by.slice("tax_rate", "sales_vat_rate")

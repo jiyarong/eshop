@@ -86,10 +86,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_equal Ec::SkuProfitStandardContexts::SCENARIOS, scenarios
     assert payload.fetch("contexts").all? { |context| context.fetch("calculation_status") == "incomplete" }
-    assert payload.fetch("contexts").all? do |context|
-      expected = context.fetch("platform") == "wb" && context.fetch("market") == "by" ? 0.3.to_d : 0.1.to_d
-      context.fetch("return_rate").to_d == expected
-    end
+    assert payload.fetch("contexts").all? { |context| context.fetch("return_rate").to_d == 0.1.to_d }
   end
 
   test "persists Ozon seller and buyer prices independently in both markets" do
@@ -296,7 +293,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert wb_rows.all? { |row| row.at_css("input[data-field='return_rate']")["data-source-value"].to_d == 0.1.to_d }
     wb_belarus_rows = rows.select { |row| row["data-platform"] == "wb" && row["data-market"] == "by" }
     assert_equal 4, wb_belarus_rows.size
-    assert wb_belarus_rows.all? { |row| row.at_css("input[data-field='return_rate']")["data-source-value"].to_d == 0.3.to_d }
+    assert wb_belarus_rows.all? { |row| row.at_css("input[data-field='return_rate']")["data-source-value"].to_d == 0.1.to_d }
     assert wb_belarus_rows.all? { |row| row.at_css("input[data-field='acquiring_rate']")["data-source-value"].to_d == 0.019.to_d }
     small_fbo = rows.find do |row|
       row["data-platform"] == "wb" && row["data-company-type"] == "small" && row["data-delivery-mode"] == "fbo"

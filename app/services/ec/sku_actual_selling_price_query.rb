@@ -36,7 +36,7 @@ module Ec
       period_to = today.beginning_of_week(:monday) - 1.day
       period_from = period_to - (weeks * 7 - 1).days
       all_rows = order_rows(period_from:, period_to:)
-      wb_markets = platform == "wb" ? Ec::WbLedgerMarket.markets_by_srid(all_rows.map { |row| row[:external_order_id] }) : {}
+      wb_markets = platform == "wb" ? Ec::WbOrderMarket.markets_by_srid(all_rows.map { |row| row[:external_order_id] }) : {}
       rows = rows_in_market(all_rows, wb_markets)
       commission_base_price = summarize_price(
         rows,
@@ -55,7 +55,7 @@ module Ec
         platform: platform,
         market: market,
         delivery_mode: delivery_mode,
-        # WB orders whose market the ledger does not know yet (this week's): counted as Russian.
+        # WB orders with no known country: counted as Russian.
         unclassified_unit_count: all_rows.reject { |row| wb_markets.key?(row[:external_order_id]) }.sum { |row| row.fetch(:quantity) } * (platform == "wb" ? 1 : 0),
         period: {
           from_date: period_from,
@@ -77,9 +77,9 @@ module Ec
 
     # Ozon orders are told apart by the currency the buyer paid in, so an Ozon item without buyer
     # data cannot be assigned to one. WB orders have no buyer country: their market is the one of
-    # the ledger's sale row for the same srid. An order the ledger has not reached yet (shipped,
-    # this week's) has none; it counts as Russian, the usual market, and is reported in
-    # `unclassified_unit_count`, while the Belarus price rests on orders the ledger places there.
+    # the statistics order of the same srid (its country). An order the statistics do not list has
+    # none; it counts as Russian, the usual market, and is reported in `unclassified_unit_count`,
+    # while the Belarus price rests on orders known to be Belarusian. Other countries are neither.
     def rows_in_market(rows, wb_markets)
       return rows.select { |row| row.fetch(:buyer_currency) == market_buyer_currency } unless platform == "wb"
 

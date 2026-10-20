@@ -4,7 +4,7 @@ module Ec
     PLATFORMS = %w[ozon wb].freeze
     WB_DELIVERY_MODES = %w[fbo fbs].freeze
     OZON_DELIVERY_MODES = %w[fbo fbs].freeze
-    WB_MARKETS = Ec::WbLedgerMarket::MARKET_REPORT_TYPES.keys.freeze
+    WB_MARKETS = Ec::WbOrderMarket::MARKETS
     # Ozon FBS books its fees under three groups: the direct-flow leg (the outbound fee proper), the
     # hand-over of the parcel by the seller (drop-off at a pickup point or sorting centre, delivery to
     # the hand-over place, last mile) and the return leg. FBO has no hand-over.
@@ -169,9 +169,17 @@ module Ec
           correction: "%#{RawWb::FinanceDetail::CORR_LOGISTIC_KEYWORD}%"
         )
         .where.not(delivery_rub: [nil, 0])
-        .then { |scope| market ? scope.where(report_type: Ec::WbLedgerMarket.report_type_for(market)) : scope }
         .select(:account_id, :nm_id, :shk_id, :srid, :rr_dt, :bonus_type_name, :delivery_method, :delivery_rub)
         .to_a
+        .then { |rows| market ? wb_rows_of_market(rows) : rows }
+    end
+
+    # The legs of parcels whose buyer is in the market. A parcel the statistics orders do not list
+    # (a cancelled order never listed, a seller-return parcel with its own srid) has no known
+    # market and belongs to none.
+    def wb_rows_of_market(rows)
+      markets = Ec::WbOrderMarket.markets_by_srid(rows.map(&:srid))
+      rows.select { |row| markets[row.srid] == market }
     end
 
     def grouped_logistics_fees(rows, bindings)
