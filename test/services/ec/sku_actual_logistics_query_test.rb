@@ -43,12 +43,12 @@ class Ec::SkuActualLogisticsQueryTest < ActiveSupport::TestCase
   end
 
   test "returns posting-weighted outbound and return averages across bound Ozon stores" do
-    create_accrual(0, type_id: 16, posting: "OUT-1", amount: -100, date: Date.new(2026, 8, 25))
+    create_accrual(0, type_id: 32, posting: "OUT-1", amount: -100, date: Date.new(2026, 8, 25))
     create_accrual(0, type_id: 28, posting: "OUT-1", amount: -20, date: Date.new(2026, 8, 25))
     create_accrual(0, type_id: 777, type_name: "LogisticService", posting: "OUT-2", amount: -80, date: Date.new(2026, 9, 1))
     create_accrual(0, type_id: 9, posting: "RET-1", amount: -40, date: Date.new(2026, 9, 2))
     create_accrual(0, type_id: 45, posting: "RET-1", amount: -10, date: Date.new(2026, 9, 2))
-    create_accrual(1, type_id: 29, posting: "OUT-3", amount: -300, date: Date.new(2026, 9, 8))
+    create_accrual(1, type_id: 32, posting: "OUT-3", amount: -300, date: Date.new(2026, 9, 8))
     create_accrual(1, type_id: 888, type_name: "ReturnFlowService", posting: "RET-2", amount: -90, date: Date.new(2026, 9, 9))
     create_accrual(0, type_id: 12, posting: "SUPPLY-1", amount: -30, date: Date.new(2026, 9, 6))
     create_accrual(0, type_id: 12, posting: "SUPPLY-1", amount: -50, date: Date.new(2026, 9, 6))

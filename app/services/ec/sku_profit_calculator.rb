@@ -156,10 +156,8 @@ module Ec
           sales_vat_rate: market == "by" ? decimal("0.2") : nil,
           storage_cny: decimal("0"),
           other_cny: decimal("0"),
-          warehouse_operation_rub: fbs ? nil : decimal("25"),
-          fbs_handover_rub: fbs ? decimal("30") : nil,
+          fbs_handover_rub: decimal(fbs ? Ec::ProfitCalculators::Ozon::DEFAULT_HANDOVER_RUB.fetch("fbs") : Ec::ProfitCalculators::Ozon::DEFAULT_HANDOVER_RUB.fetch("fbo")),
           cross_docking_cny: fbs ? nil : decimal("0"),
-          ozon_warehouse_rate: decimal("0.25"),
           ozon_import_vat_cost_rate: decimal("0"),
           advertising_fixed_rub: decimal("0")
         }.compact.stringify_keys

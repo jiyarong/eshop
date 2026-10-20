@@ -51,7 +51,7 @@ module Ec
       if logistics
         values["outbound_logistics_rub"] = positive(logistics.dig(:outbound, :average_rub))
         values["return_logistics_rub"] = positive(logistics.dig(:return, :average_rub))
-        values["fbs_handover_rub"] = positive(logistics.dig(:handover, :average_rub)) if platform == "ozon" && mode == "fbs"
+        values["fbs_handover_rub"] = positive(logistics.dig(:handover, :average_rub)) if platform == "ozon"
         cross_dock = positive(logistics.dig(:cross_dock, :average_rub))
         values["cross_docking_cny"] = cross_dock / exchange if cross_dock && exchange.positive? && platform == "ozon" && market == "ru" && mode == "fbo"
       end

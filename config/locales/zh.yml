@@ -3134,7 +3134,7 @@ zh:
         outbound_logistics_rub: "去程物流（RUB）"
         return_logistics_rub: "返程物流（RUB）"
         warehouse_operation_rub: "仓库操作费（RUB）"
-        fbs_handover_rub: "FBS 交接配送费（RUB）"
+        fbs_handover_rub: "交接与末端处理费（RUB）"
         cross_docking_cny: "越库费（CNY）"
         sales_vat_rate: "销售增值税率"
       result_fields:

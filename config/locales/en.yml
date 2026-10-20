@@ -2922,7 +2922,7 @@ en:
         outbound_logistics_rub: "Outbound logistics (RUB)"
         return_logistics_rub: "Return logistics (RUB)"
         warehouse_operation_rub: "Warehouse operation (RUB)"
-        fbs_handover_rub: "FBS handover and last mile (RUB)"
+        fbs_handover_rub: "Handover and last mile (RUB)"
         cross_docking_cny: "Cross-docking (CNY)"
         sales_vat_rate: "Sales VAT rate"
       result_fields:

@@ -145,7 +145,7 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
     assert_equal({ order_count: 2, return_count: 1, rate: 0.5.to_d }, fbs[:return_rate])
     assert_nil fbs[:cross_dock], "FBS has no cross-docking"
     assert_equal({ total_rub: 100.to_d, sample_count: 1, average_rub: 100.to_d }, fbo[:outbound])
-    assert_equal 0, fbo.dig(:handover, :sample_count)
+    assert_equal({ total_rub: 0.to_d, sample_count: 1, average_rub: nil }, fbo[:handover], "FBO has the same split; the handover fee is per delivered unit")
     assert_equal "fbs", fbs[:delivery_mode]
   end
 

@@ -72,8 +72,11 @@ class Ec::SkuProfitStandardContextsTest < ActiveSupport::TestCase
     assert_equal 0.019.to_d, belarus.acquiring_rate
     assert_equal 0.1.to_d, belarus.return_rate
     fbs = built.find { |context| context.platform == "ozon" && context.delivery_mode == "fbs" && context.market == "ru" }
-    assert_equal 30.to_d, fbs.fbs_handover_rub
+    assert_equal 36.to_d, fbs.fbs_handover_rub
     assert_nil fbs.warehouse_operation_rub
+    fbo = built.find { |context| context.platform == "ozon" && context.delivery_mode == "fbo" && context.market == "ru" }
+    assert_equal 12.to_d, fbo.fbs_handover_rub, "FBO has the same structure with its own default"
+    assert_nil fbo.warehouse_operation_rub
   end
 
   test "a scenario added with price prefill takes the price the SKU really sold it for, and stays empty where nothing sold" do

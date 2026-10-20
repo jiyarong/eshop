@@ -278,9 +278,7 @@ module SkuProfitPredictionHelper
       return %i[return_rate outbound_logistics_rub return_logistics_rub fbs_handover_rub].include?(field) ||
         (context.market == "by" && field == :sales_vat_rate)
     end
-    return false if field == :fbs_handover_rub
-
-    common = %i[return_rate storage_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub]
+    common = %i[return_rate storage_cny outbound_logistics_rub return_logistics_rub fbs_handover_rub]
     return true if common.include?(field)
     return field == :cross_docking_cny if context.market == "ru"
     return field == :sales_vat_rate if context.market == "by"

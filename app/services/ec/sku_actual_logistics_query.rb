@@ -8,7 +8,7 @@ module Ec
     # Ozon FBS books its fees under three groups: the direct-flow leg (the outbound fee proper), the
     # hand-over of the parcel by the seller (drop-off at a pickup point or sorting centre, delivery to
     # the hand-over place, last mile) and the return leg. FBO has no hand-over.
-    OZON_FBS_HANDOVER_TYPE_IDS = [ 16, 29, 98 ].to_set.freeze
+    OZON_HANDOVER_TYPE_IDS = [ 16, 29, 98 ].to_set.freeze
     WB_OUTBOUND_BONUS_PREFIXES = ["К клиенту при продаже", "К клиенту при отмене"].freeze
     WB_RETURN_BONUS_PREFIXES = ["От клиента при возврате", "От клиента при отмене"].freeze
     # Goods sent back to the seller ("Возврат ... (К продавцу)") travel as their own parcels with
@@ -66,7 +66,7 @@ module Ec
         store_count: bindings.map(&:first).uniq.size,
         listing_count: bindings.size,
         outbound: metric_payload(grouped_fees.fetch(:outbound)),
-        handover: metric_payload(grouped_fees.fetch(:handover)),
+        handover: handover_payload(grouped_fees.fetch(:handover), grouped_fees.fetch(:outbound)),
         return: metric_payload(grouped_fees.fetch(:return)),
         cross_dock: delivery_mode == "fbs" ? nil : Ec::SkuActualCrossDockQuery.run(sku: sku, today: today),
         return_rate: return_rate_payload(grouped_fees)
@@ -197,7 +197,7 @@ module Ec
         category = logistics_category(row.type_id, row.type_name)
         next unless category
 
-        category = :handover if category == :outbound && delivery_mode == "fbs" && OZON_FBS_HANDOVER_TYPE_IDS.include?(row.type_id.to_i)
+        category = :handover if category == :outbound && OZON_HANDOVER_TYPE_IDS.include?(row.type_id.to_i)
         key = [row.account_id, row.ozon_sku_id, row.posting_number]
         grouped.fetch(category)[key] += row.amount.to_d
       end
@@ -276,6 +276,15 @@ module Ec
       name = type_name.to_s
       return :outbound if Ec::OzonProfitAttribution::DELIVERY_NAMES.any? { |prefix| name.start_with?(prefix) }
       return :return if Ec::OzonProfitAttribution::RETURN_NAMES.any? { |prefix| name.start_with?(prefix) }
+    end
+
+    # The handover and last-mile fees per delivered unit (every parcel with an outbound fee), not per parcel that
+    # happens to carry one: not every delivery has a last-mile redistribution or a handover-place fee.
+    def handover_payload(handover, outbound)
+      total = -handover.values.sum(0.to_d)
+      count = outbound.values.reject(&:zero?).size
+
+      { total_rub: total.round(2), sample_count: count, average_rub: total.positive? && count.positive? ? (total / count).round(2) : nil }
     end
 
     def metric_payload(grouped_amounts)

@@ -170,7 +170,7 @@ class Ec::SkuProfitPricingSheetImporterTest < ActiveSupport::TestCase
     assert_equal 0.2.to_d, fbs.commission_rate
     assert_nil fbs.warehouse_operation_rub
     fbo = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general")
-    assert_nil fbo.fbs_handover_rub
+    assert_equal 33.to_d, fbo.fbs_handover_rub, "the handover and last-mile fee is measured for FBO too (the stubbed figure is the same for both modes)"
     assert_equal 1, summary.fetch(:contexts).count { |entry| entry[:priced] }
   end
 

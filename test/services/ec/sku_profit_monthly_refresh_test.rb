@@ -67,7 +67,7 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     assert_equal 0.05.to_d, ozon_fbs.advertising_rate
     assert_equal 0, ozon_fbs.storage_cny.to_d, "FBS has no Ozon storage"
     ozon_fbo = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general")
-    assert_nil ozon_fbo.fbs_handover_rub
+    assert_equal 33.to_d, ozon_fbo.fbs_handover_rub, "FBO has the handover and last-mile fee too (the stubbed figure is the same for both modes)"
     assert_equal 0.05.to_d, ozon_fbo.advertising_rate
   end
 

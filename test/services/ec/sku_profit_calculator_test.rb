@@ -104,8 +104,8 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_equal 13.to_d, ozon_ru.fetch("exchange_rate_rub_cny")
     assert_equal 0.1.to_d, ozon_ru.fetch("return_rate")
     assert_equal 0.02.to_d, ozon_ru.fetch("acquiring_rate")
-    assert_equal 25.to_d, ozon_ru.fetch("warehouse_operation_rub")
-    assert_equal 0.25.to_d, ozon_ru.fetch("ozon_warehouse_rate")
+    assert_equal 12.to_d, ozon_ru.fetch("fbs_handover_rub"), "FBO pays only the last-mile redistribution and the handover place"
+    assert_not ozon_ru.key?("warehouse_operation_rub"), "the old FBO warehouse operation fee is not billed"
     assert_equal 0.to_d, ozon_ru.fetch("cross_docking_cny")
     assert_equal 0.22.to_d, ozon_ru.fetch("buyer_price_vat_rate")
     assert_equal 0.2.to_d, ozon_by.fetch("sales_vat_rate")
@@ -139,7 +139,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_includes result[:errors], "unsupported_delivery_mode"
   end
 
-  test "Ozon FBS needs no warehouse operation fee and charges a handover fee instead" do
+  test "Ozon FBS and FBO share one structure; a saved FBO scenario with the old warehouse fee and no handover fee is calculated the old way" do
     inputs = {
       purchase_price_cny: 100, commission_base_price_rub: 2600, exchange_rate_rub_cny: 13, commission_rate: 0.4,
       length_cm: 20, width_cm: 20, height_cm: 10, outbound_logistics_rub: 260, return_logistics_rub: 130,
@@ -154,10 +154,14 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_in_delta (260 + 130) * (0.1 / 0.9) / 13.0, fbs.dig(:cost_breakdown, :returns), 1e-9
     assert_in_delta 30, fbs.dig(:intermediate, :fbs_handover_rub), 1e-9
     assert_in_delta 0, fbs.dig(:intermediate, :warehouse_surcharge_rub), 1e-9
-    assert_in_delta (260 + 25 + 25 * 0.5) / 13.0, fbo.dig(:cost_breakdown, :logistics), 1e-9
+    assert_in_delta (260 + 25 + 25 * 0.5) / 13.0, fbo.dig(:cost_breakdown, :logistics), 1e-9, "legacy: no handover fee, a warehouse fee"
+
+    fbo_new = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "ru", delivery_mode: "fbo" }, inputs: inputs.merge(fbs_handover_rub: 12, warehouse_operation_rub: 25))
+    assert_in_delta (260 + 12) / 13.0, fbo_new.dig(:cost_breakdown, :logistics), 1e-9, "a handover fee wins over the old warehouse fee"
+    assert_in_delta 12, fbo_new.dig(:intermediate, :fbs_handover_rub), 1e-9
   end
 
-  test "Ozon FBS ignores cross-docking and uses a default handover fee of 30 when none is given" do
+  test "Ozon FBS ignores cross-docking and uses a default handover fee of 36 when none is given" do
     inputs = {
       purchase_price_cny: 100, commission_base_price_rub: 2600, exchange_rate_rub_cny: 13, commission_rate: 0.4,
       length_cm: 20, width_cm: 20, height_cm: 10, outbound_logistics_rub: 260, return_logistics_rub: 130,
@@ -166,12 +170,23 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     result = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "ru", delivery_mode: "fbs" }, inputs: inputs)
 
     assert_empty result[:errors].to_a
-    assert_in_delta 30, result.dig(:intermediate, :fbs_handover_rub), 1e-9
+    assert_in_delta 36, result.dig(:intermediate, :fbs_handover_rub), 1e-9
     assert_in_delta 0, result.dig(:cost_breakdown, :other), 1e-9
-    assert_in_delta (260 + 30) / 13.0, result.dig(:cost_breakdown, :logistics), 1e-9
+    assert_in_delta (260 + 36) / 13.0, result.dig(:cost_breakdown, :logistics), 1e-9
   end
 
-  test "Ozon FBS still asks for the route prices but not for a warehouse fee" do
+  test "Ozon FBO without any handover or warehouse fee uses the default handover fee of 12" do
+    inputs = {
+      purchase_price_cny: 100, commission_base_price_rub: 2600, exchange_rate_rub_cny: 13, commission_rate: 0.4,
+      length_cm: 20, width_cm: 20, height_cm: 10, outbound_logistics_rub: 260, return_logistics_rub: 130
+    }
+    result = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "ru", delivery_mode: "fbo" }, inputs: inputs)
+
+    assert_empty result[:errors].to_a
+    assert_in_delta (260 + 12) / 13.0, result.dig(:cost_breakdown, :logistics), 1e-9
+  end
+
+  test "Ozon still asks for the route prices but no longer for a warehouse fee" do
     result = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "by", delivery_mode: "fbs" }, inputs: { purchase_price_cny: 10 })
 
     assert_includes result[:errors], "missing_outbound_logistics_rub"
@@ -179,10 +194,10 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert_not_includes result[:errors], "missing_warehouse_operation_rub"
   end
 
-  test "Ozon FBS defaults carry the handover fee and drop the FBO warehouse inputs" do
+  test "Ozon defaults carry the handover fee for both modes and no warehouse operation inputs" do
     fbs = Ec::SkuProfitCalculator.default_inputs(platform: "ozon", parameter_context: { market: "by", delivery_mode: "fbs", company_type: "general" })
 
-    assert_equal 30.to_d, fbs.fetch("fbs_handover_rub")
+    assert_equal 36.to_d, fbs.fetch("fbs_handover_rub")
     assert_not fbs.key?("warehouse_operation_rub")
     assert_not fbs.key?("cross_docking_cny")
     assert_equal 0.2.to_d, fbs.fetch("sales_vat_rate")

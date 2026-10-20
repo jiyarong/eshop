@@ -304,8 +304,9 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     ozon_fbs_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbs" }
     assert_equal [ 2, 2 ], [ ozon_fbo_rows.size, ozon_fbs_rows.size ]
     assert_equal 0, rows.count { |row| row["data-actuals-pending"].present? }, "no actual-data kind is platform-wide for a scenario now"
-    assert ozon_fbo_rows.all? { |row| row.at_css("input[data-field='warehouse_operation_rub']")["value"].to_d == 25.to_d }
-    assert ozon_fbs_rows.all? { |row| row.at_css("input[data-field='fbs_handover_rub']")["value"].to_d == 30.to_d }
+    assert ozon_fbo_rows.all? { |row| row.at_css("input[data-field='fbs_handover_rub']")["value"].to_d == 12.to_d }
+    assert ozon_fbs_rows.all? { |row| row.at_css("input[data-field='fbs_handover_rub']")["value"].to_d == 36.to_d }
+    assert ozon_rows.none? { |row| row.at_css("input[data-field='warehouse_operation_rub']:not([type='hidden'])") }, "the old FBO warehouse operation fee is not an input any more"
     assert ozon_rows.all? { |row| row.at_css("input[data-field='return_rate']")["value"].to_d == 10.to_d }
     assert_select "tr[data-platform='ozon'][data-market='ru'][data-company-type='general']" do
       assert_select "input[type='number'][data-field='commission_base_price_rub']:not([disabled])"
@@ -377,7 +378,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[data-field='buyer_price_vat_rate'][value='20'][data-source-value='0.2']"
       assert_select "input[data-field='outbound_logistics_rub']"
       assert_select "input[data-field='return_logistics_rub']"
-      assert_select "input[data-field='warehouse_operation_rub']"
+      assert_select "input[data-field='fbs_handover_rub']"
       assert_select "input[data-field='sales_vat_rate']"
       assert_select ".profit-prediction-table__not-applicable", text: /白俄场景不适用，不参与计算/, count: 1
       assert_select "input[data-field='length_cm'][disabled]"
@@ -405,15 +406,15 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
         length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny commission_rate
         acquiring_rate advertising_rate other_cny storage_cny return_rate outbound_logistics_rub
-        return_logistics_rub warehouse_operation_rub cross_docking_cny
+        return_logistics_rub fbs_handover_rub cross_docking_cny
       ],
       ["ozon", "by", "fbo"] => %w[
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
         length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny
         commission_rate acquiring_rate advertising_rate sales_vat_rate other_cny storage_cny return_rate
-        outbound_logistics_rub return_logistics_rub warehouse_operation_rub
+        outbound_logistics_rub return_logistics_rub fbs_handover_rub
       ],
-      # Seller-shipped: no Ozon warehouse (operation fee, storage, cross-docking), a handover fee instead.
+      # Seller-shipped: no Ozon warehouse (storage, cross-docking); the handover fee is the same field as FBO's.
       ["ozon", "ru", "fbs"] => %w[
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
         length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny commission_rate

@@ -1,14 +1,16 @@
 module Ec
   module ProfitCalculators
     class Ozon < Base
-      REQUIRED = %w[purchase_price_cny commission_base_price_rub exchange_rate_rub_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub commission_rate].freeze
-      # FBS: the seller ships from their own warehouse, so Ozon's warehouse operation fee, its
-      # surcharge, cross-docking and placement do not exist; what replaces them is the handover
-      # (drop-off at a pickup point or sorting centre) and last-mile fee, a small fixed amount.
-      FBS_REQUIRED = REQUIRED - %w[warehouse_operation_rub]
-      DEFAULT_FBS_HANDOVER_RUB = "30".freeze
+      REQUIRED = %w[purchase_price_cny commission_base_price_rub exchange_rate_rub_cny outbound_logistics_rub return_logistics_rub commission_rate].freeze
+      # Both modes pay the route freight plus a small fixed fee per delivered unit (`fbs_handover_rub`, called the
+      # handover and last-mile fee): FBS the drop-off at a pickup point (30) or sorting centre (20), the last-mile
+      # redistribution and the delivery to the handover place, about 36 RUB per unit in Sep-Oct 2026; FBO only the last-mile
+      # redistribution and the handover place, about 12. Ozon's old FBO "warehouse operation fee" (25 RUB + a surcharge)
+      # does not appear in the bills at all, so it is no longer part of the calculation; a scenario saved with that fee
+      # and no handover fee is still calculated the old way.
+      DEFAULT_HANDOVER_RUB = { "fbo" => "12", "fbs" => "36" }.freeze
       def call
-        required = (fbs? ? FBS_REQUIRED : REQUIRED).dup
+        required = REQUIRED.dup
         errors = validation_errors(required: required, dimensions: %w[length_cm width_cm height_cm])
         errors << "unsupported_market" unless market.in?(%w[ru by])
         errors << "unsupported_delivery_mode" unless delivery_mode.in?(%w[fbo fbs])
@@ -37,9 +39,10 @@ module Ec
         end
         warehouse_rate = value_or_default("ozon_warehouse_rate", "0.25")
         return_amortized = (decimal("outbound_logistics_rub") + decimal("return_logistics_rub")) * return_amortization_factor
-        warehouse = fbs? ? 0.to_d : decimal("warehouse_operation_rub")
+        legacy_warehouse = !fbs? && !present?("fbs_handover_rub") && present?("warehouse_operation_rub")
+        warehouse = legacy_warehouse ? decimal("warehouse_operation_rub") : 0.to_d
         warehouse_surcharge = warehouse * 2 * warehouse_rate
-        handover = fbs? ? value_or_default("fbs_handover_rub", DEFAULT_FBS_HANDOVER_RUB) : 0.to_d
+        handover = legacy_warehouse ? 0.to_d : value_or_default("fbs_handover_rub", DEFAULT_HANDOVER_RUB.fetch(delivery_mode, "0"))
         logistics_rub = decimal("outbound_logistics_rub") + return_amortized + warehouse + warehouse_surcharge + handover
         sales_vat_rate = value_or_default("sales_vat_rate", "0.2")
         sales_tax_rate = value_or_default("tax_rate", "0")

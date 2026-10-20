@@ -2873,7 +2873,7 @@ ru:
         outbound_logistics_rub: "Прямая логистика (RUB)"
         return_logistics_rub: "Обратная логистика (RUB)"
         warehouse_operation_rub: "Складская обработка (RUB)"
-        fbs_handover_rub: "FBS: приём и последняя миля (RUB)"
+        fbs_handover_rub: "Приём и последняя миля (RUB)"
         cross_docking_cny: "Кросс-докинг (CNY)"
         sales_vat_rate: "Ставка НДС с продаж"
       result_fields:

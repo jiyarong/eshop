@@ -193,9 +193,6 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     const factorOverride = inputs.return_amortization_factor_override;
     const hasOverride = intermediate.return_amortization_factor_overridden === true
       || (factorOverride !== undefined && factorOverride !== null && factorOverride !== "");
-    const warehouseRate = numberOr(intermediate.warehouse_rate, 0.25);
-    const warehouse = F("warehouse_operation_rub");
-
     // The fixed formula takes the outbound and return freight from the official route tariff: say what from.
     const routeFormula = logisticsMode === "formula" ? data.logistics?.formula : null;
     let routeNote = null;
@@ -208,24 +205,22 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
         .replace("__RATE__", Number(routeFormula.outbound_rub).toFixed(2)) || null;
     }
 
-    if (fbs) {
-      // Seller-shipped: the parcel is handed over at a pickup point or sorting centre, so the
-      // warehouse operation fee and its surcharge give way to a flat handover fee.
-      step("platform_logistics", [
-        F("outbound_logistics_rub"), "+", F("fbs_handover_rub", numberOr(inputs.fbs_handover_rub, 30))
-      ], toRub(costs.logistics), "rub", ["outbound_logistics_rub", "fbs_handover_rub"],
-      { source: "ozon_logistics_tariffs", note: routeNote });
-    } else {
-      step("platform_logistics", [
-        F("outbound_logistics_rub"), "+", warehouse, "+", warehouse, "×", N(2), "×", H("ozon_warehouse_rate", warehouseRate, true)
-      ], toRub(costs.logistics), "rub", ["outbound_logistics_rub", "warehouse_operation_rub"],
-      { source: "ozon_logistics_tariffs", note: routeNote });
+    // Both modes: the route freight plus a small fixed fee per delivered unit. FBS: the drop-off at a pickup point (30) or
+    // sorting centre (20), the last-mile redistribution and the delivery to the handover place, about 36 RUB; FBO: only
+    // the last-mile redistribution and the handover place, about 12 (the old FBO warehouse operation fee is not billed).
+    step("platform_logistics", [
+      F("outbound_logistics_rub"), "+", F("fbs_handover_rub", numberOr(inputs.fbs_handover_rub, fbs ? 36 : 12))
+    ], toRub(costs.logistics), "rub", ["outbound_logistics_rub", "fbs_handover_rub"],
+    { source: "ozon_logistics_tariffs", note: routeNote });
 
-      // Cross-docking is charged inside "other costs"; this row only shows where it comes from.
-      const crossDocking = market === "ru";
+    // Cross-docking (FBO in Russia) is charged inside "other costs"; its row only shows where it comes from, in roubles
+    // like the rest, and the total below counts it as the cost of getting the goods to the Ozon warehouse.
+    const crossDocking = !fbs && market === "ru";
+    const crossDockingRub = crossDocking ? toRub(inputs.cross_docking_cny || 0) : 0;
+    if (!fbs) {
       step("cross_docking",
-        crossDocking ? [F("cross_docking_cny", inputs.cross_docking_cny || 0)] : labels.crossDockingNotApplicable,
-        crossDocking ? inputs.cross_docking_cny || 0 : 0, "cny", crossDocking ? ["cross_docking_cny"] : [],
+        crossDocking ? [F("cross_docking_cny", inputs.cross_docking_cny || 0), "×", F("exchange_rate_rub_cny", exchange)] : labels.crossDockingNotApplicable,
+        crossDockingRub, "rub", crossDocking ? ["cross_docking_cny"] : [],
         { source: crossDocking ? "ozon_cross_dock_tariffs" : null, note: crossDocking ? labels.crossDockingInOther : null });
     }
 
@@ -234,6 +229,14 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       : returnAmortization();
     step("return_amortized", ["(", F("outbound_logistics_rub"), "+", F("return_logistics_rub"), ")", "×", ...factor],
       toRub(costs.returns), "rub", ["outbound_logistics_rub", "return_logistics_rub", "return_amortization_factor_override", "return_rate"]);
+
+    // The same total as WB's: the route freight and handover fee, the share of returns and cancellations, and (FBO in
+    // Russia) the cross-docking of the supply.
+    const platformRub = toRub(costs.logistics);
+    const returnsRub = toRub(costs.returns);
+    step("total_logistics",
+      [C("platform_logistics", platformRub), "+", C("return_amortized", returnsRub), ...(crossDocking ? ["+", C("cross_docking", crossDockingRub)] : [])],
+      hasValue(platformRub) && hasValue(returnsRub) ? Number(platformRub) + Number(returnsRub) + (crossDockingRub ?? 0) : null, "rub", []);
   }
 
   const revenue = data.revenue_cny;

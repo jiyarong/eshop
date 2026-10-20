@@ -31,7 +31,7 @@ const labels = {
     acquiring_rate: "收单费率", advertising_rate: "广告费率", tax_rate: "税率", damage_rate: "货损率",
     misc_cny: "杂费（CNY）", other_cny: "其他费用（CNY）", outbound_logistics_rub: "去程物流（RUB）",
     return_logistics_rub: "返程物流（RUB）", warehouse_operation_rub: "仓库操作费（RUB）", cross_docking_cny: "越库费（CNY）",
-    fbs_handover_rub: "FBS 交接配送费（RUB）",
+    fbs_handover_rub: "交接与末端处理费（RUB）",
   },
   steps: {
     revenue: "收入", goods: "商品成本", duty: "关税", import_vat: "进口增值税", volume: "商品体积",
@@ -157,16 +157,13 @@ test("WB names the logistics source the calculator actually used", () => {
   assert.equal(formulaLines(platformLogistics("wb_small_override_and_fixed_return").formula, format).named, "WB 物流费覆盖值 × 汇率");
 });
 
-test("Ozon's logistics step shows the warehouse surcharge rate and no longer asks for the return fee", () => {
+test("Ozon FBO and FBS have the same logistics structure: the route freight plus the handover and last-mile fee", () => {
   const standard = stepsFor(cases.find((testCase) => testCase.name === "ozon_ru_standard"));
   const logistics = standard.find((step) => step.key === "platform_logistics");
 
-  assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "warehouse_operation_rub"]);
-  assert.equal(
-    formulaLines(logistics.formula, format).named,
-    "去程物流 + 仓库操作费 + 仓库操作费 × 2 × 仓库附加费率",
-  );
-  assert.match(formulaLines(logistics.formula, format).values, /× 2 × 25%$/);
+  assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "fbs_handover_rub"]);
+  assert.equal(formulaLines(logistics.formula, format).named, "去程物流 + 交接与末端处理费");
+  assert.equal(formulaLines(logistics.formula, format).values, "92 + 14");
 });
 
 test("Ozon cross-docking is flagged as already inside other costs; Belarus shows it as not applicable", () => {
@@ -205,7 +202,7 @@ test("an incomplete scenario still builds every step, with blanks instead of num
   assert.ok(steps.every((step) => step.formula !== undefined));
 });
 
-test("an Ozon FBS scenario swaps the warehouse fee and cross-docking for the handover fee", () => {
+test("an Ozon FBS scenario has no cross-docking row", () => {
   const fbsCases = cases.filter((testCase) => testCase.platform === "ozon" && testCase.context.delivery_mode === "fbs");
   assert.ok(fbsCases.length >= 2);
 
@@ -213,18 +210,18 @@ test("an Ozon FBS scenario swaps the warehouse fee and cross-docking for the han
     const steps = stepsFor(testCase);
     const logistics = steps.find((step) => step.key === "platform_logistics");
 
-    assert.equal(formulaLines(logistics.formula, format).named, "去程物流 + FBS 交接配送费", testCase.name);
+    assert.equal(formulaLines(logistics.formula, format).named, "去程物流 + 交接与末端处理费", testCase.name);
     assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "fbs_handover_rub"]);
     assert.ok(!steps.some((step) => step.key === "cross_docking"), `${testCase.name}: FBS has no cross-docking row`);
     assert.ok(!formulaLines(steps.find((step) => step.key === "other").formula, format).named.includes("越库"), testCase.name);
   });
 });
 
-test("an FBS scenario without a handover input uses the calculator's default of 30", () => {
+test("an FBS scenario without a handover input uses the calculator's default of 36", () => {
   const testCase = cases.find((candidate) => candidate.name === "ozon_by_fbs_default_handover");
   const logistics = stepsFor(testCase).find((step) => step.key === "platform_logistics");
 
-  assert.equal(formulaLines(logistics.formula, format).values, "280 + 30");
+  assert.equal(formulaLines(logistics.formula, format).values, "280 + 36");
 });
 
 test("only a scenario that pays storage offers the actual storage shortcut: an Ozon FBS one does not", () => {
@@ -281,4 +278,18 @@ test("Ozon's fixed formula says what the freight is the average of", () => {
   assert.equal(stepsIn("formula", { ...top, route_basis: "all_routes", route_count: 820 }).note, "所有路线 22.10 L 268.43");
   assert.equal(stepsIn("actual", top).note, null, "real figures are not worked out from the tariff");
   assert.equal(stepsIn("formula", { outbound_rub: null, source: null }).note, null, "no tariff figure, nothing to explain");
+});
+
+test("Ozon has the same total logistics row as WB: the freight with its handover fee, the returns share and, for FBO in Russia, cross-docking", () => {
+  cases.filter((testCase) => testCase.platform === "ozon").forEach((testCase) => {
+    const steps = stepsFor(testCase);
+    const total = steps.find((step) => step.key === "total_logistics");
+    const crossDocking = testCase.platform === "ozon" && testCase.context.market === "ru" && testCase.context.delivery_mode === "fbo";
+    const costs = testCase.expected.cost_breakdown;
+    const expectedCny = costs.logistics + costs.returns + (crossDocking ? Number(testCase.inputs.cross_docking_cny || 0) : 0);
+
+    assert.equal(steps.map((step) => step.key).indexOf("total_logistics"), steps.map((step) => step.key).indexOf("return_amortized") + 1, `${testCase.name}: right under the returns share`);
+    assert.ok(Math.abs(total.result - expectedCny * testCase.inputs.exchange_rate_rub_cny) < 1e-6, `${testCase.name}: ${total.result} vs ${expectedCny * testCase.inputs.exchange_rate_rub_cny}`);
+    assert.equal(formulaLines(total.formula, format).named, crossDocking ? "平台物流费 + 退货分摊费用 + 越库费" : "平台物流费 + 退货分摊费用", testCase.name);
+  });
 });
