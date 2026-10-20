@@ -7072,6 +7072,14 @@ body {
   color: #fff;
 }
 
+.btn-danger:disabled,
+.btn-danger:disabled:hover {
+  border-color: #e4b4ba;
+  background: #f6dde0;
+  color: #b4636d;
+  cursor: not-allowed;
+}
+
 .btn-danger.link-button {
   min-height: auto;
   padding: 0;
