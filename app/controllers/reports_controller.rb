@@ -2677,13 +2677,18 @@ class ReportsController < ApplicationController
     false
   end
 
+  # What a scenario added to a version is priced with (see SkuProfitStandardContexts.build_missing).
+  def price_prefill_options
+    { today: user_today, time_zone: user_time_zone }
+  end
+
   def build_profit_version_for_create(sku)
     attributes = profit_version_params
     return sku.profit_versions.new(attributes) if params[:copy_from_version_id].blank?
 
     source = sku.profit_versions.includes(:contexts).find(params[:copy_from_version_id])
     copy = source.build_copy(effective_from: attributes[:effective_from].presence || user_today, name: attributes[:name])
-    Ec::SkuProfitStandardContexts.build_missing(copy, sku: sku, effective_on: copy.effective_from)
+    Ec::SkuProfitStandardContexts.build_missing(copy, sku: sku, effective_on: copy.effective_from, prefill_prices: price_prefill_options)
     copy
   end
 
@@ -2693,7 +2698,7 @@ class ReportsController < ApplicationController
   def add_missing_standard_scenarios(version)
     return if version.persisted? && version.archived?
 
-    Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: version.effective_from || user_today)
+    Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: version.effective_from || user_today, prefill_prices: price_prefill_options)
   end
 
   def build_standard_profit_version
@@ -2702,7 +2707,7 @@ class ReportsController < ApplicationController
       status: "draft",
       effective_from: user_today
     )
-    Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: user_today)
+    Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: user_today, prefill_prices: price_prefill_options)
     version
   end
 
@@ -2749,7 +2754,8 @@ class ReportsController < ApplicationController
       Ec::SkuProfitStandardContexts.build_missing(
         version,
         sku: version.sku,
-        effective_on: version.effective_from || user_today
+        effective_on: version.effective_from || user_today,
+        prefill_prices: price_prefill_options
       )
       return
     end

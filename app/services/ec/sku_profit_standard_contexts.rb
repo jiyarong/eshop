@@ -37,7 +37,11 @@ module Ec
       SCENARIOS.map { |attributes| key_for(attributes) }
     end
 
-    def self.build_missing(version, sku: version.sku, effective_on: version.effective_from || Date.current)
+    # Builds the scenarios a version does not have yet (in memory; the caller saves). With
+    # prefill_prices: { today:, time_zone: } a new scenario's commission base price is the average the
+    # SKU really sold it for in the last 12 weeks when at least 5 units were sold, and stays empty
+    # otherwise: a price is never borrowed from another scenario.
+    def self.build_missing(version, sku: version.sku, effective_on: version.effective_from || Date.current, prefill_prices: nil)
       SCENARIOS.filter_map do |attributes|
         next if version.contexts.any? { |context| identity_for(context) == attributes }
 
@@ -50,9 +54,20 @@ module Ec
             effective_on:
           )
         )
+        prefill_price(context, sku, prefill_prices) if prefill_prices
         context
       end
     end
+
+    def self.prefill_price(context, sku, options)
+      result = SkuProfitPriceFromActuals.realized_price_for(
+        sku, context, today: options.fetch(:today), time_zone: options.fetch(:time_zone), weeks: SkuScenarioSales::WEEKS
+      )
+      context.commission_base_price_rub = result[:price_rub] if result[:price_rub]
+    rescue StandardError => error
+      Rails.logger.warn("[SkuProfitStandardContexts] price prefill failed for #{sku.sku_code} #{key_for(context.attributes)}: #{error.class}: #{error.message}")
+    end
+    private_class_method :prefill_price
 
     def self.sort(contexts)
       contexts.sort_by do |context|

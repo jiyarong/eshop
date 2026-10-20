@@ -962,6 +962,45 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 6, version.reload.contexts.count, "opening the page writes nothing"
   end
 
+  test "scenarios added to an old version, and to a new one, start at the price the SKU really sold them for" do
+    account = RawOzon::SellerAccount.create!(client_id: "prefill-#{SecureRandom.hex(4)}", api_key: "key", company_name: "Prefill", company_type: "general")
+    store = Ec::Store.create!(platform: "ozon", store_name: "Prefill #{SecureRandom.hex(3)}", company_type: "general", ozon_raw_account_id: account.id)
+    product = Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: store, product_id: "pf-#{SecureRandom.hex(3)}", platform_sku_id: "98765#{SecureRandom.random_number(1000)}")
+    6.times do |index|
+      order = Ec::Order.create!(store:, platform: "ozon", order_key: "ozon:#{store.id}:pf-#{index}-#{SecureRandom.hex(3)}", order_status: "delivered", ordered_at: 3.weeks.ago)
+      fulfillment = Ec::OrderFulfillment.create!(order:, store:, platform: "ozon", fulfillment_type: "fbs", status: "delivered",
+        external_fulfillment_id: "pf-f-#{index}-#{SecureRandom.hex(3)}", fulfillment_key: "pf-f-#{index}-#{SecureRandom.hex(3)}")
+      Ec::OrderItem.create!(order:, store:, platform: "ozon", platform_sku_id: product.platform_sku_id, quantity: 1, unit_price: 3_000 + index * 100,
+        currency_code: "RUB", buyer_paid_unit_price: 2_900, buyer_currency_code: "RUB", fulfillment_id: fulfillment.id)
+    end
+    old = @sku.profit_versions.new(name: "Old", status: "draft", effective_from: Date.current)
+    Ec::SkuProfitStandardContexts::SCENARIOS.first(2).each { |scenario| old.contexts.build(scenario) }
+    old.save!
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", version_id: old.id, locale: "en" }, headers: { "Accept" => "text/html" }
+    assert_response :success
+    rows = Nokogiri::HTML(response.body).css("tr[data-profit-prediction-target='row']")
+    fbs = rows.find { |row| row["data-platform"] == "ozon" && row["data-delivery-mode"] == "fbs" && row["data-market"] == "ru" }
+    assert_equal 3_250.to_d, fbs.at_css("input[data-field='commission_base_price_rub']")["value"].to_d, "(3000..3500 step 100) over 6 units"
+    assert_empty rows.select { |row| row["data-platform"] == "wb" && row["data-market"] == "by" }.map { |row| row.at_css("input[data-field='commission_base_price_rub']")["value"].presence }.compact,
+      "nothing sold there, so no price"
+
+    sign_in @user
+    post report_sku_profit_versions_path(@sku.sku_code), params: { version: { name: "Fresh", status: "draft", effective_from: Date.current.to_s } }, as: :json
+    assert_response :created
+    created = response.parsed_body.fetch("contexts").find { |context| context["platform"] == "ozon" && context["delivery_mode"] == "fbs" && context["market"] == "ru" }
+    assert_equal 3_250.to_d, created.fetch("commission_base_price_rub").to_d
+  ensure
+    Ec::OrderItem.where(store_id: store&.id).delete_all
+    Ec::OrderFulfillment.where(store_id: store&.id).delete_all
+    Ec::Order.where(store_id: store&.id).delete_all
+    Ec::OperationLog.where(record_type: "Ec::SkuProduct", record_id: product&.id).delete_all
+    Ec::OperationLog.where(record_type: "Ec::Store", record_id: store&.id).delete_all
+    Ec::SkuProduct.where(id: product&.id).delete_all
+    Ec::Store.where(id: store&.id).delete_all
+    RawOzon::SellerAccount.where(id: account&.id).delete_all
+  end
+
   test "an archived version keeps exactly the scenarios it had" do
     version = @sku.profit_versions.new(name: "Archived", status: "archived", effective_from: Date.new(2026, 1, 1), effective_to: Date.new(2026, 1, 31))
     Ec::SkuProfitStandardContexts::SCENARIOS.first(2).each { |scenario| version.contexts.build(scenario) }

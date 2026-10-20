@@ -14,10 +14,11 @@ module Ec
     #   { price_rub:, units:, orders: }                     when it can be filled (the caller assigns it)
     #   { reason: "no_orders_in_scenario" | "too_few_units" | "missing_exchange_rate", units: }
     # Shared by this service and the monthly refresh.
-    def self.realized_price_for(sku, context, today:, time_zone:, min_units: MIN_UNITS)
+    def self.realized_price_for(sku, context, today:, time_zone:, min_units: MIN_UNITS, weeks: nil)
+      window = weeks ? { weeks: } : {}
       price = Ec::SkuActualScenarioPriceQuery.run(
         sku:, platform: context.platform, market: context.market, delivery_mode: context.delivery_mode,
-        company_type: context.company_type.presence || "general", today:, time_zone:
+        company_type: context.company_type.presence || "general", today:, time_zone:, **window
       ).fetch(:commission_base_price)
       units = price[:unit_count].to_i
       average = price[:average_rub]

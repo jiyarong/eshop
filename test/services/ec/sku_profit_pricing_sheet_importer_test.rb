@@ -149,6 +149,31 @@ class Ec::SkuProfitPricingSheetImporterTest < ActiveSupport::TestCase
     assert_equal "actual_4w", reported.dig(:sources, "outbound_logistics_rub")
   end
 
+  test "the scenarios the sheet has no column for are created too: unpriced, with their market's defaults and their own actual data" do
+    sku = create_sku("NEW-#{@token}")
+    rows = { wb_general: [ [ "header" ], wb_row(sku.sku_code, price: 9_000) ] }
+    logistics = { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") }, handover: { average_rub: BigDecimal("33") }, cross_dock: {} }
+
+    summary = with_stubbed_queries(logistics:, commission: { rates: [ { rate: "0.2" } ], errors: {} }) do
+      build_importer(rows, dry_run: false).call
+    end
+
+    assert summary.fetch(:ok), summary.inspect
+    version = sku.profit_versions.sole
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, version.contexts.count
+    belarus = version.context_for(platform: "wb", market: "by", delivery_mode: "fbs", warehouse_region: "main", company_type: "small")
+    assert_nil belarus.commission_base_price_rub, "no sheet price, so unpriced"
+    assert_equal 0.019.to_d, belarus.acquiring_rate
+    assert_equal 210.5.to_d, belarus.outbound_logistics_rub
+    fbs = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general")
+    assert_equal 33.to_d, fbs.fbs_handover_rub
+    assert_equal 0.2.to_d, fbs.commission_rate
+    assert_nil fbs.warehouse_operation_rub
+    fbo = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general")
+    assert_nil fbo.fbs_handover_rub
+    assert_equal 1, summary.fetch(:contexts).count { |entry| entry[:priced] }
+  end
+
   test "without acquiring data the standard acquiring rate of the scenario is kept" do
     sku = create_sku("ACQ-#{@token}")
     rows = { wb_general: [ [ "header" ], wb_row(sku.sku_code, price: 9_000) ], wb_small: [ [ "header" ], wb_row(sku.sku_code, price: 9_000) ] }

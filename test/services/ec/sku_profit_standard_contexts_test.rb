@@ -76,4 +76,47 @@ class Ec::SkuProfitStandardContextsTest < ActiveSupport::TestCase
     assert_equal 30.to_d, fbs.fbs_handover_rub
     assert_nil fbs.warehouse_operation_rub
   end
+
+  test "a scenario added with price prefill takes the price the SKU really sold it for, and stays empty where nothing sold" do
+    sku = Ec::Sku.new(sku_code: "PF-#{SecureRandom.hex(3)}")
+    version = Ec::SkuProfitVersion.new(sku: sku, name: "old", effective_from: Date.new(2026, 10, 1))
+    SCENARIOS.first(2).each { |scenario| version.contexts.build(scenario) }
+    asked = []
+    original = Ec::SkuProfitPriceFromActuals.method(:realized_price_for)
+    Ec::SkuProfitPriceFromActuals.define_singleton_method(:realized_price_for) do |_sku, context, **options|
+      asked << [ context.platform, context.market, context.delivery_mode, context.company_type, options[:weeks] ]
+      context.platform == "ozon" && context.delivery_mode == "fbs" ? { price_rub: BigDecimal("2750.5"), units: 9, orders: 4 } : { reason: "too_few_units", units: 2 }
+    end
+
+    built = Ec::SkuProfitStandardContexts.build_missing(version, sku: sku, effective_on: Date.new(2026, 10, 1),
+      prefill_prices: { today: Date.new(2026, 10, 20), time_zone: ActiveSupport::TimeZone["Asia/Shanghai"] })
+
+    assert_equal 10, asked.size, "only the scenarios the version lacked were priced"
+    assert asked.all? { |entry| entry.last == 12 }, "over the last twelve weeks"
+    prices = built.to_h { |context| [ [ context.platform, context.market, context.delivery_mode ], context.commission_base_price_rub ] }
+    assert_equal 2750.5.to_d, prices.fetch([ "ozon", "ru", "fbs" ])
+    assert_equal 2750.5.to_d, prices.fetch([ "ozon", "by", "fbs" ])
+    assert_nil prices.fetch([ "wb", "by", "fbo" ])
+    assert_nil prices.fetch([ "ozon", "ru", "fbo" ])
+  ensure
+    Ec::SkuProfitPriceFromActuals.define_singleton_method(:realized_price_for, original) if original
+  end
+
+  test "without prefill no price is looked up, and a failing lookup leaves the price empty instead of failing the page" do
+    sku = Ec::Sku.new(sku_code: "PF-#{SecureRandom.hex(3)}")
+    version = Ec::SkuProfitVersion.new(sku: sku, name: "old", effective_from: Date.new(2026, 10, 1))
+    original = Ec::SkuProfitPriceFromActuals.method(:realized_price_for)
+    calls = 0
+    Ec::SkuProfitPriceFromActuals.define_singleton_method(:realized_price_for) { |*_args, **_options| calls += 1; raise "boom" }
+
+    Ec::SkuProfitStandardContexts.build_missing(version, sku: sku, effective_on: Date.new(2026, 10, 1))
+    assert_equal 0, calls
+
+    built = Ec::SkuProfitStandardContexts.build_missing(Ec::SkuProfitVersion.new(sku: sku, name: "x", effective_from: Date.new(2026, 10, 1)), sku: sku,
+      effective_on: Date.new(2026, 10, 1), prefill_prices: { today: Date.new(2026, 10, 20), time_zone: ActiveSupport::TimeZone["Asia/Shanghai"] })
+    assert_equal 12, built.size
+    assert built.all? { |context| context.commission_base_price_rub.nil? }
+  ensure
+    Ec::SkuProfitPriceFromActuals.define_singleton_method(:realized_price_for, original) if original
+  end
 end
