@@ -98,7 +98,9 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
   // What the failed parcels (returned or cancelled) cost is spread over the parcels that were delivered and kept:
   // return rate ÷ delivered rate, "the failed parcels per delivered one".
   const deliveredRate = 1 - numberOr(returnRate, 0);
-  const returnAmortization = (rate) => [P("return_rate", rate), "÷", C("delivered_rate", 1 - numberOr(rate, 0), true)];
+  // failed parcels per delivered unit, shown as a percentage (7.14% = 7.14 failed parcels for every 100 delivered ones)
+  const failedPerDelivered = deliveredRate > 0 ? numberOr(returnRate, 0) / deliveredRate : 0;
+  const returnAmortization = () => [C("failed_per_delivered", failedPerDelivered, true)];
 
   // Revenue is the commission base price on every platform; the buyer-paid price never enters
   // it (it only feeds the platform subsidy step).
@@ -177,12 +179,17 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     const returnBase = hasActualReturn
       ? F("return_logistics_rub")
       : F("wb_fixed_return_base_rub", numberOr(inputs.wb_fixed_return_base_rub, 50));
-    // Two terms: the outbound fee of the failed parcels (charged and not refunded) and their return leg.
-    step("returns", [
-      "(", H("logistics_ex_fbo", toRub(intermediate.platform_logistics_cny)), "×", ...returnAmortization(returnRate), ")", "+",
-      "(", returnBase, "×", ...returnAmortization(returnRate), ")"
-    ], toRub(costs.returns), "rub", ["return_rate", "return_logistics_rub", "wb_fixed_return_base_rub"],
-    { inactiveFields: [hasActualReturn ? "wb_fixed_return_base_rub" : "return_logistics_rub"] });
+    // What the failed parcels (returned or cancelled) cost, spread over the delivered units: their outbound fee,
+    // charged and not refunded, and their return leg.
+    step("failed_per_delivered", [P("return_rate", returnRate), "÷", C("delivered_rate", deliveredRate, true)],
+      failedPerDelivered * 100, "percent", ["return_rate"]);
+    step("returns_outbound", [H("logistics_ex_fbo", toRub(intermediate.platform_logistics_cny)), "×", ...returnAmortization()],
+      toRub(intermediate.return_amortization_cny), "rub", []);
+    step("returns_return", [returnBase, "×", ...returnAmortization()],
+      toRub(intermediate.fixed_return_cny), "rub", ["return_logistics_rub", "wb_fixed_return_base_rub"],
+      { inactiveFields: [hasActualReturn ? "wb_fixed_return_base_rub" : "return_logistics_rub"] });
+    step("returns", [C("returns_outbound", toRub(intermediate.return_amortization_cny)), "+", C("returns_return", toRub(intermediate.fixed_return_cny))],
+      toRub(costs.returns), "rub", ["return_rate"]);
   } else {
     const factorOverride = inputs.return_amortization_factor_override;
     const hasOverride = intermediate.return_amortization_factor_overridden === true
@@ -211,13 +218,18 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
         { source: crossDocking ? "ozon_cross_dock_tariffs" : null, note: crossDocking ? labels.crossDockingInOther : null });
     }
 
+    const factorValue = numberOr(intermediate.return_amortization_factor, hasOverride ? Number(factorOverride) : failedPerDelivered);
     const factor = hasOverride
-      ? [F("return_amortization_factor_override", numberOr(intermediate.return_amortization_factor, factorOverride))]
-      : returnAmortization(returnRate);
-    // Two terms: the outbound fee of the failed parcels and their return leg.
-    step("return_amortized", [
-      "(", F("outbound_logistics_rub"), "×", ...factor, ")", "+", "(", F("return_logistics_rub"), "×", ...factor, ")"
-    ], toRub(costs.returns), "rub", ["outbound_logistics_rub", "return_logistics_rub", "return_amortization_factor_override", "return_rate"]);
+      ? [F("return_amortization_factor_override", factorValue)]
+      : returnAmortization();
+    const share = (field) => (hasValue(inputs[field]) ? Number(inputs[field]) * factorValue : null);
+    step("failed_per_delivered", [P("return_rate", returnRate), "÷", C("delivered_rate", deliveredRate, true)],
+      failedPerDelivered * 100, "percent", ["return_rate"]);
+    step("returns_outbound", [F("outbound_logistics_rub"), "×", ...factor], share("outbound_logistics_rub"), "rub",
+      ["outbound_logistics_rub", "return_amortization_factor_override"]);
+    step("returns_return", [F("return_logistics_rub"), "×", ...factor], share("return_logistics_rub"), "rub", ["return_logistics_rub"]);
+    step("return_amortized", [C("returns_outbound", share("outbound_logistics_rub")), "+", C("returns_return", share("return_logistics_rub"))],
+      toRub(costs.returns), "rub", ["return_rate"]);
   }
 
   const revenue = data.revenue_cny;
