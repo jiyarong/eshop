@@ -10775,6 +10775,21 @@ thead .table-sticky-column {
   color: #b42318;
 }
 
+/* A step or parameter that does not count in the calculation right now (see the logistics mode) stays in
+   place, greyed out; a whole step also has its formula and result struck through. */
+.profit-prediction-process__table tbody tr.is-inactive > td {
+  opacity: .5;
+}
+
+.profit-prediction-process__table tbody tr.is-inactive .profit-prediction-process__formula,
+.profit-prediction-process__table tbody tr.is-inactive .profit-prediction-process__result {
+  text-decoration: line-through;
+}
+
+.profit-prediction-process__parameter.is-inactive {
+  opacity: .5;
+}
+
 .profit-prediction-version-dialog {
   width: min(440px, calc(100vw - 32px));
 }

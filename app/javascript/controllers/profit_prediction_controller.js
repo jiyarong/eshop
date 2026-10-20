@@ -507,23 +507,34 @@ export default class extends Controller {
       const input = row.querySelector(`[data-field='${field}']`);
       if (!input) return;
 
+      // Without a figure from the formula (WB works from the tariff parameters) the typed one stays in
+      // view, greyed out, so it is clear it is not in use.
+      if (value === null || value === undefined) {
+        this.restoreRealFigure(input);
+        return;
+      }
+
       if (input.dataset.stashedValue === undefined) {
         input.dataset.stashedValue = profitInputValue(input);
         input.dataset.stashedDisplay = input.value;
       }
-      input.value = value === null || value === undefined ? "" : Number(value).toFixed(2);
+      input.value = Number(value).toFixed(2);
     });
   }
 
   restoreRealFigures(row) {
     LOGISTICS_FIGURE_FIELDS.forEach((field) => {
       const input = row.querySelector(`[data-field='${field}']`);
-      if (!input || input.dataset.stashedValue === undefined) return;
-
-      input.value = input.dataset.stashedDisplay ?? "";
-      delete input.dataset.stashedValue;
-      delete input.dataset.stashedDisplay;
+      if (input) this.restoreRealFigure(input);
     });
+  }
+
+  restoreRealFigure(input) {
+    if (input.dataset.stashedValue === undefined) return;
+
+    input.value = input.dataset.stashedDisplay ?? "";
+    delete input.dataset.stashedValue;
+    delete input.dataset.stashedDisplay;
   }
 
   // The quiet "current mode" line at the top of the panel, and the switch on the platform logistics row.
@@ -1228,7 +1239,9 @@ export default class extends Controller {
     }).forEach((step) => {
       this.appendProcessStep(step.label, step.formula, step.result, process.units[step.unit], step.fields, step.source, {
         key: step.key,
-        note: step.note
+        note: step.note,
+        inactive: step.inactive,
+        inactiveFields: step.inactiveFields
       });
     });
   }
@@ -1264,7 +1277,7 @@ export default class extends Controller {
     return invalidFields;
   }
 
-  appendProcessStep(label, formula, result, unit, parameterFields = [], sourceKey = null, { key = null, note = null } = {}) {
+  appendProcessStep(label, formula, result, unit, parameterFields = [], sourceKey = null, { key = null, note = null, inactive = false, inactiveFields = [] } = {}) {
     const stepIndex = this.processStepIndex++;
     let row = this.detailBodyTarget.querySelector(`[data-process-step-index='${stepIndex}']`);
     if (!row) {
@@ -1288,7 +1301,7 @@ export default class extends Controller {
     itemCell.textContent = label;
     parameterCell.className = "profit-prediction-process__parameters";
     const newFields = parameterFields.filter((field) => !this.renderedProcessParameters.has(field));
-    this.renderProcessParameters(parameterCell, this.selectedRow, newFields).forEach((field) => {
+    this.renderProcessParameters(parameterCell, this.selectedRow, newFields, inactive ? parameterFields : inactiveFields).forEach((field) => {
       this.renderedProcessParameters.add(field);
     });
     // The mode switch sits on its own line under the freight parameters; a row reused by another step drops it.
@@ -1307,7 +1320,8 @@ export default class extends Controller {
     this.renderProcessNote(calculationCell, note);
     if (key) row.dataset.processStepKey = key;
     else delete row.dataset.processStepKey;
-    row.classList.toggle("is-incomplete", parameterFields.some((field) => this.processInvalidFields?.has(field)));
+    row.classList.toggle("is-inactive", inactive);
+    row.classList.toggle("is-incomplete", !inactive && parameterFields.some((field) => !inactiveFields.includes(field) && this.processInvalidFields?.has(field)));
   }
 
   // A formula is either a plain string or a token list (see profit_prediction_formula.js): the
@@ -3303,7 +3317,8 @@ export default class extends Controller {
     this.detailStatusTarget.hidden = !message;
   }
 
-  renderProcessParameters(cell, row, fields) {
+  // inactiveFields are shown greyed out and cannot be edited: they do not count in the calculation right now.
+  renderProcessParameters(cell, row, fields, inactiveFields = []) {
     if (!row) return [];
 
     const renderedFields = [];
@@ -3390,7 +3405,9 @@ export default class extends Controller {
       input.dataset.processRowKey = row.dataset.rowKey;
       input.dataset.processField = field;
       if (field !== "target_margin" && document.activeElement !== input) input.value = source.value;
-      input.disabled = field === "target_margin" ? this.readonlyValue : source.disabled || source.dataset.editable === "false";
+      const inactive = inactiveFields.includes(field);
+      input.disabled = field === "target_margin" ? this.readonlyValue : source.disabled || source.dataset.editable === "false" || inactive;
+      wrapper?.classList.toggle("is-inactive", inactive);
       wrapper?.querySelectorAll(".input-number__button").forEach((button) => {
         button.disabled = input.disabled;
       });

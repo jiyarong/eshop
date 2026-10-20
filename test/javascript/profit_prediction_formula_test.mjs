@@ -87,10 +87,8 @@ test("every formula evaluates to the figure the Ruby calculator produced for tha
       checked += 1;
     });
 
-    // An Ozon FBS scenario has no cross-docking row, and a WB scenario on typed or overridden freight
-    // no base-logistics row (the tariff parameters play no part), hence one step fewer.
-    const withoutBaseLogistics = !steps.some((step) => step.key === "base_logistics") && testCase.platform === "wb";
-    const floor = (testCase.context.delivery_mode === "fbs" && testCase.platform === "ozon") || withoutBaseLogistics ? 17 : 18;
+    // An Ozon FBS scenario has no cross-docking row, hence one step fewer.
+    const floor = testCase.context.delivery_mode === "fbs" && testCase.platform === "ozon" ? 17 : 18;
     assert.ok(checked >= floor, `${testCase.name}: only ${checked} formulas were compared`);
   });
 });
@@ -223,7 +221,7 @@ test("only a scenario that pays storage offers the actual storage shortcut: an O
   assert.equal(source("wb_general_coefficient"), "actual_storage");
 });
 
-test("WB offers the tariff parameters on the fixed formula and the typed freight on real figures", () => {
+test("WB keeps every freight row and parameter in place and flags what does not apply", () => {
   const base = cases.find((testCase) => testCase.name === "wb_general_coefficient");
   const stepsIn = (logisticsMode, inputs = {}, source = "coefficient") => {
     const input = { ...base.inputs, ...inputs };
@@ -233,18 +231,18 @@ test("WB offers the tariff parameters on the fixed formula and the typed freight
       companyType: base.context.company_type, logisticsMode, inputs: input, data, labels
     });
   };
-  const fieldsOf = (steps, key) => steps.find((step) => step.key === key)?.fields;
+  const stepOf = (steps, key) => steps.find((step) => step.key === key);
+  const layout = (steps) => steps.map((step) => [step.key, step.fields.join()].join(":"));
 
   const formula = stepsIn("formula", { outbound_logistics_rub: 250, return_logistics_rub: 120 });
-  assert.deepEqual(fieldsOf(formula, "base_logistics"), ["wb_logistics_base_rub", "wb_logistics_liter_rub"]);
-  assert.ok(fieldsOf(formula, "platform_logistics").includes("logistics_coeff"));
-  assert.ok(!fieldsOf(formula, "platform_logistics").includes("outbound_logistics_rub"));
-  assert.ok(fieldsOf(formula, "returns").includes("wb_fixed_return_base_rub"));
-  assert.ok(!fieldsOf(formula, "returns").includes("return_logistics_rub"));
-
   const actual = stepsIn("actual", { outbound_logistics_rub: 250, return_logistics_rub: 120 }, "actual");
-  assert.equal(fieldsOf(actual, "base_logistics"), undefined, "the base fee, per-litre fee and coefficient are void on typed freight");
-  assert.deepEqual(fieldsOf(actual, "platform_logistics"), ["fbo_delivery_cny", "outbound_logistics_rub", "exchange_rate_rub_cny"]);
-  assert.ok(fieldsOf(actual, "returns").includes("return_logistics_rub"));
-  assert.ok(!fieldsOf(actual, "returns").includes("wb_fixed_return_base_rub"));
+  assert.deepEqual(layout(formula), layout(actual), "switching the mode must not add or remove a row or a field");
+
+  assert.equal(stepOf(formula, "base_logistics").inactive, false);
+  assert.deepEqual(stepOf(formula, "platform_logistics").inactiveFields, ["outbound_logistics_rub"]);
+  assert.deepEqual(stepOf(formula, "returns").inactiveFields, ["return_logistics_rub"]);
+
+  assert.equal(stepOf(actual, "base_logistics").inactive, true, "the base fee, per-litre fee and coefficient are void on typed freight");
+  assert.deepEqual(stepOf(actual, "platform_logistics").inactiveFields, ["logistics_coeff"]);
+  assert.deepEqual(stepOf(actual, "returns").inactiveFields, ["wb_fixed_return_base_rub"]);
 });
