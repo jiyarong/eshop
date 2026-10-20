@@ -1,5 +1,8 @@
 module Ec
   class OzonSalesFunnelHealthCheckJob < ApplicationJob
+    DATA_DELAY_DAYS = 2
+    WINDOW_DAYS = 3
+
     queue_as :default
 
     def perform
@@ -16,12 +19,11 @@ module Ec
       account_id = store.ozon_raw_account_id
       return if account_id.blank?
 
-      latest_date = RawOzon::SalesFunnelDaily.where(account_id: account_id).maximum(:stat_date)
-      return if latest_date.blank?
-
-      current_start = latest_date - 2.days
-      baseline_start = latest_date - 5.days
-      current = aggregate(account_id, current_start, latest_date)
+      # Exclude today and allow two complete days for platform data to settle.
+      as_of = Time.current.in_time_zone("Asia/Shanghai").to_date - (DATA_DELAY_DAYS + 1).days
+      current_start = as_of - (WINDOW_DAYS - 1).days
+      baseline_start = current_start - WINDOW_DAYS.days
+      current = aggregate(account_id, current_start, as_of)
       baseline = aggregate(account_id, baseline_start, current_start - 1.day)
       products = Ec::SkuProduct.where(store_id: store.id, platform: "ozon")
         .where.not(platform_sku_id: [nil, ""])
@@ -34,7 +36,7 @@ module Ec
 
         { sku_code: product.sku_code, current: current_row, baseline: baseline_row }
       end
-      Ec::FunnelAnomalyNotifier.call(observations: observations, store: store, as_of: latest_date)
+      Ec::FunnelAnomalyNotifier.call(observations: observations, store: store, as_of: as_of)
     end
 
     def aggregate(account_id, from_date, to_date)
@@ -42,6 +44,7 @@ module Ec
         .where(account_id: account_id, stat_date: from_date..to_date)
         .select("sku, SUM(hits_view_pdp) AS views, SUM(hits_tocart_pdp) AS carts, SUM(ordered_units) AS orders, SUM(revenue) AS revenue")
         .group(:sku)
+        .having("COUNT(*) = ?", WINDOW_DAYS)
         .each_with_object({}) do |row, result|
           result[row.sku.to_s] = {
             "views" => row.attributes["views"],

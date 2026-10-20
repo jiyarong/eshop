@@ -43,11 +43,15 @@ module Ec
 
       def notify_sku(candidate, store:, as_of:)
         sku_code = candidate.fetch(:sku_code)
+        from_date = (as_of - 2.days).iso8601
+        to_date = as_of.iso8601
         title = I18n.t("notifications.funnel_anomaly.title", sku_code: sku_code)
         body = I18n.t(
           "notifications.funnel_anomaly.body",
           sku_code: sku_code,
           store_name: store.store_name,
+          from_date: from_date,
+          to_date: to_date,
           current_views: candidate.fetch(:current_views).round,
           baseline_views: candidate.fetch(:baseline_views).round,
           current_orders: candidate.fetch(:current_orders).round,
@@ -65,15 +69,18 @@ module Ec
           occurred_at: as_of.end_of_day,
           sku_code: sku_code,
           store: store,
-          metadata: candidate,
+          metadata: candidate.merge(from_date: from_date, to_date: to_date),
           fingerprint: "ozon_funnel_anomaly:#{store.id}:#{sku_code}:#{as_of}"
         )
       end
 
       def notify_batch(candidates, store:, as_of:)
         sku_codes = candidates.map { |candidate| candidate.fetch(:sku_code) }.uniq
+        from_date = (as_of - 2.days).iso8601
+        to_date = as_of.iso8601
         title = I18n.t("notifications.funnel_anomaly.batch_title", store_name: store.store_name)
-        body = I18n.t("notifications.funnel_anomaly.batch_body", store_name: store.store_name, sku_count: sku_codes.size)
+        body = I18n.t("notifications.funnel_anomaly.batch_body", store_name: store.store_name, sku_count: sku_codes.size,
+          from_date: from_date, to_date: to_date)
 
         Ec::SystemNotificationDispatcher.call(
           notification_type: "funnel_anomaly",
@@ -82,12 +89,12 @@ module Ec
           body: body,
           target_path: Rails.application.routes.url_helpers.reports_sales_funnel_path(
             store_ref: "ozon:#{store.ozon_raw_account_id}",
-            from_date: (as_of - 2.days).iso8601,
-            to_date: as_of.iso8601
+            from_date: from_date,
+            to_date: to_date
           ),
           occurred_at: as_of.end_of_day,
           store: store,
-          metadata: { "sku_count" => sku_codes.size, "sku_codes" => sku_codes.first(50) },
+          metadata: { "sku_count" => sku_codes.size, "sku_codes" => sku_codes.first(50), "from_date" => from_date, "to_date" => to_date },
           fingerprint: "ozon_funnel_batch_anomaly:#{store.id}:#{as_of}:#{sku_codes.sort.join(',')}"
         )
       end
