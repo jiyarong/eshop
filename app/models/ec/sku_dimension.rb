@@ -30,6 +30,15 @@ module Ec
       volume_l(outer_length_cm, outer_width_cm, outer_height_cm)
     end
 
+    def calculated_ozon_size_category
+      self.class.ozon_size_category_for(
+        length: inner_length_cm,
+        width: inner_width_cm,
+        height: inner_height_cm,
+        weight: inner_box_weight_kg
+      )
+    end
+
     def self.ozon_size_category_for(length:, width:, height:, weight:)
       # Ozon FBO uses fixed axis thresholds for KGT; weight is an upper-limit check.
       values = [length, width, height, weight]
@@ -45,12 +54,7 @@ module Ec
     private
 
     def calculate_ozon_size_category
-      self.ozon_size_category = self.class.ozon_size_category_for(
-        length: outer_length_cm,
-        width: outer_width_cm,
-        height: outer_height_cm,
-        weight: outer_box_weight_kg
-      )
+      self.ozon_size_category = calculated_ozon_size_category
     end
 
     def volume_l(length_cm, width_cm, height_cm)

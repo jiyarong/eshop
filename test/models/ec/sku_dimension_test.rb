@@ -54,21 +54,42 @@ class Ec::SkuDimensionTest < ActiveSupport::TestCase
     assert_equal BigDecimal("0.21"), cost.pkg_volume_l
   end
 
-  test "calculates and persists the Ozon FBO size category from final carton values" do
+  test "classifies a packaged unit independently of a multi-unit shipping carton" do
     dimension = Ec::SkuDimension.create!(sku_code: @sku_code,
-      outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 10)
+      inner_length_cm: 24.5, inner_width_cm: 9.2, inner_height_cm: 7, inner_box_weight_kg: 0.35,
+      outer_length_cm: 48.5, outer_width_cm: 30, outer_height_cm: 51, outer_box_weight_kg: 14, outer_box_pcs: 40)
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL, dimension.ozon_size_category
 
-    dimension.update!(outer_length_cm: 45)
+    dimension.update!(outer_length_cm: 221, outer_box_weight_kg: 121)
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL, dimension.reload.ozon_size_category
+
+    dimension.update!(inner_length_cm: 45)
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT, dimension.reload.ozon_size_category
 
-    dimension.update!(outer_length_cm: 221)
+    dimension.update!(inner_length_cm: 221)
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE, dimension.reload.ozon_size_category
+
+    dimension.update!(inner_length_cm: 24.5, inner_box_weight_kg: 121)
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE, dimension.reload.ozon_size_category
   end
 
-  test "uses unknown when a required final carton value is missing" do
+  test "does not use complete carton values when a packaged unit value is missing or nonpositive" do
+    unit = { inner_length_cm: 35, inner_width_cm: 11.5, inner_height_cm: 17.5, inner_box_weight_kg: 1.03 }
     dimension = Ec::SkuDimension.create!(sku_code: @sku_code, outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20)
+    dimension.update!(**unit, outer_box_weight_kg: 10)
 
-    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN, dimension.ozon_size_category
+    unit.each_key do |field|
+      [nil, 0, -1].each do |value|
+        dimension.update!(**unit.merge(field => value))
+        assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN, dimension.reload.ozon_size_category
+      end
+    end
+  end
+
+  test "a complete packaged unit can be classified without carton data" do
+    dimension = Ec::SkuDimension.create!(sku_code: @sku_code,
+      inner_length_cm: 35, inner_width_cm: 11.5, inner_height_cm: 17.5, inner_box_weight_kg: 1.03)
+
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL, dimension.reload.ozon_size_category
   end
 end

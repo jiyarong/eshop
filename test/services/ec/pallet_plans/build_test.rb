@@ -13,7 +13,8 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
       cluster_name: "Москва", warehouse_id: 131, warehouse_name: "MOSCOW_BUILD", synced_at: Time.current)
     @sku = Ec::Sku.create!(sku_code: "PALLET-BUILD-#{@token}", product_name: "Build test #{@token}")
     @product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "PROD-#{@token}", platform_sku_id: "SKU-#{@token}")
-    @sku.create_dimension!(outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
+    @sku.create_dimension!(inner_length_cm: 20, inner_width_cm: 10, inner_height_cm: 10, inner_box_weight_kg: 0.7,
+      outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
     Ec::SkuBatch.create!(sku: @sku, batch_code: "PALLET-BUILD-#{@token}", status: "received",
       purchased_quantity: 10, received_quantity: 10, purchase_unit_price_cny: 1)
   end
@@ -57,14 +58,42 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
     assert_equal 2, plan.calculation.fetch("total_boxes")
   end
 
-  test "rejects Ozon FBO oversize packaging before building a plan" do
-    @sku.dimension.update!(outer_length_cm: 221)
+  test "uses server unit data for classification and carton data for geometry" do
+    @sku.dimension.update!(outer_height_cm: 88)
+    @sku.dimension.update_columns(ozon_size_category: "kgt")
+    input = attributes(quantity: 1)
+    input[:items].first.merge!(ozon_size_category: "oversize", inner_length_cm: 221)
+
+    built = Ec::PalletPlans::Build.new(user: @user, attributes: input).call
+
+    assert_equal "normal", built[:items].sole[:ozon_size_category]
+    assert_equal "normal", built[:result][:items].sole[:ozon_size_category]
+    assert_equal 88, built[:result][:items].sole[:height]
+    assert_equal 8, built[:result][:items].sole[:weight]
+    assert_equal 10, built[:result][:total_units]
+  end
+
+  test "rejects Ozon FBO oversize units even when the client supplies smaller carton dimensions" do
+    @sku.dimension.update!(inner_length_cm: 221)
+    input = attributes(quantity: 1)
+    input[:items].first.merge!(length: 20, width: 10, height: 10, weight: 1, ozon_size_category: "normal")
+
+    error = assert_raises(Ec::PalletPlans::Error) do
+      Ec::PalletPlans::Build.new(user: @user, attributes: input).call
+    end
+
+    assert_equal :ozon_oversize, error.key
+    assert_equal @sku.sku_code, error.details[:sku]
+  end
+
+  test "requires packaged unit dimensions and weight even when carton data is complete" do
+    @sku.dimension.update!(inner_box_weight_kg: nil)
 
     error = assert_raises(Ec::PalletPlans::Error) do
       Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 1)).call
     end
 
-    assert_equal :ozon_oversize, error.key
+    assert_equal :missing_packaging, error.key
     assert_equal @sku.sku_code, error.details[:sku]
   end
 

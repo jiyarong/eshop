@@ -34,7 +34,8 @@ module Ec
         @items = rows.map do |item|
           fail_input(:sku_unavailable) if item[:sku_code].blank?
           quantity = quantity!(item[:quantity], item[:sku_code])
-          item = item.merge(ozon_size_category: size_category_for(item))
+          # Build supplies the packaged-unit category; these dimensions describe shipping cartons.
+          item = item.merge(ozon_size_category: item[:ozon_size_category].presence || Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN)
           # A solo recommendation supplies both canonical normalization/validation
           # and an upper bound on how many cartons a candidate needs to consider.
           result = calculate([item.merge(quantity: nil)])
@@ -139,12 +140,6 @@ module Ec
 
       def calculate(items)
         PalletPacking::Calculator.new(profile: PROFILE, items: items, settings: @settings).call
-      end
-
-      def size_category_for(item)
-        Ec::SkuDimension.ozon_size_category_for(
-          length: item[:length], width: item[:width], height: item[:height], weight: item[:weight]
-        )
       end
 
       def fail_input(key, **details)

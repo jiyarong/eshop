@@ -13,7 +13,8 @@ class Ec::PalletPlans::SaveTest < ActiveSupport::TestCase
       cluster_name: "Москва", warehouse_id: 141, warehouse_name: "MOSCOW_SAVE", synced_at: Time.current)
     @sku = Ec::Sku.create!(sku_code: "PALLET-SAVE-#{@token}", product_name: "Save test #{@token}")
     @product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "PROD-#{@token}", platform_sku_id: "SKU-#{@token}")
-    @sku.create_dimension!(outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
+    @sku.create_dimension!(inner_length_cm: 20, inner_width_cm: 10, inner_height_cm: 10, inner_box_weight_kg: 0.7,
+      outer_length_cm: 60, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
     Ec::SkuBatch.create!(sku: @sku, batch_code: "PALLET-SAVE-#{@token}", status: "received",
       purchased_quantity: 100, received_quantity: 100, purchase_unit_price_cny: 1)
   end
@@ -22,6 +23,8 @@ class Ec::PalletPlans::SaveTest < ActiveSupport::TestCase
     plan = Ec::PalletPlans::Save.new(user: @user, attributes: attributes(quantity: 1)).call
     assert_equal 1, plan.items.count
     assert_operator plan.pallets.count, :>, 0
+    assert_equal "normal", plan.items.sole.packaging.fetch("ozon_size_category")
+    assert_equal "normal", plan.calculation.fetch("items").sole.fetch("ozon_size_category")
     old_pallet_ids = plan.pallets.pluck(:id)
 
     Ec::PalletPlans::Save.new(user: @user, plan: plan, attributes: attributes(quantity: 2)).call
@@ -38,7 +41,7 @@ class Ec::PalletPlans::SaveTest < ActiveSupport::TestCase
     {
       store_id: @store.id, cluster_id: @cluster.macrolocal_cluster_id,
       from_date: "2026-07-01", to_date: "2026-07-28", target_days: 28,
-      items: [{ sku_code: @sku.sku_code, quantity: quantity, length: 40, width: 30, height: 20,
+      items: [{ sku_code: @sku.sku_code, quantity: quantity, length: 60, width: 30, height: 20,
         weight: 8, pcs: 10, unit_volume_l: 24 }]
     }
   end

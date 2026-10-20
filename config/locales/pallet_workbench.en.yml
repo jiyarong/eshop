@@ -135,8 +135,8 @@ en:
       invalid_items: "Complete packaging and enter positive whole carton counts within available stock."
       sku_unavailable: The selection includes an unavailable or inaccessible SKU.
       ambiguous_listing: A SKU has multiple listings in this store and cannot be resolved.
-      ozon_oversize: "The carton exceeds Ozon FBO limits and cannot be supplied on a regular pallet. Use an eligible delivery mode."
-      missing_packaging: Complete carton dimensions, weight and units per carton.
+      ozon_oversize: "The packaged unit exceeds Ozon FBO limits and cannot be supplied on a regular pallet. Use an eligible delivery mode."
+      missing_packaging: Complete packaged unit and carton dimensions, weights and units per carton.
       invalid_quantity: Carton quantities must be positive integers.
       insufficient_stock: Insufficient allocatable stock. Reduce carton quantities
         and retry.
@@ -165,7 +165,7 @@ en:
       sync_failed: Platform supply status sync failed. Try again later.
     exclusions:
       ambiguous_listing: Multiple listings exist for this store
-      ozon_oversize: Carton exceeds Ozon FBO limits
+      ozon_oversize: Packaged unit exceeds Ozon FBO limits
       unavailable: No allocatable full cartons
       packaging_incomplete: Incomplete packaging
       stock_unavailable: No allocatable full cartons

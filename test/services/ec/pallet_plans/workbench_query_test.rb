@@ -13,7 +13,8 @@ class Ec::PalletPlans::WorkbenchQueryTest < ActiveSupport::TestCase
       cluster_name: "Москва", warehouse_id: 123, warehouse_name: "MOSCOW_TEST", synced_at: Time.current)
     @sku = Ec::Sku.create!(sku_code: "PALLET-QUERY-#{@token}", product_name: "Query test #{@token}")
     @product = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "PROD-#{@token}", platform_sku_id: "SKU-#{@token}")
-    @sku.create_dimension!(outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
+    @sku.create_dimension!(inner_length_cm: 20, inner_width_cm: 10, inner_height_cm: 10, inner_box_weight_kg: 0.7,
+      outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
     @batch = Ec::SkuBatch.create!(sku: @sku, batch_code: "PALLET-QUERY-#{@token}", status: "received",
       purchased_quantity: 100, received_quantity: 100, purchase_unit_price_cny: 1)
     create_sale(@store, @product, "Москва", 28)
@@ -70,13 +71,36 @@ class Ec::PalletPlans::WorkbenchQueryTest < ActiveSupport::TestCase
     assert_equal 0, row[:suggested_boxes]
   end
 
-  test "does not recommend an Ozon FBO oversize carton" do
-    @sku.dimension.update!(outer_length_cm: 221)
+  test "uses unit data instead of carton dimensions or a stale stored category" do
+    @sku.dimension.update!(outer_height_cm: 88)
+    @sku.dimension.update_columns(ozon_size_category: "oversize")
+
+    row = query[:rows].sole
+
+    assert_equal "normal", row[:ozon_size_category]
+    assert_equal 88, row[:packaging][:height]
+    assert_equal 2, row[:suggested_boxes]
+    assert_nil row[:exclusion_reason]
+  end
+
+  test "does not recommend an Ozon FBO oversize packaged unit" do
+    @sku.dimension.update!(inner_length_cm: 221)
 
     row = query[:rows].sole
 
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE, row[:ozon_size_category]
     assert_equal :ozon_oversize, row[:exclusion_reason]
+    assert_equal 0, row[:suggested_boxes]
+  end
+
+  test "does not recommend a SKU with incomplete packaged unit data" do
+    @sku.dimension.update!(inner_box_weight_kg: nil)
+
+    row = query[:rows].sole
+
+    assert_equal "unknown", row[:ozon_size_category]
+    assert_not row[:packaging_complete]
+    assert_equal :missing_packaging, row[:exclusion_reason]
     assert_equal 0, row[:suggested_boxes]
   end
 

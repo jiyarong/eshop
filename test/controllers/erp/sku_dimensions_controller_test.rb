@@ -248,9 +248,21 @@ class Erp::SkuDimensionsControllerTest < ActionDispatch::IntegrationTest
       assert_select "template", "12.50"
     end
     assert_select "turbo-stream[action='replace'][target='sku_dimension_#{@sku.sku_code}_ozon_size_category_cell']" do
-      assert_select "template", /待补齐/
+      assert_select "template", /普通商品/
     end
     assert_select "turbo-stream[action='update'][target='global_toast']"
+  end
+
+  test "inline update of unit dimensions refreshes the Ozon size category" do
+    patch "/erp/sku_dimensions/#{@sku.sku_code}",
+      params: { inline_field: "inner_length_cm", ec_sku_dimension: { inner_length_cm: "45" } },
+      headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "kgt", @dimension.reload.ozon_size_category
+    assert_select "turbo-stream[action='replace'][target='sku_dimension_#{@sku.sku_code}_ozon_size_category_cell']" do
+      assert_select "template", /KGT 大件/
+    end
   end
 
   test "inline update creates missing sku dimension record" do

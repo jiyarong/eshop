@@ -48,8 +48,8 @@ class Ec::PalletPlans::PackingTest < ActiveSupport::TestCase
 
   test "automatic pallets keep Ozon size categories separate" do
     result = pack([
-      item("NORMAL", ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL),
-      item("KGT", length: 45, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT)
+      item("NORMAL", length: 60, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL),
+      item("KGT", ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT)
     ])
 
     assert_equal 2, result[:pallets].size
@@ -62,8 +62,8 @@ class Ec::PalletPlans::PackingTest < ActiveSupport::TestCase
   test "manual pallets reject mixed Ozon size categories" do
     error = assert_raises(Ec::PalletPlans::Packing::InvalidInput) do
       pack([
-        item("NORMAL", quantity: 1, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL),
-        item("KGT", quantity: 1, length: 45, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT)
+        item("NORMAL", quantity: 1, length: 60, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL),
+        item("KGT", quantity: 1, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT)
       ], allocations: [{ items: [{ sku_code: "NORMAL", quantity: 1 }, { sku_code: "KGT", quantity: 1 }] }])
     end
 

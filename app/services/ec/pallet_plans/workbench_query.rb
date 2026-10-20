@@ -89,7 +89,7 @@ module Ec
         packaging = packaging(sku.dimension)
         complete = %i[length width height weight pcs].all? do |field|
           packaging[field].present? && packaging[field].to_d.positive?
-        end
+        end && packaging[:ozon_size_category] != Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN
         pcs = packaging[:pcs].to_i
         planned_quantity = planned.fetch(row[:sku_code], 0)
         gap = cluster.fetch(:distribution_gap, 0).to_i
@@ -124,14 +124,7 @@ module Ec
 
       def packaging(dimension)
         unit_volume_l = dimension&.inner_volume_l
-        category = if dimension
-          dimension.ozon_size_category.presence || Ec::SkuDimension.ozon_size_category_for(
-            length: dimension.outer_length_cm, width: dimension.outer_width_cm,
-            height: dimension.outer_height_cm, weight: dimension.outer_box_weight_kg
-          )
-        else
-          Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN
-        end
+        category = dimension&.calculated_ozon_size_category || Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN
         {
           length: dimension&.outer_length_cm, width: dimension&.outer_width_cm, height: dimension&.outer_height_cm,
           weight: dimension&.outer_box_weight_kg, pcs: dimension&.outer_box_pcs,

@@ -86,7 +86,8 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
     ActiveRecord::Base.transaction do
       sku = Ec::Sku.create!(sku_code: "PREVIEW-#{SecureRandom.hex(6).upcase}", product_name: "Preview test")
       Ec::SkuOperatorAssignment.create!(sku: sku, user: @user)
-      sku.create_dimension!(outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
+      sku.create_dimension!(inner_length_cm: 20, inner_width_cm: 10, inner_height_cm: 10, inner_box_weight_kg: 0.7,
+        outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 8, outer_box_pcs: 10)
       product = Ec::SkuProduct.create!(sku: sku, store: @store, product_id: sku.sku_code, platform_sku_id: sku.sku_code)
       Ec::SkuBatch.create!(sku: sku, batch_code: sku.sku_code, status: "received",
         purchased_quantity: 10, received_quantity: 10, purchase_unit_price_cny: 1)

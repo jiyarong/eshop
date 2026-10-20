@@ -127,8 +127,8 @@ zh:
       invalid_items: "请补齐包装参数，并检查箱数是否为正整数且未超过库存。"
       sku_unavailable: 包含不存在或无权操作的 SKU。
       ambiguous_listing: 当前店铺中 SKU 对应多个 Listing，无法确定供货商品。
-      ozon_oversize: "外箱参数超过 Ozon FBO 上限，不能按普通托盘供货，请改用适用的配送模式。"
-      missing_packaging: 包装参数不完整，请补齐尺寸、重量与每箱件数。
+      ozon_oversize: "单件包装参数超过 Ozon FBO 上限，不能按普通托盘供货，请改用适用的配送模式。"
+      missing_packaging: 包装参数不完整，请补齐单件包装及外箱的尺寸、重量与每箱件数。
       invalid_quantity: 箱数必须为正整数。
       insufficient_stock: 可分配库存不足，请调整箱数后重试。
       invalid_status: 当前状态不允许执行此操作。
@@ -154,7 +154,7 @@ zh:
       sync_failed: 平台供货状态同步失败，请稍后重试。
     exclusions:
       ambiguous_listing: 店铺中存在多个 Listing，无法确定供货商品
-      ozon_oversize: 外箱参数超过 Ozon FBO 上限
+      ozon_oversize: 单件包装参数超过 Ozon FBO 上限
       unavailable: 无可分配的整箱库存
       packaging_incomplete: 包装参数缺失
       stock_unavailable: 无可分配整箱库存
