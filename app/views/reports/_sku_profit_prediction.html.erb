@@ -537,7 +537,13 @@
                 <%= profit_prediction_identity_value(context, :company_type) %>
               </span>
             </button>
-            <i class="bi bi-exclamation-triangle-fill profit-prediction-process__scenario-warning" data-scenario-warning hidden aria-hidden="true"></i>
+            <button
+              type="button"
+              class="profit-prediction-process__scenario-warning"
+              data-scenario-warning
+              data-action="mouseenter->profit-prediction#showScenarioWarning focus->profit-prediction#showScenarioWarning click->profit-prediction#showScenarioWarning mouseleave->profit-prediction#hideScenarioWarning blur->profit-prediction#hideScenarioWarning"
+              hidden
+            ><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i></button>
             <button
               type="button"
               class="profit-prediction-process__scenario-menu-button"

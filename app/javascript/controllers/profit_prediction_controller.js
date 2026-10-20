@@ -455,9 +455,11 @@ export default class extends Controller {
       if (!warning) return;
       const warn = scenarioWarning(state, scenario);
       warning.hidden = !warn;
-      warning.title = warn
+      const text = warn
         ? fill(messages.warning, { weeks: state.weeks, units: scenario.units ?? 0, min: state.min_units })
         : "";
+      warning.dataset.message = text;
+      warning.setAttribute("aria-label", text);
     });
 
     const hidden = hiddenScenarios(state);
@@ -570,6 +572,21 @@ export default class extends Controller {
     ]);
   }
 
+  // The yellow mark explains itself at once (hover, keyboard focus or tap) in the same popover as
+  // the menu; a native title would take a second to appear and show a help cursor meanwhile.
+  showScenarioWarning(event) {
+    const anchor = event.currentTarget;
+    if (!anchor.dataset.message) return;
+    if (this.openScenarioMenuFor && !this.openScenarioMenuFor.hasAttribute("data-scenario-warning")) return;
+    if (this.openScenarioMenuFor === anchor) return;
+
+    this.openScenarioMenu(anchor, [{ info: anchor.dataset.message }]);
+  }
+
+  hideScenarioWarning(event) {
+    if (this.openScenarioMenuFor === event.currentTarget) this.closeScenarioMenu();
+  }
+
   toggleRestoreMenu(event) {
     event.stopPropagation();
     if (!this.scenarios) return;
@@ -629,7 +646,9 @@ export default class extends Controller {
     // the right of its tab, so the menu stays under that tab instead of the next one.
     const box = anchor.getBoundingClientRect();
     const top = Math.round(box.bottom + 4);
-    const left = Math.round(Math.max(8, Math.min(box.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 8)));
+    // Not further left than the scenario bar, so the popover never slides under the sidebar.
+    const minLeft = Math.max(8, anchor.closest("nav")?.getBoundingClientRect().left ?? 8);
+    const left = Math.round(Math.max(minLeft, Math.min(box.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 8)));
     menu.style.top = `${top}px`;
     menu.style.left = `${left}px`;
     // `position: fixed` is relative to the viewport unless an ancestor (a transform, filter or
