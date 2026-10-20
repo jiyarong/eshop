@@ -88,6 +88,9 @@ en:
     cancel_confirm: Cancel this pallet plan? Dispatched stock still requires platform
       reconciliation.
     supply_binding: Supply binding and sync
+    supply_sync_hint: Applications created here bind their supply number automatically. Background sync updates platform and plan statuses every 15 minutes. Packing progress requires manual confirmation.
+    supply_manual: Enter a supply order number manually
+    supply_manual_hint: Enter an Ozon supply number or parent order ID. Unsynced numbers wait for background matching. Once the complete order is verified, drafts reserve stock and subsequent statuses follow Ozon.
     supply_search: Search by order number or supply ID
     supply_empty: No supply records found for this plan
     supply_search_hint: Choose a supply record from this store. Products, quantities, cluster and destination are checked when binding.
@@ -150,6 +153,7 @@ en:
       supply_not_found: Supply order not found for this store. Check the number or
         wait for sync.
       supply_mismatch: The supply cluster, SKUs or quantities do not match this plan.
+      supply_already_bound: This supply order is already bound to another valid plan. Check the order number.
       cluster_unavailable: This cluster is not mapped to the selected store.
       invalid_period: Invalid date range or target stock days.
       binding_number: Enter an Ozon supply order number.

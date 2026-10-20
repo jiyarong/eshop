@@ -258,8 +258,8 @@ module Ec
 
       def authorize_write!
         @plan.reload
-        user = @plan.created_by
-        raise Error.new(:sku_unavailable) unless user.can?(:manage_skus)
+        user = data["requested_by_id"].present? ? User.find_by(id: data["requested_by_id"]) : @plan.created_by
+        raise Error.new(:sku_unavailable) unless user&.can?(:manage_skus)
         raise Error.new(:sku_unavailable) if @plan.items.where.not(sku_code: WeeklyProfitReports::AccessScope.new(user).visible_skus.select(:sku_code)).exists?
         raise Error.new(:invalid_status) unless @plan.status.in?(Ec::PalletPlan::EDITABLE_STATUSES)
       end

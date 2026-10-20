@@ -86,13 +86,22 @@ module Reports
       render json: { running: @plan.ozon_supply_submission&.running?, active: @plan.active?, state: @plan.ozon_supply_submission&.state,
         html: render_to_string(partial: "reports/pallet_plans/supply_submission", formats: [:html], locals: { plan: @plan }),
         workflow_html: render_to_string(partial: "reports/pallet_plans/workflow", formats: [:html], locals: { plan: @plan }), plan_state: @plan.status,
+        binding_html: render_to_string(partial: "reports/pallet_plans/supply_binding", formats: [:html], locals: { plan: @plan }),
+        handoff_html: can?(:manage_skus) && @plan.editable? ? render_to_string(partial: "reports/pallet_plans/supply_handoff", formats: [:html], locals: { plan: @plan }) : "",
         platform_status: @plan.platform_status, platform_synced_at: helpers.display_time(@plan.platform_synced_at),
-        status: helpers.pallet_workbench_status(@plan), order_number: @plan.supply_order_number, sync_error: @plan.sync_error }
+        status: helpers.pallet_workbench_status(@plan), order_id: @plan.ozon_order_id, order_number: @plan.supply_order_number, sync_error: @plan.sync_error }
     end
 
     def supply_warehouse
       supply_actions.select_warehouse!(params[:warehouse_id])
       enqueue_supply
+    end
+
+    def start_supply
+      submission = Ec::PalletPlans::StartOzonSupply.new(user: current_user, plan: @plan,
+        attributes: params.permit(:lock_version, :supply_type, :drop_off)).call
+      Ec::OzonSupplySubmissionJob.perform_later(submission.id) if submission.state == "queued"
+      saved_response
     end
 
     def submit_supply

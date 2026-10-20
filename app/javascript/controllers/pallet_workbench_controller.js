@@ -149,6 +149,8 @@ export default class extends Controller {
   invalidate() {
     this.revision += 1;
     this.validated = false;
+    // Keep the sticky editor and page scroll range stable while replacing stale results.
+    this.resultsTarget.style.minHeight = this.items.length ? `${this.resultsTarget.getBoundingClientRect().height}px` : "";
     this.resultsTarget.replaceChildren();
     this.capacityTarget.hidden = true;
     this.setStatus(this.items.length ? this.messagesValue.changed : this.messagesValue.empty);

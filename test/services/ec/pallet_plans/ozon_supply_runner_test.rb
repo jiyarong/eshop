@@ -92,6 +92,27 @@ class Ec::PalletPlans::OzonSupplyRunnerTest < ActiveSupport::TestCase
     assert_equal 1, @client.calls.count { |call| call.first == :create_cargoes }
   end
 
+  test "authorizes the submitting user when a workbench plan has a different creator" do
+    creator = User.create!(email: "supply-creator-#{@token}@example.com", password: "password123")
+    @plan.update!(created_by: creator)
+    @submission.update!(data: @submission.data.merge("requested_by_id" => @user.id))
+
+    run_step
+
+    assert_equal "calculating", @submission.reload.state
+    assert_equal 1, @client.calls.count { |call| call.first == :create_draft }
+  end
+
+  test "rechecks the submitting user's permission before writing to Ozon" do
+    requester = User.create!(email: "supply-requester-#{@token}@example.com", password: "password123")
+    @submission.update!(data: @submission.data.merge("requested_by_id" => requester.id))
+
+    run_step
+
+    assert_equal "failed", @submission.reload.state
+    assert_empty @client.calls
+  end
+
   test "lost supply creation response resumes by draft without repeating the write" do
     ready_to_submit
     @client.responses[:create_supply] = Timeout::Error.new("lost response")

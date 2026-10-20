@@ -1,0 +1,18 @@
+<section class="panel" data-controller="ozon-supply">
+  <h2><%= t("pallet_workbench.supply_api.plan_prepare") %></h2>
+  <p class="form-hint"><%= t("pallet_workbench.supply_api.plan_hint") %></p>
+  <%= form_with url: start_supply_reports_pallet_plan_path(plan, locale: I18n.locale), class: "report-form", data: { turbo: false, action: "submit->ozon-supply#submit" } do |form| %>
+    <%= form.hidden_field :lock_version, value: plan.lock_version %>
+    <div class="field">
+      <%= form.label :plan_supply_type, t("pallet_workbench.supply_api.type") %>
+      <%= form.select :supply_type, %w[DIRECT CROSSDOCK].map { |type| [t("pallet_workbench.supply_api.types.#{type}"), type] }, {}, id: "plan_supply_type", data: { ozon_supply_target: "type", action: "change->ozon-supply#typeChanged" } %>
+    </div>
+    <div data-ozon-supply-target="dropOff" hidden>
+      <%= render "shared/association_picker", dom_id: "pallet-plan-#{plan.id}-drop-off", field_name: "drop_off",
+        label: t("pallet_workbench.supply_api.drop_off"), search_url: drop_offs_reports_pallet_calculator_path(store_id: plan.store_id, locale: I18n.locale),
+        placeholder: t("pallet_workbench.supply_api.drop_off_search"), empty_label: t("pallet_workbench.supply_api.drop_off_empty"),
+        hint: t("pallet_workbench.supply_api.drop_off_hint") %>
+    </div>
+    <%= form.submit t("pallet_workbench.supply_api.plan_prepare"), class: "button", data: { ozon_supply_target: "submit" } %>
+  <% end %>
+</section>

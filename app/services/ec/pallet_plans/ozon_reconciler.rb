@@ -3,17 +3,18 @@ module Ec
     class OzonReconciler
       DEPARTED_STATES = %w[ACCEPTED_AT_SUPPLY_WAREHOUSE IN_TRANSIT ACCEPTANCE_AT_STORAGE_WAREHOUSE REPORTS_CONFIRMATION_AWAITING REPORT_REJECTED].freeze
       READY_STATES = %w[DATA_FILLING READY_TO_SUPPLY].freeze
-      COMMITTED_STATUSES = Ec::PalletPlan::COMMITTED_STATUSES
       SYNC_STATUSES = %w[draft reserved packing packed dispatched closed].freeze
 
       def self.sync_for(account_id:, order_ids:)
         orders = RawOzon::SupplyOrder.where(account_id: account_id, supply_order_id: order_ids.map(&:to_s))
-        numbers = orders.filter_map { |order| order.raw_json.to_h["order_number"].presence }
+        numbers = orders.select(Arel.sql("raw_json ->> 'order_number'"))
+        submissions = Ec::OzonSupplySubmission.where(order_id: orders.select(:supply_order_id))
         plans = Ec::PalletPlan.joins(:store).where(ec_stores: { ozon_raw_account_id: account_id })
           .where(status: SYNC_STATUSES)
-        plans.where(ozon_order_id: order_ids.map(&:to_s)).or(plans.where(supply_order_number: numbers)).find_each do |plan|
-          reconciler = new(plan: plan)
-          plan.ozon_order_id.present? ? reconciler.sync! : reconciler.bind!(plan.supply_order_number)
+        plans.where(ozon_order_id: orders.select(:supply_order_id)).or(plans.where(supply_order_number: numbers))
+          .or(plans.where(supply_order_number: orders.select(:supply_order_id)))
+          .or(plans.where(id: submissions.select(:pallet_plan_id))).includes(:store, :ozon_supply_submission).find_each do |plan|
+          new(plan: plan).sync!
         rescue Ec::PalletPlans::Error => error
           plan.update!(sync_error: error.message)
         end
@@ -31,15 +32,23 @@ module Ec
           .or(account_orders.where("raw_json ->> 'order_number' = ?", number)).first
         unless order
           @plan.with_lock do
+            fail_input(:invalid_status) unless @plan.status.in?(SYNC_STATUSES)
             fail_input(:supply_mismatch) if @plan.ozon_order_id.present?
+            fail_input(:supply_mismatch) if @plan.ozon_sync_order_id.present? && number != @plan.ozon_sync_order_id
             @plan.update!(supply_order_number: number, sync_error: Error.new(:supply_pending).message)
           end
           Ec::PalletPlanSyncJob.perform_later(plan_id: @plan.id) if enqueue
           return @plan
         end
-        @plan.with_lock do
-          fail_input(:supply_mismatch) if @plan.ozon_order_id.present? && @plan.ozon_order_id != order.supply_order_id
-          apply_order!(order, binding: true)
+        order.with_lock do
+          @plan.with_lock do
+            fail_input(:invalid_status) unless @plan.status.in?(SYNC_STATUSES)
+            fail_input(:supply_mismatch) if @plan.ozon_sync_order_id.present? && @plan.ozon_sync_order_id != order.supply_order_id
+            bound = Ec::PalletPlan.joins(:store).where(ec_stores: { ozon_raw_account_id: order.account_id })
+              .where(ozon_order_id: order.supply_order_id).where.not(id: @plan.id).where.not(status: "cancelled")
+            fail_input(:supply_already_bound) if bound.exists?
+            apply_order!(order, binding: true)
+          end
         end
         @plan
       rescue Error => error
@@ -48,8 +57,9 @@ module Ec
       end
 
       def sync!
-        return bind!(@plan.supply_order_number, enqueue: false) if @plan.ozon_order_id.blank?
+        return bind!(@plan.ozon_sync_order_id.presence || @plan.supply_order_number, enqueue: false) if @plan.ozon_order_id.blank?
         @plan.with_lock do
+          return @plan unless @plan.status.in?(SYNC_STATUSES)
           order = account_orders.find_by(supply_order_id: @plan.ozon_order_id)
           fail_input(:supply_pending) unless order
           apply_order!(order, binding: false)
@@ -77,7 +87,8 @@ module Ec
         end
         fail_input(:supply_review_required) if %w[REJECTED_AT_SUPPLY_WAREHOUSE OVERDUE CANCELLED].include?(state)
         evidence, pallet_destinations = matching_evidence!(order)
-        if dispatched? && READY_STATES.include?(state) && evidence.values.all? { |item| READY_STATES.include?(item[:state]) }
+        completed = state == "COMPLETED" && evidence.values.all? { |item| item[:state] == "COMPLETED" }
+        if @plan.status == "closed" && !completed || dispatched? && READY_STATES.include?(state) && evidence.values.all? { |item| READY_STATES.include?(item[:state]) }
           fail_input(:supply_status_regressed)
         end
         previous = @plan.platform_snapshot.to_h.fetch("items", {})
@@ -100,10 +111,11 @@ module Ec
             synced_at: order.synced_at&.iso8601, items: evidence
           }
         }
-        if COMMITTED_STATUSES.include?(@plan.status)
-          if state == "COMPLETED" && evidence.values.all? { |item| item[:state] == "COMPLETED" }
+        if @plan.status != "closed"
+          attributes.merge!(status: "reserved", confirmed_at: @plan.confirmed_at || Time.current) if @plan.status == "draft"
+          if completed
             attributes.merge!(status: "closed", dispatched_at: @plan.dispatched_at || Time.current, closed_at: @plan.closed_at || Time.current)
-          elsif @plan.status != "closed" && (DEPARTED_STATES.include?(state) || evidence.values.any? { |item| DEPARTED_STATES.include?(item[:state]) || item[:state] == "COMPLETED" })
+          elsif DEPARTED_STATES.include?(state) || evidence.values.any? { |item| DEPARTED_STATES.include?(item[:state]) || item[:state] == "COMPLETED" }
             attributes.merge!(status: "dispatched", dispatched_at: @plan.dispatched_at || Time.current)
           end
         end

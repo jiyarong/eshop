@@ -26,7 +26,8 @@ module Ec
       end
 
       def bind!(number)
-        raise Error.new(:submission_in_progress) if @plan.ozon_supply_submission
+        raise Error.new(:invalid_status) unless @plan.active?
+        raise Error.new(:submission_in_progress) unless @plan.manual_supply_binding_allowed?
         OzonReconciler.new(plan: @plan).bind!(number)
       end
 

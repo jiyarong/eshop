@@ -1,0 +1,36 @@
+<h2><%= t("pallet_workbench.supply_binding") %></h2>
+<p class="form-hint"><%= t("pallet_workbench.supply_sync_hint") %></p>
+<dl class="pallet-workbench__metadata">
+  <div><dt><%= t("pallet_workbench.supply_order_number") %></dt><dd data-ozon-supply-target="orderNumber"><%= plan.supply_order_number.presence || t("common.empty_value") %></dd></div>
+  <div><dt><%= t("pallet_workbench.platform_status") %></dt><dd data-ozon-supply-target="platformStatus"><%= plan.platform_status.presence || t("common.empty_value") %></dd></div>
+  <div><dt><%= t("pallet_workbench.updated_at") %></dt><dd data-ozon-supply-target="syncedAt"><%= display_time(plan.platform_synced_at) %></dd></div>
+</dl>
+<div role="alert" class="pallet-calculator__error" data-ozon-supply-target="syncError" <%= 'hidden' if plan.sync_error.blank? %>><%= plan.sync_error %></div>
+<% if can?(:manage_skus) && plan.manual_supply_binding_allowed? %>
+  <%= form_with url: bind_reports_pallet_plan_path(plan, locale: I18n.locale), class: "report-form", data: { turbo: false, action: "submit->ozon-supply#submit" } do |form| %>
+    <%= render "shared/association_picker", dom_id: "pallet-plan-#{plan.id}-supply",
+      field_name: "supply_order_number", label: t("pallet_workbench.supply_order_number"),
+      selected_value: plan.ozon_order_id.presence || plan.supply_order_number,
+      selected_label: plan.supply_order_number,
+      search_url: supply_orders_reports_pallet_plan_path(plan, locale: I18n.locale),
+      placeholder: t("pallet_workbench.supply_search"), empty_label: t("pallet_workbench.supply_empty"),
+      hint: t("pallet_workbench.supply_search_hint") %>
+    <%= form.submit t("pallet_workbench.bind"), class: "button", data: { ozon_supply_target: "submit" } %>
+    <%= link_to t("supply_order_reports.title"), reports_supply_orders_path(store_ref: "ozon:#{plan.store.ozon_raw_account_id}", locale: I18n.locale), class: "button button-secondary" %>
+  <% end %>
+  <details>
+    <summary><%= t("pallet_workbench.supply_manual") %></summary>
+    <%= form_with url: bind_reports_pallet_plan_path(plan, locale: I18n.locale), class: "report-form", data: { turbo: false, action: "submit->ozon-supply#submit" } do |form| %>
+      <% field_id = "pallet-plan-#{plan.id}-manual-supply-number" %>
+      <div class="field">
+        <%= form.label :supply_order_number, t("pallet_workbench.supply_order_number"), for: field_id %>
+        <%= form.text_field :supply_order_number, id: field_id, value: plan.supply_order_number, required: true %>
+        <p class="form-hint"><%= t("pallet_workbench.supply_manual_hint") %></p>
+      </div>
+      <%= form.submit t("pallet_workbench.bind"), class: "button", data: { ozon_supply_target: "submit" } %>
+    <% end %>
+  </details>
+<% end %>
+<% if can?(:manage_skus) && plan.active? && (plan.ozon_sync_order_id.present? || plan.supply_order_number.present?) %>
+  <%= button_to t("pallet_workbench.refresh"), refresh_reports_pallet_plan_path(plan), class: "button button-secondary" %>
+<% end %>

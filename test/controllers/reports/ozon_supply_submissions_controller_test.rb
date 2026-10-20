@@ -44,6 +44,191 @@ class Reports::OzonSupplySubmissionsControllerTest < ActionDispatch::Integration
     assert_equal "DIRECT", @submission.data["supply_type"]
   end
 
+  test "starts from a saved plan using its actual manifest and deduplicates repeated submissions" do
+    attributes = workbench_attributes
+    attributes[:items].sole[:quantity] = 25
+    attributes.merge!(recommend_one: true, settings: { height: 60 })
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: attributes).call
+    assert_operator plan.items.sole.boxes, :<, 25
+    item_ids = plan.items.ids
+    pallet_ids = plan.pallets.ids
+    units = plan.items.sum(:units)
+
+    sign_in @user
+    assert_no_difference "Ec::PalletPlan.count" do
+      assert_difference "Ec::OzonSupplySubmission.count", 1 do
+        assert_enqueued_with(job: Ec::OzonSupplySubmissionJob) do
+          post start_supply_reports_pallet_plan_path(plan, format: :json), params: {
+            lock_version: plan.lock_version, store_id: -1, cluster_id: -1,
+            items: [{ sku_code: @sku.sku_code, quantity: 100 }], supply_type: "DIRECT"
+          }
+        end
+        assert_response :success
+        submission_id = response.parsed_body.dig("supply_submission", "id")
+        assert submission_id
+        sign_in @user
+        post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+        assert_response :success
+        assert_equal submission_id, response.parsed_body.dig("supply_submission", "id")
+      end
+    end
+    assert_equal item_ids, plan.reload.items.ids
+    assert_equal pallet_ids, plan.pallets.ids
+    assert_equal units, plan.pallets.sole.items.sum(:units)
+    assert_equal @store.id, plan.store_id
+    assert_equal 761, plan.macrolocal_cluster_id
+    assert_equal "draft", plan.status
+    assert_equal @user.id, plan.ozon_supply_submission.data["requested_by_id"]
+    assert_nil plan.ozon_supply_submission.draft_id
+    assert_nil plan.ozon_supply_submission.order_id
+  end
+
+  test "saved plan details offer delivery creation in every locale without performing writes" do
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    %w[zh en ru].each do |locale|
+      sign_in @user
+      assert_no_enqueued_jobs do
+        assert_no_difference "Ec::OzonSupplySubmission.count" do
+          get reports_pallet_plan_path(plan, locale: locale)
+        end
+      end
+      assert_response :success
+      assert_select "form[action=?]", start_supply_reports_pallet_plan_path(plan, locale: locale) do
+        assert_select "input[name='lock_version'][value=?]", plan.lock_version.to_s
+        assert_select "select[name='supply_type']"
+        assert_select "input[type='submit'][value=?]", I18n.t("pallet_workbench.supply_api.plan_prepare", locale: locale)
+      end
+      assert_select "[data-association-picker-id-value=?]", "pallet-plan-#{plan.id}-drop-off"
+      assert_empty response.body.scan(/translation missing[^<"]*/i)
+      assert_not_includes response.body, @account.api_key
+    end
+    sign_in @user
+    post start_supply_reports_pallet_plan_path(plan, locale: :ru), params: { lock_version: plan.lock_version }
+    assert_response :see_other
+    assert_redirected_to reports_pallet_plan_path(plan)
+    sign_in @user
+    get reports_pallet_plan_path(plan, locale: :zh)
+    assert_response :success
+    assert_select "form[action=?]", start_supply_reports_pallet_plan_path(plan, locale: :zh), count: 0
+  end
+
+  test "saved plan creation preserves manual multiple pallet allocations and crossdock choice" do
+    attributes = workbench_attributes.merge(packing_mode: "multiple", allocations: [
+      { items: [{ sku_code: @sku.sku_code, quantity: 1 }] }, { items: [{ sku_code: @sku.sku_code, quantity: 1 }] }
+    ])
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: attributes).call
+    pallet_ids = plan.pallets.ids
+    sign_in @user
+    post start_supply_reports_pallet_plan_path(plan, format: :json), params: {
+      lock_version: plan.lock_version, supply_type: "CROSSDOCK", drop_off: "9002:DELIVERY_POINT"
+    }
+    assert_response :success
+    assert_equal pallet_ids, plan.reload.pallets.ids
+    assert_equal [4, 4], plan.pallets.map { |pallet| pallet.items.sum(:units) }
+    submission = plan.ozon_supply_submission
+    assert_equal "CROSSDOCK", submission.data["supply_type"]
+    assert_equal({ "warehouse_id" => 9002, "warehouse_type" => "DELIVERY_POINT" }, submission.data["drop_off"])
+  end
+
+  test "a reserved saved plan excludes its reservation and records the actual submitting user" do
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    creator = create_user_with_roles("supply-creator-#{@token}@example.com", "auditor")
+    plan.update!(status: "reserved", created_by: creator)
+    Ec::SkuBatch.find_by!(sku: @sku).update!(received_quantity: 8)
+    sign_in @user
+    assert_no_difference "Ec::PalletPlan.count" do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+    end
+    assert_response :success
+    assert_equal "reserved", plan.reload.status
+    assert_equal creator.id, plan.created_by_id
+    assert_equal @user.id, plan.ozon_supply_submission.data["requested_by_id"]
+    assert_equal 8, plan.items.sole.units
+  end
+
+  test "rejects a changed saved plan or one already bound to Ozon" do
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    old_version = plan.lock_version
+    plan.update!(target_days: 30)
+    sign_in @user
+    assert_no_difference "Ec::OzonSupplySubmission.count" do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: old_version }
+      assert_response :unprocessable_entity
+      assert_equal "stale_plan", response.parsed_body["key"]
+    end
+    plan.update!(ozon_order_id: "already-bound")
+    sign_in @user
+    assert_no_difference "Ec::OzonSupplySubmission.count" do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+      assert_response :unprocessable_entity
+      assert_equal "not_editable", response.parsed_body["key"]
+    end
+    sign_in @user
+    get reports_pallet_plan_path(plan, locale: :zh)
+    assert_select "form[action=?]", start_supply_reports_pallet_plan_path(plan, locale: :zh), count: 0
+  end
+
+  test "replaces a cancelled submission from saved plan details without recreating the plan" do
+    create_submission
+    plan = @submission.pallet_plan
+    @submission.update!(state: "cancelled")
+    sign_in @user
+    get reports_pallet_plan_path(plan, locale: :zh)
+    assert_select "form[action=?]", start_supply_reports_pallet_plan_path(plan, locale: :zh)
+    sign_in @user
+    assert_no_difference ["Ec::PalletPlan.count", "Ec::OzonSupplySubmission.count"] do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+    end
+    assert_response :success
+    assert_not_equal @submission.id, response.parsed_body.dig("supply_submission", "id")
+    assert_equal "queued", plan.reload.ozon_supply_submission.state
+  end
+
+  test "rechecks saved plan inventory and access before creating a delivery application" do
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    Ec::SkuBatch.find_by!(sku: @sku).update!(received_quantity: 4)
+    sign_in @user
+    assert_no_difference "Ec::OzonSupplySubmission.count" do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+    end
+    assert_response :unprocessable_entity
+    assert_equal "insufficient_stock", response.parsed_body["key"]
+
+    Ec::SkuOperatorAssignment.where(sku_code: @sku.sku_code).delete_all
+    sign_in @user
+    assert_no_enqueued_jobs do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+    end
+    assert_response :not_found
+  end
+
+  test "rejects invalid saved pallet allocations and invalid delivery choices" do
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    sign_in @user
+    assert_no_difference "Ec::OzonSupplySubmission.count" do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version, supply_type: "CROSSDOCK" }
+    end
+    assert_response :unprocessable_entity
+    assert_equal "invalid_delivery", response.parsed_body["key"]
+    plan.pallets.sole.items.sole.update!(boxes: 1, units: 4)
+    sign_in @user
+    assert_no_difference "Ec::OzonSupplySubmission.count" do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+    end
+    assert_response :unprocessable_entity
+    assert_equal "allocation_mismatch", response.parsed_body["key"]
+  end
+
+  test "requires management permission to start from saved plan details" do
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    reader = create_user_with_roles("plan-supply-reader-#{@token}@example.com", "auditor")
+    sign_in reader
+    assert_no_enqueued_jobs do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+    end
+    assert_response :forbidden
+  end
+
   test "renders the full handoff and submission selectors without missing translations in every locale" do
     %w[zh en ru].each do |locale|
       sign_in @user
@@ -169,9 +354,40 @@ class Reports::OzonSupplySubmissionsControllerTest < ActionDispatch::Integration
     assert_includes response.parsed_body.fetch("html"), "808"
   end
 
+  test "starting a saved plan batches pallet item reads as the pallet count grows" do
+    small_plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    attributes = workbench_attributes
+    attributes[:items].sole[:quantity] = 10
+    attributes.merge!(packing_mode: "multiple", allocations: Array.new(10) { { items: [{ sku_code: @sku.sku_code, quantity: 1 }] } })
+    large_plan = Ec::PalletPlans::Save.new(user: @user, attributes: attributes).call
+
+    small = measure_local_request do
+      post start_supply_reports_pallet_plan_path(small_plan, format: :json), params: { lock_version: small_plan.lock_version }
+    end
+    assert_response :success
+    large = measure_local_request do
+      post start_supply_reports_pallet_plan_path(large_plan, format: :json), params: { lock_version: large_plan.lock_version }
+    end
+    assert_response :success
+    assert_operator large[:queries], :<=, small[:queries] + 1
+    assert_operator large[:max_sql], :<=, small[:max_sql] + 150
+    assert_equal small[:inventory_records], large[:inventory_records]
+    assert_equal 10, large_plan.reload.pallets.count
+    assert_equal 40, large_plan.items.sum(:units)
+  end
+
   private
 
+  def workbench_attributes
+    { store_id: @store.id, cluster_id: 761, from_date: "2026-09-18", to_date: "2026-10-15", packing_mode: "single",
+      items: [{ sku_code: @sku.sku_code, quantity: 2 }] }
+  end
+
   def measure_status(plan)
+    measure_local_request { get supply_submission_status_reports_pallet_plan_path(plan, format: :json) }
+  end
+
+  def measure_local_request
     sign_in @user
     metrics = { queries: 0, max_sql: 0, inventory_records: 0 }
     sql = lambda do |_name, _start, _finish, _id, payload|
@@ -185,7 +401,7 @@ class Reports::OzonSupplySubmissionsControllerTest < ActionDispatch::Integration
     ActiveRecord::Base.uncached do
       ActiveSupport::Notifications.subscribed(sql, "sql.active_record") do
         ActiveSupport::Notifications.subscribed(instantiation, "instantiation.active_record") do
-          get supply_submission_status_reports_pallet_plan_path(plan, format: :json)
+          yield
         end
       end
     end

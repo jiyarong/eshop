@@ -1,37 +1,19 @@
 <% content_for :title, @plan.plan_no %>
 <div class="report-stack" data-controller="ozon-supply"
-     data-ozon-supply-status-url-value="<%= supply_submission_status_reports_pallet_plan_path(@plan, locale: I18n.locale) if @plan.ozon_supply_submission %>"
+     data-ozon-supply-status-url-value="<%= supply_submission_status_reports_pallet_plan_path(@plan, locale: I18n.locale) %>"
      data-ozon-supply-state-value="<%= @plan.ozon_supply_submission&.state %>"
      data-ozon-supply-plan-state-value="<%= @plan.status %>"
+     data-ozon-supply-order-id-value="<%= @plan.ozon_order_id %>"
      data-ozon-supply-empty-value="<%= t('common.empty_value') %>"
      data-ozon-supply-poll-error-value="<%= t('pallet_workbench.supply_api.poll_error') %>">
   <header class="ozon-warehouse-heading"><div><h1 class="page-title"><%= @plan.plan_no %></h1><p class="page-subtitle"><%= @plan.store.store_name %> · <%= @plan.cluster_name %></p></div><%= link_to t("pallet_workbench.plans"), reports_pallet_plans_path, class: "button button-secondary" %></header>
   <section class="panel" data-ozon-supply-target="workflow"><%= render "workflow", plan: @plan %></section>
-  <% if @plan.ozon_supply_submission %>
-    <section class="panel">
-      <div data-ozon-supply-target="content"><%= render "supply_submission", plan: @plan %></div>
-      <p role="status" data-ozon-supply-target="pollError"></p>
-    </section>
-  <% end %>
-  <section class="panel">
-    <h2><%= t("pallet_workbench.supply_binding") %></h2>
-    <dl class="pallet-workbench__metadata"><div><dt><%= t("pallet_workbench.supply_order_number") %></dt><dd data-ozon-supply-target="orderNumber"><%= @plan.supply_order_number.presence || t("common.empty_value") %></dd></div><div><dt><%= t("pallet_workbench.platform_status") %></dt><dd data-ozon-supply-target="platformStatus"><%= @plan.platform_status.presence || t("common.empty_value") %></dd></div><div><dt><%= t("pallet_workbench.updated_at") %></dt><dd data-ozon-supply-target="syncedAt"><%= display_time(@plan.platform_synced_at) %></dd></div></dl>
-    <div role="alert" class="pallet-calculator__error" data-ozon-supply-target="syncError" <%= 'hidden' if @plan.sync_error.blank? %>><%= @plan.sync_error %></div>
-    <% if can?(:manage_skus) && !%w[closed cancelled].include?(@plan.status) && !@plan.ozon_supply_submission %>
-      <%= form_with url: bind_reports_pallet_plan_path(@plan), class: "report-form", data: { turbo: false } do |form| %>
-        <%= render "shared/association_picker", dom_id: "pallet-plan-#{@plan.id}-supply",
-          field_name: "supply_order_number", label: t("pallet_workbench.supply_order_number"),
-          selected_value: @plan.ozon_order_id.presence || @plan.supply_order_number,
-          selected_label: @plan.supply_order_number,
-          search_url: supply_orders_reports_pallet_plan_path(@plan, locale: I18n.locale),
-          placeholder: t("pallet_workbench.supply_search"), empty_label: t("pallet_workbench.supply_empty"),
-          hint: t("pallet_workbench.supply_search_hint") %>
-        <%= form.submit t("pallet_workbench.bind"), class: "button" %>
-        <%= link_to t("supply_order_reports.title"), reports_supply_orders_path(store_ref: "ozon:#{@plan.store.ozon_raw_account_id}", locale: I18n.locale), class: "button button-secondary" %>
-      <% end %>
-    <% end %>
-    <% if can?(:manage_skus) && @plan.ozon_order_id.present? && !%w[closed cancelled].include?(@plan.status) %><%= button_to t("pallet_workbench.refresh"), refresh_reports_pallet_plan_path(@plan), class: "button button-secondary" %><% end %>
+  <section class="panel" data-ozon-supply-target="submissionPanel" <%= 'hidden' unless @plan.ozon_supply_submission %>>
+    <div data-ozon-supply-target="content"><%= render "supply_submission", plan: @plan %></div>
   </section>
+  <p role="status" data-ozon-supply-target="pollError"></p>
+  <div data-ozon-supply-target="handoff"><%= render "supply_handoff", plan: @plan if can?(:manage_skus) && @plan.editable? %></div>
+  <section class="panel" data-ozon-supply-target="binding"><%= render "supply_binding", plan: @plan %></section>
   <section class="panel"><h2><%= t("pallet_workbench.manifest") %></h2><%= table_viewport do %><table class="prod-tbl"><thead><tr><% %w[sku boxes units].each do |key| %><th><%= t("pallet_calculator.#{key}") %></th><% end %></tr></thead><tbody><% @plan.items.each do |item| %><tr><td><%= item.sku_code %></td><td><%= item.boxes %></td><td><%= item.units %></td></tr><% end %></tbody></table><% end %></section>
   <%= render "reports/pallet_workbenches/result", result: @result if @result.present? %>
 </div>

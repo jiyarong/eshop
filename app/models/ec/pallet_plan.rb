@@ -16,6 +16,11 @@ module Ec
     has_one :ozon_supply_submission, class_name: "Ec::OzonSupplySubmission", dependent: :destroy
 
     scope :committed, -> { where(status: COMMITTED_STATUSES) }
+    scope :with_ozon_supply_reference, -> {
+      where.not(ozon_order_id: [nil, ""])
+        .or(where.not(supply_order_number: [nil, ""]))
+        .or(where(id: Ec::OzonSupplySubmission.where.not(order_id: [nil, ""]).select(:pallet_plan_id)))
+    }
     validates :plan_no, :cluster_name, :time_zone, :from_date, :to_date, presence: true
     validates :plan_no, uniqueness: true
     validates :status, inclusion: { in: STATUSES }
@@ -31,6 +36,16 @@ module Ec
 
     def active?
       !status.in?(%w[closed cancelled])
+    end
+
+    def ozon_sync_order_id
+      ozon_order_id.presence || ozon_supply_submission&.order_id.presence
+    end
+
+    def manual_supply_binding_allowed?
+      submission = ozon_supply_submission
+      active? && (submission.nil? || submission.state.in?(%w[completed cancelled]) ||
+        submission.state.in?(%w[failed review_required]) && submission.order_id.present?)
     end
   end
 end

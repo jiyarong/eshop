@@ -11,12 +11,14 @@
       <div><strong data-pallet-workbench-target="weightCount">0</strong><span><%= t("pallet_workbench.summary.weight") %></span></div>
     </div>
     <div class="pallet-workbench__save-bar">
-      <span class="pallet-workbench__eyebrow"><%= t("pallet_workbench.step_save") %></span>
-      <p role="status" aria-live="polite" data-pallet-workbench-target="status"></p>
-      <div class="pallet-workbench__capacity" data-pallet-workbench-target="capacity" hidden>
-        <label><span><%= t("pallet_workbench.height_usage") %></span><strong data-pallet-workbench-target="heightLabel"></strong><meter min="0" max="220" value="0" data-pallet-workbench-target="heightMeter"></meter></label>
-        <label><span><%= t("pallet_workbench.weight_usage") %></span><strong data-pallet-workbench-target="weightLabel"></strong><meter min="0" max="800" value="0" data-pallet-workbench-target="weightMeter"></meter></label>
-        <a href="#pallet-workbench-result"><%= t("pallet_workbench.view_layout") %></a>
+      <div class="pallet-workbench__feedback">
+        <span class="pallet-workbench__eyebrow"><%= t("pallet_workbench.step_save") %></span>
+        <p role="status" aria-live="polite" data-pallet-workbench-target="status"></p>
+        <div class="pallet-workbench__capacity" data-pallet-workbench-target="capacity" hidden>
+          <label><span><%= t("pallet_workbench.height_usage") %></span><strong data-pallet-workbench-target="heightLabel"></strong><meter min="0" max="220" value="0" data-pallet-workbench-target="heightMeter"></meter></label>
+          <label><span><%= t("pallet_workbench.weight_usage") %></span><strong data-pallet-workbench-target="weightLabel"></strong><meter min="0" max="800" value="0" data-pallet-workbench-target="weightMeter"></meter></label>
+          <a href="#pallet-workbench-result"><%= t("pallet_workbench.view_layout") %></a>
+        </div>
       </div>
       <div class="pallet-workbench__actions"><button type="button" class="button button-secondary" data-pallet-workbench-target="calculateButton" data-action="pallet-workbench#preview" disabled><%= t("pallet_workbench.recalculate") %></button><button type="button" class="button" data-pallet-workbench-target="saveButton" data-action="pallet-workbench#save" disabled><%= t("pallet_workbench.save_draft") %></button></div>
     </div>

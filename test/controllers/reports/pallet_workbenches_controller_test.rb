@@ -33,6 +33,8 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
       assert_select "[data-controller='pallet-workbench']"
       assert_select "[data-pallet-workbench-target='mode'] option[value='single']"
       assert_select "[data-pallet-workbench-target='recommendButton']"
+      assert_select "[data-pallet-workbench-target='supplyButton']", count: 0
+      assert_select "select[name='supply_type']", count: 0
       assert_no_match(/translation missing/i, response.body)
     end
   end
@@ -104,6 +106,7 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
       end
       assert_response :success
       assert_equal 1, response.parsed_body.dig("result", "total_boxes")
+      assert_not response.parsed_body.key?("calculation_token")
       raise ActiveRecord::Rollback
     end
   end

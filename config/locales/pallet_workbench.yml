@@ -81,6 +81,9 @@ zh:
     cancel: 取消计划
     cancel_confirm: 确认取消此托盘计划？已发出数量仍需平台对账。
     supply_binding: 供货单绑定与同步
+    supply_sync_hint: 系统创建的交货申请会自动绑定供货单号。后台每 15 分钟回读平台状态，并更新计划状态；打包进度仍需人工确认。
+    supply_manual: 人工回填供货单号
+    supply_manual_hint: 可填写 Ozon 供货单号或父订单 ID。未同步的单号会等待后台匹配；整单校验通过后，草稿自动确认占用库存，后续状态随平台更新。
     supply_search: 搜索订单编号或送仓单号
     supply_empty: 暂无符合当前计划的送仓记录
     supply_search_hint: 从当前店铺送仓记录中选择，绑定时核对商品、数量、集群和目的仓。
@@ -139,6 +142,7 @@ zh:
       not_editable: 该计划已不可编辑。
       supply_not_found: 找不到该店铺的 Ozon 供货单，请核对单号或等待同步。
       supply_mismatch: 供货单集群、SKU 或数量与计划不一致。
+      supply_already_bound: 该供货单已绑定其他有效计划，请核对单号。
       cluster_unavailable: 此集群未映射到当前店铺，请重新选择。
       invalid_period: 日期区间或目标覆盖天数无效。
       binding_number: 请填写 Ozon 供货单号。

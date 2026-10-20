@@ -51,6 +51,7 @@ Rails.application.routes.draw do
         post :refresh
         get :supply_orders
         get :supply_submission_status
+        post :start_supply
         post :supply_warehouse
         post :submit_supply
         post :retry_supply

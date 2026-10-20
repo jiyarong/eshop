@@ -3,6 +3,8 @@ zh:
     supply_api:
       title: 同步到 Ozon 店铺
       prepare: 保存方案并查询可供货仓库
+      plan_prepare: 创建交货申请
+      plan_hint: 使用已保存计划的店铺、集群、清单和托盘分配查询可供货仓。选择仓库和预约时段后，确认创建 Ozon 交货申请并同步托盘。
       prepare_hint: 选择店铺与集群后，保存当前装托方案并查询 Ozon 可接收整批商品的仓库。选择仓库和时段后再确认创建供货单。
       type: 供货方式
       types:
@@ -64,6 +66,8 @@ en:
     supply_api:
       title: Sync to Ozon store
       prepare: Save plan and find available warehouses
+      plan_prepare: Create delivery application
+      plan_hint: Find available warehouses using the saved plan’s store, cluster, manifest and pallet allocations. Then select a warehouse and time slot to confirm the Ozon delivery application and sync pallets.
       prepare_hint: Save this packing plan for the selected store and cluster, then find warehouses that accept the entire shipment. Choose a warehouse and time slot before confirming creation.
       type: Supply method
       types:
@@ -125,6 +129,8 @@ ru:
     supply_api:
       title: Синхронизация с магазином Ozon
       prepare: Сохранить план и найти доступные склады
+      plan_prepare: Создать заявку на поставку
+      plan_hint: Найдите доступные склады по магазину, кластеру, составу и распределению палет сохранённого плана. Затем выберите склад и таймслот, подтвердите создание заявки Ozon и передачу палет.
       prepare_hint: Сохраните план упаковки для выбранного магазина и кластера. Выберите склад, принимающий весь состав, и таймслот, затем подтвердите создание заявки.
       type: Способ поставки
       types:

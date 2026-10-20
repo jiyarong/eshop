@@ -171,6 +171,7 @@
 - 当前链路：`Ec::PalletPlans::WorkbenchQuery` 组装需求与库存，`Build` 校验店铺、集群、日期、SKU 权限、Listing、包装及库存并调用 `Packing`，`Save` 保存计划、清单、托盘和托盘明细；状态变更由 `Workflow` 负责。
 - 页面位于 `app/views/reports/pallet_workbenches/`，交互为 `app/javascript/controllers/pallet_workbench_controller.js`。包装几何、平台限制和费用继续复用 `PalletPacking::Calculator`、`Rules`、`Fees`，不要在页面或 Stimulus 中另写排托算法。
 - 工作台 GET、自动选品和计算预览不创建计划、不占库存、不触发平台 API。保存草稿后，由用户在计划详情明确确认库存占用。Ozon 供货绑定、状态回读使用 `OzonReconciler` 与 `Ec::PalletPlanSyncJob`；定时回读在 `config/recurring.yml` 中每 15 分钟运行，不要并入页面 GET。
+- 系统建单自动绑定并回填单号，提交已有 `order_id` 但计划尚未关联时也纳入后台恢复。详情保留搜索选择与人工填写单号 / 父订单 ID；待导入的单号排队匹配，校验整单通过后草稿转已确认并占用库存。已终止提交允许人工绑定，失败 / 需复核提交只有已知正式订单 ID 时允许关联该订单，不清除原货位错误。平台收货 / 在途映射已发出，父单及全部目的地完成映射已完成；发出前取消释放占用，发出后取消或回退保留状态并报复核错误；不从建单成功推断实物打包状态。
 - 计划详情的供货关联从送仓记录页 `/reports/supply_orders?store_ref=ozon:<账号ID>` 同源查询中搜索选择。`SupplyOrderReports::ReportQuery#ozon_order_options` 限定账号、集群和相关平台 SKU，排除其他有效计划已绑定的父供货；`#ozon_reconciliation_rows` 按账号和父供货 ID 读取完整明细，不应用页面分页或 SKU/状态筛选，防止隐藏额外商品。提交继续校验整单数量、目的仓及集群，不以搜索结果替代校验。
 
 ### 单托、多托与数量规则
@@ -195,6 +196,7 @@
 ### 页面交互与回归
 
 - `/reports/pallet_calculator` 的 Ozon FBO 结果可手动新建供货单并同步托盘。`StartOzonSupply` 校验绑定当前用户的签名计算结果并按请求键去重，复用 `Save/Build` 保存原托盘分配；`Ec::OzonSupplySubmission` 冻结同步期间的计划编辑。用户选择平台返回的完整可供货仓和预约时段后才确认库存占用及正式建单。支持直送和通过交货点的 Cross-dock。
+- 工作台试算通过后先保存计划，仅在计划详情页点击“创建交货申请”，通过 `POST /reports/pallet_plans/:id/start_supply` 复用供货后台链路。申请只读取已保存的店铺、集群、清单和托盘分配，不重建计划或托盘；发起前排除自身占用并校验版本、权限、库存及装托约束，有效提交复用、已终止提交可重开。提交记录的 `data.requested_by_id` 保存实际发起人，后台外部写入校验其管理权限与 SKU 可见范围，旧记录回退到计划创建者。
 - 平台写入仅由 `Ec::OzonSupplySubmissionJob` → `OzonSupplyRunner` → `RawOzon::SupplyClient` 执行。使用新版 `cluster_info` 草稿结构、`draft_id` 查询正式建单结果、`/v2/cargoes/create/info` 回读货位；不要使用旧调研文档中的简化 payload。货位商品使用正式供货明细的 `barcode/offer_id/quant`，`quant` 不得拿本地每箱件数替代。完成以数量/目的地核对、逐托 cargo ID 回填及平台货位规则通过为准，不代表实物已经打包或发出。
 - 供货和货位创建禁用 OzonClient 的自动网络重试。写入前持久化提交标记并使用 `SyncRunLock` 串行执行；供货响应不明时只查询原 `draft_id`，货位响应不明时进入 `review_required`，不得盲目重建。所有页面状态轮询保持本地只读；已有每 15 分钟供货回读继续更新平台状态，新提交的恢复扫描由 `ozon_supply_submission_recovery` 负责。接口与测试细节见 `docs/ozon_pallet_supply_sync.md`。
 

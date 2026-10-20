@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["store", "cluster", "type", "dropOff", "submit", "content", "workflow", "planStatus", "platformStatus", "syncedAt", "orderNumber", "syncError", "pollError"];
-  static values = { clusters: Object, statusUrl: String, state: String, planState: String, pollError: String, empty: String };
+  static targets = ["store", "cluster", "type", "dropOff", "submit", "content", "workflow", "binding", "handoff", "submissionPanel", "planStatus", "platformStatus", "syncedAt", "orderNumber", "syncError", "pollError"];
+  static values = { clusters: Object, statusUrl: String, state: String, planState: String, orderId: String, pollError: String, empty: String };
 
   connect() {
     if (this.hasStoreTarget) this.storeChanged();
@@ -47,10 +47,19 @@ export default class extends Controller {
         throw new Error("Status request failed");
       }
       const result = await response.json();
-      if (result.state !== this.stateValue || result.plan_state !== this.planStateValue) this.workflowTarget.innerHTML = result.workflow_html;
-      if (result.state !== this.stateValue || result.running) this.contentTarget.innerHTML = result.html;
-      this.stateValue = result.state;
+      const state = result.state || "";
+      const orderId = result.order_id || "";
+      const changed = state !== this.stateValue || result.plan_state !== this.planStateValue || orderId !== this.orderIdValue;
+      if (changed) {
+        this.workflowTarget.innerHTML = result.workflow_html;
+        this.bindingTarget.innerHTML = result.binding_html;
+        this.handoffTarget.innerHTML = result.handoff_html;
+      }
+      if (state !== this.stateValue || result.running) this.contentTarget.innerHTML = result.html;
+      this.submissionPanelTarget.hidden = !state;
+      this.stateValue = state;
       this.planStateValue = result.plan_state;
+      this.orderIdValue = orderId;
       this.planStatusTarget.innerHTML = result.status;
       this.platformStatusTarget.textContent = result.platform_status || this.emptyValue;
       this.syncedAtTarget.textContent = result.platform_synced_at;
@@ -58,7 +67,7 @@ export default class extends Controller {
       this.syncErrorTarget.textContent = result.sync_error || "";
       this.syncErrorTarget.hidden = !result.sync_error;
       this.pollErrorTarget.textContent = "";
-      if (result.active && this.element.isConnected) this.timer = setTimeout(() => this.poll(), result.running ? 3000 : 30000);
+      if ((result.active || result.running) && this.element.isConnected) this.timer = setTimeout(() => this.poll(), result.running ? 3000 : 30000);
     } catch (error) {
       if (error.name !== "AbortError" && this.element.isConnected) {
         this.pollErrorTarget.textContent = this.pollErrorValue;

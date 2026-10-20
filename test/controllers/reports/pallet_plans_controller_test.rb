@@ -19,7 +19,7 @@ class Reports::PalletPlansControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
-  test "renders a search-only supply picker and the current store report link in every locale" do
+  test "renders search and manual supply binding with the current store report link in every locale" do
     %w[zh en ru].each do |locale|
       sign_in @user
       get reports_pallet_plan_path(@plan, locale: locale)
@@ -28,6 +28,8 @@ class Reports::PalletPlansControllerTest < ActionDispatch::IntegrationTest
       assert_select "[data-controller='association-picker'] input[type='hidden'][name='supply_order_number']"
       assert_select "[data-controller='association-picker'] input[role='combobox']"
       assert_select "[data-action='association-picker#openCreate']", count: 0
+      assert_select "details input[type='text'][name='supply_order_number']"
+      assert_select "[data-ozon-supply-status-url-value=?]", supply_submission_status_reports_pallet_plan_path(@plan, locale: locale)
       assert_select "a[href=?]", reports_supply_orders_path(store_ref: "ozon:#{@account.id}", locale: locale)
       assert_no_match(/translation missing/i, response.body)
     end
@@ -71,6 +73,81 @@ class Reports::PalletPlansControllerTest < ActionDispatch::IntegrationTest
     assert_equal "OZON-MATCH-#{@token}", @plan.supply_order_number
     assert_equal "2000064845539", @pallet.reload.ozon_supply_id
     assert_equal 9001, @pallet.storage_warehouse_id
+  end
+
+  test "manually binding an Ozon order number confirms a draft without marking it packed" do
+    @plan.update!(status: "draft")
+
+    post bind_reports_pallet_plan_path(@plan, format: :json), params: { supply_order_number: "  OZON-MATCH-#{@token}  " }
+
+    assert_response :success
+    assert_equal @order.supply_order_id, @plan.reload.ozon_order_id
+    assert_equal "reserved", @plan.status
+    assert @plan.confirmed_at
+    assert_nil @plan.dispatched_at
+    assert_nil @pallet.reload.ozon_cargo_id
+  end
+
+  test "manual numbers not yet imported are saved and matched in the background" do
+    assert_enqueued_with(job: Ec::PalletPlanSyncJob, args: [{ plan_id: @plan.id }]) do
+      post bind_reports_pallet_plan_path(@plan, format: :json), params: { supply_order_number: "NOT-YET-IMPORTED" }
+    end
+
+    assert_response :success
+    assert_equal "NOT-YET-IMPORTED", @plan.reload.supply_order_number
+    assert_nil @plan.ozon_order_id
+    assert @plan.sync_error
+    assert_equal "packed", @plan.status
+  end
+
+  test "retains manual binding after stopping automated creation" do
+    @plan.create_ozon_supply_submission!(request_key: "cancelled-#{@token}", state: "cancelled")
+    get reports_pallet_plan_path(@plan, locale: :zh)
+    assert_response :success
+    assert_select "details input[name='supply_order_number']"
+
+    sign_in @user
+    post bind_reports_pallet_plan_path(@plan, format: :json), params: { supply_order_number: @order.supply_order_id }
+    assert_response :success
+    assert_equal @order.supply_order_id, @plan.reload.ozon_order_id
+    assert_equal "cancelled", @plan.ozon_supply_submission.state
+  end
+
+  test "hides and blocks manual binding while a platform write has an unknown order ID" do
+    @plan.create_ozon_supply_submission!(request_key: "unknown-#{@token}", state: "review_required")
+    get reports_pallet_plan_path(@plan, locale: :zh)
+    assert_response :success
+    assert_select "input[name='supply_order_number']", count: 0
+
+    sign_in @user
+    post bind_reports_pallet_plan_path(@plan, format: :json), params: { supply_order_number: @order.supply_order_id }
+    assert_response :unprocessable_entity
+    assert_equal "submission_in_progress", response.parsed_body.fetch("key")
+    assert_nil @plan.reload.ozon_order_id
+  end
+
+  test "manual plan status polling reads local state and returns updated binding and workflow actions" do
+    @plan.update!(status: "draft")
+    Ec::PalletPlans::OzonReconciler.new(plan: @plan).bind!(@order.supply_order_id, enqueue: false)
+
+    assert_no_enqueued_jobs do
+      assert_no_changes -> { @plan.reload.attributes } do
+        get supply_submission_status_reports_pallet_plan_path(@plan, format: :json, locale: :zh)
+      end
+    end
+
+    assert_response :success
+    data = response.parsed_body
+    assert_nil data["state"]
+    assert_equal "reserved", data["plan_state"]
+    assert_equal @order.supply_order_id, data["order_id"]
+    assert_equal "OZON-MATCH-#{@token}", data["order_number"]
+    assert_includes data["binding_html"], "OZON-MATCH-#{@token}"
+    assert_includes data["workflow_html"], advance_reports_pallet_plan_path(@plan)
+    assert_equal "", data["handoff_html"]
+    assert_not data["running"]
+    assert data["active"]
+    assert_not_includes response.body, @account.api_key
   end
 
   test "rechecks supply quantities at binding after a record was selected" do
