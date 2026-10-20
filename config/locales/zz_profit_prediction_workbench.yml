@@ -2,6 +2,19 @@ zh:
   reports:
     profit_prediction:
       copy_name: "%{name} 副本"
+      logistics_mode:
+        label: "物流费模式"
+        formula: "固定公式"
+        actual: "历史数据"
+        formula_hint: "按固定公式算：WB 为基础费率 × 物流系数，返程固定 50 RUB；Ozon 为路线费率均价（去程、返程相同）。历史数据只作参考，不会填入。"
+        actual_hint: "按填写的数值算：可以点「获取真实数据」填入近 4 周的实际物流费，也可以手工填写。"
+        alternative_formula: "切换到固定公式：利润 %{profit} CNY（%{difference}）"
+        alternative_actual: "切换到历史数据：利润 %{profit} CNY（%{difference}）"
+        reference_only: "固定公式模式下只作参考，切换到「历史数据」后才能填入"
+        locked_title: "固定公式模式下由公式决定，不能填写"
+        compare: "固定公式：去程 %{outbound} / 返程 %{return} RUB"
+        no_formula: "固定公式暂时算不出来（缺少尺寸或 Ozon 费率表）"
+        tariff_locked: "固定公式模式下运费由公式决定，请先切换到「历史数据」"
       delete_dialog:
         title: "删除版本"
         message: "确定删除版本「%{name}」吗？该版本的所有场景数据会一起删除，无法恢复。"
@@ -399,6 +412,19 @@ en:
   reports:
     profit_prediction:
       copy_name: "%{name} copy"
+      logistics_mode:
+        label: "Freight mode"
+        formula: "Fixed formula"
+        actual: "Actual data"
+        formula_hint: "Calculated by the fixed formula: WB base rate x logistics coefficient with a flat 50 RUB return; Ozon the route tariff average (outbound and return alike). Real figures are reference only and are not filled in."
+        actual_hint: "Calculated from the figures entered: use \"Load actual data\" to fill in the last 4 weeks' real freight, or type them in."
+        alternative_formula: "Switching to the fixed formula: profit %{profit} CNY (%{difference})"
+        alternative_actual: "Switching to actual data: profit %{profit} CNY (%{difference})"
+        reference_only: "Reference only on the fixed formula; switch to \"Actual data\" to fill it in"
+        locked_title: "Decided by the fixed formula, not editable"
+        compare: "Fixed formula: outbound %{outbound} / return %{return} RUB"
+        no_formula: "The fixed formula cannot be worked out yet (no dimensions or no Ozon tariff table)"
+        tariff_locked: "Freight is decided by the fixed formula; switch to \"Actual data\" first"
       delete_dialog:
         title: "Delete version"
         message: "Delete the version \"%{name}\"? All of its scenario data is deleted with it and cannot be restored."
@@ -796,6 +822,19 @@ ru:
   reports:
     profit_prediction:
       copy_name: "%{name}, копия"
+      logistics_mode:
+        label: "Режим логистики"
+        formula: "Фиксированная формула"
+        actual: "Фактические данные"
+        formula_hint: "По фиксированной формуле: WB — базовый тариф × коэффициент, возврат фиксированные 50 RUB; Ozon — средний тариф по маршрутам (туда и обратно одинаково). Фактические данные только для справки и не подставляются."
+        actual_hint: "По введённым значениям: можно нажать «Получить фактические данные» (последние 4 недели) или ввести вручную."
+        alternative_formula: "При переходе на формулу: прибыль %{profit} CNY (%{difference})"
+        alternative_actual: "При переходе на фактические данные: прибыль %{profit} CNY (%{difference})"
+        reference_only: "В режиме формулы только для справки; для подстановки перейдите на «Фактические данные»"
+        locked_title: "Определяется фиксированной формулой, не редактируется"
+        compare: "Формула: туда %{outbound} / обратно %{return} RUB"
+        no_formula: "Формулу пока не посчитать (нет габаритов или таблицы тарифов Ozon)"
+        tariff_locked: "Логистика определяется формулой; сначала перейдите на «Фактические данные»"
       delete_dialog:
         title: "Удалить версию"
         message: "Удалить версию «%{name}»? Все её сценарии будут удалены без возможности восстановления."

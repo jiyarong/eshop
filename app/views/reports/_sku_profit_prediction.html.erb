@@ -32,6 +32,17 @@
   warnings: warning_fields.index_with do |field|
     t("reports.profit_prediction.warnings.not_included", field: t("reports.profit_prediction.fields.#{field}"))
   end.transform_keys { |field| "#{field}_not_included" },
+  logistics_mode: {
+    formula_hint: t("reports.profit_prediction.logistics_mode.formula_hint"),
+    actual_hint: t("reports.profit_prediction.logistics_mode.actual_hint"),
+    alternative_formula: t("reports.profit_prediction.logistics_mode.alternative_formula", profit: "__PROFIT__", difference: "__DIFFERENCE__"),
+    alternative_actual: t("reports.profit_prediction.logistics_mode.alternative_actual", profit: "__PROFIT__", difference: "__DIFFERENCE__"),
+    reference_only: t("reports.profit_prediction.logistics_mode.reference_only"),
+    locked_title: t("reports.profit_prediction.logistics_mode.locked_title"),
+    compare: t("reports.profit_prediction.logistics_mode.compare", outbound: "__OUTBOUND__", return: "__RETURN__"),
+    no_formula: t("reports.profit_prediction.logistics_mode.no_formula"),
+    tariff_locked: t("reports.profit_prediction.logistics_mode.tariff_locked")
+  },
   delete_dialog: {
     message: t("reports.profit_prediction.delete_dialog.message", name: "__NAME__"),
     current_blocked: t("reports.profit_prediction.delete_dialog.current_blocked"),
@@ -466,6 +477,7 @@
                 data-platform="<%= context.platform %>"
                 data-market="<%= context.market %>"
                 data-delivery-mode="<%= context.delivery_mode %>"
+                data-logistics-mode="<%= context.logistics_mode %>"
                 data-actuals-pending="<%= Ec::SkuProfitStandardContexts.actuals_pending(context.attributes.slice(*Ec::SkuProfitStandardContexts::IDENTITY_KEYS)).join(" ") %>"
                 data-warehouse-region="<%= context.warehouse_region %>"
                 data-company-type="<%= context.company_type %>"
@@ -634,6 +646,24 @@
       <div class="profit-prediction-process__header-content">
         <h3 id="profit-prediction-process-title"><%= t("reports.profit_prediction.process.title") %></h3>
         <p data-profit-prediction-target="detailTitle"></p>
+        <div class="profit-prediction-logistics-mode" role="group" aria-label="<%= t("reports.profit_prediction.logistics_mode.label") %>">
+          <span class="profit-prediction-logistics-mode__label"><%= t("reports.profit_prediction.logistics_mode.label") %></span>
+          <nav class="profit-prediction-view-tabs">
+            <% %w[formula actual].each do |mode| %>
+              <button
+                type="button"
+                class="profit-prediction-view-tab"
+                aria-pressed="false"
+                data-profit-prediction-target="logisticsModeButton"
+                data-logistics-mode-option="<%= mode %>"
+                data-action="click->profit-prediction#selectLogisticsMode"
+                <%= "disabled" if profit_version_readonly %>
+              ><%= t("reports.profit_prediction.logistics_mode.#{mode}") %></button>
+            <% end %>
+          </nav>
+          <span class="profit-prediction-logistics-mode__hint" data-profit-prediction-target="logisticsModeHint"></span>
+          <span class="profit-prediction-logistics-mode__alternative" data-profit-prediction-target="logisticsModeAlternative" hidden></span>
+        </div>
         <div class="profit-prediction-process__formula-summary">
           <strong><%= t("reports.profit_prediction.process.formula_summary.label") %></strong>
           <span data-profit-prediction-target="detailCostFormula"><%= t("reports.profit_prediction.process.formula_summary.total_cost", items: "-", total: "-") %></span>

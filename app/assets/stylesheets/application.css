@@ -10024,6 +10024,41 @@ thead .table-sticky-column {
   box-shadow: 0 4px 10px rgba(24, 34, 53, .06);
 }
 
+.profit-prediction-logistics-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 8px 0 4px;
+  font-size: 12px;
+}
+
+.profit-prediction-logistics-mode__label {
+  color: var(--fg);
+  font-weight: 650;
+}
+
+.profit-prediction-logistics-mode__hint {
+  flex: 1 1 320px;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.profit-prediction-logistics-mode__alternative {
+  flex: 1 1 100%;
+  color: #8a5200;
+}
+
+.profit-prediction-logistics-mode__alternative[hidden] {
+  display: none;
+}
+
+.profit-prediction-view-tab[aria-pressed="true"] {
+  background: #fff;
+  color: var(--fg);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
+}
+
 .profit-prediction-process__scenario-mode {
   display: flex;
   flex-wrap: wrap;

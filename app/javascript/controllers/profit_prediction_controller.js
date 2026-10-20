@@ -16,6 +16,9 @@ import {
 
 const PREVIEW_DEBOUNCE_MS = 350;
 
+// The freight figures a scenario on the fixed formula does not take from the inputs (see Ec::LogisticsFormula).
+const LOGISTICS_FIGURE_FIELDS = ["outbound_logistics_rub", "return_logistics_rub"];
+
 // The actual-data shortcuts that can still be platform-wide for a scenario (see actuals_pending in
 // config/sku_profit_scenarios.yml).
 const PENDING_KIND_BY_SOURCE = { actual_storage: "storage", actual_advertising: "advertising" };
@@ -117,6 +120,9 @@ export default class extends Controller {
     "deleteDialogMessage",
     "deleteDialogError",
     "deleteDialogConfirm",
+    "logisticsModeButton",
+    "logisticsModeHint",
+    "logisticsModeAlternative",
     "versionDialog",
     "versionDialogTitle",
     "versionDialogName",
@@ -222,6 +228,10 @@ export default class extends Controller {
         .forEach((row) => this.schedulePreview(row));
     }
     this.setCalculationMode(true);
+    // A scenario on the formula shows the formula's figures: ask for them (quietly) even when it is up to date.
+    this.rowTargets
+      .filter((row) => this.logisticsMode(row) === "formula" && row.dataset.calculationStatus === "valid" && !this.newRecordValue)
+      .forEach((row) => this.previewRow(row, { detailOnly: true }));
     this.applyPlatformFilter();
     this.renderScenarios();
     this.setViewMode(this.storedViewMode());
@@ -448,6 +458,101 @@ export default class extends Controller {
     this.deleteDialogErrorTarget.hidden = !text;
   }
 
+  // ── Logistics mode ─────────────────────────────────────────────────────────────────────────
+  // "formula": the fixed formula decides the freight (WB base rate x coefficient and a flat 50 RUB return,
+  // Ozon the route tariff average), so the same SKU always costs the same; real figures are only a reference.
+  // "actual": the typed or applied real figures count. Chosen per scenario, saved with it.
+  logisticsMode(row) {
+    return row?.dataset.logisticsMode === "actual" ? "actual" : "formula";
+  }
+
+  logisticsInputLocked(input) {
+    return LOGISTICS_FIGURE_FIELDS.includes(input.dataset.field) && this.logisticsMode(input.closest("tr")) === "formula";
+  }
+
+  selectLogisticsMode(event) {
+    const row = this.selectedRow;
+    if (!row || this.readonlyValue) return;
+
+    const mode = event.currentTarget.dataset.logisticsModeOption === "actual" ? "actual" : "formula";
+    if (this.logisticsMode(row) === mode) return;
+
+    row.dataset.logisticsMode = mode;
+    if (mode === "actual") this.restoreRealFigures(row);
+    this.applyLogisticsLock(row);
+    this.dirtyRows.add(row.dataset.rowKey);
+    this.previewData.delete(row.dataset.rowKey);
+    row.classList.add("is-dirty");
+    this.updateControls();
+    this.renderLogisticsModePanel(row);
+    this.schedulePreview(row);
+  }
+
+  applyLogisticsLock(row) {
+    const messages = this.messagesValue.logistics_mode || {};
+    row.querySelectorAll("[data-profit-prediction-target~='input']").forEach((input) => {
+      if (!LOGISTICS_FIGURE_FIELDS.includes(input.dataset.field)) return;
+
+      const locked = this.logisticsInputLocked(input);
+      input.disabled = !this.calculationMode || input.dataset.editable === "false" || locked;
+      input.title = locked ? messages.locked_title || "" : "";
+    });
+  }
+
+  // On the formula the two freight inputs show the formula's figures (read-only); the real figures that were
+  // there are kept aside and go back when the scenario returns to the real figures, and are what gets saved.
+  showFormulaFigures(row, data) {
+    if (this.logisticsMode(row) !== "formula") return;
+
+    const formula = data.logistics?.formula || {};
+    [["outbound_logistics_rub", formula.outbound_rub], ["return_logistics_rub", formula.return_rub]].forEach(([field, value]) => {
+      const input = row.querySelector(`[data-field='${field}']`);
+      if (!input) return;
+
+      if (input.dataset.stashedValue === undefined) {
+        input.dataset.stashedValue = profitInputValue(input);
+        input.dataset.stashedDisplay = input.value;
+      }
+      input.value = value === null || value === undefined ? "" : Number(value).toFixed(2);
+    });
+  }
+
+  restoreRealFigures(row) {
+    LOGISTICS_FIGURE_FIELDS.forEach((field) => {
+      const input = row.querySelector(`[data-field='${field}']`);
+      if (!input || input.dataset.stashedValue === undefined) return;
+
+      input.value = input.dataset.stashedDisplay ?? "";
+      delete input.dataset.stashedValue;
+      delete input.dataset.stashedDisplay;
+    });
+  }
+
+  // The mode switch of the selected scenario, its explanation, and what the other mode would give.
+  renderLogisticsModePanel(row) {
+    if (!this.hasLogisticsModeHintTarget) return;
+
+    const messages = this.messagesValue.logistics_mode || {};
+    const mode = this.logisticsMode(row);
+    this.logisticsModeButtonTargets.forEach((button) => {
+      const active = button.dataset.logisticsModeOption === mode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+      button.disabled = this.readonlyValue;
+    });
+    this.logisticsModeHintTarget.textContent = mode === "formula" ? messages.formula_hint : messages.actual_hint;
+
+    const alternative = this.previewData.get(row?.dataset.rowKey)?.logistics?.alternative;
+    const difference = Number(alternative?.profit_difference_cny);
+    const show = alternative && Number.isFinite(difference) && Math.abs(difference) >= 0.005;
+    this.logisticsModeAlternativeTarget.hidden = !show;
+    this.logisticsModeAlternativeTarget.textContent = show
+      ? fill(mode === "formula" ? messages.alternative_actual : messages.alternative_formula, {
+        profit: this.number(Number(alternative.profit_cny)), difference: `${difference > 0 ? "+" : ""}${this.number(difference)}`
+      })
+      : "";
+  }
+
   // Frame links that would throw away unsaved edits ask first.
   confirmLeave(event) {
     if (!this.confirmDiscardChanges()) event.preventDefault();
@@ -496,7 +601,7 @@ export default class extends Controller {
         headers: this.jsonHeaders(),
         body: JSON.stringify({
           platform: row.dataset.platform,
-          parameter_context: this.contextAttributes(row),
+          parameter_context: this.parameterContext(row),
           inputs: this.rowInputs(row)
         }),
         signal: controller.signal
@@ -528,7 +633,11 @@ export default class extends Controller {
           .join("; ");
         row.classList.add("has-preview-results");
       }
-      if (this.selectedRow === row) this.renderCalculationProcess(row, data);
+      this.showFormulaFigures(row, data);
+      if (this.selectedRow === row) {
+        this.renderLogisticsModePanel(row);
+        this.renderCalculationProcess(row, data);
+      }
     } catch (error) {
       if (error.name === "AbortError") return;
 
@@ -1021,6 +1130,7 @@ export default class extends Controller {
       tab.tabIndex = selected ? 0 : -1;
     });
     if (this.hasDetailTitleTarget) this.detailTitleTarget.textContent = row.dataset.contextLabel || "";
+    this.renderLogisticsModePanel(row);
     this.renderPriceSummary(row);
 
     const data = this.previewData.get(row.dataset.rowKey);
@@ -2186,7 +2296,8 @@ export default class extends Controller {
     link.dataset.outboundRate = outbound;
     if (Number.isFinite(returnRate)) link.dataset.returnRate = returnRate;
     if (Number.isFinite(handover)) link.dataset.handoverRate = handover;
-    link.title = messages.apply;
+    const formulaMode = this.logisticsMode(this.selectedRow) === "formula";
+    link.title = formulaMode ? this.messagesValue.logistics_mode?.reference_only || messages.apply : messages.apply;
     const outboundLine = document.createElement("span");
     outboundLine.textContent = `${messages.outbound} ${this.number(outbound)} RUB`;
     link.append(outboundLine);
@@ -2200,8 +2311,14 @@ export default class extends Controller {
       handoverLine.textContent = `${messages.handover} ${this.number(handover)} RUB`;
       link.append(handoverLine);
     }
-    link.disabled = this.readonlyValue;
+    link.disabled = this.readonlyValue || formulaMode;
 
+    const formula = this.previewData.get(this.selectedRow?.dataset.rowKey)?.logistics?.formula;
+    const reference = document.createElement("small");
+    const modeMessages = this.messagesValue.logistics_mode || {};
+    reference.textContent = formula && formula.outbound_rub !== null && formula.outbound_rub !== undefined
+      ? fill(modeMessages.compare || "", { outbound: this.number(Number(formula.outbound_rub)), return: this.number(Number(formula.return_rub)) })
+      : modeMessages.no_formula || "";
     const meta = document.createElement("small");
     meta.textContent = messages.meta
       .replace("__FROM__", data.period?.from_date || "-")
@@ -2210,7 +2327,7 @@ export default class extends Controller {
       .replace("__RETURN_COUNT__", data.return?.sample_count ?? 0)
       .replace("__DATA_THROUGH__", data.period?.data_through || "-");
     container.className = "profit-prediction-process__source-result";
-    container.replaceChildren(link, meta);
+    container.replaceChildren(link, meta, reference);
   }
 
   actualLogisticsKey(row) {
@@ -2220,7 +2337,7 @@ export default class extends Controller {
   }
 
   applyActualLogistics(event) {
-    if (!this.selectedRow || this.readonlyValue) return;
+    if (!this.selectedRow || this.readonlyValue || this.logisticsMode(this.selectedRow) === "formula") return;
 
     const values = {
       outbound_logistics_rub: event.currentTarget.dataset.outboundRate,
@@ -2720,6 +2837,10 @@ export default class extends Controller {
   applyOzonTariffRate(rate) {
     const numericRate = Number(rate);
     if (!this.selectedRow || !Number.isFinite(numericRate)) return;
+    if (this.logisticsMode(this.selectedRow) === "formula") {
+      this.renderTariffActionMessage(this.messagesValue.logistics_mode?.tariff_locked || "", true);
+      return;
+    }
 
     ["outbound_logistics_rub", "return_logistics_rub"].forEach((field) => {
       const input = this.selectedRow.querySelector(`[data-field='${field}']`);
@@ -3053,7 +3174,7 @@ export default class extends Controller {
         headers: this.jsonHeaders(),
         body: JSON.stringify({
           platform: row.dataset.platform,
-          parameter_context: this.contextAttributes(row),
+          parameter_context: this.parameterContext(row),
           inputs
         }),
         signal: controller.signal
@@ -3322,7 +3443,8 @@ export default class extends Controller {
     const inputs = Object.fromEntries(
       Array.from(row.querySelectorAll("[data-profit-prediction-target~='input']"))
         .map((input) => {
-          const value = profitInputValue(input);
+          // A figure the fixed formula shows is what the formula says, not the stored real figure behind it.
+          const value = this.logisticsInputLocked(input) ? input.value : profitInputValue(input);
           return [input.dataset.field, value === "" ? null : Number(value)];
         })
     );
@@ -3499,7 +3621,8 @@ export default class extends Controller {
     this.calculationMode = active && !this.readonlyValue;
     this.element.classList.toggle("is-calculating", this.calculationMode);
     this.inputTargets.forEach((input) => {
-      input.disabled = !this.calculationMode || input.dataset.editable === "false";
+      input.disabled = !this.calculationMode || input.dataset.editable === "false" || this.logisticsInputLocked(input);
+      if (this.logisticsInputLocked(input)) input.title = this.messagesValue.logistics_mode?.locked_title || "";
     });
     this.targetMarginTargets.forEach((input) => { input.disabled = !this.calculationMode; });
     this.versionInputTargets.forEach((input) => { input.disabled = !this.calculationMode; });
@@ -3538,8 +3661,14 @@ export default class extends Controller {
     return {
       id: row.dataset.contextId || undefined,
       context: this.contextAttributes(row),
+      logistics_mode: this.logisticsMode(row),
       inputs: this.rowInputs(row)
     };
+  }
+
+  // What the calculator is asked about a scenario: its identity and how its freight is decided.
+  parameterContext(row) {
+    return { ...this.contextAttributes(row), logistics_mode: this.logisticsMode(row) };
   }
 
   contextAttributes(row) {
@@ -3555,7 +3684,9 @@ export default class extends Controller {
   rowInputs(row) {
     const inputs = Object.fromEntries(
       Array.from(row.querySelectorAll("[data-profit-prediction-target~='input']"))
-        .map((input) => [input.dataset.field, profitInputValue(input)])
+        .map((input) => [input.dataset.field, this.logisticsInputLocked(input) && input.dataset.stashedValue !== undefined
+          ? input.dataset.stashedValue
+          : profitInputValue(input)])
     );
 
     return inputs;
