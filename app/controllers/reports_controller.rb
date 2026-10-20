@@ -1360,6 +1360,7 @@ class ReportsController < ApplicationController
         Ec::SkuProfitVersion.resolve_for(@profit_versions, date: default_version_date)
       end
       @profit_version ||= build_standard_profit_version
+      add_missing_standard_scenarios(@profit_version)
       load_ozon_logistics_tariff_options
       @hidden_scenario_keys = Ec::SkuScenarioVisibility.hidden_keys_for(@sku)
       @scenario_sales = load_scenario_sales
@@ -2636,6 +2637,15 @@ class ReportsController < ApplicationController
 
   def profit_version_params
     params.fetch(:version, {}).permit(:name, :status, :effective_from, :effective_to, :note, :lock_version)
+  end
+
+  # A version made before a scenario existed opens with that scenario added, in memory only: its
+  # rows show with the market's defaults and are written when the version is saved. An archived
+  # version is a record of its day and stays as it is.
+  def add_missing_standard_scenarios(version)
+    return if version.persisted? && version.archived?
+
+    Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: version.effective_from || user_today)
   end
 
   def build_standard_profit_version

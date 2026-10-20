@@ -206,6 +206,7 @@ export default class extends Controller {
     this.setViewMode(this.storedViewMode());
 
     if (!this.selectedRow && this.visibleRows()[0]) this.setSelectedRow(this.visibleRows()[0]);
+    this.updateControls();
   }
 
   disconnect() {
@@ -512,7 +513,7 @@ export default class extends Controller {
     if (!state) return;
 
     this.rowTargets.forEach((row) => {
-      const scenario = state.scenarios.find((candidate) => candidate.row_key === row.dataset.rowKey);
+      const scenario = state.scenarios.find((candidate) => candidate.key === row.dataset.scenarioKey);
       row.dataset.scenarioHidden = scenario?.hidden ? "true" : "false";
     });
     this.applyPlatformFilter();
@@ -3139,7 +3140,7 @@ export default class extends Controller {
 
     const rows = includeAllRows || this.newRecordValue
       ? this.rowTargets
-      : this.rowTargets.filter((row) => this.dirtyRows.has(row.dataset.rowKey));
+      : this.rowTargets.filter((row) => this.dirtyRows.has(row.dataset.rowKey) || !row.dataset.contextId);
 
     try {
       const response = await fetch(this.element.dataset.saveUrl, {
@@ -3289,9 +3290,15 @@ export default class extends Controller {
     this.updateControls();
   }
 
+  // Rows of a saved version that have no record yet: scenarios added after the version was made.
+  // They are not unsaved edits (leaving the page loses nothing), but saving writes them.
+  unsavedNewRows() {
+    return this.newRecordValue ? [] : this.rowTargets.filter((row) => !row.dataset.contextId);
+  }
+
   updateControls() {
     const dirty = this.dirtyRows.size > 0 || this.versionDirty;
-    if (this.hasSaveButtonTarget) this.saveButtonTarget.disabled = !dirty || this.saving;
+    if (this.hasSaveButtonTarget) this.saveButtonTarget.disabled = !(dirty || this.unsavedNewRows().length > 0) || this.saving;
     if (this.hasNavigationControlTarget) {
       this.navigationControlTarget.disabled = this.navigationWasDisabled || dirty || this.saving;
     }

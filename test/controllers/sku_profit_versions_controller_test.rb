@@ -31,6 +31,9 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: version_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::SkuCost", record_id: cost_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::SkuDimension", record_id: dimension_ids).delete_all
+    visibility_ids = Ec::SkuScenarioVisibility.where(sku_id: @sku&.id).pluck(:id)
+    Ec::OperationLog.where(record_type: "Ec::SkuScenarioVisibility", record_id: visibility_ids).delete_all
+    Ec::SkuScenarioVisibility.where(id: visibility_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::Sku", record_id: @sku&.id).delete_all
     Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
     Ec::SkuProfitVersionContext.where(id: context_ids).delete_all
@@ -777,6 +780,77 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal "Changed", version.reload.name
     assert_equal "published", version.status
+  end
+
+  test "a saved version made before the new scenarios opens with them added, unsaved" do
+    version = @sku.profit_versions.new(name: "Old", status: "draft", effective_from: Date.current)
+    Ec::SkuProfitStandardContexts::SCENARIOS.first(6).each { |scenario| version.contexts.build(scenario) }
+    version.save!
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", version_id: version.id, locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    rows = Nokogiri::HTML(response.body).css("tr[data-profit-prediction-target='row']")
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, rows.size
+    assert_equal 6, rows.count { |row| row["data-context-id"].to_s.empty? }
+    assert_equal 6, version.reload.contexts.count, "opening the page writes nothing"
+  end
+
+  test "an archived version keeps exactly the scenarios it had" do
+    version = @sku.profit_versions.new(name: "Archived", status: "archived", effective_from: Date.new(2026, 1, 1), effective_to: Date.new(2026, 1, 31))
+    Ec::SkuProfitStandardContexts::SCENARIOS.first(2).each { |scenario| version.contexts.build(scenario) }
+    version.save!
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", version_id: version.id, locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "tr[data-profit-prediction-target='row']", count: 2
+  end
+
+  test "saving a version writes the scenarios that were added to it" do
+    version = @sku.profit_versions.create!(name: "Draft", status: "draft", effective_from: Date.current)
+    version.contexts.create!(platform: "wb", market: "ru", delivery_mode: "fbo", company_type: "general")
+
+    patch report_sku_profit_version_path(@sku.sku_code, version), params: {
+      version: { lock_version: version.lock_version },
+      contexts: [
+        { platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general",
+          inputs: { commission_base_price_rub: "3000", commission_rate: "0.4", outbound_logistics_rub: "250", return_logistics_rub: "150",
+                    purchase_price_cny: "50", length_cm: "10", width_cm: "10", height_cm: "10", fbs_handover_rub: "28" } }
+      ]
+    }, as: :json
+
+    assert_response :success
+    created = version.reload.contexts.find_by!(platform: "ozon", delivery_mode: "fbs")
+    assert_equal 28.to_d, created.fbs_handover_rub
+    assert_equal "valid", created.calculation_status
+    assert_equal 2, version.contexts.count
+  end
+
+  test "a published version can be saved while a hidden scenario is still incomplete" do
+    version = @sku.profit_versions.new(name: "Published", status: "published", effective_from: Date.current)
+    version.contexts.build(
+      platform: "wb", market: "ru", delivery_mode: "fbo", company_type: "general",
+      purchase_price_cny: 10, length_cm: 10, width_cm: 20, height_cm: 30,
+      commission_base_price_rub: 1_000, exchange_rate_rub_cny: 10, logistics_coeff: 1,
+      return_rate: 0.1, commission_rate: 0.1
+    )
+    version.save!
+    incomplete = { platform: "wb", market: "by", delivery_mode: "fbs", warehouse_region: "main", company_type: "small" }
+
+    patch report_sku_profit_version_path(@sku.sku_code, version), params: {
+      version: { lock_version: version.lock_version }, contexts: [ incomplete ]
+    }, as: :json
+    assert_response :unprocessable_entity, "an incomplete shown scenario still blocks a published version"
+
+    Ec::SkuScenarioVisibility.set!(sku: @sku, identity: incomplete.stringify_keys, hidden: true, user: @user)
+    sign_in @user
+    patch report_sku_profit_version_path(@sku.sku_code, version.reload), params: {
+      version: { lock_version: version.lock_version }, contexts: [ incomplete ]
+    }, as: :json
+
+    assert_response :success
+    assert_equal 2, version.reload.contexts.count
   end
 
   private
