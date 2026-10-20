@@ -2743,7 +2743,7 @@ class ReportsController < ApplicationController
     version.attributes.slice("id", "name", "status", "is_current", "effective_from", "effective_to", "note", "lock_version", "created_at", "updated_at").merge(
       "contexts" => Ec::SkuProfitStandardContexts.sort(version.contexts).map do |context|
         context.attributes.slice(
-          "id", "platform", "market", "delivery_mode", "warehouse_region", "company_type",
+          "id", "platform", "market", "delivery_mode", "warehouse_region", "company_type", "logistics_mode",
           *Ec::SkuProfitVersionContext::INPUT_COLUMNS,
           *Ec::SkuProfitVersionContext::RESULT_COLUMNS
         )
@@ -2772,6 +2772,7 @@ class ReportsController < ApplicationController
         version.contexts.find_or_initialize_by(normalized_attributes)
       end
       context.assign_attributes(attributes)
+      context.logistics_mode = payload[:logistics_mode] if payload[:logistics_mode]
       if context.new_record? && context.calculation_inputs.empty?
         effective_on = version.effective_from || user_today
         context.assign_input_values(
@@ -2805,6 +2806,7 @@ class ReportsController < ApplicationController
       {
         id: payload["id"] || context_source&.[]("id"),
         attributes: context_parameters.permit(:platform, :market, :delivery_mode, :warehouse_region, :company_type),
+        logistics_mode: payload["logistics_mode"].to_s.presence,
         inputs: input_parameters && permitted_profit_inputs(input_parameters)
       }
     end

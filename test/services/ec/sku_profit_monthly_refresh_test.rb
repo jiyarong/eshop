@@ -71,6 +71,21 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     assert_equal 0.05.to_d, ozon_fbo.advertising_rate
   end
 
+  test "a scenario on the fixed formula keeps its freight figures out of the refresh" do
+    sku = create_sku("MF-#{@token}")
+    create_version(sku, "published", Date.new(2026, 10, 1), price: 12_500, return_rate: 0.1, logistics_mode: "formula")
+
+    with_actuals(logistics: { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") } },
+      return_rate: { return_rate: { rate: BigDecimal("0.12") } }) do
+      run_refresh
+    end
+
+    wb = sku.profit_versions.find_by!(effective_from: MONTH_START).context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
+    assert_equal "formula", wb.logistics_mode
+    assert_equal 100.to_d, wb.outbound_logistics_rub, "a figure the formula ignores is not refreshed"
+    assert_equal 0.12.to_d, wb.return_rate, "the return rate is not a freight figure and still follows the real data"
+  end
+
   test "a scenario without a price gets its own realized price when enough units sold, existing prices stay" do
     sku = create_sku("MP-#{@token}")
     version = sku.profit_versions.new(name: "v", status: "published", effective_from: Date.new(2026, 10, 1))
@@ -188,10 +203,10 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     sku
   end
 
-  def create_version(sku, status, effective_from, price:, return_rate:, effective_to: nil)
+  def create_version(sku, status, effective_from, price:, return_rate:, effective_to: nil, logistics_mode: "actual")
     version = sku.profit_versions.new(name: "v #{effective_from}", status:, effective_from:, effective_to:)
     Ec::SkuProfitStandardContexts::SCENARIOS.each do |identity|
-      context = version.contexts.build(identity)
+      context = version.contexts.build(identity.merge("logistics_mode" => logistics_mode))
       context.assign_input_values(
         Ec::SkuProfitCalculator.default_inputs(platform: identity.fetch("platform"), parameter_context: identity).merge(
           "purchase_price_cny" => 77, "freight_cny" => 10, "customs_misc_cny" => 2, "duty_rate" => 0.1,

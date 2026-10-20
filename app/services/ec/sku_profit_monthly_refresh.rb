@@ -90,6 +90,8 @@ module Ec
         identity = context.attributes.slice(*IDENTITY_KEYS)
         exchange = context.exchange_rate_rub_cny || Ec::SkuProfitCalculator::DEFAULT_EXCHANGE_RATE_RUB_CNY
         values = actuals.call(identity:, exchange_rate: exchange).fetch(:values)
+        # A scenario on the fixed formula ignores the real freight figures: leave them out of it.
+        values = values.except(*Ec::SkuProfitVersionContext::LOGISTICS_FIGURE_COLUMNS) if context.logistics_mode == "formula"
         context.assign_input_values(values)
         values.size
       end

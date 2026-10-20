@@ -242,7 +242,7 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
       platform: "ozon", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
       purchase_price_cny: 270, freight_cny: 22.5, customs_misc_cny: 2.81,
       duty_rate: 0.1, import_vat_rate: 0.2,
-      buyer_paid_price_rub: 10_200, commission_base_price_rub: 12_500, exchange_rate_rub_cny: 13,
+      buyer_paid_price_rub: 10_200, commission_base_price_rub: 12_500, exchange_rate_rub_cny: 13, logistics_mode: "actual",
       outbound_logistics_rub: 245, return_logistics_rub: 245,
       warehouse_operation_rub: 25, commission_rate: 0.075,
       return_rate: 0.1, acquiring_rate: 0.02, advertising_rate: 0.05,
@@ -272,5 +272,69 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
 
       assert_includes result[:errors], "missing_commission_base_price_rub"
     end
+  end
+
+  WB_LOGISTICS_INPUTS = {
+    "purchase_price_cny" => 100, "commission_base_price_rub" => 4_000, "exchange_rate_rub_cny" => 13, "commission_rate" => 0.2,
+    "length_cm" => 20, "width_cm" => 20, "height_cm" => 10, "return_rate" => 0.1
+  }.freeze
+
+  test "a WB scenario on the formula ignores real freight figures and says what the other mode would give" do
+    typed = WB_LOGISTICS_INPUTS.merge("outbound_logistics_rub" => 500, "return_logistics_rub" => 120)
+    context = { "market" => "ru", "delivery_mode" => "fbo", "warehouse_region" => "main", "company_type" => "general" }
+
+    formula = Ec::SkuProfitCalculator.call(sku: @sku, platform: "wb", parameter_context: context.merge("logistics_mode" => "formula"), inputs: typed)
+    actual = Ec::SkuProfitCalculator.call(sku: @sku, platform: "wb", parameter_context: context.merge("logistics_mode" => "actual"), inputs: typed)
+    blank = Ec::SkuProfitCalculator.call(sku: @sku, platform: "wb", parameter_context: context.merge("logistics_mode" => "formula"), inputs: WB_LOGISTICS_INPUTS)
+
+    assert_empty formula[:errors].to_a
+    assert_equal "coefficient", formula.dig(:intermediate, :logistics_source)
+    assert_equal "actual", actual.dig(:intermediate, :logistics_source)
+    assert_equal blank[:profit_cny], formula[:profit_cny], "typed figures do not matter on the formula"
+    assert_not_equal formula[:profit_cny], actual[:profit_cny]
+
+    # volume 4 L -> billed 4 L: 60 + 3 x 14 = 102 RUB, x 1.55 coefficient = 158.1 RUB; the return is the flat 50
+    assert_equal 158.1.to_d, formula.dig(:logistics, :formula, :outbound_rub)
+    assert_equal 50.to_d, formula.dig(:logistics, :formula, :return_rub)
+    assert_equal 158.1.to_d, actual.dig(:logistics, :formula, :outbound_rub), "the formula's figure is shown in actual mode too"
+
+    assert_equal "formula", formula.dig(:logistics, :mode)
+    assert_equal "actual", formula.dig(:logistics, :alternative, :mode)
+    assert_equal actual[:profit_cny], formula.dig(:logistics, :alternative, :profit_cny)
+    assert_in_delta actual[:profit_cny] - formula[:profit_cny], formula.dig(:logistics, :alternative, :profit_difference_cny), 1e-9
+    assert_in_delta formula[:profit_cny] - actual[:profit_cny], actual.dig(:logistics, :alternative, :profit_difference_cny), 1e-9
+  end
+
+  test "without real figures there is no other mode to compare with only when the formula cannot be worked out" do
+    context = { "market" => "ru", "delivery_mode" => "fbo", "warehouse_region" => "main", "company_type" => "general", "logistics_mode" => "formula" }
+
+    result = Ec::SkuProfitCalculator.call(sku: @sku, platform: "wb", parameter_context: context, inputs: WB_LOGISTICS_INPUTS)
+
+    assert_equal "actual", result.dig(:logistics, :alternative, :mode)
+    assert_in_delta 0, result.dig(:logistics, :alternative, :profit_difference_cny), 1e-9, "no typed figures: both modes use the formula"
+  end
+
+  test "a saved context calculates in its own mode" do
+    version = @sku.profit_versions.build(name: "Mode", status: "draft", effective_from: Date.new(2026, 3, 1))
+    inputs = { purchase_price_cny: 100, commission_base_price_rub: 4_000, exchange_rate_rub_cny: 13, commission_rate: 0.2,
+               length_cm: 20, width_cm: 20, height_cm: 10, return_rate: 0.1, outbound_logistics_rub: 500, return_logistics_rub: 120 }
+    formula = version.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general", logistics_mode: "formula", **inputs)
+    actual = version.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general", logistics_mode: "actual", **inputs)
+
+    formula_result = Ec::SkuProfitCalculator.call_for_context(formula)
+    actual_result = Ec::SkuProfitCalculator.call_for_context(actual)
+
+    assert_equal "coefficient", formula_result.dig(:intermediate, :logistics_source)
+    assert_equal "actual", actual_result.dig(:intermediate, :logistics_source)
+    assert_equal 500.to_d, actual_result.dig(:intermediate, :outbound_logistics_rub)
+  end
+
+  test "a context only accepts the two logistics modes" do
+    version = @sku.profit_versions.build(name: "Mode", status: "draft", effective_from: Date.new(2026, 3, 1))
+    assert version.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbo", logistics_mode: "formula").valid?
+    context = version.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbs", logistics_mode: "guess")
+    assert_not context.valid?
+    assert context.errors.of_kind?(:logistics_mode, :inclusion)
+    assert_equal "formula", Ec::SkuProfitVersionContext.new.logistics_mode, "new scenarios start on the fixed formula"
   end
 end

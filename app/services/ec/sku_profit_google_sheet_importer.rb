@@ -655,6 +655,7 @@ module Ec
             effective_on: effective_from
           ).merge(parsed.fetch(:inputs))
         )
+        context.use_actual_logistics_when_typed
       end
       Ec::SkuProfitStandardContexts.build_missing(version, sku:, effective_on: effective_from)
 

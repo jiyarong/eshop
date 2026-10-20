@@ -236,6 +236,7 @@ module Ec
         warehouse_operation_rub
         cross_docking_cny
         fbs_handover_rub
+        logistics_mode
         return_amortization_factor_override
         ozon_warehouse_rate
         ozon_import_vat_cost_rate

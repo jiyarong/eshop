@@ -3,9 +3,12 @@ module Ec
     DEFAULT_EXCHANGE_RATE_RUB_CNY = BigDecimal("13").freeze
 
     class << self
+      # parameter_context may carry "logistics_mode" ("formula" / "actual", see Ec::LogisticsFormula); the
+      # result then has a `logistics` entry with the mode, what the formula says and what the other mode
+      # would give, so the page can show the two side by side.
       def call(sku:, platform:, parameter_context:, inputs:, effective_on: Date.current)
         normalized_inputs = inputs.to_h.stringify_keys
-        ProfitCalculator.call(
+        calculate(
           platform: platform,
           parameter_context: parameter_context,
           inputs: initial_inputs(
@@ -18,8 +21,8 @@ module Ec
       end
 
       def call_for_context(context, overrides: {})
-        parameter_context = context.attributes.slice("market", "delivery_mode", "warehouse_region", "company_type")
-        ProfitCalculator.call(
+        parameter_context = context.attributes.slice("market", "delivery_mode", "warehouse_region", "company_type", "logistics_mode")
+        calculate(
           platform: context.platform,
           parameter_context: parameter_context,
           inputs: default_inputs(platform: context.platform, parameter_context: parameter_context)
@@ -58,6 +61,53 @@ module Ec
       end
 
       private
+
+      def calculate(platform:, parameter_context:, inputs:)
+        mode = LogisticsFormula.mode_for(parameter_context)
+        other = mode == "formula" ? "actual" : "formula"
+        result = calculate_in_mode(platform, parameter_context, inputs, mode)
+        alternative = calculate_in_mode(platform, parameter_context, inputs, other)
+        formula = mode == "formula" ? result : alternative
+        result.merge(
+          logistics: {
+            mode: mode,
+            formula: formula_figures(platform, formula, inputs),
+            alternative: alternative_summary(other, alternative, result)
+          }
+        )
+      end
+
+      def calculate_in_mode(platform, parameter_context, inputs, mode)
+        adjusted, info = LogisticsFormula.apply(platform: platform, mode: mode, parameter_context: parameter_context, inputs: inputs)
+        ProfitCalculator.call(platform: platform, parameter_context: parameter_context, inputs: adjusted).merge(logistics_info: info)
+      end
+
+      # The figures the fixed formula gives: for WB the base rate x coefficient and the flat return, for Ozon the
+      # route average. nil entries when the formula cannot be worked out (no volume, no tariff).
+      def formula_figures(platform, result, inputs)
+        info = result.fetch(:logistics_info)
+        return { outbound_rub: info[:outbound_rub], return_rub: info[:return_rub], source: info[:source] } unless platform.to_s.downcase == "wb"
+        return { outbound_rub: nil, return_rub: nil, source: nil } if result[:errors].present?
+
+        intermediate = result.fetch(:intermediate)
+        coefficient = BigDecimal(inputs["logistics_coeff"].to_s, exception: false)
+        {
+          outbound_rub: coefficient && (intermediate.fetch(:base_logistics_rub) * coefficient).round(2),
+          return_rub: BigDecimal((inputs["wb_fixed_return_base_rub"].presence || "50").to_s),
+          source: "wb_coefficient"
+        }
+      end
+
+      def alternative_summary(mode, alternative, current)
+        return if alternative[:errors].present? || current[:errors].present?
+
+        {
+          mode: mode,
+          profit_cny: alternative[:profit_cny], margin: alternative[:margin], total_cost_cny: alternative[:total_cost_cny],
+          logistics_cny: alternative.dig(:cost_breakdown, :logistics), returns_cny: alternative.dig(:cost_breakdown, :returns),
+          profit_difference_cny: alternative[:profit_cny] - current[:profit_cny]
+        }
+      end
 
       def wb_default_inputs(context)
         company_type = context.fetch("company_type", "general").to_s.downcase

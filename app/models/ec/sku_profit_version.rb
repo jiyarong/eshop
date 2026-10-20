@@ -92,7 +92,7 @@ module Ec
       )
       contexts.each do |context|
         attributes = context.attributes.slice(
-          "platform", "market", "delivery_mode", "warehouse_region", "company_type",
+          "platform", "market", "delivery_mode", "warehouse_region", "company_type", "logistics_mode",
           *Ec::SkuProfitVersionContext::INPUT_COLUMNS
         )
         copy.contexts.build(attributes)

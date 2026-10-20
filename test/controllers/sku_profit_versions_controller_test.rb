@@ -1007,6 +1007,55 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     RawOzon::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "the logistics mode of a scenario is saved, returned, copied and checked" do
+    version = @sku.profit_versions.create!(name: "Modes", status: "draft", effective_from: Date.current)
+    wb = version.contexts.create!(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general")
+    assert_equal "formula", wb.logistics_mode, "a new scenario starts on the fixed formula"
+
+    patch report_sku_profit_version_path(@sku.sku_code, version), params: {
+      version: { lock_version: version.lock_version },
+      contexts: [ { id: wb.id, platform: "wb", market: "ru", delivery_mode: "fbo", logistics_mode: "actual", inputs: { outbound_logistics_rub: "250" } } ]
+    }, as: :json
+
+    assert_response :success
+    assert_equal "actual", wb.reload.logistics_mode
+    payload_context = response.parsed_body.fetch("contexts").find { |context| context["id"] == wb.id }
+    assert_equal "actual", payload_context.fetch("logistics_mode")
+    assert_equal 250.to_d, payload_context.fetch("outbound_logistics_rub").to_d
+
+    sign_in @user
+    post report_sku_profit_versions_path(@sku.sku_code), params: {
+      version: { name: "Copy", status: "draft", effective_from: Date.current.to_s }, copy_from_version_id: version.id
+    }, as: :json
+    assert_response :created
+    copied = response.parsed_body.fetch("contexts").find { |context| context["platform"] == "wb" && context["market"] == "ru" && context["delivery_mode"] == "fbo" }
+    assert_equal "actual", copied.fetch("logistics_mode")
+    assert_equal "formula", response.parsed_body.fetch("contexts").find { |context| context["platform"] == "ozon" && context["delivery_mode"] == "fbs" }.fetch("logistics_mode"),
+      "a scenario added by the copy starts on the formula"
+
+    sign_in @user
+    patch report_sku_profit_version_path(@sku.sku_code, version.reload), params: {
+      version: { lock_version: version.lock_version },
+      contexts: [ { id: wb.id, platform: "wb", market: "ru", delivery_mode: "fbo", logistics_mode: "guess" } ]
+    }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal "actual", wb.reload.logistics_mode
+  end
+
+  test "the preview takes the mode from the scenario and returns both modes' figures" do
+    post preview_report_sku_profit_path(@sku.sku_code), params: {
+      platform: "wb", parameter_context: { market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general", logistics_mode: "formula" },
+      inputs: { commission_base_price_rub: "4000", commission_rate: "0.2", exchange_rate_rub_cny: "13", return_rate: "0.1", outbound_logistics_rub: "999" }
+    }, as: :json
+
+    assert_response :success
+    logistics = response.parsed_body.fetch("logistics")
+    assert_equal "formula", logistics.fetch("mode")
+    assert_equal "actual", logistics.dig("alternative", "mode")
+    assert_equal "coefficient", response.parsed_body.dig("intermediate", "logistics_source")
+    assert_equal 50, logistics.dig("formula", "return_rub").to_d
+  end
+
   test "an archived version keeps exactly the scenarios it had" do
     version = @sku.profit_versions.new(name: "Archived", status: "archived", effective_from: Date.new(2026, 1, 1), effective_to: Date.new(2026, 1, 31))
     Ec::SkuProfitStandardContexts::SCENARIOS.first(2).each { |scenario| version.contexts.build(scenario) }
@@ -1025,7 +1074,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     patch report_sku_profit_version_path(@sku.sku_code, version), params: {
       version: { lock_version: version.lock_version },
       contexts: [
-        { platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general",
+        { platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general", logistics_mode: "actual",
           inputs: { commission_base_price_rub: "3000", commission_rate: "0.4", outbound_logistics_rub: "250", return_logistics_rub: "150",
                     purchase_price_cny: "50", length_cm: "10", width_cm: "10", height_cm: "10", fbs_handover_rub: "28" } }
       ]

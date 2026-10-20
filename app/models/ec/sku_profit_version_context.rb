@@ -7,6 +7,7 @@ module Ec
     PLATFORMS = %w[wb ozon].freeze
     DELIVERY_MODES = %w[fbo fbs].freeze
     COMPANY_TYPES = %w[general small].freeze
+    LOGISTICS_MODES = Ec::LogisticsFormula::MODES
     INPUT_COLUMNS = %w[
       purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
       length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny
@@ -36,6 +37,7 @@ module Ec
     validates :delivery_mode, inclusion: { in: DELIVERY_MODES }
     validates :company_type, inclusion: { in: COMPANY_TYPES }, allow_nil: true
     validates :calculation_status, inclusion: { in: %w[pending valid incomplete] }
+    validates :logistics_mode, inclusion: { in: LOGISTICS_MODES }
     validates :platform,
       uniqueness: { scope: %i[sku_profit_version_id market delivery_mode warehouse_region company_type] }
 
@@ -47,6 +49,18 @@ module Ec
 
     def calculation_result
       attributes.slice(*RESULT_COLUMNS)
+    end
+
+    LOGISTICS_FIGURE_COLUMNS = %w[outbound_logistics_rub return_logistics_rub wb_logistics_override_cny].freeze
+
+    def logistics_figures_typed?
+      LOGISTICS_FIGURE_COLUMNS.any? { |column| self[column].present? }
+    end
+
+    # For code that fills real logistics figures into a scenario (the importers): such a scenario is in
+    # "actual" mode, whatever the default for new ones is.
+    def use_actual_logistics_when_typed
+      self.logistics_mode = "actual" if logistics_figures_typed?
     end
 
     def assign_input_values(values)

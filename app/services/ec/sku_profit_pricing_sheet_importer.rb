@@ -309,6 +309,7 @@ module Ec
         entry = entries.find { |candidate| same_identity?(candidate.fetch(:identity), context) }
         inputs, sources = assemble_inputs(sku, context, entry, cache)
         context.assign_input_values(inputs)
+        context.use_actual_logistics_when_typed
         sources_by_context[context] = sources
       end
 
