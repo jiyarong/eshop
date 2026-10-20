@@ -1,0 +1,17 @@
+    <div class="pallet-workbench__actions"><strong><%= t("pallet_workbench.status") %></strong><span data-ozon-supply-target="planStatus"><%= pallet_workbench_status(plan) %></span></div>
+    <p><%= t("pallet_workbench.stock_status_hint") %></p>
+    <% if can?(:manage_skus) && (!plan.ozon_supply_submission || plan.ozon_supply_submission.state.in?(%w[completed cancelled])) %>
+      <div class="pallet-workbench__actions">
+        <% if plan.editable? %><%= link_to t("pallet_workbench.edit"), edit_reports_pallet_plan_path(plan), class: "button button-secondary" %><% end %>
+        <% if plan.status == 'draft' %><%= button_to t("pallet_workbench.confirm"), confirm_reports_pallet_plan_path(plan), class: "button" %><% end %>
+        <% next_status = { "reserved" => "packing", "packing" => "packed", "packed" => "dispatched" }[plan.status] %>
+        <% if next_status %>
+          <%= form_with url: advance_reports_pallet_plan_path(plan), class: "report-form", data: { turbo: false } do |form| %>
+            <%= form.hidden_field :status, value: next_status %>
+            <% if next_status == 'dispatched' %><div class="field"><%= form.label :platform_check_note, t("pallet_workbench.platform_check") %><%= form.text_field :platform_check_note, required: true, placeholder: t("pallet_workbench.platform_check_hint") %></div><% end %>
+            <%= form.submit t("pallet_workbench.advance", status: t("pallet_workbench.statuses.#{next_status}")), class: "button" %>
+          <% end %>
+        <% end %>
+        <% unless %w[closed cancelled].include?(plan.status) %><%= button_to t("pallet_workbench.cancel"), cancel_reports_pallet_plan_path(plan), class: "button button-secondary", form: { data: { turbo_confirm: t("pallet_workbench.cancel_confirm") } } %><% end %>
+      </div>
+    <% end %>

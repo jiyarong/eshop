@@ -35,6 +35,8 @@ Rails.application.routes.draw do
   end
   get "reports/pallet_calculator" => "reports/pallet_calculators#show", as: :reports_pallet_calculator
   post "reports/pallet_calculator/calculate" => "reports/pallet_calculators#calculate", as: :calculate_reports_pallet_calculator
+  post "reports/pallet_calculator/start_supply" => "reports/pallet_calculators#start_supply", as: :start_supply_reports_pallet_calculator
+  get "reports/pallet_calculator/drop_offs" => "reports/pallet_calculators#drop_offs", as: :drop_offs_reports_pallet_calculator
   namespace :reports do
     resource :pallet_workbench, only: :show do
       post :preview
@@ -48,6 +50,11 @@ Rails.application.routes.draw do
         post :bind
         post :refresh
         get :supply_orders
+        get :supply_submission_status
+        post :supply_warehouse
+        post :submit_supply
+        post :retry_supply
+        post :cancel_supply
       end
     end
   end

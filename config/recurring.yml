@@ -138,6 +138,10 @@ production:
     class: Ec::PalletPlanSyncJob
     schedule: every 15 minutes
 
+  ozon_supply_submission_recovery:
+    class: Ec::OzonSupplySubmissionJob
+    schedule: every 15 minutes
+
   # Buyer-paid prices only exist in Ozon's posting report (async CSV). Refresh the
   # last 7 days after the morning daily sync; imports link to order items on arrival.
   ozon_posting_report_sync:

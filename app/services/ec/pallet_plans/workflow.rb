@@ -18,6 +18,7 @@ module Ec
 
       def cancel!
         @plan.with_lock do
+          raise Error.new(:submission_in_progress) if @plan.ozon_supply_submission && !@plan.ozon_supply_submission.state.in?(%w[completed cancelled])
           raise Error.new(:invalid_status) if %w[closed cancelled].include?(@plan.status)
           @plan.update!(status: "cancelled")
         end
@@ -25,6 +26,7 @@ module Ec
       end
 
       def bind!(number)
+        raise Error.new(:submission_in_progress) if @plan.ozon_supply_submission
         OzonReconciler.new(plan: @plan).bind!(number)
       end
 
@@ -36,6 +38,7 @@ module Ec
       private
       def transition!(status, platform_check_note: nil)
         @plan.with_lock do
+          raise Error.new(:submission_in_progress) if @plan.ozon_supply_submission && !@plan.ozon_supply_submission.state.in?(%w[completed cancelled])
           raise Error.new(:invalid_status) unless @plan.status == "draft" && status == "reserved" || ORDER.index(status).to_i == ORDER.index(@plan.status).to_i + 1
           attrs = { status: status }
           attrs[:confirmed_at] = Time.current if status == "reserved"

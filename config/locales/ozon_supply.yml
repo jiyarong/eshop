@@ -1,0 +1,183 @@
+zh:
+  pallet_workbench:
+    supply_api:
+      title: 同步到 Ozon 店铺
+      prepare: 保存方案并查询可供货仓库
+      prepare_hint: 选择店铺与集群后，保存当前装托方案并查询 Ozon 可接收整批商品的仓库。选择仓库和时段后再确认创建供货单。
+      type: 供货方式
+      types:
+        DIRECT: 直送
+        CROSSDOCK: 越库（交货点送仓）
+      drop_off: 交货点
+      drop_off_search: 输入至少 4 个字符搜索交货点
+      drop_off_empty: 没有匹配的交货点
+      drop_off_hint: 交货点来自当前店铺的 Ozon 接口。切换店铺后需重新选择。
+      draft_id: 平台草稿 ID
+      order_id: 平台供货单 ID
+      warehouse: 最终存储仓库
+      load_timeslots: 查询预约时段
+      expiry_hint: Ozon 草稿有效期为 30 分钟，请及时完成仓库与时段选择。
+      timeslot: 预约时段（%{zone}）
+      submit: 创建供货单并同步托盘
+      submit_hint: 将在当前店铺创建供货单并写入 %{pallets} 个托盘、%{units} 件商品，同时确认本地库存占用。
+      retry: 重试读取平台结果
+      cancel: 终止本次创建
+      review_hint: 请先在 Ozon 店铺后台核对已有供货单或货位，再处理失败原因。系统不会自动重复执行结果不明的写入。
+      poll_error: 状态读取失败，正在自动重试。
+      pallet: 托盘
+      supply_id: 目的地供货 ID
+      cargo_id: 平台货位 ID
+      states:
+        queued: 等待查询可供货仓库
+        draft_submitting: 正在创建平台草稿
+        calculating: 平台正在计算可供货仓库
+        warehouse_required: 请选择最终存储仓库
+        loading_timeslots: 正在查询可预约时段
+        timeslot_required: 请选择预约时段并确认创建
+        order_queued: 等待创建供货单
+        order_submitting: 正在提交供货单
+        creating: 正在读取供货单创建结果
+        syncing: 正在回填供货单与目的仓
+        cargoes: 正在写入并回读托盘明细
+        finalizing: 正在校验平台货位规则
+        completed: 供货单与托盘已同步，状态已回填
+        failed: 同步失败
+        review_required: 写入结果待人工复核
+        cancelled: 本次创建已终止
+    errors:
+      invalid_calculation: 装托结果已失效或不属于当前用户，请重新计算。
+      invalid_delivery: 请选择有效的供货方式和交货点。
+      invalid_warehouse: 请选择平台返回的可供货仓库。
+      invalid_timeslot: 请选择平台返回的预约时段。
+      draft_expired: 平台草稿已超过 30 分钟有效期，请终止本次创建并重新计算。
+      no_available_warehouse: 平台没有可接收完整清单的仓库，未创建供货单。
+      no_timeslots: 当前仓库没有可预约时段，请尝试其他仓库。
+      invalid_platform_response: 平台返回的数据不完整或状态无法识别，请核对平台结果。
+      platform_rejected: "Ozon 拒绝请求：%{reason}"
+      missing_cargo_metadata: "%{sku} 缺少平台条码、量子信息或数量不符合平台量子，无法写入托盘。"
+      cargo_rules_failed: 平台货位规则校验未通过，请在店铺后台核对商品分配与必填信息。
+      poll_timeout: 等待平台结果超时，可重试读取；系统不会重新创建供货单。
+      write_uncertain: 写入响应不明，请核对 Ozon 店铺后台，系统已停止重复写入。
+      submission_in_progress: 请先完成或终止当前 Ozon 同步，再操作计划。
+en:
+  pallet_workbench:
+    supply_api:
+      title: Sync to Ozon store
+      prepare: Save plan and find available warehouses
+      prepare_hint: Save this packing plan for the selected store and cluster, then find warehouses that accept the entire shipment. Choose a warehouse and time slot before confirming creation.
+      type: Supply method
+      types:
+        DIRECT: Direct delivery
+        CROSSDOCK: Cross-dock via drop-off point
+      drop_off: Drop-off point
+      drop_off_search: Enter at least 4 characters to find a drop-off point
+      drop_off_empty: No matching drop-off points
+      drop_off_hint: Results come from this store's Ozon account. Select again after changing stores.
+      draft_id: Platform draft ID
+      order_id: Platform supply order ID
+      warehouse: Storage warehouse
+      load_timeslots: Find available time slots
+      expiry_hint: Ozon drafts expire after 30 minutes. Complete warehouse and time slot selection promptly.
+      timeslot: "Time slot (%{zone})"
+      submit: Create supply order and sync pallets
+      submit_hint: "Create a supply order with %{pallets} pallets and %{units} units in this store, and reserve local inventory."
+      retry: Retry reading platform results
+      cancel: Stop this submission
+      review_hint: Check the existing supply order or cargoes in Ozon before resolving the error. Writes with an unknown outcome are never repeated automatically.
+      poll_error: Unable to read status. Retrying automatically.
+      pallet: Pallet
+      supply_id: Destination supply ID
+      cargo_id: Platform cargo ID
+      states:
+        queued: Waiting to find available warehouses
+        draft_submitting: Creating platform draft
+        calculating: Platform is calculating warehouse availability
+        warehouse_required: Select a storage warehouse
+        loading_timeslots: Finding available time slots
+        timeslot_required: Select a time slot and confirm creation
+        order_queued: Waiting to create supply order
+        order_submitting: Submitting supply order
+        creating: Reading supply order creation result
+        syncing: Importing supply order and destination
+        cargoes: Writing and reading back pallet contents
+        finalizing: Checking platform cargo rules
+        completed: Supply order and pallets synced; status updated
+        failed: Sync failed
+        review_required: Write result requires manual review
+        cancelled: Submission stopped
+    errors:
+      invalid_calculation: This packing result has expired or belongs to another user. Calculate again.
+      invalid_delivery: Select a valid supply method and drop-off point.
+      invalid_warehouse: Select an available warehouse returned by Ozon.
+      invalid_timeslot: Select a time slot returned by Ozon.
+      draft_expired: The platform draft has expired after 30 minutes. Stop this submission and calculate again.
+      no_available_warehouse: No warehouse can accept the entire shipment. No supply order was created.
+      no_timeslots: This warehouse has no available time slots. Try another warehouse.
+      invalid_platform_response: The platform response is incomplete or has an unknown status. Check Ozon.
+      platform_rejected: "Ozon rejected the request: %{reason}"
+      missing_cargo_metadata: "%{sku} has missing platform barcode or quantum data, or its quantity is not divisible by the quantum."
+      cargo_rules_failed: Platform cargo checks failed. Check distribution and required details in Ozon.
+      poll_timeout: Waiting for the platform timed out. Retry reading the result; no new supply order will be created.
+      write_uncertain: The write result is unknown. Check Ozon; repeated writes have been stopped.
+      submission_in_progress: Complete or stop the current Ozon submission before changing the plan.
+ru:
+  pallet_workbench:
+    supply_api:
+      title: Синхронизация с магазином Ozon
+      prepare: Сохранить план и найти доступные склады
+      prepare_hint: Сохраните план упаковки для выбранного магазина и кластера. Выберите склад, принимающий весь состав, и таймслот, затем подтвердите создание заявки.
+      type: Способ поставки
+      types:
+        DIRECT: Прямая поставка
+        CROSSDOCK: Кросс-докинг через точку отгрузки
+      drop_off: Точка отгрузки
+      drop_off_search: Введите не менее 4 символов для поиска
+      drop_off_empty: Подходящих точек отгрузки нет
+      drop_off_hint: Точки получены из аккаунта Ozon этого магазина. При смене магазина выберите точку заново.
+      draft_id: ID черновика Ozon
+      order_id: ID заявки Ozon
+      warehouse: Склад хранения
+      load_timeslots: Найти доступные таймслоты
+      expiry_hint: Черновик Ozon действует 30 минут. Завершите выбор склада и таймслота вовремя.
+      timeslot: "Таймслот (%{zone})"
+      submit: Создать заявку и передать палеты
+      submit_hint: "В магазине будет создана заявка: %{pallets} палет, %{units} единиц. Локальные остатки будут зарезервированы."
+      retry: Повторить чтение результата
+      cancel: Остановить создание
+      review_hint: Проверьте заявку или грузоместа в кабинете Ozon перед устранением ошибки. Запись с неизвестным результатом автоматически не повторяется.
+      poll_error: Не удалось получить статус. Повторяем автоматически.
+      pallet: Палета
+      supply_id: ID поставки в пункт назначения
+      cargo_id: ID грузоместа Ozon
+      states:
+        queued: Ожидание поиска складов
+        draft_submitting: Создание черновика Ozon
+        calculating: Ozon рассчитывает доступность складов
+        warehouse_required: Выберите склад хранения
+        loading_timeslots: Поиск доступных таймслотов
+        timeslot_required: Выберите таймслот и подтвердите создание
+        order_queued: Ожидание создания заявки
+        order_submitting: Отправка заявки
+        creating: Получение результата создания заявки
+        syncing: Загрузка заявки и склада назначения
+        cargoes: Передача и проверка состава палет
+        finalizing: Проверка правил грузомест Ozon
+        completed: Заявка и палеты переданы, статусы обновлены
+        failed: Ошибка синхронизации
+        review_required: Результат записи требует проверки
+        cancelled: Создание остановлено
+    errors:
+      invalid_calculation: Результат расчёта устарел или принадлежит другому пользователю. Выполните расчёт заново.
+      invalid_delivery: Выберите корректный способ поставки и точку отгрузки.
+      invalid_warehouse: Выберите доступный склад из ответа Ozon.
+      invalid_timeslot: Выберите таймслот из ответа Ozon.
+      draft_expired: Срок действия черновика Ozon истёк через 30 минут. Остановите создание и выполните расчёт заново.
+      no_available_warehouse: Нет склада, принимающего весь состав. Заявка не создана.
+      no_timeslots: У склада нет доступных таймслотов. Выберите другой склад.
+      invalid_platform_response: Ответ Ozon неполный или содержит неизвестный статус. Проверьте результат в Ozon.
+      platform_rejected: "Ozon отклонил запрос: %{reason}"
+      missing_cargo_metadata: "Для %{sku} отсутствует штрихкод или квант Ozon либо количество не кратно кванту."
+      cargo_rules_failed: Проверка грузомест Ozon не пройдена. Проверьте состав и обязательные данные в кабинете.
+      poll_timeout: Истекло время ожидания Ozon. Повторите чтение результата, новая заявка не будет создана.
+      write_uncertain: Результат записи неизвестен. Проверьте Ozon, повторная запись остановлена.
+      submission_in_progress: Завершите или остановите синхронизацию с Ozon перед изменением плана.

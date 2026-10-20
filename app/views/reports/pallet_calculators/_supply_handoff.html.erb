@@ -1,0 +1,24 @@
+<section class="panel" data-controller="ozon-supply"
+         data-ozon-supply-clusters-value="<%= @supply_stores.to_h { |store| [store.id, @supply_clusters.fetch(store.ozon_raw_account_id, [])] }.to_json %>">
+  <h2><%= t("pallet_workbench.supply_api.title") %></h2>
+  <p class="form-hint"><%= t("pallet_workbench.supply_api.prepare_hint") %></p>
+  <%= form_with url: start_supply_reports_pallet_calculator_path(locale: I18n.locale), class: "report-form", data: { turbo: false, action: "submit->ozon-supply#submit" } do |form| %>
+    <%= form.hidden_field :calculation_token, value: @calculation_token %>
+    <div class="field"><%= form.label :supply_store_id, t("pallet_workbench.store") %>
+      <%= form.select :store_id, options_from_collection_for_select(@supply_stores, :id, :store_name), {}, id: "supply_store_id", required: true, data: { ozon_supply_target: "store", action: "change->ozon-supply#storeChanged" } %>
+    </div>
+    <div class="field"><%= form.label :supply_cluster_id, t("pallet_workbench.cluster") %>
+      <%= form.select :cluster_id, [], {}, id: "supply_cluster_id", required: true, data: { ozon_supply_target: "cluster" } %>
+    </div>
+    <div class="field"><%= form.label :supply_type, t("pallet_workbench.supply_api.type") %>
+      <%= form.select :supply_type, %w[DIRECT CROSSDOCK].map { |type| [t("pallet_workbench.supply_api.types.#{type}"), type] }, {}, data: { ozon_supply_target: "type", action: "change->ozon-supply#typeChanged" } %>
+    </div>
+    <div data-ozon-supply-target="dropOff" hidden>
+      <%= render "shared/association_picker", dom_id: "pallet-supply-drop-off", field_name: "drop_off",
+        label: t("pallet_workbench.supply_api.drop_off"), search_url: drop_offs_reports_pallet_calculator_path(locale: I18n.locale),
+        placeholder: t("pallet_workbench.supply_api.drop_off_search"), empty_label: t("pallet_workbench.supply_api.drop_off_empty"),
+        hint: t("pallet_workbench.supply_api.drop_off_hint") %>
+    </div>
+    <%= form.submit t("pallet_workbench.supply_api.prepare"), class: "button", data: { ozon_supply_target: "submit" } %>
+  <% end %>
+</section>

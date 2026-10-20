@@ -1,0 +1,81 @@
+# 装托结果 → Ozon 供货单 → 托盘货位
+
+入口为 `/reports/pallet_calculator` 的 Ozon FBO 计算结果。填写箱数与未填写箱数时生成的装托推荐均可使用；保存前会再次检查包装、单件尺寸类别、Listing 唯一性、SKU 权限、库存及每托分配，推荐数量超过库存时需先调整箱数。
+
+## 人工操作
+
+1. 选择店铺、目标集群和直送 / Cross-dock 方式。Cross-dock 需要选择该店铺接口返回的交货点。
+2. 点击“保存方案并查询可供货仓库”。本地保存独立托盘计划和提交记录，后台创建 Ozon 草稿；此时不创建正式供货单、不占用库存。
+3. 在计划详情选择平台计算的完整可供货仓库，查询时段。预约时段展示平台返回的仓库当地时间及其时区，提交原始 `from_in_timezone/to_in_timezone`，不按用户时区二次换算。
+4. 选择时段，点击“创建供货单并同步托盘”。重新检查库存，确认本地占用，后台建单并写入每托明细。
+5. 页面自动显示供货单号、父订单 ID、目的地 supply ID、每托 cargo ID、平台状态和错误。API 完成不代表实物打包完成，计划仍沿用原库存与发货流程；后续平台状态由已有定时任务继续回读。
+
+草稿有效期 30 分钟。无可用时段时可切换仓库重新查询；正式建单前可终止本次提交。终止提交不会自动取消已经确认的本地库存计划，库存释放仍使用计划原有的取消动作。
+
+## 接口契约
+
+平台凭证仅由后台从当前店铺关联的 `RawOzon::SellerAccount` 读取，不进入页面、提交快照或日志。
+
+| 用途 | 接口和关键字段 |
+| --- | --- |
+| 搜索交货点 | `/v1/warehouse/fbo/list`，`filter_by_supply_type: [CREATE_TYPE_CROSSDOCK]`；搜索至少 4 字符 |
+| 创建平台草稿 | `/v1/draft/direct/create`、`/v1/draft/crossdock/create`；`cluster_info: {macrolocal_cluster_id, items: [{sku, quantity}]}`、`deletion_sku_mode: FULL` |
+| Cross-dock 交货点 | `delivery_info: {type: DROPOFF, drop_off_warehouse: {warehouse_id, warehouse_type}}`；仓库类型使用创建接口枚举，移除搜索结果的 `WAREHOUSE_TYPE_` 前缀 |
+| 查询候选仓 | `/v2/draft/create/info`；仅接受匹配集群、供货方式且 `FULL_AVAILABLE` 的结果 |
+| 核对完整商品组成 | `/v1/supply-order/bundle`；读取全部分页，按平台 SKU 精确比较数量，检查条码和量子 |
+| 查询预约时段 | `/v2/draft/timeslot/info`；`draft_id`、`supply_type`、`selected_cluster_warehouses`、日期区间 |
+| 创建正式供货单 | `/v2/draft/supply/create`；传同一仓库选择和平台原始时段 |
+| 查询建单结果 | `/v2/draft/supply/create/status`；请求使用 `draft_id`，成功后取得 `order_id` |
+| 回读正式供货 | 已有 `DailySync#sync_supply_orders(order_ids:)` 和 `OzonReconciler`；核对完整数量、集群及每托唯一目的地 |
+| 写入托盘 | `/v1/cargoes/create`；`delete_current_version: false`，`cargoes: [{key, value: {type: PALLET, items: [{barcode, offer_id, quant, quantity}]}}]` |
+| 回读货位 | `/v2/cargoes/create/info`；用 `operation_id` 查询，按稳定的 pallet key 精确匹配 cargo ID |
+| 最终校验 | `/v1/cargoes/rules/get`；供货范围、货位存在、数量分配及所有适用必填规则必须通过 |
+
+`quant` 来自 Ozon 返回的供货商品量子，不能使用本地外箱每箱件数代替。单托数量必须是该量子的倍数。平台减量、额外商品、拆分目的地、目的仓变化及必填信息缺失均会中止同步，保留已取得的外部 ID 和错误。当前不包含上门取货、多集群建单、保质期编辑和标签下载。
+
+参考官方文档：[Seller API](https://docs.ozon.ru/api/seller/)、[FBO 创建流程](https://dev.ozon.ru/start/453-Protsess-sozdaniia-zaiavok-na-postavku-tovarov-FBO/)。本次核对使用的 schema 镜像为 [vispar-tech/ozon-seller-api-schema](https://github.com/vispar-tech/ozon-seller-api-schema/blob/main/schemas/ozon-seller-api-openapi.json)，接口字段以平台实际返回为准；旧 `platform_warehouse_allocation_stage2_api_research.md` 的 payload 是概念骨架，不能直接作为请求。
+
+## 重复提交及异常恢复
+
+计算结果使用绑定用户、有效期两小时的签名快照；请求键和计划提交关联均有唯一索引。后台同一提交使用 PostgreSQL advisory lock 串行推进，不在外部写入期间持有数据库事务。写入前先持久化标记，防止进程中断后重新写入。
+
+OzonClient 默认重试行为保留，新供货和货位写操作显式关闭重试。正式建单丢失响应后只查询原草稿的建单结果。草稿或货位写入结果不明时进入 `review_required`，不会自动重复创建或覆盖平台货位。平台明确失败或读取超时会展示错误；可恢复阶段提供重试入口，继续使用原 draft/order/operation ID。轮询每阶段最多 60 次，每次间隔 15 秒。每 15 分钟恢复扫描重新调度停滞的后台状态。
+
+页面主 GET 和状态轮询只读取本地数据。交货点搜索是明确的只读平台查询；所有外部写入都在后台任务中执行。正式写入前重新检查发起人的管理权限及 SKU 可见范围。
+
+## 验证
+
+新增测试覆盖完整模拟链路、多托数量与 cargo ID、重复点击、签名失效、SKU 权限变化、库存不足、草稿过期、平台减量、条码/量子缺失、写入响应丢失、轮询上限、货位规则失败及目的仓变化。
+
+状态查询性能测试比较 1 托和 10 托的未命中缓存 SQL 次数、最大 SQL 长度，并检查不实例化库存或订单记录；这是本地状态接口的合成数据检查，不代表整页或真实平台性能。
+
+相关 Rails 测试：
+
+```sh
+eval "$(/opt/homebrew/bin/rbenv init - zsh)"
+SKIP_JS_BUILD=1 bin/rails test \
+  test/controllers/reports/pallet_calculators_controller_test.rb \
+  test/controllers/reports/pallet_workbenches_controller_test.rb \
+  test/controllers/reports/pallet_plans_controller_test.rb \
+  test/controllers/reports/ozon_supply_submissions_controller_test.rb \
+  test/services/ec/pallet_plans/ \
+  test/services/raw_ozon/supply_client_test.rb \
+  test/services/raw_ozon/ozon_client_test.rb
+node --check app/javascript/controllers/ozon_supply_controller.js
+```
+
+当前依赖 `simple_apm` 会向可用语言追加 `zh-CN`，但全局菜单没有对应语言名称，直接运行上述页面测试会出现既有菜单翻译失败。验证项目配置的 `zh/en/ru` 时，可在测试进程初始化后显式限定语言，保持仓库配置不变：
+
+```sh
+SKIP_JS_BUILD=1 RAILS_ENV=test bin/rails runner \
+  'I18n.available_locales = %i[zh en ru]; $LOAD_PATH.unshift(Rails.root.join("test").to_s); require "rails/test_unit/runner"; Rails::TestUnit::Runner.run(ARGV)' \
+  test/controllers/reports/pallet_calculators_controller_test.rb \
+  test/controllers/reports/pallet_workbenches_controller_test.rb \
+  test/controllers/reports/pallet_plans_controller_test.rb \
+  test/controllers/reports/ozon_supply_submissions_controller_test.rb \
+  test/services/ec/pallet_plans/ \
+  test/services/raw_ozon/supply_client_test.rb \
+  test/services/raw_ozon/ozon_client_test.rb
+```
+
+本次不向真实店铺发单，平台结果通过注入客户端模拟验证。

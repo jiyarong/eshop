@@ -1,10 +1,10 @@
 module Reports
   class PalletPlansController < PalletWorkbenchesController
-    before_action -> { require_permission!(:manage_skus) }, except: %i[index show]
+    before_action -> { require_permission!(:manage_skus) }, except: %i[index show supply_submission_status]
     before_action :find_plan, except: %i[index create]
 
     def index
-      scope = Ec::PalletPlan.includes(:store).order(id: :desc)
+      scope = Ec::PalletPlan.includes(:store, :ozon_supply_submission).order(id: :desc)
       hidden_items = Ec::PalletPlanItem.where.not(sku_code: access_scope.visible_skus.select(:sku_code))
       scope = scope.where.not(id: hidden_items.select(:pallet_plan_id))
       scope = scope.where(store_id: params[:store_id]) if params[:store_id].present?
@@ -82,11 +82,49 @@ module Reports
       saved_response
     end
 
+    def supply_submission_status
+      render json: { running: @plan.ozon_supply_submission&.running?, active: @plan.active?, state: @plan.ozon_supply_submission&.state,
+        html: render_to_string(partial: "reports/pallet_plans/supply_submission", formats: [:html], locals: { plan: @plan }),
+        workflow_html: render_to_string(partial: "reports/pallet_plans/workflow", formats: [:html], locals: { plan: @plan }), plan_state: @plan.status,
+        platform_status: @plan.platform_status, platform_synced_at: helpers.display_time(@plan.platform_synced_at),
+        status: helpers.pallet_workbench_status(@plan), order_number: @plan.supply_order_number, sync_error: @plan.sync_error }
+    end
+
+    def supply_warehouse
+      supply_actions.select_warehouse!(params[:warehouse_id])
+      enqueue_supply
+    end
+
+    def submit_supply
+      supply_actions.submit!(params[:timeslot_index])
+      enqueue_supply
+    end
+
+    def retry_supply
+      supply_actions.retry!
+      enqueue_supply
+    end
+
+    def cancel_supply
+      supply_actions.cancel!
+      saved_response
+    end
+
     private
 
     def find_plan
-      @plan = Ec::PalletPlan.includes(:store, :items, :pallets).find(params[:id])
+      @plan = Ec::PalletPlan.includes(:store, :items, :pallets, :ozon_supply_submission).find(params[:id])
       raise ActiveRecord::RecordNotFound if @plan.items.where.not(sku_code: access_scope.visible_skus.select(:sku_code)).exists?
+    end
+
+    def supply_actions
+      raise ActiveRecord::RecordNotFound unless @plan.ozon_supply_submission
+      Ec::PalletPlans::OzonSupplyActions.new(submission: @plan.ozon_supply_submission)
+    end
+
+    def enqueue_supply
+      Ec::OzonSupplySubmissionJob.perform_later(@plan.ozon_supply_submission.id)
+      saved_response
     end
 
     def workflow
@@ -95,6 +133,7 @@ module Reports
 
     def plan_data(plan)
       plan.as_json(only: %i[id plan_no store_id macrolocal_cluster_id cluster_name status supply_order_number ozon_order_id platform_status platform_synced_at sync_error lock_version created_at])
+        .merge("supply_submission" => plan.ozon_supply_submission&.as_json(only: %i[id state draft_id order_id last_error]))
     end
 
     def saved_response

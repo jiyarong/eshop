@@ -1,0 +1,38 @@
+<% submission = plan.ozon_supply_submission %>
+<% if submission %>
+  <h2><%= t("pallet_workbench.supply_api.title") %></h2>
+  <p role="status" aria-live="polite"><strong><%= t("pallet_workbench.supply_api.states.#{submission.state}") %></strong></p>
+  <dl class="pallet-workbench__metadata">
+    <div><dt><%= t("pallet_workbench.supply_api.draft_id") %></dt><dd><%= submission.draft_id.presence || t("common.empty_value") %></dd></div>
+    <div><dt><%= t("pallet_workbench.supply_api.order_id") %></dt><dd><%= submission.order_id.presence || t("common.empty_value") %></dd></div>
+  </dl>
+  <% if submission.last_error.present? %><div role="alert" class="pallet-calculator__error"><%= submission.last_error %></div><% end %>
+  <% if submission.state == "review_required" %><p class="form-hint"><%= t("pallet_workbench.supply_api.review_hint") %></p><% end %>
+  <% if can?(:manage_skus) %>
+    <% if submission.warehouse_selectable? %>
+      <%= form_with url: supply_warehouse_reports_pallet_plan_path(plan, locale: I18n.locale), class: "report-form", data: { turbo: false, action: "submit->ozon-supply#submit" } do |form| %>
+        <div class="field"><%= form.label :warehouse_id, t("pallet_workbench.supply_api.warehouse") %>
+          <%= form.select :warehouse_id, options_for_select(submission.data.fetch("warehouses", []).map { |row| warehouse = row.fetch("storage_warehouse"); [[warehouse["name"], warehouse["address"]].compact.join(" · "), warehouse["warehouse_id"]] }, submission.data.dig("warehouse", "storage_warehouse", "warehouse_id")), {}, required: true %>
+        </div>
+        <%= form.submit t("pallet_workbench.supply_api.load_timeslots"), class: "button button-secondary", data: { ozon_supply_target: "submit" } %>
+      <% end %>
+      <p class="form-hint"><%= t("pallet_workbench.supply_api.expiry_hint") %></p>
+    <% end %>
+    <% if submission.state == "timeslot_required" %>
+      <%= form_with url: submit_supply_reports_pallet_plan_path(plan, locale: I18n.locale), class: "report-form", data: { turbo: false, action: "submit->ozon-supply#submit" } do |form| %>
+        <div class="field"><%= form.label :timeslot_index, t("pallet_workbench.supply_api.timeslot", zone: submission.data["warehouse_timezone"]) %>
+          <%= form.select :timeslot_index, submission.data.fetch("timeslots").each_with_index.map { |slot, index| ["#{slot['from_in_timezone']} — #{slot['to_in_timezone']}", index] }, {}, required: true %>
+        </div>
+        <p class="form-hint"><%= t("pallet_workbench.supply_api.submit_hint", pallets: plan.pallets.size, units: plan.items.sum(&:units)) %></p>
+        <%= form.submit t("pallet_workbench.supply_api.submit"), class: "button", data: { ozon_supply_target: "submit" } %>
+      <% end %>
+    <% end %>
+    <% if submission.retryable? %><%= button_to t("pallet_workbench.supply_api.retry"), retry_supply_reports_pallet_plan_path(plan, locale: I18n.locale), class: "button button-secondary" %><% end %>
+    <% if submission.cancellable? %><%= button_to t("pallet_workbench.supply_api.cancel"), cancel_supply_reports_pallet_plan_path(plan, locale: I18n.locale), class: "button button-secondary" %><% end %>
+  <% end %>
+  <% if submission.state == "completed" %>
+    <%= table_viewport do %><table class="prod-tbl"><thead><tr><th><%= t("pallet_workbench.supply_api.pallet") %></th><th><%= t("pallet_workbench.supply_api.supply_id") %></th><th><%= t("pallet_workbench.supply_api.cargo_id") %></th></tr></thead>
+      <tbody><% plan.pallets.each do |pallet| %><tr><td><%= pallet.position %></td><td><%= pallet.ozon_supply_id %></td><td><%= pallet.ozon_cargo_id %></td></tr><% end %></tbody>
+    </table><% end %>
+  <% end %>
+<% end %>

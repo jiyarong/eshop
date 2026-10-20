@@ -91,6 +91,9 @@
       <pre data-clipboard-target="source"><%= pallet_strategy(result) %></pre>
       <span role="status" data-clipboard-target="status"></span>
     </section>
+    <% if @calculation_token.present? %>
+      <%= render "reports/pallet_calculators/supply_handoff" %>
+    <% end %>
   <% else %>
     <div class="pallet-calculator__blank-result"><i class="bi bi-box-seam" aria-hidden="true"></i><h2><%= t("pallet_calculator.empty_title") %></h2><p><%= t("pallet_calculator.empty_description") %></p></div>
   <% end %>

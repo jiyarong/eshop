@@ -38,15 +38,16 @@ module RawOzon
       end
     end
 
-    def post(path, body = {}, headers: {})
+    def post(path, body = {}, headers: {}, retry_on_error: true)
       uri = URI("#{BASE_URL}#{path}")
 
-      with_retry(context: "POST #{path}") do
+      request = proc do
         req      = Net::HTTP::Post.new(uri)
         req.body = body.to_json
         set_headers(req, headers)
         perform(uri, req)
       end
+      retry_on_error ? with_retry(context: "POST #{path}", &request) : request.call
     end
 
     def download(path)

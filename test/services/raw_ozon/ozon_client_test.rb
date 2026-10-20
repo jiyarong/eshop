@@ -27,4 +27,16 @@ class RawOzon::OzonClientTest < ActiveSupport::TestCase
 
     assert_equal "connection closed", error.message
   end
+
+  test "nonidempotent POST can disable automatic transport retries" do
+    client = RawOzon::OzonClient.new("client", "key")
+    attempts = 0
+    client.define_singleton_method(:perform) do |_uri, _request|
+      attempts += 1
+      raise Timeout::Error, "response lost"
+    end
+
+    assert_raises(Timeout::Error) { client.post("/v1/cargoes/create", {}, retry_on_error: false) }
+    assert_equal 1, attempts
+  end
 end

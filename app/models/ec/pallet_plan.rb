@@ -13,6 +13,7 @@ module Ec
     belongs_to :created_by, class_name: "User"
     has_many :items, class_name: "Ec::PalletPlanItem", foreign_key: :pallet_plan_id, dependent: :destroy, inverse_of: :pallet_plan
     has_many :pallets, -> { order(:position) }, class_name: "Ec::Pallet", dependent: :destroy, inverse_of: :pallet_plan
+    has_one :ozon_supply_submission, class_name: "Ec::OzonSupplySubmission", dependent: :destroy
 
     scope :committed, -> { where(status: COMMITTED_STATUSES) }
     validates :plan_no, :cluster_name, :time_zone, :from_date, :to_date, presence: true
@@ -25,7 +26,7 @@ module Ec
     before_validation { self.plan_no ||= "OP-#{SecureRandom.uuid}" }
 
     def editable?
-      status.in?(EDITABLE_STATUSES) && ozon_order_id.blank?
+      status.in?(EDITABLE_STATUSES) && ozon_order_id.blank? && (ozon_supply_submission.nil? || ozon_supply_submission.state == "cancelled")
     end
 
     def active?

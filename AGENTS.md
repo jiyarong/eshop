@@ -194,6 +194,10 @@
 
 ### 页面交互与回归
 
+- `/reports/pallet_calculator` 的 Ozon FBO 结果可手动新建供货单并同步托盘。`StartOzonSupply` 校验绑定当前用户的签名计算结果并按请求键去重，复用 `Save/Build` 保存原托盘分配；`Ec::OzonSupplySubmission` 冻结同步期间的计划编辑。用户选择平台返回的完整可供货仓和预约时段后才确认库存占用及正式建单。支持直送和通过交货点的 Cross-dock。
+- 平台写入仅由 `Ec::OzonSupplySubmissionJob` → `OzonSupplyRunner` → `RawOzon::SupplyClient` 执行。使用新版 `cluster_info` 草稿结构、`draft_id` 查询正式建单结果、`/v2/cargoes/create/info` 回读货位；不要使用旧调研文档中的简化 payload。货位商品使用正式供货明细的 `barcode/offer_id/quant`，`quant` 不得拿本地每箱件数替代。完成以数量/目的地核对、逐托 cargo ID 回填及平台货位规则通过为准，不代表实物已经打包或发出。
+- 供货和货位创建禁用 OzonClient 的自动网络重试。写入前持久化提交标记并使用 `SyncRunLock` 串行执行；供货响应不明时只查询原 `draft_id`，货位响应不明时进入 `review_required`，不得盲目重建。所有页面状态轮询保持本地只读；已有每 15 分钟供货回读继续更新平台状态，新提交的恢复扫描由 `ozon_supply_submission_recovery` 负责。接口与测试细节见 `docs/ozon_pallet_supply_sync.md`。
+
 - 需求表与当前清单并排，窄屏优先显示清单；表格每页 15 条，默认只显示决策所需字段，销量/库存明细、人员/SKU 筛选、包装与收货参数按需展开。继续复用通用筛选、排序及表格视口组件，文案补齐 `pallet_workbench` 的 zh/en/ru。
 - 修改清单或参数后先使旧结果失效，等待 650ms 自动验算；请求期间禁止重复提交，使用递增 `revision` 丢弃旧请求结果。仅最新方案验算通过后启用保存，单托高度使用含托高度，重量容量使用货重，二者分别对应 FBO 规则限制。
 - `sessionStorage` 按计划（或 `new`）、店铺、集群隔离，保存清单、模式、分配、参数及 `lockVersion`；跨页/刷新恢复后仍重新验算。服务器版本与本地版本不同时丢弃旧本地清单，保存成功后清理本标签页草稿。该机制不是跨设备的服务器草稿。

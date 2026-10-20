@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_031211) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -636,6 +636,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_031211) do
     t.index ["store_id"], name: "index_ec_ozon_listing_publications_on_store_id"
   end
 
+  create_table "ec_ozon_supply_submissions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.string "draft_id"
+    t.text "last_error"
+    t.string "order_id"
+    t.bigint "pallet_plan_id", null: false
+    t.integer "poll_attempts", default: 0, null: false
+    t.string "request_key", null: false
+    t.string "state", default: "queued", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pallet_plan_id"], name: "index_ec_ozon_supply_submissions_on_pallet_plan_id", unique: true
+    t.index ["request_key"], name: "index_ec_ozon_supply_submissions_on_request_key", unique: true
+    t.index ["state", "updated_at"], name: "index_ec_ozon_supply_submissions_on_state_and_updated_at"
+  end
+
   create_table "ec_pallet_items", force: :cascade do |t|
     t.integer "boxes", null: false
     t.datetime "created_at", null: false
@@ -706,6 +722,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_031211) do
     t.datetime "created_at", null: false
     t.jsonb "layout", default: {}, null: false
     t.jsonb "metrics", default: {}, null: false
+    t.string "ozon_cargo_id"
     t.string "ozon_supply_id"
     t.bigint "pallet_plan_id", null: false
     t.integer "position", null: false
@@ -3744,6 +3761,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_031211) do
   add_foreign_key "ec_ozon_listing_publications", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_ozon_listing_publications", "ec_stores", column: "store_id"
   add_foreign_key "ec_ozon_listing_publications", "raw_ozon_seller_accounts", column: "account_id"
+  add_foreign_key "ec_ozon_supply_submissions", "ec_pallet_plans", column: "pallet_plan_id"
   add_foreign_key "ec_pallet_items", "ec_pallet_plan_items", column: "pallet_plan_item_id"
   add_foreign_key "ec_pallet_items", "ec_pallets", column: "pallet_id"
   add_foreign_key "ec_pallet_plan_items", "ec_pallet_plans", column: "pallet_plan_id"
