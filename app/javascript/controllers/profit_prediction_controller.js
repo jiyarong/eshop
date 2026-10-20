@@ -120,9 +120,7 @@ export default class extends Controller {
     "deleteDialogMessage",
     "deleteDialogError",
     "deleteDialogConfirm",
-    "logisticsModeButton",
-    "logisticsModeHint",
-    "logisticsModeAlternative",
+    "logisticsModeCurrent",
     "versionDialog",
     "versionDialogTitle",
     "versionDialogName",
@@ -528,29 +526,47 @@ export default class extends Controller {
     });
   }
 
-  // The mode switch of the selected scenario, its explanation, and what the other mode would give.
+  // The quiet "current mode" line at the top of the panel, and the switch on the platform logistics row.
   renderLogisticsModePanel(row) {
-    if (!this.hasLogisticsModeHintTarget) return;
+    const messages = this.messagesValue.logistics_mode || {};
+    if (this.hasLogisticsModeCurrentTarget) this.logisticsModeCurrentTarget.textContent = messages[this.logisticsMode(row)] || "";
+    const control = this.hasDetailBodyTarget && this.detailBodyTarget.querySelector("[data-logistics-mode-control]");
+    if (control) this.fillLogisticsModeControl(control, row);
+  }
 
+  // The switch itself: two buttons, what the current mode means, and what the other mode would give.
+  fillLogisticsModeControl(container, row) {
     const messages = this.messagesValue.logistics_mode || {};
     const mode = this.logisticsMode(row);
-    this.logisticsModeButtonTargets.forEach((button) => {
-      const active = button.dataset.logisticsModeOption === mode;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-pressed", active ? "true" : "false");
+    const tabs = document.createElement("div");
+    tabs.className = "profit-prediction-view-tabs";
+    ["formula", "actual"].forEach((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `profit-prediction-view-tab${option === mode ? " is-active" : ""}`;
+      button.setAttribute("aria-pressed", option === mode ? "true" : "false");
+      button.dataset.logisticsModeOption = option;
+      button.dataset.action = "profit-prediction#selectLogisticsMode";
+      button.textContent = messages[option] || option;
       button.disabled = this.readonlyValue;
+      tabs.append(button);
     });
-    this.logisticsModeHintTarget.textContent = mode === "formula" ? messages.formula_hint : messages.actual_hint;
+    const hint = document.createElement("small");
+    hint.className = "profit-prediction-process__logistics-mode-hint";
+    hint.textContent = mode === "formula" ? messages.formula_hint : messages.actual_hint;
+    const children = [tabs, hint];
 
     const alternative = this.previewData.get(row?.dataset.rowKey)?.logistics?.alternative;
     const difference = Number(alternative?.profit_difference_cny);
-    const show = alternative && Number.isFinite(difference) && Math.abs(difference) >= 0.005;
-    this.logisticsModeAlternativeTarget.hidden = !show;
-    this.logisticsModeAlternativeTarget.textContent = show
-      ? fill(mode === "formula" ? messages.alternative_actual : messages.alternative_formula, {
+    if (alternative && Number.isFinite(difference) && Math.abs(difference) >= 0.005) {
+      const line = document.createElement("small");
+      line.className = "profit-prediction-process__logistics-mode-alternative";
+      line.textContent = fill(mode === "formula" ? messages.alternative_actual : messages.alternative_formula, {
         profit: this.number(Number(alternative.profit_cny)), difference: `${difference > 0 ? "+" : ""}${this.number(difference)}`
-      })
-      : "";
+      });
+      children.push(line);
+    }
+    container.replaceChildren(...children);
   }
 
   // Frame links that would throw away unsaved edits ask first.
@@ -1264,6 +1280,13 @@ export default class extends Controller {
     }
 
     itemCell.textContent = label;
+    if (key === "platform_logistics" && this.selectedRow) {
+      const control = document.createElement("div");
+      control.className = "profit-prediction-process__logistics-mode";
+      control.dataset.logisticsModeControl = "";
+      this.fillLogisticsModeControl(control, this.selectedRow);
+      itemCell.append(control);
+    }
     parameterCell.className = "profit-prediction-process__parameters";
     const newFields = parameterFields.filter((field) => !this.renderedProcessParameters.has(field));
     this.renderProcessParameters(parameterCell, this.selectedRow, newFields).forEach((field) => {
