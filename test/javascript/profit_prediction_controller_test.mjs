@@ -1035,6 +1035,8 @@ test("the logistics mode is only named at the top and switched on the platform l
   assert.doesNotMatch(view, /logisticsModeButton|logisticsModeHint|logisticsModeAlternative/);
   assert.match(source, /key === "platform_logistics"/);
   assert.match(source, /data-logistics-mode-control/);
-  assert.match(source, /button\.dataset\.action = "profit-prediction#selectLogisticsMode"/);
-  assert.match(source, /button\.disabled = this\.readonlyValue/);
+  assert.match(source, /radio\.type = "radio"/);
+  assert.match(source, /radio\.dataset\.action = "change->profit-prediction#selectLogisticsMode"/);
+  assert.match(source, /radio\.disabled = this\.readonlyValue/);
+  assert.match(source, /parameterCell\.append\(control\)/);
 });

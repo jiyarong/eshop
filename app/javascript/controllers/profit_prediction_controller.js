@@ -534,27 +534,32 @@ export default class extends Controller {
     if (control) this.fillLogisticsModeControl(control, row);
   }
 
-  // The switch itself: two buttons, what the current mode means, and what the other mode would give.
+  // The switch itself: a radio pair, what the current mode means, and what the other mode would give.
   fillLogisticsModeControl(container, row) {
     const messages = this.messagesValue.logistics_mode || {};
     const mode = this.logisticsMode(row);
-    const tabs = document.createElement("div");
-    tabs.className = "profit-prediction-view-tabs";
+    const group = document.createElement("div");
+    group.className = "profit-prediction-process__logistics-mode-options";
+    group.setAttribute("role", "radiogroup");
+    group.setAttribute("aria-label", messages.label || "");
     ["formula", "actual"].forEach((option) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `profit-prediction-view-tab${option === mode ? " is-active" : ""}`;
-      button.setAttribute("aria-pressed", option === mode ? "true" : "false");
-      button.dataset.logisticsModeOption = option;
-      button.dataset.action = "profit-prediction#selectLogisticsMode";
-      button.textContent = messages[option] || option;
-      button.disabled = this.readonlyValue;
-      tabs.append(button);
+      const label = document.createElement("label");
+      label.className = "profit-prediction-process__logistics-mode-option";
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = `logistics-mode-${row.dataset.rowKey}`;
+      radio.value = option;
+      radio.checked = option === mode;
+      radio.dataset.logisticsModeOption = option;
+      radio.dataset.action = "change->profit-prediction#selectLogisticsMode";
+      radio.disabled = this.readonlyValue;
+      label.append(radio, document.createTextNode(messages[option] || option));
+      group.append(label);
     });
     const hint = document.createElement("small");
     hint.className = "profit-prediction-process__logistics-mode-hint";
     hint.textContent = mode === "formula" ? messages.formula_hint : messages.actual_hint;
-    const children = [tabs, hint];
+    const children = [group, hint];
 
     const alternative = this.previewData.get(row?.dataset.rowKey)?.logistics?.alternative;
     const difference = Number(alternative?.profit_difference_cny);
@@ -1281,18 +1286,20 @@ export default class extends Controller {
     }
 
     itemCell.textContent = label;
-    if (key === "platform_logistics" && this.selectedRow) {
-      const control = document.createElement("div");
-      control.className = "profit-prediction-process__logistics-mode";
-      control.dataset.logisticsModeControl = "";
-      this.fillLogisticsModeControl(control, this.selectedRow);
-      itemCell.append(control);
-    }
     parameterCell.className = "profit-prediction-process__parameters";
     const newFields = parameterFields.filter((field) => !this.renderedProcessParameters.has(field));
     this.renderProcessParameters(parameterCell, this.selectedRow, newFields).forEach((field) => {
       this.renderedProcessParameters.add(field);
     });
+    // The mode switch sits on its own line under the freight parameters; a row reused by another step drops it.
+    parameterCell.querySelector("[data-logistics-mode-control]")?.remove();
+    if (key === "platform_logistics" && this.selectedRow) {
+      const control = document.createElement("div");
+      control.className = "profit-prediction-process__logistics-mode";
+      control.dataset.logisticsModeControl = "";
+      this.fillLogisticsModeControl(control, this.selectedRow);
+      parameterCell.append(control);
+    }
     this.renderProcessSource(sourceCell, sourceKey);
     calculationCell.className = "profit-prediction-process__calculation";
     this.renderProcessFormula(formulaElement, formula);
