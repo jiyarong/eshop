@@ -32,6 +32,13 @@
   warnings: warning_fields.index_with do |field|
     t("reports.profit_prediction.warnings.not_included", field: t("reports.profit_prediction.fields.#{field}"))
   end.transform_keys { |field| "#{field}_not_included" },
+  version_dialog: {
+    title_new: t("reports.profit_prediction.version_dialog.title_new"),
+    title_copy: t("reports.profit_prediction.version_dialog.title_copy"),
+    name_required: t("reports.profit_prediction.version_dialog.name_required"),
+    failed: t("reports.profit_prediction.version_dialog.failed"),
+    overlap: t("reports.profit_prediction.version_dialog.overlap")
+  },
   scenarios: {
     hide: t("reports.profit_prediction.scenarios.hide"),
     menu_label: t("reports.profit_prediction.scenarios.menu_label"),
@@ -241,6 +248,8 @@
   data-profit-prediction-actual-advertising-url-value="<%= report_sku_actual_advertising_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-actual-acquiring-url-value="<%= report_sku_actual_acquiring_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-switch-url-value="<%= report_sku_path(@sku.sku_code, tab: "profit_prediction") %>"
+  data-profit-prediction-create-url-value="<%= report_sku_profit_versions_path(@sku.sku_code) %>"
+  data-profit-prediction-today-value="<%= user_today.iso8601 %>"
   <% if @profit_version.persisted? %>
     data-profit-prediction-version-id-value="<%= @profit_version.id %>"
     data-profit-prediction-set-current-url-value="<%= set_current_report_sku_profit_version_path(@sku.sku_code, @profit_version) %>"
@@ -314,18 +323,23 @@
               </button>
             <% end %>
           <% end %>
+          <%# New and Copy ask for a name first, then create the version at once (see versionDialog). %>
           <% if @profit_version.persisted? %>
-            <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", copy_version_id: @profit_version.id),
-              class: "btn btn-ghost btn-sm", data: { action: "click->profit-prediction#confirmLeave" } do %>
+            <button type="button" class="btn btn-ghost btn-sm"
+              data-action="profit-prediction#openVersionDialog"
+              data-version-action="copy"
+              data-default-name="<%= t("reports.profit_prediction.copy_name", name: @profit_version.name) %>">
               <i class="bi bi-copy" aria-hidden="true"></i>
               <%= t("reports.profit_prediction.actions.copy") %>
-            <% end %>
+            </button>
           <% end %>
-          <%= link_to report_sku_path(@sku.sku_code, tab: "profit_prediction", new_profit_version: 1),
-            class: "btn btn-ghost btn-sm", data: { action: "click->profit-prediction#confirmLeave" } do %>
+          <button type="button" class="btn btn-ghost btn-sm"
+            data-action="profit-prediction#openVersionDialog"
+            data-version-action="new"
+            data-default-name="<%= t("reports.profit_prediction.default_version_name", date: user_today) %>">
             <i class="bi bi-plus-lg" aria-hidden="true"></i>
             <%= t("reports.profit_prediction.actions.new") %>
-          <% end %>
+          </button>
         </div>
         <div class="profit-prediction-toolbar__calculation-actions">
           <% unless profit_version_readonly %>
@@ -673,6 +687,33 @@
       <tbody data-profit-prediction-target="detailBody"></tbody>
     </table>
   </section>
+
+  <dialog
+    class="attachment-dialog profit-prediction-version-dialog"
+    data-profit-prediction-target="versionDialog"
+    data-action="click->profit-prediction#closeVersionDialogOnBackdrop">
+    <section class="attachment-dialog__content" role="document" aria-labelledby="profit-prediction-version-dialog-title">
+      <form data-action="submit->profit-prediction#submitVersionDialog" novalidate>
+        <div class="erp-modal__header">
+          <div>
+            <h2 id="profit-prediction-version-dialog-title" data-profit-prediction-target="versionDialogTitle"></h2>
+          </div>
+          <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="profit-prediction#closeVersionDialog">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
+        </div>
+        <label class="profit-prediction-version-dialog__field">
+          <span><%= t("reports.profit_prediction.version_dialog.name_label") %></span>
+          <input type="text" class="input" maxlength="120" autocomplete="off" data-profit-prediction-target="versionDialogName">
+        </label>
+        <p class="profit-prediction-version-dialog__error" role="alert" data-profit-prediction-target="versionDialogError" hidden></p>
+        <div class="profit-prediction-version-dialog__actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="profit-prediction#closeVersionDialog"><%= t("reports.profit_prediction.version_dialog.cancel") %></button>
+          <button type="submit" class="btn btn-primary btn-sm" data-profit-prediction-target="versionDialogConfirm"><%= t("reports.profit_prediction.version_dialog.confirm") %></button>
+        </div>
+      </form>
+    </section>
+  </dialog>
 
   <dialog
     class="attachment-dialog profit-prediction-tariff-dialog"

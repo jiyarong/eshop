@@ -68,6 +68,8 @@ export default class extends Controller {
     actualAdvertisingUrl: String,
     actualAcquiringUrl: String,
     switchUrl: String,
+    createUrl: String,
+    today: String,
     versionId: Number,
     setCurrentUrl: String,
     incompleteCount: Number,
@@ -106,6 +108,11 @@ export default class extends Controller {
     "detailProfitFormula",
     "detailMarginFormula",
     "detailBody",
+    "versionDialog",
+    "versionDialogTitle",
+    "versionDialogName",
+    "versionDialogError",
+    "versionDialogConfirm",
     "tariffDialog",
     "tariffVolume",
     "tariffVolumeBand",
@@ -313,7 +320,73 @@ export default class extends Controller {
     if (this.hasModeStatusTarget) this.modeStatusTarget.textContent = text;
   }
 
-  // Copy and New are frame links; ask before they throw away unsaved edits.
+  // Copy and New ask for a name first and create the version at once; the page then opens it. A
+  // copy is taken from what is stored, so unsaved edits would be left behind: ask before that.
+  openVersionDialog(event) {
+    if (!this.hasVersionDialogTarget || !this.confirmDiscardChanges()) return;
+
+    const button = event.currentTarget;
+    this.versionDialogAction = button.dataset.versionAction === "copy" ? "copy" : "new";
+    const messages = this.messagesValue.version_dialog || {};
+    this.versionDialogTitleTarget.textContent = this.versionDialogAction === "copy" ? messages.title_copy : messages.title_new;
+    this.versionDialogNameTarget.value = button.dataset.defaultName || "";
+    this.versionDialogErrorTarget.hidden = true;
+    this.versionDialogConfirmTarget.disabled = false;
+    if (!this.versionDialogTarget.open) this.versionDialogTarget.showModal();
+    this.versionDialogNameTarget.focus();
+    this.versionDialogNameTarget.select();
+  }
+
+  closeVersionDialog() {
+    if (this.hasVersionDialogTarget && this.versionDialogTarget.open) this.versionDialogTarget.close();
+  }
+
+  closeVersionDialogOnBackdrop(event) {
+    if (event.target === this.versionDialogTarget) this.closeVersionDialog();
+  }
+
+  async submitVersionDialog(event) {
+    event.preventDefault();
+    const messages = this.messagesValue.version_dialog || {};
+    const name = this.versionDialogNameTarget.value.trim();
+    if (!name) {
+      this.showVersionDialogError(messages.name_required);
+      return;
+    }
+
+    this.versionDialogConfirmTarget.disabled = true;
+    this.versionDialogErrorTarget.hidden = true;
+    try {
+      const body = { version: { name, status: "draft", effective_from: this.todayValue } };
+      if (this.versionDialogAction === "copy") body.copy_from_version_id = this.versionIdValue;
+      const response = await fetch(this.createUrlValue, { method: "POST", headers: this.jsonHeaders(), body: JSON.stringify(body) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        this.showVersionDialogError(data.errors?.effective_from ? messages.overlap : messages.failed);
+        this.versionDialogConfirmTarget.disabled = false;
+        return;
+      }
+
+      this.closeVersionDialog();
+      // Nothing is unsaved any more (it was confirmed before the dialog opened): go straight there.
+      this.dirtyRows.clear();
+      this.versionDirty = false;
+      const url = new URL(this.switchUrlValue, window.location.origin);
+      url.searchParams.set("tab", "profit_prediction");
+      url.searchParams.set("version_id", data.id);
+      this.navigateWithinFrame(url);
+    } catch (_error) {
+      this.showVersionDialogError(messages.failed);
+      this.versionDialogConfirmTarget.disabled = false;
+    }
+  }
+
+  showVersionDialogError(text) {
+    this.versionDialogErrorTarget.textContent = text || "";
+    this.versionDialogErrorTarget.hidden = !text;
+  }
+
+  // Frame links that would throw away unsaved edits ask first.
   confirmLeave(event) {
     if (!this.confirmDiscardChanges()) event.preventDefault();
   }
@@ -3343,7 +3416,7 @@ export default class extends Controller {
     this.targetMarginTargets.forEach((input) => { input.disabled = !this.calculationMode; });
     this.versionInputTargets.forEach((input) => { input.disabled = !this.calculationMode; });
     if (this.hasNavigationControlTarget) {
-      this.navigationControlTarget.disabled = this.navigationWasDisabled || this.hasUnsavedChanges();
+      this.navigationControlTarget.disabled = this.navigationWasDisabled;
     }
     if (this.hasSaveButtonTarget) this.saveButtonTarget.hidden = !this.calculationMode;
     this.updateControls();
@@ -3359,7 +3432,8 @@ export default class extends Controller {
     const dirty = this.dirtyRows.size > 0 || this.versionDirty;
     if (this.hasSaveButtonTarget) this.saveButtonTarget.disabled = !(dirty || this.unsavedNewRows().length > 0) || this.saving;
     if (this.hasNavigationControlTarget) {
-      this.navigationControlTarget.disabled = this.navigationWasDisabled || dirty || this.saving;
+      // Unsaved edits do not lock the switcher: changeVersion asks before throwing them away.
+      this.navigationControlTarget.disabled = this.navigationWasDisabled || this.saving;
     }
     if (!this.hasModeStatusTarget) return;
 

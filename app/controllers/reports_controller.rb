@@ -615,7 +615,7 @@ class ReportsController < ApplicationController
 
   def create_sku_profit_version
     sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
-    version = sku.profit_versions.new(profit_version_params)
+    version = build_profit_version_for_create(sku)
     version.name = version.effective_from.to_s if version.name.blank?
     assign_profit_contexts(version)
     persist_profit_version!(version)
@@ -2637,6 +2637,18 @@ class ReportsController < ApplicationController
 
   def profit_version_params
     params.fetch(:version, {}).permit(:name, :status, :effective_from, :effective_to, :note, :lock_version)
+  end
+
+  # A new version, or (with copy_from_version_id) a copy of one of this SKU's versions under the
+  # name and date the request gives. The copy gets every standard scenario, like a new version.
+  def build_profit_version_for_create(sku)
+    attributes = profit_version_params
+    return sku.profit_versions.new(attributes) if params[:copy_from_version_id].blank?
+
+    source = sku.profit_versions.includes(:contexts).find(params[:copy_from_version_id])
+    copy = source.build_copy(effective_from: attributes[:effective_from].presence || user_today, name: attributes[:name])
+    Ec::SkuProfitStandardContexts.build_missing(copy, sku: sku, effective_on: copy.effective_from)
+    copy
   end
 
   # A version made before a scenario existed opens with that scenario added, in memory only: its

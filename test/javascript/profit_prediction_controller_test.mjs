@@ -643,6 +643,142 @@ test("copy and new links ask before discarding edits and can be cancelled", () =
   assert.deepEqual(clean.confirmations, []);
 });
 
+function versionDialogController({ dirty = false, response = { ok: true, json: async () => ({ id: 42 }) }, name = "Default name" } = {}) {
+  const fetches = [];
+  const { controller, confirmations, answer } = versionSwitcher({ frame: { id: "sku_detail_tab_profit_prediction" }, dirty });
+  globalThis.fetch = async (url, options) => { fetches.push([ url, JSON.parse(options.body), options.method ]); return response; };
+  let shown = 0;
+  let closed = 0;
+  const dialog = { open: false, showModal() { this.open = true; shown += 1; }, close() { this.open = false; closed += 1; } };
+  Object.assign(controller, {
+    hasVersionDialogTarget: true,
+    versionDialogTarget: dialog,
+    versionDialogTitleTarget: { textContent: "" },
+    versionDialogNameTarget: { value: name, focus() {}, select() {} },
+    versionDialogErrorTarget: { hidden: true, textContent: "" },
+    versionDialogConfirmTarget: { disabled: false },
+    createUrlValue: "/reports/skus/KJ-217-GD/profit_versions",
+    todayValue: "2026-10-20",
+    versionIdValue: 3,
+    messagesValue: {
+      confirm_leave: "discard?",
+      version_dialog: { title_new: "New", title_copy: "Copy", name_required: "name?", failed: "failed", overlap: "overlap" }
+    },
+    jsonHeaders: () => ({ "X-CSRF-Token": "t" })
+  });
+  const open = (action, defaultName = "Default name") =>
+    controller.openVersionDialog({ currentTarget: { dataset: { versionAction: action, defaultName } } });
+  return { controller, fetches, confirmations, answer, open, counts: () => ({ shown, closed }) };
+}
+
+test("New and Copy open a dialog prefilled with the default name instead of creating anything", () => {
+  const { controller, fetches, open, counts } = versionDialogController();
+
+  open("copy", "Model copy");
+
+  assert.equal(counts().shown, 1);
+  assert.equal(controller.versionDialogTitleTarget.textContent, "Copy");
+  assert.equal(controller.versionDialogNameTarget.value, "Model copy");
+  assert.equal(fetches.length, 0);
+
+  open("new", "2026-10-20 forecast");
+  assert.equal(controller.versionDialogTitleTarget.textContent, "New");
+  assert.equal(controller.versionDialogNameTarget.value, "2026-10-20 forecast");
+});
+
+test("the dialog asks before leaving unsaved edits behind and opens nothing when that is declined", () => {
+  const { controller, answer, open, counts, confirmations } = versionDialogController({ dirty: true });
+  answer.value = false;
+
+  open("new");
+
+  assert.deepEqual(confirmations, [ "discard?" ]);
+  assert.equal(counts().shown, 0);
+  assert.equal(controller.versionDialogTarget.open, false);
+});
+
+test("confirming a copy creates it from the current version under the typed name, then opens it", async () => {
+  const { controller, fetches, open, counts } = versionDialogController();
+  open("copy", "Model copy");
+  controller.versionDialogNameTarget.value = "  Autumn prices  ";
+
+  await controller.submitVersionDialog({ preventDefault() {} });
+
+  assert.equal(fetches.length, 1);
+  const [url, body, method] = fetches[0];
+  assert.equal(url, "/reports/skus/KJ-217-GD/profit_versions");
+  assert.equal(method, "POST");
+  assert.deepEqual(body, { version: { name: "Autumn prices", status: "draft", effective_from: "2026-10-20" }, copy_from_version_id: 3 });
+  assert.equal(counts().closed, 1);
+  const [visitUrl, options] = globalThis.__turboVisits.at(-1);
+  assert.deepEqual(options, { frame: "sku_detail_tab_profit_prediction" });
+  assert.equal(new URL(visitUrl).searchParams.get("version_id"), "42");
+});
+
+test("confirming a new version sends no copy source", async () => {
+  const { controller, fetches, open } = versionDialogController();
+  open("new");
+
+  await controller.submitVersionDialog({ preventDefault() {} });
+
+  assert.equal("copy_from_version_id" in fetches[0][1], false);
+  assert.equal(fetches[0][1].version.name, "Default name");
+});
+
+test("an empty name is refused in the dialog without a request", async () => {
+  const { controller, fetches, open } = versionDialogController();
+  open("new");
+  controller.versionDialogNameTarget.value = "   ";
+
+  await controller.submitVersionDialog({ preventDefault() {} });
+
+  assert.equal(fetches.length, 0);
+  assert.equal(controller.versionDialogErrorTarget.hidden, false);
+  assert.equal(controller.versionDialogErrorTarget.textContent, "name?");
+  assert.equal(controller.versionDialogTarget.open, true);
+});
+
+test("a failed creation is explained in the dialog and the confirm button works again", async () => {
+  const failing = versionDialogController({ response: { ok: false, json: async () => ({ errors: { effective_from: [ "overlaps_published_version" ] } }) } });
+  failing.open("new");
+
+  await failing.controller.submitVersionDialog({ preventDefault() {} });
+
+  assert.equal(failing.controller.versionDialogErrorTarget.textContent, "overlap");
+  assert.equal(failing.controller.versionDialogConfirmTarget.disabled, false);
+  assert.equal(failing.controller.versionDialogTarget.open, true);
+
+  const broken = versionDialogController({ response: { ok: false, json: async () => { throw new Error("not json"); } } });
+  broken.open("new");
+  await broken.controller.submitVersionDialog({ preventDefault() {} });
+  assert.equal(broken.controller.versionDialogErrorTarget.textContent, "failed");
+});
+
+test("unsaved edits no longer lock the version switcher, only a save in progress does", () => {
+  const controller = new ProfitPredictionController();
+  const navigation = { disabled: false };
+  Object.assign(controller, {
+    calculationMode: true,
+    dirtyRows: new Set([ "row-1" ]),
+    versionDirty: true,
+    saving: false,
+    navigationWasDisabled: false,
+    hasSaveButtonTarget: false,
+    hasNavigationControlTarget: true,
+    navigationControlTarget: navigation,
+    hasModeStatusTarget: false,
+    rowTargets: [],
+    newRecordValue: false
+  });
+
+  controller.updateControls();
+  assert.equal(navigation.disabled, false);
+
+  controller.saving = true;
+  controller.updateControls();
+  assert.equal(navigation.disabled, true);
+});
+
 function modeStatusController({ dirtyRows = [], versionDirty = false } = {}) {
   const classes = new Set();
   const controller = new ProfitPredictionController();

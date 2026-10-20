@@ -10713,6 +10713,35 @@ thead .table-sticky-column {
   color: #b42318;
 }
 
+.profit-prediction-version-dialog {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.profit-prediction-version-dialog__field {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 8px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.profit-prediction-version-dialog__error {
+  margin: 0 0 8px;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.profit-prediction-version-dialog__error[hidden] {
+  display: none;
+}
+
+.profit-prediction-version-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .profit-prediction-tariff-dialog {
   width: min(1180px, calc(100vw - 48px));
 }

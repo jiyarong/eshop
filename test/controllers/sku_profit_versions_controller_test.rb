@@ -237,7 +237,12 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".profit-prediction-workbench[data-profit-prediction-official-commission-url-value]"
     # Switching version reloads the tab's own frame from the SKU detail URL, never the host page.
     assert_select ".profit-prediction-workbench[data-profit-prediction-switch-url-value='#{report_sku_path(@sku.sku_code, tab: "profit_prediction")}']"
-    assert_select ".profit-prediction-toolbar__version-actions a[data-action='click->profit-prediction#confirmLeave']", minimum: 1
+    # New and Copy ask for a name in a dialog first; they are buttons now, not links that build an unsaved version.
+    assert_select ".profit-prediction-toolbar__version-actions button[data-action='profit-prediction#openVersionDialog']", count: 1
+    assert_select ".profit-prediction-toolbar__version-actions button[data-version-action='new'][data-default-name]"
+    assert_select ".profit-prediction-toolbar__version-actions a[href*='new_profit_version']", count: 0
+    assert_select "dialog[data-profit-prediction-target='versionDialog'] input[data-profit-prediction-target='versionDialogName']", count: 1
+    assert_select ".profit-prediction-workbench[data-profit-prediction-create-url-value='#{report_sku_profit_versions_path(@sku.sku_code)}']"
     assert_select ".profit-prediction-header", count: 0
     assert_select ".profit-prediction-version-bar", count: 0
     assert_select ".table-viewport[data-sticky-table-header-sticky-columns-value='5']"
@@ -780,6 +785,49 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal "Changed", version.reload.name
     assert_equal "published", version.status
+  end
+
+  test "creating with copy_from_version_id copies that version under the given name, with every standard scenario" do
+    source = @sku.profit_versions.new(name: "Source", status: "draft", effective_from: Date.new(2026, 9, 1))
+    source.contexts.build(
+      platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general",
+      purchase_price_cny: 42, commission_base_price_rub: 1_234, commission_rate: 0.1, exchange_rate_rub_cny: 10,
+      length_cm: 10, width_cm: 10, height_cm: 10, logistics_coeff: 1, return_rate: 0.1
+    )
+    source.save!
+
+    post report_sku_profit_versions_path(@sku.sku_code), params: {
+      version: { name: "Autumn prices", status: "draft", effective_from: "2026-10-20" }, copy_from_version_id: source.id
+    }, as: :json
+
+    assert_response :created
+    copy = @sku.profit_versions.find(response.parsed_body.fetch("id"))
+    assert_equal "Autumn prices", copy.name
+    assert_equal "draft", copy.status
+    assert_not copy.is_current
+    assert_equal Date.new(2026, 10, 20), copy.effective_from
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, copy.contexts.count
+    copied = copy.contexts.find_by!(platform: "wb", market: "ru", delivery_mode: "fbo", company_type: "general")
+    assert_equal 1_234.to_d, copied.commission_base_price_rub
+    assert_equal 42.to_d, copied.purchase_price_cny
+    assert_equal 1, source.reload.contexts.count, "the source is untouched"
+  end
+
+  test "copying a version of another SKU is refused" do
+    other = Ec::Sku.create!(sku_code: "PVX-#{SecureRandom.hex(4).upcase}")
+    foreign = other.profit_versions.create!(name: "Foreign", status: "draft", effective_from: Date.new(2026, 9, 1))
+
+    post report_sku_profit_versions_path(@sku.sku_code), params: {
+      version: { name: "Stolen", status: "draft", effective_from: "2026-10-20" }, copy_from_version_id: foreign.id
+    }, as: :json
+
+    assert_response :not_found
+    assert_equal 0, @sku.profit_versions.where(name: "Stolen").count
+  ensure
+    Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: foreign&.id).delete_all
+    foreign&.destroy
+    Ec::OperationLog.where(record_type: "Ec::Sku", record_id: other&.id).delete_all
+    other&.destroy
   end
 
   test "a saved version made before the new scenarios opens with them added, unsaved" do

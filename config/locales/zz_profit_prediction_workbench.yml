@@ -2,6 +2,15 @@ zh:
   reports:
     profit_prediction:
       copy_name: "%{name} 副本"
+      version_dialog:
+        title_new: "新建版本"
+        title_copy: "复制版本"
+        name_label: "版本名称"
+        confirm: "确定"
+        cancel: "取消"
+        name_required: "请输入版本名称"
+        failed: "创建失败，请稍后重试"
+        overlap: "生效日期与已发布的版本重叠，无法创建"
       default_version_name: "%{date} 利润测算"
       confirm_leave: "当前测算尚未保存，确定离开吗？"
       unsaved_version: "未保存的新版本"
@@ -381,6 +390,15 @@ en:
   reports:
     profit_prediction:
       copy_name: "%{name} copy"
+      version_dialog:
+        title_new: "New version"
+        title_copy: "Copy version"
+        name_label: "Version name"
+        confirm: "Confirm"
+        cancel: "Cancel"
+        name_required: "Enter a version name"
+        failed: "Could not create the version, please try again"
+        overlap: "The effective date overlaps a published version"
       default_version_name: "%{date} profit forecast"
       confirm_leave: "This calculation has unsaved changes. Leave anyway?"
       unsaved_version: "Unsaved new version"
@@ -760,6 +778,15 @@ ru:
   reports:
     profit_prediction:
       copy_name: "%{name}, копия"
+      version_dialog:
+        title_new: "Новая версия"
+        title_copy: "Копия версии"
+        name_label: "Название версии"
+        confirm: "Подтвердить"
+        cancel: "Отмена"
+        name_required: "Введите название версии"
+        failed: "Не удалось создать версию, повторите попытку"
+        overlap: "Дата начала пересекается с опубликованной версией"
       default_version_name: "Расчет прибыли %{date}"
       confirm_leave: "В расчете есть несохраненные изменения. Покинуть страницу?"
       unsaved_version: "Новая несохраненная версия"
