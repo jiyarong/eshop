@@ -35,7 +35,7 @@ const labels = {
   },
   steps: {
     revenue: "收入", goods: "商品成本", duty: "关税", import_vat: "进口增值税", volume: "商品体积",
-    billed_volume: "计费体积", delivered_rate: "成交签收率", logistics_mode: "物流费模式", base_logistics: "基础物流费", return_rate: "退货率", return_amortized: "退货运费折算",
+    billed_volume: "计费体积", delivered_rate: "成交签收率", logistics_mode: "物流费模式", return_rate: "退货率", return_amortized: "退货运费折算",
     platform_logistics: "平台物流费", cross_docking: "越库费", returns: "退货费用", storage: "仓储费", commission: "佣金",
     platform_subsidy: "平台净补贴（参考）", acquiring: "收单费", advertising: "广告费", tax: "销售税", other: "其他成本",
     total_cost: "总成本", profit: "利润", margin: "利润率",
@@ -112,11 +112,12 @@ test("the cost steps add up to the calculator's total cost, counting cross-docki
 
 test("formulas name the parameters and then substitute the numbers", () => {
   const wb = stepsFor(cases.find((testCase) => testCase.name === "wb_general_coefficient"));
-  const base = wb.find((step) => step.key === "base_logistics");
-  const lines = formulaLines(base.formula, format);
+  const logistics = wb.find((step) => step.key === "platform_logistics");
+  const lines = formulaLines(logistics.formula, format);
 
-  assert.equal(lines.named, "WB 基础物流费 + ( 计费体积 − 1 ) × WB 每升物流费");
-  assert.equal(lines.values, "60 + ( 7 − 1 ) × 14");
+  assert.equal(lines.named, "送仓费 × 汇率 + ( WB 基础物流费 + ( 计费体积 − 1 ) × WB 每升物流费 ) × 物流系数");
+  assert.match(lines.values, /\( 60 \+ \( 7 − 1 \) × 14 \) × /);
+  assert.ok(!wb.some((step) => step.key === "base_logistics"), "WB's base fee is part of the platform logistics row");
   assert.equal(formulaLines(wb.find((step) => step.key === "revenue").formula, format).named, "佣金基准价 ÷ 汇率");
   assert.equal(formulaLines(wb.find((step) => step.key === "margin").formula, format).named, "利润 ÷ 收入");
 });
@@ -142,7 +143,7 @@ test("WB names the logistics source the calculator actually used", () => {
   const platformLogistics = (name) => stepsFor(cases.find((testCase) => testCase.name === name))
     .find((step) => step.key === "platform_logistics");
 
-  assert.match(formulaLines(platformLogistics("wb_general_coefficient").formula, format).named, /送仓费 × 汇率 \+ 基础物流费 × 物流系数$/);
+  assert.match(formulaLines(platformLogistics("wb_general_coefficient").formula, format).named, /送仓费 × 汇率 \+ \( WB 基础物流费 .* \) × 物流系数$/);
   assert.match(formulaLines(platformLogistics("wb_small_actual_logistics").formula, format).named, /送仓费 × 汇率 \+ 去程物流$/);
   assert.match(formulaLines(platformLogistics("wb_small_override_and_fixed_return").formula, format).named, /WB 物流费覆盖值 \) × 汇率$/);
 });
@@ -248,11 +249,10 @@ test("WB keeps every freight row and parameter in place and flags what does not 
     "the delivered rate and then the switch sit right under the return rate");
   assert.ok(stepOf(formula, "logistics_mode").control);
 
-  assert.equal(stepOf(formula, "base_logistics").inactive, false);
   assert.deepEqual(stepOf(formula, "platform_logistics").inactiveFields, ["outbound_logistics_rub"]);
   assert.deepEqual(stepOf(formula, "returns").inactiveFields, ["return_logistics_rub"]);
 
-  assert.equal(stepOf(actual, "base_logistics").inactive, true, "the base fee, per-litre fee and coefficient are void on typed freight");
-  assert.deepEqual(stepOf(actual, "platform_logistics").inactiveFields, ["logistics_coeff"]);
+  assert.deepEqual(stepOf(actual, "platform_logistics").inactiveFields, ["wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff"],
+    "the base fee, per-litre fee and coefficient are void on typed freight");
   assert.deepEqual(stepOf(actual, "returns").inactiveFields, ["wb_fixed_return_base_rub"]);
 });

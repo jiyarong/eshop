@@ -157,20 +157,22 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     const coefficientApplies = logisticsSource === "coefficient";
     const fbo = F("fbo_delivery_cny", inputs.fbo_delivery_cny || 0);
 
-    step("base_logistics", [F("wb_logistics_base_rub", baseFee), "+", "(", C("billed_volume", intermediate.billed_volume_l), "−", N(1), ")", "×", F("wb_logistics_liter_rub", literFee)],
-      intermediate.base_logistics_rub, "rub", ["wb_logistics_base_rub", "wb_logistics_liter_rub"],
-      { source: "wb_logistics_tariffs", inactive: !coefficientApplies });
-
+    // One row for the whole outbound freight: the delivery to the warehouse, plus either the tariff (base fee +
+    // per-litre fee on the billed volume) times the coefficient, or the typed real figure.
     const exchangeToken = F("exchange_rate_rub_cny", exchange);
     const deliveryRub = [fbo, "×", exchangeToken, "+"];
+    const baseTariff = ["(", F("wb_logistics_base_rub", baseFee), "+", "(", C("billed_volume", intermediate.billed_volume_l), "−", N(1), ")", "×", F("wb_logistics_liter_rub", literFee), ")"];
     const platformLogistics = {
       actual: [...deliveryRub, F("outbound_logistics_rub")],
       override: ["(", fbo, "+", H("wb_logistics_override_cny", intermediate.platform_logistics_cny), ")", "×", exchangeToken],
-      coefficient: [...deliveryRub, C("base_logistics", intermediate.base_logistics_rub), "×", F("logistics_coeff")]
+      coefficient: [...deliveryRub, ...baseTariff, "×", F("logistics_coeff")]
     }[logisticsSource];
     step("platform_logistics", platformLogistics, toRub(costs.logistics), "rub",
-      ["fbo_delivery_cny", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"],
-      { inactiveFields: [coefficientApplies ? "outbound_logistics_rub" : "logistics_coeff"] });
+      ["fbo_delivery_cny", "wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"],
+      {
+        source: "wb_logistics_tariffs",
+        inactiveFields: coefficientApplies ? ["outbound_logistics_rub"] : ["wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff"]
+      });
 
     const returnBase = hasActualReturn
       ? F("return_logistics_rub")
