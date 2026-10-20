@@ -625,14 +625,24 @@ export default class extends Controller {
       return button;
     }));
     const box = anchor.getBoundingClientRect();
-    menu.style.top = `${Math.round(box.bottom + 4)}px`;
-    menu.style.left = `${Math.round(Math.max(8, Math.min(box.left, window.innerWidth - 320)))}px`;
+    const top = Math.round(box.bottom + 4);
+    const left = Math.round(Math.max(8, Math.min(box.left, window.innerWidth - 320)));
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
     menu.hidden = false;
+    // `position: fixed` is relative to the viewport unless an ancestor (a transform, filter or
+    // contain) becomes its containing block; measure where it really landed and shift it back.
+    const placed = menu.getBoundingClientRect();
+    if (Math.abs(placed.left - left) > 1 || Math.abs(placed.top - top) > 1) {
+      menu.style.top = `${Math.round(top - (placed.top - top))}px`;
+      menu.style.left = `${Math.round(left - (placed.left - left))}px`;
+    }
     this.openScenarioMenuFor = anchor;
     anchor.setAttribute("aria-expanded", "true");
     document.addEventListener("click", this.closeScenarioMenuHandler, true);
     document.addEventListener("keydown", this.closeScenarioMenuHandler, true);
     window.addEventListener("resize", this.closeScenarioMenuHandler);
+    window.addEventListener("scroll", this.closeScenarioMenuHandler, true);
   }
 
   closeScenarioMenu() {
@@ -642,6 +652,7 @@ export default class extends Controller {
     document.removeEventListener("click", this.closeScenarioMenuHandler, true);
     document.removeEventListener("keydown", this.closeScenarioMenuHandler, true);
     window.removeEventListener("resize", this.closeScenarioMenuHandler);
+    window.removeEventListener("scroll", this.closeScenarioMenuHandler, true);
   }
 
   closeScenarioMenuOnOutsideEvent(event) {
