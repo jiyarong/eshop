@@ -95,9 +95,12 @@ module Ec
         gap = cluster.fetch(:distribution_gap, 0).to_i
         shortage = [gap - planned_quantity, 0].max
         allocatable = quantities.fetch(:available_quantity).to_i
-        suggested_boxes = complete && products.one? ? [(shortage.to_d / pcs).ceil, ([allocatable, 0].max / pcs)].min : 0
+        fbo_eligible = complete && packaging[:ozon_size_category] != Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE
+        suggested_boxes = fbo_eligible && products.one? ? [(shortage.to_d / pcs).ceil, ([allocatable, 0].max / pcs)].min : 0
         exclusion_reason = if products.size != 1
           :ambiguous_listing
+        elsif packaging[:ozon_size_category] == Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE
+          :ozon_oversize
         elsif !complete
           :missing_packaging
         elsif allocatable < pcs
@@ -114,16 +117,26 @@ module Ec
           distribution_gap: gap, planned_quantity: planned_quantity, shortage: shortage,
           fbs_available: quantities.fetch(:base_quantity), reserved_quantity: quantities.fetch(:reserved_quantity),
           fbs_allocatable: allocatable, pcs: pcs, suggested_boxes: suggested_boxes,
+          ozon_size_category: packaging[:ozon_size_category],
           packaging: packaging, packaging_complete: complete, exclusion_reason: exclusion_reason
         }
       end
 
       def packaging(dimension)
         unit_volume_l = dimension&.inner_volume_l
+        category = if dimension
+          dimension.ozon_size_category.presence || Ec::SkuDimension.ozon_size_category_for(
+            length: dimension.outer_length_cm, width: dimension.outer_width_cm,
+            height: dimension.outer_height_cm, weight: dimension.outer_box_weight_kg
+          )
+        else
+          Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN
+        end
         {
           length: dimension&.outer_length_cm, width: dimension&.outer_width_cm, height: dimension&.outer_height_cm,
           weight: dimension&.outer_box_weight_kg, pcs: dimension&.outer_box_pcs,
-          unit_volume_l: unit_volume_l&.positive? ? unit_volume_l : nil
+          unit_volume_l: unit_volume_l&.positive? ? unit_volume_l : nil,
+          ozon_size_category: category
         }
       end
     end

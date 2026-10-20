@@ -3519,6 +3519,12 @@ zh:
         outer_length_cm: "外长 cm"
         outer_volume_l: "外径体积 L"
         outer_width_cm: "外宽 cm"
+        ozon_size_category: "Ozon 尺寸类别"
+      categories:
+        unknown: "待补齐"
+        normal: "普通商品"
+        kgt: "KGT 大件"
+        oversize: "超限"
       filters:
         sku: "SKU"
         sku_placeholder: "搜索 SKU"

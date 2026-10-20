@@ -67,7 +67,17 @@ module Erp
           feedback_target: feedback_target,
           cell_partial: "shared/inline_edit_cell",
           cell_locals: inline_cell_locals(@dimension, field, feedback_target, editing: false),
-          message: I18n.t("erp.inline_edit.messages.saved")
+          message: I18n.t("erp.inline_edit.messages.saved"),
+          additional_streams: [
+            turbo_stream.replace(
+              view_context.sku_dimension_category_frame_id(@dimension.sku_code),
+              html: view_context.content_tag(
+                :span,
+                t("erp.sku_dimensions.categories.#{@dimension.ozon_size_category}"),
+                id: view_context.sku_dimension_category_frame_id(@dimension.sku_code)
+              )
+            )
+          ]
         )
       else
         render_inline_edit_failure(

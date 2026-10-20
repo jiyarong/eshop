@@ -3307,6 +3307,12 @@ en:
         outer_length_cm: "Outer length cm"
         outer_volume_l: "Outer volume L"
         outer_width_cm: "Outer width cm"
+        ozon_size_category: "Ozon size category"
+      categories:
+        unknown: "Incomplete"
+        normal: "Regular"
+        kgt: "KGT bulky"
+        oversize: "Oversize"
       filters:
         sku: "SKU"
         sku_placeholder: "Search SKU"

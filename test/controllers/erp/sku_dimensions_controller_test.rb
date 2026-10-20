@@ -76,6 +76,7 @@ class Erp::SkuDimensionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", "内箱重量 kg"
     assert_select "th", "外箱重量 kg"
     assert_select "th", "外箱 pcs"
+    assert_select "th", "Ozon 尺寸类别"
     assert_select "turbo-frame#sku_dimension_#{@sku.sku_code}_inner_length_cm_cell"
   end
 
@@ -245,6 +246,9 @@ class Erp::SkuDimensionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal BigDecimal("12.5"), @dimension.reload.outer_length_cm
     assert_select "turbo-stream[action='replace'][target='sku_dimension_#{@sku.sku_code}_outer_length_cm_cell']" do
       assert_select "template", "12.50"
+    end
+    assert_select "turbo-stream[action='replace'][target='sku_dimension_#{@sku.sku_code}_ozon_size_category_cell']" do
+      assert_select "template", /待补齐/
     end
     assert_select "turbo-stream[action='update'][target='global_toast']"
   end

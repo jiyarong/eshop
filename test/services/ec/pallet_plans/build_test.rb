@@ -34,27 +34,38 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
   end
 
   test "single mode rejects overfilling instead of splitting the manifest" do
-    @sku.dimension.update!(outer_length_cm: 120, outer_width_cm: 80, outer_height_cm: 200)
+    @sku.dimension.update!(outer_length_cm: 120, outer_width_cm: 80, outer_height_cm: 80)
     @sku.batches.first.update!(received_quantity: 30, purchased_quantity: 30)
 
     error = assert_raises(Ec::PalletPlans::Error) do
-      Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 2).merge(packing_mode: "single")).call
+      Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 3).merge(packing_mode: "single")).call
     end
     assert_equal :single_pallet_capacity, error.key
 
     built = Ec::PalletPlans::Build.new(user: @user,
-      attributes: attributes(quantity: 2).merge(packing_mode: "single", recommend_one: true)).call
+      attributes: attributes(quantity: 3).merge(packing_mode: "single", recommend_one: true)).call
     assert_equal 1, built[:result][:pallets].size
-    assert_equal 1, built[:items].first[:quantity]
+    assert_equal 2, built[:items].first[:quantity]
     assert_equal @product.id, built[:items].first[:sku_product_id]
-    assert_equal 1, built[:result][:total_boxes]
+    assert_equal 2, built[:result][:total_boxes]
 
     plan = Ec::PalletPlans::Save.new(user: @user,
-      attributes: attributes(quantity: 2).merge(packing_mode: "single", recommend_one: true)).call
+      attributes: attributes(quantity: 3).merge(packing_mode: "single", recommend_one: true)).call
     assert_equal "draft", plan.status
     assert_equal 1, plan.pallets.count
-    assert_equal [1], plan.items.pluck(:boxes)
-    assert_equal 1, plan.calculation.fetch("total_boxes")
+    assert_equal [2], plan.items.pluck(:boxes)
+    assert_equal 2, plan.calculation.fetch("total_boxes")
+  end
+
+  test "rejects Ozon FBO oversize packaging before building a plan" do
+    @sku.dimension.update!(outer_length_cm: 221)
+
+    error = assert_raises(Ec::PalletPlans::Error) do
+      Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 1)).call
+    end
+
+    assert_equal :ozon_oversize, error.key
+    assert_equal @sku.sku_code, error.details[:sku]
   end
 
   private

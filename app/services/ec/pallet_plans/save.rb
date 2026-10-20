@@ -19,7 +19,7 @@ module Ec
           plan.pallets.destroy_all
           plan.items.destroy_all
           product_by_code = Ec::SkuProduct.where(id: built[:items].filter_map { |item| item[:sku_product_id] }).index_by(&:id)
-          plan_items = built[:items].to_h { |item| [item[:sku_code], plan.items.create!(sku_code: item[:sku_code], sku_product: product_by_code.fetch(item[:sku_product_id]), platform_sku_id: product_by_code.fetch(item[:sku_product_id]).platform_sku_id.to_s, boxes: item[:quantity], pcs: item[:pcs].to_i, units: item[:quantity].to_i * item[:pcs].to_i, packaging: item.slice(:length, :width, :height, :weight, :pcs, :unit_volume_l), shortage: 0)] }
+            plan_items = built[:items].to_h { |item| [item[:sku_code], plan.items.create!(sku_code: item[:sku_code], sku_product: product_by_code.fetch(item[:sku_product_id]), platform_sku_id: product_by_code.fetch(item[:sku_product_id]).platform_sku_id.to_s, boxes: item[:quantity], pcs: item[:pcs].to_i, units: item[:quantity].to_i * item[:pcs].to_i, packaging: item.slice(:length, :width, :height, :weight, :pcs, :unit_volume_l, :ozon_size_category), shortage: 0)] }
           built[:result][:pallets].each_with_index do |pallet, index|
             record = plan.pallets.create!(position: index + 1, layout: pallet, metrics: pallet.slice(:height, :gross_weight, :cargo_l, :boxes, :units))
             pallet[:zones].each do |zone|

@@ -40,6 +40,7 @@ class Ec::PalletPlans::WorkbenchQueryTest < ActiveSupport::TestCase
     assert_equal 65, row[:fbs_available]
     assert_equal 65, row[:fbs_allocatable]
     assert row[:packaging_complete]
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL, row[:ozon_size_category]
     assert_nil row[:exclusion_reason]
   end
 
@@ -66,6 +67,16 @@ class Ec::PalletPlans::WorkbenchQueryTest < ActiveSupport::TestCase
     row = query[:rows].sole
     assert_equal :ambiguous_listing, row[:exclusion_reason]
     assert_nil row[:sku_product_id]
+    assert_equal 0, row[:suggested_boxes]
+  end
+
+  test "does not recommend an Ozon FBO oversize carton" do
+    @sku.dimension.update!(outer_length_cm: 221)
+
+    row = query[:rows].sole
+
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE, row[:ozon_size_category]
+    assert_equal :ozon_oversize, row[:exclusion_reason]
     assert_equal 0, row[:suggested_boxes]
   end
 

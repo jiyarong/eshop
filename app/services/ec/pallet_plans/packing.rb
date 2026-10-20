@@ -34,6 +34,7 @@ module Ec
         @items = rows.map do |item|
           fail_input(:sku_unavailable) if item[:sku_code].blank?
           quantity = quantity!(item[:quantity], item[:sku_code])
+          item = item.merge(ozon_size_category: size_category_for(item))
           # A solo recommendation supplies both canonical normalization/validation
           # and an upper bound on how many cartons a candidate needs to consider.
           result = calculate([item.merge(quantity: nil)])
@@ -72,13 +73,15 @@ module Ec
       end
 
       def candidate_groups(pending, remaining)
-        by_volume = pending.sort_by { |index| [-carton_volume(index) * remaining[index], index] }
-        by_weight = pending.sort_by { |index| [-@items[index][:weight] * remaining[index], index] }
-        small_cartons = pending.sort_by { |index| [carton_volume(index), index] }
-        [pending.first(MAX_SKUS_PER_PALLET), pending.last(MAX_SKUS_PER_PALLET),
-          by_volume.first(MAX_SKUS_PER_PALLET), by_weight.first(MAX_SKUS_PER_PALLET),
-          ([pending.first] + small_cartons).uniq.first(MAX_SKUS_PER_PALLET),
-          ([by_volume.first] + small_cartons).uniq.first(MAX_SKUS_PER_PALLET)].map(&:sort).uniq
+        pending.group_by { |index| @items[index][:ozon_size_category] }.values.flat_map do |group|
+          by_volume = group.sort_by { |index| [-carton_volume(index) * remaining[index], index] }
+          by_weight = group.sort_by { |index| [-@items[index][:weight] * remaining[index], index] }
+          small_cartons = group.sort_by { |index| [carton_volume(index), index] }
+          [group.first(MAX_SKUS_PER_PALLET), group.last(MAX_SKUS_PER_PALLET),
+            by_volume.first(MAX_SKUS_PER_PALLET), by_weight.first(MAX_SKUS_PER_PALLET),
+            ([group.first] + small_cartons).uniq.first(MAX_SKUS_PER_PALLET),
+            ([by_volume.first] + small_cartons).uniq.first(MAX_SKUS_PER_PALLET)].map(&:sort).uniq
+        end
       end
 
       def candidate_pallet(indices, remaining)
@@ -112,6 +115,8 @@ module Ec
           fail_input(:allocation_mismatch, sku: item[:sku_code]) unless totals[index] == item[:quantity]
         end
         groups.each_with_index.map do |group, pallet_index|
+          categories = group.map { |index, _quantity| @items[index][:ozon_size_category] }.uniq
+          fail_input(:mixed_ozon_size_categories, pallet: pallet_index + 1) if categories.size > 1
           fail_input(:allocation_pallet, pallet: pallet_index + 1) if group.any? { |index, quantity| quantity > @capacities[index] }
           result = calculate(group.map { |index, quantity| @items[index].merge(quantity: quantity) })
           fail_input(:allocation_pallet, pallet: pallet_index + 1) unless result[:pallets].one?
@@ -134,6 +139,12 @@ module Ec
 
       def calculate(items)
         PalletPacking::Calculator.new(profile: PROFILE, items: items, settings: @settings).call
+      end
+
+      def size_category_for(item)
+        Ec::SkuDimension.ozon_size_category_for(
+          length: item[:length], width: item[:width], height: item[:height], weight: item[:weight]
+        )
       end
 
       def fail_input(key, **details)

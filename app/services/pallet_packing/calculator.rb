@@ -56,7 +56,7 @@ module PalletPacking
       ITEM_FIELDS.each do |field|
         fail_input(:item_field, sku: item[:sku_code], field: field) if item[field].present? && decimal(item[field]).nil?
       end
-      item.slice(:sku_code, :name, :rotatable, :fashion).merge(
+      item.slice(:sku_code, :name, :rotatable, :fashion, :ozon_size_category).merge(
         ITEM_FIELDS.to_h { |field| [field, decimal(item[field])] },
         rotatable: ActiveModel::Type::Boolean.new.cast(item[:rotatable]) == true,
         fashion: ActiveModel::Type::Boolean.new.cast(item[:fashion]) == true

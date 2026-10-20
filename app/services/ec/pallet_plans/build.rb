@@ -78,7 +78,15 @@ module Ec
         raise Error.new(:missing_packaging, sku: product.sku_code) unless packaging.values_at(:length, :width, :height, :weight, :pcs).all?(&:present?)
         quantity = Integer(row[:quantity])
         raise Error.new(:invalid_quantity, sku: product.sku_code) unless quantity.positive?
-        packaging.merge(sku_code: product.sku_code, name: product.sku.product_name, quantity: quantity,
+        ozon_size_category = Ec::SkuDimension.ozon_size_category_for(
+          length: packaging[:length], width: packaging[:width], height: packaging[:height], weight: packaging[:weight]
+        )
+        raise Error.new(:ozon_oversize, sku: product.sku_code) if ozon_size_category == Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE
+        packaging.merge(
+          sku_code: product.sku_code,
+          name: product.sku.product_name,
+          quantity: quantity,
+          ozon_size_category: ozon_size_category,
           rotatable: row[:rotatable], fashion: row[:fashion], sku_product_id: product.id)
       rescue ArgumentError, TypeError
         raise Error.new(:invalid_quantity, sku: product.sku_code)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_042853) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_19_080407) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -916,6 +916,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_042853) do
     t.decimal "outer_height_cm", precision: 8, scale: 2
     t.decimal "outer_length_cm", precision: 8, scale: 2
     t.decimal "outer_width_cm", precision: 8, scale: 2
+    t.string "ozon_size_category"
     t.string "sku_code", null: false
     t.datetime "updated_at", null: false
     t.index ["sku_code"], name: "idx_ec_sku_dimensions_sku_code", unique: true

@@ -46,6 +46,30 @@ class Ec::PalletPlans::PackingTest < ActiveSupport::TestCase
     assert_platform_limits(result)
   end
 
+  test "automatic pallets keep Ozon size categories separate" do
+    result = pack([
+      item("NORMAL", ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL),
+      item("KGT", length: 45, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT)
+    ])
+
+    assert_equal 2, result[:pallets].size
+    result[:pallets].each do |pallet|
+      categories = pallet[:zones].map { |zone| result[:items][zone[:item_index]][:ozon_size_category] }.uniq
+      assert_equal 1, categories.size
+    end
+  end
+
+  test "manual pallets reject mixed Ozon size categories" do
+    error = assert_raises(Ec::PalletPlans::Packing::InvalidInput) do
+      pack([
+        item("NORMAL", quantity: 1, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL),
+        item("KGT", quantity: 1, length: 45, ozon_size_category: Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT)
+      ], allocations: [{ items: [{ sku_code: "NORMAL", quantity: 1 }, { sku_code: "KGT", quantity: 1 }] }])
+    end
+
+    assert_equal :mixed_ozon_size_categories, error.key
+  end
+
   test "manual overfilled pallets are rejected instead of silently split" do
     error = assert_raises(Ec::PalletPlans::Packing::InvalidInput) do
       pack([item(length: 120, width: 80, height: 200, quantity: 2)],

@@ -61,6 +61,7 @@
           <th style="width: 110px; text-align: right"><%= t("erp.sku_dimensions.fields.outer_volume_l") %></th>
           <th style="width: 120px; text-align: right"><%= t("erp.sku_dimensions.fields.outer_box_weight_kg") %></th>
           <th style="width: 100px; text-align: right"><%= t("erp.sku_dimensions.fields.outer_box_pcs") %></th>
+          <th style="width: 130px"><%= t("erp.sku_dimensions.fields.ozon_size_category") %></th>
         </tr>
       </thead>
       <tbody>
@@ -81,11 +82,12 @@
               <td class="num"><%= erp_value(dimension.outer_volume_l) %></td>
               <td><%= render "shared/inline_edit_cell", **sku_dimension_inline_cell_locals(dimension, :outer_box_weight_kg) %></td>
               <td><%= render "shared/inline_edit_cell", **sku_dimension_inline_cell_locals(dimension, :outer_box_pcs) %></td>
+              <td class="num"><span id="<%= sku_dimension_category_frame_id(dimension.sku_code) %>"><%= t("erp.sku_dimensions.categories.#{dimension.ozon_size_category || Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN}") %></span></td>
             </tr>
           <% end %>
         <% else %>
           <tr>
-            <td colspan="13" class="empty-state">
+            <td colspan="14" class="empty-state">
               <i class="bi bi-inbox" aria-hidden="true"></i>
               <%= t("erp.sku_dimensions.empty.no_skus") %>
             </td>

@@ -3258,6 +3258,12 @@ ru:
         outer_length_cm: "Внеш. длина см"
         outer_volume_l: "Внеш. объем L"
         outer_width_cm: "Внеш. ширина см"
+        ozon_size_category: "Категория размера Ozon"
+      categories:
+        unknown: "Не заполнено"
+        normal: "Обычный товар"
+        kgt: "Крупногабаритный KGT"
+        oversize: "Сверх лимита"
       filters:
         sku: "SKU"
         sku_placeholder: "Поиск SKU"

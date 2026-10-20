@@ -57,6 +57,7 @@
             <table class="inventory-list-table pallet-workbench__stock-table">
               <thead><tr><th><%= t("pallet_workbench.select") %></th>
                 <% %w[sku_code shortage days_of_stock fbs_allocatable].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key %><% end %>
+                <th><%= t("pallet_workbench.fields.ozon_size_category") %></th>
                 <th><%= t("pallet_workbench.fields.suggested_boxes") %></th>
                 <% %w[daily_sales sales_quantity available inbound].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key, class_name: "pallet-workbench__stock-detail" %><% end %>
                 <th class="pallet-workbench__stock-detail"><%= t("pallet_workbench.fields.reserved_quantity") %></th>
@@ -66,6 +67,7 @@
                 <td><strong><%= row[:sku_code] %></strong><small class="pallet-workbench__product"><%= row[:product_name] %></small><small class="pallet-workbench__hint"><%= row[:operator_name] %></small></td>
                 <% %i[shortage days_of_stock].each do |key| %><td class="numeric"><%= row[key].nil? ? t("common.empty_value") : number_with_precision(row[key], precision: 0) %></td><% end %>
                 <td class="numeric"><% if row[:reserved_quantity].to_i.positive? %><del><%= row[:fbs_available] %></del><br><% end %><strong><%= row[:fbs_allocatable] %></strong><small class="pallet-workbench__hint"><%= t("pallet_workbench.carton_size", count: row[:pcs]) if row[:pcs].to_i.positive? %></small></td>
+                <td><%= t("pallet_workbench.categories.#{row[:ozon_size_category] || Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN}") %></td>
                 <td class="numeric"><strong><%= row[:suggested_boxes] %></strong><% if row[:exclusion_reason].present? %><small class="pallet-workbench__exclusion"><%= t("pallet_workbench.exclusions.#{row[:exclusion_reason]}", default: t("pallet_workbench.exclusions.packaging_incomplete")) %></small><% end %></td>
                 <% %i[daily_sales sales_quantity available inbound].each do |key| %><td class="numeric pallet-workbench__stock-detail"><%= number_with_precision(row[key], precision: key == :daily_sales ? 2 : 0) %></td><% end %>
                 <td class="numeric pallet-workbench__stock-detail"><%= row[:reserved_quantity] %></td>

@@ -53,4 +53,22 @@ class Ec::SkuDimensionTest < ActiveSupport::TestCase
     assert_equal BigDecimal("5"), cost.reload.pkg_length_cm
     assert_equal BigDecimal("0.21"), cost.pkg_volume_l
   end
+
+  test "calculates and persists the Ozon FBO size category from final carton values" do
+    dimension = Ec::SkuDimension.create!(sku_code: @sku_code,
+      outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20, outer_box_weight_kg: 10)
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL, dimension.ozon_size_category
+
+    dimension.update!(outer_length_cm: 45)
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT, dimension.reload.ozon_size_category
+
+    dimension.update!(outer_length_cm: 221)
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE, dimension.reload.ozon_size_category
+  end
+
+  test "uses unknown when a required final carton value is missing" do
+    dimension = Ec::SkuDimension.create!(sku_code: @sku_code, outer_length_cm: 40, outer_width_cm: 30, outer_height_cm: 20)
+
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN, dimension.ozon_size_category
+  end
 end

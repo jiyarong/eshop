@@ -28,9 +28,10 @@ module InlineEditableResponse
     end
   end
 
-  def render_inline_edit_success(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:)
+  def render_inline_edit_success(frame_id:, feedback_target:, cell_partial:, cell_locals:, message:, additional_streams: [])
     render turbo_stream: [
       turbo_stream.replace(frame_id, partial: cell_partial, locals: cell_locals),
+      *Array(additional_streams),
       turbo_stream.update(feedback_target, global_toast_markup(tone: :success, message: message))
     ]
   end

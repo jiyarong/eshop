@@ -69,6 +69,10 @@ module Erp
       "sku_dimension_#{inline_record_key(sku_code)}_#{field}_cell"
     end
 
+    def sku_dimension_category_frame_id(sku_code)
+      "sku_dimension_#{inline_record_key(sku_code)}_ozon_size_category_cell"
+    end
+
     def sku_batch_inline_feedback_target(sku)
       inline_edit_toast_target
     end

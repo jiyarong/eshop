@@ -109,7 +109,13 @@ en:
       fbs_allocatable: Allocatable FBS
       reserved_quantity: Reserved units
       pcs: Units per carton
+      ozon_size_category: Ozon size category
       suggested_boxes: Suggested cartons
+    categories:
+      unknown: Incomplete
+      normal: Regular
+      kgt: KGT bulky
+      oversize: Oversize
     statuses:
       draft: Draft
       reserved: Confirmed
@@ -121,6 +127,7 @@ en:
     errors:
       single_pallet_limit: "One pallet supports up to 5 SKUs. Remove SKUs or switch to multiple pallets."
       single_pallet_capacity: "These quantities do not fit one pallet. Fit the current manifest automatically, reduce cartons, or switch to multiple pallets."
+      mixed_ozon_size_categories: "SKUs with different Ozon size categories cannot share a pallet. Split the pallet allocation."
       invalid_input: Invalid input. Check store, cluster, dates and carton parameters.
       invalid_store: Select a valid Ozon store.
       invalid_cluster: This cluster is not mapped to the selected store.
@@ -128,6 +135,7 @@ en:
       invalid_items: "Complete packaging and enter positive whole carton counts within available stock."
       sku_unavailable: The selection includes an unavailable or inaccessible SKU.
       ambiguous_listing: A SKU has multiple listings in this store and cannot be resolved.
+      ozon_oversize: "The carton exceeds Ozon FBO limits and cannot be supplied on a regular pallet. Use an eligible delivery mode."
       missing_packaging: Complete carton dimensions, weight and units per carton.
       invalid_quantity: Carton quantities must be positive integers.
       insufficient_stock: Insufficient allocatable stock. Reduce carton quantities
@@ -157,6 +165,7 @@ en:
       sync_failed: Platform supply status sync failed. Try again later.
     exclusions:
       ambiguous_listing: Multiple listings exist for this store
+      ozon_oversize: Carton exceeds Ozon FBO limits
       unavailable: No allocatable full cartons
       packaging_incomplete: Incomplete packaging
       stock_unavailable: No allocatable full cartons
