@@ -1027,13 +1027,13 @@ test("hovering a quoted step lights up that step's row", () => {
   assert.deepEqual([row, hovered, otherRow].map((element) => element.classes.has("is-formula-linked")), [true, true, false]);
 });
 
-test("the logistics mode is only named at the top and switched on the platform logistics row", async () => {
+test("the logistics mode is only named at the top and switched on a row of its own", async () => {
   const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
   const view = await readFile("app/views/reports/_sku_profit_prediction.html.erb", "utf8");
 
   assert.match(view, /data-profit-prediction-target="logisticsModeCurrent"/);
   assert.doesNotMatch(view, /logisticsModeButton|logisticsModeHint|logisticsModeAlternative/);
-  assert.match(source, /key === "platform_logistics"/);
+  assert.match(source, /key === "logistics_mode"/);
   assert.match(source, /data-logistics-mode-control/);
   assert.match(source, /radio\.type = "radio"/);
   assert.match(source, /radio\.dataset\.action = "change->profit-prediction#selectLogisticsMode"/);

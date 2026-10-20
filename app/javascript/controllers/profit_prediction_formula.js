@@ -61,7 +61,7 @@ export function evaluateFormula(tokens) {
 //              labels      { fields, steps, formula }  (the translated names) }
 // Each step is { key, label, formula, result, unit, fields, source, note }, where
 // `fields` are the parameters whose inputs are shown on that row, `unit` is "cny", "rub",
-// "liter" or "percent" and a string `formula` is shown as is. A step flagged `inactive`, or a field in its
+// "liter" or "percent" and a string `formula` is shown as is. A `control` step carries the logistics mode switch and no figure. A step flagged `inactive`, or a field in its
 // `inactiveFields`, is on the page but does not count in the calculation (see logisticsMode).
 export function buildCalculationSteps({ platform, market, deliveryMode, companyType, logisticsMode, inputs, data, labels }) {
   const costs = data.cost_breakdown || {};
@@ -130,6 +130,9 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     intermediate.billed_volume_l, "liter", ["length_cm", "width_cm", "height_cm"]);
   step("return_rate", [P("return_rate", returnRate)], returnRate * 100, "percent", ["return_rate"],
     { source: "actual_return_rate" });
+
+  // Not a calculation: the row that holds the switch between the fixed freight formula and the real figures.
+  step("logistics_mode", "", null, null, [], { control: true });
 
   if (wb) {
     const baseFee = numberOr(inputs.wb_logistics_base_rub, companyType === "general" ? 60 : 46);

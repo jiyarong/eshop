@@ -35,7 +35,7 @@ const labels = {
   },
   steps: {
     revenue: "收入", goods: "商品成本", duty: "关税", import_vat: "进口增值税", volume: "商品体积",
-    billed_volume: "计费体积", base_logistics: "基础物流费", return_rate: "退货率", return_amortized: "退货运费折算",
+    billed_volume: "计费体积", logistics_mode: "物流费模式", base_logistics: "基础物流费", return_rate: "退货率", return_amortized: "退货运费折算",
     platform_logistics: "平台物流费", cross_docking: "越库费", returns: "退货费用", storage: "仓储费", commission: "佣金",
     platform_subsidy: "平台净补贴（参考）", acquiring: "收单费", advertising: "广告费", tax: "销售税", other: "其他成本",
     total_cost: "总成本", profit: "利润", margin: "利润率",
@@ -237,6 +237,10 @@ test("WB keeps every freight row and parameter in place and flags what does not 
   const formula = stepsIn("formula", { outbound_logistics_rub: 250, return_logistics_rub: 120 });
   const actual = stepsIn("actual", { outbound_logistics_rub: 250, return_logistics_rub: 120 }, "actual");
   assert.deepEqual(layout(formula), layout(actual), "switching the mode must not add or remove a row or a field");
+
+  const order = formula.map((step) => step.key);
+  assert.equal(order[order.indexOf("return_rate") + 1], "logistics_mode", "the switch has its own row right under the return rate");
+  assert.ok(stepOf(formula, "logistics_mode").control);
 
   assert.equal(stepOf(formula, "base_logistics").inactive, false);
   assert.deepEqual(stepOf(formula, "platform_logistics").inactiveFields, ["outbound_logistics_rub"]);

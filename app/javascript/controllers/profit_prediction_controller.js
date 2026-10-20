@@ -1241,7 +1241,8 @@ export default class extends Controller {
         key: step.key,
         note: step.note,
         inactive: step.inactive,
-        inactiveFields: step.inactiveFields
+        inactiveFields: step.inactiveFields,
+        control: step.control
       });
     });
   }
@@ -1277,7 +1278,7 @@ export default class extends Controller {
     return invalidFields;
   }
 
-  appendProcessStep(label, formula, result, unit, parameterFields = [], sourceKey = null, { key = null, note = null, inactive = false, inactiveFields = [] } = {}) {
+  appendProcessStep(label, formula, result, unit, parameterFields = [], sourceKey = null, { key = null, note = null, inactive = false, inactiveFields = [], control = false } = {}) {
     const stepIndex = this.processStepIndex++;
     let row = this.detailBodyTarget.querySelector(`[data-process-step-index='${stepIndex}']`);
     if (!row) {
@@ -1304,9 +1305,9 @@ export default class extends Controller {
     this.renderProcessParameters(parameterCell, this.selectedRow, newFields, inactive ? parameterFields : inactiveFields).forEach((field) => {
       this.renderedProcessParameters.add(field);
     });
-    // The mode switch sits on its own line under the freight parameters; a row reused by another step drops it.
+    // The mode switch has a row of its own, under the return rate; a row reused by another step drops it.
     parameterCell.querySelector("[data-logistics-mode-control]")?.remove();
-    if (key === "platform_logistics" && this.selectedRow) {
+    if (key === "logistics_mode" && this.selectedRow) {
       const control = document.createElement("div");
       control.className = "profit-prediction-process__logistics-mode";
       control.dataset.logisticsModeControl = "";
@@ -1316,7 +1317,7 @@ export default class extends Controller {
     this.renderProcessSource(sourceCell, sourceKey);
     calculationCell.className = "profit-prediction-process__calculation";
     this.renderProcessFormula(formulaElement, formula);
-    resultElement.textContent = this.formatProcessResult(result, unit);
+    resultElement.textContent = control ? "" : this.formatProcessResult(result, unit);
     this.renderProcessNote(calculationCell, note);
     if (key) row.dataset.processStepKey = key;
     else delete row.dataset.processStepKey;
