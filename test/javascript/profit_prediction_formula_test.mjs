@@ -35,7 +35,7 @@ const labels = {
   },
   steps: {
     revenue: "收入", goods: "商品成本", duty: "关税", import_vat: "进口增值税", volume: "商品体积",
-    billed_volume: "计费体积", logistics_mode: "物流费模式", base_logistics: "基础物流费", return_rate: "退货率", return_amortized: "退货运费折算",
+    billed_volume: "计费体积", delivered_rate: "成交签收率", logistics_mode: "物流费模式", base_logistics: "基础物流费", return_rate: "退货率", return_amortized: "退货运费折算",
     platform_logistics: "平台物流费", cross_docking: "越库费", returns: "退货费用", storage: "仓储费", commission: "佣金",
     platform_subsidy: "平台净补贴（参考）", acquiring: "收单费", advertising: "广告费", tax: "销售税", other: "其他成本",
     total_cost: "总成本", profit: "利润", margin: "利润率",
@@ -130,7 +130,7 @@ test("WB's return step uses the outbound fee without the inbound delivery, and n
     const returns = stepsFor(testCase).find((step) => step.key === "returns");
 
     assert.ok(!returns.fields.includes("logistics_tax_rate"), testCase.name);
-    assert.match(formulaLines(returns.formula, format).named, /^\( 去程物流费 \+ .* ÷ 汇率 \) × 退货率 ÷ \( 1 − 退货率 \)$/);
+    assert.match(formulaLines(returns.formula, format).named, /^\( 去程物流费 × 退货率 ÷ 成交签收率 \) \+ \( .* ÷ 汇率 × 退货率 ÷ 成交签收率 \)$/, "two terms: the failed parcels' outbound and their return leg");
   });
 });
 
@@ -175,8 +175,9 @@ test("legacy sheet parameters the calculator applies are shown in the formulas",
   assert.ok(hidden.some((step) => step.key === "import_vat"));
   assert.ok(!standard.some((step) => step.key === "import_vat"), "Ozon Russia shows no import VAT line unless part of it is a cost");
   assert.equal(named(hidden, "tax"), "收入 × 税率");
-  assert.match(named(hidden, "return_amortized"), /× 退货折算系数 ÷ 汇率$/);
-  assert.match(named(standard, "return_amortized"), /× \( 退货率 ÷ \( 1 − 退货率 \) \) ÷ 汇率$/);
+  assert.equal(named(hidden, "return_amortized"), "( 去程物流 × 退货折算系数 ÷ 汇率 ) + ( 返程物流 × 退货折算系数 ÷ 汇率 )");
+  assert.equal(named(standard, "return_amortized"), "( 去程物流 × 退货率 ÷ 成交签收率 ÷ 汇率 ) + ( 返程物流 × 退货率 ÷ 成交签收率 ÷ 汇率 )");
+  assert.equal(named(standard, "delivered_rate"), "1 − 退货率");
 });
 
 test("an incomplete scenario still builds every step, with blanks instead of numbers", () => {
@@ -239,7 +240,8 @@ test("WB keeps every freight row and parameter in place and flags what does not 
   assert.deepEqual(layout(formula), layout(actual), "switching the mode must not add or remove a row or a field");
 
   const order = formula.map((step) => step.key);
-  assert.equal(order[order.indexOf("return_rate") + 1], "logistics_mode", "the switch has its own row right under the return rate");
+  assert.deepEqual(order.slice(order.indexOf("return_rate"), order.indexOf("return_rate") + 3), ["return_rate", "delivered_rate", "logistics_mode"],
+    "the delivered rate and then the switch sit right under the return rate");
   assert.ok(stepOf(formula, "logistics_mode").control);
 
   assert.equal(stepOf(formula, "base_logistics").inactive, false);

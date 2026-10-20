@@ -75,7 +75,7 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     type: "field", field, name: formulaFieldName(fieldLabel(field)), value, percent
   });
   const P = (field, value) => F(field, value === undefined ? inputs[field] : value, true);
-  const C = (key, value) => ({ type: "calc", key, name: labels.steps[key], value });
+  const C = (key, value, percent = false) => ({ type: "calc", key, name: labels.steps[key], value, percent });
   // A value the backend applies but the page has no input for (legacy sheet parameters).
   const N = (value) => ({ type: "const", value });
   const H = (field, value, percent = false) => ({ type: "field", field: null, name: formulaFieldName(labels.formula?.[field] ?? field), value, percent });
@@ -91,7 +91,10 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
   const dutyRate = numberOr(inputs.duty_rate, 0.1);
   const importVatRate = numberOr(inputs.import_vat_rate, 0.2);
   const returnRate = wb ? inputs.return_rate : numberOr(inputs.return_rate, 0.1);
-  const returnAmortization = (rate) => [P("return_rate", rate), "÷", "(", N(1), "−", P("return_rate", rate), ")"];
+  // What the failed parcels (returned or cancelled) cost is spread over the parcels that were delivered and kept:
+  // return rate ÷ delivered rate, "the failed parcels per delivered one".
+  const deliveredRate = 1 - numberOr(returnRate, 0);
+  const returnAmortization = (rate) => [P("return_rate", rate), "÷", C("delivered_rate", 1 - numberOr(rate, 0), true)];
 
   // Revenue is the commission base price on every platform; the buyer-paid price never enters
   // it (it only feeds the platform subsidy step).
@@ -130,6 +133,7 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     intermediate.billed_volume_l, "liter", ["length_cm", "width_cm", "height_cm"]);
   step("return_rate", [P("return_rate", returnRate)], returnRate * 100, "percent", ["return_rate"],
     { source: "actual_return_rate" });
+  step("delivered_rate", [N(1), "−", P("return_rate", returnRate)], deliveredRate * 100, "percent", ["return_rate"]);
 
   // Not a calculation: the row that holds the switch between the fixed freight formula and the real figures.
   step("logistics_mode", "", null, null, [], { control: true });
@@ -165,9 +169,10 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     const returnBase = hasActualReturn
       ? F("return_logistics_rub")
       : F("wb_fixed_return_base_rub", numberOr(inputs.wb_fixed_return_base_rub, 50));
+    // Two terms: the outbound fee of the failed parcels (charged and not refunded) and their return leg.
     step("returns", [
-      "(", H("logistics_ex_fbo", intermediate.platform_logistics_cny), "+", returnBase, "÷", F("exchange_rate_rub_cny", exchange), ")",
-      "×", ...returnAmortization(returnRate)
+      "(", H("logistics_ex_fbo", intermediate.platform_logistics_cny), "×", ...returnAmortization(returnRate), ")", "+",
+      "(", returnBase, "÷", F("exchange_rate_rub_cny", exchange), "×", ...returnAmortization(returnRate), ")"
     ], costs.returns, "cny", ["return_rate", "return_logistics_rub", "wb_fixed_return_base_rub", "exchange_rate_rub_cny"],
     { inactiveFields: [hasActualReturn ? "wb_fixed_return_base_rub" : "return_logistics_rub"] });
   } else {
@@ -200,12 +205,13 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
         { source: crossDocking ? "ozon_cross_dock_tariffs" : null, note: crossDocking ? labels.crossDockingInOther : null });
     }
 
+    const factor = hasOverride
+      ? [F("return_amortization_factor_override", numberOr(intermediate.return_amortization_factor, factorOverride))]
+      : returnAmortization(returnRate);
+    // Two terms: the outbound fee of the failed parcels and their return leg.
     step("return_amortized", [
-      "(", F("outbound_logistics_rub"), "+", F("return_logistics_rub"), ")", "×",
-      ...(hasOverride
-        ? [F("return_amortization_factor_override", numberOr(intermediate.return_amortization_factor, factorOverride))]
-        : ["(", ...returnAmortization(returnRate), ")"]),
-      "÷", F("exchange_rate_rub_cny", exchange)
+      "(", F("outbound_logistics_rub"), "×", ...factor, "÷", F("exchange_rate_rub_cny", exchange), ")", "+",
+      "(", F("return_logistics_rub"), "×", ...factor, "÷", F("exchange_rate_rub_cny", exchange), ")"
     ], costs.returns, "cny", ["outbound_logistics_rub", "return_logistics_rub", "return_amortization_factor_override", "return_rate", "exchange_rate_rub_cny"]);
   }
 
