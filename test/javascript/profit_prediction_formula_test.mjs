@@ -98,7 +98,11 @@ test("the cost steps add up to the calculator's total cost, counting cross-docki
     const steps = Object.fromEntries(stepsFor(testCase).map((step) => [step.key, step]));
     const costKeys = ["goods", "duty", "import_vat", "platform_logistics", "storage", "commission", "acquiring", "advertising", "tax", "other"]
       .concat(testCase.platform === "wb" ? ["returns"] : ["return_amortized"]);
-    const total = costKeys.filter((key) => steps[key]).reduce((sum, key) => sum + Number(steps[key].result), 0);
+    const total = costKeys.filter((key) => steps[key]).reduce((sum, key) => {
+      // The fee steps are worked out in roubles.
+      const result = Number(steps[key].result);
+      return sum + (steps[key].unit === "rub" ? result / testCase.inputs.exchange_rate_rub_cny : result);
+    }, 0);
     // WB books import VAT as a cost line even when Ozon Russia does not show one.
     const expectedTotal = testCase.expected.total_cost_cny - (steps.import_vat ? 0 : testCase.expected.cost_breakdown.import_vat);
 
@@ -130,7 +134,7 @@ test("WB's return step uses the outbound fee without the inbound delivery, and n
     const returns = stepsFor(testCase).find((step) => step.key === "returns");
 
     assert.ok(!returns.fields.includes("logistics_tax_rate"), testCase.name);
-    assert.match(formulaLines(returns.formula, format).named, /^\( 去程物流费 × 退货率 ÷ 成交签收率 \) \+ \( .* ÷ 汇率 × 退货率 ÷ 成交签收率 \)$/, "two terms: the failed parcels' outbound and their return leg");
+    assert.match(formulaLines(returns.formula, format).named, /^\( 去程物流费 × 退货率 ÷ 成交签收率 \) \+ \( .* × 退货率 ÷ 成交签收率 \)$/, "two terms: the failed parcels' outbound and their return leg");
   });
 });
 
@@ -138,21 +142,21 @@ test("WB names the logistics source the calculator actually used", () => {
   const platformLogistics = (name) => stepsFor(cases.find((testCase) => testCase.name === name))
     .find((step) => step.key === "platform_logistics");
 
-  assert.match(formulaLines(platformLogistics("wb_general_coefficient").formula, format).named, /基础物流费 × 物流系数 ÷ 汇率$/);
-  assert.match(formulaLines(platformLogistics("wb_small_actual_logistics").formula, format).named, /去程物流 ÷ 汇率$/);
-  assert.match(formulaLines(platformLogistics("wb_small_override_and_fixed_return").formula, format).named, /WB 物流费覆盖值$/);
+  assert.match(formulaLines(platformLogistics("wb_general_coefficient").formula, format).named, /送仓费 × 汇率 \+ 基础物流费 × 物流系数$/);
+  assert.match(formulaLines(platformLogistics("wb_small_actual_logistics").formula, format).named, /送仓费 × 汇率 \+ 去程物流$/);
+  assert.match(formulaLines(platformLogistics("wb_small_override_and_fixed_return").formula, format).named, /WB 物流费覆盖值 \) × 汇率$/);
 });
 
 test("Ozon's logistics step shows the warehouse surcharge rate and no longer asks for the return fee", () => {
   const standard = stepsFor(cases.find((testCase) => testCase.name === "ozon_ru_standard"));
   const logistics = standard.find((step) => step.key === "platform_logistics");
 
-  assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "warehouse_operation_rub", "exchange_rate_rub_cny"]);
+  assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "warehouse_operation_rub"]);
   assert.equal(
     formulaLines(logistics.formula, format).named,
-    "( 去程物流 + 仓库操作费 + 仓库操作费 × 2 × 仓库附加费率 ) ÷ 汇率",
+    "去程物流 + 仓库操作费 + 仓库操作费 × 2 × 仓库附加费率",
   );
-  assert.match(formulaLines(logistics.formula, format).values, /× 2 × 25% \)/);
+  assert.match(formulaLines(logistics.formula, format).values, /× 2 × 25%$/);
 });
 
 test("Ozon cross-docking is flagged as already inside other costs; Belarus shows it as not applicable", () => {
@@ -175,8 +179,8 @@ test("legacy sheet parameters the calculator applies are shown in the formulas",
   assert.ok(hidden.some((step) => step.key === "import_vat"));
   assert.ok(!standard.some((step) => step.key === "import_vat"), "Ozon Russia shows no import VAT line unless part of it is a cost");
   assert.equal(named(hidden, "tax"), "收入 × 税率");
-  assert.equal(named(hidden, "return_amortized"), "( 去程物流 × 退货折算系数 ÷ 汇率 ) + ( 返程物流 × 退货折算系数 ÷ 汇率 )");
-  assert.equal(named(standard, "return_amortized"), "( 去程物流 × 退货率 ÷ 成交签收率 ÷ 汇率 ) + ( 返程物流 × 退货率 ÷ 成交签收率 ÷ 汇率 )");
+  assert.equal(named(hidden, "return_amortized"), "( 去程物流 × 退货折算系数 ) + ( 返程物流 × 退货折算系数 )");
+  assert.equal(named(standard, "return_amortized"), "( 去程物流 × 退货率 ÷ 成交签收率 ) + ( 返程物流 × 退货率 ÷ 成交签收率 )");
   assert.equal(named(standard, "delivered_rate"), "1 − 退货率");
 });
 
@@ -199,8 +203,8 @@ test("an Ozon FBS scenario swaps the warehouse fee and cross-docking for the han
     const steps = stepsFor(testCase);
     const logistics = steps.find((step) => step.key === "platform_logistics");
 
-    assert.equal(formulaLines(logistics.formula, format).named, "( 去程物流 + FBS 交接配送费 ) ÷ 汇率", testCase.name);
-    assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "fbs_handover_rub", "exchange_rate_rub_cny"]);
+    assert.equal(formulaLines(logistics.formula, format).named, "去程物流 + FBS 交接配送费", testCase.name);
+    assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "fbs_handover_rub"]);
     assert.ok(!steps.some((step) => step.key === "cross_docking"), `${testCase.name}: FBS has no cross-docking row`);
     assert.ok(!formulaLines(steps.find((step) => step.key === "other").formula, format).named.includes("越库"), testCase.name);
   });
@@ -210,7 +214,7 @@ test("an FBS scenario without a handover input uses the calculator's default of 
   const testCase = cases.find((candidate) => candidate.name === "ozon_by_fbs_default_handover");
   const logistics = stepsFor(testCase).find((step) => step.key === "platform_logistics");
 
-  assert.equal(formulaLines(logistics.formula, format).values, "( 280 + 30 ) ÷ 11.2");
+  assert.equal(formulaLines(logistics.formula, format).values, "280 + 30");
 });
 
 test("only a scenario that pays storage offers the actual storage shortcut: an Ozon FBS one does not", () => {

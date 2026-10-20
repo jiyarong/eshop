@@ -3097,7 +3097,10 @@ export default class extends Controller {
       const amounts = dualCurrencyAmounts(result, sourceCurrency, this.processExchangeRate);
       if (!amounts) return "-";
 
-      return `${this.number(amounts.cny)}${this.processCurrencyUnits.cny} / ${this.number(amounts.rub)}${this.processCurrencyUnits.rub}`;
+      // The platform's own currency first: a step worked out in roubles reads rouble first, yuan as the reference.
+      const cny = `${this.number(amounts.cny)}${this.processCurrencyUnits.cny}`;
+      const rub = `${this.number(amounts.rub)}${this.processCurrencyUnits.rub}`;
+      return sourceCurrency === "rub" ? `${rub} / ${cny}` : `${cny} / ${rub}`;
     }
 
     const formattedResult = this.number(result);

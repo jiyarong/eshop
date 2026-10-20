@@ -80,6 +80,10 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
   const N = (value) => ({ type: "const", value });
   const H = (field, value, percent = false) => ({ type: "field", field: null, name: formulaFieldName(labels.formula?.[field] ?? field), value, percent });
 
+  // The platform's fees are in roubles; the yuan figure beside them is there for the reader. So the fee
+  // steps are worked out in roubles (only a parameter entered in yuan is converted) and their result is
+  // the rouble amount, shown with the yuan equivalent.
+  const toRub = (cny) => (hasValue(cny) && hasValue(exchange) ? Number(cny) * Number(exchange) : null);
   const steps = [];
   const step = (key, formula, result, unit, fields = [], extra = {}) => {
     steps.push({ key, label: labels.steps[key], formula, result, unit, fields, source: null, note: null, inactive: false, inactiveFields: [], ...extra });
@@ -157,12 +161,14 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       intermediate.base_logistics_rub, "rub", ["wb_logistics_base_rub", "wb_logistics_liter_rub"],
       { source: "wb_logistics_tariffs", inactive: !coefficientApplies });
 
-    const outbound = {
-      actual: [F("outbound_logistics_rub"), "÷", F("exchange_rate_rub_cny", exchange)],
-      override: [H("wb_logistics_override_cny", intermediate.platform_logistics_cny)],
-      coefficient: [C("base_logistics", intermediate.base_logistics_rub), "×", F("logistics_coeff"), "÷", F("exchange_rate_rub_cny", exchange)]
+    const exchangeToken = F("exchange_rate_rub_cny", exchange);
+    const deliveryRub = [fbo, "×", exchangeToken, "+"];
+    const platformLogistics = {
+      actual: [...deliveryRub, F("outbound_logistics_rub")],
+      override: ["(", fbo, "+", H("wb_logistics_override_cny", intermediate.platform_logistics_cny), ")", "×", exchangeToken],
+      coefficient: [...deliveryRub, C("base_logistics", intermediate.base_logistics_rub), "×", F("logistics_coeff")]
     }[logisticsSource];
-    step("platform_logistics", [fbo, "+", ...outbound], costs.logistics, "cny",
+    step("platform_logistics", platformLogistics, toRub(costs.logistics), "rub",
       ["fbo_delivery_cny", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"],
       { inactiveFields: [coefficientApplies ? "outbound_logistics_rub" : "logistics_coeff"] });
 
@@ -171,9 +177,9 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       : F("wb_fixed_return_base_rub", numberOr(inputs.wb_fixed_return_base_rub, 50));
     // Two terms: the outbound fee of the failed parcels (charged and not refunded) and their return leg.
     step("returns", [
-      "(", H("logistics_ex_fbo", intermediate.platform_logistics_cny), "×", ...returnAmortization(returnRate), ")", "+",
-      "(", returnBase, "÷", F("exchange_rate_rub_cny", exchange), "×", ...returnAmortization(returnRate), ")"
-    ], costs.returns, "cny", ["return_rate", "return_logistics_rub", "wb_fixed_return_base_rub", "exchange_rate_rub_cny"],
+      "(", H("logistics_ex_fbo", toRub(intermediate.platform_logistics_cny)), "×", ...returnAmortization(returnRate), ")", "+",
+      "(", returnBase, "×", ...returnAmortization(returnRate), ")"
+    ], toRub(costs.returns), "rub", ["return_rate", "return_logistics_rub", "wb_fixed_return_base_rub"],
     { inactiveFields: [hasActualReturn ? "wb_fixed_return_base_rub" : "return_logistics_rub"] });
   } else {
     const factorOverride = inputs.return_amortization_factor_override;
@@ -186,15 +192,13 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       // Seller-shipped: the parcel is handed over at a pickup point or sorting centre, so the
       // warehouse operation fee and its surcharge give way to a flat handover fee.
       step("platform_logistics", [
-        "(", F("outbound_logistics_rub"), "+", F("fbs_handover_rub", numberOr(inputs.fbs_handover_rub, 30)), ")",
-        "÷", F("exchange_rate_rub_cny", exchange)
-      ], costs.logistics, "cny", ["outbound_logistics_rub", "fbs_handover_rub", "exchange_rate_rub_cny"],
+        F("outbound_logistics_rub"), "+", F("fbs_handover_rub", numberOr(inputs.fbs_handover_rub, 30))
+      ], toRub(costs.logistics), "rub", ["outbound_logistics_rub", "fbs_handover_rub"],
       { source: "ozon_logistics_tariffs" });
     } else {
       step("platform_logistics", [
-        "(", F("outbound_logistics_rub"), "+", warehouse, "+", warehouse, "×", N(2), "×", H("ozon_warehouse_rate", warehouseRate, true), ")",
-        "÷", F("exchange_rate_rub_cny", exchange)
-      ], costs.logistics, "cny", ["outbound_logistics_rub", "warehouse_operation_rub", "exchange_rate_rub_cny"],
+        F("outbound_logistics_rub"), "+", warehouse, "+", warehouse, "×", N(2), "×", H("ozon_warehouse_rate", warehouseRate, true)
+      ], toRub(costs.logistics), "rub", ["outbound_logistics_rub", "warehouse_operation_rub"],
       { source: "ozon_logistics_tariffs" });
 
       // Cross-docking is charged inside "other costs"; this row only shows where it comes from.
@@ -210,9 +214,8 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       : returnAmortization(returnRate);
     // Two terms: the outbound fee of the failed parcels and their return leg.
     step("return_amortized", [
-      "(", F("outbound_logistics_rub"), "×", ...factor, "÷", F("exchange_rate_rub_cny", exchange), ")", "+",
-      "(", F("return_logistics_rub"), "×", ...factor, "÷", F("exchange_rate_rub_cny", exchange), ")"
-    ], costs.returns, "cny", ["outbound_logistics_rub", "return_logistics_rub", "return_amortization_factor_override", "return_rate", "exchange_rate_rub_cny"]);
+      "(", F("outbound_logistics_rub"), "×", ...factor, ")", "+", "(", F("return_logistics_rub"), "×", ...factor, ")"
+    ], toRub(costs.returns), "rub", ["outbound_logistics_rub", "return_logistics_rub", "return_amortization_factor_override", "return_rate"]);
   }
 
   const revenue = data.revenue_cny;
