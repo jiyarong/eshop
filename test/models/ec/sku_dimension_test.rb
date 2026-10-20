@@ -92,4 +92,14 @@ class Ec::SkuDimensionTest < ActiveSupport::TestCase
 
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL, dimension.reload.ozon_size_category
   end
+
+  test "sorts packaged unit sides before applying Ozon limits" do
+    dimension = Ec::SkuDimension.create!(sku_code: @sku_code,
+      inner_length_cm: 100, inner_width_cm: 130, inner_height_cm: 10, inner_box_weight_kg: 10)
+
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT, dimension.ozon_size_category
+
+    dimension.update!(inner_length_cm: 10, inner_width_cm: 100, inner_height_cm: 130)
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT, dimension.reload.ozon_size_category
+  end
 end

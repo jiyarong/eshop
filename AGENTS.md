@@ -182,7 +182,7 @@
 - `Packing#retain_packed_items!` 必须同步裁减结果清单、更新实际箱数并重排 zone 的 `item_index`；`Build` 同步裁减待保存明细并保留 `sku_product_id`，确保清单、几何结果、箱数和件数一致，不能只隐藏剩余托盘。
 - 普通改量只验算当前输入，不自动减量；单托超容量报 `single_pallet_capacity`，超过 5 个 SKU 报 `single_pallet_limit`，不能静默拆托。多托手工分配必须逐托验算，所有托盘按 SKU 汇总的箱数必须与清单相等；总托数沿用计算器上限。
 - 外箱尺寸为 cm、外箱重量为 kg，箱数与每箱件数必须为正整数。单品体积可缺省，SKU 尺寸推导出的非正单品体积按缺失处理，不要传 0 给计算器代替缺失值。
-- Ozon FBO 尺寸类别按带最终销售包装的单件商品计算，使用 `Ec::SkuDimension` 的 `inner_*_cm` 和 `inner_box_weight_kg`，统一调用 `calculated_ozon_size_category`；缺失时标为待补齐，不得回退到整箱数据。外箱尺寸、整箱重量和每箱件数仅用于装托几何、货重和数量计算；计划构建从服务端 SKU 数据取得类别，装托服务沿用该类别，不按外箱重新分类。
+- Ozon FBO 尺寸类别按带最终销售包装的单件商品计算，使用 `Ec::SkuDimension` 的 `inner_*_cm` 和 `inner_box_weight_kg`，三边先按从大到小归一化后统一调用 `calculated_ozon_size_category`；缺失时标为待补齐，不得回退到整箱数据。外箱尺寸、整箱重量和每箱件数仅用于装托几何、货重和数量计算；计划构建从服务端 SKU 数据取得类别，装托服务沿用该类别，不按外箱重新分类。
 
 ### 库存、权限与编辑上下文
 

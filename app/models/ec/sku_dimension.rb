@@ -40,11 +40,12 @@ module Ec
     end
 
     def self.ozon_size_category_for(length:, width:, height:, weight:)
-      # Ozon FBO uses fixed axis thresholds for KGT; weight is an upper-limit check.
+      # Normalize the three sides to Ozon's length/width/height order before checking limits.
       values = [length, width, height, weight]
       return OZON_SIZE_CATEGORY_UNKNOWN if values.any? { |value| value.blank? || value.to_d <= 0 }
 
-      length, width, height, weight = values.map(&:to_d)
+      length, width, height = values.first(3).map(&:to_d).sort.reverse
+      weight = values.last.to_d
       return OZON_SIZE_CATEGORY_OVERSIZE if length > 220 || width > 120 || height > 80 || weight > 120
       return OZON_SIZE_CATEGORY_KGT if length >= 45 || width >= 32 || height >= 32
 
