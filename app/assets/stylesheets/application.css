@@ -10725,6 +10725,11 @@ thead .table-sticky-column {
   font-size: 12px;
 }
 
+.profit-prediction-version-dialog__message {
+  margin: 16px 0 12px;
+  line-height: 1.6;
+}
+
 .profit-prediction-version-dialog__error {
   margin: 0 0 8px;
   color: #b42318;

@@ -779,6 +779,71 @@ test("unsaved edits no longer lock the version switcher, only a save in progress
   assert.equal(navigation.disabled, true);
 });
 
+function versionDeleter({ response = { ok: true, json: async () => ({ deleted: true }) } } = {}) {
+  const fetches = [];
+  const { controller } = versionSwitcher({ frame: { id: "sku_detail_tab_profit_prediction" }, dirty: true });
+  globalThis.fetch = async (url, options) => { fetches.push([ url, options.method ]); return response; };
+  const dialog = { open: false, showModal() { this.open = true; }, close() { this.open = false; } };
+  Object.assign(controller, {
+    hasDeleteDialogTarget: true,
+    hasDeleteUrlValue: true,
+    deleteUrlValue: "/reports/skus/KJ-217-GD/profit_versions/9",
+    deleteDialogTarget: dialog,
+    deleteDialogMessageTarget: { textContent: "" },
+    deleteDialogErrorTarget: { hidden: true, textContent: "" },
+    deleteDialogConfirmTarget: { disabled: false, blur() {} },
+    messagesValue: { delete_dialog: { message: "Delete __NAME__?", current_blocked: "current!", failed: "failed" } },
+    jsonHeaders: () => ({ "X-CSRF-Token": "t" })
+  });
+  return { controller, fetches, dialog };
+}
+
+test("delete opens a dialog that names the version and sends nothing yet", () => {
+  const { controller, fetches, dialog } = versionDeleter();
+
+  controller.openDeleteDialog({ currentTarget: { dataset: { versionName: "Autumn prices" } } });
+
+  assert.equal(dialog.open, true);
+  assert.equal(controller.deleteDialogMessageTarget.textContent, "Delete Autumn prices?");
+  assert.equal(fetches.length, 0);
+});
+
+test("confirming a delete sends DELETE, drops the unsaved state and reloads the tab onto the version it resolves to", async () => {
+  const { controller, fetches, dialog } = versionDeleter();
+  controller.openDeleteDialog({ currentTarget: { dataset: { versionName: "X" } } });
+
+  await controller.submitDeleteDialog();
+
+  assert.deepEqual(fetches, [ [ "/reports/skus/KJ-217-GD/profit_versions/9", "DELETE" ] ]);
+  assert.equal(dialog.open, false);
+  assert.equal(controller.dirtyRows.size, 0);
+  const [url, options] = globalThis.__turboVisits.at(-1);
+  assert.deepEqual(options, { frame: "sku_detail_tab_profit_prediction" });
+  assert.equal(new URL(url).searchParams.get("tab"), "profit_prediction");
+  assert.equal(new URL(url).searchParams.get("version_id"), null, "no version asked for: the tab picks the current one");
+});
+
+test("a refused delete is explained in the dialog and can be retried or cancelled", async () => {
+  const blocked = versionDeleter({ response: { ok: false, json: async () => ({ errors: { base: [ "current_version" ] } }) } });
+  blocked.controller.openDeleteDialog({ currentTarget: { dataset: { versionName: "X" } } });
+  globalThis.__turboVisits = [];
+
+  await blocked.controller.submitDeleteDialog();
+
+  assert.equal(blocked.controller.deleteDialogErrorTarget.textContent, "current!");
+  assert.equal(blocked.controller.deleteDialogConfirmTarget.disabled, false);
+  assert.equal(blocked.dialog.open, true);
+  assert.equal(globalThis.__turboVisits.length, 0);
+
+  const broken = versionDeleter({ response: { ok: false, json: async () => { throw new Error("not json"); } } });
+  broken.controller.openDeleteDialog({ currentTarget: { dataset: { versionName: "X" } } });
+  await broken.controller.submitDeleteDialog();
+  assert.equal(broken.controller.deleteDialogErrorTarget.textContent, "failed");
+
+  broken.controller.closeDeleteDialog();
+  assert.equal(broken.dialog.open, false);
+});
+
 function modeStatusController({ dirtyRows = [], versionDirty = false } = {}) {
   const classes = new Set();
   const controller = new ProfitPredictionController();

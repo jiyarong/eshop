@@ -32,6 +32,11 @@
   warnings: warning_fields.index_with do |field|
     t("reports.profit_prediction.warnings.not_included", field: t("reports.profit_prediction.fields.#{field}"))
   end.transform_keys { |field| "#{field}_not_included" },
+  delete_dialog: {
+    message: t("reports.profit_prediction.delete_dialog.message", name: "__NAME__"),
+    current_blocked: t("reports.profit_prediction.delete_dialog.current_blocked"),
+    failed: t("reports.profit_prediction.delete_dialog.failed")
+  },
   version_dialog: {
     title_new: t("reports.profit_prediction.version_dialog.title_new"),
     title_copy: t("reports.profit_prediction.version_dialog.title_copy"),
@@ -249,6 +254,9 @@
   data-profit-prediction-actual-acquiring-url-value="<%= report_sku_actual_acquiring_path(@sku.sku_code, format: :json) %>"
   data-profit-prediction-switch-url-value="<%= report_sku_path(@sku.sku_code, tab: "profit_prediction") %>"
   data-profit-prediction-create-url-value="<%= report_sku_profit_versions_path(@sku.sku_code) %>"
+  <% if @profit_version.persisted? %>
+    data-profit-prediction-delete-url-value="<%= report_sku_profit_version_path(@sku.sku_code, @profit_version) %>"
+  <% end %>
   data-profit-prediction-today-value="<%= user_today.iso8601 %>"
   <% if @profit_version.persisted? %>
     data-profit-prediction-version-id-value="<%= @profit_version.id %>"
@@ -346,6 +354,17 @@
             <button type="button" class="btn btn-primary btn-sm" data-profit-prediction-target="saveButton" data-action="profit-prediction#save">
               <i class="bi bi-floppy" aria-hidden="true"></i>
               <%= t("reports.profit_prediction.actions.save_calculation") %>
+            </button>
+          <% end %>
+          <% if @profit_version.persisted? %>
+            <button type="button" class="btn btn-danger btn-sm"
+              data-action="profit-prediction#openDeleteDialog"
+              data-version-name="<%= @profit_version.name %>"
+              <% if @profit_version.is_current? %>
+                disabled title="<%= t("reports.profit_prediction.delete_dialog.current_blocked") %>"
+              <% end %>>
+              <i class="bi bi-trash" aria-hidden="true"></i>
+              <%= t("reports.profit_prediction.actions.delete") %>
             </button>
           <% end %>
         </div>
@@ -687,6 +706,31 @@
       <tbody data-profit-prediction-target="detailBody"></tbody>
     </table>
   </section>
+
+  <dialog
+    class="attachment-dialog profit-prediction-version-dialog"
+    data-profit-prediction-target="deleteDialog"
+    data-action="click->profit-prediction#closeDeleteDialogOnBackdrop">
+    <section class="attachment-dialog__content" role="alertdialog" aria-labelledby="profit-prediction-delete-dialog-title" aria-describedby="profit-prediction-delete-dialog-message">
+      <div class="erp-modal__header">
+        <div>
+          <h2 id="profit-prediction-delete-dialog-title"><%= t("reports.profit_prediction.delete_dialog.title") %></h2>
+        </div>
+        <button class="icon-button" type="button" aria-label="<%= t("common.actions.close") %>" data-action="profit-prediction#closeDeleteDialog">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p id="profit-prediction-delete-dialog-message" class="profit-prediction-version-dialog__message" data-profit-prediction-target="deleteDialogMessage"></p>
+      <p class="profit-prediction-version-dialog__error" role="alert" data-profit-prediction-target="deleteDialogError" hidden></p>
+      <div class="profit-prediction-version-dialog__actions">
+        <button type="button" class="btn btn-ghost btn-sm" data-action="profit-prediction#closeDeleteDialog"><%= t("reports.profit_prediction.delete_dialog.cancel") %></button>
+        <button type="button" class="btn btn-danger btn-sm" data-profit-prediction-target="deleteDialogConfirm" data-action="profit-prediction#submitDeleteDialog">
+          <i class="bi bi-trash" aria-hidden="true"></i>
+          <%= t("reports.profit_prediction.delete_dialog.confirm") %>
+        </button>
+      </div>
+    </section>
+  </dialog>
 
   <dialog
     class="attachment-dialog profit-prediction-version-dialog"

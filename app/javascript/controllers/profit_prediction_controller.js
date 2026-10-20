@@ -69,6 +69,7 @@ export default class extends Controller {
     actualAcquiringUrl: String,
     switchUrl: String,
     createUrl: String,
+    deleteUrl: String,
     today: String,
     versionId: Number,
     setCurrentUrl: String,
@@ -108,6 +109,10 @@ export default class extends Controller {
     "detailProfitFormula",
     "detailMarginFormula",
     "detailBody",
+    "deleteDialog",
+    "deleteDialogMessage",
+    "deleteDialogError",
+    "deleteDialogConfirm",
     "versionDialog",
     "versionDialogTitle",
     "versionDialogName",
@@ -384,6 +389,59 @@ export default class extends Controller {
   showVersionDialogError(text) {
     this.versionDialogErrorTarget.textContent = text || "";
     this.versionDialogErrorTarget.hidden = !text;
+  }
+
+  // Delete asks first, in a dialog that names the version. The current version cannot go (the button
+  // is disabled and the server refuses): another version has to be made current first.
+  openDeleteDialog(event) {
+    if (!this.hasDeleteDialogTarget || !this.hasDeleteUrlValue) return;
+
+    const messages = this.messagesValue.delete_dialog || {};
+    this.deleteDialogMessageTarget.textContent = fill(messages.message || "", { name: event.currentTarget.dataset.versionName || "" });
+    this.deleteDialogErrorTarget.hidden = true;
+    this.deleteDialogConfirmTarget.disabled = false;
+    if (!this.deleteDialogTarget.open) this.deleteDialogTarget.showModal();
+    this.deleteDialogConfirmTarget.blur();
+  }
+
+  closeDeleteDialog() {
+    if (this.hasDeleteDialogTarget && this.deleteDialogTarget.open) this.deleteDialogTarget.close();
+  }
+
+  closeDeleteDialogOnBackdrop(event) {
+    if (event.target === this.deleteDialogTarget) this.closeDeleteDialog();
+  }
+
+  async submitDeleteDialog() {
+    const messages = this.messagesValue.delete_dialog || {};
+    this.deleteDialogConfirmTarget.disabled = true;
+    this.deleteDialogErrorTarget.hidden = true;
+    try {
+      const response = await fetch(this.deleteUrlValue, { method: "DELETE", headers: this.jsonHeaders() });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        this.showDeleteDialogError(data.errors?.base?.includes("current_version") ? messages.current_blocked : messages.failed);
+        this.deleteDialogConfirmTarget.disabled = false;
+        return;
+      }
+
+      this.closeDeleteDialog();
+      // The version is gone, so nothing in it is unsaved any more. Land on whichever version the
+      // tab resolves to (the current one).
+      this.dirtyRows.clear();
+      this.versionDirty = false;
+      const url = new URL(this.switchUrlValue, window.location.origin);
+      url.searchParams.set("tab", "profit_prediction");
+      this.navigateWithinFrame(url);
+    } catch (_error) {
+      this.showDeleteDialogError(messages.failed);
+      this.deleteDialogConfirmTarget.disabled = false;
+    }
+  }
+
+  showDeleteDialogError(text) {
+    this.deleteDialogErrorTarget.textContent = text || "";
+    this.deleteDialogErrorTarget.hidden = !text;
   }
 
   // Frame links that would throw away unsaved edits ask first.

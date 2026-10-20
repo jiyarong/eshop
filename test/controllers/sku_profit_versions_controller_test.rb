@@ -830,6 +830,85 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     other&.destroy
   end
 
+  test "deleting a version removes it with its scenarios and logs it" do
+    version = @sku.profit_versions.new(name: "To delete", status: "draft", effective_from: Date.new(2026, 9, 1))
+    Ec::SkuProfitStandardContexts::SCENARIOS.first(3).each { |scenario| version.contexts.build(scenario) }
+    version.save!
+    context_ids = version.contexts.pluck(:id)
+
+    delete report_sku_profit_version_path(@sku.sku_code, version), as: :json
+
+    assert_response :success
+    assert_equal({ "id" => version.id, "deleted" => true }, response.parsed_body)
+    assert_not Ec::SkuProfitVersion.exists?(version.id)
+    assert_empty Ec::SkuProfitVersionContext.where(id: context_ids)
+    assert Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: version.id, action: "destroy").exists?
+  end
+
+  test "the current version cannot be deleted" do
+    version = @sku.profit_versions.create!(name: "Current", status: "draft", effective_from: Date.new(2026, 9, 1))
+    version.make_current!
+
+    delete report_sku_profit_version_path(@sku.sku_code, version), as: :json
+
+    assert_response :unprocessable_entity
+    assert_equal [ "current_version" ], response.parsed_body.dig("errors", "base")
+    assert Ec::SkuProfitVersion.exists?(version.id)
+  end
+
+  test "a version of another SKU cannot be deleted through this SKU" do
+    other = Ec::Sku.create!(sku_code: "PVD-#{SecureRandom.hex(4).upcase}")
+    foreign = other.profit_versions.create!(name: "Foreign", status: "draft", effective_from: Date.new(2026, 9, 1))
+
+    delete report_sku_profit_version_path(@sku.sku_code, foreign), as: :json
+
+    assert_response :not_found
+    assert Ec::SkuProfitVersion.exists?(foreign.id)
+  ensure
+    Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: foreign&.id).delete_all
+    foreign&.destroy
+    Ec::OperationLog.where(record_type: "Ec::Sku", record_id: other&.id).delete_all
+    other&.destroy
+  end
+
+  test "deleting a version needs the manage SKUs permission" do
+    version = @sku.profit_versions.create!(name: "Guarded", status: "draft", effective_from: Date.new(2026, 9, 1))
+    reader = create_user_with_roles("reader-#{SecureRandom.hex(4)}@example.com", "auditor")
+    sign_in reader
+
+    delete report_sku_profit_version_path(@sku.sku_code, version), as: :json
+
+    assert_response :forbidden
+    assert Ec::SkuProfitVersion.exists?(version.id)
+  ensure
+    UserRole.where(user_id: reader&.id).delete_all
+    User.where(id: reader&.id).delete_all
+  end
+
+  test "the delete button sits after save, in danger style, and is disabled on the current version" do
+    current = @sku.profit_versions.create!(name: "Current", status: "draft", effective_from: Date.new(2026, 9, 1))
+    current.make_current!
+    other = @sku.profit_versions.create!(name: "Other", status: "draft", effective_from: Date.new(2026, 10, 1))
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", version_id: other.id, locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".profit-prediction-toolbar__calculation-actions .btn-primary + .btn-danger[data-action='profit-prediction#openDeleteDialog']:not([disabled])", text: /Delete version/
+    assert_select "[data-profit-prediction-delete-url-value='#{report_sku_profit_version_path(@sku.sku_code, other)}']"
+    assert_select "dialog[data-profit-prediction-target='deleteDialog'] .btn-danger[data-action='profit-prediction#submitDeleteDialog']", count: 1
+
+    sign_in @user
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", version_id: current.id, locale: "en" }, headers: { "Accept" => "text/html" }
+    assert_select ".profit-prediction-toolbar__calculation-actions .btn-danger[disabled][title]", count: 1
+  end
+
+  test "an unsaved new version has no delete button" do
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", new_profit_version: 1, locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select "[data-action='profit-prediction#openDeleteDialog']", count: 0
+  end
+
   test "a saved version made before the new scenarios opens with them added, unsaved" do
     version = @sku.profit_versions.new(name: "Old", status: "draft", effective_from: Date.current)
     Ec::SkuProfitStandardContexts::SCENARIOS.first(6).each { |scenario| version.contexts.build(scenario) }

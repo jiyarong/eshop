@@ -125,6 +125,7 @@ Rails.application.routes.draw do
   post "reports/skus/:sku_code/profit_versions/preview" => "reports#preview_sku_profit", as: :preview_report_sku_profit
   post "reports/skus/:sku_code/profit_versions" => "reports#create_sku_profit_version"
   patch "reports/skus/:sku_code/profit_versions/:id" => "reports#update_sku_profit_version", as: :report_sku_profit_version
+  delete "reports/skus/:sku_code/profit_versions/:id" => "reports#destroy_sku_profit_version"
   patch "reports/skus/:sku_code/profit_versions/:id/set_current" => "reports#set_current_sku_profit_version", as: :set_current_report_sku_profit_version
   get "reports/skus/:sku_code/profit_scenarios" => "reports#sku_profit_versions"
   post "reports/skus/:sku_code/profit_scenarios/preview" => "reports#preview_sku_profit"

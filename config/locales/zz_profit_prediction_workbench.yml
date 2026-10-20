@@ -2,6 +2,13 @@ zh:
   reports:
     profit_prediction:
       copy_name: "%{name} 副本"
+      delete_dialog:
+        title: "删除版本"
+        message: "确定删除版本「%{name}」吗？该版本的所有场景数据会一起删除，无法恢复。"
+        confirm: "删除"
+        cancel: "取消"
+        current_blocked: "当前版本不能删除，请先把别的版本设为当前版本"
+        failed: "删除失败，请稍后重试"
       version_dialog:
         title_new: "新建版本"
         title_copy: "复制版本"
@@ -27,6 +34,7 @@ zh:
         enter_calculation: "进入测算"
         cancel_calculation: "取消本次测算"
         save_calculation: "保存本次测算"
+        delete: "删除版本"
       status:
         dirty: "%{count} 条场景有未保存修改"
         calculating: "计算中"
@@ -390,6 +398,13 @@ en:
   reports:
     profit_prediction:
       copy_name: "%{name} copy"
+      delete_dialog:
+        title: "Delete version"
+        message: "Delete the version \"%{name}\"? All of its scenario data is deleted with it and cannot be restored."
+        confirm: "Delete"
+        cancel: "Cancel"
+        current_blocked: "The current version cannot be deleted; make another version current first"
+        failed: "Could not delete the version, please try again"
       version_dialog:
         title_new: "New version"
         title_copy: "Copy version"
@@ -415,6 +430,7 @@ en:
         enter_calculation: "Enter calculation"
         cancel_calculation: "Cancel calculation"
         save_calculation: "Save calculation"
+        delete: "Delete version"
       status:
         dirty: "%{count} scenarios have unsaved changes"
         calculating: "Calculating"
@@ -778,6 +794,13 @@ ru:
   reports:
     profit_prediction:
       copy_name: "%{name}, копия"
+      delete_dialog:
+        title: "Удалить версию"
+        message: "Удалить версию «%{name}»? Все её сценарии будут удалены без возможности восстановления."
+        confirm: "Удалить"
+        cancel: "Отмена"
+        current_blocked: "Текущую версию удалить нельзя: сначала сделайте текущей другую"
+        failed: "Не удалось удалить версию, повторите попытку"
       version_dialog:
         title_new: "Новая версия"
         title_copy: "Копия версии"
@@ -803,6 +826,7 @@ ru:
         enter_calculation: "Начать расчет"
         cancel_calculation: "Отменить расчет"
         save_calculation: "Сохранить расчет"
+        delete: "Удалить версию"
       status:
         dirty: "Несохраненные изменения в сценариях: %{count}"
         calculating: "Выполняется расчет"

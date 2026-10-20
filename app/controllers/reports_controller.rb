@@ -20,7 +20,7 @@ class ReportsController < ApplicationController
                 :sku_supply_order_columns, :sku_supply_order_value, :sku_supply_order_status_options, :warehouse_report_path
   before_action -> { require_permission!(:view_reports) }
   before_action -> { require_any_permission!(:manage_finance, :manage_skus) }, only: [:new_sku_predicted_cost, :create_sku_predicted_cost]
-  before_action -> { require_permission!(:manage_skus) }, only: %i[create_sku_profit_version update_sku_profit_version set_current_sku_profit_version update_sku_scenario_visibility]
+  before_action -> { require_permission!(:manage_skus) }, only: %i[create_sku_profit_version update_sku_profit_version destroy_sku_profit_version set_current_sku_profit_version update_sku_scenario_visibility]
   before_action -> { require_permission!(:manage_skus) }, only: %i[
     create_sku_attachment
     edit_sku_attachment
@@ -51,7 +51,7 @@ class ReportsController < ApplicationController
     new_sku_general_diagnosis create_sku_general_diagnosis create_sku_planner ignore_sku_ai_diagnosis_event
     sku_profit_versions sku_actual_logistics sku_actual_return_rate sku_actual_storage
     sku_actual_selling_price sku_actual_advertising sku_actual_acquiring sku_official_commission_rate preview_sku_profit
-    create_sku_profit_version update_sku_profit_version set_current_sku_profit_version update_sku_scenario_visibility sku_listing_diagnoses new_sku_listing_diagnosis
+    create_sku_profit_version update_sku_profit_version destroy_sku_profit_version set_current_sku_profit_version update_sku_scenario_visibility sku_listing_diagnoses new_sku_listing_diagnosis
     create_sku_listing_diagnosis destroy_sku_competitor_data_batch destroy_sku_competitor_datum
     sku_profit_trend sku_sales_funnel_trends new_sku_predicted_cost create_sku_predicted_cost
     create_sku_attachment edit_sku_attachment update_sku_attachment download_sku_attachment
@@ -648,6 +648,22 @@ class ReportsController < ApplicationController
     raise unless e.cause.is_a?(PG::ExclusionViolation)
 
     render json: { errors: { effective_from: ["overlaps_published_version"] } }, status: :unprocessable_entity
+  end
+
+  # Deletes one version with its scenarios. The current version stays: the SKU's other screens
+  # follow it, so another version has to be made current first.
+  def destroy_sku_profit_version
+    sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
+    version = sku.profit_versions.find(params[:id])
+    if version.is_current?
+      render json: { errors: { base: ["current_version"] } }, status: :unprocessable_entity
+      return
+    end
+
+    version.destroy!
+    render json: { id: version.id, deleted: true }
+  rescue ActiveRecord::RecordNotFound
+    render json: { errors: { base: ["not_found"] } }, status: :not_found
   end
 
   def set_current_sku_profit_version
