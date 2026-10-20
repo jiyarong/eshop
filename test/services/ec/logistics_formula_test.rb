@@ -6,11 +6,19 @@ class Ec::LogisticsFormulaTest < ActiveSupport::TestCase
   end
   Snapshot = Struct.new(:logistics_tariffs)
 
+  def without_route_mix
+    original = Ec::OzonRouteMix.method(:routes)
+    Ec::OzonRouteMix.define_singleton_method(:routes) { |*| [] }
+    yield
+  ensure
+    Ec::OzonRouteMix.define_singleton_method(:routes, original)
+  end
+
   def with_tariff(rows)
     original = RawOzon::LogisticsTariffSnapshot.method(:current_for)
     snapshot = rows && Snapshot.new(Tariffs.new(rows))
     RawOzon::LogisticsTariffSnapshot.define_singleton_method(:current_for) { |**| snapshot }
-    yield
+    without_route_mix { yield }
   ensure
     RawOzon::LogisticsTariffSnapshot.define_singleton_method(:current_for, original)
   end
@@ -68,5 +76,43 @@ class Ec::LogisticsFormulaTest < ActiveSupport::TestCase
     with_tariff({ "fbo_rub" => { (100..200) => 5 } }) do
       assert_nil Ec::LogisticsFormula.apply(platform: "ozon", mode: "formula", parameter_context: { "delivery_mode" => "fbo" }, inputs: INPUTS).first["outbound_logistics_rub"], "no route covers 8 litres"
     end
+  end
+
+  test "Ozon weights the route tariff by the share of our units that travel each route" do
+    snapshot = RawOzon::LogisticsTariffSnapshot.create!(market_code: "zz#{SecureRandom.hex(3)}", effective_from: Date.new(2026, 1, 1), imported_at: Time.current,
+      source_checksum: SecureRandom.hex(8), source_file_name: "test.xlsx", status: "succeeded")
+    tariffs = [ [ "Москва", "Москва", 100 ], [ "Москва", "Казань", 200 ], [ "Москва", "Омск", 400 ] ]
+    tariffs.each_with_index do |(origin, destination, fbo), index|
+      RawOzon::LogisticsTariff.create!(snapshot: snapshot, origin_cluster_key: origin.downcase, origin_cluster_name: origin,
+        destination_cluster_key: destination.downcase, destination_cluster_name: destination, volume_band_label: "0-30", volume_band_order: index,
+        volume_min_l: 0, volume_max_l: 30, fbo_rub: fbo, fbo_fresh_under_300_rub: fbo, fbo_fresh_over_300_rub: fbo, fbs_over_300_rub: fbo, fbs_under_300_rub: fbo)
+    end
+    original = RawOzon::LogisticsTariffSnapshot.method(:current_for)
+    RawOzon::LogisticsTariffSnapshot.define_singleton_method(:current_for) { |**| snapshot }
+    mix = [ [ "Москва", "Москва", BigDecimal("0.7") ], [ "Москва", "Казань", BigDecimal("0.2") ], [ "Москва", "Нигде", BigDecimal("0.1") ] ]
+    original_routes = Ec::OzonRouteMix.method(:routes)
+    Ec::OzonRouteMix.define_singleton_method(:routes) { |mode, market| mode == "fbo" && market == "ru" ? mix : [] }
+
+    context = { "delivery_mode" => "fbo", "market" => "ru" }
+    # 0.7 x 100 + 0.2 x 200 over the 0.9 of the units whose route the tariff lists; "Нигде" drops out and the rest is renormalised
+    assert_equal (110.0 / 0.9).to_d.round(2), Ec::LogisticsFormula.ozon_route_average(INPUTS, context)
+    # a scenario without a mix (Belarus FBO here) keeps the plain average of every route
+    assert_equal (700.0 / 3).to_d.round(2), Ec::LogisticsFormula.ozon_route_average(INPUTS, context.merge("market" => "by"))
+  ensure
+    Ec::OzonRouteMix.define_singleton_method(:routes, original_routes) if original_routes
+    RawOzon::LogisticsTariffSnapshot.define_singleton_method(:current_for, original) if original
+    RawOzon::LogisticsTariff.where(snapshot_id: snapshot&.id).delete_all
+    snapshot&.destroy
+  end
+
+  test "the generated route mix adds up to one for every fulfilment and market" do
+    Ec::OzonRouteMix.reset!
+    %w[fbo fbs].each do |mode|
+      %w[ru by].each do |market|
+        shares = Ec::OzonRouteMix.routes(mode, market).map(&:last)
+        assert_in_delta 1.0, shares.sum, 0.0005, "#{mode}/#{market}" if shares.any?
+      end
+    end
+    assert Ec::OzonRouteMix.routes("fbo", "ru").any?, "the file covers the Russian FBO scenario"
   end
 end

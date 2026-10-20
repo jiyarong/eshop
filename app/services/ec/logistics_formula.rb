@@ -34,7 +34,10 @@ module Ec
         end
       end
 
-      # What the Ozon route tariff says for the inputs' volume, or nil without volume, price or tariff.
+      # What the Ozon route tariff says for the inputs' volume, or nil without volume, price or tariff. The tariff of
+      # each route is weighted by the share of our units that really travel it (Ec::OzonRouteMix, by fulfilment and
+      # buyer market); a route the tariff does not list drops out and the rest are renormalised. Without a mix for
+      # the scenario it is the plain average of every route.
       def ozon_route_average(inputs, parameter_context)
         volume = volume_l(inputs)
         return unless volume
@@ -43,11 +46,26 @@ module Ec
         return unless snapshot
 
         column = tariff_column(parameter_context["delivery_mode"], inputs)
-        average = snapshot.logistics_tariffs.for_volume(volume).average(column)
+        band = snapshot.logistics_tariffs.for_volume(volume)
+        routes = Ec::OzonRouteMix.routes(parameter_context["delivery_mode"].presence || "fbo", parameter_context["market"].presence || "ru")
+        average = weighted_route_average(band, column, routes) || band.average(column)
         average&.to_d&.round(2)
       end
 
       private
+
+      def weighted_route_average(band, column, routes)
+        return if routes.empty?
+
+        prices = band.where(origin_cluster_name: routes.map(&:first).uniq, destination_cluster_name: routes.map { |route| route[1] }.uniq)
+          .pluck(:origin_cluster_name, :destination_cluster_name, column)
+          .to_h { |origin, destination, price| [ [ origin, destination ], price.to_d ] }
+        matched = routes.select { |origin, destination, _| prices.key?([ origin, destination ]) }
+        total = matched.sum { |_, _, share| share }
+        return unless total.positive?
+
+        matched.sum { |origin, destination, share| prices.fetch([ origin, destination ]) * share } / total
+      end
 
       def ozon_formula(inputs, parameter_context)
         rate = ozon_route_average(inputs, parameter_context)
