@@ -403,6 +403,45 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_match(/\.operator-sku-row:hover td\s*\{[^}]*background:/m, css)
   end
 
+  test "loads plan evaluations in one query as the number of displayed plans grows" do
+    plans = []
+    counts = []
+    3.times do |index|
+      plan = @sku.sku_operation_plans.create!(target: "advertising", operation: "maintain",
+        referer: [ "risk-#{index}" ], message: "Plan #{index}")
+      plans << plan
+      [ [ 14, "Earlier result" ], [ 7, "Latest result #{index}" ], [ 21, "Older result created later" ] ].each do |days, summary|
+        plan.evaluations.create!(observation_from: Date.current - 28, observation_to: Date.current - days,
+          status: "succeeded", execution_status: "not_started", effectiveness: "inconclusive",
+          confidence: "low", summary: summary, evaluator_version: "test")
+      end
+      next if index == 1
+
+      sign_in @user
+      queries = []
+      callback = lambda do |*args|
+        payload = args.last
+        queries << payload[:sql] if !payload[:cached] && payload[:sql].match?(/SELECT.*FROM "ec_ai_sku_operation_plan_evaluations"/)
+      end
+      ActiveRecord::Base.uncached do
+        ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
+          with_sort_values({}) { get operator_skus_path, params: { q: @token }, headers: { "Accept" => "text/html" } }
+        end
+      end
+
+      assert_response :success
+      plans.each_with_index do |record, number|
+        assert_select "dialog#operator-sku-#{@sku.id}-plan-#{record.id}-dialog", text: /Latest result #{number}/
+      end
+      refute_includes response.body, "Older result created later"
+      counts << queries.length
+    end
+
+    assert_equal [ 1, 1 ], counts
+  ensure
+    Ec::SkuOperationPlanEvaluation.where(plan_id: plans&.map(&:id)).delete_all
+  end
+
   test "sortable metric headers preserve filters and toggle direction" do
     with_empty_metrics do
       get operator_skus_path,
@@ -595,7 +634,7 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
   end
 
   def with_sort_values(values)
-    fake_query = Struct.new(:values) do
+    fake_query = Struct.new(:values, :weekly_profit_report) do
       def call
         values
       end

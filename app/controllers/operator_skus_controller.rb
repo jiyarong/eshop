@@ -24,12 +24,7 @@ class OperatorSkusController < ApplicationController
     load_responsible_user_filters
     load_table_sort(allowed_keys: SORT_KEYS, default_key: "weekly_profit", default_direction: "desc")
 
-    scope = access_scope.visible_skus.includes(
-      :master_sku,
-      :current_marketing_state,
-      :developers,
-      :operator
-    ).order(:sku_code)
+    scope = access_scope.visible_skus.order(:sku_code)
     scope = apply_master_sku_category_filter_to_skus(scope)
     scope = apply_spu_sku_filter_to_skus(scope)
     scope = apply_responsible_user_filters_to_skus(scope)
@@ -42,7 +37,7 @@ class OperatorSkusController < ApplicationController
       ).distinct
     end
 
-    filtered_sku_ids = scope.reorder(nil).pluck(:id)
+    filtered_sku_ids = scope.reorder(nil).select(:id)
     load_ai_diagnosis_event_filter(sku_ids: filtered_sku_ids)
     load_ai_diagnosis_advice_filter(sku_ids: filtered_sku_ids)
     scope = apply_ai_diagnosis_event_filter_to_skus(scope)
@@ -50,7 +45,9 @@ class OperatorSkusController < ApplicationController
 
     if table_sort_key.present?
       all_skus = scope.to_a
-      sort_values = Ec::OperatorSkuSortMetricsQuery.new(skus: all_skus, sort_key: table_sort_key, date_to: user_today, time_zone: user_time_zone).call
+      sort_query = Ec::OperatorSkuSortMetricsQuery.new(skus: all_skus, sort_key: table_sort_key, date_to: user_today, time_zone: user_time_zone)
+      sort_values = sort_query.call
+      @weekly_profit_report = sort_query.weekly_profit_report
       sorted = sort_table_records(all_skus) { |sku| sort_values[sku.sku_code] }
       @skus = Kaminari.paginate_array(sorted).page(page_param).per(PAGE_SIZE)
     else
@@ -59,10 +56,14 @@ class OperatorSkusController < ApplicationController
     if @skus.total_pages.positive? && @skus.current_page > @skus.total_pages
       @skus = table_sort_key.present? ? Kaminari.paginate_array(sorted).page(@skus.total_pages).per(PAGE_SIZE) : scope.page(@skus.total_pages).per(PAGE_SIZE)
     end
+    ActiveRecord::Associations::Preloader.new(
+      records: @skus.to_a,
+      associations: [ :master_sku, :current_marketing_state, :developers, :operator ]
+    ).call
     @metrics_by_sku = metrics_for(@skus)
     load_latest_active_ai_diagnosis_risk_events_for(@skus, include_advice: false)
     @sku_operation_plans_by_sku_id = Ec::SkuOperationPlan.latest.where(sku_id: @skus.map(&:id))
-      .includes(operation_actions: [ :operated_by_user, :store ])
+      .includes(:evaluations, operation_actions: [ :operated_by_user, :store ])
       .order(created_at: :desc, id: :desc).group_by(&:sku_id)
     @sku_plan_referer_events_by_sku_id = Ec::SkuOperationPlan.referenced_events_by_sku_id(@sku_operation_plans_by_sku_id.values.flatten)
   end
@@ -74,7 +75,8 @@ class OperatorSkusController < ApplicationController
       skus: skus,
       date_to: user_today,
       time_zone: user_time_zone,
-      include_days_30: false
+      include_days_30: false,
+      weekly_profit_report: @weekly_profit_report
     ).call
   end
 

@@ -2,12 +2,13 @@ module Ec
   class OperatorSkuMetricsQuery
     PROFIT_KEYS = %i[net_sales revenue after_tax margin_pct ads ad_ratio_pct annualized_return_pct annualized_net_profit_cny].freeze
 
-    def initialize(skus:, date_to:, time_zone:, include_days_30: true)
+    def initialize(skus:, date_to:, time_zone:, include_days_30: true, weekly_profit_report: nil)
       @skus = skus.to_a
       @sku_codes = @skus.map(&:sku_code)
       @date_to = date_to.to_date
       @time_zone = time_zone
       @include_days_30 = include_days_30
+      @weekly_profit_report = weekly_profit_report
     end
 
     def call
@@ -152,7 +153,13 @@ module Ec
     end
 
     def profit_metrics_for_period(from_date, to_date)
-      report = Ec::WeeklySummaryDeepQuery.run(from_date:, to_date:, sku_codes: @sku_codes)
+      report = if @weekly_profit_report &&
+          @weekly_profit_report.dig(:period, :from_date) == from_date.to_s &&
+          @weekly_profit_report.dig(:period, :to_date) == to_date.to_s
+        @weekly_profit_report
+      else
+        Ec::WeeklySummaryDeepQuery.run(from_date:, to_date:, sku_codes: @sku_codes)
+      end
       comparisons = report.dig(:comparison, :rows) || {}
 
       report.fetch(:rows).each_with_object({}) do |row, result|

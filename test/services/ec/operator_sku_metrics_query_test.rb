@@ -89,6 +89,35 @@ class Ec::OperatorSkuMetricsQueryTest < ActiveSupport::TestCase
     Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, original_run)
   end
 
+  test "reuses the sorting report for the same week and preserves every profit metric and comparison" do
+    original_run = Ec::WeeklySummaryDeepQuery.method(:run)
+    calls = []
+    report = {
+      period: { from_date: "2026-07-20", to_date: "2026-07-26" },
+      rows: [ { sku: @sku.sku_code }.merge(Ec::OperatorSkuMetricsQuery::PROFIT_KEYS.index_with { |key| key.to_s.length.to_d }) ],
+      comparison: { rows: { @sku.sku_code => Ec::OperatorSkuMetricsQuery::PROFIT_KEYS.index_with { { delta_pct: 10, semantic: "positive" } } } }
+    }
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run) do |**args|
+      calls << args
+      report
+    end
+    args = { skus: [ @sku ], date_to: Date.new(2026, 7, 28), time_zone: Time.find_zone!("Asia/Shanghai"), include_days_30: false }
+    expected = Ec::OperatorSkuMetricsQuery.new(**args).send(:profit_metrics)
+    sort_query = Ec::OperatorSkuSortMetricsQuery.new(**args.except(:include_days_30), sort_key: "weekly_profit")
+    assert_equal report[:rows].first[:after_tax], sort_query.call.fetch(@sku.sku_code)
+    calls.clear
+
+    result = Ec::OperatorSkuMetricsQuery.new(**args, weekly_profit_report: sort_query.weekly_profit_report).send(:profit_metrics)
+
+    assert_equal expected, result
+    assert_empty calls, "the page must reuse the report already calculated for sorting"
+
+    Ec::OperatorSkuMetricsQuery.new(**args.merge(date_to: Date.new(2026, 8, 4)), weekly_profit_report: report).send(:profit_metrics)
+    assert_equal Date.new(2026, 7, 27), calls.sole.fetch(:from_date), "reports from another week must not be reused"
+  ensure
+    Ec::WeeklySummaryDeepQuery.define_singleton_method(:run, original_run)
+  end
+
   private
 
   def create_order(external_id, platform_sku_id:, sku_code:, quantity:, ordered_on:)

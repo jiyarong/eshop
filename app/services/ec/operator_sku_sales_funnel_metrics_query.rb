@@ -42,15 +42,22 @@ module Ec
       wb_products = products.select { |product| product.platform == "wb" }.index_by { |product| [product.store.wb_raw_account_id, product.product_id.to_s] }
       ozon_products = products.select { |product| product.platform == "ozon" }.index_by { |product| [product.store.ozon_raw_account_id, product.platform_sku_id.to_s] }
 
-      RawWb::SalesFunnelDaily.where(account_id: wb_products.keys.map(&:first).compact.uniq, stat_date: full_range).find_each do |record|
-        product = wb_products[[record.account_id, record.nm_id.to_s]]
-        add_raw(result, product, record.stat_date, record.open_card, record.add_to_cart, record.orders, record.cancel_count) if product
-      end
-      RawOzon::SalesFunnelDaily.where(account_id: ozon_products.keys.map(&:first).compact.uniq, stat_date: full_range).find_each do |record|
-        product = ozon_products[[record.account_id, record.sku.to_s]]
-        add_raw(result, product, record.stat_date, record.hits_view_pdp, record.hits_tocart_pdp, record.ordered_units, record.cancellations) if product
-      end
+      add_raw_totals(result, RawWb::SalesFunnelDaily, wb_products, :nm_id, %i[open_card add_to_cart orders cancel_count])
+      add_raw_totals(result, RawOzon::SalesFunnelDaily, ozon_products, :sku, %i[hits_view_pdp hits_tocart_pdp ordered_units cancellations])
       result
+    end
+
+    def add_raw_totals(result, model, products, product_column, metric_columns)
+      return if products.empty?
+
+      period = Arel.sql("CASE WHEN stat_date >= #{model.connection.quote(@from_date)} THEN 1 ELSE 0 END")
+      model.where(account_id: products.keys.map(&:first).compact.uniq, product_column => products.keys.map(&:last), stat_date: full_range)
+        .group(:account_id, product_column, period)
+        .pluck(:account_id, product_column, Arel.sql("MIN(stat_date)"), *metric_columns.map { |column| Arel.sql("SUM(#{column})") })
+        .each do |account_id, product_id, date, *totals|
+          product = products[[ account_id, product_id.to_s ]]
+          add_raw(result, product, date, *totals) if product
+        end
     end
 
     def load_order_totals(products)

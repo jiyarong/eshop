@@ -120,6 +120,47 @@ class Ec::OperatorSkuSalesFunnelMetricsQueryTest < ActiveSupport::TestCase
     RawOzon::SellerAccount.where(id: account&.id).delete_all
   end
 
+  test "aggregates bound products and both week boundaries without loading daily records" do
+    @products.each do |product|
+      create_funnel(product, Date.new(2026, 8, 23), views: 999, carts: 999, orders: 999, cancellations: 999)
+      create_funnel(product, Date.new(2026, 8, 24), views: 20, carts: 10, orders: 4, cancellations: 1)
+      create_funnel(product, Date.new(2026, 8, 30), views: 30, carts: 10, orders: 6, cancellations: 1)
+      create_funnel(product, Date.new(2026, 8, 31), views: 40, carts: 10, orders: 6, cancellations: 2)
+      create_funnel(product, Date.new(2026, 9, 6), views: 60, carts: 20, orders: 9, cancellations: 1)
+      create_funnel(product, Date.new(2026, 9, 7), views: 999, carts: 999, orders: 999, cancellations: 999)
+    end
+    RawWb::SalesFunnelDaily.create!(account: @account, stat_date: Date.new(2026, 9, 1), nm_id: 99_999,
+      open_card: 999, orders: 999, synced_at: Time.current)
+    counts = []
+    loaded_daily_records = 0
+    instantiation = lambda do |*args|
+      payload = args.last
+      loaded_daily_records += payload[:record_count] if payload[:class_name].in?(%w[RawWb::SalesFunnelDaily RawOzon::SalesFunnelDaily])
+    end
+
+    ActiveRecord::Base.uncached do
+      ActiveSupport::Notifications.subscribed(instantiation, "instantiation.active_record") do
+        [ [ @skus.first ], @skus ].each do |skus|
+          sql_count = 0
+          callback = ->(*args) { sql_count += 1 unless args.last[:cached] || args.last[:name].in?(%w[SCHEMA TRANSACTION]) }
+          result = ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { query_for(skus).call }
+          skus.each do |sku|
+            metrics = result.fetch(sku)
+            assert_equal 100, metrics.dig(:product_card_views, :value)
+            assert_equal 100, metrics.dig(:product_card_views, :comparison, :delta_pct)
+            assert_equal 30, metrics.dig(:cart_additions, :value)
+            assert_equal 15, metrics.dig(:orders, :value)
+            assert_equal 3, metrics.dig(:cancellations, :value)
+          end
+          counts << sql_count
+        end
+      end
+    end
+
+    assert_equal 0, loaded_daily_records
+    assert_equal counts.first, counts.last, "query count must not grow with the number of SKUs"
+  end
+
   private
 
   def query

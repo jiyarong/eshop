@@ -1,5 +1,7 @@
 module Ec
   class OperatorSkuSortMetricsQuery
+    attr_reader :weekly_profit_report
+
     def initialize(skus:, sort_key:, date_to:, time_zone:)
       @skus = skus.to_a
       @sku_codes = @skus.map(&:sku_code)
@@ -23,8 +25,8 @@ module Ec
 
     def weekly_profit
       from_date = @date_to.beginning_of_week(:monday) - 1.week
-      report = Ec::WeeklySummaryDeepQuery.run(from_date:, to_date: from_date.end_of_week(:monday), sku_codes: @sku_codes)
-      report.fetch(:rows, []).to_h { |row| [row.fetch(:sku).to_s, row[:after_tax]] }
+      @weekly_profit_report = Ec::WeeklySummaryDeepQuery.run(from_date:, to_date: from_date.end_of_week(:monday), sku_codes: @sku_codes)
+      @weekly_profit_report.fetch(:rows, []).to_h { |row| [ row.fetch(:sku).to_s, row[:after_tax] ] }
     rescue RuntimeError => error
       raise unless error.message.start_with?("找不到 ")
       {}

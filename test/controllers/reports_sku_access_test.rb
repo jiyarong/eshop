@@ -50,6 +50,8 @@ class ReportsSkuAccessTest < ActionDispatch::IntegrationTest
       end
     end
     sort_query = Class.new do
+      attr_reader :weekly_profit_report
+
       def initialize(**); end
       def call = {}
     end
