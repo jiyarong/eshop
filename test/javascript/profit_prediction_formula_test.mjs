@@ -47,6 +47,8 @@ const labels = {
   sumCosts: "以上各项成本合计",
   crossDockingNotApplicable: "白俄场景不适用",
   crossDockingInOther: "已计入其他成本",
+  ozonRouteNote: "最常用 __COUNT__ 条路线 __VOLUME__ L __RATE__",
+  ozonRouteNoteAll: "所有路线 __VOLUME__ L __RATE__",
 };
 
 // What the workbench form can hold: the legacy sheet parameters have no input, so the page
@@ -262,4 +264,21 @@ test("WB keeps every freight row and parameter in place and flags what does not 
   assert.deepEqual(stepOf(actual, "outbound_logistics").inactiveFields, ["wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff"],
     "the base fee, per-litre fee and coefficient are void on typed freight");
   assert.deepEqual(stepOf(actual, "returns").inactiveFields, ["wb_fixed_return_base_rub"]);
+});
+
+test("Ozon's fixed formula says what the freight is the average of", () => {
+  const kase = cases.find((testCase) => testCase.name === "ozon_ru_standard");
+  const stepsIn = (logisticsMode, formula, platformLogistics = "platform_logistics") => {
+    const data = { ...kase.expected, logistics: { formula } };
+    return buildCalculationSteps({
+      platform: "ozon", market: kase.context.market, deliveryMode: kase.context.delivery_mode, companyType: kase.context.company_type,
+      logisticsMode, inputs: { ...kase.inputs, length_cm: 52, width_cm: 5, height_cm: 85 }, data, labels
+    }).find((step) => step.key === platformLogistics);
+  };
+
+  const top = { outbound_rub: 268.43, return_rub: 268.43, source: "ozon_route_average", route_count: 40, route_basis: "top_routes" };
+  assert.equal(stepsIn("formula", top).note, "最常用 40 条路线 22.10 L 268.43");
+  assert.equal(stepsIn("formula", { ...top, route_basis: "all_routes", route_count: 820 }).note, "所有路线 22.10 L 268.43");
+  assert.equal(stepsIn("actual", top).note, null, "real figures are not worked out from the tariff");
+  assert.equal(stepsIn("formula", { outbound_rub: null, source: null }).note, null, "no tariff figure, nothing to explain");
 });

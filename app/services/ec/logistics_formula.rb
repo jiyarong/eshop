@@ -39,6 +39,11 @@ module Ec
       # fulfilment and buyer market). A route the tariff does not list drops out. Without routes for the scenario it
       # is the plain average of every route.
       def ozon_route_average(inputs, parameter_context)
+        ozon_route_basis(inputs, parameter_context)&.fetch(:average)
+      end
+
+      # The same, with what it was worked out from: { average:, route_count:, basis: "top_routes" | "all_routes" }.
+      def ozon_route_basis(inputs, parameter_context)
         volume = volume_l(inputs)
         return unless volume
 
@@ -48,12 +53,21 @@ module Ec
         column = tariff_column(parameter_context["delivery_mode"], inputs)
         band = snapshot.logistics_tariffs.for_volume(volume)
         routes = Ec::OzonRouteMix.routes(parameter_context["delivery_mode"].presence || "fbo", parameter_context["market"].presence || "ru")
-        average = weighted_route_average(band, column, routes) || band.average(column)
-        average&.to_d&.round(2)
+        average, count = weighted_route_average(band, column, routes)
+        basis = "top_routes"
+        unless average
+          average = band.average(column)
+          count = band.count
+          basis = "all_routes"
+        end
+        return unless average
+
+        { average: average.to_d.round(2), route_count: count, basis: basis }
       end
 
       private
 
+      # => [average, routes used] or nil
       def weighted_route_average(band, column, routes)
         return if routes.empty?
 
@@ -64,16 +78,18 @@ module Ec
         total = matched.sum { |_, _, share| share }
         return unless total.positive?
 
-        matched.sum { |origin, destination, share| prices.fetch([ origin, destination ]) * share } / total
+        [ matched.sum { |origin, destination, share| prices.fetch([ origin, destination ]) * share } / total, matched.size ]
       end
 
       def ozon_formula(inputs, parameter_context)
-        rate = ozon_route_average(inputs, parameter_context)
-        return [ inputs, { mode: "formula", outbound_rub: nil, return_rub: nil, source: nil } ] unless rate
+        basis = ozon_route_basis(inputs, parameter_context)
+        return [ inputs, { mode: "formula", outbound_rub: nil, return_rub: nil, source: nil } ] unless basis
 
         # The return leg costs what the way out does (the tariff dialog has always filled both).
+        rate = basis.fetch(:average)
         [ inputs.merge("outbound_logistics_rub" => rate, "return_logistics_rub" => rate),
-          { mode: "formula", outbound_rub: rate, return_rub: rate, source: "ozon_route_average" } ]
+          { mode: "formula", outbound_rub: rate, return_rub: rate, source: "ozon_route_average",
+            route_count: basis.fetch(:route_count), route_basis: basis.fetch(:basis) } ]
       end
 
       def volume_l(inputs)

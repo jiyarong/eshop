@@ -52,7 +52,7 @@ class Ec::LogisticsFormulaTest < ActiveSupport::TestCase
     with_tariff(ROWS) do
       fbo, info = Ec::LogisticsFormula.apply(platform: "ozon", mode: "formula", parameter_context: { "delivery_mode" => "fbo" }, inputs: INPUTS)
       assert_equal [ 300.to_d, 300.to_d ], fbo.values_at("outbound_logistics_rub", "return_logistics_rub"), "8 litres falls in the second band"
-      assert_equal({ mode: "formula", outbound_rub: 300.to_d, return_rub: 300.to_d, source: "ozon_route_average" }, info)
+      assert_equal({ mode: "formula", outbound_rub: 300.to_d, return_rub: 300.to_d, source: "ozon_route_average", route_basis: "all_routes" }, info.except(:route_count), "no routes for the scenario: every route of the tariff")
 
       small = INPUTS.merge("length_cm" => 10, "width_cm" => 10, "height_cm" => 5)
       assert_equal 123.46.to_d, Ec::LogisticsFormula.apply(platform: "ozon", mode: "formula", parameter_context: { "delivery_mode" => "fbo" }, inputs: small).first["outbound_logistics_rub"]
@@ -97,6 +97,10 @@ class Ec::LogisticsFormulaTest < ActiveSupport::TestCase
     context = { "delivery_mode" => "fbo", "market" => "ru" }
     # (100 + 200) / 2: "Нигде" is not in the tariff, so it drops out and the others keep equal weights
     assert_equal 150.to_d, Ec::LogisticsFormula.ozon_route_average(INPUTS, context)
+    basis = Ec::LogisticsFormula.ozon_route_basis(INPUTS, context)
+    assert_equal({ average: 150.to_d, route_count: 2, basis: "top_routes" }, basis, "two of the three routes are in the tariff")
+    info = Ec::LogisticsFormula.apply(platform: "ozon", mode: "formula", parameter_context: context, inputs: INPUTS).last
+    assert_equal [ 2, "top_routes" ], info.values_at(:route_count, :route_basis)
     # a scenario without routes (Belarus FBO here) keeps the plain average of every route
     assert_equal (700.0 / 3).to_d.round(2), Ec::LogisticsFormula.ozon_route_average(INPUTS, context.merge("market" => "by"))
   ensure

@@ -86,7 +86,7 @@ module Ec
       # route average. nil entries when the formula cannot be worked out (no volume, no tariff).
       def formula_figures(platform, result, inputs)
         info = result.fetch(:logistics_info)
-        return { outbound_rub: info[:outbound_rub], return_rub: info[:return_rub], source: info[:source] } unless platform.to_s.downcase == "wb"
+        return info.slice(:outbound_rub, :return_rub, :source, :route_count, :route_basis) unless platform.to_s.downcase == "wb"
         return { outbound_rub: nil, return_rub: nil, source: nil } if result[:errors].present?
 
         intermediate = result.fetch(:intermediate)

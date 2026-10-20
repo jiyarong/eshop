@@ -196,18 +196,30 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     const warehouseRate = numberOr(intermediate.warehouse_rate, 0.25);
     const warehouse = F("warehouse_operation_rub");
 
+    // The fixed formula takes the outbound and return freight from the official route tariff: say what from.
+    const routeFormula = logisticsMode === "formula" ? data.logistics?.formula : null;
+    let routeNote = null;
+    if (routeFormula?.source === "ozon_route_average" && hasValue(routeFormula.outbound_rub)) {
+      const volume = ["length_cm", "width_cm", "height_cm"].reduce((product, field) => product * numberOr(inputs[field], 0), 1) / 1000;
+      const template = routeFormula.route_basis === "top_routes" ? labels.ozonRouteNote : labels.ozonRouteNoteAll;
+      routeNote = String(template || "")
+        .replace("__COUNT__", routeFormula.route_count)
+        .replace("__VOLUME__", volume.toFixed(2))
+        .replace("__RATE__", Number(routeFormula.outbound_rub).toFixed(2)) || null;
+    }
+
     if (fbs) {
       // Seller-shipped: the parcel is handed over at a pickup point or sorting centre, so the
       // warehouse operation fee and its surcharge give way to a flat handover fee.
       step("platform_logistics", [
         F("outbound_logistics_rub"), "+", F("fbs_handover_rub", numberOr(inputs.fbs_handover_rub, 30))
       ], toRub(costs.logistics), "rub", ["outbound_logistics_rub", "fbs_handover_rub"],
-      { source: "ozon_logistics_tariffs" });
+      { source: "ozon_logistics_tariffs", note: routeNote });
     } else {
       step("platform_logistics", [
         F("outbound_logistics_rub"), "+", warehouse, "+", warehouse, "×", N(2), "×", H("ozon_warehouse_rate", warehouseRate, true)
       ], toRub(costs.logistics), "rub", ["outbound_logistics_rub", "warehouse_operation_rub"],
-      { source: "ozon_logistics_tariffs" });
+      { source: "ozon_logistics_tariffs", note: routeNote });
 
       // Cross-docking is charged inside "other costs"; this row only shows where it comes from.
       const crossDocking = market === "ru";

@@ -1243,7 +1243,9 @@ export default class extends Controller {
         formula: process.formula_labels,
         sumCosts: process.sum_costs,
         crossDockingNotApplicable: process.cross_docking_not_applicable,
-        crossDockingInOther: process.cross_docking_in_other
+        crossDockingInOther: process.cross_docking_in_other,
+        ozonRouteNote: process.ozon_route_note,
+        ozonRouteNoteAll: process.ozon_route_note_all
       }
     }).forEach((step) => {
       this.appendProcessStep(step.label, step.formula, step.result, process.units[step.unit], step.fields, step.source, {
