@@ -517,11 +517,10 @@ class ReportsController < ApplicationController
       return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
     end
     delivery_mode = params[:delivery_mode].to_s.downcase.presence
-    if platform == "wb" && delivery_mode && !Ec::SkuActualLogisticsQuery::WB_DELIVERY_MODES.include?(delivery_mode)
-      return render json: { errors: ["unsupported_delivery_mode"] }, status: :unprocessable_entity
-    end
+    market = params[:market].to_s.downcase.presence
+    return unless valid_actual_data_scope?(platform:, delivery_mode:, market:)
 
-    render json: Ec::SkuActualLogisticsQuery.run(sku:, platform:, delivery_mode:, today: user_today)
+    render json: Ec::SkuActualLogisticsQuery.run(sku:, platform:, delivery_mode:, market:, today: user_today)
   end
 
   def sku_actual_return_rate
@@ -532,13 +531,13 @@ class ReportsController < ApplicationController
     end
 
     delivery_mode = params[:delivery_mode].to_s.downcase.presence
-    if platform == "wb" && delivery_mode && !Ec::SkuActualLogisticsQuery::WB_DELIVERY_MODES.include?(delivery_mode)
-      return render json: { errors: ["unsupported_delivery_mode"] }, status: :unprocessable_entity
-    end
+    market = params[:market].to_s.downcase.presence
+    return unless valid_actual_data_scope?(platform:, delivery_mode:, market:)
 
     render json: Ec::SkuActualReturnRateQuery.run(
       sku:,
       platform:,
+      market:,
       today: user_today,
       time_zone: user_time_zone,
       delivery_mode: (delivery_mode if platform == "wb")
@@ -563,10 +562,14 @@ class ReportsController < ApplicationController
       return render json: { errors: ["unsupported_context"] }, status: :unprocessable_entity
     end
 
+    delivery_mode = params[:delivery_mode].to_s.downcase.presence
+    return unless valid_actual_data_scope?(platform:, delivery_mode:, market: nil)
+
     render json: Ec::SkuActualSellingPriceQuery.run(
       sku: sku,
       platform: platform,
       market: market,
+      delivery_mode: delivery_mode,
       today: user_today,
       time_zone: user_time_zone
     )
@@ -589,7 +592,11 @@ class ReportsController < ApplicationController
       return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
     end
 
-    render json: Ec::SkuActualAcquiringQuery.run(sku:, platform:, today: user_today)
+    delivery_mode = params[:delivery_mode].to_s.downcase.presence
+    market = params[:market].to_s.downcase.presence
+    return unless valid_actual_data_scope?(platform:, delivery_mode:, market:)
+
+    render json: Ec::SkuActualAcquiringQuery.run(sku:, platform:, delivery_mode:, market:, today: user_today)
   end
 
   def sku_official_commission_rate
@@ -2657,6 +2664,19 @@ class ReportsController < ApplicationController
 
   # A new version, or (with copy_from_version_id) a copy of one of this SKU's versions under the
   # name and date the request gives. The copy gets every standard scenario, like a new version.
+  # The optional delivery_mode / market a scenario narrows its actual data to: FBO or FBS on both
+  # platforms, and for WB the Belarus-local or export-to-Russia part of the ledger. Renders the
+  # 422 itself and returns false when the scope is not one of those.
+  def valid_actual_data_scope?(platform:, delivery_mode:, market:)
+    valid = (delivery_mode.nil? || Ec::SkuActualLogisticsQuery::WB_DELIVERY_MODES.include?(delivery_mode)) &&
+      (market.nil? || (platform == "wb" && Ec::SkuActualLogisticsQuery::WB_MARKETS.include?(market)))
+    return true if valid
+
+    render json: { errors: [ delivery_mode && !Ec::SkuActualLogisticsQuery::WB_DELIVERY_MODES.include?(delivery_mode) ? "unsupported_delivery_mode" : "unsupported_market" ] },
+      status: :unprocessable_entity
+    false
+  end
+
   def build_profit_version_for_create(sku)
     attributes = profit_version_params
     return sku.profit_versions.new(attributes) if params[:copy_from_version_id].blank?

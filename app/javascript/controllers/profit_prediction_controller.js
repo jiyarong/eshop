@@ -16,6 +16,10 @@ import {
 
 const PREVIEW_DEBOUNCE_MS = 350;
 
+// The actual-data shortcuts that can still be platform-wide for a scenario (see actuals_pending in
+// config/sku_profit_scenarios.yml).
+const PENDING_KIND_BY_SOURCE = { actual_storage: "storage", actual_advertising: "advertising" };
+
 const VIEW_MODE_STORAGE_KEY = "profit_prediction_view_mode";
 const VIEW_MODES = ["calculator", "table"];
 const DEFAULT_VIEW_MODE = "calculator";
@@ -1255,7 +1259,8 @@ export default class extends Controller {
     // A scenario whose actual-data queries still cover the whole platform says so next to every
     // shortcut, so a figure taken from them is not mistaken for that market's or mode's own.
     cell.querySelector(":scope > .profit-prediction-process__source-note")?.remove();
-    if (sourceKey && cell.childElementCount > 0 && this.selectedRow?.dataset.actualsSplit === "false") {
+    const pending = (this.selectedRow?.dataset.actualsPending || "").split(" ").filter(Boolean);
+    if (sourceKey && cell.childElementCount > 0 && pending.includes(PENDING_KIND_BY_SOURCE[sourceKey])) {
       const note = document.createElement("div");
       note.className = "profit-prediction-process__source-note";
       note.textContent = this.messagesValue.process.sources.actuals_not_split || "";
@@ -1395,7 +1400,7 @@ export default class extends Controller {
     result.dataset.actualAcquiringResult = "";
     cell.replaceChildren(actions, result);
 
-    const data = this.actualAcquiringData.get(this.selectedRow?.dataset.platform);
+    const data = this.actualAcquiringData.get(this.actualLogisticsKey(this.selectedRow));
     if (data) this.renderActualAcquiringResult(cell, data);
   }
 
@@ -1612,7 +1617,9 @@ export default class extends Controller {
   async loadActualAcquiring(event) {
     if (!this.selectedRow) return;
 
-    const platform = this.selectedRow.dataset.platform;
+    const row = this.selectedRow;
+    const platform = row.dataset.platform;
+    const key = this.actualLogisticsKey(row);
     const cell = event.currentTarget.closest(".profit-prediction-process__source");
     const result = cell?.querySelector("[data-actual-acquiring-result]");
     const messages = this.messagesValue.process.sources.actual_acquiring;
@@ -1625,6 +1632,8 @@ export default class extends Controller {
     try {
       const url = new URL(this.actualAcquiringUrlValue, window.location.origin);
       url.searchParams.set("platform", platform);
+      if (platform === "ozon") url.searchParams.set("delivery_mode", row.dataset.deliveryMode || "fbo");
+      if (platform === "wb") url.searchParams.set("market", row.dataset.market);
       const response = await fetch(url, {
         headers: { Accept: "application/json" },
         signal: controller.signal
@@ -1632,8 +1641,8 @@ export default class extends Controller {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      this.actualAcquiringData.set(platform, data);
-      if (this.selectedRow?.dataset.platform === platform) this.renderActualAcquiringResult(cell, data);
+      this.actualAcquiringData.set(key, data);
+      if (this.actualLogisticsKey(this.selectedRow) === key) this.renderActualAcquiringResult(cell, data);
     } catch (error) {
       if (error.name !== "AbortError" && result) {
         result.className = "profit-prediction-process__source-result is-error";
@@ -1970,6 +1979,7 @@ export default class extends Controller {
       const url = new URL(this.actualSellingPriceUrlValue, window.location.origin);
       url.searchParams.set("platform", row.dataset.platform);
       url.searchParams.set("market", row.dataset.market);
+      url.searchParams.set("delivery_mode", row.dataset.deliveryMode || "fbo");
       const response = await fetch(url, {
         headers: { Accept: "application/json" },
         signal: controller.signal
@@ -1991,7 +2001,7 @@ export default class extends Controller {
   }
 
   actualSellingPriceKey(row) {
-    return row ? `${row.dataset.platform}:${row.dataset.market}` : "";
+    return row ? `${row.dataset.platform}:${row.dataset.market}:${row.dataset.deliveryMode || ""}` : "";
   }
 
   renderActualSellingPriceResult(cell, data) {
@@ -2085,7 +2095,7 @@ export default class extends Controller {
 
     const platform = this.selectedRow.dataset.platform;
     const deliveryMode = this.selectedRow.dataset.deliveryMode || "";
-    const logisticsKey = `${platform}:${deliveryMode}`;
+    const logisticsKey = this.actualLogisticsKey(this.selectedRow);
     if (kind === "cross-dock" && platform !== "ozon") return;
 
     this.actualMetricsRequestController?.abort();
@@ -2109,8 +2119,11 @@ export default class extends Controller {
         ? new URL(this.actualReturnRateUrlValue, window.location.origin)
         : new URL(this.actualLogisticsUrlValue, window.location.origin);
       if (kind === "return-rate" || kind === "logistics") url.searchParams.set("platform", platform);
-      if ((kind === "logistics" || kind === "return-rate") && platform === "wb") {
+      // Both platforms narrow to the scenario: FBO/FBS, and for WB the market (Belarus-local or
+      // export-to-Russia part of the ledger).
+      if (kind === "logistics" || kind === "return-rate") {
         url.searchParams.set("delivery_mode", deliveryMode || "fbo");
+        if (platform === "wb") url.searchParams.set("market", this.selectedRow.dataset.market);
       }
       const response = await fetch(url, {
         headers: { Accept: "application/json" },
@@ -2149,6 +2162,8 @@ export default class extends Controller {
     const returnValue = data.return?.average_rub;
     const outbound = outboundValue === null || outboundValue === undefined || outboundValue === "" ? NaN : Number(outboundValue);
     const returnRate = returnValue === null || returnValue === undefined || returnValue === "" ? NaN : Number(returnValue);
+    const handoverValue = data.handover?.average_rub;
+    const handover = handoverValue === null || handoverValue === undefined || handoverValue === "" ? NaN : Number(handoverValue);
     if (!Number.isFinite(outbound)) {
       container.className = "profit-prediction-process__source-result is-empty";
       container.textContent = this.messagesValue.process.sources.actual_logistics.empty;
@@ -2162,6 +2177,7 @@ export default class extends Controller {
     link.dataset.action = "profit-prediction#applyActualLogistics";
     link.dataset.outboundRate = outbound;
     if (Number.isFinite(returnRate)) link.dataset.returnRate = returnRate;
+    if (Number.isFinite(handover)) link.dataset.handoverRate = handover;
     link.title = messages.apply;
     const outboundLine = document.createElement("span");
     outboundLine.textContent = `${messages.outbound} ${this.number(outbound)} RUB`;
@@ -2170,6 +2186,11 @@ export default class extends Controller {
       const returnLine = document.createElement("span");
       returnLine.textContent = `${messages.return} ${this.number(returnRate)} RUB`;
       link.append(returnLine);
+    }
+    if (Number.isFinite(handover)) {
+      const handoverLine = document.createElement("span");
+      handoverLine.textContent = `${messages.handover} ${this.number(handover)} RUB`;
+      link.append(handoverLine);
     }
     link.disabled = this.readonlyValue;
 
@@ -2187,7 +2208,7 @@ export default class extends Controller {
   actualLogisticsKey(row) {
     if (!row) return "";
 
-    return `${row.dataset.platform}:${row.dataset.deliveryMode || ""}`;
+    return `${row.dataset.platform}:${row.dataset.deliveryMode || ""}:${row.dataset.market || ""}`;
   }
 
   applyActualLogistics(event) {
@@ -2195,7 +2216,8 @@ export default class extends Controller {
 
     const values = {
       outbound_logistics_rub: event.currentTarget.dataset.outboundRate,
-      return_logistics_rub: event.currentTarget.dataset.returnRate
+      return_logistics_rub: event.currentTarget.dataset.returnRate,
+      fbs_handover_rub: event.currentTarget.dataset.handoverRate
     };
     Object.entries(values).forEach(([field, value]) => {
       if (value === undefined || value === "") return;

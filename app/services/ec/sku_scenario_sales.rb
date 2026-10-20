@@ -19,7 +19,7 @@ module Ec
     # A hidden scenario is reported as missed when it has at least MIN_UNITS signed units and at
     # least this share (percent) of all the SKU's signed units.
     MISSED_SHARE_PERCENT = 1
-    WB_MARKETS = { 1 => "by", 2 => "ru" }.freeze
+    WB_MARKETS = Ec::WbLedgerMarket::REPORT_TYPE_MARKETS
     WB_MODES = { "FBW" => "fbo", "FBS" => "fbs" }.freeze
     OZON_MARKETS = { "BYN" => "by", "RUB" => "ru" }.freeze
 

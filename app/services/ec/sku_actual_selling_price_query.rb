@@ -4,17 +4,22 @@ module Ec
     PLATFORMS = %w[wb ozon].freeze
     MARKETS = %w[ru by].freeze
 
-    def self.run(sku:, platform:, market:, today:, time_zone:, weeks: DEFAULT_WEEKS)
-      new(sku:, platform:, market:, today:, time_zone:, weeks:).run
+    FULFILLMENT_MODES = { "fbo" => %w[fbo fbw], "fbs" => %w[fbs] }.freeze
+
+    # delivery_mode (optional) narrows to FBO/FBW or FBS orders.
+    def self.run(sku:, platform:, market:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
+      new(sku:, platform:, market:, today:, time_zone:, weeks:, delivery_mode:).run
     end
 
-    def initialize(sku:, platform:, market:, today:, time_zone:, weeks: DEFAULT_WEEKS)
+    def initialize(sku:, platform:, market:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
       @sku = sku
       @platform = platform.to_s.downcase
       @market = market.to_s.downcase
       @today = today.to_date
       @time_zone = time_zone
       @weeks = Integer(weeks)
+      @delivery_mode = delivery_mode.to_s.downcase.presence
+      raise ArgumentError, "unsupported_delivery_mode" if @delivery_mode && !FULFILLMENT_MODES.key?(@delivery_mode)
       raise ArgumentError, "unsupported_platform" unless PLATFORMS.include?(@platform)
       raise ArgumentError, "unsupported_market" unless MARKETS.include?(@market)
       raise ArgumentError, "weeks_must_be_positive" unless @weeks.positive?
@@ -30,7 +35,9 @@ module Ec
     def run
       period_to = today.beginning_of_week(:monday) - 1.day
       period_from = period_to - (weeks * 7 - 1).days
-      rows = order_rows(period_from:, period_to:).select { |row| in_market?(row) }
+      all_rows = order_rows(period_from:, period_to:)
+      wb_markets = platform == "wb" ? Ec::WbLedgerMarket.markets_by_srid(all_rows.map { |row| row[:external_order_id] }) : {}
+      rows = rows_in_market(all_rows, wb_markets)
       commission_base_price = summarize_price(
         rows,
         amount_key: :commission_base_price,
@@ -47,6 +54,9 @@ module Ec
       {
         platform: platform,
         market: market,
+        delivery_mode: delivery_mode,
+        # WB orders whose market the ledger does not know yet (this week's): counted as Russian.
+        unclassified_unit_count: all_rows.reject { |row| wb_markets.key?(row[:external_order_id]) }.sum { |row| row.fetch(:quantity) } * (platform == "wb" ? 1 : 0),
         period: {
           from_date: period_from,
           to_date: period_to,
@@ -59,16 +69,24 @@ module Ec
 
     private
 
-    attr_reader :sku, :platform, :market, :today, :time_zone, :weeks
+    attr_reader :sku, :platform, :market, :today, :time_zone, :weeks, :delivery_mode
 
     def market_buyer_currency
       platform == "ozon" && market == "by" ? "BYN" : "RUB"
     end
 
-    # WB has a single market here. Ozon orders are told apart by the currency the
-    # buyer paid in, so an Ozon item without buyer data cannot be assigned to one.
-    def in_market?(row)
-      platform == "wb" || row.fetch(:buyer_currency) == market_buyer_currency
+    # Ozon orders are told apart by the currency the buyer paid in, so an Ozon item without buyer
+    # data cannot be assigned to one. WB orders have no buyer country: their market is the one of
+    # the ledger's sale row for the same srid. An order the ledger has not reached yet (shipped,
+    # this week's) has none; it counts as Russian, the usual market, and is reported in
+    # `unclassified_unit_count`, while the Belarus price rests on orders the ledger places there.
+    def rows_in_market(rows, wb_markets)
+      return rows.select { |row| row.fetch(:buyer_currency) == market_buyer_currency } unless platform == "wb"
+
+      rows.select do |row|
+        known = wb_markets[row[:external_order_id]]
+        market == "ru" ? known.nil? || known == "ru" : known == "by"
+      end
     end
 
     def order_rows(period_from:, period_to:)
@@ -80,6 +98,7 @@ module Ec
         .joins(order_item_sku_product_join_sql)
         .where(ec_sku_products: { sku_code: sku.sku_code, is_active: true })
         .where(ec_order_items: { platform: platform, store_id: active_store_ids })
+        .then { |scope| fulfillment_scope(scope) }
         .where(ec_orders: { ordered_at: user_time_range(period_from, period_to) })
         .where.not(ec_orders: { order_status: "cancelled" })
         .where("ec_order_items.quantity > 0")
@@ -92,10 +111,12 @@ module Ec
           "ec_order_items.buyer_paid_unit_price",
           "ec_order_items.buyer_currency_code",
           "ec_order_items.quantity",
-          "ec_orders.ordered_at"
-        ).map do |id, commission_base_price, commission_base_currency, buyer_paid_price, buyer_currency, quantity, ordered_at|
+          "ec_orders.ordered_at",
+          "ec_orders.external_order_id"
+        ).map do |id, commission_base_price, commission_base_currency, buyer_paid_price, buyer_currency, quantity, ordered_at, external_order_id|
           {
             id: id,
+            external_order_id: external_order_id,
             commission_base_price: commission_base_price&.to_d,
             commission_base_currency: commission_base_currency.to_s.upcase.presence,
             buyer_paid_price: buyer_paid_price&.to_d,
@@ -104,6 +125,14 @@ module Ec
             ordered_at: ordered_at
           }
         end
+    end
+
+    def fulfillment_scope(scope)
+      return scope unless delivery_mode
+
+      scope
+        .joins("INNER JOIN ec_order_fulfillments ON ec_order_fulfillments.id = ec_order_items.fulfillment_id")
+        .where(ec_order_fulfillments: { fulfillment_type: FULFILLMENT_MODES.fetch(delivery_mode) })
     end
 
     def summarize_price(rows, amount_key:, currency_key:, default_currency:)

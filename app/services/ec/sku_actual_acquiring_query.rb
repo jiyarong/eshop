@@ -6,16 +6,22 @@ module Ec
     DEFAULT_WEEKS = 4
     PLATFORMS = %w[ozon wb].freeze
 
-    def self.run(sku:, platform:, today:, weeks: DEFAULT_WEEKS)
-      new(sku:, platform:, today:, weeks:).run
+    # delivery_mode narrows Ozon to FBO or FBS postings, market narrows WB to the Belarus-local or
+    # export-to-Russia part of the ledger; nil means the whole platform.
+    def self.run(sku:, platform:, today:, weeks: DEFAULT_WEEKS, delivery_mode: nil, market: nil)
+      new(sku:, platform:, today:, weeks:, delivery_mode:, market:).run
     end
 
-    def initialize(sku:, platform:, today:, weeks: DEFAULT_WEEKS)
+    def initialize(sku:, platform:, today:, weeks: DEFAULT_WEEKS, delivery_mode: nil, market: nil)
       @sku = sku
       @platform = platform.to_s.downcase
       @today = today.to_date
       @weeks = Integer(weeks)
+      @delivery_mode = delivery_mode.to_s.downcase.presence
+      @market = market.to_s.downcase.presence
       raise ArgumentError, "unsupported_platform" unless PLATFORMS.include?(@platform)
+      raise ArgumentError, "unsupported_delivery_mode" if @delivery_mode && !(@platform == "ozon" && %w[fbo fbs].include?(@delivery_mode))
+      raise ArgumentError, "unsupported_market" if @market && !(@platform == "wb" && Ec::WbLedgerMarket.report_type_for(@market))
       raise ArgumentError, "weeks_must_be_positive" unless @weeks.positive?
     end
 
@@ -29,6 +35,8 @@ module Ec
 
       {
         platform: platform,
+        delivery_mode: delivery_mode,
+        market: market,
         period: { from_date: period_from, to_date: period_to, data_through: result[:data_through] },
         store_count: bindings.map(&:first).uniq.size,
         listing_count: bindings.size,
@@ -43,7 +51,7 @@ module Ec
 
     private
 
-    attr_reader :sku, :platform, :today, :weeks
+    attr_reader :sku, :platform, :today, :weeks, :delivery_mode, :market
 
     def platform_bindings
       account_column = platform == "ozon" ? :ozon_raw_account_id : :wb_raw_account_id
@@ -77,6 +85,7 @@ module Ec
         type_id: [ 0, 1 ]
       ).pluck(:account_id, :ozon_sku_id, :type_id, :amount, :posting_number, :accrual_date)
       rows = rows.select { |account_id, product_id, *| allowed.include?([ account_id, product_id ]) }
+      rows = rows_of_delivery_mode(rows) if delivery_mode
 
       revenue_postings = rows.filter_map do |account_id, product_id, type_id, _amount, posting, _date|
         [ account_id, product_id, posting_key(posting) ] if type_id.to_i.zero? && posting.present?
@@ -96,6 +105,12 @@ module Ec
       { fee:, base:, sample_count: count, data_through: rows.map(&:last).max }
     end
 
+    # Ozon FBS postings are the ones in the FBS posting table; every other posting is FBO.
+    def rows_of_delivery_mode(rows)
+      fbs_numbers = RawOzon::PostingFbs.where(posting_number: rows.filter_map { |row| row[4] }.uniq).pluck(:posting_number).to_set
+      rows.select { |row| (fbs_numbers.include?(row[4]) ? "fbs" : "fbo") == delivery_mode }
+    end
+
     def wb_totals(bindings, period_from:, period_to:)
       return empty_totals if bindings.empty?
 
@@ -105,6 +120,7 @@ module Ec
         nm_id: bindings.map(&:last).uniq,
         rr_dt: period_from..period_to
       ).where("seller_oper_name LIKE ?", "%#{RawWb::FinanceDetail::SALE_KEYWORD}%")
+        .then { |scope| market ? scope.where(report_type: Ec::WbLedgerMarket.report_type_for(market)) : scope }
         .pluck(:account_id, :nm_id, :acquiring_fee, :retail_price_with_disc, :quantity, :rr_dt)
         .select { |account_id, nm_id, *| allowed.include?([ account_id, nm_id ]) }
 

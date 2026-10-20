@@ -3,6 +3,12 @@ module Ec
     DEFAULT_WEEKS = 4
     PLATFORMS = %w[ozon wb].freeze
     WB_DELIVERY_MODES = %w[fbo fbs].freeze
+    OZON_DELIVERY_MODES = %w[fbo fbs].freeze
+    WB_MARKETS = Ec::WbLedgerMarket::MARKET_REPORT_TYPES.keys.freeze
+    # Ozon FBS books its fees under three groups: the direct-flow leg (the outbound fee proper), the
+    # hand-over of the parcel by the seller (drop-off at a pickup point or sorting centre, delivery to
+    # the hand-over place, last mile) and the return leg. FBO has no hand-over.
+    OZON_FBS_HANDOVER_TYPE_IDS = [ 16, 29, 98 ].to_set.freeze
     WB_OUTBOUND_BONUS_PREFIXES = ["К клиенту при продаже", "К клиенту при отмене"].freeze
     WB_RETURN_BONUS_PREFIXES = ["От клиента при возврате", "От клиента при отмене"].freeze
     # Goods sent back to the seller ("Возврат ... (К продавцу)") travel as their own parcels with
@@ -10,20 +16,23 @@ module Ec
     # order costs and are spread over the returned orders of the period.
     WB_RETURN_TO_SELLER_BONUS_PREFIXES = ["Возврат"].freeze
 
-    def self.run(sku:, today:, platform: "ozon", delivery_mode: nil, weeks: DEFAULT_WEEKS)
-      new(sku:, today:, platform:, delivery_mode:, weeks:).run
+    # delivery_mode narrows to FBW/FBS (WB) or FBO/FBS (Ozon); market (WB only) to the Belarus-local
+    # or export-to-Russia part of the ledger. Nil means every parcel of the platform.
+    def self.run(sku:, today:, platform: "ozon", delivery_mode: nil, market: nil, weeks: DEFAULT_WEEKS)
+      new(sku:, today:, platform:, delivery_mode:, market:, weeks:).run
     end
 
-    def initialize(sku:, today:, platform: "ozon", delivery_mode: nil, weeks: DEFAULT_WEEKS)
+    def initialize(sku:, today:, platform: "ozon", delivery_mode: nil, market: nil, weeks: DEFAULT_WEEKS)
       @sku = sku
       @today = today.to_date
       @platform = platform.to_s.downcase
       @delivery_mode = delivery_mode.to_s.downcase.presence
+      @market = market.to_s.downcase.presence
       @weeks = Integer(weeks)
       raise ArgumentError, "unsupported_platform" unless PLATFORMS.include?(@platform)
-      if @platform == "wb" && @delivery_mode && !WB_DELIVERY_MODES.include?(@delivery_mode)
-        raise ArgumentError, "unsupported_delivery_mode"
-      end
+      modes = @platform == "wb" ? WB_DELIVERY_MODES : OZON_DELIVERY_MODES
+      raise ArgumentError, "unsupported_delivery_mode" if @delivery_mode && !modes.include?(@delivery_mode)
+      raise ArgumentError, "unsupported_market" if @market && !(@platform == "wb" && WB_MARKETS.include?(@market))
       raise ArgumentError, "weeks_must_be_positive" unless @weeks.positive?
     end
 
@@ -38,15 +47,17 @@ module Ec
 
     private
 
-    attr_reader :sku, :today, :platform, :delivery_mode, :weeks
+    attr_reader :sku, :today, :platform, :delivery_mode, :market, :weeks
 
     def ozon_payload(period_from:, period_to:)
       bindings = ozon_bindings
       rows = accrual_rows(bindings, period_from:, period_to:)
+      rows = rows_of_delivery_mode(rows) if delivery_mode
       grouped_fees = grouped_logistics_fees(rows, bindings)
 
       {
         platform: "ozon",
+        delivery_mode: delivery_mode,
         period: {
           from_date: period_from,
           to_date: period_to,
@@ -55,10 +66,18 @@ module Ec
         store_count: bindings.map(&:first).uniq.size,
         listing_count: bindings.size,
         outbound: metric_payload(grouped_fees.fetch(:outbound)),
+        handover: metric_payload(grouped_fees.fetch(:handover)),
         return: metric_payload(grouped_fees.fetch(:return)),
-        cross_dock: Ec::SkuActualCrossDockQuery.run(sku: sku, today: today),
+        cross_dock: delivery_mode == "fbs" ? nil : Ec::SkuActualCrossDockQuery.run(sku: sku, today: today),
         return_rate: return_rate_payload(grouped_fees)
       }
+    end
+
+    # Ozon FBS postings are the ones in the FBS posting table; every other posting is FBO.
+    def rows_of_delivery_mode(rows)
+      posting_numbers = rows.filter_map(&:posting_number).uniq
+      fbs_numbers = RawOzon::PostingFbs.where(posting_number: posting_numbers).pluck(:posting_number).to_set
+      rows.select { |row| (fbs_numbers.include?(row.posting_number) ? "fbs" : "fbo") == delivery_mode }
     end
 
     def wb_payload(period_from:, period_to:)
@@ -75,6 +94,7 @@ module Ec
       {
         platform: "wb",
         delivery_mode: delivery_mode,
+        market: market,
         period: {
           from_date: period_from,
           to_date: period_to,
@@ -149,6 +169,7 @@ module Ec
           correction: "%#{RawWb::FinanceDetail::CORR_LOGISTIC_KEYWORD}%"
         )
         .where.not(delivery_rub: [nil, 0])
+        .then { |scope| market ? scope.where(report_type: Ec::WbLedgerMarket.report_type_for(market)) : scope }
         .select(:account_id, :nm_id, :shk_id, :srid, :rr_dt, :bonus_type_name, :delivery_method, :delivery_rub)
         .to_a
     end
@@ -157,6 +178,7 @@ module Ec
       allowed_bindings = bindings.to_set
       grouped = {
         outbound: Hash.new(0.to_d),
+        handover: Hash.new(0.to_d),
         return: Hash.new(0.to_d)
       }
 
@@ -167,6 +189,7 @@ module Ec
         category = logistics_category(row.type_id, row.type_name)
         next unless category
 
+        category = :handover if category == :outbound && delivery_mode == "fbs" && OZON_FBS_HANDOVER_TYPE_IDS.include?(row.type_id.to_i)
         key = [row.account_id, row.ozon_sku_id, row.posting_number]
         grouped.fetch(category)[key] += row.amount.to_d
       end

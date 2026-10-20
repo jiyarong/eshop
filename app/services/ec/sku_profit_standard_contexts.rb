@@ -5,11 +5,13 @@ module Ec
     SCENARIOS = YAML.load_file(CONFIG_PATH).fetch("scenarios").map do |row|
       row.stringify_keys.merge("warehouse_region" => row["warehouse_region"] || "main").slice(*IDENTITY_KEYS).transform_values(&:to_s).freeze
     end.freeze
-    ACTUALS_PENDING = YAML.load_file(CONFIG_PATH).fetch("scenarios").filter_map do |row|
-      next unless row["actuals_split"] == false
+    ACTUALS_PENDING = YAML.load_file(CONFIG_PATH).fetch("scenarios").each_with_object({}) do |row, pending|
+      kinds = Array(row["actuals_pending"]).map(&:to_s)
+      next if kinds.empty?
 
-      row.stringify_keys.merge("warehouse_region" => row["warehouse_region"] || "main").slice(*IDENTITY_KEYS).transform_values(&:to_s)
-    end.map { |identity| IDENTITY_KEYS.map { |key| identity[key] }.join("|") }.to_set.freeze
+      identity = row.stringify_keys.merge("warehouse_region" => row["warehouse_region"] || "main")
+      pending[IDENTITY_KEYS.map { |key| identity[key].to_s }.join("|")] = kinds.freeze
+    end.freeze
     SCENARIO_INDEX = SCENARIOS.each_with_index.to_h.freeze
     DEFAULT_WAREHOUSE_REGION = "main".freeze
 
@@ -22,9 +24,13 @@ module Ec
       end.join("|")
     end
 
-    # False for a scenario whose actual-data queries still cover the whole platform.
+    # The actual-data kinds ("storage", "advertising") that are still platform-wide for a scenario.
+    def self.actuals_pending(attributes)
+      ACTUALS_PENDING.fetch(key_for(attributes), [])
+    end
+
     def self.actuals_split?(attributes)
-      !ACTUALS_PENDING.include?(key_for(attributes))
+      actuals_pending(attributes).empty?
     end
 
     def self.scenario_keys

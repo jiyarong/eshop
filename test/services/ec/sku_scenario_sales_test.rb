@@ -57,7 +57,8 @@ class Ec::SkuScenarioSalesTest < ActiveSupport::TestCase
     assert_equal 2, ru[:orders]
     assert_equal Date.new(2026, 9, 9), ru[:last_date]
     assert_equal 4, result[:scenarios].fetch("ozon|by|fbo|main|general")[:units]
-    assert_equal 6, result[:outside_units], "Ozon FBS is not one of the standard scenarios yet"
+    assert_equal 6, result[:scenarios].fetch("ozon|ru|fbs|main|general")[:units], "Ozon FBS is a standard scenario now"
+    assert_equal 0, result[:outside_units]
     assert_equal 5, result[:unclassified_units], "a missing buyer currency says nothing about the market"
     assert_equal 20, result[:total_units]
   end
@@ -79,7 +80,8 @@ class Ec::SkuScenarioSalesTest < ActiveSupport::TestCase
     assert_equal 2, result[:scenarios].fetch("wb|ru|fbo|main|small")[:units]
     assert_equal 1, result[:scenarios].fetch("wb|ru|fbs|main|small")[:units]
     assert_equal 3, result[:scenarios].fetch("wb|ru|fbs|main|general")[:units]
-    assert_equal 4, result[:outside_units], "Belarus-local WB sales belong to a scenario the workbench does not have yet"
+    assert_equal 4, result[:scenarios].fetch("wb|by|fbs|main|small")[:units], "Belarus-local WB sales have their own scenarios now"
+    assert_equal 0, result[:outside_units]
     assert_equal 5, result[:unclassified_units], "a sale row without a logistics row cannot be told FBW from FBS"
     assert_equal 15, result[:total_units]
   end

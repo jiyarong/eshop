@@ -12,13 +12,9 @@ module Ec
 
     # Decides the price of one scenario that has none. Returns
     #   { price_rub:, units:, orders: }                     when it can be filled (the caller assigns it)
-    #   { reason: "no_orders_in_scenario" | "too_few_units" | "missing_exchange_rate" | "market_not_measurable", units: }
+    #   { reason: "no_orders_in_scenario" | "too_few_units" | "missing_exchange_rate", units: }
     # Shared by this service and the monthly refresh.
     def self.realized_price_for(sku, context, today:, time_zone:, min_units: MIN_UNITS)
-      # WB orders carry no buyer country, so their orders cannot be told apart by market: the
-      # price a Belarus scenario would get is the Russian one. Only the ledger knows the market.
-      return { reason: "market_not_measurable", units: 0 } if context.platform == "wb" && context.market == "by"
-
       price = Ec::SkuActualScenarioPriceQuery.run(
         sku:, platform: context.platform, market: context.market, delivery_mode: context.delivery_mode,
         company_type: context.company_type.presence || "general", today:, time_zone:

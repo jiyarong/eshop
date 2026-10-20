@@ -49,10 +49,12 @@ module Ec
           "ec_order_items.buyer_paid_unit_price",
           "ec_order_items.buyer_currency_code",
           "ec_order_items.quantity",
-          "ec_orders.ordered_at"
-        ).map do |id, commission_base_price, commission_base_currency, buyer_paid_price, buyer_currency, quantity, ordered_at|
+          "ec_orders.ordered_at",
+          "ec_orders.external_order_id"
+        ).map do |id, commission_base_price, commission_base_currency, buyer_paid_price, buyer_currency, quantity, ordered_at, external_order_id|
           {
             id: id,
+            external_order_id: external_order_id,
             commission_base_price: commission_base_price&.to_d,
             commission_base_currency: commission_base_currency.to_s.upcase.presence,
             buyer_paid_price: buyer_paid_price&.to_d,

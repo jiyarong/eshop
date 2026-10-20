@@ -26,8 +26,9 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     previous = create_version(sku, "published", Date.new(2026, 10, 1), price: 12_500, return_rate: 0.1)
 
     summary = nil
-    with_actuals(logistics: { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") } },
-      return_rate: { return_rate: { rate: BigDecimal("0.12") } }) do
+    with_actuals(logistics: { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") }, handover: { average_rub: BigDecimal("33") } },
+      return_rate: { return_rate: { rate: BigDecimal("0.12") } },
+      storage: { storage: { average_rub: BigDecimal("130") } }, advertising: { rate: BigDecimal("0.05") }) do
       summary = run_refresh
     end
 
@@ -52,13 +53,20 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     assert_not_nil wb.profit_cny
     # The previous version is untouched.
     assert_equal 0.1.to_d, previous.reload.contexts.find_by(platform: "wb", delivery_mode: "fbo", company_type: "small").return_rate
-    # Scenarios whose actual-data queries still cover the whole platform keep their defaults.
+    # Storage and advertising are refreshed where they are measured for the scenario ...
+    assert_equal 10.to_d, wb.storage_cny
+    assert_equal 0.05.to_d, wb.advertising_rate
+    # ... and left as the version holds them where they are still platform-wide (Belarus, FBS).
     belarus = version.context_for(platform: "wb", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
-    assert_equal 100.to_d, belarus.outbound_logistics_rub
-    assert_equal 0.1.to_d, belarus.return_rate
+    assert_equal 210.5.to_d, belarus.outbound_logistics_rub, "logistics is measured per market"
+    assert_equal 0, belarus.storage_cny.to_d
+    assert_nil belarus.advertising_rate
     ozon_fbs = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general")
-    assert_equal 100.to_d, ozon_fbs.outbound_logistics_rub
-    assert_equal 0.1.to_d, ozon_fbs.return_rate
+    assert_equal 33.to_d, ozon_fbs.fbs_handover_rub
+    assert_nil ozon_fbs.advertising_rate
+    ozon_fbo = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general")
+    assert_nil ozon_fbo.fbs_handover_rub
+    assert_equal 0.05.to_d, ozon_fbo.advertising_rate
   end
 
   test "a scenario without a price gets its own realized price when enough units sold, existing prices stay" do
@@ -196,8 +204,11 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
   end
 
   # Canned payloads for the actual-data queries; nil keeps the real (empty-DB) answer.
-  def with_actuals(logistics: nil, return_rate: nil)
-    stubs = { Ec::SkuActualLogisticsQuery => logistics, Ec::SkuActualReturnRateQuery => return_rate }.select { |_klass, payload| payload }
+  def with_actuals(logistics: nil, return_rate: nil, storage: nil, advertising: nil)
+    stubs = {
+      Ec::SkuActualLogisticsQuery => logistics, Ec::SkuActualReturnRateQuery => return_rate,
+      Ec::SkuActualStorageQuery => storage, Ec::SkuActualAdvertisingQuery => advertising
+    }.select { |_klass, payload| payload }
     originals = stubs.keys.index_with { |klass| klass.method(:run) }
     stubs.each { |klass, payload| klass.define_singleton_method(:run) { |**_args| payload } }
     yield

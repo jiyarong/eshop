@@ -9,17 +9,18 @@ module Ec
     DEFAULT_WEEKS = 4
     PLATFORMS = %w[wb ozon].freeze
 
-    def self.run(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
-      new(sku:, platform:, today:, time_zone:, weeks:, delivery_mode:).run
+    def self.run(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil, market: nil)
+      new(sku:, platform:, today:, time_zone:, weeks:, delivery_mode:, market:).run
     end
 
-    def initialize(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
+    def initialize(sku:, platform:, today:, time_zone:, weeks: DEFAULT_WEEKS, delivery_mode: nil, market: nil)
       @sku = sku
       @platform = platform.to_s.downcase
       @today = today.to_date
       @time_zone = time_zone
       @weeks = Integer(weeks)
       @delivery_mode = delivery_mode.to_s.downcase.presence
+      @market = market.to_s.downcase.presence
       raise ArgumentError, "unsupported_platform" unless PLATFORMS.include?(@platform)
       raise ArgumentError, "weeks_must_be_positive" unless @weeks.positive?
     end
@@ -32,29 +33,30 @@ module Ec
 
     private
 
-    attr_reader :sku, :platform, :today, :time_zone, :weeks, :delivery_mode
+    attr_reader :sku, :platform, :today, :time_zone, :weeks, :delivery_mode, :market
 
     def ozon_payload
-      payload = Ec::SkuActualLogisticsQuery.run(sku:, today:, weeks:)
+      payload = Ec::SkuActualLogisticsQuery.run(sku:, today:, delivery_mode:, weeks:)
 
-      payload.slice(:platform, :period, :store_count, :listing_count, :return_rate)
+      payload.slice(:platform, :delivery_mode, :period, :store_count, :listing_count, :return_rate)
     end
 
     # Return legs ("От клиента при возврате / при отмене") per outbound leg ("К клиенту при
     # продаже / при отмене"), counted per parcel in the 4-week finance details, for the
     # scenario's delivery mode when given.
     def wb_payload
-      logistics = Ec::SkuActualLogisticsQuery.run(sku:, today:, platform: "wb", delivery_mode:, weeks:)
+      logistics = Ec::SkuActualLogisticsQuery.run(sku:, today:, platform: "wb", delivery_mode:, market:, weeks:)
       outbound_count = logistics.dig(:outbound, :sample_count).to_i
       return_count = logistics.dig(:return, :sample_count).to_i
 
-      logistics.slice(:platform, :delivery_mode, :period, :store_count, :listing_count).merge(
+      logistics.slice(:platform, :delivery_mode, :market, :period, :store_count, :listing_count).merge(
         return_rate: {
           order_count: outbound_count,
           return_count: return_count,
           rate: outbound_count.positive? ? (return_count.to_d / outbound_count).round(10) : nil
         },
-        buyer_return_rate: wb_buyer_return_rate
+        # The buyer-side rate comes from the orders table, which cannot be told apart by market.
+        buyer_return_rate: market ? nil : wb_buyer_return_rate
       )
     end
 

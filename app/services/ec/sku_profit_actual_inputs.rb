@@ -8,7 +8,7 @@ module Ec
     WEEKS = 4
     FIELDS = %w[
       outbound_logistics_rub return_logistics_rub cross_docking_cny return_rate storage_cny
-      advertising_rate acquiring_rate buyer_paid_price_rub
+      advertising_rate acquiring_rate buyer_paid_price_rub fbs_handover_rub
     ].freeze
 
     def initialize(sku:, today:, time_zone:, weeks: WEEKS)
@@ -27,6 +27,10 @@ module Ec
       mode = identity.fetch("delivery_mode")
       market = identity.fetch("market")
       exchange = exchange_rate.to_d
+      pending = Ec::SkuProfitStandardContexts.actuals_pending(identity)
+      # WB tells its markets apart through the ledger, Ozon its modes through the posting tables;
+      # both queries narrow to the scenario, so the key carries what they are narrowed by.
+      wb_market = platform == "wb" ? market : nil
       values = {}
       unavailable = []
       fetch = lambda do |kind, *key, &block|
@@ -41,52 +45,57 @@ module Ec
         end
       end
 
-      logistics = fetch.call(:logistics, platform, platform == "wb" ? mode : nil) do
-        args = { sku: sku, today: today, platform: platform }
-        args[:delivery_mode] = mode if platform == "wb"
-        Ec::SkuActualLogisticsQuery.run(**args, weeks: weeks)
+      logistics = fetch.call(:logistics, platform, mode, wb_market) do
+        Ec::SkuActualLogisticsQuery.run(sku: sku, today: today, platform: platform, delivery_mode: mode, market: wb_market, weeks: weeks)
       end
       if logistics
         values["outbound_logistics_rub"] = positive(logistics.dig(:outbound, :average_rub))
         values["return_logistics_rub"] = positive(logistics.dig(:return, :average_rub))
+        values["fbs_handover_rub"] = positive(logistics.dig(:handover, :average_rub)) if platform == "ozon" && mode == "fbs"
         cross_dock = positive(logistics.dig(:cross_dock, :average_rub))
-        values["cross_docking_cny"] = cross_dock / exchange if cross_dock && exchange.positive? && platform == "ozon" && market == "ru"
+        values["cross_docking_cny"] = cross_dock / exchange if cross_dock && exchange.positive? && platform == "ozon" && market == "ru" && mode == "fbo"
       end
 
-      return_rate = fetch.call(:return_rate, platform, platform == "wb" ? mode : nil) do
-        args = { sku: sku, platform: platform, today: today, time_zone: time_zone, weeks: weeks }
-        args[:delivery_mode] = mode if platform == "wb"
-        Ec::SkuActualReturnRateQuery.run(**args)
+      return_rate = fetch.call(:return_rate, platform, mode, wb_market) do
+        Ec::SkuActualReturnRateQuery.run(sku: sku, platform: platform, today: today, time_zone: time_zone, weeks: weeks,
+          delivery_mode: mode, market: wb_market)
       end
       rate = decimal(return_rate&.dig(:return_rate, :rate))
       values["return_rate"] = rate if rate && rate >= 0 && rate < 1
 
-      storage = fetch.call(:storage, platform) do
-        Ec::SkuActualStorageQuery.run(sku: sku, platform: platform, today: today, weeks: weeks)
-      end
-      storage_rub = positive(storage&.dig(:storage, :average_rub))
-      values["storage_cny"] = storage_rub / exchange if storage_rub && exchange.positive?
-
-      advertising = fetch.call(:advertising, platform) do
-        Ec::SkuActualAdvertisingQuery.run(sku: sku, platform: platform, today: today, weeks: weeks)
-      end
-      ad_rate = decimal(advertising&.dig(:rate))
-      # A rate of 100% or more (spend above sales) cannot be calculated with: leave it out.
-      if ad_rate && ad_rate >= 0 && ad_rate < 1
-        values["advertising_rate"] = ad_rate
-      elsif ad_rate
-        unavailable << "advertising: rate #{ad_rate.round(2).to_s('F')} is not below 100%"
+      # What is still platform-wide for this scenario is left alone, not filled with a figure that
+      # would pass for the scenario's own.
+      unless pending.include?("storage") || (platform == "ozon" && mode == "fbs")
+        storage = fetch.call(:storage, platform) do
+          Ec::SkuActualStorageQuery.run(sku: sku, platform: platform, today: today, weeks: weeks)
+        end
+        storage_rub = positive(storage&.dig(:storage, :average_rub))
+        values["storage_cny"] = storage_rub / exchange if storage_rub && exchange.positive?
       end
 
-      acquiring = fetch.call(:acquiring, platform) do
-        Ec::SkuActualAcquiringQuery.run(sku: sku, platform: platform, today: today, weeks: weeks)
+      unless pending.include?("advertising")
+        advertising = fetch.call(:advertising, platform) do
+          Ec::SkuActualAdvertisingQuery.run(sku: sku, platform: platform, today: today, weeks: weeks)
+        end
+        ad_rate = decimal(advertising&.dig(:rate))
+        # A rate of 100% or more (spend above sales) cannot be calculated with: leave it out.
+        if ad_rate && ad_rate >= 0 && ad_rate < 1
+          values["advertising_rate"] = ad_rate
+        elsif ad_rate
+          unavailable << "advertising: rate #{ad_rate.round(2).to_s('F')} is not below 100%"
+        end
+      end
+
+      acquiring = fetch.call(:acquiring, platform, mode, wb_market) do
+        Ec::SkuActualAcquiringQuery.run(sku: sku, platform: platform, today: today, weeks: weeks,
+          delivery_mode: platform == "ozon" ? mode : nil, market: wb_market)
       end
       acquiring_rate = decimal(acquiring&.dig(:acquiring, :rate))
       values["acquiring_rate"] = acquiring_rate if acquiring_rate && acquiring_rate < 1
 
-      price = fetch.call(:selling_price, platform, market) do
-        Ec::SkuActualSellingPriceQuery.run(sku: sku, platform: platform, market: market, today: today,
-          time_zone: time_zone, weeks: weeks)
+      price = fetch.call(:selling_price, platform, market, mode) do
+        Ec::SkuActualSellingPriceQuery.run(sku: sku, platform: platform, market: market, delivery_mode: mode,
+          today: today, time_zone: time_zone, weeks: weeks)
       end
       values["buyer_paid_price_rub"] = positive(price&.dig(:buyer_paid_price, :average_rub))
 

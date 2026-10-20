@@ -2,8 +2,9 @@
 # The workbench opens every version with all of them; a SKU can hide the ones it does not sell
 # (see Ec::SkuScenarioVisibility). Order here is the display order.
 #
-# actuals_split: false while the actual-data queries (logistics, return rate, storage, ads, ...)
-# do not yet separate this scenario from the others of its platform; the page says so.
+# actuals_pending: the actual-data kinds (storage, advertising) that are still platform-wide for
+# this scenario because the rule for splitting them by market is not decided; the page says so
+# next to those shortcuts and the monthly refresh leaves those inputs alone.
 #
 # delivery_mode: WB FBW is stored as "fbo"; Ozon has fbo and fbs.
 # To add a market or a tax regime, add its rows here and teach the calculator and the defaults
@@ -13,11 +14,11 @@ scenarios:
   - { platform: wb,   market: ru, delivery_mode: fbs, company_type: general }
   - { platform: wb,   market: ru, delivery_mode: fbo, company_type: small }
   - { platform: wb,   market: ru, delivery_mode: fbs, company_type: small }
-  - { platform: wb,   market: by, delivery_mode: fbo, company_type: general, actuals_split: false }
-  - { platform: wb,   market: by, delivery_mode: fbs, company_type: general, actuals_split: false }
-  - { platform: wb,   market: by, delivery_mode: fbo, company_type: small, actuals_split: false }
-  - { platform: wb,   market: by, delivery_mode: fbs, company_type: small, actuals_split: false }
+  - { platform: wb,   market: by, delivery_mode: fbo, company_type: general, actuals_pending: [storage, advertising] }
+  - { platform: wb,   market: by, delivery_mode: fbs, company_type: general, actuals_pending: [storage, advertising] }
+  - { platform: wb,   market: by, delivery_mode: fbo, company_type: small, actuals_pending: [storage, advertising] }
+  - { platform: wb,   market: by, delivery_mode: fbs, company_type: small, actuals_pending: [storage, advertising] }
   - { platform: ozon, market: ru, delivery_mode: fbo, company_type: general }
-  - { platform: ozon, market: ru, delivery_mode: fbs, company_type: general, actuals_split: false }
+  - { platform: ozon, market: ru, delivery_mode: fbs, company_type: general, actuals_pending: [advertising] }
   - { platform: ozon, market: by, delivery_mode: fbo, company_type: general }
-  - { platform: ozon, market: by, delivery_mode: fbs, company_type: general, actuals_split: false }
+  - { platform: ozon, market: by, delivery_mode: fbs, company_type: general, actuals_pending: [advertising] }

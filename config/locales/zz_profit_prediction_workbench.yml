@@ -219,7 +219,7 @@ zh:
           profit: "利润"
           margin: "利润率"
       sources:
-        actuals_not_split: "这个场景的实际数据暂时还没有按目标市场 / 履约方式拆分：取到的是该平台全部订单的数字，仅供参考。"
+        actuals_not_split: "这一项的实际数据暂时还没有按目标市场拆分：取到的是该平台全部订单的数字，仅供参考。"
         actual_return_rate:
           action: "使用近4周物流退货率"
           loading: "正在获取物流退货率…"
@@ -238,6 +238,7 @@ zh:
           load_failed: "真实物流费获取失败，请稍后重试"
           outbound: "去程"
           return: "返程"
+          handover: "交接"
           apply: "点击回填近4周真实物流费"
           meta: "样本 %{outbound_count}/%{return_count} 单 · %{from}—%{to} · 截至 %{data_through}"
         actual_selling_price:
@@ -615,7 +616,7 @@ en:
           profit: "Profit"
           margin: "Margin"
       sources:
-        actuals_not_split: "Actual data is not yet split by target market or fulfilment for this scenario: the figures cover all of the platform's orders, for reference only."
+        actuals_not_split: "This actual figure is not yet split by target market for this scenario: it covers all of the platform's orders, for reference only."
         actual_return_rate:
           action: "Use actual logistics return rate from the last 4 weeks"
           loading: "Loading the logistics return rate..."
@@ -634,6 +635,7 @@ en:
           load_failed: "Unable to load actual logistics costs. Try again later."
           outbound: "Outbound"
           return: "Return"
+          handover: "Handover"
           apply: "Apply actual logistics costs from the last 4 weeks"
           meta: "Samples %{outbound_count}/%{return_count} · %{from}–%{to} · through %{data_through}"
         actual_selling_price:
@@ -1011,7 +1013,7 @@ ru:
           profit: "Прибыль"
           margin: "Маржинальность"
       sources:
-        actuals_not_split: "Фактические данные для этого сценария пока не разделены по рынку и схеме доставки: цифры по всем заказам площадки, только для ориентира."
+        actuals_not_split: "Этот фактический показатель для сценария пока не разделён по рынку: цифры по всем заказам площадки, только для ориентира."
         actual_return_rate:
           action: "Использовать долю возвратов по логистике за 4 недели"
           loading: "Загрузка доли возвратов по логистике..."
@@ -1030,6 +1032,7 @@ ru:
           load_failed: "Не удалось загрузить фактические расходы. Повторите позже."
           outbound: "Прямая"
           return: "Обратная"
+          handover: "Приём"
           apply: "Применить фактические расходы за последние 4 недели"
           meta: "Выборка %{outbound_count}/%{return_count} · %{from}–%{to} · данные по %{data_through}"
         actual_selling_price:

@@ -81,15 +81,13 @@ module Ec
       }
     end
 
-    # Overwrites only the inputs the platform data provides, scenario by scenario. A scenario
-    # whose actual-data queries still cover the whole platform keeps what the version holds: a
-    # platform-wide figure would pass for that market's or mode's own.
+    # Overwrites only the inputs the platform data provides, scenario by scenario. SkuProfitActualInputs
+    # leaves out the kinds that are still platform-wide for a scenario (storage, advertising of the
+    # Belarus and FBS scenarios), so those keep what the version holds.
     def refresh_actuals(sku, version)
       actuals = Ec::SkuProfitActualInputs.new(sku:, today:, time_zone:)
       version.contexts.sum do |context|
         identity = context.attributes.slice(*IDENTITY_KEYS)
-        next 0 unless Ec::SkuProfitStandardContexts.actuals_split?(identity)
-
         exchange = context.exchange_rate_rub_cny || Ec::SkuProfitCalculator::DEFAULT_EXCHANGE_RATE_RUB_CNY
         values = actuals.call(identity:, exchange_rate: exchange).fetch(:values)
         context.assign_input_values(values)

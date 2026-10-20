@@ -293,7 +293,9 @@ test("explains the return rate as return legs per outbound leg on every platform
   assert.match(render, /messages\.buyer_reference/);
   // The reference is never the value that gets applied.
   assert.match(render, /link\.dataset\.returnRate = rate/);
-  assert.match(source, /\(kind === "logistics" \|\| kind === "return-rate"\) && platform === "wb"/);
+  // Both platforms narrow to the scenario's mode, WB also to its market.
+  assert.match(source, /kind === "logistics" \|\| kind === "return-rate"/);
+  assert.match(source, /if \(platform === "wb"\) url\.searchParams\.set\("market", this\.selectedRow\.dataset\.market\)/);
 });
 
 // The controller itself is bundled with the Hotwire imports stubbed, so the "load all actual
@@ -490,7 +492,7 @@ test("offers the actual acquiring rate on the acquiring step, writes the acquiri
   assert.match(step, /"actual_acquiring"/);
   assert.match(source, /profit-prediction#loadActualAcquiring/);
   assert.match(source, /\[data-field='acquiring_rate'\]/);
-  assert.match(source, /this\.actualAcquiringData\.set\(platform, data\)/);
+  assert.match(source, /this\.actualAcquiringData\.set\(key, data\)/);
   // The bulk buttons pick every "loadActual*" loader up by that prefix.
   assert.match(source, /data-action\^='profit-prediction#loadActual'/);
 });

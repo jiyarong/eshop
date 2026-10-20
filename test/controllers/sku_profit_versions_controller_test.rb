@@ -306,7 +306,9 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     ozon_fbo_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbo" }
     ozon_fbs_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbs" }
     assert_equal [ 2, 2 ], [ ozon_fbo_rows.size, ozon_fbs_rows.size ]
-    assert_equal 6, rows.count { |row| row["data-actuals-split"] == "false" }
+    assert_equal 6, rows.count { |row| row["data-actuals-pending"].present? }
+    assert_equal [ "advertising", "advertising", "advertising storage", "advertising storage", "advertising storage", "advertising storage" ].sort,
+      rows.filter_map { |row| row["data-actuals-pending"].presence&.split&.sort&.join(" ") }.sort
     assert ozon_fbo_rows.all? { |row| row.at_css("input[data-field='warehouse_operation_rub']")["value"].to_d == 25.to_d }
     assert ozon_fbs_rows.all? { |row| row.at_css("input[data-field='fbs_handover_rub']")["value"].to_d == 30.to_d }
     assert ozon_rows.all? { |row| row.at_css("input[data-field='return_rate']")["value"].to_d == 10.to_d }
@@ -522,6 +524,46 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, payload.dig("outbound", "sample_count")
     assert_nil payload.dig("outbound", "average_rub")
     assert_nil payload.dig("return", "average_rub")
+  end
+
+  test "the actual-data endpoints accept the scenario's mode and market and reject what the platform does not have" do
+    get report_sku_actual_logistics_path(@sku.sku_code), params: { platform: "wb", delivery_mode: "fbs", market: "by" }, as: :json
+    assert_response :success
+    assert_equal [ "fbs", "by" ], response.parsed_body.values_at("delivery_mode", "market")
+
+    sign_in @user
+    get report_sku_actual_logistics_path(@sku.sku_code), params: { platform: "ozon", delivery_mode: "fbs" }, as: :json
+    assert_response :success
+    assert_equal "fbs", response.parsed_body.fetch("delivery_mode")
+    assert_equal 0, response.parsed_body.dig("handover", "sample_count")
+
+    sign_in @user
+    get report_sku_actual_return_rate_path(@sku.sku_code), params: { platform: "wb", delivery_mode: "fbo", market: "ru" }, as: :json
+    assert_response :success
+
+    sign_in @user
+    get report_sku_actual_acquiring_path(@sku.sku_code), params: { platform: "ozon", delivery_mode: "fbs" }, as: :json
+    assert_response :success
+    assert_equal "fbs", response.parsed_body.fetch("delivery_mode")
+
+    sign_in @user
+    get report_sku_actual_selling_price_path(@sku.sku_code), params: { platform: "wb", market: "by", delivery_mode: "fbs" }, as: :json
+    assert_response :success
+    assert_equal "fbs", response.parsed_body.fetch("delivery_mode")
+
+    sign_in @user
+    get report_sku_actual_logistics_path(@sku.sku_code), params: { platform: "ozon", market: "by" }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "unsupported_market" ], response.parsed_body.fetch("errors")
+
+    sign_in @user
+    get report_sku_actual_acquiring_path(@sku.sku_code), params: { platform: "wb", market: "kz" }, as: :json
+    assert_response :unprocessable_entity
+
+    sign_in @user
+    get report_sku_actual_selling_price_path(@sku.sku_code), params: { platform: "wb", market: "ru", delivery_mode: "dbs" }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "unsupported_delivery_mode" ], response.parsed_body.fetch("errors")
   end
 
   test "rejects unsupported actual logistics platforms" do

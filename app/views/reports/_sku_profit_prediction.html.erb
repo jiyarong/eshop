@@ -96,6 +96,7 @@
         load_failed: t("reports.profit_prediction.sources.actual_logistics.load_failed"),
         outbound: t("reports.profit_prediction.sources.actual_logistics.outbound"),
         return: t("reports.profit_prediction.sources.actual_logistics.return"),
+        handover: t("reports.profit_prediction.sources.actual_logistics.handover"),
         apply: t("reports.profit_prediction.sources.actual_logistics.apply"),
         meta: t("reports.profit_prediction.sources.actual_logistics.meta", from: "__FROM__", to: "__TO__", outbound_count: "__OUTBOUND_COUNT__", return_count: "__RETURN_COUNT__", data_through: "__DATA_THROUGH__")
       },
@@ -465,7 +466,7 @@
                 data-platform="<%= context.platform %>"
                 data-market="<%= context.market %>"
                 data-delivery-mode="<%= context.delivery_mode %>"
-                data-actuals-split="<%= Ec::SkuProfitStandardContexts.actuals_split?(context.attributes.slice(*Ec::SkuProfitStandardContexts::IDENTITY_KEYS)) %>"
+                data-actuals-pending="<%= Ec::SkuProfitStandardContexts.actuals_pending(context.attributes.slice(*Ec::SkuProfitStandardContexts::IDENTITY_KEYS)).join(" ") %>"
                 data-warehouse-region="<%= context.warehouse_region %>"
                 data-company-type="<%= context.company_type %>"
                 data-calculation-status="<%= context.calculation_status %>"
