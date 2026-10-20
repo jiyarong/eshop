@@ -156,20 +156,19 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       ? "coefficient"
       : intermediate.logistics_source || (hasValue(inputs.outbound_logistics_rub) ? "actual" : "coefficient");
     const coefficientApplies = logisticsSource === "coefficient";
-    const fbo = F("fbo_delivery_cny", inputs.fbo_delivery_cny || 0);
-
-    // One row for the whole outbound freight: the delivery to the warehouse, plus either the tariff (base fee +
-    // per-litre fee on the billed volume) times the coefficient, or the typed real figure.
     const exchangeToken = F("exchange_rate_rub_cny", exchange);
-    const deliveryRub = [fbo, "×", exchangeToken, "+"];
+    const outboundRub = toRub(intermediate.platform_logistics_cny);
+
+    // Outbound freight: the tariff (base fee + per-litre fee on the billed volume) times the coefficient, or the
+    // typed real figure. The delivery to the WB warehouse is its own row further down.
     const baseTariff = ["(", F("wb_logistics_base_rub", baseFee), "+", "(", C("billed_volume", intermediate.billed_volume_l), "−", N(1), ")", "×", F("wb_logistics_liter_rub", literFee), ")"];
-    const platformLogistics = {
-      actual: [...deliveryRub, F("outbound_logistics_rub")],
-      override: ["(", fbo, "+", H("wb_logistics_override_cny", intermediate.platform_logistics_cny), ")", "×", exchangeToken],
-      coefficient: [...deliveryRub, ...baseTariff, "×", F("logistics_coeff")]
+    const outbound = {
+      actual: [F("outbound_logistics_rub")],
+      override: [H("wb_logistics_override_cny", intermediate.platform_logistics_cny), "×", exchangeToken],
+      coefficient: [...baseTariff, "×", F("logistics_coeff")]
     }[logisticsSource];
-    step("platform_logistics", platformLogistics, toRub(costs.logistics), "rub",
-      ["fbo_delivery_cny", "wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"],
+    step("outbound_logistics", outbound, outboundRub, "rub",
+      ["wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"],
       {
         source: "wb_logistics_tariffs",
         inactiveFields: coefficientApplies ? ["outbound_logistics_rub"] : ["wb_logistics_base_rub", "wb_logistics_liter_rub", "logistics_coeff"]
@@ -180,9 +179,16 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       : F("wb_fixed_return_base_rub", numberOr(inputs.wb_fixed_return_base_rub, 50));
     // A returned or cancelled order was shipped (its outbound fee is charged and not refunded) and comes back;
     // the delivered orders carry that cost.
-    step("returns", ["(", H("logistics_ex_fbo", toRub(intermediate.platform_logistics_cny)), "+", returnBase, ")", "×", ...returnAmortization()],
-      toRub(costs.returns), "rub", ["return_rate", "return_logistics_rub", "wb_fixed_return_base_rub"],
+    const returnsRub = toRub(costs.returns);
+    step("returns", ["(", C("outbound_logistics", outboundRub), "+", returnBase, ")", "×", ...returnAmortization()],
+      returnsRub, "rub", ["return_rate", "return_logistics_rub", "wb_fixed_return_base_rub"],
       { inactiveFields: [hasActualReturn ? "wb_fixed_return_base_rub" : "return_logistics_rub"] });
+
+    const deliveryRub = toRub(inputs.fbo_delivery_cny || 0);
+    step("fbo_delivery", [F("fbo_delivery_cny", inputs.fbo_delivery_cny || 0), "×", exchangeToken], deliveryRub, "rub", ["fbo_delivery_cny"]);
+    step("total_logistics",
+      [C("outbound_logistics", outboundRub), "+", C("returns", returnsRub), "+", C("fbo_delivery", deliveryRub)],
+      toRub(numberOr(costs.logistics, NaN) + numberOr(costs.returns, NaN)), "rub", []);
   } else {
     const factorOverride = inputs.return_amortization_factor_override;
     const hasOverride = intermediate.return_amortization_factor_overridden === true
