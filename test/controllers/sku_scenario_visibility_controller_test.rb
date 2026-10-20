@@ -113,4 +113,13 @@ class SkuScenarioVisibilityControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-scenario-key][data-scenario-hidden='true']", count: 0
     assert_select "tr[data-scenario-key]", count: 6
   end
+
+  test "the mark says one thing for no sales and another for thin sales" do
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }
+
+    messages = JSON.parse(css_select(".profit-prediction-workbench").first["data-profit-prediction-messages-value"]).fetch("scenarios")
+    assert_match(/Nothing signed/, messages.fetch("warning_none"))
+    assert_match(/Only __UNITS__ units/, messages.fetch("warning"))
+    assert_no_match(/__UNITS__/, messages.fetch("warning_none"))
+  end
 end

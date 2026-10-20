@@ -455,9 +455,10 @@ export default class extends Controller {
       if (!warning) return;
       const warn = scenarioWarning(state, scenario);
       warning.hidden = !warn;
-      const text = warn
-        ? fill(messages.warning, { weeks: state.weeks, units: scenario.units ?? 0, min: state.min_units })
-        : "";
+      const text = !warn ? ""
+        : Number(scenario.units || 0) === 0
+          ? fill(messages.warning_none, { weeks: state.weeks })
+          : fill(messages.warning, { weeks: state.weeks, units: scenario.units, min: state.min_units });
       warning.dataset.message = text;
       warning.setAttribute("aria-label", text);
     });
