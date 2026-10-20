@@ -551,7 +551,10 @@ class ReportsController < ApplicationController
       return render json: { errors: ["unsupported_platform"] }, status: :unprocessable_entity
     end
 
-    render json: Ec::SkuActualStorageQuery.run(sku:, platform:, today: user_today)
+    delivery_mode = params[:delivery_mode].to_s.downcase.presence
+    return unless valid_actual_data_scope?(platform:, delivery_mode:, market: nil)
+
+    render json: Ec::SkuActualStorageQuery.run(sku:, platform:, delivery_mode:, today: user_today)
   end
 
   def sku_actual_selling_price

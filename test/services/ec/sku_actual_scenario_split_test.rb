@@ -178,7 +178,7 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
 
   # ── The scenario inputs ────────────────────────────────────────────────────────────────────
 
-  test "scenario inputs carry the FBS hand-over and leave the platform-wide kinds out" do
+  test "scenario inputs carry the FBS hand-over and no storage for FBS" do
     fbs_posting("FBS-1")
     ozon_accrual(32, "FBS-1", -200)
     ozon_accrual(16, "FBS-1", -22)
@@ -191,7 +191,6 @@ class Ec::SkuActualScenarioSplitTest < ActiveSupport::TestCase
     assert_equal 200.to_d, fbs[:values]["outbound_logistics_rub"]
     assert_equal 22.to_d, fbs[:values]["fbs_handover_rub"]
     assert_equal 100.to_d, fbs[:values]["return_logistics_rub"]
-    assert_not fbs[:values].key?("advertising_rate"), "advertising is still platform-wide for FBS"
     assert_not fbs[:values].key?("storage_cny"), "FBS has no Ozon storage"
     assert_not fbo[:values].key?("fbs_handover_rub")
     assert_equal 0, fbo[:values].fetch("outbound_logistics_rub", 0), "the FBS postings are not FBO's"

@@ -303,9 +303,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     ozon_fbo_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbo" }
     ozon_fbs_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbs" }
     assert_equal [ 2, 2 ], [ ozon_fbo_rows.size, ozon_fbs_rows.size ]
-    assert_equal 6, rows.count { |row| row["data-actuals-pending"].present? }
-    assert_equal [ "advertising", "advertising", "advertising storage", "advertising storage", "advertising storage", "advertising storage" ].sort,
-      rows.filter_map { |row| row["data-actuals-pending"].presence&.split&.sort&.join(" ") }.sort
+    assert_equal 0, rows.count { |row| row["data-actuals-pending"].present? }, "no actual-data kind is platform-wide for a scenario now"
     assert ozon_fbo_rows.all? { |row| row.at_css("input[data-field='warehouse_operation_rub']")["value"].to_d == 25.to_d }
     assert ozon_fbs_rows.all? { |row| row.at_css("input[data-field='fbs_handover_rub']")["value"].to_d == 30.to_d }
     assert ozon_rows.all? { |row| row.at_css("input[data-field='return_rate']")["value"].to_d == 10.to_d }
@@ -547,6 +545,14 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     get report_sku_actual_selling_price_path(@sku.sku_code), params: { platform: "wb", market: "by", delivery_mode: "fbs" }, as: :json
     assert_response :success
     assert_equal "fbs", response.parsed_body.fetch("delivery_mode")
+
+    sign_in @user
+    get report_sku_actual_storage_path(@sku.sku_code), params: { platform: "ozon", delivery_mode: "fbo" }, as: :json
+    assert_response :success
+
+    sign_in @user
+    get report_sku_actual_storage_path(@sku.sku_code), params: { platform: "ozon", delivery_mode: "dbs" }, as: :json
+    assert_response :unprocessable_entity
 
     sign_in @user
     get report_sku_actual_logistics_path(@sku.sku_code), params: { platform: "ozon", market: "by" }, as: :json

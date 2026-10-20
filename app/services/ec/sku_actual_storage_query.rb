@@ -3,15 +3,20 @@ module Ec
     DEFAULT_WEEKS = 4
     PLATFORMS = %w[ozon wb].freeze
 
-    def self.run(sku:, platform:, today:, weeks: DEFAULT_WEEKS)
-      new(sku:, platform:, today:, weeks:).run
+    # delivery_mode (Ozon only): storage is an FBO fee, so the per-unit figure of an FBO scenario divides it by
+    # the FBO postings only; the FBS postings of the same SKU never stored anything at Ozon. For "fbs" there
+    # is no storage at all. Nil keeps every posting in the count.
+    def self.run(sku:, platform:, today:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
+      new(sku:, platform:, today:, weeks:, delivery_mode:).run
     end
 
-    def initialize(sku:, platform:, today:, weeks: DEFAULT_WEEKS)
+    def initialize(sku:, platform:, today:, weeks: DEFAULT_WEEKS, delivery_mode: nil)
       @sku = sku
       @platform = platform.to_s.downcase
       @today = today.to_date
       @weeks = Integer(weeks)
+      @delivery_mode = delivery_mode.to_s.downcase.presence
+      raise ArgumentError, "unsupported_delivery_mode" if @delivery_mode && !%w[fbo fbs].include?(@delivery_mode)
       raise ArgumentError, "unsupported_platform" unless PLATFORMS.include?(@platform)
       raise ArgumentError, "weeks_must_be_positive" unless @weeks.positive?
     end
@@ -41,7 +46,7 @@ module Ec
 
     private
 
-    attr_reader :sku, :platform, :today, :weeks
+    attr_reader :sku, :platform, :today, :weeks, :delivery_mode
 
     def platform_bindings
       account_column = platform == "ozon" ? :ozon_raw_account_id : :wb_raw_account_id
@@ -85,6 +90,12 @@ module Ec
         end
       end
 
+      if delivery_mode
+        # Ozon FBS postings are the ones in the FBS posting table; every other posting is FBO.
+        fbs_numbers = RawOzon::PostingFbs.where(posting_number: postings.keys.map(&:last)).pluck(:posting_number).to_set
+        postings = postings.select { |(_account, _product, posting), _amount| (fbs_numbers.include?(posting) ? "fbs" : "fbo") == delivery_mode }
+        amounts = [] if delivery_mode == "fbs"
+      end
       { amounts: amounts, sale_count: postings.count { |_key, amount| amount.positive? }, data_through: dates.max }
     end
 

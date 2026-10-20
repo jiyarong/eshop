@@ -41,12 +41,11 @@ class Ec::SkuProfitStandardContextsTest < ActiveSupport::TestCase
     end
   end
 
-  test "only the scenarios whose actual-data queries are not split yet are flagged" do
-    pending = SCENARIOS.reject { |scenario| Ec::SkuProfitStandardContexts.actuals_split?(scenario) }
-
-    assert_equal 6, pending.size
-    assert pending.all? { |scenario| scenario["market"] == "by" && scenario["platform"] == "wb" || scenario["platform"] == "ozon" && scenario["delivery_mode"] == "fbs" }
-    assert Ec::SkuProfitStandardContexts.actuals_split?("platform" => "wb", "market" => "ru", "delivery_mode" => "fbo", "company_type" => "general")
+  test "no scenario has an actual-data kind left platform-wide: storage and advertising are the SKU's own in every market" do
+    SCENARIOS.each do |scenario|
+      assert_empty Ec::SkuProfitStandardContexts.actuals_pending(scenario)
+      assert Ec::SkuProfitStandardContexts.actuals_split?(scenario)
+    end
   end
 
   test "sorting follows the configured order and puts unknown identities last" do

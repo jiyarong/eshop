@@ -66,8 +66,8 @@ module Ec
       # What is still platform-wide for this scenario is left alone, not filled with a figure that
       # would pass for the scenario's own.
       unless pending.include?("storage") || (platform == "ozon" && mode == "fbs")
-        storage = fetch.call(:storage, platform) do
-          Ec::SkuActualStorageQuery.run(sku: sku, platform: platform, today: today, weeks: weeks)
+        storage = fetch.call(:storage, platform, platform == "ozon" ? mode : nil) do
+          Ec::SkuActualStorageQuery.run(sku: sku, platform: platform, today: today, weeks: weeks, delivery_mode: platform == "ozon" ? mode : nil)
         end
         storage_rub = positive(storage&.dig(:storage, :average_rub))
         values["storage_cny"] = storage_rub / exchange if storage_rub && exchange.positive?

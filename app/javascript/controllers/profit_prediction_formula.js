@@ -194,7 +194,8 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
   }
 
   const revenue = data.revenue_cny;
-  step("storage", [F("storage_cny", inputs.storage_cny || 0)], costs.storage, "cny", ["storage_cny"], { source: "actual_storage" });
+  // An Ozon FBS seller keeps the goods at their own warehouse: Ozon charges no storage, so there is nothing to look up.
+  step("storage", [F("storage_cny", inputs.storage_cny || 0)], costs.storage, "cny", ["storage_cny"], { source: fbs ? null : "actual_storage" });
   step("commission", [C("revenue", revenue), "×", commissionRate], costs.commission, "cny", ["commission_rate"], { source: "official_commission" });
   step("acquiring", [C("revenue", revenue), "×", P("acquiring_rate", numberOr(inputs.acquiring_rate, wb ? 0 : 0.02))],
     costs.acquiring, "cny", ["acquiring_rate"], { source: "actual_acquiring" });

@@ -46,6 +46,29 @@ class Ec::SkuActualStorageQueryTest < ActiveSupport::TestCase
     assert_equal({ total_rub: 150.to_d, sample_count: 3, sale_count: 2, average_rub: 75.to_d }, payload[:storage])
   end
 
+  test "Ozon storage per unit of an FBO scenario divides by the FBO postings only; FBS has none" do
+    account, product_id = bind_ozon
+    day = Date.new(2026, 9, 1)
+    ozon_accrual(account, product_id, type_id: 15, amount: -300, date: day)
+    ozon_accrual(account, product_id, type_id: 0, amount: 500, posting: "FBO-1", date: day)
+    ozon_accrual(account, product_id, type_id: 0, amount: 500, posting: "FBO-2", date: day)
+    ozon_accrual(account, product_id, type_id: 0, amount: 500, posting: "FBS-1", date: day)
+    ozon_accrual(account, product_id, type_id: 0, amount: 500, posting: "FBS-2", date: day)
+    RawOzon::PostingFbs.create!(account_id: account.id, posting_number: "FBS-1", raw_json: {}, status: "delivered")
+    RawOzon::PostingFbs.create!(account_id: account.id, posting_number: "FBS-2", raw_json: {}, status: "delivered")
+
+    all = query("ozon")
+    fbo = Ec::SkuActualStorageQuery.run(sku: @sku, platform: "ozon", today: Date.new(2026, 9, 21), delivery_mode: "fbo")
+    fbs = Ec::SkuActualStorageQuery.run(sku: @sku, platform: "ozon", today: Date.new(2026, 9, 21), delivery_mode: "fbs")
+
+    assert_equal 75.to_d, all.dig(:storage, :average_rub), "300 over all four postings, as before"
+    assert_equal({ total_rub: 300.to_d, sample_count: 1, sale_count: 2, average_rub: 150.to_d }, fbo[:storage])
+    assert_equal({ total_rub: 0.to_d, sample_count: 0, sale_count: 2, average_rub: nil }, fbs[:storage])
+    assert_raises(ArgumentError) { Ec::SkuActualStorageQuery.run(sku: @sku, platform: "ozon", today: Date.new(2026, 9, 21), delivery_mode: "dbs") }
+  ensure
+    RawOzon::PostingFbs.where(account_id: account&.id).delete_all
+  end
+
   test "WB divides net paid storage by same-period net units of both report types" do
     account, product_id = bind_wb
     day = Date.new(2026, 9, 1)

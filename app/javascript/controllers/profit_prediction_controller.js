@@ -1278,7 +1278,7 @@ export default class extends Controller {
     const sourceRowKey = this.selectedRow?.dataset.rowKey || "";
     if (cell.dataset.sourceKey === sourceKey && cell.dataset.sourceRowKey === sourceRowKey) {
       if (sourceKey === "actual_storage") {
-        const data = this.actualStorageData.get(this.selectedRow?.dataset.platform);
+        const data = this.actualStorageData.get(this.actualStorageKey(this.selectedRow));
         if (data) this.renderActualStorageResult(cell, data);
       }
       return;
@@ -1483,7 +1483,7 @@ export default class extends Controller {
     result.className = "profit-prediction-process__source-result";
     result.dataset.actualStorageResult = "";
     cell.replaceChildren(actions, result);
-    const data = this.actualStorageData.get(this.selectedRow?.dataset.platform);
+    const data = this.actualStorageData.get(this.actualStorageKey(this.selectedRow));
     if (data) this.renderActualStorageResult(cell, data);
   }
 
@@ -1580,6 +1580,12 @@ export default class extends Controller {
     await this.loadActualMetrics(event, "cross-dock");
   }
 
+  actualStorageKey(row) {
+    if (!row) return "";
+
+    return row.dataset.platform === "ozon" ? `ozon:${row.dataset.deliveryMode || "fbo"}` : row.dataset.platform;
+  }
+
   async loadActualStorage(event) {
     if (!this.selectedRow) return;
 
@@ -1597,11 +1603,13 @@ export default class extends Controller {
     try {
       const url = new URL(this.actualStorageUrlValue, window.location.origin);
       url.searchParams.set("platform", platform);
+      // Ozon storage is an FBO fee: the per-unit figure divides by the FBO postings only.
+      if (platform === "ozon") url.searchParams.set("delivery_mode", row.dataset.deliveryMode || "fbo");
       const response = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      this.actualStorageData.set(platform, data);
+      this.actualStorageData.set(this.actualStorageKey(row), data);
       if (this.selectedRow === row && cell?.isConnected) this.renderActualStorageResult(cell, data);
     } catch (error) {
       if (error.name !== "AbortError" && result?.isConnected) {

@@ -211,3 +211,12 @@ test("an FBS scenario without a handover input uses the calculator's default of 
 
   assert.equal(formulaLines(logistics.formula, format).values, "( 280 + 30 ) ÷ 11.2");
 });
+
+test("only a scenario that pays storage offers the actual storage shortcut: an Ozon FBS one does not", () => {
+  const source = (name) => stepsFor(cases.find((candidate) => candidate.name === name)).find((step) => step.key === "storage").source;
+
+  assert.equal(source("ozon_ru_fbs"), null);
+  assert.equal(source("ozon_by_fbs_default_handover"), null);
+  assert.equal(source("ozon_ru_standard"), "actual_storage");
+  assert.equal(source("wb_general_coefficient"), "actual_storage");
+});
