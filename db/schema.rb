@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -578,6 +578,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
     t.string "business_status", default: "needs_review", null: false
     t.string "buyer_city"
     t.string "buyer_country"
+    t.string "buyer_country_source"
     t.string "buyer_region"
     t.datetime "cancelled_at"
     t.datetime "completed_at"
@@ -601,6 +602,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
     t.index ["business_status", "return_business_status"], name: "idx_ec_orders_business_statuses"
     t.index ["order_status"], name: "index_ec_orders_on_order_status"
     t.index ["ordered_at"], name: "index_ec_orders_on_ordered_at"
+    t.index ["platform", "buyer_country"], name: "index_ec_orders_on_platform_and_buyer_country"
     t.index ["platform", "store_id", "external_order_number"], name: "idx_ec_orders_external_order_number"
     t.index ["platform", "store_id", "order_key"], name: "idx_ec_orders_unique_order_key", unique: true
     t.index ["store_id"], name: "index_ec_orders_on_store_id"
@@ -1121,6 +1123,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
     t.decimal "duty_rate", precision: 14, scale: 10
     t.decimal "exchange_rate_rub_cny", precision: 20, scale: 8
     t.decimal "fbo_delivery_cny", precision: 20, scale: 8
+    t.decimal "fbs_handover_rub", precision: 20, scale: 8
     t.string "formula_version"
     t.decimal "freight_cny", precision: 20, scale: 8
     t.decimal "goods_cost_cny", precision: 20, scale: 8
@@ -1130,6 +1133,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
     t.decimal "length_cm", precision: 12, scale: 4
     t.decimal "logistics_cny", precision: 20, scale: 8
     t.decimal "logistics_coeff", precision: 14, scale: 10
+    t.string "logistics_mode", default: "formula", null: false
     t.decimal "logistics_tax_rate", precision: 14, scale: 10
     t.decimal "margin", precision: 14, scale: 10
     t.string "market", default: "ru", null: false
@@ -1181,6 +1185,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
     t.index ["sku_id"], name: "idx_sku_profit_versions_one_current", unique: true, where: "is_current"
     t.index ["sku_id"], name: "index_ec_sku_profit_versions_on_sku_id"
     t.exclusion_constraint "sku_id WITH =, daterange(effective_from, COALESCE(effective_to, 'infinity'::date), '[]'::text) WITH &&", where: "(status)::text = 'published'::text", using: :gist, name: "ec_sku_profit_versions_no_published_overlap"
+  end
+
+  create_table "ec_sku_scenario_visibilities", force: :cascade do |t|
+    t.string "company_type", null: false
+    t.datetime "created_at", null: false
+    t.string "delivery_mode", null: false
+    t.boolean "hidden", default: false, null: false
+    t.string "market", null: false
+    t.string "platform", null: false
+    t.bigint "sku_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "updated_by_id"
+    t.string "warehouse_region", default: "main", null: false
+    t.index ["sku_id", "platform", "market", "delivery_mode", "warehouse_region", "company_type"], name: "idx_ec_sku_scenario_visibilities_identity", unique: true
+    t.index ["sku_id"], name: "index_ec_sku_scenario_visibilities_on_sku_id"
+    t.index ["updated_by_id"], name: "index_ec_sku_scenario_visibilities_on_updated_by_id"
   end
 
   create_table "ec_sku_store_assignments", force: :cascade do |t|
@@ -3576,6 +3596,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
+    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
@@ -3806,6 +3827,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_033143) do
   add_foreign_key "ec_sku_products", "ec_stores", column: "store_id"
   add_foreign_key "ec_sku_profit_version_contexts", "ec_sku_profit_versions", column: "sku_profit_version_id"
   add_foreign_key "ec_sku_profit_versions", "ec_skus", column: "sku_id"
+  add_foreign_key "ec_sku_scenario_visibilities", "ec_skus", column: "sku_id"
+  add_foreign_key "ec_sku_scenario_visibilities", "users", column: "updated_by_id"
   add_foreign_key "ec_sku_store_assignments", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
