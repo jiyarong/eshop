@@ -55,13 +55,14 @@ export function evaluateFormula(tokens) {
 
 // The steps of the calculation process for one scenario row, in display order.
 //   context: { platform, market, deliveryMode, companyType,
+//              logisticsMode  "formula" or "actual" (see Ec::LogisticsFormula); decides which freight parameters apply
 //              inputs      the numeric left-form values (null when blank),
 //              data        the preview response ({ revenue_cny, cost_breakdown, intermediate, ... }),
 //              labels      { fields, steps, formula }  (the translated names) }
 // Each step is { key, label, formula, result, unit, fields, source, note }, where
 // `fields` are the parameters whose inputs are shown on that row, `unit` is "cny", "rub",
 // "liter" or "percent" and a string `formula` is shown as is.
-export function buildCalculationSteps({ platform, market, deliveryMode, companyType, inputs, data, labels }) {
+export function buildCalculationSteps({ platform, market, deliveryMode, companyType, logisticsMode, inputs, data, labels }) {
   const costs = data.cost_breakdown || {};
   const intermediate = data.intermediate || {};
   const exchange = inputs.exchange_rate_rub_cny;
@@ -132,12 +133,21 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
   if (wb) {
     const baseFee = numberOr(inputs.wb_logistics_base_rub, companyType === "general" ? 60 : 46);
     const literFee = numberOr(inputs.wb_logistics_liter_rub, 14);
-    const hasActualReturn = hasValue(inputs.return_logistics_rub);
-    const logisticsSource = intermediate.logistics_source || (hasValue(inputs.outbound_logistics_rub) ? "actual" : "coefficient");
+    // On the fixed formula the freight is worked out from the tariff parameters (base fee, per-litre fee,
+    // coefficient, the flat return); on real figures it is the typed outbound and return, and those
+    // parameters play no part, so only the set that applies is offered.
+    const formulaMode = logisticsMode === "formula";
+    const hasActualReturn = !formulaMode && hasValue(inputs.return_logistics_rub);
+    const logisticsSource = formulaMode
+      ? "coefficient"
+      : intermediate.logistics_source || (hasValue(inputs.outbound_logistics_rub) ? "actual" : "coefficient");
+    const coefficientApplies = logisticsSource === "coefficient";
     const fbo = F("fbo_delivery_cny", inputs.fbo_delivery_cny || 0);
 
-    step("base_logistics", [F("wb_logistics_base_rub", baseFee), "+", "(", C("billed_volume", intermediate.billed_volume_l), "−", N(1), ")", "×", F("wb_logistics_liter_rub", literFee)],
-      intermediate.base_logistics_rub, "rub", ["wb_logistics_base_rub", "wb_logistics_liter_rub"], { source: "wb_logistics_tariffs" });
+    if (coefficientApplies) {
+      step("base_logistics", [F("wb_logistics_base_rub", baseFee), "+", "(", C("billed_volume", intermediate.billed_volume_l), "−", N(1), ")", "×", F("wb_logistics_liter_rub", literFee)],
+        intermediate.base_logistics_rub, "rub", ["wb_logistics_base_rub", "wb_logistics_liter_rub"], { source: "wb_logistics_tariffs" });
+    }
 
     const outbound = {
       actual: [F("outbound_logistics_rub"), "÷", F("exchange_rate_rub_cny", exchange)],
@@ -145,7 +155,7 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
       coefficient: [C("base_logistics", intermediate.base_logistics_rub), "×", F("logistics_coeff"), "÷", F("exchange_rate_rub_cny", exchange)]
     }[logisticsSource];
     step("platform_logistics", [fbo, "+", ...outbound], costs.logistics, "cny",
-      ["fbo_delivery_cny", "logistics_coeff", "outbound_logistics_rub", "exchange_rate_rub_cny"]);
+      ["fbo_delivery_cny", ...(coefficientApplies ? ["logistics_coeff"] : []), ...(formulaMode ? [] : ["outbound_logistics_rub"]), "exchange_rate_rub_cny"]);
 
     const returnBase = hasActualReturn
       ? F("return_logistics_rub")
@@ -153,7 +163,7 @@ export function buildCalculationSteps({ platform, market, deliveryMode, companyT
     step("returns", [
       "(", H("logistics_ex_fbo", intermediate.platform_logistics_cny), "+", returnBase, "÷", F("exchange_rate_rub_cny", exchange), ")",
       "×", ...returnAmortization(returnRate)
-    ], costs.returns, "cny", ["return_rate", "wb_fixed_return_base_rub", "return_logistics_rub", "exchange_rate_rub_cny"]);
+    ], costs.returns, "cny", ["return_rate", formulaMode ? null : "return_logistics_rub", hasActualReturn ? null : "wb_fixed_return_base_rub", "exchange_rate_rub_cny"].filter(Boolean));
   } else {
     const factorOverride = inputs.return_amortization_factor_override;
     const hasOverride = intermediate.return_amortization_factor_overridden === true

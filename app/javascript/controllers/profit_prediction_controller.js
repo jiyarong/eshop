@@ -1209,6 +1209,7 @@ export default class extends Controller {
       market: row.dataset.market,
       deliveryMode: row.dataset.deliveryMode,
       companyType: row.dataset.companyType,
+      logisticsMode: this.logisticsMode(row),
       inputs,
       data,
       labels: {
