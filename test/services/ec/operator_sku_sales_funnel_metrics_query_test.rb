@@ -185,7 +185,8 @@ class Ec::OperatorSkuSalesFunnelMetricsQueryTest < ActiveSupport::TestCase
   def create_order(product, date, status, quantity, fulfillment_type: nil, key: nil)
     order = Ec::Order.create!(
       store: @store, platform: "wb", order_key: "#{product.product_id}-#{date}-#{key}-#{@token}",
-      order_status: status, ordered_at: Time.find_zone!("Asia/Shanghai").local(date.year, date.month, date.day, 12)
+      order_status: status, ordered_at: Time.find_zone!("Asia/Shanghai").local(date.year, date.month, date.day, 12),
+      buyer_country: "RU"
     )
     fulfillment = if fulfillment_type
       Ec::OrderFulfillment.create!(order:, store: @store, platform: "wb", fulfillment_type:, status: "delivered",

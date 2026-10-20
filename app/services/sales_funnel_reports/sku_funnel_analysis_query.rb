@@ -113,7 +113,7 @@ module SalesFunnelReports
         .joins("LEFT JOIN ec_order_fulfillments ON ec_order_fulfillments.id = ec_order_items.fulfillment_id")
         .where(ec_sku_products: { id: product_ids.keys })
         .where(ec_orders: { ordered_at: from_time..to_time })
-        .select("ec_order_items.*, ec_sku_products.id AS matched_sku_product_id, ec_orders.ordered_at AS matched_ordered_at, ec_orders.order_status AS matched_order_status, ec_order_fulfillments.fulfillment_type AS matched_fulfillment_type")
+        .select("ec_order_items.*, ec_sku_products.id AS matched_sku_product_id, ec_orders.ordered_at AS matched_ordered_at, ec_orders.order_status AS matched_order_status, ec_order_fulfillments.fulfillment_type AS matched_fulfillment_type, ec_orders.buyer_country AS matched_buyer_country")
         .find_each do |item|
           result[item.matched_sku_product_id.to_i] << item
         end
@@ -160,7 +160,7 @@ module SalesFunnelReports
     # Units of the period by pricing scenario [platform, market, delivery_mode, company_type], for
     # estimating profit from the SKU's profit version. `orders` is the mix of every order item
     # (the funnel's own order count is spread over it), `conversions` the completed/returned ones.
-    # Items that fit no scenario (Ozon FBS, an Ozon item without buyer currency) are :uncovered.
+    # Items that fit no scenario (a buyer in a country with none, a WB order with no known country) are :uncovered.
     def scenario_units(product, items)
       units = { orders: Hash.new(0), conversions: Hash.new(0) }
       items.each do |item|
@@ -175,7 +175,8 @@ module SalesFunnelReports
     def scenario_key(product, item)
       PricingScenario.key(
         platform: product.platform, company_type: product.store.company_type,
-        fulfillment_type: item.try(:matched_fulfillment_type), buyer_currency: item.buyer_currency_code
+        fulfillment_type: item.try(:matched_fulfillment_type), buyer_currency: item.buyer_currency_code,
+        buyer_country: item.try(:matched_buyer_country)
       )
     end
 

@@ -72,21 +72,21 @@ module Ec
         .where(ec_orders: { ordered_at: local_day(full_range.begin).beginning_of_day..local_day(full_range.end).end_of_day })
         .pluck("ec_sku_products.sku_code", "ec_orders.ordered_at", "ec_orders.order_status", "ec_order_items.quantity",
           "ec_sku_products.platform", "ec_stores.company_type", "ec_order_fulfillments.fulfillment_type",
-          "ec_order_items.buyer_currency_code")
-        .each do |sku_code, ordered_at, status, quantity, platform, company_type, fulfillment_type, buyer_currency|
+          "ec_order_items.buyer_currency_code", "ec_orders.buyer_country")
+        .each do |sku_code, ordered_at, status, quantity, platform, company_type, fulfillment_type, buyer_currency, buyer_country|
           period = period_key(ordered_at.in_time_zone(@time_zone).to_date)
           totals = result[[sku_code.to_s, period]]
           totals[:conversions] += quantity.to_i if status.in?(%w[delivered returned])
           totals[:net_sales] += quantity.to_i if status == "delivered"
           totals[:present] = true
-          add_scenario_units(sku_code.to_s, platform, company_type, fulfillment_type, buyer_currency, status, quantity.to_i) if period == :current
+          add_scenario_units(sku_code.to_s, platform, company_type, fulfillment_type, buyer_currency, buyer_country, status, quantity.to_i) if period == :current
         end
       result
     end
 
     # Units of the selected week by pricing scenario, for the estimated profit under the funnel.
-    def add_scenario_units(sku_code, platform, company_type, fulfillment_type, buyer_currency, status, quantity)
-      key = SalesFunnelReports::PricingScenario.key(platform:, company_type:, fulfillment_type:, buyer_currency:) || :uncovered
+    def add_scenario_units(sku_code, platform, company_type, fulfillment_type, buyer_currency, buyer_country, status, quantity)
+      key = SalesFunnelReports::PricingScenario.key(platform:, company_type:, fulfillment_type:, buyer_currency:, buyer_country:) || :uncovered
       units = @scenario_units[sku_code]
       units[:orders][key] += quantity
       units[:conversions][key] += quantity if status.in?(%w[delivered returned])

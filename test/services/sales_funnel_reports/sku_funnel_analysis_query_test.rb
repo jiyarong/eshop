@@ -58,27 +58,34 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
     assert_equal "RUB", result[:store_groups].find { |group| group[:platform] == "ozon" }.dig(:rows_by_period, "P0", :currency)
   end
 
-  test "places order items into pricing scenarios by fulfillment, store tax regime and buyer currency" do
+  test "places order items into pricing scenarios by fulfillment, store tax regime and buyer country" do
     ozon_general = Ec::Store.create!(platform: "ozon", store_name: "Ozon general #{@token}", company_type: "general", ozon_raw_account_id: @ozon_account.id)
     ozon_product = Ec::SkuProduct.create!(sku_code: @sku.sku_code, store: ozon_general, product_id: "OZG-#{@token}", platform_sku_id: "81002", product_name: "Ozon general")
-    create_order(@wb_store, "wb", "71001", "delivered", 6, fulfillment_type: "fbw")
-    create_order(@wb_store, "wb", "71001", "returned", 2, fulfillment_type: "fbs", order_key: "wb-fbs")
+    create_order(@wb_store, "wb", "71001", "delivered", 6, fulfillment_type: "fbw", buyer_country: "RU")
+    create_order(@wb_store, "wb", "71001", "delivered", 4, fulfillment_type: "fbw", buyer_country: "BY", order_key: "wb-by-fbw")
+    create_order(@wb_store, "wb", "71001", "returned", 2, fulfillment_type: "fbs", buyer_country: "BY", order_key: "wb-by-fbs")
+    create_order(@wb_store, "wb", "71001", "delivered", 8, fulfillment_type: "fbs", buyer_country: "KZ", order_key: "wb-kz")
     create_order(@wb_store, "wb", "71001", "cancelled", 1, fulfillment_type: "fbs", order_key: "wb-cancelled")
-    create_order(ozon_general, "ozon", "81002", "delivered", 4, fulfillment_type: "fbo", buyer_currency: "BYN", order_key: "oz-by")
-    create_order(ozon_general, "ozon", "81002", "delivered", 3, fulfillment_type: "fbo", buyer_currency: "RUB", order_key: "oz-ru")
-    create_order(ozon_general, "ozon", "81002", "delivered", 5, fulfillment_type: "fbs", buyer_currency: "RUB", order_key: "oz-fbs")
-    create_order(ozon_general, "ozon", "81002", "delivered", 7, fulfillment_type: "fbo", order_key: "oz-no-currency")
+    create_order(ozon_general, "ozon", "81002", "delivered", 4, fulfillment_type: "fbo", buyer_country: "BY", buyer_currency: "RUB", order_key: "oz-by")
+    create_order(ozon_general, "ozon", "81002", "delivered", 3, fulfillment_type: "fbo", buyer_country: "RU", buyer_currency: "BYN", order_key: "oz-ru")
+    create_order(ozon_general, "ozon", "81002", "delivered", 5, fulfillment_type: "fbs", buyer_country: "RU", order_key: "oz-fbs-ru")
+    create_order(ozon_general, "ozon", "81002", "delivered", 9, fulfillment_type: "fbs", buyer_country: "BY", order_key: "oz-fbs-by")
+    create_order(ozon_general, "ozon", "81002", "delivered", 10, fulfillment_type: "fbo", buyer_currency: "BYN", order_key: "oz-currency-only")
+    create_order(ozon_general, "ozon", "81002", "delivered", 7, fulfillment_type: "fbo", order_key: "oz-nothing")
 
     result = query
     wb = result[:store_groups].find { |group| group[:platform] == "wb" }.dig(:rows_by_period, "P0", :scenario_units)
     ozon = result[:store_groups].find { |group| group[:store_id] == ozon_general.id }.dig(:rows_by_period, "P0", :scenario_units)
 
-    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "ru", "fbs", "small" ] => 3 }, wb[:orders])
-    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "ru", "fbs", "small" ] => 2 }, wb[:conversions])
-    assert_equal 4, ozon[:orders][[ "ozon", "by", "fbo", "general" ]]
+    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "by", "fbo", "small" ] => 4, [ "wb", "by", "fbs", "small" ] => 2, uncovered: 9 }, wb[:orders])
+    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "by", "fbo", "small" ] => 4, [ "wb", "by", "fbs", "small" ] => 2, uncovered: 8 }, wb[:conversions],
+      "the Kazakh order and the cancelled one with no known country fit no scenario")
+    # 4 whose country is Belarus although paid in RUB, plus the 10 with no country that fall back to BYN.
+    assert_equal 14, ozon[:orders][[ "ozon", "by", "fbo", "general" ]], "the country wins over the currency it was paid in"
     assert_equal 3, ozon[:orders][[ "ozon", "ru", "fbo", "general" ]]
-    assert_equal 12, ozon[:orders][:uncovered]
-    assert_equal 12, ozon[:conversions][:uncovered]
+    assert_equal 5, ozon[:orders][[ "ozon", "ru", "fbs", "general" ]], "Ozon FBS is a scenario now"
+    assert_equal 9, ozon[:orders][[ "ozon", "by", "fbs", "general" ]]
+    assert_equal 7, ozon[:orders][:uncovered]
   ensure
     store_ids = [ @wb_store&.id, @ozon_store&.id, ozon_general&.id ]
     Ec::OrderItem.where(store_id: store_ids).delete_all
@@ -136,9 +143,9 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
     )
   end
 
-  def create_order(store, platform, platform_sku_id, status, quantity, fulfillment_type: nil, buyer_currency: nil, order_key: nil)
+  def create_order(store, platform, platform_sku_id, status, quantity, fulfillment_type: nil, buyer_currency: nil, buyer_country: nil, order_key: nil)
     order = Ec::Order.create!(store:, platform:, order_key: "#{platform}-#{@token}-#{order_key || quantity}", order_status: status,
-      ordered_at: Time.find_zone!("Asia/Shanghai").local(2026, 8, 4, 12), completed_at: Time.find_zone!("Asia/Shanghai").local(2026, 8, 5, 12))
+      buyer_country:, ordered_at: Time.find_zone!("Asia/Shanghai").local(2026, 8, 4, 12), completed_at: Time.find_zone!("Asia/Shanghai").local(2026, 8, 5, 12))
     fulfillment = if fulfillment_type
       Ec::OrderFulfillment.create!(order:, store:, platform:, fulfillment_type:, status: "delivered",
         external_fulfillment_id: "f-#{order.order_key}", fulfillment_key: "f-#{order.order_key}")
