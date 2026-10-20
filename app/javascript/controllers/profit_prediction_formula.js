@@ -54,14 +54,14 @@ export function evaluateFormula(tokens) {
 }
 
 // The steps of the calculation process for one scenario row, in display order.
-//   context: { platform, market, companyType,
+//   context: { platform, market, deliveryMode, companyType,
 //              inputs      the numeric left-form values (null when blank),
 //              data        the preview response ({ revenue_cny, cost_breakdown, intermediate, ... }),
 //              labels      { fields, steps, formula }  (the translated names) }
 // Each step is { key, label, formula, result, unit, fields, source, note }, where
 // `fields` are the parameters whose inputs are shown on that row, `unit` is "cny", "rub",
 // "liter" or "percent" and a string `formula` is shown as is.
-export function buildCalculationSteps({ platform, market, companyType, inputs, data, labels }) {
+export function buildCalculationSteps({ platform, market, deliveryMode, companyType, inputs, data, labels }) {
   const costs = data.cost_breakdown || {};
   const intermediate = data.intermediate || {};
   const exchange = inputs.exchange_rate_rub_cny;
@@ -84,6 +84,7 @@ export function buildCalculationSteps({ platform, market, companyType, inputs, d
   };
 
   const wb = platform === "wb";
+  const fbs = !wb && deliveryMode === "fbs";
   const commissionRate = P("commission_rate");
   const dutyRate = numberOr(inputs.duty_rate, 0.1);
   const importVatRate = numberOr(inputs.import_vat_rate, 0.2);
@@ -160,18 +161,28 @@ export function buildCalculationSteps({ platform, market, companyType, inputs, d
     const warehouseRate = numberOr(intermediate.warehouse_rate, 0.25);
     const warehouse = F("warehouse_operation_rub");
 
-    step("platform_logistics", [
-      "(", F("outbound_logistics_rub"), "+", warehouse, "+", warehouse, "×", N(2), "×", H("ozon_warehouse_rate", warehouseRate, true), ")",
-      "÷", F("exchange_rate_rub_cny", exchange)
-    ], costs.logistics, "cny", ["outbound_logistics_rub", "warehouse_operation_rub", "exchange_rate_rub_cny"],
-    { source: "ozon_logistics_tariffs" });
+    if (fbs) {
+      // Seller-shipped: the parcel is handed over at a pickup point or sorting centre, so the
+      // warehouse operation fee and its surcharge give way to a flat handover fee.
+      step("platform_logistics", [
+        "(", F("outbound_logistics_rub"), "+", F("fbs_handover_rub", numberOr(inputs.fbs_handover_rub, 30)), ")",
+        "÷", F("exchange_rate_rub_cny", exchange)
+      ], costs.logistics, "cny", ["outbound_logistics_rub", "fbs_handover_rub", "exchange_rate_rub_cny"],
+      { source: "ozon_logistics_tariffs" });
+    } else {
+      step("platform_logistics", [
+        "(", F("outbound_logistics_rub"), "+", warehouse, "+", warehouse, "×", N(2), "×", H("ozon_warehouse_rate", warehouseRate, true), ")",
+        "÷", F("exchange_rate_rub_cny", exchange)
+      ], costs.logistics, "cny", ["outbound_logistics_rub", "warehouse_operation_rub", "exchange_rate_rub_cny"],
+      { source: "ozon_logistics_tariffs" });
 
-    // Cross-docking is charged inside "other costs"; this row only shows where it comes from.
-    const crossDocking = market === "ru";
-    step("cross_docking",
-      crossDocking ? [F("cross_docking_cny", inputs.cross_docking_cny || 0)] : labels.crossDockingNotApplicable,
-      crossDocking ? inputs.cross_docking_cny || 0 : 0, "cny", crossDocking ? ["cross_docking_cny"] : [],
-      { source: crossDocking ? "ozon_cross_dock_tariffs" : null, note: crossDocking ? labels.crossDockingInOther : null });
+      // Cross-docking is charged inside "other costs"; this row only shows where it comes from.
+      const crossDocking = market === "ru";
+      step("cross_docking",
+        crossDocking ? [F("cross_docking_cny", inputs.cross_docking_cny || 0)] : labels.crossDockingNotApplicable,
+        crossDocking ? inputs.cross_docking_cny || 0 : 0, "cny", crossDocking ? ["cross_docking_cny"] : [],
+        { source: crossDocking ? "ozon_cross_dock_tariffs" : null, note: crossDocking ? labels.crossDockingInOther : null });
+    }
 
     step("return_amortized", [
       "(", F("outbound_logistics_rub"), "+", F("return_logistics_rub"), ")", "×",
@@ -200,7 +211,7 @@ export function buildCalculationSteps({ platform, market, companyType, inputs, d
   const damage = [ "(", C("goods", costs.goods), "+", C("import_vat", costs.import_vat), "+", C("duty", costs.duty), ")", "×", P("damage_rate", inputs.damage_rate || 0), "+", F("misc_cny", inputs.misc_cny || 0), "+" ];
   const otherCost = wb
     ? [...damage, F("other_cny", inputs.other_cny || 0)]
-    : [...(market === "ru" ? [F("cross_docking_cny", inputs.cross_docking_cny || 0), "+"] : []), F("other_cny", inputs.other_cny || 0)];
+    : [...(market === "ru" && !fbs ? [F("cross_docking_cny", inputs.cross_docking_cny || 0), "+"] : []), F("other_cny", inputs.other_cny || 0)];
   step("other", otherCost, costs.other, "cny", wb ? ["damage_rate", "misc_cny", "other_cny"] : ["other_cny"]);
 
   step("total_cost", labels.sumCosts, data.total_cost_cny, "cny");

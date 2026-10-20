@@ -31,6 +31,7 @@ const labels = {
     acquiring_rate: "收单费率", advertising_rate: "广告费率", tax_rate: "税率", damage_rate: "货损率",
     misc_cny: "杂费（CNY）", other_cny: "其他费用（CNY）", outbound_logistics_rub: "去程物流（RUB）",
     return_logistics_rub: "返程物流（RUB）", warehouse_operation_rub: "仓库操作费（RUB）", cross_docking_cny: "越库费（CNY）",
+    fbs_handover_rub: "FBS 交接配送费（RUB）",
   },
   steps: {
     revenue: "收入", goods: "商品成本", duty: "关税", import_vat: "进口增值税", volume: "商品体积",
@@ -60,6 +61,7 @@ function stepsFor(testCase) {
   return buildCalculationSteps({
     platform: testCase.platform,
     market: testCase.context.market,
+    deliveryMode: testCase.context.delivery_mode,
     companyType: testCase.context.company_type,
     inputs,
     data: expected,
@@ -85,7 +87,9 @@ test("every formula evaluates to the figure the Ruby calculator produced for tha
       checked += 1;
     });
 
-    assert.ok(checked >= 18, `${testCase.name}: only ${checked} formulas were compared`);
+    // An Ozon FBS scenario has no cross-docking row, hence one step fewer.
+    const floor = testCase.context.delivery_mode === "fbs" && testCase.platform === "ozon" ? 17 : 18;
+    assert.ok(checked >= floor, `${testCase.name}: only ${checked} formulas were compared`);
   });
 });
 
@@ -184,4 +188,26 @@ test("an incomplete scenario still builds every step, with blanks instead of num
   assert.equal(steps[0].key, "revenue");
   assert.equal(steps.at(-1).key, "margin");
   assert.ok(steps.every((step) => step.formula !== undefined));
+});
+
+test("an Ozon FBS scenario swaps the warehouse fee and cross-docking for the handover fee", () => {
+  const fbsCases = cases.filter((testCase) => testCase.platform === "ozon" && testCase.context.delivery_mode === "fbs");
+  assert.ok(fbsCases.length >= 2);
+
+  fbsCases.forEach((testCase) => {
+    const steps = stepsFor(testCase);
+    const logistics = steps.find((step) => step.key === "platform_logistics");
+
+    assert.equal(formulaLines(logistics.formula, format).named, "( 去程物流 + FBS 交接配送费 ) ÷ 汇率", testCase.name);
+    assert.deepEqual(logistics.fields, ["outbound_logistics_rub", "fbs_handover_rub", "exchange_rate_rub_cny"]);
+    assert.ok(!steps.some((step) => step.key === "cross_docking"), `${testCase.name}: FBS has no cross-docking row`);
+    assert.ok(!formulaLines(steps.find((step) => step.key === "other").formula, format).named.includes("越库"), testCase.name);
+  });
+});
+
+test("an FBS scenario without a handover input uses the calculator's default of 30", () => {
+  const testCase = cases.find((candidate) => candidate.name === "ozon_by_fbs_default_handover");
+  const logistics = stepsFor(testCase).find((step) => step.key === "platform_logistics");
+
+  assert.equal(formulaLines(logistics.formula, format).values, "( 280 + 30 ) ÷ 11.2");
 });

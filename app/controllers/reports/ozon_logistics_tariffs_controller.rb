@@ -23,6 +23,8 @@ module Reports
       scope = name_filter(scope, :destination_cluster_name, @destination_query)
       @matched_count = scope.count
       @average_fbo_rub = scope.average(:fbo_rub)
+      @average_fbs_over_300_rub = scope.average(:fbs_over_300_rub)
+      @average_fbs_under_300_rub = scope.average(:fbs_under_300_rub)
       @matched_volume_band = @snapshot&.default_logistics_tariffs&.for_volume(@volume_l)&.first if @volume_l
       @rows = paginate(scope.order(:volume_band_order, :origin_cluster_name, :destination_cluster_name))
       respond_with_rows
@@ -127,7 +129,9 @@ module Reports
           origin_keys: @origin_keys,
           destination_keys: @destination_keys,
           matched_count: @matched_count,
-          average_fbo_rub: @average_fbo_rub
+          average_fbo_rub: @average_fbo_rub,
+          average_fbs_over_300_rub: @average_fbs_over_300_rub,
+          average_fbs_under_300_rub: @average_fbs_under_300_rub
         } : nil,
         cross_dock_filter: @page_kind == :cross_dock ? {
           volume_l: @volume_l,

@@ -12,7 +12,7 @@ module SkuProfitPredictionHelper
     logistics_coeff return_rate logistics_tax_rate wb_logistics_base_rub wb_logistics_liter_rub
     wb_fixed_return_base_rub fbo_delivery_cny storage_cny damage_rate misc_cny
     other_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub
-    cross_docking_cny
+    cross_docking_cny fbs_handover_rub
   ].freeze
   PROFIT_RESULT_COLUMNS = %i[
     revenue_cny goods_cost_cny import_vat_cny duty_cny logistics_cny returns_cny
@@ -32,7 +32,7 @@ module SkuProfitPredictionHelper
   ].freeze
 
   PROFIT_OZON_ONLY_COLUMNS = %i[
-    warehouse_operation_rub cross_docking_cny
+    warehouse_operation_rub cross_docking_cny fbs_handover_rub
   ].freeze
 
   # Keep calculated values beside the inputs that drive them, following the
@@ -57,6 +57,7 @@ module SkuProfitPredictionHelper
       [ :input, :logistics_coeff ],
       [ :input, :wb_fixed_return_base_rub ],
       [ :input, :warehouse_operation_rub ],
+      [ :input, :fbs_handover_rub ],
       [ :input, :outbound_logistics_rub ],
       [ :input, :return_rate ],
       [ :input, :logistics_tax_rate ],
@@ -271,6 +272,14 @@ module SkuProfitPredictionHelper
   end
 
   def ozon_profit_input_applicable?(context, field)
+    if context.delivery_mode == "fbs"
+      # Seller-shipped: no Ozon warehouse (operation fee, storage, cross-docking); the handover fee
+      # takes their place.
+      return %i[return_rate outbound_logistics_rub return_logistics_rub fbs_handover_rub].include?(field) ||
+        (context.market == "by" && field == :sales_vat_rate)
+    end
+    return false if field == :fbs_handover_rub
+
     common = %i[return_rate storage_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub]
     return true if common.include?(field)
     return field == :cross_docking_cny if context.market == "ru"

@@ -62,14 +62,21 @@ module Ec
       def wb_default_inputs(context)
         company_type = context.fetch("company_type", "general").to_s.downcase
         delivery_mode = context.fetch("delivery_mode", "fbo").to_s.downcase
+        belarus = context.fetch("market", "ru").to_s.downcase == "by"
         general_company = company_type == "general"
 
         {
           exchange_rate_rub_cny: DEFAULT_EXCHANGE_RATE_RUB_CNY,
           buyer_price_vat_rate: decimal("0.2"),
           logistics_coeff: company_type == "small" && delivery_mode == "fbo" ? decimal("1.3") : decimal("1.55"),
-          return_rate: decimal("0.1"),
-          acquiring_rate: general_company ? decimal("0.015") : decimal("0.031"),
+          # Belarus-local sales: a third of the outbound parcels are cancelled or refused and come
+          # back (measured on the ledger, Jul-Sep 2026), so the placeholder is well above Russia's;
+          # "get actual data" replaces it per SKU.
+          return_rate: decimal(belarus ? "0.3" : "0.1"),
+          # Acquiring is 1.9% on Belarus sales, 3.0-3.4% on exports to Russia.
+          acquiring_rate: if belarus then decimal("0.019")
+                          else general_company ? decimal("0.015") : decimal("0.031")
+                          end,
           sales_vat_rate: general_company ? decimal("0.2") : nil,
           tax_rate: general_company ? nil : decimal("0.06"),
           wb_logistics_base_rub: general_company ? decimal("60") : decimal("46"),
@@ -85,6 +92,7 @@ module Ec
 
       def ozon_default_inputs(context)
         market = context.fetch("market", "ru").to_s.downcase
+        fbs = context.fetch("delivery_mode", "fbo").to_s.downcase == "fbs"
         {
           exchange_rate_rub_cny: DEFAULT_EXCHANGE_RATE_RUB_CNY,
           # VAT embedded in what the buyer pays: Russian buyers 22%, Belarusian buyers 20%.
@@ -95,8 +103,9 @@ module Ec
           sales_vat_rate: market == "by" ? decimal("0.2") : nil,
           storage_cny: decimal("0"),
           other_cny: decimal("0"),
-          warehouse_operation_rub: decimal("25"),
-          cross_docking_cny: decimal("0"),
+          warehouse_operation_rub: fbs ? nil : decimal("25"),
+          fbs_handover_rub: fbs ? decimal("30") : nil,
+          cross_docking_cny: fbs ? nil : decimal("0"),
           ozon_warehouse_rate: decimal("0.25"),
           ozon_import_vat_cost_rate: decimal("0"),
           advertising_fixed_rub: decimal("0")

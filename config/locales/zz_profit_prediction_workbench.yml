@@ -89,6 +89,7 @@ zh:
           wb_fbo: "FBW"
           wb_fbs: "FBS"
           ozon_fbo: "FBO"
+          ozon_fbs: "FBS"
         company_types:
           general: "一般"
           small: "小规模"
@@ -193,6 +194,7 @@ zh:
           profit: "利润"
           margin: "利润率"
       sources:
+        actuals_not_split: "这个场景的实际数据暂时还没有按目标市场 / 履约方式拆分：取到的是该平台全部订单的数字，仅供参考。"
         actual_return_rate:
           action: "使用近4周物流退货率"
           loading: "正在获取物流退货率…"
@@ -458,6 +460,7 @@ en:
           wb_fbo: "FBW"
           wb_fbs: "FBS"
           ozon_fbo: "FBO"
+          ozon_fbs: "FBS"
         company_types:
           general: "General"
           small: "Small"
@@ -562,6 +565,7 @@ en:
           profit: "Profit"
           margin: "Margin"
       sources:
+        actuals_not_split: "Actual data is not yet split by target market or fulfilment for this scenario: the figures cover all of the platform's orders, for reference only."
         actual_return_rate:
           action: "Use actual logistics return rate from the last 4 weeks"
           loading: "Loading the logistics return rate..."
@@ -827,6 +831,7 @@ ru:
           wb_fbo: "FBW"
           wb_fbs: "FBS"
           ozon_fbo: "FBO"
+          ozon_fbs: "FBS"
         company_types:
           general: "ОСН"
           small: "УСН"
@@ -931,6 +936,7 @@ ru:
           profit: "Прибыль"
           margin: "Маржинальность"
       sources:
+        actuals_not_split: "Фактические данные для этого сценария пока не разделены по рынку и схеме доставки: цифры по всем заказам площадки, только для ориентира."
         actual_return_rate:
           action: "Использовать долю возвратов по логистике за 4 недели"
           loading: "Загрузка доли возвратов по логистике..."

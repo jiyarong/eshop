@@ -99,7 +99,7 @@ class SkuScenarioVisibilityControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-scenario-key='wb|ru|fbo|main|general'][data-scenario-hidden='false']:not([hidden])"
     assert_select "[data-profit-prediction-target='scenarioBanner'][hidden]"
     state = JSON.parse(css_select(".profit-prediction-workbench").first["data-profit-prediction-scenario-state-value"])
-    assert_equal 6, state.fetch("scenarios").size
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, state.fetch("scenarios").size
     assert_equal [ KEY ], state.fetch("scenarios").select { |scenario| scenario["hidden"] }.map { |scenario| scenario["key"] }
     assert_equal Ec::SkuScenarioSales::MIN_UNITS, state.fetch("min_units")
     assert_equal report_sku_scenario_visibility_path(@sku.sku_code),
@@ -111,7 +111,7 @@ class SkuScenarioVisibilityControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tr[data-scenario-key][data-scenario-hidden='true']", count: 0
-    assert_select "tr[data-scenario-key]", count: 6
+    assert_select "tr[data-scenario-key]", count: Ec::SkuProfitStandardContexts::SCENARIOS.size
   end
 
   test "the mark says one thing for no sales and another for thin sales" do

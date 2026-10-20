@@ -71,7 +71,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, @sku.profit_versions.where(name: "Initial model").count
   end
 
-  test "creates the six standard contexts when no contexts are submitted" do
+  test "creates every standard context when no contexts are submitted" do
     post report_sku_profit_versions_path(@sku.sku_code), params: {
       version: { name: "Default scenarios", status: "draft", effective_from: "2026-09-01" }
     }, as: :json
@@ -83,7 +83,10 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_equal Ec::SkuProfitStandardContexts::SCENARIOS, scenarios
     assert payload.fetch("contexts").all? { |context| context.fetch("calculation_status") == "incomplete" }
-    assert payload.fetch("contexts").all? { |context| context.fetch("return_rate").to_d == 0.1.to_d }
+    assert payload.fetch("contexts").all? do |context|
+      expected = context.fetch("platform") == "wb" && context.fetch("market") == "by" ? 0.3.to_d : 0.1.to_d
+      context.fetch("return_rate").to_d == expected
+    end
   end
 
   test "persists Ozon seller and buyer prices independently in both markets" do
@@ -247,23 +250,24 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "th", text: "Exchange rate (%)", count: 0
     assert_select "th", text: "Buyer-paid price incl. VAT (RUB)", count: 1
     assert_select "th", text: "VAT rate in the buyer price (%)", count: 1
-    assert_select "tr[data-profit-prediction-target='row']", count: 6
-    assert_select "tr[data-profit-prediction-target='row'][tabindex='0'][aria-selected='false']", count: 6
-    assert_select "tr[data-action*='profit-prediction#selectRow']", count: 6
+    total = Ec::SkuProfitStandardContexts::SCENARIOS.size
+    assert_select "tr[data-profit-prediction-target='row']", count: total
+    assert_select "tr[data-profit-prediction-target='row'][tabindex='0'][aria-selected='false']", count: total
+    assert_select "tr[data-action*='profit-prediction#selectRow']", count: total
     assert_select ".profit-prediction-table__identity-heading", count: 4
     assert_select ".profit-prediction-table__identity-heading--warehouse_region", count: 0
     assert_select "td.profit-prediction-table__identity--warehouse_region", count: 0
-    assert_select "td[data-row-status][data-status='pending']", count: 6
-    assert_select "input[type='number'][data-field='logistics_coeff']", count: 4
-    assert_select "input[type='number'][data-field='outbound_logistics_rub']", count: 6
-    assert_select "input[type='number'][data-field='commission_base_price_rub']:not([disabled])", count: 6
-    assert_select "input[type='number'][data-field='buyer_paid_price_rub']:not([disabled])", count: 6
-    assert_select "input[type='number'][data-field='buyer_price_vat_rate']:not([disabled])", count: 6
-    assert_select "input[type='number'][data-field='length_cm'][disabled]", count: 6
+    assert_select "td[data-row-status][data-status='pending']", count: total
+    assert_select "input[type='number'][data-field='logistics_coeff']", count: 8
+    assert_select "input[type='number'][data-field='outbound_logistics_rub']", count: total
+    assert_select "input[type='number'][data-field='commission_base_price_rub']:not([disabled])", count: total
+    assert_select "input[type='number'][data-field='buyer_paid_price_rub']:not([disabled])", count: total
+    assert_select "input[type='number'][data-field='buyer_price_vat_rate']:not([disabled])", count: total
+    assert_select "input[type='number'][data-field='length_cm'][disabled]", count: total
     document = Nokogiri::HTML(response.body)
     rows = document.css("tr[data-profit-prediction-target='row']")
     scenario_tabs = document.css(".profit-prediction-process__scenario-tab[data-profit-prediction-target='scenarioTab']")
-    assert_equal 6, scenario_tabs.size
+    assert_equal total, scenario_tabs.size
     assert_equal 1, scenario_tabs.count { |tab| tab["aria-selected"] == "true" && tab["tabindex"] == "0" }
     assert_equal rows.map { |row| row["data-row-key"] }, scenario_tabs.map { |tab| tab["data-row-key"] }
     assert scenario_tabs.all? { |tab| tab["data-action"].include?("profit-prediction#selectScenarioTab") }
@@ -279,15 +283,24 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Ec::SkuProfitStandardContexts::SCENARIOS, actual_scenarios
     assert rows.all? { |row| row.at_css("input[data-field='exchange_rate_rub_cny']")["value"] == "13.00" }
     assert rows.all? { |row| row.at_css("input[data-field='exchange_rate_rub_cny']")["data-source-value"] == "13.0" }
-    wb_rows = rows.select { |row| row["data-platform"] == "wb" }
+    wb_rows = rows.select { |row| row["data-platform"] == "wb" && row["data-market"] == "ru" }
     assert wb_rows.all? { |row| row.at_css("input[data-field='return_rate']")["value"].to_d == 10.to_d }
     assert wb_rows.all? { |row| row.at_css("input[data-field='return_rate']")["data-source-value"].to_d == 0.1.to_d }
+    wb_belarus_rows = rows.select { |row| row["data-platform"] == "wb" && row["data-market"] == "by" }
+    assert_equal 4, wb_belarus_rows.size
+    assert wb_belarus_rows.all? { |row| row.at_css("input[data-field='return_rate']")["data-source-value"].to_d == 0.3.to_d }
+    assert wb_belarus_rows.all? { |row| row.at_css("input[data-field='acquiring_rate']")["data-source-value"].to_d == 0.019.to_d }
     small_fbo = rows.find do |row|
       row["data-platform"] == "wb" && row["data-company-type"] == "small" && row["data-delivery-mode"] == "fbo"
     end
     assert_equal 1.3.to_d, small_fbo.at_css("input[data-field='logistics_coeff']")["value"].to_d
     ozon_rows = rows.select { |row| row["data-platform"] == "ozon" }
-    assert ozon_rows.all? { |row| row.at_css("input[data-field='warehouse_operation_rub']")["value"].to_d == 25.to_d }
+    ozon_fbo_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbo" }
+    ozon_fbs_rows = ozon_rows.select { |row| row["data-delivery-mode"] == "fbs" }
+    assert_equal [ 2, 2 ], [ ozon_fbo_rows.size, ozon_fbs_rows.size ]
+    assert_equal 6, rows.count { |row| row["data-actuals-split"] == "false" }
+    assert ozon_fbo_rows.all? { |row| row.at_css("input[data-field='warehouse_operation_rub']")["value"].to_d == 25.to_d }
+    assert ozon_fbs_rows.all? { |row| row.at_css("input[data-field='fbs_handover_rub']")["value"].to_d == 30.to_d }
     assert ozon_rows.all? { |row| row.at_css("input[data-field='return_rate']")["value"].to_d == 10.to_d }
     assert_select "tr[data-platform='ozon'][data-market='ru'][data-company-type='general']" do
       assert_select "input[type='number'][data-field='commission_base_price_rub']:not([disabled])"
@@ -344,8 +357,8 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
       headers: { "Accept" => "text/html" }
 
     assert_response :success
-    assert_select "td.profit-prediction-table__identity--company_type", text: "一般", count: 4
-    assert_select "td.profit-prediction-table__identity--company_type", text: "小规模", count: 2
+    assert_select "td.profit-prediction-table__identity--company_type", text: "一般", count: 8
+    assert_select "td.profit-prediction-table__identity--company_type", text: "小规模", count: 4
     assert_select "tr[data-platform='wb'][data-company-type='small'][data-delivery-mode='fbo']" do
       assert_select "input[data-field='wb_logistics_base_rub']"
       assert_select "input[data-field='logistics_tax_rate']"
@@ -353,7 +366,7 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type='number'][data-field='wb_fixed_return_base_rub']", count: 0
       assert_select "input[type='number'][data-field='sales_vat_rate']", count: 0
     end
-    assert_select "tr[data-platform='ozon'][data-market='by']" do
+    assert_select "tr[data-platform='ozon'][data-market='by'][data-delivery-mode='fbo']" do
       assert_select "input[data-field='buyer_paid_price_rub']"
       assert_select "input[data-field='commission_base_price_rub']:not([disabled])", count: 1
       assert_select "input[data-field='buyer_price_vat_rate'][value='20'][data-source-value='0.2']"
@@ -383,22 +396,35 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
         logistics_tax_rate wb_logistics_base_rub wb_logistics_liter_rub fbo_delivery_cny storage_cny
         damage_rate misc_cny other_cny outbound_logistics_rub return_logistics_rub
       ],
-      ["ozon", "ru"] => %w[
+      ["ozon", "ru", "fbo"] => %w[
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
         length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny commission_rate
         acquiring_rate advertising_rate other_cny storage_cny return_rate outbound_logistics_rub
         return_logistics_rub warehouse_operation_rub cross_docking_cny
       ],
-      ["ozon", "by"] => %w[
+      ["ozon", "by", "fbo"] => %w[
         purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
         length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny
         commission_rate acquiring_rate advertising_rate sales_vat_rate other_cny storage_cny return_rate
         outbound_logistics_rub return_logistics_rub warehouse_operation_rub
+      ],
+      # Seller-shipped: no Ozon warehouse (operation fee, storage, cross-docking), a handover fee instead.
+      ["ozon", "ru", "fbs"] => %w[
+        purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
+        length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny commission_rate
+        acquiring_rate advertising_rate other_cny return_rate outbound_logistics_rub
+        return_logistics_rub fbs_handover_rub
+      ],
+      ["ozon", "by", "fbs"] => %w[
+        purchase_price_cny freight_cny customs_misc_cny duty_rate import_vat_rate
+        length_cm width_cm height_cm commission_base_price_rub buyer_paid_price_rub buyer_price_vat_rate exchange_rate_rub_cny
+        commission_rate acquiring_rate advertising_rate sales_vat_rate other_cny return_rate
+        outbound_logistics_rub return_logistics_rub fbs_handover_rub
       ]
     }
     document = Nokogiri::HTML(response.body)
     document.css("tr[data-profit-prediction-target='row']").each do |row|
-      key = row["data-platform"] == "wb" ? ["wb", row["data-company-type"]] : ["ozon", row["data-market"]]
+      key = row["data-platform"] == "wb" ? ["wb", row["data-company-type"]] : ["ozon", row["data-market"], row["data-delivery-mode"]]
       actual_fields = row.css("input[type='number'][data-profit-prediction-target~='input']").map { |input| input["data-field"] }
       assert_equal expected_fields.fetch(key).sort, actual_fields.sort, "unexpected input matrix for #{key.join('/')}"
     end
@@ -699,9 +725,9 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-profit-prediction-target='tableView'][hidden]"
     assert_select "[data-profit-prediction-target='calculatorView']:not([hidden])"
     # The calculator reads the table's inputs, so the table must stay in the page even when hidden.
-    assert_select "[data-profit-prediction-target='tableView'] .profit-prediction-table tbody tr[data-profit-prediction-target~='row']", minimum: 6
+    assert_select "[data-profit-prediction-target='tableView'] .profit-prediction-table tbody tr[data-profit-prediction-target~='row']", minimum: Ec::SkuProfitStandardContexts::SCENARIOS.size
     assert_select "[data-profit-prediction-target='tableView'] .profit-prediction-platform-tab", count: 3
-    assert_select "[data-profit-prediction-target='calculatorView'] .profit-prediction-process__scenario-tab", count: 6
+    assert_select "[data-profit-prediction-target='calculatorView'] .profit-prediction-process__scenario-tab", count: Ec::SkuProfitStandardContexts::SCENARIOS.size
   end
 
   test "an unsaved new version offers no way to set it as current" do

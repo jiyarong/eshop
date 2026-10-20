@@ -14,7 +14,7 @@ module Ec
       logistics_coeff return_rate logistics_tax_rate wb_logistics_base_rub wb_logistics_liter_rub
       wb_fixed_return_base_rub wb_logistics_override_cny fbo_delivery_cny storage_cny damage_rate misc_cny
       other_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub
-      cross_docking_cny return_amortization_factor_override ozon_warehouse_rate
+      cross_docking_cny fbs_handover_rub return_amortization_factor_override ozon_warehouse_rate
       ozon_import_vat_cost_rate advertising_fixed_rub
     ].freeze
     RESULT_COLUMNS = %w[
@@ -38,7 +38,6 @@ module Ec
     validates :calculation_status, inclusion: { in: %w[pending valid incomplete] }
     validates :platform,
       uniqueness: { scope: %i[sku_profit_version_id market delivery_mode warehouse_region company_type] }
-    validate :ozon_delivery_mode_supported
 
     before_validation :normalize_context
 
@@ -90,10 +89,6 @@ module Ec
       self.warehouse_region = warehouse_region.to_s.downcase.presence
       self.company_type = company_type.to_s.downcase.presence
       self.company_type ||= "general" if platform == "ozon"
-    end
-
-    def ozon_delivery_mode_supported
-      errors.add(:delivery_mode, :inclusion) if platform == "ozon" && delivery_mode != "fbo"
     end
   end
 end

@@ -129,14 +129,79 @@ class Ec::SkuProfitCalculatorTest < ActiveSupport::TestCase
     assert result.dig(:cost_breakdown, :tax).positive?
   end
 
-  test "pure calculator rejects Ozon FBS even when called directly" do
+  test "pure calculator rejects a delivery mode Ozon does not have" do
     result = Ec::ProfitCalculator.call(
       platform: "ozon",
-      parameter_context: { market: "ru", delivery_mode: "fbs" },
+      parameter_context: { market: "ru", delivery_mode: "rfbs" },
       inputs: {}
     )
 
     assert_includes result[:errors], "unsupported_delivery_mode"
+  end
+
+  test "Ozon FBS needs no warehouse operation fee and charges a handover fee instead" do
+    inputs = {
+      purchase_price_cny: 100, commission_base_price_rub: 2600, exchange_rate_rub_cny: 13, commission_rate: 0.4,
+      length_cm: 20, width_cm: 20, height_cm: 10, outbound_logistics_rub: 260, return_logistics_rub: 130,
+      return_rate: 0.1, acquiring_rate: 0, advertising_rate: 0
+    }
+    fbs = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "ru", delivery_mode: "fbs" }, inputs: inputs.merge(fbs_handover_rub: 30))
+    fbo = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "ru", delivery_mode: "fbo" }, inputs: inputs.merge(warehouse_operation_rub: 25))
+
+    assert_empty fbs[:errors].to_a
+    # (outbound 260 + handover 30) / 13 as platform logistics; returns amortised as in FBO.
+    assert_in_delta (260 + 30) / 13.0, fbs.dig(:cost_breakdown, :logistics), 1e-9
+    assert_in_delta (260 + 130) * (0.1 / 0.9) / 13.0, fbs.dig(:cost_breakdown, :returns), 1e-9
+    assert_in_delta 30, fbs.dig(:intermediate, :fbs_handover_rub), 1e-9
+    assert_in_delta 0, fbs.dig(:intermediate, :warehouse_surcharge_rub), 1e-9
+    assert_in_delta (260 + 25 + 25 * 0.5) / 13.0, fbo.dig(:cost_breakdown, :logistics), 1e-9
+  end
+
+  test "Ozon FBS ignores cross-docking and uses a default handover fee of 30 when none is given" do
+    inputs = {
+      purchase_price_cny: 100, commission_base_price_rub: 2600, exchange_rate_rub_cny: 13, commission_rate: 0.4,
+      length_cm: 20, width_cm: 20, height_cm: 10, outbound_logistics_rub: 260, return_logistics_rub: 130,
+      cross_docking_cny: 50, warehouse_operation_rub: 99
+    }
+    result = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "ru", delivery_mode: "fbs" }, inputs: inputs)
+
+    assert_empty result[:errors].to_a
+    assert_in_delta 30, result.dig(:intermediate, :fbs_handover_rub), 1e-9
+    assert_in_delta 0, result.dig(:cost_breakdown, :other), 1e-9
+    assert_in_delta (260 + 30) / 13.0, result.dig(:cost_breakdown, :logistics), 1e-9
+  end
+
+  test "Ozon FBS still asks for the route prices but not for a warehouse fee" do
+    result = Ec::ProfitCalculator.call(platform: "ozon", parameter_context: { market: "by", delivery_mode: "fbs" }, inputs: { purchase_price_cny: 10 })
+
+    assert_includes result[:errors], "missing_outbound_logistics_rub"
+    assert_includes result[:errors], "missing_return_logistics_rub"
+    assert_not_includes result[:errors], "missing_warehouse_operation_rub"
+  end
+
+  test "Ozon FBS defaults carry the handover fee and drop the FBO warehouse inputs" do
+    fbs = Ec::SkuProfitCalculator.default_inputs(platform: "ozon", parameter_context: { market: "by", delivery_mode: "fbs", company_type: "general" })
+
+    assert_equal 30.to_d, fbs.fetch("fbs_handover_rub")
+    assert_not fbs.key?("warehouse_operation_rub")
+    assert_not fbs.key?("cross_docking_cny")
+    assert_equal 0.2.to_d, fbs.fetch("sales_vat_rate")
+  end
+
+  test "WB Belarus scenarios default to the Belarus acquiring rate and a higher return rate" do
+    %w[general small].each do |company_type|
+      %w[fbo fbs].each do |mode|
+        by = Ec::SkuProfitCalculator.default_inputs(platform: "wb", parameter_context: { market: "by", delivery_mode: mode, company_type: company_type })
+        ru = Ec::SkuProfitCalculator.default_inputs(platform: "wb", parameter_context: { market: "ru", delivery_mode: mode, company_type: company_type })
+
+        assert_equal 0.019.to_d, by.fetch("acquiring_rate"), "#{company_type}/#{mode}"
+        assert_equal 0.3.to_d, by.fetch("return_rate"), "#{company_type}/#{mode}"
+        assert_equal 0.1.to_d, ru.fetch("return_rate")
+        # Tax regime and logistics inputs follow the company type and mode, not the market.
+        assert_equal ru.fetch("logistics_coeff"), by.fetch("logistics_coeff")
+        assert_equal ru.slice("tax_rate", "sales_vat_rate"), by.slice("tax_rate", "sales_vat_rate")
+      end
+    end
   end
 
   test "saved context calculates entirely from its typed row inputs" do

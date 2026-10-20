@@ -42,9 +42,10 @@ class Ec::SkuProfitVersionTest < ActiveSupport::TestCase
     assert duplicate.errors.added?(:platform, :taken, value: "wb")
   end
 
-  test "Ozon FBS remains unsupported" do
-    context = build_version.contexts.build(platform: "ozon", market: "ru", delivery_mode: "fbs")
+  test "Ozon FBS is a supported delivery mode, an unknown one is not" do
+    assert build_version.contexts.build(platform: "ozon", market: "ru", delivery_mode: "fbs").valid?
 
+    context = build_version.contexts.build(platform: "ozon", market: "ru", delivery_mode: "rfbs")
     assert_not context.valid?
     assert context.errors.of_kind?(:delivery_mode, :inclusion)
   end
@@ -128,7 +129,7 @@ class Ec::SkuProfitVersionTest < ActiveSupport::TestCase
     )
 
     ordered = Ec::SkuProfitStandardContexts.sort(version.contexts)
-    identities = ordered.first(6).map do |context|
+    identities = ordered.first(Ec::SkuProfitStandardContexts::SCENARIOS.size).map do |context|
       context.attributes.slice(*Ec::SkuProfitStandardContexts::IDENTITY_KEYS)
     end
 

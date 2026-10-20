@@ -413,5 +413,144 @@
         "platform_subsidy_rub": 860.6666666666666
       }
     }
+  },
+  {
+    "name": "ozon_ru_fbs",
+    "platform": "ozon",
+    "context": {
+      "market": "ru",
+      "delivery_mode": "fbs"
+    },
+    "inputs": {
+      "purchase_price_cny": 120,
+      "freight_cny": 12,
+      "customs_misc_cny": 3,
+      "length_cm": 30,
+      "width_cm": 22.5,
+      "height_cm": 9.5,
+      "commission_base_price_rub": 4200,
+      "buyer_paid_price_rub": 3100,
+      "exchange_rate_rub_cny": 11.2,
+      "commission_rate": 0.18,
+      "acquiring_rate": 0.015,
+      "advertising_rate": 0.07,
+      "return_rate": 0.12,
+      "storage_cny": 1.5,
+      "other_cny": 0.8,
+      "outbound_logistics_rub": 310,
+      "return_logistics_rub": 190,
+      "fbs_handover_rub": 28
+    },
+    "expected": {
+      "revenue_cny": 375.0,
+      "total_cost_cny": 284.9412337662338,
+      "profit_cny": 90.05876623376624,
+      "margin": 0.24015670995670996,
+      "cost_breakdown": {
+        "goods": 135.0,
+        "import_vat": 0.0,
+        "duty": 12.0,
+        "logistics": 30.178571428571427,
+        "returns": 6.087662337662338,
+        "storage": 1.5,
+        "commission": 67.5,
+        "acquiring": 5.625,
+        "advertising": 26.25,
+        "tax": 0.0,
+        "other": 0.8
+      },
+      "intermediate": {
+        "import_vat_cny": 26.4,
+        "volume_l": 6.4125,
+        "billed_volume_l": 7,
+        "return_rate": 0.12,
+        "return_amortization_factor": 0.13636363636363635,
+        "return_amortization_factor_overridden": false,
+        "return_amortized_rub": 68.18181818181819,
+        "warehouse_rate": 0.25,
+        "import_vat_cost_rate": 0.0,
+        "advertising_fixed_rub": 0.0,
+        "sales_tax_rate": 0.0,
+        "warehouse_surcharge_rub": 0.0,
+        "fbs_handover_rub": 28.0,
+        "platform_logistics_rub": 406.1818181818182,
+        "platform_logistics_cny": 36.26623376623377,
+        "commission_base_rub": 4200.0,
+        "commission_base_cny": 375.0,
+        "buyer_paid_ex_vat_rub": 2540.9836065573772,
+        "seller_due_rub": 3444.0,
+        "platform_subsidy_rub": 903.016393442623
+      }
+    }
+  },
+  {
+    "name": "ozon_by_fbs_default_handover",
+    "platform": "ozon",
+    "context": {
+      "market": "by",
+      "delivery_mode": "fbs"
+    },
+    "inputs": {
+      "purchase_price_cny": 120,
+      "freight_cny": 12,
+      "customs_misc_cny": 3,
+      "length_cm": 30,
+      "width_cm": 22.5,
+      "height_cm": 9.5,
+      "commission_base_price_rub": 4200,
+      "buyer_paid_price_rub": 3100,
+      "exchange_rate_rub_cny": 11.2,
+      "commission_rate": 0.18,
+      "acquiring_rate": 0.015,
+      "advertising_rate": 0.07,
+      "return_rate": 0.12,
+      "storage_cny": 1.5,
+      "other_cny": 0.8,
+      "outbound_logistics_rub": 280,
+      "return_logistics_rub": 175,
+      "sales_vat_rate": 0.2,
+      "buyer_price_vat_rate": 0.2
+    },
+    "expected": {
+      "revenue_cny": 375.0,
+      "total_cost_cny": 344.39334415584415,
+      "profit_cny": 30.606655844155846,
+      "margin": 0.08161774891774892,
+      "cost_breakdown": {
+        "goods": 135.0,
+        "import_vat": 26.4,
+        "duty": 12.0,
+        "logistics": 27.678571428571427,
+        "returns": 5.5397727272727275,
+        "storage": 1.5,
+        "commission": 67.5,
+        "acquiring": 5.625,
+        "advertising": 26.25,
+        "tax": 36.1,
+        "other": 0.8
+      },
+      "intermediate": {
+        "import_vat_cny": 26.4,
+        "volume_l": 6.4125,
+        "billed_volume_l": 7,
+        "return_rate": 0.12,
+        "return_amortization_factor": 0.13636363636363635,
+        "return_amortization_factor_overridden": false,
+        "return_amortized_rub": 62.04545454545455,
+        "warehouse_rate": 0.25,
+        "import_vat_cost_rate": 0.0,
+        "advertising_fixed_rub": 0.0,
+        "sales_tax_rate": 0.0,
+        "warehouse_surcharge_rub": 0.0,
+        "fbs_handover_rub": 30.0,
+        "platform_logistics_rub": 372.04545454545456,
+        "platform_logistics_cny": 33.21834415584416,
+        "commission_base_rub": 4200.0,
+        "commission_base_cny": 375.0,
+        "buyer_paid_ex_vat_rub": 2583.3333333333335,
+        "seller_due_rub": 3444.0,
+        "platform_subsidy_rub": 860.6666666666666
+      }
+    }
   }
 ]

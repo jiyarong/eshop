@@ -105,4 +105,12 @@ class Ec::SkuProfitPriceFromActualsTest < ActiveSupport::TestCase
   ensure
     Ec::SkuActualScenarioPriceQuery.define_singleton_method(:run, original)
   end
+
+  test "a Belarus WB scenario is never priced from orders that cannot be told apart by market" do
+    context = Struct.new(:platform, :market, :delivery_mode, :company_type).new("wb", "by", "fbs", "general")
+
+    result = Ec::SkuProfitPriceFromActuals.realized_price_for(Ec::Sku.new(sku_code: "NOPE"), context, today: Date.new(2026, 10, 20), time_zone: ActiveSupport::TimeZone["Asia/Shanghai"])
+
+    assert_equal({ reason: "market_not_measurable", units: 0 }, result)
+  end
 end

@@ -2,11 +2,16 @@ module Ec
   module ProfitCalculators
     class Ozon < Base
       REQUIRED = %w[purchase_price_cny commission_base_price_rub exchange_rate_rub_cny outbound_logistics_rub return_logistics_rub warehouse_operation_rub commission_rate].freeze
+      # FBS: the seller ships from their own warehouse, so Ozon's warehouse operation fee, its
+      # surcharge, cross-docking and placement do not exist; what replaces them is the handover
+      # (drop-off at a pickup point or sorting centre) and last-mile fee, a small fixed amount.
+      FBS_REQUIRED = REQUIRED - %w[warehouse_operation_rub]
+      DEFAULT_FBS_HANDOVER_RUB = "30".freeze
       def call
-        required = REQUIRED.dup
+        required = (fbs? ? FBS_REQUIRED : REQUIRED).dup
         errors = validation_errors(required: required, dimensions: %w[length_cm width_cm height_cm])
         errors << "unsupported_market" unless market.in?(%w[ru by])
-        errors << "unsupported_delivery_mode" unless @context.fetch("delivery_mode", "").to_s.downcase == "fbo"
+        errors << "unsupported_delivery_mode" unless delivery_mode.in?(%w[fbo fbs])
         if numeric?("return_amortization_factor_override") && decimal("return_amortization_factor_override").negative?
           errors << "return_amortization_factor_override_must_be_non_negative"
         end
@@ -32,9 +37,10 @@ module Ec
         end
         warehouse_rate = value_or_default("ozon_warehouse_rate", "0.25")
         return_amortized = (decimal("outbound_logistics_rub") + decimal("return_logistics_rub")) * return_amortization_factor
-        warehouse = decimal("warehouse_operation_rub")
+        warehouse = fbs? ? 0.to_d : decimal("warehouse_operation_rub")
         warehouse_surcharge = warehouse * 2 * warehouse_rate
-        logistics_rub = decimal("outbound_logistics_rub") + return_amortized + warehouse + warehouse_surcharge
+        handover = fbs? ? value_or_default("fbs_handover_rub", DEFAULT_FBS_HANDOVER_RUB) : 0.to_d
+        logistics_rub = decimal("outbound_logistics_rub") + return_amortized + warehouse + warehouse_surcharge + handover
         sales_vat_rate = value_or_default("sales_vat_rate", "0.2")
         sales_tax_rate = value_or_default("tax_rate", "0")
         sales_tax = if market == "by"
@@ -56,7 +62,7 @@ module Ec
           acquiring: revenue * value_or_default("acquiring_rate", "0.02"),
           advertising: revenue * value_or_default("advertising_rate", "0") + advertising_fixed_rub / exchange,
           tax: sales_tax,
-          other: (market == "ru" ? value_or_default("cross_docking_cny", "0") : 0.to_d) + value_or_default("other_cny", "0")
+          other: (market == "ru" && !fbs? ? value_or_default("cross_docking_cny", "0") : 0.to_d) + value_or_default("other_cny", "0")
         }
         warnings = optional_warnings("advertising_rate", "other_cny")
         result(revenue: revenue, breakdown: breakdown, warnings: warnings,
@@ -67,13 +73,15 @@ module Ec
             return_amortized_rub: return_amortized,
             warehouse_rate: warehouse_rate, import_vat_cost_rate: import_vat_cost_rate,
             advertising_fixed_rub: advertising_fixed_rub, sales_tax_rate: sales_tax_rate,
-            warehouse_surcharge_rub: warehouse_surcharge, platform_logistics_rub: logistics_rub,
+            warehouse_surcharge_rub: warehouse_surcharge, fbs_handover_rub: handover, platform_logistics_rub: logistics_rub,
             platform_logistics_cny: logistics_rub / exchange,
             commission_base_rub: commission_base_rub,
             commission_base_cny: revenue }.merge(buyer_price_audit(commission_base_rub, market == "ru" ? "0.22" : "0.2")))
       end
       private
       def market = @context.fetch("market", "ru").to_s.downcase
+      def delivery_mode = @context.fetch("delivery_mode", "").to_s.downcase
+      def fbs? = delivery_mode == "fbs"
     end
   end
 end

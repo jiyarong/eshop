@@ -35,7 +35,7 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     version = sku.profit_versions.find_by!(effective_from: MONTH_START)
     assert_equal "draft", version.status
     assert_equal "月度自动更新 2026-11", version.name
-    assert_equal 6, version.contexts.count
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, version.contexts.count
     assert_equal [ previous.id ], summary.fetch(:created).map { |entry| entry.fetch(:copied_from_version_id) }
 
     wb = version.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
@@ -52,6 +52,13 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     assert_not_nil wb.profit_cny
     # The previous version is untouched.
     assert_equal 0.1.to_d, previous.reload.contexts.find_by(platform: "wb", delivery_mode: "fbo", company_type: "small").return_rate
+    # Scenarios whose actual-data queries still cover the whole platform keep their defaults.
+    belarus = version.context_for(platform: "wb", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
+    assert_equal 100.to_d, belarus.outbound_logistics_rub
+    assert_equal 0.1.to_d, belarus.return_rate
+    ozon_fbs = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general")
+    assert_equal 100.to_d, ozon_fbs.outbound_logistics_rub
+    assert_equal 0.1.to_d, ozon_fbs.return_rate
   end
 
   test "a scenario without a price gets its own realized price when enough units sold, existing prices stay" do

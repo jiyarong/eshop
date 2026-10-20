@@ -86,7 +86,7 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
       assert summary.fetch(:ok), summary.inspect
       assert_equal [ sku.sku_code ], summary.fetch(:matched_skus)
       assert_equal 1, summary.fetch(:versions_would_create)
-      assert_equal 6, summary.fetch(:contexts_would_create)
+      assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, summary.fetch(:contexts_would_create)
       duplicate = summary.fetch(:duplicate_rows_discarded).sole
       assert_equal 2, duplicate.fetch(:discarded_row)
       assert_equal 3, duplicate.fetch(:kept_row)
@@ -107,12 +107,12 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
 
       assert summary.fetch(:ok)
       assert_equal 1, summary.fetch(:versions_created)
-      assert_equal 6, summary.fetch(:contexts_created)
+      assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, summary.fetch(:contexts_created)
     end
 
     version = sku.profit_versions.includes(:contexts).sole
     assert_equal "draft", version.status
-    assert_equal 6, version.contexts.size
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, version.contexts.size
     assert_equal 1_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general").commission_base_price_rub
     assert_equal 2_000.to_d, version.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small").commission_base_price_rub
     ozon_ru = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main")
@@ -122,7 +122,7 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
     assert_equal 3_000.to_d, ozon_by.commission_base_price_rub
     assert_equal 4_000.to_d, ozon_by.buyer_paid_price_rub
     assert_equal 4, version.contexts.count { |context| context.calculation_status == "valid" }
-    assert_equal 2, version.contexts.count { |context| context.calculation_status == "incomplete" }
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size - 4, version.contexts.count { |context| context.calculation_status == "incomplete" }
 
     assert_no_difference -> { Ec::SkuProfitVersion.count } do
       rerun = build_importer(rows, dry_run: false).call
@@ -152,8 +152,8 @@ class Ec::SkuProfitGoogleSheetImporterTest < ActiveSupport::TestCase
     assert summary.fetch(:ok)
     assert_equal 0, summary.fetch(:versions_created)
     assert_equal 1, summary.fetch(:versions_updated)
-    assert_equal 5, summary.fetch(:contexts_created)
-    assert_equal 6, version.reload.contexts.count
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size - 1, summary.fetch(:contexts_created)
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, version.reload.contexts.count
     assert_equal 777.to_d, existing.reload.commission_base_price_rub
   end
 

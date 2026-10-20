@@ -1,14 +1,15 @@
 module Ec
   class SkuProfitStandardContexts
     IDENTITY_KEYS = %w[platform market delivery_mode warehouse_region company_type].freeze
-    SCENARIOS = [
-      { "platform" => "wb", "market" => "ru", "delivery_mode" => "fbo", "warehouse_region" => "main", "company_type" => "general" },
-      { "platform" => "wb", "market" => "ru", "delivery_mode" => "fbs", "warehouse_region" => "main", "company_type" => "general" },
-      { "platform" => "wb", "market" => "ru", "delivery_mode" => "fbo", "warehouse_region" => "main", "company_type" => "small" },
-      { "platform" => "wb", "market" => "ru", "delivery_mode" => "fbs", "warehouse_region" => "main", "company_type" => "small" },
-      { "platform" => "ozon", "market" => "ru", "delivery_mode" => "fbo", "warehouse_region" => "main", "company_type" => "general" },
-      { "platform" => "ozon", "market" => "by", "delivery_mode" => "fbo", "warehouse_region" => "main", "company_type" => "general" }
-    ].map(&:freeze).freeze
+    CONFIG_PATH = Rails.root.join("config/sku_profit_scenarios.yml")
+    SCENARIOS = YAML.load_file(CONFIG_PATH).fetch("scenarios").map do |row|
+      row.stringify_keys.merge("warehouse_region" => row["warehouse_region"] || "main").slice(*IDENTITY_KEYS).transform_values(&:to_s).freeze
+    end.freeze
+    ACTUALS_PENDING = YAML.load_file(CONFIG_PATH).fetch("scenarios").filter_map do |row|
+      next unless row["actuals_split"] == false
+
+      row.stringify_keys.merge("warehouse_region" => row["warehouse_region"] || "main").slice(*IDENTITY_KEYS).transform_values(&:to_s)
+    end.map { |identity| IDENTITY_KEYS.map { |key| identity[key] }.join("|") }.to_set.freeze
     SCENARIO_INDEX = SCENARIOS.each_with_index.to_h.freeze
     DEFAULT_WAREHOUSE_REGION = "main".freeze
 
@@ -19,6 +20,11 @@ module Ec
         value = DEFAULT_WAREHOUSE_REGION if key == "warehouse_region" && value.blank?
         value.to_s.downcase
       end.join("|")
+    end
+
+    # False for a scenario whose actual-data queries still cover the whole platform.
+    def self.actuals_split?(attributes)
+      !ACTUALS_PENDING.include?(key_for(attributes))
     end
 
     def self.scenario_keys

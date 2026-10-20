@@ -886,6 +886,7 @@ export default class extends Controller {
     buildCalculationSteps({
       platform: row.dataset.platform,
       market: row.dataset.market,
+      deliveryMode: row.dataset.deliveryMode,
       companyType: row.dataset.companyType,
       inputs,
       data,
@@ -1058,6 +1059,20 @@ export default class extends Controller {
   }
 
   renderProcessSource(cell, sourceKey) {
+    this.renderProcessSourceControls(cell, sourceKey);
+
+    // A scenario whose actual-data queries still cover the whole platform says so next to every
+    // shortcut, so a figure taken from them is not mistaken for that market's or mode's own.
+    cell.querySelector(":scope > .profit-prediction-process__source-note")?.remove();
+    if (sourceKey && cell.childElementCount > 0 && this.selectedRow?.dataset.actualsSplit === "false") {
+      const note = document.createElement("div");
+      note.className = "profit-prediction-process__source-note";
+      note.textContent = this.messagesValue.process.sources.actuals_not_split || "";
+      cell.append(note);
+    }
+  }
+
+  renderProcessSourceControls(cell, sourceKey) {
     cell.className = "profit-prediction-process__source";
     if (!sourceKey) {
       cell.replaceChildren();
@@ -2403,7 +2418,7 @@ export default class extends Controller {
     const pagination = data.pagination || {};
     this.tariffCurrentPage = Number(pagination.page) || 1;
     this.tariffTotalPages = Number(pagination.pages) || 1;
-    this.tariffAverageRate = filter.average_fbo_rub;
+    this.tariffAverageRate = filter[`average_${this.tariffRateColumn()}`];
     this.tariffVolumeBandTarget.textContent = filter.volume_band_label || "-";
     this.tariffSnapshotTarget.textContent = data.snapshot
       ? `${data.snapshot.effective_from} · ${data.snapshot.source_file_name}`
@@ -2430,6 +2445,16 @@ export default class extends Controller {
     data.rows.forEach((route) => this.tariffBodyTarget.append(this.tariffRouteRow(route)));
   }
 
+  // Which price of the Ozon route table applies to the scenario being priced: FBO has one, FBS
+  // charges less for an item under 300 RUB.
+  tariffRateColumn() {
+    const row = this.selectedRow;
+    if (row?.dataset.platform !== "ozon" || row.dataset.deliveryMode !== "fbs") return "fbo_rub";
+
+    const price = this.numericInputs(row).commission_base_price_rub;
+    return price !== null && price !== undefined && price < 300 ? "fbs_under_300_rub" : "fbs_over_300_rub";
+  }
+
   tariffRouteRow(route) {
     const row = document.createElement("tr");
     const origin = document.createElement("td");
@@ -2439,11 +2464,12 @@ export default class extends Controller {
     origin.textContent = route.origin_cluster_name;
     destination.textContent = route.destination_cluster_name;
     rate.className = "numeric";
-    rate.textContent = `${this.number(route.fbo_rub)} RUB`;
+    const rateValue = route[this.tariffRateColumn()];
+    rate.textContent = `${this.number(rateValue)} RUB`;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "btn btn-outline btn-sm";
-    button.dataset.rate = route.fbo_rub;
+    button.dataset.rate = rateValue;
     button.dataset.action = "profit-prediction#useTariffRate";
     button.textContent = this.messagesValue.process.sources.use_rate;
     operation.append(button);

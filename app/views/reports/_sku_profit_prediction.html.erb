@@ -69,6 +69,7 @@
       margin: t("reports.profit_prediction.process.formula_summary.margin", profit: "__PROFIT__", revenue: "__REVENUE__", margin: "__MARGIN__")
     },
     sources: {
+      actuals_not_split: t("reports.profit_prediction.sources.actuals_not_split"),
       ozon_tariffs: t("reports.profit_prediction.sources.ozon_tariffs.action"),
       ozon_tariff_feedback: {
         no_average: t("reports.profit_prediction.sources.ozon_tariffs.no_average"),
@@ -429,6 +430,7 @@
                 data-platform="<%= context.platform %>"
                 data-market="<%= context.market %>"
                 data-delivery-mode="<%= context.delivery_mode %>"
+                data-actuals-split="<%= Ec::SkuProfitStandardContexts.actuals_split?(context.attributes.slice(*Ec::SkuProfitStandardContexts::IDENTITY_KEYS)) %>"
                 data-warehouse-region="<%= context.warehouse_region %>"
                 data-company-type="<%= context.company_type %>"
                 data-calculation-status="<%= context.calculation_status %>"
