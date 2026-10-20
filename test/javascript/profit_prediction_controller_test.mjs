@@ -1040,3 +1040,12 @@ test("the logistics mode is only named at the top and switched on a row of its o
   assert.match(source, /radio\.disabled = this\.readonlyValue/);
   assert.match(source, /parameterCell\.append\(control\)/);
 });
+
+test("on the WB formula the greyed freight fields keep the real figures, Ozon's show the route average", async () => {
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+  const start = source.indexOf("  showFormulaFigures(");
+  const body = source.slice(start, source.indexOf("\n  restoreRealFigures(", start));
+
+  assert.match(body, /row\.dataset\.platform === "wb"[\s\S]*this\.restoreRealFigures\(row\)/);
+  assert.match(body, /formula\.outbound_rub/);
+});

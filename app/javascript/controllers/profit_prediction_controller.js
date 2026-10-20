@@ -497,10 +497,18 @@ export default class extends Controller {
     });
   }
 
-  // On the formula the two freight inputs show the formula's figures (read-only); the real figures that were
+  // On Ozon's formula the two freight inputs show the formula's figures (read-only); the real figures that were
   // there are kept aside and go back when the scenario returns to the real figures, and are what gets saved.
   showFormulaFigures(row, data) {
     if (this.logisticsMode(row) !== "formula") return;
+
+    // WB's formula is made of its tariff parameters, shown on their own fields; the two freight fields are
+    // then only the greyed-out real figures, and the formula's own result stays out of them (it would sit
+    // there as an unexplained number). Ozon's route average has no parameter fields, so it is shown here.
+    if (row.dataset.platform === "wb") {
+      this.restoreRealFigures(row);
+      return;
+    }
 
     const formula = data.logistics?.formula || {};
     [["outbound_logistics_rub", formula.outbound_rub], ["return_logistics_rub", formula.return_rub]].forEach(([field, value]) => {
