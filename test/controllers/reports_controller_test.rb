@@ -1213,6 +1213,16 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "template .sku-detail-loading[aria-busy='true']", count: 1
   end
 
+  test "sku detail drawer carries its own erp modal frame for modal links" do
+    get report_sku_path(@sku.sku_code),
+      params: { tab: "basic" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "sku_detail_drawer" }
+
+    assert_response :success
+    assert_select "turbo-frame#sku_detail_drawer turbo-frame#erp_modal", count: 1
+    assert_select "turbo-frame#sku_detail_tab_basic turbo-frame#erp_modal", count: 0
+  end
+
   test "sku detail renders in a drawer and keeps drawer mode for internal navigation" do
     get report_sku_path(@sku.sku_code),
       params: { tab: "sales_funnel" },
