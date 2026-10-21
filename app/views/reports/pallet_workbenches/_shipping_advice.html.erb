@@ -1,0 +1,24 @@
+<% recommended = quote[:recommended]&.to_sym %>
+<% candidate = recommended || (quote[:box][:available] ? :box : :pallet) %>
+<div class="pallet-workbench__shipping-advice">
+  <span class="pallet-workbench__eyebrow"><%= t("pallet_workbench.shipping.detected") %></span>
+  <% if recommended %>
+    <strong><%= t("pallet_workbench.shipping.recommended", mode: t("pallet_workbench.shipping.#{recommended}")) %></strong>
+    <p><%= t("pallet_workbench.shipping.#{quote[:recommendation_reason]}") %></p>
+    <% if quote[:savings].to_d.positive? %><p><%= t("pallet_workbench.shipping.savings", amount: number_with_precision(quote[:savings], precision: 2)) %></p><% end %>
+  <% elsif quote[:box][:available] %>
+    <strong><%= t("pallet_workbench.shipping.box_eligible") %></strong>
+  <% else %>
+    <strong><%= t("pallet_workbench.shipping.box_unavailable") %></strong>
+    <p><%= t("pallet_workbench.shipping.reasons.#{quote[:box][:blocked_by]}") %></p>
+  <% end %>
+  <% if quote[:box][:available] %><p><%= t("pallet_workbench.shipping.box_rules") %></p><% end %>
+  <% if [quote[:box], quote[:pallet]].any? { |entry| entry[:available] && entry[:cost].nil? } %>
+    <p><%= t("pallet_workbench.shipping.#{quote[:supply_receiving_zone_key].present? ? 'quote_incomplete' : 'choose_zone'}") %></p>
+  <% end %>
+  <% if quote[candidate][:available] && candidate.to_s != current_mode.to_s %>
+    <button type="button" class="button button-secondary" data-mode="<%= candidate %>" data-action="pallet-workbench#useShippingMode"><%= t("pallet_workbench.shipping.try_mode", mode: t("pallet_workbench.shipping.#{candidate}")) %></button>
+  <% else %>
+    <span class="pallet-workbench__hint"><%= t("pallet_workbench.shipping.current", mode: t("pallet_workbench.shipping.#{current_mode}")) %></span>
+  <% end %>
+</div>

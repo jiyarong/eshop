@@ -18,7 +18,14 @@ function controllerFor(t) {
     revision: 1,
     validated: true,
     items: [{ sku_code: "TEST-SKU", quantity: 2 }],
-    messagesValue: { changed: "Pending validation", empty: "Select SKUs", calculating: "Calculating", validated: "Validation passed" },
+    messagesValue: { changed: "Pending validation", empty: "Select SKUs", calculating: "Calculating", validated: "Validation passed", filled: "Cartons added", fill_unchanged: "No cartons added; see limits", shipping_pending: "Checking delivery options", shipping_empty: "Add products to check delivery options", shipping_failed: "Delivery validation failed" },
+    hasShippingAdviceTarget: true,
+    shippingAdviceTarget: {
+      innerHTML: "Previous delivery recommendation",
+      buttons: [{ disabled: false }],
+      set textContent(value) { this.innerHTML = value; this.buttons = []; },
+      querySelectorAll() { return this.buttons; },
+    },
     resultsTarget: {
       innerHTML: "Previous validated layout",
       style: { minHeight: "" },
@@ -50,6 +57,8 @@ test("quantity changes clear stale results and disable saving without collapsing
   assert.equal(controller.resultsTarget.getBoundingClientRect().height, 1200);
   assert.equal(controller.capacityTarget.hidden, true);
   assert.equal(controller.saveButtonTarget.disabled, true);
+  assert.equal(controller.shippingAdviceTarget.innerHTML, "Checking delivery options");
+  assert.equal(controller.shippingAdviceTarget.buttons.length, 0);
 
   controller.items[0].quantity = 3;
   controller.invalidate();
@@ -68,6 +77,7 @@ test("failed validation keeps the reserved scroll space and saving disabled", as
   assert.equal(controller.resultsTarget.getBoundingClientRect().height, 1200);
   assert.equal(controller.resultsTarget.innerHTML, "");
   assert.equal(controller.saveButtonTarget.disabled, true);
+  assert.equal(controller.shippingAdviceTarget.innerHTML, "Delivery validation failed");
   assert.deepEqual(controller.status, { message: "Pallet capacity exceeded", error: true });
 });
 
@@ -77,6 +87,7 @@ test("a shorter replacement layout keeps the scroll space while enabling saving"
   controller.renderAllocations = () => {};
   controller.request = async () => ({
     html: "Updated layout",
+    shipping_advice_html: "Box delivery is available",
     result: {
       items: controller.items,
       pallets: [{ zones: [{ item_index: 0, count: 2 }], height: 100, weight: 80 }],
@@ -88,6 +99,7 @@ test("a shorter replacement layout keeps the scroll space while enabling saving"
   await controller.calculate(true);
 
   assert.equal(controller.resultsTarget.innerHTML, "Updated layout");
+  assert.equal(controller.shippingAdviceTarget.innerHTML, "Box delivery is available");
   assert.equal(controller.resultsTarget.getBoundingClientRect().height, 1200);
   assert.equal(controller.saveButtonTarget.disabled, false);
   assert.equal(controller.status.message, "Validation passed");
@@ -102,5 +114,97 @@ test("clearing the manifest releases the space reserved for the previous layout"
 
   assert.equal(controller.resultsTarget.getBoundingClientRect().height, 0);
   assert.equal(controller.status.message, "Select SKUs");
+  assert.equal(controller.shippingAdviceTarget.innerHTML, "Add products to check delivery options");
   assert.equal(controller.saveButtonTarget.disabled, true);
+});
+
+test("fill with no additions displays the outcome and keeps the current manifest", async (t) => {
+  const controller = controllerFor(t);
+  controller.renderAllocations = () => {};
+  let request;
+  controller.request = async (_url, body) => {
+    request = body.pallet_plan;
+    return { html: "Coverage limit explanation", result: {
+      shipping_mode: "pallet", items: controller.items, pallets: [], fill: { changes: [] },
+    } };
+  };
+
+  await controller.fillFreeSpace();
+
+  assert.equal(request.apply_fill, true);
+  assert.equal(request.shipping_mode, "pallet");
+  assert.equal(controller.status.message, "No cartons added; see limits");
+  assert.equal(controller.resultsTarget.innerHTML, "Coverage limit explanation");
+  assert.equal(controller.items[0].quantity, 2);
+  assert.equal(controller.saveButtonTarget.disabled, false);
+});
+
+test("an outdated preview cannot restore a stale delivery recommendation", async (t) => {
+  const controller = controllerFor(t);
+  let resolve;
+  controller.request = () => new Promise((done) => { resolve = done; });
+
+  const calculating = controller.calculate(true);
+  assert.equal(controller.shippingAdviceTarget.buttons[0].disabled, true);
+  controller.items[0].quantity = 4;
+  controller.invalidate();
+  resolve({ html: "Outdated layout", shipping_advice_html: "Outdated delivery suggestion", result: {} });
+  await calculating;
+
+  assert.equal(controller.resultsTarget.innerHTML, "");
+  assert.equal(controller.shippingAdviceTarget.innerHTML, "Checking delivery options");
+  assert.equal(controller.saveButtonTarget.disabled, true);
+});
+
+test("choosing box delivery preserves quantities, revalidates and can be undone", async (t) => {
+  const controller = controllerFor(t);
+  controller.hasShippingModeTarget = true;
+  controller.shippingModeTarget = { value: "pallet" };
+  controller.undoButtonTarget = { hidden: true };
+  controller.allocations = [{ items: [{ sku_code: "TEST-SKU", quantity: 2 }] }];
+  const originalAllocations = structuredClone(controller.allocations);
+  controller.renderAllocations = () => {};
+  controller.renderItems = () => {};
+
+  controller.useShippingMode({ currentTarget: { dataset: { mode: "box" } } });
+
+  assert.equal(controller.shippingModeTarget.value, "box");
+  assert.deepEqual(controller.items, [{ sku_code: "TEST-SKU", quantity: 2 }]);
+  assert.deepEqual(controller.allocations, []);
+  assert.equal(controller.saveButtonTarget.disabled, true);
+  assert.equal(controller.undoButtonTarget.hidden, false);
+  assert.equal(globalThis.setTimeout.mock.calls.at(-1).arguments[1], 650);
+
+  controller.request = async () => ({ html: "Validated box delivery", shipping_advice_html: "Current: box delivery", result: {
+    shipping_mode: "box", items: controller.items, pallets: [],
+  } });
+  await globalThis.setTimeout.mock.calls.at(-1).arguments[0]();
+  assert.equal(controller.saveButtonTarget.disabled, false);
+  assert.equal(controller.shippingAdviceTarget.innerHTML, "Current: box delivery");
+
+  controller.undo();
+  assert.equal(controller.shippingModeTarget.value, "pallet");
+  assert.deepEqual(controller.allocations, originalAllocations);
+  assert.deepEqual(controller.items, [{ sku_code: "TEST-SKU", quantity: 2 }]);
+  assert.equal(controller.saveButtonTarget.disabled, true);
+  assert.equal(controller.undoButtonTarget.hidden, true);
+});
+
+test("successful fill applies the returned quantities and keeps one undo snapshot", async (t) => {
+  const controller = controllerFor(t);
+  controller.undoButtonTarget = { hidden: true };
+  controller.renderAllocations = () => {};
+  controller.renderItems = () => {};
+  controller.request = async () => ({ html: "Filled layout", result: {
+    shipping_mode: "pallet", items: [{ sku_code: "TEST-SKU", quantity: 3 }], pallets: [],
+    fill: { changes: [{ sku_code: "TEST-SKU", from_boxes: 2, to_boxes: 3 }] },
+  } });
+
+  await controller.fillFreeSpace();
+
+  assert.equal(controller.items[0].quantity, 3);
+  assert.equal(controller.previous.items[0].quantity, 2);
+  assert.equal(controller.undoButtonTarget.hidden, false);
+  assert.equal(controller.status.message, "Cartons added");
+  assert.equal(controller.saveButtonTarget.disabled, false);
 });

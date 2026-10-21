@@ -25,9 +25,12 @@ module Reports
       built = Ec::PalletPlans::Build.new(user: current_user, attributes: plan_attributes, existing_plan: @plan).call
       @result = built.fetch(:result).deep_symbolize_keys
       respond_to do |format|
-        format.html { render partial: "reports/pallet_workbenches/result", locals: { result: @result } }
+        format.html { render partial: "reports/pallet_workbenches/result", locals: { result: @result, interactive: true } }
         format.json do
-          render json: { result: @result, html: render_to_string(partial: "reports/pallet_workbenches/result", formats: [:html], locals: { result: @result }) }
+          render json: { result: @result,
+            html: render_to_string(partial: "reports/pallet_workbenches/result", formats: [:html], locals: { result: @result, interactive: true }),
+            shipping_advice_html: render_to_string(partial: "reports/pallet_workbenches/shipping_advice", formats: [:html],
+              locals: { quote: @result[:shipping], current_mode: @result[:shipping_mode] }) }
         end
       end
     end
@@ -68,6 +71,15 @@ module Reports
       @from_date = params[:from_date].present? ? Date.iso8601(params[:from_date].to_s) : user_today - 28
       @to_date = params[:to_date].present? ? Date.iso8601(params[:to_date].to_s) : user_today - 1
       @target_days = Integer(params[:target_days].presence || 28)
+      @coverage = Ec::PalletPlans::ReplenishmentRange.new(target_days: @target_days,
+        min_days: params[:min_days].presence || [21, @target_days].min,
+        max_days: params[:max_days].presence || [35, @target_days].max,
+        fill_free_space: params.fetch(:fill_free_space, "1")).to_h
+      @shipping = (@plan&.calculation&.fetch("shipping", {}) || {}).symbolize_keys
+      @shipping[:shipping_date] ||= user_today.iso8601
+      snapshot = RawOzon::CrossDockTariffSnapshot.for_effective_date(Date.iso8601(@shipping[:shipping_date].to_s))
+      @shipping_zone_options = snapshot ? snapshot.cross_dock_tariffs.distinct.order(:supply_receiving_zone_name)
+        .pluck(:supply_receiving_zone_name, :supply_receiving_zone_key) : []
       raise Ec::PalletPlans::Error.new(:invalid_period) unless @from_date <= @to_date && @target_days.between?(1, 180)
       load_responsible_user_filters
       visible_skus = access_scope.visible_skus
@@ -78,7 +90,7 @@ module Reports
       if @store && @clusters.any?
         report_cluster_id = @cluster_id || @clusters.first[:id]
         report = Ec::PalletPlans::WorkbenchQuery.new(user: current_user, store: @store, cluster_id: report_cluster_id,
-          from_date: @from_date, to_date: @to_date, time_zone: user_time_zone, target_days: @target_days,
+          from_date: @from_date, to_date: @to_date, time_zone: user_time_zone, **@coverage,
           query: params[:q], operator_id: operator_override || @operator_id, developer_id: @developer_id,
           sku_codes: sku_scope.select(:sku_code), excluding_plan_id: @plan&.id).call
         gaps_by_cluster = report.fetch(:cluster_rows).index_by { |row| row[:cluster_name].to_s }
@@ -101,7 +113,9 @@ module Reports
 
     def plan_attributes
       source = params[:pallet_plan].presence || params
-      source.permit(:plan_id, :store_id, :cluster_id, :from_date, :to_date, :target_days, :time_zone, :lock_version, :packing_mode, :recommend_one,
+      source.permit(:plan_id, :store_id, :cluster_id, :from_date, :to_date, :target_days, :min_days, :max_days, :fill_free_space, :apply_fill,
+        :shipping_mode, :time_zone, :lock_version, :packing_mode, :recommend_one,
+        shipping: %i[supply_receiving_zone_key shipping_date point_type point_name],
         settings: PalletPacking::Rules.defaults("ozon_fbo").keys,
         items: %i[sku_code quantity length width height weight pcs unit_volume_l rotatable],
         allocations: [items: %i[sku_code quantity]]).to_h

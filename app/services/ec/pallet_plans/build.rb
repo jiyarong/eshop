@@ -16,8 +16,11 @@ module Ec
           raise Error.new(:invalid_cluster) unless @existing_plan.macrolocal_cluster_id.to_i == cluster.macrolocal_cluster_id.to_i
         end
         from_date = parse_date(@attributes[:from_date]); to_date = parse_date(@attributes[:to_date])
-        target_days = Integer(@attributes[:target_days] || 28)
-        raise Error.new(:invalid_period) unless from_date && to_date && from_date <= to_date && target_days.between?(1, 180)
+        range = ReplenishmentRange.new(**@attributes.slice(:target_days, :min_days, :max_days, :fill_free_space))
+        target_days = range.target_days
+        raise Error.new(:invalid_period) unless from_date && to_date && from_date <= to_date
+        shipping_mode = @attributes[:shipping_mode].presence || "pallet"
+        raise Error.new(:invalid_shipping_mode) unless %w[pallet box].include?(shipping_mode)
 
         rows = Array(@attributes[:items]).map { |row| row.to_h.deep_symbolize_keys }
         raise Error.new(:invalid_items) if rows.empty?
@@ -30,23 +33,47 @@ module Ec
         visible = WeeklyProfitReports::AccessScope.new(@user).visible_skus.where(sku_code: codes).pluck(:sku_code)
         raise Error.new(:sku_unavailable) unless products.keys.sort == codes.sort && visible.sort == codes.sort
         items = rows.map { |row| normalize_item(row, products.fetch(row[:sku_code].to_s.upcase)) }
-        availability = Availability.new(sku_codes: codes, excluding_plan_id: @existing_plan&.id, store_id: store.id).call
+        stock_query = Availability.new(sku_codes: codes, excluding_plan_id: @existing_plan&.id, store_id: store.id)
+        availability = stock_query.call
         items.each do |item|
           available = availability.fetch(item[:sku_code]).fetch(:available_quantity).to_i
           raise Error.new(:insufficient_stock, sku: item[:sku_code]) if item[:quantity].to_i * item[:pcs].to_i > available
         end
         allocations = @attributes[:allocations].presence
         recommend_one = ActiveModel::Type::Boolean.new.cast(@attributes[:recommend_one])
-        if @attributes[:packing_mode] == "single"
+        if shipping_mode == "pallet" && @attributes[:packing_mode] == "single"
           raise Error.new(:single_pallet_limit) if items.size > Packing::MAX_SKUS_PER_PALLET
           allocations = [{ items: items.map { |item| item.slice(:sku_code, :quantity) } }] unless recommend_one
         end
-        result = Packing.new(items: items, settings: @attributes[:settings] || {}, allocations: recommend_one ? nil : allocations,
-          recommend_one: recommend_one).call
+        settings = @attributes[:settings] || {}
+        if shipping_mode == "box"
+          result = BoxPacking.new(items: items, settings: settings).call
+        else
+          result = Packing.new(items: items, settings: settings, allocations: recommend_one ? nil : allocations,
+            recommend_one: recommend_one).call
+        end
         if recommend_one
           quantities = result[:items].index_by { |item| item[:sku_code] }
           items = items.filter_map { |item| item.merge(quantity: quantities[item[:sku_code]][:quantity]) if quantities.key?(item[:sku_code]) }
         end
+        if shipping_mode == "pallet" && (recommend_one || ActiveModel::Type::Boolean.new.cast(@attributes[:apply_fill]))
+          demand = WorkbenchQuery.new(user: @user, store: store, cluster_id: cluster.macrolocal_cluster_id,
+            from_date: from_date, to_date: to_date, time_zone: ActiveSupport::TimeZone[@attributes[:time_zone].presence || "Asia/Shanghai"],
+            sku_codes: items.map { |item| item[:sku_code] }, excluding_plan_id: @existing_plan&.id, availability: stock_query, **range.to_h).call[:rows]
+          demand.each do |row|
+            item = items.find { |entry| entry[:sku_code] == row[:sku_code] }
+            row.merge!(range.boxes(**row.slice(:daily_sales, :available, :inbound, :planned_quantity),
+              pcs: item[:pcs].to_i, allocatable: availability.fetch(row[:sku_code])[:available_quantity]))
+          end
+          result = FillStrategy.new(items: items, demand_rows: demand, result: result, range: range,
+            shipping: @attributes[:shipping] || {}).call
+        end
+        pallet_result = shipping_mode == "pallet" ? result : alternative_pallets(items, settings)
+        box_result = shipping_mode == "box" ? result : alternative_boxes(items, settings)
+        quote = ShippingQuote.new(items: items, pallet_result: pallet_result, box_result: box_result,
+          attributes: @attributes[:shipping] || {}, cluster: cluster, time_zone: @attributes[:time_zone].presence || "Asia/Shanghai").call
+        raise Error.new(:shipping_unavailable) unless quote.fetch(shipping_mode.to_sym)[:available]
+        result = result.merge(shipping_mode: shipping_mode, coverage: range.to_h, shipping: quote)
         { store: store, cluster: cluster, from_date: from_date, to_date: to_date, target_days: target_days,
           time_zone: @attributes[:time_zone].presence || "Asia/Shanghai", items: items, result: result }
       rescue Packing::InvalidInput => error
@@ -57,6 +84,18 @@ module Ec
       end
 
       private
+
+      def alternative_pallets(items, settings)
+        Packing.new(items: items, settings: settings).call
+      rescue Packing::InvalidInput
+        nil
+      end
+
+      def alternative_boxes(items, settings)
+        BoxPacking.new(items: items, settings: settings).call
+      rescue Error, Packing::InvalidInput
+        nil
+      end
 
       def parse_date(value)
         Date.iso8601(value.to_s)

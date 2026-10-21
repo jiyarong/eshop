@@ -117,6 +117,7 @@ en:
     categories:
       unknown: Incomplete
       normal: Regular
+      non_sortable: Non-sortable
       kgt: KGT bulky
       oversize: Oversize
     statuses:

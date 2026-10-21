@@ -168,7 +168,7 @@
 ### 入口与职责
 
 - 工作台入口为 `GET /reports/pallet_workbench`，计算预览为 `POST /reports/pallet_workbench/preview`，批量选品为 `POST /reports/pallet_workbench/auto_select`；计划列表、详情和编辑位于 `/reports/pallet_plans`。Controller 分别为 `Reports::PalletWorkbenchesController`、`Reports::PalletPlansController`，保留 HTML / `.json` 两种响应。
-- 当前链路：`Ec::PalletPlans::WorkbenchQuery` 组装需求与库存，`Build` 校验店铺、集群、日期、SKU 权限、Listing、包装及库存并调用 `Packing`，`Save` 保存计划、清单、托盘和托盘明细；状态变更由 `Workflow` 负责。
+- 当前链路：`Ec::PalletPlans::WorkbenchQuery` 组装需求与库存，`Build` 校验店铺、集群、日期、SKU 权限、Listing、包装及库存并按货位方式调用 `Packing` / `BoxPacking`，`Save` 保存计划、清单、货位和明细；状态变更由 `Workflow` 负责。
 - 页面位于 `app/views/reports/pallet_workbenches/`，交互为 `app/javascript/controllers/pallet_workbench_controller.js`。包装几何、平台限制和费用继续复用 `PalletPacking::Calculator`、`Rules`、`Fees`，不要在页面或 Stimulus 中另写排托算法。
 - 工作台 GET、自动选品和计算预览不创建计划、不占库存、不触发平台 API。保存草稿后，由用户在计划详情明确确认库存占用。Ozon 供货绑定、状态回读使用 `OzonReconciler` 与 `Ec::PalletPlanSyncJob`；定时回读在 `config/recurring.yml` 中每 15 分钟运行，不要并入页面 GET。
 - 系统建单自动绑定并回填单号，提交已有 `order_id` 但计划尚未关联时也纳入后台恢复。详情保留搜索选择与人工填写单号 / 父订单 ID；待导入的单号排队匹配，校验整单通过后草稿转已确认并占用库存。已终止提交允许人工绑定，失败 / 需复核提交只有已知正式订单 ID 时允许关联该订单，不清除原货位错误。平台收货 / 在途映射已发出，父单及全部目的地完成映射已完成；发出前取消释放占用，发出后取消或回退保留状态并报复核错误；不从建单成功推断实物打包状态。
@@ -184,6 +184,19 @@
 - 普通改量只验算当前输入，不自动减量；单托超容量报 `single_pallet_capacity`，超过 5 个 SKU 报 `single_pallet_limit`，不能静默拆托。多托手工分配必须逐托验算，所有托盘按 SKU 汇总的箱数必须与清单相等；总托数沿用计算器上限。
 - 外箱尺寸为 cm、外箱重量为 kg，箱数与每箱件数必须为正整数。单品体积可缺省，SKU 尺寸推导出的非正单品体积按缺失处理，不要传 0 给计算器代替缺失值。
 - Ozon FBO 尺寸类别按带最终销售包装的单件商品计算，使用 `Ec::SkuDimension` 的 `inner_*_cm` 和 `inner_box_weight_kg`，三边先按从大到小归一化后统一调用 `calculated_ozon_size_category`；缺失时标为待补齐，不得回退到整箱数据。外箱尺寸、整箱重量和每箱件数仅用于装托几何、货重和数量计算；计划构建从服务端 SKU 数据取得类别，装托服务沿用该类别，不按外箱重新分类。
+- 尺寸阈值统一读取 `Ec::SkuDimension::OZON_SIZE_LIMITS`，从大到小判断 `oversize/kgt/non_sortable/normal`。普通件含边界为 45×32×32cm、10kg，非分拣上限为 120×60×50cm、35kg，KGT 上限为 220×120×80cm、120kg；仅超过任一上限才进入下一档。非分拣与 KGT 分开装托，类别文案及数据回填同步覆盖五档（含 `unknown`）。
+
+### 补货区间、空间增补与按箱送货
+
+- `ReplenishmentRange` 管理 `min_days/target_days/max_days/fill_free_space`，要求 `1 ≤ min ≤ target ≤ max ≤ 180`。工作台默认最低 21、目标 28、最高 35 天；服务调用省略上下限时均使用目标天数。基础建议按目标缺口整箱向上取整，最高允许量按最高覆盖缺口和可分配库存整箱向下取整，不能为填托突破最高覆盖天数。
+- `FillStrategy` 用现有 `Packing` 逐箱试算，按缺口、日均销量降序及 SKU 编码升序增补。“免费空间”仅指托数、路线计费体积以及提货/点位处理费不增加；分拣、仓储费用允许随商品量增加，须单独展示增量，不能以总 `known_fee` 不变阻止增补。推荐时的自动填充及“利用免费空间增补当前清单”都遵守该规则，普通改量仍只验算输入数量。
+- 无增补也须展示原因，区分覆盖上限、整箱库存、托盘容量、计费体积、点位处理费、体积缺失和无销量；覆盖限制显示再加一箱后的天数，并向上保留一位小数，避免掩盖超限。低销量、大箱规可能使基础建议已达到最高允许量；不通过放宽上限或静默加量制造填充效果。
+- `shipping_mode` 仅接受 `pallet/box`；`packing_mode` 只控制托盘模式的单托/多托。`BoxPacking` 复用计算器的包装输入校验，每箱单 SKU、最多 25kg，每单最多 30 箱，每箱一个货位，不套用每托 5 个 SKU 限制；暂不支持运输货位扩容。`ec_pallets.cargo_type` 保存 `pallet/box`，历史默认 `pallet`。
+- `ShippingQuote` 按预计交货日期选择本地 `CrossDockTariffSnapshot`，按发货费率区、目的集群取价，再由纯计算的 `PalletPacking::ShippingModeAdvisor` 比较同一清单。箱送逐箱商品体积进位；托送逐托进位且每托至少 1900L。点位处理费按当前货位逐箱/逐托进位，托盘不能按每箱进位。比较范围仅为路线及点位处理费，不含分拣、仓储和自有运输；缺失体积或费率保留未知，不补 0。
+- 箱/托先判断包装、货位数量与点位限制，再比较费用。ПВЗ、ППЗ 和 Ханты-Мансийск 仅箱送；Софьино、Домодедово、Новая Рига、Пушкино-1 仅托送。平台实际商品准入及货位规则仍须由 Ozon 确认。
+- 清单上方的“送货方式识别”在验算后展示建议，费率区和交货日期放在方式选择旁。双方案报价完整时按费用推荐并展示价差；仅一种方式可行时可按硬约束推荐并说明依据；双方案可行但报价不全时只提示可按箱送货。模式不自动切换；一键采用会保留商品和箱数、清除原托盘分配并重新验算，支持一次撤销。所选方式验算失败时保留错误，用户可直接切换方式重试。
+- 保存和发起供货均重新校验服务端包装、库存和货位约束。`CargoValidation` 校验已保存的箱/托类型、数量守恒、重量/高度及平台实际点位；点位选择使用绑定账号、有效期和用途的签名值保留名称，不能信任客户端自由填写点位名称绕过只收箱/只收托限制。`/v1/cargoes/create` 使用裸枚举 `BOX/PALLET`，两种类型均沿用正式供货明细的 `barcode/offer_id/quant`，继续遵守写前标记、串行锁和响应不明时禁止盲目重试。
+- 设计及实现边界见 `docs/ozon_pallet_strategy_v2_design.md`，平台链路见 `docs/ozon_pallet_supply_sync.md`；只读样本的装载量、费率和覆盖天数不作为固定业务规则。
 
 ### 库存、权限与编辑上下文
 
@@ -201,11 +214,11 @@
 - 供货和货位创建禁用 OzonClient 的自动网络重试。写入前持久化提交标记并使用 `SyncRunLock` 串行执行；供货响应不明时只查询原 `draft_id`，货位响应不明时进入 `review_required`，不得盲目重建。所有页面状态轮询保持本地只读；已有每 15 分钟供货回读继续更新平台状态，新提交的恢复扫描由 `ozon_supply_submission_recovery` 负责。接口与测试细节见 `docs/ozon_pallet_supply_sync.md`。
 
 - 需求表与当前清单并排，窄屏优先显示清单；表格每页 15 条，默认只显示决策所需字段，销量/库存明细、人员/SKU 筛选、包装与收货参数按需展开。继续复用通用筛选、排序及表格视口组件，文案补齐 `pallet_workbench` 的 zh/en/ru。
-- 修改清单或参数后先使旧结果失效，等待 650ms 自动验算；请求期间禁止重复提交，使用递增 `revision` 丢弃旧请求结果。仅最新方案验算通过后启用保存，单托高度使用含托高度，重量容量使用货重，二者分别对应 FBO 规则限制。
-- `sessionStorage` 按计划（或 `new`）、店铺、集群隔离，保存清单、模式、分配、参数及 `lockVersion`；跨页/刷新恢复后仍重新验算。服务器版本与本地版本不同时丢弃旧本地清单，保存成功后清理本标签页草稿。该机制不是跨设备的服务器草稿。
+- 修改清单或参数后先使旧结果及送货建议失效，等待 650ms 自动验算；请求期间禁止重复提交，使用递增 `revision` 丢弃旧请求结果。验算失败显示重试提示，不保留“识别中”或旧建议。仅最新方案验算通过后启用保存，单托高度使用含托高度，重量容量使用货重，二者分别对应 FBO 规则限制。
+- `sessionStorage` 按计划（或 `new`）、店铺、集群隔离，保存清单、装托/送货模式、分配、包装/报价参数及 `lockVersion`；跨页/刷新恢复后仍重新验算。服务器版本与本地版本不同时丢弃旧本地清单，保存成功后清理本标签页草稿。该机制不是跨设备的服务器草稿。
 - 显示库存明细时，须同时更新原表与通用浮动表头的 `table.pallet-workbench__stock-table`；浮动表头由 `sticky_table_header_controller.js` 克隆到 `document.body`，不能仅靠工作台祖先 CSS 控制隐藏列。
 - 关键回归包括：单托超量拒绝而非拆托、推荐裁减与索引/保存数量一致、多托数量守恒、库存上限、编辑排除自身占用、权限、三种 locale、跨页与刷新恢复、撤销及异步旧结果失效。
-- 相关 Rails 测试为 `test/services/ec/pallet_plans/`、`test/controllers/reports/pallet_workbenches_controller_test.rb`、`test/controllers/reports/pallet_calculators_controller_test.rb`。先初始化 rbenv，再运行 `bin/rails test` 加上述路径；Stimulus 使用 `node --check app/javascript/controllers/pallet_workbench_controller.js` 检查语法。沿用默认无需启动浏览器或前端构建的约定，用户明确要求交互验收时再操作浏览器。
+- 相关 Rails 测试为 `test/services/ec/pallet_plans/`、`test/services/pallet_packing/`、SKU 尺寸模型/迁移测试及工作台、计划、计算器、供货提交 Controller 测试。先初始化 rbenv；若 `bin/rails test` 的 prepare 钩子会触发前端构建，使用 `bundle exec ruby -Itest -rtest_helper -e 'ARGV.each { |path| require File.expand_path(path) }'` 加具体测试路径。Stimulus 运行 `node --test test/javascript/pallet_workbench_controller_test.mjs` 和 `node --check app/javascript/controllers/pallet_workbench_controller.js`，覆盖切换、撤销、旧建议失效及过期响应丢弃。沿用默认无需启动浏览器或前端构建的约定，用户明确要求交互验收时再操作浏览器。
 - 详细实现说明与本地只读测量见 `docs/ozon_pallet_workbench_implementation_plan.md`，样本装托结果及单次耗时不作为固定业务规则或性能承诺。
 
 ## SKU Diagnosis -> Plan -> Action -> Evaluation 闭环

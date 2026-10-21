@@ -1,4 +1,4 @@
-# 装托结果 → Ozon 供货单 → 托盘货位
+# 补货方案 → Ozon 供货单 → 箱/托货位
 
 工作台先试算并保存计划，再进入 `/reports/pallet_plans/:id` 计划详情页点击“创建交货申请”。申请使用该计划已保存的店铺、集群、清单与逐托分配，支持直送及交货点 Cross-dock。发起前校验计划版本、可编辑状态、权限、库存与装托约束，排除该计划自身库存占用；发起过程不重建计划、清单或托盘。已有有效提交会被复用，已终止的提交可在详情页重新发起。
 
@@ -47,13 +47,13 @@
 | 创建正式供货单 | `/v2/draft/supply/create`；传同一仓库选择和平台原始时段 |
 | 查询建单结果 | `/v2/draft/supply/create/status`；请求使用 `draft_id`，成功后取得 `order_id` |
 | 回读正式供货 | 已有 `DailySync#sync_supply_orders(order_ids:)` 和 `OzonReconciler`；核对完整数量、集群及每托唯一目的地 |
-| 写入托盘 | `/v1/cargoes/create`；`delete_current_version: false`，`cargoes: [{key, value: {type: PALLET, items: [{barcode, offer_id, quant, quantity}]}}]` |
-| 回读货位 | `/v2/cargoes/create/info`；用 `operation_id` 查询，按稳定的 pallet key 精确匹配 cargo ID |
+| 写入箱/托货位 | `/v1/cargoes/create`；`delete_current_version: false`，`value.type` 为 `BOX` 或 `PALLET`，共用 `items: [{barcode, offer_id, quant, quantity}]` |
+| 回读箱/托货位 | `/v2/cargoes/create/info`；用 `operation_id` 查询，按稳定的货运单元 key 精确匹配 cargo ID |
 | 最终校验 | `/v1/cargoes/rules/get`；供货范围、货位存在、数量分配及所有适用必填规则必须通过 |
 
-`quant` 来自 Ozon 返回的供货商品量子，不能使用本地外箱每箱件数代替。单托数量必须是该量子的倍数。平台减量、额外商品、拆分目的地、目的仓变化及必填信息缺失均会中止同步，保留已取得的外部 ID 和错误。当前不包含上门取货、多集群建单、保质期编辑和标签下载。
+`quant` 来自 Ozon 返回的供货商品量子，不能使用本地外箱每箱件数代替。单托 SKU 数量必须是该量子的倍数；箱型货位每箱包含一个 SKU 的一个本地外箱，箱数与平台供货组成必须相符。普通货位最多 30 箱或 40 托，单箱货重最多 25kg；运输货位扩容暂不支持。平台减量、额外商品、拆分目的地、目的仓变化及必填信息缺失均会中止同步，保留已取得的外部 ID 和错误。当前不包含上门取货、多集群建单、保质期编辑和标签下载。
 
-参考官方文档：[Seller API](https://docs.ozon.ru/api/seller/)、[FBO 创建流程](https://dev.ozon.ru/start/453-Protsess-sozdaniia-zaiavok-na-postavku-tovarov-FBO/)。本次核对使用的 schema 镜像为 [vispar-tech/ozon-seller-api-schema](https://github.com/vispar-tech/ozon-seller-api-schema/blob/main/schemas/ozon-seller-api-openapi.json)，接口字段以平台实际返回为准；旧 `platform_warehouse_allocation_stage2_api_research.md` 的 payload 是概念骨架，不能直接作为请求。
+参考官方文档：[Seller API](https://docs.ozon.ru/api/seller/)、[FBO 创建流程](https://dev.ozon.ru/start/453-Protsess-sozdaniia-zaiavok-na-postavku-tovarov-FBO/)。`/v1/cargoes/create` 的 `ValueCargoType` schema 明确枚举为 `BOX`、`PALLET`，请求两者共用的货品结构；本地完整模拟覆盖箱型及托型链路。没有对真实 Ozon 执行写入，接口准入仍以平台实际响应及规则回读为准。旧 `platform_warehouse_allocation_stage2_api_research.md` 的 payload 是概念骨架，不能直接作为请求。
 
 ## 重复提交及异常恢复
 

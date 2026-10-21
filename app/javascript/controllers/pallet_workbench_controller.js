@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["pick", "catalogueRow", "manifest", "itemTemplate", "status", "results", "autoDialog", "mySkus", "threshold", "autoStatus", "autoPreviewButton", "autoApplyButton", "allocationPanel", "allocationRows", "allocationTemplate", "mode", "emptyManifest", "skuCount", "boxCount", "unitCount", "weightCount", "saveButton", "calculateButton", "recommendButton", "undoButton", "capacity", "heightMeter", "heightLabel", "weightMeter", "weightLabel"];
+  static targets = ["pick", "catalogueRow", "manifest", "itemTemplate", "status", "results", "autoDialog", "mySkus", "threshold", "autoStatus", "autoPreviewButton", "autoApplyButton", "allocationPanel", "allocationRows", "allocationTemplate", "mode", "emptyManifest", "skuCount", "boxCount", "unitCount", "weightCount", "saveButton", "calculateButton", "recommendButton", "undoButton", "capacity", "heightMeter", "heightLabel", "weightMeter", "weightLabel", "shippingMode", "shippingAdvice", "fillButton"];
   static values = { catalogue: Array, context: Object, initial: Array, allocations: Array, previewUrl: String, autoUrl: String, saveUrl: String, method: String, planId: String, messages: Object };
 
   connect() {
@@ -15,6 +15,10 @@ export default class extends Controller {
     this.items = stored?.items || this.initialValue || [];
     this.allocations = stored?.allocations || this.allocationsValue || [];
     this.modeTarget.value = stored?.mode || (this.allocations.length > 1 ? "multiple" : "single");
+    if (this.hasShippingModeTarget && stored?.shippingMode) this.shippingModeTarget.value = stored.shippingMode;
+    this.element.querySelectorAll("[data-shipping]").forEach((input) => {
+      if (stored?.shipping && Object.hasOwn(stored.shipping, input.dataset.shipping)) input.value = stored.shipping[input.dataset.shipping];
+    });
     this.element.querySelectorAll("[data-setting]").forEach((input) => {
       if (stored?.settings && Object.hasOwn(stored.settings, input.dataset.setting)) input.value = stored.settings[input.dataset.setting];
     });
@@ -38,7 +42,7 @@ export default class extends Controller {
   }
 
   remember() {
-    this.previous = JSON.parse(JSON.stringify({ items: this.items, allocations: this.allocations, mode: this.modeTarget.value }));
+    this.previous = JSON.parse(JSON.stringify({ items: this.items, allocations: this.allocations, mode: this.modeTarget.value, shippingMode: this.hasShippingModeTarget ? this.shippingModeTarget.value : "pallet" }));
     this.undoButtonTarget.hidden = false;
   }
 
@@ -47,6 +51,7 @@ export default class extends Controller {
     this.items = this.previous.items;
     this.allocations = this.previous.allocations;
     this.modeTarget.value = this.previous.mode;
+    if (this.hasShippingModeTarget) this.shippingModeTarget.value = this.previous.shippingMode;
     this.previous = null;
     this.undoButtonTarget.hidden = true;
     this.renderItems(); this.renderAllocations(); this.invalidate();
@@ -54,7 +59,7 @@ export default class extends Controller {
 
   pick(event) {
     const sku = event.target.dataset.sku;
-    if (event.target.checked && this.modeTarget.value === "single" && this.items.length >= 5) {
+    if (event.target.checked && (!this.hasShippingModeTarget || this.shippingModeTarget.value === "pallet") && this.modeTarget.value === "single" && this.items.length >= 5) {
       event.target.checked = false;
       this.setStatus(this.messagesValue.single_limit, true);
       return;
@@ -146,12 +151,23 @@ export default class extends Controller {
     this.allocations = []; this.renderAllocations(); this.invalidate();
   }
 
+  changeShippingMode() {
+    this.allocations = []; this.renderAllocations(); this.invalidate();
+  }
+
+  useShippingMode(event) {
+    this.remember();
+    this.shippingModeTarget.value = event.currentTarget.dataset.mode;
+    this.changeShippingMode();
+  }
+
   invalidate() {
     this.revision += 1;
     this.validated = false;
     // Keep the sticky editor and page scroll range stable while replacing stale results.
     this.resultsTarget.style.minHeight = this.items.length ? `${this.resultsTarget.getBoundingClientRect().height}px` : "";
     this.resultsTarget.replaceChildren();
+    if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.textContent = this.items.length ? this.messagesValue.shipping_pending : this.messagesValue.shipping_empty;
     this.capacityTarget.hidden = true;
     this.setStatus(this.items.length ? this.messagesValue.changed : this.messagesValue.empty);
     this.updateButtons(); this.persist();
@@ -167,7 +183,9 @@ export default class extends Controller {
   updateButtons() {
     this.saveButtonTarget.disabled = this.busy || !this.validated;
     this.calculateButtonTarget.disabled = this.busy || !this.items.length;
-    this.calculateButtonTarget.textContent = this.modeTarget.value === "single" ? this.messagesValue.fit : this.messagesValue.recalculate;
+    this.calculateButtonTarget.textContent = (!this.hasShippingModeTarget || this.shippingModeTarget.value === "pallet") && this.modeTarget.value === "single" ? this.messagesValue.fit : this.messagesValue.recalculate;
+    if (this.hasFillButtonTarget) this.fillButtonTarget.disabled = this.busy || !this.items.length || this.contextValue.fill_free_space === false || (this.hasShippingModeTarget && this.shippingModeTarget.value === "box");
+    if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.querySelectorAll("button").forEach((button) => { button.disabled = this.busy; });
     this.recommendButtonTarget.disabled = this.busy || !this.catalogueValue.some((row) => row.packaging_complete && row.suggested_boxes > 0);
   }
 
@@ -179,11 +197,17 @@ export default class extends Controller {
 
   persist() {
     if (!this.storageKey) return;
-    try { sessionStorage.setItem(this.storageKey, JSON.stringify({ items: this.items, allocations: this.allocations, mode: this.modeTarget.value, settings: this.settings(), lockVersion: this.contextValue.lock_version })); } catch (_) { /* Storage is optional. */ }
+    try { sessionStorage.setItem(this.storageKey, JSON.stringify({ items: this.items, allocations: this.allocations, mode: this.modeTarget.value, settings: this.settings(), shipping: this.shipping(), shippingMode: this.hasShippingModeTarget ? this.shippingModeTarget.value : "pallet", lockVersion: this.contextValue.lock_version })); } catch (_) { /* Storage is optional. */ }
+  }
+
+  shipping() {
+    const shipping = {};
+    this.element.querySelectorAll("[data-shipping]").forEach((input) => { shipping[input.dataset.shipping] = input.value; });
+    return shipping;
   }
 
   payload(manual = true) {
-    return { ...this.contextValue, items: this.items, settings: this.settings(), packing_mode: this.modeTarget.value, allocations: manual ? this.allocations : [] };
+    return { ...this.contextValue, items: this.items, settings: this.settings(), shipping: this.shipping(), shipping_mode: this.hasShippingModeTarget ? this.shippingModeTarget.value : "pallet", packing_mode: this.modeTarget.value, allocations: manual ? this.allocations : [] };
   }
 
   async request(url, body, method = "POST") {
@@ -193,8 +217,9 @@ export default class extends Controller {
     return data;
   }
 
-  async preview() { await this.calculate(false, this.modeTarget.value === "single" ? this.items : null); }
+  async preview() { await this.calculate(false, (!this.hasShippingModeTarget || this.shippingModeTarget.value === "pallet") && this.modeTarget.value === "single" ? this.items : null); }
   async validateAllocation() { await this.calculate(true); }
+  async fillFreeSpace() { await this.calculate(false, null, true); }
 
   async recommendOne() {
     // Use all filtered pages and a stable urgency order, regardless of table sorting.
@@ -204,11 +229,12 @@ export default class extends Controller {
     await this.calculate(false, candidates.map((row) => this.itemFor(row.sku_code, row.suggested_boxes)));
   }
 
-  async calculate(manual, recommendation = null) {
+  async calculate(manual, recommendation = null, fill = false) {
     clearTimeout(this.timer);
     if (this.busy || (!recommendation && !this.items.length)) return;
     if (!recommendation && this.manifestTarget.querySelector("input:invalid")) {
       this.setStatus(this.messagesValue.invalid_items, true);
+      if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.textContent = this.messagesValue.shipping_failed;
       return;
     }
     const revision = this.revision;
@@ -216,16 +242,20 @@ export default class extends Controller {
     this.setStatus(this.messagesValue.calculating); this.updateButtons();
     try {
       const payload = this.payload(manual);
+      if (fill) Object.assign(payload, { apply_fill: true, shipping_mode: "pallet", allocations: [] });
       if (recommendation) Object.assign(payload, { items: recommendation, recommend_one: true, packing_mode: "single", allocations: [] });
+      if (recommendation) payload.shipping_mode = "pallet";
       const data = await this.request(this.previewUrlValue, { pallet_plan: payload });
       if (revision !== this.revision || !this.element.isConnected) return;
-      if (recommendation) {
+      if (recommendation || data.result.fill?.changes?.length) {
         this.remember();
         this.items = data.result.items;
-        this.modeTarget.value = "single";
+        if (recommendation) this.modeTarget.value = "single";
+        if (this.hasShippingModeTarget) this.shippingModeTarget.value = "pallet";
         this.renderItems();
       }
       this.resultsTarget.innerHTML = data.html;
+      if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.innerHTML = data.shipping_advice_html || "";
       this.allocations = data.result.pallets.map((pallet) => {
         const quantities = new Map();
         pallet.zones.forEach((zone) => {
@@ -235,8 +265,8 @@ export default class extends Controller {
         return { items: [...quantities].map(([sku_code, quantity]) => ({ sku_code, quantity })) };
       });
       this.renderAllocations();
-      this.capacityTarget.hidden = data.result.pallets.length !== 1;
-      if (data.result.pallets.length === 1) {
+      this.capacityTarget.hidden = data.result.shipping_mode === "box" || data.result.pallets.length !== 1;
+      if (data.result.shipping_mode !== "box" && data.result.pallets.length === 1) {
         const pallet = data.result.pallets[0];
         this.heightMeterTarget.max = data.result.settings.height;
         this.heightMeterTarget.value = pallet.height;
@@ -246,9 +276,13 @@ export default class extends Controller {
         this.weightLabelTarget.textContent = `${pallet.weight.toFixed(1)} / ${data.result.settings.weight}`;
       }
       this.validated = true;
-      this.setStatus(recommendation ? this.messagesValue.recommended : this.messagesValue.validated);
+      if (fill) this.setStatus(data.result.fill?.changes?.length ? this.messagesValue.filled : this.messagesValue.fill_unchanged);
+      else this.setStatus(recommendation ? this.messagesValue.recommended : this.messagesValue.validated);
     } catch (error) {
-      if (revision === this.revision) { this.validated = false; this.setStatus(error.message, true); }
+      if (revision === this.revision) {
+        this.validated = false; this.setStatus(error.message, true);
+        if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.textContent = this.messagesValue.shipping_failed;
+      }
     } finally {
       this.busy = false; this.updateButtons();
       if (revision !== this.revision && this.element.isConnected && this.items.length) this.timer = setTimeout(() => this.calculate(true), 650);
@@ -268,7 +302,7 @@ export default class extends Controller {
 
   renderAllocations() {
     this.currentMode = this.modeTarget.value;
-    this.allocationPanelTarget.hidden = this.modeTarget.value === "single" || this.allocations.length === 0;
+    this.allocationPanelTarget.hidden = (this.hasShippingModeTarget && this.shippingModeTarget.value === "box") || this.modeTarget.value === "single" || this.allocations.length === 0;
     this.allocationRowsTarget.replaceChildren();
     this.allocations.forEach((pallet, index) => {
       const fragment = this.allocationTemplateTarget.content.cloneNode(true);

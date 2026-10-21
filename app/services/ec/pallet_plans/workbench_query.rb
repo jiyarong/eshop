@@ -2,7 +2,8 @@ module Ec
   module PalletPlans
     class WorkbenchQuery
       def initialize(user:, store:, cluster_id:, from_date:, to_date:, time_zone:, target_days: nil,
-        query: nil, operator_id: nil, developer_id: nil, sku_codes: nil, excluding_plan_id: nil)
+        query: nil, operator_id: nil, developer_id: nil, sku_codes: nil, excluding_plan_id: nil,
+        min_days: nil, max_days: nil, fill_free_space: true, availability: nil)
         @user = user
         @store = store
         @cluster_id = cluster_id
@@ -10,18 +11,20 @@ module Ec
         @to_date = to_date
         @time_zone = time_zone
         @target_days = target_days
+        @range = ReplenishmentRange.new(target_days: target_days, min_days: min_days, max_days: max_days, fill_free_space: fill_free_space)
         @query = query
         @operator_id = operator_id
         @developer_id = developer_id
         @sku_codes = sku_codes
         @excluding_plan_id = excluding_plan_id
+        @availability = availability
       end
 
       def call
         validate_destination!
         product_scope = scoped_products
         products = product_scope.to_a.group_by(&:sku_code)
-        availability = Availability.new(sku_codes: products.keys, store_id: @store.id, excluding_plan_id: @excluding_plan_id)
+        availability = @availability || Availability.new(sku_codes: products.keys, store_id: @store.id, excluding_plan_id: @excluding_plan_id)
         quantities = availability.call
         report = Ec::OzonWarehouseRecommendationQuery.new(
           store: @store, from_date: @from_date, to_date: @to_date, time_zone: @time_zone,
@@ -119,7 +122,8 @@ module Ec
           fbs_allocatable: allocatable, pcs: pcs, suggested_boxes: suggested_boxes,
           ozon_size_category: packaging[:ozon_size_category],
           packaging: packaging, packaging_complete: complete, exclusion_reason: exclusion_reason
-        }
+        }.merge(@range.boxes(daily_sales: cluster[:daily_sales], available: cluster[:available], inbound: cluster[:inbound],
+          planned_quantity: planned_quantity, pcs: pcs, allocatable: allocatable))
       end
 
       def packaging(dimension)

@@ -50,6 +50,11 @@ module PalletPacking
         .merge(profile: @profile, settings: @settings, items: @items, pallets: pallets, recommendation: @recommend, rules_as_of: Rules::AS_OF)
     end
 
+    def validated_input
+      validate!
+      { items: @items, settings: @settings }
+    end
+
     private
 
     def normalize_item(item)

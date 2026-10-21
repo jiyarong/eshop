@@ -1,7 +1,23 @@
 <div class="pallet-calculator">
   <section class="panel">
-    <h2><%= t("pallet_workbench.validated") %></h2><p><%= t("pallet_workbench.result_summary", pallets: result[:pallets].size, boxes: result[:total_boxes], units: result[:total_units]) %></p>
-    <p><%= t("pallet_calculator.rules.ozon_fbo") %></p>
+    <h2><%= t("pallet_workbench.validated") %></h2><p><%= t(result[:shipping_mode] == "box" ? "pallet_workbench.box_summary" : "pallet_workbench.result_summary", pallets: result[:pallets].size, boxes: result[:total_boxes], units: result[:total_units]) %></p>
+    <p><%= t(result[:shipping_mode] == "box" ? "pallet_workbench.shipping.box_rules" : "pallet_calculator.rules.ozon_fbo") %></p>
+    <% if result[:fill] %>
+      <p><%= t("pallet_workbench.fill_summary", base: result[:fill][:base_boxes], final: result[:fill][:final_boxes], target: result[:fill][:target_days], max: result[:fill][:max_days]) %></p>
+      <% result[:fill][:changes].each do |change| %><p><%= t("pallet_workbench.fill_change", sku: change[:sku_code], from: change[:from_boxes], to: change[:to_boxes], units: change[:added_units]) %></p><% end %>
+      <% if result[:fill][:changes].empty? %><p><%= t("pallet_workbench.fill_no_change") %></p><% end %>
+      <% if result[:fill][:additional_known_fee].to_d.positive? %><p><%= t("pallet_workbench.fill_additional_fee", amount: number_with_precision(result[:fill][:additional_known_fee], precision: 2)) %></p><% end %>
+      <% if result[:fill][:skipped_reason] %><p><%= t("pallet_workbench.fill_reasons.#{result[:fill][:skipped_reason]}") %></p><% end %>
+      <% if result[:fill][:limits].present? %>
+        <ul><% result[:fill][:limits].each do |limit| %>
+          <li><%= t("pallet_workbench.fill_limit", sku: limit[:sku_code], reason: t("pallet_workbench.fill_reasons.#{limit[:reason]}", max: result[:fill][:max_days], boxes: limit[:max_boxes], days: number_with_precision(limit[:next_box_days], precision: 1))) %></li>
+        <% end %></ul>
+      <% end %>
+    <% end %>
+    <%= render "reports/pallet_workbenches/shipping_quote", quote: result[:shipping], interactive: local_assigns[:interactive] if result[:shipping] %>
+    <% if result[:shipping_mode] == "box" %>
+      <%= table_viewport do %><table class="prod-tbl"><thead><tr><% %w[sku boxes].each do |key| %><th><%= t("pallet_calculator.#{key}") %></th><% end %></tr></thead><tbody><% result[:items].each do |item| %><tr><td><%= item[:sku_code] %></td><td><%= item[:quantity].to_i %></td></tr><% end %></tbody></table><% end %>
+    <% else %>
     <% result[:pallets].each_with_index do |pallet, index| %>
       <details class="pallet-workbench__pallet" <%= 'open' if index.zero? %>>
         <summary><%= t("pallet_calculator.pallet_option", number: index + 1, boxes: pallet[:boxes]) %> · <%= t("pallet_calculator.pallet_height", value: pallet_number(pallet[:height]), limit: pallet_number(result[:settings][:height])) %> · <%= t("pallet_calculator.pallet_weight", value: pallet_number(pallet[:gross_weight])) %></summary>
@@ -10,9 +26,12 @@
           <tbody><% pallet[:zones].each do |zone| %><% item = result[:items][zone[:item_index]] %><tr><td><%= item[:sku_code] %></td><td><%= zone[:count] %></td><td><%= zone[:layers] %></td><td><%= pallet_layer_grid(zone) %></td><td><%= pallet_orientation(item, zone) %></td></tr><% end %></tbody></table><% end %>
       </details>
     <% end %>
+    <% end %>
     <p><%= t("pallet_calculator.strategy.check") %></p>
   </section>
+  <% unless result[:shipping_mode] == "box" %>
   <section class="panel pallet-calculator__handoff" data-controller="clipboard" data-clipboard-copied-label-value="<%= t('pallet_calculator.copied') %>">
     <button type="button" class="button button-secondary" data-action="clipboard#copy" data-clipboard-target="button"><%= t("pallet_calculator.copy") %></button><pre data-clipboard-target="source"><%= pallet_strategy(result) %></pre><span role="status" data-clipboard-target="status"></span>
   </section>
+  <% end %>
 </div>

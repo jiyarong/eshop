@@ -33,6 +33,11 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
       assert_select "[data-controller='pallet-workbench']"
       assert_select "[data-pallet-workbench-target='mode'] option[value='single']"
       assert_select "[data-pallet-workbench-target='recommendButton']"
+      assert_select "[data-pallet-workbench-target='shippingAdvice'][aria-live='polite']", count: 1
+      assert_select "#workbench-shipping-zone", count: 1
+      assert_select "#workbench-shipping-date", count: 1
+      assert_select ".pallet-workbench__advanced #workbench-shipping-zone", count: 0
+      assert_select ".pallet-workbench__advanced #workbench-shipping-date", count: 0
       assert_select "[data-pallet-workbench-target='supplyButton']", count: 0
       assert_select "select[name='supply_type']", count: 0
       assert_no_match(/translation missing/i, response.body)
@@ -97,16 +102,104 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
         cluster_name: @cluster.cluster_name, status: "reserved", from_date: Date.new(2026, 9, 18), to_date: Date.new(2026, 10, 15), target_days: 28, time_zone: "Asia/Shanghai")
       plan.items.create!(sku_product: product, sku_code: sku.sku_code, platform_sku_id: product.platform_sku_id, boxes: 1, pcs: 10, units: 10)
 
+      attributes = {
+        plan_id: plan.id, store_id: @store.id, cluster_id: @cluster.macrolocal_cluster_id,
+        from_date: "2026-09-18", to_date: "2026-10-15", packing_mode: "single",
+        items: [{ sku_code: sku.sku_code, quantity: 1 }]
+      }
+      %w[zh en ru].each do |locale|
+        sign_in @user
+        assert_no_difference("Ec::PalletPlan.count") do
+          post preview_reports_pallet_workbench_path(format: :json, locale: locale), params: { pallet_plan: attributes }, as: :json
+        end
+        assert_response :success
+        assert_equal 1, response.parsed_body.dig("result", "total_boxes")
+        assert_nil response.parsed_body.dig("result", "shipping", "recommended")
+        advice = response.parsed_body.fetch("shipping_advice_html")
+        assert_includes advice, I18n.t("pallet_workbench.shipping.box_eligible", locale: locale)
+        assert_includes advice, I18n.t("pallet_workbench.shipping.choose_zone", locale: locale)
+        assert_select Nokogiri::HTML.fragment(advice), "button[data-mode='box'][data-action='pallet-workbench#useShippingMode']", count: 1
+        assert_no_match(/translation missing/i, advice)
+        assert_not response.parsed_body.key?("calculation_token")
+      end
+
+      snapshot = RawOzon::CrossDockTariffSnapshot.create!(market_code: "ru", effective_from: Date.new(2026, 10, 1),
+        effective_to: Date.new(2026, 11, 1), source_file_name: "test.xlsx", source_checksum: SecureRandom.hex(16),
+        imported_at: Time.current, status: "succeeded")
+      RawOzon::CrossDockTariff.create!(snapshot: snapshot, supply_receiving_zone_name: "Zone A",
+        supply_receiving_zone_key: "ZONE-A", destination_cluster_name: @cluster.cluster_name,
+        destination_cluster_key: "МОСКВА", box_rub_per_l: 5, pallet_rub_per_l: 2.5)
+      attributes[:shipping] = { supply_receiving_zone_key: "ZONE-A", shipping_date: "2026-10-21" }
+      sign_in @user
+      post preview_reports_pallet_workbench_path(format: :json, locale: :zh), params: { pallet_plan: attributes }, as: :json
+      assert_response :success
+      assert_equal "box", response.parsed_body.dig("result", "shipping", "recommended")
+      assert_equal "lowest_cost", response.parsed_body.dig("result", "shipping", "recommendation_reason")
+      assert_equal 4650, response.parsed_body.dig("result", "shipping", "savings").to_d
+      assert_includes response.parsed_body.fetch("shipping_advice_html"), I18n.t("pallet_workbench.shipping.savings", amount: "4650.00", locale: :zh)
+
+      attributes[:shipping_mode] = "box"
+      sign_in @user
       assert_no_difference("Ec::PalletPlan.count") do
-        post preview_reports_pallet_workbench_path(format: :json), params: { pallet_plan: {
-          plan_id: plan.id, store_id: @store.id, cluster_id: @cluster.macrolocal_cluster_id,
-          from_date: "2026-09-18", to_date: "2026-10-15", packing_mode: "single",
-          items: [{ sku_code: sku.sku_code, quantity: 1 }]
-        } }, as: :json
+        post preview_reports_pallet_workbench_path(format: :json, locale: :zh), params: { pallet_plan: attributes }, as: :json
       end
       assert_response :success
+      assert_equal "box", response.parsed_body.dig("result", "shipping_mode")
       assert_equal 1, response.parsed_body.dig("result", "total_boxes")
-      assert_not response.parsed_body.key?("calculation_token")
+      assert_equal 10, response.parsed_body.dig("result", "total_units")
+      assert_select Nokogiri::HTML.fragment(response.parsed_body.fetch("shipping_advice_html")), "button[data-mode='box']", count: 0
+
+      attributes[:shipping] = { point_type: "pvz", shipping_date: "2026-10-21" }
+      %w[zh en ru].each do |locale|
+        sign_in @user
+        post preview_reports_pallet_workbench_path(format: :json, locale: locale), params: { pallet_plan: attributes }, as: :json
+        assert_response :success
+        assert_equal "box", response.parsed_body.dig("result", "shipping", "recommended")
+        assert_equal "only_available", response.parsed_body.dig("result", "shipping", "recommendation_reason")
+        assert_nil response.parsed_body.dig("result", "shipping", "box", "cost")
+        assert_includes response.parsed_body.fetch("shipping_advice_html"), I18n.t("pallet_workbench.shipping.only_available", locale: locale)
+        assert_no_match(/translation missing/i, response.parsed_body.fetch("shipping_advice_html"))
+      end
+      raise ActiveRecord::Rollback
+    end
+  end
+
+  test "fill preview explains whole-carton coverage limits in every supported locale without saving" do
+    ActiveRecord::Base.transaction do
+      sku = Ec::Sku.create!(sku_code: "FILL-LIMIT-#{SecureRandom.hex(6).upcase}", product_name: "Fill limit test")
+      Ec::SkuOperatorAssignment.create!(sku: sku, user: @user)
+      sku.create_dimension!(inner_length_cm: 20, inner_width_cm: 10, inner_height_cm: 10, inner_box_weight_kg: 0.7,
+        outer_length_cm: 40, outer_width_cm: 40, outer_height_cm: 60, outer_box_weight_kg: 5, outer_box_pcs: 1)
+      product = Ec::SkuProduct.create!(sku: sku, store: @store, product_id: sku.sku_code, platform_sku_id: sku.sku_code)
+      Ec::SkuBatch.create!(sku: sku, batch_code: sku.sku_code, status: "received",
+        purchased_quantity: 100, received_quantity: 100, purchase_unit_price_cny: 1)
+      order = Ec::Order.create!(platform: "ozon", store: @store, order_key: sku.sku_code,
+        order_status: "delivered", ordered_at: Time.zone.parse("2026-10-01 12:00:00"))
+      fulfillment = order.fulfillments.create!(platform: "ozon", store: @store,
+        external_fulfillment_id: sku.sku_code, fulfillment_key: sku.sku_code,
+        fulfillment_type: "fbo", status: "delivered", cluster_to: @cluster.cluster_name)
+      order.items.create!(platform: "ozon", store: @store, fulfillment: fulfillment,
+        platform_sku_id: product.platform_sku_id, quantity: 5)
+
+      %w[zh en ru].each do |locale|
+        sign_in @user
+        assert_no_difference("Ec::PalletPlan.count") do
+          post preview_reports_pallet_workbench_path(format: :json, locale: locale), params: { pallet_plan: {
+            store_id: @store.id, cluster_id: @cluster.macrolocal_cluster_id,
+            from_date: "2026-09-23", to_date: "2026-10-20", target_days: 28, min_days: 21, max_days: 35,
+            packing_mode: "single", fill_free_space: true, apply_fill: true,
+            items: [{ sku_code: sku.sku_code, quantity: 6 }]
+          } }, as: :json
+        end
+        assert_response :success
+        result = response.parsed_body.fetch("result")
+        assert_equal 6, result["total_boxes"]
+        assert_empty result.dig("fill", "changes")
+        assert_equal "coverage", result.dig("fill", "limits", 0, "reason")
+        assert_equal 38.9, result.dig("fill", "limits", 0, "next_box_days").to_f
+        assert_includes response.parsed_body["html"], I18n.t("pallet_workbench.fill_no_change", locale: locale)
+        assert_no_match(/translation missing/i, response.parsed_body["html"])
+      end
       raise ActiveRecord::Rollback
     end
   end

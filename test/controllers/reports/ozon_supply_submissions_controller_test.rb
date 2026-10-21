@@ -120,14 +120,51 @@ class Reports::OzonSupplySubmissionsControllerTest < ActionDispatch::Integration
     pallet_ids = plan.pallets.ids
     sign_in @user
     post start_supply_reports_pallet_plan_path(plan, format: :json), params: {
-      lock_version: plan.lock_version, supply_type: "CROSSDOCK", drop_off: "9002:DELIVERY_POINT"
+      lock_version: plan.lock_version, supply_type: "CROSSDOCK", drop_off: drop_off_selection("SORTING_CENTER")
     }
     assert_response :success
     assert_equal pallet_ids, plan.reload.pallets.ids
     assert_equal [4, 4], plan.pallets.map { |pallet| pallet.items.sum(:units) }
     submission = plan.ozon_supply_submission
     assert_equal "CROSSDOCK", submission.data["supply_type"]
-    assert_equal({ "warehouse_id" => 9002, "warehouse_type" => "DELIVERY_POINT" }, submission.data["drop_off"])
+    assert_equal({ "warehouse_id" => 9002, "warehouse_type" => "SORTING_CENTER" }, submission.data["drop_off"])
+    assert_equal "Test receiving point", submission.data["drop_off_name"]
+  end
+
+  test "rejects pallets at a box-only point and accepts a valid box plan there" do
+    pallet_plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    sign_in @user
+    assert_no_difference "Ec::OzonSupplySubmission.count" do
+      post start_supply_reports_pallet_plan_path(pallet_plan, format: :json), params: {
+        lock_version: pallet_plan.lock_version, supply_type: "CROSSDOCK", drop_off: drop_off_selection("DELIVERY_POINT")
+      }
+    end
+    assert_response :unprocessable_entity
+    assert_equal "shipping_unavailable", response.parsed_body["key"]
+
+    box_plan = Ec::PalletPlans::Save.new(user: @user,
+      attributes: workbench_attributes.merge(shipping_mode: "box")).call
+    sign_in @user
+    post start_supply_reports_pallet_plan_path(box_plan, format: :json), params: {
+      lock_version: box_plan.lock_version, supply_type: "CROSSDOCK", drop_off: drop_off_selection("DELIVERY_POINT")
+    }
+    assert_response :success
+    assert_equal "queued", box_plan.reload.ozon_supply_submission.state
+  end
+
+  test "requires a signed receiving point from the plan's Ozon account" do
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
+    token = Ec::PalletPlans::StartOzonSupply.drop_off_verifier.generate({
+      "account_id" => @account.id + 1, "warehouse_id" => 9002, "warehouse_type" => "SORTING_CENTER", "name" => "Other account"
+    }, purpose: "drop-off", expires_in: 30.minutes)
+    sign_in @user
+    assert_no_difference "Ec::OzonSupplySubmission.count" do
+      post start_supply_reports_pallet_plan_path(plan, format: :json), params: {
+        lock_version: plan.lock_version, supply_type: "CROSSDOCK", drop_off: token
+      }
+    end
+    assert_response :unprocessable_entity
+    assert_equal "invalid_delivery", response.parsed_body["key"]
   end
 
   test "a reserved saved plan excludes its reservation and records the actual submitting user" do
@@ -421,6 +458,12 @@ class Reports::OzonSupplySubmissionsControllerTest < ActionDispatch::Integration
 
   def supply_params(token)
     { calculation_token: token, store_id: @store.id, cluster_id: 761, supply_type: "DIRECT" }
+  end
+
+  def drop_off_selection(type)
+    Ec::PalletPlans::StartOzonSupply.drop_off_verifier.generate({
+      "account_id" => @account.id, "warehouse_id" => 9002, "warehouse_type" => type, "name" => "Test receiving point"
+    }, purpose: "drop-off", expires_in: 30.minutes)
   end
 
   def create_submission

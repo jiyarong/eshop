@@ -3533,6 +3533,7 @@ zh:
       categories:
         unknown: "待补齐"
         normal: "普通商品"
+        non_sortable: 普通不可分拣
         kgt: "KGT 大件"
         oversize: "超限"
       filters:

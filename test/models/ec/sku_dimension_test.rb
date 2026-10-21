@@ -63,8 +63,8 @@ class Ec::SkuDimensionTest < ActiveSupport::TestCase
     dimension.update!(outer_length_cm: 221, outer_box_weight_kg: 121)
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NORMAL, dimension.reload.ozon_size_category
 
-    dimension.update!(inner_length_cm: 45)
-    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT, dimension.reload.ozon_size_category
+    dimension.update!(inner_length_cm: 45.01)
+    assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_NON_SORTABLE, dimension.reload.ozon_size_category
 
     dimension.update!(inner_length_cm: 221)
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE, dimension.reload.ozon_size_category
@@ -102,4 +102,22 @@ class Ec::SkuDimensionTest < ActiveSupport::TestCase
     dimension.update!(inner_length_cm: 10, inner_width_cm: 100, inner_height_cm: 130)
     assert_equal Ec::SkuDimension::OZON_SIZE_CATEGORY_KGT, dimension.reload.ozon_size_category
   end
+  test "Ozon tiers include exact limits and classify every axis and weight independently" do
+    {
+      [45, 32, 32, 10] => "normal", [45.01, 32, 32, 10] => "non_sortable",
+      [40, 32.01, 20, 10] => "non_sortable", [40, 33, 32.01, 10] => "non_sortable",
+      [120, 60, 50, 35] => "non_sortable", [120.01, 60, 50, 35] => "kgt",
+      [100, 60.01, 40, 35] => "kgt", [100, 55, 50.01, 35] => "kgt",
+      [30, 30, 30, 10.01] => "non_sortable", [30, 30, 30, 35.01] => "kgt",
+      [220, 120, 80, 120] => "kgt", [220.01, 120, 80, 120] => "oversize",
+      [200, 120.01, 80, 120] => "oversize", [200, 100, 80.01, 120] => "oversize",
+      [30, 30, 30, 120.01] => "oversize", [nil, 30, 30, 10] => "unknown",
+      [0, 30, 30, 10] => "unknown", [-1, 30, 30, 10] => "unknown"
+    }.each do |(l, w, h, weight), expected|
+      [l, w, h].permutation.each do |length, width, height|
+        assert_equal expected, Ec::SkuDimension.ozon_size_category_for(length: length, width: width, height: height, weight: weight)
+      end
+    end
+  end
+
 end

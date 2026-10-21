@@ -13761,6 +13761,9 @@ button.ai-row-action {
 .pallet-workbench__exclusion { display: block; max-width: 140px; white-space: normal; color: var(--erp-muted); font-size: 11px; margin-top: 4px; }
 .pallet-workbench__mode { margin: 16px 0 12px; }
 .pallet-workbench__recommend { width: 100%; justify-content: center; }
+.pallet-workbench__shipping-advice { display: grid; gap: 8px; margin-top: 12px; padding: 14px; border: 1px solid var(--erp-border); border-radius: 7px; background: var(--erp-surface-soft); font-size: 13px; }
+.pallet-workbench__shipping-advice p { margin: 0; line-height: 1.6; }
+.pallet-workbench__shipping-advice .button { min-height: 44px; justify-content: center; }
 .pallet-workbench__summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 16px 0; margin: 12px 0; border-block: 1px solid var(--erp-border); }
 .pallet-workbench__summary > div { display: grid; gap: 6px; }
 .pallet-workbench__summary strong { font-size: 23px; font-variant-numeric: tabular-nums; }

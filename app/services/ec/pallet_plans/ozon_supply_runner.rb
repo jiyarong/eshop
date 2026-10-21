@@ -201,7 +201,7 @@ module Ec
               raise Error.new(:missing_cargo_metadata, sku: plan_item.sku_code) unless source["barcode"].present? && quant.positive? && item.units % quant == 0
               { barcode: source["barcode"], offer_id: source["offer_id"], quant: quant, quantity: item.units }.compact
             end
-            { key: "#{@plan.plan_no}-#{pallet.position}", value: { type: "PALLET", items: items } }
+            { key: "#{@plan.plan_no}-#{pallet.position}", value: { type: pallet.cargo_type.upcase, items: items } }
           end
           [supply_id, cargoes]
         end
@@ -262,6 +262,8 @@ module Ec
         raise Error.new(:sku_unavailable) unless user&.can?(:manage_skus)
         raise Error.new(:sku_unavailable) if @plan.items.where.not(sku_code: WeeklyProfitReports::AccessScope.new(user).visible_skus.select(:sku_code)).exists?
         raise Error.new(:invalid_status) unless @plan.status.in?(Ec::PalletPlan::EDITABLE_STATUSES)
+        CargoValidation.new(plan: @plan, drop_off: data["drop_off"], drop_off_name: data["drop_off_name"],
+          warehouse: data.dig("warehouse", "storage_warehouse")).call
       end
 
       def handle_error(error)

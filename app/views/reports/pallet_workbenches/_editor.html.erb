@@ -2,8 +2,15 @@
   <section class="panel">
     <div class="pallet-workbench__section-heading"><div><span class="pallet-workbench__eyebrow"><%= t("pallet_workbench.step_pack") %></span><h2><%= t("pallet_workbench.current_pallet") %></h2></div><span class="pallet-workbench__badge"><%= t("pallet_workbench.local_draft") %></span></div>
     <div class="field pallet-workbench__mode"><label for="pallet-packing-mode"><%= t("pallet_workbench.packing_mode") %></label><select id="pallet-packing-mode" data-pallet-workbench-target="mode" data-action="change->pallet-workbench#changeMode"><option value="single"><%= t("pallet_workbench.single_mode") %></option><option value="multiple"><%= t("pallet_workbench.multiple_mode") %></option></select></div>
+    <div class="field"><label for="pallet-shipping-mode"><%= t("pallet_workbench.shipping.mode") %></label><select id="pallet-shipping-mode" data-pallet-workbench-target="shippingMode" data-action="change->pallet-workbench#changeShippingMode"><%= options_for_select(%w[pallet box].map { |mode| [t("pallet_workbench.shipping.#{mode}"), mode] }, @plan&.calculation&.fetch("shipping_mode", "pallet") || "pallet") %></select></div>
+    <div data-pallet-workbench-target="shippingAdvice" aria-live="polite"><p class="pallet-workbench__hint"><%= t("pallet_workbench.messages.shipping_empty") %></p></div>
+    <div class="pallet-workbench__packaging">
+      <div class="field"><label for="workbench-shipping-zone"><%= t("pallet_workbench.shipping.zone") %></label><select id="workbench-shipping-zone" data-shipping="supply_receiving_zone_key" data-action="change->pallet-workbench#invalidate"><%= options_for_select([[t("common.empty_value"), ""]] + @shipping_zone_options, @shipping[:supply_receiving_zone_key]) %></select></div>
+      <div class="field"><label for="workbench-shipping-date"><%= t("pallet_workbench.shipping.date") %></label><input id="workbench-shipping-date" type="date" data-shipping="shipping_date" value="<%= @shipping[:shipping_date] %>" data-action="change->pallet-workbench#invalidate"></div>
+    </div>
     <button type="button" class="button pallet-workbench__recommend" data-pallet-workbench-target="recommendButton" data-action="pallet-workbench#recommendOne"><%= t("pallet_workbench.recommend_one") %></button>
     <p class="pallet-workbench__hint"><%= t("pallet_workbench.recommend_hint") %></p>
+    <button type="button" class="button button-secondary" data-pallet-workbench-target="fillButton" data-action="pallet-workbench#fillFreeSpace"><%= t("pallet_workbench.fill_action") %></button>
     <div class="pallet-workbench__summary" aria-live="polite">
       <div><strong data-pallet-workbench-target="skuCount">0</strong><span><%= t("pallet_workbench.summary.skus") %></span></div>
       <div><strong data-pallet-workbench-target="boxCount">0</strong><span><%= t("pallet_workbench.summary.boxes") %></span></div>
@@ -29,6 +36,8 @@
     <details class="pallet-workbench__advanced"><summary><%= t("pallet_calculator.parameters") %></summary><div class="pallet-workbench__packaging">
       <% defaults = @plan ? PalletPacking::Rules.defaults("ozon_fbo").merge(@plan.settings.symbolize_keys) : PalletPacking::Rules.defaults("ozon_fbo") %>
       <% %i[height weight overhang tare route_rate].each do |key| %><div class="field"><label for="workbench-setting-<%= key %>"><%= t("pallet_calculator.fields.#{key}") %></label><input type="number" id="workbench-setting-<%= key %>" data-setting="<%= key %>" value="<%= defaults[key] %>" min="0" step="any" data-action="change->pallet-workbench#invalidate"></div><% end %>
+      <div class="field"><label for="workbench-point-type"><%= t("pallet_workbench.shipping.point") %></label><select id="workbench-point-type" data-shipping="point_type" data-action="change->pallet-workbench#invalidate"><%= options_for_select(PalletPacking::ShippingModeAdvisor::POINT_TYPES.map { |type| [t("pallet_workbench.shipping.points.#{type}"), type] }, @shipping[:point_type] || "warehouse") %></select></div>
+      <div class="field"><label for="workbench-point-name"><%= t("pallet_workbench.shipping.point_name") %></label><input id="workbench-point-name" data-shipping="point_name" value="<%= @shipping[:point_name] %>" data-action="change->pallet-workbench#invalidate"></div>
     </div></details>
 
   </section>

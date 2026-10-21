@@ -67,10 +67,14 @@ module Reports
       query = params[:q].to_s.strip
       return render json: [] if query.length < 4
       response = RawOzon::SupplyClient.new(account: store.raw_ozon_account).warehouses(query)
-      render json: Array(response["search"]).map { |row| {
-        id: "#{row['warehouse_id']}:#{row['warehouse_type'].to_s.delete_prefix('WAREHOUSE_TYPE_')}",
-        label: [row["name"], row["address"]].compact.join(" · ")
-      } }
+      render json: Array(response["search"]).map { |row|
+        warehouse_type = row["warehouse_type"].to_s.delete_prefix("WAREHOUSE_TYPE_")
+        selection = Ec::PalletPlans::StartOzonSupply.drop_off_verifier.generate({
+          "account_id" => store.ozon_raw_account_id, "warehouse_id" => row["warehouse_id"],
+          "warehouse_type" => warehouse_type, "name" => row["name"]
+        }, purpose: "drop-off", expires_in: 30.minutes)
+        { id: selection, label: [row["name"], row["address"]].compact.join(" · ") }
+      }
     rescue RawOzon::OzonClient::ApiError, RawOzon::OzonClient::RetryableError
       render json: { error: t("pallet_workbench.errors.sync_failed") }, status: :bad_gateway
     end

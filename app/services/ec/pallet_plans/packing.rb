@@ -19,7 +19,8 @@ module Ec
         retain_packed_items!(pallets) if @recommend_one
         PalletPacking::Fees.new(profile: PROFILE, items: @items, settings: @settings, pallets: pallets).call.merge(
           profile: PROFILE, settings: @settings, items: @items, pallets: pallets,
-          recommendation: false, rules_as_of: PalletPacking::Rules::AS_OF
+          recommendation: false, rules_as_of: PalletPacking::Rules::AS_OF,
+          capacities: @items.to_h { |item| [item[:sku_code], @capacities[@item_indices.fetch(item[:sku_code])]] }
         )
       end
 

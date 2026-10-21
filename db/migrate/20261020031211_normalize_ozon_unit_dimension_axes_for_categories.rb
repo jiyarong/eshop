@@ -5,8 +5,6 @@ class NormalizeOzonUnitDimensionAxesForCategories < ActiveRecord::Migration[8.1]
 
   UNKNOWN = "unknown".freeze
   NORMAL = "normal".freeze
-  KGT = "kgt".freeze
-  OVERSIZE = "oversize".freeze
 
   def up
     recalculate_categories(sorted: true)
@@ -34,8 +32,10 @@ class NormalizeOzonUnitDimensionAxesForCategories < ActiveRecord::Migration[8.1]
     length, width, height = dimensions.map(&:to_d)
     length, width, height = [length, width, height].sort.reverse if sorted
     weight = weight.to_d
-    return OVERSIZE if length > 220 || width > 120 || height > 80 || weight > 120
-    return KGT if length >= 45 || width >= 32 || height >= 32
+    measurements = { length: length, width: width, height: height, weight: weight }
+    Ec::SkuDimension::OZON_SIZE_LIMITS.each do |category, limits|
+      return category.to_s if limits.any? { |axis, limit| measurements.fetch(axis) > limit }
+    end
 
     NORMAL
   end

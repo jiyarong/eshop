@@ -3272,6 +3272,7 @@ ru:
       categories:
         unknown: "Не заполнено"
         normal: "Обычный товар"
+        non_sortable: Несортируемый
         kgt: "Крупногабаритный KGT"
         oversize: "Сверх лимита"
       filters:

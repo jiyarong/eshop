@@ -6,14 +6,22 @@ module Ec
 
     OZON_SIZE_CATEGORY_UNKNOWN = "unknown".freeze
     OZON_SIZE_CATEGORY_NORMAL = "normal".freeze
+    OZON_SIZE_CATEGORY_NON_SORTABLE = "non_sortable".freeze
     OZON_SIZE_CATEGORY_KGT = "kgt".freeze
     OZON_SIZE_CATEGORY_OVERSIZE = "oversize".freeze
     OZON_SIZE_CATEGORIES = [
       OZON_SIZE_CATEGORY_UNKNOWN,
       OZON_SIZE_CATEGORY_NORMAL,
+      OZON_SIZE_CATEGORY_NON_SORTABLE,
       OZON_SIZE_CATEGORY_KGT,
       OZON_SIZE_CATEGORY_OVERSIZE
     ].freeze
+
+    OZON_SIZE_LIMITS = {
+      oversize: { length: 220, width: 120, height: 80, weight: 120 }.freeze,
+      kgt: { length: 120, width: 60, height: 50, weight: 35 }.freeze,
+      non_sortable: { length: 45, width: 32, height: 32, weight: 10 }.freeze
+    }.freeze
 
     belongs_to :sku, class_name: "Ec::Sku", foreign_key: :sku_code, primary_key: :sku_code
 
@@ -44,10 +52,10 @@ module Ec
       values = [length, width, height, weight]
       return OZON_SIZE_CATEGORY_UNKNOWN if values.any? { |value| value.blank? || value.to_d <= 0 }
 
-      length, width, height = values.first(3).map(&:to_d).sort.reverse
-      weight = values.last.to_d
-      return OZON_SIZE_CATEGORY_OVERSIZE if length > 220 || width > 120 || height > 80 || weight > 120
-      return OZON_SIZE_CATEGORY_KGT if length >= 45 || width >= 32 || height >= 32
+      measurements = %i[length width height weight].zip(values.first(3).map(&:to_d).sort.reverse + [weight.to_d]).to_h
+      OZON_SIZE_LIMITS.each do |category, limits|
+        return category.to_s if limits.any? { |axis, limit| measurements.fetch(axis) > limit }
+      end
 
       OZON_SIZE_CATEGORY_NORMAL
     end

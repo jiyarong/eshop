@@ -35,7 +35,7 @@ class Ec::PalletPlans::OzonSupplyRunnerTest < ActiveSupport::TestCase
     @plan = Ec::PalletPlan.create!(store: @store, created_by: @user, macrolocal_cluster_id: 761, cluster_name: "Москва",
       status: "draft", from_date: Date.new(2026, 10, 1), to_date: Date.new(2026, 10, 19), target_days: 28, time_zone: "Asia/Shanghai")
     @item = @plan.items.create!(sku_code: @sku.sku_code, sku_product: @product, platform_sku_id: "1001", boxes: 2, pcs: 10, units: 20)
-    @pallet = @plan.pallets.create!(position: 1, layout: {}, metrics: {})
+    @pallet = @plan.pallets.create!(position: 1, layout: { weight: 100 }, metrics: { height: 120, gross_weight: 125, boxes: 2, units: 20 })
     @pallet.items.create!(pallet_plan_item: @item, boxes: 2, units: 20, layout: {})
     Ec::SkuBatch.create!(sku: @sku, batch_code: "SUPPLY-#{@token}", status: "received", purchased_quantity: 100, received_quantity: 100, purchase_unit_price_cny: 1)
     @submission = @plan.create_ozon_supply_submission!(request_key: SecureRandom.uuid, data: { "supply_type" => "DIRECT" })
@@ -90,6 +90,22 @@ class Ec::PalletPlans::OzonSupplyRunnerTest < ActiveSupport::TestCase
     2.times { run_step }
     assert_equal 1, @client.calls.count { |call| call.first == :create_supply }
     assert_equal 1, @client.calls.count { |call| call.first == :create_cargoes }
+  end
+
+  test "box cargoes conserve quantities and fill platform IDs through the complete workflow" do
+    @pallet.update!(cargo_type: "box", metrics: { gross_weight: 10 })
+    @pallet.items.sole.update!(boxes: 1, units: 10)
+    second = @plan.pallets.create!(position: 2, cargo_type: "box", metrics: { gross_weight: 10 })
+    second.items.create!(pallet_plan_item: @item, boxes: 1, units: 10)
+    @client.responses[:cargoes_info]["result"]["cargoes"] << { "key" => "#{@plan.plan_no}-2", "value" => { "cargo_id" => 790 } }
+    ready_to_submit
+    7.times { run_step }
+    assert_equal "completed", @submission.reload.state, @submission.last_error
+    cargoes = @client.calls.find { |call| call.first == :create_cargoes }.last.fetch(:cargoes)
+    assert_equal %w[BOX BOX], cargoes.map { |cargo| cargo.dig(:value, :type) }
+    assert_equal [10, 10], cargoes.map { |cargo| cargo.dig(:value, :items).sole[:quantity] }
+    assert_equal ["789", "790"], @plan.pallets.reload.map(&:ozon_cargo_id)
+    assert_equal [2, 2], cargoes.map { |cargo| cargo.dig(:value, :items).sole[:quant] }
   end
 
   test "authorizes the submitting user when a workbench plan has a different creator" do
@@ -264,7 +280,7 @@ class Ec::PalletPlans::OzonSupplyRunnerTest < ActiveSupport::TestCase
 
   test "multiple pallets conserve units and receive distinct platform cargo IDs" do
     @pallet.items.sole.update!(boxes: 1, units: 10)
-    second = @plan.pallets.create!(position: 2, layout: {}, metrics: {})
+    second = @plan.pallets.create!(position: 2, layout: { weight: 100 }, metrics: { height: 120, gross_weight: 125, boxes: 1, units: 10 })
     second.items.create!(pallet_plan_item: @item, boxes: 1, units: 10, layout: {})
     @client.responses[:cargoes_info]["result"]["cargoes"] << { "key" => "#{@plan.plan_no}-2", "value" => { "cargo_id" => 790 } }
     ready_to_submit

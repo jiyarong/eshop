@@ -6,7 +6,7 @@ class RecalculateOzonSizeCategoriesFromUnitDimensionsTest < ActiveSupport::TestC
 
   test "backfills unit categories including missing values and can restore carton categories" do
     token = SecureRandom.hex(6).upcase
-    dimensions = [24.5, 45, 221, nil, 0].each_with_index.map do |length, index|
+    dimensions = [24.5, 45.01, 221, nil, 0].each_with_index.map do |length, index|
       sku = Ec::Sku.create!(sku_code: "UNIT-MIGRATION-#{token}-#{index}")
       dimension = sku.create_dimension!(inner_length_cm: length, inner_width_cm: 9.2,
         inner_height_cm: 7, inner_box_weight_kg: 0.35, outer_length_cm: 48.5,
@@ -18,10 +18,10 @@ class RecalculateOzonSizeCategoriesFromUnitDimensionsTest < ActiveSupport::TestC
 
     2.times do
       migration.suppress_messages { migration.up }
-      assert_equal %w[normal kgt oversize unknown unknown], dimensions.map { |dimension| dimension.reload.ozon_size_category }
+      assert_equal %w[normal non_sortable oversize unknown unknown], dimensions.map { |dimension| dimension.reload.ozon_size_category }
     end
 
     migration.suppress_messages { migration.down }
-    assert_equal ["kgt"] * 5, dimensions.map { |dimension| dimension.reload.ozon_size_category }
+    assert_equal ["non_sortable"] * 5, dimensions.map { |dimension| dimension.reload.ozon_size_category }
   end
 end

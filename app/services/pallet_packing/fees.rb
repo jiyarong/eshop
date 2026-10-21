@@ -1,7 +1,8 @@
 module PalletPacking
   class Fees
-    def initialize(profile:, items:, settings:, pallets:)
-      @profile, @items, @settings, @pallets = profile, items, settings, pallets
+    def initialize(profile:, items:, settings:, pallets:, mode: :pallet)
+      raise ArgumentError, "unsupported shipping mode" unless %i[pallet box].include?(mode.to_sym)
+      @profile, @items, @settings, @pallets, @mode = profile, items, settings, pallets, mode.to_sym
     end
 
     def call
@@ -10,7 +11,7 @@ module PalletPacking
         zones = pallet[:zones]
         volume_known = zones.all? { |zone| @items[zone[:item_index]][:unit_volume_l] }
         goods_l = volume_known ? zones.sum { |zone| goods_volume(zone) } : nil
-        bill_l = goods_l && [goods_l.ceil, 1900].max
+        bill_l = goods_l && (@mode == :box ? goods_l.ceil : [goods_l.ceil, 1900].max)
         missing = []
         route = handling = storage = 0.0
         if @profile == "ozon_fbo"

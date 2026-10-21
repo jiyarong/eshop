@@ -10,6 +10,8 @@ module Ec
       end
 
       def call
+        return @result if defined?(@result)
+
         base = BaseStockQuery.new(sku_codes: @sku_codes, store_id: @store_id).call
         reservations = reservation_rows
         @result = @sku_codes.index_with do |code|

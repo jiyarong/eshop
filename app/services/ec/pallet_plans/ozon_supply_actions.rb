@@ -25,6 +25,9 @@ module Ec
           raise Error.new(:invalid_timeslot) unless timeslot
           plan = @submission.pallet_plan
           raise Error.new(:invalid_status) unless plan.status.in?(Ec::PalletPlan::EDITABLE_STATUSES) && plan.ozon_order_id.blank?
+          CargoValidation.new(plan: plan, drop_off: @submission.data["drop_off"],
+            drop_off_name: @submission.data["drop_off_name"],
+            warehouse: @submission.data.dig("warehouse", "storage_warehouse")).call
           availability = Availability.new(sku_codes: plan.items.map(&:sku_code), excluding_plan_id: plan.id, store_id: plan.store_id).call
           plan.items.each do |item|
             raise Error.new(:insufficient_stock, sku: item.sku_code) if availability.fetch(item.sku_code).fetch(:available_quantity) < item.units

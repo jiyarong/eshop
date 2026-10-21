@@ -2,7 +2,7 @@
 <div class="report-stack pallet-workbench"
      data-controller="pallet-workbench"
      data-pallet-workbench-catalogue-value="<%= @catalogue.to_json %>"
-     data-pallet-workbench-context-value="<%= { plan_id: @plan&.id, store_id: @store&.id, cluster_id: @cluster_id, from_date: @from_date, to_date: @to_date, target_days: @target_days, time_zone: user_time_zone, lock_version: @plan&.lock_version }.to_json %>"
+     data-pallet-workbench-context-value="<%= { plan_id: @plan&.id, store_id: @store&.id, cluster_id: @cluster_id, from_date: @from_date, to_date: @to_date, time_zone: user_time_zone, lock_version: @plan&.lock_version }.merge(@coverage).to_json %>"
      data-pallet-workbench-initial-value="<%= pallet_workbench_initial_items.to_json %>"
      data-pallet-workbench-allocations-value="<%= pallet_workbench_initial_allocations.to_json %>"
      data-pallet-workbench-preview-url-value="<%= preview_reports_pallet_workbench_path(format: :json, locale: I18n.locale) %>"
@@ -31,6 +31,8 @@
       <details class="pallet-workbench__advanced" <%= 'open' if [params[:developer_id], params[:operator_id], params[:shortage_gt]].any?(&:present?) %>>
         <summary><%= t("pallet_workbench.more_filters") %></summary>
         <div class="report-form">
+          <% %i[min_days max_days].each do |key| %><div class="field"><%= form.label key, t("pallet_workbench.#{key}") %><%= form.number_field key, value: @coverage[key], min: 1, max: 180 %></div><% end %>
+          <label class="checkbox-option"><%= hidden_field_tag :fill_free_space, "0" %><%= check_box_tag :fill_free_space, "1", @coverage[:fill_free_space] %><%= t("pallet_workbench.fill_free_space") %></label>
           <%= render "shared/responsible_user_filters", dom_id_prefix: "pallet-workbench-responsible", field_class: "" %>
           <div class="field"><%= form.label :shortage_gt, t("pallet_workbench.shortage_gt") %><%= form.number_field :shortage_gt, value: params[:shortage_gt], min: 0 %></div>
           <label class="checkbox-option"><%= check_box_tag :packaging_complete, "1", params[:packaging_complete] == "1" %><%= t("pallet_workbench.packaging_complete") %></label>
@@ -68,7 +70,7 @@
                 <% %i[shortage days_of_stock].each do |key| %><td class="numeric"><%= row[key].nil? ? t("common.empty_value") : number_with_precision(row[key], precision: 0) %></td><% end %>
                 <td class="numeric"><% if row[:reserved_quantity].to_i.positive? %><del><%= row[:fbs_available] %></del><br><% end %><strong><%= row[:fbs_allocatable] %></strong><small class="pallet-workbench__hint"><%= t("pallet_workbench.carton_size", count: row[:pcs]) if row[:pcs].to_i.positive? %></small></td>
                 <td><%= t("pallet_workbench.categories.#{row[:ozon_size_category] || Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN}") %></td>
-                <td class="numeric"><strong><%= row[:suggested_boxes] %></strong><% if row[:exclusion_reason].present? %><small class="pallet-workbench__exclusion"><%= t("pallet_workbench.exclusions.#{row[:exclusion_reason]}", default: t("pallet_workbench.exclusions.packaging_incomplete")) %></small><% end %></td>
+                <td class="numeric"><strong><%= row[:suggested_boxes] %></strong><small class="pallet-workbench__hint"><%= t("pallet_workbench.box_range", min: row[:min_boxes], max: row[:max_boxes]) %></small><% if row[:exclusion_reason].present? %><small class="pallet-workbench__exclusion"><%= t("pallet_workbench.exclusions.#{row[:exclusion_reason]}", default: t("pallet_workbench.exclusions.packaging_incomplete")) %></small><% end %></td>
                 <% %i[daily_sales sales_quantity available inbound].each do |key| %><td class="numeric pallet-workbench__stock-detail"><%= number_with_precision(row[key], precision: key == :daily_sales ? 2 : 0) %></td><% end %>
                 <td class="numeric pallet-workbench__stock-detail"><%= row[:reserved_quantity] %></td>
               </tr><% end %></tbody>

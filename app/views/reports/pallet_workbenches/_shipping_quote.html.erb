@@ -1,0 +1,20 @@
+<details open>
+  <summary><%= t("pallet_workbench.shipping.comparison") %></summary>
+  <p class="pallet-workbench__hint"><%= t("pallet_workbench.shipping.scope") %></p>
+  <%= table_viewport do %>
+    <table class="prod-tbl"><thead><tr><% %w[mode bill_l rate cost status].each do |key| %><th><%= t("pallet_workbench.shipping.#{key}") %></th><% end %></tr></thead>
+      <tbody><% %i[box pallet].each do |mode| %><% entry = quote.fetch(mode) %><tr>
+        <td><%= t("pallet_workbench.shipping.#{mode}") %></td>
+        <td><%= entry[:bill_l] || t("common.empty_value") %></td>
+        <td><%= entry[:rate] ? number_with_precision(entry[:rate], precision: 4) : t("pallet_workbench.shipping.unknown") %></td>
+        <td><%= entry[:cost] ? number_with_precision(entry[:cost], precision: 2) : t("pallet_workbench.shipping.unknown") %></td>
+        <td><%= entry[:available] ? t("pallet_workbench.shipping.available") : t("pallet_workbench.shipping.reasons.#{entry[:blocked_by]}") %></td>
+      </tr><% end %></tbody>
+    </table>
+  <% end %>
+  <p><%= quote[:recommended] ? t("pallet_workbench.shipping.recommended", mode: t("pallet_workbench.shipping.#{quote[:recommended]}")) : t("pallet_workbench.shipping.unknown") %></p>
+  <% if quote[:recommendation_reason].to_s == "only_available" %><p class="pallet-workbench__hint"><%= t("pallet_workbench.shipping.only_available") %></p><% end %>
+  <% if interactive && quote[:recommended] %><button type="button" class="button button-secondary" data-mode="<%= quote[:recommended] %>" data-action="pallet-workbench#useShippingMode"><%= t("pallet_workbench.shipping.apply") %></button><% end %>
+  <% if quote[:break_even_volume_l] %><p><%= t("pallet_workbench.shipping.break_even", volume: number_with_precision(quote[:break_even_volume_l], precision: 0)) %></p><% end %>
+  <p class="pallet-workbench__hint"><%= t("pallet_workbench.shipping.source", date: quote[:shipping_date], snapshot: quote[:snapshot_id] || t("common.empty_value")) %></p>
+</details>
