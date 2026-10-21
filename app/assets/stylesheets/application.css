@@ -10317,6 +10317,15 @@ thead .table-sticky-column {
   outline-offset: -2px;
 }
 
+.profit-prediction-process__scenario-tab-stores {
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .profit-prediction-process__scenario-tab-primary,
 .profit-prediction-process__scenario-tab-secondary {
   overflow: hidden;

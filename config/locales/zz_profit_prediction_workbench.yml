@@ -59,6 +59,7 @@ zh:
       scenarios:
         hide: "隐藏该场景"
         menu_label: "场景菜单"
+        stores_title: "代表店铺"
         restore_label: "恢复被隐藏的场景"
         restore_one: "恢复"
         restore_all: "全部恢复"
@@ -518,6 +519,7 @@ en:
       scenarios:
         hide: "Hide this scenario"
         menu_label: "Scenario menu"
+        stores_title: "Representative stores"
         restore_label: "Restore hidden scenarios"
         restore_one: "Restore"
         restore_all: "Restore all"
@@ -977,6 +979,7 @@ ru:
       scenarios:
         hide: "Скрыть сценарий"
         menu_label: "Меню сценария"
+        stores_title: "Представительные магазины"
         restore_label: "Вернуть скрытые сценарии"
         restore_one: "Вернуть"
         restore_all: "Вернуть все"

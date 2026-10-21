@@ -610,6 +610,10 @@
               data-row-key="<%= row_key %>"
               data-action="click->profit-prediction#selectScenarioTab keydown->profit-prediction#selectScenarioTabWithKeyboard"
             >
+              <% scenario_store_names = (@scenario_stores || {})[scenario_key.(context)] || [] %>
+              <% if scenario_store_names.any? %>
+                <span class="profit-prediction-process__scenario-tab-stores" title="<%= t("reports.profit_prediction.scenarios.stores_title") %>: <%= scenario_store_names.join(" · ") %>"><i class="bi bi-shop" aria-hidden="true"></i> <%= scenario_store_names.join(" · ") %></span>
+              <% end %>
               <span class="profit-prediction-process__scenario-tab-primary">
                 <%= profit_prediction_identity_value(context, :platform) %>
                 <%= profit_prediction_identity_value(context, :market) %>

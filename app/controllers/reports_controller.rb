@@ -1390,6 +1390,7 @@ class ReportsController < ApplicationController
       load_ozon_logistics_tariff_options
       @hidden_scenario_keys = Ec::SkuScenarioVisibility.hidden_keys_for(@sku)
       @scenario_sales = load_scenario_sales
+      @scenario_stores = load_scenario_stores
     end
     @attachments = @sku.attachments.sort_by { |attachment| [attachment.created_at || Time.zone.at(0), attachment.id || 0] }.reverse
     @prototype_media = @attachments.reverse.find do |attachment|
@@ -2721,6 +2722,14 @@ class ReportsController < ApplicationController
   rescue StandardError => e
     Rails.logger.warn("[ReportsController] scenario sales failed for #{@sku.sku_code}: #{e.class} #{e.message}")
     nil
+  end
+
+  # The stores that stand for each scenario, shown above its tab. A name is an aid: without them the page still opens.
+  def load_scenario_stores
+    Ec::SkuScenarioStores.call(sku: @sku, today: user_today, time_zone: user_time_zone)
+  rescue StandardError => e
+    Rails.logger.warn("[ReportsController] scenario stores failed for #{@sku.sku_code}: #{e.class} #{e.message}")
+    {}
   end
 
   def load_ozon_logistics_tariff_options
