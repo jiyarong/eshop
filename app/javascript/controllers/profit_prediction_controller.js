@@ -1450,8 +1450,9 @@ export default class extends Controller {
     this.renderProcessSourceBasis(cell, sourceKey);
   }
 
-  // "Basis: ..." (which data it comes from) is the heading; below it, open by default, how the figure is worked out and,
-  // in a paragraph of its own, how to check it by hand.
+  // "Basis: ..." (which data it comes from) is the heading of a collapsed block that opens to how the figure is worked out
+  // and, in a paragraph of its own, how to check it by hand. It shows up together with the link that applies the real
+  // figure (nothing to check before the figure has been fetched) and goes again when that link does.
   renderProcessSourceBasis(cell, sourceKey) {
     cell.querySelectorAll(":scope > .profit-prediction-process__basis").forEach((element) => element.remove());
     const keys = SOURCE_BASIS_KEYS[sourceKey];
@@ -1468,7 +1469,7 @@ export default class extends Controller {
       details.className = "profit-prediction-process__basis";
       const summary = document.createElement("summary");
       summary.textContent = scope;
-      details.open = true;
+      details.hidden = true;
       const how = entry[`${platform}_how`] || entry.how || "";
       const [principle, check] = how.split(/(?=核对：|To check:|Проверка:)/);
       details.append(summary);
@@ -1480,6 +1481,19 @@ export default class extends Controller {
       });
       cell.append(details);
     });
+    this.observeSourceBasis(cell);
+  }
+
+  observeSourceBasis(cell) {
+    const sync = () => {
+      const fetched = Boolean(cell.querySelector(".profit-prediction-process__source-link"));
+      cell.querySelectorAll(":scope > .profit-prediction-process__basis").forEach((details) => { details.hidden = !fetched; });
+    };
+    if (!cell.dataset.basisObserved) {
+      cell.dataset.basisObserved = "true";
+      new MutationObserver(sync).observe(cell, { childList: true, subtree: true });
+    }
+    sync();
   }
 
   renderProcessSourceControls(cell, sourceKey) {

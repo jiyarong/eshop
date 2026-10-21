@@ -1074,4 +1074,7 @@ test("every source cell says which data it takes the figures from, and how to ch
   assert.match(keys, /wb_logistics_tariffs: \["wb_logistics_tariffs", "actual_logistics"\]/, "the cell that offers both the tariff and the real figures explains both");
   assert.match(source, /this\.renderProcessSourceBasis\(cell, sourceKey\)/);
   assert.match(source, /summary\.textContent = scope/);
+  assert.match(source, /details\.hidden = true/, "nothing to check before the real figure has been fetched");
+  assert.match(source, /new MutationObserver\(sync\)/, "it shows with the link that applies the figure");
+  assert.doesNotMatch(source, /details\.open = true/, "collapsed by default");
 });
