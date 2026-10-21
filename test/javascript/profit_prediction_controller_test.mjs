@@ -765,7 +765,7 @@ test("unsaved edits no longer lock the version switcher, only a save in progress
     versionDirty: true,
     saving: false,
     navigationWasDisabled: false,
-    hasSaveButtonTarget: false,
+    saveButtonTargets: [],
     hasNavigationControlTarget: true,
     navigationControlTarget: navigation,
     hasModeStatusTarget: false,
@@ -854,7 +854,9 @@ function modeStatusController({ dirtyRows = [], versionDirty = false } = {}) {
     dirtyRows: new Set(dirtyRows),
     versionDirty,
     saving: false,
-    hasSaveButtonTarget: false,
+    saveButtonTargets: [],
+    rowTargets: [],
+    newRecordValue: false,
     hasNavigationControlTarget: false,
     hasModeStatusTarget: true,
     modeStatusTarget: {
@@ -1077,4 +1079,36 @@ test("every source cell says which data it takes the figures from, and how to ch
   assert.match(source, /details\.hidden = true/, "nothing to check before the real figure has been fetched");
   assert.match(source, /new MutationObserver\(sync\)/, "it shows with the link that applies the figure");
   assert.doesNotMatch(source, /details\.open = true/, "collapsed by default");
+});
+
+test("the save buttons of the toolbar and of the sticky header follow the same state", async () => {
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+  const view = await readFile("app/views/reports/_sku_profit_prediction.html.erb", "utf8");
+
+  assert.equal((view.match(/data-profit-prediction-target="saveButton"/g) || []).length, 2, "one in the toolbar, one in the sticky header");
+  assert.doesNotMatch(source, /saveButtonTarget\b/, "every save button is handled, not just the first");
+  assert.match(source, /this\.saveButtonTargets\.forEach\(\(button\) => \{ button\.hidden = !this\.calculationMode; \}\)/);
+  assert.match(source, /this\.saveButtonTargets\.forEach\(\(button\) => \{ button\.disabled = saveDisabled; \}\)/);
+  assert.match(source, /this\.saveButtonTargets\.forEach\(\(button\) => \{ button\.disabled = disabled; \}\)/);
+});
+
+test("both save buttons are enabled by an edit and disabled while saving or when nothing changed", () => {
+  const first = { disabled: true, hidden: false };
+  const second = { disabled: true, hidden: false };
+  const controller = new ProfitPredictionController();
+  Object.assign(controller, {
+    calculationMode: true, dirtyRows: new Set(), versionDirty: false, saving: false, saveButtonTargets: [ first, second ],
+    rowTargets: [], newRecordValue: false, hasNavigationControlTarget: false, hasModeStatusTarget: false
+  });
+
+  controller.updateControls();
+  assert.deepEqual([ first.disabled, second.disabled ], [ true, true ], "nothing to save");
+
+  controller.dirtyRows.add("row-1");
+  controller.updateControls();
+  assert.deepEqual([ first.disabled, second.disabled ], [ false, false ]);
+
+  controller.saving = true;
+  controller.updateControls();
+  assert.deepEqual([ first.disabled, second.disabled ], [ true, true ], "a save is running");
 });

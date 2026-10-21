@@ -3755,7 +3755,7 @@ export default class extends Controller {
     if (this.hasNavigationControlTarget) {
       this.navigationControlTarget.disabled = this.navigationWasDisabled;
     }
-    if (this.hasSaveButtonTarget) this.saveButtonTarget.hidden = !this.calculationMode;
+    this.saveButtonTargets.forEach((button) => { button.hidden = !this.calculationMode; });
     this.updateControls();
   }
 
@@ -3767,7 +3767,8 @@ export default class extends Controller {
 
   updateControls() {
     const dirty = this.dirtyRows.size > 0 || this.versionDirty;
-    if (this.hasSaveButtonTarget) this.saveButtonTarget.disabled = !(dirty || this.unsavedNewRows().length > 0) || this.saving;
+    const saveDisabled = !(dirty || this.unsavedNewRows().length > 0) || this.saving;
+    this.saveButtonTargets.forEach((button) => { button.disabled = saveDisabled; });
     if (this.hasNavigationControlTarget) {
       // Unsaved edits do not lock the switcher: changeVersion asks before throwing them away.
       this.navigationControlTarget.disabled = this.navigationWasDisabled || this.saving;
@@ -3948,7 +3949,7 @@ export default class extends Controller {
   }
 
   setButtonsDisabled(disabled) {
-    if (this.hasSaveButtonTarget) this.saveButtonTarget.disabled = disabled;
+    this.saveButtonTargets.forEach((button) => { button.disabled = disabled; });
   }
 
   jsonHeaders() {

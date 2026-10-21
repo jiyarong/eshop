@@ -581,6 +581,13 @@
           ><%= t("reports.profit_prediction.scenarios.mode_actual") %></button>
         </nav>
         <span class="profit-prediction-process__scenario-mode-note" data-profit-prediction-target="scenarioModeNote" hidden></span>
+        <%# The same save as the toolbar's: the header sticks while the calculation scrolls, so a save needs no scroll to the top. %>
+        <% unless profit_version_readonly %>
+          <button type="button" class="btn btn-primary btn-sm profit-prediction-process__save" data-profit-prediction-target="saveButton" data-action="profit-prediction#save">
+            <i class="bi bi-floppy" aria-hidden="true"></i>
+            <%= t("reports.profit_prediction.actions.save_calculation") %>
+          </button>
+        <% end %>
       </div>
       <nav
         class="profit-prediction-process__scenario-tabs"

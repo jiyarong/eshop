@@ -465,6 +465,8 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "td[data-result-field='profit_cny']", text: "12.35"
     assert_select "td[data-result-field='margin']", text: "12.35%"
     assert_select "button[data-action='profit-prediction#save']:not([hidden])"
+    assert_select "button[data-action='profit-prediction#save']", count: 2
+    assert_select ".profit-prediction-process__header button[data-action='profit-prediction#save']", count: 1
     assert_includes response.body, "佣金基准价（RUB）"
     assert_includes response.body, "买家实付价（含 VAT，RUB）"
     assert_includes response.body, "目标利润率"

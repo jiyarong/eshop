@@ -10091,6 +10091,14 @@ thead .table-sticky-column {
   font-size: 12px;
 }
 
+.profit-prediction-process__save {
+  margin-left: auto;
+}
+
+.profit-prediction-process__save[hidden] {
+  display: none;
+}
+
 .profit-prediction-process__scenario-mode-note[hidden] {
   display: none;
 }
