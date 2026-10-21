@@ -6,11 +6,24 @@ module Ec
       end
 
       def call
+        attributes = @attributes.to_h.symbolize_keys
+        delivery_plan = @plan ? @plan.delivery_plan : (Ec::DeliveryPlan.find(attributes[:delivery_plan_id]) if attributes[:delivery_plan_id].present?)
+        if delivery_plan
+          delivery_plan.with_lock { persist }
+        else
+          persist
+        end
+      end
+
+      private
+
+      def persist
         built = Build.new(user: @user, attributes: @attributes, existing_plan: @plan).call
         plan = @plan || Ec::PalletPlan.new(created_by: @user, store: built[:store])
         plan.with_lock do
           raise Error.new(:not_editable) if @plan && !plan.editable?
           plan.assign_attributes(
+            delivery_plan: built[:delivery_plan],
             store: built[:store], macrolocal_cluster_id: built[:cluster].macrolocal_cluster_id, cluster_name: built[:cluster].cluster_name,
             from_date: built[:from_date], to_date: built[:to_date], target_days: built[:target_days], time_zone: built[:time_zone],
             settings: built[:result][:settings], calculation: built[:result], status: plan.status.presence || "draft"

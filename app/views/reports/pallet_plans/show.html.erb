@@ -8,6 +8,7 @@
      data-ozon-supply-poll-error-value="<%= t('pallet_workbench.supply_api.poll_error') %>">
   <header class="ozon-warehouse-heading"><div><h1 class="page-title"><%= @plan.plan_no %></h1><p class="page-subtitle"><%= @plan.store.store_name %> · <%= @plan.cluster_name %></p></div><%= link_to t("pallet_workbench.plans"), reports_pallet_plans_path, class: "button button-secondary" %></header>
   <section class="panel" data-ozon-supply-target="workflow"><%= render "workflow", plan: @plan %></section>
+  <% if @plan.delivery_plan %><section class="panel"><%= link_to t("delivery_workbench.source_plan", number: @plan.delivery_plan.plan_no), reports_delivery_plan_path(@plan.delivery_plan) %></section><% end %>
   <section class="panel" data-ozon-supply-target="submissionPanel" <%= 'hidden' unless @plan.ozon_supply_submission %>>
     <div data-ozon-supply-target="content"><%= render "supply_submission", plan: @plan %></div>
   </section>

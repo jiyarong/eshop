@@ -1,0 +1,152 @@
+---
+zh:
+  delivery_workbench:
+    title: 送仓工作台
+    description: 先选择送仓商品，再指定本周目标集群；数量可在后续按箱或按托打包时确定和调整。
+    plans: 送仓计划
+    new: 新建送仓计划
+    step_demand: 01 · 确定送仓需求
+    manifest: 送仓商品清单
+    demand_hint: 先选择 SKU，数量可以留空，打包时再确定。填写的预估量和缺货建议仅供参考，后续可按库存和装载情况调整；缺少箱规也可先保存计划。
+    destination_hint: 目标集群按运营安排选择。即使当前没有缺货，也可以送仓。
+    plan_hint: 送仓计划不占库存；打包批次确认后占用库存。
+    select_suggested: 加入全部筛选结果的建议送仓量
+    suggested_units: 建议送仓量（件）
+    packable_units: 本批可用库存（件）
+    units: 预估送仓量（件，可选）
+    quantity_pending: 打包时确定
+    week: 送仓周（所选日期所在自然周）
+    save: 保存送仓计划
+    saved: 送仓计划已保存
+    packaging_ready: 箱规已齐
+    packaging_pending: 箱规待补，可先计划
+    packing_plans: 打包批次
+    pack: 02 · 分配箱 / 托打包
+    edit: 调整送仓计划
+    cancel: 取消送仓计划
+    allocated: 批次累计（件）
+    remaining: 预估待送（件）
+    reference_units: 参考待送（件）
+    source_plan: 送仓计划：%{number}
+    packing_hint: 预估量不限制打包，可按可用库存、箱规和装载情况增减数量。建议箱数参考预估待送量，未填预估时参考销量；覆盖区间用于自动增补。批次累计含草稿和已完成批次，取消批次后扣除；再次打包前请核对累计数量。
+    empty: 暂无送仓计划
+    no_packing: 尚未分配打包批次
+    statuses:
+      active: 待执行
+      cancelled: 已取消
+    messages:
+      saving: 正在保存送仓计划…
+      failed: 保存失败，请重试。
+  pallet_workbench:
+    errors:
+      delivery_inactive: 送仓计划已取消，不能继续编辑或分配。
+      delivery_sku_unavailable: "%{sku} 不在送仓计划中，请先加入计划。"
+      delivery_sku_in_use: "%{sku} 已用于打包批次，请先取消相关批次再移除商品。"
+      delivery_has_packages: 请先取消尚未取消的打包批次，再取消送仓计划。
+en:
+  delivery_workbench:
+    title: Warehouse delivery workbench
+    description: Choose products first, then select this week’s destination cluster.
+      Determine and adjust quantities later while packing boxes or pallets.
+    plans: Delivery plans
+    new: New delivery plan
+    step_demand: 01 · Plan delivery demand
+    manifest: Delivery manifest
+    demand_hint: Select SKUs first; quantities can be left blank until packing. Estimates
+      and shortage suggestions are advisory. Adjust quantities later to suit available
+      stock and loading capacity. Missing carton dimensions do not block planning.
+    destination_hint: Choose a destination cluster based on operational needs. A cluster
+      can receive stock even when it has no current shortage.
+    plan_hint: Delivery plans do not reserve stock. Confirmed packing batches reserve
+      stock.
+    select_suggested: Add suggested quantities from all filtered results
+    suggested_units: Suggested units
+    packable_units: Stock available for this batch
+    units: Estimated units (optional)
+    quantity_pending: Determine during packing
+    week: Delivery week (week containing the selected date)
+    save: Save delivery plan
+    saved: Delivery plan saved
+    packaging_ready: Carton data ready
+    packaging_pending: Carton data pending; planning available
+    packing_plans: Packing batches
+    pack: 02 · Allocate boxes / pallets
+    edit: Edit delivery plan
+    cancel: Cancel delivery plan
+    allocated: Total units in batches
+    remaining: Estimated units remaining
+    reference_units: Reference units to send
+    source_plan: 'Delivery plan: %{number}'
+    packing_hint: Estimates do not limit packing. Adjust quantities to suit stock,
+      carton data and loading capacity. Suggested boxes use the remaining estimate,
+      or sales when no estimate is set; coverage ranges guide automatic top-ups.
+      Batch totals include drafts and completed batches, excluding cancelled batches.
+      Check the total before packing another batch.
+    empty: No delivery plans
+    no_packing: No packing batches allocated
+    statuses:
+      active: Pending execution
+      cancelled: Cancelled
+    messages:
+      saving: Saving delivery plan…
+      failed: Save failed. Please retry.
+  pallet_workbench:
+    errors:
+      delivery_inactive: This delivery plan is cancelled and cannot be edited or allocated.
+      delivery_sku_unavailable: '%{sku} is not in this delivery plan. Add it to the plan first.'
+      delivery_sku_in_use: '%{sku} is used in packing batches. Cancel those batches before removing it.'
+      delivery_has_packages: Cancel the packing batches before cancelling this delivery
+        plan.
+ru:
+  delivery_workbench:
+    title: Рабочее место поставок
+    description: Сначала выберите товары и целевой кластер на эту неделю.
+      Количество можно определить и изменить позже при упаковке в коробки или на паллеты.
+    plans: Планы поставок
+    new: Новый план поставки
+    step_demand: 01 · Планирование поставки
+    manifest: Состав поставки
+    demand_hint: Сначала выберите SKU. Количество можно оставить пустым до упаковки.
+      Оценки и рекомендации по дефициту справочные; количество можно менять с учётом
+      остатков и вместимости. План можно сохранить без размеров коробок.
+    destination_hint: Выберите кластер по операционной необходимости. Поставку можно
+      оформить и в кластер без текущего дефицита.
+    plan_hint: План поставки не резервирует остатки. Остатки резервируются при подтверждении
+      упаковочной партии.
+    select_suggested: Добавить рекомендации из всех отфильтрованных результатов
+    suggested_units: Рекомендуется, шт.
+    packable_units: Доступный остаток для партии, шт.
+    units: Оценка количества, шт. (необязательно)
+    quantity_pending: Определить при упаковке
+    week: Неделя поставки (неделя выбранной даты)
+    save: Сохранить план поставки
+    saved: План поставки сохранён
+    packaging_ready: Данные коробки заполнены
+    packaging_pending: Данные коробки ожидаются; планирование доступно
+    packing_plans: Упаковочные партии
+    pack: 02 · Распределить по коробкам / паллетам
+    edit: Изменить план поставки
+    cancel: Отменить план поставки
+    allocated: Всего в партиях, шт.
+    remaining: Остаток по оценке, шт.
+    reference_units: Ориентир поставки, шт.
+    source_plan: 'План поставки: %{number}'
+    packing_hint: Оценка не ограничивает упаковку. Меняйте количество с учётом остатков,
+      коробок и вместимости. Рекомендуемое число коробок учитывает остаток оценки,
+      а без оценки — продажи; диапазон покрытия используется для автоматического дополнения.
+      Итог включает черновики и завершённые партии, исключая отменённые.
+      Проверьте итог перед созданием следующей партии.
+    empty: Нет планов поставок
+    no_packing: Упаковочные партии ещё не созданы
+    statuses:
+      active: Ожидает исполнения
+      cancelled: Отменён
+    messages:
+      saving: Сохранение плана поставки…
+      failed: Ошибка сохранения. Повторите попытку.
+  pallet_workbench:
+    errors:
+      delivery_inactive: План отменён; редактирование и распределение недоступны.
+      delivery_sku_unavailable: '%{sku} отсутствует в плане поставки. Сначала добавьте SKU в план.'
+      delivery_sku_in_use: '%{sku} используется в упаковочных партиях. Отмените их перед удалением SKU.'
+      delivery_has_packages: Сначала отмените упаковочные партии.

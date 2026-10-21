@@ -1,5 +1,6 @@
 import "@hotwired/turbo-rails";
 import { Application } from "@hotwired/stimulus";
+import DeliveryWorkbenchController from "./controllers/delivery_workbench_controller";
 import AgentFormController from "./controllers/agent_form_controller";
 import AttachmentPreviewController from "./controllers/attachment_preview_controller";
 import AttachmentUploadController from "./controllers/attachment_upload_controller";
@@ -107,4 +108,5 @@ Stimulus.register("table-row-link", TableRowLinkController);
 Stimulus.register("sticky-table-header", StickyTableHeaderController);
 Stimulus.register("toast", ToastController);
 Stimulus.register("weekly-profit-filter", WeeklyProfitFilterController);
+Stimulus.register("delivery-workbench", DeliveryWorkbenchController);
 Stimulus.register("yclaw-download", YclawDownloadController);

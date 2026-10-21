@@ -1,0 +1,13 @@
+<% content_for :title, t("delivery_workbench.plans") %>
+<div class="report-stack">
+  <header class="ozon-warehouse-heading"><h1 class="page-title"><%= t("delivery_workbench.plans") %></h1><div><%= link_to t("delivery_workbench.new"), reports_delivery_workbench_path, class: "button" %> <%= link_to t("delivery_workbench.packing_plans"), reports_pallet_plans_path, class: "button button-secondary" %></div></header>
+  <section class="panel table-list-card">
+    <%= render "reports/pallet_workbenches/pagination", rows: @deliveries %>
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="inventory-list-table"><thead><tr><% %w[plan_no store cluster].each do |key| %><th><%= t("pallet_workbench.#{key}") %></th><% end %><th><%= t("delivery_workbench.week") %></th><th><%= t("pallet_workbench.status") %></th></tr></thead>
+        <tbody><% @deliveries.each do |plan| %><tr><td><%= link_to plan.plan_no, reports_delivery_plan_path(plan, locale: I18n.locale) %></td><td><%= plan.store.store_name %></td><td><%= plan.cluster_name %></td><td><%= plan.week_start %> – <%= plan.week_start + 6 %></td><td><%= t("delivery_workbench.statuses.#{plan.status}") %></td></tr><% end %></tbody>
+      </table>
+    <% end %>
+    <% if @deliveries.empty? %><div class="empty-state"><%= t("delivery_workbench.empty") %></div><% end %>
+  </section>
+</div>

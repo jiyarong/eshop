@@ -33,39 +33,46 @@ module Ec
         visible = WeeklyProfitReports::AccessScope.new(@user).visible_skus.where(sku_code: codes).pluck(:sku_code)
         raise Error.new(:sku_unavailable) unless products.keys.sort == codes.sort && visible.sort == codes.sort
         items = rows.map { |row| normalize_item(row, products.fetch(row[:sku_code].to_s.upcase)) }
+        maximize_sku = @attributes[:maximize_sku_code].presence&.upcase
+        if maximize_sku
+          raise Error.new(:sku_unavailable) unless codes.include?(maximize_sku)
+          raise Error.new(:invalid_shipping_mode) unless shipping_mode == "pallet"
+        end
+        maximizing_single = maximize_sku && @attributes[:packing_mode] == "single"
         stock_query = Availability.new(sku_codes: codes, excluding_plan_id: @existing_plan&.id, store_id: store.id)
         availability = stock_query.call
         items.each do |item|
           available = availability.fetch(item[:sku_code]).fetch(:available_quantity).to_i
-          raise Error.new(:insufficient_stock, sku: item[:sku_code]) if item[:quantity].to_i * item[:pcs].to_i > available
+          quantity = maximizing_single && item[:sku_code] == maximize_sku ? 1 : item[:quantity].to_i
+          raise Error.new(:insufficient_stock, sku: item[:sku_code]) if quantity * item[:pcs].to_i > available
+        end
+        packing_items = items.map do |item|
+          maximizing_single && item[:sku_code] == maximize_sku ? item.merge(quantity: 1) : item
         end
         allocations = @attributes[:allocations].presence
-        recommend_one = ActiveModel::Type::Boolean.new.cast(@attributes[:recommend_one])
+        recommend_one = !maximize_sku && ActiveModel::Type::Boolean.new.cast(@attributes[:recommend_one])
         if shipping_mode == "pallet" && @attributes[:packing_mode] == "single"
           raise Error.new(:single_pallet_limit) if items.size > Packing::MAX_SKUS_PER_PALLET
-          allocations = [{ items: items.map { |item| item.slice(:sku_code, :quantity) } }] unless recommend_one
+          allocations = [{ items: packing_items.map { |item| item.slice(:sku_code, :quantity) } }] unless recommend_one
         end
         settings = @attributes[:settings] || {}
         if shipping_mode == "box"
           result = BoxPacking.new(items: items, settings: settings).call
         else
-          result = Packing.new(items: items, settings: settings, allocations: recommend_one ? nil : allocations,
+          result = Packing.new(items: packing_items, settings: settings, allocations: recommend_one ? nil : allocations,
             recommend_one: recommend_one).call
         end
         if recommend_one
           quantities = result[:items].index_by { |item| item[:sku_code] }
           items = items.filter_map { |item| item.merge(quantity: quantities[item[:sku_code]][:quantity]) if quantities.key?(item[:sku_code]) }
         end
-        if shipping_mode == "pallet" && (recommend_one || ActiveModel::Type::Boolean.new.cast(@attributes[:apply_fill]))
-          demand = WorkbenchQuery.new(user: @user, store: store, cluster_id: cluster.macrolocal_cluster_id,
-            from_date: from_date, to_date: to_date, time_zone: ActiveSupport::TimeZone[@attributes[:time_zone].presence || "Asia/Shanghai"],
-            sku_codes: items.map { |item| item[:sku_code] }, excluding_plan_id: @existing_plan&.id, availability: stock_query, **range.to_h).call[:rows]
-          demand.each do |row|
-            item = items.find { |entry| entry[:sku_code] == row[:sku_code] }
-            row.merge!(range.boxes(**row.slice(:daily_sales, :available, :inbound, :planned_quantity),
-              pcs: item[:pcs].to_i, allocatable: availability.fetch(row[:sku_code])[:available_quantity]))
-          end
-          result = FillStrategy.new(items: items, demand_rows: demand, result: result, range: range,
+        stock_limits = items.to_h do |item|
+          [item[:sku_code], availability.fetch(item[:sku_code])[:available_quantity].to_i / item[:pcs].to_i]
+        end
+        if maximize_sku
+          result = Maximize.new(items: items, sku_code: maximize_sku, stock_limit: stock_limits.fetch(maximize_sku), result: result).call
+        elsif shipping_mode == "pallet" && (recommend_one || ActiveModel::Type::Boolean.new.cast(@attributes[:apply_fill]))
+          result = FillStrategy.new(items: items, stock_limits: stock_limits, result: result, enabled: range.fill_free_space,
             shipping: @attributes[:shipping] || {}).call
         end
         pallet_result = shipping_mode == "pallet" ? result : alternative_pallets(items, settings)
@@ -74,7 +81,17 @@ module Ec
           attributes: @attributes[:shipping] || {}, cluster: cluster, time_zone: @attributes[:time_zone].presence || "Asia/Shanghai").call
         raise Error.new(:shipping_unavailable) unless quote.fetch(shipping_mode.to_sym)[:available]
         result = result.merge(shipping_mode: shipping_mode, coverage: range.to_h, shipping: quote)
-        { store: store, cluster: cluster, from_date: from_date, to_date: to_date, target_days: target_days,
+        delivery_plan = @existing_plan&.delivery_plan
+        if @attributes[:delivery_plan_id].present?
+          raise Error.new(:invalid_items) if @existing_plan && @existing_plan.delivery_plan_id.to_s != @attributes[:delivery_plan_id].to_s
+          delivery_plan ||= Ec::DeliveryPlan.find(@attributes[:delivery_plan_id])
+        end
+        if delivery_plan
+          visible_skus = WeeklyProfitReports::AccessScope.new(@user).visible_skus.select(:sku_code)
+          raise ActiveRecord::RecordNotFound if delivery_plan.items.where.not(sku_code: visible_skus).exists?
+          Ec::DeliveryPlans::Allocation.validate!(plan: delivery_plan, store: store, cluster: cluster, items: items)
+        end
+        { delivery_plan: delivery_plan, store: store, cluster: cluster, from_date: from_date, to_date: to_date, target_days: target_days,
           time_zone: @attributes[:time_zone].presence || "Asia/Shanghai", items: items, result: result }
       rescue Packing::InvalidInput => error
         raise Error.new(:single_pallet_capacity) if @attributes[:packing_mode] == "single" && error.key == :allocation_pallet

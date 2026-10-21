@@ -1,12 +1,12 @@
 en:
   pallet_workbench:
-    title: Pallet workbench
-    description: "Build one pallet from replenishment needs. Carton changes validate automatically before saving."
+    title: "Delivery packing workbench"
+    description: "Choose boxes or pallets for the planned delivery quantity, validate and save a packing batch."
     more_filters: "More filters: people and stock"
     step_demand: "01 · Select replenishment"
-    step_pack: "02 · Build a pallet"
+    step_pack: "02 · Choose packing"
     step_save: "03 · Validate and save"
-    current_pallet: "Current pallet manifest"
+    current_pallet: "Current packing batch"
     local_draft: "Draft · no stock reserved"
     packing_mode: "Packing mode"
     single_mode: "One pallet (up to 5 SKUs)"
@@ -15,10 +15,12 @@ en:
     recommend_hint: "Across all filtered pages, take the top 5 eligible SKUs by shortage and fit carton counts to one pallet. Replaces the manifest; undo is available."
     eligible_count: "%{count} SKUs ready to replenish"
     stock_details: "Show sales and stock details"
+    collapse_catalogue: "Hide SKU selection"
+    expand_catalogue: "Show SKU selection"
     carton_size: "%{count} units / carton"
     undo: "Undo last change"
-    empty_manifest: "Build your next pallet"
-    empty_manifest_hint: "Recommend one pallet, or select SKUs from the list."
+    empty_manifest: "Select products for this delivery batch"
+    empty_manifest_hint: "Select SKUs and carton quantities, then choose box or pallet delivery."
     autosave_hint: "Selections and settings stay in this tab. Changes validate automatically. Save a draft, then confirm it to reserve stock."
     recalculate: "Validate again"
     packaging_details: "Packaging / orientation"
@@ -32,8 +34,8 @@ en:
     height_usage: "Height used (cm)"
     weight_usage: "Cargo weight (kg)"
     view_layout: "View layout and placement details ↓"
-    plans: Pallet plans
-    new_plan: New plan
+    plans: "Packing batches"
+    new_plan: "New packing batch"
     editing: Editing %{number}
     store: Store
     cluster: Destination cluster

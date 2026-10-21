@@ -11,6 +11,7 @@ module Ec
 
     belongs_to :store, class_name: "Ec::Store"
     belongs_to :created_by, class_name: "User"
+    belongs_to :delivery_plan, class_name: "Ec::DeliveryPlan", optional: true
     has_many :items, class_name: "Ec::PalletPlanItem", foreign_key: :pallet_plan_id, dependent: :destroy, inverse_of: :pallet_plan
     has_many :pallets, -> { order(:position) }, class_name: "Ec::Pallet", dependent: :destroy, inverse_of: :pallet_plan
     has_one :ozon_supply_submission, class_name: "Ec::OzonSupplySubmission", dependent: :destroy

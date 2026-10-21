@@ -61,9 +61,11 @@ module Reports
     end
 
     def load_workbench(operator_override: nil)
+      load_delivery_context
       @stores = Ec::Store.active.where(platform: "ozon").where.not(ozon_raw_account_id: nil).order(:store_name)
       @store = params[:store_id].present? ? @stores.find(params[:store_id]) : @stores.first
       @clusters = @store ? RawOzon::WarehouseCluster.where(account_id: @store.ozon_raw_account_id).where.not(macrolocal_cluster_id: nil)
+        .where.not(cluster_name: [nil, ""])
         .group(:macrolocal_cluster_id).order(Arel.sql("MIN(cluster_name)"))
         .pluck(:macrolocal_cluster_id, Arel.sql("MIN(cluster_name)")).map { |id, name| { id: id, name: name.presence || id.to_s } } : []
       @cluster_id = params[:cluster_id].presence&.to_i
@@ -90,17 +92,35 @@ module Reports
       if @store && @clusters.any?
         report_cluster_id = @cluster_id || @clusters.first[:id]
         report = Ec::PalletPlans::WorkbenchQuery.new(user: current_user, store: @store, cluster_id: report_cluster_id,
-          from_date: @from_date, to_date: @to_date, time_zone: user_time_zone, **@coverage,
+          from_date: @from_date, to_date: @to_date, time_zone: @delivery_plan ? ActiveSupport::TimeZone[@delivery_plan.time_zone] : user_time_zone, **@coverage,
           query: params[:q], operator_id: operator_override || @operator_id, developer_id: @developer_id,
-          sku_codes: sku_scope.select(:sku_code), excluding_plan_id: @plan&.id).call
+          sku_codes: (@delivery_plan ? sku_scope.where(sku_code: @delivery_plan.items.select(:sku_code)) : sku_scope).select(:sku_code), excluding_plan_id: @plan&.id).call
         gaps_by_cluster = report.fetch(:cluster_rows).index_by { |row| row[:cluster_name].to_s }
         @clusters = @clusters.map do |cluster|
           cluster.merge(shortage: gaps_by_cluster.dig(cluster[:name].to_s, :distribution_gap).to_i)
         end.sort_by { |cluster| [-cluster[:shortage], cluster[:name].to_s] }
 
+        @catalogue = report.fetch(:rows)
+        if @delivery_plan
+          allocated = @delivery_plan.allocated_units(excluding_plan_id: @plan&.id)
+          quantities = @delivery_plan.items.index_by(&:sku_code)
+          @catalogue.each do |row|
+            estimate = quantities.fetch(row[:sku_code]).units
+            next if estimate.nil?
+
+            remaining = [estimate - allocated.fetch(row[:sku_code], 0), 0].max
+            row[:shortage] = remaining
+            row[:suggested_boxes] = if row[:packaging_complete] && row[:sku_product_id] && row[:pcs].to_i.positive? &&
+                row[:ozon_size_category] != Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE
+              [(remaining.to_d / row[:pcs]).ceil, [row[:fbs_allocatable], 0].max / row[:pcs].to_i].min
+            else
+              0
+            end
+            row[:exclusion_reason] = nil if row[:suggested_boxes].positive?
+          end
+        end
+        @inventory_synced_at = report[:inventory_synced_at]
         if @cluster_id
-          @catalogue = report.fetch(:rows)
-          @inventory_synced_at = report[:inventory_synced_at]
           @catalogue.select! { |row| row[:shortage].to_f > params[:shortage_gt].to_f } if params[:shortage_gt].present?
           @catalogue.select! { |row| row[:packaging_complete] } if params[:packaging_complete] == "1"
           @catalogue.select! { |row| row[:fbs_allocatable].to_i >= row[:pcs].to_i && row[:pcs].to_i.positive? } if params[:allocatable_only] == "1"
@@ -113,12 +133,23 @@ module Reports
 
     def plan_attributes
       source = params[:pallet_plan].presence || params
-      source.permit(:plan_id, :store_id, :cluster_id, :from_date, :to_date, :target_days, :min_days, :max_days, :fill_free_space, :apply_fill,
+      source.permit(:delivery_plan_id, :plan_id, :store_id, :cluster_id, :from_date, :to_date, :target_days, :min_days, :max_days, :fill_free_space, :apply_fill, :maximize_sku_code,
         :shipping_mode, :time_zone, :lock_version, :packing_mode, :recommend_one,
         shipping: %i[supply_receiving_zone_key shipping_date point_type point_name],
         settings: PalletPacking::Rules.defaults("ozon_fbo").keys,
         items: %i[sku_code quantity length width height weight pcs unit_volume_l rotatable],
         allocations: [items: %i[sku_code quantity]]).to_h
+    end
+
+    def load_delivery_context
+      id = @plan&.delivery_plan_id || params[:delivery_plan_id]
+      return unless id
+
+      @delivery_plan = Ec::DeliveryPlan.find(id)
+      raise ActiveRecord::RecordNotFound if @delivery_plan.items.where.not(sku_code: access_scope.visible_skus.select(:sku_code)).exists?
+      raise Ec::PalletPlans::Error.new(:delivery_inactive) unless @delivery_plan.status == "active"
+      params.merge!(store_id: @delivery_plan.store_id, cluster_id: @delivery_plan.macrolocal_cluster_id,
+        from_date: @delivery_plan.from_date.iso8601, to_date: @delivery_plan.to_date.iso8601, target_days: @delivery_plan.target_days)
     end
 
     def render_workbench_error(error)

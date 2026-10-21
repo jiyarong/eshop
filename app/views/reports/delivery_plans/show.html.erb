@@ -1,0 +1,23 @@
+<% content_for :title, @delivery.plan_no %>
+<div class="report-stack">
+  <header class="ozon-warehouse-heading"><div><h1 class="page-title"><%= @delivery.plan_no %></h1><p class="page-subtitle"><%= @delivery.store.store_name %> · <%= @delivery.cluster_name %> · <%= @delivery.week_start %> – <%= @delivery.week_start + 6 %></p></div><%= link_to t("delivery_workbench.plans"), reports_delivery_plans_path, class: "button button-secondary" %></header>
+  <section class="panel">
+    <p><%= t("delivery_workbench.statuses.#{@delivery.status}") %> · <%= t("delivery_workbench.plan_hint") %></p>
+    <% if can?(:manage_skus) && @delivery.status == "active" %><div class="report-form">
+      <%= link_to t("delivery_workbench.edit"), edit_reports_delivery_plan_path(@delivery, locale: I18n.locale), class: "button button-secondary" %>
+      <%= link_to t("delivery_workbench.pack"), reports_pallet_workbench_path(delivery_plan_id: @delivery.id, locale: I18n.locale), class: "button" %>
+      <%= button_to t("delivery_workbench.cancel"), cancel_reports_delivery_plan_path(@delivery, locale: I18n.locale), class: "button button-secondary" %>
+    </div><% end %>
+  </section>
+  <section class="panel"><h2><%= t("delivery_workbench.manifest") %></h2>
+    <%= table_viewport do %><table class="prod-tbl"><thead><tr><th><%= t("pallet_calculator.sku") %></th><% %w[units allocated remaining].each do |key| %><th><%= t("delivery_workbench.#{key}") %></th><% end %></tr></thead>
+      <tbody><% @delivery.items.each do |item| %><tr><td><%= item.sku_code %></td><td><%= item.units || t("delivery_workbench.quantity_pending") %></td><td><%= @allocated.fetch(item.sku_code, 0) %></td><td><%= item.units ? [item.units - @allocated.fetch(item.sku_code, 0), 0].max : t("delivery_workbench.quantity_pending") %></td></tr><% end %></tbody>
+    </table><% end %>
+  </section>
+  <section class="panel"><h2><%= t("delivery_workbench.packing_plans") %></h2><p class="pallet-workbench__hint"><%= t("delivery_workbench.packing_hint") %></p>
+    <%= table_viewport do %><table class="prod-tbl"><thead><tr><th><%= t("pallet_workbench.plan_no") %></th><th><%= t("pallet_workbench.shipping.mode") %></th><th><%= t("pallet_workbench.status") %></th><th><%= t("pallet_workbench.supply_order_number") %></th></tr></thead>
+      <tbody><% @packing_plans.each do |plan| %><tr><td><%= link_to plan.plan_no, reports_pallet_plan_path(plan) %></td><td><%= t("pallet_workbench.shipping.#{plan.calculation.fetch('shipping_mode', 'pallet')}") %></td><td><%= pallet_workbench_status(plan) %></td><td><%= plan.supply_order_number.presence || t("common.empty_value") %></td></tr><% end %></tbody>
+    </table><% end %>
+    <% if @packing_plans.empty? %><div class="empty-state"><%= t("delivery_workbench.no_packing") %></div><% end %>
+  </section>
+</div>

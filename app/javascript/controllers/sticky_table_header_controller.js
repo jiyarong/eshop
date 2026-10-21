@@ -59,6 +59,7 @@ export default class extends Controller {
   static values = {
     floatingHeader: Boolean,
     stickyColumns: Number,
+    topOffset: { type: Number, default: 0 },
   };
 
   connect() {
@@ -241,7 +242,7 @@ export default class extends Controller {
   verticalBounds() {
     if (this.scrollContainer === window) {
       const value = getComputedStyle(document.documentElement).getPropertyValue("--erp-topbar-height");
-      return { top: Number.parseFloat(value) || 0, bottom: window.innerHeight };
+      return { top: (Number.parseFloat(value) || 0) + this.topOffsetValue, bottom: window.innerHeight };
     }
 
     const rect = this.scrollContainer.getBoundingClientRect();

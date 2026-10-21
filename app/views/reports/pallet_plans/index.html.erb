@@ -1,6 +1,6 @@
 <% content_for :title, t("pallet_workbench.plans") %>
 <div class="report-stack">
-  <header class="ozon-warehouse-heading"><h1 class="page-title"><%= t("pallet_workbench.plans") %></h1><%= link_to t("pallet_workbench.new_plan"), reports_pallet_workbench_path, class: "button" %></header>
+  <header class="ozon-warehouse-heading"><h1 class="page-title"><%= t("pallet_workbench.plans") %></h1><div><%= link_to t("delivery_workbench.plans"), reports_delivery_plans_path, class: "button button-secondary" %> <%= link_to t("delivery_workbench.new"), reports_delivery_workbench_path, class: "button" %></div></header>
   <section class="panel"><%= form_with url: reports_pallet_plans_path, method: :get, class: "report-form", data: { turbo: false } do |form| %>
     <div class="field"><%= form.label :status, t("pallet_workbench.status") %><%= form.select :status, %w[draft reserved packing packed dispatched closed cancelled].map { |status| [t("pallet_workbench.statuses.#{status}"), status] }, { selected: params[:status], include_blank: t("pallet_workbench.all_statuses") } %></div><%= form.submit t("pallet_workbench.apply_selection"), class: "button" %>
   <% end %></section>

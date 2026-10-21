@@ -1,8 +1,8 @@
 <% content_for :title, t("pallet_workbench.title") %>
-<div class="report-stack pallet-workbench"
+<div class="report-stack pallet-workbench <%= 'pallet-workbench--collapsible' if @cluster_id && can?(:manage_skus) %>"
      data-controller="pallet-workbench"
      data-pallet-workbench-catalogue-value="<%= @catalogue.to_json %>"
-     data-pallet-workbench-context-value="<%= { plan_id: @plan&.id, store_id: @store&.id, cluster_id: @cluster_id, from_date: @from_date, to_date: @to_date, time_zone: user_time_zone, lock_version: @plan&.lock_version }.merge(@coverage).to_json %>"
+     data-pallet-workbench-context-value="<%= { delivery_plan_id: @delivery_plan&.id, plan_id: @plan&.id, store_id: @store&.id, cluster_id: @cluster_id, from_date: @from_date, to_date: @to_date, time_zone: @delivery_plan&.time_zone || user_time_zone, lock_version: @plan&.lock_version }.merge(@coverage).to_json %>"
      data-pallet-workbench-initial-value="<%= pallet_workbench_initial_items.to_json %>"
      data-pallet-workbench-allocations-value="<%= pallet_workbench_initial_allocations.to_json %>"
      data-pallet-workbench-preview-url-value="<%= preview_reports_pallet_workbench_path(format: :json, locale: I18n.locale) %>"
@@ -16,9 +16,23 @@
     <%= link_to t("pallet_workbench.plans"), reports_pallet_plans_path, class: "button button-secondary" %>
   </header>
   <% if @plan %><div class="panel"><%= t("pallet_workbench.editing", number: @plan.plan_no) %></div><% end %>
-  <section class="panel pallet-workbench__filters">
+  <% if @delivery_plan %><div class="panel"><%= link_to t("delivery_workbench.source_plan", number: @delivery_plan.plan_no), reports_delivery_plan_path(@delivery_plan) %><p class="pallet-workbench__hint"><%= t("delivery_workbench.packing_hint") %></p></div><% end %>
+  <% if @cluster_id && can?(:manage_skus) %>
+    <div class="pallet-workbench__workspace-toolbar">
+      <button type="button" class="button button-secondary pallet-workbench__catalogue-toggle"
+              aria-expanded="true" aria-controls="pallet-workbench-filters pallet-workbench-catalogue"
+              data-pallet-workbench-target="catalogueToggle" data-action="pallet-workbench#toggleCatalogue">
+        <i class="bi bi-chevron-up" aria-hidden="true"></i>
+        <span data-pallet-workbench-target="catalogueCollapseLabel"><%= t("pallet_workbench.collapse_catalogue") %></span>
+        <span data-pallet-workbench-target="catalogueExpandLabel" hidden><%= t("pallet_workbench.expand_catalogue") %></span>
+      </button>
+      <span class="pallet-workbench__selection-count"><%= t("pallet_workbench.manifest") %> · <strong data-pallet-workbench-target="skuCount">0</strong> <%= t("pallet_workbench.summary.skus") %></span>
+    </div>
+  <% end %>
+  <section id="pallet-workbench-filters" class="panel pallet-workbench__filters" data-pallet-workbench-target="cataloguePanel">
     <%= form_with url: reports_pallet_workbench_path, method: :get, data: { turbo: false } do |form| %>
       <%= hidden_field_tag :locale, I18n.locale %>
+      <%= hidden_field_tag :delivery_plan_id, @delivery_plan.id if @delivery_plan %>
       <%= hidden_field_tag :from_date, @from_date %>
       <%= hidden_field_tag :to_date, @to_date %>
       <div class="report-form">
@@ -43,7 +57,7 @@
   </section>
   <% if @cluster_id %>
     <div class="pallet-workbench__workspace">
-      <section class="panel pallet-workbench__catalogue">
+      <section id="pallet-workbench-catalogue" class="panel pallet-workbench__catalogue" data-pallet-workbench-target="cataloguePanel">
         <div class="pallet-workbench__section-heading">
           <div><span class="pallet-workbench__eyebrow"><%= t("pallet_workbench.step_demand") %></span><h2><%= @clusters.find { |cluster| cluster[:id] == @cluster_id }[:name] %></h2></div>
           <span class="pallet-workbench__badge"><%= t("pallet_workbench.eligible_count", count: @catalogue.count { |row| row[:suggested_boxes].to_i.positive? }) %></span>
@@ -55,10 +69,15 @@
         </div>
         <div class="table-list-card">
           <%= render "reports/pallet_workbenches/pagination", rows: @rows %>
-          <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+          <%= table_viewport(class_name: "table-list-viewport", sticky_header: true, data: { sticky_table_header_top_offset_value: can?(:manage_skus) ? 76 : 0 }) do %>
             <table class="inventory-list-table pallet-workbench__stock-table">
               <thead><tr><th><%= t("pallet_workbench.select") %></th>
-                <% %w[sku_code shortage days_of_stock fbs_allocatable].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key %><% end %>
+                <% %w[sku_code shortage days_of_stock fbs_allocatable].each do |key| %>
+                  <% label_key = "pallet_workbench.fields.#{key}" %>
+                  <% label_key = "delivery_workbench.reference_units" if @delivery_plan && key == "shortage" %>
+                  <% label_key = "delivery_workbench.packable_units" if @delivery_plan && key == "fbs_allocatable" %>
+                  <%= render "shared/sortable_table_header", label: t(label_key), sort_key: key %>
+                <% end %>
                 <th><%= t("pallet_workbench.fields.ozon_size_category") %></th>
                 <th><%= t("pallet_workbench.fields.suggested_boxes") %></th>
                 <% %w[daily_sales sales_quantity available inbound].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key, class_name: "pallet-workbench__stock-detail" %><% end %>

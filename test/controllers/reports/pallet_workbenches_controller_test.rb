@@ -33,6 +33,7 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
       assert_select "[data-controller='pallet-workbench']"
       assert_select "[data-pallet-workbench-target='mode'] option[value='single']"
       assert_select "[data-pallet-workbench-target='recommendButton']"
+      assert_select "template button[data-pallet-workbench-target='maxButton'][title]", text: I18n.t("pallet_workbench.max_action", locale: locale)
       assert_select "[data-pallet-workbench-target='shippingAdvice'][aria-live='polite']", count: 1
       assert_select "#workbench-shipping-zone", count: 1
       assert_select "#workbench-shipping-date", count: 1
@@ -164,7 +165,7 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "fill preview explains whole-carton coverage limits in every supported locale without saving" do
+  test "fill and MAX previews ignore coverage in every supported locale without saving" do
     ActiveRecord::Base.transaction do
       sku = Ec::Sku.create!(sku_code: "FILL-LIMIT-#{SecureRandom.hex(6).upcase}", product_name: "Fill limit test")
       Ec::SkuOperatorAssignment.create!(sku: sku, user: @user)
@@ -193,11 +194,25 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
         end
         assert_response :success
         result = response.parsed_body.fetch("result")
-        assert_equal 6, result["total_boxes"]
-        assert_empty result.dig("fill", "changes")
-        assert_equal "coverage", result.dig("fill", "limits", 0, "reason")
-        assert_equal 38.9, result.dig("fill", "limits", 0, "next_box_days").to_f
-        assert_includes response.parsed_body["html"], I18n.t("pallet_workbench.fill_no_change", locale: locale)
+        assert_equal 18, result["total_boxes"]
+        assert_equal 18, result.dig("fill", "changes", 0, "to_boxes")
+        assert_equal "pallet_capacity", result.dig("fill", "limits", 0, "reason")
+        assert_nil result.dig("fill", "limits", 0, "next_box_days")
+        assert_includes response.parsed_body["html"], I18n.t("pallet_workbench.fill_summary", base: 6, final: 18, locale: locale)
+        assert_no_match(/translation missing/i, response.parsed_body["html"])
+
+        sign_in @user
+        assert_no_difference("Ec::PalletPlan.count") do
+          post preview_reports_pallet_workbench_path(format: :json, locale: locale), params: { pallet_plan: {
+            store_id: @store.id, cluster_id: @cluster.macrolocal_cluster_id,
+            from_date: "2026-09-23", to_date: "2026-10-20", target_days: 1, min_days: 1, max_days: 1,
+            packing_mode: "single", maximize_sku_code: sku.sku_code,
+            items: [{ sku_code: sku.sku_code, quantity: 6 }]
+          } }, as: :json
+        end
+        assert_response :success
+        assert_equal 18, response.parsed_body.dig("result", "maximized", "to_boxes")
+        assert_equal 18, response.parsed_body.dig("result", "total_boxes")
         assert_no_match(/translation missing/i, response.parsed_body["html"])
       end
       raise ActiveRecord::Rollback

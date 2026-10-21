@@ -38,6 +38,10 @@ Rails.application.routes.draw do
   post "reports/pallet_calculator/start_supply" => "reports/pallet_calculators#start_supply", as: :start_supply_reports_pallet_calculator
   get "reports/pallet_calculator/drop_offs" => "reports/pallet_calculators#drop_offs", as: :drop_offs_reports_pallet_calculator
   namespace :reports do
+    resource :delivery_workbench, only: :show
+    resources :delivery_plans, only: %i[index show edit create update] do
+      post :cancel, on: :member
+    end
     resource :pallet_workbench, only: :show do
       post :preview
       post :auto_select

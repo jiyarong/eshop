@@ -122,7 +122,7 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
     assert_equal :shipping_unavailable, error.key
   end
 
-  test "fills a mixed manifest from server demand and preserves listing and quantity consistency" do
+  test "fills a mixed manifest without sales or coverage caps and preserves listing and quantity consistency" do
     @sku.dimension.update!(outer_length_cm: 40, outer_width_cm: 40, outer_height_cm: 60, outer_box_pcs: 1)
     @sku.batches.first.update!(purchased_quantity: 100, received_quantity: 100)
     second_sku = Ec::Sku.create!(sku_code: "FILL-BUILD-#{@token}", product_name: "Fill build test")
@@ -131,16 +131,7 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
     second_product = Ec::SkuProduct.create!(sku: second_sku, store: @store, product_id: second_sku.sku_code, platform_sku_id: second_sku.sku_code)
     Ec::SkuBatch.create!(sku: second_sku, batch_code: second_sku.sku_code, status: "received",
       purchased_quantity: 100, received_quantity: 100, purchase_unit_price_cny: 1)
-    [@product, second_product].each do |product|
-      order = Ec::Order.create!(platform: "ozon", store: @store, order_key: product.sku_code,
-        order_status: "delivered", ordered_at: Time.zone.parse("2026-07-14 12:00:00"))
-      fulfillment = order.fulfillments.create!(platform: "ozon", store: @store,
-        external_fulfillment_id: product.sku_code, fulfillment_key: product.sku_code,
-        fulfillment_type: "fbo", status: "delivered", cluster_to: @cluster.cluster_name)
-      order.items.create!(platform: "ozon", store: @store, fulfillment: fulfillment,
-        platform_sku_id: product.platform_sku_id, quantity: 14)
-    end
-    input = attributes(quantity: 7).merge(packing_mode: "single", min_days: 21, max_days: 35,
+    input = attributes(quantity: 7).merge(packing_mode: "single", target_days: 1, min_days: 1, max_days: 1,
       fill_free_space: true, apply_fill: true, settings: { height: 194.5, route_rate: 5 })
     input[:items] << { sku_code: second_sku.sku_code, quantity: 7 }
 
@@ -148,12 +139,56 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
 
     assert_equal 18, built[:result][:total_boxes]
     assert_equal 18, built[:items].sum { |item| item[:quantity] }
+    assert_equal [9, 9], built[:items].map { |item| item[:quantity] }
     assert_equal 1, built[:result][:pallets].size
     assert_equal 1900, built[:result][:pallets].sole[:bill_l]
     assert_operator built[:result][:fill][:additional_known_fee], :>, 0
     assert_equal [@product.id, second_product.id].sort, built[:items].map { |item| item[:sku_product_id] }.sort
     assert_equal built[:items].to_h { |item| [item[:sku_code], item[:quantity]] },
       built[:result][:items].to_h { |item| [item[:sku_code], item[:quantity]] }
+  end
+
+  test "MAX uses server whole-carton stock and saves consistent quantities" do
+    @sku.batches.first.update!(purchased_quantity: 65, received_quantity: 65)
+    input = attributes(quantity: 1).merge(packing_mode: "single", maximize_sku_code: @sku.sku_code,
+      target_days: 1, min_days: 1, max_days: 1)
+
+    built = Ec::PalletPlans::Build.new(user: @user, attributes: input).call
+
+    assert_equal 6, built[:items].sole[:quantity]
+    assert_equal @product.id, built[:items].sole[:sku_product_id]
+    assert_equal 60, built[:result][:total_units]
+    assert_equal 6, built[:result][:maximized][:to_boxes]
+
+    input.delete(:maximize_sku_code)
+    input[:items] = built[:items]
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: input).call
+    assert_equal [6], plan.items.pluck(:boxes)
+    assert_equal 60, plan.pallets.sole.items.sum(:units)
+    assert_equal 6, plan.calculation["total_boxes"]
+  end
+
+  test "MAX rejects a target outside the manifest and box delivery" do
+    error = assert_raises(Ec::PalletPlans::Error) do
+      Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 1).merge(maximize_sku_code: "OTHER")).call
+    end
+    assert_equal :sku_unavailable, error.key
+
+    error = assert_raises(Ec::PalletPlans::Error) do
+      Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 1).merge(
+        maximize_sku_code: @sku.sku_code, shipping_mode: "box")).call
+    end
+    assert_equal :invalid_shipping_mode, error.key
+  end
+
+  test "single-pallet MAX can correct an excessive target quantity without trimming other SKUs" do
+    @sku.batches.first.update!(purchased_quantity: 65, received_quantity: 65)
+    built = Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 99).merge(
+      packing_mode: "single", maximize_sku_code: @sku.sku_code)).call
+
+    assert_equal 6, built[:items].sole[:quantity]
+    assert_equal({ sku_code: @sku.sku_code, from_boxes: 99, to_boxes: 6 }, built[:result][:maximized])
+    assert_equal 1, built[:result][:pallets].size
   end
 
   private

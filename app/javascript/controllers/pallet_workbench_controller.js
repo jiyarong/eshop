@@ -1,13 +1,13 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["pick", "catalogueRow", "manifest", "itemTemplate", "status", "results", "autoDialog", "mySkus", "threshold", "autoStatus", "autoPreviewButton", "autoApplyButton", "allocationPanel", "allocationRows", "allocationTemplate", "mode", "emptyManifest", "skuCount", "boxCount", "unitCount", "weightCount", "saveButton", "calculateButton", "recommendButton", "undoButton", "capacity", "heightMeter", "heightLabel", "weightMeter", "weightLabel", "shippingMode", "shippingAdvice", "fillButton"];
+  static targets = ["pick", "catalogueRow", "manifest", "itemTemplate", "status", "results", "autoDialog", "mySkus", "threshold", "autoStatus", "autoPreviewButton", "autoApplyButton", "allocationPanel", "allocationRows", "allocationTemplate", "mode", "emptyManifest", "skuCount", "boxCount", "unitCount", "weightCount", "saveButton", "calculateButton", "recommendButton", "undoButton", "capacity", "heightMeter", "heightLabel", "weightMeter", "weightLabel", "shippingMode", "shippingAdvice", "fillButton", "cataloguePanel", "catalogueToggle", "catalogueCollapseLabel", "catalogueExpandLabel", "maxButton"];
   static values = { catalogue: Array, context: Object, initial: Array, allocations: Array, previewUrl: String, autoUrl: String, saveUrl: String, method: String, planId: String, messages: Object };
 
   connect() {
     if (!this.hasManifestTarget) return;
     this.revision = (this.revision || 0) + 1;
-    this.storageKey = `pallet-workbench:${this.planIdValue || "new"}:${this.contextValue.store_id}:${this.contextValue.cluster_id}`;
+    this.storageKey = `pallet-workbench:${this.planIdValue || (this.contextValue.delivery_plan_id ? `delivery-${this.contextValue.delivery_plan_id}` : "new")}:${this.contextValue.store_id}:${this.contextValue.cluster_id}`;
     let stored;
     try { stored = JSON.parse(sessionStorage.getItem(this.storageKey)); } catch (_) { stored = null; }
     // An edited server plan may have changed in another tab since this local draft.
@@ -32,6 +32,15 @@ export default class extends Controller {
   changeStore(event) {
     event.target.form.querySelector("[name=cluster_id]").value = "";
     event.target.form.requestSubmit();
+  }
+
+  toggleCatalogue() {
+    const collapsed = this.element.classList.toggle("pallet-workbench--catalogue-collapsed");
+    this.cataloguePanelTargets.forEach((panel) => { panel.hidden = collapsed; });
+    this.catalogueToggleTarget.setAttribute("aria-expanded", String(!collapsed));
+    this.catalogueCollapseLabelTarget.hidden = collapsed;
+    this.catalogueExpandLabelTarget.hidden = !collapsed;
+    window.dispatchEvent(new Event("resize"));
   }
 
   toggleDetails(event) {
@@ -95,6 +104,7 @@ export default class extends Controller {
       const quantity = card.querySelector('[data-field="quantity"]');
       quantity.id = `pallet-quantity-${index}`;
       card.querySelector("[data-quantity-label]").htmlFor = quantity.id;
+      card.querySelector('[data-pallet-workbench-target="maxButton"]').setAttribute("aria-label", this.messagesValue.max_label.replace("%{sku}", item.sku_code));
       if (["length", "width", "height", "weight", "pcs"].some((key) => !Number(item[key]))) card.querySelector("details").open = true;
       this.manifestTarget.append(fragment);
     });
@@ -106,7 +116,7 @@ export default class extends Controller {
 
   updateSummary() {
     this.emptyManifestTarget.hidden = this.items.length > 0;
-    this.skuCountTarget.textContent = this.items.length;
+    this.skuCountTargets.forEach((target) => { target.textContent = this.items.length; });
     this.boxCountTarget.textContent = this.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     this.unitCountTarget.textContent = this.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.pcs || 0), 0);
     this.weightCountTarget.textContent = this.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.weight || 0), 0).toFixed(1);
@@ -185,6 +195,11 @@ export default class extends Controller {
     this.calculateButtonTarget.disabled = this.busy || !this.items.length;
     this.calculateButtonTarget.textContent = (!this.hasShippingModeTarget || this.shippingModeTarget.value === "pallet") && this.modeTarget.value === "single" ? this.messagesValue.fit : this.messagesValue.recalculate;
     if (this.hasFillButtonTarget) this.fillButtonTarget.disabled = this.busy || !this.items.length || this.contextValue.fill_free_space === false || (this.hasShippingModeTarget && this.shippingModeTarget.value === "box");
+    this.maxButtonTargets.forEach((button) => {
+      button.hidden = this.hasShippingModeTarget && this.shippingModeTarget.value === "box";
+      button.disabled = this.busy;
+      button.setAttribute("aria-busy", String(this.busy && button.closest("[data-item]").dataset.sku === this.maximizingSku));
+    });
     if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.querySelectorAll("button").forEach((button) => { button.disabled = this.busy; });
     this.recommendButtonTarget.disabled = this.busy || !this.catalogueValue.some((row) => row.packaging_complete && row.suggested_boxes > 0);
   }
@@ -220,6 +235,10 @@ export default class extends Controller {
   async preview() { await this.calculate(false, (!this.hasShippingModeTarget || this.shippingModeTarget.value === "pallet") && this.modeTarget.value === "single" ? this.items : null); }
   async validateAllocation() { await this.calculate(true); }
   async fillFreeSpace() { await this.calculate(false, null, true); }
+  async maximizeItem(event) {
+    const sku = event.currentTarget.closest("[data-item]").dataset.sku;
+    await this.calculate(false, null, false, sku);
+  }
 
   async recommendOne() {
     // Use all filtered pages and a stable urgency order, regardless of table sorting.
@@ -229,25 +248,28 @@ export default class extends Controller {
     await this.calculate(false, candidates.map((row) => this.itemFor(row.sku_code, row.suggested_boxes)));
   }
 
-  async calculate(manual, recommendation = null, fill = false) {
+  async calculate(manual, recommendation = null, fill = false, maximizeSku = null) {
     clearTimeout(this.timer);
     if (this.busy || (!recommendation && !this.items.length)) return;
-    if (!recommendation && this.manifestTarget.querySelector("input:invalid")) {
+    const invalidInputs = [...this.manifestTarget.querySelectorAll("input:invalid")];
+    if (!recommendation && invalidInputs.some((input) => !(maximizeSku && this.modeTarget.value === "single" && input.dataset.field === "quantity" && input.closest("[data-item]").dataset.sku === maximizeSku))) {
       this.setStatus(this.messagesValue.invalid_items, true);
       if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.textContent = this.messagesValue.shipping_failed;
       return;
     }
     const revision = this.revision;
     this.busy = true;
-    this.setStatus(this.messagesValue.calculating); this.updateButtons();
+    this.maximizingSku = maximizeSku;
+    this.setStatus(maximizeSku ? this.messagesValue.maximizing.replace("%{sku}", maximizeSku) : this.messagesValue.calculating); this.updateButtons();
     try {
       const payload = this.payload(manual);
       if (fill) Object.assign(payload, { apply_fill: true, shipping_mode: "pallet", allocations: [] });
+      if (maximizeSku) Object.assign(payload, { maximize_sku_code: maximizeSku, shipping_mode: "pallet", allocations: [] });
       if (recommendation) Object.assign(payload, { items: recommendation, recommend_one: true, packing_mode: "single", allocations: [] });
       if (recommendation) payload.shipping_mode = "pallet";
       const data = await this.request(this.previewUrlValue, { pallet_plan: payload });
       if (revision !== this.revision || !this.element.isConnected) return;
-      if (recommendation || data.result.fill?.changes?.length) {
+      if (recommendation || data.result.fill?.changes?.length || (data.result.maximized && data.result.maximized.from_boxes !== data.result.maximized.to_boxes)) {
         this.remember();
         this.items = data.result.items;
         if (recommendation) this.modeTarget.value = "single";
@@ -276,7 +298,8 @@ export default class extends Controller {
         this.weightLabelTarget.textContent = `${pallet.weight.toFixed(1)} / ${data.result.settings.weight}`;
       }
       this.validated = true;
-      if (fill) this.setStatus(data.result.fill?.changes?.length ? this.messagesValue.filled : this.messagesValue.fill_unchanged);
+      if (maximizeSku) this.setStatus(this.messagesValue.maximized.replace("%{sku}", maximizeSku).replace("%{boxes}", data.result.maximized.to_boxes));
+      else if (fill) this.setStatus(data.result.fill?.changes?.length ? this.messagesValue.filled : this.messagesValue.fill_unchanged);
       else this.setStatus(recommendation ? this.messagesValue.recommended : this.messagesValue.validated);
     } catch (error) {
       if (revision === this.revision) {

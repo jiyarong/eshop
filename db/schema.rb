@@ -721,7 +721,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
   end
 
   create_table "ec_pallets", force: :cascade do |t|
-    t.string "cargo_type", default: "pallet", null: false
     t.datetime "created_at", null: false
     t.jsonb "layout", default: {}, null: false
     t.jsonb "metrics", default: {}, null: false

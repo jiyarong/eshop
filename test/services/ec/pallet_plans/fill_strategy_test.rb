@@ -6,11 +6,10 @@ class Ec::PalletPlans::FillStrategyTest < ActiveSupport::TestCase
       unit_volume_l: 1, quantity: 14, ozon_size_category: "normal" }.merge(overrides)
   end
 
-  def fill(items: [item], maximum: 18, enabled: true, settings: {}, shipping: {}, daily_sales: 0.5, max_days: 36)
+  def fill(items: [item], maximum: 18, enabled: true, settings: {}, shipping: {}, stock_overrides: {})
     base = Ec::PalletPlans::Packing.new(items: items, settings: { height: 194.5, route_rate: 5 }.merge(settings)).call
-    range = Ec::PalletPlans::ReplenishmentRange.new(target_days: 28, min_days: 21, max_days: max_days, fill_free_space: enabled)
-    rows = items.map { |entry| { sku_code: entry[:sku_code], shortage: 14, daily_sales: daily_sales, max_boxes: maximum } }
-    result = Ec::PalletPlans::FillStrategy.new(items: items, demand_rows: rows, result: base, range: range, shipping: shipping).call
+    limits = items.to_h { |entry| [entry[:sku_code], stock_overrides.fetch(entry[:sku_code], maximum)] }
+    result = Ec::PalletPlans::FillStrategy.new(items: items, stock_limits: limits, result: base, enabled: enabled, shipping: shipping).call
     [base, result]
   end
 
@@ -23,7 +22,72 @@ class Ec::PalletPlans::FillStrategyTest < ActiveSupport::TestCase
     assert_equal [18], result[:items].map { |entry| entry[:quantity] }
   end
 
-  test "caps at stock and coverage and never adds a pallet" do
+  test "preserves unequal starting proportions instead of filling the highest shortage SKU first" do
+    items = [item(sku_code: "FILL-A", quantity: 2), item(sku_code: "FILL-B", quantity: 4)]
+    base, result = fill(items: items, maximum: 50)
+
+    assert_equal [6, 12], result[:items].map { |entry| entry[:quantity] }
+    assert_equal base[:pallets].size, result[:pallets].size
+    assert_equal base[:pallets].sum { |pallet| pallet[:bill_l] }, result[:pallets].sum { |pallet| pallet[:bill_l] }
+    assert_equal [6, 12], items.map { |entry| entry[:quantity] }
+    assert_equal [4, 8], result[:fill][:changes].map { |change| change[:added_units] }
+  end
+
+  test "rounds proportional quantities fairly and independently of manifest ordering" do
+    quantities = { "FILL-A" => 1, "FILL-B" => 2, "FILL-C" => 4 }
+    [quantities.to_a, quantities.to_a.reverse].each do |entries|
+      items = entries.map { |code, quantity| item(sku_code: code, quantity: quantity, length: 20, width: 20, height: 20) }
+      _, result = fill(items: items, maximum: 50, settings: { weight: 90 })
+
+      assert_equal({ "FILL-A" => 3, "FILL-B" => 5, "FILL-C" => 10 },
+        result[:items].to_h { |entry| [entry[:sku_code], entry[:quantity]] })
+    end
+  end
+
+  test "continues filling eligible SKUs after one reaches its stock limit" do
+    items = [item(sku_code: "FILL-A", quantity: 2, length: 20, width: 20, height: 20),
+      item(sku_code: "FILL-B", quantity: 4, length: 20, width: 20, height: 20)]
+    _, result = fill(items: items, maximum: 50, settings: { weight: 90 },
+      stock_overrides: { "FILL-A" => 3 })
+
+    assert_equal [3, 15], result[:items].map { |entry| entry[:quantity] }
+    assert_equal :stock, result[:fill][:limits].find { |limit| limit[:sku_code] == "FILL-A" }[:reason]
+    assert_equal 1, result[:pallets].size
+  end
+
+  test "fills existing multiple pallets beyond a SKU single-pallet capacity" do
+    base, result = fill(items: [item(quantity: 20)], maximum: 100)
+
+    assert_equal 36, result[:total_boxes]
+    assert_equal 2, result[:pallets].size
+    assert_equal base[:pallets].sum { |pallet| pallet[:bill_l] }, result[:pallets].sum { |pallet| pallet[:bill_l] }
+    assert_equal :pallet_capacity, result[:fill][:limits].sole[:reason]
+  end
+
+  test "keeps filling smaller cartons when a proportional candidate no longer fits" do
+    items = [item(sku_code: "FILL-A", quantity: 1, length: 20, width: 20, height: 20, weight: 50),
+      item(sku_code: "FILL-B", quantity: 1, length: 20, width: 20, height: 20)]
+    base, result = fill(items: items, maximum: 50, settings: { weight: 70 })
+
+    assert_equal [1, 4], result[:items].map { |entry| entry[:quantity] }
+    assert_equal base[:pallets].size, result[:pallets].size
+    assert_equal base[:pallets].sum { |pallet| pallet[:bill_l] }, result[:pallets].sum { |pallet| pallet[:bill_l] }
+    assert_equal :pallet_capacity, result[:fill][:limits].find { |limit| limit[:sku_code] == "FILL-A" }[:reason]
+  end
+
+  test "stops safely when another carton would exceed the platform pallet count" do
+    items = %w[FILL-A FILL-B].map do |code|
+      item(sku_code: code, quantity: 20, length: 120, width: 80, height: 180)
+    end
+    base, result = fill(items: items, maximum: 100)
+
+    assert_equal 40, base[:pallets].size
+    assert_equal [20, 20], result[:items].map { |entry| entry[:quantity] }
+    assert_empty result[:fill][:changes]
+    assert_equal [:pallet_capacity], result[:fill][:limits].pluck(:reason).uniq
+  end
+
+  test "caps at stock and never adds a pallet" do
     _, result = fill(maximum: 17)
     assert_equal 17, result[:total_boxes]
     _, result = fill(maximum: 100)
@@ -36,6 +100,7 @@ class Ec::PalletPlans::FillStrategyTest < ActiveSupport::TestCase
     base, result = fill(items: items, maximum: 17)
 
     assert_equal 18, result[:total_boxes]
+    assert_equal [9, 9], result[:items].map { |entry| entry[:quantity] }
     assert_equal base[:pallets].sum { |pallet| pallet[:bill_l] }, result[:pallets].sum { |pallet| pallet[:bill_l] }
     assert_operator result[:known_fee], :>, base[:known_fee]
     assert_equal result[:known_fee] - base[:known_fee], result[:fill][:additional_known_fee]
@@ -78,40 +143,21 @@ class Ec::PalletPlans::FillStrategyTest < ActiveSupport::TestCase
     assert_equal :disabled, result[:fill][:skipped_reason]
   end
 
-  test "explains why a low-sales SKU has no extra whole carton within maximum coverage" do
-    _, result = fill(items: [item(sku_code: "HZX001", quantity: 6)], daily_sales: 0.18, maximum: 6, max_days: 35)
+  test "fills without sales or coverage data" do
+    _, result = fill(items: [item(sku_code: "HZX001", quantity: 6)], maximum: 100)
 
-    assert_equal 6, result[:total_boxes]
-    assert_empty result[:fill][:changes]
-    limit = result[:fill][:limits].sole
-    assert_equal "HZX001", limit[:sku_code]
-    assert_equal :coverage, limit[:reason]
-    assert_equal 6, limit[:max_boxes]
-    assert_equal BigDecimal("38.9"), limit[:next_box_days]
+    assert_equal 18, result[:total_boxes]
+    assert_equal :pallet_capacity, result[:fill][:limits].sole[:reason]
+    assert_equal 100, result[:fill][:limits].sole[:max_boxes]
+    assert_equal 12, result[:fill][:changes].sole[:added_units]
+    assert_not result[:fill].key?(:max_days)
   end
 
-  test "preserves the target manifest when whole-carton rounding already exceeds maximum days" do
-    _, result = fill(items: [item(quantity: 2, pcs: 5)], daily_sales: 0.18, maximum: 1, max_days: 35)
-
-    assert_equal 2, result[:total_boxes]
-    assert_equal :coverage, result[:fill][:limits].sole[:reason]
-  end
-
-  test "coverage explanations do not round a breached limit back down to the maximum" do
-    _, result = fill(items: [item(quantity: 40, length: 20, width: 20, height: 20)],
-      daily_sales: 1.17, maximum: 40, max_days: 35)
-
-    assert_equal :coverage, result[:fill][:limits].sole[:reason]
-    assert_equal BigDecimal("35.1"), result[:fill][:limits].sole[:next_box_days]
-  end
-
-  test "distinguishes whole-carton stock and pallet capacity from coverage limits" do
+  test "distinguishes whole-carton stock and pallet capacity" do
     _, result = fill(maximum: 16)
     assert_equal :stock, result[:fill][:limits].sole[:reason]
     _, result = fill(maximum: 100)
     assert_equal :pallet_capacity, result[:fill][:limits].sole[:reason]
-    _, result = fill(daily_sales: 0)
-    assert_equal :no_sales, result[:fill][:limits].sole[:reason]
   end
 
   test "upper coverage rounds down and missing range preserves legacy days" do

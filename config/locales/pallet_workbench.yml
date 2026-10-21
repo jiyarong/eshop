@@ -1,12 +1,12 @@
 zh:
   pallet_workbench:
-    title: 打托盘工作台
-    description: "选好补货需求，一键生成一托；调整箱数后自动验算，再保存方案。"
+    title: "送仓打包工作台"
+    description: "按已确定的送仓量选择箱送或托送，验算后保存打包批次。"
     more_filters: "更多筛选：人员与库存条件"
     step_demand: "01 · 选择补货商品"
-    step_pack: "02 · 组装托盘"
+    step_pack: "02 · 选择打包方式"
     step_save: "03 · 验算并保存"
-    current_pallet: "当前装托方案"
+    current_pallet: "当前打包批次"
     local_draft: "草稿不占库存"
     packing_mode: "本次装托方式"
     single_mode: "只打一托（最多 5 个 SKU）"
@@ -15,10 +15,12 @@ zh:
     recommend_hint: "从全部筛选结果中，按缺口优先选取前 5 个可补货 SKU，自动调整箱数装入一托。会替换当前清单，可撤销。"
     eligible_count: "%{count} 个 SKU 可补货"
     stock_details: "显示销量与库存明细"
+    collapse_catalogue: "收起 SKU 选择"
+    expand_catalogue: "展开 SKU 选择"
     carton_size: "%{count} 件 / 箱"
     undo: "撤销上次操作"
-    empty_manifest: "先组好这一个托盘"
-    empty_manifest_hint: "点击“一键推荐一托”，或勾选左侧 SKU 手动组托。"
+    empty_manifest: "选择本批次的送仓商品"
+    empty_manifest_hint: "勾选左侧 SKU 并填写箱数，选择按箱或按托送货。"
     autosave_hint: "选品与参数在本标签页自动保留；更改箱数后自动验算。保存草稿后可继续确认并占用库存。"
     recalculate: "重新验算"
     packaging_details: "包装参数 / 朝向"
@@ -32,8 +34,8 @@ zh:
     height_usage: "高度使用（cm）"
     weight_usage: "货重使用（kg）"
     view_layout: "查看装托图与摆放明细 ↓"
-    plans: 托盘计划
-    new_plan: 新建方案
+    plans: "打包批次"
+    new_plan: "新建打包批次"
     editing: 正在编辑 %{number}
     store: 店铺
     cluster: 目标集群

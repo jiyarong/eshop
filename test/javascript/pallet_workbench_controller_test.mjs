@@ -18,7 +18,7 @@ function controllerFor(t) {
     revision: 1,
     validated: true,
     items: [{ sku_code: "TEST-SKU", quantity: 2 }],
-    messagesValue: { changed: "Pending validation", empty: "Select SKUs", calculating: "Calculating", validated: "Validation passed", filled: "Cartons added", fill_unchanged: "No cartons added; see limits", shipping_pending: "Checking delivery options", shipping_empty: "Add products to check delivery options", shipping_failed: "Delivery validation failed" },
+    messagesValue: { changed: "Pending validation", empty: "Select SKUs", calculating: "Calculating", validated: "Validation passed", invalid_items: "Check quantities and packaging", filled: "Cartons added", fill_unchanged: "No cartons added; see limits", shipping_pending: "Checking delivery options", shipping_empty: "Add products to check delivery options", shipping_failed: "Delivery validation failed", maximizing: "Calculating MAX for %{sku}", maximized: "%{sku}: %{boxes} cartons maximum" },
     hasShippingAdviceTarget: true,
     shippingAdviceTarget: {
       innerHTML: "Previous delivery recommendation",
@@ -33,11 +33,12 @@ function controllerFor(t) {
       replaceChildren() { this.innerHTML = ""; },
     },
     capacityTarget: { hidden: false },
-    manifestTarget: { querySelector: () => null },
+    manifestTarget: { querySelectorAll: () => [] },
     saveButtonTarget: { disabled: false },
     calculateButtonTarget: {},
     recommendButtonTarget: {},
     modeTarget: { value: "single" },
+    maxButtonTargets: [],
     catalogueValue: [],
     setStatus(message, error = false) { this.status = { message, error }; },
     persist() {},
@@ -124,7 +125,7 @@ test("fill with no additions displays the outcome and keeps the current manifest
   let request;
   controller.request = async (_url, body) => {
     request = body.pallet_plan;
-    return { html: "Coverage limit explanation", result: {
+    return { html: "Capacity limit explanation", result: {
       shipping_mode: "pallet", items: controller.items, pallets: [], fill: { changes: [] },
     } };
   };
@@ -134,7 +135,7 @@ test("fill with no additions displays the outcome and keeps the current manifest
   assert.equal(request.apply_fill, true);
   assert.equal(request.shipping_mode, "pallet");
   assert.equal(controller.status.message, "No cartons added; see limits");
-  assert.equal(controller.resultsTarget.innerHTML, "Coverage limit explanation");
+  assert.equal(controller.resultsTarget.innerHTML, "Capacity limit explanation");
   assert.equal(controller.items[0].quantity, 2);
   assert.equal(controller.saveButtonTarget.disabled, false);
 });
@@ -208,3 +209,95 @@ test("successful fill applies the returned quantities and keeps one undo snapsho
   assert.equal(controller.status.message, "Cartons added");
   assert.equal(controller.saveButtonTarget.disabled, false);
 });
+
+test("MAX applies the server layout, preserves other SKUs and supports undo", async (t) => {
+  const controller = controllerFor(t);
+  controller.items.push({ sku_code: "OTHER", quantity: 4 });
+  const original = structuredClone(controller.items);
+  controller.allocations = [];
+  controller.undoButtonTarget = { hidden: true };
+  controller.renderAllocations = () => {};
+  controller.renderItems = () => {};
+  let request;
+  controller.request = async (_url, body) => {
+    request = body.pallet_plan;
+    assert.equal(controller.status.message, "Calculating MAX for TEST-SKU");
+    return { html: "Maximum layout", result: {
+      shipping_mode: "pallet", items: [{ sku_code: "TEST-SKU", quantity: 14 }, { sku_code: "OTHER", quantity: 4 }],
+      pallets: [], maximized: { sku_code: "TEST-SKU", from_boxes: 2, to_boxes: 14 },
+    } };
+  };
+
+  await controller.maximizeItem({ currentTarget: { closest: () => ({ dataset: { sku: "TEST-SKU" } }) } });
+
+  assert.equal(request.maximize_sku_code, "TEST-SKU");
+  assert.equal(request.shipping_mode, "pallet");
+  assert.deepEqual(request.allocations, []);
+  assert.deepEqual(controller.items.map((item) => item.quantity), [14, 4]);
+  assert.equal(controller.status.message, "TEST-SKU: 14 cartons maximum");
+  assert.equal(controller.saveButtonTarget.disabled, false);
+  controller.undo();
+  assert.deepEqual(controller.items, original);
+  assert.equal(controller.saveButtonTarget.disabled, true);
+});
+
+test("MAX buttons reflect busy state and are hidden for box delivery", (t) => {
+  const controller = controllerFor(t);
+  const button = { attributes: {}, setAttribute(key, value) { this.attributes[key] = value; }, closest: () => ({ dataset: { sku: "TEST-SKU" } }) };
+  controller.maxButtonTargets = [button];
+  controller.busy = true;
+  controller.maximizingSku = "TEST-SKU";
+  controller.updateButtons();
+  assert.equal(button.disabled, true);
+  assert.equal(button.attributes["aria-busy"], "true");
+
+  controller.busy = false;
+  controller.hasShippingModeTarget = true;
+  controller.shippingModeTarget = { value: "box" };
+  controller.updateButtons();
+  assert.equal(button.hidden, true);
+  assert.equal(button.attributes["aria-busy"], "false");
+});
+
+test("a stale MAX result cannot overwrite edited quantities or undo history", async (t) => {
+  const controller = controllerFor(t);
+  let resolve;
+  controller.request = () => new Promise((done) => { resolve = done; });
+  const calculating = controller.calculate(false, null, false, "TEST-SKU");
+  controller.items[0].quantity = 4;
+  controller.invalidate();
+  resolve({ result: { maximized: { from_boxes: 2, to_boxes: 18 } } });
+  await calculating;
+  assert.equal(controller.items[0].quantity, 4);
+  assert.equal(controller.previous, undefined);
+  assert.equal(controller.saveButtonTarget.disabled, true);
+});
+
+test("single-pallet MAX can correct its own quantity beyond the stock input limit", async (t) => {
+  const controller = controllerFor(t);
+  controller.manifestTarget.querySelectorAll = () => [{ dataset: { field: "quantity" }, closest: () => ({ dataset: { sku: "TEST-SKU" } }) }];
+  controller.renderAllocations = () => {};
+  let requested = false;
+  controller.request = async () => {
+    requested = true;
+    return { result: { items: controller.items, pallets: [], maximized: { from_boxes: 2, to_boxes: 2 } } };
+  };
+
+  await controller.calculate(false, null, false, "TEST-SKU");
+
+  assert.equal(requested, true);
+  assert.equal(controller.status.message, "TEST-SKU: 2 cartons maximum");
+});
+
+for (const [mode, field, sku] of [["single", "quantity", "OTHER"], ["single", "weight", "TEST-SKU"], ["multiple", "quantity", "TEST-SKU"]]) {
+  test(`MAX rejects invalid ${field} for ${sku} in ${mode} mode`, async (t) => {
+    const controller = controllerFor(t);
+    controller.modeTarget.value = mode;
+    controller.manifestTarget.querySelectorAll = () => [{ dataset: { field }, closest: () => ({ dataset: { sku } }) }];
+    controller.request = () => assert.fail("Invalid inputs must be corrected before requesting MAX");
+
+    await controller.calculate(false, null, false, "TEST-SKU");
+
+    assert.deepEqual(controller.status, { message: "Check quantities and packaging", error: true });
+  });
+}

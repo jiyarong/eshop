@@ -142,7 +142,7 @@ module Reports
     end
 
     def plan_data(plan)
-      plan.as_json(only: %i[id plan_no store_id macrolocal_cluster_id cluster_name status supply_order_number ozon_order_id platform_status platform_synced_at sync_error lock_version created_at])
+      plan.as_json(only: %i[id delivery_plan_id plan_no store_id macrolocal_cluster_id cluster_name status supply_order_number ozon_order_id platform_status platform_synced_at sync_error lock_version created_at])
         .merge("supply_submission" => plan.ozon_supply_submission&.as_json(only: %i[id state draft_id order_id last_error]))
     end
 

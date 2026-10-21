@@ -82,6 +82,7 @@
 - SKU Planner 计划标签：`app/views/shared/_sku_operation_plan_tags.html.erb`，用于 SKU 详情与 SKU 工作台的 AI 建议区；工作台 AI 建议筛选与表格标签只使用 latest 计划，不包含旧诊断 `scope: advise` 事件。传 `plans`（当前 SKU 的 latest 计划）及页面唯一的 `dom_id_prefix`。标签包含状态颜色、剩余时间和弹窗 trigger；调用方须在表格滚动视口外渲染 `reports/_sku_operation_plan_dialog.html.erb`（传 `plan`、`sku`、相同的 `dom_id_prefix`、`referer_dom_id_prefix`、该 SKU 的 `events_by_id`）及 `reports/_sku_operation_plan_referer_dialogs.html.erb`（使用相同的 `referer_dom_id_prefix`），确保 ID 对应且不跨 SKU 读取事件。
 - 表格滚动视口：业务表格使用 `ApplicationHelper#table_viewport` 包裹，调用形式为 `<%= table_viewport do %>...<% end %>`；字段过多时在组件内部横向滚动。需要明确限制高度时传 `max_height:`，需要附加样式类时传 `class_name:`，其他 HTML 属性可直接传入。菜单入口中的主列表使用 `.table-list-card` 包裹顶部分页和 `table_viewport(class_name: "table-list-viewport")`，分页必须位于表格视口上方；主列表只建立横向滚动边界，纵向滚动始终交给页面，避免鼠标位于表格上时形成滚动陷阱。需要在页面纵向滚动时固定表头的主列表传 `sticky_header: true`，交互由 `app/javascript/controllers/sticky_table_header_controller.js` 提供；该实现参考 floatThead 的 responsive window scrolling 架构，通过独立浮动表头同步列宽和横向位置，不要再给主列表增加内部纵向滚动。只有抽屉或明确使用 `.table-scroll--contained` 的局部表格可以建立内部纵向滚动。旧 `.table-scroll` 保留兼容行为，新页面不要自行重复实现 `overflow` 或 sticky 表头；展开行中的嵌套表格仅在自身确实需要独立滚动时再单独包裹。
 - 可排序表头：Controller `include TableSortable`，调用 `load_table_sort(allowed_keys: ...)` 对 `sort`、`direction` 做白名单解析；内存指标排序可使用 `sort_table_records(records) { |record| ... }`，空值会统一排在末尾。ERB 使用 `app/views/shared/_sortable_table_header.html.erb`，传 `label`、`sort_key`，按需传 `class_name`、`style`、`title`。组件会保留现有查询参数，按未排序、降序、升序三态切换并清除分页参数；业务 Controller 仍须显式定义字段到安全 SQL 或指标取值的映射，排序必须在分页前完成。
+- 页面存在额外吸顶操作条时，`table_viewport(sticky_header: true, data: { sticky_table_header_top_offset_value: 76 })` 可为窗口滚动的浮动表头增加顶部避让像素，默认 0；局部抽屉表格仍按自己的滚动容器定位。送仓打包工作台是参考实现，业务页面不应另写浮动表头。
 - 任意枚举或简单选项的可搜索多选筛选：`app/views/shared/_popover_multiselect_filter.html.erb` + `popover_multiselect_filter_controller.js`。传 `dom_id_prefix`、`param_name`、`label`、`all_label`、`selected_values`、`options`；提交参数自动使用 `param_name[]`。
 - SPU 类目多选筛选：`app/views/shared/_master_sku_category_filter.html.erb` + `MasterSkuCategoryFilterable`。它按 Master SKU 的类目过滤，区别于编辑表单中选择单个类目的 `app/views/shared/_category_selector.html.erb`，两者不要混用。
 - 表格行内编辑：`app/views/shared/_inline_edit_cell.html.erb` + `inline_cell_controller.js` + `InlineEditableResponse`。新字段接入时沿用现有 helper 组装 locals、Turbo Frame 编辑和 Turbo Stream 回写模式；Controller 必须对允许编辑的字段使用白名单。
@@ -165,6 +166,16 @@
 
 ## Ozon 打托盘工作台
 
+### 送仓计划与打包批次（2026-10-21）
+
+- 主菜单入口改为 `GET /reports/delivery_workbench`（送仓工作台）；独立计划列表、详情与编辑位于 `/reports/delivery_plans`。先选 SKU，再选目标集群；没有缺货的集群也可送仓。`Ec::DeliveryPlan` / `Ec::DeliveryPlanItem` 保存店铺、目标集群、送仓周、SKU 及可空的预估件数；数量可以打包时确定，不依赖箱规、单托容量或已选配送方式，也不占库存。需求保存通过 `Ec::DeliveryPlans::Save` 完成。
+- 现有 `Ec::PalletPlan` 作为箱/托打包执行批次，使用可空的 `delivery_plan_id` 关联送仓计划；历史批次及计算器保持兼容。一份送仓计划可关联多个箱送或托送批次，每批仍只采用一种货位类型。普通 BOX/PALLET 与运输货位能力不可混淆。
+- 从送仓详情进入 `/reports/pallet_workbench?delivery_plan_id=...`，候选 SKU 限定为计划商品，可用库存不受预估余量限制。预估量只指导建议箱数，不构成累计打包上限；未填预估时建议箱数参考销量。运营可在打包时增减数量，继续校验实际库存、箱规、Listing 唯一性及箱/托容量；自动增补和单 SKU MAX 不受覆盖天数或销量限制。
+- 所有非 cancelled 批次（包括草稿和已完成批次）均计入批次累计件数；取消批次后从累计中扣除。详情并列展示预估量、批次累计及非负预估待送量；批次累计不是已发货量。库存继续仅由原 COMMITTED_STATUSES 执行批次占用，不能再在送仓计划层重复预留。
+- `Build` 预览及提交前校验计划状态、店铺、集群与 SKU 归属；`Save` 对送仓父记录加锁，串行校验并保存批次。父计划修改与取消使用同一父锁，预估量可调低或清空，但不得移除仍被未取消批次使用的 SKU；有未取消批次时不能取消父计划。不能将已有批次改挂其他送仓计划。
+- 新页面保持 HTML / `.json`、整单 SKU 可见范围与管理权限；送仓清单的浏览器草稿按计划、店铺隔离，切换集群保留选品，并以 `lock_version` 丢弃旧版本。新增回归位于 `test/services/ec/delivery_plans/`、`test/controllers/reports/delivery_plans_controller_test.rb` 和 `test/javascript/delivery_workbench_controller_test.mjs`。测试环境若触发资产构建，使用 `SKIP_JS_BUILD=1` 跳过构建钩子。
+- 拆分说明及任务 337 待核对事项见 `docs/ozon_delivery_workbench.md`。
+
 ### 入口与职责
 
 - 工作台入口为 `GET /reports/pallet_workbench`，计算预览为 `POST /reports/pallet_workbench/preview`，批量选品为 `POST /reports/pallet_workbench/auto_select`；计划列表、详情和编辑位于 `/reports/pallet_plans`。Controller 分别为 `Reports::PalletWorkbenchesController`、`Reports::PalletPlansController`，保留 HTML / `.json` 两种响应。
@@ -188,9 +199,10 @@
 
 ### 补货区间、空间增补与按箱送货
 
-- `ReplenishmentRange` 管理 `min_days/target_days/max_days/fill_free_space`，要求 `1 ≤ min ≤ target ≤ max ≤ 180`。工作台默认最低 21、目标 28、最高 35 天；服务调用省略上下限时均使用目标天数。基础建议按目标缺口整箱向上取整，最高允许量按最高覆盖缺口和可分配库存整箱向下取整，不能为填托突破最高覆盖天数。
-- `FillStrategy` 用现有 `Packing` 逐箱试算，按缺口、日均销量降序及 SKU 编码升序增补。“免费空间”仅指托数、路线计费体积以及提货/点位处理费不增加；分拣、仓储费用允许随商品量增加，须单独展示增量，不能以总 `known_fee` 不变阻止增补。推荐时的自动填充及“利用免费空间增补当前清单”都遵守该规则，普通改量仍只验算输入数量。
-- 无增补也须展示原因，区分覆盖上限、整箱库存、托盘容量、计费体积、点位处理费、体积缺失和无销量；覆盖限制显示再加一箱后的天数，并向上保留一位小数，避免掩盖超限。低销量、大箱规可能使基础建议已达到最高允许量；不通过放宽上限或静默加量制造填充效果。
+- `ReplenishmentRange` 管理 `min_days/target_days/max_days/fill_free_space`，要求 `1 ≤ min ≤ target ≤ max ≤ 180`。工作台默认最低 21、目标 28、最高 35 天；服务调用省略上下限时均使用目标天数。基础建议按目标缺口整箱向上取整，建议区间上限按最高覆盖缺口和可分配库存整箱向下取整；这些天数仅用于初始补货建议，不限制按比例增补或单 SKU MAX。
+- `FillStrategy` 以增补前各 SKU 箱数为比例，用现有 `Packing` 逐箱试算，按比例误差的边际代价 `(2 × 当前箱数 + 1) / 原箱数` 优先分配整箱；同分时按当前增幅、SKU 编码排序，不按缺口优先灌满单个 SKU。受库存或装载限制的 SKU 跳过后继续尝试其他 SKU，每次成功增补后重试曾受装载限制的 SKU；多托上限按现有托数计算，不能误用单托容量限制整单。“免费空间”仅指托数、路线计费体积以及提货/点位处理费不增加；分拣、仓储费用允许随商品量增加，须单独展示增量，不能以总 `known_fee` 不变阻止增补。推荐时的自动填充及“按比例增补清单”都遵守该规则，普通改量仍只验算输入数量。
+- 增补直接使用 Availability 的整箱库存上限，不查询销量或覆盖天数；无销量 SKU 同样可增补。无增补也须展示整箱库存、托盘容量、计费体积、点位处理费或体积缺失原因。
+- 每个 SKU 箱数旁的 MAX 使用 `Maximize` 保持其他 SKU 数量及当前托数，在库存、剩余重量和外箱体积上界内，从大到小调用 `Packing` 验算实际排布，支持一次撤销；不使用覆盖天数或免费计费体积限制，费用随结果重新计算。所有结果继续由保存阶段重新校验。
 - `shipping_mode` 仅接受 `pallet/box`；`packing_mode` 只控制托盘模式的单托/多托。`BoxPacking` 复用计算器的包装输入校验，每箱单 SKU、最多 25kg，每单最多 30 箱，每箱一个货位，不套用每托 5 个 SKU 限制；暂不支持运输货位扩容。`ec_pallets.cargo_type` 保存 `pallet/box`，历史默认 `pallet`。
 - `ShippingQuote` 按预计交货日期选择本地 `CrossDockTariffSnapshot`，按发货费率区、目的集群取价，再由纯计算的 `PalletPacking::ShippingModeAdvisor` 比较同一清单。箱送逐箱商品体积进位；托送逐托进位且每托至少 1900L。点位处理费按当前货位逐箱/逐托进位，托盘不能按每箱进位。比较范围仅为路线及点位处理费，不含分拣、仓储和自有运输；缺失体积或费率保留未知，不补 0。
 - 箱/托先判断包装、货位数量与点位限制，再比较费用。ПВЗ、ППЗ 和 Ханты-Мансийск 仅箱送；Софьино、Домодедово、Новая Рига、Пушкино-1 仅托送。平台实际商品准入及货位规则仍须由 Ozon 确认。

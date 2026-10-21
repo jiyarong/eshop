@@ -3,7 +3,7 @@
     <h2><%= t("pallet_workbench.validated") %></h2><p><%= t(result[:shipping_mode] == "box" ? "pallet_workbench.box_summary" : "pallet_workbench.result_summary", pallets: result[:pallets].size, boxes: result[:total_boxes], units: result[:total_units]) %></p>
     <p><%= t(result[:shipping_mode] == "box" ? "pallet_workbench.shipping.box_rules" : "pallet_calculator.rules.ozon_fbo") %></p>
     <% if result[:fill] %>
-      <p><%= t("pallet_workbench.fill_summary", base: result[:fill][:base_boxes], final: result[:fill][:final_boxes], target: result[:fill][:target_days], max: result[:fill][:max_days]) %></p>
+      <p><%= t("pallet_workbench.fill_summary", base: result[:fill][:base_boxes], final: result[:fill][:final_boxes]) %></p>
       <% result[:fill][:changes].each do |change| %><p><%= t("pallet_workbench.fill_change", sku: change[:sku_code], from: change[:from_boxes], to: change[:to_boxes], units: change[:added_units]) %></p><% end %>
       <% if result[:fill][:changes].empty? %><p><%= t("pallet_workbench.fill_no_change") %></p><% end %>
       <% if result[:fill][:additional_known_fee].to_d.positive? %><p><%= t("pallet_workbench.fill_additional_fee", amount: number_with_precision(result[:fill][:additional_known_fee], precision: 2)) %></p><% end %>

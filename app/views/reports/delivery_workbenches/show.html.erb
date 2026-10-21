@@ -1,0 +1,65 @@
+<% content_for :title, t("delivery_workbench.title") %>
+<div class="report-stack pallet-workbench" data-controller="delivery-workbench"
+     data-delivery-workbench-context-value="<%= { store_id: @store&.id, cluster_id: @cluster_id, from_date: @from_date, to_date: @to_date, target_days: @target_days, time_zone: @delivery&.time_zone || user_time_zone, lock_version: @delivery&.lock_version, id: @delivery&.id }.to_json %>"
+     data-delivery-workbench-initial-value="<%= (@delivery ? @delivery.items.map { |item| item.slice(:sku_code, :units) } : []).to_json %>"
+     data-delivery-workbench-catalogue-value="<%= @catalogue.to_json %>"
+     data-delivery-workbench-messages-value="<%= t('delivery_workbench.messages').to_json %>">
+  <header class="ozon-warehouse-heading"><div><h1 class="page-title"><%= t("delivery_workbench.title") %></h1><p class="page-subtitle"><%= t("delivery_workbench.description") %></p></div><%= link_to t("delivery_workbench.plans"), reports_delivery_plans_path, class: "button button-secondary" %></header>
+  <% if @delivery %><div class="panel"><%= t("pallet_workbench.editing", number: @delivery.plan_no) %></div><% end %>
+  <section class="panel">
+    <%= form_with url: @delivery ? edit_reports_delivery_plan_path(@delivery, locale: I18n.locale) : reports_delivery_workbench_path, method: :get, id: "delivery-workbench-filters", class: "report-form", data: { turbo: false } do |form| %>
+      <%= hidden_field_tag :locale, I18n.locale %>
+      <div class="field"><%= form.label :store_id, t("pallet_workbench.store") %><%= form.select :store_id, @stores.map { |store| [store.store_name, store.id] }, { selected: @store&.id }, disabled: @delivery.present?, data: { action: "change->delivery-workbench#changeStore" } %></div>
+      <%= render "shared/spu_sku_filter", dom_id_prefix: "delivery-workbench-skus", field_class: "" %>
+      <%= render "shared/responsible_user_filters", dom_id_prefix: "delivery-workbench-responsible", field_class: "" %>
+      <%= render "shared/time_range_selector", id: "delivery-sales-period", from_date: @from_date, to_date: @to_date %>
+      <div class="field"><%= form.label :target_days, t("pallet_workbench.target_days") %><%= form.number_field :target_days, value: @target_days, min: 1, max: 180 %></div>
+      <%= form.submit t("pallet_workbench.start"), class: "button button-secondary" %>
+    <% end %>
+  </section>
+  <% if @store && @clusters.any? %>
+    <div class="pallet-workbench__workspace">
+      <section class="panel pallet-workbench__catalogue">
+        <h2><%= t("delivery_workbench.step_demand") %></h2><p class="pallet-workbench__hint"><%= t("delivery_workbench.demand_hint") %></p>
+        <% if can?(:manage_skus) && @cluster_id %><button type="button" class="button button-secondary" data-action="delivery-workbench#selectSuggested"><%= t("delivery_workbench.select_suggested") %></button><% end %>
+        <div class="table-list-card">
+          <%= render "reports/pallet_workbenches/pagination", rows: @rows %>
+          <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+            <table class="inventory-list-table"><thead><tr><th><%= t("pallet_workbench.select") %></th>
+              <%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.sku_code"), sort_key: "sku_code" %>
+              <% if @cluster_id %>
+                <% %w[shortage fbs_allocatable].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key %><% end %>
+                <th><%= t("delivery_workbench.suggested_units") %></th>
+              <% end %>
+              <th><%= t("pallet_workbench.packaging_details") %></th></tr></thead>
+              <tbody><% @rows.each do |row| %><tr>
+                <td><input type="checkbox" data-delivery-workbench-target="pick" data-sku="<%= row[:sku_code] %>" data-action="delivery-workbench#pick" aria-label="<%= t('pallet_workbench.select_sku', sku: row[:sku_code]) %>" <%= 'disabled' unless can?(:manage_skus) %>></td>
+                <td><strong><%= row[:sku_code] %></strong><small class="pallet-workbench__product"><%= row[:product_name] %></small></td>
+                <% if @cluster_id %><td class="numeric"><%= row[:shortage] %></td><td class="numeric"><%= row[:fbs_allocatable] %></td><td class="numeric"><%= row[:suggested_units] %></td><% end %>
+                <td><%= t("delivery_workbench.#{row[:packaging_complete] ? 'packaging_ready' : 'packaging_pending'}") %></td>
+              </tr><% end %></tbody>
+            </table>
+          <% end %>
+          <% if @rows.empty? %><div class="empty-state"><%= t("pallet_workbench.empty") %></div><% end %>
+        </div>
+      </section>
+      <% if can?(:manage_skus) %>
+        <aside class="pallet-workbench__editor"><section class="panel">
+          <h2><%= t("delivery_workbench.manifest") %></h2><p><%= t("delivery_workbench.plan_hint") %></p>
+          <div class="field"><%= label_tag :cluster_id, t("pallet_workbench.cluster") %><%= select_tag :cluster_id, options_for_select(@clusters.map { |cluster| [t("pallet_workbench.cluster_option", name: cluster[:name], shortage: cluster[:shortage]), cluster[:id]] }, @cluster_id), include_blank: t("pallet_workbench.choose_cluster"), disabled: @delivery.present?, form: "delivery-workbench-filters", data: { action: "change->delivery-workbench#changeCluster" } %></div>
+          <p class="pallet-workbench__hint"><%= t("delivery_workbench.destination_hint") %></p>
+          <%= form_with url: @delivery ? reports_delivery_plan_path(@delivery, format: :json, locale: I18n.locale) : reports_delivery_plans_path(format: :json, locale: I18n.locale), method: @delivery ? :patch : :post, data: { action: "submit->delivery-workbench#save" } do %>
+            <div class="field"><%= label_tag :delivery_week_start, t("delivery_workbench.week") %><%= date_field_tag :week_start, @week_start, id: "delivery_week_start", required: true, data: { delivery_workbench_target: "week", action: "change->delivery-workbench#persist" } %></div>
+            <div data-delivery-workbench-target="manifest"></div>
+            <p role="status" aria-live="polite" data-delivery-workbench-target="status"></p>
+            <button type="submit" class="button" data-delivery-workbench-target="save"><%= t("delivery_workbench.save") %></button>
+          <% end %>
+        </section></aside>
+      <% end %>
+    </div>
+  <% else %><div class="empty-state"><%= t("pallet_workbench.choose_cluster") %></div><% end %>
+  <template data-delivery-workbench-target="itemTemplate"><article class="pallet-workbench__item" data-item>
+    <strong data-code></strong><label class="field"><%= t("delivery_workbench.units") %><input type="number" min="1" step="1" placeholder="<%= t('delivery_workbench.quantity_pending') %>" data-action="input->delivery-workbench#changeUnits"></label>
+    <button type="button" class="button button-secondary" data-action="delivery-workbench#remove"><%= t("pallet_workbench.remove") %></button>
+  </article></template>
+</div>
