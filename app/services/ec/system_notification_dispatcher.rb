@@ -5,6 +5,7 @@ module Ec
                sku_code: nil, store: nil, source: nil, metadata: {}, fingerprint: nil)
         target_path = normalize_target_path(target_path)
         recipient_ids = recipient_ids_for(sku_code)
+        delivered_at = Time.current
 
         Ec::SystemNotification.transaction do
           notification = find_or_create_notification(
@@ -22,8 +23,8 @@ module Ec
             fingerprint: fingerprint
           )
 
-          recipient_ids.each do |user_id|
-            Ec::SystemNotificationRecipient.find_or_create_by!(notification: notification, user_id: user_id)
+          User.where(id: recipient_ids).order(:id).each do |user|
+            Ec::SystemNotificationDailyDigest.call(notification: notification, user: user, delivered_at: delivered_at)
           end
           notification
         end
@@ -33,10 +34,14 @@ module Ec
 
       def find_or_create_notification(attributes)
         fingerprint = attributes[:fingerprint].presence
-        existing = fingerprint && Ec::SystemNotification.active.find_by(fingerprint: fingerprint)
-        return touch_existing(existing, attributes) if existing
+        return Ec::SystemNotification.create!(attributes) unless fingerprint
 
-        Ec::SystemNotification.create!(attributes)
+        notification = Ec::SystemNotification.active.find_or_create_by!(fingerprint: fingerprint) do |record|
+          record.assign_attributes(attributes)
+        end
+        return notification if notification.previously_new_record?
+
+        notification.with_lock { touch_existing(notification, attributes) }
       end
 
       def touch_existing(notification, attributes)

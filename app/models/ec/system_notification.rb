@@ -2,7 +2,7 @@ module Ec
   class SystemNotification < ApplicationRecord
     self.table_name = "ec_system_notifications"
 
-    TYPES = %w[price_anomaly funnel_anomaly].freeze
+    TYPES = %w[price_anomaly funnel_anomaly daily_summary].freeze
     SEVERITIES = %w[warning critical].freeze
 
     belongs_to :store, class_name: "Ec::Store", optional: true
@@ -12,6 +12,9 @@ module Ec
       foreign_key: :notification_id,
       dependent: :destroy
     has_many :users, through: :recipients
+    has_many :digest_items, class_name: "Ec::SystemNotificationDigestItem", foreign_key: :digest_id, dependent: :destroy
+    has_many :digest_notifications, through: :digest_items, source: :notification
+    has_many :digest_memberships, class_name: "Ec::SystemNotificationDigestItem", foreign_key: :notification_id, dependent: :destroy
 
     validates :notification_type, inclusion: { in: TYPES }
     validates :severity, inclusion: { in: SEVERITIES }
@@ -23,6 +26,10 @@ module Ec
 
     def active?
       resolved_at.nil?
+    end
+
+    def daily_summary?
+      notification_type == "daily_summary"
     end
 
     private

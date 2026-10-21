@@ -8,6 +8,7 @@ module Ec
     validates :notification_id, uniqueness: { scope: :user_id }
 
     scope :active, -> { where(deleted_at: nil) }
+    scope :inbox, -> { joins(:notification).where(ec_system_notifications: { notification_type: "daily_summary" }) }
     scope :unread, -> { where(read_at: nil) }
     scope :read, -> { where.not(read_at: nil) }
 

@@ -28,9 +28,44 @@
       <% end %>
     </div>
     <p class="notification-detail-card__body"><%= @notification.body %></p>
-    <%= link_to @notification.target_path, class: "btn btn-primary" do %>
-      <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
-      <%= t("notifications.open_event") %>
+    <% unless @notification.daily_summary? %>
+      <%= link_to @notification.target_path, class: "btn btn-primary" do %>
+        <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+        <%= t("notifications.open_event") %>
+      <% end %>
     <% end %>
   </section>
+
+  <% if @events %>
+    <section class="card notifications-list">
+      <% @events.each do |event| %>
+        <article class="notification-card">
+          <div class="notification-card__header">
+            <div>
+              <span class="badge <%= event.severity == "critical" ? "badge-danger" : "badge-pri" %>"><%= t("notifications.severity.#{event.severity}") %></span>
+              <span class="badge badge-sec"><%= t("notifications.types.#{event.notification_type}") %></span>
+            </div>
+            <time datetime="<%= event.occurred_at.iso8601 %>"><%= display_time(event.occurred_at) %></time>
+          </div>
+          <h2><%= link_to event.title, event.target_path %></h2>
+          <p><%= event.body %></p>
+          <%= link_to event.target_path, class: "btn btn-outline btn-sm" do %>
+            <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+            <%= t("notifications.open_event") %>
+          <% end %>
+        </article>
+      <% end %>
+      <% if @events.total_pages > 1 %>
+        <nav class="pagination-nav notifications-pagination" aria-label="<%= t("notifications.pagination.label") %>">
+          <% if @events.prev_page %>
+            <%= link_to "‹", notification_path(@recipient, page: @events.prev_page), class: "pg-btn pg-btn-nav", aria: { label: t("notifications.pagination.previous") } %>
+          <% end %>
+          <span class="pagination-chip"><%= t("notifications.pagination.page", page: @events.current_page, pages: @events.total_pages) %></span>
+          <% if @events.next_page %>
+            <%= link_to "›", notification_path(@recipient, page: @events.next_page), class: "pg-btn pg-btn-nav", aria: { label: t("notifications.pagination.next") } %>
+          <% end %>
+        </nav>
+      <% end %>
+    </section>
+  <% end %>
 </div>

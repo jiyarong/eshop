@@ -3,6 +3,8 @@ require "securerandom"
 
 module Ec
   class PriceAnomalyNotifierTest < ActiveSupport::TestCase
+    self.use_transactional_tests = true
+
     setup do
       @token = SecureRandom.hex(6)
       @admin = User.create!(email: "price-notification-admin-#{@token}@example.com", password: "password123")
@@ -20,20 +22,6 @@ module Ec
       )
     end
 
-    teardown do
-      Ec::SystemNotificationRecipient.where(user_id: [@admin&.id, @operator&.id]).delete_all
-      notification_ids = Ec::SystemNotification.where(store_id: @store&.id).select(:id)
-      Ec::SystemNotificationRecipient.where(notification_id: notification_ids).delete_all
-      Ec::SystemNotification.where(id: notification_ids).delete_all
-      Ec::OperationAction.where(id: @action&.id).delete_all
-      Ec::SkuOperatorAssignment.where(sku_code: @sku&.sku_code).delete_all
-      Ec::SkuProduct.where(id: @product&.id).delete_all
-      Ec::Sku.with_deleted.where(id: @sku&.id).delete_all
-      Ec::Store.where(id: @store&.id).delete_all
-      UserRole.where(user_id: [@admin&.id, @operator&.id]).delete_all
-      User.where(id: [@admin&.id, @operator&.id]).delete_all
-    end
-
     test "notifies assigned operator and admin for a large price increase" do
       Ec::PriceAnomalyNotifier.call(actions: [@action], store: @store)
 
@@ -41,8 +29,8 @@ module Ec
       assert_equal "price_anomaly", notification.notification_type
       assert_equal "critical", notification.severity
       assert_includes notification.body, "10000"
-      assert_includes notification.recipients.pluck(:user_id), @admin.id
-      assert_includes notification.recipients.pluck(:user_id), @operator.id
+      assert @admin.system_notification_recipients.inbox.sole.notification.digest_notifications.exists?(notification.id)
+      assert @operator.system_notification_recipients.inbox.sole.notification.digest_notifications.exists?(notification.id)
       assert_equal "/reports/skus/#{@sku.sku_code}?tab=operation_actions", notification.target_path
     end
 

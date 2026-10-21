@@ -19,10 +19,19 @@ class NotificationsController < ApplicationController
 
   def show
     @recipient.read! if @recipient.unread?
+    @events = @notification.digest_notifications.recent.page(page_param).per(PAGE_SIZE) if @notification.daily_summary?
 
     respond_to do |format|
       format.html
-      format.json { render json: notification_json(@recipient) }
+      format.json do
+        payload = notification_json(@recipient)
+        if @events
+          payload[:events] = @events.map { |event| event_json(event) }
+          payload[:page] = @events.current_page
+          payload[:total_pages] = @events.total_pages
+        end
+        render json: payload
+      end
     end
   end
 
@@ -46,7 +55,7 @@ class NotificationsController < ApplicationController
 
   def mark_all_read
     now = Time.current
-    current_user.system_notification_recipients.active.unread.update_all(read_at: now, updated_at: now)
+    current_user.system_notification_recipients.inbox.active.unread.update_all(read_at: now, updated_at: now)
     respond_to do |format|
       format.html { redirect_to notifications_path(filter: params[:filter]), notice: t("notifications.flash.marked_all_read") }
       format.json { render json: { ok: true, unread_count: 0 } }
@@ -57,8 +66,8 @@ class NotificationsController < ApplicationController
 
   def inbox_scope
     current_user.system_notification_recipients
+      .inbox
       .active
-      .joins(:notification)
       .includes(:notification)
       .order("ec_system_notifications.occurred_at DESC, ec_system_notifications.id DESC")
   end
@@ -82,16 +91,24 @@ class NotificationsController < ApplicationController
 
   def notification_collection_json
     {
-      unread_count: current_user.system_notification_recipients.active.unread.count,
+      unread_count: current_user.system_notification_recipients.inbox.active.unread.count,
       notifications: @recipients.map { |recipient| notification_json(recipient) }
     }
   end
 
   def notification_json(recipient)
     notification = recipient.notification
-    {
+    event_json(notification).merge(
       id: recipient.id,
       notification_id: notification.id,
+      read_at: recipient.read_at,
+      deleted_at: recipient.deleted_at
+    )
+  end
+
+  def event_json(notification)
+    {
+      id: notification.id,
       type: notification.notification_type,
       severity: notification.severity,
       title: notification.title,
@@ -99,8 +116,6 @@ class NotificationsController < ApplicationController
       sku_code: notification.sku_code,
       target_path: notification.target_path,
       occurred_at: notification.occurred_at,
-      read_at: recipient.read_at,
-      deleted_at: recipient.deleted_at,
       occurrence_count: notification.occurrence_count
     }
   end

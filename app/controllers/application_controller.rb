@@ -84,7 +84,7 @@ class ApplicationController < ActionController::Base
   def notification_unread_count
     return 0 unless current_user
 
-    current_user.system_notification_recipients.active.unread.count
+    current_user.system_notification_recipients.inbox.active.unread.count
   end
 
   def parse_user_date(value)

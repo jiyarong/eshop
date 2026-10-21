@@ -17,11 +17,15 @@ zh:
       unread: 未读
       read: 已读
     types:
+      daily_summary: 每日经营异常汇总
       price_anomaly: 价格异常
       funnel_anomaly: 销售漏斗异常
     severity:
       warning: 预警
       critical: 严重
+    daily_summary:
+      title: "%{date} 经营异常汇总"
+      body: "共 %{count} 项经营异常：价格异常 %{price_count} 项，销售漏斗异常 %{funnel_count} 项。查看详情了解相关 SKU、店铺及异常指标。"
     price_anomaly:
       title: SKU %{sku_code} 价格异常
       body: "店铺 %{store_name} 的 SKU %{sku_code} %{field} 从 %{before_price} RUB 调整为 %{after_price} RUB，涨幅 %{change_percent}%%，请检查俄罗斯与白俄罗斯的定价配置。"
@@ -63,11 +67,15 @@ en:
       unread: Unread
       read: Read
     types:
+      daily_summary: Daily business anomaly summary
       price_anomaly: Price anomaly
       funnel_anomaly: Sales funnel anomaly
     severity:
       warning: Warning
       critical: Critical
+    daily_summary:
+      title: "Business anomaly summary for %{date}"
+      body: "%{count} anomalies: %{price_count} price anomalies and %{funnel_count} sales funnel anomalies. Open the details for affected SKUs, stores, and metrics."
     price_anomaly:
       title: Price anomaly for SKU %{sku_code}
       body: "Store %{store_name}: %{field} for SKU %{sku_code} changed from %{before_price} RUB to %{after_price} RUB, up %{change_percent}%%. Check Russia and Belarus pricing configuration."
@@ -109,11 +117,15 @@ ru:
       unread: Непрочитанные
       read: Прочитанные
     types:
+      daily_summary: Ежедневная сводка аномалий
       price_anomaly: Аномалия цены
       funnel_anomaly: Аномалия воронки продаж
     severity:
       warning: Предупреждение
       critical: Критично
+    daily_summary:
+      title: "Сводка аномалий за %{date}"
+      body: "Всего аномалий: %{count}, из них ценовых: %{price_count}, воронки продаж: %{funnel_count}. Откройте подробности для просмотра SKU, магазинов и показателей."
     price_anomaly:
       title: Аномалия цены SKU %{sku_code}
       body: "Магазин %{store_name}: %{field} SKU %{sku_code} изменена с %{before_price} RUB до %{after_price} RUB, рост %{change_percent}%%. Проверьте цены для России и Беларуси."
