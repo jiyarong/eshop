@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_092554) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -412,6 +412,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
     t.index ["rate_date", "base_currency", "currency_code"], name: "index_ec_daily_exchange_rates_unique_daily_currency", unique: true
   end
 
+  create_table "ec_delivery_plan_items", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "delivery_plan_id", null: false
+    t.string "sku_code", null: false
+    t.integer "units"
+    t.datetime "updated_at", null: false
+    t.index ["delivery_plan_id", "sku_code"], name: "idx_delivery_plan_items_unique", unique: true
+    t.index ["delivery_plan_id"], name: "index_ec_delivery_plan_items_on_delivery_plan_id"
+  end
+
+  create_table "ec_delivery_plans", force: :cascade do |t|
+    t.string "cluster_name", null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.date "from_date", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.bigint "macrolocal_cluster_id", null: false
+    t.string "plan_no", null: false
+    t.string "status", default: "active", null: false
+    t.bigint "store_id", null: false
+    t.integer "target_days", default: 28, null: false
+    t.string "time_zone", null: false
+    t.date "to_date", null: false
+    t.datetime "updated_at", null: false
+    t.date "week_start", null: false
+    t.index ["created_by_id"], name: "index_ec_delivery_plans_on_created_by_id"
+    t.index ["plan_no"], name: "index_ec_delivery_plans_on_plan_no", unique: true
+    t.index ["store_id", "macrolocal_cluster_id", "week_start"], name: "idx_delivery_plans_destination_week"
+    t.index ["store_id"], name: "index_ec_delivery_plans_on_store_id"
+  end
+
   create_table "ec_master_skus", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "ec_category_id"
@@ -694,6 +725,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
     t.datetime "confirmed_at"
     t.datetime "created_at", null: false
     t.bigint "created_by_id", null: false
+    t.bigint "delivery_plan_id"
     t.datetime "dispatched_at"
     t.date "from_date", null: false
     t.integer "lock_version", default: 0, null: false
@@ -714,6 +746,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
     t.date "to_date", null: false
     t.datetime "updated_at", null: false
     t.index ["created_by_id"], name: "index_ec_pallet_plans_on_created_by_id"
+    t.index ["delivery_plan_id"], name: "index_ec_pallet_plans_on_delivery_plan_id"
     t.index ["plan_no"], name: "index_ec_pallet_plans_on_plan_no", unique: true
     t.index ["store_id", "macrolocal_cluster_id", "status"], name: "idx_pallet_plans_workbench"
     t.index ["store_id", "ozon_order_id"], name: "idx_pallet_plans_bound_order", unique: true, where: "((ozon_order_id IS NOT NULL) AND ((status)::text <> 'cancelled'::text))"
@@ -721,6 +754,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
   end
 
   create_table "ec_pallets", force: :cascade do |t|
+    t.string "cargo_type", default: "pallet", null: false
     t.datetime "created_at", null: false
     t.jsonb "layout", default: {}, null: false
     t.jsonb "metrics", default: {}, null: false
@@ -1166,7 +1200,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
     t.decimal "wb_logistics_liter_rub", precision: 20, scale: 8
     t.decimal "wb_logistics_override_cny", precision: 20, scale: 8
     t.decimal "width_cm", precision: 12, scale: 4
-    t.index ["sku_profit_version_id", "platform", "market", "delivery_mode", "warehouse_region", "company_type"], name: "idx_sku_profit_contexts_unique", unique: true, nulls_not_distinct: true
     t.index ["sku_profit_version_id"], name: "index_ec_sku_profit_version_contexts_on_sku_profit_version_id"
   end
 
@@ -1276,6 +1309,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
     t.integer "wb_raw_account_id"
     t.index ["ozon_client_id"], name: "index_ec_stores_on_ozon_client_id", unique: true, where: "(ozon_client_id IS NOT NULL)"
     t.index ["platform"], name: "index_ec_stores_on_platform"
+  end
+
+  create_table "ec_system_notification_digest_items", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "digest_id", null: false
+    t.bigint "notification_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["digest_id", "notification_id"], name: "idx_ec_notification_digest_items_unique", unique: true
+    t.index ["digest_id"], name: "index_ec_system_notification_digest_items_on_digest_id"
+    t.index ["notification_id"], name: "index_ec_system_notification_digest_items_on_notification_id"
   end
 
   create_table "ec_system_notification_recipients", force: :cascade do |t|
@@ -3596,7 +3639,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
     t.datetime "verified_at"
     t.bigint "verified_by_id"
     t.bigint "warehouse_id", null: false
-    t.index ["account_id", "normalized_historical_name", "valid_from"], name: "idx_raw_wb_warehouse_name_mappings_unique", unique: true, nulls_not_distinct: true
     t.index ["account_id"], name: "index_raw_wb_warehouse_name_mappings_on_account_id"
     t.index ["normalized_historical_name", "status"], name: "idx_raw_wb_warehouse_name_mappings_lookup"
     t.index ["verified_by_id"], name: "index_raw_wb_warehouse_name_mappings_on_verified_by_id"
@@ -3762,6 +3804,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
   add_foreign_key "ec_competitor_data_batches", "ec_skus", column: "sku_id"
   add_foreign_key "ec_cost_allocation_items", "ec_cost_allocations", column: "cost_allocation_id"
   add_foreign_key "ec_cost_allocation_items", "ec_sku_batches", column: "sku_batch_id"
+  add_foreign_key "ec_delivery_plan_items", "ec_delivery_plans", column: "delivery_plan_id"
+  add_foreign_key "ec_delivery_plans", "ec_stores", column: "store_id"
+  add_foreign_key "ec_delivery_plans", "users", column: "created_by_id"
   add_foreign_key "ec_master_skus", "ec_categories"
   add_foreign_key "ec_operation_actions", "ec_ai_sku_operation_plans", column: "plan_id", on_delete: :nullify
   add_foreign_key "ec_operation_actions", "ec_sku_products"
@@ -3787,6 +3832,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
   add_foreign_key "ec_pallet_items", "ec_pallets", column: "pallet_id"
   add_foreign_key "ec_pallet_plan_items", "ec_pallet_plans", column: "pallet_plan_id"
   add_foreign_key "ec_pallet_plan_items", "ec_sku_products", column: "sku_product_id"
+  add_foreign_key "ec_pallet_plans", "ec_delivery_plans", column: "delivery_plan_id"
   add_foreign_key "ec_pallet_plans", "ec_stores", column: "store_id"
   add_foreign_key "ec_pallet_plans", "users", column: "created_by_id"
   add_foreign_key "ec_pallets", "ec_pallet_plans", column: "pallet_plan_id"
@@ -3833,6 +3879,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_104523) do
   add_foreign_key "ec_skus", "ec_master_skus", column: "master_sku_id"
   add_foreign_key "ec_skus", "ec_sku_categories", column: "sku_category_id"
   add_foreign_key "ec_snapshots", "ec_skus", column: "sku_id"
+  add_foreign_key "ec_system_notification_digest_items", "ec_system_notifications", column: "digest_id"
+  add_foreign_key "ec_system_notification_digest_items", "ec_system_notifications", column: "notification_id"
   add_foreign_key "ec_system_notification_recipients", "ec_system_notifications", column: "notification_id"
   add_foreign_key "ec_system_notification_recipients", "users"
   add_foreign_key "ec_tool_configurations", "ec_tool_definitions", column: "tool_definition_id"
