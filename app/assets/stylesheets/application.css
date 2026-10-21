@@ -10600,11 +10600,17 @@ thead .table-sticky-column {
   color: var(--fg);
   font-weight: 600;
   cursor: pointer;
+  white-space: normal;
 }
 
 .profit-prediction-process__basis > p {
   margin: 4px 0 0;
   white-space: normal;
+}
+
+.profit-prediction-process__basis > .profit-prediction-process__basis-check {
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
 }
 
 .profit-prediction-process__source-result {

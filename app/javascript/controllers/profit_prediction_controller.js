@@ -1450,7 +1450,8 @@ export default class extends Controller {
     this.renderProcessSourceBasis(cell, sourceKey);
   }
 
-  // "Basis: ..." (which data it comes from) always shows; the way it is worked out and how to check it opens on click.
+  // "Basis: ..." (which data it comes from) is the heading; below it, open by default, how the figure is worked out and,
+  // in a paragraph of its own, how to check it by hand.
   renderProcessSourceBasis(cell, sourceKey) {
     cell.querySelectorAll(":scope > .profit-prediction-process__basis").forEach((element) => element.remove());
     const keys = SOURCE_BASIS_KEYS[sourceKey];
@@ -1467,9 +1468,16 @@ export default class extends Controller {
       details.className = "profit-prediction-process__basis";
       const summary = document.createElement("summary");
       summary.textContent = scope;
-      const body = document.createElement("p");
-      body.textContent = entry[`${platform}_how`] || entry.how || "";
-      details.append(summary, body);
+      details.open = true;
+      const how = entry[`${platform}_how`] || entry.how || "";
+      const [principle, check] = how.split(/(?=核对：|To check:|Проверка:)/);
+      details.append(summary);
+      [principle, check].filter(Boolean).forEach((text, index) => {
+        const paragraph = document.createElement("p");
+        paragraph.className = index === 0 ? "profit-prediction-process__basis-how" : "profit-prediction-process__basis-check";
+        paragraph.textContent = text.trim();
+        details.append(paragraph);
+      });
       cell.append(details);
     });
   }
