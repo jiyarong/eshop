@@ -210,12 +210,24 @@ module Ec
       nil
     end
 
+    # Buyer country per posting, from the destination cluster Ozon puts in the posting's financial data
+    # (cluster_to) and Ozon's own cluster -> country table. A posting whose cluster is missing or whose
+    # cluster has no known country is absent from the result: it is "pending", never assumed to be an
+    # export. Values are ISO codes ("BY", "RU", ...). The city whitelist behind
+    # raw_ozon_posting_destinations.is_belarus is not used: it misses Belarusian towns and cannot
+    # recognise other countries.
     def load_destinations
-      @destinations = RawOzon::PostingDestination
-        .where(account_id: @account_id)
-        .where(posting_number: accrual_scope.select(:posting_number))
-        .pluck(:posting_number, :is_belarus)
-        .each_with_object({}) { |(pn, by), h| h[pn] = by }
+      posting_numbers = accrual_scope.where.not(posting_number: nil).select(:posting_number)
+      cluster_countries = RawOzon::WarehouseCluster.distinct.pluck(:cluster_name, :country_name).to_h
+      @destinations = {}
+      [ RawOzon::PostingFbo, RawOzon::PostingFbs ].each do |model|
+        model.where(account_id: @account_id, posting_number: posting_numbers)
+          .pluck(:posting_number, Arel.sql("financial_data->>'cluster_to'"))
+          .each do |posting_number, cluster|
+            country = cluster.present? ? Ec::BuyerCountry.ozon_cluster(cluster, cluster_countries)&.country : nil
+            @destinations[posting_number] = country if country
+          end
+      end
     end
 
     def load_cost_data; end  # already done in load_sku_mappings
@@ -352,13 +364,16 @@ module Ec
       end
     end
 
-    # ── destination split (Belarus vs export) ────────────────────────────────────
+    # ── destination split (Belarus vs export vs pending) ─────────────────────────
     # Uses posting-level net amounts (mirrors Python phase1_report_v5.py logic).
     # Counts can be negative when returns exceed sales in a region within the period.
     # blr_sale = sum of net revenues for Belarus postings with net > 0 (VAT output base).
+    # Export is Russia only. A posting whose country is unknown or is neither Belarus nor Russia is
+    # pending: it is counted in pending_count / pending_sale (signed, like the other counts) and no tax
+    # is computed for it, so the report can say how much of the tax is missing.
 
     def split_by_destination
-      @dest_split = Hash.new { |h, k| h[k] = { blr_sale: 0.0, blr_count: 0, export_count: 0 } }
+      @dest_split = Hash.new { |h, k| h[k] = { blr_sale: 0.0, blr_count: 0, export_count: 0, pending_count: 0, pending_sale: 0.0 } }
 
       # Accumulate posting-level net SaleRevenue per (sku, posting_number)
       posting_nets = Hash.new { |h, k| h[k] = Hash.new(0.0) }
@@ -370,18 +385,19 @@ module Ec
       posting_nets.each do |sku, pn_nets|
         pn_nets.each do |pn, net|
           next if net == 0
-          is_by = @destinations[pn]
+          country = @destinations[pn]
           ds = @dest_split[sku]
           quantity = posting_quantity(sku, pn)
-          if net > 0
-            if is_by
-              ds[:blr_count] += quantity
-              ds[:blr_sale]  += net
-            else
-              ds[:export_count] += quantity
-            end
+          sign = net > 0 ? 1 : -1
+          case country
+          when "BY"
+            ds[:blr_count] += sign * quantity
+            ds[:blr_sale]  += net if net > 0
+          when "RU"
+            ds[:export_count] += sign * quantity
           else
-            is_by ? ds[:blr_count] -= quantity : ds[:export_count] -= quantity
+            ds[:pending_count] += sign * quantity
+            ds[:pending_sale]  += net
           end
         end
       end
@@ -468,6 +484,9 @@ module Ec
           blr_sale:       ds&.dig(:blr_sale)&.round(2) || 0.0,
           blr_count:      ds&.dig(:blr_count) || 0,
           export_count:   ds&.dig(:export_count) || 0,
+          # postings whose buyer country is not known yet: their tax is not in blr_tax / export_refund
+          dest_pending_count: ds&.dig(:pending_count) || 0,
+          dest_pending_sale:  ds&.dig(:pending_sale)&.round(2) || 0.0,
           # cost & tax
           cost_cny:        cost&.dig(:cost_cny),
           import_vat_cny:  cost&.dig(:import_vat_cny),
@@ -540,6 +559,8 @@ module Ec
         # destinations
         total_blr:       all.sum { |r| r[:blr_count] },
         total_export:    all.sum { |r| r[:export_count] },
+        total_dest_pending_count: all.sum { |r| r[:dest_pending_count] },
+        total_dest_pending_sale:  all.sum { |r| r[:dest_pending_sale] }.round(2),
         # cost & tax
         total_goods_cost:    all.sum { |r| r[:goods_cost] || 0 }.round(2),
         total_blr_tax:       all.sum { |r| r[:blr_tax] || 0 }.round(2),

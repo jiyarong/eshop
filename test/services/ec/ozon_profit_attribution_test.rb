@@ -19,6 +19,9 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
   teardown do
     RawOzon::AccrualByDay.where(account_id: @ozon_account.id).delete_all if @ozon_account
     RawOzon::PostingDestination.where(account_id: @ozon_account.id).delete_all if @ozon_account
+    RawOzon::PostingFbo.where(account_id: @ozon_account.id).delete_all if @ozon_account
+    RawOzon::PostingFbs.where(account_id: @ozon_account.id).delete_all if @ozon_account
+    RawOzon::WarehouseCluster.where(account_id: @ozon_account.id).delete_all if @ozon_account
     RawOzon::PerformanceSkuSpend.where(account_id: @ozon_account.id).delete_all if @ozon_account
     RawOzon::PostingItem.where(account_id: @ozon_account.id).delete_all if @ozon_account
     Ec::SkuProduct.joins(:store).where(ec_stores: { id: @store_ids }).delete_all if @store_ids.any?
@@ -122,8 +125,10 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
     assert_equal 1, counts.fetch(:net_sales_count), "2 kept sales - 1 return of an earlier sale"
     assert_equal 3, counts.fetch(:order_count)
     assert_equal 2, counts.fetch(:return_count)
-    assert_equal split.fetch(:export_count) + split.fetch(:blr_count), counts.fetch(:net_sales_count),
-      "net units and the units refunded import VAT is paid on must agree"
+    assert_equal 1, split.fetch(:pending_count), "no destination known: the units are pending, not export"
+    assert_equal 0, split.fetch(:export_count)
+    assert_equal split.fetch(:export_count) + split.fetch(:blr_count) + split.fetch(:pending_count), counts.fetch(:net_sales_count),
+      "net units are the sum of Belarus, export and pending units"
   end
 
   test "compute_counts nets a multi-unit posting sold and returned inside the period to zero" do
@@ -171,7 +176,7 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
       sync_missing_ad_costs: false
     )
     service.send(:load_rows)
-    service.instance_variable_set(:@destinations, { posting_number => false })
+    service.instance_variable_set(:@destinations, { posting_number => "RU" })
 
     service.send(:load_posting_quantities)
     service.send(:compute_counts)
@@ -192,9 +197,8 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
       RawOzon::PostingItem.create!(account: @ozon_account, posting_number: number, posting_type: "fbo",
         ozon_sku: sku, quantity: quantity, raw_json: {})
     end
-    [ posting, old_posting ].each do |number|
-      RawOzon::PostingDestination.create!(account: @ozon_account, posting_number: number, is_belarus: true, synced_at: Time.current)
-    end
+    create_belarus_cluster
+    [ posting, old_posting ].each { |number| create_fbo_posting(number, cluster_to: "Беларусь") }
     service = Ec::OzonProfitAttribution.new(account_id: @ozon_account.id,
       from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5), rate_cny_rub: 10, sync_missing_ad_costs: false)
 
@@ -204,11 +208,86 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
     service.send(:load_destinations)
 
     assert_equal({ [ sku_id, posting ] => 4 }, service.instance_variable_get(:@posting_quantities))
-    assert_equal({ posting => true }, service.instance_variable_get(:@destinations))
+    assert_equal({ posting => "BY" }, service.instance_variable_get(:@destinations))
     assert sql.any? { |query| query.include?("EXISTS") }
     assert sql.none? { |query| query.include?(posting) }, "posting numbers should stay in the database"
   ensure
     ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+  end
+
+  test "load_destinations takes the country from the posting cluster, not from a city list" do
+    sku_id = rand(10_000_000..99_999_999)
+    belarus, russia, unmapped, missing, fbs = %w[by ru unmapped missing fbs].map { |name| "posting-#{name}-#{@token}" }
+    [ belarus, russia, unmapped, missing, fbs ].each { |number| create_accrual(sku_id, number) }
+    create_belarus_cluster
+    create_fbo_posting(belarus, cluster_to: "Беларусь")
+    create_fbo_posting(russia, cluster_to: "Самара") # Russia through the reviewed override in buyer_places.yml
+    create_fbo_posting(unmapped, cluster_to: "Cluster #{@token} nobody classified")
+    create_fbo_posting(missing, cluster_to: nil)
+    create_fbs_posting(fbs, cluster_to: "Беларусь")
+    # the old city whitelist said "not Belarus" for a town it does not list; the cluster must win
+    RawOzon::PostingDestination.create!(account: @ozon_account, posting_number: belarus, city: "Новогрудок", is_belarus: false, synced_at: Time.current)
+    service = Ec::OzonProfitAttribution.new(account_id: @ozon_account.id,
+      from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5), rate_cny_rub: 10, sync_missing_ad_costs: false)
+
+    service.send(:load_rows)
+    service.send(:load_destinations)
+
+    assert_equal({ belarus => "BY", russia => "RU", fbs => "BY" }, service.instance_variable_get(:@destinations))
+  end
+
+  test "split_by_destination keeps a posting with an unknown or other country out of Belarus and export" do
+    ozon_sku = rand(10_000_000..99_999_999)
+    service = Ec::OzonProfitAttribution.new(account_id: 0, from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5),
+      rate_cny_rub: 10.0, sync_missing_ad_costs: false)
+    service.instance_variable_set(:@rows, [
+      AccrualRow.new(0, ozon_sku, "by-1", 1_200.0),
+      AccrualRow.new(0, ozon_sku, "ru-1", 1_000.0),
+      AccrualRow.new(0, ozon_sku, "ru-2", 1_000.0),
+      AccrualRow.new(0, ozon_sku, "unknown-1", 900.0),
+      AccrualRow.new(0, ozon_sku, "kz-1", 600.0),
+      AccrualRow.new(0, ozon_sku, "kz-2", -600.0),
+      AccrualRow.new(0, ozon_sku, "unknown-earlier", -300.0)
+    ])
+    service.instance_variable_set(:@destinations, { "by-1" => "BY", "ru-1" => "RU", "ru-2" => "RU", "kz-1" => "KZ", "kz-2" => "KZ" })
+
+    service.send(:split_by_destination)
+    split = service.instance_variable_get(:@dest_split).fetch(ozon_sku)
+
+    assert_equal 1, split.fetch(:blr_count)
+    assert_in_delta 1_200.0, split.fetch(:blr_sale), 0.001
+    assert_equal 2, split.fetch(:export_count)
+    # unknown +1, KZ +1 and -1, unknown return -1 => 0 units, but the money is still reported
+    assert_equal 0, split.fetch(:pending_count)
+    assert_in_delta 900.0 - 300.0, split.fetch(:pending_sale), 0.001
+  end
+
+  test "apply_profit_chain leaves pending postings out of tax and never lets after-tax exceed pre-tax because of them" do
+    service = Ec::OzonProfitAttribution.new(account_id: 0, from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5),
+      rate_cny_rub: 10.0, sync_missing_ad_costs: false)
+    fees = service.send(:zero_fees)
+    fees[:sales_revenue] = 1_000.0
+    service.instance_variable_set(:@fees, { 123 => fees })
+    service.instance_variable_set(:@ppc_by_sku, Hash.new(0.0))
+    service.instance_variable_set(:@promotion_by_sku, Hash.new(0.0))
+    service.instance_variable_set(:@counts, { 123 => { order_count: 3, return_count: 0, net_sales_count: 3 } })
+    service.instance_variable_set(:@dest_split, { 123 => { blr_sale: 240.0, blr_count: 1, export_count: 1, pending_count: 1, pending_sale: 300.0 } })
+    service.instance_variable_set(:@cost_by_sku, { 123 => { cost_cny: 30.0, import_vat_cny: 5.0 } })
+    service.instance_variable_set(:@sku_to_code, { 123 => "SKU-PENDING" })
+
+    service.send(:apply_profit_chain)
+    row = service.instance_variable_get(:@profit).fetch(123)
+
+    rate = 10.0 * 1.03
+    import_vat = 5.0 * rate
+    expected_blr_tax = -[ 240.0 * 20 / 120 - 1 * import_vat, 0.0 ].max
+    assert_equal 1, row[:dest_pending_count]
+    assert_in_delta 300.0, row[:dest_pending_sale], 0.001
+    assert_in_delta expected_blr_tax, row[:blr_tax], 0.01
+    assert_in_delta import_vat, row[:export_refund], 0.01
+    assert_in_delta row[:pre_tax_profit] + expected_blr_tax + import_vat, row[:after_tax_profit], 0.01
+    assert row[:after_tax_profit] < row[:pre_tax_profit] + import_vat + 0.01,
+      "pending units add no refund, so after-tax cannot jump above pre-tax by more than the confirmed refund"
   end
 
   test "apply_profit_chain reverses goods cost for negative net sales" do
@@ -420,6 +499,21 @@ class Ec::OzonProfitAttributionTest < ActiveSupport::TestCase
   end
 
   private
+
+  def create_belarus_cluster
+    RawOzon::WarehouseCluster.create!(account: @ozon_account, warehouse_id: rand(1_000_000..9_999_999),
+      warehouse_name: "wh-#{@token}", cluster_name: "Беларусь", country_name: "Беларусь", synced_at: Time.current)
+  end
+
+  def create_fbo_posting(number, cluster_to:)
+    RawOzon::PostingFbo.create!(account: @ozon_account, posting_number: number, status: "delivered", raw_json: {},
+      financial_data: { "cluster_to" => cluster_to }.compact)
+  end
+
+  def create_fbs_posting(number, cluster_to:)
+    RawOzon::PostingFbs.create!(account: @ozon_account, posting_number: number, status: "delivered", raw_json: {},
+      financial_data: { "cluster_to" => cluster_to }.compact)
+  end
 
   def create_accrual(sku_id, posting, **attributes)
     RawOzon::AccrualByDay.create!({ account: @ozon_account, ozon_sku_id: sku_id, posting_number: posting,

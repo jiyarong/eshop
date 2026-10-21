@@ -31,6 +31,12 @@
                     <% else %>
                       <%= weekly_profit_report_value(row, key) %>
                     <% end %>
+                    <% if key.to_s == "sku" && (pending_text = weekly_profit_dest_pending_text(row)) %>
+                      <span class="search-terms-data-help" tabindex="0" aria-label="<%= pending_text %>">
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        <span class="search-terms-data-tooltip" role="tooltip"><%= pending_text %></span>
+                      </span>
+                    <% end %>
                   </div>
                   <% if comparison.present? %>
                     <div class="weekly-profit-table-comparison <%= weekly_profit_report_comparison_class(comparison) %>">

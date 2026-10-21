@@ -39,7 +39,8 @@ class WeeklyProfitReportsController < ApplicationController
                 :weekly_profit_report_unallocated_comparison,
                 :weekly_profit_report_comparison_label,
                 :weekly_profit_report_comparison_class,
-                :weekly_profit_sku_drawer_linkable?
+                :weekly_profit_sku_drawer_linkable?,
+                :weekly_profit_dest_pending_text
 
   def accounts
     render json: {
@@ -286,6 +287,18 @@ class WeeklyProfitReportsController < ApplicationController
     return format("%.2f", value) if value.is_a?(Float) || value.is_a?(BigDecimal)
 
     value
+  end
+
+  # Text for the "buyer country not known yet" marker, or nil when the row (or the summary) has none.
+  # `source` is a row or a summary hash; the summary carries the same figures under total_ keys.
+  def weekly_profit_dest_pending_text(source, scope: :row)
+    prefix = scope == :summary ? "total_" : ""
+    count = (source[:"#{prefix}dest_pending_count"] || source["#{prefix}dest_pending_count"]).to_i
+    sale = (source[:"#{prefix}dest_pending_sale"] || source["#{prefix}dest_pending_sale"]).to_d
+    return nil if count.zero? && sale.zero?
+
+    key = count.zero? ? "#{scope}_amount_only" : scope.to_s
+    t("weekly_profit_reports.dest_pending.#{key}", count: count, amount: format("%.2f", sale))
   end
 
   def weekly_profit_report_comparison_note(report)

@@ -904,6 +904,11 @@ zh:
       shipped: "配送中"
       total: "订单数"
   weekly_profit_reports:
+    dest_pending:
+      row: "目的地待确认：净 %{count} 件，销售额 %{amount} CNY，这部分的税未计入税后净利"
+      row_amount_only: "目的地待确认：销售额 %{amount} CNY（销售与退货件数相抵），这部分的税未计入税后净利"
+      summary: "目的地待确认：净 %{count} 件，销售额 %{amount} CNY，这部分的税未计入税后净利"
+      summary_amount_only: "目的地待确认：销售额 %{amount} CNY（销售与退货件数相抵），这部分的税未计入税后净利"
     unallocated_labels:
       settlement_residual: "平台结算分配差额"
     comparison:
@@ -978,6 +983,8 @@ zh:
         storage_fee: "仓储费"
         tax: "税额"
       wsu_deep:
+        dest_pending_count: "目的地待确认净件数"
+        dest_pending_sale: "目的地待确认销售额（CNY）"
         ad_ratio_pct: "广告占比"
         ads: "广告费"
         after_tax: "税后净利"
@@ -1054,6 +1061,8 @@ zh:
         total_sales_revenue: "总销售额"
         unallocated_total: "未分摊合计"
       wsu_deep:
+        total_dest_pending_count: "目的地待确认净件数"
+        total_dest_pending_sale: "目的地待确认销售额（CNY）"
         after_tax_with_unallocated: "含未分摊税后净利"
         total_after_tax: "税后净利"
         total_net_sales: "总净销量"

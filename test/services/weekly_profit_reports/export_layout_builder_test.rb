@@ -1,6 +1,27 @@
 require "test_helper"
 
 class WeeklyProfitReports::ExportLayoutBuilderTest < ActiveSupport::TestCase
+  test "SKU aggregate export carries the unconfirmed-country units and sales, empty when none" do
+    report = {
+      report_type: "wsu_deep", period: { from_date: "2026-06-01", to_date: "2026-06-07" },
+      summary: { total_after_tax: 130, total_dest_pending_count: 2, total_dest_pending_sale: 35.5 },
+      rows: [
+        { sku: "PENDING-A", net_sales: 1, revenue: 200, after_tax: 100, dest_pending_count: 2, dest_pending_sale: 35.5 },
+        { sku: "CLEAN-B", net_sales: 1, revenue: 100, after_tax: 30, dest_pending_count: 0, dest_pending_sale: 0.0 }
+      ]
+    }
+    layout = WeeklyProfitReports::ExportLayoutBuilder.build(report: report)
+    section = layout[:sections].first
+
+    assert_equal [2, 35.5], section[:rows][2].last(2)
+    assert_equal [nil, nil], section[:rows][3].last(2)
+    assert_equal [2, 35.5], section[:rows].last.last(2)
+    assert_equal I18n.t("weekly_profit_reports.columns.wsu_deep.dest_pending_count", locale: :zh), section[:rows][0][-2]
+    assert_equal I18n.t("weekly_profit_reports.columns.wsu_deep.dest_pending_sale", locale: :ru), section[:rows][1][-1]
+    summary_labels = layout[:sections].last[:rows].map(&:first).join("|")
+    assert_includes summary_labels, I18n.t("weekly_profit_reports.summary.wsu_deep.total_dest_pending_sale", locale: :zh)
+  end
+
   test "build returns wsu layout with google sheet headers and summary block" do
     report = {
       report_type: "wsu",

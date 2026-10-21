@@ -591,6 +591,63 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     query_class.define_singleton_method(:run, original_run)
   end
 
+  test "show marks wsu deep rows whose buyer country is not confirmed with an icon and a hint" do
+    payload = {
+      report_type: "wsu_deep",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sku_count: 2, total_net_sales: 6, total_sales_revenue: 200.0, total_after_tax: 80.0, unallocated_total: 0.0,
+                 after_tax_with_unallocated: 80.0, total_dest_pending_count: 2, total_dest_pending_sale: 35.5 },
+      rows: [
+        { sku: @direct_sku.sku_code, net_sales: 4, revenue: 100.0, ads: 10.0, goods_cost: 20.0, pre_tax: 60.0, tax: 10.0, after_tax: 50.0,
+          dest_pending_count: 2, dest_pending_sale: 35.5 },
+        { sku: "NO-PENDING-#{SecureRandom.hex(3)}", net_sales: 2, revenue: 100.0, ads: 0.0, goods_cost: 10.0, pre_tax: 40.0, tax: 10.0, after_tax: 30.0,
+          dest_pending_count: 0, dest_pending_sale: 0.0 }
+      ],
+      extras: {}
+    }
+
+    query_class = Ec::WeeklySummaryDeepQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: { report_type: "wsu_deep", from_date: "2026-05-18", to_date: "2026-05-24" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "weekly_profit_report_results" }
+
+    assert_response :success
+    assert_select "turbo-frame#weekly_profit_report_results" do
+      assert_select "i.bi-exclamation-triangle", count: 2, message: "one marker in the summary line, one on the pending SKU row only"
+      assert_select "td .search-terms-data-tooltip", count: 1, text: /目的地待确认：净 2 件，销售额 35\.50 CNY.*未计入税后净利/
+      assert_select "p.report-meta", text: /目的地待确认：净 2 件/
+    end
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
+  test "show words the pending hint by amount only when the pending units cancel out" do
+    payload = {
+      report_type: "wsu_deep",
+      period: { from_date: "2026-05-18", to_date: "2026-05-24" },
+      meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
+      summary: { total_sku_count: 1, total_net_sales: 0, total_sales_revenue: 0.0, total_after_tax: 0.0, unallocated_total: 0.0,
+                 after_tax_with_unallocated: 0.0, total_dest_pending_count: 0, total_dest_pending_sale: 12.0 },
+      rows: [ { sku: @direct_sku.sku_code, net_sales: 0, revenue: 0.0, ads: 0.0, goods_cost: 0.0, pre_tax: 0.0, tax: 0.0, after_tax: 0.0,
+                dest_pending_count: 0, dest_pending_sale: 12.0 } ],
+      extras: {}
+    }
+    query_class = Ec::WeeklySummaryDeepQuery
+    original_run = query_class.method(:run)
+    query_class.define_singleton_method(:run) { |**_kwargs| payload }
+
+    get "/weekly_profit_reports", params: { report_type: "wsu_deep", from_date: "2026-05-18", to_date: "2026-05-24" },
+      headers: { "Accept" => "text/html", "Turbo-Frame" => "weekly_profit_report_results" }
+
+    assert_select "td .search-terms-data-tooltip", text: /目的地待确认：销售额 12\.00 CNY（销售与退货件数相抵）/
+    assert_select "td .search-terms-data-tooltip", text: /净 0 件/, count: 0
+  ensure
+    query_class.define_singleton_method(:run, original_run)
+  end
+
   test "show renders wsu result with average price and cost ratio columns matching sku detail metrics" do
     payload = {
       report_type: "wsu",

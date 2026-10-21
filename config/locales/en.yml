@@ -926,6 +926,11 @@ en:
       shipped: "Shipped"
       total: "Orders"
   weekly_profit_reports:
+    dest_pending:
+      row: "Buyer country unconfirmed: net %{count} units, sales %{amount} CNY. Their tax is not in the after-tax profit"
+      row_amount_only: "Buyer country unconfirmed: sales %{amount} CNY (sold and returned units cancel out). Their tax is not in the after-tax profit"
+      summary: "Buyer country unconfirmed: net %{count} units, sales %{amount} CNY. Their tax is not in the after-tax profit"
+      summary_amount_only: "Buyer country unconfirmed: sales %{amount} CNY (sold and returned units cancel out). Their tax is not in the after-tax profit"
     unallocated_labels:
       settlement_residual: "Platform settlement allocation residual"
     comparison:
@@ -1000,6 +1005,8 @@ en:
         storage_fee: "Storage fee"
         tax: "Tax"
       wsu_deep:
+        dest_pending_count: "Buyer country unconfirmed: net units"
+        dest_pending_sale: "Buyer country unconfirmed: sales (CNY)"
         ad_ratio_pct: "Ad ratio"
         ads: "Advertising"
         after_tax: "After-tax profit"
@@ -1076,6 +1083,8 @@ en:
         total_sales_revenue: "Total revenue"
         unallocated_total: "Unallocated total"
       wsu_deep:
+        total_dest_pending_count: "Buyer country unconfirmed: net units"
+        total_dest_pending_sale: "Buyer country unconfirmed: sales (CNY)"
         after_tax_with_unallocated: "After-tax incl. unallocated"
         total_after_tax: "After-tax profit"
         total_net_sales: "Total net sales"

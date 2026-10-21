@@ -3,6 +3,9 @@
     <p class="report-meta">
       <%= report.dig(:period, :from_date) %> ~ <%= report.dig(:period, :to_date) %>
     </p>
+    <% if (pending_summary = weekly_profit_dest_pending_text(report[:summary], scope: :summary)) %>
+      <p class="report-meta"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <%= pending_summary %></p>
+    <% end %>
     <p class="weekly-profit-comparison-note"><%= weekly_profit_report_comparison_note(report) %></p>
     <%= render "weekly_profit_reports/summary_cards", cards: weekly_profit_report_summary_cards(report) %>
   </section>
@@ -30,6 +33,12 @@
                       <%= sku_detail_drawer_link sku_code, tab: "profit" %>
                     <% else %>
                       <%= weekly_profit_report_value(row, key) %>
+                    <% end %>
+                    <% if key.to_s == "sku" && (pending_text = weekly_profit_dest_pending_text(row)) %>
+                      <span class="search-terms-data-help" tabindex="0" aria-label="<%= pending_text %>">
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        <span class="search-terms-data-tooltip" role="tooltip"><%= pending_text %></span>
+                      </span>
                     <% end %>
                   </div>
                   <% if comparison.present? %>

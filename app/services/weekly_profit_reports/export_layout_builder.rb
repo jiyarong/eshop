@@ -57,13 +57,24 @@ module WeeklyProfitReports
       data_rows = helper.send(:build_query_data_rows, rows)
       total_row = helper.send(:build_query_total_row, rows)
       summary_rows = helper.send(:build_query_summary_rows, summary)
+      # Units and sales of postings whose buyer country is unconfirmed (their tax is not in the profit),
+      # left empty when there are none.
+      pending_keys = %i[dest_pending_count dest_pending_sale]
+      blank_if_zero = ->(value) { value.to_d.zero? ? nil : value }
+      headers = [:zh, :ru].map { |locale| pending_keys.map { |key| I18n.t("weekly_profit_reports.columns.wsu_deep.#{key}", locale: locale) } }
+      data_rows.each_with_index { |data, index| data.concat(pending_keys.map { |key| blank_if_zero.call(rows[index][key]) }) }
+      total_row.concat([blank_if_zero.call(summary[:total_dest_pending_count]), blank_if_zero.call(summary[:total_dest_pending_sale])])
+      %i[total_dest_pending_count total_dest_pending_sale].each do |key|
+        label = [:zh, :ru].map { |locale| I18n.t("weekly_profit_reports.summary.wsu_deep.#{key}", locale: locale) }.join(" / ")
+        summary_rows << [label, summary[key]]
+      end
 
       {
         sheet_name: "WSU-DEEP:#{week_label}",
-        column_widths: GoogleSheets::WeeklySummaryDeepService::COL_WIDTHS,
+        column_widths: GoogleSheets::WeeklySummaryDeepService::COL_WIDTHS + [150, 160],
         sections: [
           {
-            rows: [GoogleSheets::WeeklySummaryDeepService::HDR_ZH, GoogleSheets::WeeklySummaryDeepService::HDR_RU] + data_rows + [total_row],
+            rows: [GoogleSheets::WeeklySummaryDeepService::HDR_ZH + headers[0], GoogleSheets::WeeklySummaryDeepService::HDR_RU + headers[1]] + data_rows + [total_row],
             row_types: [:header, :header] + Array.new(data_rows.size, :data) + [:total]
           },
           {
