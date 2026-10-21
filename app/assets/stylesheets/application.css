@@ -10588,6 +10588,25 @@ thead .table-sticky-column {
   line-height: 1.4;
 }
 
+/* The data basis under a source cell: the scope line always shows, the way it is worked out opens on click. */
+.profit-prediction-process__basis {
+  margin-top: 8px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.profit-prediction-process__basis > summary {
+  color: var(--fg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profit-prediction-process__basis > p {
+  margin: 4px 0 0;
+  white-space: normal;
+}
+
 .profit-prediction-process__source-result {
   display: grid;
   gap: 3px;

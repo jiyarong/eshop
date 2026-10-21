@@ -1062,3 +1062,16 @@ test("WB's official tariff fees go in without the coefficient they were multipli
   assert.match(source, /wb_logistics_base_rub: withoutCoefficient\(rate\.base_rub, rate\.logistics_coeff\)/);
   assert.match(source, /wb_logistics_liter_rub: withoutCoefficient\(rate\.liter_rub, rate\.logistics_coeff\)/);
 });
+
+test("every source cell says which data it takes the figures from, and how to check them", async () => {
+  const source = await readFile("app/javascript/controllers/profit_prediction_controller.js", "utf8");
+  const keys = source.slice(source.indexOf("const SOURCE_BASIS_KEYS"), source.indexOf("const VIEW_MODE_STORAGE_KEY"));
+
+  ["actual_selling_price", "actual_return_rate", "actual_storage", "actual_acquiring", "actual_advertising", "official_commission",
+    "wb_logistics_tariffs", "ozon_logistics_tariffs", "ozon_cross_dock_tariffs"].forEach((sourceKey) => {
+    assert.match(keys, new RegExp(`${sourceKey}: \\[`), sourceKey);
+  });
+  assert.match(keys, /wb_logistics_tariffs: \["wb_logistics_tariffs", "actual_logistics"\]/, "the cell that offers both the tariff and the real figures explains both");
+  assert.match(source, /this\.renderProcessSourceBasis\(cell, sourceKey\)/);
+  assert.match(source, /summary\.textContent = scope/);
+});

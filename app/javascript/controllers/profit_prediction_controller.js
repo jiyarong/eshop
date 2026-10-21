@@ -24,6 +24,20 @@ const LOGISTICS_FIGURE_FIELDS = ["outbound_logistics_rub", "return_logistics_rub
 // config/sku_profit_scenarios.yml).
 const PENDING_KIND_BY_SOURCE = { actual_storage: "storage", actual_advertising: "advertising" };
 
+// The data basis text under each source cell (messages: process.source_basis), per source key; a cell with two
+// sources (the official tariff and the real figures it also offers) shows both.
+const SOURCE_BASIS_KEYS = {
+  actual_selling_price: ["actual_selling_price"],
+  actual_return_rate: ["actual_return_rate"],
+  actual_storage: ["actual_storage"],
+  actual_acquiring: ["actual_acquiring"],
+  actual_advertising: ["actual_advertising"],
+  official_commission: ["official_commission"],
+  wb_logistics_tariffs: ["wb_logistics_tariffs", "actual_logistics"],
+  ozon_logistics_tariffs: ["ozon_logistics_tariffs", "actual_logistics"],
+  ozon_cross_dock_tariffs: ["ozon_cross_dock"]
+};
+
 const VIEW_MODE_STORAGE_KEY = "profit_prediction_view_mode";
 const VIEW_MODES = ["calculator", "table"];
 const DEFAULT_VIEW_MODE = "calculator";
@@ -1433,6 +1447,31 @@ export default class extends Controller {
       note.textContent = this.messagesValue.process.sources.actuals_not_split || "";
       cell.append(note);
     }
+    this.renderProcessSourceBasis(cell, sourceKey);
+  }
+
+  // "Basis: ..." (which data it comes from) always shows; the way it is worked out and how to check it opens on click.
+  renderProcessSourceBasis(cell, sourceKey) {
+    cell.querySelectorAll(":scope > .profit-prediction-process__basis").forEach((element) => element.remove());
+    const keys = SOURCE_BASIS_KEYS[sourceKey];
+    const messages = this.messagesValue.process.source_basis;
+    if (!keys || !messages) return;
+
+    const platform = this.selectedRow?.dataset.platform || "";
+    keys.forEach((key) => {
+      const entry = messages[key];
+      const scope = entry?.[`${platform}_scope`] || entry?.scope;
+      if (!scope) return;
+
+      const details = document.createElement("details");
+      details.className = "profit-prediction-process__basis";
+      const summary = document.createElement("summary");
+      summary.textContent = scope;
+      const body = document.createElement("p");
+      body.textContent = entry[`${platform}_how`] || entry.how || "";
+      details.append(summary, body);
+      cell.append(details);
+    });
   }
 
   renderProcessSourceControls(cell, sourceKey) {
