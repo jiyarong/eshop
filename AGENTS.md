@@ -170,7 +170,7 @@
 
 - 主菜单入口改为 `GET /reports/delivery_workbench`（送仓工作台）；独立计划列表、详情与编辑位于 `/reports/delivery_plans`。先选 SKU，再选目标集群；没有缺货的集群也可送仓。`Ec::DeliveryPlan` / `Ec::DeliveryPlanItem` 保存店铺、目标集群、送仓周、SKU 及可空的预估件数；数量可以打包时确定，不依赖箱规、单托容量或已选配送方式，也不占库存。需求保存通过 `Ec::DeliveryPlans::Save` 完成。
 - 现有 `Ec::PalletPlan` 作为箱/托打包执行批次，使用可空的 `delivery_plan_id` 关联送仓计划；历史批次及计算器保持兼容。一份送仓计划可关联多个箱送或托送批次，每批仍只采用一种货位类型。普通 BOX/PALLET 与运输货位能力不可混淆。
-- 从送仓详情进入 `/reports/pallet_workbench?delivery_plan_id=...`，候选 SKU 限定为计划商品，可用库存不受预估余量限制。预估量只指导建议箱数，不构成累计打包上限；未填预估时建议箱数参考销量。运营可在打包时增减数量，继续校验实际库存、箱规、Listing 唯一性及箱/托容量；自动增补和单 SKU MAX 不受覆盖天数或销量限制。
+- 从送仓详情进入 `/reports/pallet_workbench?delivery_plan_id=...`，候选 SKU 限定为计划商品，可用库存不受预估余量限制。预估量只指导建议箱数，不构成累计打包上限；未填预估时建议箱数参考销量。运营可在打包时增减数量，继续校验实际库存、箱规、供货 Listing 可确定性及箱/托容量；自动增补和单 SKU MAX 不受覆盖天数或销量限制。
 - 所有非 cancelled 批次（包括草稿和已完成批次）均计入批次累计件数；取消批次后从累计中扣除。详情并列展示预估量、批次累计及非负预估待送量；批次累计不是已发货量。库存继续仅由原 COMMITTED_STATUSES 执行批次占用，不能再在送仓计划层重复预留。
 - `Build` 预览及提交前校验计划状态、店铺、集群与 SKU 归属；`Save` 对送仓父记录加锁，串行校验并保存批次。父计划修改与取消使用同一父锁，预估量可调低或清空，但不得移除仍被未取消批次使用的 SKU；有未取消批次时不能取消父计划。不能将已有批次改挂其他送仓计划。
 - 新页面保持 HTML / `.json`、整单 SKU 可见范围与管理权限；送仓清单的浏览器草稿按计划、店铺隔离，切换集群保留选品，并以 `lock_version` 丢弃旧版本。新增回归位于 `test/services/ec/delivery_plans/`、`test/controllers/reports/delivery_plans_controller_test.rb` 和 `test/javascript/delivery_workbench_controller_test.mjs`。测试环境若触发资产构建，使用 `SKIP_JS_BUILD=1` 跳过构建钩子。
@@ -188,7 +188,7 @@
 ### 单托、多托与数量规则
 
 - 新方案默认 `packing_mode: single`，每托最多 5 个 SKU；同时保留 `multiple` 多托计划。使用 `ozon_fbo` 规则，自有/FBS 侧出库不代表采用 `ozon_fbs` 收货限制。
-- 需求限定当前店铺与目标集群；包装完整且 Listing 唯一时，建议箱数为 `min(ceil(剩余缺口 / 每箱件数), floor(max(可分配库存, 0) / 每箱件数))`，即整箱向上补足缺口、库存上限向下取整。同一店铺 SKU 对应多个 Listing 时不能自动选取供货商品。
+- 需求限定当前店铺与目标集群；包装完整且可确定供货 Listing 时，建议箱数为 `min(ceil(剩余缺口 / 每箱件数), floor(max(可分配库存, 0) / 每箱件数))`，即整箱向上补足缺口、库存上限向下取整。工作台与 `Build` 共用 `Ec::PalletPlans::ListingSelection`：同店铺 SKU 有多个 Listing 时优先 `is_active`，多个 active 时按店铺、平台及 `platform_sku_id` 硬关联的最新 `ec_orders.ordered_at` 选择，不受销量日期或集群筛选限制；无 active、active 均无订单或最新时间并列时仍报 `ambiguous_listing`。仅有一个 Listing 时沿用原有行为。搜索只限定候选 SKU，不得缩窄该 SKU 的 Listing 选择范围。
 - “一键推荐一托”使用**全部筛选结果**，不受当前页或表格排序影响：筛选包装完整且建议箱数大于 0 的 SKU，按缺口降序、日均销量降序、SKU 编码升序取前 5 个候选，再请求 `recommend_one: true`。这是启发式推荐，候选可能无法全部装入，不保证全局最优装载率。
 - “清单适配一托”使用当前清单的选品与箱数上限请求单托推荐；两种推荐均可减少箱数或移除本托未装入的 SKU，应用前保留一次撤销。不要把它们改成未经提示的整份多托补货。
 - `Packing#retain_packed_items!` 必须同步裁减结果清单、更新实际箱数并重排 zone 的 `item_index`；`Build` 同步裁减待保存明细并保留 `sku_product_id`，确保清单、几何结果、箱数和件数一致，不能只隐藏剩余托盘。

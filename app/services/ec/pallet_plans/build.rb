@@ -26,12 +26,13 @@ module Ec
         raise Error.new(:invalid_items) if rows.empty?
         codes = rows.map { |row| row[:sku_code].to_s.upcase }
         raise Error.new(:invalid_items) unless codes.uniq.size == codes.size
-        products_by_code = Ec::SkuProduct.where(store_id: store.id, platform: "ozon", sku_code: codes)
-          .includes(sku: :dimension).to_a.group_by(&:sku_code)
-        raise Error.new(:ambiguous_listing, sku: products_by_code.find { |_code, rows| rows.size > 1 }&.first) if products_by_code.any? { |_code, rows| rows.size > 1 }
-        products = products_by_code.transform_values(&:first)
-        visible = WeeklyProfitReports::AccessScope.new(@user).visible_skus.where(sku_code: codes).pluck(:sku_code)
-        raise Error.new(:sku_unavailable) unless products.keys.sort == codes.sort && visible.sort == codes.sort
+        visible = WeeklyProfitReports::AccessScope.new(@user).visible_skus.where(sku_code: codes)
+        product_scope = Ec::SkuProduct.where(store_id: store.id, platform: "ozon", sku_code: visible.select(:sku_code))
+          .includes(sku: :dimension)
+        products = ListingSelection.new(products: product_scope).call
+        raise Error.new(:sku_unavailable) unless products.keys.sort == codes.sort
+        ambiguous = products.find { |_code, product| product.nil? }
+        raise Error.new(:ambiguous_listing, sku: ambiguous.first) if ambiguous
         items = rows.map { |row| normalize_item(row, products.fetch(row[:sku_code].to_s.upcase)) }
         maximize_sku = @attributes[:maximize_sku_code].presence&.upcase
         if maximize_sku

@@ -18,6 +18,7 @@ module Reports
         @catalogue.sort_by! { |row| row[:sku_code].to_s }
         @rows = Kaminari.paginate_array(@catalogue).page(params[:page]).per(15)
       end
+      load_sales_metrics
     end
   end
 end

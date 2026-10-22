@@ -2,7 +2,6 @@
 <div class="report-stack pallet-workbench" data-controller="delivery-workbench"
      data-delivery-workbench-context-value="<%= { store_id: @store&.id, cluster_id: @cluster_id, from_date: @from_date, to_date: @to_date, target_days: @target_days, time_zone: @delivery&.time_zone || user_time_zone, lock_version: @delivery&.lock_version, id: @delivery&.id }.to_json %>"
      data-delivery-workbench-initial-value="<%= (@delivery ? @delivery.items.map { |item| item.slice(:sku_code, :units) } : []).to_json %>"
-     data-delivery-workbench-catalogue-value="<%= @catalogue.to_json %>"
      data-delivery-workbench-messages-value="<%= t('delivery_workbench.messages').to_json %>">
   <header class="ozon-warehouse-heading"><div><h1 class="page-title"><%= t("delivery_workbench.title") %></h1><p class="page-subtitle"><%= t("delivery_workbench.description") %></p></div><%= link_to t("delivery_workbench.plans"), reports_delivery_plans_path, class: "button button-secondary" %></header>
   <% if @delivery %><div class="panel"><%= t("pallet_workbench.editing", number: @delivery.plan_no) %></div><% end %>
@@ -21,12 +20,12 @@
     <div class="pallet-workbench__workspace">
       <section class="panel pallet-workbench__catalogue">
         <h2><%= t("delivery_workbench.step_demand") %></h2><p class="pallet-workbench__hint"><%= t("delivery_workbench.demand_hint") %></p>
-        <% if can?(:manage_skus) && @cluster_id %><button type="button" class="button button-secondary" data-action="delivery-workbench#selectSuggested"><%= t("delivery_workbench.select_suggested") %></button><% end %>
         <div class="table-list-card">
           <%= render "reports/pallet_workbenches/pagination", rows: @rows %>
           <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
             <table class="inventory-list-table"><thead><tr><th><%= t("pallet_workbench.select") %></th>
               <%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.sku_code"), sort_key: "sku_code" %>
+              <th title="<%= t('delivery_workbench.sales_hint', from: @recent_sales_from_date, to: @recent_sales_to_date) %>"><%= t("delivery_workbench.sales") %></th>
               <% if @cluster_id %>
                 <% %w[shortage fbs_allocatable].each do |key| %><%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.#{key}"), sort_key: key %><% end %>
                 <th><%= t("delivery_workbench.suggested_units") %></th>
@@ -35,6 +34,10 @@
               <tbody><% @rows.each do |row| %><tr>
                 <td><input type="checkbox" data-delivery-workbench-target="pick" data-sku="<%= row[:sku_code] %>" data-action="delivery-workbench#pick" aria-label="<%= t('pallet_workbench.select_sku', sku: row[:sku_code]) %>" <%= 'disabled' unless can?(:manage_skus) %>></td>
                 <td><strong><%= row[:sku_code] %></strong><small class="pallet-workbench__product"><%= row[:product_name] %></small></td>
+                <td class="numeric">
+                  <div><%= t("delivery_workbench.recent_sales", quantity: number_with_delimiter(row[:sales_quantity_28d])) %></div>
+                  <small class="pallet-workbench__product"><%= t("delivery_workbench.strict_forecast_sales", quantity: row[:strict_forecast_quantity_28d].nil? ? t("common.empty_value") : number_with_precision(row[:strict_forecast_quantity_28d], precision: 2, strip_insignificant_zeros: true, delimiter: ",")) %></small>
+                </td>
                 <% if @cluster_id %><td class="numeric"><%= row[:shortage] %></td><td class="numeric"><%= row[:fbs_allocatable] %></td><td class="numeric"><%= row[:suggested_units] %></td><% end %>
                 <td><%= t("delivery_workbench.#{row[:packaging_complete] ? 'packaging_ready' : 'packaging_pending'}") %></td>
               </tr><% end %></tbody>

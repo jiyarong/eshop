@@ -64,11 +64,39 @@ class Ec::PalletPlans::WorkbenchQueryTest < ActiveSupport::TestCase
     assert_equal 0, row[:suggested_boxes]
 
     @sku.dimension.update!(outer_box_pcs: 10)
-    Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "DUPLICATE-#{@token}", platform_sku_id: "DUPLICATE-SKU-#{@token}")
+    duplicate = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "DUPLICATE-#{@token}", platform_sku_id: "DUPLICATE-SKU-#{@token}")
+    create_sale(@store, duplicate, "Москва", 1)
     row = query[:rows].sole
     assert_equal :ambiguous_listing, row[:exclusion_reason]
     assert_nil row[:sku_product_id]
     assert_equal 0, row[:suggested_boxes]
+  end
+
+  test "selects the only active listing while retaining historical sales from inactive listings" do
+    @product.update!(is_active: false)
+    active = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "ACTIVE-#{@token}", platform_sku_id: "ACTIVE-SKU-#{@token}")
+
+    row = query[:rows].sole
+
+    assert_equal active.id, row[:sku_product_id]
+    assert_equal 28, row[:sales_quantity]
+    assert_equal 2, row[:suggested_boxes]
+    assert_nil row[:exclusion_reason]
+  end
+
+  test "selects the most recently ordered active listing outside the sales period cluster and matching search listing" do
+    @product.update!(offer_id: "OLD-OFFER-#{@token}")
+    recent = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "RECENT-#{@token}", platform_sku_id: "RECENT-SKU-#{@token}")
+    create_sale(@store, recent, "Казань", 1, ordered_at: Time.zone.parse("2026-08-01 12:00:00"))
+
+    report = query(query: @product.offer_id)
+    row = report[:rows].sole
+
+    assert_equal @product.offer_id, report[:query]
+    assert_equal recent.id, row[:sku_product_id]
+    assert_equal 28, row[:sales_quantity]
+    assert_equal 2, row[:suggested_boxes]
+    assert_nil row[:exclusion_reason]
   end
 
   test "uses unit data instead of carton dimensions or a stale stored category" do
@@ -161,11 +189,12 @@ class Ec::PalletPlans::WorkbenchQueryTest < ActiveSupport::TestCase
     }.merge(overrides)).call
   end
 
-  def create_sale(store, product, cluster, quantity)
-    order = Ec::Order.create!(platform: "ozon", store: store, order_key: "pallet-query-#{store.id}-#{@token}",
-      order_status: "delivered", ordered_at: Time.zone.parse("2026-07-14 12:00:00"))
+  def create_sale(store, product, cluster, quantity, ordered_at: Time.zone.parse("2026-07-14 12:00:00"))
+    sale_token = SecureRandom.hex(6)
+    order = Ec::Order.create!(platform: "ozon", store: store, order_key: "pallet-query-#{store.id}-#{sale_token}",
+      order_status: "delivered", ordered_at: ordered_at)
     fulfillment = order.fulfillments.create!(platform: "ozon", store: store,
-      external_fulfillment_id: "PALLET-#{store.id}-#{@token}", fulfillment_key: "pallet-query-#{store.id}-#{@token}",
+      external_fulfillment_id: "PALLET-#{store.id}-#{sale_token}", fulfillment_key: "pallet-query-#{store.id}-#{sale_token}",
       fulfillment_type: "fbo", status: "delivered", cluster_to: cluster)
     order.items.create!(platform: "ozon", store: store, fulfillment: fulfillment, platform_sku_id: product.platform_sku_id, quantity: quantity)
   end

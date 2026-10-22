@@ -34,6 +34,29 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
     assert_equal @sku.sku_code, error.details[:sku]
   end
 
+  test "uses the active listing consistently in previews and saved packing batches" do
+    @product.update!(is_active: false)
+    active = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "ACTIVE-#{@token}", platform_sku_id: "ACTIVE-SKU-#{@token}")
+
+    built = Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 1)).call
+    assert_equal active.id, built[:items].sole[:sku_product_id]
+
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: attributes(quantity: 1)).call
+    assert_equal active.id, plan.items.sole.sku_product_id
+    assert_equal active.platform_sku_id, plan.items.sole.platform_sku_id
+  end
+
+  test "rejects multiple active listings without order evidence" do
+    Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "OTHER-#{@token}", platform_sku_id: "OTHER-SKU-#{@token}")
+
+    error = assert_raises(Ec::PalletPlans::Error) do
+      Ec::PalletPlans::Build.new(user: @user, attributes: attributes(quantity: 1)).call
+    end
+
+    assert_equal :ambiguous_listing, error.key
+    assert_equal @sku.sku_code, error.details[:sku]
+  end
+
   test "single mode rejects overfilling instead of splitting the manifest" do
     @sku.dimension.update!(outer_length_cm: 120, outer_width_cm: 80, outer_height_cm: 80)
     @sku.batches.first.update!(received_quantity: 30, purchased_quantity: 30)

@@ -24,19 +24,22 @@ module Ec
         validate_destination!
         product_scope = scoped_products
         products = product_scope.to_a.group_by(&:sku_code)
+        selected_products = ListingSelection.new(products: product_scope).call
         availability = @availability || Availability.new(sku_codes: products.keys, store_id: @store.id, excluding_plan_id: @excluding_plan_id)
         quantities = availability.call
         report = Ec::OzonWarehouseRecommendationQuery.new(
           store: @store, from_date: @from_date, to_date: @to_date, time_zone: @time_zone,
-          target_days: @target_days, query: @query, sku_codes: product_scope.unscope(:order).reselect(:sku_code).distinct,
+          target_days: @target_days, sku_codes: product_scope.unscope(:order).reselect(:sku_code).distinct,
           fbs_available: quantities.transform_values { |quantity| quantity.fetch(:base_quantity) }
         ).call
         planned = planned_quantities(availability)
         rows = report[:rows].map do |row|
-          build_row(row, products.fetch(row[:sku_code]), quantities.fetch(row[:sku_code]), planned)
+          build_row(row, products.fetch(row[:sku_code]), quantities.fetch(row[:sku_code]), planned,
+            product: selected_products[row[:sku_code]])
         end
 
-        report.merge(cluster: @cluster, rows: rows.sort_by { |row| [-row[:shortage], -row[:sales_quantity], row[:sku_code]] })
+        report.merge(cluster: @cluster, query: @query.to_s.strip.presence,
+          rows: rows.sort_by { |row| [-row[:shortage], -row[:sales_quantity], row[:sku_code]] })
       end
 
       private
@@ -69,10 +72,11 @@ module Ec
         return products if @query.blank?
 
         pattern = "%#{ActiveRecord::Base.sanitize_sql_like(@query.to_s.downcase.strip)}%"
-        products.where(
+        matching_products = products.where(
           "LOWER(ec_sku_products.sku_code) LIKE :pattern OR LOWER(ec_sku_products.product_name) LIKE :pattern OR LOWER(ec_sku_products.offer_id) LIKE :pattern",
           pattern: pattern
-        )
+        ).unscope(:includes, :order).select(:sku_code)
+        products.where(sku_code: matching_products)
       end
 
       def planned_quantities(availability)
@@ -86,7 +90,7 @@ module Ec
           end
       end
 
-      def build_row(row, products, quantities, planned)
+      def build_row(row, products, quantities, planned, product:)
         cluster = row[:clusters].find { |entry| entry[:cluster_name] == @cluster.cluster_name } || {}
         sku = products.first.sku
         packaging = packaging(sku.dimension)
@@ -99,8 +103,8 @@ module Ec
         shortage = [gap - planned_quantity, 0].max
         allocatable = quantities.fetch(:available_quantity).to_i
         fbo_eligible = complete && packaging[:ozon_size_category] != Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE
-        suggested_boxes = fbo_eligible && products.one? ? [(shortage.to_d / pcs).ceil, ([allocatable, 0].max / pcs)].min : 0
-        exclusion_reason = if products.size != 1
+        suggested_boxes = fbo_eligible && product ? [(shortage.to_d / pcs).ceil, ([allocatable, 0].max / pcs)].min : 0
+        exclusion_reason = if product.nil?
           :ambiguous_listing
         elsif packaging[:ozon_size_category] == Ec::SkuDimension::OZON_SIZE_CATEGORY_OVERSIZE
           :ozon_oversize
@@ -113,7 +117,7 @@ module Ec
         end
 
         {
-          sku_code: row[:sku_code], product_name: row[:product_name], sku_product_id: products.one? ? products.first.id : nil,
+          sku_code: row[:sku_code], product_name: row[:product_name], sku_product_id: product&.id,
           operator_id: sku.operator_assignment&.user_id, operator_name: sku.operator_assignment&.user&.display_name,
           sales_quantity: cluster.fetch(:sales_quantity, 0), daily_sales: cluster.fetch(:daily_sales, 0),
           days_of_stock: cluster[:days_of_stock], available: cluster.fetch(:available, 0), inbound: cluster.fetch(:inbound, 0),

@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
   static targets = ["manifest", "itemTemplate", "pick", "week", "status", "save"];
-  static values = { context: Object, initial: Array, catalogue: Array, messages: Object };
+  static values = { context: Object, initial: Array, messages: Object };
 
   connect() {
     if (!this.hasManifestTarget) return;
@@ -30,13 +30,6 @@ export default class extends Controller {
     if (event.target.checked && !this.items.some((item) => item.sku_code === code)) {
       this.items.push({ sku_code: code, units: null });
     } else if (!event.target.checked) this.items = this.items.filter((item) => item.sku_code !== code);
-    this.render();
-  }
-
-  selectSuggested() {
-    this.catalogueValue.filter((row) => row.suggested_units > 0).forEach((row) => {
-      if (!this.items.some((item) => item.sku_code === row.sku_code)) this.items.push({ sku_code: row.sku_code, units: row.suggested_units });
-    });
     this.render();
   }
 

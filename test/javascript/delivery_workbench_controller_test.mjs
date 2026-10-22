@@ -5,28 +5,14 @@ import { build } from "esbuild";
 const bundle = await build({ entryPoints: ["app/javascript/controllers/delivery_workbench_controller.js"], bundle: true, format: "esm", platform: "browser", write: false });
 const { default: DeliveryWorkbenchController } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`);
 
-test("selecting a SKU leaves the estimate empty even when a suggested quantity exists", () => {
+test("selecting a SKU leaves the estimate empty", () => {
   const controller = Object.create(DeliveryWorkbenchController.prototype);
   controller.items = [];
-  controller.catalogueValue = [{ sku_code: "SKU", suggested_units: 100 }];
   controller.render = () => {};
 
   controller.pick({ target: { dataset: { sku: "SKU" }, checked: true } });
 
   assert.deepEqual(controller.items, [{ sku_code: "SKU", units: null }]);
-});
-
-test("suggested demand includes more than five SKUs without requiring packaging or replacing manual quantities", () => {
-  const controller = Object.create(DeliveryWorkbenchController.prototype);
-  controller.items = [{ sku_code: "SKU-0", units: 7 }];
-  controller.catalogueValue = Array.from({ length: 8 }, (_, i) => ({ sku_code: `SKU-${i}`, suggested_units: 100 + i, packaging_complete: false }));
-  controller.render = () => {};
-
-  controller.selectSuggested();
-
-  assert.equal(controller.items.length, 8);
-  assert.equal(controller.items[0].units, 7);
-  assert.equal(controller.items[7].units, 107);
 });
 
 test("changing stores clears the destination cluster and reloads the SKU catalogue", () => {

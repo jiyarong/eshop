@@ -41,6 +41,7 @@ class Reports::PalletWorkbenchesControllerTest < ActionDispatch::IntegrationTest
       assert_select ".pallet-workbench__advanced #workbench-shipping-date", count: 0
       assert_select "[data-pallet-workbench-target='supplyButton']", count: 0
       assert_select "select[name='supply_type']", count: 0
+      assert_select "th", text: I18n.t("delivery_workbench.sales", locale: locale)
       assert_no_match(/translation missing/i, response.body)
     end
   end

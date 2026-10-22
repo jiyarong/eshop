@@ -33,6 +33,7 @@ module Reports
       params[:target_days] = @plan.target_days
       params.merge!(@plan.calculation.fetch("coverage", {}).slice("min_days", "max_days", "fill_free_space"))
       load_workbench
+      load_sales_metrics
       render "reports/pallet_workbenches/show"
     end
 

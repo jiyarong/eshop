@@ -72,7 +72,9 @@
           <%= table_viewport(class_name: "table-list-viewport", sticky_header: true, data: { sticky_table_header_top_offset_value: can?(:manage_skus) ? 76 : 0 }) do %>
             <table class="inventory-list-table pallet-workbench__stock-table">
               <thead><tr><th><%= t("pallet_workbench.select") %></th>
-                <% %w[sku_code shortage days_of_stock fbs_allocatable].each do |key| %>
+                <%= render "shared/sortable_table_header", label: t("pallet_workbench.fields.sku_code"), sort_key: "sku_code" %>
+                <th title="<%= t('delivery_workbench.sales_hint', from: @recent_sales_from_date, to: @recent_sales_to_date) %>"><%= t("delivery_workbench.sales") %></th>
+                <% %w[shortage days_of_stock fbs_allocatable].each do |key| %>
                   <% label_key = "pallet_workbench.fields.#{key}" %>
                   <% label_key = "delivery_workbench.reference_units" if @delivery_plan && key == "shortage" %>
                   <% label_key = "delivery_workbench.packable_units" if @delivery_plan && key == "fbs_allocatable" %>
@@ -86,6 +88,10 @@
               <tbody><% @rows.each do |row| %><tr data-pallet-workbench-target="catalogueRow" data-sku="<%= row[:sku_code] %>">
                 <td><input type="checkbox" data-sku="<%= row[:sku_code] %>" data-pallet-workbench-target="pick" data-action="change->pallet-workbench#pick" aria-label="<%= t('pallet_workbench.select_sku', sku: row[:sku_code]) %>" <%= 'disabled' unless can?(:manage_skus) && row[:exclusion_reason] != :ambiguous_listing %>></td>
                 <td><strong><%= row[:sku_code] %></strong><small class="pallet-workbench__product"><%= row[:product_name] %></small><small class="pallet-workbench__hint"><%= row[:operator_name] %></small></td>
+                <td class="numeric">
+                  <div><%= t("delivery_workbench.recent_sales", quantity: number_with_delimiter(row[:sales_quantity_28d])) %></div>
+                  <small class="pallet-workbench__product"><%= t("delivery_workbench.strict_forecast_sales", quantity: row[:strict_forecast_quantity_28d].nil? ? t("common.empty_value") : number_with_precision(row[:strict_forecast_quantity_28d], precision: 2, strip_insignificant_zeros: true, delimiter: ",")) %></small>
+                </td>
                 <% %i[shortage days_of_stock].each do |key| %><td class="numeric"><%= row[key].nil? ? t("common.empty_value") : number_with_precision(row[key], precision: 0) %></td><% end %>
                 <td class="numeric"><% if row[:reserved_quantity].to_i.positive? %><del><%= row[:fbs_available] %></del><br><% end %><strong><%= row[:fbs_allocatable] %></strong><small class="pallet-workbench__hint"><%= t("pallet_workbench.carton_size", count: row[:pcs]) if row[:pcs].to_i.positive? %></small></td>
                 <td><%= t("pallet_workbench.categories.#{row[:ozon_size_category] || Ec::SkuDimension::OZON_SIZE_CATEGORY_UNKNOWN}") %></td>

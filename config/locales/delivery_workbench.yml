@@ -10,8 +10,11 @@ zh:
     demand_hint: 先选择 SKU，数量可以留空，打包时再确定。填写的预估量和缺货建议仅供参考，后续可按库存和装载情况调整；缺少箱规也可先保存计划。
     destination_hint: 目标集群按运营安排选择。即使当前没有缺货，也可以送仓。
     plan_hint: 送仓计划不占库存；打包批次确认后占用库存。
-    select_suggested: 加入全部筛选结果的建议送仓量
     suggested_units: 建议送仓量（件）
+    sales: 全平台销量（件）
+    sales_hint: "最近4周为 %{from} 至 %{to} 的全店铺、全平台销量，排除取消和退货订单；预测为 SKU 工作台的严谨预测日销 × 28天，无有效观察日时显示为 -。"
+    recent_sales: "近4周：%{quantity}"
+    strict_forecast_sales: "严谨预测 × 28天：%{quantity}"
     packable_units: 本批可用库存（件）
     units: 预估送仓量（件，可选）
     quantity_pending: 打包时确定
@@ -59,8 +62,11 @@ en:
       can receive stock even when it has no current shortage.
     plan_hint: Delivery plans do not reserve stock. Confirmed packing batches reserve
       stock.
-    select_suggested: Add suggested quantities from all filtered results
     suggested_units: Suggested units
+    sales: All-platform sales (units)
+    sales_hint: "Last 4 weeks: %{from} to %{to}, across all stores and platforms, excluding cancelled and returned orders. Forecast uses the SKU workbench's strict daily forecast × 28 days; - means no valid observation days."
+    recent_sales: "Last 4 weeks: %{quantity}"
+    strict_forecast_sales: "Strict forecast × 28 days: %{quantity}"
     packable_units: Stock available for this batch
     units: Estimated units (optional)
     quantity_pending: Determine during packing
@@ -113,8 +119,11 @@ ru:
       оформить и в кластер без текущего дефицита.
     plan_hint: План поставки не резервирует остатки. Остатки резервируются при подтверждении
       упаковочной партии.
-    select_suggested: Добавить рекомендации из всех отфильтрованных результатов
     suggested_units: Рекомендуется, шт.
+    sales: Продажи на всех платформах, шт.
+    sales_hint: "Последние 4 недели: с %{from} по %{to}, все магазины и платформы, без отменённых и возвращённых заказов. Прогноз — строгий суточный прогноз из рабочего места SKU × 28 дней; - означает отсутствие пригодных дней наблюдения."
+    recent_sales: "За 4 недели: %{quantity}"
+    strict_forecast_sales: "Строгий прогноз × 28 дней: %{quantity}"
     packable_units: Доступный остаток для партии, шт.
     units: Оценка количества, шт. (необязательно)
     quantity_pending: Определить при упаковке

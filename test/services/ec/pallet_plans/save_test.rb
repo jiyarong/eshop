@@ -35,6 +35,20 @@ class Ec::PalletPlans::SaveTest < ActiveSupport::TestCase
     assert plan.pallets.any?
   end
 
+  test "saves the most recently ordered active listing and its platform SKU" do
+    recent = Ec::SkuProduct.create!(sku: @sku, store: @store, product_id: "RECENT-#{@token}", platform_sku_id: "RECENT-SKU-#{@token}")
+    [@product, recent].each_with_index do |product, index|
+      order = Ec::Order.create!(platform: "ozon", store: @store, order_key: "listing-save-#{@token}-#{index}",
+        order_status: "delivered", ordered_at: Time.zone.parse("2026-08-0#{index + 1} 12:00:00"))
+      order.items.create!(platform: "ozon", store: @store, platform_sku_id: product.platform_sku_id, quantity: 1)
+    end
+
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: attributes(quantity: 1)).call
+
+    assert_equal recent.id, plan.items.sole.sku_product_id
+    assert_equal recent.platform_sku_id, plan.items.sole.platform_sku_id
+  end
+
   private
 
   def attributes(quantity:)

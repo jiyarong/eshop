@@ -15,6 +15,7 @@ module Reports
 
     def show
       load_workbench
+      load_sales_metrics
       respond_to do |format|
         format.html
         format.json { render json: { store_id: @store&.id, clusters: @clusters, cluster_id: @cluster_id, rows: @catalogue, inventory_synced_at: @inventory_synced_at } }
@@ -129,6 +130,31 @@ module Reports
       load_table_sort(allowed_keys: SORT_KEYS, default_key: :shortage)
       @catalogue = sort_table_records(@catalogue) { |row| row[table_sort_key.to_sym] }
       @rows = Kaminari.paginate_array(@catalogue).page(params[:page]).per(15)
+    end
+
+    def load_sales_metrics
+      @recent_sales_from_date = user_today - 28.days
+      @recent_sales_to_date = user_today - 1.day
+      rows = (request.format.json? ? @catalogue : @rows).index_by { |row| row[:sku_code] }
+      return if rows.empty?
+
+      skus = access_scope.visible_skus.where(sku_code: rows.keys).includes(:current_marketing_state).to_a
+      sales = Hash.new(0)
+      Ec::SkuDailySalesQuery.new(sku_codes: rows.keys, from_date: @recent_sales_from_date,
+        to_date: @recent_sales_to_date, time_zone: user_time_zone).call.each do |(_date, sku_code), quantity|
+        sales[sku_code] += quantity
+      end
+      result = ErpAI::DynamicDailySalesForecast.new(skus: skus, date_to: @recent_sales_to_date).call
+      forecasts = skus.one? ? { skus.first => result } : result
+      skus.each do |sku|
+        row = rows.fetch(sku.sku_code)
+        forecast = forecasts.fetch(sku)
+        daily_sales = forecast[:forecast_daily_sales]
+        row[:sales_quantity_28d] = sales[sku.sku_code]
+        row[:strict_forecast_quantity_28d] = if daily_sales.present? && forecast.dig(:calculation, :path).to_s != "no_valid_days"
+          daily_sales.to_d * 28
+        end
+      end
     end
 
     def plan_attributes
