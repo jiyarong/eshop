@@ -4,7 +4,7 @@ module Ec
       "Ec::DeliveryPlan" => %w[plan_no store_id macrolocal_cluster_id cluster_name week_start from_date to_date target_days time_zone status],
       "Ec::DeliveryPlanItem" => %w[delivery_plan_id sku_code units],
       "Ec::OwnWarehouseCostPeriod" => %w[
-        own_warehouse_code effective_from effective_to total_operating_cost billing_unit currency
+        own_warehouse_code effective_from effective_to total_operating_cost cost_basis_days currency
         storage_ratio transport_ratio labor_ratio fbo_labor_weight status source_reference note
         created_by_id confirmed_by_id confirmed_at
       ],

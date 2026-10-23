@@ -1,0 +1,170 @@
+en:
+  own_warehouse:
+    page_title: Belarus own warehouse costs
+    page_subtitle: Maintain own warehouse cost versions and review SKU allocations by natural week.
+    tabs:
+      aria_label: Own warehouse cost sections
+      config: Cost configuration
+      allocations: Weekly allocation
+    costs_title: Own warehouse cost configuration
+    allocations_title: Weekly own warehouse allocation
+    configuration_hint: >-
+      New versions default to CNY 9,300 per 7 days, storage 40%, transport 25%,
+      labor 35% and FBO labor weight 10%. Rules remain valid across weeks;
+      create a new version only when expenses or allocation rules change.
+    allocation_hint: Weeks run Monday–Sunday in Asia/Shanghai. Allocation uses the
+      entire warehouse population; filters affect display only. Unit expense is empty
+      when there are no outbound units.
+    import_hint: "CSV is for manual historical inputs; system generation needs no upload. The template includes eligible daily SKU inputs and ignores invalid supply records. CSV imports still require all active SKUs and seven complete days, UTF-8 encoding, up to 5 MB."
+    complete_population: I confirm this file contains the complete warehouse population
+      for the week
+    version: Configuration version
+    version_label: 'Version #%{id} · %{warehouse} · %{date} · %{status}'
+    switch: Switch version
+    new_version: New version
+    save_draft: Save draft
+    confirm: Confirm configuration
+    saved: Configuration saved
+    calculated: Weekly allocation published
+    calculated_with_exclusions: "Weekly allocation published; %{count} SKU(s) were excluded. See the page notice."
+    input_warning: "This week excludes invalid data: %{details}. Excluded SKUs do not participate this week; operators can complete them for the next week."
+    immutable_hint: Confirmed versions are read only; create a new version to change
+      expenses or rules.
+    show_history: Show previous weekly revisions
+    query: Search
+    total: Selected revision total %{amount} CNY · %{count} records
+    previous: Previous
+    next: Next
+    page: Page %{page} / %{count}
+    details: Calculation evidence
+    segment: 'Cost version #%{id}: %{from} to %{to}, segment budget %{amount} CNY'
+    empty: No allocations match the current filters. If this week has not been generated, confirm the cost configuration, then select “Generate weekly allocation” at the top right.
+    generate_week: Generate weekly allocation
+    regenerate_week: Regenerate weekly allocation
+    system_hint: "Generate from daily warehouse stock and volume snapshots, FBS dispatch dates and FBO receipt dates. Exclude SKUs without seven complete days of stock and positive volume; ignore outbound records with unknown dates or SKU mappings and show a notice. Eligible SKUs share the costs. Automatic inputs support BY only; recalculation preserves history."
+    calculate_system: "Generate / recalculate from system data"
+    system_issues: "Publication blocked by %{count} input issues: %{examples}"
+    source_label: "Input source"
+    sources:
+      system: "Daily snapshots and platform supplies"
+      csv: "Confirmed complete CSV"
+    issue_reasons:
+      snapshot: "Missing or invalid daily stock / positive volume"
+      missing_receipt_date: "Missing receipt date"
+      sku_mapping: "Missing or ambiguous SKU mapping"
+      excluded_sku: "SKU lacks complete seven-day stock or volume and was excluded"
+    import_title: Generate / recalculate weekly allocation
+    download_template: Download full SKU input template
+    file: Daily stock and outbound CSV
+    calculate: Calculate and publish weekly revision
+    cny: Chinese yuan (CNY)
+    fields:
+      own_warehouse_code: Own warehouse code
+      effective_from: Effective from
+      effective_to: Effective to (optional)
+      total_operating_cost: Base operating expense (CNY)
+      cost_basis_days: Days covered by base expense
+      currency: Currency
+      storage_ratio: Storage share (0–1)
+      transport_ratio: Transport share (0–1)
+      labor_ratio: Labor share (0–1)
+      fbo_labor_weight: FBO replenishment labor weight (0–1)
+      source_reference: Expense reference
+      note: Notes
+      sku_code: SKU
+      week_start: Week starting Monday
+      allocation_version: Weekly revision
+      on_hand_quantity: Average daily own warehouse stock (units)
+      on_hand_volume_m3: Average stock volume (m³)
+      fbs_outbound_quantity: FBS outbound units
+      fbo_outbound_quantity: FBO replenishment outbound units
+      storage_cost: Storage expense (CNY)
+      transport_cost: Transport expense (CNY)
+      labor_cost: Labor expense (CNY)
+      total_cost: Total own warehouse expense (CNY)
+      cost_per_outbound_unit: Expense per outbound unit this week (CNY)
+      fbs_unit_cost: FBS unit cost (CNY)
+      fbo_unit_cost: FBO unit cost (CNY)
+    errors:
+      no_eligible_inputs: "No SKU has seven complete days of stock and positive volume. Complete the data or select another finished natural week."
+      system_incomplete: "System inputs are incomplete. Weekly allocation was not published."
+      unsupported_warehouse: "Automatic inputs use consolidated own stock and support BY only. Import complete separate data for other warehouses."
+      ratios: Allocation shares must sum to 1.
+      dates: End date cannot precede the start date.
+      immutable: Confirmed versions cannot be edited or deleted.
+      immutable_history: The effective date overlaps calculated weeks. Choose a date
+        after those weeks.
+      overlap: New versions must follow confirmed versions without overlapping validity.
+      missing_version: "Confirmed cost configurations do not cover all seven days. Save and confirm a configuration covering the selected week in Cost configuration."
+      invalid_week: Select one completed natural week (Monday–Sunday) to view or generate allocations.
+      missing_inputs: Provide complete inputs and confirm the whole warehouse population.
+      invalid_inputs: 'Invalid inputs: dates, SKU, positive unit volume and nonnegative
+        stock/outbound quantities are required.'
+      duplicate_inputs: Duplicate SKU/day inputs.
+      incomplete_inputs: Every SKU must have all seven daily records.
+      missing_skus: The import does not cover every active SKU. Download the full template and complete all SKU rows.
+      unknown_sku: Unknown SKU in input; register it first.
+      zero_denominator: A positive expense pool has a zero denominator. Check stock
+        and outbound inputs.
+    statuses:
+      draft: Draft
+      confirmed: Confirmed
+      superseded: Previous version
+    profit_incomplete: Own warehouse allocations are incomplete; warehouse expense
+      and adjusted profit are unavailable.
+    current_revision: Current revision
+    revision_label: Weekly revision v%{revision}
+    history_total: Selected historical total %{amount} CNY · %{count} records (includes
+      previous revisions)
+    ui:
+      configuration_subtitle: Maintain total costs and allocation rules for the
+        Belarus own warehouse effective range. Confirmed versions are read only.
+      allocations_subtitle: Review weekly own warehouse expense, outbound unit cost
+        and calculation evidence by SKU.
+      sections:
+        identity: Version details
+        expense: Expense basis
+        allocation: Allocation rules
+        reference: Source and notes
+      ratios_hint: Storage, transport and labor shares must sum to 1. The FBO labor
+        weight only affects the labor pool.
+      validity_hint: Leave the end date empty for continuous validity. A new version applies on its start date; the previous version ends the day before.
+      cost_basis_hint: Daily expense = base operating expense ÷ days covered. CNY 9,300 per 7 days allocates CNY 9,300 per complete week; validity dates do not change the daily rate.
+      total_cost: Total own warehouse expense
+      record_count: Allocation records
+      details_title: SKU allocation details
+      dynamic_rates_title: Dynamic rates for this week
+      dynamic_rates_hint: Rates are calculated from warehouse-wide stock, outbound volume and equivalent work units; each cost-version segment is shown separately.
+      dynamic_rates_empty: No dynamic rates are available for the current selection.
+      rate_period: Cost segment
+      dynamic_storage_rate: P-storage rate
+      dynamic_transport_rate: P-transport rate
+      dynamic_labor_rate: P-labor rate
+      rate_units:
+        storage: CNY/m³·segment
+        transport: CNY/m³
+        labor: CNY/equivalent unit
+  weekly_profit_reports:
+    columns:
+      wsu_deep:
+        own_warehouse_cost: Own warehouse allocation (CNY)
+        after_own_warehouse_cost: Profit after own warehouse costs (CNY)
+    summary:
+      wsu_deep:
+        total_own_warehouse_cost: Own warehouse allocation (CNY)
+        total_after_own_warehouse_cost: Profit after own warehouse costs (CNY)
+  activerecord:
+    attributes:
+      ec/own_warehouse_cost_period:
+        own_warehouse_code: Own warehouse code
+        effective_from: Effective from
+        effective_to: Effective to (optional)
+        total_operating_cost: Base operating expense (CNY)
+        cost_basis_days: Days covered by base expense
+        currency: Currency
+        storage_ratio: Storage share (0–1)
+        transport_ratio: Transport share (0–1)
+        labor_ratio: Labor share (0–1)
+        fbo_labor_weight: FBO replenishment labor weight (0–1)
+        source_reference: Expense reference
+        note: Notes

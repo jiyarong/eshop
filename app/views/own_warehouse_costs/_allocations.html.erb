@@ -1,0 +1,104 @@
+<div class="own-warehouse-tab-panel" id="own-warehouse-allocations-panel" role="tabpanel" aria-labelledby="own-warehouse-allocations-tab">
+  <% rate_segments = @rows.flat_map { |row| own_warehouse_rate_segments(row) }.uniq { |segment| [segment[:period_id], segment[:from], segment[:to], segment[:storage_rate], segment[:transport_rate], segment[:labor_rate]] } %>
+  <% if flash[:notice].present? %><div class="own-warehouse-notice" role="status"><i class="bi bi-check-circle" aria-hidden="true"></i><%= flash[:notice] %></div><% end %>
+  <% if flash[:alert].present? %><div class="panel error-box" role="alert"><%= flash[:alert] %></div><% end %>
+  <% if @input_warnings.present? %><div class="panel own-warehouse-input-warning" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i><%= t("own_warehouse.input_warning", details: @input_warnings.map { |reason, count| t("own_warehouse.issue_reasons.#{reason}", default: reason) + " ×#{count}" }.join("，")) %></div><% end %>
+  <section class="card product-filter-card">
+    <%= form_with url: own_warehouse_costs_path, method: :get, class: "product-filter-form own-warehouse-filters" do %>
+      <%= hidden_field_tag :tab, "allocations" %>
+      <div class="field own-warehouse-filters__dates">
+        <%= label_tag "own-warehouse-weeks-trigger", t("weekly_profit_reports.filters.date_range") %>
+        <%= render "shared/time_range_selector", id: "own-warehouse-weeks", from_date: @from_date, to_date: @to_date, submit_on_apply: true %>
+      </div>
+      <div class="field product-filter-field"><%= label_tag :own_warehouse_code, t("own_warehouse.fields.own_warehouse_code") %><%= select_tag :own_warehouse_code, options_for_select(@warehouses.presence || [@warehouse_code], @warehouse_code), class: "input" %></div>
+      <%= render "shared/spu_sku_filter", dom_id_prefix: "own-warehouse-skus", field_class: "product-filter-field" %>
+      <% if @revisions.any? %><div class="field product-filter-field"><%= label_tag :revision, t("own_warehouse.fields.allocation_version") %><%= select_tag :revision, options_for_select([[t("own_warehouse.current_revision"), ""]] + @revisions.map { |revision| [t("own_warehouse.revision_label", revision: revision), revision] }, @revision), class: "input" %></div><% end %>
+      <div class="own-warehouse-filters__actions">
+        <label class="switch-checkbox" for="history"><%= check_box_tag :history, "1", @show_history %><span><%= t("own_warehouse.show_history") %></span></label>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search" aria-hidden="true"></i><%= t("own_warehouse.query") %></button>
+      </div>
+    <% end %>
+  </section>
+  <% if @report_error %>
+    <div class="panel own-warehouse-range-warning" role="status"><%= @report_error %></div>
+  <% else %>
+  <section class="panel own-warehouse-rate-panel">
+    <div class="own-warehouse-section-heading">
+      <i class="bi bi-speedometer2" aria-hidden="true"></i>
+      <div>
+        <h2 class="section-title"><%= t("own_warehouse.ui.dynamic_rates_title") %></h2>
+        <p class="own-warehouse-rate-panel__hint"><%= t("own_warehouse.ui.dynamic_rates_hint") %></p>
+      </div>
+    </div>
+    <% if rate_segments.any? %>
+      <div class="table-viewport own-warehouse-rate-table-wrap">
+        <table class="prod-tbl own-warehouse-rate-table">
+          <thead><tr>
+            <th><%= t("own_warehouse.ui.rate_period") %></th>
+            <th class="num"><%= t("own_warehouse.ui.dynamic_storage_rate") %></th>
+            <th class="num"><%= t("own_warehouse.ui.dynamic_transport_rate") %></th>
+            <th class="num"><%= t("own_warehouse.ui.dynamic_labor_rate") %></th>
+          </tr></thead>
+          <tbody>
+            <% rate_segments.each do |segment| %><tr>
+              <td><%= [segment[:from], segment[:to]].compact.join(" — ") %></td>
+              <td class="num"><%= number_with_precision(segment[:storage_rate], precision: 6, delimiter: ",") %><small><%= t("own_warehouse.ui.rate_units.storage") %></small></td>
+              <td class="num"><%= number_with_precision(segment[:transport_rate], precision: 6, delimiter: ",") %><small><%= t("own_warehouse.ui.rate_units.transport") %></small></td>
+              <td class="num"><%= number_with_precision(segment[:labor_rate], precision: 6, delimiter: ",") %><small><%= t("own_warehouse.ui.rate_units.labor") %></small></td>
+            </tr><% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="empty-state"><i class="bi bi-info-circle" aria-hidden="true"></i><%= t("own_warehouse.ui.dynamic_rates_empty") %></p>
+    <% end %>
+  </section>
+  <div class="product-summary-grid">
+    <div class="product-summary-card"><span class="summary-label"><%= t("own_warehouse.ui.total_cost") %></span><strong class="summary-value"><%= number_with_precision(@total_cost, precision: 2, delimiter: ",") %><small class="own-warehouse-summary-unit">CNY</small></strong></div>
+    <div class="product-summary-card"><span class="summary-label"><%= t("own_warehouse.ui.record_count") %></span><strong class="summary-value"><%= number_with_delimiter(@total_count) %></strong></div>
+    <div class="product-summary-card"><span class="summary-label"><%= t("weekly_profit_reports.filters.date_range") %></span><strong class="own-warehouse-summary-period"><%= @from_date %> — <%= @to_date %></strong><span class="summary-label"><%= @revision ? t("own_warehouse.revision_label", revision: @revision) : t(@show_history ? "own_warehouse.show_history" : "own_warehouse.current_revision") %></span></div>
+  </div>
+  <section class="card product-list-card table-list-card">
+    <div class="own-warehouse-list-toolbar">
+      <h2 class="section-title"><%= t("own_warehouse.ui.details_title") %></h2>
+      <div class="own-warehouse-pagination">
+        <% if @page > 1 %><%= link_to t("own_warehouse.previous"), own_warehouse_costs_path(request.query_parameters.merge(tab: "allocations", page: @page - 1)), class: "btn btn-outline btn-sm" %><% end %>
+        <span class="text-sm text-muted"><%= t("own_warehouse.page", page: @page, count: @page_count) %></span>
+        <% if @page < @page_count %><%= link_to t("own_warehouse.next"), own_warehouse_costs_path(request.query_parameters.merge(tab: "allocations", page: @page + 1)), class: "btn btn-outline btn-sm" %><% end %>
+      </div>
+    </div>
+    <%= table_viewport(class_name: "table-list-viewport", sticky_header: true) do %>
+      <table class="prod-tbl own-warehouse-table">
+        <thead><tr>
+          <% OwnWarehouseCostsController::COLUMNS.each do |key| %><%= render "shared/sortable_table_header", label: t("own_warehouse.fields.#{key}"), sort_key: key, class_name: key.in?(%w[sku_code own_warehouse_code week_start allocation_version]) ? nil : "num" %><% end %>
+          <th><%= t("own_warehouse.fields.fbs_unit_cost") %></th>
+          <th><%= t("own_warehouse.fields.fbo_unit_cost") %></th>
+          <th><%= t("own_warehouse.details") %></th>
+        </tr></thead>
+        <tbody>
+          <% @rows.each do |row| %><tr>
+            <% row_metrics = own_warehouse_allocation_metrics(row) %>
+            <% OwnWarehouseCostsController::COLUMNS.each do |key| %>
+              <% value = key == "sku_code" ? row.sku.sku_code : row.public_send(key) %>
+              <td class="<%= "num" if value.is_a?(BigDecimal) %> <%= "own-warehouse-table__total" if key == "total_cost" %>">
+                <% if key == "sku_code" %><span class="code-text"><%= value %></span>
+                <% elsif key == "allocation_version" %><span class="status-pill <%= row.is_current ? "is-active" : "is-muted" %>"><%= t("own_warehouse.revision_label", revision: value) %></span>
+                <% else %><%= value.nil? ? "—" : value.is_a?(BigDecimal) ? number_with_precision(value, precision: key == "cost_per_outbound_unit" ? 6 : key.include?("volume") ? 4 : 2, delimiter: ",") : value %><% end %>
+              </td>
+            <% end %>
+            <td class="num"><%= row_metrics[:fbs_unit_cost].nil? ? "—" : number_with_precision(row_metrics[:fbs_unit_cost], precision: 6, delimiter: ",") %></td>
+            <td class="num"><%= row_metrics[:fbo_unit_cost].nil? ? "—" : number_with_precision(row_metrics[:fbo_unit_cost], precision: 6, delimiter: ",") %></td>
+            <td><details class="own-warehouse-evidence"><summary><%= t("own_warehouse.details") %><i class="bi bi-chevron-down" aria-hidden="true"></i></summary><div>
+              <p><%= t("own_warehouse.source_label") %>：<%= t("own_warehouse.sources.#{row.calculation_inputs["source"] == "system_daily_v1" ? "system" : "csv"}") %></p>
+              <% row.calculation_inputs.fetch("segments", []).each do |segment| %><p><%= t("own_warehouse.segment", id: segment.dig("period", "id"), from: segment["from"], to: segment["to"], amount: segment["budget"]) %></p><% end %>
+            </div></details></td>
+          </tr><% end %>
+          <% if @rows.empty? %><tr><td colspan="<%= OwnWarehouseCostsController::COLUMNS.size + 3 %>" class="empty-state"><i class="bi bi-inbox" aria-hidden="true"></i><p><%= t("own_warehouse.empty") %></p></td></tr><% end %>
+        </tbody>
+      </table>
+    <% end %>
+    <div class="own-warehouse-list-note"><%= t(@show_history && @revision.nil? ? "own_warehouse.history_total" : "own_warehouse.total", amount: number_with_precision(@total_cost, precision: 2, delimiter: ","), count: @total_count) %></div>
+  </section>
+  <div class="own-warehouse-help"><i class="bi bi-info-circle" aria-hidden="true"></i><p><%= t("own_warehouse.allocation_hint") %></p></div>
+  <% end %>
+</div>

@@ -1,0 +1,155 @@
+zh:
+  own_warehouse:
+    page_title: 白俄自有仓成本
+    page_subtitle: 维护自有仓成本版本，并按自然周查看 SKU 分摊结果。
+    tabs:
+      aria_label: 自有仓成本页面
+      config: 成本配置
+      allocations: 周度分摊
+    costs_title: 自有仓成本配置
+    allocations_title: 自有仓周成本分摊
+    configuration_hint: 新建版本默认按 9300 元 / 7 天计费，仓储 40%、运输 25%、人工 35%、FBO 人工权重 10%。规则持续有效，无需每周新建；费用或分摊规则变化时再新建版本。
+    allocation_hint: 按上海时区周一至周日归集。每周各 SKU 的费用按全仓分母计算；筛选只影响展示。无出库时每件成本为空。
+    import_hint: "CSV 用于人工补齐历史数据，系统自动生成无需上传文件。下载模板会带出合规 SKU 的每日输入，异常送仓记录忽略。上传文件仍须包含全部有效 SKU 的 7 天完整数据，使用 UTF-8 编码，最多 5 MB。"
+    complete_population: 确认文件包含该自有仓全部 SKU 的完整周数据
+    version: 配置版本
+    version_label: '版本 #%{id} · %{warehouse} · %{date} · %{status}'
+    switch: 切换版本
+    new_version: 新建版本
+    save_draft: 保存草稿
+    confirm: 确认生效
+    saved: 成本配置已保存
+    calculated: 周分摊已完成
+    calculated_with_exclusions: "周分摊已完成，已排除 %{count} 个异常 SKU；详情见页面提示。"
+    input_warning: "本周计算已排除异常数据：%{details}。异常 SKU 不参与本周分摊，请运营人员补齐后在下一周生效。"
+    immutable_hint: 已确认版本只读；修改费用或规则请新建版本。
+    show_history: 显示历史周版本
+    query: 查询
+    total: 所选版本合计 %{amount} CNY · %{count} 条记录
+    previous: 上一页
+    next: 下一页
+    page: 第 %{page} / %{count} 页
+    details: 计算依据
+    segment: '成本版本 #%{id}：%{from} 至 %{to}，区段费用 %{amount} CNY'
+    empty: 当前筛选暂无分摊结果；如该周尚未生成，请先确认成本配置，再点击右上角“生成本周分摊”。
+    generate_week: 生成本周分摊
+    regenerate_week: 重新生成本周分摊
+    system_hint: "按全仓数据生成：库存和体积读取每日快照，FBS 按实际发货日，FBO 按实际接货日统计送仓数量。缺少完整 7 天库存或体积的 SKU 整周排除，日期或 SKU 映射不明的出库记录忽略，并展示提示。成本由剩余合规 SKU 分摊。自动归集仅支持 BY；重算保留历史版本。"
+    calculate_system: "从系统数据生成 / 重算周分摊"
+    system_issues: "系统数据有 %{count} 项待补齐，未发布：%{examples}"
+    source_label: "数据来源"
+    sources:
+      system: "每日快照与平台送仓记录"
+      csv: "人工确认的完整 CSV"
+    issue_reasons:
+      snapshot: "每日库存或正体积缺失 / 非法"
+      missing_receipt_date: "接货日期缺失"
+      sku_mapping: "SKU 映射缺失或不唯一"
+      excluded_sku: "SKU 缺少完整 7 天库存或体积，已排除"
+    import_title: 生成 / 重算周分摊
+    download_template: 下载全量 SKU 输入模板
+    file: 每日库存及出库 CSV
+    calculate: 自动计算并发布周版本
+    cny: 人民币（CNY）
+    fields:
+      own_warehouse_code: 自有仓编码
+      effective_from: 生效日期
+      effective_to: 结束日期（可空）
+      total_operating_cost: 基准运营费用（CNY）
+      cost_basis_days: 费用对应天数
+      currency: 币种
+      storage_ratio: 仓储比例（0–1）
+      transport_ratio: 运输比例（0–1）
+      labor_ratio: 人工比例（0–1）
+      fbo_labor_weight: FBO 补货人工权重（0–1）
+      source_reference: 费用来源
+      note: 备注
+      sku_code: SKU
+      week_start: 自然周起始日
+      allocation_version: 周分摊版本
+      on_hand_quantity: 日均自有仓库存（件）
+      on_hand_volume_m3: 日均库存体积（m³）
+      fbs_outbound_quantity: FBS 出库件数
+      fbo_outbound_quantity: FBO 补货出库件数
+      storage_cost: 仓储分摊（CNY）
+      transport_cost: 运输分摊（CNY）
+      labor_cost: 人工分摊（CNY）
+      total_cost: 自有仓成本合计（CNY）
+      cost_per_outbound_unit: 本周每件出库成本（CNY）
+      fbs_unit_cost: 单件 FBS 成本（CNY）
+      fbo_unit_cost: 单件 FBO 成本（CNY）
+    errors:
+      no_eligible_inputs: "本周没有具备完整 7 天库存和正体积的 SKU，无法分摊。请补齐数据或选择其他已结束的自然周。"
+      system_incomplete: "系统数据不完整，无法发布周分摊。"
+      unsupported_warehouse: "当前系统快照只有合并自有仓口径，自动归集仅支持 BY。其他仓请导入独立完整数据。"
+      ratios: 三个分摊比例必须合计为 1。
+      dates: 结束日期不能早于生效日期。
+      immutable: 已确认的版本不能修改或删除。
+      immutable_history: 新配置的生效日期覆盖了已计算周，请选择已计算周之后的日期。
+      overlap: 新版本须晚于当前已确认版本，且生效区间不得重叠。
+      missing_version: "所选周没有覆盖全部 7 天的已确认成本配置。请在“成本配置”中保存并确认覆盖该周的版本。"
+      invalid_week: 请选择单个已结束的完整自然周（周一至周日），再查看或生成分摊。
+      missing_inputs: 请提供完整数据并确认包含全仓所有 SKU。
+      invalid_inputs: 数据格式错误：日期、SKU、每件体积、库存及出库数量必须完整且合法，体积须大于零，数量不能为负。
+      duplicate_inputs: 同一 SKU 同一天存在重复数据。
+      incomplete_inputs: 每个 SKU 都必须包含该周全部 7 天的数据。
+      missing_skus: 导入文件没有覆盖全部有效 SKU，请使用全量模板并补齐所有 SKU。
+      unknown_sku: 文件包含未登记的 SKU，请先建立 SKU。
+      zero_denominator: 存在有费用但分母为零的费用池，无法分摊；请检查库存及出库数据。
+    statuses:
+      draft: 草稿
+      confirmed: 已确认
+      superseded: 历史版本
+    profit_incomplete: 自有仓成本尚未完整计算，分摊成本及扣除后利润暂不显示。
+    current_revision: 当前版本
+    revision_label: 周版本 v%{revision}
+    history_total: 所选历史记录合计 %{amount} CNY · %{count} 条记录（含重复周版本）
+    ui:
+      configuration_subtitle: 维护白俄自有仓生效区间的总成本和分摊规则，确认后版本只读。
+      allocations_subtitle: 按自然周查看每个 SKU 的自有仓成本分摊、出库单价和计算依据。
+      sections:
+        identity: 版本信息
+        expense: 费用口径
+        allocation: 分摊规则
+        reference: 来源与备注
+      ratios_hint: 仓储、运输和人工比例合计必须为 1；FBO 人工权重只影响人工池。
+      validity_hint: 结束日期留空表示持续有效。新版本生效当天使用新规则，旧版本自动截止到前一天。
+      cost_basis_hint: 每日费用 = 基准运营费用 ÷ 费用对应天数。例如 9300 元 / 7 天，每个完整自然周分摊 9300 元；有效期长短不改变每日费用。
+      total_cost: 自有仓成本合计
+      record_count: 分摊记录数
+      details_title: SKU 分摊明细
+      dynamic_rates_title: 本周动态单价
+      dynamic_rates_hint: 动态单价根据全仓库存、出库体积和等效作业件数计算；跨成本版本时按区段展示。
+      dynamic_rates_empty: 当前筛选暂无可展示的动态单价。
+      rate_period: 成本区段
+      dynamic_storage_rate: P仓 仓储动态单价
+      dynamic_transport_rate: P车 运输动态单价
+      dynamic_labor_rate: P工 人工动态单价
+      rate_units:
+        storage: CNY/m³·区段
+        transport: CNY/m³
+        labor: CNY/当量件
+  weekly_profit_reports:
+    columns:
+      wsu_deep:
+        own_warehouse_cost: 自有仓分摊成本（CNY）
+        after_own_warehouse_cost: 扣除自有仓成本后利润（CNY）
+    summary:
+      wsu_deep:
+        total_own_warehouse_cost: 自有仓分摊成本（CNY）
+        total_after_own_warehouse_cost: 扣除自有仓成本后利润（CNY）
+  activerecord:
+    attributes:
+      ec/own_warehouse_cost_period:
+        own_warehouse_code: 自有仓编码
+        effective_from: 生效日期
+        effective_to: 结束日期（可空）
+        total_operating_cost: 基准运营费用（CNY）
+        cost_basis_days: 费用对应天数
+        currency: 币种
+        storage_ratio: 仓储比例（0–1）
+        transport_ratio: 运输比例（0–1）
+        labor_ratio: 人工比例（0–1）
+        fbo_labor_weight: FBO 补货人工权重（0–1）
+        source_reference: 费用来源
+        note: 备注

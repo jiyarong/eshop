@@ -1,0 +1,43 @@
+<div class="own-warehouse-tab-panel" id="own-warehouse-config-panel" role="tabpanel" aria-labelledby="own-warehouse-config-tab">
+  <% if flash[:notice].present? %><div class="own-warehouse-notice" role="status"><i class="bi bi-check-circle" aria-hidden="true"></i><%= flash[:notice] %></div><% end %>
+  <% if flash[:alert].present? || @error.present? %><div class="panel error-box" role="alert"><%= @error.presence || flash[:alert] %></div><% end %>
+  <div class="own-warehouse-config-stack">
+    <section class="card product-filter-card">
+      <%= form_with url: own_warehouse_costs_path, method: :get, class: "product-filter-form own-warehouse-version-toolbar" do %>
+        <%= hidden_field_tag :tab, "config" %>
+        <div class="field own-warehouse-version-toolbar__select">
+          <%= label_tag :version_id, t("own_warehouse.version") %>
+          <%= select_tag :version_id, options_for_select(@versions.map { |v| [t("own_warehouse.version_label", id: v.id, warehouse: v.own_warehouse_code, date: v.effective_from, status: t("own_warehouse.statuses.#{v.status}")), v.id] }, @period.id), class: "input" %>
+        </div>
+        <%= submit_tag t("own_warehouse.switch"), class: "btn btn-outline", disabled: @versions.empty? %>
+        <button type="submit" name="new_version" value="1" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i><%= t("own_warehouse.new_version") %></button>
+        <span class="status-pill <%= @period.confirmed? ? "is-active" : "is-muted" %>"><%= t("own_warehouse.statuses.#{@period.status}") %></span>
+      <% end %>
+    </section>
+    <%= form_with model: @period, url: @period.persisted? ? own_warehouse_cost_path(@period) : own_warehouse_costs_path, method: @period.persisted? ? :patch : :post, class: "own-warehouse-form" do |form| %>
+      <fieldset class="own-warehouse-form__fieldset" <%= "disabled" unless @period.draft? %>>
+        <% [
+          ["identity", "bi-house", %w[own_warehouse_code effective_from effective_to]],
+          ["expense", "bi-cash-stack", %w[total_operating_cost cost_basis_days currency]],
+          ["allocation", "bi-pie-chart", %w[storage_ratio transport_ratio labor_ratio fbo_labor_weight]],
+          ["reference", "bi-file-earmark-text", %w[source_reference note]]
+        ].each do |section, icon, fields| %>
+          <section class="panel own-warehouse-form__section">
+            <div class="own-warehouse-section-heading"><i class="bi <%= icon %>" aria-hidden="true"></i><h2 class="section-title"><%= t("own_warehouse.ui.sections.#{section}") %></h2></div>
+            <% if section == "allocation" %><p class="own-warehouse-help"><%= t("own_warehouse.ui.ratios_hint") %></p><% end %>
+            <% if section == "identity" %><p class="own-warehouse-help"><%= t("own_warehouse.ui.validity_hint") %></p><% end %>
+            <% if section == "expense" %><p class="own-warehouse-help"><%= t("own_warehouse.ui.cost_basis_hint") %></p><% end %>
+            <div class="own-warehouse-form__grid <%= "own-warehouse-form__grid--rules" if section == "allocation" %>">
+              <% fields.each do |key| %><%= render "field", form: form, key: key %><% end %>
+            </div>
+          </section>
+        <% end %>
+      </fieldset>
+      <% if @period.draft? %><div class="own-warehouse-form__actions"><%= form.submit t("own_warehouse.save_draft"), class: "btn btn-primary" %></div><% end %>
+    <% end %>
+  </div>
+  <section class="panel own-warehouse-footer">
+    <div class="own-warehouse-help"><i class="bi bi-info-circle" aria-hidden="true"></i><p><%= @period.draft? ? t("own_warehouse.configuration_hint") : t("own_warehouse.immutable_hint") %></p></div>
+    <% if @period.persisted? && @period.draft? %><%= button_to t("own_warehouse.confirm"), confirm_own_warehouse_cost_path(@period), class: "btn btn-primary" %><% end %>
+  </section>
+</div>

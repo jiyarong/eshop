@@ -38,7 +38,17 @@ class Ec::WeeklySummaryDeepQueryTest < ActiveSupport::TestCase
       [rows, { wb: -3.25, ozon: -1.75 }]
     end
 
-    payload = query.run
+    statements = []
+    subscriber = ->(_name, _start, _finish, _id, event) { statements << event[:sql] }
+    payload = ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { query.run }
+
+    assert statements.none? { |sql| sql.include?("ec_own_warehouse_") }
+    assert payload[:rows].none? { |row| row.key?(:own_warehouse_cost) || row.key?(:after_own_warehouse_cost) }
+    assert_not payload[:summary].key?(:total_own_warehouse_cost)
+    assert_not payload[:summary].key?(:total_after_own_warehouse_cost)
+    assert_not payload[:summary].key?(:own_warehouse_cost_complete)
+    assert_not payload.dig(:comparison, :summary).key?(:total_own_warehouse_cost)
+    assert_not payload.dig(:comparison, :rows, "WSUDEEP-A").key?(:own_warehouse_cost)
 
     assert_equal "wsu_deep", payload[:report_type]
     assert_equal 57.0, payload.dig(:summary, :after_tax_with_unallocated)

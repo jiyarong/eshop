@@ -44,6 +44,7 @@
           { label: t("navigation.sku_batches"), path: "/erp/sku_batches", icon: "bi-layers", active: active_link.call("/erp/sku_batches") },
           { label: t("navigation.sku_costs"), path: "/erp/sku_costs", icon: "bi-currency-yen", active: active_link.call("/erp/sku_costs") },
           { label: t("navigation.sku_dimensions"), path: "/erp/sku_dimensions", icon: "bi-rulers", active: active_link.call("/erp/sku_dimensions") },
+          { label: t("own_warehouse.page_title"), path: own_warehouse_costs_path, icon: "bi-house", active: active_link.call(["/reports/own_warehouse_costs", "/reports/own_warehouse_sku_costs"]) },
           { label: t("navigation.inventory"), path: "/reports/inventory", icon: "bi-box-seam", active: current_path == "/reports/inventory" }
         ]
       },

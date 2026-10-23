@@ -687,7 +687,7 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
       report_type: "wsu_deep",
       period: { from_date: "2026-05-18", to_date: "2026-05-24" },
       meta: { rates: { rate_cny_rub: 10.93, rate_byn_rub: 26.41 } },
-      summary: { total_after_tax: 50.0 },
+      summary: { total_after_tax: 50.0, total_own_warehouse_cost: 10, total_after_own_warehouse_cost: 40, own_warehouse_cost_complete: false },
       rows: [
         { sku: @direct_sku.sku_code, net_sales: 4, revenue: 100.0, average_price: 25.0, ads: 10.0, goods_cost: 20.0, cost_ratio_pct: 20.0, pre_tax: 60.0, tax: 10.0, after_tax: 50.0, margin_pct: 50.0 }
       ],
@@ -710,6 +710,13 @@ class WeeklyProfitReportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "th", text: I18n.t("weekly_profit_reports.columns.wsu_deep.average_price")
     assert_select "th", text: I18n.t("weekly_profit_reports.columns.wsu_deep.cost_ratio_pct")
+    %i[own_warehouse_cost after_own_warehouse_cost].each do |key|
+      assert_select "th", text: I18n.t("weekly_profit_reports.columns.wsu_deep.#{key}"), count: 0
+    end
+    %i[total_own_warehouse_cost total_after_own_warehouse_cost].each do |key|
+      assert_not_includes response.body, I18n.t("weekly_profit_reports.summary.wsu_deep.#{key}")
+    end
+    assert_not_includes response.body, I18n.t("own_warehouse.profit_incomplete")
     assert_select ".weekly-profit-table-value", text: "25.00"
     assert_select ".weekly-profit-table-value", text: "20.00%"
   ensure

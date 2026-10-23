@@ -1,0 +1,32 @@
+<% content_for :title, t("own_warehouse.page_title") %>
+<% content_for :page_heading, t("own_warehouse.page_title") %>
+
+<div class="product-management own-warehouse-page">
+  <div class="page-h">
+    <div>
+      <h1><%= t("own_warehouse.page_title") %></h1>
+      <p class="sub"><%= t("own_warehouse.page_subtitle") %></p>
+    </div>
+    <% if @active_tab == "allocations" && @valid_week && can?(:manage_finance) %>
+      <%= form_with url: calculate_own_warehouse_costs_path, class: "own-warehouse-generate-form" do %>
+        <%= hidden_field_tag :source, "system", id: "own-warehouse-generate-source" %>
+        <%= hidden_field_tag :own_warehouse_code, @warehouse_code, id: "own-warehouse-generate-code" %>
+        <%= hidden_field_tag :week_start, @from_date, id: "own-warehouse-generate-week" %>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-repeat" aria-hidden="true"></i><%= t(@week_generated ? "own_warehouse.regenerate_week" : "own_warehouse.generate_week") %></button>
+      <% end %>
+    <% end %>
+  </div>
+
+  <nav class="erp-tabs erp-tabs--underline own-warehouse-tabs" aria-label="<%= t("own_warehouse.tabs.aria_label") %>">
+    <%= link_to own_warehouse_costs_path(request.query_parameters.merge(tab: "config")), id: "own-warehouse-config-tab", class: "erp-tabs__link", aria: (@active_tab == "config" ? { current: "page" } : nil) do %>
+      <i class="bi bi-sliders" aria-hidden="true"></i>
+      <span><%= t("own_warehouse.tabs.config") %></span>
+    <% end %>
+    <%= link_to own_warehouse_costs_path(request.query_parameters.merge(tab: "allocations")), id: "own-warehouse-allocations-tab", class: "erp-tabs__link", aria: (@active_tab == "allocations" ? { current: "page" } : nil) do %>
+      <i class="bi bi-calculator" aria-hidden="true"></i>
+      <span><%= t("own_warehouse.tabs.allocations") %></span>
+    <% end %>
+  </nav>
+
+  <%= render @active_tab == "config" ? "configuration" : "allocations" %>
+</div>

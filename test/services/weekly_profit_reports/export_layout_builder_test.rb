@@ -1,24 +1,43 @@
 require "test_helper"
 
 class WeeklyProfitReports::ExportLayoutBuilderTest < ActiveSupport::TestCase
-  test "SKU aggregate export carries the unconfirmed-country units and sales, empty when none" do
+  test "SKU aggregate export hides warehouse costs even when supplied in the payload" do
     report = {
       report_type: "wsu_deep", period: { from_date: "2026-06-01", to_date: "2026-06-07" },
-      summary: { total_after_tax: 130, total_dest_pending_count: 2, total_dest_pending_sale: 35.5 },
-      rows: [
-        { sku: "PENDING-A", net_sales: 1, revenue: 200, after_tax: 100, dest_pending_count: 2, dest_pending_sale: 35.5 },
-        { sku: "CLEAN-B", net_sales: 1, revenue: 100, after_tax: 30, dest_pending_count: 0, dest_pending_sale: 0.0 }
-      ]
+      summary: { total_after_tax: 100, total_own_warehouse_cost: 25, total_after_own_warehouse_cost: 75 },
+      rows: [{ sku: "OWN-COST", net_sales: 1, revenue: 200, after_tax: 100, own_warehouse_cost: 25, after_own_warehouse_cost: 75 }]
     }
     layout = WeeklyProfitReports::ExportLayoutBuilder.build(report: report)
     section = layout[:sections].first
+    assert_equal GoogleSheets::WeeklySummaryDeepService::HDR_ZH.size + 2, section[:rows][0].size
+    assert_equal section[:rows][0].size, layout[:column_widths].size
+    %i[own_warehouse_cost after_own_warehouse_cost].each do |key|
+      assert_not_includes section[:rows][0], I18n.t("weekly_profit_reports.columns.wsu_deep.#{key}", locale: :zh)
+    end
+    summary_labels = layout[:sections].last[:rows].map(&:first).join("|")
+    %i[total_own_warehouse_cost total_after_own_warehouse_cost].each do |key|
+      assert_not_includes summary_labels, I18n.t("weekly_profit_reports.summary.wsu_deep.#{key}", locale: :zh)
+    end
+    assert_equal [nil, nil], section[:rows][2].last(2)
+  end
+
+  test "SKU aggregate export carries the unconfirmed-country units and sales at the end, empty when none" do
+    report = {
+      report_type: "wsu_deep", period: { from_date: "2026-06-01", to_date: "2026-06-07" },
+      summary: { total_after_tax: 130, total_dest_pending_count: 2, total_dest_pending_sale: 35.5, total_own_warehouse_cost: 5, total_after_own_warehouse_cost: 125 },
+      rows: [
+        { sku: "PENDING-A", net_sales: 1, revenue: 200, after_tax: 100, dest_pending_count: 2, dest_pending_sale: 35.5, own_warehouse_cost: 5, after_own_warehouse_cost: 95 },
+        { sku: "CLEAN-B", net_sales: 1, revenue: 100, after_tax: 30, dest_pending_count: 0, dest_pending_sale: 0.0, own_warehouse_cost: 0, after_own_warehouse_cost: 30 }
+      ]
+    }
+    section = WeeklyProfitReports::ExportLayoutBuilder.build(report: report)[:sections].first
 
     assert_equal [2, 35.5], section[:rows][2].last(2)
     assert_equal [nil, nil], section[:rows][3].last(2)
     assert_equal [2, 35.5], section[:rows].last.last(2)
     assert_equal I18n.t("weekly_profit_reports.columns.wsu_deep.dest_pending_count", locale: :zh), section[:rows][0][-2]
     assert_equal I18n.t("weekly_profit_reports.columns.wsu_deep.dest_pending_sale", locale: :ru), section[:rows][1][-1]
-    summary_labels = layout[:sections].last[:rows].map(&:first).join("|")
+    summary_labels = WeeklyProfitReports::ExportLayoutBuilder.build(report: report)[:sections].last[:rows].map(&:first).join("|")
     assert_includes summary_labels, I18n.t("weekly_profit_reports.summary.wsu_deep.total_dest_pending_sale", locale: :zh)
   end
 

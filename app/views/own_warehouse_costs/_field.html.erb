@@ -1,0 +1,16 @@
+<div class="field <%= "own-warehouse-form__wide" if key == "note" %>">
+  <%= form.label key, t("own_warehouse.fields.#{key}"), class: "label" %>
+  <% if key.in?(%w[effective_from effective_to]) %>
+    <%= form.date_field key, class: "input", required: key == "effective_from" %>
+  <% elsif key == "currency" %>
+    <%= form.select key, [[t("own_warehouse.cny"), "CNY"]], {}, class: "input" %>
+  <% elsif key == "cost_basis_days" %>
+    <%= form.number_field key, step: 1, min: 1, class: "input", required: true %>
+  <% elsif key.in?(%w[total_operating_cost storage_ratio transport_ratio labor_ratio fbo_labor_weight]) %>
+    <%= form.number_field key, step: key == "total_operating_cost" ? "0.01" : "0.000001", min: 0, max: key == "total_operating_cost" ? nil : 1, class: "input", required: true %>
+  <% elsif key == "note" %>
+    <%= form.text_area key, class: "input", rows: 3 %>
+  <% else %>
+    <%= form.text_field key, class: "input", required: key == "own_warehouse_code" %>
+  <% end %>
+</div>

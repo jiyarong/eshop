@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_063449) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_064635) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -637,6 +637,67 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_063449) do
     t.index ["platform", "store_id", "external_order_number"], name: "idx_ec_orders_external_order_number"
     t.index ["platform", "store_id", "order_key"], name: "idx_ec_orders_unique_order_key", unique: true
     t.index ["store_id"], name: "index_ec_orders_on_store_id"
+  end
+
+  create_table "ec_own_warehouse_cost_periods", force: :cascade do |t|
+    t.datetime "confirmed_at"
+    t.bigint "confirmed_by_id"
+    t.integer "cost_basis_days", default: 7, null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.string "currency", default: "CNY", null: false
+    t.date "effective_from", null: false
+    t.date "effective_to"
+    t.decimal "fbo_labor_weight", precision: 8, scale: 6, default: "0.0", null: false
+    t.decimal "labor_ratio", precision: 8, scale: 6, default: "0.0", null: false
+    t.text "note"
+    t.string "own_warehouse_code", null: false
+    t.string "source_reference"
+    t.string "status", default: "draft", null: false
+    t.decimal "storage_ratio", precision: 8, scale: 6, default: "0.0", null: false
+    t.decimal "total_operating_cost", precision: 18, scale: 2, null: false
+    t.decimal "transport_ratio", precision: 8, scale: 6, default: "0.0", null: false
+    t.datetime "updated_at", null: false
+    t.index ["own_warehouse_code", "effective_from"], name: "idx_own_wh_cost_periods_start", unique: true
+    t.check_constraint "cost_basis_days > 0", name: "own_wh_cost_periods_basis_days"
+    t.check_constraint "effective_to IS NULL OR effective_to >= effective_from", name: "own_wh_cost_periods_dates"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'confirmed'::character varying::text, 'superseded'::character varying::text])", name: "own_wh_cost_periods_status"
+    t.check_constraint "total_operating_cost >= 0::numeric AND storage_ratio >= 0::numeric AND transport_ratio >= 0::numeric AND labor_ratio >= 0::numeric AND fbo_labor_weight >= 0::numeric AND (storage_ratio + transport_ratio + labor_ratio) = 1::numeric", name: "own_wh_cost_periods_values"
+    t.exclusion_constraint "own_warehouse_code WITH =, daterange(effective_from, effective_to, '[]'::text) WITH &&", where: "(status)::text = ANY (ARRAY[('confirmed'::character varying)::text, ('superseded'::character varying)::text])", using: :gist, name: "own_wh_cost_periods_no_overlap"
+  end
+
+  create_table "ec_own_warehouse_sku_cost_allocations", force: :cascade do |t|
+    t.integer "allocation_version", default: 1, null: false
+    t.datetime "calculated_at"
+    t.jsonb "calculation_inputs", default: {}, null: false
+    t.decimal "cost_per_outbound_unit", precision: 18, scale: 6
+    t.datetime "created_at", null: false
+    t.decimal "fbo_outbound_quantity", precision: 18, scale: 4
+    t.decimal "fbo_outbound_volume_m3", precision: 18, scale: 8
+    t.decimal "fbs_outbound_quantity", precision: 18, scale: 4
+    t.decimal "fbs_outbound_volume_m3", precision: 18, scale: 8
+    t.boolean "is_current", default: true, null: false
+    t.decimal "labor_cost", precision: 18, scale: 2, default: "0.0", null: false
+    t.decimal "on_hand_quantity", precision: 18, scale: 4
+    t.decimal "on_hand_volume_m3", precision: 18, scale: 8
+    t.decimal "outbound_quantity", precision: 18, scale: 4
+    t.string "own_warehouse_code", null: false
+    t.bigint "own_warehouse_cost_period_id"
+    t.bigint "sku_id", null: false
+    t.string "status", default: "calculated", null: false
+    t.decimal "storage_cost", precision: 18, scale: 2, default: "0.0", null: false
+    t.decimal "total_cost", precision: 18, scale: 2, default: "0.0", null: false
+    t.decimal "transport_cost", precision: 18, scale: 2, default: "0.0", null: false
+    t.decimal "unit_volume_m3", precision: 18, scale: 8
+    t.datetime "updated_at", null: false
+    t.date "week_end", null: false
+    t.date "week_start", null: false
+    t.index ["own_warehouse_code", "sku_id", "week_start", "allocation_version"], name: "idx_own_wh_allocations_revision", unique: true
+    t.index ["own_warehouse_code", "sku_id", "week_start"], name: "idx_own_wh_allocations_current", unique: true, where: "is_current"
+    t.index ["own_warehouse_cost_period_id"], name: "idx_on_own_warehouse_cost_period_id_0a2f19dc96"
+    t.index ["sku_id"], name: "index_ec_own_warehouse_sku_cost_allocations_on_sku_id"
+    t.check_constraint "storage_cost >= 0::numeric AND transport_cost >= 0::numeric AND labor_cost >= 0::numeric AND total_cost = (storage_cost + transport_cost + labor_cost)", name: "own_wh_allocations_values"
+    t.check_constraint "week_end = (week_start + 6) AND EXTRACT(isodow FROM week_start) = 1::numeric AND allocation_version > 0", name: "own_wh_allocations_natural_week"
   end
 
   create_table "ec_ozon_listing_publications", force: :cascade do |t|
@@ -3830,6 +3891,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_063449) do
   add_foreign_key "ec_order_source_links", "ec_order_items", column: "item_id"
   add_foreign_key "ec_order_source_links", "ec_orders", column: "order_id"
   add_foreign_key "ec_orders", "ec_stores", column: "store_id"
+  add_foreign_key "ec_own_warehouse_sku_cost_allocations", "ec_own_warehouse_cost_periods", column: "own_warehouse_cost_period_id"
+  add_foreign_key "ec_own_warehouse_sku_cost_allocations", "ec_skus", column: "sku_id"
   add_foreign_key "ec_ozon_listing_publications", "ec_skus", column: "sku_code", primary_key: "sku_code"
   add_foreign_key "ec_ozon_listing_publications", "ec_stores", column: "store_id"
   add_foreign_key "ec_ozon_listing_publications", "raw_ozon_seller_accounts", column: "account_id"

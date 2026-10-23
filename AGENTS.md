@@ -134,6 +134,17 @@
 - 新报表优先继续走 Rails 页面，不要新开 React/Vite 报表承载层。
 
 ### 库存报表
+### 自有仓成本
+
+- 配置入口 `/reports/own_warehouse_costs`，周分摊入口 `/reports/own_warehouse_sku_costs`。只有 `manage_finance` 可维护配置或导入计算，分摊查看复用周利润 SKU 权限范围。
+- 周度分摊不提供开发/运营负责人筛选；日期复用通用选择器，应用范围或左右切周立即提交。仅展示单个已结束自然周，其他范围保留筛选并提示，隐藏结果与生成操作；右上角生成/重新生成直接使用当前查看的仓库和自然周，始终按全仓数据计算。
+- 只有两张业务表：`ec_own_warehouse_cost_periods`（整份配置版本）和 `ec_own_warehouse_sku_cost_allocations`（自有仓 + SKU + 自然周 + revision）。已确认配置只读，新版本结束上一版本；已计算周不得被新配置追溯覆盖。
+- 费用统一 CNY，`total_operating_cost` 为基准费用，按固定的 `cost_basis_days` 折算到天（默认 9300 元 / 7 天），不随有效期长度改变。最新规则 `effective_to` 可空并持续有效；新版本从生效当天接替旧版本，旧版本截止到前一天，日费率保持不变。迁移保留既有配置日费率并将各仓最新已确认版本改为持续有效；已有周分摊及计算依据不改写。已移除 `billing_unit`。周一至周日按 `Asia/Shanghai` 归集，跨版本按区段计算。
+- `Ec::OwnWarehouseCostAllocator.call(week_start:, warehouse_code:, daily_inputs:, actor:, source_metadata:)` 接收全仓完整每日数据。自动来源为 `Ec::OwnWarehouseCostInputTemplate.build`：库存使用用户确认的 `ec_snapshots` inventory `overview.available_stock`，体积取同日 `unit_volume_l / 1000`；不回退到当前尺寸或平台库存。自动归集仅支持 BY，快照没有独立仓编码。全量集合包含有效 SKU、周快照 SKU 及周出库 SKU，不能因停用而丢弃历史成本。
+- FBO 为送仓数量 quantity，不是实收数或平台销量。WB 按 `fact_date`，Ozon 按操作历史中首次接货状态时间，当前状态本身为接货状态时可取其 `state_updated_date`；不得用最终完成、建单或预约日期替代。时间不明、SKU 映射不明的送仓记录直接排除并在页面提示。保存每日输入、快照 ID 和平台分项，数据源变化不会自行修改已发布周，只有明确 POST 重算才产生新 revision。
+- 全仓分母必须在用户权限、SKU 和负责人筛选前计算。缺少完整 7 天库存/体积的 SKU、未知 SKU、重复或非法行从本周分摊中排除并在页面提示；不阻止其他合规 SKU 发布。正费用池没有分母仍拒绝发布，因为该周无法形成有意义的分摊。三类费用按分角对账，整周事务发布，输入相同幂等复用版本，重算保留历史。
+- GET 页面只读；发布由明确 POST 触发。自有仓成本暂不接入周利润归集：`wsu_deep` 不读取分摊、不增加成本独有 SKU，不展示或导出自有仓成本及扣除后利润、对应汇总和比较。独立自有仓页面继续使用，待计算逻辑稳定后再恢复接入。
+
 
 - 入口：`GET /reports/inventory`
 - 详情入口：`GET /reports/inventory/:sku_code`

@@ -23,6 +23,15 @@ Rails.application.routes.draw do
 
   get "weekly_profit_reports/accounts" => "weekly_profit_reports#accounts"
   get "weekly_profit_reports"          => "weekly_profit_reports#show"
+  resources :own_warehouse_costs, path: "reports/own_warehouse_costs", only: [:index, :create, :update] do
+    post :confirm, on: :member
+    post :calculate, on: :collection
+    get :template, on: :collection
+  end
+  resources :own_warehouse_sku_costs, path: "reports/own_warehouse_sku_costs", only: :index do
+    post :calculate, on: :collection
+    get :template, on: :collection
+  end
   resources :operator_skus, only: :index
   resources :notifications, only: %i[index show destroy] do
     member do
