@@ -10,6 +10,7 @@ module Ec
           total += import_stats_order(stats_order)
         end
         Ec::OrderBuyerCountryBackfill.run_after_import("wb")
+        Ec::OrderImport::WbShippedAt.call
         total
       end
 
