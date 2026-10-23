@@ -3802,6 +3802,10 @@ en:
       units: "%{count} units"
       version_hint: "Estimated with the per-unit profit of each scenario in profit version \"%{name}\" (%{status}); %{unpriced} units have no matching or priced scenario and are not counted"
       no_version: "This SKU has no profit version yet, so profit cannot be estimated"
+      per_unit: "avg %{value} / unit"
+      switch_version: "Switch the profit version used for the estimate (orders and completed share it)"
+      kinds:
+        automatic: "Automatic"
     finance:
       net_sales: "Net sales"
       profit: "Profit"

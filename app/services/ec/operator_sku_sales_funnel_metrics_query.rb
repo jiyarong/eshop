@@ -101,7 +101,7 @@ module Ec
     # SalesFunnelReports::SkuProfitEstimateQuery). nil when the SKU has no orders in the week.
     def profit_estimate(sku, versions)
       units = @scenario_units.key?(sku.sku_code) ? @scenario_units[sku.sku_code] : { orders: {}, conversions: {} }
-      SalesFunnelReports::SkuProfitEstimateQuery.estimate_units(scenario_units: units, versions: versions, to_date: @to_date)
+      SalesFunnelReports::SkuProfitEstimateQuery.estimate_units(scenario_units: units, versions: versions, to_date: @to_date, with_options: true)
     end
 
     def add_raw(result, product, date, views, carts, orders, cancellations)

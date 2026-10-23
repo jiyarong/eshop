@@ -16,6 +16,7 @@ import ConversationThreadController from "./controllers/conversation_thread_cont
 import DatePickerController from "./controllers/date_picker_controller";
 import DiagnosisEventDialogController from "./controllers/diagnosis_event_dialog_controller";
 import DiagnosisEventPopoverController from "./controllers/diagnosis_event_popover_controller";
+import EstimateVersionController from "./controllers/estimate_version_controller";
 import EmailInputController from "./controllers/email_input_controller";
 import EchartsController from "./controllers/echarts_controller";
 import FeedbackController from "./controllers/feedback_controller";
@@ -74,6 +75,7 @@ Stimulus.register("date-picker", DatePickerController);
 Stimulus.register("diagnosis-event-dialog", DiagnosisEventDialogController);
 Stimulus.register("diagnosis-event-popover", DiagnosisEventPopoverController);
 Stimulus.register("email-input", EmailInputController);
+Stimulus.register("estimate-version", EstimateVersionController);
 Stimulus.register("echarts", EchartsController);
 Stimulus.register("feedback", FeedbackController);
 Stimulus.register("gbrain-page-editor", GbrainPageEditorController);

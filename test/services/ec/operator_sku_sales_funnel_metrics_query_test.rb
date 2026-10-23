@@ -82,9 +82,50 @@ class Ec::OperatorSkuSalesFunnelMetricsQueryTest < ActiveSupport::TestCase
     assert_equal 10, conversions.fetch(:units)
     assert_equal 6 * 10 + 4 * 4, conversions.fetch(:profit_cny)
     assert_equal "draft", estimate.dig(:version, :status)
+    assert_equal "manual", estimate.dig(:version, :kind)
+    # Profit per priced unit, the figure the workbench shows beside the totals.
+    assert_equal (8 * 10 + 4 * 4).to_d / 12, orders.fetch(:unit_average_cny)
+    assert_equal (6 * 10 + 4 * 4).to_d / 10, conversions.fetch(:unit_average_cny)
+    # Every version of the SKU comes with its own estimate, for the version switch.
+    options = estimate.fetch(:options)
+    assert_equal 1, options.size
+    assert_equal estimate.dig(:version, :id), options.first.dig(:version, :id)
+    assert_equal orders.fetch(:profit_cny), options.first.dig(:bases, :orders, :profit_cny)
     assert_equal 0, @result.fetch(@skus.last).dig(:profit_estimate, :bases, :orders, :units)
     assert_operator counts.fetch(2), :<=, counts.fetch(1), "query count must not grow with the number of SKUs"
     assert_operator counts.fetch(2), :<=, 7
+  end
+
+  test "carries the estimate under each of the SKU's versions, automatic ones included" do
+    first_product = @products.first
+    create_order(first_product, Date.new(2026, 9, 1), "delivered", 6, fulfillment_type: "fbw", key: "a")
+    create_order(first_product, Date.new(2026, 9, 4), "delivered", 3, fulfillment_type: "fbs", key: "e")
+    sku = @skus.first
+    create_version(sku, fbo_profit: 10, fbs_profit: 4)
+    automatic = sku.profit_versions.new(
+      name: "2026-09", kind: "automatic", status: "published", effective_from: Date.new(2026, 9, 1), effective_to: Date.new(2026, 9, 30),
+      data_from: Date.new(2026, 8, 3), data_to: Date.new(2026, 8, 30)
+    )
+    { "fbo" => 20, "fbs" => 8 }.each do |mode, profit|
+      automatic.contexts.build(platform: "wb", market: "ru", delivery_mode: mode, warehouse_region: "main",
+        company_type: "small", calculation_status: "valid", profit_cny: profit)
+    end
+    automatic.system_write = true
+    automatic.save!
+
+    options = query_for([ sku ]).call.fetch(sku).dig(:profit_estimate, :options)
+
+    # The newest automatic version is the default; the manual one stays one pick away.
+    estimate = query_for([ sku ]).call.fetch(sku).fetch(:profit_estimate)
+    assert_equal "automatic", estimate.dig(:version, :kind)
+    assert_equal 6 * 20 + 3 * 8, estimate.dig(:bases, :orders, :profit_cny)
+
+    by_kind = options.index_by { |option| option.dig(:version, :kind) }
+    assert_equal %w[automatic manual], by_kind.keys.sort
+    assert_equal 6 * 10 + 3 * 4, by_kind.fetch("manual").dig(:bases, :orders, :profit_cny)
+    assert_equal 6 * 20 + 3 * 8, by_kind.fetch("automatic").dig(:bases, :orders, :profit_cny)
+    assert_equal (6 * 20 + 3 * 8).to_d / 9, by_kind.fetch("automatic").dig(:bases, :orders, :unit_average_cny)
+    assert_equal "2026-09", by_kind.fetch("automatic").dig(:version, :name)
   end
 
   test "adds Ozon cancellations into the same operator sku funnel metric" do

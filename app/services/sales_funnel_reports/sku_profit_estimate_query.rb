@@ -15,25 +15,40 @@ module SalesFunnelReports
 
     # The same estimate for units that were counted elsewhere (the SKU workbench list):
     # scenario_units = { orders: { scenario_key => units }, conversions: { ... } }.
-    def self.estimate_units(scenario_units:, versions:, to_date:)
-      version = version_for(versions, to_date)
+    # with_options: also the estimate under every one of the SKU's versions (`options`, newest first, the same shape as
+    # the result itself), for a page that lets the reader switch the version.
+    def self.estimate_units(scenario_units:, versions:, to_date:, with_options: false)
       units = BASES.index_with do |basis|
         scenario_units.fetch(basis, {}).transform_values(&:to_d)
       end
-      {
+      version = version_for(versions, to_date, units: units[:orders])
+      result = {
         version: version && version_summary(version),
         bases: BASES.index_with { |basis| basis_estimate(units.fetch(basis), version) }
       }
+      return result unless with_options
+
+      result.merge(options: versions.map do |candidate|
+        { version: version_summary(candidate), bases: BASES.index_with { |basis| basis_estimate(units.fetch(basis), candidate) } }
+      end)
     end
 
-    # The SKU's current version (see Ec::SkuProfitVersion.resolve_for); the date only matters for
-    # SKUs that have not marked one.
-    def self.version_for(versions, date)
-      Ec::SkuProfitVersion.resolve_for(versions, date: date)
+    # The SKU's newest automatic version (the latest month of the automatic series), unless it cannot price the period:
+    # given the period's units by scenario (`units`), an automatic version that prices none of them gives way to the
+    # SKU's manual version, the current one (see Ec::SkuProfitVersion.resolve_for; its date only matters for SKUs that
+    # have not marked one). Whichever version is chosen serves every basis of the period. When neither can price
+    # the units, or only one kind exists, the first of them is kept.
+    def self.version_for(versions, date, units: nil)
+      automatic = versions.select(&:automatic?).max_by { |version| [ version.effective_from, version.id.to_i ] }
+      manual = Ec::SkuProfitVersion.resolve_for(versions.reject(&:automatic?), date: date)
+      candidates = [ automatic, manual ].compact
+      return candidates.first if units.nil?
+
+      candidates.find { |version| basis_estimate(units, version)[:profit_cny] } || candidates.first
     end
 
     def self.version_summary(version)
-      { id: version.id, name: version.name, status: version.status, effective_from: version.effective_from }
+      { id: version.id, name: version.name, kind: version.kind, status: version.status, current: version.is_current?, effective_from: version.effective_from }
     end
 
     def self.basis_estimate(units_by_scenario, version)
@@ -50,11 +65,15 @@ module SalesFunnelReports
       end
       scenarios.sort_by! { |entry| [ entry[:identity].nil? ? 1 : 0, -entry[:units] ] }
       priced = scenarios.select { |entry| entry[:profit_cny] }
+      priced_units = priced.sum(0.to_d) { |entry| entry[:units] }
+      profit = priced.empty? ? nil : priced.sum(0.to_d) { |entry| entry[:profit_cny] }
 
       {
         units: scenarios.sum(0.to_d) { |entry| entry[:units] },
-        priced_units: priced.sum(0.to_d) { |entry| entry[:units] },
-        profit_cny: priced.empty? ? nil : priced.sum(0.to_d) { |entry| entry[:profit_cny] },
+        priced_units:,
+        profit_cny: profit,
+        # Profit per unit over the units that have a priced scenario (the profit covers no others).
+        unit_average_cny: profit && priced_units.positive? ? profit / priced_units : nil,
         scenarios:
       }
     end

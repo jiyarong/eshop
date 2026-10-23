@@ -4013,6 +4013,10 @@ zh:
       units: "%{count} 单"
       version_hint: "按定价版本「%{name}」（%{status}）的各场景单件利润估算；%{unpriced} 单无对应场景或场景未定价，未计入"
       no_version: "该 SKU 还没有定价版本，无法估算利润"
+      per_unit: "单件均 %{value}"
+      switch_version: "切换计算用的定价版本（下单、成交共用）"
+      kinds:
+        automatic: "自动"
     finance:
       net_sales: "净销量"
       profit: "利润"

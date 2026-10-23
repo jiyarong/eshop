@@ -13610,7 +13610,23 @@ button.ai-row-action {
 .inventory-fbs-status-table a { font-weight: 600; text-decoration: none; }
 .inventory-fbs-status-table__anomaly { margin-left: 6px; font-size: 12px; color: var(--erp-danger-text, #c0392b); }
 .inventory-fbs-orders-modal__summary { display: flex; gap: 8px; align-items: baseline; margin: 8px 0; }
-.operator-sku-funnel-estimate--first { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+/* The estimated profit under the funnel: the two figures on the left, the version switch on the right. */
+.operator-sku-funnel-estimates { display: grid; grid-template-columns: max-content max-content; justify-content: start; align-items: center; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.operator-sku-funnel-estimates__rows { display: grid; gap: 3px; min-width: 0; }
+.operator-sku-funnel-estimates__rows > span { display: grid; grid-template-columns: 6.6em 13.5ch auto; align-items: baseline; column-gap: 6px; text-align: left; }
+.operator-sku-funnel-estimates__rows > span > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.operator-sku-funnel-estimates .operator-sku-funnel-value { display: block; justify-self: end; width: 13.5ch; text-align: right; }
+.operator-sku-funnel-estimates .operator-sku-comparison { display: block; text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* A small dropdown-looking button (swap arrows and a caret), so it reads as "pick another version". */
+.operator-sku-estimate-switch { display: inline-flex; align-items: center; gap: 3px; height: 26px; padding: 0 7px; border: 1px solid var(--border); border-radius: 5px; background: var(--erp-surface, #fff); color: var(--fg-muted); font-size: 13px; cursor: pointer; }
+.operator-sku-estimate-switch .bi-chevron-down { font-size: 9px; }
+.operator-sku-estimate-switch:hover, .operator-sku-estimate-switch[aria-expanded="true"] { border-color: #93b9e6; background: #eaf3ff; color: #174f8a; }
+.operator-sku-estimate-switch:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.operator-sku-estimate-menu { width: auto; min-width: 200px; max-width: 300px; padding: 6px; }
+.operator-sku-estimate-menu__group { margin: 4px 6px 2px; color: var(--fg-muted); font-size: 11px; font-weight: 600; }
+.operator-sku-estimate-menu__item { display: block; width: 100%; padding: 5px 8px; border: 0; border-radius: 4px; background: transparent; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.operator-sku-estimate-menu__item:hover, .operator-sku-estimate-menu__item:focus-visible { background: var(--gray-50); }
+.operator-sku-estimate-menu__item.is-selected { background: #eaf3ff; color: #174f8a; font-weight: 600; }
 
 /* Independent pallet planning workbench */
 .pallet-calculator { --pallet-blue: #2563eb; display: grid; gap: 20px; max-width: 1560px; margin: 0 auto; }

@@ -382,7 +382,8 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     sku_row = css_select(".operator-sku-row").find { |row| row.text.include?(@sku.sku_code) }
     assert_equal %w[商品卡访问 加购 下单 成交 取消数 下单估算利润 成交估算利润],
       sku_row.css(".operator-sku-funnel-grid .operator-sku-metric-label").map { |node| node.text.squish }
-    assert_select ".operator-sku-funnel-grid > span", count: 7
+    assert_select ".operator-sku-funnel-grid > span", count: 5
+    assert_select ".operator-sku-funnel-grid .operator-sku-funnel-estimates__rows > span", count: 2
     assert_select ".operator-sku-funnel-grid .operator-sku-metric-label", { text: "净销量", count: 0 }
     assert_select ".operator-sku-funnel-estimate", count: 2
     assert_select ".operator-sku-funnel-estimate .operator-sku-metric-label", text: "下单估算利润"
@@ -573,7 +574,84 @@ class OperatorSkusControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='current_page'][value='2']"
   end
 
+  test "the estimated profit shows the per-unit average and a version switch shared by both figures" do
+    entry = lambda do |units, profit|
+      { units: BigDecimal(units.to_s), priced_units: BigDecimal(units.to_s), profit_cny: BigDecimal(profit.to_s), unit_average_cny: BigDecimal(profit.to_s) / units }
+    end
+    estimate = {
+      version: { id: 7, name: "My model", kind: "manual", status: "published", current: true },
+      bases: { orders: entry.call(50, 1_200), conversions: entry.call(40, 1_000) },
+      options: [
+        { version: { id: 9, name: "2026-10", kind: "automatic", status: "published", current: false },
+          bases: { orders: entry.call(50, 900), conversions: entry.call(40, 800) } },
+        { version: { id: 7, name: "My model", kind: "manual", status: "published", current: true },
+          bases: { orders: entry.call(50, 1_200), conversions: entry.call(40, 1_000) } }
+      ]
+    }
+
+    with_estimate(estimate) do
+      get operator_skus_path, params: { q: @token }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".operator-sku-funnel-estimates[data-controller='estimate-version'][data-estimate-version-selected-value='7']", count: 1
+    assert_select ".operator-sku-funnel-estimates__rows .operator-sku-funnel-value", text: "50 单 / 1,200.00"
+    assert_select ".operator-sku-funnel-estimates__rows .operator-sku-funnel-value", text: "40 单 / 1,000.00"
+    assert_select ".operator-sku-estimate-average", text: "单件均 24.00"
+    assert_select ".operator-sku-estimate-average", text: "单件均 25.00"
+    assert_select "button.operator-sku-estimate-switch[data-action='estimate-version#toggle']", count: 1
+    assert_select ".operator-sku-estimate-menu__group", text: "月度（自动）"
+    assert_select ".operator-sku-estimate-menu__group", text: "测算（手动）"
+    assert_select ".operator-sku-estimate-menu__item[data-version-id='9']", text: "2026-10"
+    assert_select ".operator-sku-estimate-menu__item.is-selected[data-version-id='7']", text: "My model · 当前 · 已发布"
+    options = JSON.parse(css_select(".operator-sku-funnel-estimates").first["data-estimate-version-options-value"])
+    assert_equal "50 单 / 900.00", options.dig("9", "bases", "orders", "value")
+    assert_equal "单件均 20.00", options.dig("9", "bases", "conversions", "average")
+    assert_includes options.dig("9", "hint"), "2026-10"
+    assert_includes options.dig("9", "hint"), "自动"
+  end
+
+  test "a SKU with a single version has no version switch" do
+    entry = { units: BigDecimal("5"), priced_units: BigDecimal("5"), profit_cny: BigDecimal("50"), unit_average_cny: BigDecimal("10") }
+    estimate = {
+      version: { id: 7, name: "Only", kind: "manual", status: "draft", current: false },
+      bases: { orders: entry, conversions: entry },
+      options: [ { version: { id: 7, name: "Only", kind: "manual", status: "draft", current: false }, bases: { orders: entry, conversions: entry } } ]
+    }
+
+    with_estimate(estimate) do
+      get operator_skus_path, params: { q: @token }, headers: { "Accept" => "text/html" }
+    end
+
+    assert_response :success
+    assert_select ".operator-sku-funnel-estimates__rows .operator-sku-funnel-value", text: "5 单 / 50.00"
+    assert_select ".operator-sku-estimate-switch", count: 0
+    assert_select ".operator-sku-funnel-estimates[data-controller]", count: 0
+  end
+
   private
+
+  def with_estimate(estimate)
+    fake_query = Struct.new(:skus, :estimate) do
+      def call
+        skus.index_with do
+          {
+            sales: %i[days_7 days_30].index_with { { value: 0, comparison: { delta_pct: nil, semantic: "neutral" } } },
+            inventory: { available_stock: 0, incoming_quantity: 0, turnover_days: nil },
+            profit: %i[days_7 days_30].index_with { %i[revenue after_tax margin_pct ads].index_with { { value: nil, comparison: nil } } },
+            sales_funnel: { profit_estimate: estimate }
+          }
+        end
+      end
+    end
+    original_new = Ec::OperatorSkuMetricsQuery.method(:new)
+    Ec::OperatorSkuMetricsQuery.define_singleton_method(:new) do |**args|
+      fake_query.new(args.fetch(:skus).to_a, estimate)
+    end
+    yield
+  ensure
+    Ec::OperatorSkuMetricsQuery.define_singleton_method(:new, original_new)
+  end
 
   def with_empty_metrics
     fake_query = Struct.new(:skus) do

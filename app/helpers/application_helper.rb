@@ -174,6 +174,49 @@ module ApplicationHelper
     end
   end
 
+  # The estimated profit under the SKU workbench's funnel, as the strings the page shows (the first render and the
+  # version switch use the same ones, so the figures read alike).
+  def operator_sku_estimate_value(entry)
+    scope = "operator_skus.funnel_estimate"
+    profit = entry[:profit_cny].nil? ? "-" : number_with_precision(entry[:profit_cny], precision: 2, delimiter: ",")
+    "#{t("#{scope}.units", count: number_with_precision(entry[:units], precision: 1, strip_insignificant_zeros: true))} / #{profit}"
+  end
+
+  def operator_sku_estimate_average(entry)
+    return "" if entry[:unit_average_cny].nil?
+
+    t("operator_skus.funnel_estimate.per_unit", value: number_with_precision(entry[:unit_average_cny], precision: 2, delimiter: ","))
+  end
+
+  # "automatic" for an automatic version, otherwise its draft / published / archived status.
+  def operator_sku_estimate_version_state(version)
+    return t("operator_skus.funnel_estimate.kinds.automatic") if version[:kind].to_s == "automatic"
+
+    t("reports.sku_detail.funnel_analysis.profit_estimate.statuses.#{version[:status]}")
+  end
+
+  def operator_sku_estimate_hint(estimate_version, orders_entry)
+    scope = "operator_skus.funnel_estimate"
+    return t("#{scope}.no_version") unless estimate_version
+
+    unpriced = orders_entry[:units].to_d - orders_entry[:priced_units].to_d
+    t("#{scope}.version_hint", name: estimate_version[:name], status: operator_sku_estimate_version_state(estimate_version),
+      unpriced: number_with_precision(unpriced, precision: 1, strip_insignificant_zeros: true))
+  end
+
+  # Every version of the SKU with what the estimate reads under it, keyed by version id, for the version switch.
+  def operator_sku_estimate_options(estimate)
+    Array(estimate[:options]).to_h do |option|
+      version = option.fetch(:version)
+      [ version[:id].to_s, {
+        hint: operator_sku_estimate_hint(version, option.dig(:bases, :orders)),
+        bases: %i[orders conversions].index_with do |basis|
+          { value: operator_sku_estimate_value(option.dig(:bases, basis)), average: operator_sku_estimate_average(option.dig(:bases, basis)) }
+        end
+      } ]
+    end
+  end
+
   def operator_sku_comparison_text(comparison, compact: false)
     delta_pct = comparison&.dig(:delta_pct) || comparison&.dig("delta_pct")
     return t("operator_skus.values.unavailable") if delta_pct.nil?

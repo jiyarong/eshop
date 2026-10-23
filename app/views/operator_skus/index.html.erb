@@ -138,15 +138,49 @@
                 <% estimate = sales_funnel[:profit_estimate] %>
                 <% if estimate && %i[orders conversions].any? { |basis| estimate.dig(:bases, basis, :units).to_d.positive? } %>
                   <% estimate_scope = "operator_skus.funnel_estimate" %>
-                  <% unpriced = estimate.dig(:bases, :orders, :units).to_d - estimate.dig(:bases, :orders, :priced_units).to_d %>
-                  <% hint = estimate[:version] ? t("#{estimate_scope}.version_hint", name: estimate[:version][:name], status: t("reports.sku_detail.funnel_analysis.profit_estimate.statuses.#{estimate[:version][:status]}"), unpriced: number_with_precision(unpriced, precision: 1, strip_insignificant_zeros: true)) : t("#{estimate_scope}.no_version") %>
-                  <% %i[orders conversions].each_with_index do |basis, index| %>
-                    <% entry = estimate.dig(:bases, basis) %>
-                    <span class="operator-sku-funnel-estimate<%= " operator-sku-funnel-estimate--first" if index.zero? %>" title="<%= hint %>">
-                      <span class="operator-sku-metric-label"><%= t("#{estimate_scope}.#{basis}") %></span>
-                      <strong class="operator-sku-funnel-value"><%= t("#{estimate_scope}.units", count: number_with_precision(entry[:units], precision: 1, strip_insignificant_zeros: true)) %> / <%= entry[:profit_cny].nil? ? "-" : number_with_precision(entry[:profit_cny], precision: 2, delimiter: ",") %></strong>
-                      <small class="operator-sku-comparison">CNY</small>
-                    </span>
+                  <% hint = operator_sku_estimate_hint(estimate[:version], estimate.dig(:bases, :orders)) %>
+                  <% estimate_options = operator_sku_estimate_options(estimate) %>
+                  <% switchable = estimate_options.size > 1 %>
+                  <%# One version decides both figures; the icon at the right switches it for this SKU without leaving the page. %>
+                  <%= tag.div class: "operator-sku-funnel-estimates",
+                    data: (switchable ? {
+                      controller: "estimate-version",
+                      estimate_version_options_value: estimate_options.to_json,
+                      estimate_version_selected_value: estimate.dig(:version, :id).to_s,
+                      action: "keydown->estimate-version#closeOnEscape"
+                    } : {}) do %>
+                    <div class="operator-sku-funnel-estimates__rows">
+                      <% %i[orders conversions].each do |basis| %>
+                        <% entry = estimate.dig(:bases, basis) %>
+                        <span class="operator-sku-funnel-estimate" title="<%= hint %>" data-estimate-version-target="row">
+                          <span class="operator-sku-metric-label"><%= t("#{estimate_scope}.#{basis}") %></span>
+                          <strong class="operator-sku-funnel-value" data-estimate-version-target="value" data-basis="<%= basis %>"><%= operator_sku_estimate_value(entry) %></strong>
+                          <small class="operator-sku-comparison"><span>CNY</span> <span class="operator-sku-estimate-average" data-estimate-version-target="average" data-basis="<%= basis %>"><%= operator_sku_estimate_average(entry) %></span></small>
+                        </span>
+                      <% end %>
+                    </div>
+                    <% if switchable %>
+                      <div class="operator-sku-funnel-estimates__switch">
+                        <button type="button" class="operator-sku-estimate-switch" aria-haspopup="menu" aria-expanded="false"
+                          aria-label="<%= t("#{estimate_scope}.switch_version") %>" title="<%= t("#{estimate_scope}.switch_version") %>"
+                          data-estimate-version-target="trigger" data-action="estimate-version#toggle"><i class="bi bi-arrow-left-right" aria-hidden="true"></i><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+                        <div class="sku-ai-diagnosis-event-popover__panel operator-sku-estimate-menu" role="menu" data-estimate-version-target="menu" hidden>
+                          <% [ [ "automatic", true ], [ "manual", false ] ].each do |group, automatic| %>
+                            <% group_options = estimate[:options].select { |option| (option.dig(:version, :kind).to_s == "automatic") == automatic } %>
+                            <% next if group_options.empty? %>
+                            <p class="operator-sku-estimate-menu__group"><%= t("reports.profit_prediction.version_groups.#{group}") %></p>
+                            <% group_options.each do |option| %>
+                              <% version = option[:version] %>
+                              <% selected = version[:id] == estimate.dig(:version, :id) %>
+                              <button type="button" role="menuitemradio" aria-checked="<%= selected %>" class="operator-sku-estimate-menu__item<%= " is-selected" if selected %>"
+                                data-version-id="<%= version[:id] %>" data-estimate-version-target="option" data-action="estimate-version#select">
+                                <%= [ version[:name], (t("reports.profit_prediction.current_version.badge") if version[:current]), (operator_sku_estimate_version_state(version) unless automatic) ].compact.join(" · ") %>
+                              </button>
+                            <% end %>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
                   <% end %>
                 <% end %>
               </div></td>

@@ -106,7 +106,61 @@ class SalesFunnelReports::SkuProfitEstimateQueryTest < ActiveSupport::TestCase
     assert_not_equal in_effect.id, period.dig(:version, :id)
   end
 
+  test "the newest automatic version is used ahead of the current manual one, and a SKU without one keeps the manual version" do
+    manual = create_version("published", [ context("wb", "ru", "fbs", "small", profit: 10) ], name: "manual")
+    manual.make_current!
+    funnel = funnel_analysis([ row(scenario_units: { orders: { [ "wb", "ru", "fbs", "small" ] => 2 }, conversions: {} }) ])
+
+    assert_equal manual.id, estimate(funnel).fetch(:periods).last.dig(:version, :id), "no automatic version yet"
+
+    create_automatic_version("2026-09", Date.new(2026, 9, 1), profit: 30)
+    newest = create_automatic_version("2026-10", Date.new(2026, 10, 1), profit: 50)
+
+    period = estimate(funnel).fetch(:periods).last
+    assert_equal newest.id, period.dig(:version, :id)
+    assert_equal "automatic", period.dig(:version, :kind)
+    assert_equal 100, period.dig(:bases, :orders, :profit_cny)
+  end
+
+  test "an automatic version that prices none of the period's units gives way to the manual version" do
+    manual = create_version("published", [ context("wb", "ru", "fbs", "small", profit: 10) ], name: "manual")
+    manual.make_current!
+    unpriced = create_automatic_version("2026-10", Date.new(2026, 10, 1), profit: nil, status: "incomplete")
+    funnel = funnel_analysis([ row(scenario_units: { orders: { [ "wb", "ru", "fbs", "small" ] => 2 }, conversions: { [ "wb", "ru", "fbs", "small" ] => 1 } }) ])
+
+    period = estimate(funnel).fetch(:periods).last
+    assert_equal manual.id, period.dig(:version, :id)
+    assert_equal 20, period.dig(:bases, :orders, :profit_cny)
+    assert_equal 10, period.dig(:bases, :conversions, :profit_cny), "one version serves both bases"
+
+    # Priced for a scenario the units do not touch: still nothing to price them with, so the manual version stays.
+    other = create_automatic_version("2026-11", Date.new(2026, 11, 1), profit: 99, identity: %w[ozon ru fbo general])
+    assert_equal manual.id, estimate(funnel).fetch(:periods).last.dig(:version, :id)
+    assert_not_equal other.id, unpriced.id
+  end
+
+  test "without a manual version the automatic one is kept even when it prices nothing" do
+    automatic = create_automatic_version("2026-10", Date.new(2026, 10, 1), profit: nil, status: "incomplete")
+    funnel = funnel_analysis([ row(scenario_units: { orders: { [ "wb", "ru", "fbs", "small" ] => 2 }, conversions: {} }) ])
+
+    period = estimate(funnel).fetch(:periods).last
+
+    assert_equal automatic.id, period.dig(:version, :id)
+    assert_nil period.dig(:bases, :orders, :profit_cny)
+  end
+
   private
+
+  def create_automatic_version(name, month, profit:, status: "valid", identity: %w[wb ru fbs small])
+    version = @sku.profit_versions.new(
+      name:, kind: "automatic", status: "published", effective_from: month, effective_to: month.end_of_month,
+      data_from: month - 35.days, data_to: month - 8.days
+    )
+    version.contexts.build(context(*identity, profit:, status:))
+    version.system_write = true
+    version.save!
+    version
+  end
 
   def estimate(funnel)
     SalesFunnelReports::SkuProfitEstimateQuery.run(sku: @sku.reload, funnel_analysis: funnel)
