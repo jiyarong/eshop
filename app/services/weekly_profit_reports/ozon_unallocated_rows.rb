@@ -1,7 +1,7 @@
 module WeeklyProfitReports
   class OzonUnallocatedRows
     LABEL_MAP = {
-      1 => "支付手续费 / Эквайринг",
+      1 => "收单费 / Эквайринг",
       12 => "越库或仓储费 / Кросс-докинг или хранение",
       16 => "物流费 / Логистика",
       25 => "平台补偿 / Компенсация Ozon",

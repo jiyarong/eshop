@@ -311,6 +311,34 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", count: 1
   end
 
+  test "sku profit tab shows revenue before and after commission in the overview and store detail" do
+    period = {
+      key: "P0", from_date: Date.new(2026, 7, 6), to_date: Date.new(2026, 7, 12),
+      sku_row: { net_sales: 5, revenue: BigDecimal("100.00"), revenue_after_commission: BigDecimal("78.00"), currency: "CNY" },
+      store_rows: []
+    }
+    store_row = { net_sales: 5, revenue: BigDecimal("100.00"), revenue_after_commission: BigDecimal("78.00"), currency: "CNY" }
+    analysis = {
+      periods: [period],
+      store_groups: [{ store_ref: "wb:1", platform: "wb", shop: "WB-1", rows_by_period: { "P0" => store_row } }]
+    }
+    original_run = Ec::SkuProfitAnalysisQuery.method(:run)
+    Ec::SkuProfitAnalysisQuery.define_singleton_method(:run) { |**| analysis }
+
+    get report_sku_path(@sku_code, tab: "profit", profit_from_date: "2026-07-06", profit_to_date: "2026-07-12"),
+      headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    %w[table.sku-profit-matrix table.sku-profit-store-table].each do |table|
+      assert_select "#{table} th", text: "销售额(佣金前)", minimum: 1
+      assert_select "#{table} th", text: "销售额(佣金后)", minimum: 1
+      assert_select "#{table} .weekly-profit-table-value", text: "¥100.00", minimum: 1
+      assert_select "#{table} .weekly-profit-table-value", text: "¥78.00", minimum: 1
+    end
+  ensure
+    Ec::SkuProfitAnalysisQuery.define_singleton_method(:run, original_run) if original_run
+  end
+
   test "capital distribution renders sku summary tab with expandable batch detail" do
     batch = Ec::SkuBatch.create!(
       sku_code: @sku.sku_code,

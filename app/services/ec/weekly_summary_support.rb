@@ -8,6 +8,7 @@ module Ec
       sales_qty net_qty settlement pre_tax after_tax sales_revenue order_count net_sales_count blr_count export_count
       after_tax_margin_pct revenue net_sales margin_pct profit_margin_pct average_profit_per_order cost_return_pct
       projected_roi_pct annualized_return_pct annualized_net_profit_cny
+      revenue_after_commission total_revenue_after_commission
     ].freeze
     NEGATIVE_COMPARISON_KEYS = %i[
       total_return_qty total_returns total_tax unallocated_rows unallocated_total wb_ads wb_goods_cost wb_unallocated
@@ -52,7 +53,10 @@ module Ec
           end
 
           net_sales = sku_rows.sum { |row| row[:sales_qty] - row[:return_qty] }
-          revenue = (sku_rows.sum { |row| row[:settlement] } * byn_cny).round(2)
+          # 销售额统一为佣金前：WB 取 retail_price_with_disc × 件数（销售加、退货减，即 tax_base）。
+          # settlement 是 for_pay 合计，已扣佣金和收单费，作为佣金后销售额单独展示。
+          revenue = (sku_rows.sum { |row| row[:tax_base] } * byn_cny).round(2)
+          revenue_after_commission = (sku_rows.sum { |row| row[:settlement] } * byn_cny).round(2)
           ads = (sku_rows.sum { |row| row[:ad] } * byn_cny).round(2)
           goods_cost = (sku_rows.sum { |row| row[:goods_cost] } * byn_cny).round(2)
           pre_tax = (sku_rows.sum { |row| row[:pre_tax] } * byn_cny).round(2)
@@ -65,9 +69,10 @@ module Ec
             shop: shop,
             net_sales: net_sales,
             revenue: revenue,
+            revenue_after_commission: revenue_after_commission,
             ads: ads,
-            commission_fee: nil,
-            payment_fee: nil,
+            commission_fee: (sku_rows.sum { |row| row[:commission].to_f } * byn_cny).round(2),
+            payment_fee: (sku_rows.sum { |row| row[:acquiring].to_f } * byn_cny).round(2),
             delivery_fee: (sku_rows.sum { |row| row[:delivery] } * byn_cny).round(2),
             return_delivery_fee: nil,
             storage_fee: (sku_rows.sum { |row| row[:storage] } * byn_cny).round(2),
@@ -106,6 +111,8 @@ module Ec
           end
 
           revenue = (row[:sales_revenue] * rub_cny).round(2)
+          # 与 WB 的 for_pay 对齐：扣佣金和收单费（两者在 Ozon 记账里都是负数）
+          revenue_after_commission = ((row[:sales_revenue].to_f + row[:commission].to_f + row[:payment_fee].to_f) * rub_cny).round(2)
           ads = (-(row[:ppc_cost].to_f + row[:promotion_cost].to_f) * rub_cny).round(2)
           goods_cost = (-row[:goods_cost].to_f * rub_cny).round(2)
           pre_tax = ((row[:pre_tax_profit] || row[:book_profit_after_ad]).to_f * rub_cny).round(2)
@@ -118,6 +125,7 @@ module Ec
             shop: shop,
             net_sales: row[:net_sales_count],
             revenue: revenue,
+            revenue_after_commission: revenue_after_commission,
             ads: ads,
             commission_fee: ozon_expense_cny(row[:commission], rub_cny),
             payment_fee: ozon_expense_cny(row[:payment_fee], rub_cny),
@@ -162,6 +170,7 @@ module Ec
           shop: row[:shop],
           net_sales: row[:net_sales],
           revenue: row[:revenue],
+          revenue_after_commission: row[:revenue_after_commission],
           average_price: net_sales.zero? ? nil : (revenue / net_sales).round(2),
           ads: row[:ads],
           ad_ratio_pct: percentage(row[:ads], row[:revenue]),
@@ -205,6 +214,7 @@ module Ec
         rate_cny_rub: rate.rate_cny_rub,
         rate_byn_rub: rate.rate_byn_rub,
         total_sales_revenue: total_sales_revenue,
+        total_revenue_after_commission: sum_decimal(rows, :revenue_after_commission),
         total_after_tax: total_after_tax,
         total_margin_pct: percentage(total_after_tax, total_sales_revenue),
         wb_sales_revenue: sum_decimal(wb_rows, :revenue),
@@ -234,6 +244,7 @@ module Ec
             sku: sku,
             net_sales: sku_rows.sum { |row| row[:net_sales].to_i },
             revenue: sum_decimal(sku_rows, :revenue),
+            revenue_after_commission: sum_decimal(sku_rows, :revenue_after_commission),
             ads: sum_decimal(sku_rows, :ads),
             commission_fee: sum_optional_decimal(sku_rows, :commission_fee),
             payment_fee: sum_optional_decimal(sku_rows, :payment_fee),
@@ -272,6 +283,7 @@ module Ec
           sku: row[:sku],
           net_sales: row[:net_sales],
           revenue: row[:revenue],
+          revenue_after_commission: row[:revenue_after_commission],
           average_price: net_sales.zero? ? nil : (revenue / net_sales).round(2),
           ads: row[:ads],
           commission_fee: row[:commission_fee],
@@ -315,6 +327,7 @@ module Ec
         total_sku_count: rows.size,
         total_net_sales: rows.sum { |row| row[:net_sales].to_i },
         total_sales_revenue: total_sales_revenue,
+        total_revenue_after_commission: sum_decimal(rows, :revenue_after_commission),
         total_ads: sum_decimal(rows, :ads),
         total_goods_cost: sum_decimal(rows, :goods_cost),
         total_pre_tax: sum_decimal(rows, :pre_tax),

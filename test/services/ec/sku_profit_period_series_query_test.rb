@@ -44,4 +44,27 @@ class Ec::SkuProfitPeriodSeriesQueryTest < ActiveSupport::TestCase
       "店铺维度利润率应和总览一致（历史 bug：decorate_store_row 之前只写了 margin_pct，没写 profit_margin_pct，导致明细表利润率列一直显示 -）"
     )
   end
+
+  test "call carries the after-commission revenue next to the pre-commission revenue on sku and store rows" do
+    sku_code = @sku_code
+    query = Ec::SkuProfitPeriodSeriesQuery.new(
+      sku: @sku,
+      periods: [{ key: "P0", from_date: @week_start, to_date: @week_start.end_of_week(:monday) }]
+    )
+    query.define_singleton_method(:collect_rows) do |_from_date, _to_date, _rate|
+      [
+        [{ sku: sku_code, platform: "WB", shop: "WB-1", net_sales: 5, revenue: 100, revenue_after_commission: 78, ads: 10, goods_cost: 30, pre_tax: 40, tax: 5, after_tax: 35 }],
+        { wb: 0, ozon: 0 }
+      ]
+    end
+
+    period = query.call.first
+
+    assert_equal 100, period[:sku_row][:revenue]
+    assert_equal 78, period[:sku_row][:revenue_after_commission]
+    assert_equal 100, period[:store_rows].first[:revenue]
+    assert_equal 78, period[:store_rows].first[:revenue_after_commission]
+    # ratios keep the pre-commission revenue as their base
+    assert_in_delta 35.0, period[:sku_row][:profit_margin_pct].to_f, 0.1
+  end
 end

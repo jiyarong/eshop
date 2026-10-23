@@ -241,7 +241,7 @@ module Ec
             retail_amount:  r.retail_amount.to_f,
             commission_pct: r.commission_percent.to_f,
             for_pay:        for_pay.round(2),
-            acquiring:      r.acquiring_fee.to_f.round(2),
+            acquiring:      (is_sale ? r.acquiring_fee.to_f : -r.acquiring_fee.to_f.abs).round(2),
             delivery:       row_delivery.round(2),
             penalty:          row_penalty.round(2),
             rebill:           row_rebill.round(2),

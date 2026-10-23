@@ -3,11 +3,11 @@ module Ec
     include WeeklySummarySupport
 
     COMPARISON_SUMMARY_KEYS = %i[
-      total_sku_count total_net_sales total_sales_revenue total_ads total_goods_cost
+      total_sku_count total_net_sales total_sales_revenue total_revenue_after_commission total_ads total_goods_cost
       total_pre_tax total_after_tax total_margin_pct unallocated_total after_tax_with_unallocated
     ].freeze
     COMPARISON_ROW_KEYS = %i[
-      net_sales revenue average_price ads goods_cost cost_ratio_pct pre_tax tax after_tax margin_pct
+      net_sales revenue revenue_after_commission average_price ads goods_cost cost_ratio_pct pre_tax tax after_tax margin_pct
       profit_margin_pct average_profit_per_order ad_ratio_pct cost_return_pct projected_roi_pct
       annualized_return_pct annualized_net_profit_cny
     ].freeze

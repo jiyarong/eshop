@@ -53,7 +53,7 @@ class GoogleSheets::WeeklySummaryServiceTest < ActiveSupport::TestCase
     values = writes.fetch(:writes).find { |entry| entry[:range] == "WSU:W22!A1" }.fetch(:values)
 
     assert_equal "销售佣金(CNY)", values[0][21]
-    assert_equal "支付手续费(CNY)", values[0][22]
+    assert_equal "收单费(CNY)", values[0][22]
     assert_equal "物流费(CNY)", values[0][23]
     assert_equal "退货物流费(CNY)", values[0][24]
     assert_equal "仓储费(CNY)", values[0][25]
@@ -75,6 +75,35 @@ class GoogleSheets::WeeklySummaryServiceTest < ActiveSupport::TestCase
     assert_in_delta 0.4, row[29], 0.001
     assert_in_delta 0.6, row[30], 0.001
     assert_equal 31, row.size
+  end
+
+  test "total row keeps every total under its own column header" do
+    sku_code = "WSU-XLSX-#{SecureRandom.hex(4).upcase}"
+    @sku_codes << sku_code
+    Ec::Sku.create!(sku_code: sku_code, product_name: "Test #{sku_code}")
+
+    current_rows = [
+      { sku: sku_code, platform: "WB", shop: "WB-1", net_sales: 5, revenue: 100, ads: 10, goods_cost: 30, pre_tax: 40, tax: 5, after_tax: 35,
+        commission_fee: 3, payment_fee: 1, delivery_fee: 2, return_delivery_fee: 0.5, storage_fee: 1.5,
+        dispatch_fee: 0.2, packing_fee: 0.3, defect_fee: 0.1, crossdock_fee: 0.4, other_platform_fee: 0.6 },
+      { sku: sku_code, platform: "Ozon", shop: "OZ-1", net_sales: 3, revenue: 60, ads: 6, goods_cost: 18, pre_tax: 24, tax: 4, after_tax: 20,
+        commission_fee: 2, payment_fee: 0.5, delivery_fee: 1, return_delivery_fee: 0.25, storage_fee: 0.75,
+        dispatch_fee: 0.1, packing_fee: 0.15, defect_fee: 0.05, crossdock_fee: 0.2, other_platform_fee: 0.3 }
+    ]
+
+    values = capture_sheet_writes(current_rows:, previous_rows: []).fetch(:writes).find { |entry| entry[:range] == "WSU:W22!A1" }.fetch(:values)
+    headers = values[0]
+    total_row = values.find { |row| row[0] == "合计 / Итого" }
+
+    assert_equal headers.size, total_row.size, "the total row must be as wide as the table"
+    {
+      "净销量" => 8, "销售额(CNY)" => 160, "税后净利(CNY)" => 55,
+      "销售佣金(CNY)" => 5.0, "收单费(CNY)" => 1.5, "物流费(CNY)" => 3.0, "退货物流费(CNY)" => 0.75,
+      "仓储费(CNY)" => 2.25, "退件费(CNY)" => 0.3, "包装费(CNY)" => 0.45, "瑕疵处理费(CNY)" => 0.15,
+      "越库费(CNY)" => 0.6, "其它平台费(CNY)" => 0.9
+    }.each do |header, total|
+      assert_in_delta total, total_row[headers.index(header)].to_f, 0.001, "#{header} total sits under the wrong column"
+    end
   end
 
   private

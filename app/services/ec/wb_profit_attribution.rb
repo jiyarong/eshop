@@ -145,11 +145,16 @@ module Ec
         case
         when op.include?(RawWb::FinanceDetail::SALE_KEYWORD)
           bucket[:acquiring_byn]     += r.acquiring_fee.to_f
+          # for_pay = retail_price_with_disc × (1 − commission%) − acquiring: commission and acquiring are the
+          # two deductions between the pre-commission turnover (tax_base) and the settlement.
+          bucket[:commission_byn]    += wb_commission(r, r.quantity.to_i)
           bucket[:sales_qty]         += r.quantity.to_i
           bucket[:tax_base_byn]      += r.retail_price_with_disc.to_f * r.quantity.to_i
           bucket[:retail_amount_byn] += r.retail_amount.to_f * r.quantity.to_i
         when op.include?(RawWb::FinanceDetail::RETURN_KEYWORD)
-          bucket[:acquiring_byn]  += r.acquiring_fee.to_f
+          # A return gives back the commission and the acquiring fee of the sale it reverses.
+          bucket[:acquiring_byn]  -= r.acquiring_fee.to_f.abs
+          bucket[:commission_byn] -= wb_commission(r, r.quantity.to_i.abs)
           bucket[:return_qty]     += r.quantity.to_i.abs
           # A return reduces the turnover tax is charged on, just as it reduces net quantity
           # (the import VAT credit below already follows net quantity). It can leave the base
@@ -167,6 +172,10 @@ module Ec
           # 被 ad_settled_fees API 覆盖，不计入
         end
       end
+    end
+
+    def wb_commission(row, quantity)
+      row.retail_price_with_disc.to_f * quantity * row.commission_percent.to_f / 100
     end
 
     def signed_for_pay(row)
@@ -369,6 +378,7 @@ module Ec
         # BYN 字段直接取用（财务明细原始结算货币）
         settlement    = b[:settlement_byn]
         acquiring     = b[:acquiring_byn]
+        commission    = b[:commission_byn]
         delivery      = b[:delivery_byn]
         reimb         = b[:reimb_byn]
         logistics_reimb = b[:logistics_reimb_byn]
@@ -409,6 +419,7 @@ module Ec
           import_vat:    import_vat_cny.round(4),
           settlement:    settlement.round(2),
           acquiring:     acquiring.round(2),
+          commission:    commission.round(2),
           delivery:      delivery.round(2),
           reimb:           reimb.round(2),
           logistics_reimb: logistics_reimb.round(2),
@@ -499,7 +510,7 @@ module Ec
 
     def new_bucket
       {
-        settlement_byn: 0.0, acquiring_byn: 0.0, delivery_byn: 0.0,
+        settlement_byn: 0.0, acquiring_byn: 0.0, commission_byn: 0.0, delivery_byn: 0.0,
         reimb_byn: 0.0, logistics_reimb_byn: 0.0, pickup_byn: 0.0, penalty_byn: 0.0,
         storage_rub: 0.0, ad_byn: 0.0,
         deduction_byn: 0.0, additional_payment_byn: 0.0,

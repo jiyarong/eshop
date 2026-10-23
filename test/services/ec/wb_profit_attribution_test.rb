@@ -220,6 +220,35 @@ class Ec::WbProfitAttributionTest < ActiveSupport::TestCase
     end
   end
 
+  test "commission and acquiring are the deductions between the tax base and settlement, and returns give them back" do
+    nm_id = rand(10_000_000..99_999_999)
+    rows = [
+      # sold 2 x 100 at 20% commission: for_pay = 200 - 40 - 3
+      RawWb::FinanceDetail.new(account_id: @account.id, nm_id: nm_id, report_type: 2, seller_oper_name: "Продажа",
+        quantity: 2, retail_price_with_disc: 100, commission_percent: 20, retail_amount: 100, for_pay: 157, acquiring_fee: 3),
+      # 1 x 100 returned: commission 20 and acquiring 1.5 come back, the payout is reversed
+      RawWb::FinanceDetail.new(account_id: @account.id, nm_id: nm_id, report_type: 2, seller_oper_name: "Возврат",
+        quantity: 1, retail_price_with_disc: 100, commission_percent: 20, retail_amount: 100, for_pay: 78.5, acquiring_fee: 1.5)
+    ]
+    service = build_service(from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5))
+    service.instance_variable_set(:@rows, rows)
+    service.instance_variable_set(:@shk_to_nm, {})
+    service.send(:attribute_costs)
+    service.instance_variable_set(:@goods_costs, {})
+    service.instance_variable_set(:@unalloc_rows, [])
+    service.define_singleton_method(:build_nm_to_sku_map) { |_nm_ids| { nm_id => "SKU-FEES" } }
+
+    service.send(:compute_profit)
+    row = service.results.sole
+
+    assert_in_delta 100.0, row[:tax_base], 0.001, "2 sold x 100 - 1 returned x 100"
+    assert_in_delta 20.0, row[:commission], 0.001, "2 x 20 - 1 x 20"
+    assert_in_delta 1.5, row[:acquiring], 0.001, "3 - 1.5, the return gives the acquiring fee back"
+    assert_in_delta 78.5, row[:settlement], 0.001, "157 - 78.5"
+    assert_in_delta row[:settlement], row[:tax_base] - row[:commission] - row[:acquiring], 0.001,
+      "tax base - commission - acquiring = settlement"
+  end
+
   test "compute_profit keeps negative net quantity and reverses goods cost" do
     service = build_service(from_date: Date.new(2026, 6, 29), to_date: Date.new(2026, 7, 5), rate_cny_rub: 10.0, rate_byn_rub: 5.0)
     bucket = service.send(:new_bucket).merge(

@@ -137,7 +137,7 @@ module GoogleSheets
 
     SKU_HDR_ZH = [
       'SKU', '品号', '商品名称',
-      '销售收入', '平台佣金', '物流费', '支付手续费', '出货费', '打包费',
+      '销售收入', '平台佣金', '物流费', '收单费', '出货费', '打包费',
       '退货处理费', '临时仓储', '残次品处理', '越库费', '其他平台费用',
       '客户下单数', '净成交数', '退货笔数',
       '广告费', '广告费占比%',
@@ -321,7 +321,7 @@ module GoogleSheets
         { label: '── 已分摊费用 / Распределённые расходы ──', value: nil,           type: :section },
         { label: '平台佣金 / Комиссия Ozon',   value: total_comm,                    type: :normal },
         { label: '物流费 / Доставка',          value: total_deliv,                   type: :normal },
-        { label: '支付手续费 / Эквайринг',     value: total_pay,                     type: :normal },
+        { label: '收单费 / Эквайринг',     value: total_pay,                     type: :normal },
         { label: '出货费 / Отгрузка',          value: total_dispatch,                type: :normal },
         { label: '打包费 / Упаковка',          value: total_packing,                 type: :normal },
         { label: '退货处理费 / Обработка',     value: total_ret,                     type: :normal },

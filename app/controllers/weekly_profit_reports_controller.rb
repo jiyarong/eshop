@@ -9,12 +9,12 @@ class WeeklyProfitReportsController < ApplicationController
     "ozon" => %i[ozon_sku_id sku_code sales_revenue commission delivery_charge total_ad_cost order_count net_sales_count blr_count export_count goods_cost pre_tax_profit after_tax_profit after_tax_margin_pct]
   }.freeze
   WSU_COLUMNS = %i[
-    sku platform shop net_sales revenue average_price commission_fee payment_fee delivery_fee return_delivery_fee
+    sku platform shop net_sales revenue revenue_after_commission average_price commission_fee payment_fee delivery_fee return_delivery_fee
     storage_fee dispatch_fee packing_fee defect_fee crossdock_fee other_platform_fee goods_cost cost_ratio_pct
     ads ad_ratio_pct pre_tax tax after_tax margin_pct average_profit_per_order annualized_return_pct annualized_net_profit_cny
   ].freeze
   WSU_DEEP_COLUMNS = %i[
-    sku net_sales revenue average_price commission_fee payment_fee delivery_fee return_delivery_fee storage_fee
+    sku net_sales revenue revenue_after_commission average_price commission_fee payment_fee delivery_fee return_delivery_fee storage_fee
     dispatch_fee packing_fee defect_fee crossdock_fee other_platform_fee goods_cost cost_ratio_pct ads ad_ratio_pct
     pre_tax tax after_tax margin_pct average_profit_per_order cost_return_pct projected_roi_pct annualized_return_pct
     annualized_net_profit_cny
@@ -23,8 +23,8 @@ class WeeklyProfitReportsController < ApplicationController
     "wb" => %i[total_sales_qty total_return_qty total_net total_goods_cost total_pre_tax total_tax total_after_tax unallocated_rows],
     "ozon" => %i[sku_count total_sales_revenue total_orders total_returns total_ad total_goods_cost total_after_tax_profit unallocated_total]
   }.freeze
-  WSU_SUMMARY_KEYS = %i[total_sales_revenue total_after_tax total_margin_pct unallocated_total after_tax_with_unallocated].freeze
-  WSU_DEEP_SUMMARY_KEYS = %i[total_sku_count total_net_sales total_sales_revenue total_after_tax unallocated_total after_tax_with_unallocated].freeze
+  WSU_SUMMARY_KEYS = %i[total_sales_revenue total_revenue_after_commission total_after_tax total_margin_pct unallocated_total after_tax_with_unallocated].freeze
+  WSU_DEEP_SUMMARY_KEYS = %i[total_sku_count total_net_sales total_sales_revenue total_revenue_after_commission total_after_tax unallocated_total after_tax_with_unallocated].freeze
   SKU_CODE_COLUMNS = %w[sku sku_code vendor_code].freeze
 
   rescue_from ActionController::ParameterMissing, with: :render_bad_request

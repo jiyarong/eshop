@@ -155,7 +155,7 @@ Accept: text/markdown
 | `revenue` | 销售额 | 统一折算为 CNY 的收入 |
 | `average_price` | 销售均价 | `revenue / net_sales` |
 | `commission_fee` | 销售佣金 | 平台佣金，CNY |
-| `payment_fee` | 支付手续费 | 平台支付/收单费用，CNY |
+| `payment_fee` | 收单费 | 平台支付/收单费用，CNY |
 | `delivery_fee` | 物流费 | 正向发货物流费用，CNY |
 | `return_delivery_fee` | 退货物流费 | 退货相关物流费用，CNY |
 | `storage_fee` | 仓储费 | 平台仓储费用，CNY |

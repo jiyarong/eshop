@@ -180,7 +180,7 @@ Ozon WR 金额默认使用 RUB；`cost_cny`、`import_vat_cny` 明确使用 CNY�
 | `sales_revenue` | 销售收入 | 商品销售收入，RUB |
 | `commission` | 平台佣金 | Ozon 佣金，通常为负数 |
 | `delivery_charge` | 物流费 | 配送及物流费用，通常为负数 |
-| `payment_fee` | 支付手续费 | 支付处理费用，通常为负数 |
+| `payment_fee` | 收单费 | 支付处理费用，通常为负数 |
 | `dispatch_fee` | 发货处理费 | 发货/处理费用，通常为负数 |
 | `packing_fee` | 包装费 | 包装费用，通常为负数 |
 | `return_delivery` | 退货物流费 | 退货产生的物流费用，通常为负数 |

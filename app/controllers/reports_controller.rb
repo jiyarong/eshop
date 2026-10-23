@@ -777,7 +777,7 @@ class ReportsController < ApplicationController
         @profit_store_trend_groups = groups.map do |group|
           option = build_profit_time_chart(
             @profit_trend[:weeks],
-            %i[net_sales revenue after_tax annualized_net_profit_cny average_profit_per_order ad_ratio_pct cost_return_pct annualized_return_pct],
+            %i[net_sales revenue revenue_after_commission after_tax annualized_net_profit_cny average_profit_per_order ad_ratio_pct cost_return_pct annualized_return_pct],
             default_metrics: %i[net_sales revenue after_tax annualized_net_profit_cny],
             quantity_metrics: %i[net_sales], rows: group[:rows]
           )
@@ -787,7 +787,7 @@ class ReportsController < ApplicationController
       end
       @profit_scale_chart_option = build_profit_time_chart(
         @profit_trend[:weeks],
-        %i[net_sales revenue after_tax annualized_net_profit_cny],
+        %i[net_sales revenue revenue_after_commission after_tax annualized_net_profit_cny],
         default_metrics: %i[after_tax annualized_net_profit_cny],
         quantity_metrics: %i[net_sales]
       )
@@ -2360,7 +2360,7 @@ class ReportsController < ApplicationController
     value = row[metric]
     return "-" if value.nil? || value == ""
     return sku_operation_report_value(row, metric) unless metric.in?(%i[
-      revenue average_price commission_fee payment_fee delivery_fee return_delivery_fee storage_fee
+      revenue revenue_after_commission average_price commission_fee payment_fee delivery_fee return_delivery_fee storage_fee
       dispatch_fee packing_fee defect_fee crossdock_fee other_platform_fee ads goods_cost pre_tax tax
       after_tax average_profit_per_order annualized_net_profit_cny
     ])
