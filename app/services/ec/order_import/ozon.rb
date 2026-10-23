@@ -95,7 +95,9 @@ module Ec
           cluster_from: posting.financial_data&.dig("cluster_from").presence,
           cluster_to: posting.financial_data&.dig("cluster_to").presence,
           tracking_number: type == "fbs" ? posting.tracking_number : nil,
-          shipped_at: type == "fbs" ? posting.shipment_date : nil,
+          # shipment_date is the shipping deadline; delivering_date is when the posting was handed to delivery.
+          # It stays empty for postings cancelled before the hand-over, so they never count as shipped.
+          shipped_at: type == "fbs" ? posting.delivering_date : nil,
           delivered_at: completed_at_for(posting, type),
           cancelled_at: cancelled_at_for(posting),
           cancel_reason_source: posting.respond_to?(:cancel_reason_id) ? posting.cancel_reason_id&.to_s : nil,
