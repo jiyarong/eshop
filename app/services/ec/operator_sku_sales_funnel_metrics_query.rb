@@ -84,12 +84,14 @@ module Ec
       result
     end
 
-    # Units of the selected week by pricing scenario, for the estimated profit under the funnel.
+    # Units of the selected week by pricing scenario, for the estimated profit under the funnel. The completed basis
+    # counts delivered units only: a scenario's unit profit is per delivered unit and already carries the cost of the
+    # returns (see SalesFunnelReports::SkuProfitEstimateQuery), so returned units would be paid for twice.
     def add_scenario_units(sku_code, platform, company_type, fulfillment_type, buyer_currency, buyer_country, status, quantity)
       key = SalesFunnelReports::PricingScenario.key(platform:, company_type:, fulfillment_type:, buyer_currency:, buyer_country:) || :uncovered
       units = @scenario_units[sku_code]
       units[:orders][key] += quantity
-      units[:conversions][key] += quantity if status.in?(%w[delivered returned])
+      units[:conversions][key] += quantity if status == "delivered"
     end
 
     def load_profit_versions

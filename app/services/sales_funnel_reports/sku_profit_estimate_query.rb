@@ -2,10 +2,11 @@ module SalesFunnelReports
   # Estimated profit of each funnel period: units of the period placed into the SKU's pricing
   # scenarios x that scenario's per-unit profit from a profit version. Two bases:
   #   orders      every order item placed in the period, whatever its status
-  #   conversions completed + returned order items
+  #   conversions delivered order items only
   # Both come from the order table, so the two bases are comparable and differ only by status.
-  # The unit profit already carries the return-rate amortization, so this is an estimate, not
-  # the settled profit: it answers "what is this volume worth at the version's parameters".
+  # A scenario's unit profit is per delivered unit: the cost of the returns is amortized over the delivered ones
+  # (return_rate / (1 - return_rate) returned parcels per delivered unit), so returned units are not counted again.
+  # It is an estimate, not the settled profit: it answers "what is this volume worth at the version's parameters".
   class SkuProfitEstimateQuery
     BASES = %i[orders conversions].freeze
 

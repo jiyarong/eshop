@@ -78,14 +78,14 @@ class Ec::OperatorSkuSalesFunnelMetricsQueryTest < ActiveSupport::TestCase
     # Ordered in the week: 6 FBW + 1 FBS + 2 FBW (cancelled still counts as ordered) + 3 FBS.
     assert_equal 12, orders.fetch(:units)
     assert_equal 8 * 10 + 4 * 4, orders.fetch(:profit_cny)
-    # Completed or returned: 6 FBW + 1 FBS + 3 FBS.
-    assert_equal 10, conversions.fetch(:units)
-    assert_equal 6 * 10 + 4 * 4, conversions.fetch(:profit_cny)
+    # Delivered only (the unit profit is per delivered unit; the returned FBS unit is not counted): 6 FBW + 3 FBS.
+    assert_equal 9, conversions.fetch(:units)
+    assert_equal 6 * 10 + 3 * 4, conversions.fetch(:profit_cny)
     assert_equal "draft", estimate.dig(:version, :status)
     assert_equal "manual", estimate.dig(:version, :kind)
     # Profit per priced unit, the figure the workbench shows beside the totals.
     assert_equal (8 * 10 + 4 * 4).to_d / 12, orders.fetch(:unit_average_cny)
-    assert_equal (6 * 10 + 4 * 4).to_d / 10, conversions.fetch(:unit_average_cny)
+    assert_equal (6 * 10 + 3 * 4).to_d / 9, conversions.fetch(:unit_average_cny)
     # Every version of the SKU comes with its own estimate, for the version switch.
     options = estimate.fetch(:options)
     assert_equal 1, options.size

@@ -2587,7 +2587,7 @@ en:
         no_stores: "No active store / Listing for this period"
         profit_estimate:
           title: "Estimated profit"
-          hint: "Order-item units of the period from the order table (orders: every status; completed: delivered and returned) are placed into the version's six scenarios (WB general/small x FBW/FBS, Ozon RU/BY) and multiplied by that scenario's per-unit profit. Unit profit already carries the return amortization; the result is an estimate, not settled profit."
+          hint: "Order-item units of the period from the order table (orders: every status; completed: delivered only, returned units are not counted) are placed into the version's six scenarios (WB general/small x FBW/FBS, Ozon RU/BY) and multiplied by that scenario's per-unit profit. Unit profit is per delivered unit and already carries the return amortization, so returned units are not counted again; the result is an estimate, not settled profit."
           version: "Profit version used"
           no_version: "This SKU has no profit version yet"
           statuses:
@@ -2596,7 +2596,7 @@ en:
             archived: "Archived"
           bases:
             orders: "By orders (assumes every order completes)"
-            conversions: "By completed (incl. returned)"
+            conversions: "By completed (delivered)"
           bases_short:
             orders: "Orders"
             conversions: "Completed"

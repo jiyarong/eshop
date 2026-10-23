@@ -78,8 +78,8 @@ class SalesFunnelReports::SkuFunnelAnalysisQueryTest < ActiveSupport::TestCase
     ozon = result[:store_groups].find { |group| group[:store_id] == ozon_general.id }.dig(:rows_by_period, "P0", :scenario_units)
 
     assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "by", "fbo", "small" ] => 4, [ "wb", "by", "fbs", "small" ] => 2, uncovered: 9 }, wb[:orders])
-    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "by", "fbo", "small" ] => 4, [ "wb", "by", "fbs", "small" ] => 2, uncovered: 8 }, wb[:conversions],
-      "the Kazakh order and the cancelled one with no known country fit no scenario")
+    assert_equal({ [ "wb", "ru", "fbo", "small" ] => 6, [ "wb", "by", "fbo", "small" ] => 4, uncovered: 8 }, wb[:conversions],
+      "the returned units are not completed units, and the Kazakh order fits no scenario")
     # 4 whose country is Belarus although paid in RUB, plus the 10 with no country that fall back to BYN.
     assert_equal 14, ozon[:orders][[ "ozon", "by", "fbo", "general" ]], "the country wins over the currency it was paid in"
     assert_equal 3, ozon[:orders][[ "ozon", "ru", "fbo", "general" ]]

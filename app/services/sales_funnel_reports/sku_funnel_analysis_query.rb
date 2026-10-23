@@ -159,7 +159,8 @@ module SalesFunnelReports
 
     # Units of the period by pricing scenario [platform, market, delivery_mode, company_type], for
     # estimating profit from the SKU's profit version. `orders` is the mix of every order item
-    # (the funnel's own order count is spread over it), `conversions` the completed/returned ones.
+    # (the funnel's own order count is spread over it), `conversions` the delivered ones only: the unit profit is per
+    # delivered unit and already carries the cost of the returns.
     # Items that fit no scenario (a buyer in a country with none, a WB order with no known country) are :uncovered.
     def scenario_units(product, items)
       units = { orders: Hash.new(0), conversions: Hash.new(0) }
@@ -167,7 +168,7 @@ module SalesFunnelReports
         key = scenario_key(product, item) || :uncovered
         quantity = item.quantity.to_i
         units[:orders][key] += quantity
-        units[:conversions][key] += quantity if item.matched_order_status.in?(%w[delivered returned])
+        units[:conversions][key] += quantity if item.matched_order_status == "delivered"
       end
       units.transform_values(&:to_h)
     end

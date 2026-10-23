@@ -2794,7 +2794,7 @@ zh:
         no_stores: "所选周期暂无正在经营的店铺 / Listing"
         profit_estimate:
           title: "估算利润"
-          hint: "按订单表里周期内的订单商品件数（下单含全部状态，成交为已签收和已退回），套入定价版本的 6 个场景（WB 一般/小规模 × FBW/FBS，Ozon RU/BY），乘以该场景的单件利润。单件利润已含退货摊销，结果是估算，不是结算利润。"
+          hint: "按订单表里周期内的订单商品件数（下单含全部状态，成交只算已签收，不含已退回），套入定价版本的 6 个场景（WB 一般/小规模 × FBW/FBS，Ozon RU/BY），乘以该场景的单件利润。单件利润是每签收一件的利润，已含退货摊销，所以已退回的件数不再计入；结果是估算，不是结算利润。"
           version: "采用的定价版本"
           no_version: "该 SKU 还没有定价版本"
           statuses:
@@ -2803,7 +2803,7 @@ zh:
             archived: "已归档"
           bases:
             orders: "下单口径（假设下单均成交）"
-            conversions: "成交口径（含已退回）"
+            conversions: "成交口径（已签收）"
           bases_short:
             orders: "下单"
             conversions: "成交"
