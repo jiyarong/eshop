@@ -64,10 +64,14 @@ module PalletCalculatorsHelper
   end
 
   def pallet_strategy(result)
-    lines = [t("pallet_calculator.strategy.heading", profile: t("pallet_calculator.profiles.#{result[:profile]}"), pallets: result[:pallets].size, boxes: result[:total_boxes], units: result[:total_units])]
+    pallets = result[:pallets].reject { |cargo| cargo[:cargo_type] == "box" }
+    lines = [t("pallet_calculator.strategy.heading", profile: t("pallet_calculator.profiles.#{result[:profile]}"), pallets: pallets.size, boxes: result[:total_boxes], units: result[:total_units])]
     lines << t("pallet_calculator.strategy.limits", height: pallet_number(result[:settings][:height]), weight: pallet_number(result[:settings][:weight]), basis: t("pallet_calculator.#{PalletPacking::Rules::PROFILES[result[:profile]][:gross_weight] ? 'gross_weight' : 'cargo_weight'}"), overhang: pallet_number(result[:settings][:overhang]), tare: pallet_number(result[:settings][:tare]))
+    result[:items].select { |item| item[:box_quantity].to_i.positive? }.each do |item|
+      lines << t("pallet_calculator.strategy.loose_box_sku", sku: item[:sku_code], boxes: item[:box_quantity])
+    end
     lines << t("pallet_calculator.strategy.origin")
-    result[:pallets].each_with_index do |pallet, index|
+    pallets.each_with_index do |pallet, index|
       lines << ""
       lines << t("pallet_calculator.strategy.pallet", number: index + 1, boxes: pallet[:boxes], height: pallet_number(pallet[:height]), weight: pallet_number(pallet[:gross_weight]))
       lines << t("pallet_calculator.axis_hint", axis: t("pallet_calculator.#{pallet[:zones].first[:swap] ? 'short_axis' : 'long_axis'}"))

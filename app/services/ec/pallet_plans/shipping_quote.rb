@@ -1,8 +1,9 @@
 module Ec
   module PalletPlans
     class ShippingQuote
-      def initialize(items:, pallet_result:, box_result:, attributes:, cluster:, time_zone:)
+      def initialize(items:, pallet_result:, box_result:, attributes:, cluster:, time_zone:, box_quantities: nil)
         @items, @pallet, @box, @attributes, @cluster = items, pallet_result, box_result, attributes.to_h.symbolize_keys, cluster
+        @box_quantities = box_quantities || items.map { |item| item[:quantity].to_i }
         @date = @attributes[:shipping_date].present? ? Date.iso8601(@attributes[:shipping_date]) : Time.current.in_time_zone(time_zone).to_date
       end
 
@@ -12,8 +13,8 @@ module Ec
         box_volumes = @items.map { |item| item[:unit_volume_l] && item[:unit_volume_l].to_d * item[:pcs].to_i }
         quote = PalletPacking::ShippingModeAdvisor.new(box_volumes_l: box_volumes,
           pallet_volumes_l: @pallet ? @pallet[:pallets].map { |pallet| pallet[:goods_l] } : [],
-          box_count: @items.sum { |item| item[:quantity].to_i }, tariff: tariff,
-          box_quantities: @items.map { |item| item[:quantity].to_i },
+          box_count: @box_quantities.sum(&:to_i), tariff: tariff,
+          box_quantities: @box_quantities,
           point_type: @attributes[:point_type].presence || "warehouse", point_name: @attributes[:point_name],
           box_allowed: @box.present?, pallet_allowed: @pallet.present?).call
         quote.merge(shipping_date: @date, snapshot_id: snapshot&.id, effective_from: snapshot&.effective_from,

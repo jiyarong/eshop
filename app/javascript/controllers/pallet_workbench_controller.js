@@ -84,7 +84,7 @@ export default class extends Controller {
   itemFor(sku, quantity) {
     const row = this.catalogueValue.find((item) => item.sku_code === sku) || {};
     const packaging = row.packaging || row;
-    const item = { sku_code: sku, quantity: quantity ?? Math.max(1, row.suggested_boxes || 1) };
+    const item = { sku_code: sku, quantity: quantity ?? Math.max(1, row.suggested_boxes || 1), box_quantity: 0 };
     ["length", "width", "height", "weight", "pcs", "unit_volume_l", "rotatable"].forEach((key) => { item[key] = packaging[key] ?? row[key] ?? (key === "rotatable" ? false : ""); });
     return item;
   }
@@ -104,6 +104,10 @@ export default class extends Controller {
       const quantity = card.querySelector('[data-field="quantity"]');
       quantity.id = `pallet-quantity-${index}`;
       card.querySelector("[data-quantity-label]").htmlFor = quantity.id;
+      const boxQuantity = card.querySelector('[data-field="box_quantity"]');
+      boxQuantity.value = item.box_quantity ?? 0;
+      boxQuantity.max = Math.max(0, Number(item.quantity || 0));
+      card.querySelector("[data-box-quantity-field]").hidden = !this.hasShippingModeTarget || this.shippingModeTarget.value !== "mixed";
       card.querySelector('[data-pallet-workbench-target="maxButton"]').setAttribute("aria-label", this.messagesValue.max_label.replace("%{sku}", item.sku_code));
       if (["length", "width", "height", "weight", "pcs"].some((key) => !Number(item[key]))) card.querySelector("details").open = true;
       this.manifestTarget.append(fragment);
@@ -137,6 +141,11 @@ export default class extends Controller {
     this.remember();
     const item = this.items.find((row) => row.sku_code === input.closest("[data-item]").dataset.sku);
     item[input.dataset.field] = input.type === "checkbox" ? input.checked : input.value;
+    if (input.dataset.field === "quantity") {
+      const boxQuantity = input.closest("[data-item]").querySelector('[data-field="box_quantity"]');
+      boxQuantity.max = Math.max(0, Number(item.quantity || 0));
+      boxQuantity.setAttribute("aria-invalid", String(Number(boxQuantity.value) > Number(boxQuantity.max)));
+    }
     this.allocations = [];
     this.renderAllocations(); this.updateSummary(); this.invalidate();
   }
@@ -162,7 +171,7 @@ export default class extends Controller {
   }
 
   changeShippingMode() {
-    this.allocations = []; this.renderAllocations(); this.invalidate();
+    this.allocations = []; this.renderItems(); this.renderAllocations(); this.invalidate();
   }
 
   useShippingMode(event) {
@@ -194,9 +203,9 @@ export default class extends Controller {
     this.saveButtonTarget.disabled = this.busy || !this.validated;
     this.calculateButtonTarget.disabled = this.busy || !this.items.length;
     this.calculateButtonTarget.textContent = (!this.hasShippingModeTarget || this.shippingModeTarget.value === "pallet") && this.modeTarget.value === "single" ? this.messagesValue.fit : this.messagesValue.recalculate;
-    if (this.hasFillButtonTarget) this.fillButtonTarget.disabled = this.busy || !this.items.length || this.contextValue.fill_free_space === false || (this.hasShippingModeTarget && this.shippingModeTarget.value === "box");
+    if (this.hasFillButtonTarget) this.fillButtonTarget.disabled = this.busy || !this.items.length || this.contextValue.fill_free_space === false || (this.hasShippingModeTarget && this.shippingModeTarget.value !== "pallet");
     this.maxButtonTargets.forEach((button) => {
-      button.hidden = this.hasShippingModeTarget && this.shippingModeTarget.value === "box";
+      button.hidden = this.hasShippingModeTarget && this.shippingModeTarget.value !== "pallet";
       button.disabled = this.busy;
       button.setAttribute("aria-busy", String(this.busy && button.closest("[data-item]").dataset.sku === this.maximizingSku));
     });
@@ -278,7 +287,7 @@ export default class extends Controller {
       }
       this.resultsTarget.innerHTML = data.html;
       if (this.hasShippingAdviceTarget) this.shippingAdviceTarget.innerHTML = data.shipping_advice_html || "";
-      this.allocations = data.result.pallets.map((pallet) => {
+      this.allocations = data.result.pallets.filter((pallet) => pallet.cargo_type !== "box").map((pallet) => {
         const quantities = new Map();
         pallet.zones.forEach((zone) => {
           const sku = data.result.items[zone.item_index].sku_code;
@@ -287,9 +296,10 @@ export default class extends Controller {
         return { items: [...quantities].map(([sku_code, quantity]) => ({ sku_code, quantity })) };
       });
       this.renderAllocations();
-      this.capacityTarget.hidden = data.result.shipping_mode === "box" || data.result.pallets.length !== 1;
-      if (data.result.shipping_mode !== "box" && data.result.pallets.length === 1) {
-        const pallet = data.result.pallets[0];
+      const palletLayouts = data.result.pallets.filter((cargo) => cargo.cargo_type !== "box");
+      this.capacityTarget.hidden = palletLayouts.length !== 1;
+      if (palletLayouts.length === 1) {
+        const pallet = palletLayouts[0];
         this.heightMeterTarget.max = data.result.settings.height;
         this.heightMeterTarget.value = pallet.height;
         this.heightLabelTarget.textContent = `${pallet.height.toFixed(1)} / ${data.result.settings.height}`;

@@ -1,17 +1,17 @@
 module Admin
   class GbrainPagesController < BaseController
     REMOTE_LIST_LIMIT = 100
-    REMOTE_PAGE_SIZE = 20
+    PAGE_SIZE = 20
 
     before_action :set_page, only: %i[show edit update destroy remote retry_sync]
+    before_action :set_list_filters, only: %i[index remote_page destroy_remote]
 
     def index
       @source = params[:source] == "remote" ? "remote" : "local"
       if @source == "remote"
         load_remote_pages
       else
-        @pages = GbrainPage.recent_first
-        @pages = @pages.where(page_type: params[:page_type]) if GbrainPage::PAGE_TYPES.key?(params[:page_type])
+        load_local_pages
       end
     rescue StandardError => error
       @error = error.message
@@ -94,9 +94,9 @@ module Admin
 
     def destroy_remote
       gbrain_client.delete_page(params.require(:slug))
-      redirect_to admin_gbrain_pages_path(source: "remote", page: params[:page]), notice: t("admin.gbrain.notices.remote_deleted")
+      redirect_to admin_gbrain_pages_path(@list_filters.merge(source: "remote", page: params[:page])), notice: t("admin.gbrain.notices.remote_deleted")
     rescue StandardError => error
-      redirect_to admin_gbrain_pages_path(source: "remote", page: params[:page]), alert: error.message
+      redirect_to admin_gbrain_pages_path(@list_filters.merge(source: "remote", page: params[:page])), alert: error.message
     end
 
     def validation
@@ -124,12 +124,46 @@ module Admin
     def load_remote_pages
       @remote_result = gbrain_client.list_pages(limit: REMOTE_LIST_LIMIT)
       remote_pages = Gbrain::McpResult.pages(@remote_result)
-      @remote_total = remote_pages.size
-      @remote_page_count = [ (@remote_total.to_f / REMOTE_PAGE_SIZE).ceil, 1 ].max
-      @remote_page = params[:page].to_i.clamp(1, @remote_page_count)
-      @remote_pages = remote_pages.slice((@remote_page - 1) * REMOTE_PAGE_SIZE, REMOTE_PAGE_SIZE) || []
-      @remote_from = @remote_total.zero? ? 0 : ((@remote_page - 1) * REMOTE_PAGE_SIZE) + 1
-      @remote_to = [ @remote_page * REMOTE_PAGE_SIZE, @remote_total ].min
+      remote_pages.select! { |page| page["type"] == @page_type } if @page_type
+      if @query.present?
+        keyword = @query.downcase
+        remote_pages.select! { |page| %w[title slug].any? { |field| page[field].to_s.downcase.include?(keyword) } }
+      end
+      set_pagination(remote_pages.size)
+      @remote_pages = remote_pages.slice((@page_number - 1) * PAGE_SIZE, PAGE_SIZE) || []
+    end
+
+    def load_local_pages
+      scope = GbrainPage.recent_first
+      scope = scope.where(page_type: @page_type) if @page_type
+      scope = scope.where(sync_status: @sync_status) if @sync_status
+      if @query.present?
+        keyword = "%#{GbrainPage.sanitize_sql_like(@query)}%"
+        scope = scope.where("slug ILIKE :keyword OR title ILIKE :keyword OR summary ILIKE :keyword", keyword: keyword)
+      end
+      set_pagination(scope.count)
+      @pages = scope.limit(PAGE_SIZE).offset((@page_number - 1) * PAGE_SIZE)
+        .select(:id, :slug, :page_type, :sync_status, :content_updated_at, :knowledge_base_written_at, :delete_requested_at)
+    end
+
+    def set_list_filters
+      @query = params[:q].to_s.strip
+      @page_type = params[:page_type].presence_in(GbrainPage::PAGE_TYPES.keys)
+      @sync_status = params[:sync_status].presence_in(GbrainPage::SYNC_STATUSES)
+      @list_filters = { q: @query.presence, page_type: @page_type, sync_status: @sync_status, locale: params[:locale].presence }.compact
+    end
+
+    def set_pagination(total)
+      @total = total
+      @page_count = [ (total.to_f / PAGE_SIZE).ceil, 1 ].max
+      requested_page = if params.key?(:jump_page)
+        Integer(params[:jump_page], exception: false) || params[:current_page].to_i
+      else
+        params[:page].to_i
+      end
+      @page_number = requested_page.clamp(1, @page_count)
+      @from = total.zero? ? 0 : ((@page_number - 1) * PAGE_SIZE) + 1
+      @to = [ @page_number * PAGE_SIZE, total ].min
     end
 
     def page_params

@@ -20,7 +20,7 @@ module Ec
         target_days = range.target_days
         raise Error.new(:invalid_period) unless from_date && to_date && from_date <= to_date
         shipping_mode = @attributes[:shipping_mode].presence || "pallet"
-        raise Error.new(:invalid_shipping_mode) unless %w[pallet box].include?(shipping_mode)
+        raise Error.new(:invalid_shipping_mode) unless %w[pallet box mixed].include?(shipping_mode)
 
         rows = Array(@attributes[:items]).map { |row| row.to_h.deep_symbolize_keys }
         raise Error.new(:invalid_items) if rows.empty?
@@ -34,6 +34,17 @@ module Ec
         ambiguous = products.find { |_code, product| product.nil? }
         raise Error.new(:ambiguous_listing, sku: ambiguous.first) if ambiguous
         items = rows.map { |row| normalize_item(row, products.fetch(row[:sku_code].to_s.upcase)) }
+        if shipping_mode == "mixed"
+          items.each do |item|
+            box_quantity = Integer(item[:box_quantity].presence || 0)
+            raise Error.new(:invalid_quantity, sku: item[:sku_code]) unless box_quantity.between?(0, item[:quantity].to_i)
+            item[:box_quantity] = box_quantity
+          rescue ArgumentError, TypeError
+            raise Error.new(:invalid_quantity, sku: item[:sku_code])
+          end
+          raise Error.new(:mixed_shipping_split) unless items.any? { |item| item[:box_quantity].positive? } &&
+            items.any? { |item| item[:quantity].to_i > item[:box_quantity].to_i }
+        end
         maximize_sku = @attributes[:maximize_sku_code].presence&.upcase
         if maximize_sku
           raise Error.new(:sku_unavailable) unless codes.include?(maximize_sku)
@@ -52,16 +63,49 @@ module Ec
         end
         allocations = @attributes[:allocations].presence
         recommend_one = !maximize_sku && ActiveModel::Type::Boolean.new.cast(@attributes[:recommend_one])
-        if shipping_mode == "pallet" && @attributes[:packing_mode] == "single"
-          raise Error.new(:single_pallet_limit) if items.size > Packing::MAX_SKUS_PER_PALLET
-          allocations = [{ items: packing_items.map { |item| item.slice(:sku_code, :quantity) } }] unless recommend_one
+        pallet_items = if shipping_mode == "mixed"
+          packing_items.filter_map do |item|
+            quantity = item[:quantity].to_i - item[:box_quantity].to_i
+            item.merge(quantity: quantity) if quantity.positive?
+          end
+        else
+          packing_items
+        end
+        box_items = shipping_mode == "mixed" ? items.filter_map do |item|
+          item.merge(quantity: item[:box_quantity].to_i) if item[:box_quantity].to_i.positive?
+        end : items
+        if shipping_mode.in?(%w[pallet mixed]) && @attributes[:packing_mode] == "single"
+          raise Error.new(:single_pallet_limit) if pallet_items.size > Packing::MAX_SKUS_PER_PALLET
+          allocations = [{ items: pallet_items.map { |item| item.slice(:sku_code, :quantity) } }] unless recommend_one
         end
         settings = @attributes[:settings] || {}
         if shipping_mode == "box"
           result = BoxPacking.new(items: items, settings: settings).call
         else
-          result = Packing.new(items: packing_items, settings: settings, allocations: recommend_one ? nil : allocations,
+          result = Packing.new(items: pallet_items, settings: settings, allocations: recommend_one ? nil : allocations,
             recommend_one: recommend_one).call
+          if shipping_mode == "mixed"
+            boxes = BoxPacking.new(items: box_items, settings: settings).call
+            full_item_indexes = items.each_with_index.to_h { |item, index| [item[:sku_code], index] }
+            box_cargoes = boxes[:pallets].map do |cargo|
+              cargo.merge(cargo_type: "box", zones: cargo[:zones].map do |zone|
+                sku_code = box_items[zone[:item_index]][:sku_code]
+                zone.merge(item_index: full_item_indexes.fetch(sku_code))
+              end)
+            end
+            pallet_cargoes = result[:pallets].map do |cargo|
+              cargo.merge(cargo_type: "pallet", zones: cargo[:zones].map do |zone|
+                sku_code = pallet_items[zone[:item_index]][:sku_code]
+                zone.merge(item_index: full_item_indexes.fetch(sku_code))
+              end)
+            end
+            result = result.merge(
+              pallets: pallet_cargoes + box_cargoes,
+              total_boxes: result[:total_boxes].to_i + boxes[:total_boxes].to_i,
+              total_units: result[:total_units].to_i + boxes[:total_units].to_i,
+              items: items
+            )
+          end
         end
         if recommend_one
           quantities = result[:items].index_by { |item| item[:sku_code] }
@@ -76,11 +120,23 @@ module Ec
           result = FillStrategy.new(items: items, stock_limits: stock_limits, result: result, enabled: range.fill_free_space,
             shipping: @attributes[:shipping] || {}).call
         end
-        pallet_result = shipping_mode == "pallet" ? result : alternative_pallets(items, settings)
-        box_result = shipping_mode == "box" ? result : alternative_boxes(items, settings)
+        if shipping_mode == "mixed"
+          pallet_result = { pallets: result[:pallets].reject { |cargo| cargo[:cargo_type] == "box" } }
+          box_result = { pallets: result[:pallets].select { |cargo| cargo[:cargo_type] == "box" } }
+          box_quantities = items.map { |item| item[:box_quantity].to_i }
+        else
+          pallet_result = shipping_mode == "pallet" ? result : alternative_pallets(items, settings)
+          box_result = shipping_mode == "box" ? result : alternative_boxes(items, settings)
+          box_quantities = items.map { |item| item[:quantity].to_i }
+        end
         quote = ShippingQuote.new(items: items, pallet_result: pallet_result, box_result: box_result,
-          attributes: @attributes[:shipping] || {}, cluster: cluster, time_zone: @attributes[:time_zone].presence || "Asia/Shanghai").call
-        raise Error.new(:shipping_unavailable) unless quote.fetch(shipping_mode.to_sym)[:available]
+          attributes: @attributes[:shipping] || {}, cluster: cluster, time_zone: @attributes[:time_zone].presence || "Asia/Shanghai",
+          box_quantities: box_quantities).call
+        if shipping_mode == "mixed"
+          raise Error.new(:shipping_unavailable) unless quote[:box][:available] && quote[:pallet][:available]
+        else
+          raise Error.new(:shipping_unavailable) unless quote.fetch(shipping_mode.to_sym)[:available]
+        end
         result = result.merge(shipping_mode: shipping_mode, coverage: range.to_h, shipping: quote)
         delivery_plan = @existing_plan&.delivery_plan
         if @attributes[:delivery_plan_id].present?
@@ -143,7 +199,7 @@ module Ec
           name: product.sku.product_name,
           quantity: quantity,
           ozon_size_category: ozon_size_category,
-          rotatable: row[:rotatable], fashion: row[:fashion], sku_product_id: product.id)
+          rotatable: row[:rotatable], fashion: row[:fashion], box_quantity: row[:box_quantity], sku_product_id: product.id)
       rescue ArgumentError, TypeError
         raise Error.new(:invalid_quantity, sku: product.sku_code)
       end

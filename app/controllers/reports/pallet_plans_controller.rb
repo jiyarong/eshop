@@ -18,6 +18,9 @@ module Reports
 
     def show
       @result = @plan.calculation.deep_symbolize_keys
+      @allocations_by_sku = Ec::PalletItem.joins(:pallet, :pallet_plan_item)
+        .where(ec_pallets: { pallet_plan_id: @plan.id })
+        .group("ec_pallet_plan_items.sku_code", "ec_pallets.cargo_type").sum(:boxes)
       respond_to do |format|
         format.html
         format.json { render json: plan_data(@plan).merge(items: @plan.items, calculation: @plan.calculation) }

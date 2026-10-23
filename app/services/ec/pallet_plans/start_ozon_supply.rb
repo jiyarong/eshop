@@ -65,7 +65,8 @@ module Ec
 
       def saved_plan_attributes
         items_by_id = @plan.items.index_by(&:id)
-        allocations = @plan.pallets.includes(:items).map do |pallet|
+        cargoes = @plan.pallets.includes(items: :pallet_plan_item).to_a
+        allocations = cargoes.select { |pallet| pallet.cargo_type == "pallet" }.map do |pallet|
           rows = pallet.items.group_by(&:pallet_plan_item_id).map do |id, items|
             { sku_code: items_by_id.fetch(id).sku_code, quantity: items.sum(&:boxes) }
           end
@@ -77,7 +78,11 @@ module Ec
           packing_mode: "multiple", settings: @plan.settings,
           shipping_mode: @plan.calculation.fetch("shipping_mode", "pallet"),
           shipping: @plan.calculation.fetch("shipping", {}).slice("supply_receiving_zone_key", "point_type", "point_name", "shipping_date"),
-          items: @plan.items.map { |item| item.packaging.merge("sku_code" => item.sku_code, "quantity" => item.boxes) },
+          items: @plan.items.map do |item|
+            box_quantity = cargoes.select { |cargo| cargo.cargo_type == "box" }
+              .sum { |cargo| cargo.items.select { |row| row.pallet_plan_item_id == item.id }.sum(&:boxes) }
+            item.packaging.merge("sku_code" => item.sku_code, "quantity" => item.boxes, "box_quantity" => box_quantity)
+          end,
           allocations: allocations
         }
       end

@@ -133,6 +133,33 @@ class Ec::PalletPlans::BuildTest < ActiveSupport::TestCase
     assert_equal 1, updated.items.sole.boxes
   end
 
+  test "mixed plans split cartons between boxes and pallets and limit the box quote to loose cartons" do
+    @sku.batches.first.update!(purchased_quantity: 400, received_quantity: 400)
+    input = attributes(quantity: 32).merge(shipping_mode: "mixed")
+    input[:items].sole[:box_quantity] = 1
+
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: input).call
+
+    assert_equal 32, plan.items.sole.boxes
+    assert_equal 320, plan.items.sole.units
+    assert_equal 32, plan.pallets.includes(:items).sum { |cargo| cargo.items.sum(&:boxes) }
+    assert_equal 1, plan.pallets.where(cargo_type: "box").joins(:items).sum("ec_pallet_items.boxes")
+    assert_equal 31, plan.pallets.where(cargo_type: "pallet").joins(:items).sum("ec_pallet_items.boxes")
+    assert_equal "mixed", plan.calculation["shipping_mode"]
+    assert plan.calculation.dig("shipping", "box", "available")
+  end
+
+  test "mixed plans require at least one carton in each delivery mode" do
+    input = attributes(quantity: 2).merge(shipping_mode: "mixed")
+    input[:items].sole[:box_quantity] = 2
+
+    error = assert_raises(Ec::PalletPlans::Error) do
+      Ec::PalletPlans::Build.new(user: @user, attributes: input).call
+    end
+
+    assert_equal :mixed_shipping_split, error.key
+  end
+
   test "box plans cannot bypass carton weight or point restrictions" do
     @sku.dimension.update!(outer_box_weight_kg: 26)
     error = assert_raises(Ec::PalletPlans::Error) do

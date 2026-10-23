@@ -4,7 +4,7 @@ zh:
       title: 同步到 Ozon 店铺
       prepare: 保存方案并查询可供货仓库
       plan_prepare: 创建交货申请
-      plan_hint: 使用已保存计划的店铺、集群、清单和托盘分配查询可供货仓。选择仓库和预约时段后，确认创建 Ozon 交货申请并同步托盘。
+      plan_hint: 使用已保存计划的店铺、集群和箱装/托盘分配查询可供货仓。选择仓库和预约时段后，确认创建 Ozon 交货申请并同步所有货位。
       prepare_hint: 选择店铺与集群后，保存当前装托方案并查询 Ozon 可接收整批商品的仓库。选择仓库和时段后再确认创建供货单。
       type: 供货方式
       types:
@@ -20,13 +20,17 @@ zh:
       load_timeslots: 查询预约时段
       expiry_hint: Ozon 草稿有效期为 30 分钟，请及时完成仓库与时段选择。
       timeslot: 预约时段（%{zone}）
-      submit: 创建供货单并同步托盘
-      submit_hint: 将在当前店铺创建供货单并写入 %{pallets} 个托盘、%{units} 件商品，同时确认本地库存占用。
+      submit: 创建供货单并同步货位
+      submit_hint: 将在当前店铺创建供货单并写入 %{cargoes} 个货位、%{units} 件商品，同时确认本地库存占用。
       retry: 重试读取平台结果
       cancel: 终止本次创建
       review_hint: 请先在 Ozon 店铺后台核对已有供货单或货位，再处理失败原因。系统不会自动重复执行结果不明的写入。
       poll_error: 状态读取失败，正在自动重试。
-      pallet: 托盘
+      pallet: 货位类型
+      cargo_type: 货位类型
+      cargo_types:
+        pallet: 托盘
+        box: 普通箱
       supply_id: 目的地供货 ID
       cargo_id: 平台货位 ID
       states:
@@ -40,9 +44,9 @@ zh:
         order_submitting: 正在提交供货单
         creating: 正在读取供货单创建结果
         syncing: 正在回填供货单与目的仓
-        cargoes: 正在写入并回读托盘明细
+        cargoes: 正在写入并回读货位明细
         finalizing: 正在校验平台货位规则
-        completed: 供货单与托盘已同步，状态已回填
+        completed: 供货单与货位已同步，状态已回填
         failed: 同步失败
         review_required: 写入结果待人工复核
         cancelled: 本次创建已终止
@@ -67,7 +71,7 @@ en:
       title: Sync to Ozon store
       prepare: Save plan and find available warehouses
       plan_prepare: Create delivery application
-      plan_hint: Find available warehouses using the saved plan’s store, cluster, manifest and pallet allocations. Then select a warehouse and time slot to confirm the Ozon delivery application and sync pallets.
+      plan_hint: Find available warehouses using the saved plan’s store, cluster, manifest and box/pallet allocation. Then select a warehouse and time slot to confirm the Ozon delivery application and sync every cargo unit.
       prepare_hint: Save this packing plan for the selected store and cluster, then find warehouses that accept the entire shipment. Choose a warehouse and time slot before confirming creation.
       type: Supply method
       types:
@@ -83,13 +87,17 @@ en:
       load_timeslots: Find available time slots
       expiry_hint: Ozon drafts expire after 30 minutes. Complete warehouse and time slot selection promptly.
       timeslot: "Time slot (%{zone})"
-      submit: Create supply order and sync pallets
-      submit_hint: "Create a supply order with %{pallets} pallets and %{units} units in this store, and reserve local inventory."
+      submit: Create supply order and sync cargo
+      submit_hint: "Create a supply order with %{cargoes} cargo units and %{units} units in this store, and reserve local inventory."
       retry: Retry reading platform results
       cancel: Stop this submission
       review_hint: Check the existing supply order or cargoes in Ozon before resolving the error. Writes with an unknown outcome are never repeated automatically.
       poll_error: Unable to read status. Retrying automatically.
-      pallet: Pallet
+      pallet: Cargo type
+      cargo_type: Cargo type
+      cargo_types:
+        pallet: Pallet
+        box: Loose box
       supply_id: Destination supply ID
       cargo_id: Platform cargo ID
       states:
@@ -103,9 +111,9 @@ en:
         order_submitting: Submitting supply order
         creating: Reading supply order creation result
         syncing: Importing supply order and destination
-        cargoes: Writing and reading back pallet contents
+        cargoes: Writing and reading back cargo contents
         finalizing: Checking platform cargo rules
-        completed: Supply order and pallets synced; status updated
+        completed: Supply order and cargo synced; status updated
         failed: Sync failed
         review_required: Write result requires manual review
         cancelled: Submission stopped
@@ -130,7 +138,7 @@ ru:
       title: Синхронизация с магазином Ozon
       prepare: Сохранить план и найти доступные склады
       plan_prepare: Создать заявку на поставку
-      plan_hint: Найдите доступные склады по магазину, кластеру, составу и распределению палет сохранённого плана. Затем выберите склад и таймслот, подтвердите создание заявки Ozon и передачу палет.
+      plan_hint: Найдите доступные склады по магазину, кластеру и распределению товара по коробам и паллетам. Затем выберите склад и таймслот, подтвердите заявку Ozon и передачу всех грузомест.
       prepare_hint: Сохраните план упаковки для выбранного магазина и кластера. Выберите склад, принимающий весь состав, и таймслот, затем подтвердите создание заявки.
       type: Способ поставки
       types:
@@ -146,13 +154,17 @@ ru:
       load_timeslots: Найти доступные таймслоты
       expiry_hint: Черновик Ozon действует 30 минут. Завершите выбор склада и таймслота вовремя.
       timeslot: "Таймслот (%{zone})"
-      submit: Создать заявку и передать палеты
-      submit_hint: "В магазине будет создана заявка: %{pallets} палет, %{units} единиц. Локальные остатки будут зарезервированы."
+      submit: Создать заявку и передать грузоместа
+      submit_hint: "В магазине будет создана заявка: %{cargoes} грузомест, %{units} единиц. Локальные остатки будут зарезервированы."
       retry: Повторить чтение результата
       cancel: Остановить создание
       review_hint: Проверьте заявку или грузоместа в кабинете Ozon перед устранением ошибки. Запись с неизвестным результатом автоматически не повторяется.
       poll_error: Не удалось получить статус. Повторяем автоматически.
-      pallet: Палета
+      pallet: Тип грузоместа
+      cargo_type: Тип грузоместа
+      cargo_types:
+        pallet: Палета
+        box: Отдельный короб
       supply_id: ID поставки в пункт назначения
       cargo_id: ID грузоместа Ozon
       states:
@@ -166,9 +178,9 @@ ru:
         order_submitting: Отправка заявки
         creating: Получение результата создания заявки
         syncing: Загрузка заявки и склада назначения
-        cargoes: Передача и проверка состава палет
+        cargoes: Передача и проверка состава грузомест
         finalizing: Проверка правил грузомест Ozon
-        completed: Заявка и палеты переданы, статусы обновлены
+        completed: Заявка и грузоместа переданы, статусы обновлены
         failed: Ошибка синхронизации
         review_required: Результат записи требует проверки
         cancelled: Создание остановлено

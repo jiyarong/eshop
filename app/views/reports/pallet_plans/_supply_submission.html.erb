@@ -23,7 +23,7 @@
         <div class="field"><%= form.label :timeslot_index, t("pallet_workbench.supply_api.timeslot", zone: submission.data["warehouse_timezone"]) %>
           <%= form.select :timeslot_index, submission.data.fetch("timeslots").each_with_index.map { |slot, index| ["#{slot['from_in_timezone']} — #{slot['to_in_timezone']}", index] }, {}, required: true %>
         </div>
-        <p class="form-hint"><%= t("pallet_workbench.supply_api.submit_hint", pallets: plan.pallets.size, units: plan.items.sum(&:units)) %></p>
+        <p class="form-hint"><%= t("pallet_workbench.supply_api.submit_hint", cargoes: plan.pallets.size, units: plan.items.sum(&:units)) %></p>
         <%= form.submit t("pallet_workbench.supply_api.submit"), class: "button", data: { ozon_supply_target: "submit" } %>
       <% end %>
     <% end %>
@@ -31,8 +31,8 @@
     <% if submission.cancellable? %><%= button_to t("pallet_workbench.supply_api.cancel"), cancel_supply_reports_pallet_plan_path(plan, locale: I18n.locale), class: "button button-secondary" %><% end %>
   <% end %>
   <% if submission.state == "completed" %>
-    <%= table_viewport do %><table class="prod-tbl"><thead><tr><th><%= t("pallet_workbench.supply_api.pallet") %></th><th><%= t("pallet_workbench.supply_api.supply_id") %></th><th><%= t("pallet_workbench.supply_api.cargo_id") %></th></tr></thead>
-      <tbody><% plan.pallets.each do |pallet| %><tr><td><%= pallet.position %></td><td><%= pallet.ozon_supply_id %></td><td><%= pallet.ozon_cargo_id %></td></tr><% end %></tbody>
+    <%= table_viewport do %><table class="prod-tbl"><thead><tr><th><%= t("pallet_workbench.supply_api.cargo_type") %></th><th><%= t("pallet_workbench.supply_api.supply_id") %></th><th><%= t("pallet_workbench.supply_api.cargo_id") %></th></tr></thead>
+      <tbody><% plan.pallets.each do |pallet| %><tr><td><%= t("pallet_workbench.supply_api.cargo_types.#{pallet.cargo_type}") %></td><td><%= pallet.ozon_supply_id %></td><td><%= pallet.ozon_cargo_id %></td></tr><% end %></tbody>
     </table><% end %>
   <% end %>
 <% end %>

@@ -108,6 +108,22 @@ class Ec::PalletPlans::OzonSupplyRunnerTest < ActiveSupport::TestCase
     assert_equal [2, 2], cargoes.map { |cargo| cargo.dig(:value, :items).sole[:quant] }
   end
 
+  test "mixed cargoes submit both pallets and loose boxes with conserved quantities" do
+    @pallet.items.sole.update!(boxes: 1, units: 10)
+    box = @plan.pallets.create!(position: 2, cargo_type: "box", metrics: { gross_weight: 10 })
+    box.items.create!(pallet_plan_item: @item, boxes: 1, units: 10)
+    @client.responses[:cargoes_info]["result"]["cargoes"] << { "key" => "#{@plan.plan_no}-2", "value" => { "cargo_id" => 790 } }
+
+    ready_to_submit
+    7.times { run_step }
+
+    assert_equal "completed", @submission.reload.state, @submission.last_error
+    cargoes = @client.calls.find { |call| call.first == :create_cargoes }.last.fetch(:cargoes)
+    assert_equal %w[PALLET BOX], cargoes.map { |cargo| cargo.dig(:value, :type) }
+    assert_equal [10, 10], cargoes.map { |cargo| cargo.dig(:value, :items).sole[:quantity] }
+    assert_equal ["789", "790"], @plan.pallets.reload.map(&:ozon_cargo_id)
+  end
+
   test "authorizes the submitting user when a workbench plan has a different creator" do
     creator = User.create!(email: "supply-creator-#{@token}@example.com", password: "password123")
     @plan.update!(created_by: creator)

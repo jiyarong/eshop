@@ -8,13 +8,13 @@ module Ec
       def call
         cargoes = @plan.pallets.includes(items: :pallet_plan_item).to_a
         types = cargoes.map(&:cargo_type).uniq
-        raise Error.new(:invalid_shipping_mode) if cargoes.empty? || !types.one? || !types.first.in?(%w[box pallet])
-        boxes = types.first == "box"
-        limit = boxes ? BoxPacking::MAX_BOXES : 40
-        raise Error.new(:shipping_unavailable) if cargoes.size > limit
+        raise Error.new(:invalid_shipping_mode) if cargoes.empty? || !types.all? { |type| type.in?(%w[box pallet]) }
+        box_cargoes = cargoes.select { |cargo| cargo.cargo_type == "box" }
+        pallet_cargoes = cargoes.select { |cargo| cargo.cargo_type == "pallet" }
+        raise Error.new(:shipping_unavailable) if box_cargoes.size > BoxPacking::MAX_BOXES || pallet_cargoes.size > 40
 
         cargoes.each do |cargo|
-          if boxes
+          if cargo.cargo_type == "box"
             weight = cargo.metrics.to_h["gross_weight"].to_d
             unless weight.positive? && weight <= BoxPacking::MAX_WEIGHT && cargo.items.one? && cargo.items.sole.boxes == 1
               raise Error.new(:shipping_unavailable)
@@ -43,10 +43,10 @@ module Ec
         end
         point = { "DELIVERY_POINT" => "pvz", "ORDERS_RECEIVING_POINT" => "ppz", "SORTING_CENTER" => "sorting_center" }
           .fetch(point_info[:type], "warehouse")
-        quote = PalletPacking::ShippingModeAdvisor.new(box_volumes_l: [1], pallet_volumes_l: Array.new(boxes ? 1 : cargoes.size, 1),
-          box_count: boxes ? cargoes.size : expected.values.sum(&:first), point_type: point,
-          point_name: point_info[:name]).call
-        raise Error.new(:shipping_unavailable) unless quote.fetch(types.first.to_sym)[:available]
+        quote = PalletPacking::ShippingModeAdvisor.new(box_volumes_l: [1], pallet_volumes_l: Array.new(pallet_cargoes.size, 1),
+          box_count: box_cargoes.size, point_type: point, point_name: point_info[:name]).call
+        raise Error.new(:shipping_unavailable) if box_cargoes.any? && !quote[:box][:available]
+        raise Error.new(:shipping_unavailable) if pallet_cargoes.any? && !quote[:pallet][:available]
         true
       end
     end

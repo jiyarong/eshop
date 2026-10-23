@@ -104,6 +104,120 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  test "local keyword searches title slug and summary without case sensitivity" do
+    sign_in @admin
+    keyword = "needle#{@token}"
+    @page.update!(title: keyword.upcase)
+    slug_match = create_page(slug: "notes/admin-#{@token}-#{keyword}")
+    summary_match = create_page(slug: "notes/admin-#{@token}-summary", summary: "About #{keyword.upcase}")
+    create_page(slug: "notes/admin-#{@token}-unrelated")
+
+    get admin_gbrain_pages_path(q: " #{keyword} "), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".gbrain-page-link", count: 3
+    [ @page, slug_match, summary_match ].each { |page| assert_select ".gbrain-page-link", text: page.slug }
+    assert_select "input[name=q][value=?]", keyword
+    assert_select "form.gbrain-list-filter input[name=page]", count: 0
+  end
+
+  test "local keyword treats SQL wildcard characters literally" do
+    sign_in @admin
+    @page.update!(title: "Discount 50%_#{@token}")
+    create_page(slug: "notes/admin-#{@token}-wildcard", title: "Discount 50xyz#{@token}")
+
+    get admin_gbrain_pages_path(q: "50%_#{@token}"), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".gbrain-page-link", count: 1, text: @page.slug
+  end
+
+  test "local filters combine document type sync status and keyword" do
+    sign_in @admin
+    @page.update!(sync_status: "failed")
+    create_page(slug: "notes/admin-#{@token}-synced", sync_status: "synced")
+    create_page(slug: "concepts/admin-#{@token}-failed", page_type: "concept", sync_status: "failed")
+
+    get admin_gbrain_pages_path(q: @token, page_type: "note", sync_status: "failed"), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".gbrain-page-link", count: 1, text: @page.slug
+    assert_select "select[name=page_type] option[selected][value=note]"
+    assert_select "select[name=sync_status] option[selected][value=failed]"
+  end
+
+  test "local pagination retains filters and only loads the current page" do
+    sign_in @admin
+    timestamp = Time.current
+    pages = 45.times.map do |index|
+      create_page(slug: "notes/admin-#{@token}-#{index}", title: "pagination#{@token}", sync_status: "synced", content_updated_at: timestamp)
+    end
+    filters = { q: "pagination#{@token}", page_type: "note", sync_status: "synced" }
+    queries = []
+    instantiated = 0
+    sql_subscriber = ->(_name, _start, _finish, _id, payload) do
+      queries << payload[:sql] if !payload[:cached] && payload[:sql].include?('"gbrain_pages"')
+    end
+    instantiation_subscriber = ->(_name, _start, _finish, _id, payload) do
+      instantiated += payload[:record_count] if payload[:class_name] == "GbrainPage"
+    end
+
+    ActiveSupport::Notifications.subscribed(sql_subscriber, "sql.active_record") do
+      ActiveSupport::Notifications.subscribed(instantiation_subscriber, "instantiation.active_record") do
+        get admin_gbrain_pages_path(filters.merge(page: 2)), headers: { "Accept" => "text/html" }
+      end
+    end
+
+    assert_response :success
+    assert_equal pages.reverse.slice(20, 20).map(&:slug), css_select(".gbrain-page-link").map(&:text)
+    assert_select ".inventory-pagination-bar__summary", "显示第 21-40 条，共 45 条"
+    assert_select ".pagination-nav [aria-current=page]", "2"
+    assert_select "a[href=?][aria-label=上一页]", admin_gbrain_pages_path(filters.merge(source: "local", page: 1))
+    assert_select "a[href=?][aria-label=下一页]", admin_gbrain_pages_path(filters.merge(source: "local", page: 3))
+    assert_select "form.pagination-jump input[name=q][value=?]", filters[:q]
+    assert_select ".table-list-card > .table-list-viewport[data-sticky-table-header-floating-header-value=true]"
+    assert_equal 2, queries.size
+    assert_equal 20, instantiated
+    assert queries.all? { |sql| sql.length < 2_000 }
+    assert queries.none? { |sql| sql.include?('"gbrain_pages".*') || sql.include?('"gbrain_pages"."content"') }
+
+    sign_in @admin
+    get admin_gbrain_pages_path(filters.merge(page: 99)), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".gbrain-page-link", count: 5
+    assert_select ".inventory-pagination-bar__summary", "显示第 41-45 条，共 45 条"
+    assert_equal pages.reverse.last(5).map(&:slug), css_select(".gbrain-page-link").map(&:text)
+
+    sign_in @admin
+    get admin_gbrain_pages_path(filters.merge(jump_page: "invalid", current_page: 2)), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".pagination-nav [aria-current=page]", "2"
+    sign_in @admin
+    get admin_gbrain_pages_path(filters.merge(jump_page: "", current_page: 2)), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".pagination-nav [aria-current=page]", "2"
+    sign_in @admin
+    get admin_gbrain_pages_path(filters.merge(jump_page: "-3")), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".pagination-nav [aria-current=page]", "1"
+    assert_equal pages.reverse.first(20).map(&:slug), css_select(".gbrain-page-link").map(&:text)
+    sign_in @admin
+    get admin_gbrain_pages_path(filters.merge(jump_page: "99")), headers: { "Accept" => "text/html" }
+    assert_response :success
+    assert_select ".pagination-nav [aria-current=page]", "3"
+  end
+
+  test "local search without matches shows an empty result and clamps pagination" do
+    sign_in @admin
+
+    get admin_gbrain_pages_path(q: "missing-#{@token}", page: 99), headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".inventory-pagination-bar__summary", "显示第 0-0 条，共 0 条"
+    assert_select ".pagination-nav [aria-current=page]", "1"
+    assert_select "td.empty-state", "没有符合条件的文档，请调整或重置筛选条件。"
+  end
+
   test "admin can open the new and edit forms" do
     sign_in @admin
     get admin_new_gbrain_page_path, headers: { "Accept" => "text/html" }
@@ -310,10 +424,10 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
       assert_select ".gbrain-remote-title", /Remote Page 21/
       assert_select ".gbrain-remote-title", /Remote Page 40/
       assert_select ".gbrain-remote-title", text: /Remote Page 20/, count: 0
-      assert_select ".gbrain-remote-count", "显示第 21-40 条，共 45 条"
-      assert_select ".gbrain-remote-pagination__page[aria-current=page]", "2"
-      assert_select "a[href=?]", admin_gbrain_pages_path(source: "remote", page: 1), text: /上一页/
-      assert_select "a[href=?]", admin_gbrain_pages_path(source: "remote", page: 3), text: /下一页/
+      assert_select ".inventory-pagination-bar__summary", "显示第 21-40 条，共 45 条"
+      assert_select ".pagination-nav [aria-current=page]", "2"
+      assert_select "a[href=?][aria-label=上一页]", admin_gbrain_pages_path(source: "remote", page: 1)
+      assert_select "a[href=?][aria-label=下一页]", admin_gbrain_pages_path(source: "remote", page: 3)
     end
 
     assert_equal [ [ "list_pages", 100 ] ], client.calls
@@ -328,7 +442,8 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
       assert_response :success
       assert_select "table.gbrain-remote-pages-table tbody tr", count: 1
       assert_select "table.gbrain-remote-pages-table td.empty-state[colspan='5']", "list_pages 没有返回可展示的文档。"
-      assert_select ".gbrain-remote-pagination", count: 0
+      assert_select ".inventory-pagination-bar__summary", "显示第 0-0 条，共 0 条"
+      assert_select ".pagination-nav a", count: 0
     end
   end
 
@@ -341,8 +456,57 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
       get admin_gbrain_pages_path(source: "remote", page: 99), headers: { "Accept" => "text/html" }
       assert_response :success
       assert_select "table.gbrain-remote-pages-table tbody tr", count: 1
-      assert_select ".gbrain-remote-count", "显示第 21-21 条，共 21 条"
-      assert_select ".gbrain-remote-pagination__page[aria-current=page]", "2"
+      assert_select ".inventory-pagination-bar__summary", "显示第 21-21 条，共 21 条"
+      assert_select ".pagination-nav [aria-current=page]", "2"
+    end
+  end
+
+  test "remote search filters title slug and type before pagination" do
+    sign_in @admin
+    pages = 22.times.map { |index| { "slug" => "remote/page-#{index}", "title" => "Warehouse #{index}", "type" => "concept" } }
+    pages.last["title"] = "Other title"
+    pages.last["slug"] = "remote/warehouse"
+    pages << { "slug" => "remote/other-type", "title" => "Warehouse", "type" => "note" }
+    pages << { "slug" => "remote/unrelated", "title" => "Other", "type" => "concept" }
+    filters = { q: "WAREHOUSE", page_type: "concept" }
+    client = FakeClient.new(pages: pages)
+
+    with_gbrain_client(client) do
+      get admin_gbrain_pages_path(filters.merge(source: "remote", page: 2)), headers: { "Accept" => "text/html" }
+
+      assert_response :success
+      assert_select ".gbrain-remote-title", count: 2
+      assert_select ".gbrain-remote-slug", "remote/warehouse"
+      assert_select ".inventory-pagination-bar__summary", "显示第 21-22 条，共 22 条"
+      assert_select ".gbrain-remote-count", "仅加载并筛选最近 100 条远端文档"
+      assert_select "a[href=?][aria-label=上一页]", admin_gbrain_pages_path(filters.merge(source: "remote", page: 1))
+      assert_select "a[href=?]", remote_page_admin_gbrain_pages_path(filters.merge(slug: "remote/warehouse", page: 2))
+      assert_select "form.gbrain-remote-delete-form input[name=q][value=WAREHOUSE]", count: 2
+      assert_select "select[name=sync_status]", count: 0
+
+      sign_in @admin
+      get admin_gbrain_pages_path(source: "remote", q: "missing"), headers: { "Accept" => "text/html" }
+      assert_response :success
+      assert_select "td.empty-state", "没有符合条件的文档，请调整或重置筛选条件。"
+      assert_select ".inventory-pagination-bar__summary", "显示第 0-0 条，共 0 条"
+    end
+  end
+
+  test "remote page and deletion preserve search context" do
+    sign_in @admin
+    filters = { q: "Remote", page_type: "concept", page: 2 }
+    client = FakeClient.new
+
+    with_gbrain_client(client) do
+      get remote_page_admin_gbrain_pages_path(filters.merge(slug: "remote/page")), headers: { "Accept" => "text/html" }
+      assert_response :success
+      assert_select "a[href=?]", admin_gbrain_pages_path(filters.merge(source: "remote")), text: /返回远端列表/
+      assert_select "form input[name=q][value=Remote]"
+      assert_select "form input[name=page_type][value=concept]"
+
+      sign_in @admin
+      delete destroy_remote_page_admin_gbrain_pages_path, params: filters.merge(slug: "remote/page")
+      assert_redirected_to admin_gbrain_pages_path(filters.merge(source: "remote"))
     end
   end
 
@@ -463,7 +627,7 @@ class Admin::GbrainPagesControllerTest < ActionDispatch::IntegrationTest
     singleton_class.remove_method(:new)
   end
 
-  def create_page
-    GbrainPage.create!(gbrain_page_attributes(slug: "notes/admin-#{@token}", content: "body"))
+  def create_page(**attributes)
+    GbrainPage.create!(gbrain_page_attributes(slug: "notes/admin-#{@token}", content: "body").merge(attributes))
   end
 end

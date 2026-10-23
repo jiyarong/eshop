@@ -131,6 +131,35 @@ class Reports::OzonSupplySubmissionsControllerTest < ActionDispatch::Integration
     assert_equal "Test receiving point", submission.data["drop_off_name"]
   end
 
+  test "saved mixed plan preserves loose-box and pallet allocations when creating a delivery application" do
+    attributes = workbench_attributes.merge(shipping_mode: "mixed")
+    attributes[:items].sole[:quantity] = 2
+    attributes[:items].sole[:box_quantity] = 1
+    plan = Ec::PalletPlans::Save.new(user: @user, attributes: attributes).call
+    expected = plan.pallets.joins(:items).reorder(nil).group(:cargo_type).sum("ec_pallet_items.boxes")
+
+    sign_in @user
+    get reports_pallet_plan_path(plan, locale: :zh)
+    assert_response :success
+    assert_includes response.body, I18n.t("pallet_workbench.manifest_box_quantity", locale: :zh)
+    assert_includes response.body, I18n.t("pallet_workbench.manifest_pallet_quantity", locale: :zh)
+    assert_includes response.body, I18n.t("pallet_workbench.box_cargo", number: 1, locale: :zh)
+
+    sign_in @user
+    get edit_reports_pallet_plan_path(plan, locale: :zh)
+    assert_response :success
+    initial_items = Nokogiri::HTML(response.body).at_css("[data-pallet-workbench-initial-value]")
+    assert_equal 1, JSON.parse(initial_items["data-pallet-workbench-initial-value"]).sole.fetch("box_quantity")
+
+    sign_in @user
+    post start_supply_reports_pallet_plan_path(plan, format: :json), params: { lock_version: plan.lock_version }
+
+    assert_response :success
+    assert_equal({ "box" => 1, "pallet" => 1 }, expected)
+    assert_equal expected, plan.reload.pallets.joins(:items).reorder(nil).group(:cargo_type).sum("ec_pallet_items.boxes")
+    assert_equal "queued", plan.ozon_supply_submission.state
+  end
+
   test "rejects pallets at a box-only point and accepts a valid box plan there" do
     pallet_plan = Ec::PalletPlans::Save.new(user: @user, attributes: workbench_attributes).call
     sign_in @user

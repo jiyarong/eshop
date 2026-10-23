@@ -20,7 +20,13 @@ zh:
     carton_size: "%{count} 件 / 箱"
     undo: "撤销上次操作"
     empty_manifest: "选择本批次的送仓商品"
-    empty_manifest_hint: "勾选左侧 SKU 并填写箱数，选择按箱或按托送货。"
+    empty_manifest_hint: "勾选左侧 SKU 并填写总箱数，可逐 SKU 分配一部分按箱、一部分装托。"
+    box_quantity: 普通箱数
+    box_quantity_hint: 按箱送出的箱数；剩余箱数会分配到托盘。
+    box_cargo: 普通箱 %{number}
+    box_cargo_weight: 毛重 %{value} kg
+    manifest_box_quantity: 按箱
+    manifest_pallet_quantity: 装托
     autosave_hint: "选品与参数在本标签页自动保留；更改箱数后自动验算。保存草稿后可继续确认并占用库存。"
     recalculate: "重新验算"
     packaging_details: "包装参数 / 朝向"
@@ -136,6 +142,7 @@ zh:
       ozon_oversize: "单件包装参数超过 Ozon FBO 上限，不能按普通托盘供货，请改用适用的配送模式。"
       missing_packaging: 包装参数不完整，请补齐单件包装及外箱的尺寸、重量与每箱件数。
       invalid_quantity: 箱数必须为正整数。
+      mixed_shipping_split: 混合方式需至少有一箱按箱送出，并至少有一箱装入托盘。
       insufficient_stock: 可分配库存不足，请调整箱数后重试。
       invalid_status: 当前状态不允许执行此操作。
       stale_plan: 计划已被其他人修改，请刷新页面后重新操作。

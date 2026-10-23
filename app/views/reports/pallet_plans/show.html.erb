@@ -15,6 +15,6 @@
   <p role="status" data-ozon-supply-target="pollError"></p>
   <div data-ozon-supply-target="handoff"><%= render "supply_handoff", plan: @plan if can?(:manage_skus) && @plan.editable? %></div>
   <section class="panel" data-ozon-supply-target="binding"><%= render "supply_binding", plan: @plan %></section>
-  <section class="panel"><h2><%= t("pallet_workbench.manifest") %></h2><%= table_viewport do %><table class="prod-tbl"><thead><tr><% %w[sku boxes units].each do |key| %><th><%= t("pallet_calculator.#{key}") %></th><% end %></tr></thead><tbody><% @plan.items.each do |item| %><tr><td><%= item.sku_code %></td><td><%= item.boxes %></td><td><%= item.units %></td></tr><% end %></tbody></table><% end %></section>
+  <section class="panel"><h2><%= t("pallet_workbench.manifest") %></h2><%= table_viewport do %><table class="prod-tbl"><thead><tr><th><%= t("pallet_workbench.fields.sku_code") %></th><th><%= t("pallet_calculator.boxes") %></th><th><%= t("pallet_workbench.manifest_box_quantity") %></th><th><%= t("pallet_workbench.manifest_pallet_quantity") %></th><th><%= t("pallet_calculator.units") %></th></tr></thead><tbody><% @plan.items.each do |item| %><tr><td><%= item.sku_code %></td><td><%= item.boxes %></td><td><%= @allocations_by_sku.fetch([item.sku_code, "box"], 0) %></td><td><%= @allocations_by_sku.fetch([item.sku_code, "pallet"], 0) %></td><td><%= item.units %></td></tr><% end %></tbody></table><% end %></section>
   <%= render "reports/pallet_workbenches/result", result: @result if @result.present? %>
 </div>

@@ -173,6 +173,7 @@ zh:
       heading: "%{profile}｜共 %{pallets} 托、%{boxes} 箱、%{units} 件商品。"
       limits: "使用 120×80×14.5 cm 标准托盘，估计自重 %{tare} kg。含托总高 ≤%{height} cm；%{basis} ≤%{weight} kg；单边超出 ≤%{overhang} cm。"
       pallet: "第 %{number} 托：%{boxes} 箱；含托高 %{height} cm，含托毛重 %{weight} kg。"
+      loose_box_sku: "%{sku}：%{boxes} 箱按普通箱单独送货。"
       zone: "  分区 %{number} / %{sku}：%{boxes} 箱（%{units} 件）；%{orientation}，摆放尺寸 %{dimensions} cm；每层布局 %{grid}，最多 %{per_layer} 箱，共 %{layers} 层，顶层 %{last_layer} 箱。加号表示同层拼区，斜线分隔平面旋转后的尺寸；各层箱位对齐，余箱放顶层。"
       ozon_fbo: EUR 托盘，拉伸膜至少 3 层；包住木质底座和顶层形成“帽子”，胶带交叉固定。同托仅一个供货单，商品按列集中。按后台货位/运输货位要求贴标签；运输货位每箱也须贴箱标签。交叉转运须在卖家仓预先打托，托盘不返还。创建供货时核对普通 30 箱/40 托或运输货位 1500 箱资格与点位容量。
       ozon_fbs: 拉伸膜至少 3 层且完整，货物不能在不破坏膜的情况下抽出；托盘货位标签贴三面。可分拣与不可分拣货物必须分开，逐件检查 OZN 标签，单箱 ≤35 kg；按交付点确认信任收货资格、容量和取货费用。

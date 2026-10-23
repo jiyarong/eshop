@@ -191,6 +191,33 @@ test("choosing box delivery preserves quantities, revalidates and can be undone"
   assert.equal(controller.undoButtonTarget.hidden, true);
 });
 
+test("mixed delivery sends each SKU's loose-box split in the preview payload", async (t) => {
+  const controller = controllerFor(t);
+  controller.hasShippingModeTarget = true;
+  controller.shippingModeTarget = { value: "mixed" };
+  controller.items = [{ sku_code: "TEST-SKU", quantity: 3, box_quantity: 1 }];
+  controller.element.querySelectorAll = () => [];
+  controller.contextValue = {};
+  controller.payload = PalletWorkbenchController.prototype.payload.bind(controller);
+  for (const target of ["heightMeter", "heightLabel", "weightMeter", "weightLabel"]) controller[`${target}Target`] = {};
+  controller.request = async (_url, body) => {
+    assert.equal(body.pallet_plan.shipping_mode, "mixed");
+    assert.equal(body.pallet_plan.items[0].box_quantity, 1);
+    return { html: "Mixed layout", shipping_advice_html: "Mixed delivery", result: {
+      shipping_mode: "mixed", items: controller.items,
+      pallets: [{ cargo_type: "pallet", zones: [{ item_index: 0, count: 2 }], height: 120, weight: 40 }, { cargo_type: "box", zones: [{ item_index: 0, count: 1 }] }],
+      settings: { height: 220, weight: 800 },
+    } };
+  };
+  controller.renderAllocations = () => {};
+  controller.renderItems = () => {};
+
+  await controller.calculate(true);
+
+  assert.equal(controller.saveButtonTarget.disabled, false);
+  assert.equal(controller.resultsTarget.innerHTML, "Mixed layout");
+});
+
 test("successful fill applies the returned quantities and keeps one undo snapshot", async (t) => {
   const controller = controllerFor(t);
   controller.undoButtonTarget = { hidden: true };

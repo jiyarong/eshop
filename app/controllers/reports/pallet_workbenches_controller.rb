@@ -163,7 +163,7 @@ module Reports
         :shipping_mode, :time_zone, :lock_version, :packing_mode, :recommend_one,
         shipping: %i[supply_receiving_zone_key shipping_date point_type point_name],
         settings: PalletPacking::Rules.defaults("ozon_fbo").keys,
-        items: %i[sku_code quantity length width height weight pcs unit_volume_l rotatable],
+        items: %i[sku_code quantity box_quantity length width height weight pcs unit_volume_l rotatable],
         allocations: [items: %i[sku_code quantity]]).to_h
     end
 

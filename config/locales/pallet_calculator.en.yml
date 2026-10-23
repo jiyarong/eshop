@@ -173,6 +173,7 @@ en:
       heading: "%{profile} | %{pallets} pallets, %{boxes} cartons, %{units} merchandise units."
       limits: "Use standard 120×80×14.5 cm pallets, estimated tare %{tare} kg. Total height ≤%{height} cm; %{basis} ≤%{weight} kg; overhang ≤%{overhang} cm per side."
       pallet: "Pallet %{number}: %{boxes} cartons; total height %{height} cm, gross weight %{weight} kg."
+      loose_box_sku: "%{sku}: %{boxes} cartons shipped as loose boxes."
       zone: "  Zone %{number} / %{sku}: %{boxes} cartons (%{units} units); %{orientation}, placed dimensions %{dimensions} cm; layout %{grid}, up to %{per_layer} cartons/layer, %{layers} layers, %{last_layer} cartons on top. Plus signs join areas in a layer; slashes separate horizontally rotated dimensions. Align columns and put residual cartons on top."
       ozon_fbo: EUR pallets; at least 3 stretch-film layers, wrapping the base and top into a cap secured with crossed tape. One supply order per pallet; group SKUs in columns. Apply portal cargo/transport labels; transport cargo requires carton labels too. Preassemble cross-dock pallets at the seller warehouse; pallets are not returned. Confirm point capacity and eligibility for normal 30-carton/40-pallet or transport 1500-carton limits.
       ozon_fbs: Use at least 3 intact film layers so goods cannot be removed without breaking the film. Apply pallet labels on three sides. Separate sortable and non-sortable goods; check every OZN label, carton ≤35 kg. Confirm point capacity, trusted-acceptance eligibility and pickup fees.

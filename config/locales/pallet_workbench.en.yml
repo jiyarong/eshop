@@ -20,7 +20,13 @@ en:
     carton_size: "%{count} units / carton"
     undo: "Undo last change"
     empty_manifest: "Select products for this delivery batch"
-    empty_manifest_hint: "Select SKUs and carton quantities, then choose box or pallet delivery."
+    empty_manifest_hint: "Select SKUs and total carton counts, then split each SKU between loose boxes and pallets."
+    box_quantity: Loose box count
+    box_quantity_hint: Cartons sent as individual boxes; the remainder goes on pallets.
+    box_cargo: Loose box %{number}
+    box_cargo_weight: Gross weight %{value} kg
+    manifest_box_quantity: By box
+    manifest_pallet_quantity: On pallets
     autosave_hint: "Selections and settings stay in this tab. Changes validate automatically. Save a draft, then confirm it to reserve stock."
     recalculate: "Validate again"
     packaging_details: "Packaging / orientation"
@@ -144,6 +150,7 @@ en:
       ozon_oversize: "The packaged unit exceeds Ozon FBO limits and cannot be supplied on a regular pallet. Use an eligible delivery mode."
       missing_packaging: Complete packaged unit and carton dimensions, weights and units per carton.
       invalid_quantity: Carton quantities must be positive integers.
+      mixed_shipping_split: Mixed delivery needs at least one loose box and at least one carton on a pallet.
       insufficient_stock: Insufficient allocatable stock. Reduce carton quantities
         and retry.
       invalid_status: This action is not allowed in the current status.

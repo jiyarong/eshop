@@ -1,0 +1,41 @@
+<% query_params = @list_filters.merge(source: @source) %>
+
+<div class="inventory-pagination-bar">
+  <div class="pagination-meta">
+    <div class="inventory-pagination-bar__summary"><%= t("admin.gbrain.index.summary", from: @from, to: @to, total: @total) %></div>
+    <span class="pagination-chip"><%= t("admin.gbrain.index.page_chip", page: @page_number, pages: @page_count) %></span>
+  </div>
+  <div class="pagination-shell">
+    <nav class="pagination-nav" aria-label="<%= t("admin.gbrain.index.pagination_label") %>">
+      <% if @page_number > 1 %>
+        <%= link_to "‹", admin_gbrain_pages_path(query_params.merge(page: @page_number - 1)), class: "pg-btn pg-btn-nav", aria: { label: t("admin.gbrain.index.previous_page") } %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">‹</span>
+      <% end %>
+      <% inventory_pagination_items(@page_number, @page_count).each do |item| %>
+        <% if item.is_a?(Symbol) %>
+          <span class="pg-ell" aria-hidden="true">…</span>
+        <% elsif item == @page_number %>
+          <span class="pg-btn on" aria-current="page" aria-label="<%= t("admin.gbrain.index.current_page", page: item) %>"><%= item %></span>
+        <% else %>
+          <%= link_to item, admin_gbrain_pages_path(query_params.merge(page: item)), class: "pg-btn", aria: { label: t("admin.gbrain.index.page", page: item) } %>
+        <% end %>
+      <% end %>
+      <% if @page_number < @page_count %>
+        <%= link_to "›", admin_gbrain_pages_path(query_params.merge(page: @page_number + 1)), class: "pg-btn pg-btn-nav", aria: { label: t("admin.gbrain.index.next_page") } %>
+      <% else %>
+        <span class="pg-btn pg-btn-nav" aria-disabled="true">›</span>
+      <% end %>
+    </nav>
+    <span class="pagination-divider" aria-hidden="true"></span>
+    <%= form_with url: admin_gbrain_pages_path, method: :get, class: "pagination-jump" do |form| %>
+      <% query_params.each do |key, value| %>
+        <%= form.hidden_field key, value: value, id: nil %>
+      <% end %>
+      <%= form.hidden_field :current_page, value: @page_number %>
+      <%= form.label :jump_page, t("admin.gbrain.index.jump_label"), class: "pagination-jump-label" %>
+      <%= form.text_field :jump_page, value: @page_number, class: "pagination-jump-input", inputmode: "numeric", pattern: "[0-9]*" %>
+      <%= form.submit t("admin.gbrain.index.jump_action"), class: "pg-btn pg-btn-jump" %>
+    <% end %>
+  </div>
+</div>
