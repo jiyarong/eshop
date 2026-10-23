@@ -683,19 +683,24 @@
         <div class="profit-prediction-scenario-menu" role="menu" data-profit-prediction-target="scenarioMenu" hidden></div>
       </nav>
       <div class="profit-prediction-process__header-content">
-        <h3 id="profit-prediction-process-title"><%= t("reports.profit_prediction.process.title") %></h3>
-        <p data-profit-prediction-target="detailTitle"></p>
-        <%# Only shows the mode; it is switched on the platform logistics row below. %>
-        <p class="profit-prediction-logistics-mode-note">
-          <%= t("reports.profit_prediction.logistics_mode.label") %>：<span data-profit-prediction-target="logisticsModeCurrent"></span>
-        </p>
-        <div class="profit-prediction-process__formula-summary">
-          <strong><%= t("reports.profit_prediction.process.formula_summary.label") %></strong>
-          <span data-profit-prediction-target="detailCostFormula"><%= t("reports.profit_prediction.process.formula_summary.total_cost", items: "-", total: "-") %></span>
-          <span data-profit-prediction-target="detailProfitFormula"><%= t("reports.profit_prediction.process.formula_summary.profit", revenue: "-", total_cost: "-", profit: "-") %></span>
-          <span data-profit-prediction-target="detailMarginFormula"><%= t("reports.profit_prediction.process.formula_summary.margin", profit: "-", revenue: "-", margin: "-") %></span>
+        <div class="profit-prediction-process__header-main">
+          <div class="profit-prediction-process__heading">
+            <h3 id="profit-prediction-process-title"><%= t("reports.profit_prediction.process.title") %></h3>
+            <p data-profit-prediction-target="detailTitle"></p>
+            <%# Only shows the mode; it is switched on the platform logistics row below. %>
+            <p class="profit-prediction-logistics-mode-note">
+              <%= t("reports.profit_prediction.logistics_mode.label") %>：<span data-profit-prediction-target="logisticsModeCurrent"></span>
+            </p>
+          </div>
+          <div class="profit-prediction-process__formula-summary">
+            <strong><%= t("reports.profit_prediction.process.formula_summary.label") %></strong>
+            <span data-profit-prediction-target="detailCostFormula"><%= t("reports.profit_prediction.process.formula_summary.total_cost", items: "-", total: "-") %></span>
+            <span data-profit-prediction-target="detailProfitFormula"><%= t("reports.profit_prediction.process.formula_summary.profit", revenue: "-", total_cost: "-", profit: "-") %></span>
+            <span data-profit-prediction-target="detailMarginFormula"><%= t("reports.profit_prediction.process.formula_summary.margin", profit: "-", revenue: "-", margin: "-") %></span>
+          </div>
+          <p class="profit-prediction-process__status" data-profit-prediction-target="detailStatus" role="status" aria-live="polite" hidden></p>
         </div>
-        <p class="profit-prediction-process__status" data-profit-prediction-target="detailStatus" role="status" aria-live="polite" hidden></p>
+        <%# The figures sit at the top right, beside the heading and the calculation relation, so the sticky header stays short. %>
         <div class="profit-prediction-process__summary" aria-label="<%= t("reports.profit_prediction.process.summary") %>">
           <div class="profit-prediction-process__summary-item">
             <span><%= t("reports.profit_prediction.fields.commission_base_price_rub") %></span>

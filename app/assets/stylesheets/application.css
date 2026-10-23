@@ -10018,7 +10018,7 @@ thead .table-sticky-column {
   z-index: 4;
   display: block;
   margin: 0 -1px 10px;
-  padding: 0 1px 12px;
+  padding: 0 1px 8px;
   border-bottom: 1px solid var(--border);
   background: var(--erp-surface, #fff);
   box-shadow: 0 4px 10px rgba(24, 34, 53, .06);
@@ -10083,7 +10083,7 @@ thead .table-sticky-column {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .profit-prediction-process__scenario-mode-note {
@@ -10112,9 +10112,9 @@ thead .table-sticky-column {
 .profit-prediction-process__scenario-tabs {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
-  margin: 0 -1px 10px;
-  padding: 6px 1px;
+  gap: 3px;
+  margin: 0 -1px 6px;
+  padding: 4px 1px;
   border-bottom: 1px solid var(--border);
   background: var(--gray-50);
 }
@@ -10291,13 +10291,16 @@ thead .table-sticky-column {
   margin: 6px 0 0;
 }
 
+/* Two columns: the stores (when there are any) across the top, then the platform and market with the fulfilment and
+   company type beside it on one line. */
 .profit-prediction-process__scenario-tab {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
-  min-height: 43px;
   align-content: center;
-  gap: 2px;
-  padding: 5px 9px;
+  align-items: baseline;
+  gap: 0 6px;
+  padding: 4px 9px;
   border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
@@ -10326,6 +10329,7 @@ thead .table-sticky-column {
 }
 
 .profit-prediction-process__scenario-tab-stores {
+  grid-column: 1 / -1;
   overflow: hidden;
   color: var(--fg-muted);
   font-size: 10.5px;
@@ -10351,8 +10355,28 @@ thead .table-sticky-column {
   font-size: 11px;
 }
 
+/* Heading and calculation relation on the left, the figures on the right. */
 .profit-prediction-process__header-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 28px;
   padding-inline: 1px;
+}
+
+.profit-prediction-process__header-main {
+  min-width: 0;
+}
+
+.profit-prediction-process__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 14px;
+}
+
+.profit-prediction-process__header .profit-prediction-process__heading p {
+  margin: 0;
 }
 
 .profit-prediction-process__header h3 {
@@ -10400,10 +10424,24 @@ thead .table-sticky-column {
 }
 
 .profit-prediction-process__summary {
-  display: flex;
-  align-items: stretch;
-  gap: 18px;
-  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(104px, auto));
+  align-items: start;
+  gap: 8px 22px;
+  margin-top: 2px;
+}
+
+@media (max-width: 1100px) {
+  .profit-prediction-process__header-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profit-prediction-process__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-top: 6px;
+  }
 }
 
 .profit-prediction-process__summary-item {
