@@ -89,6 +89,18 @@ zh:
         needs_save: "请先保存当前修改，再设为当前版本"
         incomplete_confirm: "有 %{count} 个场景尚未算完，仍要设为当前版本吗？"
         failed: "设置失败，请稍后重试"
+      version_groups:
+        automatic: "月度（自动）"
+        manual: "测算（手动）"
+      automatic_version:
+        notice: "这是系统每月自动生成的版本（只读）：用 %{from} 至 %{to} 的平台数据、SKU 档案和固定公式算出，取不到的数据就留空。"
+        copy_hint: "想调价试算，请复制为手动版本再改。"
+        copy_as_manual: "复制为手动版本"
+        gaps_title: "算不出的场景（共 %{count} 个）"
+        gaps:
+          missing_commission_base_price_rub: "缺佣金基准价：该场景近 4 周没有成交，取不到成交价"
+          missing_commission_rate: "缺佣金率：官方佣金表无法唯一确定"
+          other: "其他参数不全"
       version_statuses:
         draft: "草稿"
         published: "已发布"
@@ -549,6 +561,18 @@ en:
         needs_save: "Save your changes before setting this as the current version"
         incomplete_confirm: "%{count} scenarios are not fully calculated. Set as current version anyway?"
         failed: "Could not set the current version. Please try again later."
+      version_groups:
+        automatic: "Monthly (automatic)"
+        manual: "Calculations (manual)"
+      automatic_version:
+        notice: "This version is generated automatically every month (read-only): worked out from platform data of %{from} to %{to}, the SKU file and fixed formulas. Data that could not be found is left empty."
+        copy_hint: "To try another price, copy it as a manual version and edit that."
+        copy_as_manual: "Copy as manual version"
+        gaps_title: "Scenarios that cannot be calculated (%{count})"
+        gaps:
+          missing_commission_base_price_rub: "No commission base price: nothing sold in the scenario in the last 4 weeks, so there is no realized price"
+          missing_commission_rate: "No commission rate: the official commission table does not give a single one"
+          other: "Other parameters missing"
       version_statuses:
         draft: "Draft"
         published: "Published"
@@ -1009,6 +1033,18 @@ ru:
         needs_save: "Сохраните изменения, прежде чем сделать версию текущей"
         incomplete_confirm: "Сценариев без полного расчёта: %{count}. Всё равно сделать версию текущей?"
         failed: "Не удалось задать текущую версию. Повторите позже."
+      version_groups:
+        automatic: "По месяцам (автоматические)"
+        manual: "Расчёты (ручные)"
+      automatic_version:
+        notice: "Эта версия создаётся автоматически каждый месяц (только чтение): рассчитана по данным платформы за %{from} – %{to}, карточке SKU и фиксированным формулам. Чего нет в данных, оставлено пустым."
+        copy_hint: "Чтобы примерить другую цену, скопируйте её как ручную версию и меняйте копию."
+        copy_as_manual: "Копировать как ручную версию"
+        gaps_title: "Сценарии, которые не удалось рассчитать (%{count})"
+        gaps:
+          missing_commission_base_price_rub: "Нет базовой цены комиссии: в сценарии за 4 недели ничего не продано, фактической цены нет"
+          missing_commission_rate: "Нет ставки комиссии: официальная таблица не даёт однозначной"
+          other: "Не хватает других параметров"
       version_statuses:
         draft: "Черновик"
         published: "Опубликована"

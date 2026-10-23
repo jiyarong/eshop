@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_092554) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_063449) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -1205,19 +1205,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_092554) do
 
   create_table "ec_sku_profit_versions", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.date "data_from"
+    t.date "data_to"
     t.date "effective_from", null: false
     t.date "effective_to"
     t.boolean "is_current", default: false, null: false
+    t.string "kind", default: "manual", null: false
     t.integer "lock_version", default: 0, null: false
     t.string "name", null: false
     t.text "note"
     t.bigint "sku_id", null: false
     t.string "status", default: "draft", null: false
     t.datetime "updated_at", null: false
+    t.index ["sku_id", "effective_from"], name: "idx_sku_profit_versions_one_automatic_per_month", unique: true, where: "((kind)::text = 'automatic'::text)"
     t.index ["sku_id", "effective_from"], name: "idx_sku_profit_versions_sku_start"
     t.index ["sku_id"], name: "idx_sku_profit_versions_one_current", unique: true, where: "is_current"
     t.index ["sku_id"], name: "index_ec_sku_profit_versions_on_sku_id"
-    t.exclusion_constraint "sku_id WITH =, daterange(effective_from, COALESCE(effective_to, 'infinity'::date), '[]'::text) WITH &&", where: "(status)::text = 'published'::text", using: :gist, name: "ec_sku_profit_versions_no_published_overlap"
+    t.check_constraint "kind::text = 'manual'::text OR is_current = false", name: "ec_sku_profit_versions_automatic_not_current"
+    t.check_constraint "kind::text = ANY (ARRAY['manual'::character varying::text, 'automatic'::character varying::text])", name: "ec_sku_profit_versions_kind_check"
+    t.exclusion_constraint "sku_id WITH =, daterange(effective_from, COALESCE(effective_to, 'infinity'::date), '[]'::text) WITH &&", where: "((status)::text = 'published'::text) AND ((kind)::text = 'manual'::text)", using: :gist, name: "ec_sku_profit_versions_no_published_overlap"
   end
 
   create_table "ec_sku_scenario_visibilities", force: :cascade do |t|

@@ -182,6 +182,9 @@ module Ec
       "Ec::SkuProfitVersion" => %w[
         sku_id
         name
+        kind
+        data_from
+        data_to
         status
         effective_from
         effective_to

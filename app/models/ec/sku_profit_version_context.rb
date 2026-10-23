@@ -41,6 +41,9 @@ module Ec
     validates :platform,
       uniqueness: { scope: %i[sku_profit_version_id market delivery_mode warehouse_region company_type] }
 
+    validate :profit_version_not_read_only, on: :update
+    before_destroy :protect_read_only_version
+
     before_validation :normalize_context
 
     def calculation_inputs
@@ -95,6 +98,27 @@ module Ec
     end
 
     private
+
+    # The scenarios of an automatic version are written when the monthly refresh builds it and never edited after.
+    def read_only_version?
+      version = profit_version
+      version.present? && version.persisted? && version.kind_in_database == "automatic" && !version.system_write
+    end
+
+    def record_operation_log(action, raw_changes)
+      super unless profit_version&.automatic?
+    end
+
+    def profit_version_not_read_only
+      errors.add(:base, :automatic_read_only) if read_only_version? && changed?
+    end
+
+    def protect_read_only_version
+      return unless read_only_version?
+
+      errors.add(:base, :automatic_read_only)
+      throw :abort
+    end
 
     def normalize_context
       self.platform = platform.to_s.downcase.presence

@@ -39,7 +39,7 @@ module Ec
 
     # Builds the scenarios a version does not have yet (in memory; the caller saves). With
     # prefill_prices: { today:, time_zone: } a new scenario's commission base price is the average the
-    # SKU really sold it for in the last 12 weeks when at least 5 units were sold, and stays empty
+    # SKU really sold it for in the last 12 weeks when at least SkuProfitPriceFromActuals::MIN_UNITS units were sold, and stays empty
     # otherwise: a price is never borrowed from another scenario.
     def self.build_missing(version, sku: version.sku, effective_on: version.effective_from || Date.current, prefill_prices: nil)
       SCENARIOS.filter_map do |attributes|

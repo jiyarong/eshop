@@ -1116,7 +1116,107 @@ class SkuProfitVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, version.reload.contexts.count
   end
 
+  test "an automatic version cannot be updated, deleted or made current through the endpoints" do
+    version = create_automatic_version
+
+    patch report_sku_profit_version_path(@sku.sku_code, version), params: {
+      version: { name: "renamed", lock_version: version.lock_version }
+    }, as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "readonly" ], response.parsed_body.dig("errors", "base")
+
+    sign_in @user
+    delete report_sku_profit_version_path(@sku.sku_code, version), as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "readonly" ], response.parsed_body.dig("errors", "base")
+
+    sign_in @user
+    patch set_current_report_sku_profit_version_path(@sku.sku_code, version), as: :json
+    assert_response :unprocessable_entity
+    assert_equal [ "readonly" ], response.parsed_body.dig("errors", "base")
+
+    version.reload
+    assert version.automatic?
+    assert_not version.is_current?
+    assert_not_equal "renamed", version.name
+  end
+
+  test "a version created through the endpoint is manual whatever the request says, and a copy of an automatic one is manual" do
+    post report_sku_profit_versions_path(@sku.sku_code), params: {
+      version: { name: "Mine", status: "draft", effective_from: "2026-09-01", kind: "automatic" },
+      contexts: [ { platform: "WB", market: "RU", delivery_mode: "FBO", warehouse_region: "MAIN", company_type: "GENERAL" } ]
+    }, as: :json
+    assert_response :created
+    assert_equal "manual", response.parsed_body.fetch("kind")
+    assert_equal "manual", Ec::SkuProfitVersion.find(response.parsed_body.fetch("id")).kind
+
+    automatic = create_automatic_version
+    sign_in @user
+    post report_sku_profit_versions_path(@sku.sku_code), params: {
+      copy_from_version_id: automatic.id,
+      version: { name: "What if cheaper", status: "draft", effective_from: "2026-10-05" }
+    }, as: :json
+    assert_response :created
+    payload = response.parsed_body
+    assert_equal "manual", payload.fetch("kind")
+    assert_nil payload.fetch("data_from")
+    assert_equal "draft", payload.fetch("status")
+  end
+
+  test "the page opens the latest automatic version first, read-only, with a way to copy it as a manual version" do
+    manual = @sku.profit_versions.create!(name: "My manual model", status: "draft", effective_from: Date.new(2026, 10, 1))
+    manual.make_current!
+    older = create_automatic_version(month: Date.new(2026, 9, 1))
+    latest = create_automatic_version(month: Date.new(2026, 10, 1))
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".profit-prediction-workbench[data-profit-prediction-version-id-value='#{latest.id}'][data-profit-prediction-readonly-value='true']"
+    assert_select ".profit-prediction-version-switcher optgroup[label='Monthly (automatic)'] option", count: 2
+    assert_select ".profit-prediction-version-switcher optgroup[label='Calculations (manual)'] option", text: "My manual model · Current · Draft"
+    assert_select ".profit-prediction-version-switcher option[selected]", text: latest.name
+    assert_select ".profit-prediction-alert", text: /generated automatically every month/
+    assert_select "button[data-version-action='copy']", text: /Copy as manual version/
+    assert_select "button[data-profit-prediction-target='saveButton']", count: 0
+    assert_select "button[data-action='profit-prediction#openDeleteDialog']", count: 0
+    assert_select "button[data-action='profit-prediction#setCurrent']", count: 0
+    assert older.automatic?
+  end
+
+  test "a SKU with only manual versions opens its manual version as before" do
+    manual = @sku.profit_versions.create!(name: "Only manual", status: "draft", effective_from: Date.new(2026, 10, 1))
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".profit-prediction-workbench[data-profit-prediction-version-id-value='#{manual.id}'][data-profit-prediction-readonly-value='false']"
+    assert_select ".profit-prediction-version-switcher optgroup[label='Monthly (automatic)']", count: 0
+    assert_select "button[data-action='profit-prediction#openDeleteDialog']", count: 1
+  end
+
+  test "an automatic version says which scenarios cannot be calculated and why" do
+    version = create_automatic_version(month: Date.new(2026, 10, 1))
+
+    get report_sku_path(@sku.sku_code), params: { tab: "profit_prediction", version_id: version.id, locale: "en" }, headers: { "Accept" => "text/html" }
+
+    assert_response :success
+    assert_select ".profit-prediction-alert", text: /Scenarios that cannot be calculated \(1\)/
+    assert_select ".profit-prediction-alert", text: /No commission base price/
+  end
+
   private
+
+  def create_automatic_version(month: Date.new(2026, 10, 1))
+    version = @sku.profit_versions.new(
+      name: month.strftime("%Y-%m"), kind: "automatic", status: "published",
+      effective_from: month, effective_to: month.end_of_month,
+      data_from: month - 1.month, data_to: month - 1.day
+    )
+    version.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbo", company_type: "general")
+    version.save!
+    version
+  end
 
   def valid_wb_profit_inputs
     {

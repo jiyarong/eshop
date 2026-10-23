@@ -162,6 +162,24 @@ module SkuProfitPredictionHelper
     Ec::SkuProfitStandardContexts.sort(version.contexts)
   end
 
+  # What stops the scenarios of an automatic version from being calculated: { error code => number of scenarios }.
+  # The codes are the calculator's (missing_commission_base_price_rub, missing_commission_rate ...); the scenarios that
+  # are hidden for the SKU do not count, like everywhere else on the page.
+  def profit_prediction_automatic_gaps(version, hidden_keys: Set.new)
+    version.contexts.each_with_object(Hash.new(0)) do |context, gaps|
+      next if context.calculation_status == "valid"
+      next if hidden_keys.include?(Ec::SkuProfitStandardContexts.key_for(context.attributes))
+
+      codes = Array(Ec::SkuProfitCalculator.call_for_context(context)[:errors]).map(&:to_s)
+      (codes.presence || [ "other" ]).each { |code| gaps[code] += 1 }
+    end
+  end
+
+  # The locale key of an error code in a version's "cannot be calculated" note; codes without their own text fall under "other".
+  def profit_prediction_gap_key(code)
+    %w[missing_commission_base_price_rub missing_commission_rate].include?(code) ? code : "other"
+  end
+
   def profit_prediction_input_applicable?(context, field)
     field = field.to_sym
     return true if PROFIT_BASE_INPUT_COLUMNS.include?(field)

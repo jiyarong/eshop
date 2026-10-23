@@ -5,6 +5,13 @@ module Ec
     self.table_name = "ec_sku_profit_versions"
 
     STATUSES = { draft: "draft", published: "published", archived: "archived" }.freeze
+    # manual: a person's calculation (a new SKU's first estimate, a what-if price strategy), under the draft /
+    # published / current workflow. automatic: one per SKU per month, written by Ec::SkuProfitMonthlyRefresh and
+    # read-only for everybody else; it covers its month and records the data window it was built from.
+    KINDS = { manual: "manual", automatic: "automatic" }.freeze
+
+    # Set by the code that owns an automatic version (the monthly refresh) to write or replace it; nothing else may.
+    attr_accessor :system_write
 
     belongs_to :sku, class_name: "Ec::Sku"
     has_many :contexts,
@@ -14,10 +21,15 @@ module Ec
       dependent: :destroy
 
     enum :status, STATUSES, validate: true
+    enum :kind, KINDS, validate: true
 
     validates :name, :effective_from, presence: true
     validates_associated :contexts
     validate :effective_range_valid
+    validate :automatic_version_shape, if: :automatic?
+    validate :kind_not_changed, on: :update
+    validate :automatic_version_not_edited, on: :update
+    before_destroy :protect_automatic_version
     validate :current_version_not_archived, if: :is_current?
     validate :published_version_has_contexts, if: :published?
     validate :no_overlapping_published_version, if: :published?
@@ -46,8 +58,8 @@ module Ec
     def make_current!
       raise ActiveRecord::RecordNotSaved.new("unsaved version", self) if new_record?
 
-      if archived?
-        errors.add(:status, :archived)
+      if archived? || automatic?
+        errors.add(automatic? ? :kind : :status, automatic? ? :automatic : :archived)
         raise ActiveRecord::RecordInvalid, self
       end
 
@@ -83,6 +95,10 @@ module Ec
       copy = dup
       copy.assign_attributes(
         name: name.presence || self.name,
+        # Whatever the source is, a copy is a person's own: never automatic, and without the data window.
+        kind: "manual",
+        data_from: nil,
+        data_to: nil,
         status: "draft",
         effective_from: effective_from,
         effective_to: effective_to,
@@ -102,6 +118,11 @@ module Ec
 
     private
 
+    # An automatic version is rebuilt every month by the refresh job and edited by nobody: it has no audit trail.
+    def record_operation_log(action, raw_changes)
+      super unless automatic?
+    end
+
     def flip_current!(version, value)
       version.update_columns(is_current: value)
       version.send(:record_operation_log, "update", { "is_current" => [ !value, value ] })
@@ -117,14 +138,45 @@ module Ec
       errors.add(:effective_to, :invalid)
     end
 
+    # An automatic version is its month, published for good, never the current one, and it knows its data window.
+    def automatic_version_shape
+      errors.add(:is_current, :invalid) if is_current?
+      errors.add(:status, :invalid) unless published?
+      if effective_from.present?
+        errors.add(:effective_from, :invalid) unless effective_from == effective_from.beginning_of_month
+        errors.add(:effective_to, :invalid) unless effective_to == effective_from.end_of_month
+      end
+      if data_from.blank? || data_to.blank? || data_to < data_from
+        errors.add(:data_to, :invalid)
+      end
+    end
+
+    def kind_not_changed
+      errors.add(:kind, :invalid) if kind_changed?
+    end
+
+    def automatic_version_not_edited
+      return unless kind_in_database == "automatic" && !system_write
+      return unless changed?
+
+      errors.add(:base, :automatic_read_only)
+    end
+
+    def protect_automatic_version
+      return unless automatic? && !system_write
+
+      errors.add(:base, :automatic_read_only)
+      throw :abort
+    end
+
     def published_version_has_contexts
       errors.add(:contexts, :blank) if contexts.empty?
     end
 
     def no_overlapping_published_version
-      return if sku_id.blank? || effective_from.blank?
+      return if sku_id.blank? || effective_from.blank? || automatic?
 
-      relation = self.class.published.where(sku_id: sku_id)
+      relation = self.class.published.manual.where(sku_id: sku_id)
       relation = relation.where.not(id: id) if persisted?
       relation = relation.where("effective_from <= ?", effective_to) if effective_to.present?
       relation = relation.where("effective_to IS NULL OR effective_to >= ?", effective_from)

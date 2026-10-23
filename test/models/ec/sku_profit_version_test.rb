@@ -146,6 +146,108 @@ class Ec::SkuProfitVersionTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::StaleObjectError) { stale.update!(note: "stale writer") }
   end
 
+  test "versions are manual by default and a copy of an automatic version is manual with no data window" do
+    assert_equal "manual", build_version.kind
+
+    automatic = build_automatic_version
+    assert automatic.save, automatic.errors.full_messages.to_sentence
+
+    copy = automatic.reload.build_copy(effective_from: Date.new(2026, 11, 5), name: "What if 10% cheaper")
+    assert copy.manual?
+    assert_nil copy.data_from
+    assert_nil copy.data_to
+    assert copy.save, copy.errors.full_messages.to_sentence
+    assert_equal 1, copy.contexts.count
+  end
+
+  test "an automatic version is one calendar month, published, never current, with its data window" do
+    assert build_automatic_version.valid?
+
+    mid_month = build_automatic_version(effective_from: Date.new(2026, 10, 7))
+    assert_not mid_month.valid?
+    assert mid_month.errors.of_kind?(:effective_from, :invalid)
+
+    wrong_end = build_automatic_version(effective_to: Date.new(2026, 10, 15))
+    assert_not wrong_end.valid?
+    assert wrong_end.errors.of_kind?(:effective_to, :invalid)
+
+    no_window = build_automatic_version(data_from: nil, data_to: nil)
+    assert_not no_window.valid?
+    assert no_window.errors.of_kind?(:data_to, :invalid)
+
+    draft = build_automatic_version(status: "draft")
+    assert_not draft.valid?
+    assert draft.errors.of_kind?(:status, :invalid)
+
+    current = build_automatic_version(is_current: true)
+    assert_not current.valid?
+    assert current.errors.of_kind?(:is_current, :invalid)
+  end
+
+  test "an automatic version cannot be edited, have its scenarios edited, deleted or made current" do
+    version = build_automatic_version
+    assert version.save
+    version = Ec::SkuProfitVersion.find(version.id)
+
+    version.name = "renamed"
+    assert_not version.save
+    assert version.errors.of_kind?(:base, :automatic_read_only)
+
+    context = Ec::SkuProfitVersionContext.find_by!(sku_profit_version_id: version.id)
+    context.commission_base_price_rub = 999
+    assert_not context.save
+    assert context.errors.of_kind?(:base, :automatic_read_only)
+
+    assert_not context.destroy
+    assert_not Ec::SkuProfitVersion.find(version.id).destroy
+    assert_raises(ActiveRecord::RecordInvalid) { version.make_current! }
+    assert Ec::SkuProfitVersion.exists?(version.id)
+    assert Ec::SkuProfitVersionContext.exists?(context.id)
+  end
+
+  test "the owner of an automatic version can replace it with system_write" do
+    version = build_automatic_version
+    assert version.save
+    version = Ec::SkuProfitVersion.find(version.id)
+
+    version.system_write = true
+    assert version.destroy
+    assert_not Ec::SkuProfitVersion.exists?(version.id)
+    assert_equal 0, Ec::SkuProfitVersionContext.where(sku_profit_version_id: version.id).count
+  end
+
+  test "the kind of a saved version never changes" do
+    version = build_version
+    version.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbo")
+    assert version.save
+
+    version.kind = "automatic"
+    assert_not version.valid?
+    assert version.errors.of_kind?(:kind, :invalid)
+  end
+
+  test "one automatic version per SKU and month, and months do not clash with published manual versions" do
+    assert build_automatic_version.save
+
+    assert_raises(ActiveRecord::RecordNotUnique) { build_automatic_version.save(validate: false) }
+
+    manual = build_version(status: "published", effective_from: Date.new(2026, 10, 1), effective_to: Date.new(2026, 10, 31))
+    manual.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbo")
+    assert manual.save, manual.errors.full_messages.to_sentence
+
+    next_month = build_automatic_version(effective_from: Date.new(2026, 11, 1), effective_to: Date.new(2026, 11, 30))
+    assert next_month.save
+  end
+
+  test "the database refuses a current automatic version" do
+    version = build_automatic_version
+    assert version.save
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Ec::SkuProfitVersion.where(id: version.id).update_all(is_current: true)
+    end
+  end
+
   private
 
   def build_version(status: "draft", effective_from: Date.new(2026, 1, 1), effective_to: nil)
@@ -155,5 +257,21 @@ class Ec::SkuProfitVersionTest < ActiveSupport::TestCase
       effective_from: effective_from,
       effective_to: effective_to
     )
+  end
+
+  def build_automatic_version(effective_from: Date.new(2026, 10, 1), effective_to: nil, status: "published", is_current: false,
+    data_from: Date.new(2026, 9, 1), data_to: Date.new(2026, 9, 28))
+    version = @sku.profit_versions.new(
+      name: "Automatic #{effective_from}",
+      kind: "automatic",
+      status: status,
+      is_current: is_current,
+      effective_from: effective_from,
+      effective_to: effective_to || effective_from.end_of_month,
+      data_from: data_from,
+      data_to: data_to
+    )
+    version.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbo")
+    version
   end
 end

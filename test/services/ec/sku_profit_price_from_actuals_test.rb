@@ -42,7 +42,7 @@ class Ec::SkuProfitPriceFromActualsTest < ActiveSupport::TestCase
     assert_equal 999.to_d, priced.commission_base_price_rub, "an existing price is never overwritten"
   end
 
-  test "a dry run and a published version change nothing, and too few units are not enough" do
+  test "a dry run and a published version change nothing, and a caller can ask for more units" do
     draft = create_version("draft", [ scenario("wb", "ru", "fbo", "small", price: nil) ])
     published = create_version("published", [ scenario("wb", "ru", "fbo", "small", price: nil) ], effective_from: Date.new(2026, 1, 1))
 
@@ -55,12 +55,14 @@ class Ec::SkuProfitPriceFromActualsTest < ActiveSupport::TestCase
     end
     assert_equal 0, scoped.fetch(:versions)
 
-    few = with_prices({ %w[wb ru fbo small] => 1_100 }, units: 4) { run_fill(draft) }
-    assert_equal "too_few_units", few.fetch(:not_filled).sole.fetch(:reason)
-    assert_equal 5, Ec::SkuProfitPriceFromActuals::MIN_UNITS
+    assert_equal 1, Ec::SkuProfitPriceFromActuals::MIN_UNITS
+    single = with_prices({ %w[wb ru fbo small] => 1_100 }, units: 1) { run_fill(draft, dry_run: true) }
+    assert_equal 1, single.fetch(:filled).size, "one sold unit is enough by default"
 
-    enough = with_prices({ %w[wb ru fbo small] => 1_100 }, units: 5) { run_fill(draft, dry_run: true) }
-    assert_equal 1, enough.fetch(:filled).size
+    few = with_prices({ %w[wb ru fbo small] => 1_100 }, units: 4) do
+      Ec::SkuProfitPriceFromActuals.run(scope: Ec::SkuProfitVersion.where(id: draft.id), min_units: 5, dry_run: true, today: Date.new(2026, 9, 14))
+    end
+    assert_equal "too_few_units", few.fetch(:not_filled).sole.fetch(:reason)
   end
 
   private

@@ -641,7 +641,7 @@ class ReportsController < ApplicationController
   def update_sku_profit_version
     sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     version = sku.profit_versions.includes(:contexts).find(params[:id])
-    if version.archived?
+    if version.archived? || version.automatic?
       render json: { errors: { base: ["readonly"] } }, status: :unprocessable_entity
       return
     end
@@ -665,6 +665,10 @@ class ReportsController < ApplicationController
   def destroy_sku_profit_version
     sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     version = sku.profit_versions.find(params[:id])
+    if version.automatic?
+      render json: { errors: { base: ["readonly"] } }, status: :unprocessable_entity
+      return
+    end
     if version.is_current?
       render json: { errors: { base: ["current_version"] } }, status: :unprocessable_entity
       return
@@ -679,6 +683,11 @@ class ReportsController < ApplicationController
   def set_current_sku_profit_version
     sku = Ec::Sku.find_by!(sku_code: params[:sku_code].to_s.upcase)
     version = sku.profit_versions.find(params[:id])
+    if version.automatic?
+      render json: { errors: { base: ["readonly"] } }, status: :unprocessable_entity
+      return
+    end
+
     version.make_current!
     render json: { id: version.id, is_current: true }
   rescue ActiveRecord::RecordInvalid => e
@@ -1383,7 +1392,9 @@ class ReportsController < ApplicationController
       elsif params[:version_id].present?
         @profit_versions.find_by(id: params[:version_id])
       else
-        Ec::SkuProfitVersion.resolve_for(@profit_versions, date: default_version_date)
+        # The most recent month of the automatic series comes first; without one, the SKU's own manual version.
+        @profit_versions.to_a.find(&:automatic?) ||
+          Ec::SkuProfitVersion.resolve_for(@profit_versions.to_a.reject(&:automatic?), date: default_version_date)
       end
       @profit_version ||= build_standard_profit_version
       add_missing_standard_scenarios(@profit_version)
@@ -2700,7 +2711,7 @@ class ReportsController < ApplicationController
   # rows show with the market's defaults and are written when the version is saved. An archived
   # version is a record of its day and stays as it is.
   def add_missing_standard_scenarios(version)
-    return if version.persisted? && version.archived?
+    return if version.persisted? && (version.archived? || version.automatic?)
 
     Ec::SkuProfitStandardContexts.build_missing(version, sku: @sku, effective_on: version.effective_from || user_today, prefill_prices: price_prefill_options)
   end
@@ -2749,7 +2760,7 @@ class ReportsController < ApplicationController
   end
 
   def version_payload(version)
-    version.attributes.slice("id", "name", "status", "is_current", "effective_from", "effective_to", "note", "lock_version", "created_at", "updated_at").merge(
+    version.attributes.slice("id", "name", "kind", "status", "is_current", "effective_from", "effective_to", "data_from", "data_to", "note", "lock_version", "created_at", "updated_at").merge(
       "contexts" => Ec::SkuProfitStandardContexts.sort(version.contexts).map do |context|
         context.attributes.slice(
           "id", "platform", "market", "delivery_mode", "warehouse_region", "company_type", "logistics_mode",

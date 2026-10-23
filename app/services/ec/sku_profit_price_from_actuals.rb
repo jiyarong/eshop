@@ -7,8 +7,9 @@ module Ec
   class SkuProfitPriceFromActuals
     IMPORT_NOTE_PREFIX = "sku-profit-pricing-sheet-import:".freeze
     DEFAULT_TIME_ZONE = "Asia/Shanghai".freeze
-    # A realized price is only trusted when at least this many units were sold in the scenario.
-    MIN_UNITS = 5
+    # A realized price is only used when at least this many units were sold in the scenario: one sold unit is enough,
+    # a scenario nobody bought from has no price. (A caller may ask for more through min_units.)
+    MIN_UNITS = 1
 
     # Decides the price of one scenario that has none. Returns
     #   { price_rub:, units:, orders: }                     when it can be filled (the caller assigns it)

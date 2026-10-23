@@ -12,176 +12,175 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     sku_ids = @skus.map(&:id)
     version_ids = Ec::SkuProfitVersion.where(sku_id: sku_ids).pluck(:id)
     context_ids = Ec::SkuProfitVersionContext.where(sku_profit_version_id: version_ids).pluck(:id)
+    cost_ids = Ec::SkuCost.where(sku_code: @skus.map(&:sku_code)).pluck(:id)
     Ec::OperationLog.where(record_type: "Ec::SkuProfitVersionContext", record_id: context_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::SkuProfitVersion", record_id: version_ids).delete_all
+    Ec::OperationLog.where(record_type: "Ec::SkuCost", record_id: cost_ids).delete_all
     Ec::OperationLog.where(record_type: "Ec::Sku", record_id: sku_ids).delete_all
     Ec::SkuProfitVersionContext.where(id: context_ids).delete_all
     Ec::SkuProfitVersion.where(id: version_ids).delete_all
+    Ec::SkuCost.where(id: cost_ids).delete_all
     Ec::Sku.unscoped.where(id: sku_ids).delete_all
   end
 
-  test "copies the latest version into a draft for the month and refreshes only the actual-data inputs" do
+  test "builds an automatic version for the month with every standard scenario and its data window" do
     sku = create_sku("MR-#{@token}")
-    create_version(sku, "published", Date.new(2026, 9, 1), price: 1_000, return_rate: 0.3, effective_to: Date.new(2026, 9, 30))
-    previous = create_version(sku, "published", Date.new(2026, 10, 1), price: 12_500, return_rate: 0.1)
-
-    summary = nil
-    with_actuals(logistics: { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") }, handover: { average_rub: BigDecimal("33") } },
-      return_rate: { return_rate: { rate: BigDecimal("0.12") } },
-      storage: { storage: { average_rub: BigDecimal("130") } }, advertising: { rate: BigDecimal("0.05") }) do
-      summary = run_refresh
-    end
-
-    assert summary.fetch(:ok), summary.inspect
-    version = sku.profit_versions.find_by!(effective_from: MONTH_START)
-    assert_equal "draft", version.status
-    assert_equal "月度自动更新 2026-11", version.name
-    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, version.contexts.count
-    assert_equal [ previous.id ], summary.fetch(:created).map { |entry| entry.fetch(:copied_from_version_id) }
-
-    wb = version.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
-    # Carried over from the previous version.
-    assert_equal 12_500.to_d, wb.commission_base_price_rub
-    assert_equal 77.to_d, wb.purchase_price_cny
-    assert_equal 0.185.to_d, wb.commission_rate
-    # Refreshed from the last four weeks.
-    assert_equal 210.5.to_d, wb.outbound_logistics_rub
-    assert_equal 48.to_d, wb.return_logistics_rub
-    assert_equal 0.12.to_d, wb.return_rate
-    # The copy is a fresh calculation, not the previous version's stored result.
-    assert_equal "valid", wb.calculation_status
-    assert_not_nil wb.profit_cny
-    # The previous version is untouched.
-    assert_equal 0.1.to_d, previous.reload.contexts.find_by(platform: "wb", delivery_mode: "fbo", company_type: "small").return_rate
-    # Storage and advertising are refreshed where they are measured for the scenario ...
-    assert_equal 10.to_d, wb.storage_cny
-    assert_equal 0.05.to_d, wb.advertising_rate
-    # ... which is every scenario: storage and advertising have no country dimension, so the Belarus and FBS
-    # scenarios take the SKU's own figures (Ozon FBS pays no Ozon storage and keeps what it holds).
-    belarus = version.context_for(platform: "wb", market: "by", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
-    assert_equal 210.5.to_d, belarus.outbound_logistics_rub, "logistics is measured per market"
-    assert_equal 10.to_d, belarus.storage_cny
-    assert_equal 0.05.to_d, belarus.advertising_rate
-    ozon_fbs = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general")
-    assert_equal 33.to_d, ozon_fbs.fbs_handover_rub
-    assert_equal 0.05.to_d, ozon_fbs.advertising_rate
-    assert_equal 0, ozon_fbs.storage_cny.to_d, "FBS has no Ozon storage"
-    ozon_fbo = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "general")
-    assert_equal 33.to_d, ozon_fbo.fbs_handover_rub, "FBO has the handover and last-mile fee too (the stubbed figure is the same for both modes)"
-    assert_equal 0.05.to_d, ozon_fbo.advertising_rate
-  end
-
-  test "a scenario on the fixed formula keeps its freight figures out of the refresh" do
-    sku = create_sku("MF-#{@token}")
-    create_version(sku, "published", Date.new(2026, 10, 1), price: 12_500, return_rate: 0.1, logistics_mode: "formula")
-
-    with_actuals(logistics: { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") } },
-      return_rate: { return_rate: { rate: BigDecimal("0.12") } }) do
-      run_refresh
-    end
-
-    wb = sku.profit_versions.find_by!(effective_from: MONTH_START).context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
-    assert_equal "formula", wb.logistics_mode
-    assert_equal 100.to_d, wb.outbound_logistics_rub, "a figure the formula ignores is not refreshed"
-    assert_equal 0.12.to_d, wb.return_rate, "the return rate is not a freight figure and still follows the real data"
-  end
-
-  test "a scenario without a price gets its own realized price when enough units sold, existing prices stay" do
-    sku = create_sku("MP-#{@token}")
-    version = sku.profit_versions.new(name: "v", status: "published", effective_from: Date.new(2026, 10, 1))
-    [ [ "fbo", 12_500 ], [ "fbs", nil ] ].each do |mode, price|
-      identity = { "platform" => "wb", "market" => "ru", "delivery_mode" => mode, "warehouse_region" => "main", "company_type" => "small" }
-      context = version.contexts.build(identity)
-      context.assign_input_values(
-        Ec::SkuProfitCalculator.default_inputs(platform: "wb", parameter_context: identity).merge(
-          "purchase_price_cny" => 77, "freight_cny" => 10, "customs_misc_cny" => 2, "duty_rate" => 0.1,
-          "import_vat_rate" => 0.2, "length_cm" => 10, "width_cm" => 10, "height_cm" => 10, "commission_rate" => 0.185,
-          "commission_base_price_rub" => price
-        )
-      )
-    end
-    version.save!
-
-    prices = { [ "wb", "ru", "fbo", "small" ] => [ 9_999, 50 ], [ "wb", "ru", "fbs", "small" ] => [ 3_100, 7 ],
-               [ "wb", "ru", "fbo", "general" ] => [ 2_000, 4 ] }
-    original = Ec::SkuActualScenarioPriceQuery.method(:run)
-    Ec::SkuActualScenarioPriceQuery.define_singleton_method(:run) do |**args|
-      average, units = prices.fetch([ args[:platform], args[:market], args[:delivery_mode], args[:company_type] ], [ nil, 0 ])
-      { commission_base_price: { average_rub: average && BigDecimal(average.to_s), unit_count: units, item_count: 2, missing_exchange_rate_item_count: 0 } }
-    end
-    begin
-      summary = run_refresh
-    ensure
-      Ec::SkuActualScenarioPriceQuery.define_singleton_method(:run, original)
-    end
-
-    created = sku.profit_versions.find_by!(effective_from: MONTH_START)
-    price_of = lambda do |mode, company|
-      created.context_for(platform: "wb", market: "ru", delivery_mode: mode, warehouse_region: "main", company_type: company)&.commission_base_price_rub
-    end
-    assert_equal 12_500.to_d, price_of.call("fbo", "small"), "an existing price is never replaced"
-    assert_equal 3_100.to_d, price_of.call("fbs", "small")
-    assert_nil price_of.call("fbo", "general"), "4 units are below the 5-unit minimum"
-    assert_equal 1, summary.fetch(:created).sole.fetch(:prices_filled)
-  end
-
-  test "copies the SKU's current version rather than the newest one" do
-    sku = create_sku("MC-#{@token}")
-    chosen = create_version(sku, "published", Date.new(2026, 9, 1), price: 11_000, return_rate: 0.1, effective_to: Date.new(2026, 9, 30))
-    create_version(sku, "draft", Date.new(2026, 10, 1), price: 22_000, return_rate: 0.1)
-    chosen.make_current!
 
     summary = run_refresh
 
-    assert_equal [ chosen.id ], summary.fetch(:created).map { |entry| entry.fetch(:copied_from_version_id) }
-    copy = sku.profit_versions.find_by!(effective_from: MONTH_START)
-    wb = copy.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
-    assert_equal 11_000.to_d, wb.commission_base_price_rub
-    assert_not copy.is_current, "the new draft does not take over as current by itself"
+    assert summary.fetch(:ok), summary.inspect
+    # 2026-11-01 is a Sunday: the four full weeks before the Monday of its week, 2026-10-26.
+    assert_equal "2026-09-28", summary.fetch(:data_from)
+    assert_equal "2026-10-25", summary.fetch(:data_to)
+    version = sku.profit_versions.automatic.sole
+    assert version.automatic?
+    assert_equal "published", version.status
+    assert_not version.is_current?
+    assert_equal "2026-11", version.name
+    assert_equal MONTH_START, version.effective_from
+    assert_equal Date.new(2026, 11, 30), version.effective_to
+    assert_equal Date.new(2026, 9, 28), version.data_from
+    assert_equal Date.new(2026, 10, 25), version.data_to
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, version.contexts.count
+    assert_equal Ec::SkuProfitStandardContexts::SCENARIOS.size, summary.fetch(:built).sole.fetch(:scenarios)
   end
 
-  test "a figure without platform data keeps the previous version's value" do
-    sku = create_sku("MK-#{@token}")
-    create_version(sku, "published", Date.new(2026, 10, 1), price: 9_000, return_rate: 0.22)
+  test "fills the inputs from the SKU file and the platform data, takes nothing from earlier versions" do
+    sku = create_sku("MS-#{@token}")
+    create_cost(sku)
+    # A manual version of the SKU with its own figures: nothing of it may reach the automatic one.
+    manual = sku.profit_versions.new(name: "mine", status: "draft", effective_from: Date.new(2026, 10, 1))
+    manual.contexts.build(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small",
+      commission_base_price_rub: 99_999, commission_rate: 0.5, return_rate: 0.9)
+    manual.save!
 
-    run_refresh
+    with_actuals(logistics: { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") }, handover: { average_rub: BigDecimal("33") } },
+      return_rate: { return_rate: { rate: BigDecimal("0.12") } },
+      storage: { storage: { average_rub: BigDecimal("130") } }, advertising: { rate: BigDecimal("0.05") }) do
+      run_refresh
+    end
 
-    wb = sku.profit_versions.find_by!(effective_from: MONTH_START)
-      .context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
-    assert_equal 0.22.to_d, wb.return_rate
+    version = sku.profit_versions.automatic.sole
+    wb = version.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
+    assert_equal 77.to_d, wb.purchase_price_cny, "from the SKU file"
+    assert_equal 0.12.to_d, wb.return_rate, "from the platform data, not the manual 0.9"
+    assert_equal 210.5.to_d, wb.outbound_logistics_rub
+    assert_equal 48.to_d, wb.return_logistics_rub
+    assert_equal 10.to_d, wb.storage_cny
+    assert_equal 0.05.to_d, wb.advertising_rate
+    assert_nil wb.commission_base_price_rub, "no sold units, no price: it is not carried over from the manual version"
+    assert_nil wb.commission_rate, "no official rate, no rate: it is not carried over from the manual version"
+    assert_equal "incomplete", wb.calculation_status
+    assert_nil wb.profit_cny
+
+    ozon_fbs = version.context_for(platform: "ozon", market: "ru", delivery_mode: "fbs", warehouse_region: "main", company_type: "general")
+    assert_equal 33.to_d, ozon_fbs.fbs_handover_rub
+    assert_equal 0.05.to_d, ozon_fbs.advertising_rate
   end
 
-  test "running again in the month, or with a version already on the 1st, creates nothing" do
+  test "a scenario with a price, a rate and real freight is calculated on the real freight" do
+    sku = create_sku("MA-#{@token}")
+    create_cost(sku)
+
+    with_price(9_999, 50) do
+      with_commission(BigDecimal("0.185")) do
+        with_actuals(logistics: { outbound: { average_rub: BigDecimal("210.5") }, return: { average_rub: BigDecimal("48") } },
+          return_rate: { return_rate: { rate: BigDecimal("0.12") } }) do
+          run_refresh
+        end
+      end
+    end
+
+    wb = sku.profit_versions.automatic.sole.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
+    assert_equal 9_999.to_d, wb.commission_base_price_rub
+    assert_equal 0.185.to_d, wb.commission_rate
+    assert_equal "valid", wb.calculation_status
+    assert_not_nil wb.profit_cny
+    assert_equal "actual", wb.logistics_mode
+    assert_equal 210.5.to_d, wb.outbound_logistics_rub
+  end
+
+  test "a scenario without real freight is calculated on the fixed formula and holds no freight figures" do
+    sku = create_sku("MF-#{@token}")
+    create_cost(sku)
+
+    with_price(9_999, 50) do
+      with_commission(BigDecimal("0.185")) do
+        with_actuals(logistics: { outbound: { average_rub: nil }, return: { average_rub: BigDecimal("48") } }) { run_refresh }
+      end
+    end
+
+    wb = sku.profit_versions.automatic.sole.context_for(platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small")
+    assert_equal "formula", wb.logistics_mode
+    assert_nil wb.outbound_logistics_rub
+    assert_nil wb.return_logistics_rub
+    assert_equal "valid", wb.calculation_status
+  end
+
+  test "one sold unit is enough for a price, a scenario nobody bought from has none" do
+    sold = create_sku("MP-#{@token}")
+    unsold = create_sku("MU-#{@token}")
+
+    with_price(9_999, 1) { Ec::SkuProfitMonthlyRefresh.run(month_start: MONTH_START, today: MONTH_START, sku_scope: Ec::Sku.where(id: sold.id)) }
+    with_price(nil, 0) { Ec::SkuProfitMonthlyRefresh.run(month_start: MONTH_START, today: MONTH_START, sku_scope: Ec::Sku.where(id: unsold.id)) }
+
+    identity = { platform: "wb", market: "ru", delivery_mode: "fbo", warehouse_region: "main", company_type: "small" }
+    assert_equal 9_999.to_d, sold.profit_versions.automatic.sole.context_for(**identity).commission_base_price_rub
+    assert_nil unsold.profit_versions.automatic.sole.context_for(**identity).commission_base_price_rub
+  end
+
+  test "rebuilding the same month replaces the version, other months and manual versions stay" do
     sku = create_sku("MI-#{@token}")
-    other = create_sku("MJ-#{@token}")
-    create_version(sku, "published", Date.new(2026, 10, 1), price: 9_000, return_rate: 0.1)
-    create_version(other, "published", Date.new(2026, 10, 1), price: 9_000, return_rate: 0.1)
-    create_version(other, "draft", MONTH_START, price: 9_500, return_rate: 0.1)
+    manual = sku.profit_versions.create!(name: "mine", status: "draft", effective_from: MONTH_START)
+    october = nil
+    Ec::SkuProfitMonthlyRefresh.run(month_start: Date.new(2026, 10, 1), today: Date.new(2026, 10, 1), sku_scope: Ec::Sku.where(id: sku.id))
+    october = sku.profit_versions.automatic.find_by!(effective_from: Date.new(2026, 10, 1))
 
     first = run_refresh
+    first_id = sku.profit_versions.automatic.find_by!(effective_from: MONTH_START).id
     second = run_refresh
 
-    assert_equal [ sku.sku_code ], first.fetch(:created).map { |entry| entry.fetch(:sku_code) }
-    assert_equal [ other.sku_code ], first.fetch(:skipped_existing)
-    assert_empty second.fetch(:created)
-    assert_equal [ sku.sku_code, other.sku_code ].sort, second.fetch(:skipped_existing).sort
-    assert_equal 2, sku.profit_versions.count
+    assert first.fetch(:ok) && second.fetch(:ok)
+    november = sku.profit_versions.automatic.find_by!(effective_from: MONTH_START)
+    assert_not_equal first_id, november.id, "the month's version is rebuilt"
+    assert_equal 2, sku.profit_versions.automatic.count
+    assert Ec::SkuProfitVersion.exists?(october.id)
+    assert Ec::SkuProfitVersion.exists?(manual.id)
+    assert manual.reload.manual?
+    assert_equal 0, Ec::SkuProfitVersionContext.where(sku_profit_version_id: first_id).count, "the replaced version's scenarios go with it"
   end
 
-  test "SKUs without any version are left alone, and a dry run writes nothing" do
-    bare = create_sku("MB-#{@token}")
-    dry = create_sku("MD-#{@token}")
-    create_version(dry, "published", Date.new(2026, 10, 1), price: 9_000, return_rate: 0.1)
+  test "every active SKU gets a version, inactive ones do not, and a dry run writes nothing" do
+    active = create_sku("MB-#{@token}")
+    inactive = create_sku("MD-#{@token}")
+    inactive.update_columns(is_active: false)
+    scope = Ec::Sku.where(id: [ active.id, inactive.id ], is_active: true)
 
     assert_no_difference -> { Ec::SkuProfitVersion.count } do
-      summary = run_refresh(dry_run: true)
-      assert_equal [ dry.sku_code ], summary.fetch(:created).map { |entry| entry.fetch(:sku_code) }
+      summary = Ec::SkuProfitMonthlyRefresh.run(month_start: MONTH_START, today: MONTH_START, dry_run: true, sku_scope: scope)
+      assert_equal [ active.sku_code ], summary.fetch(:built).map { |entry| entry.fetch(:sku_code) }
     end
-    assert_empty bare.profit_versions
+
+    Ec::SkuProfitMonthlyRefresh.run(month_start: MONTH_START, today: MONTH_START, sku_scope: scope)
+    assert_equal 1, active.profit_versions.automatic.count
+    assert_empty inactive.profit_versions
+  end
+
+  test "the summary says which scenarios cannot be calculated and why" do
+    sku = create_sku("MN-#{@token}")
+
+    entry = run_refresh.fetch(:built).sole
+
+    assert_equal entry.fetch(:scenarios), entry.fetch(:not_calculable).size
+    wb = entry.fetch(:not_calculable).find { |scenario| scenario.fetch(:scenario) == "wb|ru|fbo|main|small" }
+    assert_equal "no_listings", wb.dig(:reasons, "commission_rate")
+    assert_equal "no_orders_in_scenario", wb.dig(:reasons, "price")
+    assert_includes wb.fetch(:errors), "missing_commission_base_price_rub"
+    assert_equal sku.sku_code, entry.fetch(:sku_code)
   end
 
   test "the first day of the month is derived from today and the job is scheduled for it" do
-    refresh = Ec::SkuProfitMonthlyRefresh.new(today: Date.new(2026, 12, 17))
+    refresh = Ec::SkuProfitMonthlyRefresh.new(today: Date.new(2026, 12, 17), sku_scope: Ec::Sku.none)
     assert_equal "2026-12-01", refresh.call.fetch(:month_start)
 
     recurring = YAML.safe_load_file(Rails.root.join("config/recurring.yml")).fetch("production")
@@ -203,21 +202,11 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     sku
   end
 
-  def create_version(sku, status, effective_from, price:, return_rate:, effective_to: nil, logistics_mode: "actual")
-    version = sku.profit_versions.new(name: "v #{effective_from}", status:, effective_from:, effective_to:)
-    Ec::SkuProfitStandardContexts::SCENARIOS.each do |identity|
-      context = version.contexts.build(identity.merge("logistics_mode" => logistics_mode))
-      context.assign_input_values(
-        Ec::SkuProfitCalculator.default_inputs(platform: identity.fetch("platform"), parameter_context: identity).merge(
-          "purchase_price_cny" => 77, "freight_cny" => 10, "customs_misc_cny" => 2, "duty_rate" => 0.1,
-          "import_vat_rate" => 0.2, "length_cm" => 10, "width_cm" => 10, "height_cm" => 10,
-          "commission_base_price_rub" => price, "commission_rate" => 0.185, "return_rate" => return_rate,
-          "outbound_logistics_rub" => 100, "return_logistics_rub" => 50, "warehouse_operation_rub" => 25
-        )
-      )
-    end
-    version.save!
-    version
+  def create_cost(sku)
+    Ec::SkuCost.create!(
+      sku_code: sku.sku_code, effective_on: Date.new(2026, 1, 1), purchase_price_cny: 77, freight_to_by_cny: 10,
+      customs_misc_cny: 2, customs_duty_rate: 0.1, import_vat_rate: 0.2, pkg_length_cm: 10, pkg_width_cm: 10, pkg_height_cm: 10
+    )
   end
 
   # Canned payloads for the actual-data queries; nil keeps the real (empty-DB) answer.
@@ -231,5 +220,24 @@ class Ec::SkuProfitMonthlyRefreshTest < ActiveSupport::TestCase
     yield
   ensure
     originals.each { |klass, original| klass.define_singleton_method(:run, original) }
+  end
+
+  # Every scenario sold `units` units at `average` RUB (nil: nothing sold).
+  def with_price(average, units)
+    original = Ec::SkuActualScenarioPriceQuery.method(:run)
+    Ec::SkuActualScenarioPriceQuery.define_singleton_method(:run) do |**_args|
+      { commission_base_price: { average_rub: average && BigDecimal(average.to_s), unit_count: units, item_count: 2, missing_exchange_rate_item_count: 0 } }
+    end
+    yield
+  ensure
+    Ec::SkuActualScenarioPriceQuery.define_singleton_method(:run, original)
+  end
+
+  def with_commission(rate)
+    original = Ec::SkuOfficialCommissionRate.method(:call)
+    Ec::SkuOfficialCommissionRate.define_singleton_method(:call) { |**_args| { rate: rate, reason: nil } }
+    yield
+  ensure
+    Ec::SkuOfficialCommissionRate.define_singleton_method(:call, original)
   end
 end

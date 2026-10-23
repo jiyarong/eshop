@@ -1,8 +1,10 @@
 <% profit_contexts = profit_prediction_contexts(@profit_version) %>
 <% profit_version_new = @profit_version.new_record? %>
-<% profit_version_readonly = @profit_version.persisted? && @profit_version.archived? %>
+<% profit_version_readonly = @profit_version.persisted? && (@profit_version.archived? || @profit_version.automatic?) %>
+<% profit_version_automatic = @profit_version.persisted? && @profit_version.automatic? %>
 <% save_url = profit_version_new ? report_sku_profit_versions_path(@sku.sku_code) : report_sku_profit_version_path(@sku.sku_code, @profit_version) %>
-<% profit_version_options = @profit_versions.to_a.partition(&:is_current?).flatten %>
+<% automatic_versions = @profit_versions.to_a.select(&:automatic?) %>
+<% manual_versions = @profit_versions.to_a.reject(&:automatic?).partition(&:is_current?).flatten %>
 <% hidden_scenario_keys = @hidden_scenario_keys || Set.new %>
 <% scenario_key = ->(context) { Ec::SkuProfitStandardContexts.key_for(context.attributes.slice(*Ec::SkuProfitStandardContexts::IDENTITY_KEYS)) } %>
 <% scenario_state = profit_prediction_scenario_state(profit_contexts, sales: @scenario_sales, hidden_keys: hidden_scenario_keys) %>
@@ -299,11 +301,14 @@
         <h2 class="section-title"><%= t("reports.profit_prediction.title") %></h2>
         <label class="profit-prediction-version-switcher">
           <%= select_tag :profit_version_id,
-            options_for_select(
-              profit_version_options.map do |version|
-                label = [version.name, (t("reports.profit_prediction.current_version.badge") if version.is_current?), t("reports.profit_prediction.version_statuses.#{version.status}")].compact.join(" · ")
-                [label, version.id]
-              end,
+            grouped_options_for_select(
+              [
+                [ t("reports.profit_prediction.version_groups.automatic"), automatic_versions.map { |version| [ version.name, version.id ] } ],
+                [ t("reports.profit_prediction.version_groups.manual"), manual_versions.map do |version|
+                  label = [version.name, (t("reports.profit_prediction.current_version.badge") if version.is_current?), t("reports.profit_prediction.version_statuses.#{version.status}")].compact.join(" · ")
+                  [ label, version.id ]
+                end ]
+              ].reject { |_group, options| options.empty? },
               @profit_version.id
             ),
             include_blank: profit_version_new ? t("reports.profit_prediction.unsaved_version") : nil,
@@ -356,7 +361,7 @@
               data-version-action="copy"
               data-default-name="<%= t("reports.profit_prediction.copy_name", name: @profit_version.name) %>">
               <i class="bi bi-copy" aria-hidden="true"></i>
-              <%= t("reports.profit_prediction.actions.copy") %>
+              <%= profit_version_automatic ? t("reports.profit_prediction.automatic_version.copy_as_manual") : t("reports.profit_prediction.actions.copy") %>
             </button>
           <% end %>
           <button type="button" class="btn btn-ghost btn-sm"
@@ -374,7 +379,7 @@
               <%= t("reports.profit_prediction.actions.save_calculation") %>
             </button>
           <% end %>
-          <% if @profit_version.persisted? %>
+          <% if @profit_version.persisted? && !profit_version_automatic %>
             <button type="button" class="btn btn-danger btn-sm"
               data-action="profit-prediction#openDeleteDialog"
               data-version-name="<%= @profit_version.name %>"
@@ -397,7 +402,24 @@
       data: { profit_prediction_target: "versionInput", version_field: "effective_to" } %>
   </header>
 
-  <% if @profit_version.persisted? && !@profit_version.is_current? && @profit_versions.any?(&:is_current?) %>
+  <% if profit_version_automatic %>
+    <% gaps = profit_prediction_automatic_gaps(@profit_version, hidden_keys: hidden_scenario_keys) %>
+    <div class="profit-prediction-alert profit-prediction-alert--info" role="status">
+      <i class="bi bi-info-circle" aria-hidden="true"></i>
+      <div>
+        <p><%= t("reports.profit_prediction.automatic_version.notice", from: @profit_version.data_from.iso8601, to: @profit_version.data_to.iso8601) %>
+          <%= t("reports.profit_prediction.automatic_version.copy_hint") %></p>
+        <% if gaps.any? %>
+          <p><strong><%= t("reports.profit_prediction.automatic_version.gaps_title", count: incomplete_context_count) %></strong></p>
+          <% gaps.sort_by { |_code, count| -count }.each do |code, count| %>
+            <p><%= t("reports.profit_prediction.automatic_version.gaps.#{profit_prediction_gap_key(code)}") %> × <%= count %></p>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @profit_version.persisted? && @profit_version.manual? && !@profit_version.is_current? && @profit_versions.any?(&:is_current?) %>
     <div class="profit-prediction-alert profit-prediction-alert--info" role="status">
       <i class="bi bi-info-circle" aria-hidden="true"></i>
       <%= t("reports.profit_prediction.current_version.not_current_notice") %>
